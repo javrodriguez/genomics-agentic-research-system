@@ -1,0 +1,13 @@
+sample,fastq_1,fastq_2,strandedness
+DEMO-01,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-01_S1_L001_R1_001.fastq.gz,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-01_S1_L001_R2_001.fastq.gz,auto
+DEMO-01,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-01_S1_L002_R1_001.fastq.gz,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-01_S1_L002_R2_001.fastq.gz,auto
+DEMO-02,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-02_S1_L001_R1_001.fastq.gz,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-02_S1_L001_R2_001.fastq.gz,auto
+DEMO-02,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-02_S1_L002_R1_001.fastq.gz,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-02_S1_L002_R2_001.fastq.gz,auto
+DEMO-03,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-03_S1_L001_R1_001.fastq.gz,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-03_S1_L001_R2_001.fastq.gz,auto
+DEMO-03,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-03_S1_L002_R1_001.fastq.gz,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-03_S1_L002_R2_001.fastq.gz,auto
+DEMO-04,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-04_S1_L001_R1_001.fastq.gz,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-04_S1_L001_R2_001.fastq.gz,auto
+DEMO-04,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-04_S1_L002_R1_001.fastq.gz,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-04_S1_L002_R2_001.fastq.gz,auto
+DEMO-05,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-05_S1_L001_R1_001.fastq.gz,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-05_S1_L001_R2_001.fastq.gz,auto
+DEMO-05,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-05_S1_L002_R1_001.fastq.gz,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-05_S1_L002_R2_001.fastq.gz,auto
+DEMO-06,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-06_S1_L001_R1_001.fastq.gz,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-06_S1_L001_R2_001.fastq.gz,auto
+DEMO-06,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-06_S1_L002_R1_001.fastq.gz,/data/example/projects/demo-project/00_data/rnaseq_bulk/raw/DEMO-06_S1_L002_R2_001.fastq.gz,auto

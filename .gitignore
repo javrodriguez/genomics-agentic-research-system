@@ -1,0 +1,26 @@
+# Project working data never belongs in the repo
+gars/projects/*/
+!gars/projects/.gitkeep
+
+# Stage outputs and pipeline artifacts
+**/00_data/*/raw/*
+!**/00_data/*/raw/.gitkeep
+**/run/
+**/run.crashed-*/
+**/run.failed-*/
+**/work/
+.nextflow*
+*.sif
+
+# Slurm
+*.out
+*.err
+STATUS
+submit.sh
+
+# Third-party skills are installed, not vendored
+gars/tools/skills/
+
+.DS_Store
+__pycache__/
+*.pyc

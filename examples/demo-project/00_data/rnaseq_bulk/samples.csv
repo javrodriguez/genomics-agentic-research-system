@@ -1,0 +1,7 @@
+sample_id,condition,group,replicate
+DEMO-01,control,control,1
+DEMO-02,control,control,2
+DEMO-03,control,control,3
+DEMO-04,treated,treated,1
+DEMO-05,treated,treated,2
+DEMO-06,treated,treated,3

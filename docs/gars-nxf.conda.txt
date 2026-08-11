@@ -1,0 +1,32 @@
+# This file may be used to create an environment using:
+# $ conda create --name <env> --file <this file>
+# platform: linux-64
+# created-by: conda 26.1.1
+@EXPLICIT
+https://conda.anaconda.org/conda-forge/noarch/ca-certificates-2026.7.22-hbd8a1cb_0.conda
+https://conda.anaconda.org/conda-forge/linux-64/libgomp-16.1.0-he0feb66_1.conda
+https://conda.anaconda.org/conda-forge/noarch/python_abi-3.10-8_graalpy230_310_native.conda
+https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-20_gnu.conda
+https://conda.anaconda.org/conda-forge/linux-64/libgcc-16.1.0-ha9f2e26_1.conda
+https://conda.anaconda.org/bioconda/linux-64/coreutils-8.25-1.tar.bz2
+https://conda.anaconda.org/conda-forge/linux-64/libev-4.33-h280c20c_3.conda
+https://conda.anaconda.org/conda-forge/linux-64/libgcc-ng-16.1.0-h69a702a_1.conda
+https://conda.anaconda.org/conda-forge/linux-64/libstdcxx-16.1.0-h934c35e_1.conda
+https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.6-hdb14827_1.conda
+https://conda.anaconda.org/conda-forge/linux-64/patch-2.8-h280c20c_1003.conda
+https://conda.anaconda.org/bioconda/linux-64/c-ares-1.11.0-h470a237_1.tar.bz2
+https://conda.anaconda.org/conda-forge/linux-64/libedit-3.1.20250104-pl5321h7949ede_0.conda
+https://conda.anaconda.org/conda-forge/linux-64/libstdcxx-ng-16.1.0-hdf11a46_1.conda
+https://conda.anaconda.org/conda-forge/linux-64/libzlib-1.2.13-h4ab18f5_6.conda
+https://conda.anaconda.org/conda-forge/linux-64/openssl-1.1.1w-hd590300_0.conda
+https://conda.anaconda.org/conda-forge/linux-64/libssh2-1.10.0-haa6b8db_3.tar.bz2
+https://conda.anaconda.org/conda-forge/linux-64/tk-8.6.13-noxft_h4845f30_101.conda
+https://conda.anaconda.org/conda-forge/linux-64/zlib-1.2.13-h4ab18f5_6.conda
+https://conda.anaconda.org/conda-forge/linux-64/krb5-1.17.2-h926e7f8_0.tar.bz2
+https://conda.anaconda.org/conda-forge/linux-64/libnghttp2-1.41.0-hab1572f_1.tar.bz2
+https://conda.anaconda.org/conda-forge/linux-64/libcurl-7.71.1-hcdd3856_8.tar.bz2
+https://conda.anaconda.org/conda-forge/linux-64/curl-7.71.1-he644dc0_8.tar.bz2
+https://conda.anaconda.org/conda-forge/linux-64/graalpy-23.0.0-0_graalvm_native.conda
+https://conda.anaconda.org/conda-forge/linux-64/graalpy-graalvm-23.0.0-h4d560db_0.conda
+https://conda.anaconda.org/conda-forge/linux-64/openjdk-17.0.7.4-0_graalvm230b10.conda
+https://conda.anaconda.org/bioconda/noarch/nextflow-26.04.6-h2a3209d_1.conda

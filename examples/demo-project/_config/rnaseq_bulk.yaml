@@ -1,0 +1,25 @@
+# Per-assay configuration. Read by 01_prepare_samplesheets (strandedness) and
+# 02_bioinformatics (everything else). Written by the user, never generated.
+#
+# No stage substitutes a default for `reference`, `de.formula`, or `de.contrast`.
+# A wrong value in any of those produces confident, wrong biology rather than an error,
+# so a missing key stops the stage and asks.
+
+strandedness: auto
+
+reference:
+  genome: GRCh38          # iGenomes key. Mutually exclusive with fasta/gtf below.
+  # fasta: /refs/genome.fa
+  # gtf:   /refs/genes.gtf
+
+aligner: star_salmon
+
+compute:
+  partition: cpu_long
+  time: "5-00:00:00"
+  cpus: 8
+  mem: 64G
+
+de:
+  formula: "~ condition"
+  contrast: "condition,treated,control"    # factor,numerator,denominator
