@@ -133,8 +133,28 @@ here — stage 01 owns it.
 | `reference.fasta` + `reference.gtf` | one of these two | `--fasta <v> --gtf <v>` |
 | `aligner` | no (default `star_salmon`) | `--aligner <value>` |
 | `compute.partition`, `compute.time`, `compute.cpus`, `compute.mem` | yes | Slurm directives |
+| `compute.work_dir` | yes | `--work-dir <value>/<project>-<assay>` |
+| `reference.derived_dir` | no | `--star-index`, `--salmon-index`, `--transcript-fasta` from that directory |
 
 `reference.genome` and `reference.fasta` are mutually exclusive — the skill rejects both.
+
+**Never let `work/` default into the project.** Nextflow retains every process output in its
+work directory so `-resume` can reuse it, so a single 10-sample run accumulates 250-350 GB of
+intermediates there. Always pass `--work-dir` from `compute.work_dir`, on scratch. Because
+`publish_dir_mode = 'copy'`, `results/` holds real files and `work/` may be deleted once the run
+succeeds.
+
+**Reuse derived references; never rebuild them per run.** nf-core builds the STAR index, Salmon
+index and transcripts FASTA into `work/` and does not publish them (`save_reference = false`), so
+they are regenerated every run — roughly 43 GB and an hour each time, and discarded with `work/`.
+
+- If `reference.derived_dir` is set and populated, pass `--star-index`, `--salmon-index` and
+  `--transcript-fasta` from it. Do not pass `--save-reference`.
+- If it is set but empty, pass `--save-reference` so this run publishes them to
+  `run/results/genome/`, then report their location so they can be harvested into the cache.
+- **Before reusing a cached STAR index, verify the version that built it.** Read `versionGenome`
+  from its `genomeParameters.txt`; STAR refuses an index built by an incompatible version. The
+  cache path must be keyed by pipeline version for this reason.
 
 **Reference annotation must carry a biotype attribute.** nf-core's `SUBREAD_FEATURECOUNTS` step
 groups by `gene_biotype`. Ensembl GTFs provide it and are the native case. GENCODE names the

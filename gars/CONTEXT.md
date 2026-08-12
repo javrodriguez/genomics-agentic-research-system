@@ -80,13 +80,41 @@ reference:                      # declare genome OR fasta+gtf, never both
   # gtf:   /path/to/genes.gtf
 aligner: star_salmon            # star_salmon | star_rsem | hisat2 | bowtie2_salmon
 compute:                        # Slurm directives for the pipeline job
-  partition: cpu_medium
-  time: "48:00:00"
+  partition: cpu_long
+  time: "5-00:00:00"
   cpus: 8
   mem: 64G
+  # Nextflow's work directory. Point it at scratch, never inside the project.
+  # A single 10-sample run accumulates 250-350 GB of intermediates there: work/ retains
+  # every process output so -resume can reuse it, so trimmed FASTQs, unsorted BAMs, sorted
+  # BAMs and deduplicated BAMs all coexist. results/ is published with mode 'copy', so
+  # work/ is disposable once a run succeeds.
+  work_dir: /gpfs/scratch/<user>/gars-work
+  # Optional: cached indices built by a previous run with --save-reference.
+  # Must be keyed by pipeline version -- see below.
+  # derived_dir: <refs>/ensembl-GRCh38-116/derived/nf-core-rnaseq-3.26.0
+
 de:                             # read by sub-stage 02.02
   formula: "~ condition"        # every term must be a column of the design table
   contrast: "condition,treated,control"   # factor,numerator,denominator
+```
+
+`reference.derived_dir` is optional but strongly recommended. nf-core builds the STAR index,
+Salmon index and transcripts FASTA into `work/` and, with `save_reference = false` (its default),
+never publishes them — so they are rebuilt from scratch on every run, roughly 43 GB and an hour
+each time. Build them once with `--save-reference`, harvest `results/genome/` into a cache, and
+point later runs at it.
+
+**The cache must be keyed by pipeline version, not just genome build.** A STAR index is rejected
+by a different STAR version (`Genome version 2.7.1a is INCOMPATIBLE with running STAR version
+2.7.11b`), so the version must be part of the path or the incompatibility becomes a trap:
+
+```
+<refs>/ensembl-GRCh38-116/
+    Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
+    Homo_sapiens.GRCh38.116.gtf.gz
+    derived/nf-core-rnaseq-3.26.0/      <- version-keyed, safe to reuse
+        star/  salmon/  transcripts.fa  genome.bed
 ```
 
 A stage that finds a key missing stops and asks. It never substitutes a default for
