@@ -19,8 +19,8 @@ This stage performs the steps in Process and nothing else.
   `_references/assay_stage_skill_map.md` is the only source of what runs and in what order.
 - Never run a sub-stage before its predecessor has reached status `COMPLETE`.
 - Never modify anything under `00_data/` or `01_samplesheets/`. Stages 00 and 01 own them.
-- Never edit, patch, or work around skill code under `tools/skills/`. If a skill fails, report
-  its error verbatim and stop.
+- Never edit, patch, or work around skill code. It belongs to the installed `clawbio` package
+  and is read-only here. If a skill fails, report its error verbatim and stop.
 - Never run an analysis step yourself. If a sub-stage's skill cannot run, say so and stop; do
   not substitute a hand-written command, another tool, or a manual workaround.
 - Never launch a long-running job in the foreground. Submit it and return.
@@ -39,8 +39,23 @@ Created by the sub-stage, owned by it, and never written to by any other sub-sta
 `FAILED <iso8601> <error_code>`. It is the only authority on a sub-stage's state — never infer
 state from the presence of output files.
 
-**Skill.** The executable implementation under `tools/skills/<skill name>/`. That copy is
-canonical. Sub-stage directories in this workspace hold contracts, not code.
+**Skill.** The executable implementation shipped by the installed `clawbio` package. GARS does
+not vendor skill code: this workspace holds contracts only, and a sub-stage directory contains a
+`CONTEXT.md`, never a `.py`.
+
+Resolve the skills directory at runtime rather than hardcoding it — the literal path embeds a
+Python version that changes whenever the environment is rebuilt:
+
+```bash
+BIO=~/install/miniconda_clean/envs/gars-bio
+SKILLS=$($BIO/bin/python -c "import clawbio, pathlib; print(pathlib.Path(clawbio.__file__).parent / 'skills')")
+# then run a skill from inside its own directory, e.g. $SKILLS/nfcore-rnaseq-wrapper/
+```
+
+Each skill runs as a bare script from within its own directory, because it imports its siblings
+by top-level name. Skill versions are therefore pinned by `clawbio` in
+`_references/gars-bio.lock.txt`; upgrading `clawbio` changes the skills, which is a deliberate
+and recorded act rather than an untracked edit.
 
 ## Process
 1. Activated when the user asks to run bioinformatics, or names an assay to process. Reply T1.

@@ -6,7 +6,7 @@ A workspace for the management of research projects in genomics. Accessed throug
 ## Current State
 - This folder is a reference architecture until it contains a project. Once projects/ holds one or more projects, treat it as an active workspace.
 - Work in progress: the tree below is the target layout, scaffolded incrementally. Stage contracts exist for `00_initialize_project`, `01_prepare_samplesheets`, and `02_bioinformatics` (with both `rnaseq_bulk` sub-stages); `03_custom_analysis` is planned.
-- Skills live in `tools/skills/` and are canonical there. A sub-stage directory under `02_bioinformatics/` holds a CONTEXT.md contract, not skill code.
+- Skills are **not vendored**. They ship with the installed `clawbio` package and are read-only; this workspace holds contracts only. A sub-stage directory under `02_bioinformatics/` contains a CONTEXT.md, never a `.py`. See `02_bioinformatics/CONTEXT.md` for resolving the skills path at runtime.
 - To use this workspace: copy the GARS folder and initialize a project.
 
 ## Agent Entry Point
@@ -68,11 +68,8 @@ gars/
         ...
     03_custom_analysis/
         CONTEXT.md
-    tools/
-        skills/
-            <skill01>/ # e.g nfcore-rnaseq-wrapper (ClawBio)
-            <skill02>/ # e.g rnaseq-de (ClawBio)
-            ...
+    tools/                # NB: no skills/ here. Skills ship with the installed clawbio
+                          # package and are never vendored into a workspace.
         presentation/
         manuscript/
             01_draft/

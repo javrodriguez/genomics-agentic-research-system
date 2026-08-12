@@ -172,8 +172,9 @@ All checked 2026-08-11, exit 0:
 
 ```bash
 PY=~/install/miniconda_clean/envs/gars-bio/bin/python
-cd tools/skills/nfcore-rnaseq-wrapper && $PY nfcore_rnaseq_wrapper.py --help
-cd tools/skills/rnaseq-de            && $PY rnaseq_de.py --help
+SKILLS=$($PY -c "import clawbio, pathlib; print(pathlib.Path(clawbio.__file__).parent / 'skills')")
+cd $SKILLS/nfcore-rnaseq-wrapper && $PY nfcore_rnaseq_wrapper.py --help
+cd $SKILLS/rnaseq-de             && $PY rnaseq_de.py --help
 ```
 
 The container runtime is genuinely usable unprivileged here: `starter-suid` is **not** setuid

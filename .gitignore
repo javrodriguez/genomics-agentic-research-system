@@ -18,7 +18,7 @@ gars/projects/*/
 STATUS
 submit.sh
 
-# Third-party skills are installed, not vendored
+# Skills are installed with clawbio, never vendored. Guard against re-introduction.
 gars/tools/skills/
 
 .DS_Store

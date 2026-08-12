@@ -9,7 +9,7 @@ tables, QC and PCA figures, and a report.
 1. **Count matrix** — the `preferred_counts_tsv` named in sub-stage 02.01's `run/result.json`
 2. **`01_samplesheets/rnaseq_bulk_design.csv`** — `sample_id,condition,group,replicate`
 3. **`_config/rnaseq_bulk.yaml`** — `de.formula` and `de.contrast`
-4. **The skill at `tools/skills/rnaseq-de/`** — canonical, read-only
+4. **The `rnaseq-de` skill** — shipped by the installed `clawbio` package, read-only
 
 ## Scope Boundaries
 This sub-stage performs the steps in Process and nothing else.
@@ -30,7 +30,8 @@ This sub-stage performs the steps in Process and nothing else.
 
 ## Definitions
 
-**Skill invocation.** Run from `tools/skills/rnaseq-de/` with the `gars-bio` interpreter:
+**Skill invocation.** Run from inside `$SKILLS/rnaseq-de/` with the `gars-bio` interpreter
+(see Definitions in `02_bioinformatics/CONTEXT.md` for how to resolve `$SKILLS`):
 ```
 PY=~/install/miniconda_clean/envs/gars-bio/bin/python
 $PY rnaseq_de.py --counts <tsv> --metadata <csv> --formula <f> --contrast <c> --output <dir>

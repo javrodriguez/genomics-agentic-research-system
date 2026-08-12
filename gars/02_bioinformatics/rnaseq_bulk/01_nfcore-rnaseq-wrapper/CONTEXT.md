@@ -8,7 +8,7 @@ wait for completion. A later invocation reads the STATUS file and collects resul
 ## Inputs
 1. **`01_samplesheets/rnaseq_bulk_samplesheet.csv`** — written by stage 01
 2. **`_config/rnaseq_bulk.yaml`** — reference genome, aligner, and compute settings
-3. **The skill at `tools/skills/nfcore-rnaseq-wrapper/`** — canonical, read-only
+3. **The `nfcore-rnaseq-wrapper` skill** — shipped by the installed `clawbio` package, read-only
 
 ## Scope Boundaries
 This sub-stage performs the steps in Process and nothing else.
@@ -28,8 +28,9 @@ This sub-stage performs the steps in Process and nothing else.
 
 ## Definitions
 
-**Skill invocation.** `python nfcore_rnaseq_wrapper.py`, run from
-`tools/skills/nfcore-rnaseq-wrapper/`. There is no `clawbio.py` launcher in this workspace —
+**Skill invocation.** `python nfcore_rnaseq_wrapper.py`, run from inside
+`$SKILLS/nfcore-rnaseq-wrapper/` (see Definitions in `02_bioinformatics/CONTEXT.md` for how to
+resolve `$SKILLS`). There is no `clawbio.py` launcher in this environment —
 the CLI shown in the skill's own SKILL.md (`python clawbio.py run rnaseq-pipeline …`) is the
 upstream ClawBio form and does not apply here. Flag names are otherwise identical.
 
@@ -134,6 +135,21 @@ here — stage 01 owns it.
 | `compute.partition`, `compute.time`, `compute.cpus`, `compute.mem` | yes | Slurm directives |
 
 `reference.genome` and `reference.fasta` are mutually exclusive — the skill rejects both.
+
+**Reference annotation must carry a biotype attribute.** nf-core's `SUBREAD_FEATURECOUNTS` step
+groups by `gene_biotype`. Ensembl GTFs provide it and are the native case. GENCODE names the
+same field `gene_type`, so a GENCODE GTF additionally requires `--gencode` and
+`--featurecounts-group-type gene_type`. The iGenomes `--genome GRCh38` annotation is **NCBI and
+has no biotype attribute at all**: nf-core warns that biotype QC will be skipped, then runs it
+anyway and the pipeline dies — after the count matrices have already been written, so the
+failure looks late and unrelated. Prefer Ensembl.
+
+**Never reuse a prebuilt aligner index without checking the tool version that built it.** A
+STAR index records `versionGenome` in its `genomeParameters.txt`, and STAR refuses an index
+built by an incompatible version (`Genome version 2.7.1a is INCOMPATIBLE with running STAR
+version 2.7.11b`). Site-provided indices are frequently years older than the pipeline's
+containerised aligner. Check before passing `--star-index`; when in doubt omit it and let
+nf-core build one, which costs about an hour and is then reused from the work directory.
 
 ## Process
 1. Reply T1.
