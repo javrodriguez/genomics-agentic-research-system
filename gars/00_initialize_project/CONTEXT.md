@@ -53,6 +53,19 @@ result is a mixed/incomplete set: report the unpaired filenames and use T5.
 is non-empty, and — for `.gz` files — `gzip -t` reports no error. These are the only checks
 performed on file contents at this stage.
 
+**Template version.** The GARS revision that created the project, recorded so a project can
+always name the contract version that produced it. A workspace is a copy of the template, so
+this cannot be inferred later — it must be captured at creation.
+
+Resolve it from `_references/VERSION` if present, otherwise from git if the workspace was copied
+from a checkout, otherwise record `unknown`:
+
+```bash
+V=$(cat _references/VERSION 2>/dev/null || git -C <template> describe --always --dirty 2>/dev/null || echo unknown)
+```
+
+Never guess or omit it. `unknown` is an acceptable and honest value; a fabricated version is not.
+
 **Sample ID.** The filename prefix preceding the read/lane suffix. For Illumina bcl2fastq
 output (`<sample>_S<n>_L<lane>_R<1|2>_001.fastq.gz`) this is the part before `_S<n>`. If the
 filenames do not match this convention, do not guess: report the naming you observe and ask
@@ -104,19 +117,23 @@ Keeping them separate means the user enters each experimental value exactly once
 15. Write `00_data/<Assay ID>/samples.csv` per assay, one row per distinct `sample_id`, header
     `sample_id,condition,group,replicate`. Fill `sample_id` only; leave `condition`, `group`,
     and `replicate` blank for the user to complete.
-16. Write `projects/<sanitized_title>/CONTEXT.md`: project title, creation date, the supported
-    assays with their Assay IDs and data directories, the raw data source path for each, and
-    the per-assay file/sample counts.
-17. Write `projects/<sanitized_title>/HISTORY.md` with a dated entry recording the project
-    creation, the assays created, the source path per assay, and the number of files linked.
-18. Run the exit gate. All of: CONTEXT.md exists; HISTORY.md exists; `_config/` exists; every
+16. Resolve the **template version** and record it. Both `CONTEXT.md` and `HISTORY.md` must
+    carry it — a project that cannot name the contract version that produced it is not
+    reproducible.
+17. Write `projects/<sanitized_title>/CONTEXT.md`: project title, creation date, **template
+    version**, the supported assays with their Assay IDs and data directories, the raw data
+    source path for each, and the per-assay file/sample counts.
+18. Write `projects/<sanitized_title>/HISTORY.md` with a dated entry recording the project
+    creation, the **template version**, the assays created, the source path per assay, and the
+    number of files linked.
+19. Run the exit gate. All of: CONTEXT.md exists; HISTORY.md exists; `_config/` exists; every
     supported assay has a non-empty `files.csv` and `samples.csv`; the distinct `sample_id`
     count in `files.csv` equals the row count of `samples.csv`; every linked file passes
     **file integrity**; pairing is complete for every paired-end assay; no `sample_id` is
     empty. If any check fails, reply with T9 naming exactly which files failed and stop. Do
     not claim completion, and do not delete what was created — the user decides whether to fix
     or discard.
-19. Reply with T6.
+20. Reply with T6.
 
 ## Response Format
 Every message you send in this stage is one of the templates below, with placeholders filled.

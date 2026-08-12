@@ -61,6 +61,7 @@ deviation, it stops and asks rather than acting.
 | File | Use |
 |---|---|
 | `assay_stage_skill_map.md` | Authoritative map of Assay -> Stage -> Sub-stage -> Skills. Its Assay column is the definitive list of supported assays; stage 00 validates user-requested assays against it, and 02_bioinformatics uses the remaining columns to route each assay to its sub-stage and skills. |
+| `VERSION` | The template revision. Stage 00 stamps it into every project it creates, so a project can always name the contract version that produced it. Bump it when tagging a release. |
 | `environment.md` | Verified runtime for stage 02: the `gars-bio` and `gars-nxf` conda envs, how they were installed and why they are separate, and the traps that cost real debugging time. No Lmod modules are used. |
 | `gars-bio.lock.txt`, `gars-bio.conda.txt`, `gars-nxf.conda.txt` | Lockfiles rebuilding both environments at exact versions. |
 | `ICM_agents.pdf` | Integrated Context Methodology manuscript — architectural background. |

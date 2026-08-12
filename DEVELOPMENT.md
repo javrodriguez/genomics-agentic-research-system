@@ -65,7 +65,7 @@ Priority order.
    biologically.
 4. **Write the `03_custom_analysis` contract.** Deliberately deferred until 02 produces real
    output — designing against an unproven handoff is what caused the samplesheet-grain mistake.
-5. **Resolve repo/working-copy drift.** Canonical development happens in
+5. ~~**Resolve repo/working-copy drift.**~~ **Done 2026-08-12.** Canonical development happens in
    `bioinfo-research-system/gars/`; the published repo at `PROJECTS/gars/` is a snapshot copied
    by hand. **Drift is already real** — within two hours of publishing, the 02.01 contract was
    1,145 bytes ahead in the working copy (the STAR-index and biotype rules were missing from the
@@ -77,7 +77,12 @@ Priority order.
    and real sample data. Retire `bioinfo-research-system/gars/`; recreate `gars-test/` from the
    repo when needed.
 
-6. **Stop vendoring `tools/skills/`; point the contracts at the installed `clawbio`.**
+6. ~~**Stop vendoring `tools/skills/`.**~~ **Done 2026-08-12** — verified end-to-end: a workspace
+   copied from this repo contains no skill code, and preflight ran from the installed package.
+
+   Original reasoning retained below.
+
+6b. **Stop vendoring `tools/skills/`; point the contracts at the installed `clawbio`.**
    Verified 2026-08-12: the vendored skills and those shipped in `clawbio==0.6.1` are
    **byte-identical in every source file** (only `__pycache__` differs), and the installed copy
    runs standalone. So this is a pure path change with no behavioural risk.
