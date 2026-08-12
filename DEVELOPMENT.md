@@ -11,10 +11,46 @@ the part that gets lost and then reversed by someone who sees a simpler-looking 
 
 ## Current Status
 
-**As of 2026-08-12, 16:00 UTC**
+**As of 2026-08-12, 17:00 UTC**
 
 | Component | State |
 |---|---|
+| Template | **v0.1.0**, tagged and pushed |
+| Stage contracts 00, 01, 02 (+ 2 sub-stages) | Written, revised through live execution |
+| Stage 03 (`03_custom_analysis`) | **Not written** |
+| Environments (`gars-bio`, `gars-nxf`) | Installed, verified, locked |
+| Ensembl GRCh38 r116 reference | Downloaded, integrity-verified |
+| Derived-index cache | Empty; this run populates it via `--save-reference` |
+| Test project `test-TALL` | Rebuilt from v0.1.0; stages 00 and 01 complete |
+| nf-core/rnaseq run | **Job 26341149 RUNNING** since 16:45 UTC on `cpu_long` |
+
+### What is proven
+
+- Stages 00 → 01 produce correct artifacts from real data (38 samples registered, 10 analysed)
+- Sample exclusion via `samples.csv` works; raw data and `files.csv` left intact
+- Wrapper preflight passes on a compute node
+- Nextflow dispatches per-task Slurm child jobs to the configured partition
+- All 10 samples align and quantify; complete count matrices were written in an earlier run
+- Samplesheet grain is correct — nf-core merges 2 lanes/sample into 10 `CAT_FASTQ` processes
+- **Skills resolve from the installed `clawbio`** — a workspace copied from the repo carries no
+  skill code, and preflight ran from site-packages
+- **`work/` lives on scratch** — 95 GB accumulated there within 10 minutes, outside the project
+
+### What is not yet proven
+
+- `SUBREAD_FEATURECOUNTS` has never passed. Every configuration so far failed at or before it.
+- Sub-stage 02.02 (differential expression) has never run.
+- No run has produced `result.json` + `manifest.json`, so 02.01 has never reached `COMPLETE`.
+- The derived-index cache has never been populated or reused.
+
+### Cluster note
+
+A node-failure event on 2026-08-12 (1,035 `NODE_FAIL` in 24h, peaking at 146 per 2h) filled the
+queues with requeued casualties and delayed two submissions by hours. Recovered by ~16:45 UTC;
+job 26341149 started within a minute of submission. Preemption is **not** enabled on this
+cluster (`PreemptMode = OFF`) — every infrastructure failure encountered was hardware.
+
+---|---|
 | Stage contracts 00, 01, 02 (+ 2 sub-stages) | Written, revised through live execution |
 | Stage 03 (`03_custom_analysis`) | **Not written** |
 | Environment (`gars-bio`, `gars-nxf`) | Installed, verified, locked |
@@ -56,14 +92,19 @@ node-failure rate with cluster admins.
 
 Priority order.
 
-1. **Wait for cluster recovery, then let job 26336180 run.** Configuration is fully validated;
-   it needs a slot. Watch `SUBREAD_FEATURECOUNTS` — the only untested step.
-2. **Report the node failures to HPC admins.** Also blocking ~21 unrelated GPU jobs.
-3. **Complete sub-stage 02.02 (DE).** Requires 02.01 to reach `COMPLETE`. Note the test design
+1. **Let job 26341149 finish.** Watch `SUBREAD_FEATURECOUNTS` — the only step never passed.
+2. **Harvest the derived indices.** On success, copy `run/results/genome/` (STAR index, Salmon
+   index, transcripts FASTA, gene BED) into
+   `refs/ensembl-GRCh38-116/derived/nf-core-rnaseq-3.26.0/`, then drop `--save-reference` and
+   pass `--star-index` / `--salmon-index` / `--transcript-fasta` on later runs. Saves ~43 GB and
+   about an hour per run. Verify `versionGenome` in `genomeParameters.txt` before first reuse.
+3. **Delete the scratch work dir** once the run succeeds and `results/` is verified —
+   `/gpfs/scratch/rodrij92/gars-work/test-TALL-rnaseq_bulk`, expected 250-350 GB.
+4. **Complete sub-stage 02.02 (DE).** Requires 02.01 to reach `COMPLETE`. Note the test design
    is degenerate: all 10 samples are `condition=WT`, so the only two-level factor is `group`,
    and `group,G2,G1` will produce statistical noise. Fine for proving the chain, meaningless
    biologically.
-4. **Write the `03_custom_analysis` contract.** Deliberately deferred until 02 produces real
+5. **Write the `03_custom_analysis` contract.** Deliberately deferred until 02 produces real
    output — designing against an unproven handoff is what caused the samplesheet-grain mistake.
 5. ~~**Resolve repo/working-copy drift.**~~ **Done 2026-08-12.** Canonical development happens in
    `bioinfo-research-system/gars/`; the published repo at `PROJECTS/gars/` is a snapshot copied
