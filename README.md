@@ -159,9 +159,13 @@ next reader does not undo it. One was a bug in an upstream dependency, reported 
 
 ---
 
+Development history, the reasoning behind each design decision, current state and next steps are
+kept in [DEVELOPMENT.md](DEVELOPMENT.md).
+
 ## Repository layout
 
 ```
+DEVELOPMENT.md  running log: status, decisions and their reasoning, next steps
 gars/           the workspace template — copy it to start a project
   CLAUDE.md         L0 orientation
   CONTEXT.md        L1 routing, stage map, config schema
