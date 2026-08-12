@@ -11,7 +11,7 @@ the part that gets lost and then reversed by someone who sees a simpler-looking 
 
 ## Current Status
 
-**As of 2026-08-12, 15:00 UTC**
+**As of 2026-08-12, 16:00 UTC**
 
 | Component | State |
 |---|---|
@@ -40,10 +40,15 @@ the part that gets lost and then reversed by someone who sees a simpler-looking 
 
 ### Current blocker — external
 
-The cluster is experiencing widespread node failures: **1,035 `NODE_FAIL` jobs in 24h, 146 in
-the last 2h**. Queues are clogged with requeued casualties (861 `REQUEUE_HOLD` on `cpu_long`).
-Job 26336180 has been pending ~3h behind them. Nothing in our configuration is at fault; this
-needs the cluster admins.
+A cluster-wide node-failure event: **1,035 `NODE_FAIL` jobs in 24h**, peaking at 146 in a
+two-hour window. Queues filled with requeued casualties (861 `REQUEUE_HOLD` on `cpu_long`).
+
+**Recovering as of 15:57 UTC** — node failures down to 25 per 2h and `REQUEUE_HOLD` down to 172,
+but the released backlog pushed `cpu_long` PENDING from 332 to 744. Job 26336180 has been queued
+since 12:14 UTC (~3h45m) behind that backlog.
+
+Nothing in our configuration is at fault. No action available beyond waiting; worth raising the
+node-failure rate with cluster admins.
 
 ---
 
@@ -62,7 +67,40 @@ Priority order.
    output — designing against an unproven handoff is what caused the samplesheet-grain mistake.
 5. **Resolve repo/working-copy drift.** Canonical development happens in
    `bioinfo-research-system/gars/`; the published repo at `PROJECTS/gars/` is a snapshot copied
-   by hand. There is no sync mechanism, and they will diverge. Decide on one canonical location.
+   by hand. **Drift is already real** — within two hours of publishing, the 02.01 contract was
+   1,145 bytes ahead in the working copy (the STAR-index and biotype rules were missing from the
+   repo).
+
+   Suggested resolution: **make the repo canonical.** The architecture already assumes the
+   template is copied *from* a stable location, git history becomes the per-change development
+   record, and `bioinfo-research-system/` cannot itself be the repo because it holds `archive/`
+   and real sample data. Retire `bioinfo-research-system/gars/`; recreate `gars-test/` from the
+   repo when needed.
+
+6. **Stop vendoring `tools/skills/`; point the contracts at the installed `clawbio`.**
+   Verified 2026-08-12: the vendored skills and those shipped in `clawbio==0.6.1` are
+   **byte-identical in every source file** (only `__pycache__` differs), and the installed copy
+   runs standalone. So this is a pure path change with no behavioural risk.
+
+   Why it matters: the README already claims GARS orchestrates skills rather than vendoring
+   them — true of the repo, false of the workspace. A workspace copied from the repo has no
+   `tools/skills/` at all, so the contracts currently reference a path that will not exist.
+   Two hand-synced copies of the same code will also drift, and the vendored one carries no
+   version marker.
+
+   Resolve the path at runtime rather than hardcoding it, so it survives a Python upgrade or
+   env relocation:
+   ```bash
+   SKILLS=$($BIO/bin/python -c "import clawbio, pathlib; print(pathlib.Path(clawbio.__file__).parent / 'skills')")
+   ```
+   Consequence to accept: skills then move with `clawbio` upgrades, which makes
+   `clawbio==0.6.1` in `gars-bio.lock.txt` load-bearing rather than informational. That is the
+   correct trade — an upgrade becomes a deliberate, recorded act.
+
+   **Sequencing:** do this only after the current run finishes. Job 26336180's `submit.sh`
+   references `gars-test/tools/skills/`, and changing paths under a queued job invites a
+   confusing overnight failure. Afterwards, recreating `gars-test/` from the repo doubles as a
+   clean end-to-end verification.
 
 ---
 
