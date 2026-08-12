@@ -50,42 +50,6 @@ queues with requeued casualties and delayed two submissions by hours. Recovered 
 job 26341149 started within a minute of submission. Preemption is **not** enabled on this
 cluster (`PreemptMode = OFF`) — every infrastructure failure encountered was hardware.
 
----|---|
-| Stage contracts 00, 01, 02 (+ 2 sub-stages) | Written, revised through live execution |
-| Stage 03 (`03_custom_analysis`) | **Not written** |
-| Environment (`gars-bio`, `gars-nxf`) | Installed, verified, locked |
-| Ensembl GRCh38 r116 reference | Downloaded, integrity-verified |
-| Test project `test-TALL` (10 samples) | Stages 00 and 01 complete |
-| nf-core/rnaseq run | **Job 26336180 queued since 12:14 UTC — not started** |
-| Portfolio repo | Published, private |
-
-### What is proven
-
-- Stages 00 → 01 produce correct artifacts from real data (38 samples, subset to 10)
-- Sample exclusion via `samples.csv` works, leaving raw data intact
-- Wrapper preflight passes on a compute node
-- Nextflow dispatches per-task Slurm child jobs to the configured partition
-- All 10 samples align and quantify; complete count matrices were written in an earlier run
-- The samplesheet grain is correct — nf-core merged 2 lanes/sample into 10 `CAT_FASTQ` processes
-
-### What is not yet proven
-
-- `SUBREAD_FEATURECOUNTS` has never passed. Every configuration failed at or before it.
-- Sub-stage 02.02 (differential expression) has never run.
-- No run has produced `result.json` + `manifest.json`, so 02.01 has never reached `COMPLETE`.
-
-### Current blocker — external
-
-A cluster-wide node-failure event: **1,035 `NODE_FAIL` jobs in 24h**, peaking at 146 in a
-two-hour window. Queues filled with requeued casualties (861 `REQUEUE_HOLD` on `cpu_long`).
-
-**Recovering as of 15:57 UTC** — node failures down to 25 per 2h and `REQUEUE_HOLD` down to 172,
-but the released backlog pushed `cpu_long` PENDING from 332 to 744. Job 26336180 has been queued
-since 12:14 UTC (~3h45m) behind that backlog.
-
-Nothing in our configuration is at fault. No action available beyond waiting; worth raising the
-node-failure rate with cluster admins.
-
 ---
 
 ## Next Steps
@@ -110,49 +74,14 @@ Priority order.
 
 6. **Write the `03_custom_analysis` contract.** Deliberately deferred until 02 produces real
    output — designing against an unproven handoff is what caused the samplesheet-grain mistake.
-5. ~~**Resolve repo/working-copy drift.**~~ **Done 2026-08-12.** Canonical development happens in
-   `bioinfo-research-system/gars/`; the published repo at `PROJECTS/gars/` is a snapshot copied
-   by hand. **Drift is already real** — within two hours of publishing, the 02.01 contract was
-   1,145 bytes ahead in the working copy (the STAR-index and biotype rules were missing from the
-   repo).
 
-   Suggested resolution: **make the repo canonical.** The architecture already assumes the
-   template is copied *from* a stable location, git history becomes the per-change development
-   record, and `bioinfo-research-system/` cannot itself be the repo because it holds `archive/`
-   and real sample data. Retire `bioinfo-research-system/gars/`; recreate `gars-test/` from the
-   repo when needed.
-
-6. ~~**Stop vendoring `tools/skills/`.**~~ **Done 2026-08-12** — verified end-to-end: a workspace
-   copied from this repo contains no skill code, and preflight ran from the installed package.
-
-   Original reasoning retained below.
-
-6b. **Stop vendoring `tools/skills/`; point the contracts at the installed `clawbio`.**
-   Verified 2026-08-12: the vendored skills and those shipped in `clawbio==0.6.1` are
-   **byte-identical in every source file** (only `__pycache__` differs), and the installed copy
-   runs standalone. So this is a pure path change with no behavioural risk.
-
-   Why it matters: the README already claims GARS orchestrates skills rather than vendoring
-   them — true of the repo, false of the workspace. A workspace copied from the repo has no
-   `tools/skills/` at all, so the contracts currently reference a path that will not exist.
-   Two hand-synced copies of the same code will also drift, and the vendored one carries no
-   version marker.
-
-   Resolve the path at runtime rather than hardcoding it, so it survives a Python upgrade or
-   env relocation:
-   ```bash
-   SKILLS=$($BIO/bin/python -c "import clawbio, pathlib; print(pathlib.Path(clawbio.__file__).parent / 'skills')")
-   ```
-   Consequence to accept: skills then move with `clawbio` upgrades, which makes
-   `clawbio==0.6.1` in `gars-bio.lock.txt` load-bearing rather than informational. That is the
-   correct trade — an upgrade becomes a deliberate, recorded act.
-
-   **Sequencing:** do this only after the current run finishes. Job 26336180's `submit.sh`
-   references `gars-test/tools/skills/`, and changing paths under a queued job invites a
-   confusing overnight failure. Afterwards, recreating `gars-test/` from the repo doubles as a
-   clean end-to-end verification.
+**Completed 2026-08-12:** repo/working-copy drift resolved (repo is canonical, `bioinfo-research-system/gars/` retired); skills de-vendored and resolved from the installed
+`clawbio`; template version stamping added with `_references/VERSION`; `work/` moved to scratch;
+derived-reference caching designed and keyed by pipeline version.
 
 ---
+
+## Decision Log
 
 ### Storage and reference reuse — added 2026-08-12
 
@@ -252,7 +181,6 @@ database, no daemon, no copying.
   hashing and garbage collection for no gain.
 - *Automatic copying of artifacts* — paths and symlinks only, or the 612 GB problem returns.
 
-## Decision Log
 
 
 Chronological. Each entry: what was decided, and why.
@@ -399,6 +327,9 @@ grep '\[guard\]' $S/*.out              # clean start vs resume vs crashed
 tail $S/run/logs/stdout.txt
 ```
 
-### Preserved failed runs
-`run.failed-biotype-26296448` holds valid count matrices from the iGenomes attempt — usable for
-comparing NCBI vs Ensembl quantification.
+### Housekeeping
+
+Failed-run artifacts from 2026-08-12 (612 GB across four runs) were deleted. `work/` now lives
+on scratch at `/gpfs/scratch/rodrij92/gars-work/<project>-<assay>` and is disposable once a run
+succeeds, because `results/` is published with `publish_dir_mode = 'copy'`.
+
