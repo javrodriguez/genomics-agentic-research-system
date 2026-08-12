@@ -104,7 +104,11 @@ Priority order.
    is degenerate: all 10 samples are `condition=WT`, so the only two-level factor is `group`,
    and `group,G2,G1` will produce statistical noise. Fine for proving the chain, meaningless
    biologically.
-5. **Write the `03_custom_analysis` contract.** Deliberately deferred until 02 produces real
+5. **Implement artifact reuse across sub-stages.** Design settled 2026-08-12 (see Decision Log);
+   deferred until 02.02 has run, so it is validated against a real second consumer rather than a
+   hypothetical one — the same reasoning that defers stage 03.
+
+6. **Write the `03_custom_analysis` contract.** Deliberately deferred until 02 produces real
    output — designing against an unproven handoff is what caused the samplesheet-grain mistake.
 5. ~~**Resolve repo/working-copy drift.**~~ **Done 2026-08-12.** Canonical development happens in
    `bioinfo-research-system/gars/`; the published repo at `PROJECTS/gars/` is a snapshot copied
@@ -183,7 +187,73 @@ Fixes applied to the config schema and the 02.01 contract:
   recreates the exact trap that killed run 26310826.
 - 02.01 must read `versionGenome` from `genomeParameters.txt` before reusing a cached index.
 
+### Artifact reuse across sub-stages — survey and design, 2026-08-12
+
+**Question:** do different sub-stages and skills consume the same processed data (trimmed FASTQ,
+BAM, counts), and can GARS recycle it instead of reprocessing?
+
+**Method.** All 96 installed ClawBio skills, checked three ways. Frontmatter alone is not
+trustworthy: only 53 of 96 declare `inputs`/`outputs`, and those undercount badly — exactly one
+skill declares BAM input. So argparse flags were parsed from every script (83 skills) and the
+`Input Formats` tables read from each SKILL.md.
+
+**There is no machine-readable type system to build on.** 56 of 83 skills take a generic
+`--input` and infer the type. Any typing must come from GARS.
+
+**Finding 1 — the catalogue is mostly not NGS preprocessing.** Of 96 skills only ~17 touch NGS
+data, and just three consume FASTQ: the nfcore-rnaseq, nfcore-sarek and nfcore-scrnaseq
+wrappers. The other ~79 operate on already-derived data. The opportunity is therefore
+**derived-artifact fan-out**, not raw-data reprocessing.
+
+**Finding 2 — where consumers actually converge:**
+
+| Artifact | Direct consumers | Size | Value |
+|---|---|---|---|
+| VCF | 10 | MB | highest |
+| Count matrix | ~8 | MB | highest |
+| FASTQ samplesheet | 4 | KB | high |
+| h5ad | 4 | GB | medium |
+| BAM | **~0 directly** | 17 GB/sample | see below |
+
+Most-depended-on skills by in-degree: `scrna-orchestrator` (5), `diff-visualizer` (4),
+`rnaseq-de` (3) — all consuming tabular output, not alignments.
+
+**Finding 3 — almost nothing consumes BAMs directly.** The only real path is nf-core/rnaseq's
+`--skip-alignment` with a `samplesheet_with_bams.csv`, which re-quantifies against a different
+annotation without re-aligning. That samplesheet is produced **only** when the original run used
+`--save-align-intermeds`.
+
+**Decision: `--save-align-intermeds` was declined** (2026-08-12). Consequence, recorded
+deliberately: BAMs from run 26341149 cannot be re-quantified, so changing annotation means a
+full rerun. Revisit if re-quantification becomes routine.
+
+**Design, to implement after 02.02.** One new file per sub-stage, one controlled vocabulary. No
+database, no daemon, no copying.
+
+1. `_references/artifact_types.md` — a closed vocabulary: `samplesheet`, `design`,
+   `counts_gene`, `counts_transcript`, `bam_genome`, `bam_transcriptome`, `vcf`, `h5ad`,
+   `qc_multiqc`. Nothing outside it may be declared.
+2. Each sub-stage writes `OUTPUTS.tsv` beside its `STATUS`: `<type>\t<path>`, **paths only,
+   never copies**. This mirrors the existing STATUS convention rather than adding a mechanism.
+3. The assay map gains `Consumes` / `Produces` columns, so stage 02's router can verify required
+   artifacts exist before dispatching — reusing the gate pattern it already applies to STATUS.
+4. Resolution rule, stated once in `02_bioinformatics/CONTEXT.md`: a sub-stage needing type T
+   searches completed sub-stages' `OUTPUTS.tsv` in reverse order, takes the first match, and
+   records the supplying sub-stage in `HISTORY.md`. If none exists it **stops and reports** —
+   never regenerates silently, because silent regeneration is how a project ends up with two
+   count matrices that disagree.
+
+**Explicitly rejected:**
+
+- *Cross-project artifact sharing* — one project's provenance would depend on another's
+  lifecycle. The reference cache is safe only because references are immutable and version-keyed;
+  sample data is neither.
+- *A content-addressed store* — Nextflow already does this inside `work/`; duplicating it adds
+  hashing and garbage collection for no gain.
+- *Automatic copying of artifacts* — paths and symlinks only, or the 612 GB problem returns.
+
 ## Decision Log
+
 
 Chronological. Each entry: what was decided, and why.
 
