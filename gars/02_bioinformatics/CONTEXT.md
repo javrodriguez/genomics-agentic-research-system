@@ -39,6 +39,11 @@ Created by the sub-stage, owned by it, and never written to by any other sub-sta
 `FAILED <iso8601> <error_code>`. It is the only authority on a sub-stage's state — never infer
 state from the presence of output files.
 
+**Artifact.** A file a sub-stage produced, declared by type in its `OUTPUTS.tsv`. The closed
+vocabulary, the `native`/`adapted` distinction and the resolution rule are defined in
+`_references/artifact_types.md`. Sub-stages find their inputs **by type, not by path**, so a
+change in where a producer writes does not break its consumers.
+
 **Skill.** The executable implementation shipped by the installed `clawbio` package. GARS does
 not vendor skill code: this workspace holds contracts only, and a sub-stage directory contains a
 `CONTEXT.md`, never a `.py`.
@@ -72,8 +77,13 @@ and recorded act rather than an untracked edit.
    Do not resubmit.
 8. If that sub-stage is `FAILED`, reply T6 with its recorded error and stop. Resolving a failure
    is the user's decision, not an automatic retry.
-9. If that sub-stage is `NOT_STARTED`, read `02_bioinformatics/<Assay ID>/<NN_name>/CONTEXT.md`
-   and execute that contract. It owns everything from here, including its own response templates.
+9. If that sub-stage is `NOT_STARTED`, check its `Consumes` column in the assay map. For each
+   type listed, resolve an artifact from the `OUTPUTS.tsv` of completed sub-stages, plus the
+   stage-01 outputs for `samplesheet` and `design`. If any required type cannot be resolved,
+   reply T7 naming the missing types and stop — never dispatch a sub-stage whose inputs are
+   absent, and never regenerate a missing artifact.
+10. Read `02_bioinformatics/<Assay ID>/<NN_name>/CONTEXT.md` and execute that contract. It owns
+    everything from here, including its own response templates.
 
 ## Response Format
 Every message you send in this stage is one of the templates below, with placeholders filled.
@@ -139,6 +149,18 @@ Nothing was retried and nothing was deleted. Resolve the cause, clear the sub-st
 directory, and run stage 02 again.
 ```
 
+**T7 — Required artifacts missing**
+```
+Cannot start <NN_name>: required artifacts are not available.
+
+| Type | Status | Supplied by |
+|---|---|---|
+| <type> | missing / found | <sub-stage or -> |
+
+Nothing was run and nothing was regenerated. Complete the sub-stage that produces the missing
+type, then run stage 02 again.
+```
+
 # OUTPUT
 Written to `projects/<project_title>/02_bioinformatics/<Assay ID>/`:
 
@@ -146,6 +168,7 @@ Written to `projects/<project_title>/02_bioinformatics/<Assay ID>/`:
 |---|---|
 | `<NN_name>/` | One directory per sub-stage, created and owned by that sub-stage. |
 | `<NN_name>/STATUS` | The sub-stage's state. The only authority on whether it has completed. |
+| `<NN_name>/OUTPUTS.tsv` | Artifacts the sub-stage produced: `type`, `role`, path relative to the sub-stage directory. How later sub-stages find their inputs. |
 
 This stage writes no analysis output of its own. `00_data/` and `01_samplesheets/` are never
 modified.

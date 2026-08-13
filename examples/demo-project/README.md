@@ -42,3 +42,24 @@ handled — verified against a real run, where 12 file rows produced 6 `CAT_FAST
 | `nextflow.slurm.config` | executor settings — which queue pipeline tasks are dispatched to |
 
 Both are written by the user. No stage invents a reference genome or a contrast.
+
+## Stage 02 — `02_bioinformatics/rnaseq_bulk/`
+
+Each sub-stage declares what it produced in `OUTPUTS.tsv`, so the next one finds its inputs
+**by type rather than by path**:
+
+| Column | Meaning |
+|---|---|
+| `type` | From the closed vocabulary in `_references/artifact_types.md` |
+| `role` | `native` = exactly what the tool emitted; `adapted` = reshaped for a specific consumer |
+| `path` | Relative to the sub-stage directory, so projects stay relocatable |
+
+The `role` column exists because of a real failure. nf-core emits `gene_id, gene_name, <samples>`
+while `rnaseq-de` requires the identifier column to be named `gene` and everything after it to be
+numeric — so 02.02 must reshape the matrix before its skill will accept it. Without the
+distinction the registry would list two `counts_gene` artifacts with no way to tell which is
+authoritative, and a later consumer could silently pick a matrix reshaped for someone else's
+parser.
+
+Adaptations are written into the adapting sub-stage's **own** directory and may only reshape —
+rename or drop columns, change numeric type. Never filter rows, alter values, or aggregate.

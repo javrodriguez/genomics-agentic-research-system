@@ -1,0 +1,6 @@
+# type	role	path (relative to this sub-stage directory)
+counts_gene	native	run/upstream/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv
+counts_transcript	native	run/upstream/results/star_salmon/salmon.merged.transcript_counts.tsv
+tpm_gene	native	run/upstream/results/star_salmon/salmon.merged.gene_tpm.tsv
+qc_multiqc	native	run/upstream/results/multiqc/star_salmon/multiqc_report.html
+bam_genome	native	run/upstream/results/star_salmon/*.markdup.sorted.bam

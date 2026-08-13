@@ -218,7 +218,12 @@ nf-core build one, which costs about an hour and is then reused from the work di
     the filtered GTF and the gene BED. Then write a `PROVENANCE` file recording the source FASTA
     and GTF paths, the pipeline version, the STAR `versionGenome`, and the job ID that built it.
 
-15. Write `STATUS` as `COMPLETE <iso8601>`, append a dated entry to the project's `HISTORY.md`
+15. Write `OUTPUTS.tsv` declaring the artifacts produced, using the closed vocabulary in
+    `_references/artifact_types.md`. All rows are `native`; paths are relative to this sub-stage
+    directory. At minimum: `counts_gene`, `counts_transcript`, `tpm_gene`, `bam_genome`,
+    `qc_multiqc`. Resolve `counts_gene` from `result.json`'s `preferred_counts_tsv` rather than
+    guessing a filename.
+16. Write `STATUS` as `COMPLETE <iso8601>`, append a dated entry to the project's `HISTORY.md`
     noting whether the cache was populated or reused, and reply T6.
 
 ## Response Format
@@ -298,6 +303,7 @@ Written to `projects/<project_title>/02_bioinformatics/rnaseq_bulk/01_nfcore-rna
 | `submit.sh` | The exact Slurm script submitted, including module loads. Re-runnable by hand. |
 | `logs/preflight.log` | Preflight stdout/stderr. |
 | `preflight/` | Preflight's own output (`check_result.json`, validated samplesheet). Diagnostic only, safe to discard. Kept separate so `run/` stays empty for submission. |
+| `OUTPUTS.tsv` | Artifacts produced, by type. How 02.02 finds the count matrix. |
 | `run/` | The skill's own output tree: `report.md`, `result.json`, `upstream/results/`, `provenance/`, `reproducibility/`. |
 
 The count matrix consumed by the next sub-stage is the `preferred_counts_tsv` named in

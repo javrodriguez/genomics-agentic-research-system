@@ -100,11 +100,20 @@ design table. Fewer makes dispersion estimation unreliable, and the result is no
    as sub-stage 02.01 does.
 10. If the skill exits non-zero, write `STATUS` as `FAILED <iso8601>`, reply T4 with its verbatim
     error, and stop.
-11. Run the exit gate: `report.md`, `tables/de_results.csv`, and the `figures/` PNGs exist and
-    are non-empty; `de_results.csv` has at least one data row. If any check fails, write
-    `FAILED`, reply T4, stop.
-12. Write `STATUS` as `COMPLETE <iso8601>`, append a dated entry to the project's `HISTORY.md`,
-    and reply T6.
+11. Run the exit gate. Existence is not sufficient — **check content**:
+    - `report.md`, `tables/de_results.csv` and the three `figures/` PNGs exist and are non-empty
+    - `de_results.csv` has at least one data row
+    - `de_results.csv` **has a gene identifier column**, and its values are non-empty
+
+    The identifier check is not hypothetical: a version of this skill silently dropped the gene
+    column, producing a complete and plausible table in which every gene was anonymous. A
+    file-exists gate passes that happily. If any check fails, write `FAILED`, reply T4, stop.
+12. Write `OUTPUTS.tsv`: `de_results` as `native`, plus the two artifacts this sub-stage created
+    while adapting its input — `counts_gene` as **`adapted`** and `gene_id_map` as `native`.
+    Marking the reshaped matrix `adapted` is what stops a later consumer mistaking it for the
+    authoritative one from 02.01.
+13. Write `STATUS` as `COMPLETE <iso8601>`, append a dated entry to the project's `HISTORY.md`
+    naming which sub-stage supplied the count matrix, and reply T6.
 
 ## Response Format
 Every message you send in this sub-stage is one of the templates below, with placeholders
@@ -186,6 +195,8 @@ Written to `projects/<project_title>/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/
 | Artifact | Contents |
 |---|---|
 | `STATUS` | Sub-stage state. |
+| `OUTPUTS.tsv` | Artifacts produced, by type and role. |
+| `adapted/` | Input reshaped for this skill: `counts_gene.tsv` (role `adapted`) and `gene_id_to_name.tsv`. The source matrix is never modified. |
 | `logs/rnaseq_de.log` | Skill stdout/stderr. |
 | `run/report.md` | Skill report, including its required disclaimer. |
 | `run/tables/` | `de_results.csv`, `normalized_counts.csv`, `qc_summary.csv`. |

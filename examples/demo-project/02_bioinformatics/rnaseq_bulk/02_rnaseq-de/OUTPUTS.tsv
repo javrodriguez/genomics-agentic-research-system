@@ -1,0 +1,4 @@
+# type	role	path (relative to this sub-stage directory)
+de_results	native	run/tables/de_results.csv
+counts_gene	adapted	adapted/counts_gene.tsv
+gene_id_map	native	adapted/gene_id_to_name.tsv

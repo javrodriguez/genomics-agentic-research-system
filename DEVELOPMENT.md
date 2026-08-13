@@ -11,7 +11,7 @@ the part that gets lost and then reversed by someone who sees a simpler-looking 
 
 ## Current Status
 
-**As of 2026-08-12, 17:00 UTC**
+**As of 2026-08-13, 01:10 UTC**
 
 | Component | State |
 |---|---|
@@ -20,68 +20,92 @@ the part that gets lost and then reversed by someone who sees a simpler-looking 
 | Stage 03 (`03_custom_analysis`) | **Not written** |
 | Environments (`gars-bio`, `gars-nxf`) | Installed, verified, locked |
 | Ensembl GRCh38 r116 reference | Downloaded, integrity-verified |
-| Derived-index cache | Empty; this run populates it via `--save-reference` |
-| Test project `test-TALL` | Rebuilt from v0.1.0; stages 00 and 01 complete |
-| nf-core/rnaseq run | **Job 26341149 RUNNING** since 16:45 UTC on `cpu_long` |
+| Derived-index cache | **Populated**, 59 GB, keyed `nf-core-rnaseq-3.26.0` |
+| Test project `test-TALL` | **Complete through stage 02** |
+| Sub-stage 02.01 (nf-core/rnaseq) | **COMPLETE** — job 26341149, 5h09m |
+| Sub-stage 02.02 (differential expression) | **COMPLETE** — job 26363997 |
 
-### What is proven
+### The chain runs end to end
 
-- Stages 00 → 01 produce correct artifacts from real data (38 samples registered, 10 analysed)
-- Sample exclusion via `samples.csv` works; raw data and `files.csv` left intact
-- Wrapper preflight passes on a compute node
-- Nextflow dispatches per-task Slurm child jobs to the configured partition
-- All 10 samples align and quantify; complete count matrices were written in an earlier run
-- Samplesheet grain is correct — nf-core merges 2 lanes/sample into 10 `CAT_FASTQ` processes
-- **Skills resolve from the installed `clawbio`** — a workspace copied from the repo carries no
-  skill code, and preflight ran from site-packages
-- **`work/` lives on scratch** — 95 GB accumulated there within 10 minutes, outside the project
+First full success after six failed pipeline attempts. Project creation -> design -> samplesheets
+-> nf-core/rnaseq -> differential expression, on real data.
+
+- 78,941 genes x 10 samples quantified; `SUBREAD_FEATURECOUNTS` passed 10/10
+- 22,782 genes tested for DE; 264 at padj < 0.05
+- Full QC suite: RSeQC (7 modules), Qualimap, StringTie, bigWigs, samtools stats, MultiQC
+- Derived references cached automatically; 477 GB of scratch reclaimed afterwards
+
+**The DE result is biologically meaningless and that is expected.** All ten samples are
+`condition=WT`; `group` G1/G2 is an arbitrary split, so 264 hits is noise plus cohort
+heterogeneity. It proves the plumbing, nothing more. A real contrast needs real condition labels.
+
+### Data quality note
+
+RSeQC `infer_experiment` gives sense ~= antisense (0.33-0.40 each) for all ten samples: the
+library is **unstranded**. nf-core's "10/10 samples failed strandedness check" warning is
+consistent with that — auto-detection cannot return a confident *stranded* call on unstranded
+data. Independently corroborated by the lab's earlier sns analysis, which used `EXP-STRAND|unstr`.
+Set `strandedness: unstranded` explicitly in future configs to remove the ambiguity.
 
 ### What is not yet proven
 
-- `SUBREAD_FEATURECOUNTS` has never passed. Every configuration so far failed at or before it.
-- Sub-stage 02.02 (differential expression) has never run.
-- No run has produced `result.json` + `manifest.json`, so 02.01 has never reached `COMPLETE`.
-- The derived-index cache has never been populated or reused.
-
-### Cluster note
-
-A node-failure event on 2026-08-12 (1,035 `NODE_FAIL` in 24h, peaking at 146 per 2h) filled the
-queues with requeued casualties and delayed two submissions by hours. Recovered by ~16:45 UTC;
-job 26341149 started within a minute of submission. Preemption is **not** enabled on this
-cluster (`PreemptMode = OFF`) — every infrastructure failure encountered was hardware.
-
----
+- The derived-index cache has been **populated but never reused**. First reuse is the next test.
+- Stage 03 does not exist.
+- Artifact reuse between sub-stages is designed but not implemented.
 
 ## Next Steps
 
 Priority order.
 
-1. **Let job 26341149 finish.** Watch `SUBREAD_FEATURECOUNTS` — the only step never passed.
-2. **Harvest the derived indices.** On success, copy `run/results/genome/` (STAR index, Salmon
-   index, transcripts FASTA, gene BED) into
-   `refs/ensembl-GRCh38-116/derived/nf-core-rnaseq-3.26.0/`, then drop `--save-reference` and
-   pass `--star-index` / `--salmon-index` / `--transcript-fasta` on later runs. Saves ~43 GB and
-   about an hour per run. Verify `versionGenome` in `genomeParameters.txt` before first reuse.
-3. **Delete the scratch work dir** once the run succeeds and `results/` is verified —
-   `/gpfs/scratch/rodrij92/gars-work/test-TALL-rnaseq_bulk`, expected 250-350 GB.
-4. **Complete sub-stage 02.02 (DE).** Requires 02.01 to reach `COMPLETE`. Note the test design
-   is degenerate: all 10 samples are `condition=WT`, so the only two-level factor is `group`,
-   and `group,G2,G1` will produce statistical noise. Fine for proving the chain, meaningless
-   biologically.
-5. **Implement artifact reuse across sub-stages.** Design settled 2026-08-12 (see Decision Log);
-   deferred until 02.02 has run, so it is validated against a real second consumer rather than a
-   hypothetical one — the same reasoning that defers stage 03.
+1. **Implement artifact reuse across sub-stages.** Design in the Decision Log. Now genuinely
+   unblocked: the 02.01 -> 02.02 handoff produced the first real second-consumer case, and it
+   changed one detail — a registry must distinguish a producer's **native** output from a
+   consumer-**adapted** derivative, because 02.02 had to reshape the count matrix before
+   `rnaseq-de` would accept it.
+2. **Verify cache reuse.** Next run should pass `--star-index` / `--salmon-index` /
+   `--transcript-fasta` from `derived/nf-core-rnaseq-3.26.0/` and drop `--save-reference`.
+   Check `versionGenome` first. Expected saving: ~43 GB and about an hour.
+3. **Write the `03_custom_analysis` contract.** No longer blocked — stage 02 now produces real
+   output to design against.
+4. **Set `strandedness: unstranded`** in `_config/rnaseq_bulk.yaml` for this dataset.
+5. **Report the rnaseq-de defects upstream**, as ClawBio#333 was. Three separate breaks in a
+   declared chaining pair.
 
-6. **Write the `03_custom_analysis` contract.** Deliberately deferred until 02 produces real
-   output — designing against an unproven handoff is what caused the samplesheet-grain mistake.
-
-**Completed 2026-08-12:** repo/working-copy drift resolved (repo is canonical, `bioinfo-research-system/gars/` retired); skills de-vendored and resolved from the installed
-`clawbio`; template version stamping added with `_references/VERSION`; `work/` moved to scratch;
-derived-reference caching designed and keyed by pipeline version.
-
----
+**Completed 2026-08-12/13:** repo/working-copy drift resolved (repo canonical); skills
+de-vendored and resolved from installed `clawbio`; template version stamping via
+`_references/VERSION`; `work/` moved to scratch; derived-reference caching designed, made
+automatic, and populated; 612 GB + 477 GB of run artifacts reclaimed.
 
 ## Decision Log
+
+### Skill chaining is not guaranteed to actually work — 2026-08-13
+
+`nfcore-rnaseq-wrapper` and `rnaseq-de` declare each other as chaining partners in the ClawBio
+catalogue. Their formats do not meet. Three separate defects surfaced running the handoff:
+
+1. **Non-numeric column.** nf-core emits `gene_id`, `gene_name`, then samples. `rnaseq-de`
+   documents "first column is gene identifier" and coerces every later column to numeric, so
+   `gene_name` raises `Count matrix contains non-numeric entries`.
+2. **Silent loss of gene identifiers.** `rnaseq_de.py:288` does
+   `results_df.reset_index().rename(columns={"index": "gene"})`, assuming an *unnamed* index.
+   With a named index the rename is a no-op and the identifier column is dropped from the output
+   selection — **no error, no warning**. The first DE run produced a complete, plausible
+   `de_results.csv` in which every gene was anonymous. It only surfaced because a later line
+   crashed on `row.gene`. Naming the column `gene`, as the skill's own demo data does, fixes it.
+3. **`FileExistsError` on rerun.** The skill refuses a populated `--output`, so a rerun must move
+   the previous directory aside.
+
+**Consequences for the architecture:**
+
+- A sub-stage may need an **adaptation layer** between an upstream artifact and its skill. That
+  adaptation belongs in the consuming sub-stage's own directory, never as a modification of the
+  producer's output. 02.02 writes `adapted/counts_gene.tsv` and keeps
+  `adapted/gene_id_to_name.tsv` so results can be annotated later.
+- **Analysis sub-stages need scheduled allocations too.** Running 02.02 in the foreground got it
+  SIGKILLed (exit 137) on a login node. The contract now requires `sbatch`, as 02.01 does.
+- Defect 2 is the strongest argument yet for exit gates that check *content*, not just existence.
+  A file-exists check passes happily on a DE table with no gene column.
+
 
 ### Storage and reference reuse — added 2026-08-12
 
