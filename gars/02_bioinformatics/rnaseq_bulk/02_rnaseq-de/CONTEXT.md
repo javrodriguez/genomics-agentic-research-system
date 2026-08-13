@@ -49,6 +49,23 @@ around a pydeseq2 error — report the error instead.
 report it and stop. Never pip-install on the fly, never vendor or stub a missing module, and
 never swap in a different PCA or DE implementation.
 
+**Adapted count matrix.** nf-core emits `gene_id`, `gene_name`, then one column per sample.
+`rnaseq-de` documents "first column is gene identifier" and coerces every later column to
+numeric, so `gene_name` raises `Count matrix contains non-numeric entries`. The two skills
+declare each other as chaining partners, but their formats do not actually meet.
+
+This sub-stage therefore writes an adapted copy into **its own** directory — `adapted/counts_gene.tsv`,
+with `gene_name` dropped and counts rounded to integers — and preserves the mapping in
+`adapted/gene_id_to_name.tsv` so results can be annotated afterwards. **The source matrix is
+never modified**; sub-stage 02.01 owns it.
+
+**Scheduled execution.** Submit this sub-stage to Slurm; do not run it in the foreground.
+PyDESeq2 dispersion fitting over ~79k genes was SIGKILLed (exit 137) on a login node. An
+analysis sub-stage needs a scheduled allocation just as much as the pipeline does.
+
+**Non-empty output.** The skill refuses a populated `--output` with `FileExistsError`. A rerun
+must move the previous `run/` aside rather than writing into it.
+
 **Metadata table.** The skill requires a `sample_id` column. `01_samplesheets/rnaseq_bulk_design.csv`
 already has exactly that header, so it is passed unchanged as `--metadata`. Never edit it to
 suit the skill.
@@ -77,7 +94,10 @@ design table. Fewer makes dispersion estimation unreliable, and the result is no
    direction separately — samples in the matrix but not the design, and the reverse.
 7. If any check in steps 5-6 failed, reply T3 listing all of them, and stop. Write nothing.
 8. Create the output directory. If it exists and is non-empty, reply T4 and stop.
-9. Reply T2, then run the skill invocation, capturing stdout and stderr to `logs/rnaseq_de.log`.
+9. Reply T2, then write `submit.sh` carrying its own environment and the adapted-matrix step,
+   and submit it with `sbatch`. Write `STATUS` as `SUBMITTED <job_id> <iso8601>` and return; do
+   not run the skill in the foreground and do not poll. Collect results on a later invocation,
+   as sub-stage 02.01 does.
 10. If the skill exits non-zero, write `STATUS` as `FAILED <iso8601>`, reply T4 with its verbatim
     error, and stop.
 11. Run the exit gate: `report.md`, `tables/de_results.csv`, and the `figures/` PNGs exist and

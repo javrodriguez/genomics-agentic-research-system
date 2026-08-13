@@ -204,8 +204,22 @@ nf-core build one, which costs about an hour and is then reused from the work di
 13. Run the exit gate: `report.md`, `result.json`, and the counts TSV all exist and are
     non-empty; the sample count in the counts matrix equals the distinct `sample` count in the
     samplesheet. If any check fails, write `FAILED`, reply T4, stop.
-14. Write `STATUS` as `COMPLETE <iso8601>`, append a dated entry to the project's `HISTORY.md`,
-    and reply T6.
+14. **Populate the derived-reference cache, automatically.** If `reference.derived_dir` is set
+    and does not already contain a populated `star/`, publish this run's built references into
+    it. No approval is required: the contents are a deterministic function of the FASTA, GTF and
+    pipeline version, and nothing about them is project-specific.
+
+    Publish **atomically** — the cache is shared across projects and two runs may finish at
+    once. Write to a sibling temporary directory on the same filesystem, then `mv` it into
+    place. Never write directly into the cache path, and never overwrite a populated cache; if
+    one already exists, leave it and record that it was reused.
+
+    Copy `run/upstream/results/genome/`: the STAR index, Salmon index, `genome.transcripts.fa`,
+    the filtered GTF and the gene BED. Then write a `PROVENANCE` file recording the source FASTA
+    and GTF paths, the pipeline version, the STAR `versionGenome`, and the job ID that built it.
+
+15. Write `STATUS` as `COMPLETE <iso8601>`, append a dated entry to the project's `HISTORY.md`
+    noting whether the cache was populated or reused, and reply T6.
 
 ## Response Format
 Every message you send in this sub-stage is one of the templates below, with placeholders
