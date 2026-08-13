@@ -57,26 +57,53 @@ Set `strandedness: unstranded` explicitly in future configs to remove the ambigu
 
 Priority order.
 
-1. **Implement artifact reuse across sub-stages.** Design in the Decision Log. Now genuinely
-   unblocked: the 02.01 -> 02.02 handoff produced the first real second-consumer case, and it
-   changed one detail — a registry must distinguish a producer's **native** output from a
-   consumer-**adapted** derivative, because 02.02 had to reshape the count matrix before
-   `rnaseq-de` would accept it.
-2. **Verify cache reuse.** Next run should pass `--star-index` / `--salmon-index` /
-   `--transcript-fasta` from `derived/nf-core-rnaseq-3.26.0/` and drop `--save-reference`.
-   Check `versionGenome` first. Expected saving: ~43 GB and about an hour.
-3. **Write the `03_custom_analysis` contract.** No longer blocked — stage 02 now produces real
-   output to design against.
-4. **Set `strandedness: unstranded`** in `_config/rnaseq_bulk.yaml` for this dataset.
-5. **Report the rnaseq-de defects upstream**, as ClawBio#333 was. Three separate breaks in a
-   declared chaining pair.
+1. **Write the `03_custom_analysis` contract.** The last unwritten stage. Stage 02 now produces
+   real output to design against, and the artifact registry gives it a defined way to find
+   inputs.
+2. **Report the `rnaseq-de` defects upstream**, as ClawBio#333 was. Three separate breaks in a
+   declared chaining pair, one of them silent.
+3. **Exercise the artifact registry for real.** It is implemented and backfilled, but no
+   sub-stage has yet *resolved* an input through `OUTPUTS.tsv` at run time — 02.02 was given its
+   counts path directly. Stage 03 is the natural first consumer.
+4. **Consider a second assay type.** Everything so far is one assay with two sub-stages. Adding
+   e.g. ATAC-seq would test whether the assay map, artifact vocabulary and router generalise, or
+   whether they encode bulk-RNA-seq assumptions.
 
 **Completed 2026-08-12/13:** repo/working-copy drift resolved (repo canonical); skills
 de-vendored and resolved from installed `clawbio`; template version stamping via
-`_references/VERSION`; `work/` moved to scratch; derived-reference caching designed, made
-automatic, and populated; 612 GB + 477 GB of run artifacts reclaimed.
+`_references/VERSION`; `work/` moved to scratch; derived-reference caching designed, automated,
+populated **and verified reusable**; artifact registry implemented; full chain run end to end on
+real data; 612 GB + 477 GB + 89 GB of run artifacts reclaimed.
 
 ## Decision Log
+
+### Derived-reference cache verified reusable — 2026-08-13
+
+Populating a cache proves nothing; the STAR version incompatibility that killed run 26310826
+surfaces only when STAR loads the index at `STAR_ALIGN`, so a preflight cannot detect it. A
+throwaway 2-sample project (`cache-check`) was created purely to force a real alignment.
+
+Result: **`Pipeline completed successfully`, 0 index-building processes launched.**
+
+| Check | Result |
+|---|---|
+| `STAR_GENOMEGENERATE`, `SALMON_INDEX`, `MAKE_TRANSCRIPTS_FASTA` | 0 launched — all skipped |
+| `versionGenome` verified before reuse (contract requirement) | 2.7.4a, logged by `submit.sh` |
+| STAR loaded the cached genome index | aligned 2/2 |
+| Salmon quantified against the cached transcriptome index | completed |
+| Cache after reuse | 59 GB, unchanged |
+
+Both indices had to be validated independently: an aligner index and a quantifier index are
+compatible with the tool versions that built them, separately. Every later run against Ensembl
+GRCh38 r116 with nf-core/rnaseq 3.26.0 now skips ~43 GB and roughly 40 minutes.
+
+Also confirmed in the same run: setting `strandedness: unstranded` explicitly, on the RSeQC
+evidence, removed the "10/10 samples failed strandedness check" warning entirely.
+
+**Method note worth keeping.** A deliberately minimal project — 2 samples, no biological intent
+— is the right way to verify infrastructure. It cost ~2 hours and 89 GB of scratch instead of
+re-running a real analysis, and it isolated the thing under test.
+
 
 ### Skill chaining is not guaranteed to actually work — 2026-08-13
 
