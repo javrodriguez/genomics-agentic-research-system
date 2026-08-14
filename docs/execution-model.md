@@ -234,6 +234,44 @@ itself will happily run bare commands with nothing containerised.
 
 ---
 
+## Running a skill: source one file
+
+Every `submit.sh` begins with a single line:
+
+```bash
+source "$WS/tools/gars-env.sh"
+```
+
+That script is the **only** definition of how to run a GARS skill. It sets `PATH` (with
+`gars-nxf` first, so `java` resolves to OpenJDK 17 rather than the system Java 1.8 that Nextflow
+refuses), `JAVA_HOME`, the Apptainer and Nextflow caches, and exports `$GARS_PY`,
+`$GARS_SKILLS`, `$GARS_PIPELINES` and `$GARS_REFS`. It exits non-zero if an environment or the
+skills directory is missing, so a broken setup fails at submission rather than minutes into a
+scheduled job.
+
+It exists because the same ~20 lines of setup were previously copy-pasted into every
+`submit.sh`, in every project, for every sub-stage — and they drifted. A recovered script was
+still pointing at a vendored skills path that had been removed. Centralising cut a job script
+from 97 lines to 29.
+
+It lives **in the workspace**, not in `$HOME`: a workspace is a copy of the template and the
+contracts treat it as self-contained, so copying a workspace carries its environment definition,
+and it is versioned in git where a change is a reviewable commit.
+
+### For interactive debugging
+
+Batch jobs never use `conda activate` — absolute paths behave identically on every node, which
+is what a Slurm script needs. But for poking at things by hand, both environments now carry
+their own variables, so activation just works:
+
+```bash
+conda activate gars-nxf && nextflow -v      # JAVA_HOME set by the env
+```
+
+Without that, `nextflow -v` fails with *"Cannot find Java or it's a wrong version"* even though
+OpenJDK 17 sits in the same environment — Nextflow looks at `PATH` and `JAVA_HOME`, not at where
+its own binary lives. That error looks like a broken install and is not.
+
 ## Where each piece lives
 
 | Piece | Location |

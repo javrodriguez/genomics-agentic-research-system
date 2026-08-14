@@ -68,8 +68,11 @@ gars/
         ...
     03_custom_analysis/
         CONTEXT.md
-    tools/                # NB: no skills/ here. Skills ship with the installed clawbio
-                          # package and are never vendored into a workspace.
+    tools/
+        gars-env.sh       # the single definition of the execution environment.
+                          # Sourced by every submit.sh; sets PATH, JAVA_HOME, caches,
+                          # $GARS_PY and $GARS_SKILLS. No skills/ here -- skills ship
+                          # with the installed clawbio package and are never vendored.
         presentation/
         manuscript/
             01_draft/

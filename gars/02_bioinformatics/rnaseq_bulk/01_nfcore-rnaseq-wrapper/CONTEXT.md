@@ -34,18 +34,20 @@ resolve `$SKILLS`). There is no `clawbio.py` launcher in this environment —
 the CLI shown in the skill's own SKILL.md (`python clawbio.py run rnaseq-pipeline …`) is the
 upstream ClawBio form and does not apply here. Flag names are otherwise identical.
 
-**Required environment.** Entirely user-owned conda; **no `module load`**. Two environments,
-because nextflow and clawbio cannot coexist in one — see `_references/environment.md`.
+**Required environment.** Source `tools/gars-env.sh` from the workspace. It is the single
+definition of how to run a skill; do not re-declare paths or exports in `submit.sh`.
 
 ```bash
-BIO=~/install/miniconda_clean/envs/gars-bio    # skill deps + apptainer + squashfuse
-NXF=~/install/miniconda_clean/envs/gars-nxf    # nextflow 26.04.6 + openjdk 17
-export PATH="$NXF/bin:$BIO/bin:$PATH"
-export APPTAINER_CACHEDIR=~/.apptainer_cache
-export NXF_APPTAINER_CACHEDIR=~/.apptainer_cache
+source "$WS/tools/gars-env.sh"     # sets PATH, JAVA_HOME, caches, $GARS_PY, $GARS_SKILLS
 ```
 
-Every invocation, including preflight and the Slurm script, must export all of the above.
+It exits non-zero if an environment or the skills directory is missing, so a broken setup fails
+at submission rather than minutes into a scheduled job. Entirely user-owned conda — **no
+`module load`**. Two environments, because nextflow and clawbio cannot coexist in one; see
+`docs/environment.md`.
+
+`PATH` order matters and the script handles it: `gars-nxf` first, so `java` resolves to its
+OpenJDK 17 rather than the system Java 1.8, which Nextflow refuses.
 `squashfuse` must be on `PATH` or Apptainer unpacks each multi-GB image on every container
 launch. `NXF_APPTAINER_CACHEDIR` must be set or every run re-pulls the same images.
 

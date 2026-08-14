@@ -48,13 +48,14 @@ change in where a producer writes does not break its consumers.
 not vendor skill code: this workspace holds contracts only, and a sub-stage directory contains a
 `CONTEXT.md`, never a `.py`.
 
-Resolve the skills directory at runtime rather than hardcoding it — the literal path embeds a
-Python version that changes whenever the environment is rebuilt:
+`tools/gars-env.sh` resolves the skills directory at runtime and exports it as `$GARS_SKILLS`,
+along with `$GARS_PY`, `PATH`, `JAVA_HOME` and the caches. Source it rather than hardcoding
+anything — the literal site-packages path embeds a Python version that changes whenever the
+environment is rebuilt.
 
 ```bash
-BIO=~/install/miniconda_clean/envs/gars-bio
-SKILLS=$($BIO/bin/python -c "import clawbio, pathlib; print(pathlib.Path(clawbio.__file__).parent / 'skills')")
-# then run a skill from inside its own directory, e.g. $SKILLS/nfcore-rnaseq-wrapper/
+source "$WS/tools/gars-env.sh"
+cd "$GARS_SKILLS/nfcore-rnaseq-wrapper"    # skills run from inside their own directory
 ```
 
 Each skill runs as a bare script from within its own directory, because it imports its siblings

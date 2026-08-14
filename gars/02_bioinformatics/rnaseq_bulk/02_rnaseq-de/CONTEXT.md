@@ -30,8 +30,8 @@ This sub-stage performs the steps in Process and nothing else.
 
 ## Definitions
 
-**Skill invocation.** Run from inside `$SKILLS/rnaseq-de/` with the `gars-bio` interpreter
-(see Definitions in `02_bioinformatics/CONTEXT.md` for how to resolve `$SKILLS`):
+**Skill invocation.** Source `tools/gars-env.sh`, then run from inside `$GARS_SKILLS/rnaseq-de/`
+using `$GARS_PY`. Do not re-declare environment paths in `submit.sh`:
 ```
 PY=~/install/miniconda_clean/envs/gars-bio/bin/python
 $PY rnaseq_de.py --counts <tsv> --metadata <csv> --formula <f> --contrast <c> --output <dir>
