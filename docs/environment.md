@@ -1,5 +1,9 @@
 # Runtime Environment
 
+This file records **what is installed and how to reproduce it**. For how the pieces relate —
+package managers, Nextflow vs nf-core, containers and SIF — see
+[`execution-model.md`](execution-model.md).
+
 Verified on the login node, 2026-08-11. Re-verify after any cluster change.
 
 ## Cluster

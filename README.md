@@ -172,7 +172,7 @@ gars/           the workspace template — copy it to start a project
   00_initialize_project/     01_prepare_samplesheets/
   02_bioinformatics/         03_custom_analysis/
   _references/      assay -> stage -> sub-stage -> skill map
-docs/           verified cluster runtime, environment lockfiles
+docs/           execution model, verified cluster runtime, environment lockfiles
 examples/       synthetic worked example
 ```
 
@@ -189,8 +189,12 @@ conda create -y -n gars-nxf -c bioconda -c conda-forge "nextflow=26.04.6" "openj
 ```
 
 Two environments, because `nextflow` and `clawbio` have conflicting `c-ares` constraints and
-cannot be solved together. Full rationale, exact lockfiles, and the traps encountered are in
+cannot be solved together. Exact lockfiles and the traps encountered are in
 [`docs/environment.md`](docs/environment.md).
+
+How the layers relate — package managers, workflow engine, containers, and why a container
+holds one tool rather than the pipeline — is in
+[`docs/execution-model.md`](docs/execution-model.md).
 
 ## License
 
