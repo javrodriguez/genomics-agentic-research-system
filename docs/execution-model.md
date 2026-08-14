@@ -258,6 +258,41 @@ It lives **in the workspace**, not in `$HOME`: a workspace is a copy of the temp
 contracts treat it as self-contained, so copying a workspace carries its environment definition,
 and it is versioned in git where a change is a reviewable commit.
 
+### Persistent vs disposable: two very different locations
+
+A recurring confusion, worth stating plainly. Only one of these belongs on scratch:
+
+| | Location | Size | Lifecycle |
+|---|---|---|---|
+| Nextflow work dir | `/gpfs/scratch/<user>/gars-work/` | 250-350 GB per run | **Disposable** — deleted once `results/` is verified |
+| Apptainer image cache | `$GARS_ROOT/.apptainer_cache` | ~17 GB | **Persistent** — reused by every run |
+| Reference genome + derived indices | `$GARS_ROOT/install/refs/` | ~60 GB | Persistent |
+| Pinned pipeline checkout | `$GARS_ROOT/install/nf-core-pipelines/` | 34 MB | Persistent |
+
+The test is: *does losing this cost only time, or does it cost repetition forever?* A work
+directory costs nothing to lose. The image cache costs a re-pull on every subsequent run, and
+scratch filesystems are commonly purged after 30-90 days — so putting the cache there would
+silently make every run slower, months later, for no visible reason.
+
+### `GARS_ROOT`, and why not `$HOME`
+
+`$HOME` (`/gpfs/home/<user>`) and the group work area (`/gpfs/data/abl/home/<user>`) are
+**different directories** on this cluster — different inodes. Some subtrees, such as `install/`,
+are shared via symlink, which makes them look identical if you spot-check the wrong path.
+
+An early version of `gars-env.sh` used `$HOME` and therefore pointed `APPTAINER_CACHEDIR` at an
+empty directory. Nothing failed: runs simply re-pulled all 26 images and were slower. That is the
+most dangerous shape of bug in this system — no error, no wrong answer, just silent waste.
+
+`gars-env.sh` now derives everything from one explicit `GARS_ROOT`, reports the resolved cache
+and its image count on every invocation, and warns when the cache is empty:
+
+```
+[gars-env] cache=/gpfs/data/abl/home/rodrij92/.apptainer_cache (26 images)
+```
+
+An empty cache is a warning rather than an error, because a genuinely first run has one.
+
 ### For interactive debugging
 
 Batch jobs never use `conda activate` — absolute paths behave identically on every node, which

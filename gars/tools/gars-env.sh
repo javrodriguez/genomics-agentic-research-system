@@ -16,11 +16,19 @@
 # definition. It is versioned in git, so a change is a reviewable commit rather than an
 # untracked edit to a home-directory script.
 
+# --- root ------------------------------------------------------------------------------------
+# DO NOT substitute $HOME here. On this cluster $HOME (/gpfs/home/<user>) and the group work
+# area (/gpfs/data/abl/home/<user>) are DIFFERENT directories with different inodes -- only some
+# subtrees, such as install/, are shared via symlink. Using $HOME once pointed the container
+# cache at an empty directory, which silently re-pulls all 26 images and looks like the cache
+# "stopped working". Override GARS_ROOT to relocate the whole stack.
+GARS_ROOT="${GARS_ROOT:-/gpfs/data/abl/home/rodrij92}"
+
 # --- environments -------------------------------------------------------------------------
 # Two, because nextflow and clawbio have conflicting c-ares constraints and cannot be solved
 # together. See docs/environment.md.
-GARS_BIO="${GARS_BIO:-$HOME/install/miniconda_clean/envs/gars-bio}"   # clawbio, apptainer, squashfuse
-GARS_NXF="${GARS_NXF:-$HOME/install/miniconda_clean/envs/gars-nxf}"   # nextflow, openjdk 17
+GARS_BIO="${GARS_BIO:-$GARS_ROOT/install/miniconda_clean/envs/gars-bio}"   # clawbio, apptainer, squashfuse
+GARS_NXF="${GARS_NXF:-$GARS_ROOT/install/miniconda_clean/envs/gars-nxf}"   # nextflow, openjdk 17
 
 # Order matters. gars-nxf first so `java` resolves to its OpenJDK 17 rather than the system
 # Java 1.8 — Nextflow locates Java via PATH, and refuses anything below 17.
@@ -29,9 +37,9 @@ export JAVA_HOME="$GARS_NXF"
 
 # --- caches -------------------------------------------------------------------------------
 # Shared across projects: container images and the pinned pipeline are immutable and reusable.
-export APPTAINER_CACHEDIR="${APPTAINER_CACHEDIR:-$HOME/.apptainer_cache}"
+export APPTAINER_CACHEDIR="${APPTAINER_CACHEDIR:-$GARS_ROOT/.apptainer_cache}"
 export NXF_APPTAINER_CACHEDIR="$APPTAINER_CACHEDIR"
-export NXF_HOME="${NXF_HOME:-$HOME/.nextflow_gars}"
+export NXF_HOME="${NXF_HOME:-$GARS_ROOT/.nextflow_gars}"
 mkdir -p "$APPTAINER_CACHEDIR" "$NXF_HOME"
 
 # --- resolved locations -------------------------------------------------------------------
@@ -45,8 +53,8 @@ export GARS_SKILLS
 # Pinned pipeline checkout. Cloned over the git protocol, because resolving a remote
 # nf-core/rnaseq goes through the GitHub REST API, which is rate-limited to 60 requests/hour
 # across this site's shared outbound IP.
-export GARS_PIPELINES="${GARS_PIPELINES:-$HOME/install/nf-core-pipelines}"
-export GARS_REFS="${GARS_REFS:-$HOME/install/refs}"
+export GARS_PIPELINES="${GARS_PIPELINES:-$GARS_ROOT/install/nf-core-pipelines}"
+export GARS_REFS="${GARS_REFS:-$GARS_ROOT/install/refs}"
 
 # --- fail fast ----------------------------------------------------------------------------
 # A missing piece here becomes an obscure failure minutes into a scheduled job otherwise.
@@ -59,5 +67,12 @@ for _v in GARS_BIO GARS_NXF GARS_SKILLS; do
 done
 unset _v
 
+# A cache that exists but is empty is the dangerous case: runs succeed, slowly, re-pulling
+# everything. Warn rather than fail -- a genuinely first run has an empty cache legitimately.
+if [ -d "$APPTAINER_CACHEDIR" ] && [ -z "$(ls -A "$APPTAINER_CACHEDIR" 2>/dev/null)" ]; then
+    echo "[gars-env] NOTE: container cache $APPTAINER_CACHEDIR is empty -- images will be pulled." >&2
+fi
+
 echo "[gars-env] python=$("$GARS_PY" --version 2>&1) | nextflow=$(nextflow -v 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1) | apptainer=$(apptainer --version 2>&1 | awk '{print $3}')"
 echo "[gars-env] skills=$GARS_SKILLS"
+echo "[gars-env] cache=$APPTAINER_CACHEDIR ($(ls "$APPTAINER_CACHEDIR"/*.img 2>/dev/null | wc -l) images)"
