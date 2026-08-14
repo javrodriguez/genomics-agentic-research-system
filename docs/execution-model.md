@@ -10,15 +10,32 @@ container to hold something it does not.
 ## The layers
 
 ```
-GARS contracts            what runs, in what order, with what inputs   (this repo, markdown)
-  └── ClawBio skills      thin wrappers that invoke a tool             (installed via pip)
-        └── Nextflow      workflow engine: builds the task graph       (gars-nxf env)
-              └── nf-core/rnaseq   the pipeline: 107 plain-text .nf scripts on disk
-                    └── Apptainer  runs one tool per task              (gars-bio env)
-                          └── container images   one tool each, ~26 for an RNA-seq run
+GARS contract      decides THAT this assay is processed, with which reference and samples
+                                                              (this repo, markdown)
+   │ invokes
+   ▼
+ClawBio wrapper    validates inputs, writes params.yaml, launches Nextflow, parses results
+                                                              (gars-bio env, pip)
+   │ launches
+   ▼
+Nextflow           reads the pipeline, builds the task graph, submits Slurm jobs
+                                                              (gars-nxf env)
+   │ reads                              │ calls, once per task
+   ▼                                    ▼
+nf-core/rnaseq                       Apptainer ──▶ [ one tool per container ]
+107 plain-text .nf scripts on disk.  (gars-bio env)   ~26 images per RNA-seq run
+Declares the steps, their order,
+and which container each one uses.
 ```
 
-Each layer knows only about the one below it.
+Read the two branches carefully: Nextflow **reads** the pipeline and **calls** the container
+engine. The pipeline does not contain Apptainer, and Apptainer never sees the pipeline.
+
+Each layer governs the one below without taking over its job. Two consequences worth holding
+onto, each expanded below:
+
+- a container holds **one tool**, not the pipeline
+- the wrapper **launches**, it does not assemble anything
 
 ---
 
@@ -151,6 +168,52 @@ Why it is built this way — small single-tool images can be shared, cached and 
 independently, while the pipeline stays readable, diffable text.
 
 ---
+
+## Second misconception: the wrapper does not build the pipeline
+
+A natural follow-on assumption is that the ClawBio wrapper "organises the containers and tools
+into a pipeline, which Nextflow then orchestrates". The wrapper does considerably less than
+that. It never touches containers and it does not assemble anything.
+
+| Piece | Job | Knows about containers? |
+|---|---|---|
+| **nfcore-rnaseq-wrapper** (ClawBio skill) | Validates the samplesheet and references, translates CLI flags into `params.yaml`, launches Nextflow, parses results afterwards | **No** — passes `--profile apptainer` through as a string |
+| **nf-core/rnaseq** (the pipeline) | Declares the steps, their order, and **which container each step uses** — 78 modules, 78 declarations | Yes, this is where they are declared |
+| **Nextflow** (the engine) | Reads the pipeline, builds the task graph, submits Slurm jobs, calls the container engine per task | Yes, it invokes them |
+| **Apptainer** | Runs one tool in one container, once | Runs them |
+
+The wrapper's only container-adjacent code is profile passthrough and a macOS Docker memory
+workaround. Nothing in it decides that STAR runs in one image and Salmon in another — **the
+pipeline already says so**, and said so before the wrapper or this project existed. The step
+order is authored by the nf-core community, not assembled at run time.
+
+Stated correctly:
+
+> The nf-core/rnaseq **pipeline** declares which tool runs at each step and in what order.
+> **Nextflow** executes that declaration, calling **Apptainer** to run one tool-container per
+> task. The **ClawBio wrapper** is a launcher that validates inputs and starts Nextflow — it
+> neither builds the pipeline nor manages containers.
+
+### One line each
+
+```
+GARS contract    decides THAT bulk RNA-seq should be processed        (markdown)
+  wrapper        checks inputs, builds params.yaml, starts Nextflow   (python)
+    Nextflow     schedules tasks, calls the container engine          (engine)
+      pipeline   declares the steps and their containers              (static .nf text)
+        Apptainer  runs one tool                                      (per task)
+```
+
+### The sanity check
+
+**The pipeline runs perfectly well without the wrapper.** `nextflow run nf-core/rnaseq` by hand
+produces the same result. The wrapper exists to make that invocation validated, reproducible and
+auditable — preflight checks, a pinned pipeline version, a provenance bundle. It is a seatbelt,
+not an engine.
+
+The same test applies one layer up: the pipeline runs without GARS. GARS decides *that* an assay
+should be processed, with which reference and which samples, and records why. Each layer adds
+governance over the one below without taking over its job.
 
 ## Nextflow and nf-core are not the same thing
 
