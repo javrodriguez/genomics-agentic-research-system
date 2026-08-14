@@ -43,6 +43,8 @@ output. This sub-stage needs no `module load` at all; Nextflow and Singularity b
 `pydeseq2==0.5.4` is installed in `gars-bio`, so leave the default. Never force `simple` to work
 around a pydeseq2 error — report the error instead.
 
+**Declared requirements.** `_references/assay_stage_skill_map.md` lists what this skill needs (binaries and Python packages). Report a missing requirement by name — "scikit-learn missing, required by rnaseq-de" — not as a raw traceback.
+
 **Skill importability.** Confirm the skill imports before doing anything else:
 `$PY rnaseq_de.py --help`. This was verified working on 2026-08-11 with `clawbio==0.6.1`,
 `scikit-learn==1.9.0`, and `pydeseq2==0.5.4`. If it fails, that is a preconditions failure (T4):

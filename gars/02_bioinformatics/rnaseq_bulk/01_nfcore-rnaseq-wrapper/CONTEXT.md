@@ -99,6 +99,8 @@ Nextflow session, which is the wrong signal and fails as above:
 Slurm snapshots the batch script at submission, so editing `submit.sh` never affects an
 already-queued job — cancel and resubmit instead.
 
+**Declared requirements.** `_references/assay_stage_skill_map.md` lists what this skill needs (binaries and Python packages). Report a missing requirement by name — "scikit-learn missing, required by rnaseq-de" — not as a raw traceback.
+
 **Skill importability.** Before preflight, confirm the skill imports:
 `$BIO/bin/python nfcore_rnaseq_wrapper.py --help`. Verified 2026-08-11 with `clawbio==0.6.1`,
 `nextflow=26.04.6`, `apptainer=1.5.3`. If it fails, that is a preconditions failure (T5):
