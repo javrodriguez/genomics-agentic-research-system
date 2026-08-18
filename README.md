@@ -160,7 +160,8 @@ next reader does not undo it. One was a bug in an upstream dependency, reported 
 ---
 
 Development history, the reasoning behind each design decision, current state and next steps are
-kept in [DEVELOPMENT.md](DEVELOPMENT.md).
+kept in [DEVELOPMENT.md](DEVELOPMENT.md). If you are working *on* GARS rather than reading about
+it, start at [CLAUDE.md](CLAUDE.md) — it orients the repository and links everything else.
 
 ## Repository layout
 

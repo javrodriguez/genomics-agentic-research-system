@@ -3,6 +3,10 @@
 ## What This Is
 A workspace for the management of research projects in genomics. Accessed through dialogue interactions with LLM. The filesystem is the agent, the LLM is the navigator. A user usually does; 1) invoke a project creation, 2) ingests data and metadata, 3) Runs automated/validated bioinformatic frameworks, and 4) Manages Multi-projects throught a project-based memory/context system. GARS was developed following the Integrated Context Methodology (ICM) architecture for agentic-orchestration, integrated with ClawBio and in-house bioinformatics skills.
 
+> **Scope of this file.** This is orientation for *using* a GARS workspace to run an analysis.
+> If you are developing GARS itself — editing contracts, docs or this template — the entry point
+> is the `CLAUDE.md` at the root of the GARS repository, not this one.
+
 ## Current State
 - This folder is a reference architecture until it contains a project. Once projects/ holds one or more projects, treat it as an active workspace.
 - Work in progress: the tree below is the target layout, scaffolded incrementally. Stage contracts exist for `00_initialize_project`, `01_prepare_samplesheets`, and `02_bioinformatics` (with both `rnaseq_bulk` sub-stages); `03_custom_analysis` is planned.
