@@ -49,33 +49,92 @@ Set `strandedness: unstranded` explicitly in future configs to remove the ambigu
 
 ### What is not yet proven
 
-- The derived-index cache has been **populated but never reused**. First reuse is the next test.
-- Stage 03 does not exist.
-- Artifact reuse between sub-stages is designed but not implemented.
+- **Stage 03 does not exist.**
+- The artifact registry is implemented and backfilled, but no sub-stage has yet *resolved* an
+  input through `OUTPUTS.tsv` at run time — 02.02 was handed its counts path directly.
+- Only one assay exists. Whether the assay map, artifact vocabulary and router generalise, or
+  quietly encode bulk-RNA-seq assumptions, is untested.
+- Stage 01's samplesheet emitter is RNA-specific and has never produced a non-RNA layout.
 
 ## Next Steps
 
-Priority order.
+Priority order. Items 1 and 2 block assay expansion and both touch working contracts, so settle
+them before writing any new wrapper.
 
-1. **Write the `03_custom_analysis` contract.** The last unwritten stage. Stage 02 now produces
-   real output to design against, and the artifact registry gives it a defined way to find
-   inputs.
-2. **Report the `rnaseq-de` defects upstream**, as ClawBio#333 was. Three separate breaks in a
+1. **Make stage 01's samplesheet emitter assay-aware.** It currently emits
+   `sample,fastq_1,fastq_2,strandedness` — `strandedness` is RNA-only, and every target assay
+   needs a different column set. ChIP-seq and CUT&RUN additionally need a `control` column
+   (input chromatin and IgG respectively — same column shape, different biological referent, so
+   design one mechanism but keep the validation per-assay).
+2. **Decide where GARS-authored wrappers live.** Skills were de-vendored, so `tools/skills/` no
+   longer exists and `clawbio` is a third-party package we cannot add to — a wrapper we write has
+   nowhere to go. Either a versioned `gars/tools/wrappers/` exported as `$GARS_WRAPPERS`, or
+   contribute upstream to ClawBio so they arrive via `pip` like the existing three. The cost
+   driver is real: each wrapper is ~12 modules mirroring a 2.1 MB skill, times four.
+3. **Write the `03_custom_analysis` contract.** The last unwritten stage, and the natural first
+   real consumer of the artifact registry — which would close item 3 of "not yet proven" too.
+4. **Build the four wrappers**, in order: atacseq, chipseq, cutandrun, methylseq. See the
+   Decision Log entry and [docs/assay-expansion.md](docs/assay-expansion.md). Blocked on 1 and 2.
+5. **Report the `rnaseq-de` defects upstream**, as ClawBio#333 was. Three separate breaks in a
    declared chaining pair, one of them silent.
-3. **Exercise the artifact registry for real.** It is implemented and backfilled, but no
-   sub-stage has yet *resolved* an input through `OUTPUTS.tsv` at run time — 02.02 was given its
-   counts path directly. Stage 03 is the natural first consumer.
-4. **Consider a second assay type.** Everything so far is one assay with two sub-stages. Adding
-   e.g. ATAC-seq would test whether the assay map, artifact vocabulary and router generalise, or
-   whether they encode bulk-RNA-seq assumptions.
 
-**Completed 2026-08-12/13:** repo/working-copy drift resolved (repo canonical); skills
+**Completed 2026-08-12/14:** repo/working-copy drift resolved (repo canonical); skills
 de-vendored and resolved from installed `clawbio`; template version stamping via
 `_references/VERSION`; `work/` moved to scratch; derived-reference caching designed, automated,
-populated **and verified reusable**; artifact registry implemented; full chain run end to end on
-real data; 612 GB + 477 GB + 89 GB of run artifacts reclaimed.
+populated **and verified reusable**; artifact registry implemented; execution environment
+centralised in `tools/gars-env.sh`; full chain run end to end on real data; 612 GB + 477 GB +
+89 GB of run artifacts reclaimed.
 
 ## Decision Log
+
+### Assay expansion beyond rnaseq_bulk — decision, 2026-08-12 (revised 2026-08-14)
+
+Full research in [docs/assay-expansion.md](docs/assay-expansion.md). Summary and current state:
+
+**Question.** Should the lab's existing SNS (Seq-N-Slide) pipelines be integrated as skills, to
+gain ATAC-seq, ChIP-seq, CUT&RUN and methylation support?
+
+**Decision: no. Wrap the published nf-core pipelines instead.**
+
+The deciding finding is that **ClawBio's coverage is inverted relative to SNS's value**. The
+seven SNS routes ClawBio already covers — the whole RNA-seq and WES/WGS family — it covers
+portably, in GARS's native pattern, often through the identical underlying tools. The four to
+five routes that would actually justify importing SNS (ATAC, ChIP, WGBS/RRBS) have no ClawBio
+equivalent at all. So SNS's marginal value is small, while its cost is not: no preflight, no
+structured errors, runtime R package installation, config mutated during execution, and N jobs
+per route with nested `sbatch` — incompatible with a single-`job_id` STATUS line.
+
+Making SNS portable is *feasible* — only ~145 of 13,113 lines are site-locked — but the
+mechanical edits were never the cost. The real costs are per-segment containers (SNS needs
+`java/1.8` **and** `jdk/17u028`, `python/2.7` **and** `3.6`, `r/3.6` **and** `r/4.1` — no single
+environment satisfies that), a reference bundle to build, and owning a fork of someone else's
+scientific pipeline. All to reach tools nf-core already provides portably.
+
+**Plan: four new wrapper skills**, cloning the pattern ClawBio already runs three times over —
+`atacseq` (2.1.2), `chipseq` (2.1.0), `cutandrun` (3.2.2), `methylseq` (4.2.0). WES/WGS needs a
+contract only; `nfcore-sarek-wrapper` already exists and is ci-validated. **No pipeline
+development is proposed** — the upstream pipelines do the science, the wrapper is what makes
+them satisfy the GARS contract.
+
+ChIP-seq and CUT&RUN are **two Assay IDs and two skills, never one skill with a mode flag**.
+They wrap different upstream pipelines and normalise differently — read-depth versus spike-in —
+so merging them would put a scientific decision inside code, which the config-is-a-user-decision
+rule forbids.
+
+**Keep SNS runnable as-is at NYU** for comparability with historical results. That is an argument
+for not deleting it, not for porting it.
+
+**Resolved since the report was written:**
+
+- The blocker — "does any nf-core pipeline complete end-to-end on this cluster?" — is **closed**
+  (2026-08-13). Six attempts failed first; every cause is now fixed in a contract.
+- Local iGenomes mirror exists; ATAC/ChIP blacklist present; the CUT&RUN *E. coli* spike-in
+  genome is already on the cluster.
+- **No human Bismark index exists** anywhere on this cluster, so methylseq must build its own.
+  That question is closed unfavourably — budget for it.
+
+**Two blockers remain, both touching working contracts** — see Next Steps.
+
 
 ### Derived-reference cache verified reusable — 2026-08-13
 

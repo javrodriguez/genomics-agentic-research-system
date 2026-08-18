@@ -172,7 +172,7 @@ gars/           the workspace template — copy it to start a project
   00_initialize_project/     01_prepare_samplesheets/
   02_bioinformatics/         03_custom_analysis/
   _references/      assay -> stage -> sub-stage -> skill map
-docs/           execution model, verified cluster runtime, environment lockfiles
+docs/           execution model, cluster runtime, lockfiles, assay-expansion research
 examples/       synthetic worked example
 ```
 
