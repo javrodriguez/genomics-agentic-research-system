@@ -29,6 +29,7 @@ Emits a single JSON object on stdout. Exit codes:
 import argparse
 import csv
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -257,8 +258,13 @@ def write_assay(project, assay, res):
         w = csv.writer(fh, lineterminator="\n")
         w.writerow(["sample", "fastq_1", "fastq_2", "strandedness"])
         for row in res["_incl_file_rows"]:
-            r1 = str((project / row["fastq_1"]).resolve())
-            r2 = str((project / row["fastq_2"]).resolve()) if row.get("fastq_2") else ""
+            # abspath, NOT Path.resolve(). resolve() follows symlinks, and 00_data/<assay>/raw/
+            # is entirely symlinks -- so it would write the original sequencing-run path into
+            # the samplesheet and bypass the project's own registration of its data. The
+            # samplesheet must point at the project, which is why 02.01 warns that moving a
+            # project invalidates it.
+            r1 = os.path.abspath(project / row["fastq_1"])
+            r2 = os.path.abspath(project / row["fastq_2"]) if row.get("fastq_2") else ""
             w.writerow([row["sample_id"], r1, r2, res["_strandedness"]])
 
     with design.open("w", newline="", encoding="utf-8") as fh:
@@ -279,6 +285,14 @@ def write_assay(project, assay, res):
     elif any(not r["fastq_1"] or not Path(r["fastq_1"]).is_absolute()
              for r in back_sheet["rows"]):
         gate.append(fail("exit_gate", f"{sheet.name} contains a blank or non-absolute fastq_1"))
+    else:
+        proj_abs = os.path.abspath(project)
+        outside = [r["fastq_1"] for r in back_sheet["rows"]
+                   if not os.path.abspath(r["fastq_1"]).startswith(proj_abs + os.sep)]
+        if outside:
+            gate.append(fail("exit_gate",
+                             f"{sheet.name} points outside the project (symlinks were followed): "
+                             + outside[0]))
 
     back_design, err = read_csv(design)
     if err:

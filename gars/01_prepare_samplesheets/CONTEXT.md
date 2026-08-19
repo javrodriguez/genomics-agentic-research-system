@@ -79,7 +79,10 @@ and design table, and **must be confirmed by the user before anything is written
 - an assay is wholly paired-end or wholly single-end, never mixed.
 
 **Samplesheet.** `01_samplesheets/<Assay ID>_samplesheet.csv`, nf-core compatible, header
-`sample,fastq_1,fastq_2,strandedness`. One row per included `files.csv` row, paths absolute.
+`sample,fastq_1,fastq_2,strandedness`. One row per included `files.csv` row, paths absolute **and
+inside the project** — they point at the symlinks in `00_data/<Assay ID>/raw/`, never at the
+original sequencing run. Following the symlink would bypass the project's own registration of its
+data; this is why 02.01 warns that moving a project invalidates its samplesheet.
 `strandedness` comes from `_config/<Assay ID>.yaml` if it defines a top-level value, else `auto`;
 an unrecognised value is a `config` failure rather than a silent default. Multiple rows sharing a
 `sample` value are merged by nf-core as technical replicates, which is the intended handling of
