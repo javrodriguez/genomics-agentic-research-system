@@ -195,8 +195,8 @@ gars/           the workspace template — copy it to start a project
   _references/      assay map, artifact vocabulary, config schema, contract
                     standard, runtime + lockfiles
   _templates/       the stamps stages copy (project/)
-  _system/          gars-env.sh — the execution environment; stage helpers
-                    that compute deterministic artifacts; index builder
+  _system/          gars-env.sh — the execution environment; stage00_register.py
+                    and stage01_samplesheet.py; index builder
   projects/         the work, plus a generated _index.md
 docs/           execution model, assay-expansion research, decisions/
 examples/       synthetic worked example

@@ -1,10 +1,16 @@
 # Stage 00: Initialize Project
 
 ## Purpose
-Create a project workspace and register its raw data. This stage collects the project title,
-the assay types to be analyzed, and one raw data path per assay; it then **copies the project
-stamp** from `_templates/project/`, symlinks the raw files, and fills in the stamp's placeholders
-plus the per-assay files.csv and samples.csv.
+Create a project workspace and register its raw data. This stage collects the project title, the
+assay types to be analyzed, and one raw data path per assay; it then copies the project stamp,
+symlinks the raw files, and writes the project's `CONTEXT.md`, `HISTORY.md` and per-assay
+`files.csv` and `samples.csv`.
+
+**The computation is not yours.** `_system/stage00_register.py` sanitizes the title, validates the
+assays, copies the stamp, scans each source directory, derives sample IDs, creates the symlinks,
+writes both metadata files, substitutes the placeholders and runs the exit gate. Your job is the
+dialogue between its phases, and the confirmations it refuses to assume. See
+`docs/decisions/0011-deterministic-artifacts-in-stages-00-01.md` in the GARS repository for why.
 
 ## Inputs
 - Working (this run), collected from the user:
@@ -12,143 +18,164 @@ plus the per-assay files.csv and samples.csv.
   2. **Assay type/s to be analyzed**
   3. **One raw data directory path per supported assay**
 - Reference (every run):
+  - `_system/stage00_register.py` — the registrar
   - `_references/assay_stage_skill_map.md` — the definitive list of supported assays
   - `_references/VERSION` — the template version stamped into the project
-  - `_templates/project/` — the stamp this stage copies
+  - `_templates/project/` — the stamp the script copies
 
 ## Scope Boundaries
 This stage performs the steps in Process and nothing else.
 
+- **Never compute a result the script computes.** Do not count files, derive a sample ID, decide
+  a layout, build `files.csv`, or fill a placeholder yourself — not to double-check it, and not
+  when the cohort is small enough that it would be quick. Its JSON is the only source of truth.
+- **Never invent a `--sample-id-pattern`.** If filenames do not match the convention the script
+  refuses rather than guessing. Report the naming you were shown, ask the user how to read it,
+  and pass back only a pattern they gave you.
+- **Never pass `--force` to `link`.** It re-links a populated `raw/`, which is how an existing
+  project gets narrowed. If `link` refuses, report it and stop.
+- Never search for data. The script inspects only the top level of the path the user gives. Do
+  not look in subdirectories, do not infer a likely alternative location, and do not read sample
+  sheets, settings files, QC reports, or pipeline outputs found there.
 - Filesystem reads are limited to this workspace's own files and the exact paths the user
   provides. Do not list, read, or search any other location.
-- Never search for data. Inspect only the top level of the path the user gives. If it holds
-  no raw NGS files, stop and reply with T5. Do not look in subdirectories, do not infer a
-  likely alternative location, and do not read sample sheets, settings files, QC reports, or
-  pipeline outputs found there.
-- Report only what Process produces. Do not report incidental observations about the user's
+- Report only what the script returns. Do not report incidental observations about the user's
   filesystem, about prior analyses, or about the content of the data.
-- Never offer to do work belonging to another stage. If the user asks for it, name the stage
-  that owns it and stop.
+- Never offer to do work belonging to another stage. If the user asks for it, name the stage that
+  owns it and stop.
 - **Never narrow an existing project.** Once `files.csv` is written and symlinks exist, do not
   edit `files.csv`, do not delete symlinks, and do not remove samples — not even when the user
-  asks to "drop", "discard", or "only analyze" a subset. Sample selection is expressed by
-  removing rows from `samples.csv`, which stage 01 honours as an exclusion; the raw data stays
-  in place so the choice is reversible. Direct the user there and stop.
-- **Never edit `_templates/project/`.** It is the stamp every project is copied from; changing
-  it changes every future project. Fill the placeholders in the *copy*, never in the stamp.
+  asks to "drop", "discard", or "only analyze" a subset. Sample selection is expressed by removing
+  rows from `samples.csv`, which stage 01 honours as an exclusion; the raw data stays in place so
+  the choice is reversible. Direct the user there and stop.
+- **Never edit `_templates/project/`.** It is the stamp every project is copied from; changing it
+  changes every future project.
 - Do not perform QC, analysis, or interpretation of the data.
 - If you believe a step should deviate, stop and ask. Do not act first and report afterwards.
 
 ## Definitions
 
+The script owns these rules; they are stated here so you can explain a refusal, not so you can
+perform the check.
+
 **Title sanitization.** Keep characters matching `[A-Za-z0-9_-]`. Replace each space with `_`.
-Drop every other character. Collapse runs of `_` into one, and strip leading/trailing `_` and
-`-`. Example: `Macrophage Polarization (Study #2)` -> `Macrophage_Polarization_Study_2`.
+Drop every other character. Collapse runs of `_` into one, and strip leading/trailing `_` and `-`.
+Example: `Macrophage Polarization (Study #2)` -> `Macrophage_Polarization_Study_2`.
 
-**Assay ID.** The directory-safe assay name, taken from the Assay ID column of
-`_references/assay_stage_skill_map.md`. Used for `00_data/<Assay ID>/` and wherever an assay is
-named on disk. Never use the free-text assay name.
+**Assay ID.** The directory-safe assay name, from the Assay ID column of
+`_references/assay_stage_skill_map.md`. An assay is supported if and only if the user's phrase
+matches that table's **Assay** or **Assay ID** column exactly, ignoring case. Matching is never
+fuzzy: a near miss is reported, so "bulk rnaseq" is refused rather than resolved to something the
+user did not ask for.
 
-**Raw NGS file.** A file matching `*.fastq.gz`, `*.fq.gz`, `*.fastq`, or `*.fq` at the top
-level of the given directory. Everything else is excluded and reported as excluded.
+**Raw NGS file.** A file matching `*.fastq.gz`, `*.fq.gz`, `*.fastq`, or `*.fq` **at the top level
+only** of the given directory. Everything else is excluded and reported as excluded.
 
-**Read pairing.** Files are paired when names differ only in `_R1_`/`_R2_` (or `_1.`/`_2.`).
-A directory is paired-end if every raw file has a partner, single-end if none do. Any other
-result is a mixed/incomplete set: report the unpaired filenames and use T5.
+**Sample ID and sample-lane unit.** Derived from the Illumina bcl2fastq convention
+`<sample>_S<n>[_L<lane>]_R<1|2>_<nnn>.fastq.gz`: the sample is the part before `_S<n>`, and a
+sample-lane unit is one `(sample_id, lane)` pair — the grain of `files.csv`. Filenames carrying no
+lane token yield one unit per sample, with the lane column empty. Filenames matching no
+convention are **refused**, never guessed; see `--sample-id-pattern` below.
 
-**File integrity.** A linked raw file passes integrity when its symlink resolves, the target
-is non-empty, and — for `.gz` files — `gzip -t` reports no error. These are the only checks
-performed on file contents at this stage.
+**Read pairing.** An assay directory is paired-end when every sample-lane unit has both reads,
+single-end when none do. Anything else is a mixed/incomplete set and is refused.
 
-**Project stamp.** `_templates/project/`, the blank skeleton every project starts as. This
-stage **copies it and substitutes placeholders**; it never assembles a project file from
-scratch. The stamp is the schema — if a project needs a new file, it is added to the stamp, not
-to this Process. Placeholders are `{{name}}` and are listed in `_templates/CONTEXT.md`.
+**File integrity.** A linked raw file passes when its symlink resolves, the target is non-empty,
+and — for `.gz` files — a full decompression succeeds, exactly as `gzip -t` does. This is the only
+check performed on file contents at this stage, and it is O(data): expect minutes on a real
+cohort.
 
-**Template version.** The GARS revision that created the project, recorded so a project can
-always name the contract version that produced it. A workspace is a copy of the template, so
-this cannot be inferred later — it must be captured at creation.
+**Project stamp.** `_templates/project/`, the blank skeleton every project starts as. The script
+copies it and substitutes `{{placeholders}}`; it never assembles a project file from scratch. The
+stamp is the schema — if a project needs a new file, it is added to the stamp, not to this
+Process.
 
-Resolve it from `_references/VERSION` if present, otherwise from git if the workspace was copied
-from a checkout, otherwise record `unknown`:
+**Template version.** Read from `_references/VERSION`, or `unknown` if absent. Recorded in both
+`CONTEXT.md` and `HISTORY.md`, because a project that cannot name the contract version that
+produced it is not reproducible. `unknown` is an honest value; a fabricated version is not.
 
-```bash
-V=$(cat _references/VERSION 2>/dev/null || git -C <template> describe --always --dirty 2>/dev/null || echo unknown)
-```
-
-Never guess or omit it. `unknown` is an acceptable and honest value; a fabricated version is not.
-
-**Sample ID.** The filename prefix preceding the read/lane suffix. For Illumina bcl2fastq
-output (`<sample>_S<n>_L<lane>_R<1|2>_001.fastq.gz`) this is the part before `_S<n>`. If the
-filenames do not match this convention, do not guess: report the naming you observe and ask
-the user how to derive sample IDs.
-
-**Sample-lane unit.** One `(sample_id, lane)` pair — for paired-end data, the R1 and R2 files
-of a single sample on a single lane. It is the grain of `files.csv`.
-
-**The two metadata files.** Sample metadata is split by grain and by owner, and the split is
-deliberate:
+**The two metadata files.** Sample metadata is split by grain and by owner:
 
 | File | Grain | Written by | Edited by user |
 |---|---|---|---|
-| `files.csv` | one row per sample-lane unit | stage 00 | never |
-| `samples.csv` | one row per distinct sample | stage 00 (IDs only) | yes — the experimental columns |
+| `files.csv` | one row per sample-lane unit | the script | never |
+| `samples.csv` | one row per distinct sample | the script (IDs only) | yes — the experimental columns |
 
-Keeping them separate means the user enters each experimental value exactly once, and it makes
-"the same sample carries conflicting conditions" structurally impossible rather than a check.
+Keeping them separate means the user enters each experimental value exactly once, and makes "the
+same sample carries conflicting conditions" structurally impossible rather than a check.
+
+**The script's four subcommands** are this contract's own phases, so a conversation turn sits
+between each:
+
+| Subcommand | Does | Backs |
+|---|---|---|
+| `create` | sanitize title, validate assays, copy the stamp, make `raw/` dirs | T2, T3 |
+| `inspect` | read-only scan of one source directory | T4a |
+| `link` | symlink one assay's raw files | T4b |
+| `finalize` | `files.csv`, `samples.csv`, placeholders, exit gate | T6, T9 |
+
+**The script's exit codes.** These, and not your reading of its output, determine the branch:
+
+| Code | Meaning | Reply |
+|---|---|---|
+| 0 | ok | continue |
+| 1 | failure; report and stop | T9 |
+| 2 | refused; its `template` field names the reply | T5 / T7 / T8 |
+| 3 | usage or precondition error | T9 |
 
 ## Process
-1. This process is activated when the user says he wants to start a new project. Reply with T1.
-2. Receive the project title. Sanitize it per Definitions.
-3. If `projects/<sanitized_title>/` already exists, stop and reply with T7. Never overwrite,
-   merge into, or delete an existing project. Wait for the user to supply a different title.
-4. Reply with T2, asking for the assay types.
-5. Receive the assay types. An assay is supported if and only if it appears in the Assay
-   column of `_references/assay_stage_skill_map.md`.
-6. If no requested assay is supported, reply with T8 and stop. Create nothing.
-7. Copy the stamp: `cp -r _templates/project projects/<sanitized_title>`. Then create one
-   `00_data/<Assay ID>/raw/` per supported assay. Create nothing for unsupported assays, and
-   add no file the stamp does not contain.
-8. Reply with T3: the validation table, then a request for the raw data path of the first
-   supported assay. If there is more than one supported assay, handle them strictly one at a
-   time, never asking for the next until the current one is resolved.
-9. Receive a path. Inspect only its top level. Count raw NGS files, determine pairing, and
-   derive sample IDs, all per Definitions.
-10. If there are no raw NGS files, reply with T5 and stop for this assay. Create no symlinks.
-    Accept either a replacement path or `skip`.
-11. If raw NGS files are present, reply with T4a: the file/sample counts and the derived
-    sample ID list, and ask the user to confirm before anything is written. Do not create
-    symlinks yet.
-12. On confirmation, create one symlink per raw NGS file in `00_data/<Assay ID>/raw/`, pointing
-    at the source file. Never copy or move source files. Verify every link resolves. Reply
-    with T4b.
-13. Repeat steps 9-12 for each remaining supported assay.
-14. Write `00_data/<Assay ID>/files.csv` per assay, one row per sample-lane unit, header
-    `sample_id,lane,fastq_1,fastq_2`. `fastq_1`/`fastq_2` hold the symlink paths relative to the
-    project directory; `fastq_2` is empty for single-end. This file is machine-owned — say so
-    in a comment on the first line: `# generated by stage 00 — do not edit`.
-15. Write `00_data/<Assay ID>/samples.csv` per assay, one row per distinct `sample_id`, header
-    `sample_id,condition,group,replicate`. Fill `sample_id` only; leave `condition`, `group`,
-    and `replicate` blank for the user to complete.
-16. Resolve the **template version** per Definitions. Both `CONTEXT.md` and `HISTORY.md` carry
-    it — a project that cannot name the contract version that produced it is not reproducible.
-17. Substitute the placeholders in the copied `CONTEXT.md`: `{{project_title}}`, `{{created}}`,
-    `{{template_version}}`, `{{assay_table}}` (one row per supported assay: assay name, Assay ID,
-    data directory, file count, sample count) and `{{source_paths}}` (one row per assay: Assay
-    ID, source path, files linked). Change nothing else in the file — its remaining sections are
-    the stamp's, not this stage's.
-18. Substitute the same placeholders in the copied `HISTORY.md`. Append nothing beyond the
-    creation entry the stamp already carries.
-19. Run the exit gate. All of: `CONTEXT.md` exists; `HISTORY.md` exists; `_config/` exists;
-    **no file under the project contains a literal `{{`** — an unsubstituted placeholder means
-    the stamp was copied but never filled, which produces a project that looks complete and is
-    not; every supported assay has a non-empty `files.csv` and `samples.csv`; the distinct
-    `sample_id` count in `files.csv` equals the row count of `samples.csv`; every linked file
-    passes **file integrity**; pairing is complete for every paired-end assay; no `sample_id` is
-    empty. If any check fails, reply with T9 naming exactly which files failed and stop. Do not
-    claim completion, and do not delete what was created — the user decides whether to fix or
-    discard.
-20. Reply with T6.
+1. Activated when the user says they want to start a new project. Reply T1.
+2. Receive the project title. Reply T2 with it.
+3. Reply T3, asking for the assay types.
+4. Receive the assay types. Run, from the workspace root:
+
+   ```bash
+   python3 _system/stage00_register.py create --title "<title>" --assays "<assay>" ["<assay>" ...]
+   ```
+
+   It needs no conda environment. Pass the user's phrases through unchanged — resolving them to
+   Assay IDs is the script's job, and guessing on its behalf is how the wrong assay gets created.
+5. Exit 2 with `template: T7` → the project exists. Reply T7 and wait for a different title.
+   Nothing was created.
+6. Exit 2 with `template: T8` → no requested assay is supported. Reply T8 using its `assays` and
+   `supported_assays`. Nothing was created. Stop.
+7. Exit 0 → the stamp is copied and `00_data/<Assay ID>/raw/` exists for each supported assay.
+   Reply T3's validation table, then ask for the raw data path of the **first** supported assay.
+   Handle assays strictly one at a time, never asking for the next until the current is resolved.
+8. Receive a path. Inspect it, writing nothing:
+
+   ```bash
+   python3 _system/stage00_register.py inspect --assay <Assay ID> --source <path>
+   ```
+
+9. Exit 2 → reply T5 with its `error`. Accept either a replacement path or `skip`. If the error
+   names unmatched filenames, show them, ask the user how sample IDs should be read, and re-run
+   `inspect` with `--sample-id-pattern '<their answer as a regex with named groups sample, read
+   and optionally lane>'`. Never compose that pattern from your own reading of the filenames.
+10. Exit 0 → reply T4a with its counts and `sample_ids`, and **ask the user to confirm before
+    anything is written**. Do not link yet.
+11. On confirmation, link:
+
+    ```bash
+    python3 _system/stage00_register.py link --project projects/<title> --assay <Assay ID> --source <path>
+    ```
+
+    Never add `--force`. Exit 1 → report its `error` and stop; the raw directory is already
+    populated and narrowing an existing project is not this stage's to do.
+12. Exit 0 → reply T4b with its `linked` count.
+13. Repeat steps 8-12 for each remaining supported assay.
+14. When every assay is linked, finalize:
+
+    ```bash
+    python3 _system/stage00_register.py finalize --project projects/<title>
+    ```
+
+    Add the same `--sample-id-pattern` if one was used at step 9. This writes `files.csv` and
+    `samples.csv`, substitutes the stamp's placeholders, and runs the exit gate.
+15. Exit 1 or 3 → reply T9 listing every entry of its `failures` array. Do not claim completion,
+    do not repair anything, and do not delete what was created — the user decides whether to fix
+    or discard.
+16. Exit 0 → reply T6 using its `assays` map and `template_version`.
 
 ## Response Format
 Every message you send in this stage is one of the templates below, with placeholders filled.
@@ -201,7 +228,10 @@ Linked <n> files into 00_data/<Assay ID>/raw/. Broken links: <n>.
 **T5 — Path rejected**
 ```
 Path: <path>
-No raw NGS files found at the top level of this path. Nothing was created or linked.
+<error>
+
+Nothing was created or linked.
+<if the error names unmatched filenames, list them and ask how sample IDs should be read>
 
 Provide a different path for <Assay ID>, or reply `skip` to omit this assay.
 ```
@@ -249,7 +279,7 @@ Supported assays: <Assay column values>
 ```
 
 ## OUTPUT
-Written to `projects/<project_title>/`:
+Written to `projects/<project_title>/` by the script, and never by hand:
 
 | Artifact | Contents |
 |---|---|
@@ -260,10 +290,14 @@ Written to `projects/<project_title>/`:
 | `00_data/<Assay ID>/files.csv` | `sample_id,lane,fastq_1,fastq_2`. One row per sample-lane unit, paths relative to the project directory. Machine-owned; never hand-edited. |
 | `00_data/<Assay ID>/samples.csv` | `sample_id,condition,group,replicate`. One row per distinct sample. `sample_id` filled; the rest blank for the user to complete. |
 
+Re-running `finalize` on unchanged inputs reproduces `files.csv`, `samples.csv`, `CONTEXT.md` and
+`HISTORY.md` byte for byte.
+
 ## Human check
 Open each `00_data/<Assay ID>/samples.csv` and confirm the `sample_id` column lists the samples
 you expect, spelled as you expect — this is the last point at which a mis-derived sample ID is
-cheap to fix. Then fill `condition`, `group` and `replicate`, one row per sample, and delete the
+cheap to fix. The script verifies that every file resolves and decompresses; only you can verify
+that these are the right files. Then fill `condition`, `group` and `replicate`, one row per sample, and delete the
 rows of any sample you do not want analysed.
 
 Stage 01 reads whatever you leave there. Do not proceed until `CONTEXT.md` exists and at least

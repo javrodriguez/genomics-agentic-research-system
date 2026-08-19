@@ -87,6 +87,7 @@ Never hand-edit these; run the script instead.
 |---|---|
 | `gars/projects/_index.md` | `bash gars/_system/build_projects_index.sh gars` |
 | `docs/decisions/CONTEXT.md` (index table) | `bash docs/decisions/build_index.sh` |
+| a project's `00_data/*/files.csv`, `samples.csv` | `python3 gars/_system/stage00_register.py finalize --project <dir>` |
 | a project's `01_samplesheets/*.csv` | `python3 gars/_system/stage01_samplesheet.py --project <dir>` |
 
 ## Releasing
