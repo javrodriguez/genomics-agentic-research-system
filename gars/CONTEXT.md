@@ -1,129 +1,73 @@
-# Workflow: Genomics Research
+# Workflow: genomics research
 
-## Overview
-Four-stage pipeline: Initialize project → Ingest data → Bioinformatics → Custom analysis. Each stage has a defined contract, explicit inputs, and a clear output location. Human reviews between stages.
+Four stages: initialize project → prepare samplesheets → bioinformatics → custom analysis. Each
+has a contract with explicit inputs, one job, and one output location. A human reviews between
+stages.
 
-## Stage Map
+## Stage map
 
-| Stage | Purpose | Inputs | Output Location |
+| Stage | Purpose | Inputs | Writes |
 |---|---|---|---|
-| 00_initialize_project | Initialize project, gather and organize project metadata | Project title, assay/s, one raw data path per assay | projects/<project_title>/ |
-| 01_prepare_samplesheets | Validate the completed experimental design and emit workflow-ready samplesheets | Project title, completed samples.csv per assay | projects/<project_title>/01_samplesheets/ |
-| 02_bioinformatics | Route an assay to its ordered sub-stages and run each one's skill | Project title, Assay ID, samplesheet + design, _config/<Assay ID>.yaml | projects/<project_title>/02_bioinformatics/<Assay ID>/ |
-| 03_custom_analysis | Run customized bioinformatics workflows | Project title, goal | projects/<project_title>/03_custom_analysis |
+| `00_initialize_project` | Create the project, register and validate raw data | project title, assays, one raw data path per assay | `projects/<project_title>/` |
+| `01_prepare_samplesheets` | Validate the completed design, emit workflow-ready samplesheets | project title, completed `samples.csv` per assay | `01_samplesheets/` |
+| `02_bioinformatics` | Route an assay to its ordered sub-stages and run each one's skill | project title, Assay ID, samplesheet + design, `_config/<Assay ID>.yaml` | `02_bioinformatics/<Assay ID>/` |
+| `03_custom_analysis` | **Not implemented.** Its contract replies and stops. | — | nothing |
 
-## How Stages Connect
-- 00 → 01: Stage 00 registers the raw data and validates it at the file level (links resolve, files intact, reads paired). It writes `files.csv` (one row per sample-lane, machine-owned) and `samples.csv` (one row per sample, experimental columns blank). **The boundary is a human gate:** the user fills in condition, group, and replicate in `samples.csv` before stage 01 runs.
-- 01 → 02: Stage 01 validates the completed design and emits per-assay samplesheets. A bioinformatics workflow then processes assay-specific data. It can be composed by multiple sequence-ordered substages.
-- 02 → 03: Uses processed data to perform a user's customized bioinformatics workflow. The workflow can be ingeneered with AI-support.
+Read the stage's own `CONTEXT.md` and execute it literally. Nothing on this page overrides a
+contract; where they disagree, the contract is wrong and should be fixed, not worked around.
 
-Validation is split along that human gate. File-level checks belong to stage 00, because that
-is where the files are touched. Design-level checks belong to stage 01, because the design does
+## How stages connect
+
+- **00 → 01 is the human gate.** Stage 00 registers raw data and validates it at the file level
+  (links resolve, files intact, reads paired), writing `files.csv` (one row per sample-lane,
+  machine-owned) and `samples.csv` (one row per sample, experimental columns blank). The user
+  fills in `condition`, `group` and `replicate` before stage 01 runs.
+- **01 → 02.** Stage 01 validates the completed design and emits per-assay samplesheets. Stage 02
+  routes the assay to its ordered sub-stages, each of which resolves its inputs by artifact type.
+- **02 → 03.** Stage 03 would consume stage 02's artifacts. It does not exist yet.
+
+Validation splits along the human gate: **file-level checks belong to stage 00**, because that is
+where the files are touched; **design-level checks belong to stage 01**, because the design does
 not exist until the user has written it.
 
-Stage ownership of project directories is exclusive, and the numeric prefix encodes the owner:
-a project directory named `NN_*` is written by the stage named `NN_*`, and by no other stage.
+## Directory ownership
+
+Stage ownership of project directories is exclusive, and the numeric prefix encodes the owner: a
+project directory named `NN_*` is written by the stage named `NN_*`, and by no other stage.
 
 | Project directory | Owned by |
 |---|---|
-| `00_data/` | 00_initialize_project |
-| `01_samplesheets/` | 01_prepare_samplesheets |
-| `02_bioinformatics/` | 02_bioinformatics |
-| `03_custom_analysis/` | 03_custom_analysis |
+| `00_data/` | `00_initialize_project` |
+| `01_samplesheets/` | `01_prepare_samplesheets` |
+| `02_bioinformatics/` | `02_bioinformatics` |
+| `03_custom_analysis/` | `03_custom_analysis` |
 
-`CONTEXT.md`, `HISTORY.md`, and `_config/` carry no prefix: they are project-level metadata
-rather than stage artifacts. `HISTORY.md` is the one file every stage appends to.
+`CONTEXT.md`, `HISTORY.md` and `_config/` carry no prefix: they are project-level metadata rather
+than stage artifacts. `HISTORY.md` is the one file every stage appends to.
 
 When adding a stage, give its output directory the stage's own number. Never reuse a number
 across two directories.
 
-## Stage Contract Standard
-Every stage CONTEXT.md must contain these sections, in this order. `00_initialize_project` is
-the worked example.
+## Reference material
 
-| Section | Role |
-|---|---|
-| Purpose | What the stage produces, in two or three sentences. |
-| Inputs | What must be collected from the user or read from a prior stage. |
-| Scope Boundaries | What the stage may **not** do. Stated negatively and specifically — positive instructions alone do not prevent improvisation. |
-| Definitions | Every term the Process relies on, defined precisely enough that no judgment call is needed. |
-| Process | Numbered steps. One action per step. Every failure branch is its own step with its own response template. |
-| Response Format | The complete set of message templates. The agent sends nothing outside them. |
-| OUTPUT | Table of artifacts written, with their exact contents. |
-
-An agent running a stage follows that stage's contract literally. If a step seems to need
-deviation, it stops and asks rather than acting.
-
-## Reference Material
-
-**Workspace-level** — `_references/`, shared across all projects:
+Workspace-level, in `_references/`, shared across all projects. Load only what the current
+contract's Inputs section names.
 
 | File | Use |
 |---|---|
-| `assay_stage_skill_map.md` | Authoritative map of Assay -> Stage -> Sub-stage -> Skills. Its Assay column is the definitive list of supported assays; stage 00 validates user-requested assays against it, and 02_bioinformatics uses the remaining columns to route each assay to its sub-stage and skills. |
-| `VERSION` | The template revision. Stage 00 stamps it into every project it creates, so a project can always name the contract version that produced it. Bump it when tagging a release. |
-| `environment.md` | Verified runtime for stage 02: the `gars-bio` and `gars-nxf` conda envs, how they were installed and why they are separate, and the traps that cost real debugging time. No Lmod modules are used. |
-| `gars-bio.lock.txt`, `gars-bio.conda.txt`, `gars-nxf.conda.txt` | Lockfiles rebuilding both environments at exact versions. |
-| `ICM_agents.pdf` | Integrated Context Methodology manuscript — architectural background. |
+| `assay_stage_skill_map.md` | Assay → Stage → Sub-stage → Skill. Its **Assay column is the definitive list of supported assays**; stage 00 validates against it, stage 02 routes with the remaining columns. |
+| `artifact_types.md` | The closed vocabulary a sub-stage may declare in `OUTPUTS.tsv`, the `native`/`adapted` roles, and the resolution rule by which a sub-stage finds its inputs by type rather than by path. |
+| `config_schema.md` | What belongs in a project's `_config/`: the per-assay YAML, `nextflow.slurm.config`, and the index cache. Every key is a user decision; no stage defaults one. |
+| `environment.md` | The verified runtime for stage 02 — the `gars-bio` and `gars-nxf` conda environments, how they were installed, why they are separate, and the traps. No Lmod modules. |
+| `gars-bio.lock.txt`, `gars-bio.conda.txt`, `gars-nxf.conda.txt` | Lockfiles rebuilding both environments at exact versions. They pin the skills too, since the skills ship with `clawbio`. |
+| `contract_standard.md` | The eight-section shape every stage contract follows. Needed when **writing** a contract, never when running one. |
+| `VERSION` | The template revision. Stage 00 stamps it into every project, so a project can always name the contract version that produced it. |
 
-**Project-level** — `projects/<project_title>/_config/`, scoped to a single project:
-Created empty by stage 00. One file per assay, named `<Assay ID>.yaml`, written by the user
-before stage 02 runs. Stages 01 and 02 read it; nothing writes it automatically, because every
-key in it is a scientific decision the system must not make on the user's behalf.
+Project-level configuration lives in `projects/<project_title>/_config/` and is described in
+`config_schema.md`. Stages read it; nothing writes it automatically.
 
-```yaml
-# _config/rnaseq_bulk.yaml
-strandedness: auto              # auto | forward | reverse | unstranded   (read by stage 01)
-reference:                      # declare genome OR fasta+gtf, never both
-  genome: GRCh38                # iGenomes key
-  # fasta: /path/to/genome.fa
-  # gtf:   /path/to/genes.gtf
-aligner: star_salmon            # star_salmon | star_rsem | hisat2 | bowtie2_salmon
-compute:                        # Slurm directives for the pipeline job
-  partition: cpu_long
-  time: "5-00:00:00"
-  cpus: 8
-  mem: 64G
-  # Nextflow's work directory. Point it at scratch, never inside the project.
-  # A single 10-sample run accumulates 250-350 GB of intermediates there: work/ retains
-  # every process output so -resume can reuse it, so trimmed FASTQs, unsorted BAMs, sorted
-  # BAMs and deduplicated BAMs all coexist. results/ is published with mode 'copy', so
-  # work/ is disposable once a run succeeds.
-  work_dir: /gpfs/scratch/<user>/gars-work
-  # Optional: cached indices built by a previous run with --save-reference.
-  # Must be keyed by pipeline version -- see below.
-  # derived_dir: <refs>/ensembl-GRCh38-116/derived/nf-core-rnaseq-3.26.0
-
-de:                             # read by sub-stage 02.02
-  formula: "~ condition"        # every term must be a column of the design table
-  contrast: "condition,treated,control"   # factor,numerator,denominator
-```
-
-`reference.derived_dir` is optional but strongly recommended. nf-core builds the STAR index,
-Salmon index and transcripts FASTA into `work/` and, with `save_reference = false` (its default),
-never publishes them — so they are rebuilt from scratch on every run, roughly 43 GB and an hour
-each time. Build them once with `--save-reference`, harvest `results/genome/` into a cache, and
-point later runs at it.
-
-**The cache must be keyed by pipeline version, not just genome build.** A STAR index is rejected
-by a different STAR version (`Genome version 2.7.1a is INCOMPATIBLE with running STAR version
-2.7.11b`), so the version must be part of the path or the incompatibility becomes a trap:
-
-```
-<refs>/ensembl-GRCh38-116/
-    Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
-    Homo_sapiens.GRCh38.116.gtf.gz
-    derived/nf-core-rnaseq-3.26.0/      <- version-keyed, safe to reuse
-        star/  salmon/  transcripts.fa  genome.bed
-```
-
-A stage that finds a key missing stops and asks. It never substitutes a default for
-`reference`, `de.formula`, or `de.contrast` — a wrong value there produces confident, wrong
-biology rather than an error.
-
-`_config/` also holds **`nextflow.slurm.config`**, the executor settings passed to the wrapper
-via `--nextflow-config`. It is required, not optional: Nextflow submits each pipeline process as
-its own Slurm child job, and without an explicit `process.queue` it dispatches them to whatever
-partition it defaults to, ignoring the partition chosen for the parent job. The file must define
-no `params` — the wrapper rejects configs that do, so its audited parameter surface cannot be
-bypassed.
+`_templates/` holds the stamps stages copy — see `_templates/CONTEXT.md`.
+`_system/` holds `gars-env.sh` (the execution environment), `stage00_register.py` and
+`stage01_samplesheet.py` (the registrar and the samplesheet emitter) and
+`build_projects_index.sh`. Stage contracts orchestrate these; they do not duplicate what the
+scripts compute.

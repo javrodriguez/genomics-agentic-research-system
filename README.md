@@ -32,7 +32,7 @@ Context is layered, so an agent loads only what the current task needs:
 | **L0** | `CLAUDE.md` | Orientation. Always loaded. Workspace map and entry rules. |
 | **L1** | `CONTEXT.md` | Routing. Stage map, how stages connect, where reference material lives. |
 | **L2** | `<stage>/CONTEXT.md` | The stage contract. Loaded per task. |
-| **L3** | `_config/`, `_references/` | Settings and domain knowledge, loaded selectively. |
+| **L3** | `_references/`, `_templates/`, `_system/`, a project's `_config/` | Domain knowledge, stamps, runtime and settings. Loaded selectively. |
 | **L4** | stage outputs | Working artifacts. |
 
 ```mermaid
@@ -61,8 +61,8 @@ projects/<title>/
 
 ## The stage contract
 
-Every stage contract has the same seven sections. The two that do the real work are
-**Scope Boundaries** and **Response Format**.
+Every stage contract has the same eight sections. The three that do the real work are
+**Scope Boundaries**, **Response Format** and **Human check**.
 
 | Section | Role |
 |---|---|
@@ -73,6 +73,12 @@ Every stage contract has the same seven sections. The two that do the real work 
 | Process | Numbered steps, one action each. Every failure branch is its own step. |
 | **Response Format** | The complete set of message templates. Nothing else may be sent. |
 | OUTPUT | Artifacts written, with exact contents. |
+| **Human check** | The one thing a person does before the next stage runs. Concrete — something they *do*, not "review the output". |
+
+Where a stage's work is deterministic, the Process is not a specification of the computation but
+an invocation of it: run the helper in `_system/`, branch on its exit code, render its JSON
+through the templates. Stage 01 works this way; stage 02 has always worked this way, delegating
+to ClawBio skills.
 
 ### Why negative constraints
 
@@ -126,6 +132,17 @@ the rule.
 `de.contrast`. A wrong contrast produces a confident, wrong answer rather than an error, so a
 missing value stops the stage and asks.
 
+**The agent orchestrates; code computes.** Anything derived — samplesheets, design tables,
+indexes — is produced by a deterministic script, and the contract's job is to run it, hold the
+human gates, and report what it returned. The agent handles what prose is good at: mapping a
+user's phrasing to an assay, deciding what to do when filenames break convention, asking for
+confirmation, explaining a failure. It never transcribes a table. Re-running stage 01 on
+unchanged inputs reproduces its output byte for byte.
+
+**A new project is a copy, not a blank page.** Stage 00 instantiates a project by copying
+`gars/_templates/project/` and filling its placeholders. The stamp is the schema, so there is one
+home for the shape of a project rather than a description restated in each place that needs it.
+
 **Skills are orchestrated, not vendored.** Analysis is delegated to external
 [ClawBio](https://github.com/ClawBio/ClawBio) skills. Sub-stage contracts forbid patching skill
 code or substituting a hand-written analysis — if a tool cannot run, the stage reports the error
@@ -148,7 +165,9 @@ stage 00 → stage 01 → nf-core/rnaseq preflight → live pipeline execution w
 dispatch.
 
 Stage contracts exist for `00`, `01`, `02` and both `rnaseq_bulk` sub-stages.
-`03_custom_analysis` is not yet written.
+`03_custom_analysis` carries an explicit not-implemented contract: it replies and stops, so the
+routing resolves to a file that refuses rather than to an empty directory an agent would
+improvise around.
 
 Running the system surfaced defects that reading it did not — a samplesheet grain that forced
 duplicated hand entry, a contract pointing preflight and execution at the same output directory,
@@ -159,21 +178,27 @@ next reader does not undo it. One was a bug in an upstream dependency, reported 
 
 ---
 
-Development history, the reasoning behind each design decision, current state and next steps are
-kept in [DEVELOPMENT.md](DEVELOPMENT.md). If you are working *on* GARS rather than reading about
-it, start at [CLAUDE.md](CLAUDE.md) — it orients the repository and links everything else.
+Current state and next steps are in [DEVELOPMENT.md](DEVELOPMENT.md); the reasoning behind each
+design decision is in [docs/decisions/](docs/decisions/CONTEXT.md), one file per decision. If you
+are working *on* GARS rather than reading about it, start at [CLAUDE.md](CLAUDE.md) — it orients
+the repository and links everything else.
 
 ## Repository layout
 
 ```
-DEVELOPMENT.md  running log: status, decisions and their reasoning, next steps
+DEVELOPMENT.md  status and next steps
 gars/           the workspace template — copy it to start a project
   CLAUDE.md         L0 orientation
-  CONTEXT.md        L1 routing, stage map, config schema
+  CONTEXT.md        L1 routing: stage map, how stages connect, directory ownership
   00_initialize_project/     01_prepare_samplesheets/
   02_bioinformatics/         03_custom_analysis/
-  _references/      assay -> stage -> sub-stage -> skill map
-docs/           execution model, cluster runtime, lockfiles, assay-expansion research
+  _references/      assay map, artifact vocabulary, config schema, contract
+                    standard, runtime + lockfiles
+  _templates/       the stamps stages copy (project/)
+  _system/          gars-env.sh — the execution environment; stage00_register.py
+                    and stage01_samplesheet.py; index builder
+  projects/         the work, plus a generated _index.md
+docs/           execution model, assay-expansion research, decisions/
 examples/       synthetic worked example
 ```
 
@@ -191,7 +216,8 @@ conda create -y -n gars-nxf -c bioconda -c conda-forge "nextflow=26.04.6" "openj
 
 Two environments, because `nextflow` and `clawbio` have conflicting `c-ares` constraints and
 cannot be solved together. Exact lockfiles and the traps encountered are in
-[`docs/environment.md`](docs/environment.md).
+[`gars/_references/environment.md`](gars/_references/environment.md) — they ship inside the
+workspace template, so a copied workspace can rebuild its own runtime.
 
 How the layers relate — package managers, workflow engine, containers, and why a container
 holds one tool rather than the pipeline — is in

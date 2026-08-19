@@ -18,8 +18,14 @@ gars/projects/*/
 STATUS
 submit.sh
 
-# Skills are installed with clawbio, never vendored. Guard against re-introduction.
-gars/tools/skills/
+# Third-party skills are installed with clawbio, never vendored. Guard against re-introduction.
+# NOTE: gars/_system/wrappers/ is deliberately NOT ignored -- GARS-authored wrappers are versioned
+# here and are ours to maintain (decision 0012). wrappers/ is not skills/, and that is the point.
+gars/_system/skills/
+gars/tools/
+
+# Third-party skill bundles kept locally for reference, not part of GARS
+skills_dev/
 
 .DS_Store
 __pycache__/

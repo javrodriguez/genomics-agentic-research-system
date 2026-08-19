@@ -48,13 +48,13 @@ change in where a producer writes does not break its consumers.
 not vendor skill code: this workspace holds contracts only, and a sub-stage directory contains a
 `CONTEXT.md`, never a `.py`.
 
-`tools/gars-env.sh` resolves the skills directory at runtime and exports it as `$GARS_SKILLS`,
+`_system/gars-env.sh` resolves the skills directory at runtime and exports it as `$GARS_SKILLS`,
 along with `$GARS_PY`, `PATH`, `JAVA_HOME` and the caches. Source it rather than hardcoding
 anything — the literal site-packages path embeds a Python version that changes whenever the
 environment is rebuilt.
 
 ```bash
-source "$WS/tools/gars-env.sh"
+source "$WS/_system/gars-env.sh"
 cd "$GARS_SKILLS/nfcore-rnaseq-wrapper"    # skills run from inside their own directory
 ```
 
@@ -162,7 +162,7 @@ Nothing was run and nothing was regenerated. Complete the sub-stage that produce
 type, then run stage 02 again.
 ```
 
-# OUTPUT
+## OUTPUT
 Written to `projects/<project_title>/02_bioinformatics/<Assay ID>/`:
 
 | Artifact | Contents |
@@ -173,3 +173,12 @@ Written to `projects/<project_title>/02_bioinformatics/<Assay ID>/`:
 
 This stage writes no analysis output of its own. `00_data/` and `01_samplesheets/` are never
 modified.
+
+## Human check
+Before dispatching the first sub-stage of an assay, read `_config/<Assay ID>.yaml` once and
+confirm the reference build, the aligner, and — for a DE sub-stage — `de.formula` and
+`de.contrast`. Nothing downstream can detect a wrong contrast: it produces a complete, confident,
+wrong result. This is the only gate on it.
+
+Between sub-stages, read the finished one's `OUTPUTS.tsv` and confirm the artifacts it lists are
+the ones the next sub-stage should consume.

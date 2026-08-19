@@ -6,6 +6,19 @@ Nothing here comes from a real dataset.
 
 It exists to show what each stage writes, without needing a cluster.
 
+## The project files — `CONTEXT.md`, `HISTORY.md`
+
+Both are copies of `gars/_templates/project/` with the placeholders filled in. That is how every
+project is created: stage 00 copies the stamp, it does not assemble these files from scratch.
+
+| File | Holds |
+|---|---|
+| `CONTEXT.md` | what the project *is* — title, creation date, template version, assays, source paths. No state. |
+| `HISTORY.md` | what happened and when — append-only, one entry per stage action. |
+
+State is deliberately absent from both: it is derivable from `samples.csv`, `01_samplesheets/`,
+and each sub-stage's `STATUS`, so it cannot go stale.
+
 ## Stage 00 — `00_data/rnaseq_bulk/`
 
 | File | Grain | Owner |
@@ -29,6 +42,11 @@ leaves the raw data in place.
 |---|---|
 | `rnaseq_bulk_samplesheet.csv` | nf-core/rnaseq — `sample,fastq_1,fastq_2,strandedness` |
 | `rnaseq_bulk_design.csv` | the differential-expression sub-stage |
+
+Both are written by `gars/_system/stage01_samplesheet.py`, never by the agent — they are pure
+functions of `files.csv`, `samples.csv` and `_config/`, so re-running on unchanged inputs
+reproduces them byte for byte. The agent's role at this stage is to run the script, hold the two
+human gates (excluded samples, overwriting existing files), and report what it returned.
 
 The samplesheet is one row per sample-lane with absolute paths. Repeated `sample` values are
 merged by nf-core as technical replicates, which is exactly how multi-lane samples should be
