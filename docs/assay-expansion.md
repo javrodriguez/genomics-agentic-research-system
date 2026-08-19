@@ -440,7 +440,13 @@ argument for *not deleting SNS*, not for porting it.
 Total new wrapper skills: **four** (atacseq, chipseq, cutandrun, methylseq). Sarek needs a contract
 only — the skill already exists.
 
-### 6.2a Where GARS-authored wrappers live — **unresolved, blocks #1**
+### 6.2a Where GARS-authored wrappers live — **RESOLVED 2026-08-19: option A**
+
+> Settled in [decision 0012](decisions/0012-gars-authored-wrappers-live-in-system.md):
+> `gars/_system/wrappers/`, exported as `$GARS_WRAPPERS`. The rule is *third-party skills are
+> installed and read-only; GARS-authored wrappers are versioned in the repo and ours to maintain*.
+> B was rejected on pacing, not principle, and stays open per wrapper. The original analysis
+> follows.
 
 **[New 2026-08-14.]** §6.3 (below) assumes new wrappers go in `tools/skills/`. **That directory no
 longer exists.** Skills were de-vendored on 2026-08-13; they now resolve at runtime from
@@ -559,10 +565,20 @@ Design one control mechanism that serves both rather than two — the column sha
 only the biological referent differs — but keep the *validation* per-assay, since "every ChIP sample
 has an input" and "every CUT&RUN sample has an IgG" are separate checks against separate configs.
 
-**Stage 01 impact** — the current samplesheet header is
-`sample,fastq_1,fastq_2,strandedness`. `strandedness` is RNA-specific. Either make the samplesheet
-emitter assay-aware, or emit the nf-core columns each pipeline requires per assay. Decide this before
-building wrapper #1, because it touches an existing contract.
+**Stage 01 impact — done 2026-08-19.** The emitter is now table-driven: `FORMATS` in
+`_system/stage01_samplesheet.py` holds one entry per Assay ID, each column declaring its source
+(`sample_id`/`fastq_1`/`fastq_2` from `files.csv`, `config:<key>` from `_config/<assay>.yaml`,
+`design:<col>` from `samples.csv`). Adding an assay is a row plus, if needed, a validator — not a
+change to any function. `--list-formats` prints what is registered.
+
+Only `rnaseq_bulk` is registered, because it is the only assay in the map. **The four planned
+assays each add their entry when that pipeline's samplesheet schema has been read from the
+pipeline itself** — the columns were deliberately not guessed from memory here.
+
+The `control` column for ChIP/CUT&RUN is expressible today as `design:control`, but it needs a
+`control` column in `samples.csv`, which stage 00 does not yet write. The emitter reports that as
+a `config` failure rather than emitting a blank column, so the gap is loud. Making stage 00's
+`samples.csv` header assay-aware is the remaining piece, and belongs with wrapper #2 (chipseq).
 
 ### 6.5 Reference prerequisites — **mostly resolved [verified 2026-08-14]**
 
@@ -612,8 +628,8 @@ versions in this document.
 | # | Question | Status | Blocks |
 |---|---|---|---|
 | ~~1~~ | ~~Does any nf-core pipeline complete end-to-end here?~~ | **RESOLVED 2026-08-13** — yes, see §2.3 | — |
-| **2** | Should stage 01's samplesheet emitter become assay-aware, or emit per-assay column sets? | **OPEN — now the top blocker.** The header is `sample,fastq_1,fastq_2,strandedness`; `strandedness` is RNA-only and every target assay needs different columns | Wrapper #1 |
-| **2b** | Where do GARS-authored wrappers live, now that `tools/skills/` is gone? | **OPEN — new, see §6.2a** | Wrapper #1 |
+| **2** | Should stage 01's samplesheet emitter become assay-aware, or emit per-assay column sets? | **RESOLVED 2026-08-19.** Assay-aware, table-driven: `FORMATS` in `_system/stage01_samplesheet.py`, one entry per Assay ID, printable with `--list-formats`. An assay with no entry is refused rather than given the RNA layout | — |
+| **2b** | Where do GARS-authored wrappers live, now that the vendored skills directory is gone? | **RESOLVED 2026-08-19** — `gars/_system/wrappers/`, decision 0012 | — |
 | **3** | How do control assignments (ChIP input, CUT&RUN IgG) enter the design table? | OPEN | chipseq + cutandrun |
 | ~~3b~~ | ~~Classical ChIP-seq or CUT&RUN/CUT&Tag?~~ | RESOLVED 2026-08-12: the lab runs both, as separate Assay IDs | — |
 | ~~3c~~ | ~~Where does the CUT&RUN spike-in genome come from?~~ | **RESOLVED 2026-08-14** — `Escherichia_coli_K_12_MG1655` in the local iGenomes mirror | — |

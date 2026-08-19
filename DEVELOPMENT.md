@@ -68,32 +68,33 @@ Set `strandedness: unstranded` explicitly in future configs to remove the ambigu
 - The artifact registry is implemented and backfilled, but no sub-stage has yet *resolved* an
   input through `OUTPUTS.tsv` at run time — 02.02 was handed its counts path directly.
 - Only one assay exists. Whether the assay map, artifact vocabulary and router generalise, or
-  quietly encode bulk-RNA-seq assumptions, is untested.
-- Stage 01's samplesheet emitter is RNA-specific and has never produced a non-RNA layout.
+  quietly encode bulk-RNA-seq assumptions, is untested. Stage 01's emitter is no longer one of
+  those assumptions — it is table-driven and refuses an unregistered assay — but no non-RNA format
+  has been registered, so the mechanism is unproven against a real second assay.
 
 ## Next Steps
 
-Priority order. Items 1 and 2 block assay expansion and both touch working contracts, so settle
-them before writing any new wrapper.
+Priority order. The two blockers on assay expansion — where wrappers live, and the RNA-specific
+samplesheet emitter — were both cleared on 2026-08-19, so wrapper #1 is now unblocked.
 
-1. **Make stage 01's samplesheet emitter assay-aware.** It currently emits
-   `sample,fastq_1,fastq_2,strandedness` — `strandedness` is RNA-only, and every target assay
-   needs a different column set. ChIP-seq and CUT&RUN additionally need a `control` column
-   (input chromatin and IgG respectively — same column shape, different biological referent, so
-   design one mechanism but keep the validation per-assay). Now a change to one Python function
-   plus its contract vocabulary, rather than a rewrite of a prose specification.
-2. **Decide where GARS-authored wrappers live.** Skills were de-vendored, so there is no
-   in-workspace skills directory and `clawbio` is a third-party package we cannot add to — a
-   wrapper we write has nowhere to go. Either a versioned `gars/_system/wrappers/` exported as
-   `$GARS_WRAPPERS`, or contribute upstream to ClawBio so they arrive via `pip` like the existing
-   three. The cost driver is real: each wrapper is ~12 modules mirroring a 2.1 MB skill, times
-   four.
+1. **Build wrapper #1, `nfcore-atacseq-wrapper`**, in `_system/wrappers/`
+   ([0012](docs/decisions/0012-gars-authored-wrappers-live-in-system.md)). Both blockers are now
+   cleared. Read nf-core/atacseq 2.1.2's own samplesheet schema and register it in `FORMATS`
+   rather than reconstructing it from memory, add its row to the assay map, and write its
+   sub-stage contract against the requirements in
+   [assay-expansion.md](docs/assay-expansion.md) §6.2b.
+2. **Re-verify stage 02 under v0.2.0**, whenever a project with real FASTQs exists. The substrate
+   is verified (`gars-env.sh` resolves correctly from `_system/`); what is untested is a
+   sub-stage's generated `submit.sh` and whether the wrapper's preflight accepts a samplesheet
+   built by the corrected `os.path.abspath` path logic. Cheapest form is 02.01's `--check`
+   preflight, which is minutes rather than hours.
 3. **Implement `03_custom_analysis`.** Replace the stub's Process with a real one. It is the
    natural first consumer of the artifact registry, which would also close the "never resolved an
    input by type at run time" gap above.
-4. **Build the four wrappers**, in order: atacseq, chipseq, cutandrun, methylseq. See
-   [decision 0008](docs/decisions/0008-assay-expansion-wrap-nfcore.md) and
-   [docs/assay-expansion.md](docs/assay-expansion.md). Blocked on 1 and 2.
+4. **Build the remaining three wrappers**: chipseq, cutandrun, methylseq. See
+   [0008](docs/decisions/0008-assay-expansion-wrap-nfcore.md) and
+   [assay-expansion.md](docs/assay-expansion.md). chipseq additionally needs stage 00's
+   `samples.csv` header to become assay-aware, so it can carry a `control` column.
 5. **Report the `rnaseq-de` defects upstream**, as ClawBio#333 was. Three separate breaks in a
    declared chaining pair, one of them silent.
 
@@ -183,6 +184,26 @@ exit gate catching a broken symlink, a corrupt gzip, an empty file, a missing st
 empty `raw/`; non-bcl2fastq filenames refused rather than guessed, then resolved by a
 `--sample-id-pattern` the user supplies; a lane-less naming scheme carried through to a
 samplesheet; and a full 00 → 01 chain that is byte-identical on re-run.
+
+**Completed 2026-08-19 — both assay-expansion blockers cleared.**
+
+*Where wrappers live* — [0012](docs/decisions/0012-gars-authored-wrappers-live-in-system.md):
+`gars/_system/wrappers/`, exported as `$GARS_WRAPPERS`. The rule is *third-party skills are
+installed and read-only; GARS-authored wrappers are versioned here and ours to maintain*.
+Contributing upstream was rejected on pacing, not principle — it would put the lab's roadmap
+behind someone else's review queue — and stays open per wrapper once one proves general.
+`gars-env.sh` exports the variable but deliberately does not fail when the directory is absent,
+since no wrapper exists yet.
+
+*The samplesheet emitter* — now table-driven. `FORMATS` holds one entry per Assay ID, each column
+declaring its source (`files.csv`, `config:<key>`, or `design:<col>`); `--list-formats` prints
+them. An assay with no entry is **refused** rather than silently given the RNA layout, which was
+the actual hazard: a samplesheet with the wrong columns can validate upstream and mean something
+else. Output for `rnaseq_bulk` is byte-identical to before the refactor.
+
+Only `rnaseq_bulk` is registered. The four planned assays' columns were deliberately **not**
+guessed — the research names the ChIP/CUT&RUN `control` requirement but no verified nf-core
+headers, so each format gets registered when that pipeline's schema is read from the pipeline.
 
 ---
 

@@ -78,15 +78,29 @@ and design table, and **must be confirmed by the user before anything is written
 - no `(sample_id, lane)` pair appears more than once in `files.csv`;
 - an assay is wholly paired-end or wholly single-end, never mixed.
 
-**Samplesheet.** `01_samplesheets/<Assay ID>_samplesheet.csv`, nf-core compatible, header
-`sample,fastq_1,fastq_2,strandedness`. One row per included `files.csv` row, paths absolute **and
-inside the project** — they point at the symlinks in `00_data/<Assay ID>/raw/`, never at the
-original sequencing run. Following the symlink would bypass the project's own registration of its
-data; this is why 02.01 warns that moving a project invalidates its samplesheet.
-`strandedness` comes from `_config/<Assay ID>.yaml` if it defines a top-level value, else `auto`;
-an unrecognised value is a `config` failure rather than a silent default. Multiple rows sharing a
-`sample` value are merged by nf-core as technical replicates, which is the intended handling of
-multi-lane samples.
+**Samplesheet.** `01_samplesheets/<Assay ID>_samplesheet.csv`. One row per included `files.csv`
+row, with **columns determined by the assay**, because the samplesheet is the upstream pipeline's
+contract and differs per pipeline. `python3 _system/stage01_samplesheet.py --list-formats` prints
+the registered formats; today only `rnaseq_bulk` is registered
+(`sample,fastq_1,fastq_2,strandedness`), because it is the only assay in the assay map.
+
+An assay with no registered format is **refused** (`unsupported_assay`). It never inherits another
+assay's columns: `strandedness` is RNA-only, and a samplesheet carrying the wrong columns can
+validate upstream while meaning something else entirely.
+
+Paths are absolute **and inside the project** — they point at the symlinks in
+`00_data/<Assay ID>/raw/`, never at the original sequencing run. Following the symlink would
+bypass the project's own registration of its data; this is why 02.01 warns that moving a project
+invalidates its samplesheet.
+
+A column sourced from `_config/<Assay ID>.yaml` (such as `strandedness`) falls back to that key's
+documented default when the file or key is absent; an unrecognised *value* is a `config` failure
+rather than a silent default. Multiple rows sharing a `sample` value are merged by nf-core as
+technical replicates, which is the intended handling of multi-lane samples.
+
+**Unsupported assay.** The assay has no registered samplesheet format. Adding one is a change to
+`_system/stage01_samplesheet.py`'s `FORMATS` table — a row, not a rewrite — and belongs with the
+work of adding that assay's wrapper. Violation → `unsupported_assay`.
 
 **Malformed input.** Two failures mean the file itself is unusable rather than the design wrong:
 `header` (a metadata CSV's columns are not the expected set) and `preconditions` (a metadata CSV
@@ -219,7 +233,7 @@ Written to `projects/<project_title>/01_samplesheets/`, by the script and never 
 
 | Artifact | Contents |
 |---|---|
-| `<Assay ID>_samplesheet.csv` | nf-core compatible: `sample,fastq_1,fastq_2,strandedness`. One row per included sample-lane, absolute paths. Consumed by 02_bioinformatics. |
+| `<Assay ID>_samplesheet.csv` | Columns per the assay's registered format; one row per included sample-lane, absolute paths inside the project. Consumed by 02_bioinformatics. |
 | `<Assay ID>_design.csv` | `sample_id,condition,group,replicate`. One row per included sample. Consumed by the differential-expression sub-stage of 02_bioinformatics. |
 
 The agent appends the script's `history_entry` to `projects/<project_title>/HISTORY.md`.

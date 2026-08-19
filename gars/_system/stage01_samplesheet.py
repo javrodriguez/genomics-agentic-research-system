@@ -38,6 +38,38 @@ STRANDEDNESS_VALUES = {"auto", "forward", "reverse", "unstranded"}
 SAMPLES_HEADER = ["sample_id", "condition", "group", "replicate"]
 FILES_HEADER = ["sample_id", "lane", "fastq_1", "fastq_2"]
 
+# --- samplesheet formats ------------------------------------------------------------------------
+# One entry per Assay ID. The samplesheet is whatever the assay's upstream pipeline requires, so
+# this is a per-assay fact and must not be shared: `strandedness` is RNA-only, and ChIP-family
+# assays need a `control` column that RNA has no use for.
+#
+# Each column names where its value comes from:
+#   sample_id | lane | fastq_1 | fastq_2   a column of files.csv (paths are made absolute)
+#   config:<key>                           a top-level key of _config/<Assay ID>.yaml
+#   design:<col>                           a column of that sample's samples.csv row
+#
+# Adding an assay is a row here plus, if it needs one, a validator in CONFIG_RULES -- not a change
+# to any function below. An assay with no entry is REFUSED: emitting the RNA layout for an assay
+# whose pipeline does not want it produces a samplesheet that validates upstream and means
+# something else.
+#
+# Only rnaseq_bulk is registered, because it is the only assay in the assay map. The four planned
+# wrappers (atacseq, chipseq, cutandrun, methylseq) each add an entry when their upstream
+# samplesheet contract has been read from that pipeline's own schema -- never guessed from memory.
+FORMATS = {
+    "rnaseq_bulk": [
+        ("sample", "sample_id"),
+        ("fastq_1", "fastq_1"),
+        ("fastq_2", "fastq_2"),
+        ("strandedness", "config:strandedness"),
+    ],
+}
+
+# Allowed values and defaults for any `config:` column above, keyed by config key.
+CONFIG_RULES = {
+    "strandedness": {"values": STRANDEDNESS_VALUES, "default": "auto"},
+}
+
 EXIT_OK, EXIT_FAILURES, EXIT_NEEDS_CONFIRM, EXIT_PRECONDITIONS = 0, 1, 2, 3
 
 
@@ -73,33 +105,41 @@ def read_csv(path):
             "header_line": header_line}, None
 
 
-def read_strandedness(config_path):
-    """Extract the top-level `strandedness:` scalar. Returns (value, error).
+def config_columns(fmt):
+    """The config keys an assay's samplesheet needs, in column order."""
+    return [src.split(":", 1)[1] for _, src in fmt if src.startswith("config:")]
 
-    Deliberately narrow: matches only a zero-indent key, so a `strandedness` nested under some
-    other mapping is not picked up by accident. Absent file or absent key -> 'auto'.
+
+def read_config_scalar(config_path, key):
+    """Extract a top-level `<key>:` scalar. Returns (value, error).
+
+    Deliberately narrow: matches only a zero-indent key, so the same name nested under some other
+    mapping is not picked up by accident. Absent file or absent key -> the rule's default.
     """
+    rule = CONFIG_RULES.get(key, {})
+    default = rule.get("default", "")
     if not config_path.is_file():
-        return "auto", None
+        return default, None
     try:
         text = config_path.read_text(encoding="utf-8")
     except OSError as exc:
-        return None, f"cannot read {config_path.name}: {exc}"
+        return None, "cannot read %s: %s" % (config_path.name, exc)
 
     match = None
     for line in text.splitlines():
-        m = re.match(r"^strandedness:\s*(.*)$", line)
+        m = re.match(r"^%s:\s*(.*)$" % re.escape(key), line)
         if m:
             match = m.group(1)
     if match is None:
-        return "auto", None
+        return default, None
 
     value = match.split("#", 1)[0].strip().strip("\"'")
     if not value:
-        return "auto", None
-    if value not in STRANDEDNESS_VALUES:
-        return None, (f"strandedness: {value!r} in {config_path.name} is not one of "
-                      f"{sorted(STRANDEDNESS_VALUES)}")
+        return default, None
+    allowed = rule.get("values")
+    if allowed and value not in allowed:
+        return None, ("%s: %r in %s is not one of %s"
+                      % (key, value, config_path.name, sorted(allowed)))
     return value, None
 
 
@@ -116,6 +156,14 @@ def validate_assay(project, assay):
     """
     out = {"failures": [], "exclusions": [], "counts": {}}
     fails = out["failures"]
+
+    fmt = FORMATS.get(assay)
+    if fmt is None:
+        return {**out, "fatal": True, "failures": [fail(
+            "unsupported_assay",
+            "no samplesheet format is registered for %r. Registered: %s. An assay's samplesheet "
+            "is its pipeline's contract and is never inherited from another assay."
+            % (assay, ", ".join(sorted(FORMATS)) or "none"))]}
 
     data_dir = project / "00_data" / assay
     samples, err = read_csv(data_dir / "samples.csv")
@@ -220,12 +268,25 @@ def validate_assay(project, assay):
         else:
             reps[key] = row["sample_id"]
 
-    # -- strandedness
-    strandedness, err = read_strandedness(project / "_config" / f"{assay}.yaml")
-    if err:
-        fails.append(fail("config", err))
+    # -- config-sourced columns
+    config_values = {}
+    for key in config_columns(fmt):
+        value, err = read_config_scalar(project / "_config" / ("%s.yaml" % assay), key)
+        if err:
+            fails.append(fail("config", err))
+        else:
+            config_values[key] = value
 
     incl_file_rows = [r for r in files["rows"] if r["sample_id"] in included]
+    design_by_id = {r["sample_id"]: r for r in incl_rows}
+    for _, src in fmt:
+        if src.startswith("design:"):
+            col = src.split(":", 1)[1]
+            if col not in SAMPLES_HEADER:
+                fails.append(fail("config", "samplesheet format for %s needs a %r column in "
+                                            "samples.csv, which stage 00 does not write"
+                                            % (assay, col)))
+
     out["counts"] = {
         # "total" is what stage 00 ingested, not what samples.csv lists -- otherwise an
         # exclusion would report "5 of 5" and hide the very thing the user is confirming.
@@ -235,12 +296,15 @@ def validate_assay(project, assay):
         "design_rows": len(incl_rows),
         "groups": len(groups),
         "layout": layout,
-        "strandedness": strandedness,
+        "columns": [c for c, _ in fmt],
     }
+    out["counts"].update(config_values)
     out["_included"] = included
     out["_incl_file_rows"] = incl_file_rows
     out["_incl_design_rows"] = incl_rows
-    out["_strandedness"] = strandedness
+    out["_format"] = fmt
+    out["_config_values"] = config_values
+    out["_design_by_id"] = design_by_id
     out["fatal"] = False
     return out
 
@@ -254,18 +318,28 @@ def write_assay(project, assay, res):
     sheet = sheet_dir / f"{assay}_samplesheet.csv"
     design = sheet_dir / f"{assay}_design.csv"
 
+    fmt = res["_format"]
     with sheet.open("w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh, lineterminator="\n")
-        w.writerow(["sample", "fastq_1", "fastq_2", "strandedness"])
+        w.writerow([c for c, _ in fmt])
         for row in res["_incl_file_rows"]:
-            # abspath, NOT Path.resolve(). resolve() follows symlinks, and 00_data/<assay>/raw/
-            # is entirely symlinks -- so it would write the original sequencing-run path into
-            # the samplesheet and bypass the project's own registration of its data. The
-            # samplesheet must point at the project, which is why 02.01 warns that moving a
-            # project invalidates it.
-            r1 = os.path.abspath(project / row["fastq_1"])
-            r2 = os.path.abspath(project / row["fastq_2"]) if row.get("fastq_2") else ""
-            w.writerow([row["sample_id"], r1, r2, res["_strandedness"]])
+            out = []
+            for _, src in fmt:
+                if src in ("fastq_1", "fastq_2"):
+                    # abspath, NOT Path.resolve(). resolve() follows symlinks, and
+                    # 00_data/<assay>/raw/ is entirely symlinks -- so it would write the original
+                    # sequencing-run path into the samplesheet and bypass the project's own
+                    # registration of its data. The samplesheet must point at the project, which
+                    # is why 02.01 warns that moving a project invalidates it.
+                    out.append(os.path.abspath(project / row[src]) if row.get(src) else "")
+                elif src.startswith("config:"):
+                    out.append(res["_config_values"].get(src.split(":", 1)[1], ""))
+                elif src.startswith("design:"):
+                    d = res["_design_by_id"].get(row["sample_id"], {})
+                    out.append(d.get(src.split(":", 1)[1], ""))
+                else:
+                    out.append(row.get(src, ""))
+            w.writerow(out)
 
     with design.open("w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh, lineterminator="\n")
@@ -312,10 +386,14 @@ def history_entry(assays, results, wrote):
     for assay in assays:
         c = results[assay]["counts"]
         excl = results[assay]["exclusions"]
+        extra = "".join(", %s `%s`" % (k, c[k]) for k in sorted(c)
+                        if k not in ("samples_included", "samples_total", "groups", "layout",
+                                     "samplesheet_rows", "design_rows", "columns"))
         lines.append(
-            f"- **{assay}**: {c['samples_included']} of {c['samples_total']} samples, "
-            f"{c['groups']} group(s), {c['layout']}, strandedness `{c['strandedness']}`. "
-            f"Wrote {c['samplesheet_rows']} samplesheet rows and {c['design_rows']} design rows.")
+            "- **%s**: %d of %d samples, %d group(s), %s%s. Columns `%s`. "
+            "Wrote %d samplesheet rows and %d design rows."
+            % (assay, c["samples_included"], c["samples_total"], c["groups"], c["layout"], extra,
+               ",".join(c["columns"]), c["samplesheet_rows"], c["design_rows"]))
         if excl:
             lines.append("  Excluded (raw data and files.csv left untouched): "
                          + ", ".join(e["sample_id"] for e in excl))
@@ -327,16 +405,26 @@ def history_entry(assays, results, wrote):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--project", required=True, type=Path,
-                    help="path to projects/<project_title>/")
+    ap.add_argument("--project", type=Path,
+                    help="path to projects/<project_title>/ (not needed with --list-formats)")
     ap.add_argument("--check", action="store_true",
                     help="validate only; write nothing")
     ap.add_argument("--confirm-exclusions", action="store_true",
                     help="the user has confirmed the excluded samples (contract template T7)")
     ap.add_argument("--force", action="store_true",
                     help="the user has confirmed overwriting existing samplesheets (T5)")
+    ap.add_argument("--list-formats", action="store_true",
+                    help="print the registered per-assay samplesheet formats and exit")
     args = ap.parse_args(argv)
 
+    if args.list_formats:
+        return emit({"ok": True, "formats": {a: [{"column": c, "source": s} for c, s in f]
+                                             for a, f in sorted(FORMATS.items())},
+                     "config_rules": {k: {"values": sorted(v["values"]), "default": v["default"]}
+                                      for k, v in sorted(CONFIG_RULES.items())}}, EXIT_OK)
+
+    if args.project is None:
+        ap.error("--project is required")
     project = args.project
     result = {"ok": False, "mode": "check" if args.check else "write",
               "project": str(project), "assays": {}, "wrote": []}

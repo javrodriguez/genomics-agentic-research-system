@@ -45,10 +45,16 @@ mkdir -p "$APPTAINER_CACHEDIR" "$NXF_HOME"
 # --- resolved locations -------------------------------------------------------------------
 export GARS_PY="$GARS_BIO/bin/python"
 
-# Skills are never vendored. Resolve them from the installed clawbio package: the literal
-# site-packages path embeds a Python version that changes on any environment rebuild.
+# Third-party skills are never vendored. Resolve them from the installed clawbio package: the
+# literal site-packages path embeds a Python version that changes on any environment rebuild.
 GARS_SKILLS=$("$GARS_PY" -c "import clawbio, pathlib; print(pathlib.Path(clawbio.__file__).parent / 'skills')" 2>/dev/null)
 export GARS_SKILLS
+
+# GARS-authored wrappers, versioned in this workspace and ours to maintain (decision 0012).
+# The rule: third-party skills are installed and read-only; wrappers we write live here.
+# Deliberately NOT in the fail-fast list below -- no wrapper exists yet, and stage 02 must keep
+# working until the first one lands.
+export GARS_WRAPPERS="${GARS_WRAPPERS:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/wrappers}"
 
 # Pinned pipeline checkout. Cloned over the git protocol, because resolving a remote
 # nf-core/rnaseq goes through the GitHub REST API, which is rate-limited to 60 requests/hour
@@ -75,4 +81,7 @@ fi
 
 echo "[gars-env] python=$("$GARS_PY" --version 2>&1) | nextflow=$(nextflow -v 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1) | apptainer=$(apptainer --version 2>&1 | awk '{print $3}')"
 echo "[gars-env] skills=$GARS_SKILLS"
+if [ -d "$GARS_WRAPPERS" ]; then
+    echo "[gars-env] wrappers=$GARS_WRAPPERS ($(ls -1 "$GARS_WRAPPERS" 2>/dev/null | wc -l))"
+fi
 echo "[gars-env] cache=$APPTAINER_CACHEDIR ($(ls "$APPTAINER_CACHEDIR"/*.img 2>/dev/null | wc -l) images)"
