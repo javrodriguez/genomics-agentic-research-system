@@ -19,7 +19,8 @@ STATUS
 submit.sh
 
 # Skills are installed with clawbio, never vendored. Guard against re-introduction.
-gars/tools/skills/
+gars/_system/skills/
+gars/tools/
 
 .DS_Store
 __pycache__/

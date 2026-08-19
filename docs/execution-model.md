@@ -239,7 +239,7 @@ itself will happily run bare commands with nothing containerised.
 Every `submit.sh` begins with a single line:
 
 ```bash
-source "$WS/tools/gars-env.sh"
+source "$WS/_system/gars-env.sh"
 ```
 
 That script is the **only** definition of how to run a GARS skill. It sets `PATH` (with

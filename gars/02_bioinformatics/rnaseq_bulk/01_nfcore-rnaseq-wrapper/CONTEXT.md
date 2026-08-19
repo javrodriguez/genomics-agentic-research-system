@@ -34,17 +34,17 @@ resolve `$SKILLS`). There is no `clawbio.py` launcher in this environment —
 the CLI shown in the skill's own SKILL.md (`python clawbio.py run rnaseq-pipeline …`) is the
 upstream ClawBio form and does not apply here. Flag names are otherwise identical.
 
-**Required environment.** Source `tools/gars-env.sh` from the workspace. It is the single
+**Required environment.** Source `_system/gars-env.sh` from the workspace. It is the single
 definition of how to run a skill; do not re-declare paths or exports in `submit.sh`.
 
 ```bash
-source "$WS/tools/gars-env.sh"     # sets PATH, JAVA_HOME, caches, $GARS_PY, $GARS_SKILLS
+source "$WS/_system/gars-env.sh"  # sets PATH, JAVA_HOME, caches, $GARS_PY, $GARS_SKILLS
 ```
 
 It exits non-zero if an environment or the skills directory is missing, so a broken setup fails
 at submission rather than minutes into a scheduled job. Entirely user-owned conda — **no
 `module load`**. Two environments, because nextflow and clawbio cannot coexist in one; see
-`docs/environment.md`.
+`_references/environment.md`.
 
 `PATH` order matters and the script handles it: `gars-nxf` first, so `java` resolves to its
 OpenJDK 17 rather than the system Java 1.8, which Nextflow refuses.
@@ -113,7 +113,8 @@ a 2017 Nextflow once.
 **Output directory.** `projects/<project_title>/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/`.
 It must be **empty** before submission — the skill rejects a populated one with
 `OUTPUT_DIR_NOT_EMPTY`. The skill also rejects an output directory inside its own source tree
-(`PROJECT_ROOT`, which is `tools/`); a path under `projects/` is outside it and therefore valid.
+(`PROJECT_ROOT` — since de-vendoring, the installed `clawbio` package directory, i.e.
+`$GARS_SKILLS/..`); a path under `projects/` is outside it and therefore valid.
 
 **Preflight.** The same invocation with `--check` added: validates samplesheet, references,
 runtime, and backend without launching Nextflow. It must pass before any job is submitted.
@@ -298,7 +299,7 @@ Samples in matrix: <n>
 Next: sub-stage 02_rnaseq-de.
 ```
 
-# OUTPUT
+## OUTPUT
 Written to `projects/<project_title>/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/`:
 
 | Artifact | Contents |
@@ -312,3 +313,12 @@ Written to `projects/<project_title>/02_bioinformatics/rnaseq_bulk/01_nfcore-rna
 
 The count matrix consumed by the next sub-stage is the `preferred_counts_tsv` named in
 `run/result.json`. `00_data/` and `01_samplesheets/` are never modified.
+
+## Human check
+Open `run/upstream/results/multiqc/star_salmon/multiqc_report.html` and read the alignment and
+duplication rates before letting anything consume the counts. Confirm the sample count in the
+report equals the sample count in the samplesheet — a sample lost to a failed process shows up
+here and nowhere downstream.
+
+If strandedness was left at `auto`, check the RSeQC `infer_experiment` result and set it
+explicitly in `_config/<Assay ID>.yaml` for future runs.

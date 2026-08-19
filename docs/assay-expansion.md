@@ -85,7 +85,7 @@ sub-stage contracts, and `gars/_references/environment.md`.
 |---|---|---|---|
 | Stage `CONTEXT.md` | L2 | prose contract | agent executes it literally; stops and asks rather than deviating |
 | Sub-stage `CONTEXT.md` | L2 | prose contract | owns Process, Response Format, OUTPUT |
-| Skill under `tools/skills/` | code | deterministic CLI | **canonical, read-only**; agent may never edit, patch, or substitute it |
+| Skill (installed with `clawbio`, resolved as `$GARS_SKILLS`) | code | deterministic CLI | **canonical, read-only**; agent may never edit, patch, or substitute it |
 
 Stage 02 is a **pure router**: it resolves assay → ordered sub-stages from
 `_references/assay_stage_skill_map.md`, checks each predecessor's `STATUS`, hands control to the
@@ -444,7 +444,7 @@ only — the skill already exists.
 
 **[New 2026-08-14.]** §6.3 (below) assumes new wrappers go in `tools/skills/`. **That directory no
 longer exists.** Skills were de-vendored on 2026-08-13; they now resolve at runtime from
-`site-packages/clawbio/skills/` via `$GARS_SKILLS`, exported by `tools/gars-env.sh`.
+`site-packages/clawbio/skills/` via `$GARS_SKILLS`, exported by `_system/gars-env.sh`.
 
 `clawbio` is a third-party pip package, so a wrapper we write cannot be added to it. An
 `nfcore-atacseq-wrapper` currently has **nowhere to live**.
@@ -453,7 +453,7 @@ Two viable answers:
 
 | Option | Shape | Trade-off |
 |---|---|---|
-| **A — `gars/tools/wrappers/`** | Versioned in the GARS repo, exported as `$GARS_WRAPPERS` alongside `$GARS_SKILLS` | Fast; we own and maintain four wrappers. Keeps the no-vendoring rule intact, which was about not copying *someone else's* code |
+| **A — `gars/_system/wrappers/`** | Versioned in the GARS repo, exported as `$GARS_WRAPPERS` alongside `$GARS_SKILLS` | Fast; we own and maintain four wrappers. Keeps the no-vendoring rule intact, which was about not copying *someone else's* code |
 | **B — contribute upstream to ClawBio** | Wrappers arrive via `pip` like the existing three | Slower and externally paced, but no new location, no maintenance burden, and matches how the current three got here |
 
 If A: state the rule explicitly — *third-party skills are installed and read-only; GARS-authored
@@ -470,7 +470,7 @@ New wrappers and their sub-stage contracts must also satisfy requirements added 
 
 | Requirement | Where |
 |---|---|
-| Source `tools/gars-env.sh`; do not re-declare env exports in `submit.sh` | supersedes the export block in §6.3 |
+| Source `_system/gars-env.sh`; do not re-declare env exports in `submit.sh` | supersedes the export block in §6.3 |
 | `compute.work_dir` on scratch — a run accumulates 250-350 GB in `work/` | `_config/<assay>.yaml` |
 | `reference.derived_dir`, keyed by **pipeline version**, populated automatically via `--save-reference` | 02.01 contract |
 | Write `OUTPUTS.tsv` declaring artifacts by type and `native`/`adapted` role | `_references/artifact_types.md` |
@@ -484,7 +484,7 @@ Mirror `nfcore-rnaseq-wrapper` module-for-module so the sub-stage contracts read
 to 02.01 and the agent's existing habits transfer:
 
 ```
-tools/skills/nfcore-atacseq-wrapper/
+<wrapper location — see §6.2a>/nfcore-atacseq-wrapper/
     SKILL.md                 # ClawBio-style YAML frontmatter
     nfcore_atacseq_wrapper.py
     preflight.py  schemas.py  params_builder.py  command_builder.py

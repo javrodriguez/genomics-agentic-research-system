@@ -1,8 +1,9 @@
 # Runtime Environment
 
-This file records **what is installed and how to reproduce it**. For how the pieces relate —
-package managers, Nextflow vs nf-core, containers and SIF — see
-[`execution-model.md`](execution-model.md).
+This file records **what is installed and how to reproduce it**, and ships inside the workspace
+template so a copied workspace can rebuild its own runtime. For how the pieces relate — package
+managers, Nextflow vs nf-core, containers and SIF — see `docs/execution-model.md` in the GARS
+source repository; that document is background and is not shipped in a workspace.
 
 Verified on the login node, 2026-08-11. Re-verify after any cluster change.
 
@@ -105,7 +106,7 @@ installs a 2017 build, see the trap above.
 | `rnaseq-de` | `clawbio.common.report.write_result_json` |
 
 Without it the skills raise `ModuleNotFoundError: No module named 'clawbio'` at import and
-cannot even print `--help`. Neither `gars/tools/` nor `archive/bio_icm_system/` contains it —
+cannot even print `--help`. Neither `gars/_system/` nor `archive/bio_icm_system/` contains it —
 the skills were extracted from upstream without their shared library, in both locations.
 
 **`scikit-learn`** — required by `rnaseq-de` for PCA, and absent from every cluster Python
@@ -124,10 +125,11 @@ declared in each skill's own SKILL.md, and its summary matches the skills' prove
 ("bioinformatics-native AI agent skill library, built on OpenClaw"). All nine symbols the
 skills import were confirmed present in the wheel before install.
 
-### Why installed rather than vendored into `tools/clawbio/`
+### Why installed rather than vendored alongside the skills
 
-Each skill puts `SKILL_DIR.parent.parent` (= `tools/`) on `sys.path`, so `tools/clawbio/` would
-be found. Vendoring was still rejected:
+When the skills were still vendored in the workspace, each put `SKILL_DIR.parent.parent` on
+`sys.path`, so a `clawbio/` package placed beside them would have been found. Vendoring was
+rejected anyway, and the skills were de-vendored afterwards:
 
 1. **It has a real dependency tree.** `clawbio.common.report` imports `clawbio.common.audit`,
    which imports `opentelemetry`. Copying the source in yields a different `ModuleNotFoundError`.

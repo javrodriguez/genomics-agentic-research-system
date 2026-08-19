@@ -1,6 +1,6 @@
 # GARS execution environment — the single definition of how to run a skill.
 #
-# Source this from every submit.sh:  source "$WS/tools/gars-env.sh"
+# Source this from every submit.sh:  source "$WS/_system/gars-env.sh"
 #
 # Why this file exists: the same ~10 lines of setup were previously copy-pasted into every
 # submit.sh, in every project, for every sub-stage. They drifted — a salvaged script was found
@@ -26,7 +26,7 @@ GARS_ROOT="${GARS_ROOT:-/gpfs/data/abl/home/rodrij92}"
 
 # --- environments -------------------------------------------------------------------------
 # Two, because nextflow and clawbio have conflicting c-ares constraints and cannot be solved
-# together. See docs/environment.md.
+# together. See _references/environment.md.
 GARS_BIO="${GARS_BIO:-$GARS_ROOT/install/miniconda_clean/envs/gars-bio}"   # clawbio, apptainer, squashfuse
 GARS_NXF="${GARS_NXF:-$GARS_ROOT/install/miniconda_clean/envs/gars-nxf}"   # nextflow, openjdk 17
 
@@ -61,7 +61,7 @@ export GARS_REFS="${GARS_REFS:-$GARS_ROOT/install/refs}"
 for _v in GARS_BIO GARS_NXF GARS_SKILLS; do
     if [ -z "${!_v:-}" ] || [ ! -e "${!_v}" ]; then
         echo "[gars-env] FATAL: $_v is unset or missing (${!_v:-unset})" >&2
-        echo "[gars-env] See docs/environment.md for the install procedure." >&2
+        echo "[gars-env] See _references/environment.md for the install procedure." >&2
         return 1 2>/dev/null || exit 1
     fi
 done

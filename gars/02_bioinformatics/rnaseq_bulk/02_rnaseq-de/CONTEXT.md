@@ -30,7 +30,7 @@ This sub-stage performs the steps in Process and nothing else.
 
 ## Definitions
 
-**Skill invocation.** Source `tools/gars-env.sh`, then run from inside `$GARS_SKILLS/rnaseq-de/`
+**Skill invocation.** Source `_system/gars-env.sh`, then run from inside `$GARS_SKILLS/rnaseq-de/`
 using `$GARS_PY`. Do not re-declare environment paths in `submit.sh`:
 ```
 PY=~/install/miniconda_clean/envs/gars-bio/bin/python
@@ -191,7 +191,7 @@ Genes tested: <n>
 Next: 03_custom_analysis.
 ```
 
-# OUTPUT
+## OUTPUT
 Written to `projects/<project_title>/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/`:
 
 | Artifact | Contents |
@@ -206,3 +206,13 @@ Written to `projects/<project_title>/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/
 | `run/reproducibility/` | `commands.sh`, `environment.yml`, `checksums.sha256`. |
 
 `00_data/`, `01_samplesheets/`, and sub-stage 02.01's output are never modified.
+
+## Human check
+Open `run/tables/de_results.csv` and confirm the first column holds real gene identifiers, not
+blanks or row numbers. This check exists because a defect in the skill once produced a complete,
+plausible DE table in which every gene was anonymous, with no error and no warning — a
+file-exists check passes happily on it.
+
+Then confirm the contrast in `run/report.md` is the one you asked for, in the direction you
+asked for: `condition,treated,control` means treated relative to control, and reversing it
+reverses the sign of every fold change.
