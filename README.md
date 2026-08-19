@@ -23,6 +23,35 @@ through fixed message templates, and stops rather than improvising when inputs a
 
 ---
 
+## Getting started
+
+GARS is not installed. The repository holds a **workspace template**; you copy it, and the copy is
+your workspace.
+
+```bash
+git clone https://github.com/javrodriguez/genomics-agentic-research-system.git
+cp -r genomics-agentic-research-system/gars ~/my-analysis      # this copy is the workspace
+cd ~/my-analysis
+```
+
+Then open it with an agent (Claude Code or equivalent) and say what you want:
+
+> *Start a new project called Macrophage Polarization, bulk RNA-seq, data in /path/to/fastqs.*
+
+The agent reads `CLAUDE.md`, routes to the stage that owns your request, and executes that stage's
+contract. **You do not run the scripts under `_system/` yourself** — they are the agent's tools.
+Your part is the decisions: the project title and assay, confirming the derived sample IDs before
+anything is linked, filling in the experimental design, and writing `_config/`. Everything the
+system refuses to guess is something it will stop and ask you for.
+
+**Copy rather than work in the repository.** Stage 00 stamps the template version into every
+project it creates, so a copy freezes the contracts your results were produced under; editing or
+pulling the repo later cannot change them retroactively. Real data never enters the repo — put the
+workspace on your group work area, beside the data, not in `$HOME`.
+
+Stage 02 additionally needs the two conda environments under **Dependencies** below. Stages 00 and
+01 need nothing but Python 3.
+
 ## Architecture
 
 Context is layered, so an agent loads only what the current task needs:
