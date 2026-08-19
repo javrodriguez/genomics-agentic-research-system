@@ -284,6 +284,36 @@ testing: no project with real FASTQs currently exists, so stage 02 cannot be re-
 one does. The derived-index cache and pinned pipeline survived, so that run is still ~40 minutes
 and 43 GB cheaper than a cold one.
 
+### Validating a release on the cluster
+
+The first real run after a template change. **You drive this by talking to the agent, not by
+typing the commands** — the contracts are what the agent executes; the scripts underneath are its
+tools, not a user interface. "Start a new project called X, bulk RNA-seq, data in /path" is the
+whole of stage 00 from your side, and the one place it pauses is to show you the derived sample
+IDs before it creates any symlink.
+
+Use **4 samples, 2 per condition** — the smallest cohort that still gives a valid contrast, so
+02.02 runs too. A 2-sample project cannot express a valid two-group design.
+
+Three config values decide whether it works, and each has cost a real run:
+
+| Value | Why |
+|---|---|
+| `reference.fasta` + `gtf`, **not** `genome: GRCh38` | the iGenomes GRCh38 is NCBI and has no `gene_biotype`; it fails *after* counts are written (0005, failure 5) |
+| `compute.work_dir` on scratch | a run accumulates 250-350 GB there (0006) |
+| `_config/nextflow.slurm.config`, copied unchanged | without `process.queue`, Nextflow sends ~50 child jobs to the most contended partition (0005, failure 3) |
+
+Set `reference.derived_dir` to the version-keyed cache and the run skips ~43 GB and ~40 minutes.
+
+Checkpoints, in the order they can save you time:
+
+| When | Check | If wrong |
+|---|---|---|
+| after preflight | `unknown_columns: []`, sample count right | fix the samplesheet, nothing has been submitted |
+| ~5 min after `sbatch` | `squeue` shows child jobs on the **intended** partition | cancel now, not in five hours — the config is not being read |
+| after 02.01 | **0** `STAR_GENOMEGENERATE` processes launched | `derived_dir` is wrong or the version key mismatches |
+| after 02.02 | the first column of `de_results.csv` holds gene identifiers | the silent defect in 0010 — a complete, plausible table with anonymous genes |
+
 ### Checking a run
 ```bash
 S=.../02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper

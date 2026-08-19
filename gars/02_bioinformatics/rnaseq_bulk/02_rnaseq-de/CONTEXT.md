@@ -6,10 +6,13 @@ experimental design the user completed in stage 00 and validated in stage 01. Pr
 tables, QC and PCA figures, and a report.
 
 ## Inputs
-1. **Count matrix** — the `preferred_counts_tsv` named in sub-stage 02.01's `run/result.json`
-2. **`01_samplesheets/rnaseq_bulk_design.csv`** — `sample_id,condition,group,replicate`
-3. **`_config/rnaseq_bulk.yaml`** — `de.formula` and `de.contrast`
-4. **The `rnaseq-de` skill** — shipped by the installed `clawbio` package, read-only
+- Working (this run), **resolved by type, never by path**:
+  1. **`counts_gene`** — resolved from the `OUTPUTS.tsv` of completed sub-stages
+  2. **`design`** — resolved the same way; stage 01 supplies it
+- Reference (every run):
+  3. **`_config/rnaseq_bulk.yaml`** — `de.formula` and `de.contrast`
+  4. **`_system/resolve_artifact.py`** — the resolver
+  5. **The `rnaseq-de` skill** — shipped by the installed `clawbio` package, read-only
 
 ## Scope Boundaries
 This sub-stage performs the steps in Process and nothing else.
@@ -23,6 +26,11 @@ This sub-stage performs the steps in Process and nothing else.
   is missing, ask the user. A wrong contrast produces confident, wrong biology.
 - Never modify the design table, the count matrix, `00_data/`, or `01_samplesheets/`.
 - Never re-run sub-stage 02.01, and never regenerate counts.
+- **Never locate the count matrix yourself.** Do not read 02.01's `result.json`, do not glob its
+  `run/` tree, and do not open its `OUTPUTS.tsv` by eye. Resolution is
+  `_system/resolve_artifact.py`'s job: it applies the reverse-order scan, the `native` preference
+  and the STATUS gate that keep a consumer from silently picking a matrix reshaped for someone
+  else's parser.
 - **Never interpret the results.** Report file paths and row counts. Do not name significant
   genes, describe pathways, speculate about mechanism, or characterise the biology. That is
   03_custom_analysis, and the user's judgment.
@@ -50,6 +58,12 @@ around a pydeseq2 error — report the error instead.
 `scikit-learn==1.9.0`, and `pydeseq2==0.5.4`. If it fails, that is a preconditions failure (T4):
 report it and stop. Never pip-install on the fly, never vendor or stub a missing module, and
 never swap in a different PCA or DE implementation.
+
+**Input resolution.** This sub-stage finds its inputs **by artifact type, not by path**, so a
+change in where 02.01 writes does not break it. The rule and its rationale are in
+`_references/artifact_types.md`; the implementation is `_system/resolve_artifact.py`. Resolution
+prefers `native` artifacts — the `adapted` matrix this sub-stage writes at step 8 is deliberately
+*not* what a later consumer would pick up.
 
 **Adapted count matrix.** nf-core emits `gene_id`, `gene_name`, then one column per sample.
 `rnaseq-de` documents "first column is gene identifier" and coerces every later column to
@@ -84,9 +98,18 @@ design table. Fewer makes dispersion estimation unreliable, and the result is no
 
 ## Process
 1. Reply T1.
-2. Confirm sub-stage 02.01's STATUS is `COMPLETE`. If not, reply T4 and stop.
-3. Read `run/result.json` from sub-stage 02.01 and resolve `preferred_counts_tsv`. If it is
-   absent or the file does not exist, reply T4 and stop.
+2. Resolve this sub-stage's declared inputs by type, from the workspace root:
+
+   ```bash
+   python3 _system/resolve_artifact.py --project projects/<title> --assay rnaseq_bulk \
+       --consumes counts_gene design
+   ```
+
+   It reports only artifacts of sub-stages whose `STATUS` is `COMPLETE`, so this subsumes the
+   old "check 02.01 completed" step. Exit 1 → reply T4 with its `missing` and
+   `declared_but_absent` entries and stop. Never fall back to searching for the file.
+3. Take the `counts_gene` path from its `resolved` map. Record the supplying sub-stage — it goes
+   in `HISTORY.md` at step 13, so every result can name where its inputs came from.
 4. Read `de.formula` and `de.contrast` from `_config/rnaseq_bulk.yaml`. If either is missing,
    reply T5 asking for it, and stop. Do not proceed with a default.
 5. Read `01_samplesheets/rnaseq_bulk_design.csv`. Check that every formula term is a column, that
@@ -124,8 +147,8 @@ filled. Add nothing else — in particular, no interpretation of the DE results.
 **T1 — Start**
 ```
 Sub-stage 02.02: bulk RNA-seq differential expression.
-Counts:   <preferred_counts_tsv>
-Design:   01_samplesheets/rnaseq_bulk_design.csv (<n> samples)
+Counts:   <resolved counts_gene path>  (type counts_gene, native, from <supplying sub-stage>)
+Design:   <resolved design path> (<n> samples)
 Formula:  <formula>
 Contrast: <contrast>
 ```
