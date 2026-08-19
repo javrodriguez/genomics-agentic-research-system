@@ -57,7 +57,12 @@ Set `strandedness: unstranded` explicitly in future configs to remove the ambigu
 
 - **Stage 03 is not implemented.** Its contract exists only so routing resolves to a file that
   stops cleanly instead of to an empty directory an agent would improvise around.
-- **Stage 02 has not been run under v0.2.0.** Stages 00 and 01 were exercised end to end on
+- **Stage 02 has not been run under v0.2.0, and there is no longer a project to run it on.**
+  `_system/gars-env.sh` was smoke-tested from its new location on 2026-08-19 and resolves skills,
+  java, nextflow, apptainer and the image cache correctly, so the substrate survived the rename.
+  What remains untested is a sub-stage's generated `submit.sh` and the wrapper invocation —
+  including whether the wrapper's preflight accepts a samplesheet built by the corrected
+  `os.path.abspath` path logic. That needs real FASTQs. Stages 00 and 01 were exercised end to end on
   2026-08-19 (below), but that run stops at the samplesheet. Whether the moved reference paths
   and the renamed `_system/` break a sub-stage's `submit.sh` is untested, and needs a cluster.
 - The artifact registry is implemented and backfilled, but no sub-stage has yet *resolved* an
@@ -212,13 +217,21 @@ Never pipe `module load` — it runs in a subshell and silently discards the `PA
 Invoke skills by interpreter path, not `conda run`, which can swallow output entirely.
 
 ### Key locations
-| Path | Contents |
-|---|---|
-| `bioinfo-research-system/gars/` | canonical workspace template (development happens here) |
-| `bioinfo-research-system/gars-test/` | live test workspace + `test-TALL` project |
-| `PROJECTS/gars/` | published portfolio repo (snapshot) |
-| `~/install/nf-core-pipelines/rnaseq-3.26.0` | pinned pipeline checkout |
-| `~/install/refs/ensembl-GRCh38-116/` | reference FASTA + GTF |
+| Path | Contents | State |
+|---|---|---|
+| `PROJECTS/gars/` | **canonical repo** — the template and all development | current |
+| `~/install/nf-core-pipelines/rnaseq-3.26.0` | pinned pipeline checkout | present |
+| `~/install/refs/ensembl-GRCh38-116/` | reference FASTA + GTF | present |
+| `~/install/refs/ensembl-GRCh38-116/derived/nf-core-rnaseq-3.26.0/` | derived-index cache, 59 GB, version-keyed | present, verified reusable |
+| `~/install/miniconda_clean/envs/{gars-bio,gars-nxf}` | the two conda environments | present |
+| `bioinfo-research-system/` | former working copy + `test-TALL` project | **deleted** |
+
+`bioinfo-research-system/` and the `test-TALL` project are gone (noticed 2026-08-19). This table
+previously called that tree canonical and this repo a "published snapshot", which contradicted
+`CLAUDE.md`. **This repo is canonical**; there is no second working copy. The consequence for
+testing: no project with real FASTQs currently exists, so stage 02 cannot be re-verified until
+one does. The derived-index cache and pinned pipeline survived, so that run is still ~40 minutes
+and 43 GB cheaper than a cold one.
 
 ### Checking a run
 ```bash
