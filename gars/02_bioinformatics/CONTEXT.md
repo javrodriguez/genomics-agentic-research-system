@@ -41,8 +41,15 @@ state from the presence of output files.
 
 **Artifact.** A file a sub-stage produced, declared by type in its `OUTPUTS.tsv`. The closed
 vocabulary, the `native`/`adapted` distinction and the resolution rule are defined in
-`_references/artifact_types.md`. Sub-stages find their inputs **by type, not by path**, so a
-change in where a producer writes does not break its consumers.
+`_references/artifact_types.md`, and implemented by `_system/resolve_artifact.py`. Sub-stages find
+their inputs **by type, not by path**, so a change in where a producer writes does not break its
+consumers.
+
+`resolve_artifact.py` searches only sub-stages whose `STATUS` reads `COMPLETE`, in reverse
+sub-stage order, and takes the first `native` match; `samplesheet` and `design` come from stage
+01. A sub-stage whose own contract asks for an adaptation it produced passes
+`--prefer-adapted-from <its own directory name>`. `--list` shows everything declared so far, which
+is the quickest way to answer "what does this project have".
 
 **Skill.** The executable implementation shipped by the installed `clawbio` package. GARS does
 not vendor skill code: this workspace holds contracts only, and a sub-stage directory contains a
@@ -78,11 +85,19 @@ and recorded act rather than an untracked edit.
    Do not resubmit.
 8. If that sub-stage is `FAILED`, reply T6 with its recorded error and stop. Resolving a failure
    is the user's decision, not an automatic retry.
-9. If that sub-stage is `NOT_STARTED`, check its `Consumes` column in the assay map. For each
-   type listed, resolve an artifact from the `OUTPUTS.tsv` of completed sub-stages, plus the
-   stage-01 outputs for `samplesheet` and `design`. If any required type cannot be resolved,
-   reply T7 naming the missing types and stop — never dispatch a sub-stage whose inputs are
-   absent, and never regenerate a missing artifact.
+9. If that sub-stage is `NOT_STARTED`, read its `Consumes` column from the assay map and resolve
+   every listed type:
+
+   ```bash
+   python3 _system/resolve_artifact.py --project projects/<title> --assay <Assay ID> \
+       --consumes <type> [<type> ...]
+   ```
+
+   Do not perform this search yourself — the reverse-order scan, the `native` preference and the
+   STATUS gate are the script's, and reading `OUTPUTS.tsv` by eye is how a consumer silently picks
+   a matrix reshaped for someone else's parser. Exit 1 → reply T7 naming its `missing` and
+   `declared_but_absent` entries and stop. **Never dispatch a sub-stage whose inputs are absent,
+   and never regenerate a missing artifact.**
 10. Read `02_bioinformatics/<Assay ID>/<NN_name>/CONTEXT.md` and execute that contract. It owns
     everything from here, including its own response templates.
 

@@ -57,12 +57,70 @@ FILES_HEADER = ["sample_id", "lane", "fastq_1", "fastq_2"]
 # wrappers (atacseq, chipseq, cutandrun, methylseq) each add an entry when their upstream
 # samplesheet contract has been read from that pipeline's own schema -- never guessed from memory.
 FORMATS = {
-    "rnaseq_bulk": [
-        ("sample", "sample_id"),
-        ("fastq_1", "fastq_1"),
-        ("fastq_2", "fastq_2"),
-        ("strandedness", "config:strandedness"),
-    ],
+    "rnaseq_bulk": {
+        "status": "active",
+        "source": "nf-core/rnaseq 3.26.0",
+        "columns": [
+            ("sample", "sample_id"),
+            ("fastq_1", "fastq_1"),
+            ("fastq_2", "fastq_2"),
+            ("strandedness", "config:strandedness"),
+        ],
+    },
+    # --- planned -------------------------------------------------------------------------------
+    # Columns below were read from each pipeline's own assets/schema_input.json at the pinned
+    # version on 2026-08-19, not reconstructed from memory. They are `planned`: stage 01 refuses
+    # them, because no wrapper exists and none has ever been exercised. Promoting one to `active`
+    # is part of building its wrapper -- together with adding the assay to the assay map, which is
+    # what actually gates a project being created for it.
+    "atacseq_bulk": {
+        "status": "planned",
+        "source": "nf-core/atacseq 2.1.2 assets/schema_input.json",
+        "columns": [
+            ("sample", "sample_id"),
+            ("fastq_1", "fastq_1"),
+            ("fastq_2", "fastq_2"),
+            ("replicate", "design:replicate"),
+        ],
+    },
+    "chipseq_bulk": {
+        "status": "planned",
+        "source": "nf-core/chipseq 2.1.0 assets/schema_input.json",
+        # `antibody` and `control` are optional in the schema but not optional biologically --
+        # without them the pipeline cannot call peaks against an input. Both need columns
+        # samples.csv does not yet carry, which stage 01 reports rather than emitting blank.
+        "columns": [
+            ("sample", "sample_id"),
+            ("fastq_1", "fastq_1"),
+            ("fastq_2", "fastq_2"),
+            ("replicate", "design:replicate"),
+            ("antibody", "design:antibody"),
+            ("control", "design:control"),
+        ],
+    },
+    "cutandrun": {
+        "status": "planned",
+        "source": "nf-core/cutandrun 3.2.2 assets/schema_input.json",
+        # Note the different shape: `group` rather than `sample`, and `control` is REQUIRED by the
+        # schema. The control points at the IgG sample, where chipseq's points at input chromatin
+        # -- same column, different biological referent, which is why validation stays per-assay.
+        "columns": [
+            ("group", "design:group"),
+            ("replicate", "design:replicate"),
+            ("fastq_1", "fastq_1"),
+            ("fastq_2", "fastq_2"),
+            ("control", "design:control"),
+        ],
+    },
+    "methylseq": {
+        "status": "planned",
+        "source": "nf-core/methylseq 4.2.0 assets/schema_input.json",
+        "columns": [
+            ("sample", "sample_id"),
+            ("fastq_1", "fastq_1"),
+            ("fastq_2", "fastq_2"),
+        ],
+    },
 }
 
 # Allowed values and defaults for any `config:` column above, keyed by config key.
@@ -157,13 +215,21 @@ def validate_assay(project, assay):
     out = {"failures": [], "exclusions": [], "counts": {}}
     fails = out["failures"]
 
-    fmt = FORMATS.get(assay)
-    if fmt is None:
+    spec = FORMATS.get(assay)
+    if spec is None:
+        active = sorted(a for a, s in FORMATS.items() if s["status"] == "active")
         return {**out, "fatal": True, "failures": [fail(
             "unsupported_assay",
-            "no samplesheet format is registered for %r. Registered: %s. An assay's samplesheet "
-            "is its pipeline's contract and is never inherited from another assay."
-            % (assay, ", ".join(sorted(FORMATS)) or "none"))]}
+            "no samplesheet format is registered for %r. Active: %s. An assay's samplesheet is "
+            "its pipeline's contract and is never inherited from another assay."
+            % (assay, ", ".join(active) or "none"))]}
+    if spec["status"] != "active":
+        return {**out, "fatal": True, "failures": [fail(
+            "unsupported_assay",
+            "the samplesheet format for %r is registered as %r, read from %s but never exercised. "
+            "No wrapper exists for it. Promoting it to active is part of building that wrapper."
+            % (assay, spec["status"], spec["source"]))]}
+    fmt = spec["columns"]
 
     data_dir = project / "00_data" / assay
     samples, err = read_csv(data_dir / "samples.csv")
@@ -418,8 +484,11 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     if args.list_formats:
-        return emit({"ok": True, "formats": {a: [{"column": c, "source": s} for c, s in f]
-                                             for a, f in sorted(FORMATS.items())},
+        return emit({"ok": True,
+                     "formats": {a: {"status": s["status"], "source": s["source"],
+                                     "columns": [{"column": c, "from": src}
+                                                 for c, src in s["columns"]]}
+                                 for a, s in sorted(FORMATS.items())},
                      "config_rules": {k: {"values": sorted(v["values"]), "default": v["default"]}
                                       for k, v in sorted(CONFIG_RULES.items())}}, EXIT_OK)
 

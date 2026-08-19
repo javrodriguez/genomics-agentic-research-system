@@ -35,10 +35,10 @@ Skills are **not vendored**. They ship with the installed `clawbio` package and 
 sub-stage directory holds a `CONTEXT.md`, never a `.py`. `_system/gars-env.sh` resolves them at
 runtime as `$GARS_SKILLS`.
 
-**Derived artifacts are computed by code, not written by you.** Samplesheets, design tables and
-the project index come from `_system/` scripts. A contract that names one is telling you to run
-it and report what it returns — not to reproduce its work. Stage 01's helper needs no conda
-environment; stage 02's skills do.
+**Derived artifacts are computed by code, not written by you.** Samplesheets, design tables, the
+project index and artifact resolution come from `_system/` scripts. A contract that names one is
+telling you to run it and report what it returns — not to reproduce its work. The stage 00/01
+helpers and the resolver need no conda environment; stage 02's skills do.
 
 ## Using this workspace
 

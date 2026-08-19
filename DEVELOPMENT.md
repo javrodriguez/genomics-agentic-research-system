@@ -57,20 +57,22 @@ Set `strandedness: unstranded` explicitly in future configs to remove the ambigu
 
 - **Stage 03 is not implemented.** Its contract exists only so routing resolves to a file that
   stops cleanly instead of to an empty directory an agent would improvise around.
-- **Stage 02 has not been run under v0.2.0, and there is no longer a project to run it on.**
-  `_system/gars-env.sh` was smoke-tested from its new location on 2026-08-19 and resolves skills,
-  java, nextflow, apptainer and the image cache correctly, so the substrate survived the rename.
-  What remains untested is a sub-stage's generated `submit.sh` and the wrapper invocation —
-  including whether the wrapper's preflight accepts a samplesheet built by the corrected
-  `os.path.abspath` path logic. That needs real FASTQs. Stages 00 and 01 were exercised end to end on
+- **Stage 02 has passed preflight under v0.2.0 but has never executed a pipeline on it.**
+  02.01's `--check` ran clean on 2026-08-19 against a synthetic project (below). What remains
+  untested is an actual Nextflow run: the generated `submit.sh`, Slurm dispatch, the resume guard,
+  and every exit gate that depends on real results. That needs real FASTQs and a cluster
+  allocation.
+- **The artifact resolver has not run inside a live sub-stage handoff.** It is implemented and
+  tested against the worked example, but 02.02 has still never been handed a path it resolved
+  itself at run time. Stages 00 and 01 were exercised end to end on
   2026-08-19 (below), but that run stops at the samplesheet. Whether the moved reference paths
   and the renamed `_system/` break a sub-stage's `submit.sh` is untested, and needs a cluster.
 - The artifact registry is implemented and backfilled, but no sub-stage has yet *resolved* an
   input through `OUTPUTS.tsv` at run time — 02.02 was handed its counts path directly.
 - Only one assay exists. Whether the assay map, artifact vocabulary and router generalise, or
   quietly encode bulk-RNA-seq assumptions, is untested. Stage 01's emitter is no longer one of
-  those assumptions — it is table-driven and refuses an unregistered assay — but no non-RNA format
-  has been registered, so the mechanism is unproven against a real second assay.
+  those assumptions — it is table-driven, and the four target assays' real column sets are now
+  registered as `planned` — but none has been promoted to `active` or exercised.
 
 ## Next Steps
 
@@ -78,16 +80,13 @@ Priority order. The two blockers on assay expansion — where wrappers live, and
 samplesheet emitter — were both cleared on 2026-08-19, so wrapper #1 is now unblocked.
 
 1. **Build wrapper #1, `nfcore-atacseq-wrapper`**, in `_system/wrappers/`
-   ([0012](docs/decisions/0012-gars-authored-wrappers-live-in-system.md)). Both blockers are now
-   cleared. Read nf-core/atacseq 2.1.2's own samplesheet schema and register it in `FORMATS`
-   rather than reconstructing it from memory, add its row to the assay map, and write its
-   sub-stage contract against the requirements in
-   [assay-expansion.md](docs/assay-expansion.md) §6.2b.
-2. **Re-verify stage 02 under v0.2.0**, whenever a project with real FASTQs exists. The substrate
-   is verified (`gars-env.sh` resolves correctly from `_system/`); what is untested is a
-   sub-stage's generated `submit.sh` and whether the wrapper's preflight accepts a samplesheet
-   built by the corrected `os.path.abspath` path logic. Cheapest form is 02.01's `--check`
-   preflight, which is minutes rather than hours.
+   ([0012](docs/decisions/0012-gars-authored-wrappers-live-in-system.md)). Its samplesheet columns
+   are already registered as `planned` from nf-core/atacseq 2.1.2's own schema; building the
+   wrapper promotes them to `active`, adds the assay-map row, and writes the sub-stage contract
+   against [assay-expansion.md](docs/assay-expansion.md) §6.2b.
+2. **Run one real pipeline under v0.2.0**, whenever real FASTQs and an allocation exist.
+   Preflight passes; execution is the untested half. The derived-index cache survives, so the run
+   is ~40 minutes and 43 GB cheaper than a cold one.
 3. **Implement `03_custom_analysis`.** Replace the stub's Process with a real one. It is the
    natural first consumer of the artifact registry, which would also close the "never resolved an
    input by type at run time" gap above.
@@ -95,8 +94,10 @@ samplesheet emitter — were both cleared on 2026-08-19, so wrapper #1 is now un
    [0008](docs/decisions/0008-assay-expansion-wrap-nfcore.md) and
    [assay-expansion.md](docs/assay-expansion.md). chipseq additionally needs stage 00's
    `samples.csv` header to become assay-aware, so it can carry a `control` column.
-5. **Report the `rnaseq-de` defects upstream**, as ClawBio#333 was. Three separate breaks in a
-   declared chaining pair, one of them silent.
+5. **File the `rnaseq-de` defect report**, drafted at
+   [docs/upstream/clawbio-rnaseq-de-defects.md](docs/upstream/clawbio-rnaseq-de-defects.md).
+   Three breaks in a declared chaining pair, one silent. Needs a human to post it, as ClawBio#333
+   was.
 
 **Completed 2026-08-12/14:** repo/working-copy drift resolved (repo canonical); skills
 de-vendored and resolved from installed `clawbio`; template version stamping via
@@ -201,9 +202,38 @@ them. An assay with no entry is **refused** rather than silently given the RNA l
 the actual hazard: a samplesheet with the wrong columns can validate upstream and mean something
 else. Output for `rnaseq_bulk` is byte-identical to before the refactor.
 
-Only `rnaseq_bulk` is registered. The four planned assays' columns were deliberately **not**
-guessed — the research names the ChIP/CUT&RUN `control` requirement but no verified nf-core
-headers, so each format gets registered when that pipeline's schema is read from the pipeline.
+**All four target assays' columns are now registered**, read from each pipeline's own
+`assets/schema_input.json` at its pinned version rather than reconstructed from memory, and
+marked `planned`: stage 01 refuses them, because no wrapper exists and none has been exercised.
+Promoting one to `active` is part of building its wrapper. The schemas held surprises worth having
+caught early — cutandrun uses `group` rather than `sample` and makes `control` **required**, and
+atacseq requires `replicate`.
+
+**Completed 2026-08-19 — stage 02 preflight passes under v0.2.0.** `nfcore-rnaseq-wrapper --check`
+ran clean against a synthetic 2-sample project: `"ok": true`, `unknown_columns: []`, both samples
+recognised, the 4 samplesheet rows correctly merged into 2 samples as technical replicates, and
+`strandedness` carried through from `_config/`. This closes the largest open question about the
+restructure — the moved reference paths, the renamed `_system/`, and the corrected
+`os.path.abspath` samplesheet all survive contact with the real wrapper.
+
+*Worth recording precisely:* the wrapper's own validated samplesheet
+(`reproducibility/samplesheet.valid.csv`) contains the **source** paths, because nf-core resolves
+symlinks itself. That does not undermine the `abspath` fix — GARS's samplesheet is the project's
+record of what it registered, and what a downstream tool dereferences at run time is its own
+business — but it does mean the fix's benefit is provenance, not path isolation.
+
+**Completed 2026-08-19 — artifact resolution is code.** `_system/resolve_artifact.py` implements
+the rule that was prose in stage 02's router step 9: search `COMPLETE` sub-stages in reverse
+order, prefer `native`, fall back to an `adapted` artifact only when a contract names its own, and
+stop rather than regenerate. Tested against the worked example: the `native` preference correctly
+skips 02.02's `adapted` `counts_gene` in favour of 02.01's, `--prefer-adapted-from` overrides it,
+`STATUS` gates everything, a declared-but-absent file is reported separately from a missing type,
+and a malformed `OUTPUTS.tsv` row is reported rather than silently skipped.
+
+**Drafted, not filed:** the upstream `rnaseq-de` defect report, at
+[docs/upstream/clawbio-rnaseq-de-defects.md](docs/upstream/clawbio-rnaseq-de-defects.md). Filing
+creates a public issue on a third-party project under a maintainer's name, which is a person's
+call. It is ready to paste.
 
 ---
 

@@ -90,6 +90,10 @@ Never hand-edit these; run the script instead.
 | a project's `00_data/*/files.csv`, `samples.csv` | `python3 gars/_system/stage00_register.py finalize --project <dir>` |
 | a project's `01_samplesheets/*.csv` | `python3 gars/_system/stage01_samplesheet.py --project <dir>` |
 
+Two more `_system/` helpers compute rather than generate: `resolve_artifact.py` (stage 02's
+input resolution) and `stage01_samplesheet.py --list-formats` (the registered per-assay
+samplesheet formats).
+
 ## Releasing
 
 Bump `gars/_references/VERSION` when the template changes shape — stage 00 stamps it into every

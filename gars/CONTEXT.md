@@ -67,7 +67,7 @@ Project-level configuration lives in `projects/<project_title>/_config/` and is 
 `config_schema.md`. Stages read it; nothing writes it automatically.
 
 `_templates/` holds the stamps stages copy — see `_templates/CONTEXT.md`.
-`_system/` holds `gars-env.sh` (the execution environment), `stage00_register.py` and
-`stage01_samplesheet.py` (the registrar and the samplesheet emitter) and
+`_system/` holds `gars-env.sh` (the execution environment), the stage helpers
+(`stage00_register.py`, `stage01_samplesheet.py`, `resolve_artifact.py`) and
 `build_projects_index.sh`. Stage contracts orchestrate these; they do not duplicate what the
 scripts compute.
