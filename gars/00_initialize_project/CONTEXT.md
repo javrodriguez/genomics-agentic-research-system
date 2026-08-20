@@ -73,6 +73,13 @@ This is normalisation, **not fuzzy matching**: no edit distance, no substring, n
 onto two assays, the script refuses and asks for the Assay ID rather than choosing — a wrong assay
 silently builds the wrong pipeline.
 
+**Menu number.** The `01`, `02` … the `assays` subcommand hands out. **Presentation only.** They
+are assigned from a deterministic sort and regenerated on every call, so the numbering offered is
+always the numbering `--select` resolves against — but adding an assay to the map renumbers them.
+A number must never be written to disk, recorded in `HISTORY.md`, used as a directory name, or
+carried across turns. The Assay ID is the durable identifier; convert as soon as the user answers,
+and refer to assays by ID and name from then on.
+
 **Raw NGS file.** A file matching `*.fastq.gz`, `*.fq.gz`, `*.fastq`, or `*.fq` **at the top level
 only** of the given directory. Everything else is excluded and reported as excluded.
 
@@ -114,7 +121,8 @@ between each:
 
 | Subcommand | Does | Backs |
 |---|---|---|
-| `create` | sanitize title, validate assays, copy the stamp, make `raw/` dirs | T2, T3 |
+| `assays` | offer the supported assays; resolve the user's selection | T3 |
+| `create` | sanitize title, copy the stamp, make `raw/` dirs | T3b |
 | `inspect` | read-only scan of one source directory | T4a |
 | `link` | symlink one assay's raw files | T4b |
 | `finalize` | `files.csv`, `samples.csv`, placeholders, exit gate | T6, T9 |
@@ -131,35 +139,55 @@ between each:
 ## Process
 1. Activated when the user says they want to start a new project. Reply T1.
 2. Receive the project title. Reply T2 with it.
-3. Reply T3, asking for the assay types.
-4. Receive the assay types. Run, from the workspace root:
+3. **Always offer the menu, whether or not the user named an assay.** Run:
 
    ```bash
-   python3 _system/stage00_register.py create --title "<title>" --assays "<assay>" ["<assay>" ...]
+   python3 _system/stage00_register.py assays
    ```
 
-   It needs no conda environment. Pass the user's phrases through unchanged — resolving them to
-   Assay IDs is the script's job, and guessing on its behalf is how the wrong assay gets created.
-5. Exit 2 with `template: T7` → the project exists. Reply T7 and wait for a different title.
-   Nothing was created.
-6. Exit 2 with `template: T8` → no requested assay is supported. Reply T8 using its `assays` and
-   `supported_assays`. Nothing was created. Stop.
-7. Exit 0 → the stamp is copied and `00_data/<Assay ID>/raw/` exists for each supported assay.
-   Reply T3's validation table, then ask for the raw data path of the **first** supported assay.
-   Handle assays strictly one at a time, never asking for the next until the current is resolved.
-8. Receive a path. Inspect it, writing nothing:
+   Reply T3, rendering every entry of its `assays` array. Do this even when the request already
+   names an assay unambiguously — the menu is what makes the set of choices visible, and this is
+   the last moment before any directory exists when a correction is free. If the user did name
+   one, say which menu entry it matches so confirming costs one word.
+4. Receive the selection and resolve it:
+
+   ```bash
+   python3 _system/stage00_register.py assays --select "<exactly what the user replied>"
+   ```
+
+   Pass their reply through **unchanged**. It accepts menu numbers, Assay IDs and assay names, in
+   any mixture; resolving is the script's job, and doing it yourself is how the wrong assay gets
+   created.
+5. Exit 2 → reply T3 again, naming its `invalid` entries, and wait. Never proceed on a partial
+   selection, and never substitute the entry you think was meant.
+6. Exit 0 → take its **`assay_ids`**. Create the project:
+
+   ```bash
+   python3 _system/stage00_register.py create --title "<title>" --assays <assay_id> [<assay_id> ...]
+   ```
+
+   Pass Assay IDs, **never menu numbers**. The numbers are a display convenience regenerated on
+   every call; an assay added to the map renumbers them, so a number that reaches disk or a later
+   turn means something else.
+7. Exit 2 with `template: T7` → the project exists. Reply T7 and wait for a different title.
+   Nothing was created. Exit 2 with `template: T8` → reply T8; nothing was created; stop.
+8. Exit 0 → the stamp is copied and `00_data/<Assay ID>/raw/` exists for each assay. Reply T3b
+   confirming what was created **by Assay ID and name**, then ask for the raw data path of the
+   **first** assay. Handle assays strictly one at a time, never asking for the next until the
+   current is resolved.
+9. Receive a path. Inspect it, writing nothing:
 
    ```bash
    python3 _system/stage00_register.py inspect --assay <Assay ID> --source <path>
    ```
 
-9. Exit 2 → reply T5 with its `error`. Accept either a replacement path or `skip`. If the error
+10. Exit 2 → reply T5 with its `error`. Accept either a replacement path or `skip`. If the error
    names unmatched filenames, show them, ask the user how sample IDs should be read, and re-run
    `inspect` with `--sample-id-pattern '<their answer as a regex with named groups sample, read
    and optionally lane>'`. Never compose that pattern from your own reading of the filenames.
-10. Exit 0 → reply T4a with its counts and `sample_ids`, and **ask the user to confirm before
+11. Exit 0 → reply T4a with its counts and `sample_ids`, and **ask the user to confirm before
     anything is written**. Do not link yet.
-11. On confirmation, link:
+12. On confirmation, link:
 
     ```bash
     python3 _system/stage00_register.py link --project projects/<title> --assay <Assay ID> --source <path>
@@ -167,9 +195,9 @@ between each:
 
     Never add `--force`. Exit 1 → report its `error` and stop; the raw directory is already
     populated and narrowing an existing project is not this stage's to do.
-12. Exit 0 → reply T4b with its `linked` count.
-13. Repeat steps 8-12 for each remaining supported assay.
-14. When every assay is linked, finalize:
+13. Exit 0 → reply T4b with its `linked` count.
+14. Repeat steps 9-13 for each remaining assay.
+15. When every assay is linked, finalize:
 
     ```bash
     python3 _system/stage00_register.py finalize --project projects/<title>
@@ -177,10 +205,10 @@ between each:
 
     Add the same `--sample-id-pattern` if one was used at step 9. This writes `files.csv` and
     `samples.csv`, substitutes the stamp's placeholders, and runs the exit gate.
-15. Exit 1 or 3 → reply T9 listing every entry of its `failures` array. Do not claim completion,
+16. Exit 1 or 3 → reply T9 listing every entry of its `failures` array. Do not claim completion,
     do not repair anything, and do not delete what was created — the user decides whether to fix
     or discard.
-16. Exit 0 → reply T6 using its `assays` map and `template_version`.
+17. Exit 0 → reply T6 using its `assays` map and `template_version`.
 
 ## Response Format
 Every message you send in this stage is one of the templates below, with placeholders filled.
@@ -203,14 +231,40 @@ Which assay types will this project include?
 Supported: <Assay column values>
 ```
 
-**T3 — Assay validation**
-```
-| Requested | Status | Data directory |
-|---|---|---|
-| <name> | Supported / Not supported | 00_data/<Assay ID>/ or - |
+**T3 — Assay menu**
 
+Sent whether or not the user named an assay. Render one block per entry of the script's `assays`
+array, in the order given. The sub-stage list comes from that entry's `substages` and is the
+pipeline that assay would run — do not describe it in your own words, and do not add assays,
+capabilities, or timelines that are not in the array.
+
+```
+Supported assays:
+
+  01  Bulk RNA-seq  (rnaseq_bulk)
+      pipeline: 01_nfcore-rnaseq-wrapper -> 02_rnaseq-de
+      skills:   nfcore-rnaseq-wrapper, rnaseq-de
+
+<repeat per entry>
+
+<if the request already named one: "Your request matches 01.">
+<if re-asking after an unresolved reply: "Could not resolve: <invalid>.">
+
+Reply with a comma-separated list of IDs (e.g. `01` or `01,02`). Assay names work too.
+```
+
+The numbers are for this message only. Everything after this point — the confirmation, the
+directories, `HISTORY.md` — uses the Assay ID.
+
+**T3b — Project created**
+```
 Created: projects/<title>/
-Raw data path for <Assay ID>?
+
+| Assay | Assay ID | Data directory |
+|---|---|---|
+| <assay> | <assay_id> | 00_data/<assay_id>/ |
+
+Raw data path for <assay_id>?
 ```
 
 **T4a — Path inspected, awaiting confirmation**

@@ -13,7 +13,8 @@ environment, unlike stage 02.
 
 The four subcommands are the contract's own phases, so a conversation turn sits between each:
 
-    create    steps 2-7    sanitize the title, validate assays, copy the stamp
+    assays    steps 3-6    offer the supported assays; resolve a selection -> backs T3
+    create    step  7      sanitize the title, validate assays, copy the stamp
     inspect   step  9      read-only scan of one source directory   -> backs T4a
     link      step  12     symlink one assay's raw files            -> backs T4b
     finalize  steps 14-19  metadata, placeholders, exit gate        -> backs T6 / T9
@@ -77,7 +78,7 @@ def read_assay_map(workspace):
     if not path.is_file():
         return None, "assay map not found at %s" % path
 
-    assays, in_table = {}, False
+    catalog, in_table = {}, False
     for line in path.read_text(encoding="utf-8").splitlines():
         stripped = line.strip()
         if not stripped.startswith("|"):
@@ -93,11 +94,34 @@ def read_assay_map(workspace):
             continue
         if set("".join(cells[:2])) <= set("-: "):
             continue           # the header separator row
-        assays.setdefault(cells[1], cells[0])
+        name, aid = cells[0], cells[1]
+        entry = catalog.setdefault(aid, {"assay": name, "substages": []})
+        # One row per sub-stage, in the order the map lists them -- that order IS the pipeline.
+        if len(cells) >= 5 and cells[3]:
+            entry["substages"].append({"substage": cells[3], "skill": cells[4]})
 
-    if not assays:
+    if not catalog:
         return None, "assay map has no table headed `| Assay | Assay ID |`"
-    return assays, None
+    return catalog, None
+
+
+def catalog_names(catalog):
+    """{assay_id: display name} -- what the matching and placeholder code needs."""
+    return {aid: e["assay"] for aid, e in catalog.items()}
+
+
+def menu(catalog):
+    """The offer list. Numbers are PRESENTATION ONLY.
+
+    They are assigned from a deterministic sort of the Assay IDs and are regenerated on every
+    call, so the numbering handed out is always the numbering `--select` resolves against. They
+    are never written to disk, never recorded in HISTORY.md, and never used as a directory name:
+    add an assay and `02` becomes a different thing, so a persisted number would silently rot.
+    The Assay ID is the durable identifier and the only one that leaves this function.
+    """
+    return [{"n": "%02d" % i, "assay": catalog[aid]["assay"], "assay_id": aid,
+             "substages": catalog[aid]["substages"]}
+            for i, aid in enumerate(sorted(catalog), start=1)]
 
 
 def normalize_assay(text):
@@ -209,6 +233,88 @@ def units_to_rows(units, assay_id):
     return rows
 
 
+# --- assays ---
+
+def cmd_assays(args, workspace):
+    """Offer the supported assays, and resolve a selection back to Assay IDs.
+
+    Two modes, one source of truth. Without --select it returns the menu the agent renders; with
+    --select it resolves what the user picked. Both derive from the same `menu()` call, so the
+    numbering offered cannot drift from the numbering accepted.
+
+    A selection may name a number (`01`), an Assay ID, or a display name -- whatever the user
+    typed. Everything resolves to Assay IDs, and only Assay IDs are returned.
+    """
+    result = {"command": "assays", "ok": False}
+    catalog, err = read_assay_map(workspace)
+    if err:
+        result["error"] = err
+        return emit(result, EXIT_USAGE)
+
+    offered = menu(catalog)
+    result["assays"] = offered
+
+    if args.select is None:
+        result["ok"] = True
+        return emit(result, EXIT_OK)
+
+    by_n = {e["n"]: e for e in offered}
+    by_n.update({e["n"].lstrip("0"): e for e in offered})   # accept `1` as well as `01`
+    names = catalog_names(catalog)
+
+    def look_up(tok):
+        hit = by_n.get(tok)
+        if hit is not None:
+            return hit
+        # Not a menu number -- fall back to name/ID matching, so a user who typed the assay
+        # instead of picking a number is not punished for it.
+        match = resolve_assays([tok], names)[0]
+        if not match["supported"]:
+            return None
+        return next((e for e in offered if e["assay_id"] == match["assay_id"]), None)
+
+    def try_split(tokens):
+        hits, bad = [], []
+        for tok in tokens:
+            hit = look_up(tok)
+            if hit is None:
+                bad.append(tok)
+            elif hit["assay_id"] not in [h["assay_id"] for h in hits]:
+                hits.append(hit)
+        return hits, bad
+
+    # Commas first, because the prompt asks for a comma-separated list and an assay NAME may
+    # contain spaces -- splitting "Bulk RNA-seq" on whitespace tore it into two invalid tokens.
+    # Only if that fails completely, and there were no commas, retry on whitespace so that
+    # "01 02" still works.
+    result["selected"], result["invalid"] = [], []
+    comma_tokens = [t.strip() for t in args.select.split(",") if t.strip()]
+    if not comma_tokens:
+        result["assay_ids"] = []
+        result["error"] = "empty selection"
+        result["template"] = "T3"
+        return emit(result, EXIT_REFUSED)
+
+    selected, invalid = try_split(comma_tokens)
+    if invalid and "," not in args.select:
+        ws_selected, ws_invalid = try_split(args.select.split())
+        if not ws_invalid:
+            selected, invalid = ws_selected, ws_invalid
+
+    result["selected"] = selected
+    result["invalid"] = invalid
+    # The only thing the caller should pass onward. Numbers stop here.
+    result["assay_ids"] = [s["assay_id"] for s in selected]
+    if invalid or not selected:
+        result["template"] = "T3"
+        result["error"] = ("could not resolve: %s" % ", ".join(invalid)) if invalid \
+            else "nothing selected"
+        return emit(result, EXIT_REFUSED)
+
+    result["ok"] = True
+    return emit(result, EXIT_OK)
+
+
 # --- create -------------------------------------------------------------------------------------
 
 def cmd_create(args, workspace):
@@ -227,10 +333,11 @@ def cmd_create(args, workspace):
         result["error"] = "projects/%s/ already exists; nothing was created or modified" % title
         return emit(result, EXIT_REFUSED)
 
-    assay_map, err = read_assay_map(workspace)
+    catalog, err = read_assay_map(workspace)
     if err:
         result["error"] = err
         return emit(result, EXIT_USAGE)
+    assay_map = catalog_names(catalog)
 
     validation = resolve_assays(args.assays, assay_map)
     result["assays"] = validation
@@ -366,10 +473,11 @@ def cmd_finalize(args, workspace):
         result["failures"].append("project does not exist: %s" % project)
         return emit(result, EXIT_USAGE)
 
-    assay_map, err = read_assay_map(workspace)
+    catalog, err = read_assay_map(workspace)
     if err:
         result["failures"].append(err)
         return emit(result, EXIT_USAGE)
+    assay_map = catalog_names(catalog)
 
     data_root = project / "00_data"
     assays = sorted(d.name for d in data_root.iterdir() if d.is_dir())
@@ -505,6 +613,10 @@ def main(argv=None):
                     help="workspace root (default: the parent of _system/)")
     sub = ap.add_subparsers(dest="cmd")
 
+    a = sub.add_parser("assays", help="offer the supported assays; resolve a selection")
+    a.add_argument("--select", default=None,
+                   help="comma-separated menu numbers, Assay IDs or names; omit to just list")
+
     c = sub.add_parser("create", help="sanitize the title, validate assays, copy the stamp")
     c.add_argument("--title", required=True)
     c.add_argument("--assays", required=True, nargs="+",
@@ -532,7 +644,7 @@ def main(argv=None):
     if not args.cmd:
         ap.print_help(sys.stderr)
         return EXIT_USAGE
-    return {"create": cmd_create, "inspect": cmd_inspect,
+    return {"assays": cmd_assays, "create": cmd_create, "inspect": cmd_inspect,
             "link": cmd_link, "finalize": cmd_finalize}[args.cmd](args, args.workspace)
 
 

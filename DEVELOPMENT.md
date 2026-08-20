@@ -246,6 +246,29 @@ resolving to the wrong assay, and it did — but the failure mode it produced wa
 correct intent and no way to express it.** Refusing a near-miss is only safe when the refusal
 tells the user what would have worked.
 
+**Changed 2026-08-19 — stage 00 offers a menu instead of parsing a phrase.** Normalised matching
+(above) fixed one spelling, but the shape was still wrong: the user had to already know what to
+type, and a miss produced a refusal listing one column. Stage 00 now **always** offers the
+supported assays — numbered, with each one's pipeline and skills derived from the assay map — and
+asks for a comma-separated selection, whether or not the request already named an assay. `assays`
+and `assays --select` are one subcommand, so the numbering handed out is by construction the
+numbering resolved against.
+
+**The numbers are presentation only, and this is load-bearing.** They come from a deterministic
+sort and are regenerated per call, so adding an assay renumbers them; a number written to disk or
+carried across a turn would silently mean something else later. The script returns `assay_ids`,
+the contract passes only those to `create`, and the confirmation echoes ID and name. The number
+never leaves the message it appeared in.
+
+Nothing new is authored for the menu: the pipeline and skills come from rows the assay map already
+has. A prose description column was deliberately not added — "Bulk RNA-seq" needs none, and the
+right moment for one is when an assay actually needs disambiguating.
+
+`--select` accepts menu numbers, Assay IDs and assay names in any mixture. It splits on commas
+first, because an assay *name* contains spaces: an early version tore `Bulk RNA-seq` into two
+invalid tokens. Whitespace splitting is retried only when the input had no commas and the comma
+parse failed entirely, so `01 02` still works.
+
 **Drafted, not filed:** the upstream `rnaseq-de` defect report, at
 [docs/upstream/clawbio-rnaseq-de-defects.md](docs/upstream/clawbio-rnaseq-de-defects.md). Filing
 creates a public issue on a third-party project under a maintainer's name, which is a person's
