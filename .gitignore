@@ -27,6 +27,14 @@ gars/tools/
 # Third-party skill bundles kept locally for reference, not part of GARS
 skills_dev/
 
+# Workspace copies and clones made INSIDE the repo directory. `gars/` is a template that gets
+# copied; when the copy lands here it is a working area, never repo content -- and it usually
+# carries its own .git, which `git add -A` turns into a broken submodule pointer.
+# Keep workspaces outside the repo. This is the backstop for when they are not.
+gars-test*/
+gars-workspace*/
+genomics-agentic-research-system/
+
 .DS_Store
 __pycache__/
 *.pyc
