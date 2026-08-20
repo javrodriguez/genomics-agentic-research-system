@@ -34,6 +34,9 @@ OUT="$PROJECTS/_index.md"
         found=1
 
         version=$(sed -n 's/^| Template version | \(.*\) |$/\1/p' "$p/CONTEXT.md" 2>/dev/null | head -1)
+        # An unsubstituted {{placeholder}} means stage 00's finalize never completed. Show it as
+        # unknown rather than echoing the raw template text into the index.
+        case "$version" in *"{{"*) version="?" ;; esac
         version="${version:-?}"
 
         assays=$(find "$p/00_data" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | sort)

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Created | 2026-08-18 |
-| Template version | v0.2.0 |
+| Template version | v0.3.0 |
 
 ## Assays
 
