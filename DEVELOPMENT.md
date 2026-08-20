@@ -230,6 +230,22 @@ skips 02.02's `adapted` `counts_gene` in favour of 02.01's, `--prefer-adapted-fr
 `STATUS` gates everything, a declared-but-absent file is reported separately from a missing type,
 and a malformed `OUTPUTS.tsv` row is reported rather than silently skipped.
 
+**Fixed 2026-08-19 — assay matching refused punctuation variants.** The first real user prompt
+against v0.2.0 said `rnaseq-bulk` and was refused: matching was exact after case-folding, so a
+hyphen where the Assay ID has an underscore was a dead end. The reply then listed only the display
+name (`Bulk RNA-seq`), never the ID, so there was nothing to correct against.
+
+Matching now normalises — case-folded, non-alphanumerics dropped — so `rnaseq-bulk`,
+`rnaseq_bulk`, `RNAseq Bulk`, `Bulk RNA-seq` and `bulk rna seq` all resolve. It is normalisation,
+not fuzzy matching: `rnaseq` alone, `atac-seq` and the skill name `rnaseq-de` are all still
+refused, and a phrase normalising onto two assays is refused as ambiguous rather than guessed.
+T8 now renders both columns.
+
+The lesson generalises past this one bug: **the strict-matching rule was written to prevent
+resolving to the wrong assay, and it did — but the failure mode it produced was a user with a
+correct intent and no way to express it.** Refusing a near-miss is only safe when the refusal
+tells the user what would have worked.
+
 **Drafted, not filed:** the upstream `rnaseq-de` defect report, at
 [docs/upstream/clawbio-rnaseq-de-defects.md](docs/upstream/clawbio-rnaseq-de-defects.md). Filing
 creates a public issue on a third-party project under a maintainer's name, which is a person's

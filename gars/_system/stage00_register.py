@@ -100,19 +100,45 @@ def read_assay_map(workspace):
     return assays, None
 
 
-def resolve_assays(requested, assay_map):
-    """Match each request against the Assay column or the Assay ID column, case-insensitively.
+def normalize_assay(text):
+    """Case-fold and drop every non-alphanumeric character.
 
-    Anything else is unsupported. Matching is exact after case folding -- no fuzzy matching, so a
-    near-miss is reported rather than silently resolved to the wrong assay.
+    `rnaseq-bulk`, `rnaseq_bulk`, `RNAseq Bulk` and `rnaseq bulk` all normalise to `rnaseqbulk`;
+    `Bulk RNA-seq` and `bulk rna seq` both to `bulkrnaseq`. This is normalisation, NOT fuzzy
+    matching -- no edit distance, no substring, no stemming. Two different assays cannot collide
+    unless their names differ only in punctuation, which `resolve_assays` refuses outright rather
+    than guessing between.
+
+    The strict version of this rejected `rnaseq-bulk` -- one character away from the Assay ID it
+    obviously meant -- and told the user only that "Bulk RNA-seq" was supported, without ever
+    showing the ID. Refusing a punctuation variant is not safety, it is a dead end.
     """
-    by_id = {aid.lower(): aid for aid in assay_map}
-    by_name = {name.lower(): aid for aid, name in assay_map.items()}
+    return "".join(c for c in text.lower() if c.isalnum())
+
+
+def resolve_assays(requested, assay_map):
+    """Match each request against the Assay column or the Assay ID column, after normalisation.
+
+    Returns one entry per request. An unmatched request is reported, never resolved to a
+    neighbour: the point of refusing is that a wrong assay silently creates the wrong pipeline.
+    """
+    index = {}
+    for aid, name in assay_map.items():
+        for form in (aid, name):
+            index.setdefault(normalize_assay(form), set()).add(aid)
+
     out = []
     for req in requested:
-        key = req.strip().lower()
-        aid = by_id.get(key) or by_name.get(key)
-        out.append({"requested": req, "assay_id": aid, "supported": aid is not None})
+        key = normalize_assay(req)
+        hits = index.get(key, set())
+        if len(hits) == 1:
+            out.append({"requested": req, "assay_id": sorted(hits)[0], "supported": True})
+        elif len(hits) > 1:
+            out.append({"requested": req, "assay_id": None, "supported": False,
+                        "ambiguous_between": sorted(hits),
+                        "note": "matches more than one assay; name it by Assay ID"})
+        else:
+            out.append({"requested": req, "assay_id": None, "supported": False})
     return out
 
 
@@ -208,7 +234,9 @@ def cmd_create(args, workspace):
 
     validation = resolve_assays(args.assays, assay_map)
     result["assays"] = validation
-    result["supported_assays"] = sorted(assay_map.values())
+    # Both forms, because either is accepted and the ID is what users tend to type.
+    result["supported_assays"] = [{"assay": name, "assay_id": aid}
+                                  for aid, name in sorted(assay_map.items())]
     supported = [v["assay_id"] for v in validation if v["supported"]]
     if not supported:
         result["template"] = "T8"

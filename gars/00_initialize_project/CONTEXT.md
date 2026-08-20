@@ -63,10 +63,15 @@ Drop every other character. Collapse runs of `_` into one, and strip leading/tra
 Example: `Macrophage Polarization (Study #2)` -> `Macrophage_Polarization_Study_2`.
 
 **Assay ID.** The directory-safe assay name, from the Assay ID column of
-`_references/assay_stage_skill_map.md`. An assay is supported if and only if the user's phrase
-matches that table's **Assay** or **Assay ID** column exactly, ignoring case. Matching is never
-fuzzy: a near miss is reported, so "bulk rnaseq" is refused rather than resolved to something the
-user did not ask for.
+`_references/assay_stage_skill_map.md`. An assay is supported if the user's phrase matches that
+table's **Assay** or **Assay ID** column after normalisation — case-folded, with every
+non-alphanumeric character dropped. So `rnaseq-bulk`, `rnaseq_bulk`, `RNAseq Bulk`, `Bulk RNA-seq`
+and `bulk rna seq` all resolve to `rnaseq_bulk`.
+
+This is normalisation, **not fuzzy matching**: no edit distance, no substring, no stemming.
+`rnaseq` alone is still refused, and so is a skill name such as `rnaseq-de`. If a phrase normalises
+onto two assays, the script refuses and asks for the Assay ID rather than choosing — a wrong assay
+silently builds the wrong pipeline.
 
 **Raw NGS file.** A file matching `*.fastq.gz`, `*.fq.gz`, `*.fastq`, or `*.fq` **at the top level
 only** of the given directory. Everything else is excluded and reported as excluded.
@@ -272,11 +277,18 @@ Provide a different project title.
 ```
 | Requested | Status |
 |---|---|
-| <name> | Not supported |
+| <name> | Not supported<, or: ambiguous between <ids>> |
 
 None of the requested assays are supported, so no project was created.
-Supported assays: <Assay column values>
+
+Supported assays — either column is accepted:
+
+| Assay | Assay ID |
+|---|---|
+| <assay> | <assay_id> |
 ```
+Render the table from the script's `supported_assays`, which carries both forms. Listing only the
+display name leaves a user who typed an ID-like phrase with nothing to correct against.
 
 ## OUTPUT
 Written to `projects/<project_title>/` by the script, and never by hand:
