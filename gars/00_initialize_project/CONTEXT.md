@@ -165,7 +165,8 @@ between each:
 
 ## Process
 1. Activated when the user says they want to start a new project. Reply T1.
-2. Receive the project title. Reply T2 with it.
+2. Receive the project title. **Send nothing yet** — the sanitized title is confirmed in the same
+   message as the menu, so the user is asked exactly one question at a time.
 3. **Always offer the menu, whether or not the user named an assay.** Run:
 
    ```bash
@@ -257,14 +258,6 @@ I will collect, in order: (1) project title, (2) assay types, (3) one raw data p
 Project title?
 ```
 
-**T2 — Title accepted**
-```
-Project title: <raw> -> directory <sanitized>
-
-Which assay types will this project include?
-Supported: <Assay column values>
-```
-
 **T3 — Assay menu**
 
 Sent whether or not the user named an assay. Render one block per entry of the script's `assays`
@@ -273,6 +266,8 @@ pipeline that assay would run — do not describe it in your own words, and do n
 capabilities, or timelines that are not in the array.
 
 ```
+Project title: <raw> -> directory <sanitized>
+
 Supported assays:
 
   01  Bulk RNA-seq  (rnaseq_bulk)

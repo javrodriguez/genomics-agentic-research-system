@@ -43,6 +43,19 @@ system. Name what the user must decide or edit, then say what *you* will do once
 01_prepare_samplesheets". A closing template that points at an unimplemented stage is worse still:
 say plainly that nothing further is automated.
 
+**Response Format — a template that ends by asking is a wait point.** The agent sends it and
+stops. So two templates must never ask the same thing, and two consecutive Process steps must
+never both send one: the agent sends the first, waits, and the second never happens.
+
+Stage 00 shipped exactly that bug. `T2` acknowledged the title *and* asked "Which assay types will
+this project include?", while step 3 ran `assays` and sent the menu that asks the same question
+properly. The agent sent `T2`, waited, and the menu was never rendered — the user saw
+`Supported: Bulk RNA-seq` with no IDs to choose from and asked why. `T2` was a leftover from
+before the menu existed; the fix was to delete it and fold its one useful line into the menu.
+
+When adding a template, check what the step before it sends. When adding a step that replies,
+check that the step before it waits.
+
 **Human check — exactly one, and concrete.** State something a person *does* — "read the first
 three rows and confirm the sample IDs match your notebook" — not "review the output". A stage
 whose human check is vague has no gate, and the next stage will consume whatever is there.
