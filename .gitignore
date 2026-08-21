@@ -30,10 +30,20 @@ skills_dev/
 # Workspace copies and clones made INSIDE the repo directory. `gars/` is a template that gets
 # copied; when the copy lands here it is a working area, never repo content -- and it usually
 # carries its own .git, which `git add -A` turns into a broken submodule pointer.
-# Keep workspaces outside the repo. This is the backstop for when they are not.
+#
+# This matters more than tidiness. A workspace holds real projects, and a project's samples.csv
+# carries patient-derived sample IDs. This repository is public and its own rule is that such IDs
+# never enter it. One `git add -A` in the wrong directory publishes them.
+#
+# Keep workspaces OUTSIDE the repo. These patterns are the backstop for when they are not, and
+# they cannot cover a name nobody has thought of yet -- so if you put a workspace in here, add it
+# to this list in the same breath.
 gars-test*/
 gars-workspace*/
 genomics-agentic-research-system/
+*_prj/
+*_project/
+*workspace*/
 
 .DS_Store
 __pycache__/

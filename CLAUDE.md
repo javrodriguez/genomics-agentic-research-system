@@ -65,7 +65,10 @@ gars/               THE WORKSPACE TEMPLATE — copied to start a project.
   means editing the script *and* the contract's Definitions, which share its vocabulary — see
   [decision 0011](docs/decisions/0011-deterministic-artifacts-in-stages-00-01.md).
 - **Real data and patient-derived sample IDs never enter this repo.** `.gitignore` guards it;
-  keep it that way.
+  keep it that way. The live hazard is a **workspace copied inside the repo directory**: its
+  projects hold real `samples.csv` files, and one `git add -A` publishes them. Keep workspaces
+  outside the repo — and if you must put one inside, add it to `.gitignore` first, not after.
+  Prefer path-limited staging (`git add -- gars/ docs/`) over `git add -A` here.
 
 ## Editing contracts
 
