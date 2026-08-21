@@ -30,6 +30,7 @@ Stage 00's exit gate checks for a literal `{{` in any file it wrote.
 | `{{template_version}}` | contents of `_references/VERSION` |
 | `{{assay_table}}` | one row per supported assay, columns as shown in the stamp |
 | `{{source_paths}}` | one row per assay: Assay ID, raw data source path, files linked |
+| `{{integrity}}` | which file-integrity check stage 00 actually ran: `full`, `quick` or `skip` |
 
 ## Human check
 

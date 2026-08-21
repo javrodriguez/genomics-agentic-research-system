@@ -26,9 +26,10 @@ Every subcommand emits a single JSON object on stdout. Exit codes:
     2  refused; the JSON's `template` field names which reply to send (T5 / T7 / T8)
     3  usage or precondition error
 
-Note on cost: `finalize` runs a full integrity check, which decompresses every linked .gz to
-verify it, exactly as `gzip -t` does. That is O(data) -- minutes to tens of minutes on a real
-cohort. It is the gate the contract specifies, and it runs once per project.
+Note on cost: `finalize` runs a full integrity check, which decompresses every linked .gz. It is
+I/O-bound rather than CPU-bound and runs in parallel: a measured 48 GB / 152-file cohort takes
+about 6 minutes at the default 4 workers. Use `--integrity quick` to skip decompression when you
+only need the links checked; the mode is recorded, never assumed.
 """
 
 import argparse
@@ -450,20 +451,80 @@ def cmd_link(args, workspace):
 
 # --- finalize -----------------------------------------------------------------------------------
 
-def check_integrity(path):
-    """Symlink resolves, target non-empty, and for .gz a full decompress succeeds (gzip -t)."""
+def check_integrity(path, mode="full"):
+    """Verify one linked raw file. Returns a problem string, or None.
+
+    `full`  symlink resolves, target non-empty, and a complete decompression succeeds.
+    `quick` symlink resolves, target non-empty, and the gzip magic is present. Catches a broken
+            link, an empty file and a not-actually-gzip file; does NOT catch truncation or
+            corruption, which are the failures `full` exists for.
+    `skip`  resolution and non-emptiness only.
+
+    Measured on a real 48 GB cohort on this cluster: the work is I/O-bound, not CPU-bound -- a
+    quick pass that reads two bytes per file still took 3m51s wall for 152 files at 0.1 s of CPU,
+    which is GPFS latency. A full pass sustains ~130 MB/s and is throughput-limited: 4 and 16
+    workers measured identically, so more concurrency buys nothing and only loads a shared node.
+    48 GB lands around 6 minutes at 4 workers, against ~18 serial.
+
+    The mode is recorded in the result and stamped into the project, because a project must never
+    be able to claim a verification it did not get.
+    """
     if not path.is_file():
         return "does not resolve"
     if path.stat().st_size == 0:
         return "is empty"
-    if path.name.endswith(".gz"):
+    if mode == "skip" or not path.name.endswith(".gz"):
+        return None
+    if mode == "quick":
         try:
-            with gzip.open(str(path), "rb") as fh:
-                while fh.read(1 << 20):
-                    pass
-        except Exception as exc:
-            return "fails gzip -t: %s" % exc
+            with open(str(path), "rb") as fh:
+                if fh.read(2) != b"\x1f\x8b":
+                    return "is not gzip (bad magic)"
+        except OSError as exc:
+            return "cannot be read: %s" % exc
+        return None
+    try:
+        # Python's gzip measured FASTER than the system `gzip -t` binary on this cluster
+        # (15.6 s vs 26.0 s on a 666 MB file), so there is nothing to gain by shelling out.
+        with gzip.open(str(path), "rb") as fh:
+            while fh.read(1 << 20):
+                pass
+    except Exception as exc:
+        return "fails integrity check: %s" % exc
     return None
+
+
+def check_all(paths, mode, jobs, log=sys.stderr):
+    """Verify many files, in parallel, with progress.
+
+    Threads rather than processes: zlib releases the GIL during decompression, measured at ~2.8x
+    on 4 workers. The default stops at 4 because the work is throughput-limited -- 16 workers
+    measured the same MB/s -- and this often runs on a shared login node.
+
+    Progress goes to stderr because stdout carries the JSON. A silent 20-minute process reads as
+    a hang, and three runs were abandoned before that was fixed.
+    """
+    import concurrent.futures
+
+    problems, done, total = [], [0], len(paths)
+
+    def one(item):
+        rel, abs_path = item
+        problem = check_integrity(abs_path, mode)
+        done[0] += 1
+        if total >= 20 and done[0] % max(1, total // 10) == 0:
+            log.write("[integrity] %d/%d checked\n" % (done[0], total))
+            log.flush()
+        return rel, problem
+
+    if total and mode != "skip":
+        log.write("[integrity] %s check of %d files, %d worker(s)\n" % (mode, total, jobs))
+        log.flush()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, jobs)) as ex:
+        for rel, problem in ex.map(one, paths):
+            if problem:
+                problems.append((rel, problem))
+    return problems
 
 
 def cmd_finalize(args, workspace):
@@ -545,7 +606,8 @@ def cmd_finalize(args, workspace):
 
     values = {"{{project_title}}": project.name, "{{created}}": created,
               "{{template_version}}": version, "{{assay_table}}": "\n".join(assay_table),
-              "{{source_paths}}": "\n".join(source_rows)}
+              "{{source_paths}}": "\n".join(source_rows),
+              "{{integrity}}": args.integrity}
     for fname in ("CONTEXT.md", "HISTORY.md"):
         p = project / fname
         if not p.is_file():
@@ -557,7 +619,7 @@ def cmd_finalize(args, workspace):
         p.write_text(text, encoding="utf-8")
 
     # -- exit gate (step 19)
-    gate = []
+    gate, checked = [], 0
     for fname in ("CONTEXT.md", "HISTORY.md"):
         if not (project / fname).is_file():
             gate.append("%s does not exist" % fname)
@@ -586,13 +648,11 @@ def cmd_finalize(args, workspace):
             gate.append("%s: a row has an empty sample_id" % aid)
         if per_assay[aid]["layout"] == "paired-end" and any(not r["fastq_2"] for r in frows):
             gate.append("%s: pairing is incomplete in files.csv" % aid)
-        for r in frows:
-            for col in ("fastq_1", "fastq_2"):
-                if not r[col]:
-                    continue
-                problem = check_integrity(project / r[col])
-                if problem:
-                    gate.append("%s: %s %s" % (aid, r[col], problem))
+        to_check = [(r[col], project / r[col])
+                    for r in frows for col in ("fastq_1", "fastq_2") if r[col]]
+        checked += len(to_check)
+        for rel, problem in check_all(to_check, args.integrity, args.jobs):
+            gate.append("%s: %s %s" % (aid, rel, problem))
 
     if gate:
         result["failures"] = gate
@@ -601,6 +661,8 @@ def cmd_finalize(args, workspace):
 
     result["template_version"] = version
     result["created"] = created
+    result["integrity"] = {"mode": args.integrity, "jobs": args.jobs,
+                           "files_checked": checked}
     result["ok"] = True
     return emit(result, EXIT_OK)
 
@@ -639,6 +701,12 @@ def main(argv=None):
     f.add_argument("--project", required=True)
     f.add_argument("--date", default=None, help="creation date; defaults to today")
     f.add_argument("--sample-id-pattern", default=None)
+    f.add_argument("--integrity", choices=("full", "quick", "skip"), default="full",
+                   help="full: decompress every .gz (the documented gate). quick: magic bytes "
+                        "only. skip: resolution and non-emptiness only.")
+    f.add_argument("--jobs", type=int, default=4,
+                   help="parallel integrity workers (default 4; this often runs on a shared "
+                        "login node)")
 
     args = ap.parse_args(argv)
     if not args.cmd:

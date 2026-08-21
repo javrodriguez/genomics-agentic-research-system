@@ -93,9 +93,26 @@ convention are **refused**, never guessed; see `--sample-id-pattern` below.
 single-end when none do. Anything else is a mixed/incomplete set and is refused.
 
 **File integrity.** A linked raw file passes when its symlink resolves, the target is non-empty,
-and — for `.gz` files — a full decompression succeeds, exactly as `gzip -t` does. This is the only
-check performed on file contents at this stage, and it is O(data): expect minutes on a real
-cohort.
+and — for `.gz` files — a full decompression succeeds. This is the only check performed on file
+contents at this stage.
+
+It is **I/O-bound, not CPU-bound**, and runs in parallel. Measured on a 48 GB / 152-file cohort on
+this cluster: about **6 minutes** at the default 4 workers, against ~18 serial. More workers buy
+nothing — 4 and 16 measured the same throughput — so do not raise `--jobs` to make it finish
+sooner. It will not fit a 120-second command timeout; run it in the background and wait.
+
+`--integrity` selects the depth, and the choice is **recorded in the project's `HISTORY.md`**, so
+a project can always name the verification it received:
+
+| Mode | Checks | Use when |
+|---|---|---|
+| `full` (default) | resolves, non-empty, decompresses | always, unless you have a reason |
+| `quick` | resolves, non-empty, gzip magic | re-running `finalize` after a gate failure you have already diagnosed |
+| `skip` | resolves, non-empty | never, unless the user asks for it explicitly |
+
+**Never choose `quick` or `skip` yourself to make a slow step finish.** A truncated FASTQ is
+exactly what `full` exists to catch, and it is invisible to the other two. If the check is taking
+a long time, say so and wait.
 
 **Project stamp.** `_templates/project/`, the blank skeleton every project starts as. The script
 copies it and substitutes `{{placeholders}}`; it never assembles a project file from scratch. The
@@ -197,14 +214,21 @@ between each:
     populated and narrowing an existing project is not this stage's to do.
 13. Exit 0 → reply T4b with its `linked` count.
 14. Repeat steps 9-13 for each remaining assay.
-15. When every assay is linked, finalize:
+15. When every assay is linked, finalize. **This is the slow step** — minutes on a real cohort —
+    so run it in the background rather than in a foreground call that a command timeout will
+    kill, and tell the user it is running:
 
     ```bash
     python3 _system/stage00_register.py finalize --project projects/<title>
     ```
 
     Add the same `--sample-id-pattern` if one was used at step 9. This writes `files.csv` and
-    `samples.csv`, substitutes the stamp's placeholders, and runs the exit gate.
+    `samples.csv`, substitutes the stamp's placeholders, and runs the exit gate. It is
+    deterministic and re-runnable: on unchanged inputs it reproduces the four files byte for
+    byte, so a killed run costs only time.
+
+    Pass `--integrity` only if the **user** asked for a different depth. Never downgrade it on
+    your own initiative to make the step finish faster.
 16. Exit 1 or 3 → reply T9 listing every entry of its `failures` array. Do not claim completion,
     do not repair anything, and do not delete what was created — the user decides whether to fix
     or discard.
@@ -302,6 +326,8 @@ Stage 00 complete. Project <title> initialized at projects/<title>/.
 | Assay | Files linked | Samples | Source |
 |---|---|---|---|
 | <Assay ID> | <n> | <n> | <path> |
+
+File integrity: <integrity.files_checked> files checked, mode <integrity.mode>.
 
 Written: CONTEXT.md, HISTORY.md, and per assay files.csv + samples.csv.
 

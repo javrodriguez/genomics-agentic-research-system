@@ -271,6 +271,30 @@ first, because an assay *name* contains spaces: an early version tore `Bulk RNA-
 invalid tokens. Whitespace splitting is retried only when the input had no commas and the comma
 parse failed entirely, so `01 02` still works.
 
+**Fixed 2026-08-20 — stage 00's integrity check was unrunnable on a real cohort.** The first run
+on real data (38 samples, 152 files, **48 GB**) never completed: three attempts died, and the
+obvious reading was a login-node watchdog. Measuring said otherwise.
+
+- Python's `gzip` is **faster** than the system `gzip -t` binary here — 15.6 s vs 26.0 s on a
+  666 MB file — so the "shell out to C" instinct was wrong.
+- The work is **I/O-bound, not CPU-bound**. A `quick` pass reading two bytes per file took
+  **3m51s wall at 0.1 s of CPU**. That is GPFS latency, not computation.
+- A full pass sustains ~130 MB/s and is throughput-limited: **4 and 16 workers measure the same**,
+  so concurrency past 4 buys nothing and only loads a shared node.
+
+So the real cause was a single-threaded, silent, ~18-minute step in a stage whose contract
+promised "minutes", run through interfaces that cap at 120 s. Now parallel at 4 workers (~6 min
+for 48 GB), with progress on stderr, and `--integrity {full,quick,skip}`.
+
+**The chosen mode is stamped into the project's `HISTORY.md`**, not just returned in JSON. A
+project must never be able to claim a verification it did not get, and a faster mode is exactly
+the shortcut an agent under time pressure would take — so the contract forbids downgrading it on
+the agent's own initiative, and the record makes a downgrade visible afterwards.
+
+The general lesson, which is the same one as decision 0011: **an O(data) gate needs a measured
+cost in its contract, not an adjective.** "Expect minutes on a real cohort" was written without
+ever running one.
+
 **Drafted, not filed:** the upstream `rnaseq-de` defect report, at
 [docs/upstream/clawbio-rnaseq-de-defects.md](docs/upstream/clawbio-rnaseq-de-defects.md). Filing
 creates a public issue on a third-party project under a maintainer's name, which is a person's
