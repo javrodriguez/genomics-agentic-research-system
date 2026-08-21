@@ -361,6 +361,29 @@ def cmd_create(args, workspace):
     for aid in supported:
         (project / "00_data" / aid / "raw").mkdir(parents=True, exist_ok=True)
 
+    # Seed _config/ so the user never authors a config from a blank file. Everything derivable is
+    # filled in; the scientific decisions are left marked <REQUIRED>, because no stage substitutes
+    # a value for them. Making those decisions is the user's; authoring YAML from a 91-line schema
+    # is not, and a user reasonably asked why they had to.
+    seeded = []
+    config_src = workspace / "_templates" / "config"
+    scratch = os.environ.get("GARS_SCRATCH",
+                             "/gpfs/scratch/%s/gars-work" % os.environ.get("USER", "USER"))
+    values = {"{{project_title}}": title, "{{work_dir}}": "%s/%s" % (scratch, title)}
+    for aid in supported:
+        src = config_src / (aid + ".yaml")
+        if src.is_file():
+            text = src.read_text(encoding="utf-8")
+            for k, v in values.items():
+                text = text.replace(k, v)
+            (project / "_config" / (aid + ".yaml")).write_text(text, encoding="utf-8")
+            seeded.append("_config/" + aid + ".yaml")
+    executor = config_src / "nextflow.slurm.config"
+    if executor.is_file() and supported:
+        shutil.copy2(str(executor), str(project / "_config" / "nextflow.slurm.config"))
+        seeded.append("_config/nextflow.slurm.config")
+    result["config_seeded"] = seeded
+
     result["created"] = supported
     result["template_version"] = template_version(workspace)
     result["ok"] = True

@@ -422,6 +422,18 @@ def validate_assay(project, assay):
         "full_check_needs_scheduling": integrity.needs_scheduling(incl_bytes),
     }
     out["counts"].update(config_values)
+
+    # Which scientific decisions the user has still not made. Stage 00 seeds _config/ with every
+    # derivable value filled and the rest marked <REQUIRED>, so an unfilled marker is a decision
+    # outstanding -- not an error here (stage 02 needs them, this stage does not), but the thing
+    # to name in the handoff instead of pointing at a 91-line schema.
+    cfg = project / "_config" / (assay + ".yaml")
+    unfilled = []
+    if cfg.is_file():
+        for line in cfg.read_text(encoding="utf-8").splitlines():
+            if "<REQUIRED" in line and not line.lstrip().startswith("#"):
+                unfilled.append(line.split(":", 1)[0].strip())
+    out["config_unfilled"] = unfilled
     out["_incl_paths"] = incl_paths
     out["_included"] = included
     out["_incl_file_rows"] = incl_file_rows

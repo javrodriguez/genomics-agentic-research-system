@@ -193,7 +193,10 @@ differential-expression sub-stage of 02_bioinformatics.
 13. Append the script's `history_entry` to the project's `HISTORY.md` **verbatim**, replacing
     `<ISO-8601 date>` with today's date. Do not restate its numbers in your own words — they are
     the script's counts, not your recollection.
-14. Reply T4 using `wrote` and each assay's `counts`.
+14. Reply T4 using `wrote`, each assay's `counts`, and its `config_unfilled` — the scientific
+    decisions still outstanding in `_config/<Assay ID>.yaml`. Stage 00 seeded that file, so the
+    user is completing it, not authoring it. Offer to write values they give you; never choose
+    one yourself.
 
 ## Response Format
 Every message you send in this stage is one of the templates below, with placeholders filled.
@@ -235,12 +238,23 @@ Stage 01 complete. Samplesheets written to projects/<title>/01_samplesheets/.
 |---|---|---|---|
 | <Assay ID> | <samplesheet_rows> | <design_rows> | <Assay ID>_samplesheet.csv, <Assay ID>_design.csv |
 
-Over to you: stage 02 reads _config/<Assay ID>.yaml and _config/nextflow.slurm.config —
-reference, aligner, compute, and the DE formula and contrast. Nothing is defaulted; every key is a
-scientific decision. Schema and rationale: _references/config_schema.md.
+Before stage 02 runs, <n> decisions are outstanding in _config/<Assay ID>.yaml. Stage 00 already
+wrote that file with everything derivable filled in; the remaining keys are marked <REQUIRED>
+because no stage will guess them — a wrong reference or contrast produces a confident wrong
+answer rather than an error.
 
-Tell me when the config is written and I will start the bioinformatics for <Assay ID>.
+| Key | Decision |
+|---|---|
+| <config_unfilled entry> | <what it selects, in one line> |
+
+Edit those lines and tell me, or tell me the values and I will write them in and show you the
+file before anything runs.
 ```
+
+**T4 note.** Render one table row per entry of `config_unfilled`. If it is empty, omit the whole
+block and simply say the config is complete and you are ready to start stage 02 on their word.
+**Never fill a `<REQUIRED>` value from your own judgement** — offering to type in values the user
+gave you is help; choosing a reference genome or a contrast for them is inventing the experiment.
 
 **T5 — Existing samplesheets**
 ```

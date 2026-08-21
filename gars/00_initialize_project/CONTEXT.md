@@ -390,7 +390,7 @@ Written to `projects/<project_title>/` by the script, and never by hand:
 |---|---|
 | `CONTEXT.md` | The stamp's `CONTEXT.md` with placeholders filled: title, creation date, template version, assays and Assay IDs, raw data source paths, per-assay file and sample counts. The project's L1 context file. |
 | `HISTORY.md` | The stamp's `HISTORY.md` with placeholders filled: a dated creation entry naming the template version, assays, source paths and per-assay file counts. |
-| `_config/` | Empty, from the stamp. The user writes it before stage 02 — schema in `_references/config_schema.md`. |
+| `_config/` | **Seeded**, not empty: `<Assay ID>.yaml` with every derivable value filled and the scientific decisions marked `<REQUIRED>`, plus `nextflow.slurm.config` verbatim (it is executor boilerplate, not a decision). The result's `config_seeded` lists what was written. Schema: `_references/config_schema.md`. |
 | `00_data/<Assay ID>/raw/` | Symlinks to the source raw NGS files. Sources are never copied or moved. |
 | `00_data/<Assay ID>/files.csv` | `sample_id,lane,fastq_1,fastq_2`. One row per sample-lane unit, paths relative to the project directory. **Machine-owned and written mode `0444`** — the filesystem refuses a hand-edit. |
 | `00_data/<Assay ID>/samples.csv` | `sample_id,condition,group,replicate`. One row per distinct sample, `sample_id` filled and the rest blank — **written only if absent**. An existing one is preserved untouched; the result's `samples_csv` field says `created` or `preserved`. |

@@ -38,6 +38,7 @@ belongs here.
 | 0016 | [A workspace is a git checkout, not a copy](0016-workspaces-are-checkouts.md) | 2026-08-20 | standing | `README.md`<br>`CLAUDE.md`<br>`gars/CLAUDE.md`<br>`gars/CONTEXT.md`<br>`gars/00_initialize_project/CONTEXT.md`<br>`gars/_system/workspace.py` |
 | 0017 | [A machine-owned file is verified against reality, not trusted](0017-machine-owned-files-are-verified-not-trusted.md) | 2026-08-20 | standing | `gars/_system/workspace.py`<br>`gars/_system/stage00_register.py`<br>`gars/_system/stage01_samplesheet.py`<br>`gars/01_prepare_samplesheets/CONTEXT.md`<br>`gars/00_initialize_project/CONTEXT.md` |
 | 0018 | [Machine ownership is enforced by the filesystem, not advised by a comment](0018-machine-ownership-is-enforced-not-advised.md) | 2026-08-21 | standing | `gars/_system/workspace.py`<br>`gars/_system/stage00_register.py`<br>`gars/_system/stage01_samplesheet.py`<br>`gars/01_prepare_samplesheets/CONTEXT.md` |
+| 0019 | [The project config is seeded, not authored](0019-config-is-seeded-not-authored.md) | 2026-08-21 | standing | `gars/_templates/config/`<br>`gars/_system/stage00_register.py`<br>`gars/_system/stage01_samplesheet.py`<br>`gars/01_prepare_samplesheets/CONTEXT.md`<br>`gars/00_initialize_project/CONTEXT.md` |
 
 ## Human check
 

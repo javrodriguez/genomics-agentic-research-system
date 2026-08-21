@@ -1,0 +1,52 @@
+# Configuration for assay rnaseq_bulk, project {{project_title}}
+#
+# Stage 00 put this here so you never author a config from a blank file. Everything that can be
+# filled in for you already has been. What remains is marked <REQUIRED> -- those are scientific
+# decisions, and no stage will substitute a value for them, because a wrong one produces a
+# confident wrong answer rather than an error.
+#
+# Full rationale for every key: _references/config_schema.md
+
+# --- what the reads are ------------------------------------------------------------------------
+# auto | forward | reverse | unstranded
+# `auto` delegates to nf-core's RSeQC check, which cannot return a confident *stranded* call on an
+# unstranded library and reports it as "N/N samples failed strandedness check" -- a warning that
+# reads like a failure and is not one. Set it explicitly if the library prep is known.
+strandedness: auto
+
+# --- what to align against ---------------------------------------------------------------------
+# Declare EITHER `genome` OR `fasta` + `gtf`, never both.
+#
+# Do NOT use `genome: GRCh38`. That resolves to the NCBI iGenomes build, which carries no
+# `gene_biotype` attribute, and the run fails at SUBREAD_FEATURECOUNTS *after* counts are written.
+# It cost a full pipeline run once (decision 0005, failure 5). Use the Ensembl FASTA + GTF.
+reference:
+  fasta: <REQUIRED: path to genome FASTA, e.g. ~/install/refs/ensembl-GRCh38-116/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz>
+  gtf:   <REQUIRED: path to matching GTF, e.g. ~/install/refs/ensembl-GRCh38-116/Homo_sapiens.GRCh38.116.gtf.gz>
+
+  # Optional but strongly recommended: a cache of built STAR/Salmon indices, keyed by PIPELINE
+  # version. Without it every run rebuilds ~43 GB of indices, about 40 minutes. A STAR index is
+  # rejected by a different STAR version, which is why the version is part of the path.
+  # derived_dir: ~/install/refs/ensembl-GRCh38-116/derived/nf-core-rnaseq-3.26.0
+
+aligner: star_salmon          # star_salmon | star_rsem | hisat2 | bowtie2_salmon
+
+# --- where it runs -----------------------------------------------------------------------------
+# Infrastructure, not science. These are the values verified on this cluster; change them if your
+# allocation differs.
+compute:
+  partition: cpu_long
+  time: "5-00:00:00"
+  cpus: 8
+  mem: 64G
+  # Nextflow's scratch. NEVER inside the project: a single 10-sample run accumulates 250-350 GB
+  # here, because work/ retains every process output so -resume can reuse it. results/ is
+  # published with mode 'copy', so work/ is disposable once a run succeeds.
+  work_dir: {{work_dir}}
+
+# --- what question the differential expression asks --------------------------------------------
+# Read by sub-stage 02.02. Every formula term must be a column of the design table
+# (01_samplesheets/rnaseq_bulk_design.csv), and both contrast levels must appear in that column.
+de:
+  formula:  <REQUIRED: e.g. "~ condition", or "~ batch + condition" to control for batch>
+  contrast: <REQUIRED: factor,numerator,denominator -- e.g. "condition,MT,WT" tests MT relative to WT>
