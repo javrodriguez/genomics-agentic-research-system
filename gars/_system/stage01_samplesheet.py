@@ -34,6 +34,9 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import integrity            # noqa: E402  -- one home for the integrity rule
+
 STRANDEDNESS_VALUES = {"auto", "forward", "reverse", "unstranded"}
 SAMPLES_HEADER = ["sample_id", "condition", "group", "replicate"]
 FILES_HEADER = ["sample_id", "lane", "fastq_1", "fastq_2"]
@@ -344,6 +347,18 @@ def validate_assay(project, assay):
             config_values[key] = value
 
     incl_file_rows = [r for r in files["rows"] if r["sample_id"] in included]
+
+    # The cost of verifying what will actually be analysed -- not what was registered. Stage 00
+    # links everything the user pointed at; the subset is only known here, after exclusions.
+    incl_paths, incl_bytes = [], 0
+    for r in incl_file_rows:
+        for col in ("fastq_1", "fastq_2"):
+            if r.get(col):
+                p = project / r[col]
+                incl_paths.append((r[col], p))
+                if p.is_file():
+                    incl_bytes += p.stat().st_size
+
     design_by_id = {r["sample_id"]: r for r in incl_rows}
     for _, src in fmt:
         if src.startswith("design:"):
@@ -363,8 +378,13 @@ def validate_assay(project, assay):
         "groups": len(groups),
         "layout": layout,
         "columns": [c for c, _ in fmt],
+        "included_bytes": incl_bytes,
+        "included_gb": round(incl_bytes / 1e9, 1),
+        "full_check_estimate_min": integrity.estimate_minutes(incl_bytes),
+        "full_check_needs_scheduling": integrity.needs_scheduling(incl_bytes),
     }
     out["counts"].update(config_values)
+    out["_incl_paths"] = incl_paths
     out["_included"] = included
     out["_incl_file_rows"] = incl_file_rows
     out["_incl_design_rows"] = incl_rows
@@ -447,8 +467,9 @@ def write_assay(project, assay, res):
     return [str(sheet.relative_to(project)), str(design.relative_to(project))], gate
 
 
-def history_entry(assays, results, wrote):
-    lines = ["## <ISO-8601 date> — 01_prepare_samplesheets — samplesheets emitted", ""]
+def history_entry(assays, results, wrote, verify="none"):
+    lines = ["## <ISO-8601 date> — 01_prepare_samplesheets — samplesheets emitted", "",
+             "Deep file-integrity verification: `%s`" % verify, ""]
     for assay in assays:
         c = results[assay]["counts"]
         excl = results[assay]["exclusions"]
@@ -481,6 +502,14 @@ def main(argv=None):
                     help="the user has confirmed overwriting existing samplesheets (T5)")
     ap.add_argument("--list-formats", action="store_true",
                     help="print the registered per-assay samplesheet formats and exit")
+    ap.add_argument("--verify-integrity", choices=("none", "full"), default="none",
+                    help="none (default): trust the files; stage 00 already checked that every "
+                         "link resolves and carries gzip magic. full: decompress every INCLUDED "
+                         "file before emitting the samplesheet -- the last cheap moment to catch "
+                         "a truncated FASTQ. Above ~10 GB submit this with sbatch; it is not "
+                         "login-node work.")
+    ap.add_argument("--jobs", type=int, default=integrity.DEFAULT_JOBS,
+                    help="parallel integrity workers (default 4; more buys nothing, measured)")
     args = ap.parse_args(argv)
 
     if args.list_formats:
@@ -496,7 +525,8 @@ def main(argv=None):
         ap.error("--project is required")
     project = args.project
     result = {"ok": False, "mode": "check" if args.check else "write",
-              "project": str(project), "assays": {}, "wrote": []}
+              "project": str(project), "assays": {}, "wrote": [],
+              "verify_integrity": args.verify_integrity}
 
     if not project.is_dir():
         result["error"] = f"project directory does not exist: {project}"
@@ -534,6 +564,16 @@ def main(argv=None):
                           project / "01_samplesheets" / f"{a}_design.csv")
                 if p.is_file()]
 
+    if args.verify_integrity == "full":
+        for assay, res in results.items():
+            problems = integrity.check_many(res["_incl_paths"], "full", args.jobs)
+            for rel, problem in problems:
+                # result["assays"][assay] is a shallow copy of res, so this list is the SAME
+                # object -- appending to both duplicated every finding.
+                res["failures"].append(fail("integrity", "%s %s" % (rel, problem)))
+        if any(r["failures"] for r in results.values()):
+            return emit(result, EXIT_FAILURES)
+
     if args.check:
         result["ok"] = True
         result["exclusions_pending"] = bool(exclusions)
@@ -564,7 +604,8 @@ def main(argv=None):
         return emit(result, EXIT_FAILURES)
 
     result["ok"] = True
-    result["history_entry"] = history_entry(assays, results, result["wrote"])
+    result["history_entry"] = history_entry(assays, results, result["wrote"],
+                                            args.verify_integrity)
     return emit(result, EXIT_OK)
 
 

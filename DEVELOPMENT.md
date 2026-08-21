@@ -295,6 +295,25 @@ The general lesson, which is the same one as decision 0011: **an O(data) gate ne
 cost in its contract, not an adjective.** "Expect minutes on a real cohort" was written without
 ever running one.
 
+**Changed 2026-08-20 — integrity verification moves to stage 01 and becomes opt-in**
+([0013](docs/decisions/0013-integrity-verification-moves-to-stage-01.md)). Two flaws showed up the
+moment real data hit it. It verified **every registered file before the user could exclude any** —
+48 GB of reading to validate what might be a 4-sample pilot — and it was not optional, though
+FASTQs normally arrive already validated by a sequencing core.
+
+Stage 00 now checks metadata only (`quick`: resolves, non-empty, gzip magic) and stage 01 offers
+the deep check over the **included** subset, off by default, quoting the measured cost. Both
+record what they did: `HISTORY.md` carries the stage 00 mode and stage 01's `full|none`.
+
+**Deep verification is scheduled work.** Above ~10 GB the contracts submit it with `sbatch`. That
+is not a new rule — [0010](docs/decisions/0010-skill-chaining-defects-and-adaptation.md)
+established it after a pure-Python step was SIGKILLed on a login node — and the integrity check
+had broken it. The proximate cause of the failed runs was the login node's **memory cgroup**: a
+4 GB budget shared across every process the user owns, enforced by the OOM killer against whatever
+is running rather than whatever is at fault. Our own check peaked at 70 MB and was collateral.
+
+The rule extracted into `_system/integrity.py`, one home for both stages.
+
 **Drafted, not filed:** the upstream `rnaseq-de` defect report, at
 [docs/upstream/clawbio-rnaseq-de-defects.md](docs/upstream/clawbio-rnaseq-de-defects.md). Filing
 creates a public issue on a third-party project under a maintainer's name, which is a person's

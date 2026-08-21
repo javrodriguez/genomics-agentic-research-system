@@ -96,23 +96,29 @@ single-end when none do. Anything else is a mixed/incomplete set and is refused.
 and — for `.gz` files — a full decompression succeeds. This is the only check performed on file
 contents at this stage.
 
-It is **I/O-bound, not CPU-bound**, and runs in parallel. Measured on a 48 GB / 152-file cohort on
-this cluster: about **6 minutes** at the default 4 workers, against ~18 serial. More workers buy
-nothing — 4 and 16 measured the same throughput — so do not raise `--jobs` to make it finish
-sooner. It will not fit a 120-second command timeout; run it in the background and wait.
-
 `--integrity` selects the depth, and the choice is **recorded in the project's `HISTORY.md`**, so
 a project can always name the verification it received:
 
-| Mode | Checks | Use when |
+| Mode | Checks | Cost |
 |---|---|---|
-| `full` (default) | resolves, non-empty, decompresses | always, unless you have a reason |
-| `quick` | resolves, non-empty, gzip magic | re-running `finalize` after a gate failure you have already diagnosed |
-| `skip` | resolves, non-empty | never, unless the user asks for it explicitly |
+| `quick` (default) | resolves, non-empty, gzip magic | metadata only |
+| `full` | additionally decompresses every `.gz` | O(data) — see below |
+| `skip` | resolves, non-empty | metadata only |
 
-**Never choose `quick` or `skip` yourself to make a slow step finish.** A truncated FASTQ is
-exactly what `full` exists to catch, and it is invisible to the other two. If the check is taking
-a long time, say so and wait.
+**The default is `quick`, and that is deliberate.** This stage registers everything the user
+pointed at; the user does not choose which samples to analyse until the 00 → 01 gate. Deep
+verification here would spend its cost on files that are about to be excluded — on a real cohort,
+48 GB of reading to validate a 4-sample pilot. Deep verification of the files that will actually
+be analysed belongs to **stage 01**, which offers it. See
+`docs/decisions/0013-integrity-verification-moves-to-stage-01.md`.
+
+If the user asks for `full` here anyway, quote the cost from `inspect`'s `total_gb` and
+`full_check_estimate_min`, and **submit it with `sbatch` when `total_bytes` exceeds ~10 GB** —
+reading tens of GB on a shared login node is not this stage's to do, and the node's per-user
+memory cgroup will kill whatever is running rather than whatever is at fault.
+
+**Never downgrade the mode on your own initiative** to make a slow step finish. Report the cost
+and let the user choose.
 
 **Project stamp.** `_templates/project/`, the blank skeleton every project starts as. The script
 copies it and substitutes `{{placeholders}}`; it never assembles a project file from scratch. The
@@ -227,8 +233,8 @@ between each:
     deterministic and re-runnable: on unchanged inputs it reproduces the four files byte for
     byte, so a killed run costs only time.
 
-    Pass `--integrity` only if the **user** asked for a different depth. Never downgrade it on
-    your own initiative to make the step finish faster.
+    It runs `--integrity quick` by default — metadata only, fast. Pass a different depth **only
+    if the user asked for one**, and never downgrade on your own initiative.
 16. Exit 1 or 3 → reply T9 listing every entry of its `failures` array. Do not claim completion,
     do not repair anything, and do not delete what was created — the user decides whether to fix
     or discard.

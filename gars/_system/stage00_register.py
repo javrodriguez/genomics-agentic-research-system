@@ -26,21 +26,25 @@ Every subcommand emits a single JSON object on stdout. Exit codes:
     2  refused; the JSON's `template` field names which reply to send (T5 / T7 / T8)
     3  usage or precondition error
 
-Note on cost: `finalize` runs a full integrity check, which decompresses every linked .gz. It is
-I/O-bound rather than CPU-bound and runs in parallel: a measured 48 GB / 152-file cohort takes
-about 6 minutes at the default 4 workers. Use `--integrity quick` to skip decompression when you
-only need the links checked; the mode is recorded, never assumed.
+Note on cost: `finalize` defaults to `--integrity quick` -- resolves, non-empty, gzip magic --
+because at this stage EVERY registered file would be verified, including the ones the user is
+about to exclude at the 00 -> 01 gate. Deep verification of the files that will actually be
+analysed belongs to stage 01, which is the first moment the included subset exists. `--integrity
+full` is still available here and still honest about what it did: the mode is stamped into the
+project's HISTORY.md, never assumed.
 """
 
 import argparse
 import csv
 import datetime
-import gzip
 import json
 import os
 import re
 import sys
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import integrity            # noqa: E402  -- one home for the integrity rule
 
 RAW_SUFFIXES = (".fastq.gz", ".fq.gz", ".fastq", ".fq")
 SAMPLES_HEADER = ["sample_id", "condition", "group", "replicate"]
@@ -405,6 +409,11 @@ def cmd_inspect(args, workspace):
     result["sample_count"] = len(result["sample_ids"])
     result["sample_lane_units"] = len(units)
     result["layout"] = layout
+    # So the agent can state the cost of a full integrity check without computing it itself.
+    total = sum((source / n).stat().st_size for n in raw if (source / n).is_file())
+    result["total_bytes"] = total
+    result["total_gb"] = round(total / 1e9, 1)
+    result["full_check_estimate_min"] = max(1, int(round(total / 130e6 / 60)))
     result["ok"] = True
     return emit(result, EXIT_OK)
 
@@ -450,82 +459,6 @@ def cmd_link(args, workspace):
 
 
 # --- finalize -----------------------------------------------------------------------------------
-
-def check_integrity(path, mode="full"):
-    """Verify one linked raw file. Returns a problem string, or None.
-
-    `full`  symlink resolves, target non-empty, and a complete decompression succeeds.
-    `quick` symlink resolves, target non-empty, and the gzip magic is present. Catches a broken
-            link, an empty file and a not-actually-gzip file; does NOT catch truncation or
-            corruption, which are the failures `full` exists for.
-    `skip`  resolution and non-emptiness only.
-
-    Measured on a real 48 GB cohort on this cluster: the work is I/O-bound, not CPU-bound -- a
-    quick pass that reads two bytes per file still took 3m51s wall for 152 files at 0.1 s of CPU,
-    which is GPFS latency. A full pass sustains ~130 MB/s and is throughput-limited: 4 and 16
-    workers measured identically, so more concurrency buys nothing and only loads a shared node.
-    48 GB lands around 6 minutes at 4 workers, against ~18 serial.
-
-    The mode is recorded in the result and stamped into the project, because a project must never
-    be able to claim a verification it did not get.
-    """
-    if not path.is_file():
-        return "does not resolve"
-    if path.stat().st_size == 0:
-        return "is empty"
-    if mode == "skip" or not path.name.endswith(".gz"):
-        return None
-    if mode == "quick":
-        try:
-            with open(str(path), "rb") as fh:
-                if fh.read(2) != b"\x1f\x8b":
-                    return "is not gzip (bad magic)"
-        except OSError as exc:
-            return "cannot be read: %s" % exc
-        return None
-    try:
-        # Python's gzip measured FASTER than the system `gzip -t` binary on this cluster
-        # (15.6 s vs 26.0 s on a 666 MB file), so there is nothing to gain by shelling out.
-        with gzip.open(str(path), "rb") as fh:
-            while fh.read(1 << 20):
-                pass
-    except Exception as exc:
-        return "fails integrity check: %s" % exc
-    return None
-
-
-def check_all(paths, mode, jobs, log=sys.stderr):
-    """Verify many files, in parallel, with progress.
-
-    Threads rather than processes: zlib releases the GIL during decompression, measured at ~2.8x
-    on 4 workers. The default stops at 4 because the work is throughput-limited -- 16 workers
-    measured the same MB/s -- and this often runs on a shared login node.
-
-    Progress goes to stderr because stdout carries the JSON. A silent 20-minute process reads as
-    a hang, and three runs were abandoned before that was fixed.
-    """
-    import concurrent.futures
-
-    problems, done, total = [], [0], len(paths)
-
-    def one(item):
-        rel, abs_path = item
-        problem = check_integrity(abs_path, mode)
-        done[0] += 1
-        if total >= 20 and done[0] % max(1, total // 10) == 0:
-            log.write("[integrity] %d/%d checked\n" % (done[0], total))
-            log.flush()
-        return rel, problem
-
-    if total and mode != "skip":
-        log.write("[integrity] %s check of %d files, %d worker(s)\n" % (mode, total, jobs))
-        log.flush()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, jobs)) as ex:
-        for rel, problem in ex.map(one, paths):
-            if problem:
-                problems.append((rel, problem))
-    return problems
-
 
 def cmd_finalize(args, workspace):
     result = {"command": "finalize", "ok": False, "assays": {}, "failures": []}
@@ -651,7 +584,7 @@ def cmd_finalize(args, workspace):
         to_check = [(r[col], project / r[col])
                     for r in frows for col in ("fastq_1", "fastq_2") if r[col]]
         checked += len(to_check)
-        for rel, problem in check_all(to_check, args.integrity, args.jobs):
+        for rel, problem in integrity.check_many(to_check, args.integrity, args.jobs):
             gate.append("%s: %s %s" % (aid, rel, problem))
 
     if gate:
@@ -701,9 +634,11 @@ def main(argv=None):
     f.add_argument("--project", required=True)
     f.add_argument("--date", default=None, help="creation date; defaults to today")
     f.add_argument("--sample-id-pattern", default=None)
-    f.add_argument("--integrity", choices=("full", "quick", "skip"), default="full",
-                   help="full: decompress every .gz (the documented gate). quick: magic bytes "
-                        "only. skip: resolution and non-emptiness only.")
+    f.add_argument("--integrity", choices=("full", "quick", "skip"), default="quick",
+                   help="quick (default): resolves, non-empty, gzip magic. full: additionally "
+                        "decompress every .gz -- O(data), and at this stage it would verify every "
+                        "registered file including ones the user is about to exclude. skip: "
+                        "resolution and non-emptiness only.")
     f.add_argument("--jobs", type=int, default=4,
                    help="parallel integrity workers (default 4; this often runs on a shared "
                         "login node)")

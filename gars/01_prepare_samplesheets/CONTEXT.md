@@ -98,6 +98,22 @@ documented default when the file or key is absent; an unrecognised *value* is a 
 rather than a silent default. Multiple rows sharing a `sample` value are merged by nf-core as
 technical replicates, which is the intended handling of multi-lane samples.
 
+**Deep file-integrity verification.** Optional, **off by default**, and the reason this stage
+offers it rather than stage 00: this is the first moment the *included* subset exists, and the
+last cheap moment before hours of pipeline compute. Stage 00 already confirmed that every link
+resolves and carries the gzip magic; what `--verify-integrity full` adds is decompressing each
+included file, which is the only way to catch a truncated FASTQ.
+
+It is off by default because FASTQs normally arrive already validated by a sequencing core.
+**Ask the user**, quoting `included_gb` and `full_check_estimate_min` from `--check`. Record the
+answer — the script writes `Deep file-integrity verification: full|none` into `HISTORY.md`, so a
+project can always name the verification it received. Violation → `integrity`.
+
+**Above ~10 GB it is scheduled work, not login-node work.** `--check` reports
+`full_check_needs_scheduling`; when it is true, submit with `sbatch` rather than running inline.
+Sub-stage 02.02 learned this the hard way — a pure-Python step SIGKILLed on a login node — and a
+login node's per-user memory cgroup kills whatever is running, not whatever is at fault.
+
 **Unsupported assay.** The assay has no registered samplesheet format. Adding one is a change to
 `_system/stage01_samplesheet.py`'s `FORMATS` table — a row, not a rewrite — and belongs with the
 work of adding that assay's wrapper. Violation → `unsupported_assay`.
@@ -129,7 +145,8 @@ differential-expression sub-stage of 02_bioinformatics.
    python3 _system/stage01_samplesheet.py --project projects/<title> --check
    ```
 
-   It needs no conda environment. Parse its JSON; branch on its **exit code** per Definitions.
+   It needs no conda environment, decompresses nothing, and is fast. Parse its JSON; branch on its
+   **exit code** per Definitions.
 4. Exit 3 → reply T6 using its `error` field, and stop.
 5. Exit 1 → reply T3, rendering every entry of every assay's `failures` array verbatim in the
    table. Write nothing, and do not offer to fix any of it. Stop.
@@ -137,22 +154,27 @@ differential-expression sub-stage of 02_bioinformatics.
    Never proceed on a silent exclusion, and never infer that a missing row was an oversight.
    On `cancel`, stop.
 7. Exit 0 with a non-empty `existing_outputs` → reply T5 listing them, and wait. On `cancel`, stop.
-8. Once every applicable gate is confirmed, run the writer with exactly the flags the user
-   cleared — `--confirm-exclusions` only if step 6 happened, `--force` only if step 7 did:
+8. Reply T8 offering the optional deep integrity check, quoting `included_gb` and
+   `full_check_estimate_min` from step 3, and wait. Ask even when the cohort is small; the answer
+   is recorded, so it must be the user's. If they accept and `full_check_needs_scheduling` is
+   true, submit the step-9 command with `sbatch` instead of running it inline.
+9. Once every applicable gate is confirmed, run the writer with exactly the flags the user
+   cleared — `--confirm-exclusions` only if step 6 happened, `--force` only if step 7 did, and
+   `--verify-integrity full` only if step 8 was accepted:
 
    ```bash
    python3 _system/stage01_samplesheet.py --project projects/<title> [--confirm-exclusions] [--force]
    ```
 
-9. Exit 2 → a gate you believed cleared was not. Reply T5 or T7 as its `blocked` array indicates
+10. Exit 2 → a gate you believed cleared was not. Reply T5 or T7 as its `blocked` array indicates
    and return to step 6. Never re-run adding a flag the user did not confirm.
-10. Exit 1 at this point means the **exit gate** failed: the artifacts were written and then found
+11. Exit 1 at this point means the **exit gate** failed: the artifacts were written and then found
     wrong on re-read. Reply T3 with the `exit_gate` failures and stop. Do not repair them.
-11. Exit 0 → reply T2 using each assay's `counts`.
-12. Append the script's `history_entry` to the project's `HISTORY.md` **verbatim**, replacing
+12. Exit 0 → reply T2 using each assay's `counts`.
+13. Append the script's `history_entry` to the project's `HISTORY.md` **verbatim**, replacing
     `<ISO-8601 date>` with today's date. Do not restate its numbers in your own words — they are
     the script's counts, not your recollection.
-13. Reply T4 using `wrote` and each assay's `counts`.
+14. Reply T4 using `wrote` and each assay's `counts`.
 
 ## Response Format
 Every message you send in this stage is one of the templates below, with placeholders filled.
@@ -214,6 +236,22 @@ Cannot start stage 01.
 Run 00_initialize_project first.
 ```
 
+**T8 — Deep integrity check offered**
+```
+Design validated. Before writing the samplesheet:
+
+Optional deep file-integrity check — decompresses each of the <samples_included> included
+sample(s) to catch a truncated or corrupt FASTQ. Stage 00 already confirmed every link resolves
+and is a real gzip; this is the stronger check.
+
+  Data to verify: <included_gb> GB
+  Estimated time: ~<full_check_estimate_min> min<, submitted to Slurm if needs_scheduling>
+
+Most FASTQs arrive already validated by the sequencing core, so this is off by default.
+
+Reply `verify` to run it, or `skip` to trust the files.
+```
+
 **T7 — Samples excluded, awaiting confirmation**
 ```
 <n> sample(s) have raw data but no row in samples.csv, and will be excluded from the analysis:
@@ -236,12 +274,18 @@ Written to `projects/<project_title>/01_samplesheets/`, by the script and never 
 | `<Assay ID>_samplesheet.csv` | Columns per the assay's registered format; one row per included sample-lane, absolute paths inside the project. Consumed by 02_bioinformatics. |
 | `<Assay ID>_design.csv` | `sample_id,condition,group,replicate`. One row per included sample. Consumed by the differential-expression sub-stage of 02_bioinformatics. |
 
+The `HISTORY.md` entry records `Deep file-integrity verification: full|none`.
+
 The agent appends the script's `history_entry` to `projects/<project_title>/HISTORY.md`.
 
 `00_data/` is never modified by this stage. Re-running on unchanged inputs reproduces both files
 byte for byte.
 
 ## Human check
+If you declined the deep integrity check, that is the assumption you carried forward: these files
+are what the sequencing core produced and nobody has truncated them since. It is usually right,
+and `HISTORY.md` records that you chose it.
+
 Open `<Assay ID>_samplesheet.csv` and spot-check that the FASTQ paths in the first and last rows
 resolve, and that the number of rows matches the sample-lane count you expect. Then open
 `<Assay ID>_design.csv` and confirm the group sizes are the ones you intend to contrast — a
