@@ -129,8 +129,12 @@ produced it is not reproducible. `unknown` is an honest value; a fabricated vers
 
 | File | Grain | Written by | Edited by user |
 |---|---|---|---|
-| `files.csv` | one row per sample-lane unit | the script, **regenerated every finalize** | never |
+| `files.csv` | one row per sample-lane unit | the script, **regenerated every finalize** | **cannot** — written mode `0444` |
 | `samples.csv` | one row per distinct sample | the script **once, on creation** | yes — the experimental columns |
+
+`files.csv` is read-only on disk, not merely labelled so. Narrowing a cohort by editing it is the
+mistake users actually make — two files list samples, editing both looks right — and a comment
+saying "do not edit" does not stop an editor. The filesystem does, at the moment of the attempt.
 
 `finalize` is safe to re-run: it rebuilds `files.csv` from `raw/` but **never rewrites an existing
 `samples.csv`**, because that file holds the user's design and any exclusion they expressed by
@@ -388,7 +392,7 @@ Written to `projects/<project_title>/` by the script, and never by hand:
 | `HISTORY.md` | The stamp's `HISTORY.md` with placeholders filled: a dated creation entry naming the template version, assays, source paths and per-assay file counts. |
 | `_config/` | Empty, from the stamp. The user writes it before stage 02 — schema in `_references/config_schema.md`. |
 | `00_data/<Assay ID>/raw/` | Symlinks to the source raw NGS files. Sources are never copied or moved. |
-| `00_data/<Assay ID>/files.csv` | `sample_id,lane,fastq_1,fastq_2`. One row per sample-lane unit, paths relative to the project directory. Machine-owned; never hand-edited. |
+| `00_data/<Assay ID>/files.csv` | `sample_id,lane,fastq_1,fastq_2`. One row per sample-lane unit, paths relative to the project directory. **Machine-owned and written mode `0444`** — the filesystem refuses a hand-edit. |
 | `00_data/<Assay ID>/samples.csv` | `sample_id,condition,group,replicate`. One row per distinct sample, `sample_id` filled and the rest blank — **written only if absent**. An existing one is preserved untouched; the result's `samples_csv` field says `created` or `preserved`. |
 
 Re-running `finalize` on unchanged inputs reproduces `files.csv`, `samples.csv`, `CONTEXT.md` and

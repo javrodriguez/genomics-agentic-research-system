@@ -126,10 +126,16 @@ This exists because two derived files agreeing with each other proves nothing wh
 damaged. A real project had `files.csv` accounting for 40 of 152 linked FASTQs; the design
 validated cleanly against it and stage 01 reported 10 samples as the truth.
 
-**A `registry` failure is never an exclusion.** Report it with the remedy the script gives —
-re-run stage 00's `finalize`, which regenerates `files.csv` from `raw/` and leaves `samples.csv`
-alone — and **never offer to proceed with the reduced sample set**. Confirming a damaged registry
-as if it were a deliberate choice is how a quarter-cohort analysis gets published.
+**A `registry` failure is never an exclusion.** Report the script's message verbatim — it names
+the remedy — and **never offer to proceed with the reduced sample set**. Confirming a damaged
+registry as if it were a deliberate choice is how a quarter-cohort analysis gets published.
+
+The usual cause is not damage but a reasonable mistake: the user narrowed the cohort by editing
+`files.csv` as well as `samples.csv`, because two files list samples and editing both looks
+right. `files.csv` is now mode `0444`, so that edit is refused by the filesystem at the moment it
+is attempted — but a project created before that, or an editor that forces the write, still
+reaches here. Say plainly that subsetting is `samples.csv` only, and that re-running `finalize`
+restores `files.csv` **without touching their design**.
 
 **Malformed input.** Two failures mean the file itself is unusable rather than the design wrong:
 `header` (a metadata CSV's columns are not the expected set) and `preconditions` (a metadata CSV

@@ -259,12 +259,19 @@ def validate_assay(project, assay):
         unaccounted = on_disk - listed
         vanished = listed - on_disk
         if unaccounted:
-            fails.append(fail("registry", "files.csv accounts for %d of %d files in "
-                                          "00_data/%s/raw/; %d are unaccounted for (e.g. %s). "
-                                          "files.csv is machine-owned and derived from raw/, so "
-                                          "this means it is damaged or stale -- regenerate it by "
-                                          "re-running stage 00's finalize. Do not treat the "
-                                          "missing samples as an intentional exclusion."
+            fails.append(fail("registry",
+                              "files.csv accounts for %d of the %d files in 00_data/%s/raw/; %d "
+                              "are unaccounted for (e.g. %s).\n"
+                              "files.csv is stage 00's record of everything registered -- it is "
+                              "not how a cohort is narrowed, and editing it is not the way to "
+                              "select samples.\n"
+                              "To analyse a subset, delete rows from samples.csv ONLY. Stage 01 "
+                              "then reports the dropped samples as exclusions and asks you to "
+                              "confirm them, and the raw data stays linked so the choice is "
+                              "reversible.\n"
+                              "To fix this now: re-run stage 00's `finalize`. It rebuilds "
+                              "files.csv from raw/ and does NOT touch samples.csv, so a design "
+                              "you have already filled in is preserved."
                               % (len(listed), len(on_disk), assay, len(unaccounted),
                                  ", ".join(sorted(unaccounted)[:3]))))
         if vanished:

@@ -34,18 +34,20 @@ def template_version(workspace):
     return "unknown"
 
 
+MACHINE_OWNED_MODE = 0o444
+
+
 @contextlib.contextmanager
-def atomic_open(path, newline=""):
+def atomic_open(path, newline="", mode=None):
     """Open a file for writing such that a killed process cannot leave it half-written.
 
     Writes to a sibling temp file, fsyncs, then renames into place. `os.replace` is atomic on
     POSIX, so a reader sees either the previous complete file or the new complete file -- never a
     prefix of one.
 
-    This is not hypothetical. A `leukemia-test` project was found with `files.csv` accounting for
-    40 of 152 linked FASTQs and `samples.csv` holding 9 of 38 samples: both machine-owned files
-    ended mid-record with no trailing newline. A truncated CSV is still a *valid* CSV, so stage 01
-    read it, found it internally consistent, and reported 10 samples as the truth. Nothing failed.
+    `mode` is applied after the rename. Pass `MACHINE_OWNED_MODE` for a file a stage owns and a
+    user must not edit: a comment line saying "do not edit" is advisory and editors ignore it,
+    whereas 0444 makes the mistake fail at the moment it is made rather than two stages later.
     """
     path = Path(path)
     tmp = path.with_name(path.name + ".tmp")
@@ -56,6 +58,10 @@ def atomic_open(path, newline=""):
         os.fsync(fh.fileno())
         fh.close()
         os.replace(str(tmp), str(path))
+        if mode is not None:
+            # `rename` needs write permission on the DIRECTORY, not on the target, so a
+            # machine-owned file can still be replaced by the stage that owns it.
+            os.chmod(str(path), mode)
     except BaseException:
         try:
             fh.close()

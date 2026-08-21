@@ -10,6 +10,18 @@ touches:
 ---
 # A machine-owned file is verified against reality, not trusted
 
+> **Correction, 2026-08-21.** The cause stated below — a truncated write from a killed process —
+> was **wrong**. A second occurrence was diagnosed properly: the user had narrowed the cohort by
+> hand-editing `files.csv` as well as `samples.csv`. The surviving rows were a clean subset
+> (`ALL-p01`…`ALL-p10`), the do-not-edit banner was intact, and both files were modified *after*
+> `finalize` had completed. It was a reasonable user action against a guard that was only a
+> comment. See [0018](0018-machine-ownership-is-enforced-not-advised.md).
+>
+> The fixes below stand and were the right ones — the `registry` check caught this, which is
+> exactly what it was built for, and atomic writes remain correct practice. Only the diagnosis
+> was mistaken, and it was mistaken because I inferred a cause from file symptoms instead of
+> checking mtimes and content shape.
+
 ## What happened
 
 A real project registered 38 samples across 152 linked FASTQs. Its `files.csv` was later found
