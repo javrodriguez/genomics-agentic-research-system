@@ -230,6 +230,9 @@ nf-core build one, which costs about an hour and is then reused from the work di
     guessing a filename.
 16. Write `STATUS` as `COMPLETE <iso8601>`, append a dated entry to the project's `HISTORY.md`
     noting whether the cache was populated or reused, and reply T6.
+    The entry must name the **template version** this sub-stage ran under, read from
+    `_references/VERSION`. A workspace can be upgraded between stages, so the version that
+    created the project is not necessarily the version that produced this result.
 
 ## Response Format
 Every message you send in this sub-stage is one of the templates below, with placeholders

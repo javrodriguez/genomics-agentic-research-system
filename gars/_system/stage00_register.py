@@ -45,6 +45,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import integrity            # noqa: E402  -- one home for the integrity rule
+import workspace as ws     # noqa: E402  -- one home for the template version
 
 RAW_SUFFIXES = (".fastq.gz", ".fq.gz", ".fastq", ".fq")
 SAMPLES_HEADER = ["sample_id", "condition", "group", "replicate"]
@@ -172,12 +173,7 @@ def resolve_assays(requested, assay_map):
 
 
 def template_version(workspace):
-    v = workspace / "_references" / "VERSION"
-    if v.is_file():
-        text = v.read_text(encoding="utf-8").strip()
-        if text:
-            return text
-    return "unknown"
+    return ws.template_version(workspace)
 
 
 def find_raw(source):

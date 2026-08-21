@@ -36,6 +36,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import integrity            # noqa: E402  -- one home for the integrity rule
+import workspace as ws     # noqa: E402  -- one home for the template version
 
 STRANDEDNESS_VALUES = {"auto", "forward", "reverse", "unstranded"}
 SAMPLES_HEADER = ["sample_id", "condition", "group", "replicate"]
@@ -467,8 +468,12 @@ def write_assay(project, assay, res):
     return [str(sheet.relative_to(project)), str(design.relative_to(project))], gate
 
 
-def history_entry(assays, results, wrote, verify="none"):
+def history_entry(assays, results, wrote, verify="none", version="unknown"):
     lines = ["## <ISO-8601 date> — 01_prepare_samplesheets — samplesheets emitted", "",
+             # Not only stage 00 stamps this. A workspace can be upgraded between stages, and the
+             # per-stage stamp is the only record that this stage ran under a different contract
+             # than the one that created the project.
+             "Template version: %s" % version,
              "Deep file-integrity verification: `%s`" % verify, ""]
     for assay in assays:
         c = results[assay]["counts"]
@@ -604,8 +609,10 @@ def main(argv=None):
         return emit(result, EXIT_FAILURES)
 
     result["ok"] = True
+    result["template_version"] = ws.template_version(ws.workspace_root(__file__))
     result["history_entry"] = history_entry(assays, results, result["wrote"],
-                                            args.verify_integrity)
+                                            args.verify_integrity,
+                                            result["template_version"])
     return emit(result, EXIT_OK)
 
 

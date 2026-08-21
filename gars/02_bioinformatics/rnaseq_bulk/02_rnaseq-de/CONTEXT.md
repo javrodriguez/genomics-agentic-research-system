@@ -139,6 +139,9 @@ design table. Fewer makes dispersion estimation unreliable, and the result is no
     authoritative one from 02.01.
 13. Write `STATUS` as `COMPLETE <iso8601>`, append a dated entry to the project's `HISTORY.md`
     naming which sub-stage supplied the count matrix, and reply T6.
+    The entry must name the **template version** this sub-stage ran under, read from
+    `_references/VERSION`. A workspace can be upgraded between stages, so the version that
+    created the project is not necessarily the version that produced this result.
 
 ## Response Format
 Every message you send in this sub-stage is one of the templates below, with placeholders

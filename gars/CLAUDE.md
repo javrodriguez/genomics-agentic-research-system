@@ -28,7 +28,7 @@ of the stage the request maps to. Execute that contract literally.
 | `02_bioinformatics/<Assay ID>/<NN_name>/` | one contract per sub-stage of an assay | L2 |
 | `_references/` | domain knowledge shared by every project — assay map, artifact vocabulary, config schema, runtime | L3 |
 | `_templates/` | the stamps stages copy; `project/` is the shape of a new project | L3 |
-| `_system/` | `gars-env.sh` (the execution environment), the stage helpers that compute deterministic artifacts, the index builder | L3 |
+| `_system/` | `gars-env.sh` (the execution environment), the stage helpers that compute deterministic artifacts, the index builder, `upgrade.py` | L3 |
 | `projects/` | the work: one directory per project, plus a generated `_index.md` | L4 |
 
 Skills are **not vendored**. They ship with the installed `clawbio` package and are read-only; a

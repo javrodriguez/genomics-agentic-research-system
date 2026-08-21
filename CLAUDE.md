@@ -93,6 +93,22 @@ Never hand-edit these; run the script instead.
 | a project's `00_data/*/files.csv`, `samples.csv` | `python3 gars/_system/stage00_register.py finalize --project <dir>` |
 | a project's `01_samplesheets/*.csv` | `python3 gars/_system/stage01_samplesheet.py --project <dir>` |
 
+## Upgrading a workspace
+
+A workspace is a **copy** of `gars/`, not a clone — it has no `.git`, so pushing here never
+reaches it. That freeze is deliberate (contracts must not change under a running analysis), but
+freezing without an upgrade path is half a design, so:
+
+```bash
+python3 <workspace>/_system/upgrade.py --source <this repo>          # dry run
+python3 <workspace>/_system/upgrade.py --source <this repo> --apply
+```
+
+It replaces the template layer and never touches `projects/`. It records the upgrade in every
+project's `HISTORY.md`, and every stage stamps the version it ran under, so a project can always
+say which contracts produced which result. See
+[decision 0014](docs/decisions/0014-workspace-upgrade-path.md).
+
 Two more `_system/` helpers compute rather than generate: `resolve_artifact.py` (stage 02's
 input resolution) and `stage01_samplesheet.py --list-formats` (the registered per-assay
 samplesheet formats).

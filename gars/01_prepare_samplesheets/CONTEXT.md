@@ -274,7 +274,10 @@ Written to `projects/<project_title>/01_samplesheets/`, by the script and never 
 | `<Assay ID>_samplesheet.csv` | Columns per the assay's registered format; one row per included sample-lane, absolute paths inside the project. Consumed by 02_bioinformatics. |
 | `<Assay ID>_design.csv` | `sample_id,condition,group,replicate`. One row per included sample. Consumed by the differential-expression sub-stage of 02_bioinformatics. |
 
-The `HISTORY.md` entry records `Deep file-integrity verification: full|none`.
+The `HISTORY.md` entry records the **template version this stage ran under** and
+`Deep file-integrity verification: full|none`. The version is stamped per stage, not only at
+project creation, because a workspace can be upgraded between stages — see
+`_system/upgrade.py`.
 
 The agent appends the script's `history_entry` to `projects/<project_title>/HISTORY.md`.
 
