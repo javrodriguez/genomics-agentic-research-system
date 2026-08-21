@@ -68,7 +68,9 @@ Project-level configuration lives in `projects/<project_title>/_config/` and is 
 
 `_templates/` holds the stamps stages copy — see `_templates/CONTEXT.md`.
 `_system/` holds `gars-env.sh` (the execution environment), the stage helpers
-(`stage00_register.py`, `stage01_samplesheet.py`, `resolve_artifact.py`), the shared rules they
-share (`integrity.py`, `workspace.py`), `build_projects_index.sh`, and `upgrade.py` — which
-refreshes this workspace's template layer from a newer GARS checkout without touching
-`projects/`. Stage contracts orchestrate these; they do not duplicate what the scripts compute.
+(`stage00_register.py`, `stage01_samplesheet.py`, `resolve_artifact.py`), the rules they share
+(`integrity.py`, `workspace.py`) and `build_projects_index.sh`. Stage contracts orchestrate these;
+they do not duplicate what the scripts compute.
+
+This workspace is a git checkout. Updating it is `git pull`, pinning it is `git checkout <tag>`,
+and `git diff` shows what a contract change did — there is no bespoke upgrade machinery.

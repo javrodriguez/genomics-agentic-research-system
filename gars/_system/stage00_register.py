@@ -580,7 +580,7 @@ def cmd_finalize(args, workspace):
         to_check = [(r[col], project / r[col])
                     for r in frows for col in ("fastq_1", "fastq_2") if r[col]]
         checked += len(to_check)
-        for rel, problem in integrity.check_many(to_check, args.integrity, args.jobs):
+        for rel, problem in integrity.check_many(to_check, args.integrity):
             gate.append("%s: %s %s" % (aid, rel, problem))
 
     if gate:
@@ -590,7 +590,7 @@ def cmd_finalize(args, workspace):
 
     result["template_version"] = version
     result["created"] = created
-    result["integrity"] = {"mode": args.integrity, "jobs": args.jobs,
+    result["integrity"] = {"mode": args.integrity,
                            "files_checked": checked}
     result["ok"] = True
     return emit(result, EXIT_OK)
@@ -635,9 +635,6 @@ def main(argv=None):
                         "decompress every .gz -- O(data), and at this stage it would verify every "
                         "registered file including ones the user is about to exclude. skip: "
                         "resolution and non-emptiness only.")
-    f.add_argument("--jobs", type=int, default=4,
-                   help="parallel integrity workers (default 4; this often runs on a shared "
-                        "login node)")
 
     args = ap.parse_args(argv)
     if not args.cmd:

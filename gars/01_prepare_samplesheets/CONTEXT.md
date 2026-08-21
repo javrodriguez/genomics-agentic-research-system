@@ -276,8 +276,8 @@ Written to `projects/<project_title>/01_samplesheets/`, by the script and never 
 
 The `HISTORY.md` entry records the **template version this stage ran under** and
 `Deep file-integrity verification: full|none`. The version is stamped per stage, not only at
-project creation, because a workspace can be upgraded between stages — see
-`_system/upgrade.py`.
+project creation: a workspace is a git checkout, so `git pull` can move the contracts between a
+project's stages, and this stamp is what makes that visible afterwards.
 
 The agent appends the script's `history_entry` to `projects/<project_title>/HISTORY.md`.
 

@@ -513,8 +513,6 @@ def main(argv=None):
                          "file before emitting the samplesheet -- the last cheap moment to catch "
                          "a truncated FASTQ. Above ~10 GB submit this with sbatch; it is not "
                          "login-node work.")
-    ap.add_argument("--jobs", type=int, default=integrity.DEFAULT_JOBS,
-                    help="parallel integrity workers (default 4; more buys nothing, measured)")
     args = ap.parse_args(argv)
 
     if args.list_formats:
@@ -531,7 +529,8 @@ def main(argv=None):
     project = args.project
     result = {"ok": False, "mode": "check" if args.check else "write",
               "project": str(project), "assays": {}, "wrote": [],
-              "verify_integrity": args.verify_integrity}
+              "verify_integrity": args.verify_integrity,
+              "template_version": ws.template_version(ws.workspace_root(__file__))}
 
     if not project.is_dir():
         result["error"] = f"project directory does not exist: {project}"
@@ -571,7 +570,7 @@ def main(argv=None):
 
     if args.verify_integrity == "full":
         for assay, res in results.items():
-            problems = integrity.check_many(res["_incl_paths"], "full", args.jobs)
+            problems = integrity.check_many(res["_incl_paths"], "full")
             for rel, problem in problems:
                 # result["assays"][assay] is a shallow copy of res, so this list is the SAME
                 # object -- appending to both duplicated every finding.
@@ -609,7 +608,6 @@ def main(argv=None):
         return emit(result, EXIT_FAILURES)
 
     result["ok"] = True
-    result["template_version"] = ws.template_version(ws.workspace_root(__file__))
     result["history_entry"] = history_entry(assays, results, result["wrote"],
                                             args.verify_integrity,
                                             result["template_version"])

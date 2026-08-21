@@ -28,7 +28,7 @@ of the stage the request maps to. Execute that contract literally.
 | `02_bioinformatics/<Assay ID>/<NN_name>/` | one contract per sub-stage of an assay | L2 |
 | `_references/` | domain knowledge shared by every project — assay map, artifact vocabulary, config schema, runtime | L3 |
 | `_templates/` | the stamps stages copy; `project/` is the shape of a new project | L3 |
-| `_system/` | `gars-env.sh` (the execution environment), the stage helpers that compute deterministic artifacts, the index builder, `upgrade.py` | L3 |
+| `_system/` | `gars-env.sh` (the execution environment), the stage helpers that compute deterministic artifacts, the index builder | L3 |
 | `projects/` | the work: one directory per project, plus a generated `_index.md` | L4 |
 
 Skills are **not vendored**. They ship with the installed `clawbio` package and are read-only; a
@@ -42,7 +42,8 @@ helpers and the resolver need no conda environment; stage 02's skills do.
 
 ## Using this workspace
 
-1. Copy the `gars/` folder to your working location. That copy is your workspace.
+1. Clone the GARS repository; **this folder, `gars/`, is your workspace** — work here directly.
+   `git pull` before starting a project to pick up fixes; `git checkout <tag>` to pin a release.
 2. Tell the agent you want to start a new project → stage 00 creates `projects/<title>/` from
    `_templates/project/`, symlinks your raw data, and writes `files.csv` + `samples.csv` per assay.
 3. **Fill in `00_data/<Assay ID>/samples.csv`** — one row per sample, so each experimental value
@@ -58,7 +59,6 @@ There is no status file for the workspace. State is the filesystem:
 
 | Question | Answered by |
 |---|---|
-| Is this workspace up to date? | `python3 _system/upgrade.py --status` |
 | What projects exist, how far did each get? | `projects/_index.md` (generated — rebuild with `bash _system/build_projects_index.sh`) |
 | Is a design complete? | `00_data/<Assay ID>/samples.csv` |
 | Has a sub-stage run? | `02_bioinformatics/<Assay ID>/<NN_name>/STATUS` — the only authority |

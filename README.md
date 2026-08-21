@@ -25,14 +25,17 @@ through fixed message templates, and stops rather than improvising when inputs a
 
 ## Getting started
 
-GARS is not installed. The repository holds a **workspace template**; you copy it, and the copy is
-your workspace.
+GARS is not installed. You clone it, and **`gars/` inside your clone is your workspace** — you
+work there directly.
 
 ```bash
 git clone https://github.com/javrodriguez/genomics-agentic-research-system.git
-cp -r genomics-agentic-research-system/gars ~/my-analysis      # this copy is the workspace
-cd ~/my-analysis
+cd genomics-agentic-research-system/gars
 ```
+
+Your projects live in `gars/projects/`, which is gitignored — real data never enters the
+repository. Updating is `git pull`; pinning to a release is `git checkout v0.3.0`; seeing what
+changed is `git log` and `git diff`.
 
 Then open it with an agent (Claude Code or equivalent) and say what you want:
 
@@ -44,10 +47,14 @@ Your part is the decisions: the project title and assay, confirming the derived 
 anything is linked, filling in the experimental design, and writing `_config/`. Everything the
 system refuses to guess is something it will stop and ask you for.
 
-**Copy rather than work in the repository.** Stage 00 stamps the template version into every
-project it creates, so a copy freezes the contracts your results were produced under; editing or
-pulling the repo later cannot change them retroactively. Real data never enters the repo — put the
-workspace on your group work area, beside the data, not in `$HOME`.
+**Work in the clone; do not copy `gars/` somewhere else.** An earlier design made the workspace a
+detached copy, on the theory that freezing the contracts protected reproducibility. It did the
+opposite: a copy cannot be diffed, reverted, or pinned, and a fix pushed here never reached it.
+A checkout gives you all three for free, and `git pull` is an explicit act, not a silent one.
+
+Clone onto your group work area beside the data, not into `$HOME` — on this cluster those are
+different filesystems. Every stage stamps the template version it ran under into the project's
+`HISTORY.md`, so `git pull` mid-analysis is recorded rather than invisible.
 
 Stage 02 additionally needs the two conda environments under **Dependencies** below. Stages 00 and
 01 need nothing but Python 3.

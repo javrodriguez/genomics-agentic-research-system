@@ -1,12 +1,16 @@
 ---
 date: 2026-08-20
-status: standing
+status: superseded
 touches:
   - gars/_system/workspace.py
   - gars/_system/upgrade.py
   - gars/00_initialize_project/CONTEXT.md
 ---
 # A workspace can tell when it is behind its source
+
+> **Superseded 2026-08-20 by [0016](0016-workspaces-are-checkouts.md).**
+> A workspace is a git checkout; the machinery below was removed. The per-stage version
+> stamping introduced here was kept — it does not depend on the rest.
 
 **Question.** [0014](0014-workspace-upgrade-path.md) gave workspaces an upgrade path but left them
 unable to know they needed one. It deferred detection on the grounds that it "earns its place only

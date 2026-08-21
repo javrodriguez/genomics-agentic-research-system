@@ -1,6 +1,6 @@
 ---
 date: 2026-08-20
-status: standing
+status: superseded
 touches:
   - gars/_system/upgrade.py
   - gars/_system/workspace.py
@@ -9,6 +9,10 @@ touches:
   - gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md
 ---
 # A workspace can be upgraded, and every stage stamps the version it ran under
+
+> **Superseded 2026-08-20 by [0016](0016-workspaces-are-checkouts.md).**
+> A workspace is a git checkout; the machinery below was removed. The per-stage version
+> stamping introduced here was kept — it does not depend on the rest.
 
 **Question.** A user clones GARS, copies `gars/` to a workspace, and starts a project. We then fix
 a bug and push. The copy has no `.git` and no remote, so nothing reaches it. Is that right?

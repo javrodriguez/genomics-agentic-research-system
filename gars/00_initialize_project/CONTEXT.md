@@ -58,20 +58,18 @@ This stage performs the steps in Process and nothing else.
 The script owns these rules; they are stated here so you can explain a refusal, not so you can
 perform the check.
 
-**Title sanitization.** Keep characters matching `[A-Za-z0-9_-]`. Replace each space with `_`.
-Drop every other character. Collapse runs of `_` into one, and strip leading/trailing `_` and `-`.
-Example: `Macrophage Polarization (Study #2)` -> `Macrophage_Polarization_Study_2`.
+**Title sanitization.** The script derives a directory-safe title and reports it as
+`sanitized_title`. Show the user both forms; never construct one yourself.
 
 **Assay ID.** The directory-safe assay name, from the Assay ID column of
-`_references/assay_stage_skill_map.md`. An assay is supported if the user's phrase matches that
-table's **Assay** or **Assay ID** column after normalisation — case-folded, with every
-non-alphanumeric character dropped. So `rnaseq-bulk`, `rnaseq_bulk`, `RNAseq Bulk`, `Bulk RNA-seq`
-and `bulk rna seq` all resolve to `rnaseq_bulk`.
+`_references/assay_stage_skill_map.md` — the definitive list of supported assays. The script
+matches the user's phrase against that table after normalisation, so `rnaseq-bulk`, `RNAseq Bulk`
+and `Bulk RNA-seq` all resolve to `rnaseq_bulk`.
 
-This is normalisation, **not fuzzy matching**: no edit distance, no substring, no stemming.
-`rnaseq` alone is still refused, and so is a skill name such as `rnaseq-de`. If a phrase normalises
-onto two assays, the script refuses and asks for the Assay ID rather than choosing — a wrong assay
-silently builds the wrong pipeline.
+It is normalisation, **not fuzzy matching**: a near miss such as `rnaseq` alone, or a skill name
+such as `rnaseq-de`, is refused rather than resolved, and a phrase matching two assays is refused
+as ambiguous. That refusal is the point — a wrong assay silently builds the wrong pipeline — so
+report it and let the user choose. Never resolve a phrase yourself.
 
 **Menu number.** The `01`, `02` … the `assays` subcommand hands out. **Presentation only.** They
 are assigned from a deterministic sort and regenerated on every call, so the numbering offered is
@@ -80,17 +78,15 @@ A number must never be written to disk, recorded in `HISTORY.md`, used as a dire
 carried across turns. The Assay ID is the durable identifier; convert as soon as the user answers,
 and refer to assays by ID and name from then on.
 
-**Raw NGS file.** A file matching `*.fastq.gz`, `*.fq.gz`, `*.fastq`, or `*.fq` **at the top level
-only** of the given directory. Everything else is excluded and reported as excluded.
+**Raw NGS file.** `*.fastq.gz`, `*.fq.gz`, `*.fastq` or `*.fq`, **at the top level only** of the
+given directory. Everything else is reported as excluded. The script never descends.
 
-**Sample ID and sample-lane unit.** Derived from the Illumina bcl2fastq convention
-`<sample>_S<n>[_L<lane>]_R<1|2>_<nnn>.fastq.gz`: the sample is the part before `_S<n>`, and a
-sample-lane unit is one `(sample_id, lane)` pair — the grain of `files.csv`. Filenames carrying no
-lane token yield one unit per sample, with the lane column empty. Filenames matching no
-convention are **refused**, never guessed; see `--sample-id-pattern` below.
+**Sample ID and sample-lane unit.** Sample IDs come from the Illumina bcl2fastq convention; a
+sample-lane unit is one `(sample_id, lane)` pair, the grain of `files.csv`. **Filenames matching
+no convention are refused, never guessed** — the script reports the ones it could not read, and
+only a pattern the *user* supplies via `--sample-id-pattern` resolves them.
 
-**Read pairing.** An assay directory is paired-end when every sample-lane unit has both reads,
-single-end when none do. Anything else is a mixed/incomplete set and is refused.
+**Read pairing.** Wholly paired-end or wholly single-end. A mixed set is refused.
 
 **File integrity.** A linked raw file passes when its symlink resolves, the target is non-empty,
 and — for `.gz` files — a full decompression succeeds. This is the only check performed on file
@@ -160,19 +156,7 @@ between each:
 | 3 | usage or precondition error | T9 |
 
 ## Process
-1. Activated when the user says they want to start a new project. **First check whether this
-   workspace is behind its source** — a project started on stale contracts carries them for its
-   whole life, and this is the cheapest moment to find out:
-
-   ```bash
-   python3 _system/upgrade.py --status
-   ```
-
-   It never writes and never fails; `state` is one of `same`, `behind`, `ahead`, `differs`,
-   `unknown` or `unreachable`. Include the staleness line in T1 when `state` is `behind`, and
-   otherwise say nothing about it — a workspace that is current does not need announcing.
-   **Never upgrade on your own initiative**: it changes contracts, and whether to do so before or
-   after this project is the user's call. Then reply T1.
+1. Activated when the user says they want to start a new project. Reply T1.
 2. Receive the project title. Reply T2 with it.
 3. **Always offer the menu, whether or not the user named an assay.** Run:
 
@@ -260,9 +244,6 @@ about anything encountered on the filesystem.
 **T1 — Start**
 ```
 Starting stage 00: Initialize Project.
-<if state is `behind`, exactly this line and nothing more:
- "Note: this workspace is <version>; <source_version> is available. Projects created now use the
-  contracts in this workspace. Upgrading first is optional — say so if you want it.">
 I will collect, in order: (1) project title, (2) assay types, (3) one raw data path per assay.
 
 Project title?
