@@ -216,7 +216,11 @@ Stage 01 complete. Samplesheets written to projects/<title>/01_samplesheets/.
 |---|---|---|---|
 | <Assay ID> | <samplesheet_rows> | <design_rows> | <Assay ID>_samplesheet.csv, <Assay ID>_design.csv |
 
-Next: run 02_bioinformatics for <Assay ID>.
+Over to you: stage 02 reads _config/<Assay ID>.yaml and _config/nextflow.slurm.config —
+reference, aligner, compute, and the DE formula and contrast. Nothing is defaulted; every key is a
+scientific decision. Schema and rationale: _references/config_schema.md.
+
+Tell me when the config is written and I will start the bioinformatics for <Assay ID>.
 ```
 
 **T5 — Existing samplesheets**

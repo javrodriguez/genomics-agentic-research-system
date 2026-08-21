@@ -214,7 +214,9 @@ Sub-stage 02.02 complete.
 | Figures | <output>/figures/ (pca.png, volcano.png, ma_plot.png) |
 
 Genes tested: <n>
-Next: 03_custom_analysis.
+
+This is the last implemented sub-stage for rnaseq_bulk. 03_custom_analysis is not implemented in
+this template version, so these artifacts are yours to analyse directly.
 ```
 
 ## OUTPUT

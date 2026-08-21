@@ -333,8 +333,11 @@ File integrity: <integrity.files_checked> files checked, mode <integrity.mode>.
 
 Written: CONTEXT.md, HISTORY.md, and per assay files.csv + samples.csv.
 
-Next: fill condition, group, and replicate in each 00_data/<Assay ID>/samples.csv — one row per
-sample. Then run 01_prepare_samplesheets.
+Over to you: fill in condition, group and replicate in each 00_data/<Assay ID>/samples.csv, one
+row per sample. To analyse only some samples, delete the other rows — the raw data stays linked,
+so it is reversible.
+
+Tell me when the design is filled in and I will validate it and emit the samplesheets.
 ```
 
 **T9 — Exit gate failed**

@@ -138,7 +138,10 @@ All sub-stages complete for <Assay ID>.
 |---|---|
 | <NN_name> | 02_bioinformatics/<Assay ID>/<NN_name>/ |
 
-Next: 03_custom_analysis, or run stage 02 for another assay.
+Nothing further is automated for <Assay ID>: 03_custom_analysis is not implemented in this
+template version, so the artifacts above are yours to analyse directly.
+
+Say the word if you want another assay processed.
 ```
 
 **T5 — Preconditions not met**

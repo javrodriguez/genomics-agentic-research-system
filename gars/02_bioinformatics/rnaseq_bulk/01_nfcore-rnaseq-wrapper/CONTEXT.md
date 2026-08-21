@@ -299,7 +299,9 @@ Sub-stage 02.01 complete.
 | Wrapper report | <report.md> |
 
 Samples in matrix: <n>
-Next: sub-stage 02_rnaseq-de.
+
+Read the MultiQC report before this feeds anything downstream — see Human check.
+Say when you are ready and I will continue with 02_rnaseq-de.
 ```
 
 ## OUTPUT

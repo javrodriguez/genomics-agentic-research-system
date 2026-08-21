@@ -36,6 +36,13 @@ prose. Numbered templates `T1…Tn` make the set of things the agent can say fin
 original step 7 of stage 00 was a 90-word sentence containing five conditionals; buried branches
 get skipped.
 
+**Response Format — the agent runs the stages, the user decides.** A template must never tell
+the user to run a stage, a sub-stage, or a script: they do not, and saying so misdescribes the
+system. Name what the user must decide or edit, then say what *you* will do once they confirm —
+"tell me when the design is filled in and I will emit the samplesheets", not "then run
+01_prepare_samplesheets". A closing template that points at an unimplemented stage is worse still:
+say plainly that nothing further is automated.
+
 **Human check — exactly one, and concrete.** State something a person *does* — "read the first
 three rows and confirm the sample IDs match your notebook" — not "review the output". A stage
 whose human check is vague has no gate, and the next stage will consume whatever is there.
