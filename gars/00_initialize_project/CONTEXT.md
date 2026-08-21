@@ -129,8 +129,12 @@ produced it is not reproducible. `unknown` is an honest value; a fabricated vers
 
 | File | Grain | Written by | Edited by user |
 |---|---|---|---|
-| `files.csv` | one row per sample-lane unit | the script | never |
-| `samples.csv` | one row per distinct sample | the script (IDs only) | yes — the experimental columns |
+| `files.csv` | one row per sample-lane unit | the script, **regenerated every finalize** | never |
+| `samples.csv` | one row per distinct sample | the script **once, on creation** | yes — the experimental columns |
+
+`finalize` is safe to re-run: it rebuilds `files.csv` from `raw/` but **never rewrites an existing
+`samples.csv`**, because that file holds the user's design and any exclusion they expressed by
+deleting rows. Re-running it is the documented repair for a damaged `files.csv`.
 
 Keeping them separate means the user enters each experimental value exactly once, and makes "the
 same sample carries conflicting conditions" structurally impossible rather than a check.
@@ -385,7 +389,7 @@ Written to `projects/<project_title>/` by the script, and never by hand:
 | `_config/` | Empty, from the stamp. The user writes it before stage 02 — schema in `_references/config_schema.md`. |
 | `00_data/<Assay ID>/raw/` | Symlinks to the source raw NGS files. Sources are never copied or moved. |
 | `00_data/<Assay ID>/files.csv` | `sample_id,lane,fastq_1,fastq_2`. One row per sample-lane unit, paths relative to the project directory. Machine-owned; never hand-edited. |
-| `00_data/<Assay ID>/samples.csv` | `sample_id,condition,group,replicate`. One row per distinct sample. `sample_id` filled; the rest blank for the user to complete. |
+| `00_data/<Assay ID>/samples.csv` | `sample_id,condition,group,replicate`. One row per distinct sample, `sample_id` filled and the rest blank — **written only if absent**. An existing one is preserved untouched; the result's `samples_csv` field says `created` or `preserved`. |
 
 Re-running `finalize` on unchanged inputs reproduces `files.csv`, `samples.csv`, `CONTEXT.md` and
 `HISTORY.md` byte for byte.

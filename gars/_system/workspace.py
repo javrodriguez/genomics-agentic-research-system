@@ -5,6 +5,8 @@ One home for "which template version is this?", because more than one stage need
 and the "or unknown" rule is a documented behaviour rather than a bare file read.
 """
 
+import contextlib
+import os
 from pathlib import Path
 
 VERSION_FILE = "_references/VERSION"
@@ -30,3 +32,37 @@ def template_version(workspace):
         if text:
             return text
     return "unknown"
+
+
+@contextlib.contextmanager
+def atomic_open(path, newline=""):
+    """Open a file for writing such that a killed process cannot leave it half-written.
+
+    Writes to a sibling temp file, fsyncs, then renames into place. `os.replace` is atomic on
+    POSIX, so a reader sees either the previous complete file or the new complete file -- never a
+    prefix of one.
+
+    This is not hypothetical. A `leukemia-test` project was found with `files.csv` accounting for
+    40 of 152 linked FASTQs and `samples.csv` holding 9 of 38 samples: both machine-owned files
+    ended mid-record with no trailing newline. A truncated CSV is still a *valid* CSV, so stage 01
+    read it, found it internally consistent, and reported 10 samples as the truth. Nothing failed.
+    """
+    path = Path(path)
+    tmp = path.with_name(path.name + ".tmp")
+    fh = open(str(tmp), "w", newline=newline, encoding="utf-8")
+    try:
+        yield fh
+        fh.flush()
+        os.fsync(fh.fileno())
+        fh.close()
+        os.replace(str(tmp), str(path))
+    except BaseException:
+        try:
+            fh.close()
+        except OSError:
+            pass
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise

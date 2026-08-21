@@ -118,6 +118,19 @@ login node's per-user memory cgroup kills whatever is running, not whatever is a
 `_system/stage01_samplesheet.py`'s `FORMATS` table — a row, not a rewrite — and belongs with the
 work of adding that assay's wrapper. Violation → `unsupported_assay`.
 
+**Registry integrity.** `files.csv` is machine-owned and derived from `00_data/<Assay ID>/raw/`.
+Before anything else, the script compares the two: every file in `raw/` must be named in
+`files.csv` and vice versa. Violation → `registry`.
+
+This exists because two derived files agreeing with each other proves nothing when both are
+damaged. A real project had `files.csv` accounting for 40 of 152 linked FASTQs; the design
+validated cleanly against it and stage 01 reported 10 samples as the truth.
+
+**A `registry` failure is never an exclusion.** Report it with the remedy the script gives —
+re-run stage 00's `finalize`, which regenerates `files.csv` from `raw/` and leaves `samples.csv`
+alone — and **never offer to proceed with the reduced sample set**. Confirming a damaged registry
+as if it were a deliberate choice is how a quarter-cohort analysis gets published.
+
 **Malformed input.** Two failures mean the file itself is unusable rather than the design wrong:
 `header` (a metadata CSV's columns are not the expected set) and `preconditions` (a metadata CSV
 is missing, empty, or unreadable). Both mean stage 00's output was edited or damaged — direct the

@@ -38,6 +38,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import integrity            # noqa: E402  -- one home for the integrity rule
 import workspace as ws     # noqa: E402  -- one home for the template version
 
+RAW_SUFFIXES = (".fastq.gz", ".fq.gz", ".fastq", ".fq")
 STRANDEDNESS_VALUES = {"auto", "forward", "reverse", "unstranded"}
 SAMPLES_HEADER = ["sample_id", "condition", "group", "replicate"]
 FILES_HEADER = ["sample_id", "lane", "fastq_1", "fastq_2"]
@@ -243,6 +244,35 @@ def validate_assay(project, assay):
     if err:
         return {**out, "failures": [fail("preconditions", err)], "fatal": True}
 
+    # files.csv is machine-owned and derived from raw/. Nothing re-checked it against raw/ after
+    # stage 00 wrote it, so a truncated or edited registry was consumed as truth: one project had
+    # files.csv accounting for 40 of 152 linked FASTQs, and stage 01 reported 10 samples with no
+    # error because a truncated CSV is still internally consistent. raw/ is the authority.
+    raw_dir = data_dir / "raw"
+    if raw_dir.is_dir():
+        on_disk = {p.name for p in raw_dir.iterdir() if p.name.endswith(RAW_SUFFIXES)}
+        listed = set()
+        for row in files["rows"]:
+            for col in ("fastq_1", "fastq_2"):
+                if row.get(col):
+                    listed.add(row[col].rsplit("/", 1)[-1])
+        unaccounted = on_disk - listed
+        vanished = listed - on_disk
+        if unaccounted:
+            fails.append(fail("registry", "files.csv accounts for %d of %d files in "
+                                          "00_data/%s/raw/; %d are unaccounted for (e.g. %s). "
+                                          "files.csv is machine-owned and derived from raw/, so "
+                                          "this means it is damaged or stale -- regenerate it by "
+                                          "re-running stage 00's finalize. Do not treat the "
+                                          "missing samples as an intentional exclusion."
+                              % (len(listed), len(on_disk), assay, len(unaccounted),
+                                 ", ".join(sorted(unaccounted)[:3]))))
+        if vanished:
+            fails.append(fail("registry", "files.csv names %d file(s) that are no longer in "
+                                          "00_data/%s/raw/ (e.g. %s); raw data has been removed "
+                                          "since registration"
+                              % (len(vanished), assay, ", ".join(sorted(vanished)[:3]))))
+
     for name, got, want in (("samples.csv", samples["fields"], SAMPLES_HEADER),
                             ("files.csv", files["fields"], FILES_HEADER)):
         if got != want:
@@ -406,7 +436,7 @@ def write_assay(project, assay, res):
     design = sheet_dir / f"{assay}_design.csv"
 
     fmt = res["_format"]
-    with sheet.open("w", newline="", encoding="utf-8") as fh:
+    with ws.atomic_open(sheet) as fh:
         w = csv.writer(fh, lineterminator="\n")
         w.writerow([c for c, _ in fmt])
         for row in res["_incl_file_rows"]:
@@ -428,7 +458,7 @@ def write_assay(project, assay, res):
                     out.append(row.get(src, ""))
             w.writerow(out)
 
-    with design.open("w", newline="", encoding="utf-8") as fh:
+    with ws.atomic_open(design) as fh:
         w = csv.writer(fh, lineterminator="\n")
         w.writerow(SAMPLES_HEADER)
         for row in res["_incl_design_rows"]:
