@@ -45,6 +45,9 @@ genomics-agentic-research-system/
 *_project/
 *workspace*/
 
+# Written by upgrade.py inside a live workspace; the template in this repo has no origin to record.
+.gars-workspace
+
 .DS_Store
 __pycache__/
 *.pyc

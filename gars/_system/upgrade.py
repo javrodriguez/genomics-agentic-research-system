@@ -119,10 +119,50 @@ def project_versions(workspace):
     return out
 
 
+def cmd_status(workspace, marker, source_arg):
+    """Is this workspace behind its source? Informational: never writes, never fails on absence.
+
+    A workspace is made with `cp -r`, which records nothing, so the source is only known once
+    `--set-source` or `--apply` has run. Saying so plainly beats guessing at a path.
+    """
+    result = {"command": "status", "ok": True, "workspace": str(workspace),
+              "version": ws.template_version(workspace),
+              "source": marker.get("source"), "source_version": None, "state": None}
+
+    chosen = source_arg or marker.get("source")
+    if not chosen:
+        result["state"] = "unknown"
+        result["note"] = ("this workspace does not record where it was copied from; run "
+                          "`upgrade.py --source <repo> --set-source` once to record it")
+        return emit(result, EXIT_OK)
+
+    source, err = resolve_source(chosen)
+    if err:
+        result["state"] = "unreachable"
+        result["note"] = err
+        return emit(result, EXIT_OK)
+
+    result["source"] = str(source)
+    result["source_version"] = ws.template_version(source)
+    result["state"] = ws.compare_versions(result["version"], result["source_version"])
+    result["note"] = {
+        "same": "up to date",
+        "behind": "a newer template is available; see `upgrade.py --source <repo>`",
+        "ahead": "this workspace is NEWER than its source -- check the source is the right one",
+        "differs": "versions are not comparable; inspect both before upgrading",
+    }[result["state"]]
+    return emit(result, EXIT_OK)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--source", required=True,
-                    help="a GARS repo checkout, or a gars/ template directory")
+    ap.add_argument("--source", default=None,
+                    help="a GARS repo checkout, or a gars/ template directory. Optional with "
+                         "--status, which falls back to the source recorded in .gars-workspace")
+    ap.add_argument("--status", action="store_true",
+                    help="report this workspace's version against its source, and exit")
+    ap.add_argument("--set-source", action="store_true",
+                    help="record --source in .gars-workspace without upgrading")
     ap.add_argument("--workspace", default=None,
                     help="workspace to upgrade (default: the one this script lives in)")
     ap.add_argument("--apply", action="store_true",
@@ -132,6 +172,15 @@ def main(argv=None):
 
     workspace = Path(args.workspace).resolve() if args.workspace \
         else ws.workspace_root(__file__)
+    marker = ws.read_marker(workspace)
+
+    if args.status:
+        return cmd_status(workspace, marker, args.source)
+
+    if not args.source:
+        return emit({"command": "upgrade", "ok": False,
+                     "error": "--source is required (or use --status)"}, EXIT_USAGE)
+
     result = {"command": "upgrade", "ok": False, "workspace": str(workspace),
               "applied": bool(args.apply)}
 
@@ -143,6 +192,12 @@ def main(argv=None):
         result["error"] = "source and workspace are the same directory"
         return emit(result, EXIT_USAGE)
     result["source"] = str(source)
+
+    if args.set_source:
+        data = ws.write_marker(workspace, source=str(source),
+                               recorded=args.date or datetime.date.today().isoformat())
+        return emit({"command": "upgrade", "ok": True, "workspace": str(workspace),
+                     "note": "source recorded; nothing was upgraded", "marker": data}, EXIT_OK)
 
     result["from_version"] = ws.template_version(workspace)
     result["to_version"] = ws.template_version(source)
@@ -207,6 +262,9 @@ def main(argv=None):
         ]) + "\n", encoding="utf-8")
         noted.append(name)
     result["history_noted"] = noted
+    # Remember where this came from, so `--status` can answer without being told again.
+    result["marker"] = ws.write_marker(workspace, source=str(source), last_upgrade=date,
+                                       last_upgrade_to=result["to_version"])
     result["ok"] = True
     return emit(result, EXIT_OK)
 

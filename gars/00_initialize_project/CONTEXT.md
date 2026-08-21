@@ -160,7 +160,19 @@ between each:
 | 3 | usage or precondition error | T9 |
 
 ## Process
-1. Activated when the user says they want to start a new project. Reply T1.
+1. Activated when the user says they want to start a new project. **First check whether this
+   workspace is behind its source** — a project started on stale contracts carries them for its
+   whole life, and this is the cheapest moment to find out:
+
+   ```bash
+   python3 _system/upgrade.py --status
+   ```
+
+   It never writes and never fails; `state` is one of `same`, `behind`, `ahead`, `differs`,
+   `unknown` or `unreachable`. Include the staleness line in T1 when `state` is `behind`, and
+   otherwise say nothing about it — a workspace that is current does not need announcing.
+   **Never upgrade on your own initiative**: it changes contracts, and whether to do so before or
+   after this project is the user's call. Then reply T1.
 2. Receive the project title. Reply T2 with it.
 3. **Always offer the menu, whether or not the user named an assay.** Run:
 
@@ -248,6 +260,9 @@ about anything encountered on the filesystem.
 **T1 — Start**
 ```
 Starting stage 00: Initialize Project.
+<if state is `behind`, exactly this line and nothing more:
+ "Note: this workspace is <version>; <source_version> is available. Projects created now use the
+  contracts in this workspace. Upgrading first is optional — say so if you want it.">
 I will collect, in order: (1) project title, (2) assay types, (3) one raw data path per assay.
 
 Project title?

@@ -85,3 +85,7 @@ risk; it made it worth closing.
 - **Staleness detection** (a workspace checking whether it is behind). Useful, but it needs a
   recorded source path that nothing writes today, and it earns its place only once there is more
   than one workspace to track. Deferred deliberately, not forgotten.
+
+  **Built the same day — see [0015](0015-workspace-staleness-detection.md).** The deferral
+  reasoning was wrong: the number of workspaces was never the relevant variable, and a single
+  workspace unable to say it is behind is exactly the gap that had just cost a user a dead end.

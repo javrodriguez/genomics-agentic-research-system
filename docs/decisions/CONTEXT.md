@@ -34,6 +34,7 @@ belongs here.
 | 0012 | [GARS-authored wrappers live in `gars/_system/wrappers/`](0012-gars-authored-wrappers-live-in-system.md) | 2026-08-19 | standing | `gars/_system/gars-env.sh`<br>`gars/_references/assay_stage_skill_map.md`<br>`docs/assay-expansion.md` |
 | 0013 | [Deep file-integrity verification moves to stage 01, and is opt-in](0013-integrity-verification-moves-to-stage-01.md) | 2026-08-20 | standing | `gars/_system/integrity.py`<br>`gars/00_initialize_project/CONTEXT.md`<br>`gars/01_prepare_samplesheets/CONTEXT.md`<br>`gars/_system/stage00_register.py`<br>`gars/_system/stage01_samplesheet.py` |
 | 0014 | [A workspace can be upgraded, and every stage stamps the version it ran under](0014-workspace-upgrade-path.md) | 2026-08-20 | standing | `gars/_system/upgrade.py`<br>`gars/_system/workspace.py`<br>`gars/01_prepare_samplesheets/CONTEXT.md`<br>`gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md`<br>`gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md` |
+| 0015 | [A workspace can tell when it is behind its source](0015-workspace-staleness-detection.md) | 2026-08-20 | standing | `gars/_system/workspace.py`<br>`gars/_system/upgrade.py`<br>`gars/00_initialize_project/CONTEXT.md` |
 
 ## Human check
 

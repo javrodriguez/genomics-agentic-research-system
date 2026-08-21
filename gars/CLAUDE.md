@@ -58,6 +58,7 @@ There is no status file for the workspace. State is the filesystem:
 
 | Question | Answered by |
 |---|---|
+| Is this workspace up to date? | `python3 _system/upgrade.py --status` |
 | What projects exist, how far did each get? | `projects/_index.md` (generated — rebuild with `bash _system/build_projects_index.sh`) |
 | Is a design complete? | `00_data/<Assay ID>/samples.csv` |
 | Has a sub-stage run? | `02_bioinformatics/<Assay ID>/<NN_name>/STATUS` — the only authority |
