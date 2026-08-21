@@ -34,7 +34,7 @@ cd genomics-agentic-research-system/gars
 ```
 
 Your projects live in `gars/projects/`, which is gitignored — real data never enters the
-repository. Updating is `git pull`; pinning to a release is `git checkout v0.3.0`; seeing what
+repository. Updating is `git pull`; pinning to a release is `git checkout v0.4.0`; seeing what
 changed is `git log` and `git diff`.
 
 Then open it with an agent (Claude Code or equivalent) and say what you want:
@@ -223,7 +223,7 @@ the repository and links everything else.
 
 ```
 DEVELOPMENT.md  status and next steps
-gars/           the workspace template — copy it to start a project
+gars/           the workspace — clone the repo and work in here
   CLAUDE.md         L0 orientation
   CONTEXT.md        L1 routing: stage map, how stages connect, directory ownership
   00_initialize_project/     01_prepare_samplesheets/
@@ -253,7 +253,7 @@ conda create -y -n gars-nxf -c bioconda -c conda-forge "nextflow=26.04.6" "openj
 Two environments, because `nextflow` and `clawbio` have conflicting `c-ares` constraints and
 cannot be solved together. Exact lockfiles and the traps encountered are in
 [`gars/_references/environment.md`](gars/_references/environment.md) — they ship inside the
-workspace template, so a copied workspace can rebuild its own runtime.
+workspace, so a checkout can rebuild its own runtime without reaching up into the repo.
 
 How the layers relate — package managers, workflow engine, containers, and why a container
 holds one tool rather than the pipeline — is in

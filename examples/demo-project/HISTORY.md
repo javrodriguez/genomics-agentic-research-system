@@ -14,7 +14,7 @@ Entry format:
 
 ## 2026-08-18 — 00_initialize_project — project created
 
-Template version: v0.3.0
+Template version: v0.4.0
 
 | Assay ID | Source path | Files linked |
 |---|---|---|

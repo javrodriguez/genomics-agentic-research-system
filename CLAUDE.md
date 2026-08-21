@@ -6,7 +6,7 @@ system. If you are running an analysis instead, the entry point is `gars/CLAUDE.
 | Mode | You are | Entry point |
 |---|---|---|
 | **Developing GARS** | editing contracts, docs, the template | **this file** |
-| **Using GARS** | running an analysis in a copied workspace | `gars/CLAUDE.md` |
+| **Using GARS** | running an analysis in `gars/` of a checkout | `gars/CLAUDE.md` |
 
 ---
 
@@ -39,9 +39,10 @@ DEVELOPMENT.md      status and next steps
 README.md           public-facing description
 docs/               execution model, assay research, decisions/
 examples/           synthetic worked example, no real data
-gars/               THE WORKSPACE TEMPLATE — copied to start a project.
+gars/               THE WORKSPACE — users clone this repo and work in here.
                     Its own CLAUDE.md is the entry point; do not restate its
                     internals here, or the two descriptions drift.
+                    gars/projects/ is gitignored: real data never enters git.
 ```
 
 ---
@@ -50,10 +51,10 @@ gars/               THE WORKSPACE TEMPLATE — copied to start a project.
 
 - **This repo is canonical.** `bioinfo-research-system/gars-test/` is a disposable workspace copy
   for testing; never develop there. Drift between the two was measured once and it was real.
-- **`gars/` is a template that gets copied.** Anything added there travels into every future
-  workspace, so repo-level material (this file, `docs/`, `DEVELOPMENT.md`) stays *outside* it —
-  and anything the template's own files cite must live *inside* it, or the citation dangles the
-  moment someone copies the folder.
+- **`gars/` is the workspace.** Anything added there ships to every user on `git pull`, so
+  repo-level material (this file, `docs/`, `DEVELOPMENT.md`) stays *outside* it — and anything
+  `gars/` cites must live *inside* it, since a user working in `gars/` should never need to
+  reach up into the repo.
 - **Skills are not vendored.** They ship with the installed `clawbio` package and are read-only.
   There is no skills directory in the workspace. Resolve them via `$GARS_SKILLS` from
   `gars/_system/gars-env.sh`.
@@ -65,10 +66,10 @@ gars/               THE WORKSPACE TEMPLATE — copied to start a project.
   means editing the script *and* the contract's Definitions, which share its vocabulary — see
   [decision 0011](docs/decisions/0011-deterministic-artifacts-in-stages-00-01.md).
 - **Real data and patient-derived sample IDs never enter this repo.** `.gitignore` guards it;
-  keep it that way. The live hazard is a **workspace copied inside the repo directory**: its
-  projects hold real `samples.csv` files, and one `git add -A` publishes them. Keep workspaces
-  outside the repo — and if you must put one inside, add it to `.gitignore` first, not after.
-  Prefer path-limited staging (`git add -- gars/ docs/`) over `git add -A` here.
+  keep it that way. `gars/projects/*/` is ignored, which covers the normal case. The hazard is a
+  **stray workspace copy elsewhere in the repo directory** — its projects hold real `samples.csv`
+  files, and one `git add -A` publishes them. Prefer path-limited staging
+  (`git add -- gars/ docs/`) over `git add -A` here.
 
 ## Editing contracts
 
