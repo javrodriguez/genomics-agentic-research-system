@@ -26,6 +26,20 @@ This stage performs the steps in Process and nothing else.
 - Never launch a long-running job in the foreground. Submit it and return.
 - If you believe a step should deviate, stop and ask. Do not act first and report afterwards.
 
+## Scope Boundaries additions for the config
+
+- **Never type a reference path or a contrast into the config yourself.** Both come from menus
+  `configure.py` builds — the genome registry and the levels present in the design table. A path
+  typed by hand can pair a FASTA with a mismatched annotation; a contrast typed by hand can name a
+  level the design does not contain. Selection from a closed set makes both unreachable.
+- **Never add a genome to `_references/genomes.md`** to satisfy a request. Registering a reference
+  is a change to the workspace, verified separately; if the one the user wants is absent, say so
+  and stop.
+- **Never accept a contrast the script marks `testable: false`.** A level with one sample cannot
+  be tested, and running anyway produces a result that looks like an answer.
+- `de.formula` defaults to `~ condition`. It is a *presented* default: T9 shows it before anything
+  is written. Change it only to a formula the user gave you.
+
 ## Definitions
 
 **Sub-stage.** A directory `02_bioinformatics/<Assay ID>/<NN_name>/` in this workspace holding a
@@ -50,6 +64,18 @@ sub-stage order, and takes the first `native` match; `samplesheet` and `design` 
 01. A sub-stage whose own contract asks for an adaptation it produced passes
 `--prefer-adapted-from <its own directory name>`. `--list` shows everything declared so far, which
 is the quickest way to answer "what does this project have".
+
+**Genome registry.** `_references/genomes.md`, one row per reference the workspace can align
+against. A row pairs a FASTA, its matching GTF and, when built, the version-keyed index cache —
+so choosing a genome sets all three together and they cannot be mismatched. Only verified
+references are listed: the iGenomes `GRCh38` is the NCBI build with no `gene_biotype` and fails
+*after* counts are written, which is the kind of thing the registry exists to keep out.
+
+**Contrast menu.** Built from `01_samplesheets/<Assay ID>_design.csv` — the levels the user
+actually wrote, not levels imagined. Every ordered pair is offered, because direction is a
+decision: `condition,MT,WT` measures MT relative to WT, and reversing it reverses the sign of
+every fold change. A pair whose levels do not both have at least 2 samples is marked
+`testable: false` and is not a choice.
 
 **Skill.** The executable implementation shipped by the installed `clawbio` package. GARS does
 not vendor skill code: this workspace holds contracts only, and a sub-stage directory contains a
@@ -76,6 +102,28 @@ and recorded act rather than an untracked edit.
    in the assay map, reply T5 and stop.
 3. Check preconditions: `01_samplesheets/<Assay ID>_samplesheet.csv` and `_design.csv` exist and
    are non-empty. If not, reply T5 and stop — stage 01 has not run.
+3a. **Complete the config before routing anything.** Stage 00 seeded
+   `_config/<Assay ID>.yaml` with every derivable value filled and the scientific decisions marked
+   `<REQUIRED>`. Resolve them by menu, never by asking the user to type a path or a level name:
+
+   ```bash
+   python3 _system/configure.py genomes
+   python3 _system/configure.py contrasts --project projects/<title> --assay <Assay ID>
+   ```
+
+   Reply T8 rendering both. Wait. Then, with the numbers the user gave:
+
+   ```bash
+   python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> \
+       --genome <n> --contrast <n> [--formula "<theirs>"] --dry-run
+   ```
+
+   Reply T9 showing what it would write and **wait for confirmation**. On confirmation, re-run
+   without `--dry-run`. Exit 1 → report its `error` and return to T8; never retry with a value the
+   user did not choose.
+
+   Skip 3a entirely when the config has no `<REQUIRED>` markers left — a completed config is not
+   a question to re-ask.
 4. Read the Sub-stages column for this assay from `_references/assay_stage_skill_map.md`.
 5. Read each sub-stage's STATUS file, treating a missing file as `NOT_STARTED`. Reply T2 with
    the full sub-stage status table.
@@ -142,6 +190,46 @@ Nothing further is automated for <Assay ID>: 03_custom_analysis is not implement
 template version, so the artifacts above are yours to analyse directly.
 
 Say the word if you want another assay processed.
+```
+
+**T8 — Config decisions**
+```
+Before running <Assay ID>, <n> decisions in _config/<Assay ID>.yaml. Nothing is guessed: a wrong
+reference or contrast produces a confident wrong answer rather than an error.
+
+Reference genome — picking one sets the FASTA, the annotation and the prebuilt index cache
+together, so they cannot be mismatched:
+
+  01  GRCh38  Homo sapiens, Ensembl release 116   [indices cached: yes]
+
+Contrast — the levels below are the ones actually in your design table:
+
+  01  condition,MT,WT   MT relative to WT -- positive log2FC means higher in MT
+  02  condition,WT,MT   WT relative to MT -- positive log2FC means higher in WT
+
+Design formula: ~ condition  (the default; say so if you need something else, e.g.
+"~ batch + condition" to control for a batch effect)
+
+Reply with one genome number and one contrast number, e.g. `01, 02`.
+```
+
+Render the genome block from `configure.py genomes` and the contrast block from
+`configure.py contrasts` — **both verbatim from their JSON**. Do not add a reference that is not
+in the registry, and do not offer a contrast the design does not support. A contrast marked
+`testable: false` is shown with the reason, never as a choice.
+
+**T9 — Config to confirm**
+```
+This is what I will write to _config/<Assay ID>.yaml:
+
+  reference: <genome id> (<species>, <source>)
+    fasta:       <path>
+    gtf:         <path>
+    derived_dir: <path or "none — indices will be built, ~40 min and 43 GB">
+  de.formula:  <formula>
+  de.contrast: <spec>   — <meaning>
+
+Nothing else in the file changes. Confirm to write it, or say what to change.
 ```
 
 **T5 — Preconditions not met**

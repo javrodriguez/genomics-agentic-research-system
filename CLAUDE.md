@@ -104,7 +104,8 @@ There is deliberately **no bespoke upgrade machinery** — see
 some and why it was removed. Every stage still stamps the template version it ran under into the
 project's `HISTORY.md`, so a `git pull` mid-analysis is recorded.
 
-Two more `_system/` helpers compute rather than generate: `resolve_artifact.py` (stage 02's
+Three more `_system/` helpers compute rather than generate: `configure.py` (completes a project's
+`_config/` from the genome registry and the design's own levels), `resolve_artifact.py` (stage 02's
 input resolution) and `stage01_samplesheet.py --list-formats` (the registered per-assay
 samplesheet formats).
 
