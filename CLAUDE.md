@@ -82,6 +82,13 @@ Two mechanical rules, both learned the hard way:
 - **Replace whole sections by heading.** A previous edit cut on `t.index("---")`, matched a
   markdown table separator, and silently duplicated half the document.
 - **Adding a section to the standard means adding it to every contract in the same change.**
+- **When you change how something works, grep for its *description*, not its identifier.** The
+  mechanism and the prose describing it live in different files, and the prose does not break —
+  it just becomes a lie. Three bugs in one day came from updating only the mechanism: an assay
+  menu was added while `T2` still asked the same question and shadowed it; workspaces became
+  checkouts while six passages still said "copy the `gars/` folder"; config menus were added while
+  stage 01 still offered to take the values as free text. Search for the old *concept*
+  (`copy`, `write the config`, `type the path`), not the symbol you renamed.
 
 ## Generated files
 

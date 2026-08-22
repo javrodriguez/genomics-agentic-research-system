@@ -56,6 +56,12 @@ before the menu existed; the fix was to delete it and fold its one useful line i
 When adding a template, check what the step before it sends. When adding a step that replies,
 check that the step before it waits.
 
+**And when a stage starts doing something a different way, check the templates of the stages
+around it.** A handoff template describes what happens next; change what happens next and the
+handoff becomes wrong without becoming invalid. Stage 01's closing template went on offering to
+take reference paths as free text after stage 02 had begun offering them as menus — nothing was
+broken, it was just no longer true.
+
 **Human check — exactly one, and concrete.** State something a person *does* — "read the first
 three rows and confirm the sample IDs match your notebook" — not "review the output". A stage
 whose human check is vague has no gate, and the next stage will consume whatever is there.

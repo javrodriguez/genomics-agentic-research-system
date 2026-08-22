@@ -238,23 +238,23 @@ Stage 01 complete. Samplesheets written to projects/<title>/01_samplesheets/.
 |---|---|---|---|
 | <Assay ID> | <samplesheet_rows> | <design_rows> | <Assay ID>_samplesheet.csv, <Assay ID>_design.csv |
 
-Before stage 02 runs, <n> decisions are outstanding in _config/<Assay ID>.yaml. Stage 00 already
-wrote that file with everything derivable filled in; the remaining keys are marked <REQUIRED>
-because no stage will guess them — a wrong reference or contrast produces a confident wrong
-answer rather than an error.
+Before stage 02 runs, <n> decisions remain in _config/<Assay ID>.yaml: <config_unfilled, comma
+separated>. Nothing is guessed — a wrong reference or contrast produces a confident wrong answer
+rather than an error.
 
-| Key | Decision |
-|---|---|
-| <config_unfilled entry> | <what it selects, in one line> |
+You do not have to look them up. When you start stage 02 I will offer the registered reference
+genomes, and the contrasts your design table actually supports, as numbered choices — and show
+you the finished file before anything runs.
 
-Edit those lines and tell me, or tell me the values and I will write them in and show you the
-file before anything runs.
+Say when you are ready and I will start the bioinformatics for <Assay ID>.
 ```
 
-**T4 note.** Render one table row per entry of `config_unfilled`. If it is empty, omit the whole
-block and simply say the config is complete and you are ready to start stage 02 on their word.
-**Never fill a `<REQUIRED>` value from your own judgement** — offering to type in values the user
-gave you is help; choosing a reference genome or a contrast for them is inventing the experiment.
+**T4 note.** Name the `config_unfilled` keys and stop there. **Do not offer to take values in
+free text, and do not explain what each key means** — stage 02 resolves them from menus built by
+`_system/configure.py`, so a reference is chosen from the registry and a contrast from the levels
+the design contains. Describing them here as things to look up sends the user to do work the next
+stage does for them. If `config_unfilled` is empty, omit the paragraph entirely and simply say you
+are ready to start stage 02 on their word.
 
 **T5 — Existing samplesheets**
 ```

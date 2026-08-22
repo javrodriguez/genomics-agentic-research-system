@@ -21,8 +21,11 @@ strandedness: auto
 # `gene_biotype` attribute, and the run fails at SUBREAD_FEATURECOUNTS *after* counts are written.
 # It cost a full pipeline run once (decision 0005, failure 5). Use the Ensembl FASTA + GTF.
 reference:
-  fasta: <REQUIRED: path to genome FASTA, e.g. ~/install/refs/ensembl-GRCh38-116/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz>
-  gtf:   <REQUIRED: path to matching GTF, e.g. ~/install/refs/ensembl-GRCh38-116/Homo_sapiens.GRCh38.116.gtf.gz>
+  # You do not need to fill these by hand: stage 02 offers the registered genomes as a menu and
+  # sets fasta, gtf and derived_dir together, so they can never be mismatched. Paste paths here
+  # only if you are using a reference that is not in _references/genomes.md.
+  fasta: <REQUIRED: choose a genome at stage 02, or paste a FASTA path>
+  gtf:   <REQUIRED: choose a genome at stage 02, or paste the matching GTF path>
 
   # Optional but strongly recommended: a cache of built STAR/Salmon indices, keyed by PIPELINE
   # version. Without it every run rebuilds ~43 GB of indices, about 40 minutes. A STAR index is
@@ -48,5 +51,7 @@ compute:
 # Read by sub-stage 02.02. Every formula term must be a column of the design table
 # (01_samplesheets/rnaseq_bulk_design.csv), and both contrast levels must appear in that column.
 de:
-  formula:  <REQUIRED: e.g. "~ condition", or "~ batch + condition" to control for batch>
-  contrast: <REQUIRED: factor,numerator,denominator -- e.g. "condition,MT,WT" tests MT relative to WT>
+  # Also offered as choices at stage 02: the contrast menu lists the levels your design table
+  # actually contains, in both directions, and refuses one whose level has fewer than 2 samples.
+  formula:  <REQUIRED: defaults to "~ condition"; use "~ batch + condition" to control for batch>
+  contrast: <REQUIRED: choose at stage 02, or write factor,numerator,denominator e.g. "condition,MT,WT">
