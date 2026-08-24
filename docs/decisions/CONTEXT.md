@@ -40,6 +40,7 @@ belongs here.
 | 0018 | [Machine ownership is enforced by the filesystem, not advised by a comment](0018-machine-ownership-is-enforced-not-advised.md) | 2026-08-21 | standing | `gars/_system/workspace.py`<br>`gars/_system/stage00_register.py`<br>`gars/_system/stage01_samplesheet.py`<br>`gars/01_prepare_samplesheets/CONTEXT.md` |
 | 0019 | [The project config is seeded, not authored](0019-config-is-seeded-not-authored.md) | 2026-08-21 | standing | `gars/_templates/config/`<br>`gars/_system/stage00_register.py`<br>`gars/_system/stage01_samplesheet.py`<br>`gars/01_prepare_samplesheets/CONTEXT.md`<br>`gars/00_initialize_project/CONTEXT.md` |
 | 0020 | [The config's scientific decisions come from menus, not free text](0020-config-decisions-come-from-menus.md) | 2026-08-21 | standing | `gars/_references/genomes.md`<br>`gars/_system/configure.py`<br>`gars/02_bioinformatics/CONTEXT.md` |
+| 0021 | [The adaptation's rename belongs in code, not in a contract's prose](0021-the-adaptation-rename-belongs-in-code.md) | 2026-08-24 | standing | `gars/_system/adapt_counts.py`<br>`gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md` |
 
 ## Human check
 

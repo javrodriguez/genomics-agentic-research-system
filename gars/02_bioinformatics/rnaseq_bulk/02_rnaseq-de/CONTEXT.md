@@ -19,6 +19,10 @@ This sub-stage performs the steps in Process and nothing else.
 
 - Never edit, patch, or work around the skill's code. If it errors, report the error verbatim
   and stop.
+- **`AttributeError: 'Pandas' object has no attribute 'gene'` is not an upstream defect to escalate.**
+  It is the known symptom of an adapted matrix whose identifier column is not named `gene`. Check
+  `adapted/counts_gene.tsv`'s first column before concluding anything about the skill; if it reads
+  `gene_id`, the adaptation was wrong and re-running with `_system/adapt_counts.py` fixes it.
 - **Never substitute a hand-written analysis.** If the skill cannot run, do not compute DE with
   another library, do not write your own DESeq2/PyDESeq2 call, and do not approximate results.
   Report and stop.
@@ -70,10 +74,26 @@ prefers `native` artifacts — the `adapted` matrix this sub-stage writes at ste
 numeric, so `gene_name` raises `Count matrix contains non-numeric entries`. The two skills
 declare each other as chaining partners, but their formats do not actually meet.
 
-This sub-stage therefore writes an adapted copy into **its own** directory — `adapted/counts_gene.tsv`,
-with `gene_name` dropped and counts rounded to integers — and preserves the mapping in
-`adapted/gene_id_to_name.tsv` so results can be annotated afterwards. **The source matrix is
-never modified**; sub-stage 02.01 owns it.
+This sub-stage therefore writes an adapted copy into **its own** directory — `adapted/counts_gene.tsv`
+— and preserves the mapping in `adapted/gene_id_to_name.tsv` so results can be annotated
+afterwards. **The source matrix is never modified**; sub-stage 02.01 owns it.
+
+`_system/adapt_counts.py` performs the reshape. It is three changes, and the third is the one that
+bites:
+
+1. `gene_name` dropped — the skill coerces every column after the first to numeric.
+2. Counts rounded to integers — nf-core emits length-scaled floats, DESeq2 wants counts.
+3. **The identifier column renamed `gene_id` → `gene`.** Not cosmetic. The skill does
+   `results_df.reset_index().rename(columns={"index": "gene"})`, which assumes an *unnamed*
+   index. Given `gene_id` the rename matches nothing, and the identifier is then dropped from the
+   output column selection **with no error** — verified directly: with the index named `gene_id`,
+   `"gene" in res.columns` is `False` and no identifier column survives; named `gene`, it is
+   `True`.
+
+**Never hand-write this reshape into `submit.sh`.** A heredoc version omitted the rename and
+produced a real 22,783-gene differential-expression table in which every gene was anonymous. It
+surfaced only because report-writing later crashed on `row.gene`; without that crash it would
+have looked publishable.
 
 **Scheduled execution.** Submit this sub-stage to Slurm; do not run it in the foreground.
 PyDESeq2 dispersion fitting over ~79k genes was SIGKILLed (exit 137) on a login node. An
@@ -119,7 +139,15 @@ design table. Fewer makes dispersion estimation unreliable, and the result is no
    direction separately — samples in the matrix but not the design, and the reverse.
 7. If any check in steps 5-6 failed, reply T3 listing all of them, and stop. Write nothing.
 8. Create the output directory. If it exists and is non-empty, reply T4 and stop.
-9. Reply T2, then write `submit.sh` carrying its own environment and the adapted-matrix step,
+9. Reply T2, then write `submit.sh` carrying its own environment and, for the adapted matrix, a
+   call to the shared helper — never an inline reshape:
+
+   ```bash
+   "$GARS_PY" "$WS/_system/adapt_counts.py" --counts "$COUNTS" --out "$SUB/adapted"
+   ```
+
+   It exits non-zero if the matrix is not the expected shape, and verifies its own output header
+   before returning. Then
    and submit it with `sbatch`. Write `STATUS` as `SUBMITTED <job_id> <iso8601>` and return; do
    not run the skill in the foreground and do not poll. Collect results on a later invocation,
    as sub-stage 02.01 does.
