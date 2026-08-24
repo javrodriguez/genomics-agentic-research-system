@@ -23,6 +23,7 @@ gets lost.
 
 | Document | Covers |
 |---|---|
+| [docs/architecture.md](docs/architecture.md) | **how the system works** — the pipeline, the five rules, where everything lives. Start here to re-orient. |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | status, next steps, quick reference |
 | [docs/decisions/](docs/decisions/CONTEXT.md) | every design decision and its reasoning |
 | [docs/execution-model.md](docs/execution-model.md) | how the layers relate: conda/pip, Nextflow vs nf-core, containers |
@@ -37,7 +38,7 @@ gets lost.
 CLAUDE.md           you are here — orientation for developing GARS
 DEVELOPMENT.md      status and next steps
 README.md           public-facing description
-docs/               execution model, assay research, decisions/
+docs/               architecture, execution model, assay research, decisions/
 examples/           synthetic worked example, no real data
 gars/               THE WORKSPACE — users clone this repo and work in here.
                     Its own CLAUDE.md is the entry point; do not restate its

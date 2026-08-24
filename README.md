@@ -214,8 +214,10 @@ next reader does not undo it. One was a bug in an upstream dependency, reported 
 
 ---
 
-Current state and next steps are in [DEVELOPMENT.md](DEVELOPMENT.md); the reasoning behind each
-design decision is in [docs/decisions/](docs/decisions/CONTEXT.md), one file per decision. If you
+How the system works — the pipeline, the rules that shape it, where everything lives — is in
+[docs/architecture.md](docs/architecture.md). Current state and next steps are in
+[DEVELOPMENT.md](DEVELOPMENT.md); the reasoning behind each design decision is in
+[docs/decisions/](docs/decisions/CONTEXT.md), one file per decision. If you
 are working *on* GARS rather than reading about it, start at [CLAUDE.md](CLAUDE.md) — it orients
 the repository and links everything else.
 
@@ -234,7 +236,7 @@ gars/           the workspace — clone the repo and work in here
   _system/          gars-env.sh — the execution environment; stage00_register.py,
                     stage01_samplesheet.py, resolve_artifact.py; index builder
   projects/         the work, plus a generated _index.md
-docs/           execution model, assay-expansion research, decisions/, upstream/
+docs/           architecture, execution model, assay research, decisions/, upstream/
 examples/       synthetic worked example
 ```
 
