@@ -65,9 +65,12 @@ Set `strandedness: unstranded` explicitly in future configs to remove the ambigu
 - **Stage 03 has never been driven by a live agent.** The rails (`create`/`approve`/`verify`)
   are tested mechanically, including both refusal gates — but no agent has drafted a real plan
   for a real user yet. First live custom analysis on `leukemia-tall` is the natural test.
-- **The guard hook has not intercepted a real violation.** Its allow/deny matrix is pinned by
-  tests; whether the harness invokes it as expected in a fresh workspace session should be
-  confirmed once with a deliberate forbidden edit.
+- **Scope enforcement verified live, 2026-08-25** — deliberate forbidden calls in a fresh
+  workspace session: an Edit on `_references/genomes.md` was stopped by the `permissions.deny`
+  layer ("directory denied by your permission settings"), and `pip install seaborn` was stopped
+  by the PreToolUse hook with its verbatim lockfile message. The layers fire in that order by
+  design. Still unexercised live: the hook's Edit branch on machine-owned *project* files
+  (`files.csv`), which the deny globs deliberately do not cover.
 - **The resume guard and a *failed* Nextflow run are still untested under this version.** The
   successful path is proven; what has not been exercised is `--resume` after a crash, and a
   mid-pipeline Slurm failure.
