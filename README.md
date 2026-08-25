@@ -200,10 +200,10 @@ Validated end-to-end on a Slurm HPC cluster against a real 38-sample human RNA-s
 stage 00 → stage 01 → nf-core/rnaseq preflight → live pipeline execution with per-task Slurm
 dispatch.
 
-Stage contracts exist for `00`, `01`, `02` and both `rnaseq_bulk` sub-stages.
-`03_custom_analysis` carries an explicit not-implemented contract: it replies and stops, so the
-routing resolves to a file that refuses rather than to an empty directory an agent would
-improvise around.
+Stage contracts exist for `00`, `01`, `02`, both `rnaseq_bulk` sub-stages, and
+`03_custom_analysis` — the custom-analysis stage is plan-gated: the agent drafts a reviewable
+`PLAN.md`, a person approves it, and only the approved plan executes, with the approval gate
+and output verification enforced in code.
 
 Running the system surfaced defects that reading it did not — a samplesheet grain that forced
 duplicated hand entry, a contract pointing preflight and execution at the same output directory,

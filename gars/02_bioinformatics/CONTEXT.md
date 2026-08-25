@@ -188,8 +188,9 @@ All sub-stages complete for <Assay ID>.
 |---|---|
 | <NN_name> | 02_bioinformatics/<Assay ID>/<NN_name>/ |
 
-Nothing further is automated for <Assay ID>: 03_custom_analysis is not implemented in this
-template version, so the artifacts above are yours to analyse directly.
+For anything beyond the pipeline — a custom figure, a signature score, an integration — ask
+for a custom analysis: stage 03 drafts a plan for your approval and runs it against these
+artifacts by type.
 
 Say the word if you want another assay processed.
 ```

@@ -277,6 +277,93 @@ class WorkspaceFixture(unittest.TestCase):
                          "identifier column must be named 'gene' (decisions 0010/0021)")
         self.assertNotIn("gene_name", header)
 
+    # -- stage 03 ---------------------------------------------------------------------------
+
+    def test_12a_stage03_gates(self):
+        """create -> draft -> approve -> execute -> verify, with both gates exercised."""
+        s3 = self.ws / "_system" / "stage03_analysis.py"
+        # create allocates 01_<slug> and a skeleton
+        code, res, raw = run(s3, ["create", "--project", "projects/tall-test",
+                                  "--slug", "PCA of Samples!!"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertEqual(res["analysis"], "01_pca-of-samples")
+        adir = self.project / "03_custom_analysis" / "01_pca-of-samples"
+        plan = adir / "PLAN.md"
+        self.assertIn("<FILL:", plan.read_text())
+
+        # gate 1: approve refuses a skeleton
+        code, res, raw = run(s3, ["approve", "--project", "projects/tall-test",
+                                  "--analysis", "01_pca-of-samples"], self.ws)
+        self.assertEqual(code, 2, raw)
+        self.assertTrue(any("skeleton" in b for b in res["blocked"]))
+
+        # draft the plan; include one invalid type to prove the vocabulary is closed
+        plan.write_text("""# Analysis plan: pca-of-samples
+
+Status: DRAFT
+
+## Goal
+PCA of the count matrix to check sample clustering.
+
+## Inputs
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper | results/counts.tsv |
+
+## Method
+1. Load the matrix; log-transform; PCA via scikit-learn (gars-bio).
+
+## Outputs
+| File | Type | Description |
+|---|---|---|
+| results/pca.csv | table | PC coordinates per sample |
+| results/pca.png | picture | scatter of PC1 vs PC2 |
+
+## Execution
+Login node; seconds; kilobytes.
+""")
+        code, res, raw = run(s3, ["approve", "--project", "projects/tall-test",
+                                  "--analysis", "01_pca-of-samples"], self.ws)
+        self.assertEqual(code, 2, raw)
+        self.assertTrue(any("picture" in b and "closed" in b for b in res["blocked"]))
+
+        # fix the type; approve passes and stamps the plan
+        plan.write_text(plan.read_text().replace("| picture |", "| figure |"))
+        code, res, raw = run(s3, ["approve", "--project", "projects/tall-test",
+                                  "--analysis", "01_pca-of-samples"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertIn("Status: APPROVED", plan.read_text())
+
+        # gate 2: verify refuses while outputs are missing
+        code, res, raw = run(s3, ["verify", "--project", "projects/tall-test",
+                                  "--analysis", "01_pca-of-samples"], self.ws)
+        self.assertEqual(code, 1, raw)
+        self.assertEqual(sorted(res["missing"]), ["results/pca.csv", "results/pca.png"])
+
+        # "execute", then verify completes and registers
+        (adir / "results" / "pca.csv").write_text("sample,PC1,PC2\nTUMOR1,1,2\n")
+        (adir / "results" / "pca.png").write_bytes(b"\x89PNG fake")
+        code, res, raw = run(s3, ["verify", "--project", "projects/tall-test",
+                                  "--analysis", "01_pca-of-samples",
+                                  "--model", "claude-test-1"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertIn("Model: claude-test-1", res["history_entry"])
+        self.assertIn("COMPLETE", (adir / "STATUS").read_text())
+        outputs = (adir / "OUTPUTS.tsv").read_text()
+        self.assertIn("table\tnative\tresults/pca.csv", outputs)
+
+    def test_12b_stage03_verify_requires_approval(self):
+        s3 = self.ws / "_system" / "stage03_analysis.py"
+        code, res, raw = run(s3, ["create", "--project", "projects/tall-test",
+                                  "--slug", "never-approved"], self.ws)
+        self.assertEqual(code, 0, raw)
+        name = res["analysis"]
+        self.assertTrue(name.startswith("02_"), name)   # numbering advances
+        code, res, raw = run(s3, ["verify", "--project", "projects/tall-test",
+                                  "--analysis", name], self.ws)
+        self.assertEqual(code, 2, raw)
+        self.assertIn("not approved", res["error"])
+
     # -- integrity --------------------------------------------------------------------------
 
     def test_13_integrity_catches_truncation(self):

@@ -28,7 +28,7 @@ each sub-stage produced.
 | `00_initialize_project` | registering raw data | `00_data/<assay>/` — symlinks, `files.csv`, `samples.csv`, and a seeded `_config/` | `stage00_register.py` |
 | `01_prepare_samplesheets` | validating the design | `01_samplesheets/` — samplesheet + design table | `stage01_samplesheet.py` |
 | `02_bioinformatics` | routing an assay to its sub-stages | `02_bioinformatics/<assay>/<NN_name>/` | `configure.py`, `resolve_artifact.py` |
-| `03_custom_analysis` | **not implemented** — its contract replies and stops | nothing | — |
+| `03_custom_analysis` | drafting a plan the user approves, then running it | `03_custom_analysis/<NN_slug>/` — `PLAN.md`, scripts, results, `OUTPUTS.tsv` | `stage03_analysis.py`, `resolve_artifact.py` |
 
 **Ownership is exclusive and encoded in the number.** A project directory named `NN_*` is written
 by the stage named `NN_*` and by no other. `CONTEXT.md`, `HISTORY.md` and `_config/` carry no
@@ -42,7 +42,7 @@ inside one stage is what makes progress legible from the directory tree
 
 ---
 
-## The five rules that shape everything
+## The seven rules that shape everything
 
 Each was learned from a failure, and each is enforced by a mechanism rather than an instruction.
 
@@ -109,6 +109,26 @@ node's per-user memory cgroup kills whatever is running rather than whatever is 
 ([0010](decisions/0010-skill-chaining-defects-and-adaptation.md),
 [0013](decisions/0013-integrity-verification-moves-to-stage-01.md)).
 
+### 6. Scope boundaries the harness can enforce, the harness enforces
+
+The workspace ships its own harness configuration: `.claude/settings.json` arms
+`_system/guard_hook.py` on every session started in `gars/`, and a forbidden write — to the
+template, to a machine-owned file, an ad-hoc `pip install` — **fails at the moment it is
+attempted**, with a message naming the rule. Every deny is an action no contract instructs, so
+a false positive cannot block a legitimate step. Prose boundaries remain for what cannot be
+checked mechanically, like "do not read a colleague's directory"
+([0022](decisions/0022-scope-boundaries-are-enforced-by-the-harness.md)).
+
+### 7. The toolchain is named, and the load-bearing code is tested
+
+Every `HISTORY.md` entry names the template version **and the model** that executed the stage —
+the contracts run on a model, so the model is part of the toolchain
+([0024](decisions/0024-the-model-is-part-of-provenance.md)). And the deterministic core has a
+test suite: `python3 tests/run_tests.py` drives every helper through its real CLI in a
+throwaway workspace, and `tests/check_contracts.py` lints contract structure and catches
+script↔contract vocabulary drift. Run both before committing anything under `gars/`
+([0023](decisions/0023-the-deterministic-core-has-tests.md)).
+
 ---
 
 ## Where things live
@@ -160,8 +180,9 @@ its mechanism by [0016](decisions/0016-workspaces-are-checkouts.md) but not in t
   ([0012](decisions/0012-gars-authored-wrappers-live-in-system.md)).
 - **Only one assay exists.** `rnaseq_bulk`. The four planned assays have their samplesheet columns
   registered as `planned` and are refused until a wrapper exists.
-- **`03_custom_analysis` is a stub** and deliberately so — nothing has repeated enough to justify
-  building it.
+- **`03_custom_analysis` is plan-gated** ([0026](decisions/0026-stage-03-is-plan-gated.md)):
+  the agent drafts `PLAN.md`, the user approves it, and only then does anything execute.
+  Approval and output verification are enforced by `_system/stage03_analysis.py`, not by prose.
 - **When you change how something works, grep for its *description*, not its identifier.** The
   mechanism and the prose describing it live in different files, and the prose does not break — it
   becomes a lie. This has caused several bugs in a single day.

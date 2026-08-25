@@ -11,7 +11,7 @@ stages.
 | `00_initialize_project` | Create the project, register and validate raw data | project title, assays, one raw data path per assay | `projects/<project_title>/` |
 | `01_prepare_samplesheets` | Validate the completed design, emit workflow-ready samplesheets | project title, completed `samples.csv` per assay | `01_samplesheets/` |
 | `02_bioinformatics` | Route an assay to its ordered sub-stages and run each one's skill | project title, Assay ID, samplesheet + design, `_config/<Assay ID>.yaml` | `02_bioinformatics/<Assay ID>/` |
-| `03_custom_analysis` | **Not implemented.** Its contract replies and stops. | — | nothing |
+| `03_custom_analysis` | Draft a user-approved analysis plan, run it on resolved artifacts | project title, the user's goal, an approved `PLAN.md` | `03_custom_analysis/<NN_slug>/` |
 
 Read the stage's own `CONTEXT.md` and execute it literally. Nothing on this page overrides a
 contract; where they disagree, the contract is wrong and should be fixed, not worked around.
@@ -24,7 +24,10 @@ contract; where they disagree, the contract is wrong and should be fixed, not wo
   fills in `condition`, `group` and `replicate` before stage 01 runs.
 - **01 → 02.** Stage 01 validates the completed design and emits per-assay samplesheets. Stage 02
   routes the assay to its ordered sub-stages, each of which resolves its inputs by artifact type.
-- **02 → 03.** Stage 03 would consume stage 02's artifacts. It does not exist yet.
+- **02 → 03 is the second human gate.** Stage 03 resolves its inputs from the earlier stages'
+  artifacts by type and drafts `PLAN.md` — goal, inputs, method, outputs, execution — as a
+  reviewable file. The user approves the plan before anything executes; the approval is stamped
+  into the file and the plan is frozen from then on.
 
 Validation splits along the human gate: **file-level checks belong to stage 00**, because that is
 where the files are touched; **design-level checks belong to stage 01**, because the design does
@@ -57,7 +60,7 @@ contract's Inputs section names.
 |---|---|
 | `assay_stage_skill_map.md` | Assay → Stage → Sub-stage → Skill. Its **Assay column is the definitive list of supported assays**; stage 00 validates against it, stage 02 routes with the remaining columns. |
 | `artifact_types.md` | The closed vocabulary a sub-stage may declare in `OUTPUTS.tsv`, the `native`/`adapted` roles, and the resolution rule by which a sub-stage finds its inputs by type rather than by path. |
-| `config_schema.md` | What belongs in a project's `_config/`: the per-assay YAML, `nextflow.slurm.config`, and the index cache. Every key is a user decision; no stage defaults one. |
+| `config_schema.md` | What belongs in a project's `_config/`: the per-assay YAML, `nextflow.slurm.config`, and the index cache. Stage 00 seeds the files; the scientific keys stay `<REQUIRED>` until the user decides them, from menus (`_system/configure.py`), never from a guess. |
 | `environment.md` | The verified runtime for stage 02 — the `gars-bio` and `gars-nxf` conda environments, how they were installed, why they are separate, and the traps. No Lmod modules. |
 | `gars-bio.lock.txt`, `gars-bio.conda.txt`, `gars-nxf.conda.txt` | Lockfiles rebuilding both environments at exact versions. They pin the skills too, since the skills ship with `clawbio`. |
 | `genomes.md` | The references a project may be aligned against: one row pairs a FASTA, its matching GTF and the version-keyed index cache, so choosing a genome sets all three and they cannot be mismatched. Only verified references are listed. |
@@ -65,11 +68,13 @@ contract's Inputs section names.
 | `VERSION` | The template revision. Stage 00 stamps it into every project, so a project can always name the contract version that produced it. |
 
 Project-level configuration lives in `projects/<project_title>/_config/` and is described in
-`config_schema.md`. Stages read it; nothing writes it automatically.
+`config_schema.md`. Stage 00 seeds it; stage 02 completes the `<REQUIRED>` keys from menus the
+user answers; no stage ever chooses a scientific value itself.
 
 `_templates/` holds the stamps stages copy — see `_templates/CONTEXT.md`.
 `_system/` holds `gars-env.sh` (the execution environment), the stage helpers
-(`stage00_register.py`, `stage01_samplesheet.py`, `configure.py`, `resolve_artifact.py`), the rules they share
+(`stage00_register.py`, `stage01_samplesheet.py`, `configure.py`, `resolve_artifact.py`,
+`stage03_analysis.py`), the rules they share
 (`integrity.py`, `workspace.py`) and `build_projects_index.sh`. Stage contracts orchestrate these;
 they do not duplicate what the scripts compute.
 

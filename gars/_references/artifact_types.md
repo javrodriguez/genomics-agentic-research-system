@@ -24,6 +24,14 @@ rely on a name meaning one thing.
 | `de_results` | Differential expression table, one row per gene | 02.02 |
 | `qc_multiqc` | Aggregated MultiQC HTML report | 02.01 |
 | `gene_id_map` | Identifier translation table, e.g. `gene_id` -> `gene_name` | any adapter |
+| `table` | A tabular result of a custom analysis | 03_custom_analysis |
+| `figure` | A plot or image produced by a custom analysis | 03_custom_analysis |
+| `report` | A human-readable document (md/html/pdf) summarising an analysis | 03_custom_analysis |
+
+The three stage-03 types are deliberately generic: a custom analysis's semantics live in its
+`PLAN.md`, which sits beside its `OUTPUTS.tsv` — a consumer that needs to know *what* a `table`
+contains reads the plan that produced it. The specific types above them stay preferred wherever
+one fits: an analysis that produces a count matrix declares `counts_gene`, not `table`.
 
 ## OUTPUTS.tsv
 

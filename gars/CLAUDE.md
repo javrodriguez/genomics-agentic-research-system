@@ -51,8 +51,10 @@ helpers and the resolver need no conda environment; stage 02's skills do.
 3. **Fill in `00_data/<Assay ID>/samples.csv`** — one row per sample, so each experimental value
    is entered once. To analyse a subset, delete the other rows: stage 01 treats a sample with no
    row as excluded and leaves its raw data in place, so the choice is reversible.
-4. Write `_config/<Assay ID>.yaml` and `_config/nextflow.slurm.config`. Schema and rationale:
-   `_references/config_schema.md`. Nothing is defaulted — every key is a scientific decision.
+4. `_config/` is already seeded — stage 00 filled every derivable value and marked the
+   scientific decisions `<REQUIRED>`. Stage 02 completes those from menus (genome, contrast,
+   formula) and asks you to confirm before writing. Schema and rationale:
+   `_references/config_schema.md`.
 5. Run stages 01 → 02 → 03 in order, reading the output between each.
 
 ## State

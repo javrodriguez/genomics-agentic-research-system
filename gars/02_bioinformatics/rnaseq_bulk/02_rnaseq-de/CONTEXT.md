@@ -247,8 +247,9 @@ Sub-stage 02.02 complete.
 
 Genes tested: <n>
 
-This is the last implemented sub-stage for rnaseq_bulk. 03_custom_analysis is not implemented in
-this template version, so these artifacts are yours to analyse directly.
+This is the last automated sub-stage for rnaseq_bulk. For anything further — a signature
+score, a custom figure, an integration — ask for a custom analysis: stage 03 drafts a plan for
+your approval and runs it against these artifacts by type.
 ```
 
 ## OUTPUT

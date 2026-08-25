@@ -23,7 +23,7 @@ gets lost.
 
 | Document | Covers |
 |---|---|
-| [docs/architecture.md](docs/architecture.md) | **how the system works** — the pipeline, the five rules, where everything lives. Start here to re-orient. |
+| [docs/architecture.md](docs/architecture.md) | **how the system works** — the pipeline, the seven rules, where everything lives. Start here to re-orient. |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | status, next steps, quick reference |
 | [docs/decisions/](docs/decisions/CONTEXT.md) | every design decision and its reasoning |
 | [docs/execution-model.md](docs/execution-model.md) | how the layers relate: conda/pip, Nextflow vs nf-core, containers |
@@ -90,6 +90,16 @@ Two mechanical rules, both learned the hard way:
   checkouts while six passages still said "copy the `gars/` folder"; config menus were added while
   stage 01 still offered to take the values as free text. Search for the old *concept*
   (`copy`, `write the config`, `type the path`), not the symbol you renamed.
+
+## Before committing
+
+Run both, from the repo root, whenever you touch `gars/_system/` or a contract — they are the
+reason regressions stopped needing a live run to be found (decision 0023):
+
+```bash
+python3 tests/run_tests.py         # drives every helper through its real CLI
+python3 tests/check_contracts.py   # sections, wait points, script<->contract vocabulary
+```
 
 ## Generated files
 
