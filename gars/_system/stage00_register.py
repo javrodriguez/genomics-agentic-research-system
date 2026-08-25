@@ -571,7 +571,8 @@ def cmd_finalize(args, workspace):
     values = {"{{project_title}}": project.name, "{{created}}": created,
               "{{template_version}}": version, "{{assay_table}}": "\n".join(assay_table),
               "{{source_paths}}": "\n".join(source_rows),
-              "{{integrity}}": args.integrity}
+              "{{integrity}}": args.integrity,
+              "{{model}}": args.model or "unknown"}
     for fname in ("CONTEXT.md", "HISTORY.md"):
         p = project / fname
         if not p.is_file():
@@ -630,6 +631,7 @@ def cmd_finalize(args, workspace):
         return emit(result, EXIT_FAILURE)
 
     result["template_version"] = version
+    result["model"] = args.model or "unknown"
     result["created"] = created
     result["integrity"] = {"mode": args.integrity,
                            "files_checked": checked}
@@ -671,6 +673,11 @@ def main(argv=None):
     f.add_argument("--project", required=True)
     f.add_argument("--date", default=None, help="creation date; defaults to today")
     f.add_argument("--sample-id-pattern", default=None)
+    f.add_argument("--model",  default="unknown",
+                   help="the exact model id of the agent executing this stage. The model is part "
+                        "of the toolchain that produced the project, so HISTORY.md records it "
+                        "beside the template version; `unknown` is an honest value, a fabricated "
+                        "one is not (decision 0024).")
     f.add_argument("--integrity", choices=("full", "quick", "skip"), default="quick",
                    help="quick (default): resolves, non-empty, gzip magic. full: additionally "
                         "decompress every .gz -- O(data), and at this stage it would verify every "

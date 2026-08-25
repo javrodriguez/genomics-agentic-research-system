@@ -182,8 +182,12 @@ differential-expression sub-stage of 02_bioinformatics.
    `--verify-integrity full` only if step 8 was accepted:
 
    ```bash
-   python3 _system/stage01_samplesheet.py --project projects/<title> [--confirm-exclusions] [--force]
+   python3 _system/stage01_samplesheet.py --project projects/<title> --model "<model id>" [--confirm-exclusions] [--force]
    ```
+
+   `--model` is the exact model id you are running as; it lands in the `history_entry` beside
+   the template version. Omit it only if you cannot name your model — the script then records
+   `unknown`.
 
 10. Exit 2 → a gate you believed cleared was not. Reply T5 or T7 as its `blocked` array indicates
    and return to step 6. Never re-run adding a flag the user did not confirm.
@@ -202,6 +206,8 @@ differential-expression sub-stage of 02_bioinformatics.
 Every message you send in this stage is one of the templates below, with placeholders filled.
 Add nothing else: no observations, no suggestions, no offers, no commentary about the data or
 about anything encountered on the filesystem.
+
+One standing exception, from `_references/contract_standard.md` ("the bounded voice"): if the user asks a direct question, answer it from this workspace's own files — the contracts, `_references/`, and the current project's directory — read-only, in a short paragraph, then restate the pending wait point. Never let the answer become an action, a recommendation to deviate, or a reason to skip a step.
 
 **T1 — Start**
 ```

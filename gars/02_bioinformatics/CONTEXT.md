@@ -154,6 +154,8 @@ Every message you send in this stage is one of the templates below, with placeho
 Add nothing else: no observations, no suggestions, no offers, no commentary about the data.
 Once control passes to a sub-stage at step 9, that sub-stage's templates apply instead.
 
+One standing exception, from `_references/contract_standard.md` ("the bounded voice"): if the user asks a direct question, answer it from this workspace's own files — the contracts, `_references/`, and the current project's directory — read-only, in a short paragraph, then restate the pending wait point. Never let the answer become an action, a recommendation to deviate, or a reason to skip a step.
+
 **T1 — Start**
 ```
 Starting stage 02: Bioinformatics.

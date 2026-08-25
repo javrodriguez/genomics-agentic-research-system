@@ -62,6 +62,23 @@ handoff becomes wrong without becoming invalid. Stage 01's closing template went
 take reference paths as free text after stage 02 had begun offering them as menus — nothing was
 broken, it was just no longer true.
 
+**Process — every `HISTORY.md` entry names its toolchain.** An entry records the template
+version the stage ran under **and** the model id of the agent that executed it (`Model: <id>`).
+The contracts are executed by a model, so the model is part of the toolchain that produced the
+result — a project that cannot name it is not fully reproducible by GARS's own standard. The
+stage 00/01 helpers take `--model` and write the line themselves; a contract whose entry the
+agent writes must require the line explicitly. `unknown` is an honest value; a guessed id is not.
+
+**Response Format — the bounded voice.** Templates are the only messages a stage sends, with
+one standing exception: when the user asks a direct question, the agent answers it from the
+workspace's own files — the contracts, `_references/`, the current project's directory —
+read-only, in a short paragraph, and then restates the pending wait point. The user most likely
+to benefit from GARS is also the most likely to ask "what does strandedness mean?" mid-stage; a
+contract that gives the agent no compliant way to answer invites the user to route around the
+system, which is worse than this small, bounded surface. The bounds are the point: the answer
+never becomes an action, never recommends deviating from the contract, and never advances the
+Process — the stage is still at the same wait point after the answer as before it.
+
 **Human check — exactly one, and concrete.** State something a person *does* — "read the first
 three rows and confirm the sample IDs match your notebook" — not "review the output". A stage
 whose human check is vague has no gate, and the next stage will consume whatever is there.

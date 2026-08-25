@@ -1,0 +1,29 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/_system/guard_hook.py\""
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "deny": [
+      "Edit(_system/**)",
+      "Write(_system/**)",
+      "Edit(_references/**)",
+      "Write(_references/**)",
+      "Edit(_templates/**)",
+      "Write(_templates/**)",
+      "Edit(.claude/**)",
+      "Write(.claude/**)",
+      "WebSearch",
+      "WebFetch"
+    ]
+  }
+}

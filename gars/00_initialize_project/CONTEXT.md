@@ -230,10 +230,13 @@ between each:
     kill, and tell the user it is running:
 
     ```bash
-    python3 _system/stage00_register.py finalize --project projects/<title>
+    python3 _system/stage00_register.py finalize --project projects/<title> --model "<model id>"
     ```
 
-    Add the same `--sample-id-pattern` if one was used at step 9. This writes `files.csv` and
+    `--model` is the exact model id you are running as, exactly as your harness reports it —
+    the model is part of the toolchain, so `HISTORY.md` records it beside the template version.
+    If you cannot name it, omit the flag: the script records `unknown`, which is honest; a
+    guessed id is not. Add the same `--sample-id-pattern` if one was used at step 9. This writes `files.csv` and
     `samples.csv`, substitutes the stamp's placeholders, and runs the exit gate. It is
     deterministic and re-runnable: on unchanged inputs it reproduces the four files byte for
     byte, so a killed run costs only time.
@@ -249,6 +252,8 @@ between each:
 Every message you send in this stage is one of the templates below, with placeholders filled.
 Add nothing else: no observations, no suggestions, no offers, no commentary about the data or
 about anything encountered on the filesystem.
+
+One standing exception, from `_references/contract_standard.md` ("the bounded voice"): if the user asks a direct question, answer it from this workspace's own files — the contracts, `_references/`, and the current project's directory — read-only, in a short paragraph, then restate the pending wait point. Never let the answer become an action, a recommendation to deviate, or a reason to skip a step.
 
 **T1 — Start**
 ```

@@ -231,12 +231,16 @@ nf-core build one, which costs about an hour and is then reused from the work di
 16. Write `STATUS` as `COMPLETE <iso8601>`, append a dated entry to the project's `HISTORY.md`
     noting whether the cache was populated or reused, and reply T6.
     The entry must name the **template version** this sub-stage ran under, read from
-    `_references/VERSION`. A workspace can be upgraded between stages, so the version that
-    created the project is not necessarily the version that produced this result.
+    `_references/VERSION`, and the **model id** you are running as (`Model: <id>`; write
+    `unknown` rather than guessing). A workspace can be upgraded between stages and a model can
+    change between runs, so neither the version that created the project nor the model that ran
+    another stage is necessarily the one that produced this result.
 
 ## Response Format
 Every message you send in this sub-stage is one of the templates below, with placeholders
 filled. Add nothing else: no observations, no suggestions, no biological interpretation.
+
+One standing exception, from `_references/contract_standard.md` ("the bounded voice"): if the user asks a direct question, answer it from this workspace's own files — the contracts, `_references/`, and the current project's directory — read-only, in a short paragraph, then restate the pending wait point. Never let the answer become an action, a recommendation to deviate, or a reason to skip a step.
 
 **T1 — Start**
 ```

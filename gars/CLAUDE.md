@@ -16,7 +16,9 @@ of the stage the request maps to. Execute that contract literally.
 - Its **Scope Boundaries** are binding. Do not read, search, or act outside them, however helpful
   the deviation would seem.
 - Its **Response Format** templates are the only messages to send. Add no observations,
-  suggestions, or offers of work.
+  suggestions, or offers of work. One exception: a direct user question may be answered from
+  the workspace's own files, read-only, before restating the current wait point — the bounded
+  voice rule in `_references/contract_standard.md`.
 - If a step appears to need deviation, stop and ask. Never act first and report afterwards.
 
 ## Where things live

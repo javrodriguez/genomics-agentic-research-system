@@ -517,12 +517,16 @@ def write_assay(project, assay, res):
     return [str(sheet.relative_to(project)), str(design.relative_to(project))], gate
 
 
-def history_entry(assays, results, wrote, verify="none", version="unknown"):
+def history_entry(assays, results, wrote, verify="none", version="unknown",
+                  model="unknown"):
     lines = ["## <ISO-8601 date> — 01_prepare_samplesheets — samplesheets emitted", "",
              # Not only stage 00 stamps this. A workspace can be upgraded between stages, and the
              # per-stage stamp is the only record that this stage ran under a different contract
              # than the one that created the project.
              "Template version: %s" % version,
+             # The model is part of the toolchain: the same contract executed by a different
+             # interpreter is a different run. `unknown` is an honest value (decision 0024).
+             "Model: %s" % (model or "unknown"),
              "Deep file-integrity verification: `%s`" % verify, ""]
     for assay in assays:
         c = results[assay]["counts"]
@@ -556,6 +560,9 @@ def main(argv=None):
                     help="the user has confirmed overwriting existing samplesheets (T5)")
     ap.add_argument("--list-formats", action="store_true",
                     help="print the registered per-assay samplesheet formats and exit")
+    ap.add_argument("--model", default="unknown",
+                    help="the exact model id of the agent executing this stage; recorded in the "
+                         "HISTORY.md entry beside the template version (decision 0024)")
     ap.add_argument("--verify-integrity", choices=("none", "full"), default="none",
                     help="none (default): trust the files; stage 00 already checked that every "
                          "link resolves and carries gzip magic. full: decompress every INCLUDED "
@@ -659,7 +666,7 @@ def main(argv=None):
     result["ok"] = True
     result["history_entry"] = history_entry(assays, results, result["wrote"],
                                             args.verify_integrity,
-                                            result["template_version"])
+                                            result["template_version"], args.model)
     return emit(result, EXIT_OK)
 
 

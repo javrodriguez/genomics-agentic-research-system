@@ -76,28 +76,40 @@ Set `strandedness: unstranded` explicitly in future configs to remove the ambigu
 
 ## Next Steps
 
-Priority order. The two blockers on assay expansion — where wrappers live, and the RNA-specific
-samplesheet emitter — were both cleared on 2026-08-19, so wrapper #1 is now unblocked.
+Priority order. Items 1–5 come from the external assessment ("GARS Under Review", 2026-08-21),
+which found the structural gaps: prose-only scope boundaries, no tests for load-bearing code,
+no record of which model executed a stage, no compliant way to answer a user's question, and an
+unbuilt stage 03. In progress as of 2026-08-24.
 
-1. **Build wrapper #1, `nfcore-atacseq-wrapper`**, in `_system/wrappers/`
-   ([0012](docs/decisions/0012-gars-authored-wrappers-live-in-system.md)). Its samplesheet columns
-   are already registered as `planned` from nf-core/atacseq 2.1.2's own schema; building the
-   wrapper promotes them to `active`, adds the assay-map row, and writes the sub-stage contract
-   against [assay-expansion.md](docs/assay-expansion.md) §6.2b.
-2. **Run one real pipeline under v0.2.0**, whenever real FASTQs and an allocation exist.
-   Preflight passes; execution is the untested half. The derived-index cache survives, so the run
-   is ~40 minutes and 43 GB cheaper than a cold one.
-3. **Implement `03_custom_analysis`.** Replace the stub's Process with a real one. It is the
-   natural first consumer of the artifact registry, which would also close the "never resolved an
-   input by type at run time" gap above.
-4. **Build the remaining three wrappers**: chipseq, cutandrun, methylseq. See
-   [0008](docs/decisions/0008-assay-expansion-wrap-nfcore.md) and
-   [assay-expansion.md](docs/assay-expansion.md). chipseq additionally needs stage 00's
-   `samples.csv` header to become assay-aware, so it can carry a `control` column.
-5. **File the `rnaseq-de` defect report**, drafted at
-   [docs/upstream/clawbio-rnaseq-de-defects.md](docs/upstream/clawbio-rnaseq-de-defects.md).
-   Three breaks in a declared chaining pair, one silent. Needs a human to post it, as ClawBio#333
-   was.
+1. **Make scope boundaries mechanical.** Ship agent-harness configuration inside the workspace:
+   `gars/.claude/settings.json` with a PreToolUse guard (`_system/guard_hook.py`) refusing writes
+   to machine-owned and template-owned paths, and refusing ad-hoc `pip/conda install`. Decision
+   0018 proved enforcement beats advice; generalize it.
+2. **Test the load-bearing code.** `tests/` at repo level, stdlib-only, runs on stock python
+   3.6.8: unit + determinism tests for every `_system/` helper, guard-hook allow/deny cases, an
+   eight-section contract lint, and a script↔contract vocabulary drift check.
+3. **Stamp the interpreter into provenance.** Every `HISTORY.md` entry names the model that
+   executed the stage, beside the template version. `--model` on the stage 00/01 helpers;
+   contract text for the agent-written entries.
+4. **Give the agent a bounded voice.** One standing exception in the contract standard: a direct
+   user question may be answered from the workspace's own reference files, read-only, then the
+   agent returns to the current wait point.
+5. **Implement `03_custom_analysis`, plan-gated.** The agent drafts `PLAN.md` (a reviewable
+   file), executes only after approval, resolves inputs through the artifact registry, registers
+   outputs in `OUTPUTS.tsv`.
+
+Deferred, with reasons:
+- **Live contract-compliance replays** (assessment rec 2, the dynamic half): needs billed agent
+  runs per release; the scenario specs and static lint ship first.
+- **Contract token diet** (rec 7): the contracts were validated by a live run on 08-24;
+  restructuring them before a compliance harness exists repeats the exact
+  mechanism-changed/prose-lied failure class. Measure first (the lint reports tokens), diet later.
+- **Retire the ClawBio path for rnaseq** (rec 8): correct direction (0012), but the migration
+  needs a validating pipeline run to be trusted.
+- **Counterfactual benchmark** (rec 10): needs human arms; a study design, not a code change.
+- **Wrapper #1 (`nfcore-atacseq-wrapper`)** and the remaining three wrappers — unchanged from
+  before, after the above.
+- **File the `rnaseq-de` defect report** ([docs/upstream/clawbio-rnaseq-de-defects.md](docs/upstream/clawbio-rnaseq-de-defects.md)) — needs a human to post it.
 
 ## Changelog
 

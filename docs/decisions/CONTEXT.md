@@ -41,6 +41,10 @@ belongs here.
 | 0019 | [The project config is seeded, not authored](0019-config-is-seeded-not-authored.md) | 2026-08-21 | standing | `gars/_templates/config/`<br>`gars/_system/stage00_register.py`<br>`gars/_system/stage01_samplesheet.py`<br>`gars/01_prepare_samplesheets/CONTEXT.md`<br>`gars/00_initialize_project/CONTEXT.md` |
 | 0020 | [The config's scientific decisions come from menus, not free text](0020-config-decisions-come-from-menus.md) | 2026-08-21 | standing | `gars/_references/genomes.md`<br>`gars/_system/configure.py`<br>`gars/02_bioinformatics/CONTEXT.md` |
 | 0021 | [The adaptation's rename belongs in code, not in a contract's prose](0021-the-adaptation-rename-belongs-in-code.md) | 2026-08-24 | standing | `gars/_system/adapt_counts.py`<br>`gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md` |
+| 0022 | [Scope boundaries the harness can enforce, the harness enforces](0022-scope-boundaries-are-enforced-by-the-harness.md) | 2026-08-24 | standing | `gars/.claude/settings.json`<br>`gars/_system/guard_hook.py` |
+| 0023 | [The deterministic core has tests; the contracts have a lint](0023-the-deterministic-core-has-tests.md) | 2026-08-24 | standing | `gars/_system/`<br>`tests/` |
+| 0024 | [The model that executed a stage is part of its provenance](0024-the-model-is-part-of-provenance.md) | 2026-08-24 | standing | `gars/_system/stage00_register.py`<br>`gars/_system/stage01_samplesheet.py`<br>`gars/_templates/project/HISTORY.md`<br>`gars/_references/contract_standard.md` |
+| 0025 | [The bounded voice: a compliant way to answer a question](0025-the-bounded-voice.md) | 2026-08-24 | standing | `gars/_references/contract_standard.md`<br>`gars/CLAUDE.md`<br>`gars/00_initialize_project/CONTEXT.md`<br>`gars/01_prepare_samplesheets/CONTEXT.md`<br>`gars/02_bioinformatics/CONTEXT.md`<br>`gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md`<br>`gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md` |
 
 ## Human check
 

@@ -15,6 +15,7 @@ Entry format:
 ## {{created}} — 00_initialize_project — project created
 
 Template version: {{template_version}}
+Model: {{model}}
 File integrity check: `{{integrity}}`
 
 {{source_paths}}
