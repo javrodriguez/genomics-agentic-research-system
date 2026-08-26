@@ -51,6 +51,15 @@ DRIFT = [
     ("_system/wrappers/rnaseq-de/rnaseq_de.py",
      "02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md",
      r'fail\("([a-z_]+)"'),
+    ("_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py",
+     "02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md",
+     r'fail\("([a-z_]+)"'),
+    ("_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py",
+     "02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md",
+     r'fail\("([a-z_]+)"'),
+    ("_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py",
+     "02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md",
+     r'fail\("([a-z_]+)"'),
 ]
 
 

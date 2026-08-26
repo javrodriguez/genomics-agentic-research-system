@@ -59,9 +59,9 @@ FILES_HEADER = ["sample_id", "lane", "fastq_1", "fastq_2"]
 # whose pipeline does not want it produces a samplesheet that validates upstream and means
 # something else.
 #
-# Only rnaseq_bulk is registered, because it is the only assay in the assay map. The four planned
-# wrappers (atacseq, chipseq, cutandrun, methylseq) each add an entry when their upstream
-# samplesheet contract has been read from that pipeline's own schema -- never guessed from memory.
+# All five assays are registered and active (decisions 0028, 0031); each entry's columns were
+# read from its pipeline's own assets/schema_input.json at the pinned version -- never guessed
+# from memory. A future assay adds an entry the same way, together with its wrapper.
 FORMATS = {
     "rnaseq_bulk": {
         "status": "active",
@@ -73,12 +73,7 @@ FORMATS = {
             ("strandedness", "config:strandedness"),
         ],
     },
-    # --- planned -------------------------------------------------------------------------------
-    # Columns below were read from each pipeline's own assets/schema_input.json at the pinned
-    # version on 2026-08-19, not reconstructed from memory. They are `planned`: stage 01 refuses
-    # them, because no wrapper exists and none has ever been exercised. Promoting one to `active`
-    # is part of building its wrapper -- together with adding the assay to the assay map, which is
-    # what actually gates a project being created for it.
+    # --- the wrapper-backed assays (0028, 0031) ------------------------------------------------
     "atacseq_bulk": {
         # Promoted 2026-08-25 with wrapper #1 (_system/wrappers/nfcore-atacseq-wrapper).
         # Columns re-verified against the pinned checkout's schema on promotion day:
@@ -94,11 +89,12 @@ FORMATS = {
         ],
     },
     "chipseq_bulk": {
-        "status": "planned",
+        # Promoted 2026-08-25 with wrapper #3 (decision 0031). samples.csv carries antibody
+        # and control for this assay (decision 0030); control_replicate is DERIVED -- the
+        # replicate of the referenced control sample -- because a value a script can compute
+        # is never typed by a user (decision 0011).
+        "status": "active",
         "source": "nf-core/chipseq 2.1.0 assets/schema_input.json",
-        # `antibody` and `control` are optional in the schema but not optional biologically --
-        # without them the pipeline cannot call peaks against an input. Both need columns
-        # samples.csv does not yet carry, which stage 01 reports rather than emitting blank.
         "columns": [
             ("sample", "sample_id"),
             ("fastq_1", "fastq_1"),
@@ -106,10 +102,14 @@ FORMATS = {
             ("replicate", "design:replicate"),
             ("antibody", "design:antibody"),
             ("control", "design:control"),
+            ("control_replicate", "lookup:control_replicate"),
         ],
     },
     "cutandrun": {
-        "status": "planned",
+        # Promoted 2026-08-25 with wrapper #4 (decision 0031). `control` names the IgG GROUP,
+        # not a sample_id (decision 0030) -- nf-core/cutandrun matches target rows to control
+        # rows by group.
+        "status": "active",
         "source": "nf-core/cutandrun 3.2.2 assets/schema_input.json",
         # Note the different shape: `group` rather than `sample`, and `control` is REQUIRED by the
         # schema. The control points at the IgG sample, where chipseq's points at input chromatin
@@ -123,7 +123,8 @@ FORMATS = {
         ],
     },
     "methylseq": {
-        "status": "planned",
+        # Promoted 2026-08-25 with wrapper #5 (decision 0031).
+        "status": "active",
         "source": "nf-core/methylseq 4.2.0 assets/schema_input.json",
         "columns": [
             ("sample", "sample_id"),
@@ -303,13 +304,16 @@ def validate_assay(project, assay):
             fails.append(fail("incomplete_design",
                               f"samples.csv line {row['_n']}: blank {', '.join(blank)}"))
     if "control" in header:
-        ids = {r["sample_id"] for r in samples["rows"]}
+        # Same column shape, different biological referent (decision 0030): chipseq's control
+        # names the input-chromatin SAMPLE, cutandrun's names the IgG GROUP.
+        referent = "group" if assay == "cutandrun" else "sample_id"
+        valid = {r[referent] for r in samples["rows"] if r.get(referent)}
         for row in samples["rows"]:
             ctrl = row.get("control", "")
-            if ctrl and ctrl not in ids:
+            if ctrl and ctrl not in valid:
                 fails.append(fail("referential_integrity",
                                   f"samples.csv line {row['_n']}: control {ctrl!r} is not a "
-                                  f"sample_id in this design"))
+                                  f"{referent} in this design"))
 
     # -- duplicate sample_id
     seen = {}
@@ -375,20 +379,33 @@ def validate_assay(project, assay):
     groups = {}
     for row in incl_rows:
         groups.setdefault(row["group"], []).append(row)
-    for gname, grows in sorted(groups.items()):
-        distinct = {r["sample_id"] for r in grows}
-        if len(distinct) < 2:
-            fails.append(fail("invalid_design",
-                              f"group {gname!r} contains {len(distinct)} sample; a group of one "
-                              "cannot be tested for differential expression"))
+    # Group SIZE matters only where groups feed a statistical comparison. For rnaseq that is
+    # the DE stage; for cutandrun a group IS the pipeline's sample unit and a one-sample group
+    # (an IgG control) is normal; ChIP/ATAC/methyl groups are organisational only.
+    if assay == "rnaseq_bulk":
+        for gname, grows in sorted(groups.items()):
+            distinct = {r["sample_id"] for r in grows}
+            if len(distinct) < 2:
+                fails.append(fail("invalid_design",
+                                  f"group {gname!r} contains {len(distinct)} sample; a group "
+                                  "of one cannot be tested for differential expression"))
+    # Replicate numbers must be unique within an experimental unit. What identifies a unit is
+    # per-assay (decision 0030): for ChIP, an IP and its input legitimately share group,
+    # condition AND replicate -- they are distinguished by antibody (blank = input). `control`
+    # is a pointer, not identity, so it never joins the key.
+    identity_extras = [c for c in ws.design_columns(assay)
+                       if c not in ("sample_id", "condition", "group", "replicate", "control")]
     reps = {}
     for row in incl_rows:
-        key = (row["group"], row["condition"], row["replicate"])
+        key = tuple([row["group"], row["condition"], row["replicate"]]
+                    + [row.get(c, "") for c in identity_extras])
         if key in reps and reps[key] != row["sample_id"]:
             fails.append(fail("invalid_design",
                               f"replicate {row['replicate']!r} repeats within group "
                               f"{row['group']!r} / condition {row['condition']!r} for samples "
-                              f"{reps[key]!r} and {row['sample_id']!r}"))
+                              f"{reps[key]!r} and {row['sample_id']!r}"
+                              + (f" (same {'/'.join(identity_extras)})"
+                                 if identity_extras else "")))
         else:
             reps[key] = row["sample_id"]
 
@@ -490,6 +507,13 @@ def write_assay(project, assay, res):
                 elif src.startswith("design:"):
                     d = res["_design_by_id"].get(row["sample_id"], {})
                     out.append(d.get(src.split(":", 1)[1], ""))
+                elif src == "lookup:control_replicate":
+                    # Derived, never typed: the replicate of the design row this row's
+                    # control points at. Blank when the row has no control (it IS one).
+                    d = res["_design_by_id"].get(row["sample_id"], {})
+                    ctrl = d.get("control", "")
+                    out.append(res["_design_by_id"].get(ctrl, {}).get("replicate", "")
+                               if ctrl else "")
                 else:
                     out.append(row.get(src, ""))
             w.writerow(out)

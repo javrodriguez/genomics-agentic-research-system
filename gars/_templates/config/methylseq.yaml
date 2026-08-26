@@ -1,0 +1,24 @@
+# Configuration for assay methylseq, project {{project_title}}
+#
+# Stage 00 put this here so you never author a config from a blank file. Everything that can be
+# filled in for you already has been. What remains is marked <REQUIRED>.
+#
+# Full rationale for every key: _references/config_schema.md
+
+# --- what to align against ---------------------------------------------------------------------
+# Bisulfite alignment needs the FASTA only; no annotation is used. The genome menu at stage 02
+# fills it. NOTE: no plain-human Bismark index exists on this cluster (verified 2026-08-14) --
+# the first run builds one, which is expensive; budget for it.
+reference:
+  fasta: <REQUIRED: choose a genome at stage 02, or paste a FASTA path>
+
+aligner: bismark              # bismark | bismark_hisat | bwameth | bwamem
+
+# --- where it runs -----------------------------------------------------------------------------
+# Bismark index construction on the first run makes this the longest first-run of any assay.
+compute:
+  partition: cpu_medium
+  time: "3-00:00:00"
+  cpus: 12
+  mem: 96G
+  work_dir: {{work_dir}}

@@ -1,0 +1,46 @@
+# Configuration for assay chipseq_bulk, project {{project_title}}
+#
+# Stage 00 put this here so you never author a config from a blank file. Everything that can be
+# filled in for you already has been. What remains is marked <REQUIRED> -- those are scientific
+# decisions, and no stage will substitute a value for them, because a wrong one produces a
+# confident wrong answer rather than an error.
+#
+# Full rationale for every key: _references/config_schema.md
+
+# --- what to align against ---------------------------------------------------------------------
+# The genome menu at stage 02 fills fasta, gtf and macs_gsize together, so they can never be
+# mismatched. Paste paths here only for a reference that is not in _references/genomes.md.
+reference:
+  fasta: <REQUIRED: choose a genome at stage 02, or paste a FASTA path>
+  gtf:   <REQUIRED: choose a genome at stage 02, or paste the matching GTF path>
+
+  # Optional: an ENCODE blacklist BED of artifact regions to exclude from peaks. This cluster
+  # holds /gpfs/data/igorlab/ref/hg38/blacklist.bed plus v1/v2 variants -- they differ, so pick
+  # deliberately or leave peak filtering off.
+  # blacklist: /gpfs/data/igorlab/ref/hg38/blacklist.bed
+
+  # Optional but recommended: aligner-index cache, keyed by PIPELINE version. Uncommented by
+  # the genome menu; if the keyed directory does not exist yet, the first run builds the
+  # indices and harvests them into it.
+  # derived_dir: (set by the genome menu at stage 02)
+
+aligner: bwa                  # bwa | bowtie2 | chromap | star -- nf-core/chipseq default is bwa
+
+# --- how peaks are called ----------------------------------------------------------------------
+# nf-core/chipseq 2.1.0 calls peaks per IP sample against its declared control (MACS3).
+peaks:
+  # narrow | broad. Narrow suits transcription factors; broad suits wide histone marks. A
+  # scientific decision -- chosen from the menu at stage 02, never defaulted.
+  type: <REQUIRED: choose at stage 02 -- narrow or broad>
+
+  # MACS effective genome size. A property of the assembly; travels with the genome choice.
+  macs_gsize: <REQUIRED: set by the genome menu at stage 02>
+
+# --- where it runs -----------------------------------------------------------------------------
+compute:
+  partition: cpu_medium
+  time: "2-00:00:00"
+  cpus: 8
+  mem: 64G
+  # Nextflow's scratch. NEVER inside the project: work/ retains every process output.
+  work_dir: {{work_dir}}

@@ -1,0 +1,43 @@
+# Configuration for assay cutandrun, project {{project_title}}
+#
+# Stage 00 put this here so you never author a config from a blank file. Everything that can be
+# filled in for you already has been. What remains is marked <REQUIRED> -- those are scientific
+# decisions, and no stage will substitute a value for them.
+#
+# Full rationale for every key: _references/config_schema.md
+
+# --- what to align against ---------------------------------------------------------------------
+# The genome menu at stage 02 fills fasta, gtf and mito_name together.
+reference:
+  fasta: <REQUIRED: choose a genome at stage 02, or paste a FASTA path>
+  gtf:   <REQUIRED: choose a genome at stage 02, or paste the matching GTF path>
+
+  # Mitochondrial contig name (Ensembl: MT, UCSC: chrM); reads on it are reported/filtered by
+  # this name. Set by the genome menu.
+  mito_name: <REQUIRED: set by the genome menu at stage 02>
+
+  # Optional blacklist BED, as for ATAC/ChIP. Variants differ; pick deliberately.
+  # blacklist: /gpfs/data/igorlab/ref/hg38/blacklist.bed
+
+# --- spike-in normalisation --------------------------------------------------------------------
+# CUT&RUN's distinguishing feature: signal is calibrated against a spike-in genome (E. coli by
+# convention -- carried by the tagmentation enzyme prep). The local iGenomes mirror holds the
+# standard K12 reference; a different spike-in organism means changing this path.
+spikein:
+  fasta: /gpfs/data/sequence/references/iGenomes/Escherichia_coli_K_12_MG1655/NCBI/2001-10-15/Sequence/WholeGenomeFasta/genome.fa
+
+# --- how peaks are called ----------------------------------------------------------------------
+# Presented defaults (shown at stage 02 before anything runs); the pipeline's own
+# recommendations for CUT&RUN. Change them here if your experiment differs.
+peaks:
+  peakcaller: seacr           # seacr | macs2 -- SEACR is built for low-background CUT&RUN data
+  normalisation: Spikein      # Spikein | RPKM | CPM | BPM | None
+  use_control: true           # call peaks against the IgG rows the design declares
+
+# --- where it runs -----------------------------------------------------------------------------
+compute:
+  partition: cpu_medium
+  time: "2-00:00:00"
+  cpus: 8
+  mem: 64G
+  work_dir: {{work_dir}}

@@ -28,6 +28,9 @@ rely on a name meaning one thing.
 | `peaks_consensus` | Consensus peak set across all samples (BED) | ATAC/ChIP-family 02.01 |
 | `counts_peaks` | Read counts over the consensus peak set, peaks x samples | ATAC/ChIP-family 02.01 |
 | `bigwig` | Normalised signal tracks (bigWig set) | ATAC/ChIP-family 02.01 |
+| `methylation_coverage` | Per-sample cytosine coverage (`*.bismark.cov.gz` set) | methylseq 02.01 |
+| `methylation_calls` | Per-sample context-split methylation calls | methylseq 02.01 |
+| `bedgraph` | Per-sample methylation bedGraph tracks | methylseq 02.01 |
 | `table` | A tabular result of a custom analysis | 03_custom_analysis |
 | `figure` | A plot or image produced by a custom analysis | 03_custom_analysis |
 | `report` | A human-readable document (md/html/pdf) summarising an analysis | 03_custom_analysis |

@@ -27,6 +27,7 @@ sees a simpler-looking option.
 | `_system/` helpers | `stage00_register`, `stage01_samplesheet`, `configure`, `adapt_counts`, `resolve_artifact`, `stage03_analysis`, `guard_hook` + `wrappers/nfcore-atacseq-wrapper` — stdlib only, stock python 3.6.8, no conda |
 | **Assay #2: `atacseq_bulk`** | **Wired end to end offline** — stage 00 accepts it, stage 01 emits its format (`active`), config completes from genome+peaks menus, wrapper `check`/`prepare`/`collect` tested; awaits a live pipeline run |
 | **rnaseq on GARS wrappers** | **Migrated (0029)** — both sub-stages run through `_system/wrappers/{nfcore-rnaseq-wrapper,rnaseq-de}`; ClawBio path deprecated in place. DE numerics validated against the leukemia-tall baseline on the real inputs (see below) |
+| **Assays #3–#5: chipseq, cutandrun, methylseq** | **Wired end to end offline (0031)** — checkouts pinned and tag-verified, formats active, config menus, wrappers tested against faked result trees read from each pipeline's own docs. Each awaits its first live run |
 | **Full chain 00 → 02.02** | **RUN END TO END on real data, 2026-08-24** — project `leukemia-tall`, 10 samples, 22,783 genes tested |
 | Artifact resolution | `_system/resolve_artifact.py`; **exercised live** — 02.02 resolved `counts_gene` and `design` by type at run time |
 | Stage 03 (`03_custom_analysis`) | **Implemented, plan-gated** — agent drafts `PLAN.md`, user approves, `_system/stage03_analysis.py` enforces both gates. Never yet driven by a live agent |
@@ -70,7 +71,13 @@ Set `strandedness: unstranded` explicitly in future configs to remove the ambigu
   agent hand-built the analysis directory instead of running `create` (contained — `approve`
   and `verify` gate on content, not provenance of the directory). Exactly the drift class the
   still-open live compliance harness would catch.
-- **`atacseq_bulk` has never run a live pipeline.** The wrapper chain is tested offline
+- **Four assays have never run a live pipeline** (atacseq, chipseq, cutandrun, methylseq),
+  and rnaseq has not yet run live under its gars wrapper. Every mechanical layer is
+  offline-tested; what only a cluster run can prove is the pipelines completing under these
+  params, the real output trees matching the gates built from their docs, and the
+  ChIP/CUT&RUN control semantics surviving nf-core's own samplesheet validation. One live run
+  per assay is the standing item.
+- **`atacseq_bulk` detail:** The wrapper chain is tested offline
   through fixture projects and a faked results tree (25 tests), and the pinned checkout at
   `~/install/nf-core-pipelines/atacseq-2.1.2` is cloned and tag-verified — but no real ATAC
   FASTQs have been through it. Blocking test: a real 2-condition ATAC run on the cluster,
@@ -125,9 +132,12 @@ plan-gated stage 03 (0026). What remains:
    `leukemia-tall`: its existing `de_results.csv` fold-change VALUES are unreliable (gene calls
    and padj are fine) — re-run 02.02 under the new wrapper, or use the validated table the
    comparison produced.
-4. **Build the remaining three wrappers**: chipseq, cutandrun, methylseq
-   ([0008](docs/decisions/0008-assay-expansion-wrap-nfcore.md)). chipseq needs stage 00's
-   `samples.csv` header to become assay-aware (a `control` column).
+4. ~~Build the remaining three wrappers~~ **Done 2026-08-25**
+   ([0031](docs/decisions/0031-all-five-assays-are-wired.md)): chipseq (MACS3, per-antibody
+   consensus, derived control_replicate), cutandrun (group-shaped design, spike-in
+   calibration), methylseq (per-sample coverage gate). The design table went assay-aware first
+   ([0030](docs/decisions/0030-the-design-table-is-assay-aware.md)), and two RNA-era validation
+   rules were caught encoding bulk-RNA assumptions and made per-assay.
 5. **File the `rnaseq-de` defect report**, drafted at
    [docs/upstream/clawbio-rnaseq-de-defects.md](docs/upstream/clawbio-rnaseq-de-defects.md) —
    now four defects, two silent, each with a reproduction — needs a human to post it.
@@ -149,6 +159,7 @@ here is a decision record trying to be born.
 
 | Date | Change | Detail |
 |---|---|---|
+| 08-25 | **Wrappers #3–#5 (v0.8.0): every assay wired.** chipseq/cutandrun/methylseq checkouts cloned and tag-verified; all five FORMATS active; per-assay config templates + menus (`genome` decision shape); artifact vocabulary +3 (methylation types); contracts for all three sub-stages; SKILL.md for every wrapper; 34 tests. Facts read from the checkouts, not memory — chipseq calls peaks with MACS3, consensus per antibody, cutandrun MultiQC under `04_reporting/`. Two RNA-era stage-01 rules (replicate-uniqueness key, group-of-one refusal) caught encoding bulk-RNA assumptions and made per-assay | [0031](docs/decisions/0031-all-five-assays-are-wired.md) |
 | 08-25 | **rnaseq migrated to gars wrappers (v0.7.0); ClawBio defect #4 found.** `_system/wrapperlib.py` extracted (shared wrapper machinery); `nfcore-rnaseq-wrapper` + `rnaseq-de` rebuilt as gars wrappers; both rnaseq contracts rewritten to the wrapper idiom, ClawBio procedures preserved as `DEPRECATED-clawbio-path.md` with switchover criteria (0029). DE science validated on `leukemia-tall`'s real inputs via three Slurm jobs: tested set, p-values and the significant set match the baseline exactly (padj r=0.99998, 265/265) — and the old skill's published fold changes turned out not to reflect the data (r=0.33 vs 0.99 against normalized group ratios), a fourth silent defect added to the upstream report. Validation also caught two wrapper bugs pre-ship (frozen relative paths; staging on login-node /tmp). Design table made assay-aware (`workspace.design_columns`, 0030): ChIP-family assays gain `antibody`/`control` columns with per-assay referential checks | [0029](docs/decisions/0029-the-clawbio-path-is-deprecated.md), [0030](docs/decisions/0030-the-design-table-is-assay-aware.md) |
 | 08-25 | **Wrapper #1: `nfcore-atacseq-wrapper` (v0.6.0).** First GARS-authored wrapper — one stdlib file cloning the ClawBio *behavior* (preflight, audited params, structured failures, content exit gates) not its 12-module architecture; `submit.sh` generated by code with the requeue guard baked in; native Nextflow `-resume` restores real crash recovery. `atacseq_bulk` promoted to `active`; assay map gains the Source column (clawbio/gars); genome registry rows carry per-assay-keyed cache roots + mito contig + MACS gsize; `configure.py` decisions are per-assay (`peaks` menu); artifact vocabulary +4 types. nf-core/atacseq 2.1.2 cloned and tag-verified at `~/install/nf-core-pipelines/atacseq-2.1.2`. 5 new tests (25 total) | [0028](docs/decisions/0028-wrappers-are-thin-system-helpers.md) |
 | 08-25 | **v0.5.0 live-validated on `leukemia-tall`**: both guard layers fired on deliberate forbidden calls; first stage 03 analysis ran end to end (plan drafted → approved → executed → verified, HISTORY carries version + model); cache reuse confirmed (0 index-building processes in the trace). One deviation: the agent hand-built the analysis directory instead of running `create` — contained by the gates. And one policy change from the run: **stage 03 executes under `sbatch` by default** — the plan's `Runs:` line is a closed two-value vocabulary gated by `approve`; login-node execution exists only as `Runs: login-node (user-requested)` | [0027](docs/decisions/0027-stage-03-runs-under-sbatch-by-default.md) |

@@ -41,6 +41,9 @@ def template_version(workspace):
 PIPELINES = {
     "rnaseq_bulk": "nf-core-rnaseq-3.26.0",
     "atacseq_bulk": "nf-core-atacseq-2.1.2",
+    "chipseq_bulk": "nf-core-chipseq-2.1.0",
+    "cutandrun": "nf-core-cutandrun-3.2.2",
+    "methylseq": "nf-core-methylseq-4.2.0",
 }
 
 # The design table's columns, per assay (decision 0030). Every assay carries the base four;

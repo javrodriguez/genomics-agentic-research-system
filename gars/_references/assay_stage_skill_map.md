@@ -9,6 +9,9 @@ and `02_bioinformatics/<Assay ID>/` for its sub-stages.
 | Bulk RNA-seq | rnaseq_bulk | 02_bioinformatics | 01_nfcore-rnaseq-wrapper | nfcore-rnaseq-wrapper | gars | samplesheet | counts_gene, counts_transcript, tpm_gene, bam_genome, qc_multiqc |
 | Bulk RNA-seq | rnaseq_bulk | 02_bioinformatics | 02_rnaseq-de | rnaseq-de | gars | counts_gene, design | de_results |
 | ATAC-seq (bulk) | atacseq_bulk | 02_bioinformatics | 01_nfcore-atacseq-wrapper | nfcore-atacseq-wrapper | gars | samplesheet | peaks, peaks_consensus, counts_peaks, bigwig, bam_genome, qc_multiqc |
+| ChIP-seq (bulk) | chipseq_bulk | 02_bioinformatics | 01_nfcore-chipseq-wrapper | nfcore-chipseq-wrapper | gars | samplesheet | peaks, peaks_consensus, counts_peaks, bigwig, bam_genome, qc_multiqc |
+| CUT&RUN / CUT&Tag | cutandrun | 02_bioinformatics | 01_nfcore-cutandrun-wrapper | nfcore-cutandrun-wrapper | gars | samplesheet | peaks, peaks_consensus, bigwig, bam_genome, qc_multiqc |
+| Bisulfite (WGBS/RRBS) | methylseq | 02_bioinformatics | 01_nfcore-methylseq-wrapper | nfcore-methylseq-wrapper | gars | samplesheet | methylation_coverage, methylation_calls, bedgraph, qc_multiqc |
 
 The **Source** column says where a skill's code lives (decision 0012): `clawbio` skills ship
 read-only with the installed package and resolve via `$GARS_SKILLS`; `gars` wrappers are
@@ -28,6 +31,9 @@ as a preconditions failure **naming the requirement**, rather than surfacing a r
 | nfcore-rnaseq-wrapper (gars) | >=3.6 (stdlib only) | `python3`, `nextflow`, `java`, `git` | none | stock python + `gars-nxf` at submit time |
 | rnaseq-de (gars) | wrapper: >=3.6 stdlib; analysis: `$GARS_PY` | `python3`, `git` | `pandas`, `numpy`, `pydeseq2`, `matplotlib`, `scikit-learn` (analysis only) | stock python + `gars-bio` at run time |
 | nfcore-atacseq-wrapper | >=3.6 (stdlib only) | `python3`, `nextflow`, `java`, `git` | none | stock python + `gars-nxf` at submit time |
+| nfcore-chipseq-wrapper | >=3.6 (stdlib only) | `python3`, `nextflow`, `java`, `git` | none | stock python + `gars-nxf` at submit time |
+| nfcore-cutandrun-wrapper | >=3.6 (stdlib only) | `python3`, `nextflow`, `java`, `git` | none | stock python + `gars-nxf` at submit time |
+| nfcore-methylseq-wrapper | >=3.6 (stdlib only) | `python3`, `nextflow`, `java`, `git` | none | stock python + `gars-nxf` at submit time |
 
 The clawbio `nfcore-rnaseq-wrapper` and `rnaseq-de` skills are retired from the critical path
 (decision 0029) but remain installed with the package; the deprecated procedures sit beside

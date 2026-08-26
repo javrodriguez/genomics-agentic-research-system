@@ -182,9 +182,9 @@ its mechanism by [0016](decisions/0016-workspaces-are-checkouts.md) but not in t
   installed `clawbio` package, read-only. GARS-authored wrappers live in `_system/wrappers/`
   ([0012](decisions/0012-gars-authored-wrappers-live-in-system.md)) — the first,
   `nfcore-atacseq-wrapper`, is the template for the rest ([0028](decisions/0028-wrappers-are-thin-system-helpers.md)).
-- **Two assays exist.** `rnaseq_bulk` (live-proven) and `atacseq_bulk` (wired end to end,
-  offline-tested, awaiting a live run). The remaining three are `planned` and refused until
-  their wrappers exist.
+- **All five assays are wired.** `rnaseq_bulk` is live-proven; `atacseq_bulk`, `chipseq_bulk`,
+  `cutandrun` and `methylseq` are wired end to end and offline-tested through their wrappers
+  ([0031](decisions/0031-all-five-assays-are-wired.md)), each awaiting its first live run.
 - **`03_custom_analysis` is plan-gated** ([0026](decisions/0026-stage-03-is-plan-gated.md)):
   the agent drafts `PLAN.md`, the user approves it, and only then does anything execute.
   Approval and output verification are enforced by `_system/stage03_analysis.py`, not by prose.

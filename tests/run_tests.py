@@ -765,6 +765,242 @@ class RnaseqGarsWrapperTests(unittest.TestCase):
         self.assertIn("de_results\tnative\t", outputs)
 
 
+class ChipFamilyAndMethylTests(unittest.TestCase):
+    """Wrappers #3-#5 (decision 0031) and the assay-aware design table (0030): chipseq's
+    antibody/control columns with derived control_replicate, cutandrun's group-shaped sheet
+    with group-referent controls, methylseq's minimal chain — each through the real CLIs."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp(prefix="gars-chipfam-"))
+        cls.ws = cls.tmp / "gars"
+        cls.ws.mkdir()
+        for d in ("_system", "_references", "_templates"):
+            shutil.copytree(str(GARS / d), str(cls.ws / d))
+        (cls.ws / "projects").mkdir()
+        cls.refs = cls.tmp / "refs"
+        (cls.refs / "derived").mkdir(parents=True)
+        (cls.refs / "genome.fa.gz").write_bytes(gzip.compress(b">chr1\nACGT\n"))
+        (cls.refs / "genome.gtf.gz").write_bytes(gzip.compress(b"chr1\tx\tgene\n"))
+        cls.spikein = cls.tmp / "spikein.fa"
+        cls.spikein.write_text(">ecoli\nACGT\n")
+        reg = cls.ws / "_references" / "genomes.md"
+        text = reg.read_text()
+        header = text[:text.index("| GRCh38 |")]
+        reg.write_text(header +
+                       "| TESTG | Test species | T1 | fixture | %s | %s | %s | MT | 12345 |\n"
+                       % (cls.refs / "genome.fa.gz", cls.refs / "genome.gtf.gz",
+                          cls.refs / "derived"))
+        cls.src = cls.tmp / "seqrun"
+        cls.src.mkdir()
+        for s in ("CHIP1_S1", "CHIP2_S2", "INPUT1_S3", "CNR1_S4", "CNR2_S5", "IGG1_S6",
+                  "METH1_S7", "METH2_S8"):
+            for r in ("R1", "R2"):
+                write_fastq_gz(cls.src / ("%s_L001_%s_001.fastq.gz" % (s, r)))
+        cls.reg_py = cls.ws / "_system" / "stage00_register.py"
+        cls.sheet_py = cls.ws / "_system" / "stage01_samplesheet.py"
+        cls.cfg_py = cls.ws / "_system" / "configure.py"
+
+    tearDownClass = classmethod(lambda cls: WorkspaceFixture.tearDownClass.__func__(cls))
+
+    def _mk_project(self, title, assay):
+        for argv in (["create", "--title", title, "--assays", assay],
+                     ["link", "--project", "projects/" + title, "--assay", assay,
+                      "--source", str(self.src)],
+                     ["finalize", "--project", "projects/" + title]):
+            code, res, raw = run(self.reg_py, argv, self.ws)
+            self.assertEqual(code, 0, raw)
+        return self.ws / "projects" / title
+
+    def _fill_design(self, project, assay, fill):
+        scsv = project / "00_data" / assay / "samples.csv"
+        with scsv.open() as fh:
+            rows = list(csv.reader(fh))
+        head = rows[0]
+        kept = [rows[0]]
+        for r in rows[1:]:
+            d = dict(zip(head, r))
+            if d["sample_id"] in fill:
+                d.update(fill[d["sample_id"]])
+                kept.append([d.get(c, "") for c in head])
+        with scsv.open("w", newline="") as fh:
+            csv.writer(fh).writerows(kept)
+        return head
+
+    # ----- chipseq ------------------------------------------------------------------------
+
+    def test_00_chipseq_design_and_emission(self):
+        project = self._mk_project("chip-test", "chipseq_bulk")
+        head = (project / "00_data" / "chipseq_bulk" / "samples.csv"
+                ).read_text().splitlines()[0]
+        self.assertEqual(head, "sample_id,condition,group,replicate,antibody,control",
+                         "stage 00 writes the assay's design columns (0030)")
+        fill = {
+            "CHIP1": {"condition": "KO", "group": "G1", "replicate": "1",
+                      "antibody": "H3K27ac", "control": "INPUT1"},
+            "CHIP2": {"condition": "WT", "group": "G1", "replicate": "1",
+                      "antibody": "H3K27ac", "control": "NOSUCH"},
+            "INPUT1": {"condition": "KO", "group": "G1", "replicate": "1"},
+        }
+        self._fill_design(project, "chipseq_bulk", fill)
+        code, res, raw = run(self.sheet_py, ["--project", "projects/chip-test",
+                                             "--check", "--confirm-exclusions"], self.ws)
+        self.assertEqual(code, 1, raw)
+        checks = [f["check"] for a in res["assays"].values() for f in a.get("failures", [])]
+        self.assertIn("referential_integrity", checks,
+                      "a control that is not a sample_id must be caught")
+        # fix the dangling control, emit, and check the derived control_replicate
+        fill["CHIP2"]["control"] = "INPUT1"
+        self._fill_design(project, "chipseq_bulk", fill)
+        code, res, raw = run(self.sheet_py, ["--project", "projects/chip-test",
+                                             "--confirm-exclusions"], self.ws)
+        self.assertEqual(code, 0, raw)
+        sheet = (project / "01_samplesheets" / "chipseq_bulk_samplesheet.csv"
+                 ).read_text().splitlines()
+        self.assertEqual(sheet[0],
+                         "sample,fastq_1,fastq_2,replicate,antibody,control,control_replicate")
+        by_sample = {l.split(",")[0]: l.split(",") for l in sheet[1:]}
+        self.assertEqual(by_sample["CHIP1"][6], "1",
+                         "control_replicate is derived from the control's design row")
+        self.assertEqual(by_sample["INPUT1"][5], "", "a control row has no control")
+
+    def test_01_chipseq_wrapper(self):
+        wrap = self.ws / "_system" / "wrappers" / "nfcore-chipseq-wrapper" \
+            / "nfcore_chipseq_wrapper.py"
+        code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/chip-test",
+                                           "--assay", "chipseq_bulk", "--genome", "01",
+                                           "--peaks-type", "narrow"], self.ws)
+        self.assertEqual(code, 0, raw)
+        code, res, raw = run(wrap, ["check", "--project", "projects/chip-test"], self.ws)
+        self.assertEqual(code, 0, raw)
+        code, res, raw = run(wrap, ["prepare", "--project", "projects/chip-test"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertEqual(res["params"]["macs_gsize"], "12345")
+        substage = self.ws / "projects" / "chip-test" / "02_bioinformatics" / "chipseq_bulk" \
+            / "01_nfcore-chipseq-wrapper"
+        ml = substage / "run" / "results" / "bwa" / "merged_library"
+        ab = ml / "macs3" / "narrow_peak" / "consensus" / "H3K27ac"
+        ab.mkdir(parents=True)
+        (ml / "macs3" / "narrow_peak" / "CHIP1_REP1_peaks.narrowPeak").write_text("chr1\t1\t2\n")
+        (ab / "H3K27ac.consensus_peaks.bed").write_text("chr1\t1\t2\tp1\n")
+        (ab / "H3K27ac.consensus_peaks.featureCounts.txt").write_text(
+            "# fc\nGeneid\tChr\tStart\tEnd\tStrand\tLength\tCHIP1_REP1.bam\tCHIP2_REP1.bam\np1\tchr1\t1\t2\t+\t2\t1\t1\n")
+        (ml / "bigwig").mkdir()
+        (ml / "bigwig" / "CHIP1_REP1.bigWig").write_text("bw")
+        (ml / "CHIP1_REP1.mLb.clN.sorted.bam").write_text("bam")
+        mq = substage / "run" / "results" / "multiqc" / "narrow_peak"
+        mq.mkdir(parents=True)
+        (mq / "multiqc_report.html").write_text("<html>ok</html>")
+        (substage / "run" / ".gars_run_complete").write_text("now\n")
+        code, res, raw = run(wrap, ["collect", "--project", "projects/chip-test",
+                                    "--model", "claude-test-1"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertIn("IPs: 2", res["history_entry"])
+        self.assertIn("peaks_consensus\tnative\t",
+                      (substage / "OUTPUTS.tsv").read_text())
+
+    # ----- cutandrun ----------------------------------------------------------------------
+
+    def test_02_cutandrun_chain(self):
+        project = self._mk_project("cnr-test", "cutandrun")
+        head = (project / "00_data" / "cutandrun" / "samples.csv").read_text().splitlines()[0]
+        self.assertEqual(head, "sample_id,condition,group,replicate,control")
+        fill = {
+            "CNR1": {"condition": "KO", "group": "h3k4me3", "replicate": "1",
+                     "control": "igg"},
+            "CNR2": {"condition": "KO", "group": "h3k4me3", "replicate": "2",
+                     "control": "igg"},
+            "IGG1": {"condition": "KO", "group": "igg", "replicate": "1"},
+        }
+        self._fill_design(project, "cutandrun", fill)
+        code, res, raw = run(self.sheet_py, ["--project", "projects/cnr-test",
+                                             "--confirm-exclusions"], self.ws)
+        self.assertEqual(code, 0, raw)
+        sheet = (project / "01_samplesheets" / "cutandrun_samplesheet.csv"
+                 ).read_text().splitlines()
+        self.assertEqual(sheet[0], "group,replicate,fastq_1,fastq_2,control",
+                         "the cutandrun sheet is group-shaped")
+        code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/cnr-test",
+                                           "--assay", "cutandrun", "--genome", "01"], self.ws)
+        self.assertEqual(code, 0, raw)
+        cfg = (project / "_config" / "cutandrun.yaml").read_text()
+        self.assertIn("mito_name: MT", cfg)
+        wrap = self.ws / "_system" / "wrappers" / "nfcore-cutandrun-wrapper" \
+            / "nfcore_cutandrun_wrapper.py"
+        # fixture spike-in path
+        cfgp = project / "_config" / "cutandrun.yaml"
+        cfgp.write_text(cfgp.read_text().replace(
+            "/gpfs/data/sequence/references/iGenomes/Escherichia_coli_K_12_MG1655/NCBI/2001-10-15/Sequence/WholeGenomeFasta/genome.fa",
+            str(self.spikein)))
+        code, res, raw = run(wrap, ["check", "--project", "projects/cnr-test"], self.ws)
+        self.assertEqual(code, 0, raw)
+        code, res, raw = run(wrap, ["prepare", "--project", "projects/cnr-test"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertEqual(res["params"]["peakcaller"], "seacr")
+        substage = project / "02_bioinformatics" / "cutandrun" / "01_nfcore-cutandrun-wrapper"
+        r = substage / "run" / "results"
+        (r / "02_alignment" / "bowtie2" / "target" / "markdup").mkdir(parents=True)
+        (r / "02_alignment" / "bowtie2" / "target" / "markdup" / "CNR1.bam").write_text("b")
+        (r / "03_peak_calling" / "03_bed_to_bigwig").mkdir(parents=True)
+        (r / "03_peak_calling" / "03_bed_to_bigwig" / "h3k4me3_R1.bigWig").write_text("bw")
+        (r / "03_peak_calling" / "04_called_peaks").mkdir()
+        (r / "03_peak_calling" / "04_called_peaks" / "h3k4me3_R1.seacr.peaks.stringent.bed"
+         ).write_text("chr1\t1\t2\n")
+        (r / "03_peak_calling" / "05_consensus_peaks").mkdir()
+        (r / "03_peak_calling" / "05_consensus_peaks" / "h3k4me3.consensus.peaks.bed"
+         ).write_text("chr1\t1\t2\n")
+        (r / "04_reporting" / "multiqc").mkdir(parents=True)
+        (r / "04_reporting" / "multiqc" / "multiqc_report.html").write_text("<html>ok</html>")
+        (substage / "run" / ".gars_run_complete").write_text("now\n")
+        code, res, raw = run(wrap, ["collect", "--project", "projects/cnr-test",
+                                    "--model", "claude-test-1"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertIn("targets: 1", res["history_entry"])
+
+    # ----- methylseq ----------------------------------------------------------------------
+
+    def test_03_methylseq_chain(self):
+        project = self._mk_project("meth-test", "methylseq")
+        fill = {"METH1": {"condition": "A", "group": "G1", "replicate": "1"},
+                "METH2": {"condition": "B", "group": "G1", "replicate": "1"}}
+        self._fill_design(project, "methylseq", fill)
+        code, res, raw = run(self.sheet_py, ["--project", "projects/meth-test",
+                                             "--confirm-exclusions"], self.ws)
+        self.assertEqual(code, 0, raw)
+        code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/meth-test",
+                                           "--assay", "methylseq", "--genome", "01"], self.ws)
+        self.assertEqual(code, 0, raw)
+        wrap = self.ws / "_system" / "wrappers" / "nfcore-methylseq-wrapper" \
+            / "nfcore_methylseq_wrapper.py"
+        code, res, raw = run(wrap, ["check", "--project", "projects/meth-test"], self.ws)
+        self.assertEqual(code, 0, raw)
+        code, res, raw = run(wrap, ["prepare", "--project", "projects/meth-test"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertNotIn("gtf", res["params"], "bisulfite alignment uses no annotation")
+        substage = project / "02_bioinformatics" / "methylseq" / "01_nfcore-methylseq-wrapper"
+        b = substage / "run" / "results" / "bismark"
+        (b / "methylation_coverage").mkdir(parents=True)
+        # one sample missing -> content gate catches it
+        (b / "methylation_coverage" / "METH1.bismark.cov.gz").write_text("cov")
+        (b / "methylation_calls").mkdir()
+        (b / "methylation_calls" / "CpG_context_METH1.txt.gz").write_text("c")
+        (b / "bedGraph").mkdir()
+        (b / "bedGraph" / "METH1.bedGraph.gz").write_text("bg")
+        mq = substage / "run" / "results" / "multiqc"
+        mq.mkdir(parents=True)
+        (mq / "multiqc_report.html").write_text("<html>ok</html>")
+        (substage / "run" / ".gars_run_complete").write_text("now\n")
+        code, res, raw = run(wrap, ["collect", "--project", "projects/meth-test"], self.ws)
+        self.assertEqual(code, 1, raw)
+        self.assertIn("methylation_coverage", [f["check"] for f in res["failures"]])
+        (b / "methylation_coverage" / "METH2.bismark.cov.gz").write_text("cov")
+        code, res, raw = run(wrap, ["collect", "--project", "projects/meth-test",
+                                    "--model", "claude-test-1"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertIn("methylation_coverage\tnative\t",
+                      (substage / "OUTPUTS.tsv").read_text())
+
+
 class GuardHookTests(unittest.TestCase):
     """The mechanical scope boundaries (decision 0022). Every deny is an action no contract
     instructs; every allow is a step some contract does instruct."""

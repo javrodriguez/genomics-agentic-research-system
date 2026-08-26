@@ -237,6 +237,9 @@ def cmd_peaks(args, workspace):
 ASSAY_DECISIONS = {
     "rnaseq_bulk": "de",        # genome + de.formula + de.contrast
     "atacseq_bulk": "peaks",    # genome + peaks.type (macs_gsize and mito_name come with the genome)
+    "chipseq_bulk": "peaks",    # same decisions as ATAC (its template carries no mito_name key)
+    "cutandrun": "genome",      # genome only; peakcaller/normalisation are presented defaults
+    "methylseq": "genome",      # genome only (fasta; no annotation, no peaks)
 }
 
 
@@ -268,7 +271,13 @@ def cmd_apply(args, workspace):
 
     updates = [("fasta", genome["fasta"], "  "), ("gtf", genome["gtf"], "  ")]
 
-    if shape == "de":
+    if shape == "genome":
+        # No second decision: the genome sets everything. mito_name travels with it where the
+        # assay's template carries the key (set_yaml_scalar no-ops where it does not).
+        if genome.get("mito_name"):
+            updates.append(("mito_name", genome["mito_name"], "  "))
+
+    elif shape == "de":
         if not args.contrast:
             result["error"] = "assay %s needs --contrast (see `configure.py contrasts`)" % args.assay
             return emit(result, EXIT_USAGE)
@@ -340,9 +349,11 @@ def cmd_apply(args, workspace):
         # The cache line ships commented out; uncomment it rather than appending a duplicate.
         # The path is written even when the keyed directory does not exist yet: the wrapper
         # passes --save-reference on the first run and harvests the built indices into it.
-        text = re.sub(r"^\s*#\s*derived_dir:.*$", "  derived_dir: %s" % genome["derived_dir"],
-                      text, count=1, flags=re.M)
-        applied["derived_dir"] = True
+        # An assay whose template carries no cache line (cutandrun, methylseq) is reported
+        # honestly as not-applied.
+        text, n = re.subn(r"^\s*#\s*derived_dir:.*$", "  derived_dir: %s" % genome["derived_dir"],
+                          text, count=1, flags=re.M)
+        applied["derived_dir"] = bool(n)
 
     remaining = [l.split(":", 1)[0].strip() for l in text.splitlines()
                  if "<REQUIRED" in l and not l.lstrip().startswith("#")]
