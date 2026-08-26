@@ -14,8 +14,9 @@ GARS contract      decides THAT this assay is processed, with which reference an
                                                               (this repo, markdown)
    │ invokes
    ▼
-ClawBio wrapper    validates inputs, writes params.yaml, launches Nextflow, parses results
-                                                              (gars-bio env, pip)
+GARS wrapper       validates inputs, writes params.yaml + submit.sh, gates results
+                     (_system/wrappers/, stdlib; since 0029 -- the ClawBio skills are the
+                      deprecated fallback and remain installed in gars-bio)
    │ launches
    ▼
 Nextflow           reads the pipeline, builds the task graph, submits Slurm jobs
@@ -171,13 +172,16 @@ independently, while the pipeline stays readable, diffable text.
 
 ## Second misconception: the wrapper does not build the pipeline
 
-A natural follow-on assumption is that the ClawBio wrapper "organises the containers and tools
-into a pipeline, which Nextflow then orchestrates". The wrapper does considerably less than
-that. It never touches containers and it does not assemble anything.
+A natural follow-on assumption is that the wrapper "organises the containers and tools into a
+pipeline, which Nextflow then orchestrates". The wrapper does considerably less than that. It
+never touches containers and it does not assemble anything. (This was written about the
+ClawBio wrapper and is equally true of the GARS-authored wrappers that replaced it, decision
+0029 — they validate, translate config into `params.yaml`, generate `submit.sh`, and gate
+results; the pipeline is untouched.)
 
 | Piece | Job | Knows about containers? |
 |---|---|---|
-| **nfcore-rnaseq-wrapper** (ClawBio skill) | Validates the samplesheet and references, translates CLI flags into `params.yaml`, launches Nextflow, parses results afterwards | **No** — passes `--profile apptainer` through as a string |
+| **nfcore-rnaseq-wrapper** (gars, `_system/wrappers/`) | Validates the samplesheet, references and executor config, translates `_config/<assay>.yaml` into `params.yaml`, generates `submit.sh`, gates the results afterwards | **No** — passes `-profile apptainer` through as a string |
 | **nf-core/rnaseq** (the pipeline) | Declares the steps, their order, and **which container each step uses** — 78 modules, 78 declarations | Yes, this is where they are declared |
 | **Nextflow** (the engine) | Reads the pipeline, builds the task graph, submits Slurm jobs, calls the container engine per task | Yes, it invokes them |
 | **Apptainer** | Runs one tool in one container, once | Runs them |
@@ -191,8 +195,8 @@ Stated correctly:
 
 > The nf-core/rnaseq **pipeline** declares which tool runs at each step and in what order.
 > **Nextflow** executes that declaration, calling **Apptainer** to run one tool-container per
-> task. The **ClawBio wrapper** is a launcher that validates inputs and starts Nextflow — it
-> neither builds the pipeline nor manages containers.
+> task. The **wrapper** is a launcher that validates inputs and starts Nextflow — it neither
+> builds the pipeline nor manages containers.
 
 ### One line each
 

@@ -27,7 +27,7 @@ each sub-stage produced.
 |---|---|---|---|
 | `00_initialize_project` | registering raw data | `00_data/<assay>/` — symlinks, `files.csv`, `samples.csv`, and a seeded `_config/` | `stage00_register.py` |
 | `01_prepare_samplesheets` | validating the design | `01_samplesheets/` — samplesheet + design table | `stage01_samplesheet.py` |
-| `02_bioinformatics` | routing an assay to its sub-stages | `02_bioinformatics/<assay>/<NN_name>/` | `configure.py`, `resolve_artifact.py` |
+| `02_bioinformatics` | routing an assay to its sub-stages | `02_bioinformatics/<assay>/<NN_name>/` | `configure.py`, `resolve_artifact.py`, `wrappers/*` on `wrapperlib.py` |
 | `03_custom_analysis` | drafting a plan the user approves, then running it | `03_custom_analysis/<NN_slug>/` — `PLAN.md`, scripts, results, `OUTPUTS.tsv` | `stage03_analysis.py`, `resolve_artifact.py` |
 
 **Ownership is exclusive and encoded in the number.** A project directory named `NN_*` is written
@@ -166,7 +166,8 @@ you: "start a new project"
       → samplesheet + design table
   02  complete the config from menus (genome, contrast) → you confirm the file
       → route to sub-stages in order, each resolving its inputs by artifact type
-      02.01 nf-core/rnaseq via sbatch → counts, BAMs, MultiQC
+      02.01 the assay's nf-core pipeline via its gars wrapper, under sbatch
+      (rnaseq → counts; ATAC/ChIP → peaks; CUT&RUN → calibrated peaks; methylseq → coverage)
       02.02 adapt the matrix → differential expression
 ```
 
