@@ -147,9 +147,10 @@ Item-by-item record of the queue:
    calibration), methylseq (per-sample coverage gate). The design table went assay-aware first
    ([0030](docs/decisions/0030-the-design-table-is-assay-aware.md)), and two RNA-era validation
    rules were caught encoding bulk-RNA assumptions and made per-assay.
-5. **File the `rnaseq-de` defect report**, drafted at
-   [docs/upstream/clawbio-rnaseq-de-defects.md](docs/upstream/clawbio-rnaseq-de-defects.md) —
-   now four defects, two silent, each with a reproduction — needs a human to post it.
+5. ~~File the `rnaseq-de` defect report~~ **Filed 2026-08-26** on the member's word:
+   [ClawBio/ClawBio#365](https://github.com/ClawBio/ClawBio/issues/365) — the draft at
+   [docs/upstream/clawbio-rnaseq-de-defects.md](docs/upstream/clawbio-rnaseq-de-defects.md)
+   posted verbatim; four defects, two silent, each with a reproduction.
 
 From the Glitch pattern review (2026-08-26) — three additions closing the recall gaps (nine
 mechanisms record, none recall: session boot is 100% static, no lesson crosses a project
