@@ -70,10 +70,15 @@ Types come from the closed vocabulary in _references/artifact_types.md.
 <FILL: one row per output. Paths relative to this analysis directory, e.g. results/x.csv>
 
 ## Execution
-<FILL: login node or sbatch, expected wall time, expected size. Anything beyond a few
-CPU-minutes or a few GB is sbatch work -- the login node's cgroup kills whatever is running,
-not whatever is at fault.>
+Runs: sbatch
+<FILL: expected wall time and output size. `sbatch` is the default for every analysis,
+whatever its size (decision 0027). Change the line above to `Runs: login-node (user-requested)`
+ONLY if the user explicitly asked for login-node execution -- never because the job looks
+small. The login node's cgroup kills whatever is running when memory runs short, not whatever
+is at fault, and a wrong size estimate is exactly the mistake a default cannot make.>
 """
+
+EXECUTION_VENUES = ("sbatch", "login-node (user-requested)")
 
 
 def emit(result, code):
@@ -211,6 +216,18 @@ def cmd_approve(args, workspace):
         if os.path.isabs(fname) or fname.startswith(".."):
             result["blocked"].append("output %r must be a relative path inside the analysis "
                                      "directory" % fname)
+    venue = re.search(r"^Runs:\s*(.+?)\s*$", text, re.M)
+    if not venue:
+        result["blocked"].append("the Execution section has no `Runs:` line; every plan "
+                                 "states its venue -- `Runs: sbatch` (the default) or "
+                                 "`Runs: login-node (user-requested)` when the user "
+                                 "explicitly asked (decision 0027)")
+    elif venue.group(1) not in EXECUTION_VENUES:
+        result["blocked"].append("`Runs: %s` is not a recognised venue. `sbatch` is the "
+                                 "default for every analysis; `login-node (user-requested)` "
+                                 "is allowed only when the user explicitly asked for it -- "
+                                 "job size is never the reason (decision 0027)"
+                                 % venue.group(1))
     if "Status: DRAFT" not in text:
         result["blocked"].append("PLAN.md has no `Status: DRAFT` line to promote")
 

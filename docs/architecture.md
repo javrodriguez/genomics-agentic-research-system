@@ -107,7 +107,10 @@ asks. Defaults are allowed only when **shown before they take effect**.
 Anything O(data) — deep integrity verification, any pipeline — goes through `sbatch`. A login
 node's per-user memory cgroup kills whatever is running rather than whatever is at fault
 ([0010](decisions/0010-skill-chaining-defects-and-adaptation.md),
-[0013](decisions/0013-integrity-verification-moves-to-stage-01.md)).
+[0013](decisions/0013-integrity-verification-moves-to-stage-01.md)). Stage 03 goes further:
+every custom analysis runs under `sbatch` by default — the plan's `Runs:` line is gated by
+`approve`, and login-node execution exists only as an explicit, recorded user request
+([0027](decisions/0027-stage-03-runs-under-sbatch-by-default.md)).
 
 ### 6. Scope boundaries the harness can enforce, the harness enforces
 

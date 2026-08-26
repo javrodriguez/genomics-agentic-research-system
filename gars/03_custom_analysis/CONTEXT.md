@@ -60,10 +60,13 @@ gates pass: no skeleton markers, a non-empty Outputs table, every output type in
 vocabulary, every output path relative. Approval is durable — it lives in the file, not in the
 conversation.
 
-**Heavy work.** Anything beyond a few CPU-minutes or a few GB: it runs under `sbatch`, never
-in the login shell. The login node's cgroup kills whatever is running when memory runs short,
-not whatever is at fault; the plan's Execution section states the choice and the run follows
-it.
+**Execution venue.** The plan's Execution section opens with a `Runs:` line, and `approve`
+refuses any value other than these two: `Runs: sbatch` — the default for **every** analysis,
+whatever its size — or `Runs: login-node (user-requested)`, allowed only when the user
+explicitly asked for login-node execution in this analysis's dialogue. Whether a job is
+"small enough" for the login node is not a judgment this stage makes: the login node's cgroup
+kills whatever is running when memory runs short, not whatever is at fault, and a wrong size
+estimate is exactly the mistake a default cannot make (decision 0027).
 
 **Complete.** `verify` exit 0: every declared output exists and is non-empty, `OUTPUTS.tsv`
 and `STATUS` are written. An analysis whose outputs are missing is FAILED, whatever the
@@ -80,8 +83,9 @@ scripts' exit codes claimed.
 3. Draft the plan: replace every `<FILL: ...>` marker in the created `PLAN.md`. Inputs come
    from step 1's resolution; Outputs use the closed vocabulary, preferring a specific type
    (`counts_gene`, `de_results`, …) over a generic one (`table`, `figure`, `report`) wherever
-   one fits; Execution states login-node or `sbatch` per the Definitions. This is the step
-   where your judgment belongs — spend it here, not at the keyboard later.
+   one fits; Execution keeps its `Runs: sbatch` line unless the user explicitly asked for the
+   login node. This is the step where your judgment belongs — spend it here, not at the
+   keyboard later.
 4. Reply T2 and stop. The user reads the plan, edits it if they wish, and answers.
 5. If the user asks for changes, apply them to `PLAN.md` (it is still DRAFT), then reply T2
    again with what changed. If they decline the analysis, stop; the DRAFT directory remains as
@@ -90,9 +94,10 @@ scripts' exit codes claimed.
    `python3 _system/stage03_analysis.py approve --project projects/<title> --analysis <NN_slug>`.
    Exit 2 → the plan is not actually complete: reply T3 with the `blocked` reasons, fix the
    plan (that is a draft edit, allowed), and return to step 4. Never argue past the gate.
-7. Execute the approved plan literally: write the scripts it describes under `scripts/`, run
-   them in the environment it names, `sbatch` if its Execution section says so. If scheduled,
-   reply T4 and monitor as the plan describes. Steps not in the plan do not happen.
+7. Execute the approved plan literally: write the scripts it describes under `scripts/` and
+   submit them with `sbatch` in the environment the plan names — a login-shell run happens
+   only when the plan's `Runs:` line reads `login-node (user-requested)`. On submission reply
+   T4 and monitor the job. Steps not in the plan do not happen.
 8. If execution fails, write `STATUS` as `FAILED <iso8601>`, reply T5 with the actual error,
    and stop. Do not patch around the failure and re-run: diagnosis goes to the user, and a
    changed method is a new plan.

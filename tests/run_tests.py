@@ -326,9 +326,21 @@ Login node; seconds; kilobytes.
                                   "--analysis", "01_pca-of-samples"], self.ws)
         self.assertEqual(code, 2, raw)
         self.assertTrue(any("picture" in b and "closed" in b for b in res["blocked"]))
+        # ...and the missing venue line is caught in the same pass (decision 0027)
+        self.assertTrue(any("Runs:" in b for b in res["blocked"]))
 
-        # fix the type; approve passes and stamps the plan
+        # fix the type; venue gate: bare login-node is refused, the opt-in marker is required
         plan.write_text(plan.read_text().replace("| picture |", "| figure |"))
+        plan.write_text(plan.read_text().replace("Login node; seconds; kilobytes.",
+                                                 "Runs: login-node\nSeconds; kilobytes."))
+        code, res, raw = run(s3, ["approve", "--project", "projects/tall-test",
+                                  "--analysis", "01_pca-of-samples"], self.ws)
+        self.assertEqual(code, 2, raw)
+        self.assertTrue(any("not a recognised venue" in b for b in res["blocked"]))
+
+        # the explicit user request is the only accepted login-node form
+        plan.write_text(plan.read_text().replace("Runs: login-node",
+                                                 "Runs: login-node (user-requested)"))
         code, res, raw = run(s3, ["approve", "--project", "projects/tall-test",
                                   "--analysis", "01_pca-of-samples"], self.ws)
         self.assertEqual(code, 0, raw)

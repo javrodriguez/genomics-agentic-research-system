@@ -77,8 +77,9 @@ Set `strandedness: unstranded` explicitly in future configs to remove the ambigu
 - **The resume guard and a *failed* Nextflow run are still untested under this version.** The
   successful path is proven; what has not been exercised is `--resume` after a crash, and a
   mid-pipeline Slurm failure.
-- **The derived-reference cache has not been re-verified under this version.** `leukemia-tall`
-  ran with it configured, but nobody checked that 0 index-building processes launched. Stages 00 and 01 were exercised end to end on
+- **Derived-reference cache reuse verified 2026-08-25**: `leukemia-tall`'s execution trace
+  contains zero index-building processes (`GENOMEGENERATE`, `MAKE_TRANSCRIPTS_FASTA`,
+  `SALMON_INDEX`) — the 59 GB cache was consumed, saving ~40 minutes and ~43 GB. Stages 00 and 01 were exercised end to end on
   2026-08-19 (below), but that run stops at the samplesheet. Whether the moved reference paths
   and the renamed `_system/` break a sub-stage's `submit.sh` is untested, and needs a cluster.
 
@@ -130,6 +131,7 @@ here is a decision record trying to be born.
 
 | Date | Change | Detail |
 |---|---|---|
+| 08-25 | **v0.5.0 live-validated on `leukemia-tall`**: both guard layers fired on deliberate forbidden calls; first stage 03 analysis ran end to end (plan drafted → approved → executed → verified, HISTORY carries version + model); cache reuse confirmed (0 index-building processes in the trace). One deviation: the agent hand-built the analysis directory instead of running `create` — contained by the gates. And one policy change from the run: **stage 03 executes under `sbatch` by default** — the plan's `Runs:` line is a closed two-value vocabulary gated by `approve`; login-node execution exists only as `Runs: login-node (user-requested)` | [0027](docs/decisions/0027-stage-03-runs-under-sbatch-by-default.md) |
 | 08-24 | **v0.5.0 — the assessment's structural gaps closed.** Scope boundaries enforced by the harness (`gars/.claude/settings.json` + `_system/guard_hook.py`); the deterministic core tested (`tests/run_tests.py`, 20 tests, real CLIs in a throwaway workspace) and contracts linted (`tests/check_contracts.py`: sections, wait points, vocabulary drift, token load); every `HISTORY.md` entry names the model beside the template version (`--model` on the 00/01/03 helpers); the bounded voice added to the contract standard; **stage 03 implemented as plan-gated custom analysis** — agent drafts `PLAN.md`, user approves, `stage03_analysis.py` enforces the approval and exit gates, outputs register in `OUTPUTS.tsv` with three new generic types (`table`, `figure`, `report`) | [0022](docs/decisions/0022-scope-boundaries-are-enforced-by-the-harness.md)–[0026](docs/decisions/0026-stage-03-is-plan-gated.md) |
 | 08-12/14 | Repo made canonical; skills de-vendored; `work/` moved to scratch; derived-reference cache designed, populated and verified reusable; artifact registry implemented; environment centralised in `_system/gars-env.sh`; full chain run end to end on real data | 0004, 0006, 0007, 0009 |
 | 08-18 | **ICM restructure (v0.2.0).** Reference files that did not exist in a copied workspace moved into `_references/`; config schema and contract standard extracted from L0/L1 (which carried ~2.5x their token budget); `tools/` → `_system/` and nine empty directories deleted; `_templates/project/` added as the stamp stage 00 copies; `03_custom_analysis` given an explicit not-implemented contract; `projects/_index.md` generated; **Human check** added as the eighth contract section; the decision log split into `docs/decisions/` | — |
