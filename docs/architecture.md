@@ -143,7 +143,7 @@ script↔contract vocabulary drift. Run both before committing anything under `g
 | `gars/<stage>/CONTEXT.md` | L2 — the contract; the control surface of the whole system |
 | `gars/_references/` | L3 — assay map, genome registry, artifact vocabulary, config schema, contract standard, runtime + lockfiles |
 | `gars/_templates/` | the stamps stages copy: `project/` and `config/` |
-| `gars/_system/` | `gars-env.sh` and the deterministic helpers |
+| `gars/_system/` | `gars-env.sh`, the deterministic helpers, and `wrappers/` — the GARS-authored pipeline wrappers ([0028](decisions/0028-wrappers-are-thin-system-helpers.md)) |
 | `gars/projects/` | L4 — the work; gitignored, so real data never enters git |
 
 Every contract has the same **eight sections**, defined in
@@ -178,11 +178,13 @@ its mechanism by [0016](decisions/0016-workspaces-are-checkouts.md) but not in t
 
 ## Constraints worth knowing before you change anything
 
-- **Skills are never vendored.** They ship with the installed `clawbio` package and are read-only.
-  GARS-authored wrappers would live in `_system/wrappers/`
-  ([0012](decisions/0012-gars-authored-wrappers-live-in-system.md)).
-- **Only one assay exists.** `rnaseq_bulk`. The four planned assays have their samplesheet columns
-  registered as `planned` and are refused until a wrapper exists.
+- **Skills are never vendored; wrappers are versioned.** Third-party skills ship with the
+  installed `clawbio` package, read-only. GARS-authored wrappers live in `_system/wrappers/`
+  ([0012](decisions/0012-gars-authored-wrappers-live-in-system.md)) — the first,
+  `nfcore-atacseq-wrapper`, is the template for the rest ([0028](decisions/0028-wrappers-are-thin-system-helpers.md)).
+- **Two assays exist.** `rnaseq_bulk` (live-proven) and `atacseq_bulk` (wired end to end,
+  offline-tested, awaiting a live run). The remaining three are `planned` and refused until
+  their wrappers exist.
 - **`03_custom_analysis` is plan-gated** ([0026](decisions/0026-stage-03-is-plan-gated.md)):
   the agent drafts `PLAN.md`, the user approves it, and only then does anything execute.
   Approval and output verification are enforced by `_system/stage03_analysis.py`, not by prose.

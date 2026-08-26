@@ -411,6 +411,175 @@ Login node; seconds; kilobytes.
             sys.modules.pop("workspace", None)
 
 
+class AtacseqWrapperTests(unittest.TestCase):
+    """Wrapper #1 (decision 0028): the whole atacseq_bulk path offline — stage 00 accepts the
+    assay, stage 01 emits its format, configure fills the peaks decisions from the genome, and
+    the wrapper's check/prepare/collect gates behave. The genome registry is rewritten to
+    fixture paths so no test ever reads the real references or writes the real cache."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp(prefix="gars-atac-"))
+        cls.ws = cls.tmp / "gars"
+        cls.ws.mkdir()
+        for d in ("_system", "_references", "_templates"):
+            shutil.copytree(str(GARS / d), str(cls.ws / d))
+        (cls.ws / "projects").mkdir()
+        # fixture genome: tiny readable fasta/gtf, temp cache root
+        cls.refs = cls.tmp / "refs"
+        (cls.refs / "derived").mkdir(parents=True)
+        (cls.refs / "genome.fa.gz").write_bytes(gzip.compress(b">chr1\nACGT\n"))
+        (cls.refs / "genome.gtf.gz").write_bytes(gzip.compress(b"chr1\tx\tgene\n"))
+        reg = cls.ws / "_references" / "genomes.md"
+        text = reg.read_text()
+        header = text[:text.index("| GRCh38 |")]
+        reg.write_text(header +
+                       "| TESTG | Test species | T1 | fixture | %s | %s | %s | MT | 12345 |\n"
+                       % (cls.refs / "genome.fa.gz", cls.refs / "genome.gtf.gz",
+                          cls.refs / "derived"))
+        # raw data: 2 samples, paired-end
+        cls.src = cls.tmp / "seqrun"
+        cls.src.mkdir()
+        for s in ("ATAC1_S1", "ATAC2_S2"):
+            for r in ("R1", "R2"):
+                write_fastq_gz(cls.src / ("%s_L001_%s_001.fastq.gz" % (s, r)))
+        cls.reg_py = cls.ws / "_system" / "stage00_register.py"
+        cls.sheet_py = cls.ws / "_system" / "stage01_samplesheet.py"
+        cls.cfg_py = cls.ws / "_system" / "configure.py"
+        cls.wrap = cls.ws / "_system" / "wrappers" / "nfcore-atacseq-wrapper" \
+            / "nfcore_atacseq_wrapper.py"
+        cls.project = cls.ws / "projects" / "atac-test"
+        cls.substage = cls.project / "02_bioinformatics" / "atacseq_bulk" \
+            / "01_nfcore-atacseq-wrapper"
+
+    tearDownClass = classmethod(lambda cls: WorkspaceFixture.tearDownClass.__func__(cls))
+
+    def test_00_chain_to_samplesheet(self):
+        code, res, raw = run(self.reg_py, ["assays", "--select", "ATAC-seq (bulk)"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertEqual(res["assay_ids"], ["atacseq_bulk"])
+        code, res, raw = run(self.reg_py, ["create", "--title", "atac-test",
+                                           "--assays", "atacseq_bulk"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertIn("_config/atacseq_bulk.yaml", res["config_seeded"])
+        code, _, raw = run(self.reg_py, ["link", "--project", "projects/atac-test",
+                                         "--assay", "atacseq_bulk", "--source", str(self.src)],
+                           self.ws)
+        self.assertEqual(code, 0, raw)
+        code, _, raw = run(self.reg_py, ["finalize", "--project", "projects/atac-test"], self.ws)
+        self.assertEqual(code, 0, raw)
+        samples_csv = self.project / "00_data" / "atacseq_bulk" / "samples.csv"
+        with samples_csv.open() as fh:
+            rows = list(csv.reader(fh))
+        head = rows[0]
+        for i, r in enumerate(rows[1:], 1):
+            r[head.index("condition")] = "KO" if i == 1 else "WT"
+            r[head.index("group")] = "G1"
+            r[head.index("replicate")] = str(i)
+        with samples_csv.open("w", newline="") as fh:
+            csv.writer(fh).writerows(rows)
+        code, res, raw = run(self.sheet_py, ["--project", "projects/atac-test"], self.ws)
+        self.assertEqual(code, 0, raw)
+        sheet = self.project / "01_samplesheets" / "atacseq_bulk_samplesheet.csv"
+        self.assertEqual(sheet.read_text().splitlines()[0], "sample,fastq_1,fastq_2,replicate",
+                         "the emitted format is the assay's own, not the RNA layout")
+
+    def test_01_check_refuses_unfilled_config(self):
+        code, res, raw = run(self.wrap, ["check", "--project", "projects/atac-test"], self.ws)
+        self.assertEqual(code, 1, raw)
+        self.assertIn("config_unfilled", [f["check"] for f in res["failures"]])
+
+    def test_02_configure_fills_peaks_decisions(self):
+        code, res, raw = run(self.cfg_py, ["peaks"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertEqual([e["value"] for e in res["peak_types"]], ["narrow", "broad"])
+        code, res, raw = run(self.cfg_py, ["genomes", "--assay", "atacseq_bulk"], self.ws)
+        self.assertEqual(code, 0, raw)
+        g = res["genomes"][0]
+        self.assertTrue(g["derived_dir"].endswith("nf-core-atacseq-2.1.2"),
+                        "the cache root must be keyed by the assay's pinned pipeline")
+        # apply without the peaks decision is refused, not defaulted
+        code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/atac-test",
+                                           "--assay", "atacseq_bulk", "--genome", "01"], self.ws)
+        self.assertEqual(code, 3, raw)
+        code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/atac-test",
+                                           "--assay", "atacseq_bulk", "--genome", "01",
+                                           "--peaks-type", "narrow"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertEqual(res["still_unfilled"], [])
+        cfg = (self.project / "_config" / "atacseq_bulk.yaml").read_text()
+        self.assertIn("macs_gsize: 12345", cfg)
+        self.assertIn("mito_name: MT", cfg)
+
+    def test_03_prepare_is_deterministic(self):
+        code, res, raw = run(self.wrap, ["check", "--project", "projects/atac-test"], self.ws)
+        self.assertEqual(code, 0, raw)
+        code, res, raw = run(self.wrap, ["prepare", "--project", "projects/atac-test"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertEqual(res["params"]["narrow_peak"], "true")
+        self.assertEqual(res["params"]["save_reference"], "true",
+                         "empty keyed cache means the first run builds and publishes indices")
+        a = ((self.substage / "params.yaml").read_bytes(),
+             (self.substage / "submit.sh").read_bytes())
+        code, _, raw = run(self.wrap, ["prepare", "--project", "projects/atac-test"], self.ws)
+        self.assertEqual(code, 0, raw)
+        b = ((self.substage / "params.yaml").read_bytes(),
+             (self.substage / "submit.sh").read_bytes())
+        self.assertEqual(a, b, "same inputs must produce byte-identical artifacts (0011)")
+        submit = (self.substage / "submit.sh").read_text()
+        for needle in ("#SBATCH --partition=", "gars-env.sh", "-resume",
+                       ".gars_run_complete", "-params-file", "-profile apptainer"):
+            self.assertIn(needle, submit)
+
+    def _fake_results(self, samples, include_in_counts=None):
+        ml = self.substage / "run" / "results" / "bwa" / "merged_library"
+        peaks = ml / "macs2" / "narrow_peak"
+        (peaks / "consensus").mkdir(parents=True, exist_ok=True)
+        (ml / "bigwig").mkdir(parents=True, exist_ok=True)
+        (self.substage / "run" / "results" / "multiqc" / "narrow_peak").mkdir(
+            parents=True, exist_ok=True)
+        for s in samples:
+            (peaks / ("%s_REP1_peaks.narrowPeak" % s)).write_text("chr1\t1\t2\n")
+            (ml / "bigwig" / ("%s_REP1.bigWig" % s)).write_text("bw")
+            (ml / ("%s_REP1.mLb.clN.sorted.bam" % s)).write_text("bam")
+        cols = "\t".join("%s_REP1.bam" % s for s in (include_in_counts or samples))
+        (peaks / "consensus" / "consensus_peaks.mLb.clN.bed").write_text("chr1\t1\t2\tp1\n")
+        (peaks / "consensus" / "consensus_peaks.mLb.clN.featureCounts.txt").write_text(
+            "# fc\nGeneid\tChr\tStart\tEnd\tStrand\tLength\t%s\np1\tchr1\t1\t2\t+\t2\t1\t1\n" % cols)
+        (self.substage / "run" / "results" / "multiqc" / "narrow_peak"
+         / "multiqc_report.html").write_text("<html>ok</html>")
+
+    def test_04_collect_gates(self):
+        # before completion: refused
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/atac-test"], self.ws)
+        self.assertEqual(code, 2, raw)
+        # content gate: a sample missing from the count matrix header is caught
+        self._fake_results(["ATAC1", "ATAC2"], include_in_counts=["ATAC1"])
+        (self.substage / "run" / ".gars_run_complete").write_text("now\n")
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/atac-test"], self.ws)
+        self.assertEqual(code, 1, raw)
+        self.assertIn("counts_peaks", [f["check"] for f in res["failures"]])
+        # full tree: passes, registers, stamps
+        self._fake_results(["ATAC1", "ATAC2"])
+        # fake built indices so the derived cache is harvested
+        built = self.substage / "run" / "results" / "genome" / "index" / "bwa"
+        built.mkdir(parents=True, exist_ok=True)
+        (built / "genome.amb").write_text("idx")
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/atac-test",
+                                         "--model", "claude-test-1"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertIn("Model: claude-test-1", res["history_entry"])
+        self.assertEqual(res["derived_cache"]["action"], "populated")
+        keyed = self.refs / "derived" / "nf-core-atacseq-2.1.2"
+        self.assertTrue((keyed / "bwa" / "genome.amb").is_file())
+        self.assertTrue((keyed / "PROVENANCE").is_file())
+        outputs = (self.substage / "OUTPUTS.tsv").read_text()
+        for typ in ("peaks", "peaks_consensus", "counts_peaks", "bigwig",
+                    "bam_genome", "qc_multiqc"):
+            self.assertIn(typ + "\tnative\t", outputs)
+        self.assertIn("COMPLETE", (self.substage / "STATUS").read_text())
+
+
 class GuardHookTests(unittest.TestCase):
     """The mechanical scope boundaries (decision 0022). Every deny is an action no contract
     instructs; every allow is a step some contract does instruct."""

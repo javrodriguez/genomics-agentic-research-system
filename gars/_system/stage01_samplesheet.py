@@ -79,7 +79,11 @@ FORMATS = {
     # is part of building its wrapper -- together with adding the assay to the assay map, which is
     # what actually gates a project being created for it.
     "atacseq_bulk": {
-        "status": "planned",
+        # Promoted 2026-08-25 with wrapper #1 (_system/wrappers/nfcore-atacseq-wrapper).
+        # Columns re-verified against the pinned checkout's schema on promotion day:
+        # required = sample, fastq_1, replicate; control columns exist in the schema but are
+        # for ChIP-style designs and stay out of the ATAC emitter.
+        "status": "active",
         "source": "nf-core/atacseq 2.1.2 assets/schema_input.json",
         "columns": [
             ("sample", "sample_id"),

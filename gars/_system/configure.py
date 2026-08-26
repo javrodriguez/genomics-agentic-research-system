@@ -73,13 +73,24 @@ def read_genomes(workspace):
             continue
         rows.append({"id": cells[0], "species": cells[1], "build": cells[2], "source": cells[3],
                      "fasta": cells[4], "gtf": cells[5],
-                     "derived_dir": cells[6] if len(cells) > 6 and cells[6] else None})
+                     # The registry stores the cache ROOT; the per-assay pipeline key is
+                     # appended at menu time, because an index cache is only valid for the
+                     # pipeline version that built it (see genomes.md).
+                     "cache_root": cells[6] if len(cells) > 6 and cells[6] else None,
+                     "mito_name": cells[7] if len(cells) > 7 and cells[7] else None,
+                     "macs_gsize": cells[8] if len(cells) > 8 and cells[8] else None})
     if not rows:
         return None, "genome registry has no table headed `| ID | Species |`"
     return rows, None
 
 
-def genome_menu(rows):
+def genome_menu(rows, assay=None):
+    """The menu, optionally keyed to one assay's pinned pipeline for the cache column.
+
+    `derived_dir` is only computable when the assay is known: the registry stores a cache
+    root, and root/<pipeline key> is the directory that pipeline's indices live in. Without
+    an assay the menu still renders, with no cache claim."""
+    key = ws.PIPELINES.get(assay) if assay else None
     out = []
     for i, r in enumerate(sorted(rows, key=lambda x: x["id"]), start=1):
         entry = dict(r)
@@ -87,7 +98,12 @@ def genome_menu(rows):
         # Report readability now rather than failing hours into a run.
         entry["fasta_readable"] = os.access(r["fasta"], os.R_OK)
         entry["gtf_readable"] = os.access(r["gtf"], os.R_OK)
-        entry["cached_indices"] = bool(r["derived_dir"] and os.path.isdir(r["derived_dir"]))
+        if key and r["cache_root"]:
+            entry["derived_dir"] = os.path.join(r["cache_root"], key)
+            entry["cached_indices"] = os.path.isdir(entry["derived_dir"])
+        else:
+            entry["derived_dir"] = None
+            entry["cached_indices"] = False
         out.append(entry)
     return out
 
@@ -146,7 +162,7 @@ def cmd_genomes(args, workspace):
     rows, err = read_genomes(workspace)
     if err:
         return emit({"command": "genomes", "ok": False, "error": err}, EXIT_USAGE)
-    menu = genome_menu(rows)
+    menu = genome_menu(rows, getattr(args, "assay", None))
     result = {"command": "genomes", "ok": True, "genomes": menu}
     if args.select is None:
         return emit(result, EXIT_OK)
@@ -186,8 +202,52 @@ def cmd_contrasts(args, workspace):
     return emit(result, EXIT_OK)
 
 
+# --- peak type: a closed menu of two ------------------------------------------------------------
+
+PEAK_TYPES = [
+    {"n": "01", "value": "narrow",
+     "meaning": "point-source peaks -- the conventional choice for ATAC open chromatin and "
+                "transcription-factor binding"},
+    {"n": "02", "value": "broad",
+     "meaning": "domain-scale enrichment -- suits dispersed signal such as broad histone marks"},
+]
+
+
+def cmd_peaks(args, workspace):
+    """The peak-type menu. Static and closed on purpose: MACS2 has exactly these two modes,
+    and the choice changes what a 'peak' means scientifically -- so it is selected, never
+    defaulted (decision 0020)."""
+    result = {"command": "peaks", "ok": True, "peak_types": PEAK_TYPES}
+    if args.select is None:
+        return emit(result, EXIT_OK)
+    tok = args.select.strip().lower()
+    for e in PEAK_TYPES:
+        if tok in (e["n"], e["n"].lstrip("0"), e["value"]):
+            result["selected"] = e
+            result["peak_type"] = e["value"]
+            return emit(result, EXIT_OK)
+    result["ok"] = False
+    result["error"] = "could not resolve %r; reply with a menu number, `narrow` or `broad`" % args.select
+    return emit(result, EXIT_REFUSED)
+
+
+# Which decisions `apply` completes, per assay. The seeded config's <REQUIRED> keys and this
+# table must agree -- check_contracts.py's drift check keeps the contract prose honest, and
+# the `still_unfilled` scan below catches a key neither the template nor this table covers.
+ASSAY_DECISIONS = {
+    "rnaseq_bulk": "de",        # genome + de.formula + de.contrast
+    "atacseq_bulk": "peaks",    # genome + peaks.type (macs_gsize and mito_name come with the genome)
+}
+
+
 def cmd_apply(args, workspace):
     result = {"command": "apply", "ok": False, "assay": args.assay}
+    shape = ASSAY_DECISIONS.get(args.assay)
+    if shape is None:
+        result["error"] = ("no config decisions are registered for assay %r; known: %s"
+                           % (args.assay, ", ".join(sorted(ASSAY_DECISIONS))))
+        return emit(result, EXIT_USAGE)
+
     cfg = Path(args.project) / "_config" / ("%s.yaml" % args.assay)
     if not cfg.is_file():
         result["error"] = "no config at _config/%s.yaml; stage 00 seeds it at project creation" % args.assay
@@ -197,65 +257,97 @@ def cmd_apply(args, workspace):
     if err:
         result["error"] = err
         return emit(result, EXIT_USAGE)
-    genome = resolve_genome(genome_menu(rows), args.genome)
+    genome = resolve_genome(genome_menu(rows, args.assay), args.genome)
     if genome is None:
         result["error"] = "could not resolve genome %r" % args.genome
         return emit(result, EXIT_REFUSED)
-    for label, p in (("fasta", genome["fasta"]), ("gtf", genome["gtf"])):
-        if not os.access(p, os.R_OK):
-            result["error"] = "%s for %s is not readable: %s" % (label, genome["id"], p)
+    for label, path in (("fasta", genome["fasta"]), ("gtf", genome["gtf"])):
+        if not os.access(path, os.R_OK):
+            result["error"] = "%s for %s is not readable: %s" % (label, genome["id"], path)
             return emit(result, EXIT_REFUSED)
 
-    design, err = read_design(args.project, args.assay)
-    if err:
-        result["error"] = err
-        return emit(result, EXIT_USAGE)
-    levels, counts, pairs = contrast_menu(design, args.factor)
-    chosen = None
-    for p in pairs:
-        if args.contrast.strip() in (p["n"], p["n"].lstrip("0"), p["spec"]):
-            chosen = p
-            break
-    if chosen is None:
-        result["error"] = ("could not resolve contrast %r. Choose a menu number, or give "
-                           "factor,numerator,denominator using levels that exist: %s"
-                           % (args.contrast, ", ".join(levels)))
-        result["contrasts"] = pairs
-        return emit(result, EXIT_REFUSED)
-    if not chosen["testable"]:
-        result["error"] = ("%s has %d sample(s) and %s has %d; each level needs at least %d to be "
-                           "tested. Add samples in 00_data/%s/samples.csv and re-run stage 01."
-                           % (chosen["numerator"], chosen["n_numerator"], chosen["denominator"],
-                              chosen["n_denominator"], MIN_SAMPLES_PER_LEVEL, args.assay))
-        return emit(result, EXIT_REFUSED)
+    updates = [("fasta", genome["fasta"], "  "), ("gtf", genome["gtf"], "  ")]
 
-    formula = args.formula or DEFAULT_FORMULA
-    for term in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", formula):
-        if term not in design[0]:
-            result["error"] = ("formula term %r is not a column of the design table (%s)"
-                               % (term, ", ".join(design[0])))
+    if shape == "de":
+        if not args.contrast:
+            result["error"] = "assay %s needs --contrast (see `configure.py contrasts`)" % args.assay
+            return emit(result, EXIT_USAGE)
+        design, err = read_design(args.project, args.assay)
+        if err:
+            result["error"] = err
+            return emit(result, EXIT_USAGE)
+        levels, counts, pairs = contrast_menu(design, args.factor)
+        chosen = None
+        for pair in pairs:
+            if args.contrast.strip() in (pair["n"], pair["n"].lstrip("0"), pair["spec"]):
+                chosen = pair
+                break
+        if chosen is None:
+            result["error"] = ("could not resolve contrast %r. Choose a menu number, or give "
+                               "factor,numerator,denominator using levels that exist: %s"
+                               % (args.contrast, ", ".join(levels)))
+            result["contrasts"] = pairs
             return emit(result, EXIT_REFUSED)
+        if not chosen["testable"]:
+            result["error"] = ("%s has %d sample(s) and %s has %d; each level needs at least %d to be "
+                               "tested. Add samples in 00_data/%s/samples.csv and re-run stage 01."
+                               % (chosen["numerator"], chosen["n_numerator"], chosen["denominator"],
+                                  chosen["n_denominator"], MIN_SAMPLES_PER_LEVEL, args.assay))
+            return emit(result, EXIT_REFUSED)
+
+        formula = args.formula or DEFAULT_FORMULA
+        for term in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", formula):
+            if term not in design[0]:
+                result["error"] = ("formula term %r is not a column of the design table (%s)"
+                                   % (term, ", ".join(design[0])))
+                return emit(result, EXIT_REFUSED)
+        updates += [("formula", '"%s"' % formula, "  "),
+                    ("contrast", '"%s"' % chosen["spec"], "  ")]
+        result.update({"contrast": chosen["spec"], "contrast_meaning": chosen["meaning"],
+                       "formula": formula})
+
+    elif shape == "peaks":
+        if not args.peaks_type:
+            result["error"] = "assay %s needs --peaks-type (see `configure.py peaks`)" % args.assay
+            return emit(result, EXIT_USAGE)
+        tok = args.peaks_type.strip().lower()
+        chosen = next((e for e in PEAK_TYPES
+                       if tok in (e["n"], e["n"].lstrip("0"), e["value"])), None)
+        if chosen is None:
+            result["error"] = ("could not resolve peak type %r; a menu number, `narrow` or "
+                               "`broad`" % args.peaks_type)
+            return emit(result, EXIT_REFUSED)
+        # These two travel with the genome, never typed: a wrong mito name silently filters
+        # nothing, and a wrong gsize shifts every peak call.
+        for fact in ("mito_name", "macs_gsize"):
+            if not genome.get(fact):
+                result["error"] = ("the genome registry has no %s for %s; add the column value "
+                                   "in _references/genomes.md before using this assay"
+                                   % (fact, genome["id"]))
+                return emit(result, EXIT_REFUSED)
+        updates += [("type", chosen["value"], "  "),
+                    ("macs_gsize", genome["macs_gsize"], "  "),
+                    ("mito_name", genome["mito_name"], "  ")]
+        result.update({"peaks_type": chosen["value"], "peaks_meaning": chosen["meaning"],
+                       "macs_gsize": genome["macs_gsize"], "mito_name": genome["mito_name"]})
 
     text = cfg.read_text(encoding="utf-8")
     applied = {}
-    for key, value, indent in (("fasta", genome["fasta"], "  "),
-                               ("gtf", genome["gtf"], "  "),
-                               ("formula", '"%s"' % formula, "  "),
-                               ("contrast", '"%s"' % chosen["spec"], "  ")):
+    for key, value, indent in updates:
         text, ok = set_yaml_scalar(text, key, value, indent)
         applied[key] = ok
     if genome["derived_dir"]:
         # The cache line ships commented out; uncomment it rather than appending a duplicate.
+        # The path is written even when the keyed directory does not exist yet: the wrapper
+        # passes --save-reference on the first run and harvests the built indices into it.
         text = re.sub(r"^\s*#\s*derived_dir:.*$", "  derived_dir: %s" % genome["derived_dir"],
                       text, count=1, flags=re.M)
         applied["derived_dir"] = True
 
     remaining = [l.split(":", 1)[0].strip() for l in text.splitlines()
                  if "<REQUIRED" in l and not l.lstrip().startswith("#")]
-    result.update({"genome": genome["id"], "contrast": chosen["spec"],
-                   "contrast_meaning": chosen["meaning"], "formula": formula,
-                   "derived_dir": genome["derived_dir"], "applied": applied,
-                   "still_unfilled": remaining})
+    result.update({"genome": genome["id"], "derived_dir": genome["derived_dir"],
+                   "applied": applied, "still_unfilled": remaining})
     if remaining:
         result["error"] = "keys still marked <REQUIRED> after applying: %s" % ", ".join(remaining)
         return emit(result, EXIT_REFUSED)
@@ -281,6 +373,11 @@ def main(argv=None):
 
     g = sub.add_parser("genomes", help="list registered references; resolve a selection")
     g.add_argument("--select", default=None)
+    g.add_argument("--assay", default=None,
+                   help="key the derived-cache column to this assay's pinned pipeline")
+
+    pk = sub.add_parser("peaks", help="the closed peak-type menu (narrow | broad)")
+    pk.add_argument("--select", default=None)
 
     c = sub.add_parser("contrasts", help="levels present in the design, as ordered pairs")
     c.add_argument("--project", required=True)
@@ -291,7 +388,10 @@ def main(argv=None):
     a.add_argument("--project", required=True)
     a.add_argument("--assay", required=True)
     a.add_argument("--genome", required=True, help="menu number or genome ID")
-    a.add_argument("--contrast", required=True, help="menu number or factor,num,denom")
+    a.add_argument("--contrast", default=None,
+                   help="menu number or factor,num,denom (assays with a de block)")
+    a.add_argument("--peaks-type", default=None,
+                   help="menu number, `narrow` or `broad` (assays with a peaks block)")
     a.add_argument("--formula", default=None, help="default: %s" % DEFAULT_FORMULA)
     a.add_argument("--factor", default="condition")
     a.add_argument("--dry-run", action="store_true", help="show the result without writing")
@@ -301,7 +401,7 @@ def main(argv=None):
         ap.print_help(sys.stderr)
         return EXIT_USAGE
     workspace = args.workspace or ws.workspace_root(__file__)
-    return {"genomes": cmd_genomes, "contrasts": cmd_contrasts,
+    return {"genomes": cmd_genomes, "contrasts": cmd_contrasts, "peaks": cmd_peaks,
             "apply": cmd_apply}[args.cmd](args, workspace)
 
 

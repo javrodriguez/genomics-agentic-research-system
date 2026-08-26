@@ -24,6 +24,10 @@ rely on a name meaning one thing.
 | `de_results` | Differential expression table, one row per gene | 02.02 |
 | `qc_multiqc` | Aggregated MultiQC HTML report | 02.01 |
 | `gene_id_map` | Identifier translation table, e.g. `gene_id` -> `gene_name` | any adapter |
+| `peaks` | Per-sample peak calls (MACS2 narrowPeak/broadPeak set) | ATAC/ChIP-family 02.01 |
+| `peaks_consensus` | Consensus peak set across all samples (BED) | ATAC/ChIP-family 02.01 |
+| `counts_peaks` | Read counts over the consensus peak set, peaks x samples | ATAC/ChIP-family 02.01 |
+| `bigwig` | Normalised signal tracks (bigWig set) | ATAC/ChIP-family 02.01 |
 | `table` | A tabular result of a custom analysis | 03_custom_analysis |
 | `figure` | A plot or image produced by a custom analysis | 03_custom_analysis |
 | `report` | A human-readable document (md/html/pdf) summarising an analysis | 03_custom_analysis |
@@ -48,6 +52,10 @@ gene_id_map     native    adapted/gene_id_to_name.tsv
 
 Paths are **relative to the sub-stage output directory**, so a project stays relocatable. They
 are references, never copies — an artifact is recorded where its producer wrote it.
+
+A path may name a **directory** when the artifact is inherently a per-sample set (`peaks`,
+`bigwig`): the set is the artifact, and a consumer globs inside it. Single-file artifacts keep
+single-file paths — a directory is never used to avoid naming the real file.
 
 ### The `role` column
 

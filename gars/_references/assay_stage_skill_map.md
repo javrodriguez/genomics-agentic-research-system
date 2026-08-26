@@ -4,10 +4,15 @@ The Assay column is the definitive list of assays this system supports. The Assa
 directory-safe name used for that assay everywhere on disk: `00_data/<Assay ID>/` in a project,
 and `02_bioinformatics/<Assay ID>/` for its sub-stages.
 
-| Assay | Assay ID | Stage | Sub-stage | Skill | Consumes | Produces |
-|---|---|---|---|---|---|---|
-| Bulk RNA-seq | rnaseq_bulk | 02_bioinformatics | 01_nfcore-rnaseq-wrapper | nfcore-rnaseq-wrapper | samplesheet | counts_gene, counts_transcript, tpm_gene, bam_genome, qc_multiqc |
-| Bulk RNA-seq | rnaseq_bulk | 02_bioinformatics | 02_rnaseq-de | rnaseq-de | counts_gene, design | de_results |
+| Assay | Assay ID | Stage | Sub-stage | Skill | Source | Consumes | Produces |
+|---|---|---|---|---|---|---|---|
+| Bulk RNA-seq | rnaseq_bulk | 02_bioinformatics | 01_nfcore-rnaseq-wrapper | nfcore-rnaseq-wrapper | clawbio | samplesheet | counts_gene, counts_transcript, tpm_gene, bam_genome, qc_multiqc |
+| Bulk RNA-seq | rnaseq_bulk | 02_bioinformatics | 02_rnaseq-de | rnaseq-de | clawbio | counts_gene, design | de_results |
+| ATAC-seq (bulk) | atacseq_bulk | 02_bioinformatics | 01_nfcore-atacseq-wrapper | nfcore-atacseq-wrapper | gars | samplesheet | peaks, peaks_consensus, counts_peaks, bigwig, bam_genome, qc_multiqc |
+
+The **Source** column says where a skill's code lives (decision 0012): `clawbio` skills ship
+read-only with the installed package and resolve via `$GARS_SKILLS`; `gars` wrappers are
+versioned in this repository under `_system/wrappers/` and resolve via `$GARS_WRAPPERS`.
 
 Sub-stages run in the order listed. `Consumes` and `Produces` use the closed vocabulary in
 `artifact_types.md`; stage 02's router checks that every consumed type is available before
@@ -22,6 +27,7 @@ as a preconditions failure **naming the requirement**, rather than surfacing a r
 |---|---|---|---|---|
 | nfcore-rnaseq-wrapper | >=3.10 | `python3`, `nextflow`, `java` | (via `clawbio`) | `gars-bio` + `gars-nxf` |
 | rnaseq-de | (unpinned) | `python3` | `pandas`, `numpy`, `matplotlib`, `scikit-learn` | `gars-bio` |
+| nfcore-atacseq-wrapper | >=3.6 (stdlib only) | `python3`, `nextflow`, `java`, `git` | none | stock python + `gars-nxf` at submit time |
 
 Notes on requirements that are otherwise easy to mistake for unused and prune:
 

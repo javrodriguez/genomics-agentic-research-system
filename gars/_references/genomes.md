@@ -1,9 +1,10 @@
 # Genome registry
 
 The references a project may be aligned against. Selecting one fills `reference.fasta`,
-`reference.gtf` and `reference.derived_dir` together, so a FASTA can never be paired with a
-mismatched annotation — the pairing is a property of the reference, not a decision the user makes
-twice.
+`reference.gtf`, the assay-appropriate `reference.derived_dir`, and the genome-derived facts an
+assay needs (mitochondrial contig name, MACS effective genome size) together, so a FASTA can
+never be paired with a mismatched annotation — the pairing is a property of the reference, not a
+decision the user makes twice.
 
 **One table, deliberately.** `assay_stage_skill_map.md` has two, and a parser that read every
 pipe-prefixed line once accepted a skill name as an assay and created `00_data/(unpinned)/`. Add
@@ -12,9 +13,24 @@ columns here, never a second table.
 **Paths are site-specific.** They are correct for this cluster. A different site edits this file;
 nothing else needs to change.
 
-| ID | Species | Build | Source | FASTA | GTF | Derived index cache |
-|---|---|---|---|---|---|---|
-| GRCh38 | Homo sapiens | GRCh38 | Ensembl release 116 | /gpfs/data/abl/home/rodrij92/install/refs/ensembl-GRCh38-116/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz | /gpfs/data/abl/home/rodrij92/install/refs/ensembl-GRCh38-116/Homo_sapiens.GRCh38.116.gtf.gz | /gpfs/data/abl/home/rodrij92/install/refs/ensembl-GRCh38-116/derived/nf-core-rnaseq-3.26.0 |
+| ID | Species | Build | Source | FASTA | GTF | Derived cache root | Mito contig | MACS gsize |
+|---|---|---|---|---|---|---|---|---|
+| GRCh38 | Homo sapiens | GRCh38 | Ensembl release 116 | /gpfs/data/abl/home/rodrij92/install/refs/ensembl-GRCh38-116/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz | /gpfs/data/abl/home/rodrij92/install/refs/ensembl-GRCh38-116/Homo_sapiens.GRCh38.116.gtf.gz | /gpfs/data/abl/home/rodrij92/install/refs/ensembl-GRCh38-116/derived | MT | 2701495761 |
+
+**Derived cache root, not path.** The cell names the *root*; `configure.py` appends the assay's
+pinned pipeline key from `workspace.PIPELINES` (`nf-core-rnaseq-3.26.0`,
+`nf-core-atacseq-2.1.2`, …), because an index cache is only valid for the pipeline version that
+built it. A keyed directory that does not exist yet is still written to the config: the wrapper
+passes `--save-reference` on the first run and harvests the built indices into it.
+
+**Mito contig** is the assembly's mitochondrial sequence name — `MT` for Ensembl, `chrM` for
+UCSC. ATAC-seq pipelines filter mitochondrial reads by this name; a wrong one silently filters
+nothing.
+
+**MACS gsize** is the effective genome size MACS2 uses for peak calling. The GRCh38 value is the
+deeptools 50-bp unique-mappability figure (2,701,495,761), the same value nf-core/atacseq's own
+iGenomes config uses for GRCh38 at the default read length. It is a property of the assembly,
+recorded here so it is chosen once, with the genome — never typed per project.
 
 ## Why Ensembl and not iGenomes
 

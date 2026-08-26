@@ -63,7 +63,7 @@ contract's Inputs section names.
 | `config_schema.md` | What belongs in a project's `_config/`: the per-assay YAML, `nextflow.slurm.config`, and the index cache. Stage 00 seeds the files; the scientific keys stay `<REQUIRED>` until the user decides them, from menus (`_system/configure.py`), never from a guess. |
 | `environment.md` | The verified runtime for stage 02 — the `gars-bio` and `gars-nxf` conda environments, how they were installed, why they are separate, and the traps. No Lmod modules. |
 | `gars-bio.lock.txt`, `gars-bio.conda.txt`, `gars-nxf.conda.txt` | Lockfiles rebuilding both environments at exact versions. They pin the skills too, since the skills ship with `clawbio`. |
-| `genomes.md` | The references a project may be aligned against: one row pairs a FASTA, its matching GTF and the version-keyed index cache, so choosing a genome sets all three and they cannot be mismatched. Only verified references are listed. |
+| `genomes.md` | The references a project may be aligned against: one row pairs a FASTA, its matching GTF, the per-assay-keyed derived-cache root and the genome-derived facts (mito contig, MACS gsize), so choosing a genome sets them together and they cannot be mismatched. Only verified references are listed. |
 | `contract_standard.md` | The eight-section shape every stage contract follows. Needed when **writing** a contract, never when running one. |
 | `VERSION` | The template revision. Stage 00 stamps it into every project, so a project can always name the contract version that produced it. |
 
@@ -72,7 +72,8 @@ Project-level configuration lives in `projects/<project_title>/_config/` and is 
 user answers; no stage ever chooses a scientific value itself.
 
 `_templates/` holds the stamps stages copy — see `_templates/CONTEXT.md`.
-`_system/` holds `gars-env.sh` (the execution environment), the stage helpers
+`_system/` holds `gars-env.sh` (the execution environment), `wrappers/` (the GARS-authored
+pipeline wrappers, decision 0012), the stage helpers
 (`stage00_register.py`, `stage01_samplesheet.py`, `configure.py`, `resolve_artifact.py`,
 `stage03_analysis.py`), the rules they share
 (`integrity.py`, `workspace.py`) and `build_projects_index.sh`. Stage contracts orchestrate these;

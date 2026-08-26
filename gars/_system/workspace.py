@@ -34,6 +34,15 @@ def template_version(workspace):
     return "unknown"
 
 
+# One pinned upstream pipeline per assay. Single source of truth: configure.py keys the
+# derived-reference cache with these, and each wrapper asserts its checkout matches. An index
+# cache is version-keyed because an aligner refuses an index built by an incompatible version
+# (decision 0009); the checkout lives at $GARS_PIPELINES/<value without the nf-core- prefix>.
+PIPELINES = {
+    "rnaseq_bulk": "nf-core-rnaseq-3.26.0",
+    "atacseq_bulk": "nf-core-atacseq-2.1.2",
+}
+
 MACHINE_OWNED_MODE = 0o444
 
 

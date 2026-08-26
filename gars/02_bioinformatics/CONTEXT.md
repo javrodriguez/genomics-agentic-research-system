@@ -19,8 +19,9 @@ This stage performs the steps in Process and nothing else.
   `_references/assay_stage_skill_map.md` is the only source of what runs and in what order.
 - Never run a sub-stage before its predecessor has reached status `COMPLETE`.
 - Never modify anything under `00_data/` or `01_samplesheets/`. Stages 00 and 01 own them.
-- Never edit, patch, or work around skill code. It belongs to the installed `clawbio` package
-  and is read-only here. If a skill fails, report its error verbatim and stop.
+- Never edit, patch, or work around skill code — neither the installed `clawbio` skills nor
+  the GARS wrappers under `_system/wrappers/` (template code, updated only by `git pull`). If
+  a skill fails, report its error verbatim and stop.
 - Never run an analysis step yourself. If a sub-stage's skill cannot run, say so and stop; do
   not substitute a hand-written command, another tool, or a manual workaround.
 - Never launch a long-running job in the foreground. Submit it and return.
@@ -66,8 +67,10 @@ sub-stage order, and takes the first `native` match; `samplesheet` and `design` 
 is the quickest way to answer "what does this project have".
 
 **Genome registry.** `_references/genomes.md`, one row per reference the workspace can align
-against. A row pairs a FASTA, its matching GTF and, when built, the version-keyed index cache —
-so choosing a genome sets all three together and they cannot be mismatched. Only verified
+against. A row pairs a FASTA, its matching GTF, the derived-cache root (keyed per assay to that
+assay's pinned pipeline version), and the genome-derived facts an assay needs — mitochondrial
+contig name, MACS effective genome size — so choosing a genome sets all of them together and
+they cannot be mismatched. Only verified
 references are listed: the iGenomes `GRCh38` is the NCBI build with no `gene_biotype` and fails
 *after* counts are written, which is the kind of thing the registry exists to keep out.
 
@@ -77,9 +80,11 @@ decision: `condition,MT,WT` measures MT relative to WT, and reversing it reverse
 every fold change. A pair whose levels do not both have at least 2 samples is marked
 `testable: false` and is not a choice.
 
-**Skill.** The executable implementation shipped by the installed `clawbio` package. GARS does
-not vendor skill code: this workspace holds contracts only, and a sub-stage directory contains a
-`CONTEXT.md`, never a `.py`.
+**Skill.** The executable implementation a sub-stage invokes. The assay map's **Source**
+column says where it lives (decision 0012): `clawbio` skills ship read-only with the installed
+package and resolve via `$GARS_SKILLS`; `gars` wrappers are versioned in this workspace under
+`_system/wrappers/` and resolve via `$GARS_WRAPPERS`. Either way a sub-stage directory contains
+a `CONTEXT.md`, never a `.py` — the wrapper code lives in `_system/`, not in the contract tree.
 
 `_system/gars-env.sh` resolves the skills directory at runtime and exports it as `$GARS_SKILLS`,
 along with `$GARS_PY`, `PATH`, `JAVA_HOME` and the caches. Source it rather than hardcoding
@@ -88,13 +93,15 @@ environment is rebuilt.
 
 ```bash
 source "$WS/_system/gars-env.sh"
-cd "$GARS_SKILLS/nfcore-rnaseq-wrapper"    # skills run from inside their own directory
+cd "$GARS_SKILLS/nfcore-rnaseq-wrapper"    # clawbio skills run from inside their own directory
+python3 "$GARS_WRAPPERS/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py" ...   # gars wrappers run from anywhere
 ```
 
-Each skill runs as a bare script from within its own directory, because it imports its siblings
-by top-level name. Skill versions are therefore pinned by `clawbio` in
-`_references/gars-bio.lock.txt`; upgrading `clawbio` changes the skills, which is a deliberate
-and recorded act rather than an untracked edit.
+Each clawbio skill runs as a bare script from within its own directory, because it imports its
+siblings by top-level name; their versions are pinned by `clawbio` in
+`_references/gars-bio.lock.txt`, so upgrading `clawbio` changes the skills — a deliberate and
+recorded act rather than an untracked edit. A gars wrapper is versioned with the template, so
+its version IS the template version.
 
 ## Process
 1. Activated when the user asks to run bioinformatics, or names an assay to process. Reply T1.
@@ -106,16 +113,22 @@ and recorded act rather than an untracked edit.
    `_config/<Assay ID>.yaml` with every derivable value filled and the scientific decisions marked
    `<REQUIRED>`. Resolve them by menu, never by asking the user to type a path or a level name:
 
+   The decisions are per-assay (`ASSAY_DECISIONS` in `_system/configure.py`): every assay
+   chooses a genome; an assay with a `de` block additionally chooses a contrast (and may give a
+   formula); an assay with a `peaks` block chooses a peak type.
+
    ```bash
-   python3 _system/configure.py genomes
-   python3 _system/configure.py contrasts --project projects/<title> --assay <Assay ID>
+   python3 _system/configure.py genomes --assay <Assay ID>
+   python3 _system/configure.py contrasts --project projects/<title> --assay <Assay ID>   # de assays
+   python3 _system/configure.py peaks                                                     # peaks assays
    ```
 
-   Reply T8 rendering both. Wait. Then, with the numbers the user gave:
+   Reply T8 rendering the genome menu plus this assay's decision menu. Wait. Then, with the
+   numbers the user gave:
 
    ```bash
    python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> \
-       --genome <n> --contrast <n> [--formula "<theirs>"] --dry-run
+       --genome <n> [--contrast <n>] [--formula "<theirs>"] [--peaks-type <n>] --dry-run
    ```
 
    Reply T9 showing what it would write and **wait for confirmation**. On confirmation, re-run
@@ -205,20 +218,16 @@ together, so they cannot be mismatched:
 
   01  GRCh38  Homo sapiens, Ensembl release 116   [indices cached: yes]
 
-Contrast — the levels below are the ones actually in your design table:
+<the assay's second decision menu>
 
-  01  condition,MT,WT   MT relative to WT -- positive log2FC means higher in MT
-  02  condition,WT,MT   WT relative to MT -- positive log2FC means higher in WT
-
-Design formula: ~ condition  (the default; say so if you need something else, e.g.
-"~ batch + condition" to control for a batch effect)
-
-Reply with one genome number and one contrast number, e.g. `01, 02`.
+Reply with one genome number and one number from the second menu, e.g. `01, 02`.
 ```
 
-Render the genome block from `configure.py genomes` and the contrast block from
-`configure.py contrasts` — **both verbatim from their JSON**. Do not add a reference that is not
-in the registry, and do not offer a contrast the design does not support. A contrast marked
+Render the genome block from `configure.py genomes --assay <Assay ID>` and the second block
+from this assay's decision menu — `contrasts` for a de assay (every ordered level pair with
+its meaning, plus the formula default), `peaks` for a peaks assay (narrow | broad with their
+meanings) — **all verbatim from their JSON**. Do not add a reference that is not in the
+registry, and do not offer a contrast the design does not support. A contrast marked
 `testable: false` is shown with the reason, never as a choice.
 
 **T9 — Config to confirm**
@@ -229,8 +238,8 @@ This is what I will write to _config/<Assay ID>.yaml:
     fasta:       <path>
     gtf:         <path>
     derived_dir: <path or "none — indices will be built, ~40 min and 43 GB">
-  de.formula:  <formula>
-  de.contrast: <spec>   — <meaning>
+  <this assay's decision lines: de.formula + de.contrast, or peaks.type — with meanings,
+   and for a peaks assay the genome-derived macs_gsize and mito_name being set with it>
 
 Nothing else in the file changes. Confirm to write it, or say what to change.
 ```

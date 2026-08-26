@@ -35,6 +35,9 @@ SECTIONS = ["Purpose", "Inputs", "Scope Boundaries", "Definitions", "Process",
 DRIFT = [
     ("_system/stage01_samplesheet.py", "01_prepare_samplesheets/CONTEXT.md",
      r'fail\("([a-z_]+)"'),
+    ("_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py",
+     "02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md",
+     r'fail\("([a-z_]+)"'),
 ]
 
 

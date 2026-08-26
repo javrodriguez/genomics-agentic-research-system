@@ -47,6 +47,7 @@ belongs here.
 | 0025 | [The bounded voice: a compliant way to answer a question](0025-the-bounded-voice.md) | 2026-08-24 | standing | `gars/_references/contract_standard.md`<br>`gars/CLAUDE.md`<br>`gars/00_initialize_project/CONTEXT.md`<br>`gars/01_prepare_samplesheets/CONTEXT.md`<br>`gars/02_bioinformatics/CONTEXT.md`<br>`gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md`<br>`gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md` |
 | 0026 | [Stage 03 runs an approved plan, never an improvised one](0026-stage-03-is-plan-gated.md) | 2026-08-24 | standing | `gars/03_custom_analysis/CONTEXT.md`<br>`gars/_system/stage03_analysis.py`<br>`gars/_references/artifact_types.md` |
 | 0027 | [Stage 03 runs under sbatch by default; the login node is an explicit user request](0027-stage-03-runs-under-sbatch-by-default.md) | 2026-08-25 | standing | `gars/03_custom_analysis/CONTEXT.md`<br>`gars/_system/stage03_analysis.py` |
+| 0028 | [A GARS wrapper clones the ClawBio behavior, not the ClawBio architecture](0028-wrappers-are-thin-system-helpers.md) | 2026-08-25 | standing | `gars/_system/wrappers/`<br>`gars/_system/configure.py`<br>`gars/_system/workspace.py`<br>`gars/_references/genomes.md`<br>`gars/_references/artifact_types.md`<br>`gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md` |
 
 ## Human check
 
