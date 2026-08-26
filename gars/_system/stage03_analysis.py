@@ -269,7 +269,10 @@ def cmd_verify(args, workspace):
     version = ws.template_version(workspace)
     model = args.model or "unknown"
     goal = re.search(r"^## Goal\n(.*?)(?=^## |\Z)", text, re.S | re.M)
-    goal_line = " ".join(goal.group(1).split())[:200] if goal else ""
+    goal_line = " ".join(goal.group(1).split()) if goal else ""
+    if len(goal_line) > 200:
+        # break at a word, not mid-word -- this line is read by humans in HISTORY.md
+        goal_line = goal_line[:200].rsplit(" ", 1)[0] + " ..."
     entry = "\n".join([
         "## <ISO-8601 date> — 03_custom_analysis/%s — analysis complete" % args.analysis,
         "",

@@ -62,9 +62,12 @@ Set `strandedness: unstranded` explicitly in future configs to remove the ambigu
 
 ### What is not yet proven
 
-- **Stage 03 has never been driven by a live agent.** The rails (`create`/`approve`/`verify`)
-  are tested mechanically, including both refusal gates — but no agent has drafted a real plan
-  for a real user yet. First live custom analysis on `leukemia-tall` is the natural test.
+- **Stage 03 live-validated 2026-08-25** — first real analysis on `leukemia-tall`
+  (`01_de-top30-heatmap`): plan drafted and approved, inputs resolved by type at execution
+  time, `verify` passed, HISTORY entry carries version + model. One deviation observed: the
+  agent hand-built the analysis directory instead of running `create` (contained — `approve`
+  and `verify` gate on content, not provenance of the directory). Exactly the drift class the
+  still-open live compliance harness would catch.
 - **Scope enforcement verified live, 2026-08-25** — deliberate forbidden calls in a fresh
   workspace session: an Edit on `_references/genomes.md` was stopped by the `permissions.deny`
   layer ("directory denied by your permission settings"), and `pip install seaborn` was stopped
