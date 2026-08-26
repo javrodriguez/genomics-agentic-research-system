@@ -54,6 +54,15 @@ column selection.
 surfaced only because a later line happened to crash on `row.gene`. Had that line not existed, the
 result would have looked publishable.
 
+Minimal reproduction of the no-op:
+
+```python
+import pandas as pd
+df = pd.DataFrame({"x": [1]}, index=pd.Index(["ENSG1"], name="gene_id"))
+out = df.reset_index().rename(columns={"index": "gene"})
+print(list(out.columns))   # ['gene_id', 'x'] -- no 'gene' column, no error
+```
+
 Naming the identifier column `gene`, as the skill's own demo data does, avoids it. Suggested fix:
 select the identifier column explicitly rather than relying on the index being unnamed, and fail
 loudly if it is absent after the rename.
@@ -87,6 +96,19 @@ published values on this dataset match neither the MLE, apeglm shrinkage of eith
 sign, nor naive ratios; whatever estimator produced them, the reported effect sizes are not the
 requested contrast's. A reader who filters by fold change — the most common downstream move —
 silently loses true positives.
+
+Minimal check, runnable on any completed `rnaseq-de` output directory:
+
+```python
+import pandas as pd, numpy as np
+de = pd.read_csv("run/tables/de_results.csv").set_index("gene")
+nc = pd.read_csv("run/tables/normalized_counts.csv").set_index("gene")
+design = pd.read_csv("design.csv").set_index("sample_id")   # sample_id,condition,...
+a, b = "MT", "WT"                                           # your contrast levels
+naive = (np.log2(nc[design[design.condition == a].index].mean(1) + 1)
+         - np.log2(nc[design[design.condition == b].index].mean(1) + 1))
+print(de.log2FoldChange.corr(naive.reindex(de.index)))      # ~0.33 here; should be near 1
+```
 
 Suggested fix: publish the unshrunk Wald MLE for the requested contrast, or re-level the design
 so the shrinkage coefficient is exactly the contrast, and fail loudly when the coefficient

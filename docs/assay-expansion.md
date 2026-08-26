@@ -630,14 +630,14 @@ versions in this document.
 | ~~1~~ | ~~Does any nf-core pipeline complete end-to-end here?~~ | **RESOLVED 2026-08-13** — yes, see §2.3 | — |
 | **2** | Should stage 01's samplesheet emitter become assay-aware, or emit per-assay column sets? | **RESOLVED 2026-08-19.** Assay-aware, table-driven: `FORMATS` in `_system/stage01_samplesheet.py`, one entry per Assay ID, printable with `--list-formats`. An assay with no entry is refused rather than given the RNA layout | — |
 | **2b** | Where do GARS-authored wrappers live, now that the vendored skills directory is gone? | **RESOLVED 2026-08-19** — `gars/_system/wrappers/`, decision 0012 | — |
-| **3** | How do control assignments (ChIP input, CUT&RUN IgG) enter the design table? | OPEN | chipseq + cutandrun |
+| ~~3~~ | ~~How do control assignments (ChIP input, CUT&RUN IgG) enter the design table?~~ | **RESOLVED 2026-08-25** — per-assay design columns via `workspace.design_columns` (decision 0030): chipseq's `control` names the input sample (with `control_replicate` derived), cutandrun's names the IgG group; validation is per-assay | — |
 | ~~3b~~ | ~~Classical ChIP-seq or CUT&RUN/CUT&Tag?~~ | RESOLVED 2026-08-12: the lab runs both, as separate Assay IDs | — |
 | ~~3c~~ | ~~Where does the CUT&RUN spike-in genome come from?~~ | **RESOLVED 2026-08-14** — `Escherichia_coli_K_12_MG1655` in the local iGenomes mirror | — |
 | ~~4~~ | ~~Is there a local iGenomes mirror?~~ | **RESOLVED 2026-08-14** — yes, `/gpfs/data/sequence/references/iGenomes/` | — |
 | ~~5~~ | ~~Reuse `igorlab`'s Bismark indices, or build our own?~~ | **RESOLVED 2026-08-14** — none exist for human; **build our own** | — |
 | 6 | Does anyone still need `rna-snv`? | OPEN | Scope |
 | 7 | Should SNS stay in `archive/` as a reference implementation? | OPEN | Housekeeping |
-| 8 | Build wrappers ourselves (§6.2a option A) or contribute upstream to ClawBio (option B)? | **OPEN — new.** Four wrappers × 12 modules is the real cost driver | Wrapper #1 |
+| ~~8~~ | ~~Build wrappers ourselves (§6.2a option A) or contribute upstream to ClawBio (option B)?~~ | **RESOLVED 2026-08-25** — built ourselves, but as thin `_system/` helpers on a shared `wrapperlib.py` rather than 12-module clones (decision 0028), which dissolved the cost driver; all five assays wired (decisions 0029, 0031) | — |
 
 ---
 

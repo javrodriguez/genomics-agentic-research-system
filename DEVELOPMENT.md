@@ -112,13 +112,21 @@ Set `strandedness: unstranded` explicitly in future configs to remove the ambigu
 Priority order. The five structural items from the external assessment ("GARS Under Review",
 2026-08-21) were **implemented 2026-08-24** — mechanical scope enforcement (0022), the test
 suite and contract lint (0023), model provenance (0024), the bounded voice (0025), and a
-plan-gated stage 03 (0026). What remains:
+plan-gated stage 03 (0026) — and the build queue that followed (wrappers #1–#5, the rnaseq
+migration, the assay-aware design table) **completed 2026-08-25** (0028–0031). The standing
+work is now live validation:
 
-1. **Live-validate v0.5.0.** Two cheap probes on `leukemia-tall`: a first real custom analysis
-   through stage 03 (drafted plan, real approval, real outputs), and one deliberate forbidden
-   edit in a fresh workspace session to watch the guard hook refuse it. Also still unproven from
-   before: the `--resume` guard after a crash, a *failed* mid-pipeline Nextflow run, and whether
-   the derived-index cache was actually reused (grep 02.01's logs for index-building processes).
+0. **One live run per assay** — the single biggest outstanding item. atacseq, chipseq,
+   cutandrun and methylseq have never run a pipeline; rnaseq has not yet run under its gars
+   wrapper (switchover criteria in 0029). Each first run also settles that assay's derived
+   cache and, for rnaseq, allows deleting the deprecated ClawBio files.
+
+Item-by-item record of the queue:
+
+1. ~~Live-validate v0.5.0~~ **Done 2026-08-25**: the guard layers fired on deliberate
+   forbidden calls, stage 03 ran a real plan-gated analysis on `leukemia-tall`, and the trace
+   showed 0 index-building processes (cache reuse confirmed). Still unproven: the `--resume`
+   guard after a crash and a *failed* mid-pipeline Nextflow run.
 2. ~~Build wrapper #1~~ **Done 2026-08-25** ([0028](docs/decisions/0028-wrappers-are-thin-system-helpers.md)):
    `nfcore-atacseq-wrapper` in `_system/wrappers/`, atacseq_bulk promoted to `active`,
    assay-map row + Source column added, sub-stage contract written, genome registry extended
@@ -130,8 +138,9 @@ plan-gated stage 03 (0026). What remains:
    log2FoldChange column correlates 0.33 with the actual normalized group ratios (the new
    wrapper's: 0.99); p-values and the significant set were correct. Consequence for
    `leukemia-tall`: its existing `de_results.csv` fold-change VALUES are unreliable (gene calls
-   and padj are fine) — re-run 02.02 under the new wrapper, or use the validated table the
-   comparison produced.
+   and padj are fine) — re-run 02.02 under the new wrapper, or use the validated table at
+   `~/tmp-de-validate/gars/projects/val/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/run/tables/`
+   (same inputs, corrected LFC).
 4. ~~Build the remaining three wrappers~~ **Done 2026-08-25**
    ([0031](docs/decisions/0031-all-five-assays-are-wired.md)): chipseq (MACS3, per-antibody
    consensus, derived control_replicate), cutandrun (group-shaped design, spike-in
