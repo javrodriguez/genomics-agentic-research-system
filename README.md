@@ -114,7 +114,8 @@ Every stage contract has the same eight sections. The three that do the real wor
 Where a stage's work is deterministic, the Process is not a specification of the computation but
 an invocation of it: run the helper in `_system/`, branch on its exit code, render its JSON
 through the templates. Stage 01 works this way; stage 02 has always worked this way, delegating
-to ClawBio skills.
+to nf-core pipelines — since v0.7.0 through GARS-authored wrappers versioned in the repo, with
+the original ClawBio skill path preserved as a deprecated fallback.
 
 ### Why negative constraints
 

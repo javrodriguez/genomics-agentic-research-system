@@ -2,7 +2,8 @@
 
 A workspace for running genomics research projects through dialogue with an LLM agent. The
 filesystem is the architecture; the agent is the navigator. Built on the Interpretable Context
-Methodology (ICM), with bioinformatics executed by ClawBio skills.
+Methodology (ICM), with bioinformatics executed by nf-core pipelines through GARS-authored
+wrappers (plus installed ClawBio skills where a wrapper does not exist yet).
 
 > **Scope of this file.** Orientation for *using* a GARS workspace. If you are developing GARS
 > itself — editing contracts, docs or the template — the entry point is the `CLAUDE.md` at the
@@ -33,9 +34,11 @@ of the stage the request maps to. Execute that contract literally.
 | `_system/` | `gars-env.sh` (the execution environment), the stage helpers that compute deterministic artifacts, the index builder | L3 |
 | `projects/` | the work: one directory per project, plus a generated `_index.md` | L4 |
 
-Skills are **not vendored**. They ship with the installed `clawbio` package and are read-only; a
-sub-stage directory holds a `CONTEXT.md`, never a `.py`. `_system/gars-env.sh` resolves them at
-runtime as `$GARS_SKILLS`.
+Third-party skills are **not vendored** — they ship with the installed `clawbio` package,
+read-only, resolved at runtime as `$GARS_SKILLS`. GARS-authored wrappers are **versioned
+here**, under `_system/wrappers/`, resolved as `$GARS_WRAPPERS` (decision 0012); the assay
+map's Source column says which kind each sub-stage uses. Either way a sub-stage directory
+holds a `CONTEXT.md`, never a `.py`.
 
 **Derived artifacts are computed by code, not written by you.** Samplesheets, design tables, the
 project index and artifact resolution come from `_system/` scripts. A contract that names one is
@@ -49,7 +52,8 @@ helpers and the resolver need no conda environment; stage 02's skills do.
 2. Tell the agent you want to start a new project → stage 00 creates `projects/<title>/` from
    `_templates/project/`, symlinks your raw data, and writes `files.csv` + `samples.csv` per assay.
 3. **Fill in `00_data/<Assay ID>/samples.csv`** — one row per sample, so each experimental value
-   is entered once. To analyse a subset, delete the other rows: stage 01 treats a sample with no
+   is entered once; the header shows this assay's columns (ChIP-family assays add `control`).
+   To analyse a subset, delete the other rows: stage 01 treats a sample with no
    row as excluded and leaves its raw data in place, so the choice is reversible.
 4. `_config/` is already seeded — stage 00 filled every derivable value and marked the
    scientific decisions `<REQUIRED>`. Stage 02 completes those from menus (genome; contrast

@@ -43,6 +43,23 @@ PIPELINES = {
     "atacseq_bulk": "nf-core-atacseq-2.1.2",
 }
 
+# The design table's columns, per assay (decision 0030). Every assay carries the base four;
+# ChIP-family assays add columns their pipelines require: `control` points at the sample_id of
+# the input-chromatin (chipseq) or IgG (cutandrun) sample -- same column shape, different
+# biological referent, which is why VALIDATION stays per-assay while the shape is shared.
+# Stage 00 writes the header, stage 01 validates and consumes it; both read it from here so
+# the two can never disagree.
+BASE_DESIGN_COLUMNS = ["sample_id", "condition", "group", "replicate"]
+EXTRA_DESIGN_COLUMNS = {
+    "chipseq_bulk": ["antibody", "control"],
+    "cutandrun": ["control"],
+}
+
+
+def design_columns(assay):
+    return BASE_DESIGN_COLUMNS + EXTRA_DESIGN_COLUMNS.get(assay, [])
+
+
 MACHINE_OWNED_MODE = 0o444
 
 

@@ -20,8 +20,9 @@ contract; where they disagree, the contract is wrong and should be fixed, not wo
 
 - **00 → 01 is the human gate.** Stage 00 registers raw data and validates it at the file level
   (links resolve, files intact, reads paired), writing `files.csv` (one row per sample-lane,
-  machine-owned) and `samples.csv` (one row per sample, experimental columns blank). The user
-  fills in `condition`, `group` and `replicate` before stage 01 runs.
+  machine-owned) and `samples.csv` (one row per sample, experimental columns blank; the column
+  set is per-assay — ChIP-family assays add `control`, decision 0030). The user fills in the
+  design columns before stage 01 runs.
 - **01 → 02.** Stage 01 validates the completed design and emits per-assay samplesheets. Stage 02
   routes the assay to its ordered sub-stages, each of which resolves its inputs by artifact type.
 - **02 → 03 is the second human gate.** Stage 03 resolves its inputs from the earlier stages'

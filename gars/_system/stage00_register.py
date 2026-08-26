@@ -48,7 +48,6 @@ import integrity            # noqa: E402  -- one home for the integrity rule
 import workspace as ws     # noqa: E402  -- one home for the template version
 
 RAW_SUFFIXES = (".fastq.gz", ".fq.gz", ".fastq", ".fq")
-SAMPLES_HEADER = ["sample_id", "condition", "group", "replicate"]
 FILES_HEADER = ["sample_id", "lane", "fastq_1", "fastq_2"]
 BCL2FASTQ = re.compile(r"^(?P<sample>.+?)_S\d+_(?:L(?P<lane>\d+)_)?R(?P<read>[12])_\d+\."
                        r"(?:fastq|fq)(?:\.gz)?$")
@@ -545,7 +544,7 @@ def cmd_finalize(args, workspace):
             samples_state = "created"
             with ws.atomic_open(samples_csv) as fh:
                 w = csv.writer(fh, lineterminator="\n")
-                w.writerow(SAMPLES_HEADER)
+                w.writerow(ws.design_columns(aid))
                 for sid in sample_ids:
                     w.writerow([sid, "", "", ""])
 

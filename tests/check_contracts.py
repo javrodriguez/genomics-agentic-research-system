@@ -38,6 +38,19 @@ DRIFT = [
     ("_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py",
      "02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md",
      r'fail\("([a-z_]+)"'),
+    # wrapperlib's shared codes must appear in every nextflow-wrapper contract
+    ("_system/wrapperlib.py",
+     "02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md",
+     r'fail\("([a-z_]+)"'),
+    ("_system/wrapperlib.py",
+     "02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md",
+     r'fail\("([a-z_]+)"'),
+    ("_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py",
+     "02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md",
+     r'fail\("([a-z_]+)"'),
+    ("_system/wrappers/rnaseq-de/rnaseq_de.py",
+     "02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md",
+     r'fail\("([a-z_]+)"'),
 ]
 
 

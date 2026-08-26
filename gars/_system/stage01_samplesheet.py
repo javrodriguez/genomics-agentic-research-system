@@ -40,7 +40,8 @@ import workspace as ws     # noqa: E402  -- one home for the template version
 
 RAW_SUFFIXES = (".fastq.gz", ".fq.gz", ".fastq", ".fq")
 STRANDEDNESS_VALUES = {"auto", "forward", "reverse", "unstranded"}
-SAMPLES_HEADER = ["sample_id", "condition", "group", "replicate"]
+# The base design columns; the full set is per-assay via ws.design_columns() (decision 0030).
+SAMPLES_HEADER = ws.BASE_DESIGN_COLUMNS
 FILES_HEADER = ["sample_id", "lane", "fastq_1", "fastq_2"]
 
 # --- samplesheet formats ------------------------------------------------------------------------
@@ -284,19 +285,31 @@ def validate_assay(project, assay):
                                           "since registration"
                               % (len(vanished), assay, ", ".join(sorted(vanished)[:3]))))
 
-    for name, got, want in (("samples.csv", samples["fields"], SAMPLES_HEADER),
+    header = ws.design_columns(assay)
+    for name, got, want in (("samples.csv", samples["fields"], header),
                             ("files.csv", files["fields"], FILES_HEADER)):
         if got != want:
             fails.append(fail("header", f"{name} header is {got}, expected {want}"))
     if fails:
         return {**out, "fatal": True}
 
-    # -- complete design row
+    # -- complete design row. The BASE columns must be filled; an assay's extra columns may be
+    # blank at this grain -- a ChIP input or an IgG sample legitimately has no `control` of its
+    # own. What a non-blank `control` must do is resolve (below); whether every target sample
+    # HAS one is the assay wrapper's check, against its own pipeline's semantics (decision 0030).
     for row in samples["rows"]:
         blank = [c for c in SAMPLES_HEADER if not row.get(c)]
         if blank:
             fails.append(fail("incomplete_design",
                               f"samples.csv line {row['_n']}: blank {', '.join(blank)}"))
+    if "control" in header:
+        ids = {r["sample_id"] for r in samples["rows"]}
+        for row in samples["rows"]:
+            ctrl = row.get("control", "")
+            if ctrl and ctrl not in ids:
+                fails.append(fail("referential_integrity",
+                                  f"samples.csv line {row['_n']}: control {ctrl!r} is not a "
+                                  f"sample_id in this design"))
 
     # -- duplicate sample_id
     seen = {}
@@ -405,7 +418,7 @@ def validate_assay(project, assay):
     for _, src in fmt:
         if src.startswith("design:"):
             col = src.split(":", 1)[1]
-            if col not in SAMPLES_HEADER:
+            if col not in ws.design_columns(assay):
                 fails.append(fail("config", "samplesheet format for %s needs a %r column in "
                                             "samples.csv, which stage 00 does not write"
                                             % (assay, col)))
@@ -483,9 +496,9 @@ def write_assay(project, assay, res):
 
     with ws.atomic_open(design) as fh:
         w = csv.writer(fh, lineterminator="\n")
-        w.writerow(SAMPLES_HEADER)
+        w.writerow(ws.design_columns(assay))
         for row in res["_incl_design_rows"]:
-            w.writerow([row[c] for c in SAMPLES_HEADER])
+            w.writerow([row.get(c, "") for c in ws.design_columns(assay)])
 
     # Exit gate: re-read what was written. Checks content, not existence -- a file-exists check
     # passes happily on a table with the wrong rows in it (decision 0010).

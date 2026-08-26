@@ -6,8 +6,8 @@ and `02_bioinformatics/<Assay ID>/` for its sub-stages.
 
 | Assay | Assay ID | Stage | Sub-stage | Skill | Source | Consumes | Produces |
 |---|---|---|---|---|---|---|---|
-| Bulk RNA-seq | rnaseq_bulk | 02_bioinformatics | 01_nfcore-rnaseq-wrapper | nfcore-rnaseq-wrapper | clawbio | samplesheet | counts_gene, counts_transcript, tpm_gene, bam_genome, qc_multiqc |
-| Bulk RNA-seq | rnaseq_bulk | 02_bioinformatics | 02_rnaseq-de | rnaseq-de | clawbio | counts_gene, design | de_results |
+| Bulk RNA-seq | rnaseq_bulk | 02_bioinformatics | 01_nfcore-rnaseq-wrapper | nfcore-rnaseq-wrapper | gars | samplesheet | counts_gene, counts_transcript, tpm_gene, bam_genome, qc_multiqc |
+| Bulk RNA-seq | rnaseq_bulk | 02_bioinformatics | 02_rnaseq-de | rnaseq-de | gars | counts_gene, design | de_results |
 | ATAC-seq (bulk) | atacseq_bulk | 02_bioinformatics | 01_nfcore-atacseq-wrapper | nfcore-atacseq-wrapper | gars | samplesheet | peaks, peaks_consensus, counts_peaks, bigwig, bam_genome, qc_multiqc |
 
 The **Source** column says where a skill's code lives (decision 0012): `clawbio` skills ship
@@ -25,14 +25,20 @@ as a preconditions failure **naming the requirement**, rather than surfacing a r
 
 | Skill | Python | System binaries | Python packages | Provided by |
 |---|---|---|---|---|
-| nfcore-rnaseq-wrapper | >=3.10 | `python3`, `nextflow`, `java` | (via `clawbio`) | `gars-bio` + `gars-nxf` |
-| rnaseq-de | (unpinned) | `python3` | `pandas`, `numpy`, `matplotlib`, `scikit-learn` | `gars-bio` |
+| nfcore-rnaseq-wrapper (gars) | >=3.6 (stdlib only) | `python3`, `nextflow`, `java`, `git` | none | stock python + `gars-nxf` at submit time |
+| rnaseq-de (gars) | wrapper: >=3.6 stdlib; analysis: `$GARS_PY` | `python3`, `git` | `pandas`, `numpy`, `pydeseq2`, `matplotlib`, `scikit-learn` (analysis only) | stock python + `gars-bio` at run time |
 | nfcore-atacseq-wrapper | >=3.6 (stdlib only) | `python3`, `nextflow`, `java`, `git` | none | stock python + `gars-nxf` at submit time |
+
+The clawbio `nfcore-rnaseq-wrapper` and `rnaseq-de` skills are retired from the critical path
+(decision 0029) but remain installed with the package; the deprecated procedures sit beside
+each rnaseq sub-stage contract as `DEPRECATED-clawbio-path.md` until the switchover criteria
+in the source repo's DEVELOPMENT.md are met.
+
+- **`scikit-learn`** is used by the DE analysis for exactly one thing — `PCA(n_components=2)`
+  producing `figures/pca.png`. The generated script fails at import without it.
 
 Notes on requirements that are otherwise easy to mistake for unused and prune:
 
-- **`scikit-learn`** is used by `rnaseq-de` for exactly one thing — `PCA(n_components=2)` in
-  `run_pca()`, producing `figures/pca.png`. The skill fails at import without it.
 - **`nextflow` and `java`** live in `gars-nxf`, not `gars-bio`. They cannot share an environment
   with `clawbio`: conflicting `c-ares` constraints make the solve unsatisfiable. Both are on
   `PATH` when a sub-stage runs.

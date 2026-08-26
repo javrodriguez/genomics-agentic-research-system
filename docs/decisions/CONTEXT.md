@@ -48,6 +48,8 @@ belongs here.
 | 0026 | [Stage 03 runs an approved plan, never an improvised one](0026-stage-03-is-plan-gated.md) | 2026-08-24 | standing | `gars/03_custom_analysis/CONTEXT.md`<br>`gars/_system/stage03_analysis.py`<br>`gars/_references/artifact_types.md` |
 | 0027 | [Stage 03 runs under sbatch by default; the login node is an explicit user request](0027-stage-03-runs-under-sbatch-by-default.md) | 2026-08-25 | standing | `gars/03_custom_analysis/CONTEXT.md`<br>`gars/_system/stage03_analysis.py` |
 | 0028 | [A GARS wrapper clones the ClawBio behavior, not the ClawBio architecture](0028-wrappers-are-thin-system-helpers.md) | 2026-08-25 | standing | `gars/_system/wrappers/`<br>`gars/_system/configure.py`<br>`gars/_system/workspace.py`<br>`gars/_references/genomes.md`<br>`gars/_references/artifact_types.md`<br>`gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md` |
+| 0029 | [The ClawBio path for rnaseq is deprecated, not deleted](0029-the-clawbio-path-is-deprecated.md) | 2026-08-25 | standing | `gars/_system/wrappers/nfcore-rnaseq-wrapper/`<br>`gars/_system/wrappers/rnaseq-de/`<br>`gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md`<br>`gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md`<br>`gars/_references/assay_stage_skill_map.md` |
+| 0030 | [The design table's columns are per-assay](0030-the-design-table-is-assay-aware.md) | 2026-08-25 | standing | `gars/_system/workspace.py`<br>`gars/_system/stage00_register.py`<br>`gars/_system/stage01_samplesheet.py` |
 
 ## Human check
 

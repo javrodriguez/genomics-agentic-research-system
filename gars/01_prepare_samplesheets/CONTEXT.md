@@ -14,8 +14,10 @@ its own, and report what it found. See
 ## Inputs
 - Working (this run):
   1. **Project title**
-  2. **A completed `00_data/<Assay ID>/samples.csv` per assay** — `condition`, `group` and
-     `replicate` filled in by the user, one row per sample
+  2. **A completed `00_data/<Assay ID>/samples.csv` per assay** — the assay's design
+     columns filled in by the user, one row per sample. The base four are
+     `sample_id,condition,group,replicate`; ChIP-family assays add e.g. `control`
+     (decision 0030)
   3. **`00_data/<Assay ID>/files.csv` per assay** — written by stage 00, read-only here
   4. **`_config/<Assay ID>.yaml`** — read for `strandedness` only; absent is legal
 - Reference (every run):
@@ -33,7 +35,8 @@ This stage performs the steps in Process and nothing else.
 - **Never modify `samples.csv` or `files.csv`.** `samples.csv` is the user's file; `files.csv` is
   stage 00's. Report every problem found and stop; never silently correct, reformat, or fill a
   value in either.
-- Never infer a missing experimental value. A blank `condition`, `group` or `replicate` is a
+- Never infer a missing experimental value. A blank base column (`condition`, `group`,
+  `replicate`) is a
   validation failure, not something to guess from sample names.
 - Never create, re-link, move, or delete anything under `00_data/`. Stage 00 owns it.
 - **Never pass `--confirm-exclusions` or `--force` without an explicit user confirmation in this
@@ -51,8 +54,11 @@ This stage performs the steps in Process and nothing else.
 These are the terms the script's failures are named with. They are here so you can explain a
 failure, not so you can perform the check.
 
-**Complete design row.** A `samples.csv` row where `sample_id`, `condition`, `group` and
-`replicate` are all non-empty. Violation → `incomplete_design`.
+**Complete design row.** A `samples.csv` row where the base columns (`sample_id`,
+`condition`, `group`, `replicate`) are all non-empty. Violation → `incomplete_design`. An
+assay's extra columns (e.g. `control`, decision 0030) may be blank — a ChIP input or IgG
+sample has no control of its own — but a non-blank `control` must name a `sample_id` present
+in this design. Violation → `referential_integrity`.
 
 **Resolvable file row.** A `files.csv` row whose `fastq_1` and, if present, `fastq_2` resolve
 relative to the project directory to a readable file. Violation → `unresolvable_path`.

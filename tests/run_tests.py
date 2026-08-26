@@ -580,6 +580,191 @@ class AtacseqWrapperTests(unittest.TestCase):
         self.assertIn("COMPLETE", (self.substage / "STATUS").read_text())
 
 
+class RnaseqGarsWrapperTests(unittest.TestCase):
+    """The rnaseq migration (decision 0029): the gars nfcore-rnaseq-wrapper and rnaseq-de
+    wrappers behave on a fixture project — including the gates that motivated the migration
+    (the anonymous-gene content check, the half-built-cache refusal)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp(prefix="gars-rnaseqw-"))
+        cls.ws = cls.tmp / "gars"
+        cls.ws.mkdir()
+        for d in ("_system", "_references", "_templates"):
+            shutil.copytree(str(GARS / d), str(cls.ws / d))
+        (cls.ws / "projects").mkdir()
+        cls.project = cls.ws / "projects" / "rna-test"
+        (cls.project / "_config").mkdir(parents=True)
+        (cls.project / "01_samplesheets").mkdir()
+        # fixture reference + raw files
+        cls.refs = cls.tmp / "refs"
+        cls.refs.mkdir()
+        (cls.refs / "genome.fa.gz").write_bytes(gzip.compress(b">chr1\nACGT\n"))
+        (cls.refs / "genome.gtf.gz").write_bytes(gzip.compress(b"chr1\tx\tgene\n"))
+        fq = cls.tmp / "reads.fastq.gz"
+        write_fastq_gz(fq)
+        (cls.project / "_config" / "rnaseq_bulk.yaml").write_text(
+            "strandedness: auto\n"
+            "reference:\n  fasta: %s\n  gtf: %s\n  derived_dir: %s\n"
+            "aligner: star_salmon\n"
+            "compute:\n  partition: cpu_medium\n  time: \"1:00:00\"\n  cpus: 4\n"
+            "  mem: 32G\n  work_dir: /gpfs/scratch/test\n"
+            "de:\n  formula: \"~ condition\"\n  contrast: \"condition,MT,WT\"\n"
+            % (cls.refs / "genome.fa.gz", cls.refs / "genome.gtf.gz", cls.refs / "cache"))
+        (cls.project / "_config" / "nextflow.slurm.config").write_text(
+            "process { queue = 'x' }\n")
+        rows = ["sample,fastq_1,fastq_2,strandedness"]
+        design = ["sample_id,condition,group,replicate"]
+        for i, cond in enumerate(("MT", "MT", "WT", "WT"), 1):
+            rows.append("S%d,%s,%s,auto" % (i, fq, fq))
+            design.append("S%d,%s,G1,%d" % (i, cond, i))
+        (cls.project / "01_samplesheets" / "rnaseq_bulk_samplesheet.csv").write_text(
+            "\n".join(rows) + "\n")
+        (cls.project / "01_samplesheets" / "rnaseq_bulk_design.csv").write_text(
+            "\n".join(design) + "\n")
+        counts = ["gene_id\tgene_name\tS1\tS2\tS3\tS4"]
+        for g in range(1, 6):
+            counts.append("ENSG%04d\tGENE%d\t%d\t%d\t%d\t%d"
+                          % (g, g, g * 2, g * 3, g * 5, g * 7))
+        cls.counts_native = cls.tmp / "salmon.merged.gene_counts_length_scaled.tsv"
+        cls.counts_native.write_text("\n".join(counts) + "\n")
+        cls.wrap = cls.ws / "_system" / "wrappers" / "nfcore-rnaseq-wrapper" \
+            / "nfcore_rnaseq_wrapper.py"
+        cls.de = cls.ws / "_system" / "wrappers" / "rnaseq-de" / "rnaseq_de.py"
+        cls.substage = cls.project / "02_bioinformatics" / "rnaseq_bulk" \
+            / "01_nfcore-rnaseq-wrapper"
+        cls.de_substage = cls.project / "02_bioinformatics" / "rnaseq_bulk" / "02_rnaseq-de"
+
+    tearDownClass = classmethod(lambda cls: WorkspaceFixture.tearDownClass.__func__(cls))
+
+    def test_00_check_and_prepare(self):
+        code, res, raw = run(self.wrap, ["check", "--project", "projects/rna-test"], self.ws)
+        self.assertEqual(code, 0, raw)
+        code, res, raw = run(self.wrap, ["prepare", "--project", "projects/rna-test"], self.ws)
+        self.assertEqual(code, 0, raw)
+        # empty derived cache -> first run builds and publishes
+        self.assertEqual(res["params"].get("save_reference"), "true")
+        a = ((self.substage / "params.yaml").read_bytes(),
+             (self.substage / "submit.sh").read_bytes())
+        code, _, raw = run(self.wrap, ["prepare", "--project", "projects/rna-test"], self.ws)
+        self.assertEqual(code, 0, raw)
+        b = ((self.substage / "params.yaml").read_bytes(),
+             (self.substage / "submit.sh").read_bytes())
+        self.assertEqual(a, b, "same inputs must produce byte-identical artifacts (0011)")
+
+    def test_01_half_built_cache_is_refused(self):
+        star = self.refs / "cache" / "index" / "star"
+        star.mkdir(parents=True)
+        (star / "SA").write_text("index-without-parameters-file")
+        code, res, raw = run(self.wrap, ["check", "--project", "projects/rna-test"], self.ws)
+        self.assertEqual(code, 1, raw)
+        self.assertTrue(any("genomeParameters" in f["detail"] for f in res["failures"]))
+        (star / "genomeParameters.txt").write_text("versionGenome 2.7.4a")
+        (self.refs / "cache" / "index" / "salmon").mkdir()
+        (self.refs / "cache" / "index" / "salmon" / "info.json").write_text("{}")
+        (self.refs / "cache" / "genome.transcripts.fa").write_text(">t\nACGT\n")
+        code, res, raw = run(self.wrap, ["prepare", "--project", "projects/rna-test"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertIn("star_index", res["params"], "a complete cache is consumed, not rebuilt")
+        self.assertNotIn("save_reference", res["params"])
+
+    def test_02_collect_gates_on_content(self):
+        adir = self.substage / "run" / "results" / "star_salmon"
+        adir.mkdir(parents=True, exist_ok=True)
+        (self.substage / "run" / ".gars_run_complete").write_text("now\n")
+        # counts matrix missing one sample column -> caught
+        (adir / "salmon.merged.gene_counts_length_scaled.tsv").write_text(
+            "gene_id\tgene_name\tS1\tS2\tS3\ng1\tG1\t1\t2\t3\n")
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/rna-test"], self.ws)
+        self.assertEqual(code, 1, raw)
+        self.assertIn("counts_gene", [f["check"] for f in res["failures"]])
+        # full tree
+        (adir / "salmon.merged.gene_counts_length_scaled.tsv").write_text(
+            "gene_id\tgene_name\tS1\tS2\tS3\tS4\ng1\tG1\t1\t2\t3\t4\n")
+        (adir / "salmon.merged.transcript_counts.tsv").write_text("tx\n")
+        (adir / "salmon.merged.gene_tpm.tsv").write_text("tpm\n")
+        (adir / "S1.markdup.sorted.bam").write_text("bam")
+        mq = self.substage / "run" / "results" / "multiqc" / "star_salmon"
+        mq.mkdir(parents=True, exist_ok=True)
+        (mq / "multiqc_report.html").write_text("<html>ok</html>")
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/rna-test",
+                                         "--model", "claude-test-1"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertIn("Model: claude-test-1", res["history_entry"])
+        self.assertEqual(res["derived_cache"]["action"], "reused")
+        self.assertIn("counts_gene\tnative\t",
+                      (self.substage / "OUTPUTS.tsv").read_text())
+
+    def test_03_de_check_refusals(self):
+        design = self.project / "01_samplesheets" / "rnaseq_bulk_design.csv"
+        # under-sampled contrast level
+        bad = self.tmp / "bad_design.csv"
+        bad.write_text("sample_id,condition,group,replicate\nS1,MT,G1,1\nS3,WT,G1,1\n"
+                       "S4,WT,G1,2\n")
+        code, res, raw = run(self.de, ["check", "--project", "projects/rna-test",
+                                       "--counts", str(self.counts_native),
+                                       "--design", str(bad)], self.ws)
+        self.assertEqual(code, 1, raw)
+        self.assertTrue(any(f["check"] == "design" and "at least 2" in f["detail"]
+                            for f in res["failures"]))
+        # good design passes
+        code, res, raw = run(self.de, ["check", "--project", "projects/rna-test",
+                                       "--counts", str(self.counts_native),
+                                       "--design", str(design)], self.ws)
+        self.assertEqual(code, 0, raw)
+
+    def test_04_de_prepare_and_collect(self):
+        design = self.project / "01_samplesheets" / "rnaseq_bulk_design.csv"
+        code, res, raw = run(self.de, ["prepare", "--project", "projects/rna-test",
+                                       "--counts", str(self.counts_native),
+                                       "--design", str(design)], self.ws)
+        self.assertEqual(code, 0, raw)
+        script = self.de_substage / "scripts" / "run_de.py"
+        import ast as _ast
+        _ast.parse(script.read_text())   # the generated analysis is valid python
+        self.assertIn("condition,MT,WT", res["contrast"] + ",")
+        submit = (self.de_substage / "submit.sh").read_text()
+        self.assertIn("adapt_counts.py", submit)
+        self.assertIn("$GARS_PY", submit)
+        # absolute inputs frozen into the script (the validation-job defect)
+        self.assertIn("COUNTS = '/", script.read_text())
+
+        # collect refuses before completion
+        code, res, raw = run(self.de, ["collect", "--project", "projects/rna-test"], self.ws)
+        self.assertEqual(code, 2, raw)
+        # fake outputs; the anonymous-gene gate first
+        run_dir = self.de_substage / "run"
+        (run_dir / "tables").mkdir(parents=True, exist_ok=True)
+        (run_dir / "figures").mkdir(exist_ok=True)
+        (self.de_substage / "adapted").mkdir(exist_ok=True)
+        (run_dir / ".gars_run_complete").write_text("now\n")
+        (run_dir / "tables" / "de_results.csv").write_text(
+            "gene,baseMean,log2FoldChange,pvalue,padj\n,1,2,0.1,0.2\n")
+        (run_dir / "tables" / "normalized_counts.csv").write_text(
+            "gene,S1,S2,S3,S4\ng1,1,2,3,4\n")
+        for f in ("pca.png", "volcano.png", "ma_plot.png"):
+            (run_dir / "figures" / f).write_text("png")
+        (run_dir / "report.md").write_text("# report\n")
+        (self.de_substage / "adapted" / "counts_gene.tsv").write_text("gene\tS1\ng\t1\n")
+        (self.de_substage / "adapted" / "gene_id_to_name.tsv").write_text(
+            "gene_id\tgene_name\ng\tG\n")
+        code, res, raw = run(self.de, ["collect", "--project", "projects/rna-test"], self.ws)
+        self.assertEqual(code, 1, raw)
+        self.assertTrue(any("anonymous" in f["detail"] for f in res["failures"]),
+                        "an empty gene identifier must be caught (0010)")
+        (run_dir / "tables" / "de_results.csv").write_text(
+            "gene,baseMean,log2FoldChange,pvalue,padj\ng1,1,2,0.1,0.2\n")
+        code, res, raw = run(self.de, ["collect", "--project", "projects/rna-test",
+                                       "--model", "claude-test-1",
+                                       "--counts-from", "01_nfcore-rnaseq-wrapper"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertIn("Model: claude-test-1", res["history_entry"])
+        self.assertIn("01_nfcore-rnaseq-wrapper", res["history_entry"])
+        outputs = (self.de_substage / "OUTPUTS.tsv").read_text()
+        self.assertIn("counts_gene\tadapted\t", outputs)
+        self.assertIn("de_results\tnative\t", outputs)
+
+
 class GuardHookTests(unittest.TestCase):
     """The mechanical scope boundaries (decision 0022). Every deny is an action no contract
     instructs; every allow is a step some contract does instruct."""

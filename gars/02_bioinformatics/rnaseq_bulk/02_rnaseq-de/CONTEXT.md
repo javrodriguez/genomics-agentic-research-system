@@ -1,255 +1,186 @@
-# Sub-stage 02.02: Bulk RNA-seq Differential Expression
+# Sub-stage 02.02: Differential Expression
 
 ## Purpose
-Run differential expression on the count matrix produced by sub-stage 02.01, using the
-experimental design the user completed in stage 00 and validated in stage 01. Produces DE
-tables, QC and PCA figures, and a report.
+Test for differential gene expression between the two conditions the user chose, through the
+GARS-authored `rnaseq-de` wrapper (decision 0029; the ClawBio-skill procedure this replaces —
+the source of three recorded defects, one silent — is preserved beside this file as
+`DEPRECATED-clawbio-path.md` until the switchover criteria in DEVELOPMENT.md are met). The
+analysis runs under Slurm; this sub-stage submits and returns, then collects on a later
+invocation.
+
+**The computation is not yours.** The wrapper's `check` validates the design against the
+config, `prepare` generates the analysis script (`scripts/run_de.py`, PyDESeq2) and
+`submit.sh`, and `collect` runs the content-checking exit gate and writes `OUTPUTS.tsv` and
+`STATUS`. Your job is the dialogue between those calls; the adaptation of the count matrix
+happens inside the generated job via `_system/adapt_counts.py` (decision 0021) — never by
+hand.
 
 ## Inputs
-- Working (this run), **resolved by type, never by path**:
-  1. **`counts_gene`** — resolved from the `OUTPUTS.tsv` of completed sub-stages
-  2. **`design`** — resolved the same way; stage 01 supplies it
-- Reference (every run):
-  3. **`_config/rnaseq_bulk.yaml`** — `de.formula` and `de.contrast`
-  4. **`_system/resolve_artifact.py`** — the resolver
-  5. **The `rnaseq-de` skill** — shipped by the installed `clawbio` package, read-only
+1. **`counts_gene` and `design`** — resolved by artifact type through
+   `_system/resolve_artifact.py`, never by path (decision 0007). The counts are 02.01's
+   *native* matrix; this sub-stage adapts it itself.
+2. **`_config/rnaseq_bulk.yaml`** — `de.formula` and `de.contrast`, completed from the stage
+   02 menus
+3. **The wrapper** — `$GARS_WRAPPERS/rnaseq-de/rnaseq_de.py`, versioned in this workspace
+4. Reference (every run): `_references/artifact_types.md`, `_system/gars-env.sh`
 
 ## Scope Boundaries
 This sub-stage performs the steps in Process and nothing else.
 
-- Never edit, patch, or work around the skill's code. If it errors, report the error verbatim
-  and stop.
-- **`AttributeError: 'Pandas' object has no attribute 'gene'` is not an upstream defect to escalate.**
-  It is the known symptom of an adapted matrix whose identifier column is not named `gene`. Check
-  `adapted/counts_gene.tsv`'s first column before concluding anything about the skill; if it reads
-  `gene_id`, the adaptation was wrong and re-running with `_system/adapt_counts.py` fixes it.
-- **Never substitute a hand-written analysis.** If the skill cannot run, do not compute DE with
-  another library, do not write your own DESeq2/PyDESeq2 call, and do not approximate results.
-  Report and stop.
-- **Never invent a formula or contrast.** Both come from `_config/rnaseq_bulk.yaml`. If either
-  is missing, ask the user. A wrong contrast produces confident, wrong biology.
-- Never modify the design table, the count matrix, `00_data/`, or `01_samplesheets/`.
-- Never re-run sub-stage 02.01, and never regenerate counts.
-- **Never locate the count matrix yourself.** Do not read 02.01's `result.json`, do not glob its
-  `run/` tree, and do not open its `OUTPUTS.tsv` by eye. Resolution is
-  `_system/resolve_artifact.py`'s job: it applies the reverse-order scan, the `native` preference
-  and the STATUS gate that keep a consumer from silently picking a matrix reshaped for someone
-  else's parser.
-- **Never interpret the results.** Report file paths and row counts. Do not name significant
-  genes, describe pathways, speculate about mechanism, or characterise the biology. That is
-  03_custom_analysis, and the user's judgment.
+- Never resolve the count matrix or design yourself — step 2's resolver call is the only
+  source, and reading `OUTPUTS.tsv` by eye is how a consumer silently picks a matrix reshaped
+  for someone else's parser.
+- Never edit the wrapper's code or the generated `run_de.py`. A change of method is a config
+  or template change to report, not an edit to make.
+- Never run the analysis in the foreground: a pure-Python DE step was SIGKILLed on a login
+  node once (decision 0005). Submit, write STATUS, and return.
+- Never modify the native count matrix, anything under 02.01's directory, `00_data/`, or
+  `01_samplesheets/`.
+- Never resubmit a job whose STATUS is `SUBMITTED` or `RUNNING`.
+- Never execute `DEPRECATED-clawbio-path.md`. It is the retired procedure, kept for fallback
+  by a human decision, not an alternative for you to choose.
+- Do not interpret the results. Report counts of genes tested and significant, paths, and
+  the top-genes table location — the science of what they mean is the user's.
 - If you believe a step should deviate, stop and ask. Do not act first and report afterwards.
 
 ## Definitions
 
-**Skill invocation.** Source `_system/gars-env.sh`, then run from inside `$GARS_SKILLS/rnaseq-de/`
-using `$GARS_PY`. Do not re-declare environment paths in `submit.sh`:
+**Wrapper invocation.** From the workspace root, on stock python:
+
+```bash
+python3 _system/wrappers/rnaseq-de/rnaseq_de.py <subcommand> --project projects/<title> \
+    [--counts <resolved path> --design <resolved path>]
 ```
-PY=~/install/miniconda_clean/envs/gars-bio/bin/python
-$PY rnaseq_de.py --counts <tsv> --metadata <csv> --formula <f> --contrast <c> --output <dir>
-```
-Use the interpreter path, not `conda run` — the latter buffers and can swallow the skill's
-output. This sub-stage needs no `module load` at all; Nextflow and Singularity belong to 02.01.
 
-**DE backend.** The skill exposes `--backend {auto,pydeseq2,simple}` and defaults to `auto`.
-`pydeseq2==0.5.4` is installed in `gars-bio`, so leave the default. Never force `simple` to work
-around a pydeseq2 error — report the error instead.
+`check` and `prepare` take the resolved `--counts` and `--design`; `collect` takes `--model`
+and `--counts-from` (the supplying sub-stage, from the resolver's answer). Exit codes are the
+stage-helper standard: 0 ok, 1 failure, 2 refused, 3 usage.
 
-**Declared requirements.** `_references/assay_stage_skill_map.md` lists what this skill needs (binaries and Python packages). Report a missing requirement by name — "scikit-learn missing, required by rnaseq-de" — not as a raw traceback.
+**Failure vocabulary.** `preconditions`, `config`, `config_unfilled`, `design` (contrast
+level missing or under-sampled), `counts` (a design sample absent from the matrix header);
+`collect` adds `de_results`, `figures`, `report`, `adaptation`.
 
-**Skill importability.** Confirm the skill imports before doing anything else:
-`$PY rnaseq_de.py --help`. This was verified working on 2026-08-11 with `clawbio==0.6.1`,
-`scikit-learn==1.9.0`, and `pydeseq2==0.5.4`. If it fails, that is a preconditions failure (T4):
-report it and stop. Never pip-install on the fly, never vendor or stub a missing module, and
-never swap in a different PCA or DE implementation.
+**Execution venue.** Always `sbatch` (decision 0027, no opt-out). The generated `submit.sh`
+first runs `adapt_counts.py` (stdlib), then `run_de.py` under `$GARS_PY` — pandas, pydeseq2,
+scikit-learn and matplotlib live in `gars-bio`.
 
-**Input resolution.** This sub-stage finds its inputs **by artifact type, not by path**, so a
-change in where 02.01 writes does not break it. The rule and its rationale are in
-`_references/artifact_types.md`; the implementation is `_system/resolve_artifact.py`. Resolution
-prefers `native` artifacts — the `adapted` matrix this sub-stage writes at step 8 is deliberately
-*not* what a later consumer would pick up.
+**The adaptation** (decisions 0010, 0021). nf-core emits `gene_id, gene_name, <samples>`;
+the DE parser requires the identifier column named `gene` and every later column numeric.
+`adapt_counts.py` performs the reshape, writes `adapted/counts_gene.tsv` and
+`adapted/gene_id_to_name.tsv`, and verifies its own output header. The exit gate re-checks
+the result end to end: a complete, plausible DE table in which every gene is anonymous is
+exactly the silent failure that motivated all of this.
 
-**Adapted count matrix.** nf-core emits `gene_id`, `gene_name`, then one column per sample.
-`rnaseq-de` documents "first column is gene identifier" and coerces every later column to
-numeric, so `gene_name` raises `Count matrix contains non-numeric entries`. The two skills
-declare each other as chaining partners, but their formats do not actually meet.
-
-This sub-stage therefore writes an adapted copy into **its own** directory — `adapted/counts_gene.tsv`
-— and preserves the mapping in `adapted/gene_id_to_name.tsv` so results can be annotated
-afterwards. **The source matrix is never modified**; sub-stage 02.01 owns it.
-
-`_system/adapt_counts.py` performs the reshape. It is three changes, and the third is the one that
-bites:
-
-1. `gene_name` dropped — the skill coerces every column after the first to numeric.
-2. Counts rounded to integers — nf-core emits length-scaled floats, DESeq2 wants counts.
-3. **The identifier column renamed `gene_id` → `gene`.** Not cosmetic. The skill does
-   `results_df.reset_index().rename(columns={"index": "gene"})`, which assumes an *unnamed*
-   index. Given `gene_id` the rename matches nothing, and the identifier is then dropped from the
-   output column selection **with no error** — verified directly: with the index named `gene_id`,
-   `"gene" in res.columns` is `False` and no identifier column survives; named `gene`, it is
-   `True`.
-
-**Never hand-write this reshape into `submit.sh`.** A heredoc version omitted the rename and
-produced a real 22,783-gene differential-expression table in which every gene was anonymous. It
-surfaced only because report-writing later crashed on `row.gene`; without that crash it would
-have looked publishable.
-
-**Scheduled execution.** Submit this sub-stage to Slurm; do not run it in the foreground.
-PyDESeq2 dispersion fitting over ~79k genes was SIGKILLed (exit 137) on a login node. An
-analysis sub-stage needs a scheduled allocation just as much as the pipeline does.
-
-**Non-empty output.** The skill refuses a populated `--output` with `FileExistsError`. A rerun
-must move the previous `run/` aside rather than writing into it.
-
-**Metadata table.** The skill requires a `sample_id` column. `01_samplesheets/rnaseq_bulk_design.csv`
-already has exactly that header, so it is passed unchanged as `--metadata`. Never edit it to
-suit the skill.
-
-**Formula.** `de.formula` in config, e.g. `~ condition` or `~ batch + condition`. Every term in
-it must be a column of the design table.
-
-**Contrast.** `de.contrast` in config, `factor,numerator,denominator`, e.g.
-`condition,treated,control`. The factor must be a design column, and both levels must appear in
-that column.
-
-**Valid comparison.** The numerator and denominator levels each have at least 2 samples in the
-design table. Fewer makes dispersion estimation unreliable, and the result is not interpretable.
+**Output schema.** Byte-compatible with the retired skill:
+`run/tables/de_results.csv` (`gene,baseMean,log2FoldChange,pvalue,padj`),
+`run/tables/normalized_counts.csv`, `run/figures/{pca,volcano,ma_plot}.png`, `run/report.md`.
+Projects produced by either path read the same downstream.
 
 ## Process
 1. Reply T1.
-2. Resolve this sub-stage's declared inputs by type, from the workspace root:
+2. Read the STATUS file. If `SUBMITTED`, `RUNNING`, or `COMPLETE`, stop — the router handles
+   those states.
+3. Resolve the inputs:
 
    ```bash
    python3 _system/resolve_artifact.py --project projects/<title> --assay rnaseq_bulk \
        --consumes counts_gene design
    ```
 
-   It reports only artifacts of sub-stages whose `STATUS` is `COMPLETE`, so this subsumes the
-   old "check 02.01 completed" step. Exit 1 → reply T4 with its `missing` and
-   `declared_but_absent` entries and stop. Never fall back to searching for the file.
-3. Take the `counts_gene` path from its `resolved` map. Record the supplying sub-stage — it goes
-   in `HISTORY.md` at step 13, so every result can name where its inputs came from.
-4. Read `de.formula` and `de.contrast` from `_config/rnaseq_bulk.yaml`. If either is missing,
-   reply T5 asking for it, and stop. Do not proceed with a default.
-5. Read `01_samplesheets/rnaseq_bulk_design.csv`. Check that every formula term is a column, that
-   the contrast factor is a column, and that both contrast levels appear in it. Check the
-   comparison is a **valid comparison**. Collect every failure.
-6. Check that the sample IDs in the count matrix header and the design table match. Report each
-   direction separately — samples in the matrix but not the design, and the reverse.
-7. If any check in steps 5-6 failed, reply T3 listing all of them, and stop. Write nothing.
-8. Create the output directory. If it exists and is non-empty, reply T4 and stop.
-9. Reply T2, then write `submit.sh` carrying its own environment and, for the adapted matrix, a
-   call to the shared helper — never an inline reshape:
-
-   ```bash
-   "$GARS_PY" "$WS/_system/adapt_counts.py" --counts "$COUNTS" --out "$SUB/adapted"
-   ```
-
-   It exits non-zero if the matrix is not the expected shape, and verifies its own output header
-   before returning. Then
-   and submit it with `sbatch`. Write `STATUS` as `SUBMITTED <job_id> <iso8601>` and return; do
-   not run the skill in the foreground and do not poll. Collect results on a later invocation,
-   as sub-stage 02.01 does.
-10. If the skill exits non-zero, write `STATUS` as `FAILED <iso8601>`, reply T4 with its verbatim
-    error, and stop.
-11. Run the exit gate. Existence is not sufficient — **check content**:
-    - `report.md`, `tables/de_results.csv` and the three `figures/` PNGs exist and are non-empty
-    - `de_results.csv` has at least one data row
-    - `de_results.csv` **has a gene identifier column**, and its values are non-empty
-
-    The identifier check is not hypothetical: a version of this skill silently dropped the gene
-    column, producing a complete and plausible table in which every gene was anonymous. A
-    file-exists gate passes that happily. If any check fails, write `FAILED`, reply T4, stop.
-12. Write `OUTPUTS.tsv`: `de_results` as `native`, plus the two artifacts this sub-stage created
-    while adapting its input — `counts_gene` as **`adapted`** and `gene_id_map` as `native`.
-    Marking the reshaped matrix `adapted` is what stops a later consumer mistaking it for the
-    authoritative one from 02.01.
-13. Write `STATUS` as `COMPLETE <iso8601>`, append a dated entry to the project's `HISTORY.md`
-    naming which sub-stage supplied the count matrix, and reply T6.
-    The entry must name the **template version** this sub-stage ran under, read from
-    `_references/VERSION`, and the **model id** you are running as (`Model: <id>`; write
-    `unknown` rather than guessing). A workspace can be upgraded between stages and a model can
-    change between runs, so neither the version that created the project nor the model that ran
-    another stage is necessarily the one that produced this result.
+   Exit non-zero → reply T5 naming its `missing` entries and stop. Never dispatch without
+   resolved inputs, and never regenerate a missing artifact.
+4. Run the wrapper's `check` with the resolved `--counts` and `--design`. Exit 1 → reply T5
+   with its `failures` verbatim and stop: `design` failures mean the design or contrast needs
+   the user, `config_unfilled` means the stage 02 menus have not run.
+5. Run `prepare` with the same paths. Exit 1 → reply T5. Exit 0 → it wrote
+   `scripts/run_de.py`, `submit.sh` and the reproducibility bundle.
+6. Submit with `sbatch <sub-stage dir>/submit.sh`; capture the job ID. Write `STATUS` as
+   `SUBMITTED <job_id> <iso8601>`. Reply T2 and stop.
+7. **On a later invocation** where STATUS is `SUBMITTED` or `RUNNING`: query `sacct`/`squeue`.
+   Still active → update STATUS to `RUNNING <job_id> <iso8601>`, reply T3, stop.
+8. If the job has finished, run `collect` with `--model "<the exact model id you are running
+   as>"` (decision 0024) and `--counts-from <the sub-stage the resolver named>`. Exit 2 → the
+   run did not complete: write `STATUS` as `FAILED <iso8601>`, reply T4 with the Slurm log
+   path, stop. Exit 1 → the exit gate failed: write `FAILED`, reply T4 with its `failures`
+   verbatim, stop.
+9. Exit 0 → `collect` has written `OUTPUTS.tsv` (`de_results` native, `counts_gene`
+   **adapted**, `gene_id_map` native — the role marking is what stops a later consumer
+   mistaking the reshaped matrix for 02.01's authoritative one) and `STATUS COMPLETE`.
+   Append its `history_entry` to the project's `HISTORY.md` **verbatim**, replacing
+   `<ISO-8601 date>` with today's date, and reply T6.
 
 ## Response Format
 Every message you send in this sub-stage is one of the templates below, with placeholders
 filled. Add nothing else — in particular, no interpretation of the DE results.
 
-One standing exception, from `_references/contract_standard.md` ("the bounded voice"): if the user asks a direct question, answer it from this workspace's own files — the contracts, `_references/`, and the current project's directory — read-only, in a short paragraph, then restate the pending wait point. Never let the answer become an action, a recommendation to deviate, or a reason to skip a step.
+One standing exception, from `_references/contract_standard.md` ("the bounded voice"): if the
+user asks a direct question, answer it from this workspace's own files — the contracts,
+`_references/`, and the current project's directory — read-only, in a short paragraph, then
+restate the pending wait point. Never let the answer become an action, a recommendation to
+deviate, or a reason to skip a step.
 
 **T1 — Start**
 ```
-Sub-stage 02.02: bulk RNA-seq differential expression.
-Counts:   <resolved counts_gene path>  (type counts_gene, native, from <supplying sub-stage>)
-Design:   <resolved design path> (<n> samples)
-Formula:  <formula>
-Contrast: <contrast>
+Sub-stage 02.02: differential expression.
+Assay: rnaseq_bulk
+Formula: <de.formula> | Contrast: <de.contrast>
+Counts: <resolved counts_gene path> (from <sub-stage>)
+Design: <resolved design path> (<n> samples)
 ```
 
-**T2 — Validation passed**
+**T2 — Submitted**
 ```
-| Check | Result |
-|---|---|
-| Formula terms present in design | Pass |
-| Contrast levels present | <numerator>: <n> samples, <denominator>: <n> samples |
-| Count matrix / design sample match | <n> samples |
+Checks passed. Submitted to Slurm as job <job_id>.
 
-Running differential expression.
-```
+Output: 02_bioinformatics/rnaseq_bulk/02_rnaseq-de/run/
+Status: 02_bioinformatics/rnaseq_bulk/02_rnaseq-de/STATUS
 
-**T3 — Validation failed**
-```
-Validation failed. Nothing was run; no input was modified.
-
-| Check | Detail |
-|---|---|
-| <check> | <what is wrong, and which samples or levels are responsible> |
-
-Correct _config/rnaseq_bulk.yaml or the design, then run stage 02 again.
+Check progress: squeue -j <job_id>
+Run stage 02 again when it finishes to collect results.
 ```
 
-**T4 — Failed or preconditions not met**
+**T3 — Still running**
 ```
-Sub-stage 02.02 could not complete.
+Job <job_id> is <state>, submitted <timestamp>. Nothing was resubmitted.
 
-| Requirement | Status |
-|---|---|
-| 02.01 STATUS is COMPLETE | Yes / No |
-| Count matrix resolves | Yes / No |
-| Output directory empty | Yes / No |
-
-<verbatim skill error if one was produced>
-
-Nothing was retried, nothing was deleted.
+Check progress: squeue -j <job_id>
 ```
 
-**T5 — Design decision required**
+**T4 — Failed**
 ```
-_config/rnaseq_bulk.yaml does not declare <de.formula|de.contrast>.
+Sub-stage 02.02 failed at <stage: run|exit gate>.
 
-Design columns available: condition, group, replicate
-Levels in <column>: <observed levels, with sample counts>
+<verbatim wrapper failures or Slurm error>
 
-Provide the formula and contrast to use. I will not choose them.
+STATUS set to FAILED. Nothing was retried, nothing was deleted.
+Log: 02_bioinformatics/rnaseq_bulk/02_rnaseq-de/logs/<log file>
+```
+
+**T5 — Preconditions not met**
+```
+Cannot start sub-stage 02.02.
+
+<the resolver's missing entries, or the wrapper's failures, verbatim>
+
+<what the user must do: complete 02.01 / fix the design / complete the config menus>
 ```
 
 **T6 — Complete**
 ```
 Sub-stage 02.02 complete.
 
-| Artifact | Path |
+| Output | Path |
 |---|---|
-| DE results | <output>/tables/de_results.csv |
-| Report | <output>/report.md |
-| Figures | <output>/figures/ (pca.png, volcano.png, ma_plot.png) |
+| DE results | run/tables/de_results.csv |
+| Normalized counts | run/tables/normalized_counts.csv |
+| Figures | run/figures/ (pca.png, volcano.png, ma_plot.png) |
+| Report | run/report.md |
 
-Genes tested: <n>
+Genes tested: <n> | Significant at padj < 0.05: <n>
 
 This is the last automated sub-stage for rnaseq_bulk. For anything further — a signature
-score, a custom figure, an integration — ask for a custom analysis: stage 03 drafts a plan for
-your approval and runs it against these artifacts by type.
+score, a custom figure, an integration — ask for a custom analysis: stage 03 drafts a plan
+for your approval and runs it against these artifacts by type.
 ```
 
 ## OUTPUT
@@ -257,23 +188,17 @@ Written to `projects/<project_title>/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/
 
 | Artifact | Contents |
 |---|---|
-| `STATUS` | Sub-stage state. |
-| `OUTPUTS.tsv` | Artifacts produced, by type and role. |
-| `adapted/` | Input reshaped for this skill: `counts_gene.tsv` (role `adapted`) and `gene_id_to_name.tsv`. The source matrix is never modified. |
-| `logs/rnaseq_de.log` | Skill stdout/stderr. |
-| `run/report.md` | Skill report, including its required disclaimer. |
-| `run/tables/` | `de_results.csv`, `normalized_counts.csv`, `qc_summary.csv`. |
-| `run/figures/` | `pca.png`, `volcano.png`, `ma_plot.png`. |
-| `run/reproducibility/` | `commands.sh`, `environment.yml`, `checksums.sha256`. |
-
-`00_data/`, `01_samplesheets/`, and sub-stage 02.01's output are never modified.
+| `STATUS` | Sub-stage state. The authority on completion. |
+| `scripts/run_de.py` | The generated analysis, inputs frozen in. Re-runnable by hand. |
+| `submit.sh` | The generated Slurm script: adaptation, then analysis. |
+| `adapted/` | `counts_gene.tsv` (identifier renamed to `gene`), `gene_id_to_name.tsv`. |
+| `reproducibility/` | `manifest.json` (input checksums, template commit), `commands.sh`. |
+| `logs/` | Slurm stdout/stderr. |
+| `OUTPUTS.tsv` | `de_results` native, `counts_gene` adapted, `gene_id_map` native. |
+| `run/` | `tables/`, `figures/`, `report.md`, the completion marker. |
 
 ## Human check
-Open `run/tables/de_results.csv` and confirm the first column holds real gene identifiers, not
-blanks or row numbers. This check exists because a defect in the skill once produced a complete,
-plausible DE table in which every gene was anonymous, with no error and no warning — a
-file-exists check passes happily on it.
-
-Then confirm the contrast in `run/report.md` is the one you asked for, in the direction you
-asked for: `condition,treated,control` means treated relative to control, and reversing it
-reverses the sign of every fold change.
+Open `run/report.md` and confirm the contrast reads the direction you intended —
+`condition,MT,WT` means positive log2FC is higher in MT, and nothing downstream can detect a
+reversed contrast. Then open `run/figures/pca.png`: if samples do not separate by the tested
+condition, the DE table is answering a question your data may not be asking.

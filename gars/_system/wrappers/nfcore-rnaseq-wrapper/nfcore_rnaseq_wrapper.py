@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
-"""GARS-authored wrapper for nf-core/atacseq 2.1.2 — wrapper #1 of the assay expansion.
+"""GARS-authored wrapper for nf-core/rnaseq 3.26.0 — the ClawBio path's replacement.
 
-The same behavioral contract as the ClawBio wrappers, in the `_system/` idiom (decision 0028):
-one file, JSON on stdout, exit codes 0 ok / 1 failure / 2 refused / 3 usage, deterministic
-artifacts written by code. The machinery every wrapper shares — config parsing, checkout
-verification, the generated `submit.sh` with the requeue guard, the atomic cache harvest —
-lives in `_system/wrapperlib.py`; what is atacseq-specific here is the parameter translation
-and the exit-gate paths.
+Wrapper #2 in the 0028 idiom (see `nfcore-atacseq-wrapper`, the template): one file on
+`_system/wrapperlib.py`, JSON on stdout, exit codes 0/1/2/3, deterministic artifacts. This
+retires the ClawBio `nfcore-rnaseq-wrapper` skill from the critical path (decision 0029) —
+the deprecated procedure is preserved beside the sub-stage contract until a live run under
+this wrapper passes the switchover criteria in DEVELOPMENT.md.
 
-Subcommands, in run order (the sub-stage contract orchestrates; this computes):
+What this wrapper fixes relative to the ClawBio path, each a recorded defect or limitation:
+- `submit.sh` is generated with the requeue guard baked in, never agent-written;
+- crash recovery is Nextflow's native `-resume` (the manifest-gated replay could not
+  continue a crashed run);
+- the version check is `git describe --tags` against `workspace.PIPELINES`, with no
+  `_MANIFEST_VERSION_RE` lookbehind bug to reason around;
+- the derived-reference cache is read AND populated by code (`collect` harvests atomically),
+  where the old contract had the agent copy directories by hand at step 14.
 
-  check    preflight. Validates config, samplesheet, pipeline checkout, executor config and
-           output directory. Writes preflight/check_result.json. Exit 1 lists every failure.
-  prepare  re-validates, then writes params.yaml, submit.sh and the reproducibility bundle.
-           Deterministic: same inputs, same bytes.
-  collect  the exit gate after the Slurm job finishes: every sample must appear in the
-           consensus count-matrix header (content, not existence — decision 0010). Writes
-           OUTPUTS.tsv and STATUS, harvests the aligner index into the derived cache, returns
-           the history entry (template version + model, decision 0024) to append verbatim.
+The cache layout matches the one already populated at
+`<derived>/index/{star,salmon}` + `<derived>/genome.transcripts.fa`, so the existing
+59 GB `nf-core-rnaseq-3.26.0` cache is consumed as-is.
 
 Runs on stock python 3.6.8, stdlib only. Nextflow/java are needed only inside submit.sh.
 """
@@ -25,12 +26,9 @@ Runs on stock python 3.6.8, stdlib only. Nextflow/java are needed only inside su
 import argparse
 import datetime
 import json
-import os
 import sys
 from pathlib import Path
 
-# .../<workspace>/_system/wrappers/nfcore-atacseq-wrapper/<this file>
-# parents: [0]=the wrapper dir, [1]=wrappers, [2]=_system, [3]=the workspace root.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import workspace as ws          # noqa: E402
 import wrapperlib as wl         # noqa: E402
@@ -39,18 +37,14 @@ from wrapperlib import (EXIT_OK, EXIT_FAILURE, EXIT_REFUSED, EXIT_USAGE,   # noq
 
 WORKSPACE = Path(__file__).resolve().parents[3]
 
-ASSAY = "atacseq_bulk"
-SUBSTAGE = "01_nfcore-atacseq-wrapper"
+ASSAY = "rnaseq_bulk"
+SUBSTAGE = "01_nfcore-rnaseq-wrapper"
 PIPELINE_VERSION = ws.PIPELINES[ASSAY].rsplit("-", 1)[1]
 
-ALIGNERS = ("bwa", "bowtie2", "chromap", "star")
-INDEX_PARAM = {"bwa": "bwa_index", "bowtie2": "bowtie2_index",
-               "chromap": "chromap_index", "star": "star_index"}
-PEAK_TYPES = ("narrow", "broad")
-SAMPLESHEET_HEADER = ["sample", "fastq_1", "fastq_2", "replicate"]
+ALIGNERS = ("star_salmon", "star_rsem", "hisat2", "bowtie2_salmon")
+SAMPLESHEET_HEADER = ["sample", "fastq_1", "fastq_2", "strandedness"]
 
-REQUIRED_KEYS = ("reference.fasta", "reference.gtf", "reference.mito_name",
-                 "peaks.type", "peaks.macs_gsize", "compute.partition", "compute.time",
+REQUIRED_KEYS = ("reference.fasta", "reference.gtf", "compute.partition", "compute.time",
                  "compute.cpus", "compute.mem", "compute.work_dir")
 
 
@@ -62,7 +56,6 @@ def paths_for(project):
 
 
 def run_checks(project):
-    """Everything that must be true before a job may be submitted."""
     fails = []
     paths = paths_for(project)
     cfg = {}
@@ -71,32 +64,25 @@ def run_checks(project):
     else:
         cfg = wl.read_config(paths["config"])
         wl.check_config_common(cfg, REQUIRED_KEYS, fails)
-        blacklist = cfg.get("reference.blacklist")
-        if blacklist and not os.access(blacklist, os.R_OK):
-            fails.append(fail("config", "reference.blacklist is not readable: %s" % blacklist))
-        aligner = cfg.get("aligner", "bwa")
+        aligner = cfg.get("aligner", "star_salmon")
         if aligner not in ALIGNERS:
             fails.append(fail("config", "aligner %r is not one of %s"
                               % (aligner, "|".join(ALIGNERS))))
-        ptype = cfg.get("peaks.type", "")
-        if ptype and "<REQUIRED" not in ptype and ptype not in PEAK_TYPES:
-            fails.append(fail("config", "peaks.type %r is not narrow|broad" % ptype))
-        gsize = cfg.get("peaks.macs_gsize", "")
-        if gsize and "<REQUIRED" not in gsize and not gsize.isdigit():
-            fails.append(fail("config", "peaks.macs_gsize %r is not an integer" % gsize))
+        derived = cfg.get("reference.derived_dir")
+        if derived and aligner == "star_salmon":
+            star = Path(derived) / "index" / "star"
+            if star.is_dir() and not (star / "genomeParameters.txt").is_file():
+                # Never reuse a prebuilt aligner index blindly: STAR refuses an index built
+                # by an incompatible version, and the parameters file is where the version
+                # lives (decision 0009).
+                fails.append(fail("config",
+                                  "%s exists but has no genomeParameters.txt; the cache is "
+                                  "damaged or half-built -- do not reuse it" % star))
 
     wl.check_samplesheet(paths["samplesheet"], SAMPLESHEET_HEADER, fails)
-    if paths["samplesheet"].is_file():
-        for i, line in enumerate(
-                paths["samplesheet"].read_text(encoding="utf-8").splitlines()[1:], start=2):
-            row = line.split(",")
-            if len(row) > 3 and row[3] and not row[3].isdigit():
-                fails.append(fail("samplesheet",
-                                  "row %d: replicate %r is not an integer" % (i, row[3])))
-    checkout = wl.check_pipeline(ASSAY, fails)
+    paths["checkout"] = wl.check_pipeline(ASSAY, fails)
     wl.check_executor_config(paths["executor_config"], fails)
     wl.check_run_dir(paths["substage"], fails)
-    paths["checkout"] = checkout
     return fails, cfg, paths
 
 
@@ -113,39 +99,34 @@ def cmd_check(args):
     preflight.mkdir(parents=True, exist_ok=True)
     with ws.atomic_open(preflight / "check_result.json") as fh:
         json.dump({"ok": result["ok"], "failures": fails, "pipeline": ws.PIPELINES[ASSAY],
-                   "wrapper": "nfcore-atacseq-wrapper"}, fh, indent=2, sort_keys=True)
+                   "wrapper": "nfcore-rnaseq-wrapper (gars)"}, fh, indent=2, sort_keys=True)
     result["wrote"] = str((preflight / "check_result.json").relative_to(project))
     return emit(result, EXIT_OK if result["ok"] else EXIT_FAILURE)
 
 
 def build_params(cfg, paths):
-    """The audited translation of _config/<assay>.yaml into pipeline parameters.
-
-    Every key the pipeline receives is listed here — the agent never composes one.
-    """
-    aligner = cfg.get("aligner", "bwa")
+    """The audited translation of _config/<assay>.yaml into pipeline parameters."""
+    aligner = cfg.get("aligner", "star_salmon")
     params = [
         ("input", str(paths["samplesheet"].resolve())),
         ("outdir", str((paths["substage"] / "run" / "results").resolve())),
         ("fasta", cfg["reference.fasta"]),
         ("gtf", cfg["reference.gtf"]),
-        ("mito_name", cfg["reference.mito_name"]),
         ("aligner", aligner),
-        ("macs_gsize", cfg["peaks.macs_gsize"]),
     ]
-    if cfg["peaks.type"] == "narrow":
-        params.append(("narrow_peak", "true"))
-    if cfg.get("reference.blacklist"):
-        params.append(("blacklist", cfg["reference.blacklist"]))
     derived = cfg.get("reference.derived_dir")
-    if derived:
-        index_dir = Path(derived) / aligner
-        if index_dir.is_dir() and any(index_dir.iterdir()):
-            params.append((INDEX_PARAM[aligner], str(index_dir)))
+    if derived and aligner == "star_salmon":
+        d = Path(derived)
+        star, salmon, tfa = d / "index" / "star", d / "index" / "salmon", \
+            d / "genome.transcripts.fa"
+        if star.is_dir() and salmon.is_dir() and tfa.is_file():
+            params += [("star_index", str(star)), ("salmon_index", str(salmon)),
+                       ("transcript_fasta", str(tfa))]
         else:
-            # First run for this pipeline version: build and publish the indices so collect
-            # can harvest them into the cache (mirrors the rnaseq cache discipline, 0009).
+            # First run for this pipeline version: build and publish so collect harvests.
             params.append(("save_reference", "true"))
+    elif derived:
+        params.append(("save_reference", "true"))
     return params
 
 
@@ -207,51 +188,35 @@ def cmd_collect(args):
         return emit(result, EXIT_REFUSED)
 
     cfg = wl.read_config(paths["config"])
-    aligner = cfg.get("aligner", "bwa")
-    ptype = cfg.get("peaks.type", "narrow")
-    peak_dirname = "%s_peak" % ptype
-    peak_suffix = ".narrowPeak" if ptype == "narrow" else ".broadPeak"
+    aligner = cfg.get("aligner", "star_salmon")
     results = substage / "run" / "results"
-    ml = results / aligner / "merged_library"
+    adir = results / aligner
     samples = wl.samplesheet_samples(paths["samplesheet"])
     fails = []
 
-    peaks_dir = ml / "macs2" / peak_dirname
-    peak_files = sorted(peaks_dir.glob("*" + peak_suffix)) if peaks_dir.is_dir() else []
-    if not peak_files:
-        fails.append(fail("peaks", "no *%s under %s" % (peak_suffix, peaks_dir)))
-
-    consensus_dir = peaks_dir / "consensus"
-    consensus_bed = sorted(consensus_dir.glob("*.bed")) if consensus_dir.is_dir() else []
-    if not consensus_bed:
-        fails.append(fail("peaks_consensus", "no consensus *.bed under %s" % consensus_dir))
-    counts = sorted(consensus_dir.glob("*.featureCounts.txt")) if consensus_dir.is_dir() else []
-    if not counts:
-        fails.append(fail("counts_peaks", "no *.featureCounts.txt under %s" % consensus_dir))
+    counts = adir / "salmon.merged.gene_counts_length_scaled.tsv"
+    if not counts.is_file() or counts.stat().st_size == 0:
+        fails.append(fail("counts_gene", "missing or empty %s" % counts))
     else:
-        # Content, not existence: every sample must appear in the count-matrix header.
-        header = ""
-        for line in counts[0].read_text(encoding="utf-8", errors="replace").splitlines():
-            if not line.startswith("#"):
-                header = line
-                break
+        # Content, not existence: every sample must be a column of the merged matrix.
+        header = counts.read_text(encoding="utf-8", errors="replace").splitlines()[0]
         missing = [s for s in samples if s not in header]
         if missing:
-            fails.append(fail("counts_peaks",
+            fails.append(fail("counts_gene",
                               "%s lacks column(s) for sample(s): %s -- a sample lost to a "
                               "failed process disappears here and nowhere downstream"
-                              % (counts[0].name, ", ".join(missing))))
+                              % (counts.name, ", ".join(missing))))
 
-    bigwig_dir = ml / "bigwig"
-    bigwigs = sorted(bigwig_dir.glob("*.bigWig")) if bigwig_dir.is_dir() else []
-    if not bigwigs:
-        fails.append(fail("bigwig", "no *.bigWig under %s" % bigwig_dir))
-
-    bams = sorted(ml.glob("*.sorted.bam")) if ml.is_dir() else []
+    tx_counts = adir / "salmon.merged.transcript_counts.tsv"
+    if not tx_counts.is_file():
+        fails.append(fail("counts_transcript", "missing %s" % tx_counts))
+    tpm = adir / "salmon.merged.gene_tpm.tsv"
+    if not tpm.is_file():
+        fails.append(fail("tpm_gene", "missing %s" % tpm))
+    bams = sorted(adir.glob("*.sorted.bam")) if adir.is_dir() else []
     if not bams:
-        fails.append(fail("bam_genome", "no merged-library *.sorted.bam under %s" % ml))
-
-    multiqc = results / "multiqc" / peak_dirname / "multiqc_report.html"
+        fails.append(fail("bam_genome", "no *.sorted.bam under %s" % adir))
+    multiqc = results / "multiqc" / aligner / "multiqc_report.html"
     if not multiqc.is_file() or multiqc.stat().st_size == 0:
         fails.append(fail("qc_multiqc", "missing or empty %s" % multiqc))
 
@@ -260,22 +225,32 @@ def cmd_collect(args):
         return emit(result, EXIT_FAILURE)
 
     rel = lambda p: str(p.relative_to(substage))  # noqa: E731
-    outputs = [("peaks", rel(peaks_dir)), ("peaks_consensus", rel(consensus_bed[0])),
-               ("counts_peaks", rel(counts[0])), ("bigwig", rel(bigwig_dir)),
-               ("bam_genome", rel(ml)), ("qc_multiqc", rel(multiqc))]
+    outputs = [("counts_gene", rel(counts)), ("counts_transcript", rel(tx_counts)),
+               ("tpm_gene", rel(tpm)), ("bam_genome", rel(adir)),
+               ("qc_multiqc", rel(multiqc))]
     with ws.atomic_open(substage / "OUTPUTS.tsv") as fh:
         fh.write("# type\trole\tpath\n")
         for typ, path in outputs:
             fh.write("%s\tnative\t%s\n" % (typ, path))
 
-    action = wl.harvest_cache(cfg.get("reference.derived_dir"), aligner,
-                              results / "genome" / "index" / aligner,
-                              ["pipeline: nf-core/atacseq %s" % PIPELINE_VERSION,
-                               "fasta: %s" % cfg.get("reference.fasta"),
-                               "gtf: %s" % cfg.get("reference.gtf"),
-                               "built_by_substage: %s" % SUBSTAGE])
-    result["derived_cache"] = {"configured": bool(cfg.get("reference.derived_dir")),
-                               "action": action}
+    # The whole published genome dir is the cache unit here (index/ + transcripts fasta +
+    # filtered annotation), matching the layout the existing 59 GB cache already has.
+    action = "none"
+    derived = cfg.get("reference.derived_dir")
+    if derived:
+        d = Path(derived)
+        if (d / "index").is_dir():
+            action = "reused"
+        else:
+            built = results / "genome"
+            action = wl.harvest_cache(
+                str(d.parent), d.name, built,
+                ["pipeline: nf-core/rnaseq %s" % PIPELINE_VERSION,
+                 "fasta: %s" % cfg.get("reference.fasta"),
+                 "gtf: %s" % cfg.get("reference.gtf"),
+                 "built_by_substage: %s" % SUBSTAGE],
+                provenance_in_target=True)
+    result["derived_cache"] = {"configured": bool(derived), "action": action}
 
     now = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     with ws.atomic_open(substage / "STATUS") as fh:
@@ -288,8 +263,8 @@ def cmd_collect(args):
         "",
         "Template version: %s" % version,
         "Model: %s" % model,
-        "Pipeline: nf-core/atacseq %s (local checkout), aligner %s, %s peaks"
-        % (PIPELINE_VERSION, aligner, ptype),
+        "Pipeline: nf-core/rnaseq %s (local checkout, gars wrapper), aligner %s"
+        % (PIPELINE_VERSION, aligner),
         "Samples: %d (%s)" % (len(samples), ", ".join(samples)),
         "Derived cache: %s" % action,
         "Outputs: " + ", ".join("`%s`" % t for t, _ in outputs),
