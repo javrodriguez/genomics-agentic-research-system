@@ -132,9 +132,12 @@ plan-gated stage 03 (0026) — and the build queue that followed (wrappers #1–
 migration, the assay-aware design table) **completed 2026-08-25** (0028–0031). The standing
 work is now live validation:
 
-0. **One live run per remaining assay** (atacseq, chipseq, cutandrun, methylseq) — rnaseq
-   completed its live validation 2026-08-27 and the ClawBio files are deleted. Each first run
-   settles that assay's derived cache. Held until the data_abl file-quota ticket resolves.
+0. **The reproduction campaign** — [docs/reproduction-campaign.md](docs/reproduction-campaign.md):
+   five public-data projects (HCT116/DKO1 methylation-loss system + the CUT&Tag protocol set)
+   that give every remaining assay its first live run *and* reproduce published results with a
+   score per assay. Supersedes the bare "one live run per assay" item (rnaseq already
+   live-validated 2026-08-27). Each first run also settles that assay's derived cache. Held
+   until the data_abl file-quota ticket resolves.
 
 Item-by-item record of the queue:
 
