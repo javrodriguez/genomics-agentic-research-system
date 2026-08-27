@@ -1,6 +1,10 @@
 ---
 date: 2026-08-25
 status: standing
+kind: lesson
+symptoms:
+  - "stage 03 executed on the login node"
+  - "login-node SIGKILL"
 touches:
   - gars/03_custom_analysis/CONTEXT.md
   - gars/_system/stage03_analysis.py

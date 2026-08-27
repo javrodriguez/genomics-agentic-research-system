@@ -3,7 +3,7 @@
 A workspace for running genomics research projects through dialogue with an LLM agent. The
 filesystem is the architecture; the agent is the navigator. Built on the Interpretable Context
 Methodology (ICM), with bioinformatics executed by nf-core pipelines through GARS-authored
-wrappers (plus installed ClawBio skills where a wrapper does not exist yet).
+wrappers — every assay's sub-stage runs on one (decisions 0028-0031).
 
 > **Scope of this file.** Orientation for *using* a GARS workspace. If you are developing GARS
 > itself — editing contracts, docs or the template — the entry point is the `CLAUDE.md` at the
@@ -34,11 +34,10 @@ of the stage the request maps to. Execute that contract literally.
 | `_system/` | `gars-env.sh` (the execution environment), the stage helpers that compute deterministic artifacts, the index builder | L3 |
 | `projects/` | the work: one directory per project, plus a generated `_index.md` | L4 |
 
-Third-party skills are **not vendored** — they ship with the installed `clawbio` package,
-read-only, resolved at runtime as `$GARS_SKILLS`. GARS-authored wrappers are **versioned
-here**, under `_system/wrappers/`, resolved as `$GARS_WRAPPERS` (decision 0012); the assay
-map's Source column says which kind each sub-stage uses. Either way a sub-stage directory
-holds a `CONTEXT.md`, never a `.py`.
+Wrappers are **versioned here**, under `_system/wrappers/`, resolved as `$GARS_WRAPPERS`
+(decision 0012); every sub-stage's Source in the assay map is `gars`. The retired ClawBio
+skills remain installed with the `clawbio` package but no sub-stage uses them (decision 0029;
+procedures deleted 2026-08-27). A sub-stage directory holds a `CONTEXT.md`, never a `.py`.
 
 **Derived artifacts are computed by code, not written by you.** Samplesheets, design tables, the
 project index and artifact resolution come from `_system/` scripts. A contract that names one is
@@ -63,7 +62,10 @@ helpers and the resolver need no conda environment; stage 02's skills do.
 
 ## State
 
-There is no status file for the workspace. State is the filesystem:
+There is no status file for the workspace. State is the filesystem — and every session boot
+renders it for you: the SessionStart hook rebuilds `projects/_index.md` and prints
+`_system/project_state.py`'s per-project catch-up (how far each assay got, which decisions
+are unmade, the last HISTORY entries). Run it any time; it is a render, never a record:
 
 | Question | Answered by |
 |---|---|

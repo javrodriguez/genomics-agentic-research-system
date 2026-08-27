@@ -45,15 +45,15 @@ mkdir -p "$APPTAINER_CACHEDIR" "$NXF_HOME"
 # --- resolved locations -------------------------------------------------------------------
 export GARS_PY="$GARS_BIO/bin/python"
 
-# Third-party skills are never vendored. Resolve them from the installed clawbio package: the
-# literal site-packages path embeds a Python version that changes on any environment rebuild.
+# The retired clawbio skills (decision 0029) are resolved for inspection only -- no sub-stage
+# invokes them. The literal site-packages path embeds a Python version that changes on any
+# environment rebuild, hence the runtime resolution. Empty if clawbio is absent; that is fine.
 GARS_SKILLS=$("$GARS_PY" -c "import clawbio, pathlib; print(pathlib.Path(clawbio.__file__).parent / 'skills')" 2>/dev/null)
 export GARS_SKILLS
 
 # GARS-authored wrappers, versioned in this workspace and ours to maintain (decision 0012).
-# The rule: third-party skills are installed and read-only; wrappers we write live here.
-# Deliberately NOT in the fail-fast list below -- no wrapper exists yet, and stage 02 must keep
-# working until the first one lands.
+# Every sub-stage runs on one (decisions 0028-0031); the retired clawbio skills stay installed
+# but uninvoked (decision 0029).
 export GARS_WRAPPERS="${GARS_WRAPPERS:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/wrappers}"
 
 # Pinned pipeline checkout. Cloned over the git protocol, because resolving a remote
@@ -64,7 +64,7 @@ export GARS_REFS="${GARS_REFS:-$GARS_ROOT/install/refs}"
 
 # --- fail fast ----------------------------------------------------------------------------
 # A missing piece here becomes an obscure failure minutes into a scheduled job otherwise.
-for _v in GARS_BIO GARS_NXF GARS_SKILLS; do
+for _v in GARS_BIO GARS_NXF; do
     if [ -z "${!_v:-}" ] || [ ! -e "${!_v}" ]; then
         echo "[gars-env] FATAL: $_v is unset or missing (${!_v:-unset})" >&2
         echo "[gars-env] See _references/environment.md for the install procedure." >&2

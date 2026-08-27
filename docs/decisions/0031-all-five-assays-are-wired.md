@@ -1,6 +1,10 @@
 ---
 date: 2026-08-25
 status: standing
+kind: decision
+symptoms:
+  - "replicate-uniqueness rule encoded bulk-RNA assumptions"
+  - "group-of-one refusal wrong for chipseq input controls"
 touches:
   - gars/_system/wrappers/nfcore-chipseq-wrapper/
   - gars/_system/wrappers/nfcore-cutandrun-wrapper/

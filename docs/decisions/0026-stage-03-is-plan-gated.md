@@ -1,6 +1,7 @@
 ---
 date: 2026-08-24
 status: standing
+kind: decision
 touches:
   - gars/03_custom_analysis/CONTEXT.md
   - gars/_system/stage03_analysis.py

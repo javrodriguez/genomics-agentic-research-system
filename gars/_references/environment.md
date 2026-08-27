@@ -71,7 +71,10 @@ already produced one false "the module stack is broken" diagnosis.
 
 ## The `gars-bio` conda environment
 
-Created 2026-08-11. Holds the ClawBio library and everything both skills need.
+Created 2026-08-11. Holds the ClawBio library and everything both retired skills needed —
+kept as the provider of PyDESeq2, scikit-learn and the container runtime (the skills are
+retired from every sub-stage, decision 0029; the sections below stand as environment
+provenance).
 
 | Field | Value |
 |---|---|
@@ -98,7 +101,8 @@ installs a 2017 build, see the trap above.
 
 ### Why these two packages
 
-**`clawbio`** — both skills import a shared ClawBio library that was not copied with them:
+**`clawbio`** — the (now retired, decision 0029) skills import a shared ClawBio library that
+was not copied with them:
 
 | Skill | Imports |
 |---|---|

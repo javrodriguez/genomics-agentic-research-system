@@ -1,6 +1,10 @@
 ---
 date: 2026-08-19
 status: standing
+kind: decision
+symptoms:
+  - "samplesheet emitted token by token"
+  - "76-row hand-curated index"
 touches:
   - gars/01_prepare_samplesheets/CONTEXT.md
   - gars/00_initialize_project/CONTEXT.md

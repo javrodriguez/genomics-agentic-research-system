@@ -1,6 +1,10 @@
 ---
 date: 2026-08-24
 status: standing
+kind: lesson
+symptoms:
+  - "DE table crash on row.gene"
+  - "prescription stayed prose for eight decisions"
 touches:
   - gars/_system/adapt_counts.py
   - gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md

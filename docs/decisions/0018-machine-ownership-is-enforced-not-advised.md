@@ -1,6 +1,10 @@
 ---
 date: 2026-08-21
 status: standing
+kind: lesson
+symptoms:
+  - "user hand-edited files.csv to narrow the cohort"
+  - "do-not-edit banner ignored (it is only a comment)"
 touches:
   - gars/_system/workspace.py
   - gars/_system/stage00_register.py

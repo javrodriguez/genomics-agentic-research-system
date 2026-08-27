@@ -17,9 +17,13 @@ in priority order. Volatile; update it whenever work stops or a run changes stat
 
 **[docs/decisions/](docs/decisions/CONTEXT.md)** — one file per decision, with frontmatter naming
 the paths it constrains. Durable; append-only. **Before changing anything under `gars/`, grep its
-index for the path you are about to touch.** Most of what looks like an odd choice is recorded
-there with the failure that motivated it, and reversing one without reading is how the lesson
-gets lost.
+index for the path you are about to touch** — and when debugging, grep its Symptoms column for
+what you are seeing. Most of what looks like an odd choice is recorded there with the failure
+that motivated it, and reversing one without reading is how the lesson gets lost.
+
+**A lesson lands in the artifact it constrains** (decision 0032): a template default or comment,
+a menu entry, a preflight check, or a decision file with accurate `touches` — never parked in
+status prose. DEVELOPMENT.md may point at where a lesson landed; it is not a lesson's home.
 
 | Document | Covers |
 |---|---|
@@ -56,9 +60,10 @@ gars/               THE WORKSPACE — users clone this repo and work in here.
   repo-level material (this file, `docs/`, `DEVELOPMENT.md`) stays *outside* it — and anything
   `gars/` cites must live *inside* it, since a user working in `gars/` should never need to
   reach up into the repo.
-- **Skills are not vendored.** They ship with the installed `clawbio` package and are read-only.
-  There is no skills directory in the workspace. Resolve them via `$GARS_SKILLS` from
-  `gars/_system/gars-env.sh`.
+- **The ClawBio skills are retired, not gone.** They remain installed with the `clawbio`
+  package but no sub-stage invokes them (decision 0029; procedures deleted 2026-08-27). Every
+  sub-stage runs on a GARS wrapper under `gars/_system/wrappers/`. `$GARS_SKILLS` still
+  resolves, for inspection only.
 - **`$HOME` is not the work area.** `/gpfs/home/<user>` and `/gpfs/data/abl/home/<user>` are
   different directories. Use `GARS_ROOT`; using `$HOME` once pointed the container cache at an
   empty directory and silently re-pulled 26 images.

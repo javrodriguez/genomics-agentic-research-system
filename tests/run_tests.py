@@ -1001,6 +1001,91 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
                       (substage / "OUTPUTS.tsv").read_text())
 
 
+class ProjectStateTests(unittest.TestCase):
+    """The catch-up render (decision 0033): derived from the filesystem, writes nothing,
+    and says the things a returning session needs -- unmade decisions, STATUS, artifacts,
+    history. Own throwaway workspace so it proves the render against a real stage-00 chain."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp(prefix="gars-test-state-"))
+        cls.ws = cls.tmp / "gars"
+        cls.ws.mkdir()
+        for d in ("_system", "_references", "_templates"):
+            shutil.copytree(str(GARS / d), str(cls.ws / d))
+        (cls.ws / "projects").mkdir()
+        cls.src = cls.tmp / "seqrun"
+        cls.src.mkdir()
+        for s in ("A1_S1", "A2_S2"):
+            for r in ("R1", "R2"):
+                write_fastq_gz(cls.src / ("%s_L001_%s_001.fastq.gz" % (s, r)))
+        reg = cls.ws / "_system" / "stage00_register.py"
+        for args in (["create", "--title", "state-test", "--assays", "rnaseq_bulk"],
+                     ["link", "--project", "projects/state-test", "--assay", "rnaseq_bulk",
+                      "--source", str(cls.src)],
+                     ["finalize", "--project", "projects/state-test"]):
+            code, _, raw = run(reg, args, cls.ws)
+            assert code == 0, raw
+        cls.state = cls.ws / "_system" / "project_state.py"
+        cls.project = cls.ws / "projects" / "state-test"
+
+    @classmethod
+    def tearDownClass(cls):
+        for root, dirs, files in os.walk(str(cls.tmp)):
+            for f in files:
+                try:
+                    os.chmod(os.path.join(root, f), stat.S_IRUSR | stat.S_IWUSR)
+                except OSError:
+                    pass
+        shutil.rmtree(str(cls.tmp), ignore_errors=True)
+
+    def _tree_snapshot(self):
+        snap = {}
+        for root, dirs, files in os.walk(str(self.ws)):
+            for f in files:
+                fp = os.path.join(root, f)
+                st = os.stat(fp)
+                snap[fp] = (st.st_size, st.st_mtime_ns)
+        return snap
+
+    def test_00_render_names_the_unmade_decisions(self):
+        code, _, raw = run(self.state, [], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertIn("state-test", raw)
+        self.assertIn("config decisions still unmade:", raw)
+        self.assertIn("formula", raw)             # the seeded <REQUIRED> keys surface by name
+        self.assertIn("fasta", raw)               # (bare keys -- configure.py's own idiom)
+        self.assertIn("stage 02: not started", raw)
+        self.assertIn("### history", raw)          # stage 00 already appended entries
+
+    def test_01_status_is_the_only_authority_and_artifacts_render(self):
+        sub = self.project / "02_bioinformatics" / "rnaseq_bulk" / "01_nfcore-rnaseq-wrapper"
+        sub.mkdir(parents=True)
+        (sub / "STATUS").write_text("COMPLETE 2026-08-27T00:00:00Z\n")
+        (sub / "OUTPUTS.tsv").write_text(
+            "type\trole\tpath\ncounts_gene\tnative\trun/results/x.tsv\n")
+        code, _, raw = run(self.state, [], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertIn("01_nfcore-rnaseq-wrapper: COMPLETE", raw)
+        self.assertIn("artifacts: counts_gene", raw)
+
+    def test_02_render_writes_nothing_and_is_deterministic(self):
+        before = self._tree_snapshot()
+        code1, _, raw1 = run(self.state, [], self.ws)
+        code2, _, raw2 = run(self.state, [], self.ws)
+        after = self._tree_snapshot()
+        self.assertEqual(code1, 0)
+        self.assertEqual(raw1, raw2)               # byte-identical across runs
+        self.assertEqual(before, after)            # a render, not a record
+
+    def test_03_single_project_flag(self):
+        code, _, raw = run(self.state, ["--project", "projects/state-test"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertIn("state-test", raw)
+        code, _, _ = run(self.state, ["--project", "projects/nope"], self.ws)
+        self.assertEqual(code, 2)
+
+
 class GuardHookTests(unittest.TestCase):
     """The mechanical scope boundaries (decision 0022). Every deny is an action no contract
     instructs; every allow is a step some contract does instruct."""

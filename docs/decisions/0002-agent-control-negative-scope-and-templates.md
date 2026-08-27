@@ -1,6 +1,11 @@
 ---
 date: 2026-08-10
 status: standing
+kind: lesson
+symptoms:
+  - "agent read a colleague's files"
+  - "volunteered analysis of an unrelated experiment"
+  - "instructions present and ignored"
 touches:
   - gars/_references/contract_standard.md
   - all stage contracts

@@ -13,9 +13,9 @@ and `02_bioinformatics/<Assay ID>/` for its sub-stages.
 | CUT&RUN / CUT&Tag | cutandrun | 02_bioinformatics | 01_nfcore-cutandrun-wrapper | nfcore-cutandrun-wrapper | gars | samplesheet | peaks, peaks_consensus, bigwig, bam_genome, qc_multiqc |
 | Bisulfite (WGBS/RRBS) | methylseq | 02_bioinformatics | 01_nfcore-methylseq-wrapper | nfcore-methylseq-wrapper | gars | samplesheet | methylation_coverage, methylation_calls, bedgraph, qc_multiqc |
 
-The **Source** column says where a skill's code lives (decision 0012): `clawbio` skills ship
-read-only with the installed package and resolve via `$GARS_SKILLS`; `gars` wrappers are
-versioned in this repository under `_system/wrappers/` and resolve via `$GARS_WRAPPERS`.
+The **Source** column says where a skill's code lives (decision 0012). Every current row is
+`gars`: wrappers versioned in this repository under `_system/wrappers/`, resolved via
+`$GARS_WRAPPERS`. (`clawbio` was the earlier kind — retired by decision 0029.)
 
 Sub-stages run in the order listed. `Consumes` and `Produces` use the closed vocabulary in
 `artifact_types.md`; stage 02's router checks that every consumed type is available before
@@ -35,10 +35,9 @@ as a preconditions failure **naming the requirement**, rather than surfacing a r
 | nfcore-cutandrun-wrapper | >=3.6 (stdlib only) | `python3`, `nextflow`, `java`, `git` | none | stock python + `gars-nxf` at submit time |
 | nfcore-methylseq-wrapper | >=3.6 (stdlib only) | `python3`, `nextflow`, `java`, `git` | none | stock python + `gars-nxf` at submit time |
 
-The clawbio `nfcore-rnaseq-wrapper` and `rnaseq-de` skills are retired from the critical path
-(decision 0029) but remain installed with the package; the deprecated procedures sit beside
-each rnaseq sub-stage contract as `DEPRECATED-clawbio-path.md` until the switchover criteria
-in the source repo's DEVELOPMENT.md are met.
+The clawbio `nfcore-rnaseq-wrapper` and `rnaseq-de` skills are retired (decision 0029) and
+remain installed with the package but uninvoked; their deprecated procedure files were deleted
+2026-08-27 after all three switchover criteria were met on a live run.
 
 - **`scikit-learn`** is used by the DE analysis for exactly one thing — `PCA(n_components=2)`
   producing `figures/pca.png`. The generated script fails at import without it.
@@ -57,16 +56,9 @@ Note also that the skills do **not** carry the pipeline's own tool dependencies.
 declares a container per module — all 78 of them — so STAR, Salmon, samtools and the rest are
 supplied by images, not by this environment. That is why `gars-bio` contains no aligner.
 
-The authoritative source is each skill's own `SKILL.md` frontmatter
-(`metadata.openclaw.requires.bins` and `metadata.openclaw.install`). This table summarises only
-the skills GARS actually invokes; regenerate it when the assay map gains a sub-stage or when
-`clawbio` is upgraded:
-
-```bash
-BIO=~/install/miniconda_clean/envs/gars-bio
-SKILLS=$($BIO/bin/python -c "import clawbio, pathlib; print(pathlib.Path(clawbio.__file__).parent / 'skills')")
-# read metadata.openclaw from $SKILLS/<skill>/SKILL.md
-```
+The authoritative source is each wrapper's own `SKILL.md` frontmatter under
+`_system/wrappers/<name>/`. This table summarises only the skills GARS actually invokes;
+regenerate it when the assay map gains a sub-stage.
 
 Coverage caveat: across the 95 installed skills, `catalog.json` populates `dependencies` for
 only 44, while the `SKILL.md` frontmatter covers 91. Prefer the frontmatter.

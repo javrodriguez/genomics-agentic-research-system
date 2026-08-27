@@ -85,7 +85,7 @@ sub-stage contracts, and `gars/_references/environment.md`.
 |---|---|---|---|
 | Stage `CONTEXT.md` | L2 | prose contract | agent executes it literally; stops and asks rather than deviating |
 | Sub-stage `CONTEXT.md` | L2 | prose contract | owns Process, Response Format, OUTPUT |
-| Skill (installed with `clawbio`, resolved as `$GARS_SKILLS`) | code | deterministic CLI | **canonical, read-only**; agent may never edit, patch, or substitute it |
+| Skill — a GARS wrapper under `_system/wrappers/` (the installed `clawbio` skills it replaced are retired, 0029) | code | deterministic CLI | **canonical, read-only**; agent may never edit, patch, or substitute it |
 
 Stage 02 is a **pure router**: it resolves assay → ordered sub-stages from
 `_references/assay_stage_skill_map.md`, checks each predecessor's `STATUS`, hands control to the

@@ -15,8 +15,8 @@ GARS contract      decides THAT this assay is processed, with which reference an
    │ invokes
    ▼
 GARS wrapper       validates inputs, writes params.yaml + submit.sh, gates results
-                     (_system/wrappers/, stdlib; since 0029 -- the ClawBio skills are the
-                      deprecated fallback and remain installed in gars-bio)
+                     (_system/wrappers/, stdlib; the retired ClawBio skills remain installed
+                      in gars-bio but uninvoked -- 0029, procedures deleted 2026-08-27)
    │ launches
    ▼
 Nextflow           reads the pipeline, builds the task graph, submits Slurm jobs
@@ -249,9 +249,9 @@ source "$WS/_system/gars-env.sh"
 That script is the **only** definition of how to run a GARS skill. It sets `PATH` (with
 `gars-nxf` first, so `java` resolves to OpenJDK 17 rather than the system Java 1.8 that Nextflow
 refuses), `JAVA_HOME`, the Apptainer and Nextflow caches, and exports `$GARS_PY`,
-`$GARS_SKILLS`, `$GARS_PIPELINES` and `$GARS_REFS`. It exits non-zero if an environment or the
-skills directory is missing, so a broken setup fails at submission rather than minutes into a
-scheduled job.
+`$GARS_SKILLS` (inspection only since 0029), `$GARS_PIPELINES` and `$GARS_REFS`. It exits
+non-zero if an environment is missing, so a broken setup fails at submission rather than
+minutes into a scheduled job.
 
 It exists because the same ~20 lines of setup were previously copy-pasted into every
 `submit.sh`, in every project, for every sub-stage — and they drifted. A recovered script was

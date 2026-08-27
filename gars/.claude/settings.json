@@ -10,6 +10,16 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/_system/session_state.sh\""
+          }
+        ]
+      }
     ]
   },
   "permissions": {

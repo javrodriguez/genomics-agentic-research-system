@@ -1,6 +1,11 @@
 ---
 date: 2026-08-25
 status: standing
+kind: defect
+symptoms:
+  - "published log2FoldChange correlates 0.33 with actual ratios"
+  - "gene at padj 1e-12 shown as 1.04x change"
+  - "shrinkage coefficient resolves wrong or sign-flipped"
 touches:
   - gars/_system/wrappers/nfcore-rnaseq-wrapper/
   - gars/_system/wrappers/rnaseq-de/
@@ -9,6 +14,13 @@ touches:
   - gars/_references/assay_stage_skill_map.md
 ---
 # The ClawBio path for rnaseq is deprecated, not deleted
+
+> **Executed, 2026-08-27.** All three switchover criteria were met on a live run
+> (`rnaseq-wrapper-validation`: 02.01 job 26842968, 02.02 job 26851720, numerical check
+> r = 0.999952) and both `DEPRECATED-clawbio-path.md` files were deleted the same day. The
+> fallback below is now history-only: reviving the path means `git checkout` from history,
+> not a `git mv`. The criteria and reasoning stand as written.
+
 
 ## What happened
 

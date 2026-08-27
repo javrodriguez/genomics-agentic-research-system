@@ -2,9 +2,8 @@
 
 ## Purpose
 Run upstream bulk RNA-seq preprocessing — FASTQ to gene count matrix — through the
-GARS-authored `nfcore-rnaseq-wrapper` (decision 0029; the ClawBio-skill procedure this
-replaces is preserved beside this file as `DEPRECATED-clawbio-path.md` until the switchover
-criteria in DEVELOPMENT.md are met). This sub-stage submits the job and returns; it does not
+GARS-authored `nfcore-rnaseq-wrapper` (decision 0029; the retired ClawBio-skill procedure
+was deleted 2026-08-27 after all three switchover criteria were met on a live run). This sub-stage submits the job and returns; it does not
 wait for completion. A later invocation reads `STATUS` and collects results.
 
 **The computation is not yours.** The wrapper's `check` validates, `prepare` writes
@@ -37,8 +36,6 @@ This sub-stage performs the steps in Process and nothing else.
 - Never resubmit a job whose STATUS is `SUBMITTED` or `RUNNING`.
 - Never delete or move a populated `run/` directory; `check` refuses it for a reason. Surface
   the refusal.
-- Never execute `DEPRECATED-clawbio-path.md`. It is the retired procedure, kept for fallback
-  by a human decision, not an alternative for you to choose.
 - Do not interpret the biology. Report counts, paths and QC locations only.
 - If you believe a step should deviate, stop and ask. Do not act first and report afterwards.
 

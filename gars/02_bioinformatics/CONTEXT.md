@@ -80,28 +80,21 @@ decision: `condition,MT,WT` measures MT relative to WT, and reversing it reverse
 every fold change. A pair whose levels do not both have at least 2 samples is marked
 `testable: false` and is not a choice.
 
-**Skill.** The executable implementation a sub-stage invokes. The assay map's **Source**
-column says where it lives (decision 0012): `clawbio` skills ship read-only with the installed
-package and resolve via `$GARS_SKILLS`; `gars` wrappers are versioned in this workspace under
-`_system/wrappers/` and resolve via `$GARS_WRAPPERS`. Either way a sub-stage directory contains
-a `CONTEXT.md`, never a `.py` — the wrapper code lives in `_system/`, not in the contract tree.
+**Skill.** The executable implementation a sub-stage invokes. Every sub-stage's Source in
+the assay map is `gars` (decisions 0012, 0029): wrappers are versioned in this workspace under
+`_system/wrappers/`, resolve via `$GARS_WRAPPERS`, and run from anywhere on stock python. A
+sub-stage directory contains a `CONTEXT.md`, never a `.py` — the wrapper code lives in
+`_system/`, not in the contract tree. A gars wrapper is versioned with the template, so its
+version IS the template version.
 
-`_system/gars-env.sh` resolves the skills directory at runtime and exports it as `$GARS_SKILLS`,
-along with `$GARS_PY`, `PATH`, `JAVA_HOME` and the caches. Source it rather than hardcoding
-anything — the literal site-packages path embeds a Python version that changes whenever the
-environment is rebuilt.
+`_system/gars-env.sh` provides the execution environment — `$GARS_PY`, `PATH`, `JAVA_HOME`
+and the caches. Source it rather than hardcoding anything — the literal site-packages path
+embeds a Python version that changes whenever the environment is rebuilt.
 
 ```bash
 source "$WS/_system/gars-env.sh"
-cd "$GARS_SKILLS/nfcore-rnaseq-wrapper"    # clawbio skills run from inside their own directory
-python3 "$GARS_WRAPPERS/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py" ...   # gars wrappers run from anywhere
+python3 "$GARS_WRAPPERS/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py" ...   # wrappers run from anywhere
 ```
-
-Each clawbio skill runs as a bare script from within its own directory, because it imports its
-siblings by top-level name; their versions are pinned by `clawbio` in
-`_references/gars-bio.lock.txt`, so upgrading `clawbio` changes the skills — a deliberate and
-recorded act rather than an untracked edit. A gars wrapper is versioned with the template, so
-its version IS the template version.
 
 ## Process
 1. Activated when the user asks to run bioinformatics, or names an assay to process. Reply T1.

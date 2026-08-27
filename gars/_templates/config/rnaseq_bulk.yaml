@@ -12,6 +12,9 @@
 # `auto` delegates to nf-core's RSeQC check, which cannot return a confident *stranded* call on an
 # unstranded library and reports it as "N/N samples failed strandedness check" -- a warning that
 # reads like a failure and is not one. Set it explicitly if the library prep is known.
+# This lab's measured answer (decision 0032): the TALL leukemia libraries are UNSTRANDED --
+# RSeQC sense ~= antisense on 10/10 samples, corroborated by the lab's sns run. For those
+# libraries set `unstranded` explicitly and the warning disappears.
 strandedness: auto
 
 # --- what to align against ---------------------------------------------------------------------

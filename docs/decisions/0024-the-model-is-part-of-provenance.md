@@ -1,6 +1,9 @@
 ---
 date: 2026-08-24
 status: standing
+kind: decision
+symptoms:
+  - "cannot name which model executed a stage"
 touches:
   - gars/_system/stage00_register.py
   - gars/_system/stage01_samplesheet.py

@@ -1,6 +1,14 @@
 ---
 date: 2026-08-12
 status: standing
+kind: defect
+symptoms:
+  - "GitHub API rate limit on pipeline fetch"
+  - "checkout reported as version 'master' (ClawBio#333 regex lookbehind)"
+  - "NODE_FAIL, child jobs on wrong partition"
+  - "resume rejected after crash"
+  - "SUBREAD_FEATURECOUNTS failed after counts written (no gene_biotype)"
+  - "STAR index version mismatch"
 touches:
   - gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md
   - gars/_references/config_schema.md

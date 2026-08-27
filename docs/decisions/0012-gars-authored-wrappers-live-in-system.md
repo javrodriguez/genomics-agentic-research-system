@@ -1,6 +1,7 @@
 ---
 date: 2026-08-19
 status: standing
+kind: decision
 touches:
   - gars/_system/gars-env.sh
   - gars/_references/assay_stage_skill_map.md

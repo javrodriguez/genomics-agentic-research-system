@@ -1,6 +1,10 @@
 ---
 date: 2026-08-24
 status: standing
+kind: decision
+symptoms:
+  - "forbidden write succeeded with only prose against it"
+  - "ad-hoc pip install mid-stage"
 touches:
   - gars/.claude/settings.json
   - gars/_system/guard_hook.py

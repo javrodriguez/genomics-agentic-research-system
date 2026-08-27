@@ -1,6 +1,9 @@
 ---
 date: 2026-08-13
 status: standing
+kind: decision
+symptoms:
+  - "index version incompatibility surfaces only at STAR_ALIGN"
 touches:
   - gars/_references/config_schema.md
 ---

@@ -1,6 +1,10 @@
 ---
 date: 2026-08-20
 status: standing
+kind: lesson
+symptoms:
+  - "upgrade machinery compounding from an unexamined premise"
+  - "370 lines deleted same day"
 touches:
   - README.md
   - CLAUDE.md

@@ -1,6 +1,7 @@
 ---
 date: 2026-08-12
 status: standing
+kind: decision
 touches:
   - gars/_references/assay_stage_skill_map.md
   - docs/assay-expansion.md

@@ -1,6 +1,9 @@
 ---
 date: 2026-08-20
 status: superseded
+kind: decision
+symptoms:
+  - "fix existed upstream, workspace could not tell"
 touches:
   - gars/_system/workspace.py
   - gars/_system/upgrade.py

@@ -115,7 +115,7 @@ Where a stage's work is deterministic, the Process is not a specification of the
 an invocation of it: run the helper in `_system/`, branch on its exit code, render its JSON
 through the templates. Stage 01 works this way; stage 02 has always worked this way, delegating
 to nf-core pipelines — since v0.7.0 through GARS-authored wrappers versioned in the repo, with
-the original ClawBio skill path preserved as a deprecated fallback.
+the retired ClawBio skill path deleted after the live switchover validation (decision 0029).
 
 ### Why negative constraints
 
@@ -180,10 +180,11 @@ unchanged inputs reproduces its output byte for byte.
 `gars/_templates/project/` and filling its placeholders. The stamp is the schema, so there is one
 home for the shape of a project rather than a description restated in each place that needs it.
 
-**Skills are orchestrated, not vendored.** Analysis is delegated to external
-[ClawBio](https://github.com/ClawBio/ClawBio) skills. Sub-stage contracts forbid patching skill
-code or substituting a hand-written analysis — if a tool cannot run, the stage reports the error
-verbatim and stops.
+**Wrappers are orchestrated, not improvised.** Analysis runs through GARS-authored wrappers
+versioned in this repository (`gars/_system/wrappers/`), which replaced the external
+[ClawBio](https://github.com/ClawBio/ClawBio) skills after four recorded defects (decision
+0029). Sub-stage contracts forbid patching wrapper code or substituting a hand-written
+analysis — if a tool cannot run, the stage reports the error verbatim and stops.
 
 ---
 

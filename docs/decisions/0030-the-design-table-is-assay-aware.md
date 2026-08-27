@@ -1,6 +1,9 @@
 ---
 date: 2026-08-25
 status: standing
+kind: decision
+symptoms:
+  - "ChIP-family design has no antibody/control columns"
 touches:
   - gars/_system/workspace.py
   - gars/_system/stage00_register.py

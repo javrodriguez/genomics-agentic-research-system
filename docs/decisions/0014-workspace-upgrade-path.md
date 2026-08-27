@@ -1,6 +1,7 @@
 ---
 date: 2026-08-20
 status: superseded
+kind: decision
 touches:
   - gars/_system/upgrade.py
   - gars/_system/workspace.py

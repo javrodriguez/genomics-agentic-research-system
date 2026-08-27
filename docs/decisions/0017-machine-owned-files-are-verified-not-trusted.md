@@ -1,6 +1,11 @@
 ---
 date: 2026-08-20
 status: standing
+kind: lesson
+symptoms:
+  - "files.csv accounted for 40 of 152 files"
+  - "two derived files agree while both damaged"
+  - "cause inferred from symptoms instead of mtimes"
 touches:
   - gars/_system/workspace.py
   - gars/_system/stage00_register.py

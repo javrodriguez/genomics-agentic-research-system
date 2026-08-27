@@ -1,6 +1,7 @@
 ---
 date: 2026-08-08
 status: standing
+kind: decision
 touches:
   - gars/CLAUDE.md
   - gars/CONTEXT.md

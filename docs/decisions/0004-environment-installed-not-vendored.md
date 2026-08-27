@@ -1,6 +1,10 @@
 ---
 date: 2026-08-11
 status: standing
+kind: decision
+symptoms:
+  - "ModuleNotFoundError: No module named 'clawbio'"
+  - "conda solve unsatisfiable (c-ares)"
 touches:
   - gars/_references/environment.md
   - gars/_system/gars-env.sh

@@ -1,6 +1,11 @@
 ---
 date: 2026-08-13
 status: standing
+kind: defect
+symptoms:
+  - "Count matrix contains non-numeric entries"
+  - "de_results.csv with anonymous genes / no identifier column"
+  - "FileExistsError on rerun"
 touches:
   - gars/_references/artifact_types.md
   - gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md

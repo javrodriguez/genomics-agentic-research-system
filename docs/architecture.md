@@ -14,8 +14,9 @@ way it is; every rule below names the decision that produced it, usually from a 
 A **workspace** is a git checkout of this repository; you work in `gars/`. Inside it, numbered
 folders are pipeline **stages**, each holding a `CONTEXT.md` **contract** — a prose specification
 an LLM agent executes literally. The agent runs the dialogue and holds the gates; **deterministic
-work is done by scripts in `_system/`**, not by the agent. Analysis is delegated to external
-ClawBio **skills**, which are installed and read-only. State lives entirely in files: a project's
+work is done by scripts in `_system/`**, not by the agent. Analysis runs through GARS-authored
+**wrappers** versioned in `_system/wrappers/` (the external ClawBio skills they replaced stay
+installed but uninvoked — decision 0029). State lives entirely in files: a project's
 `HISTORY.md` says what happened, `STATUS` files say how far a run got, and `OUTPUTS.tsv` says what
 each sub-stage produced.
 
@@ -179,8 +180,9 @@ its mechanism by [0016](decisions/0016-workspaces-are-checkouts.md) but not in t
 
 ## Constraints worth knowing before you change anything
 
-- **Skills are never vendored; wrappers are versioned.** Third-party skills ship with the
-  installed `clawbio` package, read-only. GARS-authored wrappers live in `_system/wrappers/`
+- **Wrappers are versioned; the retired skills are never vendored.** The ClawBio skills stay
+  installed with the `clawbio` package, read-only and uninvoked since decision 0029.
+  GARS-authored wrappers live in `_system/wrappers/`
   ([0012](decisions/0012-gars-authored-wrappers-live-in-system.md)) — the first,
   `nfcore-atacseq-wrapper`, is the template for the rest ([0028](decisions/0028-wrappers-are-thin-system-helpers.md)).
 - **All five assays are wired.** `rnaseq_bulk` is live-proven; `atacseq_bulk`, `chipseq_bulk`,

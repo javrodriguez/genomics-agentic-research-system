@@ -1,6 +1,10 @@
 ---
 date: 2026-08-21
 status: standing
+kind: lesson
+symptoms:
+  - "typed fasta/gtf paths, typos expensive"
+  - "wrong-release GTF silently misannotates every count"
 touches:
   - gars/_references/genomes.md
   - gars/_system/configure.py

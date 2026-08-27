@@ -2,9 +2,9 @@
 
 ## Purpose
 Test for differential gene expression between the two conditions the user chose, through the
-GARS-authored `rnaseq-de` wrapper (decision 0029; the ClawBio-skill procedure this replaces —
-the source of three recorded defects, one silent — is preserved beside this file as
-`DEPRECATED-clawbio-path.md` until the switchover criteria in DEVELOPMENT.md are met). The
+GARS-authored `rnaseq-de` wrapper (decision 0029; the retired ClawBio-skill procedure — the
+source of four recorded defects, two silent, reported upstream as ClawBio/ClawBio#365 — was
+deleted 2026-08-27 after all three switchover criteria were met on a live run). The
 analysis runs under Slurm; this sub-stage submits and returns, then collects on a later
 invocation.
 
@@ -37,8 +37,6 @@ This sub-stage performs the steps in Process and nothing else.
 - Never modify the native count matrix, anything under 02.01's directory, `00_data/`, or
   `01_samplesheets/`.
 - Never resubmit a job whose STATUS is `SUBMITTED` or `RUNNING`.
-- Never execute `DEPRECATED-clawbio-path.md`. It is the retired procedure, kept for fallback
-  by a human decision, not an alternative for you to choose.
 - Do not interpret the results. Report counts of genes tested and significant, paths, and
   the top-genes table location — the science of what they mean is the user's.
 - If you believe a step should deviate, stop and ask. Do not act first and report afterwards.

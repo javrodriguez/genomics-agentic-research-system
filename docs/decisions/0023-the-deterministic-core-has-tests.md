@@ -1,6 +1,9 @@
 ---
 date: 2026-08-24
 status: standing
+kind: decision
+symptoms:
+  - "regressions needed a live cluster run to be found"
 touches:
   - gars/_system/
   - tests/

@@ -39,7 +39,9 @@ OUT="$PROJECTS/_index.md"
         case "$version" in *"{{"*) version="?" ;; esac
         version="${version:-?}"
 
-        assays=$(find "$p/00_data" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | sort)
+        # Portable on purpose: GNU find's -printf is absent on BSD/macOS, and under
+        # `set -euo pipefail` its failure used to truncate the index mid-write.
+        assays=$(for a in "$p/00_data"/*/; do [ -d "$a" ] && basename "$a"; done 2>/dev/null | sort)
         if [ -z "$assays" ]; then
             echo "| $name | $version | — | — | — | — | no assay directories |"
             continue

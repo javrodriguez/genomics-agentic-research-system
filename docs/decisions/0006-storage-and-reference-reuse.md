@@ -1,6 +1,10 @@
 ---
 date: 2026-08-12
 status: standing
+kind: decision
+symptoms:
+  - "612 GB of scratch consumed by failed runs"
+  - "indexes rebuilt every run"
 touches:
   - gars/_references/config_schema.md
   - gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md

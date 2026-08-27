@@ -1,6 +1,10 @@
 ---
 date: 2026-08-21
 status: standing
+kind: lesson
+symptoms:
+  - "'I have to write the config file? what?'"
+  - "_config/ created empty, user pointed at a schema"
 touches:
   - gars/_templates/config/
   - gars/_system/stage00_register.py

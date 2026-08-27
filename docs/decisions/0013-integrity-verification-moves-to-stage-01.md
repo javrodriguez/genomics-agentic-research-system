@@ -1,6 +1,10 @@
 ---
 date: 2026-08-20
 status: standing
+kind: lesson
+symptoms:
+  - "stage 00 never finished verifying 48 GB"
+  - "integrity check on files about to be excluded"
 touches:
   - gars/_system/integrity.py
   - gars/00_initialize_project/CONTEXT.md

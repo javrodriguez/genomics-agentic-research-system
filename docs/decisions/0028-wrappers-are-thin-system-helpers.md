@@ -1,6 +1,7 @@
 ---
 date: 2026-08-25
 status: standing
+kind: decision
 touches:
   - gars/_system/wrappers/
   - gars/_system/configure.py

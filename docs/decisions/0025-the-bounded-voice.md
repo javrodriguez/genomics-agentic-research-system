@@ -1,6 +1,10 @@
 ---
 date: 2026-08-24
 status: standing
+kind: decision
+symptoms:
+  - "agent has no compliant way to answer a direct question"
+  - "user routed around the templates"
 touches:
   - gars/_references/contract_standard.md
   - gars/CLAUDE.md

@@ -1,6 +1,11 @@
 ---
 date: 2026-08-10
 status: standing
+kind: lesson
+symptoms:
+  - "deleted 112 symlinks"
+  - "same sample conflicting condition"
+  - "no legal way to subset"
 touches:
   - gars/00_initialize_project/CONTEXT.md
   - gars/01_prepare_samplesheets/CONTEXT.md
