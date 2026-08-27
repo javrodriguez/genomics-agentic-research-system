@@ -82,11 +82,14 @@ Set `strandedness: unstranded` explicitly in future configs to remove the ambigu
   `~/install/nf-core-pipelines/atacseq-2.1.2` is cloned and tag-verified — but no real ATAC
   FASTQs have been through it. Blocking test: a real 2-condition ATAC run on the cluster,
   which also first populates the `nf-core-atacseq-2.1.2` derived cache.
-- **The gars rnaseq path has not run a live pipeline.** 02.02's science is numerically
-  validated (below), and both wrappers are offline-tested — but no live 02.01 pipeline run has
-  happened under the gars wrapper. The switchover criteria for deleting the deprecated ClawBio
-  files are in [0029](docs/decisions/0029-the-clawbio-path-is-deprecated.md): one live 02.01 +
-  its 02.02 downstream + the numerical check holding on that run.
+- **The gars rnaseq path is live-validated (2026-08-27).** Full chain on
+  `rnaseq-wrapper-validation` (4 samples, MT vs WT): 02.01 job 26842968 (1h23m, exit gate 5/5,
+  cache reused), 02.02 job 26851720 (1m18s, 19,566 genes, 388 significant at padj < 0.05), and
+  the [0029](docs/decisions/0029-the-clawbio-path-is-deprecated.md) numerical check holding on
+  that run — published log2FoldChange vs normalized group ratios r = 0.999952, sign agreement
+  17,064/17,064. **All three switchover criteria are met**; deleting the deprecated ClawBio
+  files is unblocked, pending the contract's human check (report.md + pca.png). Still untested:
+  the gars wrapper's own *failure* handling (the one failure so far ran the ClawBio path's).
 - **Scope enforcement verified live, 2026-08-25** — deliberate forbidden calls in a fresh
   workspace session: an Edit on `_references/genomes.md` was stopped by the `permissions.deny`
   layer ("directory denied by your permission settings"), and `pip install seaborn` was stopped
@@ -219,6 +222,7 @@ here is a decision record trying to be born.
 
 | Date | Change | Detail |
 |---|---|---|
+| 08-27 | **rnaseq validated live under the gars wrappers — 0029 switchover criteria met.** Full chain on `rnaseq-wrapper-validation`: 02.01 job 26842968 (COMPLETED 1h23m, gate 5/5, HISTORY entries verbatim), 02.02 job 26851720 (1m18s, 19,566 genes, 388 at padj < 0.05), numerical check r = 0.999952 / sign agreement 100%. Along the way the abl-fileset ENOSPC was root-caused to the **data_abl file-count quota** (344.3M/350M inodes, 98.4%; blocks fine) — creates fail at the ceiling, lab churn makes it flap; ticket drafted. Remaining assay Nextflow runs held until the quota resolves. Lesson candidate (item 8): preflight warns when the target fileset's file quota is >97% (`mmlsquota -j` is user-runnable) | — |
 | 08-27 | **First gars-wrapper live run submitted** (`rnaseq-wrapper-validation`, job 26842968) after a false start: the initial submission drifted to the deprecated ClawBio path and died on GPFS quota (errno 245, 105/107 tasks complete; 564 GB of disposable `work/` cleared from scratch). Drift recorded under "What is not yet proven"; rerun prepared and submitted strictly per the current contract, prebuilt indices from the derived cache | — |
 | 08-26 | **ClawBio defect report filed upstream**: [ClawBio/ClawBio#365](https://github.com/ClawBio/ClawBio/issues/365), posted verbatim from the draft. Same day: the Glitch pattern review added Next Steps 6–8 (recall gaps) and the status header was brought current | — |
 | 08-25 | **Wrappers #3–#5 (v0.8.0): every assay wired.** chipseq/cutandrun/methylseq checkouts cloned and tag-verified; all five FORMATS active; per-assay config templates + menus (`genome` decision shape); artifact vocabulary +3 (methylation types); contracts for all three sub-stages; SKILL.md for every wrapper; 34 tests. Facts read from the checkouts, not memory — chipseq calls peaks with MACS3, consensus per antibody, cutandrun MultiQC under `04_reporting/`. Two RNA-era stage-01 rules (replicate-uniqueness key, group-of-one refusal) caught encoding bulk-RNA assumptions and made per-assay | [0031](docs/decisions/0031-all-five-assays-are-wired.md) |
