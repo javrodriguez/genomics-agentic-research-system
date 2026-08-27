@@ -69,6 +69,15 @@ Earlier drafts used `module load python/cpu/3.10.6`, `nextflow/25.10.3`, and
 `module load`** — piping runs it in a subshell and silently discards the `PATH` change, which
 already produced one false "the module stack is broken" diagnosis.
 
+## Environment-variable precedence worth knowing
+
+`gars-env.sh` only *defaults* `NXF_HOME` (and the container-cache variables) when they are
+unset — an operator's own exports win. On the validated cluster setup, a `~/.bashrc` export
+points `NXF_HOME` at lab-shared storage rather than `$GARS_ROOT/.nextflow_gars`, and every
+validated run (including the wrapper-switchover chain) ran under that precedence. Deliberate:
+gars-env does not override a working operator environment; if you need the GARS-local default,
+unset the variable before sourcing.
+
 ## The `gars-bio` conda environment
 
 Created 2026-08-11. Holds the ClawBio library and everything both retired skills needed —
