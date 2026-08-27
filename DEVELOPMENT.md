@@ -93,9 +93,19 @@ Set `strandedness: unstranded` explicitly in future configs to remove the ambigu
   by the PreToolUse hook with its verbatim lockfile message. The layers fire in that order by
   design. Still unexercised live: the hook's Edit branch on machine-owned *project* files
   (`files.csv`), which the deny globs deliberately do not cover.
-- **The resume guard and a *failed* Nextflow run are still untested under this version.** The
-  successful path is proven; what has not been exercised is `--resume` after a crash, and a
-  mid-pipeline Slurm failure.
+- **The resume guard and a *failed* Nextflow run are still untested for the gars wrapper.** The
+  2026-08-27 failure (below) exercised the *deprecated ClawBio path's* failure handling, not the
+  gars wrapper's; `--resume` after a crash and a mid-pipeline Slurm failure under the gars
+  wrapper remain unexercised.
+- **Live compliance drift, instances two and three (2026-08-27).** The first
+  `rnaseq-wrapper-validation` submission executed `DEPRECATED-clawbio-path.md` — against the
+  contract's explicit "Never execute" Scope Boundary — and never appended the submission to
+  `HISTORY.md`. Found from the log's fingerprints (ClawBio's SkillError banner and the
+  `_MANIFEST_VERSION_RE` 'master' warning, which only that path produces); confirmed by a fresh
+  session against the failed `submit.sh`, which matched the deprecated file's shape exactly.
+  A related doc note: the "crashed runs cannot be resumed" rule quoted during triage is the
+  deprecated path's manifest-gated replay rule, not the gars wrapper's (which carries native
+  `-resume`) — worth pinning when the deprecated files are deleted.
 - **Derived-reference cache reuse verified 2026-08-25**: `leukemia-tall`'s execution trace
   contains zero index-building processes (`GENOMEGENERATE`, `MAKE_TRANSCRIPTS_FASTA`,
   `SALMON_INDEX`) — the 59 GB cache was consumed, saving ~40 minutes and ~43 GB. Stages 00 and 01 were exercised end to end on
@@ -188,7 +198,9 @@ clone-and-run for a stranger).
 
 Deferred with reasons:
 - **Live contract-compliance replays** (assessment rec 2, dynamic half): scripted scenarios
-  against the agent per release — needs billed runs; the static lint ships already.
+  against the agent per release — needs billed runs; the static lint ships already. The
+  evidence for building it is now three live deviations across two sessions: stage 03's
+  hand-built directory, the deprecated-path execution, and the unrecorded submission.
 - **Contract token diet** (rec 7): measure first (`check_contracts.py` prints tokens per
   contract — ~24k total today), diet only once compliance replays exist to catch what a
   restructure breaks.
@@ -207,6 +219,8 @@ here is a decision record trying to be born.
 
 | Date | Change | Detail |
 |---|---|---|
+| 08-27 | **First gars-wrapper live run submitted** (`rnaseq-wrapper-validation`, job 26842968) after a false start: the initial submission drifted to the deprecated ClawBio path and died on GPFS quota (errno 245, 105/107 tasks complete; 564 GB of disposable `work/` cleared from scratch). Drift recorded under "What is not yet proven"; rerun prepared and submitted strictly per the current contract, prebuilt indices from the derived cache | — |
+| 08-26 | **ClawBio defect report filed upstream**: [ClawBio/ClawBio#365](https://github.com/ClawBio/ClawBio/issues/365), posted verbatim from the draft. Same day: the Glitch pattern review added Next Steps 6–8 (recall gaps) and the status header was brought current | — |
 | 08-25 | **Wrappers #3–#5 (v0.8.0): every assay wired.** chipseq/cutandrun/methylseq checkouts cloned and tag-verified; all five FORMATS active; per-assay config templates + menus (`genome` decision shape); artifact vocabulary +3 (methylation types); contracts for all three sub-stages; SKILL.md for every wrapper; 34 tests. Facts read from the checkouts, not memory — chipseq calls peaks with MACS3, consensus per antibody, cutandrun MultiQC under `04_reporting/`. Two RNA-era stage-01 rules (replicate-uniqueness key, group-of-one refusal) caught encoding bulk-RNA assumptions and made per-assay | [0031](docs/decisions/0031-all-five-assays-are-wired.md) |
 | 08-25 | **rnaseq migrated to gars wrappers (v0.7.0); ClawBio defect #4 found.** `_system/wrapperlib.py` extracted (shared wrapper machinery); `nfcore-rnaseq-wrapper` + `rnaseq-de` rebuilt as gars wrappers; both rnaseq contracts rewritten to the wrapper idiom, ClawBio procedures preserved as `DEPRECATED-clawbio-path.md` with switchover criteria (0029). DE science validated on `leukemia-tall`'s real inputs via three Slurm jobs: tested set, p-values and the significant set match the baseline exactly (padj r=0.99998, 265/265) — and the old skill's published fold changes turned out not to reflect the data (r=0.33 vs 0.99 against normalized group ratios), a fourth silent defect added to the upstream report. Validation also caught two wrapper bugs pre-ship (frozen relative paths; staging on login-node /tmp). Design table made assay-aware (`workspace.design_columns`, 0030): ChIP-family assays gain `antibody`/`control` columns with per-assay referential checks | [0029](docs/decisions/0029-the-clawbio-path-is-deprecated.md), [0030](docs/decisions/0030-the-design-table-is-assay-aware.md) |
 | 08-25 | **Wrapper #1: `nfcore-atacseq-wrapper` (v0.6.0).** First GARS-authored wrapper — one stdlib file cloning the ClawBio *behavior* (preflight, audited params, structured failures, content exit gates) not its 12-module architecture; `submit.sh` generated by code with the requeue guard baked in; native Nextflow `-resume` restores real crash recovery. `atacseq_bulk` promoted to `active`; assay map gains the Source column (clawbio/gars); genome registry rows carry per-assay-keyed cache roots + mito contig + MACS gsize; `configure.py` decisions are per-assay (`peaks` menu); artifact vocabulary +4 types. nf-core/atacseq 2.1.2 cloned and tag-verified at `~/install/nf-core-pipelines/atacseq-2.1.2`. 5 new tests (25 total) | [0028](docs/decisions/0028-wrappers-are-thin-system-helpers.md) |
