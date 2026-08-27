@@ -250,7 +250,7 @@ validation is per-assay:
 
 | Assay | State |
 |---|---|
-| Bulk RNA-seq (`rnaseq_bulk`) | **Live-proven end to end**: 38 samples registered / 10 analysed on real patient-derived data (stage 00 → 01 → nf-core/rnaseq → DE with per-task Slurm dispatch); the wrapper switchover separately validated on a 4-sample two-condition cohort — published fold-changes vs normalized group ratios r = 0.999952 |
+| Bulk RNA-seq (`rnaseq_bulk`) | **Live-proven end to end** on real patient-derived data (stage 00 → 01 → nf-core/rnaseq → DE with per-task Slurm dispatch); the wrapper switchover separately validated on a 4-sample two-condition cohort — published fold-changes vs normalized group ratios r = 0.999952 |
 | ATAC-seq, ChIP-seq, CUT&RUN, methylation | Wired end to end and offline-tested (contracts, config menus, wrappers against result trees read from each pipeline's own docs); each awaits its first live cluster run |
 
 Stage 03 (custom analysis) is plan-gated and live-validated once: the agent drafts a reviewable
