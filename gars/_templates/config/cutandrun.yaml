@@ -17,7 +17,7 @@ reference:
   mito_name: <REQUIRED: set by the genome menu at stage 02>
 
   # Optional blacklist BED, as for ATAC/ChIP. Variants differ; pick deliberately.
-  # blacklist: /gpfs/data/igorlab/ref/hg38/blacklist.bed
+  # blacklist: /path/to/site/references/hg38/blacklist.bed
 
 # --- spike-in normalisation --------------------------------------------------------------------
 # CUT&RUN's distinguishing feature: signal is calibrated against a spike-in genome (E. coli by

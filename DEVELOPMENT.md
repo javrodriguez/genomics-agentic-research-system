@@ -62,7 +62,7 @@ The unstranded-library finding landed where it fires (decision 0032): the site m
 lives in `gars/_templates/config/rnaseq_bulk.yaml`'s `strandedness` comment, with the evidence
 in [0032](docs/decisions/0032-lessons-land-where-they-fire.md).
 
-### What is not yet proven
+### Proven live, dated
 
 - **Stage 03 live-validated 2026-08-25** — first real analysis on `leukemia-tall`
   (`01_de-top30-heatmap`): plan drafted and approved, inputs resolved by type at execution
@@ -70,17 +70,6 @@ in [0032](docs/decisions/0032-lessons-land-where-they-fire.md).
   agent hand-built the analysis directory instead of running `create` (contained — `approve`
   and `verify` gate on content, not provenance of the directory). Exactly the drift class the
   still-open live compliance harness would catch.
-- **Four assays have never run a live pipeline** (atacseq, chipseq, cutandrun, methylseq);
-  rnaseq is done. Every mechanical layer is offline-tested; what only a cluster run can prove
-  is the pipelines completing under these params, the real output trees matching the gates
-  built from their docs, and the ChIP/CUT&RUN control semantics surviving nf-core's own
-  samplesheet validation. One live run per remaining assay is the standing item — held until
-  the data_abl file-quota ticket resolves (Nextflow runs are small-file storms).
-- **`atacseq_bulk` detail:** The wrapper chain is tested offline
-  through fixture projects and a faked results tree (25 tests), and the pinned checkout at
-  `~/install/nf-core-pipelines/atacseq-2.1.2` is cloned and tag-verified — but no real ATAC
-  FASTQs have been through it. Blocking test: a real 2-condition ATAC run on the cluster,
-  which also first populates the `nf-core-atacseq-2.1.2` derived cache.
 - **The gars rnaseq path is live-validated (2026-08-27).** Full chain on
   `rnaseq-wrapper-validation` (4 samples, MT vs WT): 02.01 job 26842968 (1h23m, exit gate 5/5,
   cache reused), 02.02 job 26851720 (1m18s, 19,566 genes, 388 significant at padj < 0.05), and
@@ -97,6 +86,25 @@ in [0032](docs/decisions/0032-lessons-land-where-they-fire.md).
   by the PreToolUse hook with its verbatim lockfile message. The layers fire in that order by
   design. Still unexercised live: the hook's Edit branch on machine-owned *project* files
   (`files.csv`), which the deny globs deliberately do not cover.
+- **Derived-reference cache reuse verified 2026-08-25**: `leukemia-tall`'s execution trace
+  contains zero index-building processes (`GENOMEGENERATE`, `MAKE_TRANSCRIPTS_FASTA`,
+  `SALMON_INDEX`) — the 59 GB cache was consumed, saving ~40 minutes and ~43 GB. Stages 00 and 01 were exercised end to end on
+  2026-08-19 (below), but that run stops at the samplesheet. Whether the moved reference paths
+  and the renamed `_system/` break a sub-stage's `submit.sh` is untested, and needs a cluster.
+
+### What is not yet proven
+
+- **Four assays have never run a live pipeline** (atacseq, chipseq, cutandrun, methylseq);
+  rnaseq is done. Every mechanical layer is offline-tested; what only a cluster run can prove
+  is the pipelines completing under these params, the real output trees matching the gates
+  built from their docs, and the ChIP/CUT&RUN control semantics surviving nf-core's own
+  samplesheet validation. One live run per remaining assay is the standing item — held until
+  the data_abl file-quota ticket resolves (Nextflow runs are small-file storms).
+- **`atacseq_bulk` detail:** The wrapper chain is tested offline
+  through fixture projects and a faked results tree (25 tests), and the pinned checkout at
+  `~/install/nf-core-pipelines/atacseq-2.1.2` is cloned and tag-verified — but no real ATAC
+  FASTQs have been through it. Blocking test: a real 2-condition ATAC run on the cluster,
+  which also first populates the `nf-core-atacseq-2.1.2` derived cache.
 - **The resume guard and a *failed* Nextflow run are still untested for the gars wrapper.** The
   2026-08-27 failure (below) exercised the *deprecated ClawBio path's* failure handling, not the
   gars wrapper's; `--resume` after a crash and a mid-pipeline Slurm failure under the gars
@@ -110,21 +118,14 @@ in [0032](docs/decisions/0032-lessons-land-where-they-fire.md).
   A related doc note: the "crashed runs cannot be resumed" rule quoted during triage is the
   deprecated path's manifest-gated replay rule, not the gars wrapper's (which carries native
   `-resume`) — worth pinning when the deprecated files are deleted.
-- **Derived-reference cache reuse verified 2026-08-25**: `leukemia-tall`'s execution trace
-  contains zero index-building processes (`GENOMEGENERATE`, `MAKE_TRANSCRIPTS_FASTA`,
-  `SALMON_INDEX`) — the 59 GB cache was consumed, saving ~40 minutes and ~43 GB. Stages 00 and 01 were exercised end to end on
-  2026-08-19 (below), but that run stops at the samplesheet. Whether the moved reference paths
-  and the renamed `_system/` break a sub-stage's `submit.sh` is untested, and needs a cluster.
 
-- Only one assay exists. Whether the assay map, artifact vocabulary and router generalise, or
-  quietly encode bulk-RNA-seq assumptions, is untested. Stage 01's emitter is no longer one of
-  those assumptions — it is table-driven, and the four target assays' real column sets are now
-  registered as `planned` — but none has been promoted to `active` or exercised.
+- The assay map, artifact vocabulary and router have now been exercised across all five assays
+  offline (0031 caught two bulk-RNA assumptions in the process); whether they generalise *live*
+  is exactly what the per-assay runs above will prove.
 
 ## Next Steps
 
-Priority order. The five structural items from the external assessment ("GARS Under Review",
-2026-08-21) were **implemented 2026-08-24** — mechanical scope enforcement (0022), the test
+Priority order. The five structural items from an external design assessment (2026-08-21) were **implemented 2026-08-24** — mechanical scope enforcement (0022), the test
 suite and contract lint (0023), model provenance (0024), the bounded voice (0025), and a
 plan-gated stage 03 (0026) — and the build queue that followed (wrappers #1–#5, the rnaseq
 migration, the assay-aware design table) **completed 2026-08-25** (0028–0031). The standing
@@ -152,7 +153,7 @@ Item-by-item record of the queue:
    wrapper's: 0.99); p-values and the significant set were correct. Consequence for
    `leukemia-tall`: its existing `de_results.csv` fold-change VALUES are unreliable (gene calls
    and padj are fine) — re-run 02.02 under the new wrapper, or use the validated table at
-   `~/tmp-de-validate/gars/projects/val/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/run/tables/`
+   a cluster-local validation copy (same inputs, corrected LFC)
    (same inputs, corrected LFC).
 4. ~~Build the remaining three wrappers~~ **Done 2026-08-25**
    ([0031](docs/decisions/0031-all-five-assays-are-wired.md)): chipseq (MACS3, per-antibody
@@ -160,12 +161,12 @@ Item-by-item record of the queue:
    calibration), methylseq (per-sample coverage gate). The design table went assay-aware first
    ([0030](docs/decisions/0030-the-design-table-is-assay-aware.md)), and two RNA-era validation
    rules were caught encoding bulk-RNA assumptions and made per-assay.
-5. ~~File the `rnaseq-de` defect report~~ **Filed 2026-08-26** on the member's word:
+5. ~~File the `rnaseq-de` defect report~~ **Filed 2026-08-26** on the maintainer's approval:
    [ClawBio/ClawBio#365](https://github.com/ClawBio/ClawBio/issues/365) — the draft at
    [docs/upstream/clawbio-rnaseq-de-defects.md](docs/upstream/clawbio-rnaseq-de-defects.md)
    posted verbatim; four defects, two silent, each with a reproduction.
 
-From the Glitch pattern review (2026-08-26) — three additions closing the recall gaps (nine
+From a 2026-08-26 design review — three additions closing the recall gaps (nine
 mechanisms record, none recall: session boot is 100% static, no lesson crosses a project
 boundary, and grep-by-path is the only query over 31 decisions). All three are offline work,
 additive, and none displaces item 0. The constraint they were designed under: **memory is not
@@ -225,7 +226,7 @@ here is a decision record trying to be born.
 | 08-27 | **v0.9.0 — the ClawBio path is deleted; a session boots knowing the state.** The deprecated procedures removed after the live switchover (contracts' Purpose + boundaries, L0/L1, stage-02's skill teaching, assay map, environment notes, `gars-env.sh` — `GARS_SKILLS` out of the fail-fast list, resolved for inspection only). New: `_system/project_state.py` + a SessionStart hook (rebuilds `projects/_index.md`, prints the catch-up); `kind:` + `symptoms:` frontmatter on all 33 decisions with the index rendering both; the lesson-landing rule adopted, first case the unstranded-library note (now in the rnaseq config template). 38 tests (4 new: render truth, STATUS authority, writes-nothing determinism, single-project flag) | [0032](docs/decisions/0032-lessons-land-where-they-fire.md), [0033](docs/decisions/0033-a-session-boots-knowing-the-state.md) |
 | 08-27 | **rnaseq validated live under the gars wrappers — 0029 switchover criteria met.** Full chain on `rnaseq-wrapper-validation`: 02.01 job 26842968 (COMPLETED 1h23m, gate 5/5, HISTORY entries verbatim), 02.02 job 26851720 (1m18s, 19,566 genes, 388 at padj < 0.05), numerical check r = 0.999952 / sign agreement 100%. Along the way the abl-fileset ENOSPC was root-caused to the **data_abl file-count quota** (344.3M/350M inodes, 98.4%; blocks fine) — creates fail at the ceiling, lab churn makes it flap; ticket drafted. Remaining assay Nextflow runs held until the quota resolves. Lesson candidate (item 8): preflight warns when the target fileset's file quota is >97% (`mmlsquota -j` is user-runnable) | — |
 | 08-27 | **First gars-wrapper live run submitted** (`rnaseq-wrapper-validation`, job 26842968) after a false start: the initial submission drifted to the deprecated ClawBio path and died on GPFS quota (errno 245, 105/107 tasks complete; 564 GB of disposable `work/` cleared from scratch). Drift recorded under "What is not yet proven"; rerun prepared and submitted strictly per the current contract, prebuilt indices from the derived cache | — |
-| 08-26 | **ClawBio defect report filed upstream**: [ClawBio/ClawBio#365](https://github.com/ClawBio/ClawBio/issues/365), posted verbatim from the draft. Same day: the Glitch pattern review added Next Steps 6–8 (recall gaps) and the status header was brought current | — |
+| 08-26 | **ClawBio defect report filed upstream**: [ClawBio/ClawBio#365](https://github.com/ClawBio/ClawBio/issues/365), posted verbatim from the draft. Same day: a design review added Next Steps 6–8 (recall gaps) and the status header was brought current | — |
 | 08-25 | **Wrappers #3–#5 (v0.8.0): every assay wired.** chipseq/cutandrun/methylseq checkouts cloned and tag-verified; all five FORMATS active; per-assay config templates + menus (`genome` decision shape); artifact vocabulary +3 (methylation types); contracts for all three sub-stages; SKILL.md for every wrapper; 34 tests. Facts read from the checkouts, not memory — chipseq calls peaks with MACS3, consensus per antibody, cutandrun MultiQC under `04_reporting/`. Two RNA-era stage-01 rules (replicate-uniqueness key, group-of-one refusal) caught encoding bulk-RNA assumptions and made per-assay | [0031](docs/decisions/0031-all-five-assays-are-wired.md) |
 | 08-25 | **rnaseq migrated to gars wrappers (v0.7.0); ClawBio defect #4 found.** `_system/wrapperlib.py` extracted (shared wrapper machinery); `nfcore-rnaseq-wrapper` + `rnaseq-de` rebuilt as gars wrappers; both rnaseq contracts rewritten to the wrapper idiom, ClawBio procedures preserved as `DEPRECATED-clawbio-path.md` with switchover criteria (0029). DE science validated on `leukemia-tall`'s real inputs via three Slurm jobs: tested set, p-values and the significant set match the baseline exactly (padj r=0.99998, 265/265) — and the old skill's published fold changes turned out not to reflect the data (r=0.33 vs 0.99 against normalized group ratios), a fourth silent defect added to the upstream report. Validation also caught two wrapper bugs pre-ship (frozen relative paths; staging on login-node /tmp). Design table made assay-aware (`workspace.design_columns`, 0030): ChIP-family assays gain `antibody`/`control` columns with per-assay referential checks | [0029](docs/decisions/0029-the-clawbio-path-is-deprecated.md), [0030](docs/decisions/0030-the-design-table-is-assay-aware.md) |
 | 08-25 | **Wrapper #1: `nfcore-atacseq-wrapper` (v0.6.0).** First GARS-authored wrapper — one stdlib file cloning the ClawBio *behavior* (preflight, audited params, structured failures, content exit gates) not its 12-module architecture; `submit.sh` generated by code with the requeue guard baked in; native Nextflow `-resume` restores real crash recovery. `atacseq_bulk` promoted to `active`; assay map gains the Source column (clawbio/gars); genome registry rows carry per-assay-keyed cache roots + mito contig + MACS gsize; `configure.py` decisions are per-assay (`peaks` menu); artifact vocabulary +4 types. nf-core/atacseq 2.1.2 cloned and tag-verified at `~/install/nf-core-pipelines/atacseq-2.1.2`. 5 new tests (25 total) | [0028](docs/decisions/0028-wrappers-are-thin-system-helpers.md) |
@@ -357,6 +358,6 @@ tail $S/run/logs/stdout.txt
 ### Housekeeping
 
 Failed-run artifacts from 2026-08-12 (612 GB across four runs) were deleted. `work/` now lives
-on scratch at `/gpfs/scratch/rodrij92/gars-work/<project>-<assay>` and is disposable once a run
+on scratch at `/gpfs/scratch/<user>/gars-work/<project>-<assay>` and is disposable once a run
 succeeds, because `results/` is published with `publish_dir_mode = 'copy'`.
 

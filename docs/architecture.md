@@ -1,6 +1,6 @@
 # GARS architecture
 
-How the system works as it stands at **v0.4.0**. This is a map: it explains how the pieces relate
+How the system works as it stands at **v0.9.0**. This is a map: it explains how the pieces relate
 and points at the file that owns each fact. Where it disagrees with a contract, the contract is
 right — tell someone, do not patch around it.
 

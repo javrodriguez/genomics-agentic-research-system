@@ -15,9 +15,9 @@ reference:
   gtf:   <REQUIRED: choose a genome at stage 02, or paste the matching GTF path>
 
   # Optional: an ENCODE blacklist BED of artifact regions to exclude from peaks. This cluster
-  # holds /gpfs/data/igorlab/ref/hg38/blacklist.bed plus v1/v2 variants -- they differ, so pick
+  # may hold a shared blacklist.bed plus v1/v2 variants -- they differ, so pick
   # deliberately or leave peak filtering off.
-  # blacklist: /gpfs/data/igorlab/ref/hg38/blacklist.bed
+  # blacklist: /path/to/site/references/hg38/blacklist.bed
 
   # Optional but recommended: aligner-index cache, keyed by PIPELINE version. Uncommented by
   # the genome menu; if the keyed directory does not exist yet, the first run builds the

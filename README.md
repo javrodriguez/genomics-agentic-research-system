@@ -34,7 +34,7 @@ cd genomics-agentic-research-system/gars
 ```
 
 Your projects live in `gars/projects/`, which is gitignored — real data never enters the
-repository. Updating is `git pull`; pinning to a release is `git checkout v0.4.0`; seeing what
+repository. Updating is `git pull`; pinning to a release is `git checkout v0.9.0`; seeing what
 changed is `git log` and `git diff`.
 
 Then open it with an agent (Claude Code or equivalent) and say what you want:
@@ -52,8 +52,8 @@ detached copy, on the theory that freezing the contracts protected reproducibili
 opposite: a copy cannot be diffed, reverted, or pinned, and a fix pushed here never reached it.
 A checkout gives you all three for free, and `git pull` is an explicit act, not a silent one.
 
-Clone onto your group work area beside the data, not into `$HOME` — on this cluster those are
-different filesystems. Every stage stamps the template version it ran under into the project's
+Clone onto your group work area beside the data, not into `$HOME` — on many HPC clusters those
+are different filesystems. Every stage stamps the template version it ran under into the project's
 `HISTORY.md`, so `git pull` mid-analysis is recorded rather than invisible.
 
 Stage 02 additionally needs the two conda environments under **Dependencies** below. Stages 00 and
@@ -77,8 +77,11 @@ flowchart LR
     H --> B["01_prepare_samplesheets<br/><i>validate + emit</i>"]
     B --> C["02_bioinformatics<br/><i>route to sub-stages</i>"]
     C --> D["03_custom_analysis"]
-    C -.-> C1["01_nfcore-rnaseq-wrapper"]
-    C -.-> C2["02_rnaseq-de"]
+    C -.-> C1["rnaseq: nfcore wrapper → DE"]
+    C -.-> C2["atacseq"]
+    C -.-> C3["chipseq"]
+    C -.-> C4["cutandrun"]
+    C -.-> C5["methylseq"]
 ```
 
 Each project directory is owned by exactly one stage, and the numeric prefix encodes the owner —
@@ -140,6 +143,37 @@ Free-form replies varied every run and buried decisions in prose. Each stage now
 templates `T1…Tn` and may send nothing else — so a validation failure always looks the same, and
 "what did the agent actually do" is answerable.
 
+A refusal, then, is a template — here is stage 00's, verbatim from the contract:
+
+> **T5 — Path rejected**
+> ```
+> Path: <path>
+> <error>
+>
+> Nothing was created or linked.
+> ```
+
+---
+
+## The decision log (33 records)
+
+Every design choice in this system is recorded in [docs/decisions/](docs/decisions/CONTEXT.md) —
+one file per decision, append-only, each carrying the failure that motivated it and the
+alternative it rejected. Reversals are first-class: a decision is never edited to reverse it; a
+new one supersedes it by name. The index is greppable by the paths a decision constrains *and*
+by the symptoms it explains, so a recurring failure finds its precedent.
+
+Three records that show the method:
+
+- [0002](docs/decisions/0002-agent-control-negative-scope-and-templates.md) — the live test
+  where the agent ignored two layers of instruction and analysed a colleague's experiment; why
+  every contract now states its boundaries negatively.
+- [0016](docs/decisions/0016-workspaces-are-checkouts.md) — 370 lines of freshly built upgrade
+  machinery deleted the day they shipped, when the premise under them was re-examined.
+- [0029](docs/decisions/0029-the-clawbio-path-is-deprecated.md) — a dependency's published
+  fold-changes turned out to correlate 0.33 with its own data; the numerical validation that
+  found it, and the migration that removed the dependency from the critical path.
+
 ---
 
 ## Design decisions worth reading
@@ -196,23 +230,41 @@ table, and both config files. No real data.
 
 ---
 
+## Try it without a cluster
+
+The deterministic core runs anywhere — stock Python ≥3.6, stdlib only, no conda:
+
+```bash
+python3 tests/run_tests.py         # 38 tests: every helper through its real CLI, in a throwaway workspace
+python3 tests/check_contracts.py   # contract lint: sections, wait points, script↔contract vocabulary drift
+```
+
+(Tests that need a pinned nf-core checkout skip cleanly as environment failures off-cluster.)
+Then read [`examples/demo-project/`](examples/demo-project/) — a synthetic project showing every
+artifact each stage produces.
+
 ## Status
 
-Validated end-to-end on a Slurm HPC cluster against a real 38-sample human RNA-seq dataset:
-stage 00 → stage 01 → nf-core/rnaseq preflight → live pipeline execution with per-task Slurm
-dispatch.
+**Five assays are wired; one is proven live.** All mechanical layers are offline-tested; live
+validation is per-assay:
 
-Stage contracts exist for `00`, `01`, `02`, both `rnaseq_bulk` sub-stages, and
-`03_custom_analysis` — the custom-analysis stage is plan-gated: the agent drafts a reviewable
-`PLAN.md`, a person approves it, and only the approved plan executes, with the approval gate
-and output verification enforced in code.
+| Assay | State |
+|---|---|
+| Bulk RNA-seq (`rnaseq_bulk`) | **Live-proven end to end**: 38 samples registered / 10 analysed on real patient-derived data (stage 00 → 01 → nf-core/rnaseq → DE with per-task Slurm dispatch); the wrapper switchover separately validated on a 4-sample two-condition cohort — published fold-changes vs normalized group ratios r = 0.999952 |
+| ATAC-seq, ChIP-seq, CUT&RUN, methylation | Wired end to end and offline-tested (contracts, config menus, wrappers against result trees read from each pipeline's own docs); each awaits its first live cluster run |
+
+Stage 03 (custom analysis) is plan-gated and live-validated once: the agent drafts a reviewable
+`PLAN.md`, a person approves it, and only the approved plan executes, with the approval and
+output verification enforced in code.
 
 Running the system surfaced defects that reading it did not — a samplesheet grain that forced
 duplicated hand entry, a contract pointing preflight and execution at the same output directory,
 a resume guard keyed on the wrong signal, and pipeline tasks silently dispatched to an
 unintended partition. Each is fixed in the contracts, with the reasoning recorded inline so the
-next reader does not undo it. One was a bug in an upstream dependency, reported at
-[ClawBio#333](https://github.com/ClawBio/ClawBio/issues/333).
+next reader does not undo it. Four more were defects in an upstream dependency — two of them
+silent — found by numerical validation and reported at
+[ClawBio#333](https://github.com/ClawBio/ClawBio/issues/333) and
+[ClawBio#365](https://github.com/ClawBio/ClawBio/issues/365).
 
 ---
 
@@ -240,11 +292,12 @@ gars/           the workspace — clone the repo and work in here
   projects/         the work, plus a generated _index.md
 docs/           architecture, execution model, assay research, decisions/, upstream/
 examples/       synthetic worked example
+tests/          run_tests.py (38, stdlib-only) + check_contracts.py (contract lint)
 ```
 
 ## Dependencies
 
-Skills are external components, installed rather than vendored:
+Stages 00 and 01 need nothing but Python 3. Stage 02 needs two conda environments:
 
 ```bash
 conda create -y -n gars-bio python=3.12 pip
@@ -254,14 +307,23 @@ conda install -y -n gars-bio -c conda-forge apptainer squashfuse
 conda create -y -n gars-nxf -c bioconda -c conda-forge "nextflow=26.04.6" "openjdk>=17,<26"
 ```
 
-Two environments, because `nextflow` and `clawbio` have conflicting `c-ares` constraints and
-cannot be solved together. Exact lockfiles and the traps encountered are in
+`clawbio` is a historical dependency: the skills it ships are retired from every sub-stage
+(decision 0029) and nothing invokes them, but the environment as-built and lockfile-pinned
+installs it as the provider of PyDESeq2 and friends — a fresh environment may substitute the
+direct dependencies instead. Two environments, because `nextflow` and `clawbio` have
+conflicting `c-ares` constraints and cannot be solved together. Exact lockfiles and the traps encountered are in
 [`gars/_references/environment.md`](gars/_references/environment.md) — they ship inside the
 workspace, so a checkout can rebuild its own runtime without reaching up into the repo.
 
 How the layers relate — package managers, workflow engine, containers, and why a container
 holds one tool rather than the pipeline — is in
 [`docs/execution-model.md`](docs/execution-model.md).
+
+## Author & status
+
+Built and maintained by [Javier Rodriguez Hernaez](https://github.com/javrodriguez) as a
+single-maintainer research system. Issues and questions are welcome; the design is documented
+end to end in the decision log, so a "why is it like this?" usually has a written answer.
 
 ## License
 

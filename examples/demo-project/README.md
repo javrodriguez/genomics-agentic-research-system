@@ -1,5 +1,9 @@
 # Worked example — synthetic project
 
+> Generated under template **v0.4.0** and kept as a stable illustration of the artifact
+> shapes; the shapes are unchanged at v0.9.0 (what changed since is enforcement and wrappers —
+> see the decision log).
+
 A 6-sample paired-end bulk RNA-seq project, 2 lanes per sample, two conditions with three
 replicates each. **All data is synthetic**: sample IDs are fabricated and paths are placeholders.
 Nothing here comes from a real dataset.
@@ -23,7 +27,7 @@ and each sub-stage's `STATUS`, so it cannot go stale.
 
 | File | Grain | Owner |
 |---|---|---|
-| `files.csv` | one row per sample-lane (12 rows) | machine — carries `# do not edit` |
+| `files.csv` | one row per sample-lane (12 rows) | machine — written read-only, mode `0444` (decision 0018) |
 | `samples.csv` | one row per sample (6 rows) | the user |
 | `raw/` | symlinks to source FASTQs; never copies | machine |
 
@@ -59,7 +63,9 @@ handled — verified against a real run, where 12 file rows produced 6 `CAT_FAST
 | `rnaseq_bulk.yaml` | reference, aligner, compute, DE formula and contrast |
 | `nextflow.slurm.config` | executor settings — which queue pipeline tasks are dispatched to |
 
-Both are written by the user. No stage invents a reference genome or a contrast.
+Both are seeded by stage 00 with every derivable value filled and the scientific decisions
+marked `<REQUIRED>` (decision 0019); stage 02 completes those from menus. No stage invents a
+reference genome or a contrast.
 
 ## Stage 02 — `02_bioinformatics/rnaseq_bulk/`
 

@@ -22,12 +22,12 @@ of this repo. Update these if the layout changes again:
 
 | Thing | Absolute path |
 |---|---|
-| GARS workspace | `/gpfs/data/abl/home/rodrij92/PROJECTS/gars` |
-| Test workspace | `/gpfs/data/abl/home/rodrij92/PROJECTS/bioinfo-research-system/gars-test` |
+| GARS workspace | `/gpfs/data/<group>/home/<user>/PROJECTS/gars` |
+| Test workspace | `/gpfs/data/<group>/home/<user>/PROJECTS/bioinfo-research-system/gars-test` |
 | Local iGenomes mirror | `/gpfs/data/sequence/references/iGenomes` **[verified 2026-08-14]** |
 | Pinned pipeline checkouts | `~/install/nf-core-pipelines/` (currently `rnaseq-3.26.0` only) |
 | Reference + derived indices | `~/install/refs/ensembl-GRCh38-116/` |
-| SNS source | `/gpfs/data/abl/home/rodrij92/PROJECTS/bioinfo-research-system/archive/resources/sns/sns-main` |
+| SNS source | `/gpfs/data/<group>/home/<user>/PROJECTS/bioinfo-research-system/archive/resources/sns/sns-main` |
 | SNS docs (PDF) | `.../archive/resources/sns/SNS_documents/` |
 | ClawBio skills | `~/install/miniconda_clean/envs/gars-bio/lib/python3.12/site-packages/clawbio/skills/` |
 
@@ -196,8 +196,8 @@ the "not available" branch: `GenomiFeatures`, `rtraklayer`, `owplot`, `vfR`, `pa
 |---|---|---|
 | `module add` / `module load` | 93 | 30 segments + routes |
 | `module purge` | 47 | env-reset assumption; becomes harmful under a conda substrate |
-| Hardcoded software paths | 22 | `/gpfs/data/igorlab/software/`, `/gpfs/share/apps/` |
-| Hardcoded reference paths | 20 | `/gpfs/data/igorlab/ref/` |
+| Hardcoded software paths | 22 | `/gpfs/data/<lab>/software/`, `/gpfs/share/apps/` |
+| Hardcoded reference paths | 20 | `/gpfs/data/<lab>/ref/` |
 | `@nyulangone.org` | 6 | `run:128` + 5 routes |
 | Hardcoded Slurm partitions | 4 | `run` + routes |
 
@@ -585,7 +585,7 @@ a `config` failure rather than emitting a blank column, so the gap is loud. Maki
 | Requirement | Status |
 |---|---|
 | Local iGenomes mirror | **Yes** — `/gpfs/data/sequence/references/iGenomes/`, with `Homo_sapiens/{Ensembl,NCBI,UCSC}` and `Mus_musculus`. Usable as `--igenomes-base`. |
-| ATAC/ChIP blacklist BED | **Yes** — `/gpfs/data/igorlab/ref/hg38/blacklist.bed`, plus `v1` and `v2` variants. Pick deliberately; they differ. |
+| ATAC/ChIP blacklist BED | **Yes** — a shared `/gpfs/data/<lab>/ref/hg38/blacklist.bed`, plus `v1` and `v2` variants. Pick deliberately; they differ. |
 | CUT&RUN spike-in genome | **Yes** — the same mirror carries `Escherichia_coli_K_12_MG1655`, the standard spike-in. No build required. |
 | methylseq bisulfite index | **No shortcut.** Only `PhiX`, `hg38_SARS-CoV-2` and `hg38_MPXV` combined genomes have Bismark indices; there is no plain human one. methylseq must build its own — expensive, but it removes the cross-lab dependency this document worried about. Budget for it and cache the result under `derived/nf-core-methylseq-<version>/`. |
 | `macs_gsize` | Still a user decision; never default it. |
@@ -634,7 +634,7 @@ versions in this document.
 | ~~3b~~ | ~~Classical ChIP-seq or CUT&RUN/CUT&Tag?~~ | RESOLVED 2026-08-12: the lab runs both, as separate Assay IDs | — |
 | ~~3c~~ | ~~Where does the CUT&RUN spike-in genome come from?~~ | **RESOLVED 2026-08-14** — `Escherichia_coli_K_12_MG1655` in the local iGenomes mirror | — |
 | ~~4~~ | ~~Is there a local iGenomes mirror?~~ | **RESOLVED 2026-08-14** — yes, `/gpfs/data/sequence/references/iGenomes/` | — |
-| ~~5~~ | ~~Reuse `igorlab`'s Bismark indices, or build our own?~~ | **RESOLVED 2026-08-14** — none exist for human; **build our own** | — |
+| ~~5~~ | ~~Reuse the site's existing Bismark indices, or build our own?~~ | **RESOLVED 2026-08-14** — none exist for human; **build our own** | — |
 | 6 | Does anyone still need `rna-snv`? | OPEN | Scope |
 | 7 | Should SNS stay in `archive/` as a reference implementation? | OPEN | Housekeeping |
 | ~~8~~ | ~~Build wrappers ourselves (§6.2a option A) or contribute upstream to ClawBio (option B)?~~ | **RESOLVED 2026-08-25** — built ourselves, but as thin `_system/` helpers on a shared `wrapperlib.py` rather than 12-module clones (decision 0028), which dissolved the cost driver; all five assays wired (decisions 0029, 0031) | — |

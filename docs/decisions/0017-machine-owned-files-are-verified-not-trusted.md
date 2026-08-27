@@ -18,7 +18,7 @@ touches:
 > **Correction, 2026-08-21.** The cause stated below — a truncated write from a killed process —
 > was **wrong**. A second occurrence was diagnosed properly: the user had narrowed the cohort by
 > hand-editing `files.csv` as well as `samples.csv`. The surviving rows were a clean subset
-> (`ALL-p01`…`ALL-p10`), the do-not-edit banner was intact, and both files were modified *after*
+> (`SAMPLE-01`…`SAMPLE-10`), the do-not-edit banner was intact, and both files were modified *after*
 > `finalize` had completed. It was a reasonable user action against a guard that was only a
 > comment. See [0018](0018-machine-ownership-is-enforced-not-advised.md).
 >

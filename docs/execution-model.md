@@ -292,7 +292,7 @@ most dangerous shape of bug in this system — no error, no wrong answer, just s
 and its image count on every invocation, and warns when the cache is empty:
 
 ```
-[gars-env] cache=/gpfs/data/abl/home/rodrij92/.apptainer_cache (26 images)
+[gars-env] cache=/gpfs/data/<group>/home/<user>/.apptainer_cache (26 images)
 ```
 
 An empty cache is a warning rather than an error, because a genuinely first run has one.

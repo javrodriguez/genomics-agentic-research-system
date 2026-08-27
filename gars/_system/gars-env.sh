@@ -21,8 +21,9 @@
 # area (/gpfs/data/abl/home/<user>) are DIFFERENT directories with different inodes -- only some
 # subtrees, such as install/, are shared via symlink. Using $HOME once pointed the container
 # cache at an empty directory, which silently re-pulls all 26 images and looks like the cache
-# "stopped working". Override GARS_ROOT to relocate the whole stack.
-GARS_ROOT="${GARS_ROOT:-/gpfs/data/abl/home/rodrij92}"
+# "stopped working". Set GARS_ROOT explicitly (e.g. in ~/.bashrc) to the root that holds
+# install/ -- there is deliberately no default, because any default is someone's home.
+GARS_ROOT="${GARS_ROOT:?[gars-env] FATAL: set GARS_ROOT to the root holding install/ (see _references/environment.md)}"
 
 # --- environments -------------------------------------------------------------------------
 # Two, because nextflow and clawbio have conflicting c-ares constraints and cannot be solved

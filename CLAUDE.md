@@ -54,8 +54,9 @@ gars/               THE WORKSPACE — users clone this repo and work in here.
 
 ## Things a new session gets wrong
 
-- **This repo is canonical.** `bioinfo-research-system/gars-test/` is a disposable workspace copy
-  for testing; never develop there. Drift between the two was measured once and it was real.
+- **This repo is canonical.** There is no second working copy; disposable test workspaces are
+  built per-run by `tests/run_tests.py`. Drift between parallel copies was measured once and it
+  was real, which is why none are kept.
 - **`gars/` is the workspace.** Anything added there ships to every user on `git pull`, so
   repo-level material (this file, `docs/`, `DEVELOPMENT.md`) stays *outside* it — and anything
   `gars/` cites must live *inside* it, since a user working in `gars/` should never need to

@@ -21,7 +21,7 @@ refused: `files.csv` accounted for 40 of the 152 files.
 The user had narrowed the cohort to 10 samples by editing **both** `files.csv` and `samples.csv`.
 That is the obvious thing to do — two files list samples, you want ten, you edit both. The
 evidence was unambiguous once looked at properly: the surviving rows were a clean subset
-(`ALL-p01`…`ALL-p10`) rather than a truncation point, `samples.csv` had the design filled in
+(`SAMPLE-01`…`SAMPLE-10`) rather than a truncation point, `samples.csv` had the design filled in
 (`WT,1,1`…), the do-not-edit banner was still on line 1, and both files had mtimes *later* than
 `CONTEXT.md` — which `finalize` writes last.
 
