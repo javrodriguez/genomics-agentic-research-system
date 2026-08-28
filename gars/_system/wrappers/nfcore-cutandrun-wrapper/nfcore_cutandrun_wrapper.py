@@ -44,6 +44,7 @@ NORMALISATION = ("Spikein", "RPKM", "CPM", "BPM", "None")
 SAMPLESHEET_HEADER = ["group", "replicate", "fastq_1", "fastq_2", "control"]
 
 REQUIRED_KEYS = ("reference.fasta", "reference.gtf", "reference.mito_name", "spikein.fasta",
+                 "spikein.bowtie2",
                  "peaks.peakcaller", "peaks.normalisation", "compute.partition",
                  "compute.time", "compute.cpus", "compute.mem", "compute.work_dir")
 
@@ -68,6 +69,14 @@ def run_checks(project):
         if spikein and "<REQUIRED" not in spikein and not os.access(spikein, os.R_OK):
             fails.append(fail("config", "spikein.fasta is not readable: %s -- CUT&RUN "
                                         "normalisation needs the spike-in genome" % spikein))
+        sp_bt2 = cfg.get("spikein.bowtie2")
+        if sp_bt2 and "<REQUIRED" not in sp_bt2                 and not os.access(os.path.join(sp_bt2, "genome.1.bt2"), os.R_OK):
+            fails.append(fail("spikein_bowtie2",
+                              "no readable genome.1.bt2 under %s -- the pipeline resolves the "
+                              "spike-in index from its OWN genome map (an s3 iGenomes path) "
+                              "unless a local index is passed explicitly (0036); point "
+                              "spikein.bowtie2 at the mirror's Bowtie2Index directory"
+                              % sp_bt2))
         pc = cfg.get("peaks.peakcaller", "")
         if pc and pc not in PEAKCALLERS:
             fails.append(fail("config", "peaks.peakcaller %r is not seacr|macs2" % pc))
@@ -132,6 +141,7 @@ def build_params(cfg, paths):
         ("gtf", cfg["reference.gtf"]),
         ("mito_name", cfg["reference.mito_name"]),
         ("spikein_fasta", cfg["spikein.fasta"]),
+        ("spikein_bowtie2", cfg["spikein.bowtie2"]),
         ("peakcaller", cfg["peaks.peakcaller"]),
         ("normalisation_mode", cfg["peaks.normalisation"]),
         ("use_control", cfg.get("peaks.use_control", "true")),

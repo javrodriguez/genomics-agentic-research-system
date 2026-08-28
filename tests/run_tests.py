@@ -830,6 +830,9 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
         (cls.refs / "genome.gtf.gz").write_bytes(gzip.compress(b"chr1\tx\tgene\n"))
         cls.spikein = cls.tmp / "spikein.fa"
         cls.spikein.write_text(">ecoli\nACGT\n")
+        cls.spikein_bt2 = cls.tmp / "spikein_bt2"
+        cls.spikein_bt2.mkdir()
+        (cls.spikein_bt2 / "genome.1.bt2").write_text("idx")
         reg = cls.ws / "_references" / "genomes.md"
         text = reg.read_text()
         header = text[:text.index("| GRCh38 |")]
@@ -997,11 +1000,21 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
         cfgp.write_text(cfgp.read_text().replace(
             "/gpfs/data/sequence/references/iGenomes/Escherichia_coli_K_12_MG1655/NCBI/2001-10-15/Sequence/WholeGenomeFasta/genome.fa",
             str(self.spikein)))
+        # 0036 red case first: an index dir without genome.1.bt2 is refused BY NAME --
+        # asserted on the failure list, not the exit code, so it holds off-cluster too
         code, res, raw = run(wrap, ["check", "--project", "projects/cnr-test"], self.ws)
+        self.assertIn("spikein_bowtie2", [f["check"] for f in res.get("failures", [])], raw)
+        cfgp.write_text(cfgp.read_text().replace(
+            "/gpfs/data/sequence/references/iGenomes/Escherichia_coli_K_12_MG1655/NCBI/2001-10-15/Sequence/Bowtie2Index",
+            str(self.spikein_bt2)))
+        code, res, raw = run(wrap, ["check", "--project", "projects/cnr-test"], self.ws)
+        self.assertNotIn("spikein_bowtie2", [f["check"] for f in (res or {}).get("failures", [])],
+                         raw)
         self.assertEqual(code, 0, raw)
         code, res, raw = run(wrap, ["prepare", "--project", "projects/cnr-test"], self.ws)
         self.assertEqual(code, 0, raw)
         self.assertEqual(res["params"]["peakcaller"], "seacr")
+        self.assertEqual(res["params"]["spikein_bowtie2"], str(self.spikein_bt2))
         substage = project / "02_bioinformatics" / "cutandrun" / "01_nfcore-cutandrun-wrapper"
         r = substage / "run" / "results"
         (r / "02_alignment" / "bowtie2" / "target" / "markdup").mkdir(parents=True)

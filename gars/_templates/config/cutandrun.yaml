@@ -25,6 +25,11 @@ reference:
 # standard K12 reference; a different spike-in organism means changing this path.
 spikein:
   fasta: /gpfs/data/sequence/references/iGenomes/Escherichia_coli_K_12_MG1655/NCBI/2001-10-15/Sequence/WholeGenomeFasta/genome.fa
+  # The pipeline resolves the spike-in BOWTIE2 INDEX from its own genome map for
+  # spikein_genome, chasing an s3://ngi-igenomes path even when a local fasta is supplied
+  # (decision 0036, found live: job 26873220). Pin it to the local mirror's index -- the
+  # exact twin of the path it would have fetched.
+  bowtie2: /gpfs/data/sequence/references/iGenomes/Escherichia_coli_K_12_MG1655/NCBI/2001-10-15/Sequence/Bowtie2Index
 
 # --- how peaks are called ----------------------------------------------------------------------
 # Presented defaults (shown at stage 02 before anything runs); the pipeline's own

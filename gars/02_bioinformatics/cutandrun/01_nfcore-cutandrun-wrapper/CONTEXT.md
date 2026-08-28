@@ -67,10 +67,12 @@ Nextflow's native `-resume` crash recovery are baked into the generated script
 row is one with an empty `control`. `check` refuses a sheet where a named control group has
 no control rows, or where no target names a control while `use_control` is true.
 
-**Spike-in calibration** is this assay's distinguishing feature: `spikein.fasta` ships in the
-seeded config pointing at the local E. coli K12 mirror, and `peaks.peakcaller` (seacr),
-`peaks.normalisation` (Spikein) and `peaks.use_control` (true) are presented defaults — in
-the config the user confirms, never chosen silently.
+**Spike-in calibration** is this assay's distinguishing feature: `spikein.fasta` AND
+`spikein.bowtie2` ship in the seeded config pointing at the local E. coli K12 mirror — both,
+because the pipeline resolves the spike-in index from its own genome map (an s3 iGenomes
+path) even when a local fasta is supplied, so the index must be pinned explicitly (decision
+0036). `peaks.peakcaller` (seacr), `peaks.normalisation` (Spikein) and `peaks.use_control`
+(true) are presented defaults — in the config the user confirms, never chosen silently.
 
 **No derived cache yet.** The pipeline builds bowtie2 and spike-in indices per run; the first
 live run establishes whether a cache layout is worth adding.
