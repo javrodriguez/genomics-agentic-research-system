@@ -46,3 +46,12 @@ compute:
   cpus: 8
   mem: 64G
   work_dir: {{work_dir}}
+
+# --- optional QC figures -----------------------------------------------------------------------
+# The deeptools gene heatmaps include an all-samples x all-genes matrix (with a text dump)
+# that cannot fit a sane single-node allocation on real cohorts (decision 0038, found live:
+# the per-sample heatmaps needed 128G and the ALL matrix died even there). The stage-03
+# scoring consumes peaks/consensus/bigwigs/multiqc -- never these figures -- so turning them
+# off is scientifically free. A recorded per-project decision: flip to false deliberately.
+qc:
+  gene_heatmaps: true

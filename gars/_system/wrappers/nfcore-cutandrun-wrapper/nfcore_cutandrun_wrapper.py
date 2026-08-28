@@ -56,7 +56,7 @@ def paths_for(project):
             "executor_config": project / "_config" / "nextflow.slurm.config"}
 
 
-def run_checks(project):
+def run_checks(project, resume_refresh=False):
     fails = []
     paths = paths_for(project)
     cfg = {}
@@ -121,7 +121,7 @@ def run_checks(project):
                                  WORKSPACE / "_references/patches/"
                                  "cutandrun-3.2.2-trimgalore-dsl.patch")))
     wl.check_executor_config(paths["executor_config"], fails)
-    wl.check_run_dir(paths["substage"], fails)
+    wl.check_run_dir(paths["substage"], fails, resume_refresh=resume_refresh)
     paths["checkout"] = checkout
     return fails, cfg, paths
 
@@ -132,7 +132,7 @@ def cmd_check(args):
     if not project.is_dir():
         result["error"] = "no such project: %s" % project
         return emit(result, EXIT_USAGE)
-    fails, cfg, paths = run_checks(project)
+    fails, cfg, paths = run_checks(project, getattr(args, "resume_refresh", False))
     result["failures"] = fails
     result["ok"] = not fails
     preflight = paths["substage"] / "preflight"
@@ -160,6 +160,11 @@ def build_params(cfg, paths):
     ]
     if cfg.get("reference.blacklist"):
         params.append(("blacklist", cfg["reference.blacklist"]))
+    if str(cfg.get("qc.gene_heatmaps", "true")).lower() in ("false", "no", "off"):
+        # Decision 0038: the all-samples x all-genes heatmap matrix cannot fit a sane
+        # single-node allocation on real cohorts; the scoring consumes peaks/bigwigs, not
+        # these figures. A recorded per-project decision, never a silent default.
+        params.append(("skip_heatmaps", "true"))
     return params
 
 
@@ -169,7 +174,7 @@ def cmd_prepare(args):
     if not project.is_dir():
         result["error"] = "no such project: %s" % project
         return emit(result, EXIT_USAGE)
-    fails, cfg, paths = run_checks(project)
+    fails, cfg, paths = run_checks(project, getattr(args, "resume_refresh", False))
     if fails:
         result["failures"] = fails
         result["error"] = "preflight failed; nothing written. Run `check` for the same detail."
@@ -303,6 +308,10 @@ def main(argv=None):
     for name, needs_model in (("check", False), ("prepare", False), ("collect", True)):
         p = sub.add_parser(name)
         p.add_argument("--project", required=True)
+        if name in ("check", "prepare"):
+            p.add_argument("--resume-refresh", action="store_true",
+                           help="allow re-prepare over a terminally FAILED run whose Nextflow "
+                                "state stays in place, for a params-change-then-resume (0038)")
         if needs_model:
             p.add_argument("--model", default="unknown",
                            help="the exact model id of the agent executing this sub-stage "

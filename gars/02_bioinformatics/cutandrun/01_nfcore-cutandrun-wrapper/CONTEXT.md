@@ -81,6 +81,19 @@ reads the module's content and refuses with `pipeline_patch` — naming the exac
 the patched lines (upstream's own dev-branch fix, verbatim) are present. Content is the
 authority: a re-cloned checkout reads legacy again and the refusal comes back.
 
+**Optional QC figures** (`qc.gene_heatmaps`, decision 0038): the deeptools gene heatmaps
+include an all-samples × all-genes matrix that cannot fit a sane single-node allocation on
+real cohorts. Setting the key `false` passes `--skip_heatmaps`; the stage-03 scoring consumes
+peaks/consensus/bigwigs/multiqc, never these figures, so the skip is scientifically free —
+but it is a recorded per-project decision the user makes in the config, never a silent
+default.
+
+**Re-prepare over a FAILED run** (`prepare --resume-refresh`, decision 0038): when a run is
+terminally FAILED and its Nextflow state is still in place, prepare may regenerate
+`params.yaml` and `submit.sh` WITHOUT moving `run/` aside, so a params change can ride
+`-resume` and the completed tasks replay from cache. The gate verifies both conditions
+(STATUS says FAILED; `run/.nextflow` exists) and refuses otherwise.
+
 **No derived cache yet.** The pipeline builds bowtie2 and spike-in indices per run; the first
 live run establishes whether a cache layout is worth adding.
 

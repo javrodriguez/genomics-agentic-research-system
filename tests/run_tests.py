@@ -1039,6 +1039,8 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
         cfgp.write_text(cfgp.read_text().replace(
             "/gpfs/data/sequence/references/iGenomes/Escherichia_coli_K_12_MG1655/NCBI/2001-10-15/Sequence/WholeGenomeFasta/genome.fa",
             str(self.spikein)))
+        self.assertIn("gene_heatmaps", cfgp.read_text(),
+                      "the seeded config carries the 0038 qc surface")
         # 0036 red case first: an index dir without genome.1.bt2 is refused BY NAME --
         # asserted on the failure list, not the exit code, so it holds off-cluster too
         code, res, raw = run(wrap, ["check", "--project", "projects/cnr-test"], self.ws)
@@ -1284,6 +1286,57 @@ class ModulePatchStateTests(unittest.TestCase):
         self.assertIn("-    tuple val(meta), path(\"*.html\"), emit: html optional true", text)
         self.assertIn("+    tuple val(meta), path(\"*.html\"), emit: html, optional: true", text)
         self.assertIn("git apply", text)
+
+
+class CheckRunDirRefreshTests(unittest.TestCase):
+    """Decision 0038: --resume-refresh opens the populated-run gate ONLY for a terminally
+    FAILED run with Nextflow state in place -- a params-change-then-resume, never a bypass."""
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, str(GARS / "_system"))
+        import wrapperlib
+        cls.wl = wrapperlib
+        cls.tmp = Path(tempfile.mkdtemp(prefix="gars-test-refresh-"))
+
+    @classmethod
+    def tearDownClass(cls):
+        sys.path.remove(str(GARS / "_system"))
+        shutil.rmtree(str(cls.tmp), ignore_errors=True)
+
+    def _substage(self, name, status=None, nextflow=False, populated=True):
+        sub = self.tmp / name
+        (sub / "run").mkdir(parents=True)
+        if populated:
+            (sub / "run" / "boot.log").write_text("log")
+        if nextflow:
+            (sub / "run" / ".nextflow").mkdir()
+        if status:
+            (sub / "STATUS").write_text(status)
+        return sub
+
+    def _fails(self, sub, refresh):
+        fails = []
+        self.wl.check_run_dir(sub, fails, resume_refresh=refresh)
+        return [f["check"] for f in fails]
+
+    def test_gate(self):
+        ok = self._substage("ok", status="FAILED 2026-08-28 oom", nextflow=True)
+        self.assertEqual(self._fails(ok, True), [], "FAILED + .nextflow -> refresh allowed")
+        self.assertEqual(self._fails(ok, False), ["output_dir"],
+                         "without the flag the gate still refuses")
+        no_state = self._substage("nostate", status="FAILED 2026-08-28 oom", nextflow=False)
+        self.assertEqual(self._fails(no_state, True), ["output_dir"],
+                         "no Nextflow state -> nothing to resume -> refused")
+        running = self._substage("running", status="SUBMITTED 123", nextflow=True)
+        self.assertEqual(self._fails(running, True), ["output_dir"],
+                         "not terminally FAILED -> refused")
+
+    def test_hint_names_the_road(self):
+        sub = self._substage("hint", status="FAILED x", nextflow=True)
+        fails = []
+        self.wl.check_run_dir(sub, fails, resume_refresh=False)
+        self.assertIn("--resume-refresh", fails[0]["detail"])
 
 
 class GuardHookTests(unittest.TestCase):

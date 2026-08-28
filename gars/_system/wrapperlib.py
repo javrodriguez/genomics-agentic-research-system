@@ -119,14 +119,31 @@ def check_executor_config(exec_cfg, fails):
                           "params.yaml so the audited surface cannot be bypassed"))
 
 
-def check_run_dir(substage, fails):
+def check_run_dir(substage, fails, resume_refresh=False):
     run_dir = substage / "run"
     if run_dir.is_dir() and any(run_dir.iterdir()) \
             and not (run_dir / ".gars_run_complete").is_file():
+        if resume_refresh:
+            # Decision 0038: a deliberate params-change-then-resume. Allowed ONLY when the
+            # previous run is terminally FAILED and Nextflow state exists for -resume to use.
+            status = substage / "STATUS"
+            failed = status.is_file() and \
+                status.read_text(encoding="utf-8").lstrip().startswith("FAILED")
+            if failed and (run_dir / ".nextflow").is_dir():
+                return
+            fails.append(fail("output_dir",
+                              "--resume-refresh applies only to a terminally FAILED run with "
+                              "Nextflow state in place (STATUS says FAILED and run/.nextflow "
+                              "exists); neither holds here (0038)."))
+            return
+        hint = ""
+        if (run_dir / ".nextflow").is_dir():
+            hint = (" A FAILED run with Nextflow state can be re-prepared in place with "
+                    "prepare --resume-refresh for a params-change-then-resume (0038).")
         fails.append(fail("output_dir",
                           "run/ is populated but carries no completion marker: a previous run "
                           "crashed or is still running. Nothing is deleted automatically -- "
-                          "check STATUS and Slurm before moving it aside."))
+                          "check STATUS and Slurm before moving it aside." + hint))
 
 
 def check_config_common(cfg, required_keys, fails):
