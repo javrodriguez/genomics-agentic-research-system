@@ -208,6 +208,10 @@ clone-and-run for a stranger).
    file recording why.
 
 Deferred with reasons:
+- **cutandrun collect registers one mark's consensus** (found during project 2's stage-03
+  drafting): the gate keyed `peaks_consensus` on h3k27me3 while h3k4me3's consensus sits
+  unregistered beside it. Latent — no current consumer needs both; a future stage-03 that
+  does needs the collect gate + resolver extended per-mark.
 - **Live contract-compliance replays** (assessment rec 2, dynamic half): scripted scenarios
   against the agent per release — needs billed runs; the static lint ships already. The
   evidence for building it is now three live deviations across two sessions: stage 03's
