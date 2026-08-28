@@ -60,8 +60,11 @@ stage 00 registers from there as usual. For GSE58638, select runs by `sample_tit
   statistics; the reproduction target is per-CpG agreement and the global-loss number.
 - **Project 2 is CUT&Tag under the cutandrun pipeline** — supported and precedented (it is
   the pipeline's own full test); label it CUT&Tag everywhere.
-- **Quota:** the campaign starts only after the data_abl file-count quota is resolved;
-  Nextflow runs are small-file storms (the 2026-08-27 incident).
+- **Quota:** superseded 2026-08-28 — the campaign runs in a workspace checkout on scratch
+  (no quotas; results staged off promptly, eviction is threshold-triggered cold-data).
+- **Parser pairing (0034):** atacseq/chipseq/cutandrun/methylseq run under
+  `NXF_SYNTAX_PARSER=v1`, exported by their generated `submit.sh` — their pinned releases
+  predate Nextflow's strict parser and no newer releases exist. rnaseq stays strict.
 
 ## What done looks like
 

@@ -46,6 +46,15 @@ PIPELINES = {
     "methylseq": "nf-core-methylseq-4.2.0",
 }
 
+# Assays whose pinned pipeline's nextflow.config predates Nextflow's strict config parser
+# (decision 0034): atacseq/chipseq/cutandrun carry the legacy `def check_max` helper, and
+# methylseq's profile includes resolve eagerly against a file absent from the checkout. Their
+# submit.sh exports NXF_SYNTAX_PARSER=v1 -- verified to parse all four clean on the pinned
+# nextflow 26.04.6, silently honored. Valid while nextflow stays lockfile-pinned; a nextflow
+# upgrade re-opens 0034. rnaseq is strict-clean and deliberately NOT listed: its validated
+# configuration stays byte-identical.
+NEXTFLOW_LEGACY_PARSER = {"atacseq_bulk", "chipseq_bulk", "cutandrun", "methylseq"}
+
 # The design table's columns, per assay (decision 0030). Every assay carries the base four;
 # ChIP-family assays add columns their pipelines require: `control` points at the sample_id of
 # the input-chromatin (chipseq) or IgG (cutandrun) sample -- same column shape, different

@@ -1086,6 +1086,48 @@ class ProjectStateTests(unittest.TestCase):
         self.assertEqual(code, 2)
 
 
+class SubmitShPairingTests(unittest.TestCase):
+    """Decision 0034: legacy-era pipelines get NXF_SYNTAX_PARSER=v1 in their generated
+    submit.sh; rnaseq (strict-clean, validated) stays byte-identical without it. Unit-level
+    against write_submit_sh directly, so it runs where no pinned checkout exists."""
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, str(GARS / "_system"))
+        import wrapperlib  # noqa: F401
+        cls.wl = wrapperlib
+        cls.tmp = Path(tempfile.mkdtemp(prefix="gars-test-pairing-"))
+        cls.cfg = {"compute.partition": "cpu_medium", "compute.time": "1:00:00",
+                   "compute.cpus": "4", "compute.mem": "8G"}
+
+    @classmethod
+    def tearDownClass(cls):
+        sys.path.remove(str(GARS / "_system"))
+        shutil.rmtree(str(cls.tmp), ignore_errors=True)
+
+    def _submit_for(self, assay):
+        sub = self.tmp / assay
+        sub.mkdir(exist_ok=True)
+        self.wl.write_submit_sh(sub, self.tmp, self.cfg, "proj", assay, "echo body")
+        return (sub / "submit.sh").read_text()
+
+    def test_00_legacy_assays_export_v1(self):
+        for assay in ("atacseq_bulk", "chipseq_bulk", "cutandrun", "methylseq"):
+            script = self._submit_for(assay)
+            self.assertIn("export NXF_SYNTAX_PARSER=v1", script, assay)
+            self.assertIn("Decision 0034", script, assay)
+
+    def test_01_rnaseq_stays_strict(self):
+        script = self._submit_for("rnaseq_bulk")
+        self.assertNotIn("NXF_SYNTAX_PARSER", script)
+
+    def test_02_guard_survives_injection(self):
+        script = self._submit_for("atacseq_bulk")
+        self.assertIn(".gars_run_complete", script)     # requeue guard intact
+        self.assertIn("RESUME=", script)                # resume branch intact
+        self.assertIn('source "$WS/_system/gars-env.sh"', script)
+
+
 class GuardHookTests(unittest.TestCase):
     """The mechanical scope boundaries (decision 0022). Every deny is an action no contract
     instructs; every allow is a step some contract does instruct."""

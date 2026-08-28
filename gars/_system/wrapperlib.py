@@ -203,7 +203,7 @@ set -euo pipefail
 
 WS="{workspace}"
 source "$WS/_system/gars-env.sh"
-
+{parser_pairing}
 cd "{substage}"
 mkdir -p run logs
 cd run
@@ -225,7 +225,12 @@ echo "[wrapper] run complete"
 """.format(project=project_name, assay=assay,
            partition=cfg["compute.partition"], time=cfg["compute.time"],
            cpus=cfg["compute.cpus"], mem=cfg["compute.mem"],
-           substage=str(substage.resolve()), workspace=str(workspace_root), body=body)
+           substage=str(substage.resolve()), workspace=str(workspace_root), body=body,
+           parser_pairing=(
+               "# Decision 0034: this pipeline's config predates the strict parser; the v1\n"
+               "# parser is the recorded pairing while nextflow stays pinned (gars-nxf lockfile).\n"
+               "export NXF_SYNTAX_PARSER=v1\n"
+               if assay in ws.NEXTFLOW_LEGACY_PARSER else ""))
     with ws.atomic_open(substage / "submit.sh") as fh:
         fh.write(script)
     os.chmod(str(substage / "submit.sh"), 0o755)
