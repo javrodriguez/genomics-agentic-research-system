@@ -1206,6 +1206,46 @@ class SubmitShPairingTests(unittest.TestCase):
         self.assertIn('source "$WS/_system/gars-env.sh"', script)
 
 
+class ModulePatchStateTests(unittest.TestCase):
+    """Decision 0037: a pin may carry one recorded patch, and CONTENT is the authority --
+    the detector reads the module file, so a regressed checkout (re-clone) is caught again."""
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, str(GARS / "_system"))
+        import wrapperlib
+        cls.wl = wrapperlib
+        cls.tmp = Path(tempfile.mkdtemp(prefix="gars-test-patchstate-"))
+        cls.rel = "modules/local/for_patch/trimgalore/main.nf"
+        (cls.tmp / "modules/local/for_patch/trimgalore").mkdir(parents=True)
+
+    @classmethod
+    def tearDownClass(cls):
+        sys.path.remove(str(GARS / "_system"))
+        shutil.rmtree(str(cls.tmp), ignore_errors=True)
+
+    def _state(self, content):
+        (self.tmp / self.rel).write_text(content)
+        return self.wl.module_patch_state(self.tmp, self.rel,
+                                          "optional true", "optional: true")
+
+    def test_states(self):
+        self.assertEqual(self._state("emit: html optional true\n"), "legacy")
+        self.assertEqual(self._state("emit: html, optional: true\n"), "patched")
+        self.assertEqual(self._state("no options here\n"), "absent")
+        (self.tmp / self.rel).unlink()
+        self.assertEqual(self.wl.module_patch_state(self.tmp, self.rel,
+                                                    "optional true", "optional: true"),
+                         "absent")
+
+    def test_patch_file_ships_and_matches_the_detector(self):
+        patch = GARS / "_references" / "patches" / "cutandrun-3.2.2-trimgalore-dsl.patch"
+        text = patch.read_text()
+        self.assertIn("-    tuple val(meta), path(\"*.html\"), emit: html optional true", text)
+        self.assertIn("+    tuple val(meta), path(\"*.html\"), emit: html, optional: true", text)
+        self.assertIn("git apply", text)
+
+
 class GuardHookTests(unittest.TestCase):
     """The mechanical scope boundaries (decision 0022). Every deny is an action no contract
     instructs; every allow is a step some contract does instruct."""

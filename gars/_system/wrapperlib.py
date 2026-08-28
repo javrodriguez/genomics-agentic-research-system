@@ -11,6 +11,7 @@ Runs on stock python 3.6.8, stdlib only, like every `_system/` helper.
 
 import hashlib
 import json
+import pathlib
 import os
 import re
 import shutil
@@ -172,6 +173,21 @@ def check_samplesheet(sheet_path, expected_header, fails, path_columns=(1, 2)):
                 fails.append(fail("samplesheet",
                                   "row %d: %s does not resolve -- the project may have moved; "
                                   "re-run stage 01" % (i, row[col])))
+
+
+def module_patch_state(checkout, relpath, legacy_needle, patched_needle):
+    """Is a recorded pin patch applied (decision 0037)? -> 'patched' | 'legacy' | 'absent'.
+    Content is the authority: a checkout that regressed (re-clone, git checkout .) reads
+    legacy again and the preflight refusal comes back with the apply command."""
+    p = pathlib.Path(checkout) / relpath
+    if not p.is_file():
+        return "absent"
+    text = p.read_text(encoding="utf-8", errors="replace")
+    if legacy_needle in text:
+        return "legacy"
+    if patched_needle in text:
+        return "patched"
+    return "absent"
 
 
 def samplesheet_group_rep_tokens(sheet_path, sample_col=0, rep_col=3, require_col=None):

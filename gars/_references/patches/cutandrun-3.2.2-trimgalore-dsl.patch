@@ -1,0 +1,21 @@
+# Decision 0037: the one recorded patch on the cutandrun-3.2.2 pin.
+# Its local module modules/local/for_patch/trimgalore/main.nf uses legacy DSL2 output
+# options (`optional true`), an NPE at workflow-graph build under Nextflow 26 (live find
+# #4, job 26873422). Replacement lines are upstream's own fix, verbatim from their dev
+# branch. Apply from the checkout root:
+#   git apply /path/to/this.patch        (or: patch -p1 < this.patch)
+# The wrapper's preflight verifies the patched content and refuses with this command
+# until it is applied. Tag + this patch IS the pin's recorded provenance.
+--- a/modules/local/for_patch/trimgalore/main.nf
++++ b/modules/local/for_patch/trimgalore/main.nf
+@@ -15,8 +15,8 @@
+     tuple val(meta), path("*report.txt")        , emit: log
+     path  "versions.yml"                        , emit: versions
+ 
+-    tuple val(meta), path("*.html"), emit: html optional true
+-    tuple val(meta), path("*.zip") , emit: zip optional true
++    tuple val(meta), path("*.html"), emit: html, optional: true
++    tuple val(meta), path("*.zip"), emit: zip, optional: true
+ 
+     when:
+     task.ext.when == null || task.ext.when

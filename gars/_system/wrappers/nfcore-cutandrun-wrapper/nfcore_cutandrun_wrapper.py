@@ -108,6 +108,18 @@ def run_checks(project):
                                   "this samplesheet (a control row has an empty `control`)"
                                   % (r[0], r[4])))
     checkout = wl.check_pipeline(ASSAY, fails)
+    if checkout and Path(checkout).is_dir():
+        # Decision 0037: this pin carries one recorded patch; content is the authority.
+        state = wl.module_patch_state(checkout, "modules/local/for_patch/trimgalore/main.nf",
+                                      "optional true", "optional: true")
+        if state == "legacy":
+            fails.append(fail("pipeline_patch",
+                              "the pinned checkout's trimgalore module still carries legacy "
+                              "DSL output options -- an NPE under this Nextflow. Apply the "
+                              "recorded patch (0037): git -C %s apply %s"
+                              % (checkout,
+                                 WORKSPACE / "_references/patches/"
+                                 "cutandrun-3.2.2-trimgalore-dsl.patch")))
     wl.check_executor_config(paths["executor_config"], fails)
     wl.check_run_dir(paths["substage"], fails)
     paths["checkout"] = checkout

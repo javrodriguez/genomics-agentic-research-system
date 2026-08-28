@@ -74,6 +74,13 @@ path) even when a local fasta is supplied, so the index must be pinned explicitl
 0036). `peaks.peakcaller` (seacr), `peaks.normalisation` (Spikein) and `peaks.use_control`
 (true) are presented defaults — in the config the user confirms, never chosen silently.
 
+**The pin carries one recorded patch** (decision 0037): the checkout's own trimgalore
+module uses legacy DSL output options that this Nextflow rejects at graph build. `check`
+reads the module's content and refuses with `pipeline_patch` — naming the exact
+`git apply` command for `_references/patches/cutandrun-3.2.2-trimgalore-dsl.patch` — until
+the patched lines (upstream's own dev-branch fix, verbatim) are present. Content is the
+authority: a re-cloned checkout reads legacy again and the refusal comes back.
+
 **No derived cache yet.** The pipeline builds bowtie2 and spike-in indices per run; the first
 live run establishes whether a cache layout is worth adding.
 
