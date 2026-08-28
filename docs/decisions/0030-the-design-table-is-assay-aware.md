@@ -11,6 +11,12 @@ touches:
 ---
 # The design table's columns are per-assay
 
+> **Correction, 2026-08-28 ([0035](0035-the-samplesheet-sample-column-is-the-pipelines.md)).**
+> The clause below that an IP and its input "legitimately share group" was wrong for the
+> pipelines' actual semantics: the samplesheet's sample column IS the group, so a shared
+> group merges IP and input into one pipeline sample. Inputs take their own group; stage 01
+> now refuses an antibody-mixed group. The rest of this decision stands.
+
 ## What happened
 
 `samples.csv` carried a fixed header — `sample_id,condition,group,replicate` — because one

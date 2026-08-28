@@ -473,16 +473,62 @@ class AtacseqWrapperTests(unittest.TestCase):
             rows = list(csv.reader(fh))
         head = rows[0]
         for i, r in enumerate(rows[1:], 1):
-            r[head.index("condition")] = "KO" if i == 1 else "WT"
-            r[head.index("group")] = "G1"
-            r[head.index("replicate")] = str(i)
+            cond = "KO" if i == 1 else "WT"
+            r[head.index("condition")] = cond
+            r[head.index("group")] = cond
+            r[head.index("replicate")] = "1"
         with samples_csv.open("w", newline="") as fh:
             csv.writer(fh).writerows(rows)
         code, res, raw = run(self.sheet_py, ["--project", "projects/atac-test"], self.ws)
         self.assertEqual(code, 0, raw)
         sheet = self.project / "01_samplesheets" / "atacseq_bulk_samplesheet.csv"
-        self.assertEqual(sheet.read_text().splitlines()[0], "sample,fastq_1,fastq_2,replicate",
+        lines = sheet.read_text().splitlines()
+        self.assertEqual(lines[0], "sample,fastq_1,fastq_2,replicate",
                          "the emitted format is the assay's own, not the RNA layout")
+        emitted = sorted(l.split(",")[0] for l in lines[1:])
+        self.assertEqual(emitted, ["KO", "WT"],
+                         "sample is the GROUP (0035) -- the pipeline's checker demands it")
+
+    def test_00b_group_semantics_laws_refuse_early(self):
+        # Non-contiguous replicate ids within a group die at stage 01, not in Slurm (0035).
+        samples_csv = self.project / "00_data" / "atacseq_bulk" / "samples.csv"
+        with samples_csv.open() as fh:
+            rows = list(csv.reader(fh))
+        head = rows[0]
+        for r in rows[1:]:
+            r[head.index("group")] = "G1"
+            r[head.index("replicate")] = "2"  # both rep 2: duplicate AND non-contiguous
+        with samples_csv.open("w", newline="") as fh:
+            csv.writer(fh).writerows(rows)
+        code, res, raw = run(self.sheet_py, ["--project", "projects/atac-test", "--check"],
+                             self.ws)
+        self.assertEqual(code, 1, raw)
+        msgs = " ".join(f["detail"] for a in res["assays"].values()
+                        for f in a.get("failures", []))
+        self.assertIn("1..N", msgs)
+        self.assertIn("must be unique", msgs)
+        # a non-numeric replicate is refused at stage 01, not an hour into a Slurm job
+        for i, r in enumerate(rows[1:], 1):
+            r[head.index("replicate")] = "one" if i == 1 else "1"
+        with samples_csv.open("w", newline="") as fh:
+            csv.writer(fh).writerows(rows)
+        code, res, raw = run(self.sheet_py, ["--project", "projects/atac-test", "--check"],
+                             self.ws)
+        self.assertEqual(code, 1, raw)
+        msgs = " ".join(f["detail"] for a in res["assays"].values()
+                        for f in a.get("failures", []))
+        self.assertIn("positive integer", msgs)
+        # restore the good design for the tests that follow
+        for i, r in enumerate(rows[1:], 1):
+            cond = "KO" if i == 1 else "WT"
+            r[head.index("condition")] = cond
+            r[head.index("group")] = cond
+            r[head.index("replicate")] = "1"
+        with samples_csv.open("w", newline="") as fh:
+            csv.writer(fh).writerows(rows)
+        code, _, raw = run(self.sheet_py, ["--project", "projects/atac-test", "--force"],
+                           self.ws)
+        self.assertEqual(code, 0, raw)
 
     def test_01_check_refuses_unfilled_config(self):
         code, res, raw = run(self.wrap, ["check", "--project", "projects/atac-test"], self.ws)
@@ -554,13 +600,13 @@ class AtacseqWrapperTests(unittest.TestCase):
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/atac-test"], self.ws)
         self.assertEqual(code, 2, raw)
         # content gate: a sample missing from the count matrix header is caught
-        self._fake_results(["ATAC1", "ATAC2"], include_in_counts=["ATAC1"])
+        self._fake_results(["KO", "WT"], include_in_counts=["KO"])
         (self.substage / "run" / ".gars_run_complete").write_text("now\n")
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/atac-test"], self.ws)
         self.assertEqual(code, 1, raw)
         self.assertIn("counts_peaks", [f["check"] for f in res["failures"]])
         # full tree: passes, registers, stamps
-        self._fake_results(["ATAC1", "ATAC2"])
+        self._fake_results(["KO", "WT"])
         # fake built indices so the derived cache is harvested
         built = self.substage / "run" / "results" / "genome" / "index" / "bwa"
         built.mkdir(parents=True, exist_ok=True)
@@ -836,11 +882,11 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
         self.assertEqual(head, "sample_id,condition,group,replicate,antibody,control",
                          "stage 00 writes the assay's design columns (0030)")
         fill = {
-            "CHIP1": {"condition": "KO", "group": "G1", "replicate": "1",
+            "CHIP1": {"condition": "KO", "group": "IP_KO", "replicate": "1",
                       "antibody": "H3K27ac", "control": "INPUT1"},
-            "CHIP2": {"condition": "WT", "group": "G1", "replicate": "1",
+            "CHIP2": {"condition": "WT", "group": "IP_WT", "replicate": "1",
                       "antibody": "H3K27ac", "control": "NOSUCH"},
-            "INPUT1": {"condition": "KO", "group": "G1", "replicate": "1"},
+            "INPUT1": {"condition": "KO", "group": "INPUT_KO", "replicate": "1"},
         }
         self._fill_design(project, "chipseq_bulk", fill)
         code, res, raw = run(self.sheet_py, ["--project", "projects/chip-test",
@@ -860,9 +906,28 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
         self.assertEqual(sheet[0],
                          "sample,fastq_1,fastq_2,replicate,antibody,control,control_replicate")
         by_sample = {l.split(",")[0]: l.split(",") for l in sheet[1:]}
-        self.assertEqual(by_sample["CHIP1"][6], "1",
+        self.assertEqual(sorted(by_sample), ["INPUT_KO", "IP_KO", "IP_WT"],
+                         "sample is the GROUP (0035)")
+        self.assertEqual(by_sample["IP_KO"][5], "INPUT_KO",
+                         "control is the control's GROUP, translated from the design's "
+                         "sample_id pointer (0035)")
+        self.assertEqual(by_sample["IP_KO"][6], "1",
                          "control_replicate is derived from the control's design row")
-        self.assertEqual(by_sample["INPUT1"][5], "", "a control row has no control")
+        self.assertEqual(by_sample["INPUT_KO"][5], "", "a control row has no control")
+        # 0035's homogeneity law: an IP sharing its input's group is refused at stage 01
+        fill["CHIP1"]["group"] = "INPUT_KO"
+        self._fill_design(project, "chipseq_bulk", fill)
+        code, res, raw = run(self.sheet_py, ["--project", "projects/chip-test",
+                                             "--check", "--confirm-exclusions"], self.ws)
+        self.assertEqual(code, 1, raw)
+        msgs = " ".join(f["detail"] for a in res["assays"].values()
+                        for f in a.get("failures", []))
+        self.assertIn("antibody", msgs)
+        fill["CHIP1"]["group"] = "IP_KO"
+        self._fill_design(project, "chipseq_bulk", fill)
+        code, _, raw = run(self.sheet_py, ["--project", "projects/chip-test",
+                                           "--confirm-exclusions", "--force"], self.ws)
+        self.assertEqual(code, 0, raw)
 
     def test_01_chipseq_wrapper(self):
         wrap = self.ws / "_system" / "wrappers" / "nfcore-chipseq-wrapper" \
@@ -881,13 +946,13 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
         ml = substage / "run" / "results" / "bwa" / "merged_library"
         ab = ml / "macs3" / "narrow_peak" / "consensus" / "H3K27ac"
         ab.mkdir(parents=True)
-        (ml / "macs3" / "narrow_peak" / "CHIP1_REP1_peaks.narrowPeak").write_text("chr1\t1\t2\n")
+        (ml / "macs3" / "narrow_peak" / "IP_KO_REP1_peaks.narrowPeak").write_text("chr1\t1\t2\n")
         (ab / "H3K27ac.consensus_peaks.bed").write_text("chr1\t1\t2\tp1\n")
         (ab / "H3K27ac.consensus_peaks.featureCounts.txt").write_text(
-            "# fc\nGeneid\tChr\tStart\tEnd\tStrand\tLength\tCHIP1_REP1.bam\tCHIP2_REP1.bam\np1\tchr1\t1\t2\t+\t2\t1\t1\n")
+            "# fc\nGeneid\tChr\tStart\tEnd\tStrand\tLength\tIP_KO_REP1.bam\tIP_WT_REP1.bam\tINPUT_KO_REP1.bam\np1\tchr1\t1\t2\t+\t2\t1\t1\t1\n")
         (ml / "bigwig").mkdir()
-        (ml / "bigwig" / "CHIP1_REP1.bigWig").write_text("bw")
-        (ml / "CHIP1_REP1.mLb.clN.sorted.bam").write_text("bam")
+        (ml / "bigwig" / "IP_KO_REP1.bigWig").write_text("bw")
+        (ml / "IP_KO_REP1.mLb.clN.sorted.bam").write_text("bam")
         mq = substage / "run" / "results" / "multiqc" / "narrow_peak"
         mq.mkdir(parents=True)
         (mq / "multiqc_report.html").write_text("<html>ok</html>")

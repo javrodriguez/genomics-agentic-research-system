@@ -234,14 +234,16 @@ def cmd_collect(args):
     if not counts:
         fails.append(fail("counts_peaks", "no */*.featureCounts.txt under %s" % consensus_root))
     else:
-        # Content, not existence: every IP sample must appear in some antibody's count matrix.
+        # Content, not existence: every IP GROUP_REPn must appear in some antibody's count
+        # matrix (0035: bare groups would let a lost replicate hide behind a surviving one).
         headers = ""
         for c in counts:
             for line in c.read_text(encoding="utf-8", errors="replace").splitlines():
                 if not line.startswith("#"):
                     headers += line + "\n"
                     break
-        missing = [s for s in ip_samples if s not in headers]
+        expected = wl.samplesheet_group_rep_tokens(paths["samplesheet"], require_col=4)
+        missing = [t for t in expected if t not in headers]
         if missing:
             fails.append(fail("counts_peaks",
                               "no consensus count matrix carries IP sample(s): %s -- a sample "

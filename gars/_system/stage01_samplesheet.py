@@ -75,14 +75,15 @@ FORMATS = {
     },
     # --- the wrapper-backed assays (0028, 0031) ------------------------------------------------
     "atacseq_bulk": {
-        # Promoted 2026-08-25 with wrapper #1 (_system/wrappers/nfcore-atacseq-wrapper).
-        # Columns re-verified against the pinned checkout's schema on promotion day:
-        # required = sample, fastq_1, replicate; control columns exist in the schema but are
-        # for ChIP-style designs and stay out of the ATAC emitter.
+        # Promoted 2026-08-25 with wrapper #1; SEMANTICS corrected 2026-08-28 (decision 0035,
+        # found by live run 26863963): the pipeline's `sample` column is the GROUP -- rows
+        # repeat it per biological replicate, and its checker enforces replicate ids 1..N
+        # within each. Emitting sample_id made every replicate its own group. Control columns
+        # exist in the schema but are for ChIP-style designs and stay out of the ATAC emitter.
         "status": "active",
-        "source": "nf-core/atacseq 2.1.2 assets/schema_input.json",
+        "source": "nf-core/atacseq 2.1.2 assets/schema_input.json + bin/check_samplesheet.py",
         "columns": [
-            ("sample", "sample_id"),
+            ("sample", "design:group"),
             ("fastq_1", "fastq_1"),
             ("fastq_2", "fastq_2"),
             ("replicate", "design:replicate"),
@@ -93,15 +94,20 @@ FORMATS = {
         # and control for this assay (decision 0030); control_replicate is DERIVED -- the
         # replicate of the referenced control sample -- because a value a script can compute
         # is never typed by a user (decision 0011).
+        # SEMANTICS corrected 2026-08-28 (decision 0035): `sample` is the GROUP, and the
+        # samplesheet's `control` names the control's GROUP (matched with control_replicate) --
+        # the design's `control` still points at a sample_id (0030), and the emitter translates
+        # it to that row's group. A group must be antibody-homogeneous: IP and input can no
+        # longer share one (corrects 0030's shared-group clause; see 0035).
         "status": "active",
-        "source": "nf-core/chipseq 2.1.0 assets/schema_input.json",
+        "source": "nf-core/chipseq 2.1.0 assets/schema_input.json + bin/check_samplesheet.py",
         "columns": [
-            ("sample", "sample_id"),
+            ("sample", "design:group"),
             ("fastq_1", "fastq_1"),
             ("fastq_2", "fastq_2"),
             ("replicate", "design:replicate"),
             ("antibody", "design:antibody"),
-            ("control", "design:control"),
+            ("control", "lookup:control_group"),
             ("control_replicate", "lookup:control_replicate"),
         ],
     },
@@ -389,25 +395,63 @@ def validate_assay(project, assay):
                 fails.append(fail("invalid_design",
                                   f"group {gname!r} contains {len(distinct)} sample; a group "
                                   "of one cannot be tested for differential expression"))
-    # Replicate numbers must be unique within an experimental unit. What identifies a unit is
-    # per-assay (decision 0030): for ChIP, an IP and its input legitimately share group,
-    # condition AND replicate -- they are distinguished by antibody (blank = input). `control`
-    # is a pointer, not identity, so it never joins the key.
-    identity_extras = [c for c in ws.design_columns(assay)
-                       if c not in ("sample_id", "condition", "group", "replicate", "control")]
-    reps = {}
-    for row in incl_rows:
-        key = tuple([row["group"], row["condition"], row["replicate"]]
-                    + [row.get(c, "") for c in identity_extras])
-        if key in reps and reps[key] != row["sample_id"]:
-            fails.append(fail("invalid_design",
-                              f"replicate {row['replicate']!r} repeats within group "
-                              f"{row['group']!r} / condition {row['condition']!r} for samples "
-                              f"{reps[key]!r} and {row['sample_id']!r}"
-                              + (f" (same {'/'.join(identity_extras)})"
-                                 if identity_extras else "")))
-        else:
-            reps[key] = row["sample_id"]
+    # Replicate identity is per-assay. For the group-as-sample assays (0035: atacseq, chipseq,
+    # cutandrun -- the pipeline's `sample`/`group` column IS the group, and its checker demands
+    # replicate ids exactly 1..N within each), (group, replicate) must be unique outright and
+    # contiguous from 1, and a chipseq group must be antibody-homogeneous: IP and input can no
+    # longer share a group (corrects 0030's shared-group clause -- under group emission they
+    # would merge into one pipeline sample). Enforced HERE so the refusal lands at stage 01,
+    # not an hour into a Slurm job. Other assays keep the 0030 key.
+    if assay in ("atacseq_bulk", "chipseq_bulk", "cutandrun"):
+        for row in incl_rows:
+            r = str(row["replicate"])
+            if not (r and all("0" <= ch <= "9" for ch in r) and int(r) > 0):
+                fails.append(fail("invalid_design",
+                                  f"sample {row['sample_id']!r}: replicate {r!r} is not a "
+                                  "positive integer -- the pipeline's checker requires "
+                                  "integer replicate ids (0035)"))
+        reps = {}
+        for row in incl_rows:
+            key = (row["group"], row["replicate"])
+            if key in reps:
+                fails.append(fail("invalid_design",
+                                  f"replicate {row['replicate']!r} repeats within group "
+                                  f"{row['group']!r} for samples {reps[key]!r} and "
+                                  f"{row['sample_id']!r} -- the pipeline's sample unit is the "
+                                  "group, so (group, replicate) must be unique (0035)"))
+            else:
+                reps[key] = row["sample_id"]
+        for gname, grows in sorted(groups.items()):
+            ids = sorted({int(r["replicate"]) for r in grows if str(r["replicate"]).isdigit()})
+            if ids and (ids[0] != 1 or ids[-1] != len(ids)):
+                fails.append(fail("invalid_design",
+                                  f"group {gname!r} has replicate ids {ids}; the pipeline "
+                                  "requires exactly 1..N within each group (0035)"))
+        if assay == "chipseq_bulk":
+            for gname, grows in sorted(groups.items()):
+                abs_ = {r.get("antibody", "") for r in grows}
+                if len(abs_) > 1:
+                    fails.append(fail("invalid_design",
+                                      f"group {gname!r} mixes antibody values {sorted(abs_)}; "
+                                      "a group is one pipeline sample, so IP and input need "
+                                      "their own groups (0035, corrects 0030)"))
+    else:
+        identity_extras = [c for c in ws.design_columns(assay)
+                           if c not in ("sample_id", "condition", "group", "replicate",
+                                        "control")]
+        reps = {}
+        for row in incl_rows:
+            key = tuple([row["group"], row["condition"], row["replicate"]]
+                        + [row.get(c, "") for c in identity_extras])
+            if key in reps and reps[key] != row["sample_id"]:
+                fails.append(fail("invalid_design",
+                                  f"replicate {row['replicate']!r} repeats within group "
+                                  f"{row['group']!r} / condition {row['condition']!r} for "
+                                  f"samples {reps[key]!r} and {row['sample_id']!r}"
+                                  + (f" (same {'/'.join(identity_extras)})"
+                                     if identity_extras else "")))
+            else:
+                reps[key] = row["sample_id"]
 
     # -- config-sourced columns
     config_values = {}
@@ -513,6 +557,13 @@ def write_assay(project, assay, res):
                     d = res["_design_by_id"].get(row["sample_id"], {})
                     ctrl = d.get("control", "")
                     out.append(res["_design_by_id"].get(ctrl, {}).get("replicate", "")
+                               if ctrl else "")
+                elif src == "lookup:control_group":
+                    # Derived (0035): the pipeline matches controls by GROUP + replicate, the
+                    # design points at a sample_id -- emit the referenced row's group.
+                    d = res["_design_by_id"].get(row["sample_id"], {})
+                    ctrl = d.get("control", "")
+                    out.append(res["_design_by_id"].get(ctrl, {}).get("group", "")
                                if ctrl else "")
                 else:
                     out.append(row.get(src, ""))

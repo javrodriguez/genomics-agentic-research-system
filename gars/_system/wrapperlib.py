@@ -174,6 +174,21 @@ def check_samplesheet(sheet_path, expected_header, fails, path_columns=(1, 2)):
                                   "re-run stage 01" % (i, row[col])))
 
 
+def samplesheet_group_rep_tokens(sheet_path, sample_col=0, rep_col=3, require_col=None):
+    """`<GROUP>_REP<N>` per samplesheet row (0035) -- the naming nf-core's merged-library
+    outputs use. Exit gates check these rather than bare group names, so a lost replicate
+    cannot hide behind its group's surviving one. `require_col`: only rows with that column
+    non-empty (chipseq's IP rows)."""
+    toks = set()
+    for line in sheet_path.read_text(encoding="utf-8").splitlines()[1:]:
+        if line.strip():
+            c = line.split(",")
+            if require_col is not None and not c[require_col]:
+                continue
+            toks.add("%s_REP%s" % (c[sample_col], c[rep_col]))
+    return sorted(toks)
+
+
 def samplesheet_samples(sheet_path, column=0):
     lines = sheet_path.read_text(encoding="utf-8").splitlines()
     return sorted({l.split(",")[column] for l in lines[1:] if l.strip()})

@@ -229,16 +229,19 @@ def cmd_collect(args):
     if not counts:
         fails.append(fail("counts_peaks", "no *.featureCounts.txt under %s" % consensus_dir))
     else:
-        # Content, not existence: every sample must appear in the count-matrix header.
+        # Content, not existence: every GROUP_REPn must appear in the count-matrix header
+        # (0035: the sample column is the group, so checking bare groups would let a lost
+        # replicate hide behind its group's surviving one).
         header = ""
         for line in counts[0].read_text(encoding="utf-8", errors="replace").splitlines():
             if not line.startswith("#"):
                 header = line
                 break
-        missing = [s for s in samples if s not in header]
+        expected = wl.samplesheet_group_rep_tokens(paths["samplesheet"])
+        missing = [t for t in expected if t not in header]
         if missing:
             fails.append(fail("counts_peaks",
-                              "%s lacks column(s) for sample(s): %s -- a sample lost to a "
+                              "%s lacks column(s) for: %s -- a replicate lost to a "
                               "failed process disappears here and nowhere downstream"
                               % (counts[0].name, ", ".join(missing))))
 

@@ -77,9 +77,15 @@ remains a faithful record of what was ingested. Excluded samples are omitted fro
 and design table, and **must be confirmed by the user before anything is written**.
 
 **Valid design.** All of, considering included samples only. Violations → `invalid_design`.
-- every `group` contains at least 2 distinct `sample_id` values — a group of one cannot be tested
-  for differential expression;
-- within a given `group` and `condition`, no `replicate` repeats for distinct samples;
+- for `rnaseq_bulk`: every `group` contains at least 2 distinct `sample_id` values — a group
+  of one cannot be tested for differential expression;
+- for the group-as-sample assays (`atacseq_bulk`, `chipseq_bulk`, `cutandrun` — decision 0035:
+  the pipeline's sample unit IS the group): every `replicate` is a positive integer;
+  `(group, replicate)` is unique outright; replicate ids within each group are exactly
+  `1..N`; and a `chipseq_bulk` group is antibody-homogeneous — an IP and its input never
+  share a group (corrects 0030's shared-group clause);
+- for the other assays: within a given `group` and `condition` (plus the assay's identity
+  columns), no `replicate` repeats for distinct samples;
 - no `sample_id` appears more than once in `samples.csv`;
 - no `(sample_id, lane)` pair appears more than once in `files.csv`;
 - an assay is wholly paired-end or wholly single-end, never mixed.
@@ -87,8 +93,9 @@ and design table, and **must be confirmed by the user before anything is written
 **Samplesheet.** `01_samplesheets/<Assay ID>_samplesheet.csv`. One row per included `files.csv`
 row, with **columns determined by the assay**, because the samplesheet is the upstream pipeline's
 contract and differs per pipeline. `python3 _system/stage01_samplesheet.py --list-formats` prints
-the registered formats; today only `rnaseq_bulk` is registered
-(`sample,fastq_1,fastq_2,strandedness`), because it is the only assay in the assay map.
+the registered formats; all five assays are registered, each with its pipeline's own columns
+and semantics (for the group-as-sample assays, `sample`/`group` carries the design's `group`
+— decision 0035).
 
 An assay with no registered format is **refused** (`unsupported_assay`). It never inherits another
 assay's columns: `strandedness` is RNA-only, and a samplesheet carrying the wrong columns can
