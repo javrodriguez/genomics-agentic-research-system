@@ -95,8 +95,10 @@ in [0032](docs/decisions/0032-lessons-land-where-they-fire.md).
 
 ### What is not yet proven
 
-- **Four assays have never run a live pipeline** (atacseq, chipseq, cutandrun, methylseq);
-  rnaseq is done. Every mechanical layer is offline-tested; what only a cluster run can prove
+- **Three assays have never run a live pipeline** (chipseq, cutandrun, methylseq); rnaseq
+  and atacseq are done — atacseq's first live run completed 2026-08-28 (campaign project
+  `dko-atac`, job 26864112, exit gate clean, derived cache populated) after two attempts that
+  each found a shipped defect (0034, 0035). Every mechanical layer is offline-tested; what only a cluster run can prove
   is the pipelines completing under these params, the real output trees matching the gates
   built from their docs, and the ChIP/CUT&RUN control semantics surviving nf-core's own
   samplesheet validation. One live run per remaining assay is the standing item — held until
