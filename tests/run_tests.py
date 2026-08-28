@@ -34,6 +34,24 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 GARS = REPO / "gars"
 
+sys.path.insert(0, str(GARS / "_system"))
+import workspace  # noqa: E402 -- the single source of truth for the pipeline pins
+
+
+def needs_pipeline(assay):
+    """Skip when the assay's pinned nf-core checkout is absent from this machine.
+
+    Off-cluster there is no $GARS_PIPELINES tree, preflight rightly refuses, and the tests
+    that need `check` to PASS cannot run -- they skip as environment failures rather than
+    fail, which is the behaviour the README documents for a cluster-less checkout. The pin
+    names come from workspace.PIPELINES, never restated here."""
+    key = workspace.PIPELINES[assay]
+    root = Path(os.environ.get("GARS_PIPELINES")
+                or str(Path.home() / "install" / "nf-core-pipelines"))
+    checkout = root / key.replace("nf-core-", "")
+    return unittest.skipUnless(
+        checkout.is_dir(), "environment: no pinned checkout at %s" % checkout)
+
 
 def run(script, args, cwd, env_extra=None, stdin_data=None):
     """Run a _system/ helper (or any command list) and return (exit_code, parsed_json_or_None, raw)."""
@@ -229,7 +247,13 @@ class WorkspaceFixture(unittest.TestCase):
     def test_10_configure_apply_dry_run(self):
         cfg = self.ws / "_system" / "configure.py"
         code, res, raw = run(cfg, ["genomes"], self.ws)
-        gid = res["genomes"][0]["id"]
+        entry = res["genomes"][0]
+        if not (entry["fasta_readable"] and entry["gtf_readable"]):
+            # the registry points at the cluster's reference tree; off-cluster `apply`
+            # rightly refuses, so this is an environment failure, not a defect
+            self.skipTest("environment: registry reference %s not on this machine"
+                          % entry["id"])
+        gid = entry["id"]
         code, res, raw = run(cfg, ["apply", "--project", "projects/tall-test",
                                    "--assay", "rnaseq_bulk", "--genome", gid,
                                    "--contrast", "condition,MT,WT", "--dry-run"], self.ws)
@@ -557,6 +581,7 @@ class AtacseqWrapperTests(unittest.TestCase):
         self.assertIn("macs_gsize: 12345", cfg)
         self.assertIn("mito_name: MT", cfg)
 
+    @needs_pipeline("atacseq_bulk")
     def test_03_prepare_is_deterministic(self):
         code, res, raw = run(self.wrap, ["check", "--project", "projects/atac-test"], self.ws)
         self.assertEqual(code, 0, raw)
@@ -683,6 +708,7 @@ class RnaseqGarsWrapperTests(unittest.TestCase):
 
     tearDownClass = classmethod(lambda cls: WorkspaceFixture.tearDownClass.__func__(cls))
 
+    @needs_pipeline("rnaseq_bulk")
     def test_00_check_and_prepare(self):
         code, res, raw = run(self.wrap, ["check", "--project", "projects/rna-test"], self.ws)
         self.assertEqual(code, 0, raw)
@@ -698,6 +724,7 @@ class RnaseqGarsWrapperTests(unittest.TestCase):
              (self.substage / "submit.sh").read_bytes())
         self.assertEqual(a, b, "same inputs must produce byte-identical artifacts (0011)")
 
+    @needs_pipeline("rnaseq_bulk")
     def test_01_half_built_cache_is_refused(self):
         star = self.refs / "cache" / "index" / "star"
         star.mkdir(parents=True)
@@ -715,6 +742,16 @@ class RnaseqGarsWrapperTests(unittest.TestCase):
         self.assertNotIn("save_reference", res["params"])
 
     def test_02_collect_gates_on_content(self):
+        # the complete keyed cache test_01 leaves behind -- built here too, idempotently,
+        # so this test stands alone when test_01 skips off-cluster
+        star = self.refs / "cache" / "index" / "star"
+        star.mkdir(parents=True, exist_ok=True)
+        (star / "SA").write_text("index")
+        (star / "genomeParameters.txt").write_text("versionGenome 2.7.4a")
+        salmon = self.refs / "cache" / "index" / "salmon"
+        salmon.mkdir(exist_ok=True)
+        (salmon / "info.json").write_text("{}")
+        (self.refs / "cache" / "genome.transcripts.fa").write_text(">t\nACGT\n")
         adir = self.substage / "run" / "results" / "star_salmon"
         adir.mkdir(parents=True, exist_ok=True)
         (self.substage / "run" / ".gars_run_complete").write_text("now\n")
@@ -932,6 +969,7 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
                                            "--confirm-exclusions", "--force"], self.ws)
         self.assertEqual(code, 0, raw)
 
+    @needs_pipeline("chipseq_bulk")
     def test_01_chipseq_wrapper(self):
         wrap = self.ws / "_system" / "wrappers" / "nfcore-chipseq-wrapper" \
             / "nfcore_chipseq_wrapper.py"
@@ -969,6 +1007,7 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
 
     # ----- cutandrun ----------------------------------------------------------------------
 
+    @needs_pipeline("cutandrun")
     def test_02_cutandrun_chain(self):
         project = self._mk_project("cnr-test", "cutandrun")
         head = (project / "00_data" / "cutandrun" / "samples.csv").read_text().splitlines()[0]
@@ -1037,6 +1076,7 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
 
     # ----- methylseq ----------------------------------------------------------------------
 
+    @needs_pipeline("methylseq")
     def test_03_methylseq_chain(self):
         project = self._mk_project("meth-test", "methylseq")
         fill = {"METH1": {"condition": "A", "group": "G1", "replicate": "1"},

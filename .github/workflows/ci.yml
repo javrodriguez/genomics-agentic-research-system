@@ -1,0 +1,25 @@
+# The deterministic core, on every push -- the same two commands the repo says to run
+# before committing (CLAUDE.md). Stdlib only, nothing to install: the helpers and their
+# tests run on stock Python >= 3.6 by contract (decision 0011). Tests that need the
+# cluster -- a pinned nf-core checkout or the reference tree -- skip cleanly here as
+# environment failures, exactly as they do on any machine that is not the cluster.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test suite
+        run: python3 tests/run_tests.py
+      - name: Contract lint
+        run: python3 tests/check_contracts.py

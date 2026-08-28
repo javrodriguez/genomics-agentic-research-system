@@ -1,11 +1,14 @@
 # GARS — Genomics Agentic Research System
 
+[![CI](https://github.com/javrodriguez/genomics-agentic-research-system/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/javrodriguez/genomics-agentic-research-system/actions/workflows/ci.yml)
+
 A filesystem-native architecture for running reproducible bioinformatics workflows through an
 LLM agent, on HPC.
 
 The premise: **the filesystem is the state machine, the LLM is the navigator.** Directory
 structure encodes workflow state, each stage is a written contract the agent executes literally,
-and scientific decisions stay with the human.
+and scientific decisions stay with the human. That premise, carried through every layer of the
+system, is what its author calls the Interpretable Context Methodology (ICM).
 
 ---
 
@@ -235,7 +238,7 @@ table, and both config files. No real data.
 The deterministic core runs anywhere — stock Python ≥3.6, stdlib only, no conda:
 
 ```bash
-python3 tests/run_tests.py         # 38 tests: every helper through its real CLI, in a throwaway workspace
+python3 tests/run_tests.py         # every helper through its real CLI, in a throwaway workspace
 python3 tests/check_contracts.py   # contract lint: sections, wait points, script↔contract vocabulary drift
 ```
 
@@ -292,7 +295,7 @@ gars/           the workspace — clone the repo and work in here
   projects/         the work, plus a generated _index.md
 docs/           architecture, execution model, assay research, decisions/, upstream/
 examples/       synthetic worked example
-tests/          run_tests.py (38, stdlib-only) + check_contracts.py (contract lint)
+tests/          run_tests.py (stdlib-only) + check_contracts.py (contract lint)
 ```
 
 ## Dependencies
