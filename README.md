@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/javrodriguez/genomics-agentic-research-system/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/javrodriguez/genomics-agentic-research-system/actions/workflows/ci.yml)
 
-**▶ [Try the interactive demo](https://mff2muqhz3ghwmdj6sgfkklrgi0uzffc.lambda-url.us-east-1.on.aws/)** — step through recordings of real GARS runs (the contract-enforced refusal, the playable human gate) in your browser; no install.
+**▶ [Try the interactive demo](https://gars.javrodriguez.dev/)** — step through recordings of real GARS runs (the contract-enforced refusal, the playable human gate) in your browser; no install.
 
 A filesystem-native architecture for running reproducible bioinformatics workflows through an
 LLM agent, on HPC.
