@@ -69,5 +69,6 @@ stage 00 registers from there as usual. For GSE58638, select runs by `sample_tit
 ## What done looks like
 
 Five projects complete through their sub-stages, five approved stage-03 comparison plans
-executed, five scores in five HISTORY.md files — and a short RESULTS.md here summarising the
-per-assay agreement, honestly including wherever we and the authors disagree and why.
+executed, five scores in five HISTORY.md files — and [RESULTS.md](RESULTS.md) summarising the
+per-assay agreement, honestly including wherever we and the authors disagree and why. That
+file is live and fills in as each project closes.
