@@ -70,4 +70,5 @@ client_secret*.json
 .mcp.local.json
 .planning/
 STATE.md
+PLAN.md
 AGENTS.md
