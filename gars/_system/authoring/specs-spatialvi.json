@@ -1,0 +1,20 @@
+{
+  "assay_id": "spatialvi",
+  "assay_label": "Spatial transcriptomics (Visium)",
+  "wrapper_name": "nfcore-spatialvi-wrapper",
+  "substage": "01_nfcore-spatialvi-wrapper",
+  "pipeline": "nf-core/spatialvi",
+  "pipeline_version": "ccdfb48",
+  "requires_bins": ["python3", "nextflow", "java", "git"],
+  "samplesheet_header": ["sample", "spaceranger_dir"],
+  "required_config_keys": [
+    "hd_bin_size", "qc.min_counts", "qc.min_genes", "qc.min_spots",
+    "qc.mito_threshold", "cluster_resolution",
+    "compute.partition", "compute.time", "compute.cpus", "compute.mem", "compute.work_dir"
+  ],
+  "artifacts": [
+    {"type": "h5ad", "path": "run/results (per-sample: <sample>/data/<sample>.h5ad)", "content_gate": true},
+    {"type": "report", "path": "run/results (per-sample: <sample>/reports/report-<sample>.html)"},
+    {"type": "qc_multiqc", "path": "run/results/multiqc/multiqc_report.html"}
+  ]
+}

@@ -45,6 +45,10 @@ PIPELINES = {
     "cutandrun": "nf-core-cutandrun-3.2.2",
     "methylseq": "nf-core-methylseq-4.2.0",
     "scrnaseq": "nf-core-scrnaseq-4.2.0",
+    # A COMMIT pin, not a tag: spatialvi's only tag (v0.1.0, 2023-03-31) sits 1,014
+    # commits behind dev and predates Visium HD. wrapperlib.check_pipeline verifies a
+    # commit pin with rev-parse rather than describe --tags.
+    "spatialvi": "nf-core-spatialvi-ccdfb48",
 }
 
 # Assays whose pinned pipeline's nextflow.config predates Nextflow's strict config parser
@@ -62,6 +66,33 @@ NEXTFLOW_LEGACY_PARSER = {"atacseq_bulk", "chipseq_bulk", "cutandrun", "methylse
 # biological referent, which is why VALIDATION stays per-assay while the shape is shared.
 # Stage 00 writes the header, stage 01 validates and consumes it; both read it from here so
 # the two can never disagree.
+# How an assay's raw input arrives. The default, and every assay before spatial, is
+# "fastq": per-sample FASTQ files named by the bcl2fastq convention, registered one row per
+# (sample_id, lane). "sample_dir" is for assays whose unit of input is a DIRECTORY -- spatial
+# transcriptomics arrives as a Space Ranger output tree per sample (or a .tar.gz of one), and
+# there are no FASTQs for GARS to see at all.
+#
+# The kind selects the header of 00_data/<assay>/files.csv. Forcing a directory into a column
+# named `fastq_1` would have been a smaller diff and a lie in the data model, which is the one
+# thing the registry must never be.
+INPUT_KINDS = {
+    "spatialvi": "sample_dir",
+}
+
+FILES_HEADERS = {
+    "fastq": ["sample_id", "lane", "fastq_1", "fastq_2"],
+    "sample_dir": ["sample_id", "spaceranger_dir"],
+}
+
+
+def input_kind(assay_id):
+    return INPUT_KINDS.get(assay_id, "fastq")
+
+
+def files_header(assay_id):
+    return FILES_HEADERS[input_kind(assay_id)]
+
+
 BASE_DESIGN_COLUMNS = ["sample_id", "condition", "group", "replicate"]
 EXTRA_DESIGN_COLUMNS = {
     "chipseq_bulk": ["antibody", "control"],

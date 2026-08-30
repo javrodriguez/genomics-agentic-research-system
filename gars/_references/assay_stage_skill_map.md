@@ -13,6 +13,7 @@ and `02_bioinformatics/<Assay ID>/` for its sub-stages.
 | CUT&RUN / CUT&Tag | cutandrun | 02_bioinformatics | 01_nfcore-cutandrun-wrapper | nfcore-cutandrun-wrapper | gars | samplesheet | peaks, peaks_consensus, bigwig, bam_genome, qc_multiqc |
 | Bisulfite (WGBS/RRBS) | methylseq | 02_bioinformatics | 01_nfcore-methylseq-wrapper | nfcore-methylseq-wrapper | gars | samplesheet | methylation_coverage, methylation_calls, bedgraph, qc_multiqc |
 | Single-cell RNA-seq | scrnaseq | 02_bioinformatics | 01_nfcore-scrnaseq-wrapper | nfcore-scrnaseq-wrapper | gars | samplesheet | h5ad, qc_multiqc |
+| Spatial transcriptomics (Visium) | spatialvi | 02_bioinformatics | 01_nfcore-spatialvi-wrapper | nfcore-spatialvi-wrapper | gars | samplesheet | h5ad, report, qc_multiqc |
 
 The **Source** column says where a skill's code lives (decision 0012). Every current row is
 `gars`: wrappers versioned in this repository under `_system/wrappers/`, resolved via
@@ -36,6 +37,7 @@ as a preconditions failure **naming the requirement**, rather than surfacing a r
 | nfcore-cutandrun-wrapper | >=3.6 (stdlib only) | `python3`, `nextflow`, `java`, `git` | none | stock python + `gars-nxf` at submit time |
 | nfcore-methylseq-wrapper | >=3.6 (stdlib only) | `python3`, `nextflow`, `java`, `git` | none | stock python + `gars-nxf` at submit time |
 | nfcore-scrnaseq-wrapper | >=3.6 (stdlib only) | `python3`, `nextflow`, `java`, `git` | none | stock python + `gars-nxf` at submit time |
+| nfcore-spatialvi-wrapper | >=3.6 (stdlib only) | `python3`, `nextflow`, `java`, `git` | none | stock python + `gars-nxf` at submit time |
 
 The clawbio `nfcore-rnaseq-wrapper` and `rnaseq-de` skills are retired (decision 0029) and
 remain installed with the package but uninvoked; their deprecated procedure files were deleted

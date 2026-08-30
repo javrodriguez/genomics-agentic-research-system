@@ -1856,5 +1856,167 @@ class CommitPinTests(unittest.TestCase):
             shutil.rmtree(str(tmp), ignore_errors=True)
 
 
+class SpatialviTests(unittest.TestCase):
+    """Wrapper #7 (decision 0039) and the `sample_dir` input kind it required.
+
+    Spatial is the first assay whose unit of input is a DIRECTORY -- a Space Ranger output
+    tree someone else produced -- rather than FASTQ pairs. That needed a per-input-kind
+    files.csv header in the deterministic core, which every other assay depends on, so the
+    fastq path is asserted unchanged here as well."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp(prefix="gars-spatial-"))
+        cls.ws = cls.tmp / "gars"
+        cls.ws.mkdir()
+        for d in ("_system", "_references", "_templates"):
+            shutil.copytree(str(GARS / d), str(cls.ws / d))
+        (cls.ws / "projects").mkdir()
+        cls.src = cls.tmp / "spaceranger_runs"
+        cls.src.mkdir()
+        for name in ("BrainA", "BrainB"):
+            outs = cls.src / name / "outs"
+            (outs / "spatial").mkdir(parents=True)
+            (outs / "filtered_feature_bc_matrix.h5").write_bytes(b"h5\x00" * 200)
+        cls.reg_py = cls.ws / "_system" / "stage00_register.py"
+        cls.sheet_py = cls.ws / "_system" / "stage01_samplesheet.py"
+        cls.wrap = (cls.ws / "_system" / "wrappers" / "nfcore-spatialvi-wrapper"
+                    / "nfcore_spatialvi_wrapper.py")
+
+    tearDownClass = classmethod(lambda cls: WorkspaceFixture.tearDownClass.__func__(cls))
+
+    def _project(self, title, source=None):
+        for argv in (["create", "--title", title, "--assays", "spatialvi"],
+                     ["link", "--project", "projects/" + title, "--assay", "spatialvi",
+                      "--source", str(source or self.src)],
+                     ["finalize", "--project", "projects/" + title]):
+            code, res, raw = run(self.reg_py, argv, self.ws)
+            self.assertEqual(code, 0, raw)
+        project = self.ws / "projects" / title
+        scsv = project / "00_data" / "spatialvi" / "samples.csv"
+        with scsv.open() as fh:
+            rows = list(csv.reader(fh))
+        head = rows[0]
+        out = [head]
+        for i, r in enumerate(rows[1:]):
+            d = dict(zip(head, r))
+            d.update({"condition": "tumour" if i == 0 else "normal",
+                      "group": "G%d" % (i + 1), "replicate": "1"})
+            out.append([d.get(c, "") for c in head])
+        with scsv.open("w", newline="") as fh:
+            csv.writer(fh).writerows(out)
+        code, res, raw = run(self.sheet_py, ["--project", "projects/" + title,
+                                             "--confirm-exclusions"], self.ws)
+        self.assertEqual(code, 0, raw)
+        return project
+
+    def test_00_input_kind_is_per_assay_and_fastq_is_unchanged(self):
+        sys.path.insert(0, str(GARS / "_system"))
+        import workspace as w
+        self.assertEqual(w.input_kind("spatialvi"), "sample_dir")
+        for assay in ("rnaseq_bulk", "atacseq_bulk", "chipseq_bulk", "cutandrun",
+                      "methylseq", "scrnaseq"):
+            self.assertEqual(w.input_kind(assay), "fastq",
+                             "%s must keep the FASTQ input kind" % assay)
+            self.assertEqual(w.files_header(assay),
+                             ["sample_id", "lane", "fastq_1", "fastq_2"])
+        self.assertEqual(w.files_header("spatialvi"), ["sample_id", "spaceranger_dir"])
+
+    def test_01_stage00_registers_directories(self):
+        project = self._project("spat-reg")
+        files = (project / "00_data" / "spatialvi" / "files.csv").read_text()
+        self.assertIn("sample_id,spaceranger_dir", files)
+        self.assertNotIn("fastq_1", files)
+        raw = project / "00_data" / "spatialvi" / "raw"
+        for name in ("BrainA", "BrainB"):
+            link = raw / name
+            self.assertTrue(link.is_symlink(), "%s should be a symlink" % name)
+            self.assertTrue(link.is_dir(), "%s should resolve to a directory" % name)
+
+    def test_02_stage01_emits_two_columns_with_absolute_paths(self):
+        project = self._project("spat-sheet")
+        sheet = (project / "01_samplesheets" / "spatialvi_samplesheet.csv"
+                 ).read_text().splitlines()
+        self.assertEqual(sheet[0], "sample,spaceranger_dir")
+        self.assertEqual(len(sheet) - 1, 2)
+        for line in sheet[1:]:
+            sample, path = line.split(",")
+            self.assertTrue(Path(path).is_absolute(), "path must be absolute: %r" % path)
+            # abspath, not resolve: the sheet must point at the project's own symlink so the
+            # project's registration of its data is not bypassed.
+            self.assertIn("00_data/spatialvi/raw", path)
+
+    def test_03_a_directory_that_is_not_a_spaceranger_run_is_refused(self):
+        """Pointing at the wrong level of the tree is the easy mistake, and the pipeline's own
+        error for it arrives an hour into a Slurm job."""
+        bad = self.tmp / "wrong_level"
+        (bad / "SampleZ").mkdir(parents=True)      # no outs/, no *.h5
+        project = self._project("spat-wrong", source=bad)
+        cfg = project / "_config" / "spatialvi.yaml"
+        cfg.write_text(cfg.read_text().replace("<REQUIRED", "# <REQUIRED"))
+        code, res, raw = run(self.wrap, ["check", "--project", "projects/spat-wrong"], self.ws)
+        self.assertEqual(code, 1, raw)
+        detail = " ".join(f["detail"] for f in res["failures"])
+        self.assertIn("outs/", detail)
+
+    def test_04_collect_gates_per_sample_and_never_takes_the_raw_h5ad(self):
+        """The scrnaseq raw-for-filtered defect, avoided by construction: <sample>-raw.h5ad
+        sits beside <sample>.h5ad and is a different object."""
+        project = self._project("spat-collect")
+        substage = (project / "02_bioinformatics" / "spatialvi"
+                    / "01_nfcore-spatialvi-wrapper")
+        results = substage / "run" / "results"
+        for s in ("BrainA", "BrainB"):
+            (results / s / "data").mkdir(parents=True)
+            (results / s / "reports").mkdir(parents=True)
+            (results / s / "reports" / ("report-%s.html" % s)).write_text("<html>r</html>")
+        # BrainA processed; BrainB has ONLY the raw object
+        (results / "BrainA" / "data" / "BrainA.h5ad").write_text("processed")
+        (results / "BrainB" / "data" / "BrainB-raw.h5ad").write_text("raw only")
+        mq = results / "multiqc"
+        mq.mkdir(parents=True)
+        (mq / "multiqc_report.html").write_text("<html>ok</html>")
+        (substage / "run" / ".gars_run_complete").write_text("now\n")
+
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/spat-collect"],
+                             self.ws)
+        self.assertEqual(code, 1, raw)
+        detail = " ".join(f["detail"] for f in res["failures"])
+        self.assertIn("BrainB", detail)
+        self.assertIn("-raw.h5ad", detail,
+                      "the refusal must say the raw object was seen and not used")
+        self.assertFalse((substage / "OUTPUTS.tsv").exists())
+
+        (results / "BrainB" / "data" / "BrainB.h5ad").write_text("processed")
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/spat-collect",
+                                         "--model", "claude-test-1"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertEqual(sorted(res["samples"]), ["BrainA", "BrainB"])
+        types = sorted(o["type"] for o in res["outputs"])
+        self.assertEqual(types, ["h5ad", "qc_multiqc", "report"])
+        self.assertEqual(len(res["per_sample"]), 2)
+        self.assertIn("COMMIT pin", res["history_entry"],
+                      "the entry must say the pin is a commit, not imply a release")
+
+    def test_05_a_missing_report_is_refused(self):
+        project = self._project("spat-noreport")
+        substage = (project / "02_bioinformatics" / "spatialvi"
+                    / "01_nfcore-spatialvi-wrapper")
+        results = substage / "run" / "results"
+        for s in ("BrainA", "BrainB"):
+            (results / s / "data").mkdir(parents=True)
+            (results / s / "data" / ("%s.h5ad" % s)).write_text("processed")
+        (results / "BrainA" / "reports").mkdir(parents=True)
+        (results / "BrainA" / "reports" / "report-BrainA.html").write_text("<html>r</html>")
+        mq = results / "multiqc"
+        mq.mkdir(parents=True)
+        (mq / "multiqc_report.html").write_text("<html>ok</html>")
+        (substage / "run" / ".gars_run_complete").write_text("now\n")
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/spat-noreport"],
+                             self.ws)
+        self.assertEqual(code, 1, raw)
+        self.assertIn("report", [f["check"] for f in res["failures"]])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

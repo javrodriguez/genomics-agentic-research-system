@@ -42,6 +42,19 @@ RAW_SUFFIXES = (".fastq.gz", ".fq.gz", ".fastq", ".fq")
 STRANDEDNESS_VALUES = {"auto", "forward", "reverse", "unstranded"}
 # The base design columns; the full set is per-assay via ws.design_columns() (decision 0030).
 SAMPLES_HEADER = ws.BASE_DESIGN_COLUMNS
+
+
+def path_column(assay):
+    """The emitted samplesheet column carrying the input path, per input kind.
+
+    The exit gate checks that this column is present, absolute and inside the project. It was
+    hardcoded to `fastq_1` while every assay was FASTQ-shaped; a directory assay carries the
+    path in `spaceranger_dir` instead, and a gate that checked the wrong column would have
+    passed a samplesheet whose paths were all blank."""
+    return "spaceranger_dir" if ws.input_kind(assay) == "sample_dir" else "fastq_1"
+# The FASTQ-assay header. It is no longer the only one -- an assay whose unit of input is a
+# directory carries its own (workspace.FILES_HEADERS), so the expected header is looked up per
+# assay rather than assumed. Kept as a name because the comment block below cites it.
 FILES_HEADER = ["sample_id", "lane", "fastq_1", "fastq_2"]
 
 # --- samplesheet formats ------------------------------------------------------------------------
@@ -136,6 +149,26 @@ FORMATS = {
             ("sample", "sample_id"),
             ("fastq_1", "fastq_1"),
             ("fastq_2", "fastq_2"),
+        ],
+    },
+    "spatialvi": {
+        # Promoted 2026-08-29 with wrapper #7 (decision 0039). Read from the pinned checkout's
+        # assets/schema_input.json + docs/usage.md at commit ccdfb48.
+        #
+        # This is the DOWNSTREAM mode: the input is a Space Ranger output directory per sample,
+        # already produced by whoever ran the instrument. The raw mode would have GARS run
+        # Space Ranger itself, which needs the proprietary 10x binary, 64 GB, 8 threads and
+        # supports human and mouse only -- the same exclusion already made for the cellranger
+        # aligners in scrnaseq.
+        #
+        # Two columns, and the second is a DIRECTORY. That is why this assay's files.csv
+        # carries a different header (workspace.FILES_HEADERS): a directory in a column named
+        # `fastq_1` would have been a smaller change and a lie.
+        "status": "active",
+        "source": "nf-core/spatialvi ccdfb48 assets/schema_input.json + docs/usage.md",
+        "columns": [
+            ("sample", "sample_id"),
+            ("spaceranger_dir", "spaceranger_dir"),
         ],
     },
     "scrnaseq": {
@@ -278,11 +311,21 @@ def validate_assay(project, assay):
     # files.csv accounting for 40 of 152 linked FASTQs, and stage 01 reported 10 samples with no
     # error because a truncated CSV is still internally consistent. raw/ is the authority.
     raw_dir = data_dir / "raw"
+    kind = ws.input_kind(assay)
     if raw_dir.is_dir():
-        on_disk = {p.name for p in raw_dir.iterdir() if p.name.endswith(RAW_SUFFIXES)}
+        # The same reconciliation for both input kinds -- raw/ is the authority -- but the
+        # unit differs: FASTQ files for a fastq assay, per-sample directories (or tarballs of
+        # one) for a sample_dir assay, which is how spatial data arrives.
+        if kind == "sample_dir":
+            on_disk = {p.name for p in raw_dir.iterdir()
+                       if p.is_dir() or p.name.endswith((".tar.gz", ".tgz"))}
+            cols = ("spaceranger_dir",)
+        else:
+            on_disk = {p.name for p in raw_dir.iterdir() if p.name.endswith(RAW_SUFFIXES)}
+            cols = ("fastq_1", "fastq_2")
         listed = set()
         for row in files["rows"]:
-            for col in ("fastq_1", "fastq_2"):
+            for col in cols:
                 if row.get(col):
                     listed.add(row[col].rsplit("/", 1)[-1])
         unaccounted = on_disk - listed
@@ -311,7 +354,7 @@ def validate_assay(project, assay):
 
     header = ws.design_columns(assay)
     for name, got, want in (("samples.csv", samples["fields"], header),
-                            ("files.csv", files["fields"], FILES_HEADER)):
+                            ("files.csv", files["fields"], ws.files_header(assay))):
         if got != want:
             fails.append(fail("header", f"{name} header is {got}, expected {want}"))
     if fails:
@@ -349,40 +392,65 @@ def validate_assay(project, assay):
         elif sid:
             seen[sid] = row["_n"]
 
-    # -- duplicate (sample_id, lane)
-    seen_fl = {}
-    for row in files["rows"]:
-        key = (row["sample_id"], row["lane"])
-        if key in seen_fl:
-            fails.append(fail("invalid_design",
-                              f"(sample_id, lane) {key} appears on files.csv lines "
-                              f"{seen_fl[key]} and {row['_n']}"))
-        else:
-            seen_fl[key] = row["_n"]
-
-    # -- layout, then resolvable file rows
-    has_r2 = [bool(row.get("fastq_2")) for row in files["rows"]]
-    if all(has_r2):
-        layout = "paired-end"
-    elif not any(has_r2):
-        layout = "single-end"
-    else:
-        layout = "mixed"
-        missing = [str(r["_n"]) for r in files["rows"] if not r.get("fastq_2")]
-        fails.append(fail("invalid_design",
-                          "files.csv mixes paired-end and single-end rows; fastq_2 is blank on "
-                          f"line(s) {', '.join(missing)}"))
-
-    for row in files["rows"]:
-        for col in ("fastq_1", "fastq_2"):
-            rel = row.get(col)
+    # -- duplicate input units, and the layout. Both are per input kind: a fastq assay's unit
+    # is (sample_id, lane) and its layout is a pairing question; a sample_dir assay's unit is
+    # the sample itself, there is no lane and no pairing, and the input is a DIRECTORY -- so
+    # is_file() would reject every valid row.
+    if kind == "sample_dir":
+        seen = {}
+        for row in files["rows"]:
+            sid = row["sample_id"]
+            if sid in seen:
+                fails.append(fail("invalid_design",
+                                  f"sample_id {sid!r} appears on files.csv lines "
+                                  f"{seen[sid]} and {row['_n']}; one directory per sample"))
+            else:
+                seen[sid] = row["_n"]
+        layout = "sample-dir"
+        for row in files["rows"]:
+            rel = row.get("spaceranger_dir")
             if not rel:
+                fails.append(fail("invalid_design",
+                                  f"files.csv line {row['_n']}: spaceranger_dir is blank"))
                 continue
             target = project / rel
-            if not target.is_file():
+            if not target.is_dir() and not target.is_file():
                 fails.append(fail("unresolvable_path",
-                                  f"files.csv line {row['_n']}: {col} {rel!r} does not resolve "
-                                  "to a readable file"))
+                                  f"files.csv line {row['_n']}: spaceranger_dir {rel!r} does "
+                                  "not resolve to a directory or archive"))
+    else:
+        seen_fl = {}
+        for row in files["rows"]:
+            key = (row["sample_id"], row["lane"])
+            if key in seen_fl:
+                fails.append(fail("invalid_design",
+                                  f"(sample_id, lane) {key} appears on files.csv lines "
+                                  f"{seen_fl[key]} and {row['_n']}"))
+            else:
+                seen_fl[key] = row["_n"]
+
+        has_r2 = [bool(row.get("fastq_2")) for row in files["rows"]]
+        if all(has_r2):
+            layout = "paired-end"
+        elif not any(has_r2):
+            layout = "single-end"
+        else:
+            layout = "mixed"
+            missing = [str(r["_n"]) for r in files["rows"] if not r.get("fastq_2")]
+            fails.append(fail("invalid_design",
+                              "files.csv mixes paired-end and single-end rows; fastq_2 is "
+                              f"blank on line(s) {', '.join(missing)}"))
+
+        for row in files["rows"]:
+            for col in ("fastq_1", "fastq_2"):
+                rel = row.get(col)
+                if not rel:
+                    continue
+                target = project / rel
+                if not target.is_file():
+                    fails.append(fail("unresolvable_path",
+                                      f"files.csv line {row['_n']}: {col} {rel!r} does not "
+                                      "resolve to a readable file"))
 
     # -- referential integrity
     sample_ids = [r["sample_id"] for r in samples["rows"] if r["sample_id"]]
@@ -484,13 +552,18 @@ def validate_assay(project, assay):
     # The cost of verifying what will actually be analysed -- not what was registered. Stage 00
     # links everything the user pointed at; the subset is only known here, after exclusions.
     incl_paths, incl_bytes = [], 0
+    size_cols = ("spaceranger_dir",) if kind == "sample_dir" else ("fastq_1", "fastq_2")
     for r in incl_file_rows:
-        for col in ("fastq_1", "fastq_2"):
+        for col in size_cols:
             if r.get(col):
                 p = project / r[col]
                 incl_paths.append((r[col], p))
                 if p.is_file():
                     incl_bytes += p.stat().st_size
+                elif p.is_dir():
+                    # A Space Ranger tree: size is the sum of what is in it. Reported so the
+                    # integrity estimate stays honest rather than showing 0 GB.
+                    incl_bytes += sum(f.stat().st_size for f in p.rglob("*") if f.is_file())
 
     design_by_id = {r["sample_id"]: r for r in incl_rows}
     for _, src in fmt:
@@ -556,7 +629,7 @@ def write_assay(project, assay, res):
         for row in res["_incl_file_rows"]:
             out = []
             for _, src in fmt:
-                if src in ("fastq_1", "fastq_2"):
+                if src in ("fastq_1", "fastq_2", "spaceranger_dir"):
                     # abspath, NOT Path.resolve(). resolve() follows symlinks, and
                     # 00_data/<assay>/raw/ is entirely symlinks -- so it would write the original
                     # sequencing-run path into the samplesheet and bypass the project's own
@@ -595,19 +668,21 @@ def write_assay(project, assay, res):
     # Exit gate: re-read what was written. Checks content, not existence -- a file-exists check
     # passes happily on a table with the wrong rows in it (decision 0010).
     gate = []
+    pathcol = path_column(assay)
     back_sheet, err = read_csv(sheet)
     if err:
         gate.append(fail("exit_gate", err))
     elif len(back_sheet["rows"]) != res["counts"]["samplesheet_rows"]:
         gate.append(fail("exit_gate", f"{sheet.name} has {len(back_sheet['rows'])} rows, "
                                       f"expected {res['counts']['samplesheet_rows']}"))
-    elif any(not r["fastq_1"] or not Path(r["fastq_1"]).is_absolute()
+    elif any(not r[pathcol] or not Path(r[pathcol]).is_absolute()
              for r in back_sheet["rows"]):
-        gate.append(fail("exit_gate", f"{sheet.name} contains a blank or non-absolute fastq_1"))
+        gate.append(fail("exit_gate",
+                         f"{sheet.name} contains a blank or non-absolute {pathcol}"))
     else:
         proj_abs = os.path.abspath(project)
-        outside = [r["fastq_1"] for r in back_sheet["rows"]
-                   if not os.path.abspath(r["fastq_1"]).startswith(proj_abs + os.sep)]
+        outside = [r[pathcol] for r in back_sheet["rows"]
+                   if not os.path.abspath(r[pathcol]).startswith(proj_abs + os.sep)]
         if outside:
             gate.append(fail("exit_gate",
                              f"{sheet.name} points outside the project (symlinks were followed): "

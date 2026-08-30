@@ -175,23 +175,57 @@ def template_version(workspace):
     return ws.template_version(workspace)
 
 
-def find_raw(source):
-    """Raw NGS files at the TOP LEVEL only. Never descends -- the contract forbids searching."""
+# A Space Ranger output tree may arrive as a directory or as a tarball of one; the pipeline
+# accepts either (spatialvi docs/usage.md).
+SAMPLE_DIR_SUFFIXES = (".tar.gz", ".tgz")
+
+
+def find_raw(source, kind="fastq"):
+    """Raw input at the TOP LEVEL only. Never descends -- the contract forbids searching.
+
+    `fastq`: files with an NGS suffix. `sample_dir`: one directory (or tarball of one) per
+    sample, which is how spatial data arrives -- there are no FASTQs to see.
+    """
     raw, other = [], []
     for p in sorted(source.iterdir()):
-        if not p.is_file() and not p.is_symlink():
-            continue
-        (raw if p.name.endswith(RAW_SUFFIXES) else other).append(p.name)
+        if kind == "sample_dir":
+            is_input = p.is_dir() or p.name.endswith(SAMPLE_DIR_SUFFIXES)
+        else:
+            if not p.is_file() and not p.is_symlink():
+                continue
+            is_input = p.name.endswith(RAW_SUFFIXES)
+        (raw if is_input else other).append(p.name)
     return raw, other
 
 
-def derive_units(filenames, pattern=None):
+def derive_units(filenames, pattern=None, kind="fastq"):
     """Group filenames into (sample_id, lane) units.
 
     Returns (units, layout, problems). `pattern` overrides the bcl2fastq convention and must
     provide named groups `sample` and `read`, optionally `lane` -- it is how the contract feeds
     back an answer the user gave when filenames do not match the convention.
+
+    For `sample_dir` there is nothing to parse and nothing to pair: each entry IS a sample, its
+    id is the entry name with any tarball suffix removed, and the layout is reported as
+    `sample-dir` so callers never apply a pairing rule that has no meaning here.
     """
+    if kind == "sample_dir":
+        units, problems = {}, []
+        for name in filenames:
+            sample = name
+            for suffix in SAMPLE_DIR_SUFFIXES:
+                if sample.endswith(suffix):
+                    sample = sample[:-len(suffix)]
+                    break
+            if not sample:
+                problems.append(name)
+                continue
+            if (sample, "") in units:
+                problems.append(name)
+                continue
+            units[(sample, "")] = {"dir": name}
+        return ({}, None, problems) if problems else (units, "sample-dir", [])
+
     rx = re.compile(pattern) if pattern else BCL2FASTQ
     units, problems = {}, []
     for name in filenames:
@@ -222,11 +256,16 @@ def derive_units(filenames, pattern=None):
     return units, layout, []
 
 
-def units_to_rows(units, assay_id):
+def units_to_rows(units, assay_id, kind="fastq"):
+    """Rows for files.csv, shaped by the assay's input kind (workspace.FILES_HEADERS)."""
     rows = []
+    base = "00_data/%s/raw/" % assay_id
+    if kind == "sample_dir":
+        for (sample, _) in sorted(units):
+            rows.append([sample, base + units[(sample, "")]["dir"]])
+        return rows
     for (sample, lane) in sorted(units):
         reads = units[(sample, lane)]
-        base = "00_data/%s/raw/" % assay_id
         rows.append([sample, lane,
                      base + reads["1"] if "1" in reads else "",
                      base + reads["2"] if "2" in reads else ""])
@@ -400,22 +439,28 @@ def cmd_inspect(args, workspace):
         result["error"] = "not a directory: %s" % source
         return emit(result, EXIT_REFUSED)
 
-    raw, other = find_raw(source)
+    kind = ws.input_kind(args.assay)
+    result["input_kind"] = kind
+    raw, other = find_raw(source, kind)
     result["raw_file_count"] = len(raw)
     result["excluded_file_count"] = len(other)
     result["excluded_examples"] = other[:5]
     if not raw:
         result["template"] = "T5"
-        result["error"] = "no raw NGS files at the top level of %s" % source
+        result["error"] = ("no per-sample directories at the top level of %s" % source
+                           if kind == "sample_dir"
+                           else "no raw NGS files at the top level of %s" % source)
         return emit(result, EXIT_REFUSED)
 
-    units, layout, problems = derive_units(raw, args.sample_id_pattern)
+    units, layout, problems = derive_units(raw, args.sample_id_pattern, kind)
     if problems:
         result["template"] = "T5"
-        result["error"] = ("cannot derive sample IDs: %d filename(s) do not match the expected "
-                           "convention" % len(problems))
+        result["error"] = ("cannot derive sample IDs: %d entr%s do not match the expected "
+                           "convention" % (len(problems), "y" if len(problems) == 1 else "ies"))
         result["unmatched_examples"] = problems[:5]
-        result["convention"] = "<sample>_S<n>[_L<lane>]_R<1|2>_<nnn>.fastq.gz"
+        result["convention"] = ("<sample>/ or <sample>.tar.gz, one per sample"
+                                if kind == "sample_dir"
+                                else "<sample>_S<n>[_L<lane>]_R<1|2>_<nnn>.fastq.gz")
         return emit(result, EXIT_REFUSED)
     if layout == "mixed":
         result["template"] = "T5"
@@ -429,6 +474,9 @@ def cmd_inspect(args, workspace):
     result["layout"] = layout
     # So the agent can state the cost of a full integrity check without computing it itself.
     total = sum((source / n).stat().st_size for n in raw if (source / n).is_file())
+    if kind == "sample_dir":
+        total = sum(f.stat().st_size
+                    for n in raw for f in (source / n).rglob("*") if f.is_file()) or total
     result["total_bytes"] = total
     result["total_gb"] = round(total / 1e9, 1)
     result["full_check_estimate_min"] = max(1, int(round(total / 130e6 / 60)))
@@ -447,10 +495,13 @@ def cmd_link(args, workspace):
         return emit(result, EXIT_USAGE)
 
     source = Path(args.source)
-    raw, _ = find_raw(source)
+    kind = ws.input_kind(args.assay)
+    raw, _ = find_raw(source, kind)
     if not raw:
         result["template"] = "T5"
-        result["error"] = "no raw NGS files at the top level of %s" % source
+        result["error"] = ("no per-sample directories at the top level of %s" % source
+                           if kind == "sample_dir"
+                           else "no raw NGS files at the top level of %s" % source)
         return emit(result, EXIT_REFUSED)
 
     existing = list(raw_dir.iterdir())
@@ -465,7 +516,9 @@ def cmd_link(args, workspace):
         if dest.exists() or dest.is_symlink():
             dest.unlink()
         os.symlink(str((source / name).resolve()), str(dest))
-        (linked if dest.is_file() else broken).append(name)
+        # A sample_dir link points at a directory, which is not is_file(). What matters either
+        # way is that the link resolves to something that exists.
+        (linked if dest.exists() else broken).append(name)
 
     result["linked"] = len(linked)
     result["broken"] = broken
@@ -508,10 +561,12 @@ def cmd_finalize(args, workspace):
             result["failures"].append("%s: raw/ is empty" % aid)
             continue
 
-        units, layout, problems = derive_units(names, args.sample_id_pattern)
+        kind = ws.input_kind(aid)
+        units, layout, problems = derive_units(names, args.sample_id_pattern, kind)
         if problems:
-            result["failures"].append("%s: %d linked filename(s) do not match the convention"
-                                      % (aid, len(problems)))
+            result["failures"].append("%s: %d linked entr%s do not match the convention"
+                                      % (aid, len(problems),
+                                         "y" if len(problems) == 1 else "ies"))
             continue
         if layout == "mixed":
             result["failures"].append("%s: pairing is incomplete" % aid)
@@ -521,12 +576,12 @@ def cmd_finalize(args, workspace):
         sources = sorted({os.path.dirname(os.readlink(str(raw_dir / n)))
                           for n in names if (raw_dir / n).is_symlink()})
 
-        rows = units_to_rows(units, aid)
+        rows = units_to_rows(units, aid, kind)
         with ws.atomic_open(data_root / aid / "files.csv",
                             mode=ws.MACHINE_OWNED_MODE) as fh:
             fh.write("# generated by stage 00 — do not edit\n")
             w = csv.writer(fh, lineterminator="\n")
-            w.writerow(FILES_HEADER)
+            w.writerow(ws.files_header(aid))
             for r in rows:
                 w.writerow(r)
 
@@ -616,6 +671,18 @@ def cmd_finalize(args, workspace):
                         % (aid, len(extra), ", ".join(sorted(extra)[:5])))
         if any(not r["sample_id"] for r in frows + srows):
             gate.append("%s: a row has an empty sample_id" % aid)
+        if ws.input_kind(aid) == "sample_dir":
+            # No pairing to check and nothing to checksum: the unit of input is a directory,
+            # and hashing a Space Ranger tree would be checking someone else's output rather
+            # than the files GARS registered. What CAN go wrong is a link that resolves to
+            # nothing, so that is what is checked.
+            for r in frows:
+                rel = r.get("spaceranger_dir", "")
+                if not rel:
+                    gate.append("%s: a row has an empty spaceranger_dir" % aid)
+                elif not (project / rel).exists():
+                    gate.append("%s: %s does not resolve" % (aid, rel))
+            continue
         if per_assay[aid]["layout"] == "paired-end" and any(not r["fastq_2"] for r in frows):
             gate.append("%s: pairing is incomplete in files.csv" % aid)
         to_check = [(r[col], project / r[col])

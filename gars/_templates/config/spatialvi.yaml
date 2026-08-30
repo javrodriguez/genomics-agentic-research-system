@@ -1,0 +1,61 @@
+# Configuration for assay spatialvi, project {{project_title}}
+#
+# Stage 00 put this here so you never author a config from a blank file. Everything that can be
+# filled in for you already has been. What remains is marked <REQUIRED> -- those are scientific
+# decisions, and no stage will substitute a value for them, because a wrong one produces a
+# confident wrong answer rather than an error.
+#
+# Full rationale for every key: _references/config_schema.md
+
+# --- no reference genome here ---------------------------------------------------------------
+# Deliberately absent, and worth understanding. This assay runs nf-core/spatialvi in its
+# DOWNSTREAM mode: the input is a Space Ranger output directory per sample, so alignment and
+# spot calling already happened against whatever reference Space Ranger was given. GARS does not
+# re-align, and choosing a genome here would imply a control it does not have.
+#
+# The reference that produced your data is recorded in the Space Ranger output itself
+# (`outs/web_summary.html`). If you need GARS to run Space Ranger for you, that is not supported:
+# it requires 10x's proprietary binary, a licence acceptance, 64 GB and 8 threads, and only
+# supports human and mouse -- the same reason the cellranger aligners are absent from scrnaseq.
+
+# --- the resolution the data was binned at ----------------------------------------------------
+# Visium HD only. HD data is captured at 2 um and binned; the bin size sets what a "spot" IS,
+# so every downstream count, cluster and spatially variable gene depends on it. Leave as 8 for
+# Visium v1/v2 (non-HD), where it is ignored.
+#
+#   2  -- finest, near single-cell, sparsest per bin
+#   8  -- the pipeline's default and the usual choice
+#   16 -- coarsest, densest per bin
+hd_bin_size: 8
+
+# --- spot and gene filtering ------------------------------------------------------------------
+# These decide which spots and genes survive into every downstream result. The pipeline's
+# defaults are sensible for Visium v1/v2 and are presented rather than hidden, because a
+# threshold that silently removes half your tissue is not a detail.
+#
+# NOTE for Visium HD: these defaults are tuned for ~55 um spots. HD bins carry far fewer counts
+# each, and qc_min_counts: 500 will remove most of them. Lower both deliberately for HD.
+qc:
+  min_counts: 500             # minimum total counts for a spot to be kept
+  min_genes: 250              # minimum distinct genes for a spot to be kept
+  min_spots: 1                # minimum spots a gene must appear in to be kept
+  mito_threshold: 20          # max % mitochondrial counts before a spot is dropped
+
+# --- clustering -------------------------------------------------------------------------------
+# Leiden resolution. Higher splits the tissue into more clusters. A scientific choice, presented
+# as the pipeline's default rather than required, because unlike a contrast there is no value
+# here that is silently WRONG -- only more or less granular.
+cluster_resolution: 1.0
+
+# --- where it runs -----------------------------------------------------------------------------
+# Infrastructure, not science. Downstream-only analysis is far lighter than an alignment
+# pipeline: no index is built and no FASTQs are read.
+compute:
+  partition: cpu_short
+  time: "04:00:00"
+  cpus: 4
+  mem: 32G
+  # Nextflow's scratch. NEVER inside the project: work/ retains every process output so
+  # -resume can reuse it. results/ is published with mode 'copy', so work/ is disposable
+  # once a run succeeds.
+  work_dir: {{work_dir}}
