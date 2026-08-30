@@ -120,9 +120,10 @@ Two things that validation does **not** show, said plainly:
   because the shipped production defaults correctly filter that dataset to nothing. The
   numbers are recorded in `summary.json` either way. The 198 clusters it produced are an
   artefact of test data averaging one gene per cell, not a result.
-- The analysis has **not** been run under `gars-bio` itself. `scanpy 1.11.5` and
-  `leidenalg 0.12.0` are now pinned in `gars-bio.lock.txt` (12 packages added, **0 existing
-  pins changed** -- the resolution was done with pip's own resolver against every current pin
-  as a constraint, for cp312/linux-64). The validation ran under an equivalent pinned
-  environment on this machine. Installing the lock on the cluster is the outstanding step, and
-  `check` refuses by name until it is done.
+- ~~The analysis has not been run under `gars-bio` itself.~~ **Closed 2026-08-30, tier B:**
+  `scanpy 1.11.5` and `leidenalg 0.12.0` were installed into the real `gars-bio` on BigPurple
+  by exact pin (12 packages, 0 existing pins changed), `check`'s environment probe passed
+  against it, and the full sub-stage ran as a Slurm job (3m06s) on the matrix the cluster's
+  own 02.01 produced — with results identical to the tier-A validation on macOS: 3,997 +
+  4,675 cells after QC, 198 clusters, 67,518 marker rows. Same generated script, same
+  thresholds, two operating systems, the same numbers.

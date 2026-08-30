@@ -82,19 +82,29 @@ the `scrnaseq` wrapper shipped exactly that defect and it was caught only by run
 pipeline: a glob over `combined_*.h5ad` silently published a 114 MB raw matrix in place of a
 1.3 MB filtered one.
 
-## Validation status — honest, and partial on this hardware
+## Validation status
 
-The pipeline was run at the pin, in downstream mode, on its own public test data
-(`-profile test_downstream,docker`): **49 processes completed, 2 failed.**
+Fully validated, in two venues.
 
-- **`h5ad` and `report` are validated against the real output tree.** Both pass when the tree is
-  correct, and both fail correctly when a sample's processed matrix or report is removed — the
-  raw object present and deliberately not used.
-- **`qc_multiqc` is NOT positively validated on Apple Silicon.** MultiQC dies with `Illegal
-  instruction`: Polars executes an unsupported CPU instruction under Rosetta x86-64 emulation.
-  spatialvi exposes no `skip_multiqc`, so the step is mandatory and there is no honest way
-  around it on this machine. The gate behaves correctly — it refuses, because the artifact
-  genuinely is absent — but the passing path for that one leg is covered by the offline test
-  only, and is outstanding until a run on native x86-64 (the cluster).
+**Tier A (macOS, Docker):** the pipeline ran at the pin in downstream mode on its own public
+test data — 49 of 51 processes completed. The `h5ad` and `report` gates were proven against
+that real tree with negative controls (a removed processed matrix refused with the raw object
+present and deliberately unused; a removed report refused). MultiQC could not execute there:
+Polars dies with `Illegal instruction` under Rosetta x86-64 emulation, and spatialvi exposes no
+`skip_multiqc` — so the `qc_multiqc` gate's passing path was, at that point, honestly recorded
+as unproven.
 
-No report was fabricated to make that leg green.
+**Tier B (BigPurple, Slurm + Apptainer, native x86-64, 2026-08-30):** a real GARS project was
+driven through stage 00 → 01 → check → prepare → `sbatch` → collect. The run completed
+(45m50s) and `collect` returned ok on every gate — **including `qc_multiqc`, against a real
+4.8 MB MultiQC report**. The two per-sample processed AnnData objects and reports resolved at
+their exact names.
+
+That tier-B pass came after two live catches, both fixed and tested:
+
+- the first run died at apptainer's default 20-minute pull budget converting the fat
+  harmonypy+scanorama wave container — the executor template now carries
+  `apptainer.pullTimeout = 90m`;
+- the second died in `SDATA_READ_VISIUM` because the preflight accepted a sample directory
+  that merely *held* `outs/` — the pipeline reads the outs level directly, and `check` now
+  refuses that layout naming `<dir>/outs` as the fix.
