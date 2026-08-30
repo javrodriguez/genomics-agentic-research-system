@@ -5,7 +5,8 @@ Test for differential gene expression between the two conditions the user chose,
 GARS-authored `rnaseq-de` wrapper (decision 0029; the retired ClawBio-skill procedure — the
 source of four recorded defects, two silent, reported upstream as ClawBio/ClawBio#365 — was
 deleted 2026-08-27 after all three switchover criteria were met on a live run). The
-analysis runs under Slurm; this sub-stage submits and returns, then collects on a later
+analysis runs under the workspace's executor; this sub-stage submits and returns, then
+collects on a later
 invocation.
 
 **The computation is not yours.** The wrapper's `check` validates the design against the
@@ -58,7 +59,8 @@ stage-helper standard: 0 ok, 1 failure, 2 refused, 3 usage.
 level missing or under-sampled), `counts` (a design sample absent from the matrix header);
 `collect` adds `de_results`, `figures`, `report`, `adaptation`.
 
-**Execution venue.** Always `sbatch` (decision 0027, no opt-out). The generated `submit.sh`
+**Execution venue.** Always the workspace's configured executor — `_config/executor.yaml`
+names it (decision 0039); on this cluster that is Slurm (decision 0027, no opt-out). The generated `submit.sh`
 first runs `adapt_counts.py` (stdlib), then `run_de.py` under `$GARS_PY` — pandas, pydeseq2,
 scikit-learn and matplotlib live in `gars-bio`.
 
@@ -92,13 +94,16 @@ Projects produced by either path read the same downstream.
    the user, `config_unfilled` means the stage 02 menus have not run.
 5. Run `prepare` with the same paths. Exit 1 → reply T5. Exit 0 → it wrote
    `scripts/run_de.py`, `submit.sh` and the reproducibility bundle.
-6. Submit with `sbatch <sub-stage dir>/submit.sh`; capture the job ID. Write `STATUS` as
+6. Submit with `python3 <workspace>/_system/executorlib.py submit --workspace <project dir>
+   <sub-stage dir>/submit.sh`; capture `job_id` from the JSON. Write `STATUS` as
    `SUBMITTED <job_id> <iso8601>`. Reply T2 and stop.
-7. **On a later invocation** where STATUS is `SUBMITTED` or `RUNNING`: query `sacct`/`squeue`.
-   Still active → update STATUS to `RUNNING <job_id> <iso8601>`, reply T3, stop.
+7. **On a later invocation** where STATUS is `SUBMITTED` or `RUNNING`: ask `python3 <workspace>/_system/executorlib.py
+   status --workspace <project dir> <job_id>` — it answers `PENDING`, `RUNNING`,
+   `COMPLETED` or `FAILED`. Not yet terminal → update STATUS to `RUNNING <job_id>
+   <iso8601>`, reply T3, stop.
 8. If the job has finished, run `collect` with `--model "<the exact model id you are running
    as>"` (decision 0024) and `--counts-from <the sub-stage the resolver named>`. Exit 2 → the
-   run did not complete: write `STATUS` as `FAILED <iso8601>`, reply T4 with the Slurm log
+   run did not complete: write `STATUS` as `FAILED <iso8601>`, reply T4 with the scheduler log
    path, stop. Exit 1 → the exit gate failed: write `FAILED`, reply T4 with its `failures`
    verbatim, stop.
 9. Exit 0 → `collect` has written `OUTPUTS.tsv` (`de_results` native, `counts_gene`
@@ -128,12 +133,12 @@ Design: <resolved design path> (<n> samples)
 
 **T2 — Submitted**
 ```
-Checks passed. Submitted to Slurm as job <job_id>.
+Checks passed. Submitted as job <job_id>.
 
 Output: 02_bioinformatics/rnaseq_bulk/02_rnaseq-de/run/
 Status: 02_bioinformatics/rnaseq_bulk/02_rnaseq-de/STATUS
 
-Check progress: squeue -j <job_id>
+Check progress: python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>
 Run stage 02 again when it finishes to collect results.
 ```
 
@@ -141,14 +146,14 @@ Run stage 02 again when it finishes to collect results.
 ```
 Job <job_id> is <state>, submitted <timestamp>. Nothing was resubmitted.
 
-Check progress: squeue -j <job_id>
+Check progress: python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>
 ```
 
 **T4 — Failed**
 ```
 Sub-stage 02.02 failed at <stage: run|exit gate>.
 
-<verbatim wrapper failures or Slurm error>
+<verbatim wrapper failures or scheduler error>
 
 STATUS set to FAILED. Nothing was retried, nothing was deleted.
 Log: 02_bioinformatics/rnaseq_bulk/02_rnaseq-de/logs/<log file>
@@ -188,10 +193,10 @@ Written to `projects/<project_title>/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/
 |---|---|
 | `STATUS` | Sub-stage state. The authority on completion. |
 | `scripts/run_de.py` | The generated analysis, inputs frozen in. Re-runnable by hand. |
-| `submit.sh` | The generated Slurm script: adaptation, then analysis. |
+| `submit.sh` | The generated batch script: adaptation, then analysis. |
 | `adapted/` | `counts_gene.tsv` (identifier renamed to `gene`), `gene_id_to_name.tsv`. |
 | `reproducibility/` | `manifest.json` (input checksums, template commit), `commands.sh`. |
-| `logs/` | Slurm stdout/stderr. |
+| `logs/` | The scheduler's stdout/stderr. |
 | `OUTPUTS.tsv` | `de_results` native, `counts_gene` adapted, `gene_id_map` native. |
 | `run/` | `tables/`, `figures/`, `report.md`, the completion marker. |
 

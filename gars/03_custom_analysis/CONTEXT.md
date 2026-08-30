@@ -61,9 +61,12 @@ vocabulary, every output path relative. Approval is durable — it lives in the 
 conversation.
 
 **Execution venue.** The plan's Execution section opens with a `Runs:` line, and `approve`
-refuses any value other than these two: `Runs: sbatch` — the default for **every** analysis,
-whatever its size — or `Runs: login-node (user-requested)`, allowed only when the user
-explicitly asked for login-node execution in this analysis's dialogue. Whether a job is
+refuses any value outside this vocabulary: `Runs: batch` — the workspace's configured
+executor (`_config/executor.yaml`, decision 0039; Slurm on this cluster), the default for
+**every** analysis, whatever its size — or `Runs: login-node (user-requested)`, allowed only
+when the user explicitly asked for login-node execution in this analysis's dialogue. `sbatch`
+is accepted as `batch`'s Slurm-era spelling and means exactly the same thing, so every plan
+already written on the cluster still approves. Whether a job is
 "small enough" for the login node is not a judgment this stage makes: the login node's cgroup
 kills whatever is running when memory runs short, not whatever is at fault, and a wrong size
 estimate is exactly the mistake a default cannot make (decision 0027).
@@ -83,7 +86,7 @@ scripts' exit codes claimed.
 3. Draft the plan: replace every `<FILL: ...>` marker in the created `PLAN.md`. Inputs come
    from step 1's resolution; Outputs use the closed vocabulary, preferring a specific type
    (`counts_gene`, `de_results`, …) over a generic one (`table`, `figure`, `report`) wherever
-   one fits; Execution keeps its `Runs: sbatch` line unless the user explicitly asked for the
+   one fits; Execution keeps its `Runs: batch` line unless the user explicitly asked for the
    login node. This is the step where your judgment belongs — spend it here, not at the
    keyboard later.
 4. Reply T2 and stop. The user reads the plan, edits it if they wish, and answers.
@@ -95,8 +98,10 @@ scripts' exit codes claimed.
    Exit 2 → the plan is not actually complete: reply T3 with the `blocked` reasons, fix the
    plan (that is a draft edit, allowed), and return to step 4. Never argue past the gate.
 7. Execute the approved plan literally: write the scripts it describes under `scripts/` and
-   submit them with `sbatch` in the environment the plan names — a login-shell run happens
-   only when the plan's `Runs:` line reads `login-node (user-requested)`. On submission reply
+   submit them through the executor door —
+   `python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <script>` —
+   in the environment the plan names; a login-shell run happens only when the plan's `Runs:`
+   line reads `login-node (user-requested)`. On submission reply
    T4 and monitor the job. Steps not in the plan do not happen.
 8. If execution fails, write `STATUS` as `FAILED <iso8601>`, reply T5 with the actual error,
    and stop. Do not patch around the failure and re-run: diagnosis goes to the user, and a
@@ -137,7 +142,7 @@ Analysis plan drafted: projects/<project_title>/03_custom_analysis/<NN_slug>/PLA
 Goal: <the Goal section's first sentence>
 Inputs: <n> artifact(s) — <types, comma-separated>
 Outputs: <n> declared — <types, comma-separated>
-Execution: <login node | sbatch>, per the plan.
+Execution: <login node | batch>, per the plan.
 
 Read the plan file — Goal, Method, Outputs. Edit anything directly, or tell me the changes.
 Nothing runs until you approve it. Approve as written?

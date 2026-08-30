@@ -70,15 +70,21 @@ Types come from the closed vocabulary in _references/artifact_types.md.
 <FILL: one row per output. Paths relative to this analysis directory, e.g. results/x.csv>
 
 ## Execution
-Runs: sbatch
-<FILL: expected wall time and output size. `sbatch` is the default for every analysis,
-whatever its size (decision 0027). Change the line above to `Runs: login-node (user-requested)`
-ONLY if the user explicitly asked for login-node execution -- never because the job looks
-small. The login node's cgroup kills whatever is running when memory runs short, not whatever
-is at fault, and a wrong size estimate is exactly the mistake a default cannot make.>
+Runs: batch
+<FILL: expected wall time and output size. `batch` -- this workspace's configured scheduler,
+whatever it is (decision 0039) -- is the default for every analysis, whatever its size
+(decision 0027). `sbatch` is accepted as its Slurm-era spelling and means the same thing.
+Change the line above to `Runs: login-node (user-requested)` ONLY if the user explicitly asked
+for login-node execution -- never because the job looks small. The login node's cgroup kills
+whatever is running when memory runs short, not whatever is at fault, and a wrong size
+estimate is exactly the mistake a default cannot make.>
 """
 
-EXECUTION_VENUES = ("sbatch", "login-node (user-requested)")
+#: `batch` is the venue; `sbatch` is what it was called when Slurm was the only scheduler
+#: GARS knew, and every plan already written on the cluster says it. Both are the default;
+#: decision 0027's ruling -- the agent never decides to run work in the current process --
+#: is unchanged in force, only respelled (decision 0039).
+EXECUTION_VENUES = ("batch", "sbatch", "login-node (user-requested)")
 
 
 def emit(result, code):
@@ -219,14 +225,17 @@ def cmd_approve(args, workspace):
     venue = re.search(r"^Runs:\s*(.+?)\s*$", text, re.M)
     if not venue:
         result["blocked"].append("the Execution section has no `Runs:` line; every plan "
-                                 "states its venue -- `Runs: sbatch` (the default) or "
-                                 "`Runs: login-node (user-requested)` when the user "
-                                 "explicitly asked (decision 0027)")
+                                 "states its venue -- `Runs: batch` (the default; `sbatch` "
+                                 "is its Slurm-era spelling) or `Runs: login-node "
+                                 "(user-requested)` when the user explicitly asked "
+                                 "(decisions 0027, 0039)")
     elif venue.group(1) not in EXECUTION_VENUES:
-        result["blocked"].append("`Runs: %s` is not a recognised venue. `sbatch` is the "
-                                 "default for every analysis; `login-node (user-requested)` "
-                                 "is allowed only when the user explicitly asked for it -- "
-                                 "job size is never the reason (decision 0027)"
+        result["blocked"].append("`Runs: %s` is not a recognised venue. `batch` -- this "
+                                 "workspace's configured scheduler, `sbatch` accepted as its "
+                                 "Slurm-era spelling -- is the default for every analysis; "
+                                 "`login-node (user-requested)` is allowed only when the user "
+                                 "explicitly asked for it -- job size is never the reason "
+                                 "(decisions 0027, 0039)"
                                  % venue.group(1))
     if "Status: DRAFT" not in text:
         result["blocked"].append("PLAN.md has no `Status: DRAFT` line to promote")

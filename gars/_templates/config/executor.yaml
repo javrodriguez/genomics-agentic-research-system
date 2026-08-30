@@ -1,0 +1,80 @@
+# The workspace's batch executor (decision 0039). Seeded by stage 00; edit it per site.
+#
+# Required, not optional in spirit: GARS submits real work to a managed scheduler and never
+# runs it in the current process (decision 0027). This file says WHICH scheduler. Delete it
+# and the built-in Slurm descriptor below is what you get, byte for byte -- so an existing
+# cluster workspace behaves exactly as it always has.
+#
+# The shape is deliberately narrow -- scalars, one-level lists, one-level `key: value` maps.
+# `_system/` is stdlib-only (decision 0011), so this is parsed by a small parser we own, not
+# by a YAML library. Do not reach for anchors, multi-line scalars or nested lists.
+#
+# Three doors, and nothing else:
+#   header   the directives block the generated submit.sh opens with
+#   submit   the argv that hands that GENERATED script to the scheduler -> a job id
+#   status   the argv that asks after it -> PENDING | RUNNING | COMPLETED | FAILED
+#
+# `submit_argv` runs the generated `submit.sh` and nothing else. It is not a place to add
+# pipeline parameters, environment or wrapper logic: the audited parameter surface is
+# `_config/<assay>.yaml`, and bypassing it is the one thing this file must never enable.
+
+# The backend. `slurm` and `local` are built in; any other name means this file supplies the
+# whole descriptor. (`local` runs the script detached on this machine and reports its PID --
+# it is for testing the submit->status walk without a cluster, never a venue for analyses.)
+name: slurm
+
+# The directives block. Available placeholders, and only these:
+#   {project} {assay} {substage} {partition} {time} {cpus} {mem}
+# compute.partition / time / cpus / mem come from `_config/<assay>.yaml`.
+directives:
+  - "#SBATCH --job-name={project}-{assay}"
+  - "#SBATCH --partition={partition}"
+  - "#SBATCH --time={time}"
+  - "#SBATCH --cpus-per-task={cpus}"
+  - "#SBATCH --mem={mem}"
+  - "#SBATCH --output={substage}/logs/slurm-%j.out"
+  - "#SBATCH --error={substage}/logs/slurm-%j.err"
+
+# How a script becomes a job. {script} is the generated submit.sh; it must appear.
+submit_argv:
+  - sbatch
+  - "{script}"
+
+# How the job id is read back out of what submit printed. First capture group wins.
+# A quoted value is taken verbatim -- there is no escape processing, so a regex is
+# written exactly as a regex, single backslashes and all.
+job_id_regex: "Submitted batch job (\d+)"
+
+# How the job is asked after. {job_id} must appear.
+status_argv:
+  - sacct
+  - -j
+  - "{job_id}"
+  - --format=State
+  - --noheader
+
+# This backend's states, mapped onto the closed vocabulary. Closed means closed: a state that
+# is not listed here is refused by name rather than guessed at, so an unfamiliar scheduler
+# state can never be silently read as success.
+status_map:
+  PENDING: PENDING
+  CONFIGURING: PENDING
+  REQUEUED: PENDING
+  SUSPENDED: PENDING
+  PREEMPTED: PENDING
+  RUNNING: RUNNING
+  COMPLETING: RUNNING
+  RESIZING: RUNNING
+  COMPLETED: COMPLETED
+  FAILED: FAILED
+  CANCELLED: FAILED
+  TIMEOUT: FAILED
+  NODE_FAIL: FAILED
+  OUT_OF_MEMORY: FAILED
+  BOOT_FAIL: FAILED
+  DEADLINE: FAILED
+  REVOKED: FAILED
+
+# The Nextflow executor config this backend pairs with, under `_config/`. The wrapper checks
+# it exists and carries no `params` block.
+nextflow_config: nextflow.slurm.config
