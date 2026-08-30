@@ -1464,6 +1464,27 @@ nextflow_config: nextflow.awsbatch.config
         self.wl.check_config_common({"compute.work_dir": "relative/scratch"}, (), fails)
         self.assertTrue(any("work_dir" in f["detail"] for f in fails))
 
+    def test_07f_gars_env_survives_set_e_without_clawbio(self):
+        """gars-env.sh promises 'Empty if clawbio is absent; that is fine' -- and every
+        generated submit.sh sources it under set -e, where a failed command substitution in
+        an assignment is fatal. The first clawbio-less host died on it, silently."""
+        import subprocess
+        env_sh = GARS / "_system" / "gars-env.sh"
+        bio = self.tmp / "fake-bio" / "bin"
+        bio.mkdir(parents=True, exist_ok=True)
+        # a python with no clawbio: the system one
+        (bio / "python").symlink_to(sys.executable) if not (bio / "python").exists() else None
+        nxf = self.tmp / "fake-nxf" / "bin"
+        nxf.mkdir(parents=True, exist_ok=True)
+        proc = subprocess.run(
+            ["bash", "-ec", 'source "%s" && echo SURVIVED' % env_sh],
+            env={**os.environ, "GARS_ROOT": str(self.tmp), "GARS_BIO": str(bio.parent),
+                 "GARS_NXF": str(nxf.parent), "APPTAINER_CACHEDIR": str(self.tmp / "ac"),
+                 "NXF_HOME": str(self.tmp / "nh")},
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.assertIn(b"SURVIVED", proc.stdout,
+                      proc.stderr.decode("utf-8", "replace")[-400:])
+
     # -- a broken descriptor is refused by name, never guessed at ---------------------------
 
     def test_08_descriptor_problems_surface_as_named_failures(self):

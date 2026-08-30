@@ -49,7 +49,12 @@ export GARS_PY="$GARS_BIO/bin/python"
 # The retired clawbio skills (decision 0029) are resolved for inspection only -- no sub-stage
 # invokes them. The literal site-packages path embeds a Python version that changes on any
 # environment rebuild, hence the runtime resolution. Empty if clawbio is absent; that is fine.
-GARS_SKILLS=$("$GARS_PY" -c "import clawbio, pathlib; print(pathlib.Path(clawbio.__file__).parent / 'skills')" 2>/dev/null)
+# `|| true` carries this file's own promise ("Empty if clawbio is absent; that is fine")
+# through a caller's `set -e`: a failed command substitution in an assignment is FATAL under
+# -e, and every generated submit.sh runs with -e. The cluster never saw it -- clawbio is
+# always installed there; the first host without it (the demo's recording rig) died here
+# silently, before the script's first echo.
+GARS_SKILLS=$("$GARS_PY" -c "import clawbio, pathlib; print(pathlib.Path(clawbio.__file__).parent / 'skills')" 2>/dev/null || true)
 export GARS_SKILLS
 
 # GARS-authored wrappers, versioned in this workspace and ours to maintain (decision 0012).
