@@ -63,7 +63,7 @@ silently.
 **Failure vocabulary.** Each failure names its check: `preconditions` (an input file is
 missing), `config` (a key is absent or invalid — including an aligner outside the menu, or a
 protocol the aligner does not support), `config_unfilled` (`<REQUIRED>` markers remain — the
-stage 02 menus have not run), `samplesheet` (header, paths, or a duplicate sample id),
+stage 02 menus have not run), `samplesheet` (header, paths, or the same FASTQ listed twice),
 `pipeline` (the pinned checkout is missing or describes the wrong tag), `executor_config`
 (`nextflow.slurm.config` carries a `params` block), `output_dir` (`run/` is populated without a
 completion marker). `collect` reuses the artifact type names — `h5ad`, `qc_multiqc` — as its
@@ -71,8 +71,13 @@ check names, so a gate failure says which artifact is wrong.
 
 **The `sample` column is the sample id.** nf-core/scrnaseq's `assets/schema_input.json` gives
 `sample` the meta key `id`. This differs from the ATAC/ChIP-family sheets, where `sample` is
-the *group* and rows repeat per replicate (decision 0035). Here a repeated value is an error,
-and `check` refuses it: two rows sharing a sample id would be merged into one barcode space.
+the *group* and rows repeat per replicate (decision 0035).
+
+A repeated sample id is nonetheless **correct** here, and `check` allows it: a sample sequenced
+across lanes gets one row per lane and the pipeline concatenates them by `meta.id`. GARS models
+that directly — `files.csv` is keyed `(sample_id, lane)`, and stage 01 emits three rows for two
+samples when one has two lanes. What `check` refuses is the same FASTQ listed twice, which
+double-counts those reads into the same barcodes with no error downstream.
 
 **Protocol and aligner are a pair.** `check` reads the pinned checkout's own
 `assets/protocols.json` and refuses a protocol the chosen aligner does not support. This exists

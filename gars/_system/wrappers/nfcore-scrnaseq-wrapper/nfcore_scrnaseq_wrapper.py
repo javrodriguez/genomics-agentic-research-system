@@ -139,15 +139,26 @@ def run_checks(project):
 
     wl.check_samplesheet(paths["samplesheet"], SAMPLESHEET_HEADER, fails)
     if paths["samplesheet"].is_file():
-        # `sample` is the sample id, so duplicates are a real error here -- unlike the
-        # group-shaped sheets, where repetition per replicate is correct.
-        ids = [l.split(",")[0] for l in
-               paths["samplesheet"].read_text(encoding="utf-8").splitlines()[1:] if l.strip()]
-        dupes = sorted({s for s in ids if ids.count(s) > 1})
+        # A repeated sample id is CORRECT here: a sample sequenced across lanes gets one row
+        # per lane and the pipeline concatenates them by meta.id. GARS models this directly --
+        # files.csv is keyed (sample_id, lane) -- and stage 01 emits 3 rows for 2 samples when
+        # one has two lanes, verified against a real two-lane fixture. nf-core's own test
+        # samplesheet has exactly this shape (Sample_Y on L001 and L002).
+        #
+        # An earlier version of this check refused duplicate ids outright and would have
+        # rejected every multi-lane run -- the common case for 10x. What is genuinely wrong is
+        # the SAME FASTQ listed twice, which double-counts those reads into the same cell
+        # barcodes with no error anywhere downstream.
+        rows = [l.split(",") for l in
+                paths["samplesheet"].read_text(encoding="utf-8").splitlines()[1:] if l.strip()]
+        pairs = [(r[0], r[1]) for r in rows if len(r) > 1]
+        dupes = sorted({p for p in pairs if pairs.count(p) > 1})
         if dupes:
             fails.append(fail("samplesheet",
-                              "duplicate sample id(s): %s -- for scrnaseq the `sample` column "
-                              "is the sample id (meta: id), not a group" % ", ".join(dupes)))
+                              "the same FASTQ is listed twice for a sample: %s -- lanes are "
+                              "expected to repeat a sample id, but a repeated read file "
+                              "double-counts those reads into the same barcodes silently"
+                              % ", ".join("%s -> %s" % (s, Path(f).name) for s, f in dupes)))
 
     wl.check_executor_config(paths["executor_config"], fails)
     wl.check_run_dir(paths["substage"], fails)

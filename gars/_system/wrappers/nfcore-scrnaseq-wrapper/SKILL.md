@@ -63,9 +63,15 @@ from the checkout's own `assets/protocols.json`, so the wrapper cannot disagree 
 version it is pinned to. `auto` is never valid here — it works only with the cellranger
 aligners.
 
-**A duplicate sample id.** This pipeline's `sample` column carries `meta: ["id"]` — it is the
-sample id, unlike the ATAC/ChIP-family sheets where `sample` is the group and rows repeat per
-replicate (decision 0035). Two rows sharing an id would be merged into one barcode space.
+**The same FASTQ listed twice for a sample.** That double-counts those reads into the same cell
+barcodes, silently. A repeated *sample id* is NOT refused: a sample sequenced across lanes gets
+one row per lane and the pipeline concatenates them by `meta.id` — GARS models this directly
+(`files.csv` is keyed `(sample_id, lane)`), and nf-core's own test samplesheet has `Sample_Y`
+on two lanes. An earlier version of this check refused duplicate ids outright and would have
+rejected every multi-lane 10x run.
+
+Note the column's meaning all the same: `sample` carries `meta: ["id"]`, so it is the sample
+id, unlike the ATAC/ChIP-family sheets where `sample` is the group (decision 0035).
 
 ## Deliberately not offered
 

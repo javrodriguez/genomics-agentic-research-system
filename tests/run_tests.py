@@ -1669,16 +1669,35 @@ class ScrnaseqWrapperTests(unittest.TestCase):
         self.assertIn("verbatim", details,
                       "the refusal must say WHY a wrong protocol is dangerous")
 
-    def test_04_duplicate_sample_ids_are_refused(self):
-        project = self._project("sc-dupes")
+    def test_04_lanes_repeat_a_sample_id_but_a_repeated_fastq_does_not(self):
+        """A multi-lane sample legitimately repeats its id -- files.csv is keyed
+        (sample_id, lane) and nf-core concatenates by meta.id. An earlier version of this
+        check refused duplicate ids outright, which would have rejected every multi-lane 10x
+        run; nf-core's own test samplesheet has Sample_Y on two lanes. What is really wrong
+        is the same FASTQ twice, which double-counts reads into the same barcodes."""
+        project = self._project("sc-lanes")
         sheet = project / "01_samplesheets" / "scrnaseq_samplesheet.csv"
         lines = sheet.read_text().splitlines()
-        lines.append(lines[1])           # same sample id twice
-        sheet.write_text("\n".join(lines) + "\n")
-        code, res, raw = run(self.wrap, ["check", "--project", "projects/sc-dupes"], self.ws)
+        first = lines[1].split(",")
+
+        # same sample id, DIFFERENT read files == a second lane. Must be accepted.
+        lane2 = [first[0], first[1].replace("_L001_", "_L002_"),
+                 first[2].replace("_L001_", "_L002_")]
+        for src, dst in ((first[1], lane2[1]), (first[2], lane2[2])):
+            shutil.copyfile(str(project / src) if not os.path.isabs(src) else src,
+                            str(project / dst) if not os.path.isabs(dst) else dst)
+        sheet.write_text("\n".join(lines + [",".join(lane2)]) + "\n")
+        code, res, raw = run(self.wrap, ["check", "--project", "projects/sc-lanes"], self.ws)
+        sheet_fails = [f for f in (res.get("failures") or [])
+                       if f["check"] == "samplesheet"]
+        self.assertEqual(sheet_fails, [], "a second lane must not be refused: %s" % raw)
+
+        # the SAME fastq pair twice == double counting. Must be refused.
+        sheet.write_text("\n".join(lines + [lines[1]]) + "\n")
+        code, res, raw = run(self.wrap, ["check", "--project", "projects/sc-lanes"], self.ws)
         self.assertEqual(code, 1, raw)
         self.assertIn("samplesheet", [f["check"] for f in res["failures"]])
-        self.assertIn("duplicate", " ".join(f["detail"] for f in res["failures"]))
+        self.assertIn("listed twice", " ".join(f["detail"] for f in res["failures"]))
 
     def test_05_collect_gates_on_every_sample(self):
         """The content gate: a sample lost to a failed process must not vanish into a
