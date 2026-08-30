@@ -1043,13 +1043,21 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
             str(self.spikein)))
         self.assertIn("gene_heatmaps", cfgp.read_text(),
                       "the seeded config carries the 0038 qc surface")
-        # 0036 red case first: an index dir without genome.1.bt2 is refused BY NAME --
-        # asserted on the failure list, not the exit code, so it holds off-cluster too
-        code, res, raw = run(wrap, ["check", "--project", "projects/cnr-test"], self.ws)
-        self.assertIn("spikein_bowtie2", [f["check"] for f in res.get("failures", [])], raw)
+        # 0036 red case first: an index dir without genome.1.bt2 is refused BY NAME.
+        # The red case must MAKE its premise true, not assume it: the seeded default points
+        # at the cluster's real E. coli mirror, so on BigPurple that path is readable and
+        # the refusal rightly does not fire -- the original assertion relied on the path
+        # being absent, which encoded the Mac's filesystem into the test (caught by the
+        # first on-cluster run of this suite, where it was the only red). An empty fixture
+        # dir is unreadable-by-construction in every venue.
+        empty_bt2 = self.tmp / "empty_bt2"
+        empty_bt2.mkdir(exist_ok=True)
         cfgp.write_text(cfgp.read_text().replace(
             "/gpfs/data/sequence/references/iGenomes/Escherichia_coli_K_12_MG1655/NCBI/2001-10-15/Sequence/Bowtie2Index",
-            str(self.spikein_bt2)))
+            str(empty_bt2)))
+        code, res, raw = run(wrap, ["check", "--project", "projects/cnr-test"], self.ws)
+        self.assertIn("spikein_bowtie2", [f["check"] for f in res.get("failures", [])], raw)
+        cfgp.write_text(cfgp.read_text().replace(str(empty_bt2), str(self.spikein_bt2)))
         code, res, raw = run(wrap, ["check", "--project", "projects/cnr-test"], self.ws)
         self.assertNotIn("spikein_bowtie2", [f["check"] for f in (res or {}).get("failures", [])],
                          raw)
