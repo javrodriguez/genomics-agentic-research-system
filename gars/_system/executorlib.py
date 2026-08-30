@@ -221,6 +221,19 @@ def validate(descriptor):
 # --- the three doors ---------------------------------------------------------------------------
 
 
+def _fill(text, fields):
+    """Substitute the KNOWN {tokens} and leave every other brace alone.
+
+    Deliberately not str.format: a descriptor element may legitimately contain literal
+    braces -- the awsbatch submit argv carries a JSON --container-overrides payload, and
+    format() reads {"command": ...} as a placeholder named \'"command"\' and crashes. The
+    descriptor is data, not a template language; only the documented tokens are tokens.
+    """
+    for key, value in fields.items():
+        text = text.replace("{%s}" % key, str(value))
+    return text
+
+
 def header_lines(config_root, cfg, project, assay, substage, descriptor=None):
     """The directives block, rendered. Returns a list of lines with no trailing newlines."""
     descriptor = descriptor if descriptor is not None else load(config_root)
@@ -233,13 +246,7 @@ def header_lines(config_root, cfg, project, assay, substage, descriptor=None):
         "cpus": cfg.get("compute.cpus", "{cpus}"),
         "mem": cfg.get("compute.mem", "{mem}"),
     }
-    lines = []
-    for line in descriptor.get("directives") or []:
-        try:
-            lines.append(line.format(**fields))
-        except (KeyError, IndexError, ValueError):
-            lines.append(line)      # validate() names the problem; never crash a prepare here
-    return lines
+    return [_fill(line, fields) for line in descriptor.get("directives") or []]
 
 
 DEFAULT_SUBMIT_NOTE = ("The scheduler snapshots this script at submission: editing it never "
@@ -265,11 +272,11 @@ def config_root_for(path):
 
 
 def submit_argv(descriptor, script):
-    return [a.format(script=str(script)) for a in descriptor.get("submit_argv") or []]
+    return [_fill(a, {"script": script}) for a in descriptor.get("submit_argv") or []]
 
 
 def status_argv(descriptor, job_id):
-    return [a.format(job_id=str(job_id)) for a in descriptor.get("status_argv") or []]
+    return [_fill(a, {"job_id": job_id}) for a in descriptor.get("status_argv") or []]
 
 
 def submit_command(config_root, script, descriptor=None):

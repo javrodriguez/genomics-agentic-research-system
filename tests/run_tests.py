@@ -1399,6 +1399,25 @@ nextflow_config: nextflow.awsbatch.config
         self.assertNotIn("#SBATCH", script)
         self.assertIn("Executor: local", script)
 
+    def test_07b_literal_braces_in_a_descriptor_survive(self):
+        """The smoke's first real catch (2026-08-29): the awsbatch submit argv carries a
+        JSON --container-overrides element, and str.format read {"command": ...} as a
+        placeholder and crashed at submit time. The descriptor is data, not a template
+        language -- only the documented tokens substitute."""
+        d = {
+            "name": "awsbatch",
+            "submit_argv": ["aws", "batch", "submit-job", "--container-overrides",
+                            '{"command":["bash","{script}"]}'],
+            "status_argv": ["aws", "batch", "describe-jobs", "--jobs", "{job_id}"],
+            "directives": ['# literal {"json": true} stays; {project} substitutes'],
+        }
+        argv = self.ex.submit_argv(d, "/tmp/x.sh")
+        self.assertEqual(argv[-1], '{"command":["bash","/tmp/x.sh"]}')
+        argv = self.ex.status_argv(d, "job-123")
+        self.assertEqual(argv[-1], "job-123")
+        lines = self.ex.header_lines(None, {}, "proj", "assay", "/tmp", descriptor=d)
+        self.assertEqual(lines, ['# literal {"json": true} stays; proj substitutes'])
+
     # -- a broken descriptor is refused by name, never guessed at ---------------------------
 
     def test_08_descriptor_problems_surface_as_named_failures(self):
