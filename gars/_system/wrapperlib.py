@@ -326,7 +326,7 @@ fi
 
 {body}
 
-date -Is > .gars_run_complete
+date '+%Y-%m-%dT%H:%M:%S%z' > .gars_run_complete
 echo "[wrapper] run complete"
 """.format(assay=assay, directives=directives, submit_note=ex.submit_note(descriptor),
            substage=str(substage.resolve()), workspace=str(workspace_root), body=body,
