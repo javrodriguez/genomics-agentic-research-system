@@ -23,6 +23,7 @@ import csv
 import gzip
 import json
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -1402,6 +1403,146 @@ class ContractLintTests(unittest.TestCase):
         code, _, raw = run([sys.executable, str(REPO / "tests" / "check_contracts.py")],
                            [], REPO)
         self.assertEqual(code, 0, raw)
+
+
+class SkillAuthoringTests(unittest.TestCase):
+    """create-bioinformatics-skill: the method is only real if it describes the wrappers we
+    already trust, and only useful if breaking a rule actually goes red."""
+
+    TOOL = GARS / "_system" / "authoring" / "create_bioinformatics_skill.py"
+    WRAPPERS = GARS / "_system" / "wrappers"
+
+    SPEC = {
+        "assay_id": "demo_assay",
+        "assay_label": "Demo assay",
+        "wrapper_name": "demo-wrapper",
+        "substage": "01_demo-wrapper",
+        "pipeline": "nf-core/demo",
+        "pipeline_version": "1.0.0",
+        "samplesheet_header": ["sample", "fastq_1", "fastq_2"],
+        "required_config_keys": ["reference.fasta", "compute.partition", "compute.work_dir"],
+        "artifacts": [
+            {"type": "counts_gene", "path": "run/results/counts.tsv", "content_gate": True},
+            {"type": "qc_multiqc", "path": "run/results/multiqc/multiqc_report.html"},
+        ],
+    }
+
+    def _conform(self, target):
+        return run(self.TOOL, ["conform", str(target)], REPO)
+
+    def test_00_every_existing_wrapper_conforms(self):
+        """The standard is derived from these six. A rule that fails one is a wrong rule."""
+        code, payload, raw = self._conform(self.WRAPPERS)
+        self.assertEqual(code, 0, raw)
+        self.assertTrue(payload["ok"], payload.get("failures"))
+        self.assertGreaterEqual(payload["checked"], 6, raw)
+
+    def test_01_conform_catches_each_violation(self):
+        """Mutation coverage: every rule must go red when deliberately broken.
+
+        Without this the linter could pass everything and prove nothing. One rule originally
+        tested a substring and a rename slipped past it -- hence the --model case here."""
+        src_dir = self.WRAPPERS / "nfcore-atacseq-wrapper"
+        module_name = "nfcore_atacseq_wrapper.py"
+        mutations = [
+            ("derived_pin", lambda s: re.sub(r"^PIPELINE_VERSION = .*",
+                                             'PIPELINE_VERSION = "2.1.2"', s, flags=re.M)),
+            ("wrapperlib", lambda s: s.replace("import wrapperlib as wl", "import json as wl")),
+            ("registry", lambda s: s.replace("OUTPUTS.tsv", "OUTPUTSX.tsv")),
+            ("provenance", lambda s: s.replace('"--model"', '"--modelx"')),
+            ("verbs", lambda s: s.replace("def cmd_collect", "def cmd_collectx")),
+            ("atomic_writes", lambda s: s.replace("atomic_open", "plain_open")),
+            ("stdlib_only", lambda s: s.replace("import argparse",
+                                                "import argparse\nimport pandas")),
+            ("identity", lambda s: re.sub(r"^ASSAY = .*", "X = 1", s, flags=re.M)),
+            ("py36", lambda s: s.replace('"no such project: %s" % project',
+                                         'f"no such project"')),
+        ]
+        for check, mutate in mutations:
+            tmp = Path(tempfile.mkdtemp())
+            try:
+                dest = tmp / src_dir.name
+                shutil.copytree(str(src_dir), str(dest))
+                target = dest / module_name
+                target.write_text(mutate(target.read_text(encoding="utf-8")), encoding="utf-8")
+                code, payload, raw = self._conform(dest)
+                self.assertEqual(code, 1, "%s: linter stayed green\n%s" % (check, raw))
+                caught = set(f["check"] for f in payload["failures"])
+                self.assertIn(check, caught,
+                              "%s: expected that check to fire, got %s" % (check, sorted(caught)))
+            finally:
+                shutil.rmtree(str(tmp), ignore_errors=True)
+
+    def test_02_two_modules_and_missing_skill_md_are_caught(self):
+        src_dir = self.WRAPPERS / "nfcore-atacseq-wrapper"
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            dest = tmp / src_dir.name
+            shutil.copytree(str(src_dir), str(dest))
+            (dest / "second_module.py").write_text("x = 1\n", encoding="utf-8")
+            _, payload, raw = self._conform(dest)
+            self.assertIn("one_module", set(f["check"] for f in payload["failures"]), raw)
+
+            (dest / "second_module.py").unlink()
+            (dest / "SKILL.md").unlink()
+            _, payload, raw = self._conform(dest)
+            self.assertIn("skill_md", set(f["check"] for f in payload["failures"]), raw)
+        finally:
+            shutil.rmtree(str(tmp), ignore_errors=True)
+
+    def test_03_scaffold_output_conforms_and_compiles(self):
+        """The round trip: what the method generates must satisfy the method."""
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            spec = tmp / "spec.json"
+            spec.write_text(json.dumps(self.SPEC), encoding="utf-8")
+            out = tmp / "wrappers"
+            code, payload, raw = run(self.TOOL,
+                                     ["scaffold", "--spec", str(spec), "--out", str(out)], REPO)
+            self.assertEqual(code, 0, raw)
+            self.assertTrue(payload["ok"], raw)
+            self.assertIn("workspace.PIPELINES", payload["registry_rows"])
+
+            generated = out / "demo-wrapper" / "demo_wrapper.py"
+            self.assertTrue(generated.is_file(), raw)
+            compile(generated.read_text(encoding="utf-8"), str(generated), "exec")
+
+            code, payload, raw = self._conform(out / "demo-wrapper")
+            self.assertEqual(code, 0, raw)
+            self.assertTrue(payload["ok"], payload.get("failures"))
+        finally:
+            shutil.rmtree(str(tmp), ignore_errors=True)
+
+    def test_04_scaffold_refuses_to_overwrite(self):
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            spec = tmp / "spec.json"
+            spec.write_text(json.dumps(self.SPEC), encoding="utf-8")
+            out = tmp / "wrappers"
+            run(self.TOOL, ["scaffold", "--spec", str(spec), "--out", str(out)], REPO)
+            code, payload, raw = run(self.TOOL,
+                                     ["scaffold", "--spec", str(spec), "--out", str(out)], REPO)
+            self.assertEqual(code, 2, raw)
+            self.assertIn("refusing to overwrite", payload["error"])
+        finally:
+            shutil.rmtree(str(tmp), ignore_errors=True)
+
+    def test_05_spec_without_a_content_gate_is_refused(self):
+        """P2 enforced at spec time: an existence-only gate is how a silent defect ships."""
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            spec_data = json.loads(json.dumps(self.SPEC))
+            for art in spec_data["artifacts"]:
+                art.pop("content_gate", None)
+            spec = tmp / "spec.json"
+            spec.write_text(json.dumps(spec_data), encoding="utf-8")
+            code, payload, raw = run(self.TOOL, ["scaffold", "--spec", str(spec),
+                                                 "--out", str(tmp / "w")], REPO)
+            self.assertEqual(code, 1, raw)
+            self.assertIn("content_gate",
+                          " ".join(f["detail"] for f in payload["failures"]))
+        finally:
+            shutil.rmtree(str(tmp), ignore_errors=True)
 
 
 if __name__ == "__main__":

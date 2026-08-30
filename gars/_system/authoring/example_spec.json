@@ -1,0 +1,36 @@
+{
+  "_comment": "A worked spec. Copy it, change every value, then: scaffold --spec <yours> --out ../wrappers. Exactly one artifact must carry content_gate: true -- it is the artifact whose CONTENT proves every sample survived the run (decision 0010).",
+
+  "assay_id": "myassay",
+  "assay_label": "My assay",
+  "wrapper_name": "nfcore-myassay-wrapper",
+  "substage": "01_nfcore-myassay-wrapper",
+
+  "pipeline": "nf-core/myassay",
+  "pipeline_version": "1.0.0",
+  "requires_bins": ["python3", "nextflow", "java", "git"],
+
+  "samplesheet_header": ["sample", "fastq_1", "fastq_2"],
+
+  "required_config_keys": [
+    "reference.fasta",
+    "reference.gtf",
+    "compute.partition",
+    "compute.time",
+    "compute.cpus",
+    "compute.mem",
+    "compute.work_dir"
+  ],
+
+  "artifacts": [
+    {
+      "type": "counts_gene",
+      "path": "run/results/counts/gene_counts.tsv",
+      "content_gate": true
+    },
+    {
+      "type": "qc_multiqc",
+      "path": "run/results/multiqc/multiqc_report.html"
+    }
+  ]
+}
