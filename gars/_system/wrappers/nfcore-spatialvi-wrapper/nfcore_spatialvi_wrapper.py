@@ -142,15 +142,25 @@ def run_checks(project):
             if not target.exists():
                 fails.append(fail("samplesheet",
                                   "row %d: %s does not exist" % (i, target)))
-            elif target.is_dir() and not (target / "outs").is_dir() \
-                    and not any(target.glob("*.h5")):
-                # A Space Ranger run directory normally holds `outs/`. Warn-as-failure rather
-                # than proceed: pointing at the wrong level of the tree is the easy mistake,
-                # and the pipeline's own error for it arrives an hour into a Slurm job.
-                fails.append(fail("samplesheet",
-                                  "row %d: %s has no outs/ and no *.h5 -- is this the Space "
-                                  "Ranger run directory (the one containing outs/)?"
-                                  % (i, target)))
+            elif target.is_dir() and not any(target.glob("*.h5")):
+                # The pipeline reads the OUTS level directly: raw_feature_bc_matrix.h5 beside
+                # spatial/. An earlier version of this check ACCEPTED a directory that merely
+                # held outs/ -- and the run then died in SDATA_READ_VISIUM twenty-five minutes
+                # of queue later, looking for the .h5 at the level it was given (tierb-spatial
+                # run 26928674). Pointing one level too high is the easy mistake, so it is
+                # refused here, with the exact directory to use.
+                if (target / "outs").is_dir():
+                    fails.append(fail("samplesheet",
+                                      "row %d: %s holds an outs/ directory but no matrices at "
+                                      "its own level -- the pipeline reads the outs level "
+                                      "directly (raw_feature_bc_matrix.h5 beside spatial/). "
+                                      "Point spaceranger_dir at %s/outs instead."
+                                      % (i, target, target)))
+                else:
+                    fails.append(fail("samplesheet",
+                                      "row %d: %s has no *.h5 and no outs/ -- point "
+                                      "spaceranger_dir at a Space Ranger outs directory (or "
+                                      "a .tar.gz of one)" % (i, target)))
 
     wl.check_executor_config(paths["executor_config"], fails)
     wl.check_run_dir(paths["substage"], fails)

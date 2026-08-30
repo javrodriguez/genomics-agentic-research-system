@@ -2343,7 +2343,22 @@ class SpatialviTests(unittest.TestCase):
         code, res, raw = run(self.wrap, ["check", "--project", "projects/spat-wrong"], self.ws)
         self.assertEqual(code, 1, raw)
         detail = " ".join(f["detail"] for f in res["failures"])
-        self.assertIn("outs/", detail)
+        self.assertIn("outs", detail)
+
+        # The costlier mistake, found live (run 26928674): a dir that HOLDS outs/ passed the
+        # old preflight, and the pipeline then died in SDATA_READ_VISIUM after 25 minutes of
+        # queue, reading the .h5 at the level it was given. Refused now, naming <dir>/outs.
+        deeper = self.tmp / "one_level_high"
+        (deeper / "SampleQ" / "outs" / "spatial").mkdir(parents=True)
+        (deeper / "SampleQ" / "outs" / "raw_feature_bc_matrix.h5").write_text("h5")
+        project2 = self._project("spat-deep", source=deeper)
+        cfg2 = project2 / "_config" / "spatialvi.yaml"
+        cfg2.write_text(cfg2.read_text().replace("<REQUIRED", "# <REQUIRED"))
+        code, res, raw = run(self.wrap, ["check", "--project", "projects/spat-deep"], self.ws)
+        self.assertEqual(code, 1, raw)
+        detail = " ".join(f["detail"] for f in res["failures"])
+        self.assertIn("outs instead", detail,
+                      "the refusal must hand over the exact directory to use")
 
     def test_04_collect_gates_per_sample_and_never_takes_the_raw_h5ad(self):
         """The scrnaseq raw-for-filtered defect, avoided by construction: <sample>-raw.h5ad
