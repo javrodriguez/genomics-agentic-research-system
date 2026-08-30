@@ -87,6 +87,8 @@ flowchart LR
     C -.-> C3["chipseq"]
     C -.-> C4["cutandrun"]
     C -.-> C5["methylseq"]
+    C -.-> C6["scrnaseq: nfcore wrapper → QC/cluster"]
+    C -.-> C7["spatialvi (Visium, downstream)"]
 ```
 
 Each project directory is owned by exactly one stage, and the numeric prefix encodes the owner —
@@ -250,13 +252,20 @@ artifact each stage produces.
 
 ## Status
 
-**Five assays are wired; one is proven live.** All mechanical layers are offline-tested; live
-validation is per-assay:
+**Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
+(99 tests, green on macOS and on the cluster); live validation is per-assay:
 
 | Assay | State |
 |---|---|
 | Bulk RNA-seq (`rnaseq_bulk`) | **Live-proven end to end** on real patient-derived data (stage 00 → 01 → nf-core/rnaseq → DE with per-task Slurm dispatch); the wrapper switchover separately validated on a 4-sample two-condition cohort — published fold-changes vs normalized group ratios r = 0.999952 |
-| ATAC-seq, ChIP-seq, CUT&RUN, methylation | Wired end to end and offline-tested (contracts, config menus, wrappers against result trees read from each pipeline's own docs); each awaits its first live cluster run |
+| ATAC-seq, ChIP-seq, CUT&RUN | **Live-proven** in the reproduction campaign (nf-core pipelines complete on real GEO cohorts under Slurm; results in [docs/RESULTS.md](docs/RESULTS.md)) |
+| Single-cell RNA-seq (`scrnaseq`) | **Live-proven in two venues** — nf-core/scrnaseq 4.2.0 + the scanpy QC/clustering sub-stage ran to green exit gates on macOS/Docker and on Slurm/Apptainer, with identical downstream numbers (same cells, same 198 clusters) on both |
+| Spatial transcriptomics (`spatialvi`, Visium, downstream mode) | **Live-proven on the cluster** — full run + all three artifact gates including MultiQC (a commit pin, stated as such: the pipeline has no current release) |
+| Methylation (`methylseq`) | Wired end to end and offline-tested; awaits its first live run (the campaign's WGBS fetch is pending a clean re-download) |
+
+New assays are added through a documented, linted method — `gars/_system/authoring/` scaffolds a
+wrapper from a small spec and `conform` checks it against the standard the six earlier wrappers
+already satisfy; every rule is mutation-tested.
 
 Stage 03 (custom analysis) is plan-gated and live-validated once: the agent drafts a reviewable
 `PLAN.md`, a person approves it, and only the approved plan executes, with the approval and

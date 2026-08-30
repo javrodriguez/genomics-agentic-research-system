@@ -11,8 +11,8 @@
 #     --constraint <this file> scanpy==1.11.5 leidenalg
 # It changed NO existing pin -- 12 packages added, 0 altered. `packaging` is
 # deliberately not pinned here: conda provides it as a local wheel.
-# NOT YET APPLIED to the cluster environment; sub-stage 02.02's `check`
-# refuses by name until it is.
+# Applied to the cluster gars-bio 2026-08-30 (by exact pin; verified by import and by
+# a live 02.02 Slurm run).
 
 
 anndata==0.13.2
@@ -93,7 +93,10 @@ openai==2.53.0
 opentelemetry-api==1.44.0
 opentelemetry-sdk==1.44.0
 opentelemetry-semantic-conventions==0.65b0
-packaging @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_packaging_1785888127/work
+# packaging: provided by the conda layer as a local build. pip freeze emits it as a
+# `file:///home/conda/...` reference that exists on NO other machine, and feeding this
+# file back through `pip install -r` then dies on that line (seen live on BigPurple,
+# 2026-08-30). Deliberately unpinned here; the conda layer owns it.
 pandas==3.0.5
 patsy==1.0.3
 pillow==12.3.0
