@@ -86,26 +86,62 @@ def pipeline_checkout(assay):
     return root / name, key.rsplit("-", 1)[1]
 
 
+def is_commit_pin(version):
+    """True when a pin names a commit rather than a release tag.
+
+    Some pipelines have no usable release. nf-core/spatialvi's only tag, v0.1.0, is from
+    2023-03-31 and sits 1,014 commits behind `dev` -- it predates Visium HD support and most
+    of the current pipeline, so pinning it would be pinning the wrong science. The honest
+    alternative is a commit, said out loud rather than dressed up as a version.
+
+    A tag pin looks like `2.1.2` or `4.2.0`; a commit pin is a bare hex abbreviation.
+    """
+    return (7 <= len(version) <= 40
+            and all(c in "0123456789abcdef" for c in version.lower()))
+
+
 def check_pipeline(assay, fails):
-    """The checkout exists and `git describe --tags` reports the pinned version — verified
-    independently, never assumed (the 02.01 lesson: a version-override flag is only known to
-    be misfiring after the checkout is verified some other way)."""
+    """The checkout exists and reports the pinned version — verified independently, never
+    assumed (the 02.01 lesson: a version-override flag is only known to be misfiring after the
+    checkout is verified some other way).
+
+    A tag pin is verified with `git describe --tags`; a commit pin (see is_commit_pin) with
+    `git rev-parse HEAD`, because `describe` on a detached commit returns a
+    `<tag>-<n>-g<sha>` string that is a fact about the nearest ancestor tag, not about the pin.
+    """
     checkout, version = pipeline_checkout(assay)
+    commit_pin = is_commit_pin(version)
     if not checkout.is_dir():
         fails.append(fail("pipeline", "no pinned checkout at %s -- clone the pipeline over "
-                                      "the git protocol and check out tag %s"
-                          % (checkout, version)))
-    else:
+                                      "the git protocol and check out %s %s"
+                          % (checkout, "commit" if commit_pin else "tag", version)))
+        return checkout
+
+    if commit_pin:
         try:
-            described = subprocess.run(["git", "-C", str(checkout), "describe", "--tags"],
-                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            tag = described.stdout.decode().strip()
-            if described.returncode != 0 or tag != version:
-                fails.append(fail("pipeline", "checkout at %s describes as %r, expected %s -- "
-                                              "verify the tag before trusting it"
-                                  % (checkout, tag or "unknown", version)))
+            rev = subprocess.run(["git", "-C", str(checkout), "rev-parse", "HEAD"],
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            head = rev.stdout.decode().strip()
+            if rev.returncode != 0 or not head.startswith(version):
+                fails.append(fail("pipeline",
+                                  "checkout at %s is at commit %r, expected %s -- this "
+                                  "pipeline is pinned to a commit because it has no current "
+                                  "release; verify it before trusting it"
+                                  % (checkout, head or "unknown", version)))
         except OSError as exc:
-            fails.append(fail("pipeline", "cannot verify checkout tag: %s" % exc))
+            fails.append(fail("pipeline", "cannot verify checkout commit: %s" % exc))
+        return checkout
+
+    try:
+        described = subprocess.run(["git", "-C", str(checkout), "describe", "--tags"],
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        tag = described.stdout.decode().strip()
+        if described.returncode != 0 or tag != version:
+            fails.append(fail("pipeline", "checkout at %s describes as %r, expected %s -- "
+                                          "verify the tag before trusting it"
+                              % (checkout, tag or "unknown", version)))
+    except OSError as exc:
+        fails.append(fail("pipeline", "cannot verify checkout tag: %s" % exc))
     return checkout
 
 

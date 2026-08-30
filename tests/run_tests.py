@@ -1760,5 +1760,53 @@ class ScrnaseqWrapperTests(unittest.TestCase):
         self.assertIn("combined", " ".join(f["detail"] for f in res["failures"]))
 
 
+class CommitPinTests(unittest.TestCase):
+    """A pipeline with no usable release is pinned to a commit, and verified as one.
+
+    nf-core/spatialvi's only tag (v0.1.0, 2023-03-31) sits 1,014 commits behind dev and
+    predates most of the current pipeline. `git describe --tags` on such a checkout returns
+    `0.1.0-1014-gccdfb48` -- a fact about the nearest ancestor tag, not about the pin -- so a
+    commit pin is verified with rev-parse instead."""
+
+    def test_00_tag_pins_and_commit_pins_are_told_apart(self):
+        sys.path.insert(0, str(GARS / "_system"))
+        import wrapperlib as wl
+        for tag in ("2.1.2", "4.2.0", "3.26.0", "0.1.0", "dev", "abc"):
+            self.assertFalse(wl.is_commit_pin(tag), "%r is a tag, not a commit" % tag)
+        for sha in ("ccdfb48", "ccdfb48659aa8298bb5ed8d7c986651a99e04e7c", "deadbeef"):
+            self.assertTrue(wl.is_commit_pin(sha), "%r is a commit" % sha)
+
+    def test_01_every_shipped_pin_is_still_a_tag_pin(self):
+        """The six existing assays must be unaffected by commit-pin support."""
+        sys.path.insert(0, str(GARS / "_system"))
+        import wrapperlib as wl
+        for assay, key in sorted(workspace.PIPELINES.items()):
+            version = key.rsplit("-", 1)[1]
+            if assay == "spatialvi":
+                continue
+            self.assertFalse(wl.is_commit_pin(version),
+                             "%s is pinned to %r, which reads as a commit" % (assay, version))
+
+    def test_02_a_missing_commit_pinned_checkout_says_commit_not_tag(self):
+        sys.path.insert(0, str(GARS / "_system"))
+        import wrapperlib as wl
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            fails = []
+            saved = dict(workspace.PIPELINES)
+            workspace.PIPELINES["_probe"] = "nf-core-probe-ccdfb48"
+            os.environ["GARS_PIPELINES"] = str(tmp)
+            try:
+                wl.check_pipeline("_probe", fails)
+            finally:
+                workspace.PIPELINES.clear()
+                workspace.PIPELINES.update(saved)
+                os.environ.pop("GARS_PIPELINES", None)
+            self.assertTrue(fails)
+            self.assertIn("commit ccdfb48", fails[0]["detail"])
+        finally:
+            shutil.rmtree(str(tmp), ignore_errors=True)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
