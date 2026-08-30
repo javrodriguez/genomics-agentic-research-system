@@ -152,7 +152,7 @@ FORMATS = {
         ],
     },
     "spatialvi": {
-        # Promoted 2026-08-29 with wrapper #7 (decision 0039). Read from the pinned checkout's
+        # Promoted 2026-08-29 with wrapper #7 (decision 0040). Read from the pinned checkout's
         # assets/schema_input.json + docs/usage.md at commit ccdfb48.
         #
         # This is the DOWNSTREAM mode: the input is a Space Ranger output directory per sample,
@@ -172,7 +172,7 @@ FORMATS = {
         ],
     },
     "scrnaseq": {
-        # Promoted 2026-08-29 with wrapper #6 (decision 0039). Read from the pinned
+        # Promoted 2026-08-29 with wrapper #6 (decision 0040). Read from the pinned
         # checkout's assets/schema_input.json: `sample` carries meta: ["id"], so it is the
         # SAMPLE ID -- not the group. This is the opposite of the ATAC/ChIP-family sheets
         # (decision 0035), where `sample` is the group and rows repeat per replicate;

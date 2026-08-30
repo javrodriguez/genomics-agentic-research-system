@@ -2,7 +2,7 @@
 """GARS-authored wrapper for nf-core/spatialvi @ ccdfb48 — the spatial transcriptomics assay.
 
 Scaffolded by `_system/authoring/create_bioinformatics_skill.py` and completed by hand where
-judgment is genuine (decision 0039). The behavioural contract is decision 0028: one file, JSON
+judgment is genuine (decision 0040). The behavioural contract is decision 0028: one file, JSON
 on stdout, exit codes 0 ok / 1 failure / 2 refused / 3 usage, deterministic artifacts written
 by code.
 

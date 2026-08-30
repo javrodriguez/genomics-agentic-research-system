@@ -1546,7 +1546,7 @@ class SkillAuthoringTests(unittest.TestCase):
 
 
 class ScrnaseqWrapperTests(unittest.TestCase):
-    """Wrapper #6 (decision 0039): the single-cell chain, and the two facts that memory would
+    """Wrapper #6 (decision 0040): the single-cell chain, and the two facts that memory would
     have got wrong -- `sample` is the sample id here, and an unsupported protocol must be
     refused rather than passed to the aligner verbatim."""
 
@@ -1857,7 +1857,7 @@ class CommitPinTests(unittest.TestCase):
 
 
 class SpatialviTests(unittest.TestCase):
-    """Wrapper #7 (decision 0039) and the `sample_dir` input kind it required.
+    """Wrapper #7 (decision 0040) and the `sample_dir` input kind it required.
 
     Spatial is the first assay whose unit of input is a DIRECTORY -- a Space Ranger output
     tree someone else produced -- rather than FASTQ pairs. That needed a per-input-kind

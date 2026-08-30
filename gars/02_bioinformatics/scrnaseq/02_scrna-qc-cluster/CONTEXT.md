@@ -2,7 +2,7 @@
 
 ## Purpose
 Turn the count matrix produced by 02.01 into a filtered, clustered, annotated AnnData object
-with per-cluster markers, through `scrna-qc-cluster` (decisions 0028, 0039). This sub-stage
+with per-cluster markers, through `scrna-qc-cluster` (decisions 0028, 0040). This sub-stage
 submits the job and returns; it does not wait for completion. A later invocation reads `STATUS`
 and collects results.
 
