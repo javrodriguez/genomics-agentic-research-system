@@ -159,7 +159,7 @@ Three lockfiles, all in `_references/`:
 | File | Rebuilds | Command |
 |---|---|---|
 | `gars-bio.conda.txt` | gars-bio **conda** layer (44 pkgs): interpreter, apptainer, squashfuse. Pins exact build URLs, so linux-64 only | `conda create -n gars-bio --file gars-bio.conda.txt` |
-| `gars-bio.lock.txt` | gars-bio **pip** layer (122 pkgs): `clawbio` and its tree | `conda run -n gars-bio pip install -r gars-bio.lock.txt` |
+| `gars-bio.lock.txt` | gars-bio **pip** layer (133 pkgs): `clawbio` and its tree, plus `scanpy`/`leidenalg` for sub-stage 02.02 | `conda run -n gars-bio pip install -r gars-bio.lock.txt` |
 | `gars-nxf.conda.txt` | gars-nxf entirely (27 pkgs) | `conda create -n gars-nxf --file gars-nxf.conda.txt` |
 
 `gars-bio` needs both of its files, conda layer first, because clawbio came from pip while

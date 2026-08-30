@@ -19,10 +19,13 @@ metadata:
       analysis_packages: [scanpy, anndata, leidenalg, python-igraph, scikit-learn,
                           matplotlib, pandas, numpy]
     install: >
-      Nothing to install for the wrapper itself. The ANALYSIS needs scanpy and leidenalg in
-      the gars-bio environment; as shipped that environment carries anndata but neither of
-      them. They are a pinned environment addition (_references/environment.md) -- never a
-      run-time pip install. `check` refuses by name when they are absent.
+      Nothing to install for the wrapper itself. The ANALYSIS needs scanpy and leidenalg under
+      $GARS_PY. They are now PINNED in _references/gars-bio.lock.txt (scanpy 1.11.5,
+      leidenalg 0.12.0 and their tree -- 12 packages, resolved against every existing pin and
+      changing none of them), but a lockfile is a declaration, not an installation: the
+      cluster environment must still be rebuilt with
+      `conda run -n gars-bio pip install -r _references/gars-bio.lock.txt`. Never a run-time
+      pip install. `check` refuses by name until the packages are actually importable.
 ---
 
 # scrna-qc-cluster
@@ -117,6 +120,9 @@ Two things that validation does **not** show, said plainly:
   because the shipped production defaults correctly filter that dataset to nothing. The
   numbers are recorded in `summary.json` either way. The 198 clusters it produced are an
   artefact of test data averaging one gene per cell, not a result.
-- The analysis has **not** been run under `gars-bio` itself, because that environment does not
-  yet carry scanpy. It was run under an equivalent pinned environment. Adding the packages to
-  `gars-bio` is an outstanding, named prerequisite.
+- The analysis has **not** been run under `gars-bio` itself. `scanpy 1.11.5` and
+  `leidenalg 0.12.0` are now pinned in `gars-bio.lock.txt` (12 packages added, **0 existing
+  pins changed** -- the resolution was done with pip's own resolver against every current pin
+  as a constraint, for cp312/linux-64). The validation ran under an equivalent pinned
+  environment on this machine. Installing the lock on the cluster is the outstanding step, and
+  `check` refuses by name until it is done.
