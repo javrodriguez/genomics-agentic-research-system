@@ -44,6 +44,7 @@ PIPELINES = {
     "chipseq_bulk": "nf-core-chipseq-2.1.0",
     "cutandrun": "nf-core-cutandrun-3.2.2",
     "methylseq": "nf-core-methylseq-4.2.0",
+    "scrnaseq": "nf-core-scrnaseq-4.2.0",
 }
 
 # Assays whose pinned pipeline's nextflow.config predates Nextflow's strict config parser

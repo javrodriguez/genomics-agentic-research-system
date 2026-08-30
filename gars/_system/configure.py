@@ -213,6 +213,59 @@ PEAK_TYPES = [
 ]
 
 
+# --- library chemistry: a closed menu, per aligner ------------------------------------------------
+
+# The chemistries nf-core/scrnaseq names in assets/protocols.json, restricted to the three
+# aligners GARS offers. `auto` is deliberately absent: it is valid only for the cellranger
+# aligners, which need the proprietary binary. The danger this menu removes is specific -- the
+# pipeline passes an UNRECOGNISED protocol to the aligner verbatim rather than rejecting it, so
+# a typed value that is merely wrong runs and produces a scrambled matrix (decision 0020: a
+# decision whose wrong value is silent comes from a menu, never free text).
+PROTOCOLS = [
+    {"n": "01", "value": "10XV3",
+     "meaning": "10x Genomics 3' v3 -- the most common current chemistry",
+     "aligners": ["simpleaf", "star", "kallisto"]},
+    {"n": "02", "value": "10XV2",
+     "meaning": "10x Genomics 3' v2 -- common for libraries made before ~2020",
+     "aligners": ["simpleaf", "star", "kallisto"]},
+    {"n": "03", "value": "10XV4",
+     "meaning": "10x Genomics 3' v4 (GEM-X)",
+     "aligners": ["simpleaf", "star", "kallisto"]},
+    {"n": "04", "value": "10XV1",
+     "meaning": "10x Genomics 3' v1 -- rare; the original chemistry",
+     "aligners": ["simpleaf", "star", "kallisto"]},
+    {"n": "05", "value": "dropseq",
+     "meaning": "Drop-seq",
+     "aligners": ["simpleaf", "star", "kallisto"]},
+    {"n": "06", "value": "smartseq",
+     "meaning": "Smart-seq3 -- NOT supported by simpleaf; choose star or kallisto",
+     "aligners": ["star", "kallisto"]},
+]
+
+
+def cmd_protocols(args, workspace):
+    """The library-chemistry menu. Closed, and filterable by aligner so an incompatible pair
+    is never offered in the first place."""
+    entries = PROTOCOLS
+    if args.aligner:
+        entries = [e for e in PROTOCOLS if args.aligner in e["aligners"]]
+    result = {"command": "protocols", "ok": True, "protocols": entries}
+    if args.aligner:
+        result["aligner"] = args.aligner
+    if args.select is None:
+        return emit(result, EXIT_OK)
+    tok = args.select.strip()
+    for e in entries:
+        if tok.lower() in (e["n"], e["n"].lstrip("0")) or tok.upper() == e["value"].upper():
+            result["selected"] = e
+            result["protocol"] = e["value"]
+            return emit(result, EXIT_OK)
+    result["ok"] = False
+    result["error"] = ("could not resolve protocol %r; a menu number or one of %s"
+                       % (args.select, ", ".join(e["value"] for e in entries)))
+    return emit(result, EXIT_REFUSED)
+
+
 def cmd_peaks(args, workspace):
     """The peak-type menu. Static and closed on purpose: MACS2 has exactly these two modes,
     and the choice changes what a 'peak' means scientifically -- so it is selected, never
@@ -240,6 +293,7 @@ ASSAY_DECISIONS = {
     "chipseq_bulk": "peaks",    # same decisions as ATAC (its template carries no mito_name key)
     "cutandrun": "genome",      # genome only; peakcaller/normalisation are presented defaults
     "methylseq": "genome",      # genome only (fasta; no annotation, no peaks)
+    "scrnaseq": "protocol",    # genome + library chemistry (the aligner has a real default)
 }
 
 
@@ -340,6 +394,33 @@ def cmd_apply(args, workspace):
         result.update({"peaks_type": chosen["value"], "peaks_meaning": chosen["meaning"],
                        "macs_gsize": genome["macs_gsize"], "mito_name": genome["mito_name"]})
 
+    elif shape == "protocol":
+        if not args.protocol:
+            result["error"] = ("assay %s needs --protocol (see `configure.py protocols`)"
+                               % args.assay)
+            return emit(result, EXIT_USAGE)
+        aligner = (args.aligner or "simpleaf").strip()
+        tok = args.protocol.strip()
+        chosen = next((e for e in PROTOCOLS
+                       if tok.lower() in (e["n"], e["n"].lstrip("0"))
+                       or tok.upper() == e["value"].upper()), None)
+        if chosen is None:
+            result["error"] = ("could not resolve protocol %r; a menu number or one of %s"
+                               % (args.protocol, ", ".join(e["value"] for e in PROTOCOLS)))
+            return emit(result, EXIT_REFUSED)
+        if aligner not in chosen["aligners"]:
+            # Refused here as well as in the wrapper's preflight, because the pipeline would
+            # pass an unsupported protocol to the aligner verbatim and produce a wrong matrix
+            # rather than an error.
+            result["error"] = ("protocol %s is not supported by aligner %s (supports: %s). "
+                               "Choose another aligner, or a protocol that aligner supports."
+                               % (chosen["value"], aligner, ", ".join(chosen["aligners"])))
+            return emit(result, EXIT_REFUSED)
+        # Both sit at the top level of the scrnaseq template, hence the empty indent.
+        updates += [("protocol", chosen["value"], ""), ("aligner", aligner, "")]
+        result.update({"protocol": chosen["value"], "protocol_meaning": chosen["meaning"],
+                       "aligner": aligner})
+
     text = cfg.read_text(encoding="utf-8")
     applied = {}
     for key, value, indent in updates:
@@ -390,6 +471,11 @@ def main(argv=None):
     pk = sub.add_parser("peaks", help="the closed peak-type menu (narrow | broad)")
     pk.add_argument("--select", default=None)
 
+    pr = sub.add_parser("protocols", help="the closed library-chemistry menu")
+    pr.add_argument("--select", default=None)
+    pr.add_argument("--aligner", default=None,
+                    help="show only chemistries this aligner supports")
+
     c = sub.add_parser("contrasts", help="levels present in the design, as ordered pairs")
     c.add_argument("--project", required=True)
     c.add_argument("--assay", required=True)
@@ -399,6 +485,11 @@ def main(argv=None):
     a.add_argument("--project", required=True)
     a.add_argument("--assay", required=True)
     a.add_argument("--genome", required=True, help="menu number or genome ID")
+    a.add_argument("--protocol", default=None,
+                   help="library chemistry (see `configure.py protocols`)")
+    a.add_argument("--aligner", default=None,
+                   help="scrnaseq quantifier: simpleaf | star | kallisto "
+                        "(default simpleaf)")
     a.add_argument("--contrast", default=None,
                    help="menu number or factor,num,denom (assays with a de block)")
     a.add_argument("--peaks-type", default=None,
@@ -413,6 +504,7 @@ def main(argv=None):
         return EXIT_USAGE
     workspace = args.workspace or ws.workspace_root(__file__)
     return {"genomes": cmd_genomes, "contrasts": cmd_contrasts, "peaks": cmd_peaks,
+            "protocols": cmd_protocols,
             "apply": cmd_apply}[args.cmd](args, workspace)
 
 

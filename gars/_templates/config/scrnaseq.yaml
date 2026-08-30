@@ -1,0 +1,61 @@
+# Configuration for assay scrnaseq, project {{project_title}}
+#
+# Stage 00 put this here so you never author a config from a blank file. Everything that can be
+# filled in for you already has been. What remains is marked <REQUIRED> -- those are scientific
+# decisions, and no stage will substitute a value for them, because a wrong one produces a
+# confident wrong answer rather than an error.
+#
+# Full rationale for every key: _references/config_schema.md
+
+# --- what to align against ---------------------------------------------------------------------
+# The genome menu at stage 02 fills fasta, gtf and derived_dir together, so they can never be
+# mismatched. Paste paths here only for a reference that is not in _references/genomes.md.
+reference:
+  fasta: <REQUIRED: choose a genome at stage 02, or paste a FASTA path>
+  gtf:   <REQUIRED: choose a genome at stage 02, or paste the matching GTF path>
+
+  # Optional but recommended: aligner-index cache, keyed by PIPELINE version because an index
+  # is rejected by a different aligner version. Uncommented by the genome menu. If the keyed
+  # directory does not exist yet, the first run builds the index and harvests it into it.
+  # derived_dir: (set by the genome menu at stage 02)
+
+# --- the library chemistry -----------------------------------------------------------------------
+# WHICH 10x (or other) chemistry the library was made with. Only you know this -- it comes off
+# the bench, not off the data -- and it is the single most dangerous key in this file:
+#
+#   nf-core/scrnaseq passes an unrecognised protocol to the aligner VERBATIM rather than
+#   rejecting it (docs/usage.md). A wrong value therefore RUNS, parses barcodes at the wrong
+#   offsets, and produces a plausible, empty-looking or scrambled matrix -- no error.
+#
+# The wrapper's preflight refuses a protocol the chosen aligner does not support, reading the
+# matrix from the pinned checkout's own assets/protocols.json, so the two can never disagree.
+#
+#   10XV1 | 10XV2 | 10XV3 | 10XV4   -- 10x Genomics 3', by kit version
+#   dropseq                          -- Drop-seq (simpleaf, star, kallisto)
+#   smartseq                         -- Smart-seq3 (star, kallisto only)
+#
+# NOTE: `auto` is NOT available here. It works only with the cellranger aligners, which this
+# wrapper does not offer (they need the proprietary Cell Ranger binary and a licence).
+protocol: <REQUIRED: name the chemistry, e.g. 10XV3 -- see the list above>
+
+# --- how it is quantified ------------------------------------------------------------------------
+# simpleaf | star | kallisto. All three run from containers and need no licence.
+#
+# simpleaf (alevin-fry) is the nf-core default and the fastest; star is STARsolo, the most
+# widely published; kallisto is bustools. They differ in output cell counts at the margins --
+# an aligner change is a re-analysis, not a tweak, so it is recorded in HISTORY.md like any
+# other decision.
+aligner: simpleaf
+
+# --- where it runs -----------------------------------------------------------------------------
+# Infrastructure, not science. Change if your allocation differs. The first run builds the
+# transcriptome index unless a derived_dir cache is populated; budget for it.
+compute:
+  partition: cpu_medium
+  time: "1-00:00:00"
+  cpus: 12
+  mem: 96G
+  # Nextflow's scratch. NEVER inside the project: work/ retains every process output so
+  # -resume can reuse it, and a run accumulates hundreds of GB there. results/ is published
+  # with mode 'copy', so work/ is disposable once a run succeeds.
+  work_dir: {{work_dir}}

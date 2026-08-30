@@ -138,6 +138,23 @@ FORMATS = {
             ("fastq_2", "fastq_2"),
         ],
     },
+    "scrnaseq": {
+        # Promoted 2026-08-29 with wrapper #6 (decision 0039). Read from the pinned
+        # checkout's assets/schema_input.json: `sample` carries meta: ["id"], so it is the
+        # SAMPLE ID -- not the group. This is the opposite of the ATAC/ChIP-family sheets
+        # (decision 0035), where `sample` is the group and rows repeat per replicate;
+        # emitting a group here would silently merge replicates into one barcode space.
+        # `fastq_barcode`, `expected_cells`, `seq_center`, `sample_type` and `feature_type`
+        # are optional in the schema and are deliberately not emitted: none is derivable
+        # from the design table, and an unfilled optional column is worse than an absent one.
+        "status": "active",
+        "source": "nf-core/scrnaseq 4.2.0 assets/schema_input.json",
+        "columns": [
+            ("sample", "sample_id"),
+            ("fastq_1", "fastq_1"),
+            ("fastq_2", "fastq_2"),
+        ],
+    },
 }
 
 # Allowed values and defaults for any `config:` column above, keyed by config key.

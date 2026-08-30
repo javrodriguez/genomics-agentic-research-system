@@ -1545,5 +1545,201 @@ class SkillAuthoringTests(unittest.TestCase):
             shutil.rmtree(str(tmp), ignore_errors=True)
 
 
+class ScrnaseqWrapperTests(unittest.TestCase):
+    """Wrapper #6 (decision 0039): the single-cell chain, and the two facts that memory would
+    have got wrong -- `sample` is the sample id here, and an unsupported protocol must be
+    refused rather than passed to the aligner verbatim."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp(prefix="gars-scrna-"))
+        cls.ws = cls.tmp / "gars"
+        cls.ws.mkdir()
+        for d in ("_system", "_references", "_templates"):
+            shutil.copytree(str(GARS / d), str(cls.ws / d))
+        (cls.ws / "projects").mkdir()
+        cls.refs = cls.tmp / "refs"
+        (cls.refs / "derived").mkdir(parents=True)
+        (cls.refs / "genome.fa.gz").write_bytes(gzip.compress(b">chr1\nACGT\n"))
+        (cls.refs / "genome.gtf.gz").write_bytes(gzip.compress(b"chr1\tx\tgene\n"))
+        reg = cls.ws / "_references" / "genomes.md"
+        text = reg.read_text()
+        header = text[:text.index("| GRCh38 |")]
+        reg.write_text(header +
+                       "| TESTG | Test species | T1 | fixture | %s | %s | %s | MT | 12345 |\n"
+                       % (cls.refs / "genome.fa.gz", cls.refs / "genome.gtf.gz",
+                          cls.refs / "derived"))
+        cls.src = cls.tmp / "seqrun"
+        cls.src.mkdir()
+        for s in ("SC1_S1", "SC2_S2"):
+            for r in ("R1", "R2"):
+                write_fastq_gz(cls.src / ("%s_L001_%s_001.fastq.gz" % (s, r)))
+        cls.reg_py = cls.ws / "_system" / "stage00_register.py"
+        cls.sheet_py = cls.ws / "_system" / "stage01_samplesheet.py"
+        cls.cfg_py = cls.ws / "_system" / "configure.py"
+        cls.wrap = (cls.ws / "_system" / "wrappers" / "nfcore-scrnaseq-wrapper"
+                    / "nfcore_scrnaseq_wrapper.py")
+
+    tearDownClass = classmethod(lambda cls: WorkspaceFixture.tearDownClass.__func__(cls))
+
+    def _project(self, title):
+        for argv in (["create", "--title", title, "--assays", "scrnaseq"],
+                     ["link", "--project", "projects/" + title, "--assay", "scrnaseq",
+                      "--source", str(self.src)],
+                     ["finalize", "--project", "projects/" + title]):
+            code, res, raw = run(self.reg_py, argv, self.ws)
+            self.assertEqual(code, 0, raw)
+        project = self.ws / "projects" / title
+        scsv = project / "00_data" / "scrnaseq" / "samples.csv"
+        with scsv.open() as fh:
+            rows = list(csv.reader(fh))
+        head = rows[0]
+        out = [head]
+        fill = {"SC1": {"condition": "A", "group": "G1", "replicate": "1"},
+                "SC2": {"condition": "B", "group": "G2", "replicate": "1"}}
+        for r in rows[1:]:
+            d = dict(zip(head, r))
+            if d["sample_id"] in fill:
+                d.update(fill[d["sample_id"]])
+                out.append([d.get(c, "") for c in head])
+        with scsv.open("w", newline="") as fh:
+            csv.writer(fh).writerows(out)
+        code, res, raw = run(self.sheet_py, ["--project", "projects/" + title,
+                                             "--confirm-exclusions"], self.ws)
+        self.assertEqual(code, 0, raw)
+        return project
+
+    def test_00_samplesheet_sample_column_is_the_sample_id(self):
+        """The opposite of the ATAC/ChIP sheets (0035). Getting this backwards would merge
+        replicates into one barcode space, silently."""
+        project = self._project("sc-ids")
+        sheet = (project / "01_samplesheets" / "scrnaseq_samplesheet.csv"
+                 ).read_text().splitlines()
+        self.assertEqual(sheet[0], "sample,fastq_1,fastq_2")
+        ids = [l.split(",")[0] for l in sheet[1:] if l.strip()]
+        self.assertEqual(sorted(ids), ["SC1", "SC2"],
+                         "each sample is its own row; no grouping")
+
+    def test_01_protocol_menu_filters_by_aligner(self):
+        code, res, raw = run(self.cfg_py, ["protocols", "--aligner", "simpleaf"], self.ws)
+        self.assertEqual(code, 0, raw)
+        values = [e["value"] for e in res["protocols"]]
+        self.assertIn("10XV3", values)
+        self.assertNotIn("smartseq", values,
+                         "simpleaf does not support smartseq (assets/protocols.json)")
+        code, res, raw = run(self.cfg_py, ["protocols", "--aligner", "star"], self.ws)
+        self.assertIn("smartseq", [e["value"] for e in res["protocols"]])
+        self.assertNotIn("auto", [e["value"] for e in res["protocols"]],
+                         "auto is cellranger-only and must never be offered")
+
+    def test_02_apply_refuses_an_incompatible_pair(self):
+        project = self._project("sc-badpair")
+        code, res, raw = run(self.cfg_py,
+                             ["apply", "--project", "projects/sc-badpair",
+                              "--assay", "scrnaseq", "--genome", "01",
+                              "--protocol", "smartseq", "--aligner", "simpleaf"], self.ws)
+        # configure.py is a menu helper and carries its own narrower code set --
+        # EXIT_OK, EXIT_REFUSED, EXIT_USAGE = 0, 1, 3, with no EXIT_FAILURE. A refusal here
+        # is 1, not the wrappers' 2.
+        self.assertEqual(code, 1, raw)
+        self.assertIn("not supported by aligner", res["error"])
+        self.assertIn("<REQUIRED",
+                      (project / "_config" / "scrnaseq.yaml").read_text(),
+                      "a refused apply writes nothing")
+
+    def test_03_check_refuses_an_unsupported_protocol(self):
+        """The wrapper's own gate, independent of the menu: the pipeline would pass an
+        unrecognised protocol to the aligner verbatim and produce a wrong matrix."""
+        project = self._project("sc-badproto")
+        code, res, raw = run(self.cfg_py,
+                             ["apply", "--project", "projects/sc-badproto",
+                              "--assay", "scrnaseq", "--genome", "01",
+                              "--protocol", "10XV3", "--aligner", "simpleaf"], self.ws)
+        self.assertEqual(code, 0, raw)
+        cfg = project / "_config" / "scrnaseq.yaml"
+        cfg.write_text(cfg.read_text().replace("protocol: 10XV3", "protocol: auto"))
+        code, res, raw = run(self.wrap, ["check", "--project", "projects/sc-badproto"],
+                             self.ws)
+        self.assertEqual(code, 1, raw)
+        details = " ".join(f["detail"] for f in res["failures"])
+        if "no pinned checkout" in details:
+            self.skipTest("environment: no pinned scrnaseq checkout; protocol matrix "
+                          "is read from it")
+        self.assertIn("auto", details)
+        self.assertIn("verbatim", details,
+                      "the refusal must say WHY a wrong protocol is dangerous")
+
+    def test_04_duplicate_sample_ids_are_refused(self):
+        project = self._project("sc-dupes")
+        sheet = project / "01_samplesheets" / "scrnaseq_samplesheet.csv"
+        lines = sheet.read_text().splitlines()
+        lines.append(lines[1])           # same sample id twice
+        sheet.write_text("\n".join(lines) + "\n")
+        code, res, raw = run(self.wrap, ["check", "--project", "projects/sc-dupes"], self.ws)
+        self.assertEqual(code, 1, raw)
+        self.assertIn("samplesheet", [f["check"] for f in res["failures"]])
+        self.assertIn("duplicate", " ".join(f["detail"] for f in res["failures"]))
+
+    def test_05_collect_gates_on_every_sample(self):
+        """The content gate: a sample lost to a failed process must not vanish into a
+        combined matrix built from fewer samples (decision 0010)."""
+        project = self._project("sc-collect")
+        code, res, raw = run(self.cfg_py,
+                             ["apply", "--project", "projects/sc-collect",
+                              "--assay", "scrnaseq", "--genome", "01",
+                              "--protocol", "10XV3", "--aligner", "simpleaf"], self.ws)
+        self.assertEqual(code, 0, raw)
+        substage = (project / "02_bioinformatics" / "scrnaseq"
+                    / "01_nfcore-scrnaseq-wrapper")
+        mtx = substage / "run" / "results" / "simpleaf" / "mtx_conversions"
+        (mtx / "SC1").mkdir(parents=True)
+        (mtx / "SC1" / "SC1_filtered_matrix.h5ad").write_text("h5")
+        (mtx / "combined_filtered_matrix.h5ad").write_text("h5")
+        mq = substage / "run" / "results" / "multiqc"
+        mq.mkdir(parents=True)
+        (mq / "multiqc_report.html").write_text("<html>ok</html>")
+        (substage / "run" / ".gars_run_complete").write_text("now\n")
+
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/sc-collect"],
+                             self.ws)
+        self.assertEqual(code, 1, raw)
+        self.assertIn("h5ad", [f["check"] for f in res["failures"]])
+        self.assertIn("SC2", " ".join(f["detail"] for f in res["failures"]),
+                      "the gate must name the missing sample")
+
+        (mtx / "SC2").mkdir()
+        (mtx / "SC2" / "SC2_filtered_matrix.h5ad").write_text("h5")
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/sc-collect",
+                                         "--model", "claude-test-1"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertIn("h5ad\tnative\t", (substage / "OUTPUTS.tsv").read_text())
+        self.assertIn("COMPLETE", (substage / "STATUS").read_text())
+        self.assertIn("claude-test-1", res["history_entry"])
+
+    def test_06_empty_combined_matrix_is_refused(self):
+        """A zero-byte artifact is a failed run that looks like a successful one."""
+        project = self._project("sc-empty")
+        code, res, raw = run(self.cfg_py,
+                             ["apply", "--project", "projects/sc-empty",
+                              "--assay", "scrnaseq", "--genome", "01",
+                              "--protocol", "10XV3", "--aligner", "simpleaf"], self.ws)
+        self.assertEqual(code, 0, raw)
+        substage = (project / "02_bioinformatics" / "scrnaseq"
+                    / "01_nfcore-scrnaseq-wrapper")
+        mtx = substage / "run" / "results" / "simpleaf" / "mtx_conversions"
+        for s in ("SC1", "SC2"):
+            (mtx / s).mkdir(parents=True)
+            (mtx / s / ("%s_filtered_matrix.h5ad" % s)).write_text("h5")
+        (mtx / "combined_filtered_matrix.h5ad").write_text("")     # zero bytes
+        mq = substage / "run" / "results" / "multiqc"
+        mq.mkdir(parents=True)
+        (mq / "multiqc_report.html").write_text("<html>ok</html>")
+        (substage / "run" / ".gars_run_complete").write_text("now\n")
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/sc-empty"],
+                             self.ws)
+        self.assertEqual(code, 1, raw)
+        self.assertIn("combined", " ".join(f["detail"] for f in res["failures"]))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

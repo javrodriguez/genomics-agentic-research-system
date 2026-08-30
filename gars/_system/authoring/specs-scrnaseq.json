@@ -1,0 +1,18 @@
+{
+  "assay_id": "scrnaseq",
+  "assay_label": "Single-cell RNA-seq",
+  "wrapper_name": "nfcore-scrnaseq-wrapper",
+  "substage": "01_nfcore-scrnaseq-wrapper",
+  "pipeline": "nf-core/scrnaseq",
+  "pipeline_version": "4.2.0",
+  "requires_bins": ["python3", "nextflow", "java", "git"],
+  "samplesheet_header": ["sample", "fastq_1", "fastq_2"],
+  "required_config_keys": [
+    "reference.fasta", "reference.gtf", "protocol", "aligner",
+    "compute.partition", "compute.time", "compute.cpus", "compute.mem", "compute.work_dir"
+  ],
+  "artifacts": [
+    {"type": "h5ad", "path": "run/results/<aligner>/mtx_conversions/combined_*.h5ad", "content_gate": true},
+    {"type": "qc_multiqc", "path": "run/results/multiqc/multiqc_report.html"}
+  ]
+}
