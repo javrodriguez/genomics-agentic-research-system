@@ -1735,7 +1735,55 @@ class ScrnaseqWrapperTests(unittest.TestCase):
         self.assertIn("COMPLETE", (substage / "STATUS").read_text())
         self.assertIn("claude-test-1", res["history_entry"])
 
-    def test_06_empty_combined_matrix_is_refused(self):
+    def test_06_the_raw_matrix_is_never_substituted_for_the_filtered_one(self):
+        """The real tree carries BOTH combined_filtered_matrix.h5ad and
+        combined_raw_matrix.h5ad. An earlier gate globbed combined_*.h5ad and took the first
+        non-empty match, so a filtered matrix that failed to write meant the RAW one was
+        published under the same artifact type -- ~90x the barcodes, nearly all ambient, no
+        error. Found by truncating the filtered matrix in a real pipeline output; the
+        original offline test missed it because its faked tree had only one combined file.
+        This fixture therefore mirrors the real shape."""
+        project = self._project("sc-rawsub")
+        code, res, raw = run(self.cfg_py,
+                             ["apply", "--project", "projects/sc-rawsub",
+                              "--assay", "scrnaseq", "--genome", "01",
+                              "--protocol", "10XV3", "--aligner", "simpleaf"], self.ws)
+        self.assertEqual(code, 0, raw)
+        substage = (project / "02_bioinformatics" / "scrnaseq"
+                    / "01_nfcore-scrnaseq-wrapper")
+        mtx = substage / "run" / "results" / "simpleaf" / "mtx_conversions"
+        for s in ("SC1", "SC2"):
+            (mtx / s).mkdir(parents=True)
+            (mtx / s / ("%s_filtered_matrix.h5ad" % s)).write_text("h5")
+        # both combined matrices, as the pipeline really writes them
+        (mtx / "combined_raw_matrix.h5ad").write_text("RAW" * 100)
+        (mtx / "combined_filtered_matrix.h5ad").write_text("FILTERED")
+        mq = substage / "run" / "results" / "multiqc"
+        mq.mkdir(parents=True)
+        (mq / "multiqc_report.html").write_text("<html>ok</html>")
+        (substage / "run" / ".gars_run_complete").write_text("now\n")
+
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/sc-rawsub",
+                                         "--model", "m"], self.ws)
+        self.assertEqual(code, 0, raw)
+        published = [o["path"] for o in res["outputs"] if o["type"] == "h5ad"]
+        self.assertEqual(len(published), 1, raw)
+        self.assertTrue(published[0].endswith("combined_filtered_matrix.h5ad"),
+                        "must publish the filtered matrix, got %r" % published[0])
+
+        # the filtered matrix goes missing; the raw one is still there and must NOT be used
+        (mtx / "combined_filtered_matrix.h5ad").unlink()
+        (substage / "OUTPUTS.tsv").unlink()
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/sc-rawsub"],
+                             self.ws)
+        self.assertEqual(code, 1, raw)
+        detail = " ".join(f["detail"] for f in res["failures"])
+        self.assertIn("combined_filtered_matrix.h5ad", detail)
+        self.assertNotIn("combined_raw_matrix.h5ad",
+                         str([o.get("path") for o in res.get("outputs", [])]),
+                         "the raw matrix must never be published in its place")
+
+    def test_07_empty_combined_matrix_is_refused(self):
         """A zero-byte artifact is a failed run that looks like a successful one."""
         project = self._project("sc-empty")
         code, res, raw = run(self.cfg_py,

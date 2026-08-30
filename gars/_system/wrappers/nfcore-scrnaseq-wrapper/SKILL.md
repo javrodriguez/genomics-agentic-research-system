@@ -47,12 +47,18 @@ python3 nfcore_scrnaseq_wrapper.py collect --project projects/<title> --model "<
 
 | Type | Path |
 |---|---|
-| `h5ad` | `run/results/<aligner>/mtx_conversions/combined_*.h5ad` |
+| `h5ad` | `run/results/<aligner>/mtx_conversions/combined_filtered_matrix.h5ad` |
 | `qc_multiqc` | `run/results/multiqc/multiqc_report.html` |
 
 Per-sample matrices sit alongside at `mtx_conversions/<sample>/`; the exit gate reads that set
 to prove no sample was lost. Paths were read from the pinned checkout's `conf/modules.config`,
 not from the docs.
+
+**The filtered matrix is named exactly, and the raw one is never substituted for it.** nf-core
+writes both `combined_filtered_matrix.h5ad` and `combined_raw_matrix.h5ad` (1.3 MB and 114 MB
+respectively in the validation run — the raw one keeps every empty droplet). Only the filtered
+matrix is registered as the `h5ad` artifact; if it is missing or empty the gate fails rather
+than falling back, because a consumer reading the artifact type cannot tell the two apart.
 
 ## Two things this wrapper refuses, and why
 

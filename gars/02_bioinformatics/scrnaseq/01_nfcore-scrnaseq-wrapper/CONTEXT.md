@@ -100,6 +100,12 @@ run builds it with `--save-reference` and `collect` harvests it into the cache a
 gate checks **content**: every sample in the samplesheet must have produced its own converted
 matrix under `mtx_conversions/<sample>/`, because a sample lost to a failed process would
 otherwise vanish silently into a combined matrix built from fewer samples (decision 0010).
+
+The published matrix is `combined_filtered_matrix.h5ad`, named exactly. The pipeline also
+writes `combined_raw_matrix.h5ad`, which retains every empty droplet (114 MB against 1.3 MB in
+the validation run). Only the filtered matrix is registered, and the raw one is never
+substituted for it: both would carry the same artifact type, so a consumer could not tell which
+it had been handed.
 A `.h5ad` is HDF5 and the wrapper is stdlib-only, so cell-level checks are deliberately **not**
 attempted here; they belong to a downstream analysis sub-stage that runs under `gars-bio`.
 

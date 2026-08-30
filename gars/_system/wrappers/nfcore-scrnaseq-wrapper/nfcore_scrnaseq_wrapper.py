@@ -61,6 +61,13 @@ ALIGNERS = ("simpleaf", "star", "kallisto")
 INDEX_PARAM = {"simpleaf": "simpleaf_index", "star": "star_index",
                "kallisto": "kallisto_index"}
 
+# The one matrix this sub-stage publishes. nf-core writes both a filtered and a raw combined
+# matrix; `filtered` is the analysis-ready object (empty droplets removed) and is what a
+# consumer of the `h5ad` artifact type means. The raw matrix is deliberately NOT registered --
+# two `native` rows of one type would leave a consumer unable to tell which is which
+# (artifact_types.md), and the two differ by ~90x in barcode count.
+COMBINED_MATRIX = "combined_filtered_matrix.h5ad"
+
 # `sample` is the sample id here (meta: ["id"]), not a group. `expected_cells` is optional in
 # the pipeline's schema and stage 01 does not emit it; adding it is a stage-01 change.
 SAMPLESHEET_HEADER = ["sample", "fastq_1", "fastq_2"]
@@ -297,10 +304,25 @@ def cmd_collect(args):
                           "a failed process disappears here and nowhere downstream"
                           % (mtx, ", ".join(missing))))
 
-    combined = sorted(mtx.glob("combined_*.h5ad")) if mtx.is_dir() else []
-    combined = [p for p in combined if p.stat().st_size > 0]
-    if not combined:
-        fails.append(fail("h5ad", "no non-empty combined_*.h5ad under %s" % mtx))
+    # The published matrix is named exactly, and there is NO fallback.
+    #
+    # This gate originally globbed `combined_*.h5ad` and took the first non-empty match. The
+    # real pipeline writes TWO combined matrices -- combined_filtered_matrix.h5ad (1.3 MB in
+    # the test run) and combined_raw_matrix.h5ad (114 MB, every empty droplet included). Under
+    # the glob, a filtered matrix that failed to write meant the RAW one was published in its
+    # place, under the same artifact type, with no error: a downstream analysis would have
+    # silently received ~90x the barcodes, most of them ambient. Caught by running the real
+    # pipeline and truncating the filtered matrix; the offline test missed it because a faked
+    # tree had only one combined file.
+    combined_file = mtx / COMBINED_MATRIX
+    if not combined_file.is_file():
+        fails.append(fail("h5ad",
+                          "no %s under %s -- the raw matrix is never substituted for it, "
+                          "because raw and filtered are different objects and a consumer "
+                          "cannot tell them apart from the artifact type"
+                          % (COMBINED_MATRIX, mtx)))
+    elif combined_file.stat().st_size == 0:
+        fails.append(fail("h5ad", "%s is zero bytes" % combined_file))
 
     multiqc = results / "multiqc" / "multiqc_report.html"
     if not multiqc.is_file() or multiqc.stat().st_size == 0:
@@ -311,7 +333,7 @@ def cmd_collect(args):
         return emit(result, EXIT_FAILURE)
 
     rel = lambda p: str(p.relative_to(substage))  # noqa: E731
-    outputs = [("h5ad", rel(combined[0])), ("qc_multiqc", rel(multiqc))]
+    outputs = [("h5ad", rel(combined_file)), ("qc_multiqc", rel(multiqc))]
     with ws.atomic_open(substage / "OUTPUTS.tsv") as fh:
         fh.write("# type\trole\tpath\n")
         for typ, path in outputs:
