@@ -47,6 +47,27 @@ protocol: <REQUIRED: name the chemistry, e.g. 10XV3 -- see the list above>
 # other decision.
 aligner: simpleaf
 
+# --- sub-stage 02.02: QC and clustering -----------------------------------------------------
+# These decide which cells survive and how finely the data is split. All are presented
+# defaults rather than <REQUIRED>: unlike a DE contrast, no value here is silently WRONG --
+# they are more or less permissive, and the numbers they produced are recorded in the
+# sub-stage's summary.json and report beside the counts, so a reader can see what was removed.
+#
+# There is one rule about them that is NOT a preference: never lower a threshold to make a
+# poor sample survive. A sample that filters down to nothing is a finding to report.
+qc:
+  min_genes: 200            # a cell must express at least this many distinct genes
+  min_cells: 3              # a gene must appear in at least this many cells
+  max_mito_pct: 20          # cells above this % mitochondrial counts are dropped (dying)
+  # The mitochondrial gene-name prefix, matched case-insensitively. Human/mouse Ensembl and
+  # Gencode symbols use MT-; some references use mt- or MT.. A prefix that matches NOTHING
+  # silently disables mitochondrial filtering rather than erroring, so check it against your
+  # own annotation if the report shows 0% mito everywhere.
+  mito_prefix: MT-
+
+n_hvg: 2000                 # highly variable genes carried into PCA
+cluster_resolution: 1.0     # Leiden resolution; higher splits into more clusters
+
 # --- where it runs -----------------------------------------------------------------------------
 # Infrastructure, not science. Change if your allocation differs. The first run builds the
 # transcriptome index unless a derived_dir cache is populated; budget for it.

@@ -2018,5 +2018,211 @@ class SpatialviTests(unittest.TestCase):
         self.assertIn("report", [f["check"] for f in res["failures"]])
 
 
+class ScrnaQcClusterTests(unittest.TestCase):
+    """Sub-stage 02.02: single-cell QC and clustering, the sibling of rnaseq-de.
+
+    This suite runs on stock python with no scanpy, which is exactly the state `check` must
+    refuse BY NAME rather than crash on. The exit gate is exercised against faked run outputs
+    shaped like the real ones; the analysis itself was validated separately against the matrix
+    nf-core/scrnaseq actually produced."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp(prefix="gars-qc-"))
+        cls.ws = cls.tmp / "gars"
+        cls.ws.mkdir()
+        for d in ("_system", "_references", "_templates"):
+            shutil.copytree(str(GARS / d), str(cls.ws / d))
+        (cls.ws / "projects").mkdir()
+        cls.refs = cls.tmp / "refs"
+        (cls.refs / "derived").mkdir(parents=True)
+        (cls.refs / "genome.fa.gz").write_bytes(gzip.compress(b">chr1\nACGT\n"))
+        (cls.refs / "genome.gtf.gz").write_bytes(gzip.compress(b"chr1\tx\tgene\n"))
+        reg = cls.ws / "_references" / "genomes.md"
+        text = reg.read_text()
+        reg.write_text(text[:text.index("| GRCh38 |")] +
+                       "| TESTG | Test species | T1 | fixture | %s | %s | %s | MT | 12345 |\n"
+                       % (cls.refs / "genome.fa.gz", cls.refs / "genome.gtf.gz",
+                          cls.refs / "derived"))
+        cls.src = cls.tmp / "seqrun"
+        cls.src.mkdir()
+        for s in ("SC1", "SC2"):
+            for r in ("R1", "R2"):
+                write_fastq_gz(cls.src / ("%s_S1_L001_%s_001.fastq.gz" % (s, r)))
+        cls.reg_py = cls.ws / "_system" / "stage00_register.py"
+        cls.sheet_py = cls.ws / "_system" / "stage01_samplesheet.py"
+        cls.cfg_py = cls.ws / "_system" / "configure.py"
+        cls.wrap = (cls.ws / "_system" / "wrappers" / "scrna-qc-cluster"
+                    / "scrna_qc_cluster.py")
+
+    tearDownClass = classmethod(lambda cls: WorkspaceFixture.tearDownClass.__func__(cls))
+
+    def _project(self, title):
+        for argv in (["create", "--title", title, "--assays", "scrnaseq"],
+                     ["link", "--project", "projects/" + title, "--assay", "scrnaseq",
+                      "--source", str(self.src)],
+                     ["finalize", "--project", "projects/" + title]):
+            code, res, raw = run(self.reg_py, argv, self.ws)
+            self.assertEqual(code, 0, raw)
+        project = self.ws / "projects" / title
+        scsv = project / "00_data" / "scrnaseq" / "samples.csv"
+        with scsv.open() as fh:
+            rows = list(csv.reader(fh))
+        head = rows[0]
+        out = [head]
+        for i, r in enumerate(rows[1:]):
+            d = dict(zip(head, r))
+            d.update({"condition": "A" if i == 0 else "B", "group": "G%d" % (i + 1),
+                      "replicate": "1"})
+            out.append([d.get(c, "") for c in head])
+        with scsv.open("w", newline="") as fh:
+            csv.writer(fh).writerows(out)
+        code, res, raw = run(self.sheet_py, ["--project", "projects/" + title,
+                                             "--confirm-exclusions"], self.ws)
+        self.assertEqual(code, 0, raw)
+        code, res, raw = run(self.cfg_py, ["apply", "--project", "projects/" + title,
+                                           "--assay", "scrnaseq", "--genome", "01",
+                                           "--protocol", "10XV3", "--aligner", "simpleaf"],
+                             self.ws)
+        self.assertEqual(code, 0, raw)
+        return project
+
+    def _fake_run(self, project, summary=None, markers=None):
+        substage = (project / "02_bioinformatics" / "scrnaseq" / "02_scrna-qc-cluster")
+        run_dir = substage / "run"
+        (run_dir / "tables").mkdir(parents=True, exist_ok=True)
+        (run_dir / "figures").mkdir(parents=True, exist_ok=True)
+        (run_dir / "data").mkdir(parents=True, exist_ok=True)
+        (run_dir / "tables" / "cluster_markers.csv").write_text(
+            markers if markers is not None
+            else "gene,cluster,score,logfoldchange,pval,pval_adj\nGeneA,0,1,1,0.01,0.02\n")
+        (run_dir / "data" / "processed.h5ad").write_text("h5")
+        for fig in ("umap_clusters.png", "violin_qc.png"):
+            (run_dir / "figures" / fig).write_text("png")
+        (run_dir / "report.md").write_text("# report\n")
+        # The real matrix labels cells `<sample>_filtered`, not `<sample>` -- the fixture
+        # mirrors that, because an exact-match gate would have passed here and failed live.
+        default = {"n_cells_in": 100, "n_cells_out": 90, "n_clusters": 3,
+                   "n_genes_in": 500, "n_genes_out": 200,
+                   "cells_before_qc": {"SC1_filtered": 50, "SC2_filtered": 50},
+                   "cells_after_qc": {"SC1_filtered": 45, "SC2_filtered": 45},
+                   "thresholds": {"min_genes": 200, "min_cells": 3, "max_mito_pct": 20,
+                                  "n_hvg": 2000, "resolution": 1.0, "mito_prefix": "MT-"}}
+        (run_dir / "summary.json").write_text(
+            json.dumps(default if summary is None else summary, indent=2, sort_keys=True))
+        (run_dir / ".gars_run_complete").write_text("now\n")
+        return substage
+
+    def test_00_check_refuses_a_missing_analysis_package_by_name(self):
+        """A raw ImportError an hour into a Slurm job is the thing this prevents."""
+        project = self._project("qc-env")
+        h5ad = self.tmp / "in.h5ad"
+        h5ad.write_text("h5")
+        env = {"GARS_PY": sys.executable}     # stock python: no scanpy
+        code, res, raw = run(self.wrap, ["check", "--project", "projects/qc-env",
+                                         "--h5ad", str(h5ad)], self.ws, env_extra=env)
+        self.assertEqual(code, 1, raw)
+        detail = " ".join(f["detail"] for f in res["failures"])
+        self.assertIn("scanpy", detail)
+        self.assertIn("leidenalg", detail)
+        self.assertNotIn("Traceback", detail, "must be a named refusal, not a crash")
+
+    def test_01_check_refuses_a_missing_matrix(self):
+        project = self._project("qc-noinput")
+        code, res, raw = run(self.wrap, ["check", "--project", "projects/qc-noinput",
+                                         "--h5ad", str(self.tmp / "absent.h5ad")], self.ws)
+        self.assertEqual(code, 1, raw)
+        self.assertIn("preconditions", [f["check"] for f in res["failures"]])
+
+    def test_02_collect_accepts_a_well_formed_run(self):
+        project = self._project("qc-ok")
+        substage = self._fake_run(project)
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/qc-ok",
+                                         "--model", "m",
+                                         "--h5ad-from", "01_nfcore-scrnaseq-wrapper"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertEqual(sorted(o["type"] for o in res["outputs"]),
+                         ["figure", "h5ad", "report", "table"])
+        self.assertIn("h5ad\tnative\trun/data/processed.h5ad",
+                      (substage / "OUTPUTS.tsv").read_text())
+        self.assertIn("01_nfcore-scrnaseq-wrapper", res["history_entry"])
+
+    def test_03_an_anonymous_gene_is_refused(self):
+        """The 0010 defect class: a complete, plausible table in which a row has no gene."""
+        project = self._project("qc-anon")
+        self._fake_run(project, markers=("gene,cluster,score,logfoldchange,pval,pval_adj\n"
+                                         "GeneA,0,1,1,0.01,0.02\n"
+                                         ",0,1,1,0.01,0.02\n"))
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/qc-anon"], self.ws)
+        self.assertEqual(code, 1, raw)
+        self.assertIn("table", [f["check"] for f in res["failures"]])
+        self.assertIn("anonymous", " ".join(f["detail"] for f in res["failures"]))
+
+    def test_04_a_renamed_identifier_column_is_refused(self):
+        project = self._project("qc-renamed")
+        self._fake_run(project, markers=("names,cluster,score,logfoldchange,pval,pval_adj\n"
+                                         "GeneA,0,1,1,0.01,0.02\n"))
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/qc-renamed"],
+                             self.ws)
+        self.assertEqual(code, 1, raw)
+        self.assertIn("not 'gene'", " ".join(f["detail"] for f in res["failures"]))
+
+    def test_05_a_sample_with_no_cells_is_refused_and_named(self):
+        project = self._project("qc-lost")
+        summary = {"n_cells_in": 100, "n_cells_out": 45, "n_clusters": 3,
+                   "cells_before_qc": {"SC1_filtered": 50, "SC2_filtered": 50},
+                   "cells_after_qc": {"SC1_filtered": 45, "SC2_filtered": 0},
+                   "thresholds": {}}
+        self._fake_run(project, summary=summary)
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/qc-lost"], self.ws)
+        self.assertEqual(code, 1, raw)
+        detail = " ".join(f["detail"] for f in res["failures"])
+        self.assertIn("SC2", detail)
+        self.assertNotIn("SC1", detail.replace("SC1_filtered", ""))
+
+    def test_06_the_nfcore_sample_suffix_is_matched_not_reported_lost(self):
+        """nf-core labels cells `<sample>_filtered`. An exact-match gate would have called
+        every sample lost on a perfectly good run -- found on the real matrix."""
+        project = self._project("qc-suffix")
+        self._fake_run(project)          # labels carry the _filtered suffix
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/qc-suffix",
+                                         "--model", "m"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertEqual(sorted(res["cells_after_qc"]), ["SC1_filtered", "SC2_filtered"])
+
+    def test_07_a_label_matching_no_sample_is_refused(self):
+        project = self._project("qc-unknown")
+        summary = {"n_cells_in": 100, "n_cells_out": 90, "n_clusters": 3,
+                   "cells_before_qc": {"SC1_filtered": 50, "SC2_filtered": 50},
+                   "cells_after_qc": {"SC1_filtered": 45, "SC2_filtered": 44,
+                                      "SomeoneElse": 1},
+                   "thresholds": {}}
+        self._fake_run(project, summary=summary)
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/qc-unknown"],
+                             self.ws)
+        self.assertEqual(code, 1, raw)
+        self.assertIn("SomeoneElse", " ".join(f["detail"] for f in res["failures"]))
+
+    def test_08_zero_cells_or_zero_clusters_are_refused(self):
+        project = self._project("qc-empty")
+        summary = {"n_cells_in": 100, "n_cells_out": 0, "n_clusters": 0,
+                   "cells_before_qc": {"SC1_filtered": 50},
+                   "cells_after_qc": {"SC1_filtered": 0}, "thresholds": {}}
+        self._fake_run(project, summary=summary)
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/qc-empty"], self.ws)
+        self.assertEqual(code, 1, raw)
+        detail = " ".join(f["detail"] for f in res["failures"])
+        self.assertIn("threshold to lower", detail,
+                      "the refusal must say a filtered-out sample is a finding, not a knob")
+
+    def test_09_collect_refuses_before_the_run_finished(self):
+        project = self._project("qc-early")
+        substage = self._fake_run(project)
+        (substage / "run" / ".gars_run_complete").unlink()
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/qc-early"], self.ws)
+        self.assertEqual(code, 2, raw)
+        self.assertIn("has not finished", res["error"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
