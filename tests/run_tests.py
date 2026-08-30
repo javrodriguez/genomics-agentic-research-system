@@ -1418,6 +1418,21 @@ nextflow_config: nextflow.awsbatch.config
         lines = self.ex.header_lines(None, {}, "proj", "assay", "/tmp", descriptor=d)
         self.assertEqual(lines, ['# literal {"json": true} stays; proj substitutes'])
 
+    def test_07c_an_uncompilable_regex_is_refused_by_name(self):
+        """The smoke's second catch: a shell-escaped quote truncated by the verbatim quote
+        rule left job_id_regex as a lone backslash, and submit raised a raw PatternError.
+        The promise is refusal by name, never a traceback."""
+        d = {"name": "custom", "submit_argv": ["echo", "{script}"],
+             "status_argv": ["true", "{job_id}"],
+             "job_id_regex": "\\", "status_map": {"R": "RUNNING"}}
+        problems = self.ex.validate(d)
+        self.assertTrue(any("does not compile" in x for x in problems), problems)
+        # submit really runs (echo exists and succeeds), so the failure reached IS the
+        # regex path -- not an absent binary standing in for it.
+        job_id, detail = self.ex.submit(Path("/tmp"), "/tmp/x.sh", descriptor=d)
+        self.assertIsNone(job_id)
+        self.assertIn("does not compile", detail)
+
     # -- a broken descriptor is refused by name, never guessed at ---------------------------
 
     def test_08_descriptor_problems_surface_as_named_failures(self):

@@ -206,6 +206,14 @@ def validate(descriptor):
         if not descriptor.get("job_id_regex"):
             problems.append("`job_id_regex:` is required: it is how the submit output "
                             "becomes a job id")
+        else:
+            try:
+                re.compile(descriptor["job_id_regex"])
+            except re.error as exc:
+                problems.append("`job_id_regex:` does not compile (%s) -- remember the "
+                                "parser takes a quoted value verbatim, with no escape "
+                                "processing; a regex needing a double quote must be "
+                                "single-quoted" % exc)
         status_map = descriptor.get("status_map")
         if not isinstance(status_map, dict) or not status_map:
             problems.append("`status_map:` must map this backend's states onto %s"
@@ -361,7 +369,10 @@ def submit(config_root, script, descriptor=None):
     err = (proc.stderr or b"").decode("utf-8", "replace")
     if proc.returncode != 0:
         return None, "%s exited %d: %s" % (argv[0], proc.returncode, (err or out).strip())
-    m = re.search(descriptor.get("job_id_regex") or r"(\d+)", out)
+    try:
+        m = re.search(descriptor.get("job_id_regex") or r"(\d+)", out)
+    except re.error as exc:
+        return None, "job_id_regex does not compile: %s" % exc
     if not m:
         return None, "no job id in the submit output: %r" % out.strip()
     return m.group(1), None
