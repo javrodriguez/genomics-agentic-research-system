@@ -73,6 +73,10 @@ SLURM = {
         "DEADLINE": "FAILED", "REVOKED": "FAILED",
     },
     "nextflow_config": "nextflow.slurm.config",
+    #: The -profile the generated submit body passes to nextflow. A container runtime is a
+    #: property of the venue, not of the science: this cluster runs apptainer; AWS Batch
+    #: supplies each process's container itself and wants no profile at all (empty = omit).
+    "nextflow_profile": "apptainer",
     "submit_note": "Slurm snapshots this script at submission: editing it never affects a "
                    "queued job.",
 }
@@ -89,6 +93,7 @@ LOCAL = {
     "status_argv": [],
     "status_map": {},
     "nextflow_config": "",
+    "nextflow_profile": "",
     "submit_note": "This script is run directly on this machine; editing it mid-run is a "
                    "race you will lose.",
 }
@@ -285,6 +290,24 @@ def submit_argv(descriptor, script):
 
 def status_argv(descriptor, job_id):
     return [_fill(a, {"job_id": job_id}) for a in descriptor.get("status_argv") or []]
+
+
+def nextflow_config_path(config_root, descriptor=None):
+    """The nextflow config file this workspace's executor pairs with, or None.
+
+    The descriptor names it (0039); callers must never spell `nextflow.slurm.config`
+    themselves -- that name is the Slurm default, not a law.
+    """
+    descriptor = descriptor if descriptor is not None else load(config_root)
+    name = descriptor.get("nextflow_config") or ""
+    return (Path(config_root) / "_config" / name) if name else None
+
+
+def nextflow_profile(config_root, descriptor=None):
+    """The -profile the generated submit body passes, '' meaning none."""
+    descriptor = descriptor if descriptor is not None else load(config_root)
+    value = descriptor.get("nextflow_profile")
+    return SLURM["nextflow_profile"] if value is None else value
 
 
 def submit_command(config_root, script, descriptor=None):

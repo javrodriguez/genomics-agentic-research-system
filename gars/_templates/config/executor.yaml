@@ -78,3 +78,9 @@ status_map:
 # The Nextflow executor config this backend pairs with, under `_config/`. The wrapper checks
 # it exists and carries no `params` block.
 nextflow_config: nextflow.slurm.config
+
+# The -profile the generated submit body passes to nextflow. A container runtime is a
+# property of the venue, not of the science: this cluster runs apptainer. A venue that
+# supplies each process's container itself (AWS Batch) sets it to "" (quoted -- a bare
+# empty value reads as a section opener in the narrow parser), meaning no -profile.
+nextflow_profile: apptainer

@@ -219,9 +219,12 @@ def check_config_common(cfg, required_keys, fails):
         if v and "<REQUIRED" not in v and not os.access(v, os.R_OK):
             fails.append(fail("config", "%s is not readable: %s" % (key, v)))
     work_dir = cfg.get("compute.work_dir", "")
-    if work_dir and not os.path.isabs(work_dir):
-        fails.append(fail("config", "compute.work_dir must be an absolute scratch path, "
-                                    "got %r" % work_dir))
+    # A remote URI (s3://... on AWS Batch) is as absolute as a path gets; isabs() just
+    # cannot know that. The refusal is only for RELATIVE paths, which silently resolve
+    # against whatever directory the job happens to start in.
+    if work_dir and not os.path.isabs(work_dir) and "://" not in work_dir:
+        fails.append(fail("config", "compute.work_dir must be an absolute scratch path "
+                                    "or a remote URI (e.g. s3://...), got %r" % work_dir))
 
 
 def check_samplesheet(sheet_path, expected_header, fails, path_columns=(1, 2)):

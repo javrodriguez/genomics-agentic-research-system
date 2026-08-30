@@ -1434,6 +1434,36 @@ nextflow_config: nextflow.awsbatch.config
         self.assertIsNone(job_id)
         self.assertIn("does not compile", detail)
 
+    def test_07d_the_venue_decides_profile_and_config(self):
+        """Rung 3 of the demo's rehearsal ladder found three Slurm-era assumptions in the
+        wrappers; these pins are their law. The descriptor decides the -profile (apptainer
+        on this cluster, none on a venue that supplies containers itself) and which
+        nextflow config the submit body names."""
+        # slurm default
+        self.assertEqual(self.ex.nextflow_profile(Path("/tmp/nonexistent")), "apptainer")
+        cfgpath = self.ex.nextflow_config_path(Path("/tmp/nonexistent"))
+        self.assertEqual(cfgpath.name, "nextflow.slurm.config")
+        # a batch-shaped descriptor: no profile, its own config
+        # nextflow_profile: "" -- quoted-empty is the parser's spelling for "none";
+        # a bare empty value reads as a section opener and would fall back to the default.
+        d = self._project("venueprof", "name: awsbatch\nnextflow_profile: \"\"\n"
+                                       "nextflow_config: nextflow.awsbatch.config\n"
+                                       "submit_argv:\n  - aws\n  - \"{script}\"\n"
+                                       "job_id_regex: \"(.+)\"\n"
+                                       "status_argv:\n  - aws\n  - \"{job_id}\"\n"
+                                       "status_map:\n  RUNNING: RUNNING\n")
+        self.assertEqual(self.ex.nextflow_profile(d), "")
+        self.assertEqual(self.ex.nextflow_config_path(d).name, "nextflow.awsbatch.config")
+
+    def test_07e_remote_uri_work_dirs_are_absolute_enough(self):
+        """s3://... is as absolute as a path gets; only RELATIVE work dirs are refused."""
+        fails = []
+        self.wl.check_config_common({"compute.work_dir": "s3://bucket/work/rig"}, (), fails)
+        self.assertEqual(fails, [])
+        fails = []
+        self.wl.check_config_common({"compute.work_dir": "relative/scratch"}, (), fails)
+        self.assertTrue(any("work_dir" in f["detail"] for f in fails))
+
     # -- a broken descriptor is refused by name, never guessed at ---------------------------
 
     def test_08_descriptor_problems_surface_as_named_failures(self):

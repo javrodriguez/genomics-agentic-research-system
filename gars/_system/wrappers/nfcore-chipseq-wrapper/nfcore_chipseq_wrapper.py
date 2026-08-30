@@ -50,7 +50,9 @@ def paths_for(project):
     return {"substage": project / "02_bioinformatics" / ASSAY / SUBSTAGE,
             "config": project / "_config" / ("%s.yaml" % ASSAY),
             "samplesheet": project / "01_samplesheets" / ("%s_samplesheet.csv" % ASSAY),
-            "executor_config": project / "_config" / "nextflow.slurm.config"}
+            # the descriptor names which nextflow config this venue pairs with (0039)
+            "executor_config": wl.ex.nextflow_config_path(project)
+            or project / "_config" / "nextflow.slurm.config"}
 
 
 def sheet_rows(sheet_path):
