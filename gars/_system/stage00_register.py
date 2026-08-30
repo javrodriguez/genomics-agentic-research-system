@@ -416,10 +416,15 @@ def cmd_create(args, workspace):
                 text = text.replace(k, v)
             (project / "_config" / (aid + ".yaml")).write_text(text, encoding="utf-8")
             seeded.append("_config/" + aid + ".yaml")
-    executor = config_src / "nextflow.slurm.config"
-    if executor.is_file() and supported:
-        shutil.copy2(str(executor), str(project / "_config" / "nextflow.slurm.config"))
-        seeded.append("_config/nextflow.slurm.config")
+    # The Nextflow executor config and the scheduler descriptor (decision 0039) are seeded
+    # together: one says how Nextflow submits each process, the other how GARS submits the
+    # job that runs Nextflow. A project that deletes the descriptor gets Slurm's built-in
+    # defaults, so the pair stays optional-by-deletion rather than fragile.
+    for name in ("nextflow.slurm.config", "executor.yaml"):
+        src = config_src / name
+        if src.is_file() and supported:
+            shutil.copy2(str(src), str(project / "_config" / name))
+            seeded.append("_config/" + name)
     result["config_seeded"] = seeded
 
     result["created"] = supported
