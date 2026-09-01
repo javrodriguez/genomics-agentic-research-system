@@ -40,7 +40,7 @@ cd genomics-agentic-research-system/gars
 ```
 
 Your projects live in `gars/projects/`, which is gitignored — real data never enters the
-repository. Updating is `git pull`; pinning to a release is `git checkout v0.9.0`; seeing what
+repository. Updating is `git pull`; pinning to a release is `git checkout v0.10.0`; seeing what
 changed is `git log` and `git diff`.
 
 Then open it with an agent (Claude Code or equivalent) and say what you want:
