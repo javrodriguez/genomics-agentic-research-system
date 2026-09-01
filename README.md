@@ -163,7 +163,7 @@ A refusal, then, is a template — here is stage 00's, verbatim from the contrac
 
 ---
 
-## The decision log (33 records)
+## The decision log (40 records)
 
 Every design choice in this system is recorded in [docs/decisions/](docs/decisions/CONTEXT.md) —
 one file per decision, append-only, each carrying the failure that motivated it and the

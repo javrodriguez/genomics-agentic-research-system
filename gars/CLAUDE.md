@@ -2,7 +2,8 @@
 
 A workspace for running genomics research projects through dialogue with an LLM agent. The
 filesystem is the architecture; the agent is the navigator. Built on the Interpretable Context
-Methodology (ICM), with bioinformatics executed by nf-core pipelines through GARS-authored
+Methodology (ICM — Van Clief & McDermott, arXiv:2603.16021), with bioinformatics executed by
+nf-core pipelines through GARS-authored
 wrappers — every assay's sub-stage runs on one (decisions 0028-0031).
 
 > **Scope of this file.** Orientation for *using* a GARS workspace. If you are developing GARS
