@@ -185,9 +185,11 @@ its mechanism by [0016](decisions/0016-workspaces-are-checkouts.md) but not in t
   GARS-authored wrappers live in `_system/wrappers/`
   ([0012](decisions/0012-gars-authored-wrappers-live-in-system.md)) — the first,
   `nfcore-atacseq-wrapper`, is the template for the rest ([0028](decisions/0028-wrappers-are-thin-system-helpers.md)).
-- **All five assays are wired.** `rnaseq_bulk` is live-proven; `atacseq_bulk`, `chipseq_bulk`,
-  `cutandrun` and `methylseq` are wired end to end and offline-tested through their wrappers
-  ([0031](decisions/0031-all-five-assays-are-wired.md)), each awaiting its first live run.
+- **Seven assays are wired; six are live-proven.** `rnaseq_bulk`, `atacseq_bulk`, `chipseq_bulk`,
+  `cutandrun`, `scrnaseq` and `spatialvi` have each run to green exit gates on real data (the
+  reproduction campaign and the v0.10.0 runs — see the README's per-assay table and
+  `DEVELOPMENT.md`); `methylseq` is wired end to end and offline-tested through its wrapper
+  ([0031](decisions/0031-all-five-assays-are-wired.md)) and awaits its first live run.
 - **`03_custom_analysis` is plan-gated** ([0026](decisions/0026-stage-03-is-plan-gated.md)):
   the agent drafts `PLAN.md`, the user approves it, and only then does anything execute.
   Approval and output verification are enforced by `_system/stage03_analysis.py`, not by prose.
