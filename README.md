@@ -10,7 +10,8 @@ LLM agent, on HPC.
 The premise: **the filesystem is the state machine, the LLM is the navigator.** Directory
 structure encodes workflow state, each stage is a written contract the agent executes literally,
 and scientific decisions stay with the human. That premise, carried through every layer of the
-system, is what its author calls the Interpretable Context Methodology (ICM).
+system, follows the Interpretable Context Methodology (ICM) — Van Clief &amp; McDermott,
+[arXiv:2603.16021](https://arxiv.org/abs/2603.16021).
 
 ---
 
@@ -258,7 +259,7 @@ artifact each stage produces.
 | Assay | State |
 |---|---|
 | Bulk RNA-seq (`rnaseq_bulk`) | **Live-proven end to end** on real patient-derived data (stage 00 → 01 → nf-core/rnaseq → DE with per-task Slurm dispatch); the wrapper switchover separately validated on a 4-sample two-condition cohort — published fold-changes vs normalized group ratios r = 0.999952 |
-| ATAC-seq, ChIP-seq, CUT&RUN | **Live-proven** in the reproduction campaign (nf-core pipelines complete on real GEO cohorts under Slurm; results in [docs/RESULTS.md](docs/RESULTS.md)) |
+| ATAC-seq, ChIP-seq, CUT&Tag | **Live-proven** in the reproduction campaign (nf-core pipelines complete on real GEO cohorts under Slurm; results in [docs/RESULTS.md](docs/RESULTS.md)) |
 | Single-cell RNA-seq (`scrnaseq`) | **Live-proven in two venues** — nf-core/scrnaseq 4.2.0 + the scanpy QC/clustering sub-stage ran to green exit gates on macOS/Docker and on Slurm/Apptainer, with identical downstream numbers (same cells, same 198 clusters) on both |
 | Spatial transcriptomics (`spatialvi`, Visium, downstream mode) | **Live-proven on the cluster** — full run + all three artifact gates including MultiQC (a commit pin, stated as such: the pipeline has no current release) |
 | Methylation (`methylseq`) | Wired end to end and offline-tested; awaits its first live run (the campaign's WGBS fetch is pending a clean re-download) |
