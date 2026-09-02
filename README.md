@@ -13,6 +13,19 @@ and scientific decisions stay with the human. That premise, carried through ever
 system, follows the Interpretable Context Methodology (ICM) — Van Clief &amp; McDermott,
 [arXiv:2603.16021](https://arxiv.org/abs/2603.16021).
 
+**Evidence, if you want it before the design:**
+
+- [docs/RESULTS.md](docs/RESULTS.md) — the reproduction campaign scored against what the original
+  authors deposited, including a failed immunoprecipitation in published data that the paper's own
+  depth-only QC could not have seen.
+- [docs/reproduction-campaign.md](docs/reproduction-campaign.md) — the campaign's design: accessions,
+  run order, and what gets compared.
+- Defects found in the upstream pipeline tooling, reported and closed:
+  [ClawBio#333](https://github.com/ClawBio/ClawBio/issues/333) ·
+  [ClawBio#365](https://github.com/ClawBio/ClawBio/issues/365).
+- `python3 tests/run_tests.py` and `python3 tests/check_contracts.py` run green from a cold clone
+  with no setup, and in CI on every push.
+
 ---
 
 ## The problem this solves
@@ -305,7 +318,8 @@ gars/           the workspace — clone the repo and work in here
   _system/          gars-env.sh — the execution environment; stage00_register.py,
                     stage01_samplesheet.py, resolve_artifact.py; index builder
   projects/         the work, plus a generated _index.md
-docs/           architecture, execution model, assay research, decisions/, upstream/
+docs/           architecture, execution model, assay research, RESULTS.md,
+                reproduction-campaign.md, decisions/, upstream/
 examples/       synthetic worked example
 tests/          run_tests.py (stdlib-only) + check_contracts.py (contract lint)
 ```

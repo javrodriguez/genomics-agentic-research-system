@@ -1,9 +1,9 @@
-# Draft: upstream defect report for `rnaseq-de`
+# Upstream defect report for `rnaseq-de`
 
-**Status: drafted, not filed.** Filing this creates a public issue on a third-party project under
-the maintainer's name. That is a decision for a person, not an agent — so it is written out here,
-ready to paste, and left unsent. Target: <https://github.com/ClawBio/ClawBio/issues>, the same
-tracker as ClawBio#333.
+**Status: filed 2026-08-26 as [ClawBio#365](https://github.com/ClawBio/ClawBio/issues/365); closed
+2026-08-31.** Filing creates a public issue on a third-party project under the maintainer's name,
+so this was written out here and left unsent until a person approved it — then posted verbatim.
+The text below is what was filed. Same tracker as ClawBio#333.
 
 Found while running `nfcore-rnaseq-wrapper` → `rnaseq-de`, the pair the catalogue declares as
 chaining partners. Detail and the architectural consequences are in
