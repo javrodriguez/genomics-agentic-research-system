@@ -1463,6 +1463,73 @@ nextflow_config: nextflow.awsbatch.config
         self.assertEqual(self.ex.nextflow_profile(d), "")
         self.assertEqual(self.ex.nextflow_config_path(d).name, "nextflow.awsbatch.config")
 
+    def test_07d2_every_nfcore_wrapper_takes_its_profile_from_the_venue(self):
+        """The five nf-core wrappers ask the descriptor; none spells a profile itself.
+
+        v2's Batch substrate supplies each process's container, so a batch-shaped descriptor
+        must render NO `-profile` token at all -- there is no "awsbatch profile"; the executor
+        comes from `-c nextflow.awsbatch.config`. A cluster with no descriptor must still get
+        `-profile apptainer`, byte-identical to the pre-seam bytes. Source-level, so it runs
+        where no pinned pipeline checkout exists.
+        """
+        wrappers = ("rnaseq", "chipseq", "atacseq", "scrnaseq", "spatialvi")
+        seam = ('    profile = wl.ex.nextflow_profile(project)\n'
+                '    profile_line = \'    -profile %s \\\\\\n\' % profile if profile else ""\n')
+        for name in wrappers:
+            path = (GARS / "_system" / "wrappers" / ("nfcore-%s-wrapper" % name)
+                    / ("nfcore_%s_wrapper.py" % name))
+            src = path.read_text(encoding="utf-8")
+            with self.subTest(wrapper=name, check="asks the venue"):
+                self.assertIn(seam, src,
+                              "%s does not carry the seam byte-identically" % name)
+            with self.subTest(wrapper=name, check="spells no profile itself"):
+                self.assertNotIn("-profile apptainer", src,
+                                 "%s still hard-codes a profile" % name)
+            with self.subTest(wrapper=name, check="body interpolates the venue's answer"):
+                self.assertIn('{profile_line}    -c "{executor_config}"', src)
+                self.assertIn("profile_line=profile_line", src)
+
+        # And the seam's own arithmetic, on the two venues that matter.
+        batch = self._project("venueprof_batch",
+                              "name: awsbatch\nnextflow_profile: \"\"\n"
+                              "nextflow_config: nextflow.awsbatch.config\n"
+                              "submit_argv:\n  - aws\n  - \"{script}\"\n"
+                              "job_id_regex: \"(.+)\"\n"
+                              "status_argv:\n  - aws\n  - \"{job_id}\"\n"
+                              "status_map:\n  RUNNING: RUNNING\n")
+        for project, expected in ((batch, ""), (self._project("venueprof_slurm"), "apptainer")):
+            profile = self.ex.nextflow_profile(project)
+            self.assertEqual(profile, expected)
+            profile_line = '    -profile %s \\\n' % profile if profile else ""
+            body = 'nextflow run "x" \\\n%s    -c "y" \\\n' % profile_line
+            if expected:
+                self.assertIn("-profile apptainer", body)
+            else:
+                self.assertNotIn("-profile", body)
+                self.assertIn('nextflow run "x" \\\n    -c "y"', body)
+
+    def test_07d3_outputs_tsv_comment_header_is_not_an_artifact(self):
+        """`# type\trole\tpath` is the file's own header, and no visitor should see it listed.
+
+        The old guard skipped a bare `type` cell, but every real OUTPUTS.tsv writes the header
+        commented (`# type`), which is not equal to `type` -- so the header rendered as a
+        pseudo-artifact in the recall view. v2's recap reads this render verbatim.
+        """
+        sys.path.insert(0, str(GARS / "_system"))
+        try:
+            import project_state
+            sub = self.tmp / "outputs_header" / "02_bioinformatics" / "x" / "01_w"
+            sub.mkdir(parents=True, exist_ok=True)
+            (sub / "OUTPUTS.tsv").write_text(
+                "# type\trole\tpath (relative to this sub-stage directory)\n"
+                "alignment\tprimary\trun/results/a.bam\n"
+                "\n"
+                "table\tsecondary\trun/results/counts.tsv\n",
+                encoding="utf-8")
+            self.assertEqual(project_state._outputs_types(sub), ["alignment", "table"])
+        finally:
+            sys.path.remove(str(GARS / "_system"))
+
     def test_07e_remote_uri_work_dirs_are_absolute_enough(self):
         """s3://... is as absolute as a path gets; only RELATIVE work dirs are refused."""
         fails = []

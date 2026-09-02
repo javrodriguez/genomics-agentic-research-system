@@ -56,6 +56,8 @@ def _outputs_types(sub):
         return []
     types = []
     for line in p.read_text(encoding="utf-8").splitlines():
+        if line.lstrip().startswith("#"):
+            continue          # the "# type\tpath\t..." header is a comment, not an artifact
         cells = line.split("\t")
         if len(cells) >= 3 and cells[0] and cells[0] != "type":
             types.append(cells[0])
