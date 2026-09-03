@@ -36,6 +36,13 @@ peaks:
   # MACS effective genome size. A property of the assembly; travels with the genome choice.
   macs_gsize: <REQUIRED: set by the genome menu at stage 02>
 
+# --- the pipeline's own test-profile switches --------------------------------------------------
+# For miniaturised PUBLIC test data only (nf-core's conf/test.config sets these for its own
+# fixtures). preseq cannot extrapolate library complexity from a subsampled input and fails the
+# run; a real library never trips this. Not a scientific decision -- leave false for real data.
+pipeline:
+  skip_preseq: false
+
 # --- where it runs -----------------------------------------------------------------------------
 compute:
   partition: cpu_medium

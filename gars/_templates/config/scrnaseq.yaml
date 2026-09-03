@@ -68,6 +68,13 @@ qc:
 n_hvg: 2000                 # highly variable genes carried into PCA
 cluster_resolution: 1.0     # Leiden resolution; higher splits into more clusters
 
+# --- the pipeline's own test-profile switches --------------------------------------------------
+# For miniaturised PUBLIC test data only (nf-core's conf/test.config: "module does not work on
+# small dataset"). Not scientific decisions -- leave false for real data.
+pipeline:
+  skip_cellbender: false
+  skip_qcatch: false
+
 # --- where it runs -----------------------------------------------------------------------------
 # Infrastructure, not science. Change if your allocation differs. The first run builds the
 # transcriptome index unless a derived_dir cache is populated; budget for it.

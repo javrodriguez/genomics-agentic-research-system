@@ -43,6 +43,13 @@ peaks:
   # the genome choice (see _references/genomes.md).
   macs_gsize: <REQUIRED: set by the genome menu at stage 02>
 
+# --- the pipeline's own test-profile switches --------------------------------------------------
+# For miniaturised PUBLIC test data only (nf-core's conf/test.config sets this for its own
+# fixture): preseq cannot extrapolate library complexity from a subsampled input. Not a
+# scientific decision -- leave false for real data.
+pipeline:
+  skip_preseq: false
+
 # --- where it runs -----------------------------------------------------------------------------
 # Infrastructure, not science. Verified on this cluster; change if your allocation differs.
 compute:

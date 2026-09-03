@@ -1564,6 +1564,24 @@ nextflow_config: nextflow.awsbatch.config
         finally:
             sys.path.remove(str(GARS / "_system"))
 
+    def test_07d5_test_profile_switches_translate_only_when_true(self):
+        """`pipeline.skip_preseq: true` reaches params.yaml; unset or false never does."""
+        sys.path.insert(0, str(GARS / "_system" / "wrappers" / "nfcore-chipseq-wrapper"))
+        try:
+            import importlib
+            w = importlib.import_module("nfcore_chipseq_wrapper")
+            self.assertEqual(w.test_profile_params({"pipeline.skip_preseq": "true"}, ("skip_preseq",)),
+                             [("skip_preseq", "true")])
+            self.assertEqual(w.test_profile_params({"pipeline.skip_preseq": "false"}, ("skip_preseq",)), [])
+            self.assertEqual(w.test_profile_params({}, ("skip_preseq",)), [])
+            # a key not on the allowlist is never translated, whatever the yaml says
+            self.assertEqual(w.test_profile_params({"pipeline.narrow_peak": "true"}, ("skip_preseq",)), [])
+        finally:
+            sys.path.remove(str(GARS / "_system" / "wrappers" / "nfcore-chipseq-wrapper"))
+        for assay in ("chipseq_bulk", "atacseq_bulk", "scrnaseq"):
+            text = (GARS / "_templates" / "config" / ("%s.yaml" % assay)).read_text(encoding="utf-8")
+            self.assertIn("\npipeline:\n", text, assay)
+
     def test_07e_remote_uri_work_dirs_are_absolute_enough(self):
         """s3://... is as absolute as a path gets; only RELATIVE work dirs are refused."""
         fails = []

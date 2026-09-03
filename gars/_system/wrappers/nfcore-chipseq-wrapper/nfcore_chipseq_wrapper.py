@@ -125,6 +125,23 @@ def cmd_check(args):
     return emit(result, EXIT_OK if result["ok"] else EXIT_FAILURE)
 
 
+def test_profile_params(cfg, keys):
+    """The optional `pipeline:` section -- the pipeline's OWN test-profile switches, audited.
+
+    A miniaturised input breaks steps a real library never trips: preseq cannot extrapolate a
+    100k-read subsample, cellbender does not work on a tiny dataset. The pipelines' test
+    profiles skip those steps; a user of small public fixtures needs the same switch, on the
+    audited surface rather than a stray -c config (which check_executor_config refuses). Each
+    key is named here, translated only when the yaml says `true`, and is never a scientific
+    decision -- those stay in their own sections.
+    """
+    out = []
+    for key in keys:
+        if str(cfg.get("pipeline.%s" % key, "false")).strip().lower() == "true":
+            out.append((key, "true"))
+    return out
+
+
 def build_params(cfg, paths):
     """The audited translation of _config/<assay>.yaml into pipeline parameters."""
     aligner = cfg.get("aligner", "bwa")
@@ -147,6 +164,7 @@ def build_params(cfg, paths):
             params.append((INDEX_PARAM[aligner], str(index_dir)))
         else:
             params.append(("save_reference", "true"))
+    params.extend(test_profile_params(cfg, ("skip_preseq",)))
     return params
 
 
