@@ -1530,6 +1530,40 @@ nextflow_config: nextflow.awsbatch.config
         finally:
             sys.path.remove(str(GARS / "_system"))
 
+    def test_07d4_history_format_example_is_not_an_entry(self):
+        """A real project has the entries it recorded, not the one its own header illustrates.
+
+        HISTORY.md's header documents the entry format inside a fenced block, and that example
+        line opens with "## " exactly as a real entry does. Counting it made every project in
+        the system report one more entry than it has -- and print the placeholder
+        `<ISO-8601 date> — <stage or sub-stage> — <outcome>` as if it had happened. On the
+        memory door, whose entire claim is that it reports what a project actually recorded,
+        that is the worst possible place for a phantom row.
+        """
+        sys.path.insert(0, str(GARS / "_system"))
+        try:
+            import project_state
+            proj = self.tmp / "history_fence"
+            proj.mkdir(parents=True, exist_ok=True)
+            (proj / "HISTORY.md").write_text(
+                "# History: Demo\n\nAppend-only. Entry format:\n\n"
+                "```\n"
+                "## <ISO-8601 date> \u2014 <stage or sub-stage> \u2014 <outcome>\n"
+                "<what was done, and where any input came from>\n"
+                "```\n\n---\n\n"
+                "## 2026-09-01 \u2014 00_initialize_project \u2014 project created\n"
+                "Template version: v0.10.0\n\n"
+                "## 2026-09-02 \u2014 01_prepare_samplesheets \u2014 samplesheet written\n"
+                "Two samples.\n",
+                encoding="utf-8")
+            total, headers = project_state._history_entries(proj)
+            self.assertEqual(total, 2, "the fenced format example must not count")
+            self.assertTrue(all("<ISO-8601 date>" not in h for h in headers),
+                            "the placeholder leaked into the rendered entries: %r" % headers)
+            self.assertEqual(headers[0], "2026-09-01 \u2014 00_initialize_project \u2014 project created")
+        finally:
+            sys.path.remove(str(GARS / "_system"))
+
     def test_07e_remote_uri_work_dirs_are_absolute_enough(self):
         """s3://... is as absolute as a path gets; only RELATIVE work dirs are refused."""
         fails = []

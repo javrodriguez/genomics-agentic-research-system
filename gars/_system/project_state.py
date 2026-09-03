@@ -81,8 +81,19 @@ def _history_entries(project):
     p = project / "HISTORY.md"
     if not p.is_file():
         return 0, []
-    headers = [l[3:].strip() for l in p.read_text(encoding="utf-8").splitlines()
-               if l.startswith("## ")]
+    headers = []
+    fenced = False
+    for line in p.read_text(encoding="utf-8").splitlines():
+        # HISTORY.md's own header carries the entry FORMAT inside a fenced block, and that
+        # example line starts with "## " like a real entry does. Counting it told every
+        # project it had one more entry than it has, and printed the placeholder as though
+        # it had happened -- on the one surface whose whole claim is that it reports what
+        # the project actually recorded.
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+            continue
+        if not fenced and line.startswith("## "):
+            headers.append(line[3:].strip())
     return len(headers), headers
 
 
