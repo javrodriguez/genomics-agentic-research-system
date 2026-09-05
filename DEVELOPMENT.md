@@ -36,7 +36,7 @@ it constrains — template, menu, preflight, or decision — never parked here (
 | Artifact resolution | `_system/resolve_artifact.py`; **exercised live** — 02.02 resolved `counts_gene` and `design` by type at run time |
 | Stage 03 (`03_custom_analysis`) | **Implemented, plan-gated, LIVE-VALIDATED 2026-08-25** — agent drafts `PLAN.md`, user approves, `_system/stage03_analysis.py` enforces both gates. First real analysis on `leukemia-tall`; driven again for every scored campaign project (`dko-atac` and `cuttag-k562` on 2026-08-28, `3-K27` on 2026-08-29) |
 | Scope enforcement | `gars/.claude/settings.json` + `_system/guard_hook.py` — forbidden writes fail at the tool call ([0022](docs/decisions/0022-scope-boundaries-are-enforced-by-the-harness.md)) |
-| Tests | `tests/run_tests.py` (99) + `tests/check_contracts.py` — run both before committing under `gars/` |
+| Tests | `tests/run_tests.py` (103) + `tests/check_contracts.py` — run both before committing under `gars/` |
 | Model provenance | Every `HISTORY.md` entry names the model beside the template version ([0024](docs/decisions/0024-the-model-is-part-of-provenance.md)) |
 | Environments (`gars-bio`, `gars-nxf`) | Installed, verified, locked |
 | Ensembl GRCh38 r116 reference | Downloaded, integrity-verified |
