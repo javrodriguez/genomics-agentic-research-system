@@ -2785,8 +2785,14 @@ class SpatialClusterCountTests(unittest.TestCase):
         cls.env_ok = {"GARS_PY": sys.executable}
         if not cls.have_anndata:
             cls.env_ok["PYTHONPATH"] = str(cls.tmp / "stub_site")
-        cls.env_bare = {"GARS_PY": sys.executable, "PYTHONPATH": str(cls.tmp / "empty_site")}
-        (cls.tmp / "empty_site").mkdir()
+        # A genuinely bare interpreter: PYTHONPATH cannot HIDE a site-installed anndata, so the
+        # refusal-by-name is driven through a shim that runs this interpreter with -S (no site
+        # module, so no site-packages), and importlib's probe finds nothing whatever is
+        # installed here.
+        shim = cls.tmp / "bare_python"
+        shim.write_text('#!/bin/sh\nexec "%s" -S "$@"\n' % sys.executable)
+        os.chmod(str(shim), 0o755)
+        cls.env_bare = {"GARS_PY": str(shim)}
 
     tearDownClass = classmethod(lambda cls: WorkspaceFixture.tearDownClass.__func__(cls))
 

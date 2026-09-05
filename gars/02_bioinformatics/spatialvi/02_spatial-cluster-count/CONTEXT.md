@@ -55,9 +55,16 @@ This sub-stage performs the steps in Process and nothing else.
 environment arrives via `$GARS_PY` inside `submit.sh`:
 
 ```bash
-python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py <subcommand> \
+python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py check   \
     --project projects/<title> --h5ad <resolved path>
+python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py prepare \
+    --project projects/<title> --h5ad <resolved path>
+python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py collect \
+    --project projects/<title> --model "<model id>" --h5ad-from <sub-stage>
 ```
+
+`collect` takes no `--h5ad`: the object was resolved at `check`/`prepare` time, and the
+wrapper rejects the flag there rather than let it bind to `--h5ad-from`.
 
 Exit codes are the stage-helper standard: 0 ok, 1 failure (the JSON lists every failure),
 2 refused (a gate), 3 usage. Branch on them; never re-interpret a failure as something to fix
@@ -81,7 +88,9 @@ exactly one sample, or `check` refuses rather than guess which sample the file i
 **The column read.** `obs["clusters"]`, the name nf-core/spatialvi writes
 (`leiden_key_added = 'clusters'` in its workflow at the pin). There is no fallback list. The
 count is `nunique()` over the values a spot actually carries, never a categorical's declared
-categories; `n_obs` is the number of **spots** (rows of `obs`).
+categories; `n_obs` is the number of **spots** (rows of `obs`). A spot with **no value** in the
+column is refused (exit 2, `<n> spot(s) carry no value in obs['clusters']`), not skipped: the
+skill counts only what the pipeline assigned and does not guess which spots to leave out.
 
 **`run/summary.json`.** `obs_column`, and `samples: {<sample>: {n_clusters, n_obs}}`. With
 **one** sample it also carries top-level `n_clusters` and `n_obs`. With more than one sample
@@ -128,7 +137,9 @@ a row would shadow 02.01's for every later consumer, because the resolver takes 
    as>"` and `--h5ad-from <the sub-stage that supplied the object>` (decision 0024). Exit 2 →
    the run did not complete: write `STATUS` as `FAILED <iso8601>`, reply T4, stop. If the
    analysis log says `obs has no 'clusters' column`, T4 carries that line verbatim and the
-   columns it listed; choosing another column is not a retry. Exit 1 → the exit gate failed:
+   columns it listed; choosing another column is not a retry. If it says `spot(s) carry no
+   value in obs['clusters']`, T4 carries that line verbatim too; dropping those spots is not a
+   retry either. Exit 1 → the exit gate failed:
    write `FAILED`, reply T4 with its `failures` verbatim, stop.
 9. Exit 0 → append its `history_entry` to the project's `HISTORY.md` **verbatim**, replacing
    `<ISO-8601 date>` with today's date, and reply T6.

@@ -244,6 +244,17 @@ def check_analysis_env(fails):
         return
     missing = [m for m in out.stdout.decode().strip().split(",") if m]
     if missing:
+        import os
+        if os.environ.get("GARS_PY") is None:
+            # The probe fell back to `python3`: the likely cause is an unsourced environment,
+            # not a broken one, so name that first.
+            fails.append(fail("preconditions",
+                              "GARS_PY is not set, so `python3` was probed and it is missing: "
+                              "%s. Source gars-env.sh (the workspace environment) or set "
+                              "GARS_PY before check; if the package is still missing then, "
+                              "rebuild the environment from gars-bio.lock.txt, never "
+                              "pip-install at run time." % ", ".join(missing)))
+            return
         fails.append(fail("preconditions",
                           "the analysis environment (%s) is missing: %s. anndata is pinned in "
                           "gars-bio.lock.txt; rebuild the environment from the lockfile, never "
@@ -251,7 +262,8 @@ def check_analysis_env(fails):
 
 
 def resolve_inputs(h5ad_arg, samples, fails):
-    """`--h5ad` -> [(sample, path)] in samplesheet order, or failures naming what is wrong.
+    """`--h5ad` -> [(sample, path)] in sorted sample order (wl.samplesheet_samples), or
+    failures naming what is wrong.
 
     A DIRECTORY is what the router hands over: 02.01 registers its results directory as the
     `h5ad` artifact (the set is the artifact), and the per-sample object sits at
@@ -393,6 +405,21 @@ def cmd_prepare(args):
     return emit(result, EXIT_OK)
 
 
+def count_of(entry, key, sample, fails):
+    """summary.json's `key` for `sample` as an int, or None after a named `summary` failure.
+
+    The values are read straight from a file the analysis wrote; a string or a float there
+    must surface as a failure the JSON lists, not as a ValueError traceback from int().
+    bool is excluded explicitly because it is an int subclass.
+    """
+    value = entry.get(key)
+    if isinstance(value, bool) or not isinstance(value, int):
+        fails.append(fail("summary", "sample %s: %s in summary.json is not an integer: %r"
+                          % (sample, key, value)))
+        return None
+    return value
+
+
 def cmd_collect(args):
     project = Path(args.project)
     result = {"command": "collect", "ok": False, "assay": ASSAY, "failures": []}
@@ -457,12 +484,18 @@ def cmd_collect(args):
             fails.append(fail("summary",
                               "summary.json reports sample(s) the samplesheet does not list: "
                               "%s" % ", ".join(unknown)))
+    # The counts, coerced ONCE per sample: a value that is not an integer is a named `summary`
+    # failure, never a traceback (the contract promises the JSON lists every failure).
+    counts = {}
     for s in sorted(per_sample):
         entry = per_sample[s] if isinstance(per_sample[s], dict) else {}
-        if int(entry.get("n_obs", 0)) <= 0:
+        n_obs = count_of(entry, "n_obs", s, fails)
+        n_clusters = count_of(entry, "n_clusters", s, fails)
+        counts[s] = (n_clusters, n_obs)
+        if n_obs is not None and n_obs <= 0:
             fails.append(fail("summary", "sample %s has no spots. That is a result to report; "
                                          "this skill has no threshold to lower." % s))
-        if int(entry.get("n_clusters", 0)) <= 0:
+        if n_clusters is not None and n_clusters <= 0:
             fails.append(fail("summary", "sample %s has no clusters" % s))
 
     # --- INTERNAL consistency: clusters.tsv against summary.json ------------------------------
@@ -493,18 +526,19 @@ def cmd_collect(args):
                 rows_per_sample[r[0]] = rows_per_sample.get(r[0], 0) + 1
                 spots_per_sample[r[0]] = spots_per_sample.get(r[0], 0) + n
             for s in sorted(per_sample):
-                entry = per_sample[s] if isinstance(per_sample[s], dict) else {}
+                n_clusters, n_obs = counts[s]
                 n_rows = rows_per_sample.get(s, 0)
                 n_spots = spots_per_sample.get(s, 0)
-                if n_rows != int(entry.get("n_clusters", -1)):
+                # A count already refused above (not an integer) has nothing to compare.
+                if n_clusters is not None and n_rows != n_clusters:
                     fails.append(fail("table",
                                       "clusters.tsv has %d row(s) for %s but summary.json says "
-                                      "%s clusters -- the two disagree, so one is not whole"
-                                      % (n_rows, s, entry.get("n_clusters"))))
-                if n_spots != int(entry.get("n_obs", -1)):
+                                      "%d clusters -- the two disagree, so one is not whole"
+                                      % (n_rows, s, n_clusters)))
+                if n_obs is not None and n_spots != n_obs:
                     fails.append(fail("table",
                                       "clusters.tsv spots for %s sum to %d but summary.json "
-                                      "says n_obs %s" % (s, n_spots, entry.get("n_obs"))))
+                                      "says n_obs %d" % (s, n_spots, n_obs)))
             extra = sorted(set(rows_per_sample) - set(per_sample))
             if extra:
                 fails.append(fail("table", "clusters.tsv names sample(s) absent from "
@@ -561,10 +595,14 @@ def cmd_collect(args):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    # allow_abbrev=False on EVERY parser: argparse's prefix matching would otherwise bind
+    # `collect --h5ad <path>` to `--h5ad-from` and record an object path as the supplying
+    # sub-stage in HISTORY.md. The flag does not propagate from the parent to a sub-parser,
+    # so each add_parser carries it too.
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0], allow_abbrev=False)
     sub = ap.add_subparsers(dest="cmd")
     for name in ("check", "prepare", "collect"):
-        p = sub.add_parser(name)
+        p = sub.add_parser(name, allow_abbrev=False)
         p.add_argument("--project", required=True)
         if name in ("check", "prepare"):
             p.add_argument("--h5ad", default=None,

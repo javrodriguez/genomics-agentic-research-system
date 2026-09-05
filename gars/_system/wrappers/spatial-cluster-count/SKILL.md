@@ -21,7 +21,8 @@ metadata:
       Nothing to install for the wrapper itself. The ANALYSIS needs anndata under $GARS_PY,
       and anndata is already PINNED in _references/gars-bio.lock.txt (0.13.2) -- the
       environment that carries gars-bio already has it. It is never installed at run time;
-      `check` refuses by name if the interpreter it probes cannot import it.
+      `check` refuses by name if the interpreter it probes has no package of that name (a
+      name probe via importlib, not an import -- a package present but broken fails in the job).
 ---
 
 # spatial-cluster-count
@@ -52,7 +53,9 @@ It **never** re-clusters, never reads a `var` (gene) name, never names a cluster
 a region, and never lowers a threshold (it has none). It has **no fallback column list**: if
 `obs` carries no `clusters` column the analysis refuses with exit 2 and lists the columns that
 do exist. A fallback that silently picked another column would report a count from a
-clustering nobody asked for.
+clustering nobody asked for. A second refusal, also exit 2: a spot with **no value** in the
+column (`<n> spot(s) carry no value in obs['clusters']`) is refused, not skipped — this skill
+counts only what the pipeline assigned and does not guess which spots to leave out.
 
 ## The input: a file or a directory
 
@@ -114,7 +117,10 @@ template version, `--model`, the method, the obs column, and `Matrix supplied by
 The bare script this promotes (`h5ad_clusters.py` in the demo) read `obs["clusters"]` on the
 object the cluster's own 02.01 produced and reported 23 clusters over 834 spots; the same
 formulas (`nunique()` over the values, `obs.shape[0]`) are kept here so that number is
-unchanged. The wrapper's `check`/`prepare`/`collect` path is exercised offline in
+unchanged. One deliberate divergence: the bare script counted the non-null values and said
+nothing about nulls, where this skill refuses an object with any (see above) — the same number
+on every object where every spot carries a value, which the recorded object is. The wrapper's
+`check`/`prepare`/`collect` path is exercised offline in
 `tests/run_tests.py` against faked run outputs shaped like the real ones; the generated script
 is run there against a tiny synthetic object only when anndata is importable in the test
 interpreter, and the test says so when it is not.
