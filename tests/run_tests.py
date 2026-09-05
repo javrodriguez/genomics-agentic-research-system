@@ -2744,5 +2744,318 @@ class ScrnaQcClusterTests(unittest.TestCase):
         self.assertIn("has not finished", res["error"])
 
 
+class SpatialClusterCountTests(unittest.TestCase):
+    """Sub-stage 02.02 for spatialvi: the cluster COUNT, promoted from a bare demo script.
+
+    Runs on stock python. `check` must refuse BY NAME when the analysis interpreter lacks
+    anndata; the prepare/collect path is exercised with a stub package that satisfies the name
+    probe only, and the exit gate against faked run outputs shaped like the real ones. The
+    generated script itself runs only when anndata is genuinely importable here, and the test
+    says so when it is not -- it is never faked."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = Path(tempfile.mkdtemp(prefix="gars-spcount-"))
+        cls.ws = cls.tmp / "gars"
+        cls.ws.mkdir()
+        for d in ("_system", "_references", "_templates"):
+            shutil.copytree(str(GARS / d), str(cls.ws / d))
+        (cls.ws / "projects").mkdir()
+        cls.src = cls.tmp / "spaceranger_runs"
+        cls.src_one = cls.tmp / "spaceranger_one"
+        for root, names in ((cls.src, ("BrainA", "BrainB")), (cls.src_one, ("BrainA",))):
+            for name in names:
+                outs = root / name / "outs"
+                (outs / "spatial").mkdir(parents=True)
+                (outs / "filtered_feature_bc_matrix.h5").write_bytes(b"h5\x00" * 200)
+        cls.reg_py = cls.ws / "_system" / "stage00_register.py"
+        cls.sheet_py = cls.ws / "_system" / "stage01_samplesheet.py"
+        cls.wrap = (cls.ws / "_system" / "wrappers" / "spatial-cluster-count"
+                    / "spatial_cluster_count.py")
+        cls.tool = GARS / "_system" / "authoring" / "create_bioinformatics_skill.py"
+        # Is anndata really importable here? Decides whether the generated script can RUN.
+        probe = subprocess.run([sys.executable, "-c", "import anndata"],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        cls.have_anndata = probe.returncode == 0
+        # A stub that satisfies importlib's NAME probe only, so prepare/collect can be driven
+        # on a machine without the real package. It cannot run the script and is never used to.
+        stub = cls.tmp / "stub_site" / "anndata"
+        stub.mkdir(parents=True)
+        (stub / "__init__.py").write_text("# name-probe stub for tests; not anndata\n")
+        cls.env_ok = {"GARS_PY": sys.executable}
+        if not cls.have_anndata:
+            cls.env_ok["PYTHONPATH"] = str(cls.tmp / "stub_site")
+        cls.env_bare = {"GARS_PY": sys.executable, "PYTHONPATH": str(cls.tmp / "empty_site")}
+        (cls.tmp / "empty_site").mkdir()
+
+    tearDownClass = classmethod(lambda cls: WorkspaceFixture.tearDownClass.__func__(cls))
+
+    def _project(self, title, source=None):
+        for argv in (["create", "--title", title, "--assays", "spatialvi"],
+                     ["link", "--project", "projects/" + title, "--assay", "spatialvi",
+                      "--source", str(source or self.src)],
+                     ["finalize", "--project", "projects/" + title]):
+            code, res, raw = run(self.reg_py, argv, self.ws)
+            self.assertEqual(code, 0, raw)
+        project = self.ws / "projects" / title
+        scsv = project / "00_data" / "spatialvi" / "samples.csv"
+        with scsv.open() as fh:
+            rows = list(csv.reader(fh))
+        head = rows[0]
+        out = [head]
+        for i, r in enumerate(rows[1:]):
+            d = dict(zip(head, r))
+            d.update({"condition": "tumour" if i == 0 else "normal",
+                      "group": "G%d" % (i + 1), "replicate": "1"})
+            out.append([d.get(c, "") for c in head])
+        with scsv.open("w", newline="") as fh:
+            csv.writer(fh).writerows(out)
+        code, res, raw = run(self.sheet_py, ["--project", "projects/" + title,
+                                             "--confirm-exclusions"], self.ws)
+        self.assertEqual(code, 0, raw)
+        return project
+
+    def _results(self, project, samples):
+        """02.01's results directory as it registers it: <s>/data/<s>.h5ad per sample."""
+        results = (project / "02_bioinformatics" / "spatialvi"
+                   / "01_nfcore-spatialvi-wrapper" / "run" / "results")
+        for s in samples:
+            (results / s / "data").mkdir(parents=True, exist_ok=True)
+            (results / s / "data" / ("%s.h5ad" % s)).write_text("h5")
+        return results
+
+    def _fake_run(self, project, summary=None, table=None):
+        substage = project / "02_bioinformatics" / "spatialvi" / "02_spatial-cluster-count"
+        run_dir = substage / "run"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        default = {"obs_column": "clusters",
+                   "samples": {"BrainA": {"n_clusters": 2, "n_obs": 30},
+                               "BrainB": {"n_clusters": 3, "n_obs": 60}}}
+        (run_dir / "summary.json").write_text(
+            json.dumps(default if summary is None else summary, indent=2, sort_keys=True))
+        (run_dir / "clusters.tsv").write_text(
+            table if table is not None else
+            "sample\tcluster\tn_spots\nBrainA\t0\t10\nBrainA\t1\t20\n"
+            "BrainB\t0\t10\nBrainB\t1\t20\nBrainB\t2\t30\n")
+        (run_dir / "report.md").write_text("# report\n")
+        (run_dir / ".gars_run_complete").write_text("now\n")
+        return substage
+
+    def test_00_conform_passes_for_the_new_wrapper(self):
+        code, payload, raw = run(self.tool, ["conform", str(self.wrap.parent)], REPO)
+        self.assertEqual(code, 0, raw)
+        self.assertTrue(payload["ok"], payload.get("failures"))
+
+    def test_01_check_refuses_without_h5ad_and_names_a_missing_anndata(self):
+        project = self._project("spc-noinput")
+        code, res, raw = run(self.wrap, ["check", "--project", "projects/spc-noinput"],
+                             self.ws, env_extra=self.env_bare)
+        self.assertEqual(code, 1, raw)
+        detail = " ".join(f["detail"] for f in res["failures"])
+        self.assertIn("--h5ad was not supplied", detail)
+        self.assertIn("anndata", detail, "the missing package must be named")
+        self.assertNotIn("Traceback", detail, "must be a named refusal, not a crash")
+        self.assertIn("preconditions", [f["check"] for f in res["failures"]])
+
+    def test_02_check_refuses_a_missing_samplesheet(self):
+        project = self._project("spc-nosheet")
+        results = self._results(project, ("BrainA", "BrainB"))
+        (project / "01_samplesheets" / "spatialvi_samplesheet.csv").unlink()
+        code, res, raw = run(self.wrap, ["check", "--project", "projects/spc-nosheet",
+                                         "--h5ad", str(results)], self.ws,
+                             env_extra=self.env_ok)
+        self.assertEqual(code, 1, raw)
+        detail = " ".join(f["detail"] for f in res["failures"])
+        self.assertIn("samplesheet", detail)
+
+    def test_03_check_refuses_a_directory_missing_a_sample_and_a_file_for_two(self):
+        project = self._project("spc-partial")
+        results = self._results(project, ("BrainA",))        # BrainB absent
+        # the raw object beside it is never a substitute
+        (results / "BrainB" / "data").mkdir(parents=True)
+        (results / "BrainB" / "data" / "BrainB-raw.h5ad").write_text("raw")
+        code, res, raw = run(self.wrap, ["check", "--project", "projects/spc-partial",
+                                         "--h5ad", str(results)], self.ws,
+                             env_extra=self.env_ok)
+        self.assertEqual(code, 1, raw)
+        detail = " ".join(f["detail"] for f in res["failures"])
+        self.assertIn("BrainB", detail)
+        self.assertNotIn("BrainA", detail.replace(str(results), ""))
+        self.assertIn("-raw.h5ad", detail)
+
+        # one FILE for a two-sample samplesheet: refused, never guessed
+        one = self.tmp / "single.h5ad"
+        one.write_text("h5")
+        code, res, raw = run(self.wrap, ["check", "--project", "projects/spc-partial",
+                                         "--h5ad", str(one)], self.ws, env_extra=self.env_ok)
+        self.assertEqual(code, 1, raw)
+        detail = " ".join(f["detail"] for f in res["failures"])
+        self.assertIn("exactly one sample", detail)
+
+    def test_04_prepare_writes_the_script_submit_and_reproducibility_deterministically(self):
+        project = self._project("spc-prep")
+        results = self._results(project, ("BrainA", "BrainB"))
+        substage = project / "02_bioinformatics" / "spatialvi" / "02_spatial-cluster-count"
+        code, res, raw = run(self.wrap, ["prepare", "--project", "projects/spc-prep",
+                                         "--h5ad", str(results)], self.ws,
+                             env_extra=self.env_ok)
+        self.assertEqual(code, 0, raw)
+        script = substage / "scripts" / "count_clusters.py"
+        for rel in ("scripts/count_clusters.py", "submit.sh", "reproducibility/manifest.json",
+                    "reproducibility/commands.sh"):
+            self.assertTrue((substage / rel).is_file(), rel)
+        self.assertFalse((substage / "params.yaml").exists(), "no pipeline params here")
+        text = script.read_text()
+        compile(text, str(script), "exec")
+        self.assertIn("OBS_COLUMN = 'clusters'", text)
+        self.assertNotIn("leiden", text.lower().replace("nf-core/spatialvi", ""),
+                         "no fallback column may be named by the analysis")
+        for s in ("BrainA", "BrainB"):
+            self.assertIn(str((results / s / "data" / ("%s.h5ad" % s)).resolve()), text)
+        self.assertIn("count_clusters.py", (substage / "submit.sh").read_text())
+        manifest = json.loads((substage / "reproducibility" / "manifest.json").read_text())
+        self.assertEqual(manifest["params"]["obs_column"], "clusters")
+        self.assertIn("h5ad_BrainA_sha256", manifest)
+        first = {rel: (substage / rel).read_bytes()
+                 for rel in ("scripts/count_clusters.py", "submit.sh",
+                             "reproducibility/manifest.json")}
+        code, res, raw = run(self.wrap, ["prepare", "--project", "projects/spc-prep",
+                                         "--h5ad", str(results)], self.ws,
+                             env_extra=self.env_ok)
+        self.assertEqual(code, 0, raw)
+        for rel, data in first.items():
+            self.assertEqual((substage / rel).read_bytes(), data,
+                             "%s must be byte-identical across runs" % rel)
+
+    def test_05_collect_refuses_before_the_run_finished(self):
+        project = self._project("spc-early")
+        substage = self._fake_run(project)
+        (substage / "run" / ".gars_run_complete").unlink()
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/spc-early"],
+                             self.ws)
+        self.assertEqual(code, 2, raw)
+        self.assertIn("has not finished", res["error"])
+        self.assertFalse((substage / "OUTPUTS.tsv").exists())
+
+    def test_06_collect_refuses_a_sample_set_that_differs_from_the_samplesheet(self):
+        project = self._project("spc-lost")
+        self._fake_run(project, summary={"obs_column": "clusters",
+                                         "samples": {"BrainA": {"n_clusters": 2,
+                                                                "n_obs": 30}}},
+                       table="sample\tcluster\tn_spots\nBrainA\t0\t10\nBrainA\t1\t20\n")
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/spc-lost"],
+                             self.ws)
+        self.assertEqual(code, 1, raw)
+        detail = " ".join(f["detail"] for f in res["failures"])
+        self.assertIn("BrainB", detail)
+        self.assertIn("summary", [f["check"] for f in res["failures"]])
+
+        project = self._project("spc-unknown")
+        self._fake_run(project, summary={"obs_column": "clusters",
+                                         "samples": {"BrainA": {"n_clusters": 2, "n_obs": 30},
+                                                     "BrainB": {"n_clusters": 3, "n_obs": 60},
+                                                     "SomeoneElse": {"n_clusters": 1,
+                                                                     "n_obs": 5}}})
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/spc-unknown"],
+                             self.ws)
+        self.assertEqual(code, 1, raw)
+        self.assertIn("SomeoneElse", " ".join(f["detail"] for f in res["failures"]))
+
+    def test_07_collect_refuses_a_table_that_disagrees_with_the_summary(self):
+        project = self._project("spc-rows")
+        self._fake_run(project, table="sample\tcluster\tn_spots\nBrainA\t0\t10\nBrainA\t1\t20\n"
+                                      "BrainB\t0\t30\nBrainB\t1\t30\n")     # 2 rows, says 3
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/spc-rows"],
+                             self.ws)
+        self.assertEqual(code, 1, raw)
+        detail = " ".join(f["detail"] for f in res["failures"])
+        self.assertIn("table", [f["check"] for f in res["failures"]])
+        self.assertIn("BrainB", detail)
+        self.assertIn("disagree", detail)
+
+        project = self._project("spc-spots")
+        self._fake_run(project, table="sample\tcluster\tn_spots\nBrainA\t0\t10\nBrainA\t1\t19\n"
+                                      "BrainB\t0\t10\nBrainB\t1\t20\nBrainB\t2\t30\n")
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/spc-spots"],
+                             self.ws)
+        self.assertEqual(code, 1, raw)
+        detail = " ".join(f["detail"] for f in res["failures"])
+        self.assertIn("sum to 29", detail)
+        self.assertIn("BrainA", detail)
+
+    def test_08_collect_accepts_a_good_run_and_registers_only_table_and_report(self):
+        project = self._project("spc-ok")
+        substage = self._fake_run(project)
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/spc-ok",
+                                         "--model", "claude-test-1",
+                                         "--h5ad-from", "01_nfcore-spatialvi-wrapper"], self.ws)
+        self.assertEqual(code, 0, raw)
+        outputs = (substage / "OUTPUTS.tsv").read_text().splitlines()
+        self.assertEqual(outputs, ["# type\trole\tpath",
+                                   "table\tnative\trun/clusters.tsv",
+                                   "report\tnative\trun/report.md"])
+        self.assertNotIn("h5ad", "\n".join(outputs), "an h5ad row would shadow 02.01's")
+        self.assertTrue((substage / "STATUS").read_text().startswith("COMPLETE "))
+        entry = res["history_entry"]
+        for line in ("Template version:", "Model: claude-test-1",
+                     "Matrix supplied by: 01_nfcore-spatialvi-wrapper",
+                     "Obs column: clusters", "Method:"):
+            self.assertIn(line, entry)
+        self.assertNotIn("n_clusters", res, "two samples: no top-level total")
+        for banned in ("n_cells_in", "n_cells_out", "marker_rows"):
+            self.assertNotIn(banned, raw)
+
+    def test_09_the_generated_script_counts_a_synthetic_object_and_refuses_without_the_column(self):
+        if not self.have_anndata:
+            self.skipTest("environment: anndata is not importable in %s, so the generated "
+                          "script is not run here; the wrapper path above is what this "
+                          "interpreter can prove" % sys.executable)
+        import anndata
+        import numpy as np
+        import pandas as pd
+        project = self._project("spc-real", source=self.src_one)
+        substage = project / "02_bioinformatics" / "spatialvi" / "02_spatial-cluster-count"
+        obs = pd.DataFrame({"clusters": pd.Categorical(
+            ["0", "1", "2", "0", "1", "2", "0", "0", "1", "2"], categories=["0", "1", "2", "9"])},
+            index=["s%d" % i for i in range(10)])
+        good = self.tmp / "BrainA.h5ad"
+        anndata.AnnData(X=np.zeros((10, 4), dtype="float32"), obs=obs).write_h5ad(str(good))
+        code, res, raw = run(self.wrap, ["prepare", "--project", "projects/spc-real",
+                                         "--h5ad", str(good)], self.ws, env_extra=self.env_ok)
+        self.assertEqual(code, 0, raw)
+        script = substage / "scripts" / "count_clusters.py"
+        code, payload, raw = run(script, [], self.ws)
+        self.assertEqual(code, 0, raw)
+        summary = json.loads((substage / "run" / "summary.json").read_text())
+        self.assertEqual(sorted(summary), ["n_clusters", "n_obs", "obs_column", "samples"])
+        self.assertEqual(summary["n_clusters"], 3, "the unused category 9 must not count")
+        self.assertEqual(summary["n_obs"], 10)
+        self.assertEqual(summary["samples"], {"BrainA": {"n_clusters": 3, "n_obs": 10}})
+        table = (substage / "run" / "clusters.tsv").read_text().splitlines()
+        self.assertEqual(table, ["sample\tcluster\tn_spots", "BrainA\t0\t4", "BrainA\t1\t3",
+                                 "BrainA\t2\t3"])
+        self.assertTrue((substage / "run" / ".gars_run_complete").is_file())
+        code, res, raw = run(self.wrap, ["collect", "--project", "projects/spc-real",
+                                         "--model", "m", "--h5ad-from", "test"], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertEqual(res["n_clusters"], 3)
+
+        # the same object WITHOUT the column: refused (exit 2), naming what IS there
+        obs2 = pd.DataFrame({"leiden": ["0"] * 10, "total_counts": range(10)},
+                            index=["s%d" % i for i in range(10)])
+        bad = self.tmp / "BrainA-nocol.h5ad"
+        anndata.AnnData(X=np.zeros((10, 4), dtype="float32"), obs=obs2).write_h5ad(str(bad))
+        text = script.read_text().replace(str(good.resolve()), str(bad.resolve()))
+        alt = self.tmp / "count_nocol.py"
+        alt.write_text(text)
+        shutil.rmtree(str(substage / "run"))
+        code, payload, raw = run(alt, [], self.ws)
+        self.assertEqual(code, 2, raw)
+        self.assertIn("no 'clusters' column", payload["error"])
+        self.assertIn("leiden", payload["error"], "the refusal lists the columns present")
+        self.assertFalse((substage / "run" / "summary.json").exists())
+        self.assertFalse((substage / "run" / ".gars_run_complete").exists())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

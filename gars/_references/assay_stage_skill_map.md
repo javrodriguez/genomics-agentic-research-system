@@ -15,6 +15,7 @@ and `02_bioinformatics/<Assay ID>/` for its sub-stages.
 | Single-cell RNA-seq | scrnaseq | 02_bioinformatics | 01_nfcore-scrnaseq-wrapper | nfcore-scrnaseq-wrapper | gars | samplesheet | h5ad, qc_multiqc |
 | Single-cell RNA-seq | scrnaseq | 02_bioinformatics | 02_scrna-qc-cluster | scrna-qc-cluster | gars | h5ad | h5ad, table, figure, report |
 | Spatial transcriptomics (Visium) | spatialvi | 02_bioinformatics | 01_nfcore-spatialvi-wrapper | nfcore-spatialvi-wrapper | gars | samplesheet | h5ad, report, qc_multiqc |
+| Spatial transcriptomics (Visium) | spatialvi | 02_bioinformatics | 02_spatial-cluster-count | spatial-cluster-count | gars | h5ad | table, report |
 
 The **Source** column says where a skill's code lives (decision 0012). Every current row is
 `gars`: wrappers versioned in this repository under `_system/wrappers/`, resolved via
@@ -40,6 +41,7 @@ as a preconditions failure **naming the requirement**, rather than surfacing a r
 | nfcore-scrnaseq-wrapper | >=3.6 (stdlib only) | `python3`, `nextflow`, `java`, `git` | none | stock python + `gars-nxf` at submit time |
 | scrna-qc-cluster (gars) | wrapper: >=3.6 stdlib; analysis: `$GARS_PY` | `python3` | `scanpy`, `anndata`, `leidenalg`, `python-igraph`, `scikit-learn`, `matplotlib`, `pandas`, `numpy` (analysis only) | stock python + `gars-bio` at run time |
 | nfcore-spatialvi-wrapper | >=3.6 (stdlib only) | `python3`, `nextflow`, `java`, `git` | none | stock python + `gars-nxf` at submit time |
+| spatial-cluster-count (gars) | wrapper: >=3.6 stdlib; analysis: `$GARS_PY` | `python3` | `anndata` (analysis only) | stock python + `gars-bio` at run time |
 
 The clawbio `nfcore-rnaseq-wrapper` and `rnaseq-de` skills are retired (decision 0029) and
 remain installed with the package but uninvoked; their deprecated procedure files were deleted

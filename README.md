@@ -278,7 +278,7 @@ artifact each stage produces.
 | Methylation (`methylseq`) | Wired end to end and offline-tested; awaits its first live run (the campaign's WGBS fetch is pending a clean re-download) |
 
 New assays are added through a documented, linted method — `gars/_system/authoring/` scaffolds a
-wrapper from a small spec and `conform` checks it against the standard the six earlier wrappers
+wrapper from a small spec and `conform` checks it against the standard the earlier wrappers
 already satisfy; every rule is mutation-tested.
 
 Stage 03 (custom analysis) is plan-gated and live-validated once: the agent drafts a reviewable

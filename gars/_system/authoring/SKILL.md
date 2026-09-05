@@ -200,8 +200,8 @@ syntax, `wrapperlib` used, the four exit codes, `ASSAY`/`SUBSTAGE` declared, the
 rather than restated, all three verbs present, `--model` accepted, `OUTPUTS.tsv` and `STATUS`
 written, writes atomic, `SKILL.md` frontmatter complete.
 
-The rules are trustworthy because they are run against wrappers already known good — **all six
-existing GARS wrappers pass** — and because each rule is mutation-tested: break it deliberately
+The rules are trustworthy because they are run against wrappers already known good — **every
+existing GARS wrapper passes** — and because each rule is mutation-tested: break it deliberately
 and the linter must go red. (One rule originally tested a substring, and a mutation renaming the
 flag slipped past it. That is why the check now matches a complete quoted flag.)
 
