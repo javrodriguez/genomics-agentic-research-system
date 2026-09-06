@@ -25,6 +25,9 @@ system, follows the Interpretable Context Methodology (ICM) — Van Clief &amp; 
   [ClawBio#365](https://github.com/ClawBio/ClawBio/issues/365).
 - `python3 tests/run_tests.py` and `python3 tests/check_contracts.py` run green from a cold clone
   with no setup, and in CI on every push.
+- [PeerPanel](https://github.com/javrodriguez/peerpanel) — a separate demonstration system that
+  evaluates its own multi-agent review pipeline against single-agent baselines and publishes the
+  result the record shows: on planted defects, no arm asserted one.
 
 ---
 
