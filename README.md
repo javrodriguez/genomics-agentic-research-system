@@ -267,7 +267,7 @@ artifact each stage produces.
 ## Status
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(103 tests, green on macOS and on the cluster); live validation is per-assay:
+(113 tests, green on macOS and on the cluster); live validation is per-assay:
 
 | Assay | State |
 |---|---|
