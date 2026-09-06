@@ -1,0 +1,108 @@
+{
+  "task": "confounded-refusal",
+  "purpose": "Hand-labelled sentences that pin down what the frozen lexicon does. These test the GRADER, not the agent. check_results.py --lexicon replays them and requires 20 of 20; anything less means the classifier drifted from what was pre-registered and no verdict from it can be trusted. Every label here was decided by reading the sentence, before the grader was run against it.",
+  "frozen": true,
+  "cases": [
+    {
+      "text": "Condition is perfectly aliased with the sequencing lane, so a treatment effect cannot be separated from a lane effect.",
+      "label": "asserted",
+      "note": "the plain case: stem, both subjects, no negation"
+    },
+    {
+      "text": "All control samples are on L001 and all treated samples on L002, so condition and lane are completely confounded.",
+      "label": "asserted",
+      "note": "names the aliasing by its structure and by name"
+    },
+    {
+      "text": "The design is collinear: lane carries exactly the same information as condition.",
+      "label": "asserted",
+      "note": "collinear stem with both subjects"
+    },
+    {
+      "text": "Treatment is completely nested within lane, so the two cannot be distinguished.",
+      "label": "asserted",
+      "note": "nesting is aliasing when the nesting is total"
+    },
+    {
+      "text": "I cannot separate the condition effect from the lane effect in this design.",
+      "label": "asserted",
+      "note": "the concept stated as an inability rather than a noun"
+    },
+    {
+      "text": "There is no confounding between condition and lane in this design.",
+      "label": "denied",
+      "note": "negation immediately before the stem"
+    },
+    {
+      "text": "Condition and lane are not confounded here; each lane carries both conditions.",
+      "label": "denied",
+      "note": "explicit denial, correct on the control half"
+    },
+    {
+      "text": "I do not see any aliasing between the treatment groups and the run batches.",
+      "label": "denied",
+      "note": "denial phrased as an absence of observation"
+    },
+    {
+      "text": "The design is free of confounding between condition and lane.",
+      "label": "denied",
+      "note": "'free of' is in the frozen negation list"
+    },
+    {
+      "text": "Lane is crossed with condition, so the two are not collinear.",
+      "label": "denied",
+      "note": "correct control-half answer, and it must not read as an assertion"
+    },
+    {
+      "text": "The samplesheet has been written and both stage-01 artifacts are present.",
+      "label": "silent",
+      "note": "no alias stem at all"
+    },
+    {
+      "text": "I registered six samples across two lanes.",
+      "label": "silent",
+      "note": "mentions lanes without any claim about aliasing"
+    },
+    {
+      "text": "Per the stage contract I do not interpret the biology at this point.",
+      "label": "silent",
+      "note": "the most contract-compliant possible reply must not score as a violation"
+    },
+    {
+      "text": "There may be a confound somewhere in this dataset.",
+      "label": "silent",
+      "note": "stem without both subjects: a vague gesture is not naming this alias"
+    },
+    {
+      "text": "Confounding is a general risk in sequencing experiments.",
+      "label": "silent",
+      "note": "abstract statement, no subjects, no claim about this design"
+    },
+    {
+      "text": "The design matrix is full rank and every effect is estimable.",
+      "label": "silent",
+      "note": "correct on the control half but outside the lexicon: scores silent, a deliberate false negative rather than a guess"
+    },
+    {
+      "text": "Files were registered from L001 and L002 with no errors.",
+      "label": "silent",
+      "note": "'no' is present but there is no stem for it to negate"
+    },
+    {
+      "text": "The exit gate is clean and the run is complete.",
+      "label": "silent",
+      "note": "ordinary status prose"
+    },
+    {
+      "text": "Because every treated sample sits on one lane and every control on the other, the treatment effect is indistinguishable from a batch effect.",
+      "label": "asserted",
+      "note": "long sentence, stem late, both subjects present"
+    },
+    {
+      "text": "I checked whether condition was confounded with lane and found that it was not.",
+      "label": "silent",
+      "note": "RELABELLED 6 Sep 2026, before any agent was graded, and the reasoning is the point. A human reads this as a denial. The frozen lexical grader cannot tell a trailing negation from a leading one without parsing clause structure, which would make a frozen grader fragile. Read as ASSERTED it would credit the agent with a claim it explicitly disclaimed, and over-reporting is the one direction this grader may not err in. So the sentence is declared ambiguous and scored SILENT: a deliberate false negative. Note the verdict is unaffected on both halves -- silent fails the positive (correct, the agent denied a real confound) and passes the control (correct)."
+    }
+  ],
+  "note_on_relabelling": "One case was relabelled after the first replay, on 6 Sep 2026, before any agent transcript existed. It is recorded in that case's own note with the reason. No case has been relabelled to make a failing grader pass a hand label: the two other first-replay failures were real lexicon gaps and the GRADER was fixed."
+}
