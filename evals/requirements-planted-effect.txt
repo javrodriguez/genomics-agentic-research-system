@@ -1,0 +1,15 @@
+# Pinned environment for the planted-effect and cross-run-repro tasks.
+#
+# These are the SAME pins GARS documents for its own analysis environment in
+# gars/_references/environment.md, so the eval runs the stack the system actually
+# specifies rather than a lookalike. Pinned exactly: an eval whose numbers move when a
+# dependency floats is not an eval.
+#
+# clawbio is deliberately absent (decision 0029 deprecated that path).
+
+pydeseq2==0.5.4
+scikit-learn==1.9.0
+pandas==3.0.5
+numpy==2.5.2
+scipy==1.18.0
+matplotlib==3.11.1
