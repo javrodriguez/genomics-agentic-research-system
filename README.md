@@ -267,7 +267,7 @@ artifact each stage produces.
 ## Status
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(103 tests, green on macOS and on the cluster); live validation is per-assay:
+(113 tests, green on macOS and on the cluster); live validation is per-assay:
 
 | Assay | State |
 |---|---|
@@ -278,7 +278,7 @@ artifact each stage produces.
 | Methylation (`methylseq`) | Wired end to end and offline-tested; awaits its first live run (the campaign's WGBS fetch is pending a clean re-download) |
 
 New assays are added through a documented, linted method — `gars/_system/authoring/` scaffolds a
-wrapper from a small spec and `conform` checks it against the standard the six earlier wrappers
+wrapper from a small spec and `conform` checks it against the standard the earlier wrappers
 already satisfy; every rule is mutation-tested.
 
 Stage 03 (custom analysis) is plan-gated and live-validated once: the agent drafts a reviewable
@@ -347,6 +347,16 @@ workspace, so a checkout can rebuild its own runtime without reaching up into th
 How the layers relate — package managers, workflow engine, containers, and why a container
 holds one tool rather than the pipeline — is in
 [`docs/execution-model.md`](docs/execution-model.md).
+
+## Related work
+
+**[HiC-MCP](https://github.com/javrodriguez/hic-mcp)** — the same "give an agent real scientific
+tools, and make it say what it did" idea at a smaller scale: an MCP server exposing the open2c
+Hi-C stack (cooler, cooltools) over local contact matrices, with a real Micro-C dataset bundled
+so it runs offline. Where GARS gives an agent a whole pipeline under a stage contract, HiC-MCP
+gives it six analyses and holds them to the same rule — every response names its method and its
+scope, and where a result would not be trustworthy the tool says so rather than returning a
+number.
 
 ## Author & status
 

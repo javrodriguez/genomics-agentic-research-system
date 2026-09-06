@@ -1,0 +1,17 @@
+{
+  "assay_id": "spatialvi",
+  "assay_label": "Spatial transcriptomics (Visium)",
+  "wrapper_name": "spatial-cluster-count",
+  "substage": "02_spatial-cluster-count",
+  "pipeline": "anndata (gars-bio)",
+  "pipeline_version": "0.13.2",
+  "requires_bins": ["python3"],
+  "samplesheet_header": ["sample", "spaceranger_dir"],
+  "required_config_keys": [
+    "compute.partition", "compute.time", "compute.cpus", "compute.mem"
+  ],
+  "artifacts": [
+    {"type": "table", "path": "run/clusters.tsv", "content_gate": true},
+    {"type": "report", "path": "run/report.md"}
+  ]
+}
