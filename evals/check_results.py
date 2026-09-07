@@ -1,0 +1,300 @@
+#!/usr/bin/env python3
+"""Check the published results against the pre-registration that was frozen before they existed.
+
+This is the file that makes "pre-registered" mean something. Anyone can write a thresholds file
+and then quietly move a threshold; what stops that is a check that re-reads the FROZEN bytes from
+git history and compares them to what is on disk now, and that fails loudly when they differ.
+
+    python evals/check_results.py              thresholds unmoved since the freeze
+    python evals/check_results.py --controls   every control behaves opposite its positive
+    python evals/check_results.py --lexicon    every hand-labelled grader suite still passes
+
+WHAT IS COMPARED, and why that comparison and not an easier one.
+
+  1. The frozen file itself. `git show <prereg-sha>:evals/prereg.json` against the working copy,
+     byte for byte. Any difference is reported as `thresholds amended` -- which the goal permits,
+     PUBLISHED, and forbids silently.
+  2. Every file the frozen file pinned. The pre-registration records a git blob sha AND a sha256
+     for each grader, shared reader, generator, ground truth and case file. Re-hashing them now
+     catches a constant edited after the freeze in the one way that cannot be argued with: the
+     bytes that produced a published verdict are not the bytes on disk.
+  3. The live constants, by name. Redundant with (2) by construction, and kept anyway, because a
+     sha mismatch says "this file changed" and a named constant says WHICH threshold moved. A
+     reader deserves the second sentence, not only the first.
+  4. Each results file's own binding: the prereg_sha256 it recorded when it was written. A
+     results file that was graded against a different pre-registration than the one in the tree
+     is the exact fraud this whole design exists to make impossible, and it is checkable.
+
+--controls compares BEHAVIOUR LABELS, never pass/fail verdicts. A correctly behaving system
+passes both halves, so a verdict comparison is satisfied identically on both and measures
+nothing. The labels are what differ: asserted/denied, effect-reported/no-effect-reported,
+same/different. A system that answers both halves the same way fails here, and that failure is
+published rather than quietly dropped.
+
+AN EMPTY RESULTS DIRECTORY IS NOT A PASS. With nothing graded this exits 0 -- there is nothing to
+contradict -- but it says `graded=0` in as many words, because "no findings" and "nothing was
+looked at" are different facts and only one of them is evidence.
+
+No model is called. stdlib only.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+EVALS = Path(__file__).resolve().parent
+REPO = EVALS.parent
+sys.path.insert(0, str(EVALS))
+sys.path.insert(0, str(EVALS / "graders"))
+
+PREREG = EVALS / "prereg.json"
+RESULTS = EVALS / "results"
+
+# Which live module attribute each frozen numeric threshold must still equal. Named explicitly so
+# a mismatch reports the threshold, not merely the file.
+LIVE_THRESHOLDS = {
+    "confounded-refusal": [("confounded_refusal", "ANSWER_FROM_TURN", "answer_from_turn"),
+                           ("confounded_refusal", "NEGATION_SCOPE", "negation_scope")],
+    "planted-effect": [("planted_effect", "ALPHA", "alpha"),
+                       ("planted_effect", "MIN_RECOVERED", "min_recovered"),
+                       ("planted_effect", "MIN_PRECISION", "min_precision"),
+                       ("planted_effect", "MAX_NULL_REJECTIONS", "max_null_rejections"),
+                       ("planted_effect", "NEGATION_SCOPE", "negation_scope")],
+    "cross-run-repro": [("cross_run_repro", "CONCLUSION_FROM", "conclusion_from"),
+                        ("cross_run_repro", "NEGATION_SCOPE", "negation_scope")],
+}
+
+# The four hand-labelled suites, each with the door that replays it.
+LEXICONS = [
+    ("evals/stated_count.py", "evals/fixtures/lexicon_cases_count.json"),
+    ("evals/graders/confounded_refusal.py", "evals/fixtures/lexicon_cases_task1.json"),
+    ("evals/graders/planted_effect.py", "evals/fixtures/lexicon_cases_task2.json"),
+    ("evals/graders/cross_run_repro.py", "evals/fixtures/lexicon_cases_task3.json"),
+]
+
+
+def prereg_sha() -> str | None:
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(REPO), "log", "--format=%H", "--reverse", "--", "evals/prereg.json"],
+            capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    shas = [ln.strip() for ln in out.stdout.splitlines() if ln.strip()]
+    return shas[0] if shas else None
+
+
+def frozen_bytes(sha: str) -> bytes | None:
+    try:
+        out = subprocess.run(["git", "-C", str(REPO), "show", f"{sha}:evals/prereg.json"],
+                             capture_output=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return out.stdout if out.returncode == 0 else None
+
+
+def pinned_refs(prereg: dict) -> list[dict]:
+    refs: list[dict] = []
+    seen: set[str] = set()
+
+    def walk(o):
+        if isinstance(o, dict):
+            if "path" in o and "sha256" in o and o["path"] not in seen:
+                seen.add(o["path"])
+                refs.append(o)
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+
+    walk(prereg)
+    return refs
+
+
+def check_thresholds(prereg: dict, sha: str | None, problems: list[str]) -> None:
+    print("thresholds:")
+
+    if sha is None:
+        problems.append("git could not name the commit that introduced the pre-registration, so "
+                        "the frozen bytes cannot be re-read; the freeze is unverifiable here")
+        print("  UNVERIFIABLE  no git history for evals/prereg.json")
+    else:
+        frozen = frozen_bytes(sha)
+        if frozen is None:
+            problems.append(f"git show {sha}:evals/prereg.json failed")
+            print(f"  UNVERIFIABLE  cannot read the frozen bytes at {sha[:8]}")
+        elif frozen != PREREG.read_bytes():
+            problems.append("THRESHOLDS AMENDED: evals/prereg.json differs from the bytes frozen "
+                            f"at {sha}. This is permitted only when published in the table as "
+                            "`thresholds amended`, with the before and the after.")
+            print(f"  AMENDED       prereg.json != its frozen bytes at {sha[:8]}")
+        else:
+            print(f"  ok            prereg.json byte-identical to {sha[:8]}")
+
+    for ref in pinned_refs(prereg):
+        p = REPO / ref["path"]
+        if not p.is_file():
+            problems.append(f"pinned file missing: {ref['path']}")
+            print(f"  MISSING       {ref['path']}")
+            continue
+        live = hashlib.sha256(p.read_bytes()).hexdigest()
+        if live != ref["sha256"]:
+            problems.append(f"{ref['path']} changed after the freeze "
+                            f"(frozen {ref['sha256'][:12]}, now {live[:12]})")
+            print(f"  CHANGED       {ref['path']}")
+        else:
+            print(f"  ok            {ref['path']}")
+
+    for task in prereg["tasks"]:
+        for mod_name, attr, frozen_key in LIVE_THRESHOLDS.get(task["id"], []):
+            frozen_val = task["thresholds"].get(frozen_key)
+            try:
+                mod = __import__(mod_name)
+                live_val = getattr(mod, attr)
+            except (ImportError, AttributeError) as exc:
+                problems.append(f"{task['id']}: cannot read {mod_name}.{attr} ({exc})")
+                print(f"  UNREADABLE    {task['id']} {mod_name}.{attr}")
+                continue
+            if live_val != frozen_val:
+                problems.append(f"{task['id']}: threshold {frozen_key} moved after the freeze "
+                                f"({frozen_val!r} frozen, {live_val!r} live in {mod_name}.{attr})")
+                print(f"  MOVED         {task['id']} {frozen_key}: {frozen_val!r} -> {live_val!r}")
+            else:
+                print(f"  ok            {task['id']} {frozen_key} = {frozen_val!r}")
+
+
+def results_files() -> list[Path]:
+    if not RESULTS.is_dir():
+        return []
+    return sorted(p for p in RESULTS.glob("*.json"))
+
+
+def check_results_binding(prereg: dict, problems: list[str]) -> int:
+    files = results_files()
+    print("results:")
+    if not files:
+        print("  graded=0 — no results file exists yet. Nothing here contradicts the "
+              "pre-registration, and nothing here is evidence either.")
+        return 0
+    live256 = hashlib.sha256(PREREG.read_bytes()).hexdigest()
+    declared = {t["id"] for t in prereg["tasks"]}
+    for f in files:
+        r = json.loads(f.read_text())
+        tid = r.get("task")
+        if tid not in declared:
+            problems.append(f"{f.name}: task {tid!r} is not in the declared set")
+            print(f"  UNDECLARED    {f.name}")
+            continue
+        if r.get("prereg_sha256") != live256:
+            problems.append(f"{tid}: graded against a different pre-registration "
+                            f"(results say {str(r.get('prereg_sha256'))[:12]}, "
+                            f"the tree's is {live256[:12]})")
+            print(f"  WRONG PREREG  {tid}")
+            continue
+        state = r.get("state")
+        verdict = r.get("verdict")
+        if state == "RAN" and verdict not in ("pass", "fail", "INVALID-FIXTURE"):
+            problems.append(f"{tid}: RAN with verdict {verdict!r}")
+        print(f"  ok            {tid:20s} state={state} verdict={verdict}")
+    graded = sum(1 for f in files
+                 if json.loads(f.read_text()).get("state") == "RAN")
+    print(f"  published={len(files)} graded={graded}")
+    if files and not graded:
+        print("  Every published row is a SKIP. A published row is not a graded one: nothing "
+              "here has been run, and this check has nothing to be clean about yet.")
+    return graded
+
+
+def check_controls(prereg: dict, problems: list[str]) -> None:
+    print("controls:")
+    files = {p.stem: json.loads(p.read_text()) for p in results_files()}
+    if not files:
+        print("  graded=0 — no pair has been graded, so no control has been compared. "
+              "The teeth of this check show only once transcripts land.")
+        return
+    for task in prereg["tasks"]:
+        tid = task["id"]
+        r = files.get(tid)
+        if r is None:
+            print(f"  not published {tid}")
+            continue
+        if r.get("state") != "RAN":
+            print(f"  {r.get('state'):22s}{tid} — not graded, so not compared")
+            continue
+        labels = r.get("behaviour_label") or {}
+        pos, ctl = labels.get("positive"), labels.get("control")
+        if pos is None or ctl is None:
+            problems.append(f"{tid}: a half carries no behaviour label ({labels})")
+            print(f"  NO LABEL      {tid}")
+        elif pos == ctl:
+            problems.append(f"{tid}: the control behaved the SAME as the positive "
+                            f"(both {pos!r}). A system that answers both halves the same way has "
+                            f"told us nothing, however confidently — published as a failure.")
+            print(f"  SAME LABEL    {tid}: both {pos!r}")
+        else:
+            print(f"  ok            {tid:20s} positive={pos!r} control={ctl!r}")
+
+
+def check_lexicon(problems: list[str]) -> None:
+    print("lexicons:")
+    for mod, cases in LEXICONS:
+        out = subprocess.run([sys.executable, str(REPO / mod), "--cases", str(REPO / cases)],
+                             capture_output=True, text=True)
+        tail = (out.stdout.strip().splitlines() or ["(no output)"])[-1]
+        if out.returncode != 0:
+            problems.append(f"{cases}: the hand labels no longer match {mod} ({tail}). The "
+                            f"classifier drifted from what was pre-registered, so no verdict "
+                            f"from it can be trusted.")
+            print(f"  FAILED        {Path(cases).name:28s} {tail}")
+        else:
+            print(f"  ok            {Path(cases).name:28s} {tail}")
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(
+        description="Check published results against the frozen pre-registration. Exits non-zero "
+                    "when a threshold moved, a pinned file changed, a control behaved like its "
+                    "positive, or a hand-labelled suite drifted.")
+    ap.add_argument("--controls", action="store_true",
+                    help="compare each pair's behaviour labels; a system answering both halves "
+                         "alike fails")
+    ap.add_argument("--lexicon", action="store_true",
+                    help="replay every hand-labelled grader suite through its own door")
+    args = ap.parse_args()
+
+    if not PREREG.is_file():
+        print(f"no pre-registration at {PREREG}")
+        return 2
+    prereg = json.loads(PREREG.read_text())
+    sha = prereg_sha()
+    problems: list[str] = []
+
+    print(f"pre-registration {PREREG.relative_to(REPO)} "
+          f"frozen at {sha[:8] if sha else 'UNKNOWN'}")
+    check_thresholds(prereg, sha, problems)
+    n = check_results_binding(prereg, problems)
+    if args.controls:
+        check_controls(prereg, problems)
+    if args.lexicon:
+        check_lexicon(problems)
+
+    print()
+    if problems:
+        print(f"{len(problems)} problem(s):")
+        for p in problems:
+            print(f"  - {p}")
+        return 1
+    print(f"clean — graded={n}" if n else
+          "clean — graded=0. Nothing was contradicted because nothing was graded; that is a "
+          "state, not a pass.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
