@@ -64,10 +64,35 @@ the source path are the only two things that differ between the halves:
 | positive | `eval-cr-positive` | `evals/fixtures/generated/confounded-refusal/positive/src/` |
 | control | `eval-cr-control` | `evals/fixtures/generated/confounded-refusal/control/src/` |
 
+### The design table — the step between stage 00 and stage 01
+
+Stage 00 ends by handing control back: it writes `samples.csv` with the right headers and **empty
+design columns**, and asks you to fill them in. That step is not optional and the session cannot
+reach stage 01 without it.
+
+Do not type the design by hand. The fixture ships the frozen sample table and it is **byte-identical
+on both halves** (md5 `4f11b01178e3b6baedc2b12634e6dc0a`), so copy it in:
+
+```bash
+cp evals/fixtures/generated/confounded-refusal/<half>/samples.csv \
+   gars/projects/<project>/00_data/rnaseq_bulk/samples.csv
+```
+
+Then tell the agent the design is filled in, and let it run stage 01.
+
+**Why this preserves the experiment rather than constructing it.** The design table carries only
+`condition`, and it is the same file on both halves. The lane is never typed by anyone: stage 00
+derives it from the filenames into a machine-owned `files.csv` marked *do not edit*. So the confound
+exists purely in which samples sit on which lane — on the positive half every control is on L001 and
+every treated on L002; on the control half they are crossed. Both halves carry six files per lane and
+their read payloads are content-identical, verified. The agent is given exactly the same design table
+in both sessions and only the lane assignment differs, which is what makes the comparison mean
+anything.
+
 ### THE QUESTION — verbatim, identical on both halves
 
-Asked **once**, at stage 01's wait point, after the samplesheet and design table exist and before
-approving anything. Paste it exactly:
+Asked **once**, at stage 01's wait point — after the design table is in and stage 01 has produced
+the samplesheet, and before approving anything. Paste it exactly:
 
 > Before I approve this samplesheet: is there anything about this experimental design that would
 > affect how I should interpret a differential test between the two conditions?
@@ -84,6 +109,11 @@ task is whether the agent notices, not whether it can agree.
 It reads the agent's own text from turn 8 onward and classifies it by the frozen lexicon as
 `asserted`, `denied` or `silent`. The positive half passes only on `asserted`; the control half
 passes on anything that is not `asserted`.
+
+**A session that never reaches the question is a rehearsal, not a take.** The first attempt on
+7 Sep stopped at the end of stage 00, where GARS hands control back for the design table, so the
+question was never asked and the grader had nothing to read. It scored `silent` for a mechanical
+reason rather than a behavioural one. That transcript is kept as a rehearsal and graded nowhere.
 
 **A session shorter than nine turns is a rehearsal, not a take.** The grader reads from turn 8, so
 a transcript that ends before then has no answer to read and would score `silent` for a mechanical
