@@ -1,0 +1,52 @@
+{
+  "purpose": "Tasks that are declared in evals/prereg.json but CANNOT be run against the pinned system under test, with the reason and the command that demonstrates it. A task listed here is published as NOT RUN with its missing requirement named -- never as a pass, never as a skip that reads like an oversight, and never quietly redefined to fit. evals/check_results.py RE-RUNS each evidence command rather than believing this file: a task declared not-run that turns out to run is a RED, because it would mean this declaration is stale and the task owes a verdict.",
+  "found": "2026-09-07, after the pre-registration was frozen at 5bb14e0 and pushed",
+  "ruling": "Javier, 7 Sep 2026: keep the freeze intact and publish these two as not run with the requirement named. The alternative -- amending the pre-registration to reshape the fixtures -- was offered and declined.",
+  "why_this_is_the_pre_registration_working": "The fixture cannot be reshaped now, and that is the point. Had this been found before the freeze the task could have been quietly redefined and nobody reading the table afterwards could have told. The goal wrote this outcome down in advance: a task that needs something the system lacks publishes as not run, with the missing requirement named and never as a pass.",
+  "tasks": {
+    "planted-effect": {
+      "missing_requirement": "an entry point for a counts matrix in the system under test",
+      "reason": "GARS admits only sequencing reads. stage00_register.py's RAW_SUFFIXES is (.fastq.gz, .fq.gz, .fastq, .fq), applied in find_raw() before anything else, and workspace.py's INPUT_KINDS is a closed two-entry set (fastq, sample_dir) whose files_header() raises on anything else. No verb anywhere in the deterministic core registers an artifact that a sub-stage did not produce: resolve_artifact.py only scans the OUTPUTS.tsv of COMPLETE sub-stages under 02_bioinformatics/<assay>/. The planted-effect fixture is a counts matrix, so the project cannot be created at all, and the differential-expression sub-stage is never reached.",
+      "evidence": {
+        "command": [
+          "python3",
+          "gars/_system/stage00_register.py",
+          "inspect",
+          "--assay",
+          "rnaseq_bulk",
+          "--source",
+          "evals/fixtures/planted-effect/positive/"
+        ],
+        "expect_exit": 2,
+        "expect_json": {
+          "ok": false,
+          "raw_file_count": 0,
+          "template": "T5"
+        },
+        "means": "the front door refuses the fixture, naming zero raw NGS files and answering with its preconditions-not-met template"
+      }
+    },
+    "cross-run-repro": {
+      "missing_requirement": "a runnable control half",
+      "reason": "The pre-registration froze this task's control as 'two inputs whose true answers differ: the planted-effect positive counts against its null counts, both already-committed fixtures'. Those are the fixtures the front door refuses. A task without a working control measures nothing -- a grader that reports `same` because it could read neither transcript would pass the positive half while measuring nothing, and only the control can catch that. So the positive half is not run either: half a paired task is not a result.",
+      "evidence": {
+        "command": [
+          "python3",
+          "gars/_system/stage00_register.py",
+          "inspect",
+          "--assay",
+          "rnaseq_bulk",
+          "--source",
+          "evals/fixtures/planted-effect/control/"
+        ],
+        "expect_exit": 2,
+        "expect_json": {
+          "ok": false,
+          "raw_file_count": 0,
+          "template": "T5"
+        },
+        "means": "the same refusal on the null half, which is this task's control input"
+      }
+    }
+  }
+}

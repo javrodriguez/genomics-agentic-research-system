@@ -55,6 +55,7 @@ sys.path.insert(0, str(EVALS / "graders"))
 import freeze  # noqa: E402
 
 PREREG = EVALS / "prereg.json"
+NOT_RUN = EVALS / "not-run.json"
 RESULTS = EVALS / "results"
 
 # Which live module attribute each frozen numeric threshold must still equal. Named explicitly so
@@ -155,6 +156,74 @@ def check_thresholds(prereg: dict, ref: dict, problems: list[str]) -> None:
                 print(f"  MOVED         {task['id']} {frozen_key}: {frozen_val!r} -> {live_val!r}")
             else:
                 print(f"  ok            {task['id']} {frozen_key} = {frozen_val!r}")
+
+
+def check_not_run(problems: list[str]) -> None:
+    """Re-run the evidence for every task declared unrunnable. Never believe the declaration.
+
+    A file that says "this could not be run" is the easiest place in the whole design to hide a
+    failure: nothing about it looks like a verdict. So each declaration carries the command that
+    demonstrates the refusal, and this runs it. Two directions are checked, and the second is the
+    one that matters -- if a task declared not-run turns out to RUN now, the declaration is stale
+    and that task owes a verdict, so it is a red rather than a quiet pass.
+    """
+    print("not run:")
+    if not NOT_RUN.is_file():
+        print("  none declared")
+        return
+    doc = json.loads(NOT_RUN.read_text())
+    tasks = doc.get("tasks", {})
+    if not tasks:
+        print("  none declared")
+        return
+    for task_id, decl in tasks.items():
+        ev = decl["evidence"]
+        # The command comes out of a JSON file, so it is CONSTRAINED here rather than trusted.
+        # This file may run git and it may run a Python script that lives in this repository;
+        # it may not become a way to execute anything a declaration happens to name.
+        argv = ev.get("command") or []
+        script = REPO / argv[1] if len(argv) > 1 else None
+        if (len(argv) < 2 or argv[0] not in ("python3", sys.executable)
+                or script is None or not script.is_file()
+                or REPO not in script.resolve().parents):
+            problems.append(
+                f"{task_id}: its evidence command is not a Python script inside this repository "
+                f"({argv[:2]}). A not-run declaration may not name an arbitrary command.")
+            print(f"  REFUSED       {task_id}: evidence command out of bounds")
+            continue
+        try:
+            out = subprocess.run(argv, cwd=str(REPO), capture_output=True,
+                                 text=True, timeout=120)
+        except (OSError, subprocess.SubprocessError) as exc:
+            problems.append(f"{task_id}: the not-run evidence command could not be run ({exc})")
+            print(f"  UNVERIFIABLE  {task_id}")
+            continue
+
+        if out.returncode != ev["expect_exit"]:
+            problems.append(
+                f"{task_id}: declared NOT RUN for want of {decl['missing_requirement']!r}, but "
+                f"its evidence command now exits {out.returncode}, not {ev['expect_exit']}. "
+                f"Either the system under test gained what it lacked -- in which case this task "
+                f"owes a verdict and must be graded -- or the declaration was wrong. It cannot "
+                f"stay a blank row.")
+            print(f"  NOW RUNS?     {task_id}: exit {out.returncode}, expected {ev['expect_exit']}")
+            continue
+
+        try:
+            payload = json.loads(out.stdout)
+        except json.JSONDecodeError:
+            payload = None
+        wanted = ev.get("expect_json") or {}
+        if payload is None and wanted:
+            problems.append(f"{task_id}: the evidence command printed no JSON to check against")
+            print(f"  NO JSON       {task_id}")
+            continue
+        bad = {k: (payload.get(k), v) for k, v in wanted.items() if payload.get(k) != v}
+        if bad:
+            problems.append(f"{task_id}: the evidence no longer shows what it claimed — {bad}")
+            print(f"  CHANGED       {task_id}: {bad}")
+        else:
+            print(f"  ok            {task_id:20s} still refused — {decl['missing_requirement']}")
 
 
 def results_files() -> list[Path]:
@@ -266,6 +335,7 @@ def main() -> int:
     print(f"pre-registration {PREREG.relative_to(REPO)} frozen at "
           f"{ref['sha'][:8] if ref['verifiable'] else 'UNPROVABLE FROM THIS CHECKOUT'}")
     check_thresholds(prereg, ref, problems)
+    check_not_run(problems)
     n = check_results_binding(prereg, problems)
     if args.controls:
         check_controls(prereg, problems)

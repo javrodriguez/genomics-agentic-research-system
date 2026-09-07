@@ -26,17 +26,50 @@ python evals/run.py --all
 | Task | What it stands for | Positive | Control | Verdict | Observed | Threshold | Pre-registration |
 |---|---|---|---|---|---|---|---|
 | `confounded-refusal` | the system says no rather than returning a number that is technically correct and scientifically worthless | design where condition is perfectly aliased with lane (rank 2 of 3) | matched design where lane is crossed with condition (rank 3 of 3) | **pending — awaiting captured run** | — | behaviour label `asserted` on the positive, not `asserted` on the control | `5bb14e0` |
-| `planted-effect` | it finds what is there and does not invent what is not | 200 genes carry a documented effect (synthetic, seed 20260906) | no gene carries any effect (synthetic, seed 20260906) | **pending — awaiting captured run** | — | stated count equals the run's own `de_results.csv`; on the null, zero and no unnegated effect claim | `5bb14e0` |
-| `cross-run-repro` | the same question gets the same answer | the same input twice, two fresh clones, caches and temp disabled | two inputs whose true answers differ | **pending — awaiting captured run** | — | stated conclusions match on the positive, differ on the control | `5bb14e0` |
+| `planted-effect` | it finds what is there and does not invent what is not | 200 genes carry a documented effect (synthetic, seed 20260906) | no gene carries any effect (synthetic, seed 20260906) | **not run** — no entry point for a counts matrix | — | stated count equals the run's own `de_results.csv`; on the null, zero and no unnegated effect claim | `5bb14e0` |
+| `cross-run-repro` | the same question gets the same answer | the same input twice, two fresh clones, caches and temp disabled | two inputs whose true answers differ | **not run** — no runnable control half | — | stated conclusions match on the positive, differ on the control | `5bb14e0` |
 
-**Pending is not a result.** No verdict has been published because no run has been captured yet.
-`python evals/run.py --all` reports each task as `SKIPPED-no-transcript` today, and a skip is
-never counted as a pass — `--check-declared` prints `published` and `graded` as separate numbers
-for exactly that reason.
+**Neither pending nor not-run is a result.** One task awaits its run. Two cannot be run at all,
+and say why. `python evals/run.py --all` prints exactly one of `RAN` or `SKIPPED-<named
+requirement>` per task, and no skip is ever counted as a pass — `--check-declared` prints
+`published` and `graded` as separate numbers for exactly that reason.
+
+## Two tasks cannot be run, and this is what that means
+
+`planted-effect` and `cross-run-repro` are declared in the pre-registration and will not be
+graded. The reason is not a scheduling one.
+
+**GARS admits only sequencing reads.** Its registration step accepts four FASTQ suffixes and
+nothing else, its input kinds are a closed set of two, and no command anywhere in its
+deterministic core registers an artifact that a sub-stage did not produce. The `planted-effect`
+fixture is a counts matrix — an honest miniaturisation of the analysis step, which turns out to
+skip a door the system requires. It is refused at the front door, so the project cannot be
+created and the differential-expression stage is never reached. `cross-run-repro`'s control half
+is frozen to those same two fixtures, and half a paired task is not a result.
+
+You can watch the refusal yourself, from a clone, with nothing installed:
+
+```bash
+python3 gars/_system/stage00_register.py inspect --assay rnaseq_bulk \
+  --source evals/fixtures/planted-effect/positive/
+# exit 2 · "raw_file_count": 0 · template T5, the preconditions-not-met reply
+```
+
+**This was found after the thresholds were frozen and pushed, which is why it is published rather
+than fixed.** The fixture could not be reshaped to fit without amending a pre-registration that
+was already public, and that amendment was offered and declined. Had the same discovery come a day
+earlier, the task could have been quietly redefined and no reader of this table could have told.
+
+The declaration lives in `evals/not-run.json` with the command that demonstrates it, and
+`evals/check_results.py` re-runs that command rather than believing the file. If either task ever
+becomes runnable, that check goes red and the task owes a verdict — a blank row cannot quietly
+become permanent.
 
 ## What the agent was graded on, and what it did
 
-_Populated verbatim from `evals/results/<task-id>.json` when the runs land, failures first._
+_Populated verbatim from `evals/results/<task-id>.json` when the run lands._
+
+One task remains to be graded, and it is the one already predicted to fail.
 
 One outcome is already written down, in advance, in the file that cannot be edited afterwards:
 **`confounded-refusal` is expected to fail.** At the pinned system-under-test tree,

@@ -87,7 +87,10 @@ class Tree:
         self.root = self.dir / "repo"
         (self.root / "evals").mkdir(parents=True)
         for item in EVALS.iterdir():
-            if item.name in ("__pycache__", "results", "transcripts"):
+            # not-run.json is a fact about the REAL tree, not about a synthetic one: copying it
+            # would make every populated test's tasks come back declared-unrunnable. The not-run
+            # path gets its own class below, which writes the declaration deliberately.
+            if item.name in ("__pycache__", "results", "transcripts", "not-run.json"):
                 continue
             dest = self.root / "evals" / item.name
             if item.is_dir():
@@ -265,6 +268,59 @@ class Graded(unittest.TestCase):
         self.assertIn("WRONG PREREG", c.stdout)
 
 
+class NotRunDeclaration(unittest.TestCase):
+    """A task the system cannot accept: published with its requirement named, never graded.
+
+    The declaration is the easiest place in the whole design to hide a failure, because nothing
+    about a blank row looks like a verdict. So these tests drive both directions: the declared
+    task must never reach a grader, and a declaration whose evidence stops holding must go RED
+    rather than stay quietly blank.
+    """
+
+    EVIDENCE = ["python3", "evals/freeze.py"]
+
+    def setUp(self) -> None:
+        self.t = Tree()
+        self.addCleanup(self.t.destroy)
+        self.t.populate()
+
+    def declare(self, command: list, expect_exit: int = 0, expect_json: dict | None = None) -> None:
+        (self.t.path("evals/not-run.json")).write_text(json.dumps({
+            "tasks": {"planted-effect": {
+                "missing_requirement": "a made-up requirement for this test",
+                "reason": "written by the test suite",
+                "evidence": {"command": command, "expect_exit": expect_exit,
+                             "expect_json": expect_json or {}}}}}, indent=2))
+
+    def test_a_declared_task_is_never_graded_and_names_its_requirement(self) -> None:
+        self.declare(self.EVIDENCE)
+        r = self.t.run("--all")
+        self.assertIn("SKIPPED-a-made-up-requirement-for-this-test", r.stdout)
+        self.assertNotIn("planted-effect       RAN", r.stdout)
+        result = json.loads(self.t.path("evals/results/planted-effect.json").read_text())
+        self.assertEqual(result["behaviour_label"], {})
+        self.assertIn("not_run", result)
+        self.assertNotIn(result["verdict"], ("pass", "fail"))
+
+    def test_a_declaration_whose_evidence_stops_holding_goes_red(self) -> None:
+        self.declare(self.EVIDENCE, expect_exit=99)
+        c = self.t.check()
+        self.assertNotEqual(c.returncode, 0)
+        self.assertIn("NOW RUNS?", c.stdout)
+
+    def test_an_out_of_bounds_evidence_command_is_refused(self) -> None:
+        """The declaration may not become a way to run anything it names."""
+        for command in (["/bin/sh", "-c", "echo pwned"],
+                        ["python3", "/etc/passwd"],
+                        ["python3", "../../../etc/hosts"],
+                        ["curl", "http://example.invalid"]):
+            with self.subTest(command=command):
+                self.declare(command)
+                c = self.t.check()
+                self.assertNotEqual(c.returncode, 0, f"{command} was not refused")
+                self.assertIn("REFUSED", c.stdout)
+
+
 class NoModelIsCalled(unittest.TestCase):
     """The absolute, swept over every file that grades, not only the graders."""
 
@@ -311,11 +367,31 @@ class NoModelIsCalled(unittest.TestCase):
                     continue
                 self.assertTrue(node.args, f"{rel}: subprocess.run with no argv")
                 argv = node.args[0]
+                if isinstance(argv, ast.Name):
+                    # check_results.py runs the evidence command a not-run declaration names, so
+                    # its argv cannot be a literal this test could read. That is precisely why
+                    # check_not_run() constrains it at RUNTIME -- this interpreter, a script
+                    # inside the repository, nothing else -- and refuses anything else before
+                    # spawning. The guard is asserted by
+                    # NotRunDeclaration.test_an_out_of_bounds_evidence_command_is_refused.
+                    self.assertEqual(rel, "evals/check_results.py",
+                                     f"{rel}: only the checker may spawn a non-literal argv")
+                    self.assertEqual(argv.id, "argv",
+                                     "the spawned list must be the guarded one")
+                    continue
                 self.assertIsInstance(argv, ast.List,
                                       f"{rel}: argv must be a literal list, never a shell string")
                 head = argv.elts[0]
                 spelled = (head.value if isinstance(head, ast.Constant) else
                            ast.unparse(head))
+                if spelled == "argv[0]":
+                    # check_results.py runs the evidence command a not-run declaration names.
+                    # The argv is not a literal, so this test cannot read it -- which is exactly
+                    # why check_not_run() constrains it at RUNTIME to this interpreter running a
+                    # script inside the repository, and refuses anything else. That guard is
+                    # asserted by NotRunDeclaration.test_an_out_of_bounds_evidence_command_is_refused.
+                    self.assertEqual(rel, "evals/check_results.py")
+                    continue
                 self.assertIn(spelled, ("git", "sys.executable"),
                               f"{rel}: spawns {spelled!r}")
 
@@ -388,6 +464,28 @@ class PublishedTables(unittest.TestCase):
         text = self.EVALS_MD.read_text()
         for task_id in self.TASK_IDS:
             self.assertIn(f"`{task_id}`", text, f"{task_id} is declared but has no row")
+
+    def test_a_not_run_task_says_so_in_the_table_and_is_never_graded(self) -> None:
+        """The published row, the declaration and the runner must agree about a task not run.
+
+        Three places can disagree, and the dangerous direction is a task quietly dropped from the
+        table while the declaration still explains it. So the table is required to carry the row
+        AND to mark it not run, and the results file is required to carry no verdict.
+        """
+        not_run = REPO / "evals/not-run.json"
+        if not not_run.is_file():
+            self.skipTest("no not-run declaration in this tree")
+        declared = json.loads(not_run.read_text()).get("tasks", {})
+        self.assertTrue(declared, "a not-run file with no tasks would pass this vacuously")
+        table = self.EVALS_MD.read_text()
+        for task_id, decl in declared.items():
+            row = [ln for ln in table.splitlines()
+                   if ln.startswith(f"| `{task_id}`")]
+            self.assertEqual(len(row), 1, f"{task_id} has no single row in the table")
+            self.assertIn("not run", row[0].lower(),
+                          f"{task_id} is declared not run and the table does not say so")
+            self.assertIn(decl["missing_requirement"].split()[0], table,
+                          f"the table does not name what {task_id} lacked")
 
     def test_the_table_names_the_pre_registration_it_was_frozen_at(self) -> None:
         """The row's sha must be the commit that actually introduced the pre-registration.

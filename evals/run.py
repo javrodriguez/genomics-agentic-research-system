@@ -39,6 +39,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -54,6 +55,7 @@ import cross_run_repro as t_repro  # noqa: E402
 import planted_effect as t_planted  # noqa: E402
 
 PREREG = EVALS / "prereg.json"
+NOT_RUN = EVALS / "not-run.json"
 RESULTS = EVALS / "results"
 
 STATE_RAN = "RAN"
@@ -92,6 +94,25 @@ def prereg_sha256() -> str:
 # ---------------------------------------------------------------------------
 # Where a task's transcripts live. The layout is the pre-registration's, not this file's.
 # ---------------------------------------------------------------------------
+
+
+def not_run_declarations() -> dict:
+    """Tasks declared unrunnable against the pinned system, with the reason and its evidence.
+
+    Read here so a declared task never reaches a grader and never reads as a pass. The
+    declaration is NOT trusted: check_results.py re-runs each evidence command, and a task
+    declared not-run that turns out to run is a red there.
+    """
+    if not NOT_RUN.is_file():
+        return {}
+    return json.loads(NOT_RUN.read_text()).get("tasks", {})
+
+
+def requirement_slug(text: str) -> str:
+    """A named requirement, in the shape the pre-registration's criterion 3 fixed:
+    exactly one of `RAN` or `SKIPPED-<named requirement>`."""
+    words = re.findall(r"[a-z0-9]+", text.lower())
+    return "-".join(words[:7]) or "unnamed-requirement"
 
 
 def half_dir(task_id: str, half: str) -> Path:
@@ -159,10 +180,40 @@ def missing_requirement(task_id: str, half: str, files: list[Path]) -> str | Non
     return None
 
 
-def run_task(prereg: dict, task: dict, ref: dict) -> dict:
+def run_task(prereg: dict, task: dict, ref: dict, declared: dict) -> dict:
     task_id = task["id"]
     halves: dict[str, dict] = {}
     state = STATE_RAN
+
+    decl = declared.get(task_id)
+    if decl:
+        # Declared unrunnable against the pinned system. It is published with its missing
+        # requirement named, and it is never graded: a task the system cannot accept has no
+        # behaviour to score, and scoring it anyway would be inventing one.
+        return {
+            "task": task_id,
+            "prereg_sha": ref["sha"],
+            "prereg_sha_verifiable": ref["verifiable"],
+            "prereg_sha_note": ref["why"],
+            "prereg_sha256": prereg_sha256(),
+            "state": f"SKIPPED-{requirement_slug(decl['missing_requirement'])}",
+            "verdict": f"SKIPPED-{requirement_slug(decl['missing_requirement'])}",
+            "model_or_none": None,
+            "behaviour_label": {},
+            "observed": {},
+            "threshold": {},
+            "not_run": {
+                "missing_requirement": decl["missing_requirement"],
+                "reason": decl["reason"],
+                "evidence_command": " ".join(decl["evidence"]["command"]),
+                "evidence_means": decl["evidence"].get("means"),
+            },
+            "halves": {},
+            "note": ("NOT RUN, with the missing requirement named. This is not a pass, not a "
+                     "failure and not an oversight: the pinned system cannot accept this task's "
+                     "input at all. check_results.py re-runs the evidence command rather than "
+                     "believing this row."),
+        }
 
     for half in HALVES:
         files = transcripts_for(prereg, task_id, half)
@@ -245,6 +296,7 @@ def check_declared(prereg: dict) -> int:
 
 def run_all(prereg: dict) -> int:
     ref = prereg_ref()
+    declared = not_run_declarations()
     if not ref["verifiable"]:
         print(f"NOTE: the freeze commit cannot be proved from this checkout — {ref['why']}")
         print("      Grading proceeds (it reads committed transcripts, not history), and every "
@@ -252,7 +304,7 @@ def run_all(prereg: dict) -> int:
     RESULTS.mkdir(parents=True, exist_ok=True)
     ran = 0
     for task in prereg["tasks"]:
-        result = run_task(prereg, task, ref)
+        result = run_task(prereg, task, ref, declared)
         out = RESULTS / f"{task['id']}.json"
         out.write_text(json.dumps(result, indent=2) + "\n")
         line = result["state"]
