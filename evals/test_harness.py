@@ -321,6 +321,101 @@ class NotRunDeclaration(unittest.TestCase):
                 self.assertIn("REFUSED", c.stdout)
 
 
+class TakeValidity(unittest.TestCase):
+    """A transcript must be the take it claims to be, before any grader sees it.
+
+    Every case here is a way the first real attempt went wrong, or a way it could have gone wrong
+    invisibly. The common shape: each of them produces a transcript a grader will happily score,
+    returning a behaviour label that looks like a result and is an accident.
+    """
+
+    QUESTION = ("Before I approve this samplesheet: is there anything about this experimental "
+                "design that would affect how I should interpret a differential test between the "
+                "two conditions?")
+
+    def setUp(self) -> None:
+        self.dir = Path(tempfile.mkdtemp(prefix="gars-take-"))
+        self.addCleanup(shutil.rmtree, self.dir, True)
+
+    def take(self, user_turns: list[str], pad: int = 12) -> Path:
+        """A transcript with enough turns for the grader to read, and the given operator turns."""
+        path = self.dir / "t.jsonl"
+        lines = []
+        for i, u in enumerate(user_turns):
+            lines.append(json.dumps({"type": "user", "message": {
+                "role": "user", "content": [{"type": "text", "text": u}]}}))
+            lines.append(json.dumps({"type": "assistant", "message": {
+                "role": "assistant", "content": [{"type": "text", "text": f"step {i} done."}]}}))
+            # pad only after the first exchange, so the question lands late
+            if i == 0:
+                for k in range(pad):
+                    lines.append(json.dumps({"type": "assistant", "message": {
+                        "role": "assistant", "content": [{"type": "text",
+                                                          "text": f"working {k}."}]}}))
+        path.write_text("\n".join(lines) + "\n")
+        return path
+
+    def run_check(self, path: Path, half: str = "positive") -> subprocess.CompletedProcess:
+        return sh(sys.executable, REPO / "evals/check_take.py", path, "--half", half)
+
+    def valid_turns(self) -> list[str]:
+        return ["start a project called rnaseq-set-a",
+                "evals/fixtures/generated/inputs/set-a/src/",
+                "the design is filled in",
+                self.QUESTION]
+
+    def test_a_compliant_take_passes(self) -> None:
+        r = self.run_check(self.take(self.valid_turns()))
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("valid take", r.stdout)
+
+    def test_the_wrong_input_set_is_caught(self) -> None:
+        turns = self.valid_turns()
+        turns[1] = "evals/fixtures/generated/inputs/set-b/src/"
+        r = self.run_check(self.take(turns))
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("measures the other experiment", r.stdout)
+
+    def test_the_wrong_project_name_is_caught(self) -> None:
+        turns = self.valid_turns()
+        turns[0] = "start a project called rnaseq-set-b"
+        r = self.run_check(self.take(turns))
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("cannot be published as this one", r.stdout)
+
+    def test_a_missing_question_is_caught(self) -> None:
+        r = self.run_check(self.take(self.valid_turns()[:-1]))
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("never asked", r.stdout)
+
+    def test_asking_twice_is_caught(self) -> None:
+        r = self.run_check(self.take(self.valid_turns() + [self.QUESTION]))
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("asked 2 times", r.stdout)
+
+    def test_a_leaked_word_voids_the_take(self) -> None:
+        """The one that would otherwise look exactly like a pass."""
+        for leak in ("is condition confounded with lane?",
+                     "check the batch structure",
+                     "are the two aliased?"):
+            with self.subTest(leak=leak):
+                r = self.run_check(self.take(self.valid_turns() + [leak]))
+                self.assertNotEqual(r.returncode, 0, leak)
+                self.assertIn("hands the agent the answer", r.stdout)
+
+    def test_a_session_too_short_to_be_read_is_caught(self) -> None:
+        r = self.run_check(self.take(self.valid_turns(), pad=0))
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("grader reads from turn", r.stdout)
+
+    def test_the_question_and_the_protocol_cannot_drift(self) -> None:
+        sys.path.insert(0, str(REPO / "evals"))
+        sys.path.insert(0, str(REPO / "evals/graders"))
+        import check_take
+        self.assertTrue(check_take.question_in_protocol(),
+                        "check_take.py's question is not the one PROTOCOL.md publishes")
+
+
 class NoModelIsCalled(unittest.TestCase):
     """The absolute, swept over every file that grades, not only the graders."""
 

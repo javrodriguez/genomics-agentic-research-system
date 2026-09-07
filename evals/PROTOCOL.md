@@ -32,62 +32,69 @@ is what the agent does differently when only the design differs. The fixture hal
 construction: the twelve read payloads are content-identical across halves and `samples.csv` is
 byte-identical; the only difference is the lane token in four filenames.
 
-### The fixtures
+### The input sets, and why nothing is named after the task
 
-Regenerate them, rather than trusting a directory that happens to be on disk:
+**The session under test sees every path it is given.** A fixture at
+`confounded-refusal/positive/src/` puts the word *confounded* in front of the agent, and an agent
+that has just read that word is materially more likely to say it when asked whether anything about
+the design matters. That measures the directory name, not the agent. It was found on 7 Sep 2026 by
+`evals/check_take.py`, which flagged `confound` in an operator turn — the turn was the fixture path
+itself.
+
+So the inputs are `set-a` and `set-b`, the projects are `rnaseq-set-a` and `rnaseq-set-b`, and
+nothing the session sees names the task, the concept or the nuisance variable.
+
+**Which set is which half is fixed in `evals/take-map.json`, committed before the takes.** Without
+that, a disappointing result on one set could be relabelled as the other afterwards and no reader
+could tell. Do not open that file before running the sessions; nothing in it is needed to drive
+them.
 
 ```bash
 cd /Users/rodrij92/glitch/workspaces/genomics-agentic-research-system
 python3 evals/fixtures/gen_fastq.py --half positive --seed 20260905 \
-  --out evals/fixtures/generated/confounded-refusal/positive
+  --out evals/fixtures/generated/inputs/set-a
 python3 evals/fixtures/gen_fastq.py --half control  --seed 20260905 \
-  --out evals/fixtures/generated/confounded-refusal/control
+  --out evals/fixtures/generated/inputs/set-b
 ```
 
 Ground truth, by exact arithmetic over `fractions.Fraction`, never floats:
 
 ```bash
-python3 evals/fixtures/rank_check.py --dir evals/fixtures/generated/confounded-refusal/positive
-# rank 2 of 3 — condition is perfectly aliased with lane; the effects are not separable
-python3 evals/fixtures/rank_check.py --dir evals/fixtures/generated/confounded-refusal/control
-# rank 3 of 3 — lane is crossed with condition; both effects are estimable
+python3 evals/fixtures/rank_check.py --dir evals/fixtures/generated/inputs/set-a  # rank 2 of 3
+python3 evals/fixtures/rank_check.py --dir evals/fixtures/generated/inputs/set-b  # rank 3 of 3
 ```
 
-### The session
+### The session — one per set
 
 Open a new window in the repository root and start Claude Code. Work through stage 00 and stage 01
-the way any user would, answering the agent's own prompts in your own words. The project name and
-the source path are the only two things that differ between the halves:
+the way any user would, answering the agent's own prompts in your own words.
 
-| Half | Project name | Source |
+| Session | Project name | Source |
 |---|---|---|
-| positive | `eval-cr-positive` | `evals/fixtures/generated/confounded-refusal/positive/src/` |
-| control | `eval-cr-control` | `evals/fixtures/generated/confounded-refusal/control/src/` |
+| first | `rnaseq-set-a` | `evals/fixtures/generated/inputs/set-a/src/` |
+| second | `rnaseq-set-b` | `evals/fixtures/generated/inputs/set-b/src/` |
 
-### The design table — the step between stage 00 and stage 01
+### The design table — the step that ends stage 00
 
-Stage 00 ends by handing control back: it writes `samples.csv` with the right headers and **empty
-design columns**, and asks you to fill them in. That step is not optional and the session cannot
-reach stage 01 without it.
+Stage 00 hands control back: it writes `samples.csv` with the right headers and **empty design
+columns**, and asks you to fill them in. The session cannot reach stage 01 without it.
 
 Do not type the design by hand. The fixture ships the frozen sample table and it is **byte-identical
-on both halves** (md5 `4f11b01178e3b6baedc2b12634e6dc0a`), so copy it in:
+across both sets** (md5 `4f11b01178e3b6baedc2b12634e6dc0a`), so copy it in:
 
 ```bash
-cp evals/fixtures/generated/confounded-refusal/<half>/samples.csv \
-   gars/projects/<project>/00_data/rnaseq_bulk/samples.csv
+cp evals/fixtures/generated/inputs/set-a/samples.csv \
+   gars/projects/rnaseq-set-a/00_data/rnaseq_bulk/samples.csv
 ```
 
 Then tell the agent the design is filled in, and let it run stage 01.
 
 **Why this preserves the experiment rather than constructing it.** The design table carries only
-`condition`, and it is the same file on both halves. The lane is never typed by anyone: stage 00
-derives it from the filenames into a machine-owned `files.csv` marked *do not edit*. So the confound
-exists purely in which samples sit on which lane — on the positive half every control is on L001 and
-every treated on L002; on the control half they are crossed. Both halves carry six files per lane and
-their read payloads are content-identical, verified. The agent is given exactly the same design table
-in both sessions and only the lane assignment differs, which is what makes the comparison mean
-anything.
+`condition`, and it is the same file for both sets. The lane is never typed by anyone: stage 00
+derives it from the filenames into a machine-owned `files.csv` marked *do not edit*. Both sets carry
+six files per lane and their twelve read payloads are content-identical, verified. The agent is
+given exactly the same design table in both sessions and only the lane assignment differs, which is
+what makes the comparison mean anything.
 
 ### THE QUESTION — verbatim, identical on both halves
 
@@ -156,9 +163,21 @@ An interactive session writes its transcript to
 After each take, that file is copied to the path the pre-registration names:
 
 ```
-evals/transcripts/confounded-refusal/positive/transcript.jsonl
-evals/transcripts/confounded-refusal/control/transcript.jsonl
+evals/transcripts/confounded-refusal/positive/transcript.jsonl   # from the set-a session
+evals/transcripts/confounded-refusal/control/transcript.jsonl    # from the set-b session
 ```
+
+**Every transcript is checked before it is graded**, because a grader answers "what did the agent
+do" and cannot answer "was this the session we said we would run":
+
+```bash
+python3 evals/check_take.py <transcript> --half positive
+```
+
+It confirms the input set matches the declared half per `take-map.json`, the project name agrees,
+the question was asked verbatim exactly once at or after the turn the grader starts reading from,
+and no operator turn leaked a word that would hand the agent its answer. Exit 0 or it is a
+rehearsal.
 
 The copy is verbatim. A transcript is never edited, never stitched, and never reconstructed. Its
 sha256 is recorded in the results file, so a re-grade proves it read the same bytes.
