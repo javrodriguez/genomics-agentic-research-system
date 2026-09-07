@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -317,6 +318,87 @@ class NoModelIsCalled(unittest.TestCase):
                            ast.unparse(head))
                 self.assertIn(spelled, ("git", "sys.executable"),
                               f"{rel}: spawns {spelled!r}")
+
+
+class PublishedTables(unittest.TestCase):
+    """Invariant sweeps over the two published tables. These are absolutes, so they are swept.
+
+    Every rule here is one the goal states without exception, and a rule checked once by eye on
+    the day it was written is a rule that holds until the next edit. CI runs these, so the two
+    tables cannot quietly merge and the banned vocabulary cannot quietly return.
+    """
+
+    EVALS_MD = REPO / "docs/EVALS.md"
+    RESULTS_MD = REPO / "docs/RESULTS.md"
+
+    FIRST_LINE = ("This table grades agent behaviour on 3 pre-registered tasks. It is not the "
+                  "reproduction campaign, which scores pipeline output and lives in "
+                  "docs/RESULTS.md.")
+
+    # Words the goal bans from any public artifact, and the reason each is banned: they assert a
+    # standing this work does not have, or a capability wider than three tasks.
+    BANNED = ["compliant", "gxp", "production-ready", "named users",
+              "benchmarking framework", "evaluation harness"]
+
+    TASK_IDS = ["confounded-refusal", "planted-effect", "cross-run-repro"]
+
+    def test_the_disclaimer_is_the_first_line_verbatim(self) -> None:
+        first = self.EVALS_MD.read_text().splitlines()[0]
+        self.assertEqual(first, self.FIRST_LINE)
+
+    def test_no_banned_vocabulary(self) -> None:
+        low = self.EVALS_MD.read_text().lower()
+        for word in self.BANNED:
+            self.assertNotIn(word, low, f"banned in a public artifact: {word!r}")
+
+    def test_no_rate_over_three_tasks(self) -> None:
+        """With n=3 the table reports outcomes. A percentage suggests a precision it cannot carry."""
+        text = self.EVALS_MD.read_text()
+        self.assertEqual(re.findall(r"\d+(?:\.\d+)?\s*%", text), [])
+
+    def test_the_two_tables_share_no_project(self) -> None:
+        """Swept against the slugs RESULTS.md actually contains, never a list typed out here.
+
+        A hard-coded slug list would go stale the moment a campaign project is added, and would
+        then pass while the thing it guards against was happening.
+        """
+        campaign = set(re.findall(r"`((?:dko|cuttag)[a-z0-9-]+)`", self.RESULTS_MD.read_text()))
+        self.assertTrue(campaign, "no campaign slug found — this sweep would pass vacuously")
+        evals_text = self.EVALS_MD.read_text()
+        for slug in campaign:
+            self.assertNotIn(slug, evals_text, f"campaign project {slug!r} in the Layer B table")
+        results_text = self.RESULTS_MD.read_text()
+        for task_id in self.TASK_IDS:
+            self.assertNotIn(task_id, results_text,
+                             f"eval task {task_id!r} in the campaign table")
+
+    def test_the_campaign_keeps_its_own_denominator(self) -> None:
+        """Every unclosed campaign project stays in the table saying so, rather than dropped."""
+        rows = [ln for ln in self.RESULTS_MD.read_text().splitlines()
+                if re.match(r"^\|\s*\d[a-z]?\s*\|", ln)]
+        self.assertTrue(rows, "no campaign rows found — this sweep would pass vacuously")
+        unclosed = [r for r in rows if "not scored" in r]
+        marker_lines = [ln for ln in self.RESULTS_MD.read_text().splitlines()
+                        if "not scored" in ln]
+        self.assertEqual(len(unclosed), len(marker_lines),
+                         "the not-scored marker appears outside the table, so counting it no "
+                         "longer counts unclosed projects")
+
+    def test_every_declared_task_has_a_row(self) -> None:
+        text = self.EVALS_MD.read_text()
+        for task_id in self.TASK_IDS:
+            self.assertIn(f"`{task_id}`", text, f"{task_id} is declared but has no row")
+
+    def test_the_table_names_the_pre_registration_it_was_frozen_at(self) -> None:
+        """The row's sha must be the commit that actually introduced the pre-registration."""
+        out = sh("git", "-C", str(REPO), "log", "--format=%H", "--reverse", "--",
+                 "evals/prereg.json")
+        shas = [ln.strip() for ln in out.stdout.splitlines() if ln.strip()]
+        if not shas:
+            self.skipTest("no git history for evals/prereg.json in this checkout")
+        text = self.EVALS_MD.read_text()
+        self.assertIn(shas[0][:7], text,
+                      "the table cites a pre-registration sha that is not the freeze commit")
 
 
 if __name__ == "__main__":

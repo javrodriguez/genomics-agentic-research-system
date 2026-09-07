@@ -20,6 +20,11 @@ system, follows the Interpretable Context Methodology (ICM) — Van Clief &amp; 
   depth-only QC could not have seen.
 - [docs/reproduction-campaign.md](docs/reproduction-campaign.md) — the campaign's design: accessions,
   run order, and what gets compared.
+- [docs/EVALS.md](docs/EVALS.md) — a separate question: how the **agent** behaved on three
+  pre-registered tasks it could fail, each paired with a control, with the thresholds fixed and
+  pushed before the first run. The campaign above scores pipeline output; this grades what the
+  agent did. Reproducible from a cold clone with `python evals/run.py --all`, and one of the three
+  is recorded in advance as expected to fail.
 - Defects found in the upstream pipeline tooling, reported and closed:
   [ClawBio#333](https://github.com/ClawBio/ClawBio/issues/333) ·
   [ClawBio#365](https://github.com/ClawBio/ClawBio/issues/365).
@@ -270,7 +275,9 @@ artifact each stage produces.
 ## Status
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(113 tests, green on macOS and on the cluster); live validation is per-assay:
+(113 tests, green on macOS and on the cluster); live validation is per-assay. Agent behaviour is
+graded separately and published in [docs/EVALS.md](docs/EVALS.md), against a pre-registration
+frozen before the first run:
 
 | Assay | State |
 |---|---|

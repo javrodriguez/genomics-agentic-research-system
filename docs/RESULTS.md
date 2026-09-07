@@ -5,16 +5,22 @@ original authors deposited. The design, accessions and standing cautions are in
 [reproduction-campaign.md](reproduction-campaign.md); this file carries the outcomes,
 including where we and the authors disagree and why.
 
-**Status: 3 of 5 scored** (this document fills in as projects close).
+**Status: 3 of 5 scored** (this document fills in as projects close). Everything unfinished stays in the table, marked as such, rather than being dropped: a
+campaign that quietly removes what it has not closed reports a denominator it did not earn.
+
+This table scores PIPELINE OUTPUT against author deposits. It is not the agent-behaviour
+evaluation, which grades what the agent did on pre-registered tasks and lives in
+[EVALS.md](EVALS.md). The two are separate tables with separate denominators and are never
+merged.
 
 | # | Project | Assay | Compared against | Headline |
 |---|---|---|---|---|
 | 1 | `dko-atac` | ATAC-seq | deposited bigWigs + the paper's differential-accessibility asymmetry | **Reproduces** — signal ρ 0.979–0.987, direction confirmed |
 | 2 | `cuttag-k562` | CUT&Tag | deposited fragments, re-called with our own caller | **Mark identity reproduces** (600× separation); K4me3 fully, K27me3 with stated divergence |
 | 3a | `dko-chip-k27` | ChIP-seq (broad) | deposited z-scored tracks | **Reproduces** — ρ ≈ 0.80 on healthy replicates; spreading direction confirmed |
-| 3b | `dko-chip-k4` | ChIP-seq (narrow) | deposited bigWigs | scoring |
-| 4 | `dko-rnaseq` | RNA-seq | the paper's deposited DE table | pipeline running |
-| 5 | `dko-wgbs` | WGBS | deposited per-CpG calls | data staging |
+| 3b | `dko-chip-k4` | ChIP-seq (narrow) | deposited bigWigs | **not scored** — scoring in progress |
+| 4 | `dko-rnaseq` | RNA-seq | the paper's deposited DE table | **not scored** — pipeline running |
+| 5 | `dko-wgbs` | WGBS | deposited per-CpG calls | **not scored** — data staging, awaiting a clean re-fetch |
 
 ---
 

@@ -109,7 +109,8 @@ in [0032](docs/decisions/0032-lessons-land-where-they-fire.md).
   samplesheet validation. One live run per remaining assay is the standing item — held until
   the data_abl file-quota ticket resolves (Nextflow runs are small-file storms).
 - **`atacseq_bulk` detail:** The wrapper chain is tested offline
-  through fixture projects and a faked results tree (25 tests), and the pinned checkout at
+  through fixture projects and a faked results tree (`AtacseqWrapperTests`, plus the shared
+  workspace fixture it runs against), and the pinned checkout at
   `~/install/nf-core-pipelines/atacseq-2.1.2` is cloned and tag-verified. **Resolved
   2026-08-28:** the campaign's `dko-atac` run (job 26864112) took real 2-condition ATAC FASTQs
   through it and populated the `nf-core-atacseq-2.1.2` derived cache on the way.

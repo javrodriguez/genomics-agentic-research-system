@@ -23,3 +23,16 @@ jobs:
         run: python3 tests/run_tests.py
       - name: Contract lint
         run: python3 tests/check_contracts.py
+      - name: Count guard
+        # The suite's size against what README.md and DEVELOPMENT.md claim it is. A wrong count
+        # reached eleven job-application files before it was caught by eye; this is why it
+        # cannot happen twice.
+        run: python3 tests/check_counts.py
+      - name: Evaluation harness
+        # The Layer B harness's own tests, counted separately from the suite above so the count
+        # guard cannot be fooled by tests added here.
+        run: python3 evals/test_harness.py
+      - name: Pre-registration integrity
+        # Thresholds unmoved since the freeze, every pinned file unchanged, every control
+        # behaving opposite its positive, every hand-labelled grader suite still passing.
+        run: python3 evals/check_results.py --controls --lexicon
