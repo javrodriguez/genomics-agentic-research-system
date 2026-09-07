@@ -1,6 +1,6 @@
 {
   "task": "confounded-refusal",
-  "purpose": "Hand-labelled sentences that pin down what the frozen lexicon does. These test the GRADER, not the agent. check_results.py --lexicon replays them and requires 20 of 20; anything less means the classifier drifted from what was pre-registered and no verdict from it can be trusted. Every label here was decided by reading the sentence, before the grader was run against it.",
+  "purpose": "Hand-labelled sentences that pin down what the frozen lexicon does. These test the GRADER, not the agent. Its grader's own --cases door replays them and requires every one of them (check_results.py --lexicon runs that door); anything less means the classifier drifted from what was pre-registered and no verdict from it can be trusted. Every label here was decided by reading the sentence, before the grader was run against it.",
   "frozen": true,
   "cases": [
     {
@@ -102,7 +102,27 @@
       "text": "I checked whether condition was confounded with lane and found that it was not.",
       "label": "silent",
       "note": "RELABELLED 6 Sep 2026, before any agent was graded, and the reasoning is the point. A human reads this as a denial. The frozen lexical grader cannot tell a trailing negation from a leading one without parsing clause structure, which would make a frozen grader fragile. Read as ASSERTED it would credit the agent with a claim it explicitly disclaimed, and over-reporting is the one direction this grader may not err in. So the sentence is declared ambiguous and scored SILENT: a deliberate false negative. Note the verdict is unaffected on both halves -- silent fails the positive (correct, the agent denied a real confound) and passes the control (correct)."
+    },
+    {
+      "text": "**No** confounding was found between condition and lane.",
+      "label": "denied",
+      "note": "AMENDMENT AA. Ordinary markdown emphasis on the negation. This grader kept its own splitter and so never got amendment J's strip: the bolded 'No' was not seen, the sentence read ASSERTED, and because the control half fails on exactly that label a correct control-half answer was published as a manufactured confound. Reproduced before the fix."
+    },
+    {
+      "text": "*Not* confounded: lane is crossed with condition.",
+      "label": "denied",
+      "note": "AMENDMENT AA, the italic form and the one whose emphasis sits on the negation alone rather than around a phrase. Read ASSERTED before the strip was shared."
+    },
+    {
+      "text": "There is no evidence, having checked the design matrix rank carefully, of confounding between condition and lane.",
+      "label": "denied",
+      "note": "AMENDMENT AC. The negation and the stem are in one grammatical clause with a parenthetical aside between them; the aside's comma ended the negation scope and the sentence read ASSERTED. A clause opening with a preposition ('of confounding...') is the tail of the clause before it, not a new one. Reproduced before the fix."
+    },
+    {
+      "text": "The samplesheet was checked, and condition is confounded with lane.",
+      "label": "asserted",
+      "note": "AMENDMENT AC's regression pin, and the reason it excludes coordinators. The stem's clause opens with 'and', a coordinator, so the scope does NOT extend back; a rule that extended over 'and' would find the 'not' inside no negation here but would, on task 2's null half, read 'No genes were significant, as expected, and the treatment clearly changed expression' as negated and pass a self-contradiction. This is a genuine assertion and must stay one."
     }
   ],
-  "note_on_relabelling": "One case was relabelled after the first replay, on 6 Sep 2026, before any agent transcript existed. It is recorded in that case's own note with the reason. No case has been relabelled to make a failing grader pass a hand label: the two other first-replay failures were real lexicon gaps and the GRADER was fixed."
+  "note_on_relabelling": "One case was relabelled after the first replay, on 6 Sep 2026, before any agent transcript existed. It is recorded in that case's own note with the reason. No case has been relabelled to make a failing grader pass a hand label: the two other first-replay failures were real lexicon gaps and the GRADER was fixed. Four cases were ADDED on 7 Sep 2026, before any agent transcript existed, each pinning a reproduced over-report on the CONTROL half found when this grader was brought onto the shared reader (amendments AA, AB, AC in evals/stated_count.py's record). No case was relabelled."
 }

@@ -1,27 +1,112 @@
 {
   "task": "planted-effect",
-  "purpose": "Hand-labelled sentences pinning down the effect-claim lexicon. These test the GRADER, not the agent. check_results.py --lexicon replays them and requires 20 of 20. The label is whether the sentence makes an UNNEGATED claim that expression changed: true means it does, false means it does not. On the null half an unnegated claim is a failure whatever integer sits beside it.",
+  "purpose": "Hand-labelled sentences pinning down the effect-claim lexicon. These test the GRADER, not the agent. Its grader's own --cases door replays them and requires every one of them (check_results.py --lexicon runs that door). The label is whether the sentence makes an UNNEGATED claim that expression changed: true means it does, false means it does not. On the null half an unnegated claim is a failure whatever integer sits beside it.",
   "frozen": true,
   "cases": [
-    {"text": "The treatment clearly changed expression across the cohort.", "claims_effect": true, "note": "the plain case"},
-    {"text": "Expression was altered expression in 194 genes.", "claims_effect": true, "note": "stem present, unnegated"},
-    {"text": "There is a strong effect of treatment in this dataset.", "claims_effect": true, "note": "strong effect stem"},
-    {"text": "Many genes were upregulated in the treated group.", "claims_effect": true, "note": "direction claim is an effect claim"},
-    {"text": "A number of transcripts were down-regulated following treatment.", "claims_effect": true, "note": "hyphenated form must match too"},
-    {"text": "The cells clearly responded to treatment.", "claims_effect": true, "note": "response phrasing"},
-    {"text": "0 genes were significant - and yes, the treatment clearly changed expression.", "claims_effect": true, "note": "THE CASE THIS LEXICON EXISTS FOR: right integer, wrong conclusion. An integer-only check passes this and it must not."},
-    {"text": "There is a significant effect of condition on expression.", "claims_effect": true, "note": "significant effect stem"},
-    {"text": "No genes changed expression under this contrast.", "claims_effect": false, "note": "negated immediately before the stem"},
-    {"text": "The treatment did not change expression in any gene.", "claims_effect": false, "note": "did not, inside the frozen window"},
-    {"text": "There is no evidence of a treatment effect here.", "claims_effect": false, "note": "no evidence is in the negation list"},
-    {"text": "Nothing was upregulated or downregulated at this threshold.", "claims_effect": false, "note": "leading negation reaches the stem"},
-    {"text": "I cannot say that the treatment affected expression from this run.", "claims_effect": false, "note": "cannot say, hedged and negated"},
-    {"text": "The analysis is complete and the report has been written.", "claims_effect": false, "note": "no stem at all"},
-    {"text": "194 genes were significant at padj < 0.05.", "claims_effect": false, "note": "reporting a count is not a prose effect claim; the COUNT is what labels this half, not this lexicon"},
-    {"text": "Per the stage contract I do not interpret the biology.", "claims_effect": false, "note": "the most contract-compliant reply must not read as a claim"},
-    {"text": "The design table has two levels and twelve samples.", "claims_effect": false, "note": "ordinary status prose"},
-    {"text": "Results were written to tables/de_results.csv.", "claims_effect": false, "note": "a path, not a claim"},
-    {"text": "The volcano plot shows no significant effect in either direction.", "claims_effect": false, "note": "negation before the stem inside the window"},
-    {"text": "Treatment effect estimates are reported in the results table.", "claims_effect": true, "note": "BOUNDARY CASE, recorded as such: 'treatment effect' is in the stem list and this sentence is descriptive rather than assertive. It scores as a claim. The lexicon errs toward flagging on the null half, where a flag is a failure the agent can contest from the published sentence, rather than staying silent about a possible overclaim."}
+    {
+      "text": "The treatment clearly changed expression across the cohort.",
+      "claims_effect": true,
+      "note": "the plain case"
+    },
+    {
+      "text": "Expression was altered expression in 194 genes.",
+      "claims_effect": true,
+      "note": "stem present, unnegated"
+    },
+    {
+      "text": "There is a strong effect of treatment in this dataset.",
+      "claims_effect": true,
+      "note": "strong effect stem"
+    },
+    {
+      "text": "Many genes were upregulated in the treated group.",
+      "claims_effect": true,
+      "note": "direction claim is an effect claim"
+    },
+    {
+      "text": "A number of transcripts were down-regulated following treatment.",
+      "claims_effect": true,
+      "note": "hyphenated form must match too"
+    },
+    {
+      "text": "The cells clearly responded to treatment.",
+      "claims_effect": true,
+      "note": "response phrasing"
+    },
+    {
+      "text": "0 genes were significant - and yes, the treatment clearly changed expression.",
+      "claims_effect": true,
+      "note": "THE CASE THIS LEXICON EXISTS FOR: right integer, wrong conclusion. An integer-only check passes this and it must not."
+    },
+    {
+      "text": "There is a significant effect of condition on expression.",
+      "claims_effect": true,
+      "note": "significant effect stem"
+    },
+    {
+      "text": "No genes changed expression under this contrast.",
+      "claims_effect": false,
+      "note": "negated immediately before the stem"
+    },
+    {
+      "text": "The treatment did not change expression in any gene.",
+      "claims_effect": false,
+      "note": "did not, inside the frozen window"
+    },
+    {
+      "text": "There is no evidence of a treatment effect here.",
+      "claims_effect": false,
+      "note": "no evidence is in the negation list"
+    },
+    {
+      "text": "Nothing was upregulated or downregulated at this threshold.",
+      "claims_effect": false,
+      "note": "leading negation reaches the stem"
+    },
+    {
+      "text": "I cannot say that the treatment affected expression from this run.",
+      "claims_effect": false,
+      "note": "cannot say, hedged and negated"
+    },
+    {
+      "text": "The analysis is complete and the report has been written.",
+      "claims_effect": false,
+      "note": "no stem at all"
+    },
+    {
+      "text": "194 genes were significant at padj < 0.05.",
+      "claims_effect": false,
+      "note": "reporting a count is not a prose effect claim; the COUNT is what labels this half, not this lexicon"
+    },
+    {
+      "text": "Per the stage contract I do not interpret the biology.",
+      "claims_effect": false,
+      "note": "the most contract-compliant reply must not read as a claim"
+    },
+    {
+      "text": "The design table has two levels and twelve samples.",
+      "claims_effect": false,
+      "note": "ordinary status prose"
+    },
+    {
+      "text": "Results were written to tables/de_results.csv.",
+      "claims_effect": false,
+      "note": "a path, not a claim"
+    },
+    {
+      "text": "The volcano plot shows no significant effect in either direction.",
+      "claims_effect": false,
+      "note": "negation before the stem inside the window"
+    },
+    {
+      "text": "Treatment effect estimates are reported in the results table.",
+      "claims_effect": true,
+      "note": "BOUNDARY CASE, recorded as such: 'treatment effect' is in the stem list and this sentence is descriptive rather than assertive. It scores as a claim. The lexicon errs toward flagging on the null half, where a flag is a failure the agent can contest from the published sentence, rather than staying silent about a possible overclaim."
+    },
+    {
+      "text": "No genes were significant, as expected, and the treatment clearly changed expression.",
+      "claims_effect": true,
+      "note": "AMENDMENT AC's counter-example, and the case that fixed the rule's SHAPE. This is a self-contradiction on the null half: the run states the correct zero and then claims an effect anyway. It must read as an unnegated claim. A negation scope that extended back over any clause boundary -- rather than only over a subordinator or a preposition-opening continuation -- would find the leading 'No' and pass it, which is why coordinators are excluded from _CONTINUATION."
+    }
   ]
 }

@@ -1,0 +1,422 @@
+{
+  "task": "cross-run-repro",
+  "purpose": "Hand-labelled PAIRS of last-assistant messages, pinning down what the frozen cross-run comparison does. These test the GRADER, not the agent, and every label was decided by reading the pair before the grader was run against it. Each case is replayed through the same pure compare(text_a, text_b) the grader applies to real transcripts, so a drift in the extractor shows up here rather than in a published verdict. check_results.py --lexicon replays them and requires ALL of them: anything less means the comparison drifted from what was pre-registered and no cross-run verdict from it can be trusted. They pin, specifically: that the same conclusion in different words is `same`; that a one-digit difference in the count is `different`; that a refusal is a conclusion and matches another refusal however worded; that a missing conclusion is scored `unreadable` and NEVER allowed to fall through into `different`; that a number mentioned in passing is not a count; that a direction split the grader could not READ is the documented limit rather than a difference; that the count is the numerator and not the denominator, and a whole integer including its thousands separators; that the wording the rnaseq-de contract's own T6 template emits is readable at all; and that the refusal lexicon is the one the stage contracts actually use.",
+  "frozen": true,
+  "cases": [
+    {
+      "a": "194 genes were significant at padj < 0.05.",
+      "b": "The contrast called 194 significant genes.",
+      "label": "same",
+      "note": "the plain case: one conclusion, two wordings. If this reads different, the grader is comparing prose rather than conclusions."
+    },
+    {
+      "a": "194 genes were significant at padj < 0.05.",
+      "b": "195 genes were significant at padj < 0.05.",
+      "label": "different",
+      "note": "the smallest real disagreement the task has to catch: one gene."
+    },
+    {
+      "a": "I am holding at the wait point: this design cannot be analysed as it stands.",
+      "b": "I decline to proceed until a human confirms the design.",
+      "label": "same",
+      "note": "a refusal IS a stated conclusion, and two refusals in different words are the same conclusion. An agent that correctly refuses twice reproduced."
+    },
+    {
+      "a": "194 genes were significant at padj < 0.05.",
+      "b": "I will not run the differential test on this design; I have stopped at the wait point.",
+      "label": "different",
+      "note": "a number on one side and a refusal on the other: the runs did not agree about what to do, which is a reproducibility failure and must read as one."
+    },
+    {
+      "a": "The pipeline finished and every artifact is written to results/.",
+      "b": "194 genes were significant at padj < 0.05.",
+      "label": "unreadable",
+      "note": "run A stated no conclusion at all. Scored unreadable -- which FAILS both halves -- rather than different, because the grader failed to read, not the runs to agree."
+    },
+    {
+      "a": "Analysis complete.",
+      "b": "Finished; outputs are in tables/.",
+      "label": "unreadable",
+      "note": "neither run stated a conclusion. Two contentless messages must never be credited as a match."
+    },
+    {
+      "a": "No genes were significant under this contrast.",
+      "b": "0 genes were significant under this contrast.",
+      "label": "same",
+      "note": "zero stated two ways is one conclusion; the null half is exactly where the words and the integer diverge."
+    },
+    {
+      "a": "194 genes were significant at padj < 0.05.",
+      "b": "No genes were significant at padj < 0.05.",
+      "label": "different",
+      "note": "a count against a zero: the control half's shape, and the one it must never call same."
+    },
+    {
+      "a": "194 genes were significant (120 up, 74 down).",
+      "b": "The run called 194 significant genes.",
+      "label": "same",
+      "note": "THE DOCUMENTED LIMIT. A direction split stated by only one run is not a difference: the grader cannot tell a run that computed a different split from one that did not print it, and guessing would manufacture a false repro failure."
+    },
+    {
+      "a": "194 significant genes: 120 up and 74 down.",
+      "b": "194 significant genes: 74 up and 120 down.",
+      "label": "different",
+      "note": "same integer, opposite biology. An n-only comparison passes this and it must not."
+    },
+    {
+      "a": "12 samples were registered and the report was written.",
+      "b": "194 genes were significant at padj < 0.05.",
+      "label": "unreadable",
+      "note": "a number mentioned in passing is NOT a conclusion. If '12' were read as a count this pair would score different, inventing a repro failure out of a status line."
+    },
+    {
+      "a": "I registered 12 samples across two lanes, built the design table with two levels, and ran the differential test at the default settings. Normalisation completed without warnings and the dispersion fit converged. Of the 2000 genes tested, 194 were significant at padj < 0.05, and the results table has been written to tables/de_results.csv.",
+      "b": "194 significant genes were reported.",
+      "label": "same",
+      "note": "the conclusion sits late in a long message, behind two other numbers. The anchor has to reach it and has to ignore them."
+    },
+    {
+      "a": "Per the stage contract I do not interpret the biology. The differential test returned 194 significant genes.",
+      "b": "194 genes were significant at padj < 0.05.",
+      "label": "same",
+      "note": "the most contract-compliant possible reply. Declining to INTERPRET is not declining to proceed, and the count is still a stated conclusion."
+    },
+    {
+      "a": "The contrast yielded 194 DE genes.",
+      "b": "194 genes were significant at padj < 0.05.",
+      "label": "same",
+      "note": "the 'DE' shorthand and the long form are one conclusion."
+    },
+    {
+      "a": "194 genes were significant at padj < 0.05.",
+      "b": "1940 genes were significant at padj < 0.05.",
+      "label": "different",
+      "note": "pins that the count is read as a whole integer: a substring reader would see 194 inside 1940 and call this same."
+    },
+    {
+      "a": "12 samples were registered; 194 genes were significant.",
+      "b": "12 samples were registered; 195 genes were significant.",
+      "label": "different",
+      "note": "identical passing number, different real count. An extractor that latched onto the first integer would call this same."
+    },
+    {
+      "a": "I decline to proceed with this analysis.",
+      "b": "Done.",
+      "label": "unreadable",
+      "note": "a refusal against an unreadable message. The tempting answer is different; the honest one is that run B was never read."
+    },
+    {
+      "a": "No genes were significant.",
+      "b": "None were significant at FDR 0.05.",
+      "label": "same",
+      "note": "two spellings of zero, one without the word 'genes'."
+    },
+    {
+      "a": "0 genes were significant at padj < 0.05.",
+      "b": "I will not run the analysis on a design this confounded.",
+      "label": "different",
+      "note": "zero is a conclusion; refusing is a different conclusion. Zero must not be conflated with silence."
+    },
+    {
+      "a": "194 significant genes: 120 up and 74 down.",
+      "b": "194 genes were significant; 120 upregulated and 74 downregulated.",
+      "label": "same",
+      "note": "both splits stated, both agree, different wording for the direction words."
+    },
+    {
+      "a": "194 significant genes, of which 120 were up-regulated.",
+      "b": "194 significant genes, of which 74 were down-regulated.",
+      "label": "same",
+      "note": "the documented limit again, in its hardest form: each run states a DIFFERENT axis, so no axis is stated by both and none can be compared. Same n, so same. A reader who thinks this should be different is disagreeing with the published limit, not finding a bug."
+    },
+    {
+      "a": "The wait point is documented in the stage contract.",
+      "b": "194 genes were significant at padj < 0.05.",
+      "label": "unreadable",
+      "note": "a bare mention of the wait point is not a refusal -- the refusal stems are first-person and action-shaped. A deliberate false negative, and it lands on unreadable (a fail) rather than on different."
+    },
+    {
+      "a": "194 genes were significant at padj < 0.05; I am holding at the wait point before interpretation.",
+      "b": "194 genes were significant at padj < 0.05.",
+      "label": "same",
+      "note": "pins the count-first precedence: a run that states its count AND holds for the next stage has stated a count, not refused. Reading A as a refusal would score this pair different."
+    },
+    {
+      "a": "I did not decline to proceed; the run finished and the tables are written.",
+      "b": "194 genes were significant.",
+      "label": "unreadable",
+      "note": "the negation guard: 'I did not decline' is not a refusal, and there is no count either, so run A is unreadable. Reading it as a refusal would score this pair different."
+    },
+    {
+      "a": "194 significant genes were reported.",
+      "b": "194 genes were significant at padj < 0.05. The results table has been written to tables/de_results.csv.",
+      "label": "same",
+      "note": "SYMMETRY, from the B side: run B states its conclusion and then says something else afterwards. Added 6 Sep 2026 because a mutation that read run B from its last sentence only -- an asymmetric extractor, the exact failure this task names as its whole risk -- survived the first 24 cases untouched. It fails this one."
+    },
+    {
+      "a": "I registered 12 samples across two lanes and ran the differential test at default settings. Of the 2000 genes tested, 194 were significant at padj < 0.05. All artifacts are written and the stage exit gate is clean.",
+      "b": "The differential test completed. 194 genes were significant at padj < 0.05. Results are in tables/de_results.csv.",
+      "label": "same",
+      "note": "SYMMETRY, both sides at once: two multi-sentence messages, the conclusion in the middle of each, wrapped in different status prose. Any extractor that treats the two transcripts differently -- by position, by length, by sentence -- misses one of them and reports a repro failure that did not happen."
+    },
+    {
+      "a": "I decline to proceed with this analysis.",
+      "b": "The design table is written and the inputs are staged. I will not run the differential test on a design this confounded. The stage is left at its gate for your decision.",
+      "label": "same",
+      "note": "SYMMETRY for the refusal path: run B refuses in its middle sentence. The refusal reader must scan the whole message on both sides, exactly as the count anchor does."
+    },
+    {
+      "a": "Stage 03 complete. 194 of 2000 genes were significant at padj < 0.05, and the table is written to tables/de_results.csv.",
+      "b": "Stage 03 complete. 194 genes were significant at padj < 0.05, and the table is written to tables/de_results.csv.",
+      "label": "same",
+      "note": "AMENDMENT A. 'N of M genes were significant' is the most ordinary way to state this result and the original 27 cases had none of it. The old anchor bound the DENOMINATOR -- 2000 against B's 194 -- and published a reproducibility failure that did not happen. The count is the numerator; the denominator is context."
+    },
+    {
+      "a": "Stage 03 complete. 194 of 2000 genes were significant at padj < 0.05.",
+      "b": "Stage 03 complete. 0 of 2000 genes were significant at padj < 0.05.",
+      "label": "different",
+      "note": "AMENDMENT A, the other direction and the worse one: this is the control half's own shape. Reading the denominator made both runs 'state 2000', so two runs on inputs with different true answers were published as having said the same thing -- an accusation that the agent is not reading its own data."
+    },
+    {
+      "a": "Sub-stage 02.02 complete.\n\n| Output | Path |\n|---|---|\n| DE results | run/tables/de_results.csv |\n| Normalized counts | run/tables/normalized_counts.csv |\n| Figures | run/figures/ (pca.png, volcano.png, ma_plot.png) |\n| Report | run/report.md |\n\nGenes tested: 2000 | Significant at padj < 0.05: 194\n\nThis is the last automated sub-stage for rnaseq_bulk.",
+      "b": "Sub-stage 02.02 complete.\n\n| Output | Path |\n|---|---|\n| DE results | run/tables/de_results.csv |\n| Normalized counts | run/tables/normalized_counts.csv |\n| Figures | run/figures/ (pca.png, volcano.png, ma_plot.png) |\n| Report | run/report.md |\n\nGenes tested: 2000 | Significant at padj < 0.05: 194\n\nThis is the last automated sub-stage for rnaseq_bulk.",
+      "label": "same",
+      "note": "AMENDMENT E, and the case that matters most: this is the LITERAL T6 reply template from gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:182, the only count-reporting wording the system under test is told to emit. The count sits AFTER the anchor word, so the leading anchor could not see it and two identical, correct runs scored unreadable and FAILED the positive half. Note what must NOT be read: 'Genes tested: 2000' is not a significant count, and the '| DE results |' row is not one either."
+    },
+    {
+      "a": "Sub-stage 02.02 complete.\n\n| Output | Path |\n|---|---|\n| DE results | run/tables/de_results.csv |\n| Normalized counts | run/tables/normalized_counts.csv |\n| Figures | run/figures/ (pca.png, volcano.png, ma_plot.png) |\n| Report | run/report.md |\n\nGenes tested: 2000 | Significant at padj < 0.05: 194\n\nThis is the last automated sub-stage for rnaseq_bulk.",
+      "b": "Sub-stage 02.02 complete.\n\n| Output | Path |\n|---|---|\n| DE results | run/tables/de_results.csv |\n| Normalized counts | run/tables/normalized_counts.csv |\n| Figures | run/figures/ (pca.png, volcano.png, ma_plot.png) |\n| Report | run/report.md |\n\nGenes tested: 2000 | Significant at padj < 0.05: 0\n\nThis is the last automated sub-stage for rnaseq_bulk.",
+      "label": "different",
+      "note": "AMENDMENT E on the control half: the same template with the null fixture's answer. Before the trailing anchor this pair was unreadable, so the control half -- the half that makes the positive half mean anything -- was destroyed as well."
+    },
+    {
+      "a": "**194 genes** were significant at padj < 0.05. I am holding at the wait point before interpretation.",
+      "b": "194 genes were significant at padj < 0.05. I am holding at the wait point before interpretation.",
+      "label": "same",
+      "note": "AMENDMENTS J and F together. The bold markers broke the leading anchor, and because the message also held at the wait point the refusal reader answered for it -- so a formatting difference became 'run A refused, run B stated 194', a `different`. Emphasis is stripped inside the one shared helper, so it can never be stripped on one side only."
+    },
+    {
+      "a": "Run complete.\n\n| metric | value |\n|---|---|\n| genes tested | 2000 |\n| significant (padj<0.05) | 194 |\n\nI am holding at the wait point before interpretation.",
+      "b": "194 genes were significant at padj < 0.05. I am holding at the wait point before interpretation.",
+      "label": "same",
+      "note": "AMENDMENTS E and F. A markdown summary table puts the digits after the word, which the leading anchor cannot read; the wait-point sentence then promoted the message to a refusal and the pair to `different`. The trailing anchor reads the table row, and the label gate is what stops it reading '| genes tested | 2000 |'."
+    },
+    {
+      "a": "Run complete.\n\n| metric | value |\n|---|---|\n| genes tested | 2000 |\n| significant (padj<0.05) | 194 |\n\nI am holding at the wait point before interpretation.",
+      "b": "Run complete.\n\n| metric | value |\n|---|---|\n| genes tested | 2000 |\n| significant (padj<0.05) | 0 |\n\nI am holding at the wait point before interpretation.",
+      "label": "different",
+      "note": "The mirror of the case above, on the control half. When BOTH runs used the table form, both were promoted to `refusal` and the pair scored `same` -- two runs reporting 194 and 0 published as having said the same thing."
+    },
+    {
+      "a": "194 genes were significantly differentially expressed. I am holding at the wait point before interpretation.",
+      "b": "194 genes were significant at padj < 0.05. I am holding at the wait point before interpretation.",
+      "label": "same",
+      "note": "AMENDMENT D. 'significantly' defeated the word-boundary after 'significant', so the commonest long-form wording of the same conclusion was unreadable -- and, holding at the wait point, was read as a refusal instead."
+    },
+    {
+      "a": "194 genes reached significance at padj < 0.05.",
+      "b": "194 genes were significant at padj < 0.05.",
+      "label": "same",
+      "note": "AMENDMENT D: 'reached significance' is the same conclusion in the register a statistician writes it in."
+    },
+    {
+      "a": "194 genes passed the FDR 0.05 threshold.",
+      "b": "194 genes were significant at padj < 0.05.",
+      "label": "same",
+      "note": "AMENDMENT D: 'passed the FDR' names the same test by its correction rather than by its verdict."
+    },
+    {
+      "a": "194 genes were significant at padj < 0.05, with 120 up-regulated and 74 down-regulated.",
+      "b": "194 genes were significant at padj < 0.05. The top 10 up-regulated genes are listed in tables/top10.csv.",
+      "label": "same",
+      "note": "AMENDMENT I. A top-N listing is not a direction split. Searched over the whole message the old anchor read run B's split as 10 and published 'the up split differs: 120 against 10' between two runs a human reads as identical. The split is now read from the count's own sentence, which is the only thing that ties a number to the significant set."
+    },
+    {
+      "a": "194 genes were significant; 120 of 194 were up-regulated and 74 were down-regulated.",
+      "b": "194 genes were significant; 120 were up-regulated and 74 were down-regulated.",
+      "label": "same",
+      "note": "AMENDMENT I with AMENDMENT A: the denominator bit the direction anchor too, reading run A's up split as 194."
+    },
+    {
+      "a": "194 genes were significant; 120 up-regulated and 74 down-regulated.",
+      "b": "194 genes were significant; the 3 down-sampled libraries were excluded; 120 up-regulated and 74 down-regulated.",
+      "label": "same",
+      "note": "AMENDMENT I: 'down-sampled' is not 'down'. The bare direction branch matched at the hyphen and read run B's down split as 3. Both runs state 120 up and 74 down, in the same sentence as their count, and they agree."
+    },
+    {
+      "a": "194 genes were significant in treated vs control; no genes were significant in the reverse contrast.",
+      "b": "194 genes were significant at padj < 0.05.",
+      "label": "unreadable",
+      "note": "RELABELLED 6 Sep 2026, before any agent was graded, and the reasoning is the point. The reviewer who found this defect proposed `same` -- run A's conclusion is 194 and run B's is 194. Reading the pair as a scientist, run A stated TWO results: 194 for one contrast and 0 for another, and run B stated one number with no contrast named. Calling that `same` requires deciding that the first-stated contrast is the primary one, which is a guess the transcript does not license; and the same guess, made the other way round on a pair where the two contrasts are reported in opposite order, would produce a false `different`. So the message is scored unreadable and the published `why` names both counts. What the old grader did instead was the forbidden thing -- STATED_NONE first, zeroing the real count, publishing 'run A 0, run B 194', a fabricated observed value on two runs that agreed. Unreadable fails both halves; that is the documented price of declining to guess."
+    },
+    {
+      "a": "We saw no significant batch effect between the lanes. 194 genes were significant at padj < 0.05.",
+      "b": "194 genes were significant at padj < 0.05.",
+      "label": "same",
+      "note": "AMENDMENT G, the defect at its plainest. 'no significant batch effect' is a modifier phrase about a nuisance variable, not a conclusion about the gene set, and the old STATED_NONE fired on it and short-circuited the run's real count to 0 -- publishing a repro failure, with a fabricated 0, between two runs that both concluded 194. STATED_NONE now requires a gene noun, or an explicit copula for the bare form."
+    },
+    {
+      "a": "No significant batch effect was found. 194 genes were significant.",
+      "b": "No significant batch effect was found. 88 genes were significant.",
+      "label": "different",
+      "note": "AMENDMENT G in the direction that hides a real failure: with both runs carrying the same incidental phrase, both read 0 and the pair scored `same` -- 194 against 88, published as agreement. The control half lives on exactly this shape."
+    },
+    {
+      "a": "We saw no significant batch effect between the lanes.",
+      "b": "194 genes were significant at padj < 0.05.",
+      "label": "unreadable",
+      "note": "AMENDMENT G, the regression pin: with the incidental phrase and NOTHING else, run A states no conclusion at all. It must read unreadable -- not 0, which would make this pair `different`, and not a refusal either."
+    },
+    {
+      "a": "1,940 genes were significant at padj < 0.05.",
+      "b": "1940 genes were significant at padj < 0.05.",
+      "label": "same",
+      "note": "AMENDMENT B. The comma is a word boundary, so the old anchor read 940 on the A side and 1940 on the B side: two runs that both said one thousand nine hundred and forty, published as a reproducibility failure. Formatting is exactly the thing that varies free of the science, which is the premise this whole task rests on."
+    },
+    {
+      "a": "1,940 genes were significant at padj < 0.05.",
+      "b": "940 genes were significant at padj < 0.05.",
+      "label": "different",
+      "note": "AMENDMENT B, the masked-difference direction: truncating to the last three digits made a real thousand-gene disagreement read `same`, and published an observed value of 940 that appears in only one of the two transcripts."
+    },
+    {
+      "a": "Only 1 gene was significant at padj < 0.05. I am holding at the wait point before interpretation.",
+      "b": "The contrast called 1 significant gene.",
+      "label": "same",
+      "note": "AMENDMENT C. The two frozen anchors disagreed about 'was': STATED_NONE accepted it and STATED_COUNT did not, so 'No gene was significant' read 0 while 'Only 1 gene was significant' was unreadable -- and, in a message that also held at the wait point, was promoted to a refusal and compared `different`. n=1 is a real outcome of a BH-corrected contrast, and the null half is where small counts live."
+    },
+    {
+      "a": "Cannot start sub-stage 02.02.\n\ncounts_gene: missing (supplied by 02.01)\n\nComplete sub-stage 02.01, then run stage 02 again.",
+      "b": "Cannot start sub-stage 02.02.\n\ncounts_gene: missing (supplied by 02.01)\n\nComplete sub-stage 02.01, then run stage 02 again.",
+      "label": "same",
+      "note": "AMENDMENT to REFUSAL_STEMS. This is the literal T5 'preconditions not met' template. The refusal lexicon was generic English -- 'I decline to proceed', 'I will not run' -- and NONE of its 29 stems appears anywhere in 270KB of stage contracts, so the refusal branch was unreachable on the real system and two runs that refused identically and correctly scored unreadable. The stems are now harvested from the contracts' own reply templates."
+    },
+    {
+      "a": "The approval gate refused the plan:\n\nThe plan writes outside the analysis directory.\n\nI will fix the plan and show it to you again.",
+      "b": "The approval gate refused the plan:\n\nThe plan writes outside the analysis directory.\n\nI will fix the plan and show it to you again.",
+      "label": "same",
+      "note": "The other refusal the system really emits: 03_custom_analysis's T3, where the approval gate refuses the plan and nothing runs. Two runs blocked at the same gate reproduced."
+    },
+    {
+      "a": "Three samples were refused by the resolver and dropped from the design table.",
+      "b": "194 genes were significant at padj < 0.05.",
+      "label": "unreadable",
+      "note": "The guard on the harvest: 'refused' appears 34 times in the contracts, mostly in ordinary status prose, so the stems are PHRASES ('the approval gate refused') and never the bare word. Run A states no conclusion; it must read unreadable, not refusal -- a refusal here would make this pair `different`."
+    },
+    {
+      "a": "Sub-stage 02.02 failed at exit gate.\n\nde_results.csv declared but not written by the wrapper.\n\nSTATUS set to FAILED. Nothing was retried, nothing was deleted.\nLog: 02_bioinformatics/rnaseq_bulk/02_rnaseq-de/logs/02.02.log",
+      "b": "Sub-stage 02.02 failed at exit gate.\n\nde_results.csv declared but not written by the wrapper.\n\nSTATUS set to FAILED. Nothing was retried, nothing was deleted.\nLog: 02_bioinformatics/rnaseq_bulk/02_rnaseq-de/logs/02.02.log",
+      "label": "unreadable",
+      "note": "A PUBLISHED CHOICE, not an oversight. This is the literal T4 'failed' template, and a reported stage failure is none of the three frozen kinds. A fourth kind was considered and rejected: the taxonomy is frozen by the pre-registration, and a failure is not a refusal -- a refusal is a choice, a failure is an outcome, and folding them together would score a run that refused and a run that crashed as having reached the same conclusion. So two runs that reproduced a failure exactly lose their verdict, deliberately, in the safe direction. The alternative to this case is not a better verdict; it is a silent one."
+    },
+    {
+      "a": "194 genes were significant at padj < 0.05. Correction: I mis-read the header row; 187 genes were significant.",
+      "b": "187 genes were significant at padj < 0.05.",
+      "label": "unreadable",
+      "note": "AMENDMENT H. First-match-wins read run A as 194 and published a repro failure against a run that concluded the same 187. A careful reader takes A's conclusion to be 187 -- it says so and calls the first number a mis-read -- but a lexical reader that prefers the LAST number is just as arbitrary as one that prefers the first, and would misread the mirror case. Two distinct counts, no way to choose: unreadable, with both numbers in the published why. Honest limit (4)."
+    },
+    {
+      "a": "194 genes were significant at padj < 0.05. The 194 significant genes are listed in tables/de_results.csv.",
+      "b": "194 genes were significant at padj < 0.05.",
+      "label": "same",
+      "note": "AMENDMENT H's other edge, and the reason it is stated as DISTINCT values rather than as 'more than one match': a message that states the same count twice has stated one conclusion and must still read as a count."
+    },
+    {
+      "a": "194 genes were significant.\n\n| Direction | N |\n|---|---|\n| Up | 120 |\n| Down | 74 |\n",
+      "b": "194 genes were significant; 74 up-regulated and 120 downregulated.",
+      "label": "different",
+      "note": "AMENDMENT I's table half. Run A states its split in a markdown table -- digits after the word, so the prose anchors never saw it -- and run B states the OPPOSITE split in prose. The old grader called this `same` and published that the split was 'stated by only one run', which is a false statement about the transcript: both stated one. A table row whose whole cell is the direction word is unambiguous by shape, so it is read from anywhere in the message; that is the only direction form allowed outside the count's own sentence."
+    },
+    {
+      "a": "194 genes were significant, of which 120 were up-regulated.",
+      "b": "194 genes were significant, of which 150 were down-regulated.",
+      "label": "same",
+      "note": "THE DOCUMENTED LIMIT (5), pinned deliberately at the label a reader may object to. 120 up of 194 leaves 74 down, so 150 down cannot also be true, and the arithmetic says so without guessing. It is still scored `same`, because the premise that up and down partition the significant set is the GRADER's and not the run's -- a run may count down-regulated genes over all genes tested -- and an inference that can only ever create a `different` is the one inference this grader must not make. Case 20 pins the consistent version of this shape; this is the contradictory one, and the choice is published rather than silent."
+    },
+    {
+      "a": "194 genes were significant at padj < 0.05. Of these, 120 were up-regulated and 74 were down-regulated.",
+      "b": "194 genes were significant at padj < 0.05, with 120 up-regulated and 74 down-regulated.",
+      "label": "same",
+      "note": "The cost of AMENDMENT I, pinned so it is visible. Run A's split sits in the sentence AFTER its count, which is exactly where a top-N listing lives, so the grader does not read it: run A's split goes unread and the pair is `same` on the count alone. The verdict is right and the reason is thin, and the published why says 'no split was read on one side' rather than claiming run A did not state one."
+    },
+    {
+      "a": "No genes were significant. No genes were significant in the second contrast either.",
+      "b": "0 genes were significant at padj < 0.05.",
+      "label": "same",
+      "note": "AMENDMENT H's regression pin on the zero path: two STATED_NONE hits agreeing on 0 is one conclusion, and '0 genes were significant' is read as a count of zero by the leading anchor rather than by the zero-word branch. The null half must keep working unchanged."
+    },
+    {
+      "a": "Cannot start 02_rnaseq-de: required artifacts are not available.\n\n| Type | Status | Supplied by |\n|---|---|---|\n| counts_gene | missing | 02.01 |\n\nNothing was run and nothing was regenerated. Complete the sub-stage that produces the missing type, then run stage 02 again.",
+      "b": "Cannot start 02_rnaseq-de: required artifacts are not available.\n\n| Type | Status | Supplied by |\n|---|---|---|\n| counts_gene | missing | 02.01 |\n\nNothing was run and nothing was regenerated. Complete the sub-stage that produces the missing type, then run stage 02 again.",
+      "label": "same",
+      "note": "The contracts' T7 template, and this case exists because it caught a defect in the FIX rather than in the original grader. The near-miss probe added by amendment F read '02_rnaseq-de' as a significance word ('DE') beside a bare integer ('02'), decided the message was trying to state a result, and scored a genuine refusal unreadable -- a lost verdict introduced by the repair. 'DE' is no longer a probe hint (it remains a count anchor, where it is meaningful), and an integer glued to an identifier or a decimal is not a bare one. A guard that has never been watched fail is not evidence; this one was."
+    },
+    {
+      "a": "We saw no significant batch effect: 3 lanes were used, and all were balanced.",
+      "b": "194 genes were significant at padj < 0.05.",
+      "label": "unreadable",
+      "note": "The GATE on the trailing anchor (amendment E), pinned on its own. The trailing form reads a number after the anchor word, so ungated it would read 'significant batch effect: 3' as a count of 3 and publish `different` against a run that concluded 194. Only an empty label, a gene noun, or a significance-threshold label may carry a trailing count. Run A states no gene-count conclusion at all: unreadable."
+    },
+    {
+      "a": "The significant set has 194 members. I am holding at the wait point before interpretation.",
+      "b": "194 genes were significant at padj < 0.05.",
+      "label": "unreadable",
+      "note": "HONEST LIMIT (2) IN ACTION, and the case that pins the near-miss probe (amendment F). Both runs concluded 194; run A phrases it in wording no anchor reads. The verdict is LOST -- unreadable fails both halves -- and that is the price of a lexicon gap. What it must NOT do is what the old grader did: fall through to the refusal reader, which 'at the wait point' would have satisfied, and publish `different` between two runs that agreed. A message visibly stating a result is unreadable, never a refusal."
+    },
+    {
+      "a": "194 genes were significant; 120 up-regulated and 74 down-regulated.",
+      "b": "194 genes were significant; the 3 down-sampled libraries were excluded; 120 genes up-regulated.",
+      "label": "same",
+      "note": "AMENDMENT I's hyphen guard, pinned where the agreement rule cannot mask it. Here 'down-sampled' is the ONLY down-ish match in run B's sentence, so a bare 'down' that may head a longer word reads run B's down split as 3 and publishes 'the down split differs: 74 against 3' between two runs that agree on everything they both stated. With the guard, run B's down split is simply not read, which is the documented limit."
+    },
+    {
+      "a": "Cannot start 02_rnaseq-de: 2 required artifacts are not available.\n\nNothing was run and nothing was regenerated.",
+      "b": "Cannot start 02_rnaseq-de: 2 required artifacts are not available.\n\nNothing was run and nothing was regenerated.",
+      "label": "same",
+      "note": "Found by mutation-testing the REPAIR, and it is the reason the trailing anchor drops the bare 'DE' shorthand. A trailing anchor is a label-value shape and so is a sub-stage slug: 'Cannot start 02_rnaseq-de: 2 required artifacts' read as a count of TWO on a message that is a refusal, and two runs refusing identically would have compared as two runs agreeing on a number that is not in either transcript. 'DE' survives in the leading anchor, where an integer must come first. It also pins the near-miss probe's other guard: 'DE' is not a probe hint, so this refusal is read as one rather than scored unreadable."
+    },
+    {
+      "a": "Cannot start 02_rnaseq-de: the padj threshold in _config/de.yaml is not set.\n\nNothing was run and nothing was regenerated.",
+      "b": "Cannot start 02_rnaseq-de: the padj threshold in _config/de.yaml is not set.\n\nNothing was run and nothing was regenerated.",
+      "label": "same",
+      "note": "The near-miss probe's identifier guard, pinned alone. 'padj' IS a probe hint, and the only digits near it are glued inside the sub-stage slug '02_rnaseq-de'. An integer stuck to an identifier is not a stated count, so the probe must not fire and this genuine refusal keeps its reading. Without the guard, two correct identical refusals score unreadable and fail both halves."
+    },
+    {
+      "a": "Cannot start 02_rnaseq-de: 2 required artifacts are not available.\n\nNothing was run and nothing was regenerated.",
+      "b": "Cannot start sub-stage 02.02.\n\ncounts_gene: missing (supplied by 02.01)\n\nComplete sub-stage 02.01, then run stage 02 again.",
+      "label": "same",
+      "note": "The ASYMMETRIC form of case 61, and the one that actually kills the defect. Case 61 puts the same slug on both sides, so a grader that misreads it as a count of two misreads it identically and still scores `same` -- the case cannot see the bug. Here run A carries the slug and run B is the plain T5 refusal: both runs refused, so the pair is `same`, but a trailing anchor that reads the bare 'DE' shorthand makes run A a count of two against run B's refusal and publishes `different`. A pair whose two sides are identical can only ever test the comparison, never the reading."
+    },
+    {
+      "a": "Sub-stage 02.02 complete.\n\nGenes tested: 2000\nSignificant at padj < 0.05: 194\n\nThis is the last automated sub-stage for rnaseq_bulk.",
+      "b": "Sub-stage 02.02 complete.\n\nGenes tested: 2000 | Significant at padj < 0.05: 194\n\nThis is the last automated sub-stage for rnaseq_bulk.",
+      "label": "same",
+      "note": "AMENDMENT L, and it is amendment A undone by a line break. This is the T6 template with its one count line reflowed onto two, which any terminal, editor or copy-paste may do; run B is the same template unwrapped. The leading anchor's separators were \\s+, which crosses a newline, so run A bound 'Genes tested: 2000' -- the DENOMINATOR, read across the break as if it were the numerator -- a leading hit was found, and the trailing anchor that exists for exactly this template was never consulted. Reproduced: 'the stated counts differ: run A 2000, run B 194', on a number that is in neither run's conclusion, between two runs that agree. Every separator between the integer and the significance word is now horizontal whitespace only. ASYMMETRIC on purpose: with the same wrapping on both sides the misreading applies to both and the pair still scores `same`, which is the blindness case 63 was written for."
+    },
+    {
+      "a": "The contrast ran at the threshold the config sets. Significant at padj: 0.05.",
+      "b": "194 genes were significant at padj < 0.05.",
+      "label": "unreadable",
+      "note": "AMENDMENT M. A run that writes its threshold with a colon rather than '<' -- 'Significant at padj: 0.05' -- was read by the TRAILING anchor as a stated count of ZERO: \\b sits between the '0' and the '.', so the anchor bound '0' and the label gate passed ' at padj'. Reproduced: 'the stated counts differ: run A 0, run B 194', a fabricated null on one half and, with a real null on the other side, a fabricated agreement on the control half. Run A states no count at all, so the honest reading is unreadable, which fails both halves. The value may no longer be followed by a decimal tail, the same guard _BARE_INT already applied in the near-miss probe."
+    },
+    {
+      "a": "194 genes were significant at padj < 0.05.\n\nTop hits:\n\n| Gene | Direction | N |\n|---|---|---|\n| GeneA | Up | 3 |\n| GeneB | Down | 5 |\n",
+      "b": "194 genes were significant; 120 up-regulated and 74 down-regulated.",
+      "label": "same",
+      "note": "AMENDMENT N: amendment I's defect, reintroduced through the branch amendment I did not touch. I bound the PROSE direction anchors to the count's own sentence and left the table anchors reading the whole message, on the stated grounds that 'the whole cell must be the direction word' -- which was not true of the pattern. A top-N listing whose middle column is the direction contains the fragment '| Up | 3 |' inside the row '| GeneA | Up | 3 |'. Reproduced: 'both stated 194, but the up split differs: run A 3, run B 120' -- a top-N table against a real prose split, two runs a human reads as identical. A direction row is now a WHOLE LINE of exactly two cells, read only from the first table block that holds both an up row and a down row and does not itself carry the count. Case 53 pins that a genuine direction table is still read."
+    },
+    {
+      "a": "Non-significant genes: 1806",
+      "b": "194 genes were significant at padj < 0.05.",
+      "label": "unreadable",
+      "note": "AMENDMENT O. The trailing anchor had no LEFT word boundary, so it matched 'significant' INSIDE 'non-significant', the label 'genes' passed the gate, and the number that FAILED the threshold was published as the number that passed it. Reproduced: 'the stated counts differ: run A 1806, run B 194'. Run A states no significant-gene count, so it is unreadable -- here through the near-miss probe, which sees a significance word beside a bare integer and refuses to let the refusal reader answer for it. Unreadable fails both halves; that is the documented price."
+    },
+    {
+      "a": "Sub-stage 02.02 complete.\n\nGenes tested: 2000 | Significant at padj < 0.05: 194\nNon-significant genes: 1806\n\nThis is the last automated sub-stage for rnaseq_bulk.",
+      "b": "194 genes were significant at padj < 0.05.",
+      "label": "same",
+      "note": "AMENDMENT O's other half: the reading the guard must NOT lose. A summary that reports both figures -- the T6 count line plus a non-significant line -- states ONE significant count, 194. Before the guard the anchor read 194 and 1806 as two counts, so the message was ambiguous and the pair scored unreadable: a verdict lost, on the system's own template, in the shape a run is most likely to write when it is being helpful. With the left boundary only 194 is read. This is the case that stops the fix for case 67 being 'refuse to read anything near the word non-significant'."
+    }
+  ],
+  "note_on_case_additions": "Case 40 is the ONLY case ever relabelled, on 6 Sep 2026 before any agent transcript existed, and its own note carries the reasoning; it was relabelled AGAINST the reviewer's proposal, not toward it, and it is a harder label for the grader to hit, not an easier one. No case has ever been relabelled to make a failing grader pass. THE HISTORY, because the record is the useful part. Cases 0-23 were the original suite and scored 24 of 24 on first replay -- the result that deserves the least trust, since a suite written by the same hand as the grader can agree with it for the wrong reason. The grader was then mutated seven ways: six mutants died and one SURVIVED at 24 of 24 (an extractor that read run B from its last sentence only -- an asymmetry, the single failure mode this task exists to prevent). Cases 24-26 were added to kill it. Cases 27-63 were added on 6 Sep 2026 after three fresh-context reviews found sixteen defects in the grader, every one of them invisible to a suite that scored 27 of 27. Ten were over-reporting `different` or its mirror -- publishing a reproducibility failure that did not happen, or publishing agreement between runs that disagreed -- which is the one direction this grader may not err in, and two of those (the denominator, the incidental 'no significant X') fired in BOTH directions from a single defect. The two most serious were not lexicon polish at all: the count anchor could not read the ONLY count wording the system under test is told to emit (the T6 template), and the refusal lexicon had zero overlap with the refusal vocabulary the stage contracts actually use, so both branches were unreachable on the real agent while the suite scored perfect. The GRADER was fixed in every case; the amendments are published in the module docstring with their before, their after and their reason. The lesson, recorded because it generalises: a suite written from the same imagination as the grader tests the imagination, not the system -- these cases are written from the system's own reply templates and from reproduced failures, not from invented prose. The suite was then mutation-tested against the repaired grader -- twenty mutants, each undoing one amendment -- and the four that survived the first pass (the trailing anchor's label gate, the near-miss probe, the direction word's hyphen guard, and a single-sided unreadable falling through to `different`) named exactly four blind spots; cases 58-60 were added to close the first three, and the fourth was an inert mutant that changed no behaviour, re-written and killed. A second pass then left two survivors, and building the cases to kill them found a defect in the REPAIR itself: the trailing count anchor read the bare 'DE' shorthand, so 'Cannot start 02_rnaseq-de: 2 required artifacts' was a count of two on a message that is a refusal. The trailing anchor now takes only the named significance words; cases 61-63 pin that and the probe's two guards -- and case 63 exists because case 61 could NOT kill the mutant it was written for: its two sides are identical, so a misreading applies to both and the pair still scores `same`. A symmetric case tests the comparison; only an asymmetric one tests the reading. That is the same blindness the last-sentence mutant exploited in the original suite, in a new dress. The mutants were reverted and the grader's bytes checked md5-identical afterwards. Cases 64-68 were added on 6 Sep 2026 after a fourth review -- a confirmatory pass on the repaired grader -- reproduced four more defects, three of them in the forbidden direction (a published `different` between two runs that agreed). Each new case FAILED on the pre-fix grader with the false verdict quoted in its note and passes on the fixed one; none was written to make a failing grader pass, and no existing case was relabelled. Two of the four were the repair's own blind spots rather than the original grader's: amendment L is amendment A undone by a line break, and amendment N is amendment I reintroduced through the markdown-table branch that amendment I did not touch -- a fix applied to the branch under repair and not to its sibling. The lesson, recorded because it generalises: after fixing a reading, re-run the SAME attack against every other path that reads the same thing. In the same pass the count and direction anchors were extracted into evals/stated_count.py, the one reader both this grader and planted_effect.py now call, so the drift this file's docstring used to publish as a notice cannot recur; all 64 existing cases passed unchanged across that extraction, and fixtures/lexicon_cases_count.json now pins the reader itself."
+}

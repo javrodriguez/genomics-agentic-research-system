@@ -1,0 +1,277 @@
+{
+  "task": "shared-count-reader",
+  "purpose": "Hand-labelled MESSAGES pinning down what evals/stated_count.py reads: the count a run stated, whether the message stated more than one, and the direction split where it can be bound. These test the READER, not the agent, and every label was decided by reading the message before the reader was run against it. Both graders that publish a count -- planted_effect.py and cross_run_repro.py -- call this one module, so a drift here is a drift in both tasks and shows up in this file rather than in a published verdict. Replay with: python3 stated_count.py --cases fixtures/lexicon_cases_count.json. Every case must match; anything less means the reader drifted from what was pre-registered and no count from it can be trusted. `n` is the count read (null when nothing was read AND when more than one was), `ambiguous` tells those two apart, and `up`/`down` are asserted only on the cases written to pin the split. The texts are taken from the system's own reply templates and from reproduced misreadings, never invented: a suite written from the same imagination as the reader tests the imagination.",
+  "frozen": true,
+  "cases": [
+    {
+      "text": "Genes tested: 2000 | Significant at padj < 0.05: 194",
+      "n": 194,
+      "ambiguous": false,
+      "note": "The T6 reply template, the ONLY count wording the system under test is told to emit (gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md:182). The count sits AFTER the anchor word, so the leading form cannot see it and the trailing form must. What must NOT be read: 'Genes tested: 2000' is not a significant count. Amendment E."
+    },
+    {
+      "text": "Sub-stage 02.02 complete.\n\nGenes tested: 2000\nSignificant at padj < 0.05: 194\n\nThis is the last automated sub-stage for rnaseq_bulk.",
+      "n": 194,
+      "ambiguous": false,
+      "note": "The same template reflowed onto two lines, which any terminal or editor may do. With \\s+ separators the leading anchor bound 2000 across the newline -- the denominator read as the numerator -- and the trailing anchor was never consulted. Separators are horizontal whitespace only, so the integer and the significance word must sit on one line. Amendment L."
+    },
+    {
+      "text": "Sub-stage 02.02 complete.\n\nGenes tested: 2000\nSignificant at padj < 0.05: 0",
+      "n": 0,
+      "ambiguous": false,
+      "note": "The null half of the same reflow. A control half is only worth what its zero is worth, so the wrapped form must read 0 rather than 2000."
+    },
+    {
+      "text": "Genes tested: 2000 | Significant at padj < 0.05: 194\nNon-significant genes: 1806",
+      "n": 194,
+      "ambiguous": false,
+      "note": "A summary carrying BOTH figures. 'significant' inside 'non-significant' is not the anchor: without a left word boundary the reader saw two counts (194 and 1806) and went ambiguous, losing the verdict on the shape a helpful run is most likely to write. Amendment O, the reading the guard must not lose."
+    },
+    {
+      "text": "Non-significant genes: 1806",
+      "n": null,
+      "ambiguous": false,
+      "note": "The same defect alone: the number that FAILED the threshold read as the number that passed it, because the trailing anchor matched inside 'non-significant' and the label 'genes' passed the gate. No significant count is stated here. Amendment O."
+    },
+    {
+      "text": "Significant at padj: 0.05",
+      "n": null,
+      "ambiguous": false,
+      "note": "A THRESHOLD, not a count. \\b sits between the '0' and the '.', so the anchor bound '0' and published a stated count of zero for a run that merely named its alpha with a colon. The value may not be followed by a decimal tail -- the guard _BARE_INT already carried. Amendment M."
+    },
+    {
+      "text": "194 of 2000 genes were significant at padj < 0.05.",
+      "n": 194,
+      "ambiguous": false,
+      "note": "The count is the NUMERATOR; the denominator is context. Reading 2000 published a repro failure on the positive half and, with the null stating '0 of 2000', an agreement on the control half. Amendment A."
+    },
+    {
+      "text": "Of the 2000 genes tested, 194 were significant.",
+      "n": 194,
+      "ambiguous": false,
+      "note": "The sentence the two graders used to disagree about, published as a drift notice while task 2 kept its own copy of the anchors: task 2 read it one way and task 3 another. There is one reader now, and this is what it reads."
+    },
+    {
+      "text": "Of the 2000 genes tested, 194 were significant. No genes were significant on the Y chromosome.",
+      "n": null,
+      "ambiguous": true,
+      "note": "The other half of that drift notice, and the shape task 2 read as 0 -- its incidental-zero branch fired first and zeroed the run's real count. Two distinct counts, no way to choose between them: ambiguous, with both values published. The cost is a verdict; the alternative is a guess capable of manufacturing one. Amendments G and H."
+    },
+    {
+      "text": "1,940 genes were significant at padj < 0.05.",
+      "n": 1940,
+      "ambiguous": false,
+      "note": "One thousand nine hundred and forty. The comma is a word boundary, so a bare \\d+ read 940: two runs stating the same number published as a repro failure, and a real 1,940-vs-940 difference published as agreement. Amendment B."
+    },
+    {
+      "text": "1940 genes were significant at padj < 0.05.",
+      "n": 1940,
+      "ambiguous": false,
+      "note": "The unseparated spelling of the same number, so the pair above pins a reading and not a formatting preference."
+    },
+    {
+      "text": "Only 1 gene was significant at padj < 0.05.",
+      "n": 1,
+      "ambiguous": false,
+      "note": "The two anchors disagreed about 'was': the zero branch accepted it and the count branch did not, so 'No gene was significant' read 0 while this read nothing at all. n=1 is a real outcome of a BH-corrected contrast, and the null half is where small counts live. Amendment C."
+    },
+    {
+      "text": "We saw no significant batch effect between the lanes. 194 genes were significant at padj < 0.05.",
+      "n": 194,
+      "ambiguous": false,
+      "note": "'no significant batch effect' is a modifier phrase about a nuisance variable, not a conclusion about the gene set. Checked first and unguarded, it zeroed the run's real count and published a fabricated 0. The zero branch now needs a gene noun or an explicit copula. Amendment G."
+    },
+    {
+      "text": "We saw no significant batch effect: 3 lanes were used, and all were balanced.",
+      "n": null,
+      "ambiguous": false,
+      "note": "The same phrase with a colon after it, which is the trailing anchor's own shape. The label gate -- only an empty label, a gene noun or a significance-threshold label may carry a trailing count -- is what stops this reading as a count of 3. Amendment E's gate."
+    },
+    {
+      "text": "194 genes were significant in treated vs control; no genes were significant in the reverse contrast.",
+      "n": null,
+      "ambiguous": true,
+      "note": "TWO results in one message: 194 for one contrast and 0 for another. Calling it 194 requires deciding that the first-stated contrast is the primary one, which the transcript does not license; the same guess made the other way round on a message that reports the contrasts in the opposite order produces a false difference. Ambiguous, both values published."
+    },
+    {
+      "text": "194 genes were significant at padj < 0.05. Correction: I mis-read the header row; 187 genes were significant.",
+      "n": null,
+      "ambiguous": true,
+      "note": "A correction. First-match-wins read 194 and published a repro failure against a run that concluded the same 187. A careful human reads 187; a lexical reader that prefers the LAST number is just as arbitrary as one that prefers the first, and would misread the mirror case. Amendment H."
+    },
+    {
+      "text": "194 genes were significant at padj < 0.05. The 194 significant genes are listed in tables/de_results.csv.",
+      "n": 194,
+      "ambiguous": false,
+      "note": "The same count stated twice is ONE conclusion. This is why ambiguity is defined on DISTINCT values rather than on 'more than one match'. Amendment H's other edge."
+    },
+    {
+      "text": "12 samples were registered and the report was written.",
+      "n": null,
+      "ambiguous": false,
+      "note": "A number mentioned in passing is not a conclusion. If '12' were readable as a count, an ordinary status line would be a stated result and two runs that both said this would be compared on it."
+    },
+    {
+      "text": "Genes tested: 2000",
+      "n": null,
+      "ambiguous": false,
+      "note": "The other half of the T6 line, alone. 'tested' is not a significance word, so nothing here is a significant-gene count. The reader must not fall back to 'the only number present'."
+    },
+    {
+      "text": "Cannot start 02_rnaseq-de: 2 required artifacts are not available.\n\nNothing was run and nothing was regenerated.",
+      "n": null,
+      "ambiguous": false,
+      "note": "The contracts' T7 refusal template. A trailing anchor is a label-value shape and so is a sub-stage slug: with the bare 'DE' shorthand in the trailing form, 'Cannot start 02_rnaseq-de: 2 required artifacts' read as a count of TWO on a message that is a refusal -- a number in no transcript. 'DE' survives in the leading anchor, where an integer must come first. Amendment K2."
+    },
+    {
+      "text": "Sub-stage 02.02 failed at exit gate.\n\nde_results.csv declared but not written by the wrapper.\n\nSTATUS set to FAILED. Nothing was retried, nothing was deleted.",
+      "n": null,
+      "ambiguous": false,
+      "note": "The contracts' T4 'failed at exit gate' template. A reported stage failure states no count, and the reader must not manufacture one out of '02.02' or a filename."
+    },
+    {
+      "text": "Run complete.\n\n| metric | value |\n|---|---|\n| genes tested | 2000 |\n| significant (padj<0.05) | 194 |\n\nI am holding at the wait point before interpretation.",
+      "n": 194,
+      "ambiguous": false,
+      "note": "The markdown summary table of the T6 shape: the digits sit after the word, which the leading anchor cannot read. The label gate is what stops '| genes tested | 2000 |' being read instead. Amendment E."
+    },
+    {
+      "text": "**194 genes** were significant at padj < 0.05.",
+      "n": 194,
+      "ambiguous": false,
+      "note": "Markdown emphasis is stripped before matching, inside the shared helper so it can never be stripped on one transcript and not the other. Bold broke the leading anchor, and in a message that also held at the wait point the refusal reader then answered for it. Amendment J."
+    },
+    {
+      "text": "194 genes reached significance at padj < 0.05.",
+      "n": 194,
+      "ambiguous": false,
+      "note": "The same conclusion in the register a statistician writes it in. Unreadable before amendment D."
+    },
+    {
+      "text": "194 genes passed the FDR 0.05 threshold.",
+      "n": 194,
+      "ambiguous": false,
+      "note": "The same test named by its correction rather than by its verdict. Amendment D."
+    },
+    {
+      "text": "194 genes were significantly differentially expressed.",
+      "n": 194,
+      "ambiguous": false,
+      "note": "'significantly' defeated the word boundary after 'significant', so the commonest long-form wording of the result was unreadable. Amendment D."
+    },
+    {
+      "text": "The contrast yielded 194 DE genes.",
+      "n": 194,
+      "ambiguous": false,
+      "note": "The 'DE' shorthand in the LEADING form, where an integer must precede it. This is the reading amendment K2 deliberately kept while dropping the trailing form's bare 'DE'."
+    },
+    {
+      "text": "The significant set has 194 members.",
+      "n": null,
+      "ambiguous": false,
+      "note": "HONEST LIMIT (1), pinned as a case so the gap is published rather than discovered. Both anchors miss this phrasing; the cost is a lost verdict, never a fabricated one. A reader who wants it read must amend the lexicon and say so here."
+    },
+    {
+      "text": "0 genes were significant at padj < 0.05.",
+      "n": 0,
+      "ambiguous": false,
+      "note": "Zero as a digit is read by the leading count anchor, not by the zero-word branch. The null half depends on it."
+    },
+    {
+      "text": "No genes were significant under this contrast.",
+      "n": 0,
+      "ambiguous": false,
+      "note": "Zero in words, with the gene noun the branch now requires."
+    },
+    {
+      "text": "None were significant at FDR 0.05.",
+      "n": 0,
+      "ambiguous": false,
+      "note": "The bare form, carried by an explicit copula rather than by a noun. Amendment G's second branch."
+    },
+    {
+      "text": "194 genes were significant at padj < 0.05. The top 10 up-regulated genes are listed in tables/top10.csv.",
+      "n": 194,
+      "ambiguous": false,
+      "up": null,
+      "down": null,
+      "note": "A top-N listing is NOT a direction split. Searched over the whole message the anchor read run B's split as 10 and published 'the up split differs: 120 against 10' between two runs a human reads as identical. The split is read from the count's own sentence, which is the only thing that ties a number to the significant set. Amendment I."
+    },
+    {
+      "text": "194 genes were significant; 120 of 194 were up-regulated and 74 were down-regulated.",
+      "n": 194,
+      "ambiguous": false,
+      "up": 120,
+      "down": 74,
+      "note": "The denominator bit the direction anchor too, reading the up split as 194. Amendments A and I together."
+    },
+    {
+      "text": "194 genes were significant; the 3 down-sampled libraries were excluded; 120 genes up-regulated.",
+      "n": 194,
+      "ambiguous": false,
+      "up": 120,
+      "down": null,
+      "note": "'down-sampled' is not 'down'. The bare direction branch matched at the hyphen and read a down split of 3. With the guard the down split is simply not read, which is the documented limit. Amendment I."
+    },
+    {
+      "text": "194 genes were significant; coverage ran 30 up to 40x.",
+      "n": 194,
+      "ambiguous": false,
+      "up": null,
+      "note": "A coverage range is not an up split. 'up' may not be followed by 'to'. Amendment I."
+    },
+    {
+      "text": "194 significant genes: 120 up and 74 down.",
+      "n": 194,
+      "ambiguous": false,
+      "up": 120,
+      "down": 74,
+      "note": "The plain split, stated in the count's own sentence with the bare direction words."
+    },
+    {
+      "text": "194 genes were significant.\n\n| Direction | N |\n|---|---|\n| Up | 120 |\n| Down | 74 |\n",
+      "n": 194,
+      "ambiguous": false,
+      "up": 120,
+      "down": 74,
+      "note": "A genuine direction table: a block of whole-line two-cell rows, holding both axes, carrying no count of its own. This is the ONE direction form read from outside the count's sentence, and it must keep being read -- it is the shape that catches a run stating its split in a table against a run stating the opposite split in prose."
+    },
+    {
+      "text": "194 genes were significant at padj < 0.05.\n\nTop hits:\n\n| Gene | Direction | N |\n|---|---|---|\n| GeneA | Up | 3 |\n| GeneB | Down | 5 |\n",
+      "n": 194,
+      "ambiguous": false,
+      "up": null,
+      "down": null,
+      "note": "The listing table that broke the claim. '| GeneA | Up | 3 |' contains the fragment '| Up | 3 |', so an unbound pattern read a split of 3 up and 5 down and published 'the up split differs: run A 3, run B 120'. A direction row is now a whole line of exactly two cells, read only from a bound block. Amendment N."
+    },
+    {
+      "text": "Run complete.\n\n| metric | value |\n|---|---|\n| significant (padj<0.05) | 194 |\n| up | 120 |\n| down | 74 |\n",
+      "n": 194,
+      "ambiguous": false,
+      "up": null,
+      "down": null,
+      "note": "AMENDMENT N'S STATED COST, pinned rather than hidden: a metrics block that carries the count AND its split in one table has its split unread, because a block that tabulates the count is a metrics table and what its other rows mean is the run's business. An unread split is the documented limit; a misread one is a manufactured difference. If this is ever ruled the wrong trade, it is a published amendment and this case is where it is argued."
+    },
+    {
+      "text": "Run complete.\n\n| metric | value |\n|---|---|\n| DE | 194 |\n",
+      "n": null,
+      "ambiguous": false,
+      "note": "AMENDMENT K2'S PUBLISHED COST, and the case that kills a mutant nothing else caught. A bare 'DE' label-value row is indistinguishable in SHAPE from a sub-stage slug ('02_rnaseq-de: 2 required artifacts'), so the trailing anchor takes only the named significance words and this reading is lost, deliberately. 'DE' stays readable in the LEADING form ('the contrast yielded 194 DE genes'), where an integer must come first. Added when a mutant that put bare 'DE' back into the trailing anchor survived the whole suite: the slug case that used to catch it is now blocked one step earlier by amendment O's left word boundary, so the hole was real and unreachable through the old case."
+    },
+    {
+      "text": "Not all genes were significant:\n\n1806 genes had padj >= 0.05.",
+      "n": null,
+      "ambiguous": false,
+      "note": "The trailing anchor's colon does not reach across a line break. A label-value pair is a ONE-LINE shape; letting the separator cross a newline lets the first integer of an unrelated following line be read as the count -- here 1806, the number that FAILED the threshold, published as the number that passed it. The significant count is not stated in this message at all. Added when a mutant restoring \\s* after the colon survived the whole suite. Amendment L's second half."
+    },
+    {
+      "text": "194 genes were significant.\n\n| Gene | Up | 3 |\n| Down | 74 |\n",
+      "n": 194,
+      "ambiguous": false,
+      "up": null,
+      "down": null,
+      "note": "A MIXED table: one row names a gene beside its direction ('| Gene | Up | 3 |'), the next is a bare direction row. Read as a human: no aggregate up/down split is stated here -- the 3 belongs to a gene, not to the significant set -- so neither axis is read, and the count stands alone. Added to kill a mutant that unanchored only the UP pattern: the block rule (a block must hold BOTH an up row and a down row) masked it on every other case, so the suite could not see half of amendment N being undone. A guard that is only ever tested behind another guard has not been tested."
+    }
+  ],
+  "note_on_case_additions": "Written 6 Sep 2026, when the count anchors were extracted out of cross_run_repro.py into the shared reader, before any agent transcript existed and before evals/prereg.json was written. Each case names the amendment it pins, and each amendment's before, after and reason is published in stated_count.py's docstring. Nine of these texts are the reproduced misreadings that forced amendments A-O; four are the stage contracts' own reply templates (T4, T6 one-line, T6 as a table, T7); one -- 'The significant set has 194 members' -- pins a gap the reader does NOT close, so the limit is published rather than found later; and one pins the stated cost of amendment N rather than hiding it. No case here has ever been relabelled."
+}

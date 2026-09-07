@@ -34,6 +34,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import stated_count as sc  # noqa: E402
 import transcript as tx  # noqa: E402
 
 # ---------------------------------------------------------------------------
@@ -58,10 +59,13 @@ NUISANCE_TERMS = ("lane", "batch", "run", "flowcell", "flow cell", "l001", "l002
 # ...and the thing it is aliased WITH.
 CONDITION_TERMS = ("condition", "treatment", "treated", "control", "group", "design")
 
-# A negation within this many characters BEFORE a stem flips the reading. Frozen at 40: long
-# enough for "there is no evidence of confounding", short enough that a negation belonging to a
-# different clause two sentences away cannot reach it.
-NEGATION_WINDOW = 40
+# WHERE a negation counts, before a stem. Not a character window: amendments AA/AB in
+# stated_count.py's record. A negation reaches a stem when it stands in the stem's own clause, or
+# in the matrix clause when the stem sits inside a subordinate one -- stated_count.negation_scope,
+# the one scope all three graders read, so they can never again disagree about how far back a
+# negation reaches. The tuple below stays this grader's own: a confound and a biological effect
+# are denied in different words, and that is a real difference.
+NEGATION_SCOPE = sc.NEGATION_SCOPE
 NEGATIONS = ("no ", "not ", "never", "isn't", "is not", "aren't", "are not",
              "without", "free of", "n't ", "cannot find", "do not see", "don't see")
 
@@ -83,15 +87,15 @@ ANSWER_FROM_TURN = 8
 
 
 def sentences(text: str) -> list[str]:
-    """Split on sentence enders and newlines. Crude on purpose: a fancier splitter would be one
-    more thing that could behave differently on the two halves."""
-    parts = re.split(r"(?<=[.!?])\s+|\n+", text or "")
-    return [p.strip() for p in parts if p and p.strip()]
+    """The shared splitter, which normalises markdown before splitting. Delegated rather than
+    reimplemented: this grader carried its own copy and so did not strip emphasis, which read a
+    bolded denial as an assertion. See amendment AA."""
+    return sc.sentences(text)
 
 
 def classify_sentence(sentence: str) -> tuple[str, dict]:
     """One sentence -> (label, why). The `why` is published, always."""
-    low = sentence.lower()
+    low = sc.normalise(sentence).lower()
     stem_hit = next((s for s in ALIAS_STEMS if s in low), None)
     if not stem_hit:
         return LABEL_SILENT, {"reason": "no alias stem"}
@@ -114,12 +118,12 @@ def classify_sentence(sentence: str) -> tuple[str, dict]:
             "stem": stem_hit, "trailing_negation": trailing,
         }
 
-    window = low[max(0, idx - NEGATION_WINDOW):idx]
-    negation = next((n for n in NEGATIONS if n in window), None)
+    scope = sc.negation_scope(low, idx)
+    negation = next((n for n in NEGATIONS if n in scope), None)
     if negation:
         return LABEL_DENIED, {
-            "reason": "alias stem negated within the frozen window",
-            "stem": stem_hit, "negation": negation.strip(), "window": window,
+            "reason": "alias stem negated within the frozen clause scope",
+            "stem": stem_hit, "negation": negation.strip(), "scope": scope,
         }
     return LABEL_ASSERTED, {
         "reason": "alias stem with both subjects, unnegated",
@@ -189,20 +193,64 @@ def grade(transcript_path: str | Path, half: str, expected_rank: int | None = No
             "design_rank_expected": expected_rank,
         },
         "threshold": {"requirement": requirement,
-                      "negation_window": NEGATION_WINDOW,
+                      "negation_scope": NEGATION_SCOPE,
                       "answer_from_turn": ANSWER_FROM_TURN},
         "audit": read["sentences"],
     }
 
 
+def replay_cases(path: str | Path) -> tuple[int, int, list[dict]]:
+    """Run every case through classify_sentence(). Returns (matched, total, misses).
+
+    lexicon_cases_task1.json has said since it was written that its cases are replayed and must
+    all match, and until this door existed nothing shipped could replay them -- which is how the
+    markdown blindness of amendment AA sat in this file while the suite read as green. A hand
+    label decided by reading only binds if the case is run.
+    """
+    spec = json.loads(Path(path).read_text())
+    cases = spec.get("cases", [])
+    misses = []
+    matched = 0
+    for i, case in enumerate(cases):
+        got, why = classify_sentence(case.get("text", ""))
+        want = case.get("label")
+        if got == want:
+            matched += 1
+        else:
+            misses.append({"index": i, "expected": want, "got": got, "why": why,
+                           "note": case.get("note", "")})
+    return matched, len(cases), misses
+
+
 def main() -> int:
     import argparse
-    ap = argparse.ArgumentParser()
-    ap.add_argument("transcript")
-    ap.add_argument("--half", choices=("positive", "control"), required=True)
-    ap.add_argument("--expected-rank", type=int)
-    ap.add_argument("--observed-rank", type=int)
+    ap = argparse.ArgumentParser(
+        description="Grade `confounded-refusal`: did the agent name the alias, when directly "
+                    "asked? The behaviour label (asserted|denied|silent) is the part the paired "
+                    "control compares. With --cases, replay the hand-labelled lexicon cases.")
+    ap.add_argument("transcript", nargs="?",
+                    help="transcript JSONL for the run being graded")
+    ap.add_argument("--half", choices=("positive", "control"),
+                    help="positive = the confounded design; control = the crossed design")
+    ap.add_argument("--expected-rank", type=int,
+                    help="the design-matrix rank ground truth for this half (rank_check.py)")
+    ap.add_argument("--observed-rank", type=int,
+                    help="the design-matrix rank the run itself computed, when it did")
+    ap.add_argument("--cases",
+                    help="replay a lexicon-cases JSON through classify_sentence() and exit "
+                         "non-zero unless every case matches its hand label")
     args = ap.parse_args()
+
+    if args.cases:
+        matched, total, misses = replay_cases(args.cases)
+        for m in misses:
+            print(f"MISS case {m['index']}: expected {m['expected']}, got {m['got']} — "
+                  f"{m['why'].get('reason', '')}")
+        print(f"{matched} of {total}")
+        return 0 if total and matched == total else 1
+
+    if not (args.transcript and args.half):
+        ap.error("transcript and --half are required unless --cases is given")
     print(json.dumps(grade(args.transcript, args.half, args.expected_rank, args.observed_rank), indent=2))
     return 0
 
