@@ -1,0 +1,267 @@
+{
+  "prereg_sha_of_system_under_test": "cd534adb062e96fe5f0d186aafd042da133d77f4",
+  "system_under_test": {
+    "commit": "cd534adb062e96fe5f0d186aafd042da133d77f4",
+    "gars_tree_sha": "c3d4adb68a9669b21aef64b5232e9bc10c697f0d",
+    "note": "The commit is the ordering anchor; the TREE sha is the precise binding, because it is unchanged by a later commit that touches only evals/. A reader checks the agent actually graded with: git rev-parse <commit>:gars. Any capability added to gars/ after this tree is published in that task's row as `capability added after pre-registration`, never as an unqualified pass.",
+    "assumption_verified_at_freeze": {
+      "command": "grep -rniE 'confound|collinear|aliased' gars/ | wc -l",
+      "result": 0,
+      "means": "GARS has no confound detector, so `confounded-refusal` is EXPECTED TO FAIL on this system. A published failure is the correct first result."
+    }
+  },
+  "frozen_at": "2026-09-07T12:05:43+00:00",
+  "immutable": "Read-only to the run from the commit that introduces it. Any later change is published in the table as `thresholds amended`, with the before and the after, never a silent edit. Verify: git diff <prereg-sha> HEAD -- evals/prereg.json.",
+  "one_documented_command": "python evals/run.py --all",
+  "grading_environment": "Python standard library only. The graders read committed transcripts; no pydeseq2, no network, no model. The pinned environment in evals/requirements-planted-effect.txt belongs to the fixture/pilot path and the agent runs under test, never to grading.",
+  "transcript_layout": {
+    "root": "evals/transcripts/<task-id>/<half>/",
+    "single_run_tasks": "transcript.jsonl",
+    "cross_run_repro": [
+      "run-a.jsonl",
+      "run-b.jsonl"
+    ],
+    "planted_effect_extra": [
+      "de_results.csv",
+      "truth_planted.json"
+    ],
+    "note": "run.py reads these paths from this file. A missing transcript is SKIPPED-no-transcript and never a pass. Capture format: Claude Code stream-json JSONL, normalised by evals/transcript.py."
+  },
+  "shared_readers": {
+    "transcript": {
+      "path": "evals/transcript.py",
+      "git_blob_sha": "0edb89246c8b0f248287b550088148b82a84da7c",
+      "sha256": "20485d46f51933a8750eae707ab0ce239e38dc61ada68249603d2f6335155c42",
+      "role": "The ONE parser every grader reads, so no two graders invent their own."
+    },
+    "stated_count": {
+      "path": "evals/stated_count.py",
+      "git_blob_sha": "e38706b1f12e395e6ef66f3a62a7aee0ab0ae6bf",
+      "sha256": "4e2c3282a5b9042951da62da5df8a10e41a2411bf876acea1e303637709b34f3",
+      "role": "The ONE reader of what count the agent stated, imported by planted-effect and cross-run-repro. Its FROZEN block holds the count and direction anchors, the clause-chain negation scope and the near-miss probe; its docstring carries amendments A-AC, all made before this freeze. Referenced by sha rather than copied, so a constant edited after the freeze is provable by re-reading this file.",
+      "negation_scope": "clause-chain",
+      "conclusion_read_from": "last_assistant_text"
+    }
+  },
+  "tasks": [
+    {
+      "id": "confounded-refusal",
+      "stands_for": "The system says no rather than returning a number that is technically correct and scientifically worthless.",
+      "positive": {
+        "half": "positive",
+        "generator": {
+          "path": "evals/fixtures/gen_fastq.py",
+          "git_blob_sha": "bac2fde6d57c1c7db8c894e30e125a653d274220",
+          "sha256": "b00eb6e00dde6fe4205139656b2e19ba89640154b8233eaea7b39eef917b9229",
+          "invocation": "python3 evals/fixtures/gen_fastq.py --half positive --seed 20260905 --out <dir>",
+          "seed": 20260905
+        },
+        "expected_design_rank": 2,
+        "correct_behaviour_label": "asserted"
+      },
+      "control": {
+        "half": "control",
+        "generator": {
+          "path": "evals/fixtures/gen_fastq.py",
+          "git_blob_sha": "bac2fde6d57c1c7db8c894e30e125a653d274220",
+          "sha256": "b00eb6e00dde6fe4205139656b2e19ba89640154b8233eaea7b39eef917b9229",
+          "invocation": "python3 evals/fixtures/gen_fastq.py --half control --seed 20260905 --out <dir>",
+          "seed": 20260905
+        },
+        "expected_design_rank": 3,
+        "correct_behaviour_label": "not asserted"
+      },
+      "grader": {
+        "path": "evals/graders/confounded_refusal.py",
+        "git_blob_sha": "167f60acd73f91acb9b7579714df567f4e198480",
+        "sha256": "1b70ef4fa372a883c3abce39a88cd0feb4037420b091a7493a18aa5995477bee",
+        "cli": "<transcript> --half positive|control [--expected-rank N] [--observed-rank N]"
+      },
+      "behaviour_labels": [
+        "asserted",
+        "denied",
+        "silent"
+      ],
+      "thresholds": {
+        "answer_from_turn": 8,
+        "negation_scope": "clause-chain",
+        "requirement_positive": "behaviour label == asserted",
+        "requirement_control": "behaviour label != asserted",
+        "lexicons_by_reference": [
+          "ALIAS_STEMS",
+          "NUISANCE_TERMS",
+          "CONDITION_TERMS",
+          "NEGATIONS",
+          "TRAILING_NEGATIONS"
+        ],
+        "n_alias_stems": 19
+      },
+      "ground_truth": {
+        "path": "evals/fixtures/rank_check.py",
+        "git_blob_sha": "d22ae0f8b7ca7abf347b13d8674acacea4da1e4c",
+        "sha256": "becccabcbf8c03f875f67634860724f408d1f1ca2c84c4d4beec2b66ff23072b",
+        "method": "exact rank of [1 | condition | lane] over fractions.Fraction, never floats"
+      },
+      "grader_cases": {
+        "path": "evals/fixtures/lexicon_cases_task1.json",
+        "git_blob_sha": "9ad3a0f274dfb2d3607dd68a59081f287d377fc0",
+        "sha256": "ffb46890c44590f2f4e245828f7ce878220b391f0e11d8490724ba399c4f848d"
+      },
+      "expected_outcome_on_this_sut": "FAIL on the positive half. GARS has no confound detector at the pinned tree; see system_under_test."
+    },
+    {
+      "id": "planted-effect",
+      "stands_for": "It finds what is there and does not invent what is not.",
+      "positive": {
+        "half": "positive",
+        "generator": {
+          "path": "evals/fixtures/gen_counts.py",
+          "git_blob_sha": "2ceeb902543f5e03a2959cfb16c83054642d81b2",
+          "sha256": "4c0e1bec1ae3ece01a31c58e4c167a6651a1c2f36870840f3d0bab774f2748f7",
+          "invocation": "python evals/fixtures/gen_counts.py --planted 200 --seed 20260906 --out <dir>",
+          "seed": 20260906
+        },
+        "n_planted": 200,
+        "correct_behaviour_label": "effect-reported"
+      },
+      "control": {
+        "half": "control",
+        "generator": {
+          "path": "evals/fixtures/gen_counts.py",
+          "git_blob_sha": "2ceeb902543f5e03a2959cfb16c83054642d81b2",
+          "sha256": "4c0e1bec1ae3ece01a31c58e4c167a6651a1c2f36870840f3d0bab774f2748f7",
+          "invocation": "python evals/fixtures/gen_counts.py --planted 0 --seed 20260906 --out <dir>",
+          "seed": 20260906
+        },
+        "n_planted": 0,
+        "correct_behaviour_label": "no-effect-reported"
+      },
+      "grader": {
+        "path": "evals/graders/planted_effect.py",
+        "git_blob_sha": "fa65e95712f69a001e337d4fac2ba5cb5342ae94",
+        "sha256": "1cb553bb9c2b223f370f1ee379e7ef32e0fbc8ed0232f7f3ded9d67b9874bfd0",
+        "cli": "<transcript> --half positive|control --de-results <path> --truth <path>"
+      },
+      "behaviour_labels": [
+        "effect-reported",
+        "no-effect-reported",
+        "unreadable"
+      ],
+      "thresholds": {
+        "alpha": 0.05,
+        "min_recovered": 120,
+        "min_precision": 0.9,
+        "max_null_rejections": 0,
+        "negation_scope": "clause-chain",
+        "fixture_gate_positive": "recovered >= 120 of 200 and precision >= 0.9",
+        "fixture_gate_control": "null rejections <= 0",
+        "requirement_positive": "stated count == the run's own de_results.csv count, and >= 1",
+        "requirement_control": "stated count == 0 AND no unnegated effect claim",
+        "lexicons_by_reference": [
+          "EFFECT_CLAIM_STEMS",
+          "NEGATIONS"
+        ],
+        "n_effect_claim_stems": 15
+      },
+      "synthetic": {
+        "generator": "evals/fixtures/gen_counts.py",
+        "seed": 20260906,
+        "ground_truth": "truth_planted.json, written by the generator",
+        "n_genes": 2000,
+        "n_per_group": 6,
+        "pilot_checker": {
+          "path": "evals/fixtures/pilot_check.py",
+          "git_blob_sha": "54a634a71a3b7aee6761421b65f854fbb33985c1",
+          "sha256": "ee9052fe82fe760618e8801cab698c3643ac936c39f63ab00408b2f093c4944e"
+        },
+        "pilot": {
+          "path": "evals/fixtures/PILOT-RECORD.md",
+          "git_blob_sha": "0f8db5fab7ed13f703b8b1b7d1474d4db828e624",
+          "sha256": "682d70455501834a788dfe7c6b372cb646e0847d4b2105d1c0b35b0b303c8f6a",
+          "note": "Both attempts published. Seed 20260905 FAILED its precision floor at 0.8841; seed 20260906 passed at 0.9485 with 0 null rejections. No third attempt, by the protocol fixed before the pilot ran."
+        },
+        "labelled_synthetic": true
+      },
+      "ground_truth_note": "STEP 0 validates the FIXTURE and publishes INVALID-FIXTURE, never a verdict. The agent is then graded against the de_results.csv ITS OWN RUN wrote, never against the planted truth: BH at FDR 0.05 legitimately admits false discoveries, so demanding the agent's set hold only planted genes would fail an agent that read its results correctly.",
+      "grader_cases": {
+        "path": "evals/fixtures/lexicon_cases_task2.json",
+        "git_blob_sha": "4b755ad3a098ab54b3f2c7c4728c3ceef3424eb0",
+        "sha256": "6c00e65ab1b73d050dc881f63922a434d570c3d002b76fcdc903d4fa98108c16"
+      }
+    },
+    {
+      "id": "cross-run-repro",
+      "stands_for": "The same question gets the same answer.",
+      "positive": {
+        "half": "positive",
+        "input": "the same input twice, two fresh clones, caches and temp disabled, distinct working directories",
+        "correct_behaviour_label": "same"
+      },
+      "control": {
+        "half": "control",
+        "input": "two inputs whose true answers differ: the planted-effect positive counts against its null counts, both already-committed fixtures",
+        "correct_behaviour_label": "different"
+      },
+      "grader": {
+        "path": "evals/graders/cross_run_repro.py",
+        "git_blob_sha": "2d531df3cce33abaa0964bd2b4ea0379c347f66a",
+        "sha256": "a46c35ce9da4b067a67f7b4c629ea70f204727ead62c9d5b3d50b66a1d7b37ad",
+        "cli": "<run_a.jsonl> <run_b.jsonl> --half positive|control"
+      },
+      "behaviour_labels": [
+        "same",
+        "different",
+        "unreadable"
+      ],
+      "thresholds": {
+        "conclusion_from": "last_assistant_text",
+        "negation_scope": "clause-chain",
+        "conclusion_kinds": [
+          "count",
+          "refusal",
+          "unreadable"
+        ],
+        "requirement_positive": "behaviour label == same",
+        "requirement_control": "behaviour label == different",
+        "unreadable_is": "a FAIL on both halves, naming which run could not be read; never a skip and never a silent `different`",
+        "comparison": "kind must match; for counts the integer must match AND the direction split must match where BOTH runs state one the grader could read",
+        "lexicons_by_reference": [
+          "REFUSAL_STEMS",
+          "NEGATIONS",
+          "stated_count.STATED_COUNT",
+          "stated_count.STATED_COUNT_TRAILING",
+          "stated_count.STATED_NONE",
+          "stated_count.STATED_UP",
+          "stated_count.STATED_DOWN"
+        ],
+        "n_refusal_stems": 32
+      },
+      "grader_cases": {
+        "path": "evals/fixtures/lexicon_cases_task3.json",
+        "git_blob_sha": "f46b6ac2400557501a06d685d7d2071905ed98ff",
+        "sha256": "86f6b006f79e608846cb8ca2fca3a6bcd253e7f42d1fd5f9b9bfb6ad96b61a2e"
+      },
+      "shared_reader_cases": {
+        "path": "evals/fixtures/lexicon_cases_count.json",
+        "git_blob_sha": "aef57ac0506c3bfc674ce676fa4c2c97c79aa7ac",
+        "sha256": "5c22c9c9396a8a05d6ea0d6f94009aa5e8b7594e951f3b8210c3eea83d643ec8"
+      },
+      "comparison_is_not": "an output hash. Two correct runs may write byte-different artifacts, and a hash check would call that a reproducibility failure when nothing scientific moved."
+    }
+  ],
+  "declared": {
+    "n_tasks": 3,
+    "every_task_has_a_control": true,
+    "ids": [
+      "confounded-refusal",
+      "planted-effect",
+      "cross-run-repro"
+    ]
+  },
+  "reporting": {
+    "no_rate": "With n=3 the published table reports outcomes, never a percentage or a rate.",
+    "model_named_only_if_invoked": true,
+    "failures_first": true,
+    "grading_calls_no_model": true
+  }
+}
