@@ -16,6 +16,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history, deliberately. The pre-registration integrity check below proves that
+          # the thresholds were frozen BEFORE the runs, and it can only do that by reading the
+          # commit that froze them. At the default depth of 1 that history is absent -- and the
+          # check does not merely skip, it used to pass hollowly, comparing the file to itself.
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

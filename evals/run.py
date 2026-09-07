@@ -48,6 +48,7 @@ REPO = EVALS.parent
 sys.path.insert(0, str(EVALS))
 sys.path.insert(0, str(EVALS / "graders"))
 
+import freeze  # noqa: E402
 import confounded_refusal as t_confounded  # noqa: E402
 import cross_run_repro as t_repro  # noqa: E402
 import planted_effect as t_planted  # noqa: E402
@@ -72,22 +73,16 @@ def load_prereg() -> dict:
     return json.loads(PREREG.read_text())
 
 
-def prereg_sha() -> str | None:
-    """The sha of the commit that INTRODUCED the pre-registration -- the ordering anchor.
+def prereg_ref() -> dict:
+    """The freeze commit and whether this checkout can prove it -- evals/freeze.py's answer.
 
     Derived from git rather than written into the file, because a sha a file states about itself
-    is a claim, and one git can re-derive is a fact. None when git cannot answer (a tarball, a
-    shallow checkout); the results file then still carries prereg_sha256, which binds the bytes
-    even with no history to read.
+    is a claim and one git can re-derive is a fact. When the checkout cannot prove it (a tarball,
+    a shallow clone) the sha is None and the reason is recorded in the results file rather than a
+    wrong sha being written there: see freeze.py for the shallow-clone defect this closes. The
+    results file still carries prereg_sha256, which binds the bytes with no history at all.
     """
-    try:
-        out = subprocess.run(
-            ["git", "-C", str(REPO), "log", "--format=%H", "--reverse", "--", "evals/prereg.json"],
-            capture_output=True, text=True, timeout=30)
-    except (OSError, subprocess.SubprocessError):
-        return None
-    shas = [ln.strip() for ln in out.stdout.splitlines() if ln.strip()]
-    return shas[0] if shas else None
+    return freeze.freeze_ref()
 
 
 def prereg_sha256() -> str:
@@ -164,7 +159,7 @@ def missing_requirement(task_id: str, half: str, files: list[Path]) -> str | Non
     return None
 
 
-def run_task(prereg: dict, task: dict, sha: str | None) -> dict:
+def run_task(prereg: dict, task: dict, ref: dict) -> dict:
     task_id = task["id"]
     halves: dict[str, dict] = {}
     state = STATE_RAN
@@ -197,7 +192,9 @@ def run_task(prereg: dict, task: dict, sha: str | None) -> dict:
 
     return {
         "task": task_id,
-        "prereg_sha": sha,
+        "prereg_sha": ref["sha"],
+        "prereg_sha_verifiable": ref["verifiable"],
+        "prereg_sha_note": ref["why"],
         "prereg_sha256": prereg_sha256(),
         "state": state,
         "verdict": verdict,
@@ -247,11 +244,15 @@ def check_declared(prereg: dict) -> int:
 
 
 def run_all(prereg: dict) -> int:
-    sha = prereg_sha()
+    ref = prereg_ref()
+    if not ref["verifiable"]:
+        print(f"NOTE: the freeze commit cannot be proved from this checkout — {ref['why']}")
+        print("      Grading proceeds (it reads committed transcripts, not history), and every "
+              "results file records that the anchor was NOT verified here.")
     RESULTS.mkdir(parents=True, exist_ok=True)
     ran = 0
     for task in prereg["tasks"]:
-        result = run_task(prereg, task, sha)
+        result = run_task(prereg, task, ref)
         out = RESULTS / f"{task['id']}.json"
         out.write_text(json.dumps(result, indent=2) + "\n")
         line = result["state"]

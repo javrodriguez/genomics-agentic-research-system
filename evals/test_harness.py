@@ -390,15 +390,65 @@ class PublishedTables(unittest.TestCase):
             self.assertIn(f"`{task_id}`", text, f"{task_id} is declared but has no row")
 
     def test_the_table_names_the_pre_registration_it_was_frozen_at(self) -> None:
-        """The row's sha must be the commit that actually introduced the pre-registration."""
-        out = sh("git", "-C", str(REPO), "log", "--format=%H", "--reverse", "--",
-                 "evals/prereg.json")
-        shas = [ln.strip() for ln in out.stdout.splitlines() if ln.strip()]
-        if not shas:
-            self.skipTest("no git history for evals/prereg.json in this checkout")
-        text = self.EVALS_MD.read_text()
-        self.assertIn(shas[0][:7], text,
+        """The row's sha must be the commit that actually introduced the pre-registration.
+
+        Asked of freeze.py, which knows when the answer cannot be trusted. Asking git directly
+        was how this test passed a WRONG sha in a shallow clone.
+        """
+        sys.path.insert(0, str(REPO / "evals"))
+        import freeze
+
+        ref = freeze.freeze_ref()
+        if not ref["verifiable"]:
+            self.skipTest(f"the freeze cannot be proved from this checkout: {ref['why']}")
+        self.assertIn(ref["sha"][:7], self.EVALS_MD.read_text(),
                       "the table cites a pre-registration sha that is not the freeze commit")
+
+
+class ShallowCheckout(unittest.TestCase):
+    """A checkout without history must REFUSE, never print a green it did not earn.
+
+    This is the defect freeze.py was written to close, and it was live: at depth 1 -- which is
+    what actions/checkout makes by default -- `git log --reverse -- evals/prereg.json` returns
+    the grafted head rather than nothing, because a grafted root looks like it added every file.
+    The checker named that head as the freeze commit, read the file out of it, compared it to the
+    working copy it came from, found them identical and printed "ok byte-identical". It verified
+    the file against itself and would have gone on doing so in CI forever.
+    """
+
+    def setUp(self) -> None:
+        self.t = Tree()
+        self.addCleanup(self.t.destroy)
+        self.shallow = self.t.dir / "shallow"
+        r = sh("git", "clone", "-q", "--depth", "1", f"file://{self.t.root}", str(self.shallow))
+        if r.returncode != 0:
+            self.skipTest(f"git could not make a shallow clone here: {r.stderr.strip()[:120]}")
+
+    def test_the_freeze_reference_refuses_rather_than_guessing(self) -> None:
+        r = sh(sys.executable, self.shallow / "evals/freeze.py")
+        ref = json.loads(r.stdout)
+        self.assertIsNone(ref["sha"], "a shallow clone must offer no sha, not the wrong one")
+        self.assertFalse(ref["verifiable"])
+        self.assertIn("fetch-depth", ref["why"], "the refusal must name the fix")
+
+    def test_the_checker_fails_instead_of_printing_a_hollow_green(self) -> None:
+        r = sh(sys.executable, self.shallow / "evals/check_results.py")
+        self.assertNotEqual(r.returncode, 0,
+                            "a checkout that cannot prove the freeze must not exit 0")
+        self.assertIn("UNVERIFIABLE", r.stdout)
+        # Keyed to the CLAIM line, not to the words. The first version of this assertion looked
+        # for "byte-identical" anywhere in the output and went red on the refusal's own
+        # explanation of the defect -- a guard keyed to literal prose, catching the sentence that
+        # describes the thing rather than the thing.
+        self.assertNotIn("ok            prereg.json byte-identical", r.stdout,
+                         "it must not claim byte-identity against a sha it could not trust")
+
+    def test_the_runner_records_that_the_anchor_was_not_proved(self) -> None:
+        sh(sys.executable, self.shallow / "evals/run.py", "--all")
+        result = json.loads((self.shallow / "evals/results/planted-effect.json").read_text())
+        self.assertIsNone(result["prereg_sha"])
+        self.assertFalse(result["prereg_sha_verifiable"])
+        self.assertIn("SHALLOW", result["prereg_sha_note"])
 
 
 if __name__ == "__main__":

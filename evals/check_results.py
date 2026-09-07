@@ -52,6 +52,8 @@ REPO = EVALS.parent
 sys.path.insert(0, str(EVALS))
 sys.path.insert(0, str(EVALS / "graders"))
 
+import freeze  # noqa: E402
+
 PREREG = EVALS / "prereg.json"
 RESULTS = EVALS / "results"
 
@@ -78,24 +80,9 @@ LEXICONS = [
 ]
 
 
-def prereg_sha() -> str | None:
-    try:
-        out = subprocess.run(
-            ["git", "-C", str(REPO), "log", "--format=%H", "--reverse", "--", "evals/prereg.json"],
-            capture_output=True, text=True, timeout=30)
-    except (OSError, subprocess.SubprocessError):
-        return None
-    shas = [ln.strip() for ln in out.stdout.splitlines() if ln.strip()]
-    return shas[0] if shas else None
-
-
-def frozen_bytes(sha: str) -> bytes | None:
-    try:
-        out = subprocess.run(["git", "-C", str(REPO), "show", f"{sha}:evals/prereg.json"],
-                             capture_output=True, timeout=30)
-    except (OSError, subprocess.SubprocessError):
-        return None
-    return out.stdout if out.returncode == 0 else None
+def prereg_ref() -> dict:
+    """evals/freeze.py's answer: the freeze commit, and whether it can be proved here."""
+    return freeze.freeze_ref()
 
 
 def pinned_refs(prereg: dict) -> list[dict]:
@@ -117,15 +104,16 @@ def pinned_refs(prereg: dict) -> list[dict]:
     return refs
 
 
-def check_thresholds(prereg: dict, sha: str | None, problems: list[str]) -> None:
+def check_thresholds(prereg: dict, ref: dict, problems: list[str]) -> None:
     print("thresholds:")
+    sha = ref["sha"]
 
-    if sha is None:
-        problems.append("git could not name the commit that introduced the pre-registration, so "
-                        "the frozen bytes cannot be re-read; the freeze is unverifiable here")
-        print("  UNVERIFIABLE  no git history for evals/prereg.json")
+    if not ref["verifiable"]:
+        problems.append("THE FREEZE CANNOT BE PROVED FROM THIS CHECKOUT, so this check has not "
+                        f"verified the ordering it exists to verify: {ref['why']}")
+        print(f"  UNVERIFIABLE  {ref['why']}")
     else:
-        frozen = frozen_bytes(sha)
+        frozen = freeze.frozen_bytes(sha)
         if frozen is None:
             problems.append(f"git show {sha}:evals/prereg.json failed")
             print(f"  UNVERIFIABLE  cannot read the frozen bytes at {sha[:8]}")
@@ -272,12 +260,12 @@ def main() -> int:
         print(f"no pre-registration at {PREREG}")
         return 2
     prereg = json.loads(PREREG.read_text())
-    sha = prereg_sha()
+    ref = prereg_ref()
     problems: list[str] = []
 
-    print(f"pre-registration {PREREG.relative_to(REPO)} "
-          f"frozen at {sha[:8] if sha else 'UNKNOWN'}")
-    check_thresholds(prereg, sha, problems)
+    print(f"pre-registration {PREREG.relative_to(REPO)} frozen at "
+          f"{ref['sha'][:8] if ref['verifiable'] else 'UNPROVABLE FROM THIS CHECKOUT'}")
+    check_thresholds(prereg, ref, problems)
     n = check_results_binding(prereg, problems)
     if args.controls:
         check_controls(prereg, problems)
