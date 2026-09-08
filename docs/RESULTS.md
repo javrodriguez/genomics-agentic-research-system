@@ -5,7 +5,10 @@ original authors deposited. The design, accessions and standing cautions are in
 [reproduction-campaign.md](reproduction-campaign.md); this file carries the outcomes,
 including where we and the authors disagree and why.
 
-**Status: 3 of 5 scored** (this document fills in as projects close). Everything unfinished stays in the table, marked as such, rather than being dropped: a
+**Status: 3 of 6 table rows scored** — projects 1 and 2 closed, project 3 half closed (3a scored,
+3b not), projects 4 and 5 still open. Five projects, six rows, because the ChIP-seq project is two
+marks; the numerator and the denominator here count the same thing. (This document fills in as
+projects close.) Everything unfinished stays in the table, marked as such, rather than being dropped: a
 campaign that quietly removes what it has not closed reports a denominator it did not earn.
 
 This table scores PIPELINE OUTPUT against author deposits. It is not the agent-behaviour

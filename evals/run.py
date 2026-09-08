@@ -180,6 +180,28 @@ def missing_requirement(task_id: str, half: str, files: list[Path]) -> str | Non
     return None
 
 
+def relativise(result: dict) -> None:
+    """Every transcript path a grader recorded becomes repository-relative.
+
+    A fresh-context verifier found the published result carried an absolute path from the machine
+    that graded it, so a reproduction run on any other machine dirtied the file in exactly one
+    line while every verdict, label and sha reproduced byte for byte. The path is the only
+    machine-dependent thing in the artifact, and it should not be: the result must be
+    byte-identical to what the pinned graders re-produce from the pinned transcripts, on any
+    machine, or the published file cannot be checked against them.
+    """
+    def rel(p: str) -> str:
+        try:
+            return str(Path(p).resolve().relative_to(REPO))
+        except ValueError:
+            return p
+    if isinstance(result.get("transcript"), str):
+        result["transcript"] = rel(result["transcript"])
+    for t in result.get("transcripts") or []:
+        if isinstance(t, dict) and isinstance(t.get("path"), str):
+            t["path"] = rel(t["path"])
+
+
 def run_task(prereg: dict, task: dict, ref: dict, declared: dict) -> dict:
     task_id = task["id"]
     halves: dict[str, dict] = {}
@@ -226,6 +248,7 @@ def run_task(prereg: dict, task: dict, ref: dict, declared: dict) -> dict:
         result = grade_half(task_id, half, task[half], files)
         result["state"] = STATE_RAN
         result["model_or_none"] = model_on_transcript(files[0])
+        relativise(result)
         halves[half] = result
 
     graded = [h for h in halves.values() if h.get("state") == STATE_RAN]

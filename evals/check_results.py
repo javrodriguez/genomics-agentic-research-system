@@ -268,6 +268,63 @@ def check_results_binding(prereg: dict, problems: list[str]) -> int:
     return graded
 
 
+def check_regrade(prereg: dict, problems: list[str]) -> int:
+    """A published results file must be byte-identical to what the pinned graders re-produce.
+
+    A fresh-context verifier falsified the earlier binding: it rewrote the `threshold` block
+    INSIDE a results file -- the surface a reader is pointed at -- and the checker printed clean,
+    because the file was bound to the pre-registration only by the whole-file hash it had
+    recorded about the prereg, never by its own content. Comparing threshold fields one by one
+    would close that hole and leave every other field open. So the binding is total: for every
+    graded task, grade it again, in memory, through run.py's own dispatch from the same
+    transcripts, and require the result to serialise to exactly the committed bytes. Anything
+    edited in a results file after the fact -- a threshold, a verdict, a label, an observed
+    sentence -- makes the two differ, and the first differing key is named.
+    """
+    print("regrade:")
+    sys.path.insert(0, str(EVALS))
+    import run as runner  # noqa: E402 -- the runner is the one place grading is dispatched from
+
+    ref = runner.prereg_ref()
+    declared = runner.not_run_declarations()
+    regraded = 0
+    for task in prereg["tasks"]:
+        f = RESULTS / f"{task['id']}.json"
+        if not f.is_file():
+            continue
+        committed = json.loads(f.read_text())
+        if committed.get("state") != "RAN":
+            continue
+        fresh = runner.run_task(prereg, task, ref, declared)
+        a = json.dumps(committed, indent=2, sort_keys=True)
+        b = json.dumps(fresh, indent=2, sort_keys=True)
+        if a == b:
+            regraded += 1
+            print(f"  ok            {task['id']:20s} re-grade reproduces the committed file byte for byte")
+            continue
+        # name the first differing key so the reader is told what moved, not merely that something did
+        def first_diff(x, y, path="") -> str:
+            if isinstance(x, dict) and isinstance(y, dict):
+                for k in sorted(set(x) | set(y)):
+                    if x.get(k) != y.get(k):
+                        return first_diff(x.get(k), y.get(k), f"{path}.{k}" if path else k)
+            if isinstance(x, list) and isinstance(y, list) and len(x) == len(y):
+                for i, (p, q) in enumerate(zip(x, y)):
+                    if p != q:
+                        return first_diff(p, q, f"{path}[{i}]")
+            return f"{path}: committed {json.dumps(x)[:80]} vs re-graded {json.dumps(y)[:80]}"
+        where = first_diff(committed, fresh)
+        problems.append(
+            f"{task['id']}: the committed results file is NOT what the pinned graders produce "
+            f"from the pinned transcripts. First difference at {where}. A results file is never "
+            f"edited; if the graders changed, that is a published amendment, and if they did "
+            f"not, this file was.")
+        print(f"  TAMPERED      {task['id']:20s} {where[:100]}")
+    if not regraded and any((RESULTS / f"{t['id']}.json").is_file() for t in prereg["tasks"]):
+        print("  graded=0 — nothing to re-grade")
+    return regraded
+
+
 def check_controls(prereg: dict, problems: list[str]) -> None:
     print("controls:")
     files = {p.stem: json.loads(p.read_text()) for p in results_files()}
@@ -282,7 +339,7 @@ def check_controls(prereg: dict, problems: list[str]) -> None:
             print(f"  not published {tid}")
             continue
         if r.get("state") != "RAN":
-            print(f"  {r.get('state'):22s}{tid} — not graded, so not compared")
+            print(f"  not compared  {tid:20s} {r.get('state')} — not graded")
             continue
         labels = r.get("behaviour_label") or {}
         pos, ctl = labels.get("positive"), labels.get("control")
@@ -337,6 +394,7 @@ def main() -> int:
     check_thresholds(prereg, ref, problems)
     check_not_run(problems)
     n = check_results_binding(prereg, problems)
+    check_regrade(prereg, problems)
     if args.controls:
         check_controls(prereg, problems)
     if args.lexicon:

@@ -259,6 +259,32 @@ class Graded(unittest.TestCase):
         self.assertIn("CHANGED", c.stdout)
         self.assertIn("FAILED", c.stdout)
 
+    def test_a_results_file_edited_after_grading_is_caught_by_the_regrade(self) -> None:
+        """The verifier's mutation: rewrite the threshold INSIDE a results file. The old binding
+        (a whole-file hash the results file recorded about the prereg) printed clean; the
+        re-grade binding requires the file to be byte-identical to what the pinned graders
+        re-produce, so any edited field is named."""
+        self.t.run("--all")
+        self.t.edit_json("evals/results/confounded-refusal.json",
+                         lambda d: d["halves"]["positive"]["threshold"].update(
+                             answer_from_turn=99, requirement="assert nothing at all"))
+        c = self.t.check()
+        self.assertNotEqual(c.returncode, 0)
+        self.assertIn("TAMPERED", c.stdout)
+        self.assertIn("threshold", c.stdout)
+
+    def test_a_doctored_verdict_is_caught_by_the_regrade(self) -> None:
+        self.t.run("--all")
+        self.t.edit_json("evals/results/planted-effect.json",
+                         lambda d: d["halves"]["control"].update(verdict="pass"))
+        # the synthetic control here already passes; flip the label instead, which a re-grade
+        # cannot reproduce from the same transcript
+        self.t.edit_json("evals/results/planted-effect.json",
+                         lambda d: d["halves"]["control"].update(behaviour_label="effect-reported"))
+        c = self.t.check()
+        self.assertNotEqual(c.returncode, 0)
+        self.assertIn("TAMPERED", c.stdout)
+
     def test_a_results_file_bound_to_another_pre_registration_is_refused(self) -> None:
         self.t.run("--all")
         self.t.edit_json("evals/results/planted-effect.json",
