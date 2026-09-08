@@ -1,1 +1,12 @@
-{"excused": []}
+{
+  "role": "Lines a person has read and ruled on. An entry matches ONLY when the file, the pattern name and the EXACT text of the line all agree, so editing the line brings the finding back. Nothing here switches a pattern off.",
+  "excused": [
+    {
+      "file": "evals/gap-study/contract_quotes.json",
+      "pattern": "free",
+      "line_text": "      \"text\": \"  `stage03_analysis.py approve` has succeeded on the plan. Drafting is free; running is gated.\\n- Do **not** run `approve` before the user has read the plan and said yes to it. The command\\n  records an approval that happened in dialogue; it never substitutes for one.\"",
+      "ruled": "2026-09-08",
+      "why": "The word sits inside a byte-exact quotation of gars/03_custom_analysis/CONTEXT.md, where the contract says drafting an analysis plan is free while running it is gated. It is the system under test's own sentence about its plan gate, not a claim by this study about a local model's cost. The quote is pinned by blob sha and asserted as a byte substring, so it cannot be edited to satisfy this linter without breaking the binding that makes the plan-gate task honest."
+    }
+  ]
+}
