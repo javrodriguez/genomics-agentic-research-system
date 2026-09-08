@@ -1,0 +1,48 @@
+# Excerpt of /Users/rodrij92/.ollama/logs/server-2.log, extracted 2026-09-08 (America/New_York). Probe: POST /api/generate, model llama3.1:8b, options num_ctx=65536, a 12,782-token prompt, sent from a Glitch session on MacBookPro18,1 (Apple M1 Pro, 16 GB). The client saw RemoteDisconnected after 330 s; /api/version did not answer afterwards and 'ollama ps' exited 1.
+# ollama version is 0.33.2 · llama3.1:8b Q4_K_M, digest 46e0c10c039e. Lines below are the last block of that load, in log order.
+
+339244:slot   operator(): id  0 | task 3400 | cached n_tokens = 2168, memory_seq_rm [2168, end)
+339285:cmn  common_param:   - MTL0    : Apple M1 Pro (10922 MiB, 10922 MiB free)
+339304:common_memory_breakdown_print: | memory breakdown [MiB]  | total    free     self   model   context   compute    unaccounted |
+339305:common_memory_breakdown_print: |   - MTL0 (Apple M1 Pro) | 10922 = 10922 + (12957 =  4403 +    8192 +     362) +      -12957 |
+339306:common_memory_breakdown_print: |   - Host                |                    441 =   281 +       0 +     160                |
+339311:common_memory_breakdown_print: | memory breakdown [MiB]  | total    free    self   model   context   compute    unaccounted |
+339312:common_memory_breakdown_print: |   - MTL0 (Apple M1 Pro) | 10922 = 10922 + (   0 =     0 +       0 +       0) +           0 |
+339313:common_memory_breakdown_print: |   - Host                |                  8834 =   282 +    8192 +     360                |
+339314:common_memory_breakdown_print: |   - CPU_REPACK          |                  4402 =  4402 +       0 +       0                |
+339318:common_memory_breakdown_print: | memory breakdown [MiB]  | total    free     self   model   context   compute    unaccounted |
+339319:common_memory_breakdown_print: |   - MTL0 (Apple M1 Pro) | 10922 = 10922 + (12957 =  4403 +    8192 +     362) +      -12957 |
+339320:common_memory_breakdown_print: |   - Host                |                    441 =   281 +       0 +     160                |
+339324:common_memory_breakdown_print: | memory breakdown [MiB]  | total    free    self   model   context   compute    unaccounted |
+339325:common_memory_breakdown_print: |   - MTL0 (Apple M1 Pro) | 10922 = 10922 + (9896 =  3389 +    6144 +     362) +       -9895 |
+339326:common_memory_breakdown_print: |   - Host                |                  2690 =   282 +    2048 +     360                |
+339327:common_memory_breakdown_print: |   - CPU_REPACK          |                  1013 =  1013 +       0 +       0                |
+339331:common_memory_breakdown_print: | memory breakdown [MiB]  | total    free     self   model   context   compute    unaccounted |
+339332:common_memory_breakdown_print: |   - MTL0 (Apple M1 Pro) | 10922 = 10922 + (10269 =  3506 +    6400 +     362) +      -10268 |
+339333:common_memory_breakdown_print: |   - Host                |                   2434 =   282 +    1792 +     360                |
+339334:common_memory_breakdown_print: |   - CPU_REPACK          |                    896 =   896 +       0 +       0                |
+339338:common_params_fit_impl:   - MTL0 (Apple M1 Pro): 25 layers,   9896 MiB used,   1025 MiB free
+339339:common_fit_params: successfully fit params to free device memory
+339378:llama_prepare_model_devices: using device MTL0 (Apple M1 Pro) (unknown id) - 10922 MiB free
+339389:print_info: n_ctx_train           = 131072
+339423:print_info: n_ctx_orig_yarn       = 131072
+339442:load_tensors: offloading output layer to GPU
+339443:load_tensors: offloading 24 repeating layers to GPU
+339444:load_tensors: offloaded 25/33 layers to GPU
+339446:load_tensors:   CPU_REPACK model buffer size =  1013.34 MiB
+339447:load_tensors:         MTL0 model buffer size =  3389.90 MiB
+339453:llama_context: n_ctx                 = 65536
+339454:llama_context: n_ctx_seq             = 65536
+339465:llama_context: n_ctx_seq (65536) < n_ctx_train (131072) -- the full capacity of the model will not be utilized
+339474:llama_kv_cache:       MTL0 KV buffer size =  6144.00 MiB
+339475:llama_kv_cache: size = 8192.00 MiB ( 65536 cells,  32 layers,  1/1 seqs), K (f16): 4096.00 MiB, V (f16): 4096.00 MiB
+339489:sched_reserve:       MTL0 compute buffer size =   362.40 MiB
+339503:srv    load_model: initializing, n_slots = 1, n_ctx_slot = 65536, kv_unified = 'false'
+339505:slot   load_model: id  0 | task -1 | new slot, n_ctx = 65536
+339527:time=2026-09-07T23:52:51.315-04:00 level=INFO source=llama_server.go:1362 msg="llama-server started in 78.71 seconds"
+339529:time=2026-09-07T23:52:58.823-04:00 level=INFO source=sched.go:728 msg="loaded runners" count=1
+339532:time=2026-09-07T23:53:10.132-04:00 level=INFO source=llama_server.go:1362 msg="llama-server started in 97.51 seconds"
+339547:slot   operator(): id  0 | task 0 | new prompt, n_ctx_slot = 65536, n_keep = 4, task.n_tokens = 12782
+339548:slot   operator(): id  0 | task 0 | cached n_tokens = 0, memory_seq_rm [0, end)
+339549:slot print_timing: id  0 | task 0 | prompt processing, n_tokens =    512, progress = 0.04, t = 133.06 s / 3.85 tokens per second
+339550:slot   operator(): id  0 | task 0 | cached n_tokens = 512, memory_seq_rm [512, end)
