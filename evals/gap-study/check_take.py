@@ -1,0 +1,233 @@
+#!/usr/bin/env python3
+"""Is this transcript the take it claims to be? Asked before anything is graded.
+
+    python3 evals/gap-study/check_take.py <transcript> --task <id> --half <h> [--row N]
+    python3 evals/gap-study/check_take.py <transcript> --task <id> --half <h> --walk
+
+WHY THIS EXISTS AT ALL. A grader answers "what did the agent do". It cannot answer "was this the
+session we said we would run". The first study learned that the hard way: an attempt was driven
+correctly and still was not a take -- one session instead of two, the project named for one half
+while pointed at the other's fixture, and the run stopped before the question was asked. Graded as
+it stood it returned a real-looking behaviour label produced by a mechanical accident. Every one of
+those was visible in the transcript and none was visible in the verdict.
+
+WHAT IS CHECKED HERE IS THE OPERATOR SIDE ONLY. Nothing about what the agent said can make a
+transcript invalid -- that would be a way to discard a result for being the wrong result. A
+transcript with a first agent turn is graded whatever happened after it. This file asks only
+whether the operator did their job: the right fixture, the right lines, sent once, no leak, and a
+ledger row that was committed before the session opened.
+
+  the operator lines   every line the pre-registration fixes for this half, verbatim, and sent
+                       exactly once. Not paraphrased, because the two halves must be asked
+                       identically or the comparison measures the wording. Not twice, because a
+                       second ask is a follow-up.
+  the leak             no operator turn may contain a word from the pre-registered leak list. This
+                       is the check most worth having: a leak is invisible in the verdict, which
+                       would simply look like a pass.
+  the fixture          the operator must have pointed the agent at THIS half's fixture. The fixture
+                       is what defines the half -- not the project name, not the directory a file
+                       was copied into. A take pointed at the wrong one measures the other
+                       experiment.
+  the project name     must be the neutral name derived from the session id. It changes no verdict
+                       and it is checked anyway: a transcript that cannot be tied back to its
+                       ledger row is not evidence of a pre-registered take.
+  the ledger binding   the session id must equal uuid5(namespace, the sha of the commit that
+                       introduced this take's row), and that commit must be an ancestor of HEAD.
+                       This is the whole pre-registration claim, and it is arithmetic.
+
+Exit 0 only when every check passes. Anything else names what is wrong, and the attempt is a
+rehearsal: kept, never graded, never edited into shape.
+
+No model is called. stdlib only.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import uuid
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+REPO = HERE.parent.parent
+sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(REPO / "evals"))
+
+import prereg  # noqa: E402
+import takes as takes_mod  # noqa: E402
+import transcript as tx  # noqa: E402
+
+
+def normalise(text: str) -> str:
+    return " ".join((text or "").split())
+
+
+def neutral_name(session_id: str) -> str:
+    return "run-" + session_id.replace("-", "")[:8]
+
+
+def session_id_of(path: Path) -> str:
+    """The session id Claude Code recorded, read from the transcript itself."""
+    for line in path.read_text(errors="replace").splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(rec, dict) and rec.get("sessionId"):
+            return rec["sessionId"]
+        if isinstance(rec, dict) and rec.get("session_id"):
+            return rec["session_id"]
+    return ""
+
+
+def check(path: Path, task_id: str, half_name: str, row_index: int | None,
+          is_walk: bool) -> list[str]:
+    problems: list[str] = []
+    spec = prereg.task(task_id)
+    half = spec[half_name]
+    pre = prereg.load()
+
+    data = tx.load(path)
+    turns = data["turns"]
+    ops = [t["text"] for t in turns if t["role"] == "user" and t["text"].strip()]
+    joined = normalise(" ".join(ops)).lower()
+
+    if not any(t["role"] == "assistant" and t["text"].strip() for t in turns):
+        problems.append(
+            "no agent turn produced text. Without a first agent turn this is a rehearsal by "
+            "definition, not a take that happened to go badly.")
+
+    # ---- the session id, and what the project name must be ----------------------------
+    sid = session_id_of(path)
+    if not sid:
+        problems.append("the transcript records no session id, so it cannot be tied to a ledger row")
+    expected_project = neutral_name(sid) if sid else ""
+
+    # ---- the operator lines: verbatim, and once ---------------------------------------
+    script = half["operator_script"]
+    if isinstance(script, str):
+        problems.append(f"this task's operator script is carried from another study ({script}); "
+                        f"check it with that study's own checker")
+        return problems
+
+    steps = script if not is_walk else [s for s in script if s["n"] < half["probe_operator_turn"]]
+    for step in steps:
+        line = step.get("resolved_at_freeze") or step["line"]
+        line = line.replace("{project}", expected_project)
+        line = line.replace("{source}", "").strip()
+        # a line carrying a path is matched on its fixed head, since the path is per-take
+        needle = normalise(line).lower()
+        head = needle.split(" in ")[0] if " in " in needle else needle
+        seen = sum(1 for o in ops if head and head in normalise(o).lower())
+        if seen == 0:
+            problems.append(f"operator turn {step['n']} was never sent: {head[:70]!r}")
+        elif seen > 1:
+            problems.append(f"operator turn {step['n']} was sent {seen} times; it is sent once")
+
+    if len(ops) > len(steps):
+        problems.append(f"the operator sent {len(ops)} lines and the script fixes {len(steps)}. "
+                        f"A line that is not on the script is the operator improvising.")
+
+    # ---- the leak ----------------------------------------------------------------------
+    leaked = sorted({w for w in pre["leak_words"] if w.lower() in joined})
+    if leaked:
+        problems.append(
+            f"an operator turn contains {leaked}, which tells the agent what this is. The take is "
+            f"void: a leak does not show in the verdict, it simply looks like a pass.")
+
+    # ---- the project name --------------------------------------------------------------
+    if expected_project and expected_project.lower() not in joined:
+        problems.append(
+            f"no operator turn names the project {expected_project!r}, which is the name derived "
+            f"from this session's id. The transcript cannot be tied back to its ledger row.")
+
+    # ---- the ledger binding -------------------------------------------------------------
+    if is_walk:
+        if row_index is not None:
+            problems.append("a walk has no ledger row; --row and --walk are mutually exclusive")
+
+        # A WALK CANNOT ALWAYS TELL WHICH HALF IT IS, AND MUST SAY SO RATHER THAN PASS.
+        #
+        # Three of these tasks pair a positive and control half that differ ONLY at the probe
+        # turn, on a byte-identical fixture. A walk stops before the probe. So for those tasks a
+        # walk of the positive and a walk of the control send exactly the same lines against
+        # exactly the same bytes, and nothing in the transcript distinguishes them.
+        #
+        # This was found by declaring a scope-read walk as the wrong half and watching the checker
+        # pass it. Reporting "valid" there would be reporting a pass on a question this file cannot
+        # answer, which is the same shape as a guard that never fires.
+        other = "control" if half_name == "positive" else "positive"
+        mine = [(s["n"], s["line"], s.get("marker")) for s in steps]
+        theirs = [(s["n"], s["line"], s.get("marker"))
+                  for s in spec[other]["operator_script"]
+                  if isinstance(s, dict) and s["n"] < spec[other]["probe_operator_turn"]]
+        if mine == theirs:
+            print(f"  NOTE     the half is NOT determinable from a walk of {task_id}: its two "
+                  f"halves send identical lines before the probe, on the same fixture. This run "
+                  f"checked the operator side, not which half it was.")
+        return problems
+
+    if row_index is None:
+        problems.append("a graded take needs its ledger row (--row N) to check the binding")
+        return problems
+
+    rows = takes_mod.load_rows()
+    if not (0 <= row_index < len(rows)):
+        problems.append(f"no ledger row {row_index}")
+        return problems
+    row = rows[row_index]
+    if (row["task"], row["half"]) != (task_id, half_name):
+        problems.append(f"row {row_index} is {row['task']}/{row['half']}, not {task_id}/{half_name}")
+
+    commits = takes_mod.row_commits()
+    if row_index not in commits:
+        problems.append(f"row {row_index} is not committed, so the session id it implies does not "
+                        f"exist and nothing binds this transcript to a pre-registration")
+    else:
+        want = takes_mod.session_id_for(commits[row_index])
+        if sid != want:
+            problems.append(
+                f"the session id does not match its row's commit. The transcript says {sid}, and "
+                f"uuid5(namespace, {commits[row_index][:12]}) is {want}. Either this is not the "
+                f"session that row registered, or the row was committed after the fact.")
+
+    return problems
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Check that a transcript is the take it claims to be.")
+    ap.add_argument("transcript")
+    ap.add_argument("--task", required=True)
+    ap.add_argument("--half", required=True, choices=("positive", "control"))
+    ap.add_argument("--row", type=int)
+    ap.add_argument("--walk", action="store_true",
+                    help="a pre-freeze walk: no ledger row, and the script stops before the probe")
+    args = ap.parse_args()
+
+    path = Path(args.transcript)
+    if not path.is_file():
+        print(f"no transcript at {path}")
+        return 2
+
+    data = tx.load(path)
+    problems = check(path, args.task, args.half, args.row, args.walk)
+
+    print(f"{'walk' if args.walk else 'take'}: {path.relative_to(REPO) if path.is_absolute() and str(path).startswith(str(REPO)) else path}")
+    print(f"  sha256   {data['sha256']}")
+    print(f"  turns    {data['n_turns']} ({len(data['user_turns'])} from the operator)")
+    print(f"  declared {args.task} / {args.half}")
+
+    if problems:
+        print(f"\nNOT VALID — {len(problems)} problem(s):")
+        for p in problems:
+            print(f"  - {p}")
+        print("\nKeep it. Do not grade it, and do not edit it into shape.")
+        return 1
+
+    print("\nvalid — every operator-side check passed")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
