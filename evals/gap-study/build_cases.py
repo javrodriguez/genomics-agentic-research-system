@@ -61,9 +61,41 @@ def grader_for(task_id: str):
         return None
 
 
+# `confounded-design` is carried from the first study and has no walk HERE. Its real agent messages
+# live in that study's committed transcripts, which is where its cases come from. Sourcing them from
+# an empty directory and reporting no cases would leave the one grader this study did not write as
+# the only one that never met a real message.
+CARRIED_SOURCES = {
+    "confounded-design": REPO / "evals" / "transcripts",
+}
+
+
 def messages_for(task_id: str) -> list[dict]:
-    """Every agent message from every committed walk of this task, in order."""
+    """Every agent message from every committed walk of this task, in order.
+
+    For a carried task, from the study it was carried from.
+    """
     out = []
+    carried = CARRIED_SOURCES.get(task_id)
+    if carried and carried.is_dir():
+        for t in sorted(carried.rglob("transcript.jsonl")):
+            data = tx.load(t)
+            idx = 0
+            for turn in data["turns"]:
+                if turn["role"] != "assistant" or not turn["text"].strip():
+                    continue
+                idx += 1
+                out.append({
+                    "walk": "first-study/" + str(t.parent.relative_to(carried)),
+                    "message_index": idx,
+                    "sha256": hashlib.sha256(turn["text"].encode()).hexdigest(),
+                    "first_line": turn["text"].strip().splitlines()[0][:110],
+                    "chars": len(turn["text"]),
+                    "_text": turn["text"],
+                    "_tools": turn["tool_uses"],
+                })
+        return out
+
     root = WALKS / task_id
     if not root.is_dir():
         return out
@@ -87,11 +119,35 @@ def messages_for(task_id: str) -> list[dict]:
 
 
 def label_of(task_id: str, half: str, msg: dict) -> dict:
-    """What the grader says when this message is the post-probe text."""
+    """What the grader says when this message is the text it reads.
+
+    THE PADDING IS NOT COSMETIC, AND THE FIRST VERSION GOT IT WRONG. Two reach conventions are in
+    play. The five graders written here read from the PROBE OPERATOR TURN -- an index into the
+    operator's lines. The carried grader reads from a RAW TURN INDEX into the normalised transcript,
+    which is what the first study fixed and what this study must not restate.
+
+    The first version padded to the probe turn only. For the carried task that produced a transcript
+    shorter than its reach turn, so the grader read an empty string and every one of its 59 cases
+    came back `did-not-reach`. Fifty-nine cases measuring nothing, reported as a suite.
+
+    The transcript is now padded past BOTH, so the message is the text the grader reads whichever
+    convention that grader uses.
+    """
     grader = grader_for(task_id)
     spec = prereg.task(task_id)
-    probe = spec[half]["probe_operator_turn"]
-    turns = [{"role": "user", "text": f"line {i}", "tool_uses": []} for i in range(1, probe + 1)]
+    probe = spec[half].get("probe_operator_turn") or 1
+    reach = spec[half].get("reach_turn") or 1
+    pad = max(int(probe), int(reach))
+    # The REAL script lines, because the graders locate the probe by matching its text. Placeholder
+    # lines made every case unfindable and the whole suite report did-not-reach.
+    script = spec[half].get("operator_script")
+    lines = []
+    if isinstance(script, list):
+        for step in script:
+            lines.append(step.get("resolved_at_freeze") or step.get("line") or "")
+    while len(lines) < pad:
+        lines.append(f"line {len(lines) + 1}")
+    turns = [{"role": "user", "text": ln, "tool_uses": []} for ln in lines[:pad]]
     turns.append({"role": "assistant", "text": msg["_text"], "tool_uses": msg["_tools"]})
     got = grader.grade(turns, OK_LEDGER, half, spec)
     return {"label": got["label"], "verdict": got["verdict"]}

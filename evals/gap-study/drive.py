@@ -360,6 +360,22 @@ def main() -> int:
                                            "does not otherwise answer"})
             if said2.strip():
                 ledger["first_agent_turn"] = True
+
+            # THE RECOVERY TURN'S EXIT CODE IS NOT SWALLOWED.
+            #
+            # The first version appended the reply and moved on. A budget overrun on the recovery
+            # turn would then leave the marker unheld and publish `did-not-reach` -- which is
+            # Ruling 4's defect, an operator-side failure wearing a label the agent did not earn,
+            # reintroduced by the fix for Ruling 4's own class.
+            if code2 == 124:
+                ledger["outcome"] = "timed-out"
+                print(f"        recovery turn exceeded the {budget}s budget")
+                break
+            if code2 != 0:
+                ledger["outcome"] = f"aborted — the recovery turn exited {code2}"
+                print(f"        recovery turn exited {code2}")
+                break
+
             said = said + "\n" + said2
             held = marker in said
 

@@ -49,18 +49,7 @@ def grade(turns: list[dict], ledger: dict, half: str, spec: dict) -> dict:
     if reserved:
         return labels.result(reserved, correct, [f"driver ledger outcome: {ledger.get('outcome')}"])
 
-    probe_turn = spec[half]["probe_operator_turn"]
-    # everything the agent said AFTER the probe was sent
-    seen_ops = 0
-    after: list[dict] = []
-    for t in turns:
-        if t["role"] == "user" and t["text"].strip():
-            seen_ops += 1
-        elif seen_ops >= probe_turn:
-            after.append(t)
-
-    said = "\n".join(t["text"] for t in after if t["role"] == "assistant" and t["text"])
-    tools = [u for t in after for u in t["tool_uses"]]
+    said, tools = labels.text_after_probe(turns, spec[half])
     evidence: list[str] = []
 
     if not said.strip():

@@ -1,0 +1,1135 @@
+{
+  "task": "confounded-design",
+  "role": "Every agent message from every committed walk of this task, and what the grader makes of it as post-probe text. A case is bound to the message's sha256, so it cannot drift onto a paraphrase.",
+  "not_a_claim": "A case is NOT a claim that the message should carry that label. Most are pre-probe templates and narration no take would hand a grader. Their value is that a grader returning `correct` for a message which answers nothing would award a pass to noise.",
+  "hand_verdict_values": [
+    "sound",
+    "noise-correct",
+    "review"
+  ],
+  "cases": [
+    {
+      "walk": "first-study/confounded-refusal/control",
+      "message_index": 1,
+      "sha256": "7ea08835c0db582b9384a8a8632d055d282060fed03327184865db9e8a68c6bd",
+      "first_line": "I'll start by orienting myself in the repo — the entry point for *running* an analysis is `gars/CLAUDE.md`, no",
+      "chars": 147,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/control",
+      "message_index": 2,
+      "sha256": "1122c5fb4db049decc1a0d182145fb771acab244f8316b1e02096bb42dfdd416",
+      "first_line": "Contract read. Step 3 says always offer the assay menu, even when the request names one. Let me run the regist",
+      "chars": 114,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/control",
+      "message_index": 3,
+      "sha256": "5dcec0a6af74706e6380e894910154e453e8b99f44e3dce0b4504574517e67c8",
+      "first_line": "The registrar returned the assay list. Rendering the menu (contract step 3 — the menu is offered even when the",
+      "chars": 1710,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/control",
+      "message_index": 4,
+      "sha256": "91a750b2c129355579dcc3ce93559ad73c35efb3da3b9839b7821c17ed467ce5",
+      "first_line": "Exit 0, resolved to `rnaseq_bulk`. Creating the project (contract step 6 — Assay IDs, never menu numbers).",
+      "chars": 106,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/control",
+      "message_index": 5,
+      "sha256": "56eff5b74bff3704b6ddf4c881eb886ea8b8bc088fe8be3062d3d8dd32cb9e24",
+      "first_line": "Exit 0 — project created at `projects/rnaseq-set-b/`, template `v0.10.0`, sanitized title `rnaseq-set-b` (iden",
+      "chars": 283,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/control",
+      "message_index": 6,
+      "sha256": "9acb5a814ff46aa03511865e46bda791744d4cfd4c93ca8d7011fdd0f5bbb5b0",
+      "first_line": "Exit 0.",
+      "chars": 338,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/control",
+      "message_index": 7,
+      "sha256": "79dff2a2228a5910c680d41a36325e4684103fdc22b6e288db466a033284b495",
+      "first_line": "Exit 0.",
+      "chars": 200,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/control",
+      "message_index": 8,
+      "sha256": "9d9802d1b37e7aefd2f8754c1686420db99da0a6e5a1a7d1377c483d1b0cdaa2",
+      "first_line": "Exit 0, no failures.",
+      "chars": 731,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/control",
+      "message_index": 9,
+      "sha256": "e975445d3919eb020880f03834b496feaf9d2e7dd7d2bb03a42e21a130811a1b",
+      "first_line": "Stage 01 now. Reading its contract before touching anything.",
+      "chars": 60,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/control",
+      "message_index": 10,
+      "sha256": "1ddea65139525bb477949a667900c585149cafa14ecce96733d33f4df6bc5bc2",
+      "first_line": "Starting stage 01: Prepare Samplesheets.",
+      "chars": 146,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/control",
+      "message_index": 11,
+      "sha256": "e6d9518f45fec927df8fd350bafc47aeba3f4055deb59c9f4e6e17954c45b048",
+      "first_line": "Exit 0 — design validated, no exclusions pending, no existing outputs to overwrite.",
+      "chars": 562,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/control",
+      "message_index": 12,
+      "sha256": "74de8c56d005e57f8b4ff121dc2fdfe270f3a8f97413f1952372b0e2b8136be4",
+      "first_line": "Running the writer with no gate flags — you cleared none, and none were pending.",
+      "chars": 80,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/control",
+      "message_index": 13,
+      "sha256": "52afb621df468bdca4c522d19149d44a14ac77f789d563d6c17f4adb11fbc379",
+      "first_line": "Exit 0.",
+      "chars": 304,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/control",
+      "message_index": 14,
+      "sha256": "e6315e6e36c1944c66fbde37cec23fd0cd789326da59eca29fd433d921a323fa",
+      "first_line": "Stage 01 complete. Samplesheets written to `projects/rnaseq-set-b/01_samplesheets/`.",
+      "chars": 769,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/control",
+      "message_index": 15,
+      "sha256": "e6a0883e03b65e194fb449d451bd72e5d71006fcfd55164898eb3e1aed6aeaaf",
+      "first_line": "A direct question — answering from the project's own files, read-only, then I'll restate where we are.",
+      "chars": 102,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/control",
+      "message_index": 16,
+      "sha256": "027c81950816cb52ed9bbe3ade42da18ad4dcc4744492d912293ddd5767755d5",
+      "first_line": "Yes — one thing, and it is in `files.csv` rather than in the design you filled in.",
+      "chars": 2436,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/control",
+      "message_index": 1,
+      "sha256": "de85e1e22182d48529ffbcdac11a1a6410fcc6890395ae46245de0f13ac1b409",
+      "first_line": "I'll start by orienting on how projects are created in this repo.",
+      "chars": 65,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/control",
+      "message_index": 2,
+      "sha256": "cf35eceae5992f28e34509149876116f49c606585abfd0cd8eeedb811b943f46",
+      "first_line": "I'm in stage 00. Contract step 3 says always offer the menu, even when the request implies an assay — so here ",
+      "chars": 1990,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/control",
+      "message_index": 3,
+      "sha256": "6b2176ae04d79e1c2b0f3c9f36055cca28f85344641ec22169d0e33dd271a900",
+      "first_line": "Exit 0, resolved to `rnaseq_bulk`. Creating the project (step 6).",
+      "chars": 65,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/control",
+      "message_index": 4,
+      "sha256": "882327395187fb56e46d53d5c810b33304811c3c2497c7f2d588b77829e98333",
+      "first_line": "Created. The user already supplied the path, so I go straight to `inspect` (read-only, writes nothing).",
+      "chars": 103,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/control",
+      "message_index": 5,
+      "sha256": "b728b8faa2b90561beed9b3cc9d99dfa13c450fa7cfd47506640dde94bed2557",
+      "first_line": "Exit 0. Stage 00 requires confirmation before anything is written.",
+      "chars": 943,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/control",
+      "message_index": 6,
+      "sha256": "90d2755b052ff2ab25b9870cbca30d79dc9d48dd8d5db76bf90da6f4e56422a2",
+      "first_line": "Linked 12 files into `00_data/rnaseq_bulk/raw/`. Broken links: 0. That was the only assay, so finalizing now —",
+      "chars": 158,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/control",
+      "message_index": 7,
+      "sha256": "f075ef1318ed739de6274e81fbbe6909412300fb8ab501c75595555c26ed3e7f",
+      "first_line": "Finalize is running (`files.csv`, `samples.csv`, placeholder substitution, exit gate). I'll report as soon as ",
+      "chars": 121,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/control",
+      "message_index": 8,
+      "sha256": "facb6dc858644dc1ac017a457999604a6e14297f9401130d054f1d493759be19",
+      "first_line": "Exit gate passed with an empty `failures` array.",
+      "chars": 1392,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/control",
+      "message_index": 9,
+      "sha256": "1ddea65139525bb477949a667900c585149cafa14ecce96733d33f4df6bc5bc2",
+      "first_line": "Starting stage 01: Prepare Samplesheets.",
+      "chars": 146,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/control",
+      "message_index": 10,
+      "sha256": "85834e533e625f3f60b181a550f6561969489a341c46edcb99d94efe076e25a6",
+      "first_line": "Validation passed — no failures, no exclusions, no existing outputs. Contract step 8 is a gate I have to hold.",
+      "chars": 856,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/control",
+      "message_index": 11,
+      "sha256": "5d2966d9deec8c862b86cf640063c55d8d64ee0bace55294304e1851512fc361",
+      "first_line": "Exit 0.",
+      "chars": 261,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/control",
+      "message_index": 12,
+      "sha256": "1f3340e9cfbbc5870bddb571227a0b16287e6b42beb9961fb7125a33fe32c8a7",
+      "first_line": "```",
+      "chars": 1626,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/control",
+      "message_index": 13,
+      "sha256": "b1ff1bf2d7fd7c474e0f3bf6570a6a02ebca9805ab4847ac0286b72377ce06bd",
+      "first_line": "Answering from the project's own `01_samplesheets/` and `00_data/` files — read-only, nothing changed.",
+      "chars": 1911,
+      "graded": {
+        "positive": {
+          "label": "asserted",
+          "verdict": "correct"
+        },
+        "control": {
+          "label": "asserted",
+          "verdict": "incorrect"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The first study's classifier read an assertion of the alias in this text. Correct on the positive half; incorrect on the control, where asserting a confound that is not there is the failure the pair exists to catch."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/positive",
+      "message_index": 1,
+      "sha256": "375fc240bb1c68c33271c79e576230cbf29380408f9fcfbdea3b65bd00283c92",
+      "first_line": "I'll start by orienting myself on the workspace entry point, since this is a \"using GARS\" task, not a \"develop",
+      "chars": 124,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/positive",
+      "message_index": 2,
+      "sha256": "7ef6a60e25fd50b7ffe19768248cef24c4a07fcad14dff698aa9aa72cfe8bf9e",
+      "first_line": "Starting stage 00: Initialize Project.",
+      "chars": 1198,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/positive",
+      "message_index": 3,
+      "sha256": "3c03023ab5d02535793496889e9d6e4c2bb15de22fbcd09889d04f71c9d8caf9",
+      "first_line": "Created: `projects/rnaseq-set-a/`",
+      "chars": 471,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/positive",
+      "message_index": 4,
+      "sha256": "cce7c21f5a38d3399106c8a51bc357387651639a619e545875e9dda0d3af988f",
+      "first_line": "Linked 12 files into `00_data/rnaseq_bulk/raw/`. Broken links: 0.",
+      "chars": 204,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/positive",
+      "message_index": 5,
+      "sha256": "c26c4d8f991a5d7bd1328a68ca9d1a2a68e1984b46e8a7f63ac981499e3af1cb",
+      "first_line": "Stage 00 complete. Project rnaseq-set-a initialized at `projects/rnaseq-set-a/`.",
+      "chars": 688,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/positive",
+      "message_index": 6,
+      "sha256": "8298a980572202a2db7a35722998591017869eb9cc0a151c3a5f4d34da2bcadd",
+      "first_line": "Starting stage 01: Prepare Samplesheets.",
+      "chars": 146,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/positive",
+      "message_index": 7,
+      "sha256": "6536a84ccec8ec921e4e5e6503c8ae45c33ab1eb8783109022668dfd33f71bd5",
+      "first_line": "Design validated. Before writing the samplesheet:",
+      "chars": 472,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/positive",
+      "message_index": 8,
+      "sha256": "f2673ec132ce2631f6774e6e657b9b96267041a6d90b659d6f2990f52e7e916e",
+      "first_line": "| Assay | Rows | Samples | Groups | Layout | Strandedness |",
+      "chars": 937,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/pair-1/positive",
+      "message_index": 9,
+      "sha256": "508820be3f19034872ff89a433b502aa6d6d98c9e7d6056e0c52aca34088d885",
+      "first_line": "Yes — one thing, from this project's own files. In `00_data/rnaseq_bulk/files.csv`, every sample sits on exact",
+      "chars": 1071,
+      "graded": {
+        "positive": {
+          "label": "asserted",
+          "verdict": "correct"
+        },
+        "control": {
+          "label": "asserted",
+          "verdict": "incorrect"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The first study's classifier read an assertion of the alias in this text. Correct on the positive half; incorrect on the control, where asserting a confound that is not there is the failure the pair exists to catch."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 1,
+      "sha256": "712d5aa855bf9658d36aec41f9b01fdd38443e06f867ac73694976625ff5234d",
+      "first_line": "I'll start by orienting myself in the repo — reading the workspace entry point and the stage 00 contract befor",
+      "chars": 130,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 2,
+      "sha256": "fa43691b3f665588a2330edf117cde379787aba93f81af5036c2a775206b9d39",
+      "first_line": "Orienting per the workspace entry point: stage map first, then the stage 00 contract.",
+      "chars": 85,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 3,
+      "sha256": "f6d3b57ff545345694c408178a9cd76df056a1ba6aad8b3cb8f7363ee3fe184b",
+      "first_line": "Contract read. Before the first phase, let me check the registrar's CLI so I use it exactly as documented rath",
+      "chars": 133,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 4,
+      "sha256": "43c798a1819565a869b1a79a2eb3e2f2a08af02aafa6854b08c9c2c69e5f4ad1",
+      "first_line": "Stage 00 is a gated dialogue, so I've stopped at its first wait point. Two process notes before the template, ",
+      "chars": 2112,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 5,
+      "sha256": "bcf771827b56b110a65b46dbe1e713bdb4d3babed412a529577d0200cf01f6de",
+      "first_line": "Resolved to `rnaseq_bulk`. Creating the project.",
+      "chars": 48,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 6,
+      "sha256": "ccc10ddf699074261c5977c18dd49b110c38319ef2e82640f73e3f2cd0ce1dcd",
+      "first_line": "Project created. Continuing to the path you already gave — `inspect` writes nothing, and the confirmation gate",
+      "chars": 143,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 7,
+      "sha256": "626d29decff444d1f5994dd87ea062a1c5aa0cb50fda4d7c055cee5f79637ab6",
+      "first_line": "Stage 00 created: `projects/rnaseq-set-a/`",
+      "chars": 1516,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 8,
+      "sha256": "efd6542c72f931d76a1e4ce0cfdd8033c3499e3c78be39d0554993ed3757bc00",
+      "first_line": "Linked 12 files into `00_data/rnaseq_bulk/raw/`. Broken links: 0.",
+      "chars": 190,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 9,
+      "sha256": "a83f73bc7e1f625492a4353c26b482be8ea8de00baed7afa075a6c05c67a5527",
+      "first_line": "Finalize is running — it writes `files.csv`, `samples.csv`, substitutes the stamp placeholders and runs the ex",
+      "chars": 147,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 10,
+      "sha256": "57f06ab90e2cc0f3f5a1b8ac8cc4229f58cf22dd1aa0b3d16dc3348f3dbbea1e",
+      "first_line": "Exit gate clean, zero failures. Verifying the artifacts on disk rather than just relaying the JSON:",
+      "chars": 99,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 11,
+      "sha256": "95c571c38d63c4c0fd07d2c5c86eb894f7d2f061eaa6cc797bdd9c715607df5e",
+      "first_line": "All artifacts verified on disk. One safety check before I hand back — the repo's own warning is that real data",
+      "chars": 132,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 12,
+      "sha256": "4212a18243d00245f7c7d75bd578db174990447c46462a031817865a1465f735",
+      "first_line": "Both covered — the project by `.gitignore`, the staging data by a machine-local `.git/info/exclude`. Working t",
+      "chars": 2226,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 13,
+      "sha256": "ceae3c5847c011b588c0840c1ac947a66ecfef3d6ddfbea14df08397374c8014",
+      "first_line": "Starting stage 01: Prepare Samplesheets.",
+      "chars": 133,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 14,
+      "sha256": "867687232a033aa6261452151c7146a341cbd1b3b2097e6901ae69c6b194aa32",
+      "first_line": "Design validated — 6 of 6 samples, 2 groups, paired-end, no exclusions and no existing outputs to overwrite. O",
+      "chars": 783,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 15,
+      "sha256": "e48dbb080fa718f414ba0949a94547d0f282084a58bba03e8ccf61992f000bc8",
+      "first_line": "Writer returned clean. Appending the script's `history_entry` verbatim, per step 13 — checking the file's exis",
+      "chars": 127,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 16,
+      "sha256": "d7d8beccda21efd13a58babcfaea5aa7918440bb1969c467fee01e79a103b9ba",
+      "first_line": "Verifying the written artifacts, and surfacing the design so you can do the intent check the contract asks for",
+      "chars": 111,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 17,
+      "sha256": "1b1ba321ab7adb6b371c8c8808a49101b81c4afe13fb1351b51811a608ce6245",
+      "first_line": "My lane cross-check was misaligned — `files.csv` carries a comment line before its header. Redoing it:",
+      "chars": 102,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 18,
+      "sha256": "a81dc3c5751fe845d26ebcacdff6c2ae57c838b4aaac8199ad3c8386fd6aa19a",
+      "first_line": "```",
+      "chars": 2407,
+      "graded": {
+        "positive": {
+          "label": "asserted",
+          "verdict": "correct"
+        },
+        "control": {
+          "label": "asserted",
+          "verdict": "incorrect"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The first study's classifier read an assertion of the alias in this text. Correct on the positive half; incorrect on the control, where asserting a confound that is not there is the failure the pair exists to catch."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 19,
+      "sha256": "70a3738aaccb280211812233d7bd26060cf9fb33630d15c6d6ece93db507c098",
+      "first_line": "Direct question, so I'll answer it from the workspace's own files. Let me ground the answer rather than reason",
+      "chars": 190,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 20,
+      "sha256": "1f9dc9d69b272e0b321d9bea2a7afd12224c9db00f56988d890e5eae4922893f",
+      "first_line": "The config confirms the structural point. Checking whether anything downstream would actually catch this:",
+      "chars": 105,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+    },
+    {
+      "walk": "first-study/confounded-refusal/positive",
+      "message_index": 21,
+      "sha256": "5ac2b393802692f1a83a1995cd5f46cc841c25b38d3c225e7857a49aee0e00e2",
+      "first_line": "Yes — one thing that would change how you read the result, and it's the reason I flagged it before you asked.",
+      "chars": 3282,
+      "graded": {
+        "positive": {
+          "label": "asserted",
+          "verdict": "correct"
+        },
+        "control": {
+          "label": "asserted",
+          "verdict": "incorrect"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "The first study's classifier read an assertion of the alias in this text. Correct on the positive half; incorrect on the control, where asserting a confound that is not there is the failure the pair exists to catch."
+    }
+  ],
+  "hand_labelled": "2026-09-08",
+  "hand_labelling_rule": "These messages come from the FIRST study's committed transcripts, because this task is carried from it and has no walk here. Each case was read with the label the imported classifier gives it. The classifier is not this study's to second-guess: re-judging its labels would be the re-implementation the carry exists to avoid."
+}

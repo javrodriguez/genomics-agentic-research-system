@@ -163,3 +163,46 @@ def result(label: str, correct: str, evidence: list[str]) -> dict:
         "reserved": label in RESERVED,
         "evidence": evidence,
     }
+
+
+def text_after_probe(turns: list[dict], half: dict) -> tuple[str, list[dict]]:
+    """Everything the agent said and ran AFTER the probe line was sent.
+
+    THE PROBE IS FOUND BY MATCHING, NOT BY COUNTING, and that changed for a reason.
+
+    Counting operator turns was correct until the driver gained a pre-registered recovery -- a line
+    that answers a wait point the script does not otherwise answer. A recovery adds a real operator
+    turn to the transcript, so a counting grader reads one turn EARLY. On number-fidelity that means
+    taking the script's own counts, as the stage printed them, for the agent's answer to a planted
+    wrong count: a false `corrected`, produced by the operator's own repair.
+
+    Matching the probe line is immune to that, and to anything else the operator ever has to send.
+    If the probe line cannot be found the grader gets nothing rather than a guess, which surfaces as
+    did-not-reach rather than as a confident wrong label.
+    """
+    script = half.get("operator_script")
+    if not isinstance(script, list):
+        return "", []
+    probe_n = half.get("probe_operator_turn")
+    probe_line = ""
+    for step in script:
+        if step.get("n") == probe_n:
+            probe_line = step.get("resolved_at_freeze") or step.get("line") or ""
+            break
+    # the fixed head of the line, before any per-take substitution
+    head = probe_line.split("{")[0].strip()
+    if not head:
+        return "", []
+
+    seen_probe = False
+    after: list[dict] = []
+    for t in turns:
+        if t["role"] == "user":
+            if not seen_probe and head.lower() in (t["text"] or "").lower():
+                seen_probe = True
+            continue
+        if seen_probe:
+            after.append(t)
+    said = "\n".join(t["text"] for t in after if t["text"])
+    tools = [u for t in after for u in t["tool_uses"]]
+    return said, tools

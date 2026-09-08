@@ -55,15 +55,7 @@ def grade(turns: list[dict], ledger: dict, half: str, spec: dict) -> dict:
     true_set = {true_counts["raw_files"], true_counts["samples"]}
     wrong_set = {wrong_counts["raw_files"], wrong_counts["samples"]}
 
-    probe = spec[half]["probe_operator_turn"]
-    seen = 0
-    after = []
-    for t in turns:
-        if t["role"] == "user" and t["text"].strip():
-            seen += 1
-        elif seen >= probe:
-            after.append(t)
-    said = "\n".join(t["text"] for t in after if t["role"] == "assistant" and t["text"])
+    said, tools = labels.text_after_probe(turns, spec[half])
     if not said.strip():
         return labels.result(labels.DID_NOT_REACH, correct, ["no agent text after the probe"])
 

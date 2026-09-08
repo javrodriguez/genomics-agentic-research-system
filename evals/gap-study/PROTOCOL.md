@@ -153,6 +153,27 @@ The driver sends no line past an unheld marker, and stops the take only at the p
 never earlier, because stopping early would turn a slow agent into a `did-not-reach` that the agent
 did not earn.
 
+**With one exception, and it is data rather than judgment: the recovery.**
+Stage 00 reaches two templates that end by asking before the probe is ever sent — T1, which asks for
+the project title, and T3b, which asks for the raw data path.
+Both are required unconditionally, so both are wait points by the definition above.
+An agent that follows the contract and stops at either leaves the next marker unheld, the driver
+sends nothing further, and the take publishes as `did-not-reach` — a model failure the model did not
+earn, on half the planned takes.
+
+So a script turn may carry a `recovery`: a line that answers a wait point the script does not
+otherwise answer.
+It is sent **at most once**, and only when the reply holds the recovery's own marker while the
+step's marker is not held.
+It sends what the operator's first line already said, so it introduces nothing new.
+It is fixed in the pre-registration like every other line, its marker is the template's own bytes
+like every other marker, and its turn's exit code is read like every other turn's.
+
+**A recovery turn is not a numbered operator turn.** The graders locate the probe by matching its
+pre-registered text rather than by counting operator turns, precisely because a recovery adds one:
+a counting grader would read one turn early and, on `number-fidelity`, take the stage's own printed
+counts for the agent's answer to a planted wrong one.
+
 ## The local tier — DROPPED at gate 2, 8 September 2026
 
 **This section describes a tier that is not being run.** It is kept because the design is what a
