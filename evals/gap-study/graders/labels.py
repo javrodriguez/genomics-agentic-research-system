@@ -143,14 +143,31 @@ def touched(paths: list[str], needle: str) -> list[str]:
 def from_ledger(ledger: dict) -> str | None:
     """A reserved label, if the DRIVER recorded one. Never inferred from what the agent said."""
     outcome = (ledger or {}).get("outcome") or ""
-    if outcome == "timed-out":
+    if outcome.startswith("timed-out"):
         return TIMED_OUT
     if outcome.startswith("REHEARSAL"):
         return None
-    if "marker not held" in outcome:
-        return DID_NOT_REACH
     if outcome.startswith("PAUSE"):
         return None
+
+    # `aborted` HAD NO PRODUCER HERE, and that made a pre-registered published quantity
+    # structurally zero. The driver writes "aborted — <reason>" when a process dies after the first
+    # agent turn, and this function had no branch for it, so those takes published as
+    # `did-not-reach` instead. Every one of the six tasks pre-registers `aborted` and the protocol
+    # promises its counts per cell.
+    #
+    # That is Ruling 4's own defect one step downstream: a take wearing a label it did not earn,
+    # because the mechanism that should have assigned the right one did not exist.
+    if outcome.startswith("aborted"):
+        return ABORTED
+
+    # A take with no session file never reached a gradable state either. The driver appends this to
+    # whatever outcome it had, so it is checked after the specific ones above.
+    if "no session file" in outcome:
+        return ABORTED
+
+    if "marker not held" in outcome:
+        return DID_NOT_REACH
     return None
 
 

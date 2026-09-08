@@ -356,6 +356,79 @@ class CaseSuites(unittest.TestCase):
         self.assertGreater(checked, 0)
 
 
+class EveryOperatorLineRenders(unittest.TestCase):
+    """Every line the driver may send must actually render, with the two substitutions it makes.
+
+    One task's probe line carried {wrong_files} and {wrong_samples}. The driver substitutes only
+    {project} and {source}, so it would have raised KeyError on that turn and the task could not
+    have been driven at all -- eighteen takes. The frozen file also carried a SECOND candidate line
+    for the same turn and named neither as the one sent.
+
+    Both are closed: one line per turn, literal numbers, and this test.
+    """
+
+    def test_every_line_renders_with_only_project_and_source(self):
+        n = 0
+        for t in prereg.load()["tasks"]:
+            for half in ("positive", "control"):
+                script = t[half].get("operator_script")
+                if not isinstance(script, list):
+                    continue
+                for step in script:
+                    n += 1
+                    try:
+                        (step.get("line") or "").format(project="p", source="s")
+                    except (KeyError, IndexError) as exc:
+                        self.fail(f"{t['id']}/{half} turn {step['n']}: line does not render "
+                                  f"({exc!r}). The driver substitutes only project and source.")
+                    rec = step.get("recovery")
+                    if rec:
+                        n += 1
+                        try:
+                            rec["send"].format(project="p", source="s")
+                        except (KeyError, IndexError) as exc:
+                            self.fail(f"{t['id']}/{half} turn {step['n']}: recovery does not "
+                                      f"render ({exc!r})")
+        self.assertGreater(n, 0, "no line was checked; that is not a pass")
+
+    def test_a_turn_carries_exactly_one_candidate_line(self):
+        for t in prereg.load()["tasks"]:
+            for half in ("positive", "control"):
+                script = t[half].get("operator_script")
+                if not isinstance(script, list):
+                    continue
+                for step in script:
+                    self.assertNotIn(
+                        "resolved_at_freeze", step,
+                        f"{t['id']}/{half} turn {step['n']} carries two candidate lines and the "
+                        f"frozen file names neither as the one sent")
+
+
+class ReservedLabelsAllHaveAProducer(unittest.TestCase):
+    """Each reserved label is a published quantity; one with no producer is structurally zero.
+
+    `aborted` is pre-registered on all six tasks and the protocol promises its per-cell counts. It
+    had no branch in from_ledger, so a process that died after the first agent turn published as
+    `did-not-reach` -- a take wearing a label it did not earn, which is the defect Ruling 4 exists
+    to prevent, one step downstream of the fix for Ruling 4's class.
+    """
+
+    def test_every_reserved_label_can_be_produced(self):
+        produced = {
+            labels.from_ledger({"outcome": "timed-out"}),
+            labels.from_ledger({"outcome": "aborted — the server died"}),
+            labels.from_ledger({"outcome": "stopped — wait-point marker not held"}),
+        }
+        for name in labels.RESERVED:
+            self.assertIn(name, produced,
+                          f"{name} is pre-registered and published per cell, and nothing can "
+                          f"assign it. Its count would be structurally zero.")
+
+    def test_a_missing_session_file_is_aborted_not_did_not_reach(self):
+        self.assertEqual(
+            labels.from_ledger({"outcome": "complete — no session file at /x"}), labels.ABORTED)
+
+
 class WaitPointsAllHaveAnAnswer(unittest.TestCase):
     """Every wait point the agent can sit at must have a line that answers it.
 

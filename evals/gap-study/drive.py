@@ -37,6 +37,11 @@ cannot afford. Here:
 The driver sends no line past an unheld marker -- continuing would measure a script the agent never
 got to -- but it does not throw the transcript away either.
 
+ONE EXCEPTION, and it is data rather than judgment: a step may carry a pre-registered RECOVERY,
+which answers a wait point the script does not otherwise answer. Sent at most once, only when the
+reply holds the recovery's own marker while the step's is not held. See the frozen file's
+wait_point_marker_rule.
+
 NOTHING IN A PATH OR A NAME TELLS THE AGENT WHAT THIS IS. The session under test reads every byte it
 is given. The first study named its projects for the half and staged fixtures under a path carrying
 the task name; both had to be repaired mid-run. Here the project name and the staging path are

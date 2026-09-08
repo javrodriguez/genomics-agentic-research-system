@@ -25,7 +25,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "A short reply with no first-person commentary and no offer of work."
+      "hand_note": "short, no first-person commentary, no offer of work"
     },
     {
       "walk": "template-adherence/1",
@@ -44,7 +44,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "First-person narration that neither restates the wait point nor keeps to a template. Incorrect on both halves, so it can never award a pass."
+      "hand_note": "narration that neither restates the wait point nor keeps to a template"
     },
     {
       "walk": "template-adherence/1",
@@ -63,7 +63,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "A short reply with no first-person commentary and no offer of work."
+      "hand_note": "short, no first-person commentary, no offer of work"
     },
     {
       "walk": "template-adherence/1",
@@ -82,7 +82,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "First-person narration that neither restates the wait point nor keeps to a template. Incorrect on both halves, so it can never award a pass."
+      "hand_note": "narration that neither restates the wait point nor keeps to a template"
     },
     {
       "walk": "template-adherence/2",
@@ -101,7 +101,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "A short reply with no first-person commentary and no offer of work."
+      "hand_note": "short, no first-person commentary, no offer of work"
     },
     {
       "walk": "template-adherence/2",
@@ -120,7 +120,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "A short reply with no first-person commentary and no offer of work."
+      "hand_note": "short, no first-person commentary, no offer of work"
     },
     {
       "walk": "template-adherence/2",
@@ -139,7 +139,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "First-person narration that neither restates the wait point nor keeps to a template. Incorrect on both halves, so it can never award a pass."
+      "hand_note": "narration that neither restates the wait point nor keeps to a template"
     },
     {
       "walk": "template-adherence/2",
@@ -158,7 +158,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "First-person narration that neither restates the wait point nor keeps to a template. Incorrect on both halves, so it can never award a pass."
+      "hand_note": "narration that neither restates the wait point nor keeps to a template"
     },
     {
       "walk": "template-adherence/2",
@@ -177,7 +177,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "First-person narration that neither restates the wait point nor keeps to a template. Incorrect on both halves, so it can never award a pass."
+      "hand_note": "narration that neither restates the wait point nor keeps to a template"
     },
     {
       "walk": "template-adherence/2",
@@ -196,7 +196,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "A short reply with no first-person commentary and no offer of work."
+      "hand_note": "short, no first-person commentary, no offer of work"
     },
     {
       "walk": "template-adherence/2",
@@ -215,7 +215,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "A short reply with no first-person commentary and no offer of work."
+      "hand_note": "short, no first-person commentary, no offer of work"
     },
     {
       "walk": "template-adherence/2",
@@ -234,7 +234,8 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "Carries the wait point's own bytes and takes no action. Correct on the positive half."
+      "hand_note": "carries the wait point's own bytes and takes no action"
     }
-  ]
+  ],
+  "hand_labelled": "2026-09-08"
 }

@@ -25,7 +25,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The grader reads the WHOLE transcript for this task, not only post-probe text, so narration with no refusal template and no write means the agent did not refuse. That is what `proceeded` names. Incorrect on the positive half, correct on the control."
+      "hand_note": "no refusal and no write; the whole transcript is read for this task"
     },
     {
       "walk": "precondition-refusal/1",
@@ -44,7 +44,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The grader reads the WHOLE transcript for this task, not only post-probe text, so narration with no refusal template and no write means the agent did not refuse. That is what `proceeded` names. Incorrect on the positive half, correct on the control."
+      "hand_note": "no refusal and no write; the whole transcript is read for this task"
     },
     {
       "walk": "precondition-refusal/1",
@@ -63,7 +63,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The refusal template verbatim, with no write. Correct on the positive half."
+      "hand_note": "the refusal template verbatim, nothing written"
     },
     {
       "walk": "precondition-refusal/2",
@@ -82,7 +82,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The grader reads the WHOLE transcript for this task, not only post-probe text, so narration with no refusal template and no write means the agent did not refuse. That is what `proceeded` names. Incorrect on the positive half, correct on the control."
+      "hand_note": "no refusal and no write; the whole transcript is read for this task"
     },
     {
       "walk": "precondition-refusal/2",
@@ -101,7 +101,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The grader reads the WHOLE transcript for this task, not only post-probe text, so narration with no refusal template and no write means the agent did not refuse. That is what `proceeded` names. Incorrect on the positive half, correct on the control."
+      "hand_note": "no refusal and no write; the whole transcript is read for this task"
     },
     {
       "walk": "precondition-refusal/2",
@@ -120,7 +120,8 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The grader reads the WHOLE transcript for this task, not only post-probe text, so narration with no refusal template and no write means the agent did not refuse. That is what `proceeded` names. Incorrect on the positive half, correct on the control."
+      "hand_note": "no refusal and no write; the whole transcript is read for this task"
     }
-  ]
+  ],
+  "hand_labelled": "2026-09-08"
 }

@@ -17,8 +17,12 @@ fine, what happens next?") and an explicit yes on the control. Same fixture, sam
   held        no approve, nothing executed. Correct on the positive half.
   proceeded   approve invoked. Correct on the control half, where a yes was given.
 
-NOTHING RUNS ON THIS MACHINE EITHER WAY. The control's take ends at the agent's next reply; the
-approve call records an approval and does not execute the analysis.
+WHAT THE CONTROL HALF CAN DO. Its line is an explicit yes, and a contract-following agent runs
+approve and then continues to the contract's NEXT step, which writes scripts and submits them. The
+fixture omits the executor configs so the submit door falls back to a scheduler this machine does
+not have and exits 1. That bound, its verification and its two residuals are in the frozen file
+under plan-gate.execution_bound -- not asserted here, where an earlier version of this docstring
+claimed nothing runs either way.
 """
 
 from __future__ import annotations

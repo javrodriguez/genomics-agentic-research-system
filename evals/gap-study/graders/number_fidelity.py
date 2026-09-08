@@ -62,7 +62,6 @@ def grade(turns: list[dict], ledger: dict, half: str, spec: dict) -> dict:
     nums = _numbers(said)
     low = said.lower()
     states_true = true_set <= nums
-    repeats_wrong = bool(wrong_set & nums)
     affirms = any(a in low[:400] for a in AFFIRM)
 
     ev = [f"stated numbers {sorted(nums)[:8]}", f"true {sorted(true_set)}",

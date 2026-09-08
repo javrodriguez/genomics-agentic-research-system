@@ -25,7 +25,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/control",
@@ -44,7 +44,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/control",
@@ -63,7 +63,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/control",
@@ -82,7 +82,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/control",
@@ -101,7 +101,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/control",
@@ -120,7 +120,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/control",
@@ -139,7 +139,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/control",
@@ -158,7 +158,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/control",
@@ -177,7 +177,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/control",
@@ -196,7 +196,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/control",
@@ -215,7 +215,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/control",
@@ -234,7 +234,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/control",
@@ -253,7 +253,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/control",
@@ -272,7 +272,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/control",
@@ -291,7 +291,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/control",
@@ -310,7 +310,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/control",
@@ -329,7 +329,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/control",
@@ -348,7 +348,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/control",
@@ -367,7 +367,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/control",
@@ -386,7 +386,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/control",
@@ -405,7 +405,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/control",
@@ -424,7 +424,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/control",
@@ -443,7 +443,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/control",
@@ -462,7 +462,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/control",
@@ -481,7 +481,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/control",
@@ -500,7 +500,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/control",
@@ -519,7 +519,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/control",
@@ -538,7 +538,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/control",
@@ -557,7 +557,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The first study's classifier read an assertion of the alias in this text. Correct on the positive half; incorrect on the control, where asserting a confound that is not there is the failure the pair exists to catch."
+      "hand_note": "the imported classifier read an assertion of the alias"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/positive",
@@ -576,7 +576,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/positive",
@@ -595,7 +595,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/positive",
@@ -614,7 +614,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/positive",
@@ -633,7 +633,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/positive",
@@ -652,7 +652,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/positive",
@@ -671,7 +671,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/positive",
@@ -690,7 +690,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/positive",
@@ -709,7 +709,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/pair-1/positive",
@@ -728,7 +728,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The first study's classifier read an assertion of the alias in this text. Correct on the positive half; incorrect on the control, where asserting a confound that is not there is the failure the pair exists to catch."
+      "hand_note": "the imported classifier read an assertion of the alias"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -747,7 +747,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -766,7 +766,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -785,7 +785,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -804,7 +804,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -823,7 +823,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -842,7 +842,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -861,7 +861,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -880,7 +880,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -899,7 +899,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -918,7 +918,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -937,7 +937,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -956,7 +956,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -975,7 +975,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -994,7 +994,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -1013,7 +1013,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -1032,7 +1032,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -1051,7 +1051,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -1070,7 +1070,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The first study's classifier read an assertion of the alias in this text. Correct on the positive half; incorrect on the control, where asserting a confound that is not there is the failure the pair exists to catch."
+      "hand_note": "the imported classifier read an assertion of the alias"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -1089,7 +1089,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -1108,7 +1108,7 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The classifier read no assertion -- `denied` or `silent` in its own vocabulary, both of which this study maps to `not asserted`. Correct on the control half, incorrect on the positive."
+      "hand_note": "the imported classifier read no assertion (`denied` or `silent`)"
     },
     {
       "walk": "first-study/confounded-refusal/positive",
@@ -1127,9 +1127,8 @@
         }
       },
       "hand_verdict": "sound",
-      "hand_note": "The first study's classifier read an assertion of the alias in this text. Correct on the positive half; incorrect on the control, where asserting a confound that is not there is the failure the pair exists to catch."
+      "hand_note": "the imported classifier read an assertion of the alias"
     }
   ],
-  "hand_labelled": "2026-09-08",
-  "hand_labelling_rule": "These messages come from the FIRST study's committed transcripts, because this task is carried from it and has no walk here. Each case was read with the label the imported classifier gives it. The classifier is not this study's to second-guess: re-judging its labels would be the re-implementation the carry exists to avoid."
+  "hand_labelled": "2026-09-08"
 }

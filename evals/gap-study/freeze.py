@@ -67,10 +67,34 @@ PINNED = [
     "evals/gap-study/check_take.py",
     "evals/gap-study/drive.py",
     "evals/gap-study/lint_language.py",
+    "evals/gap-study/graders/confounded_design.py",
+    # the machinery a stranger runs, and the guards that decide what it may say
+    "evals/gap-study/prereg.py",
+    "evals/gap-study/takes.py",
+    "evals/gap-study/contracts.py",
+    "evals/gap-study/check_results.py",
+    "evals/gap-study/costs.py",
+    "evals/gap-study/build_cases.py",
+    "evals/gap-study/test_harness.py",
+    "evals/gap-study/mutations.py",
+    "evals/gap-study/controls/run_controls.py",
+    # the excusals. Unpinned, anything could be excused after the freeze and the guard would still
+    # report clean.
+    "evals/gap-study/language-allowlist.json",
+    # what the frozen file was frozen FROM
+    "evals/gap-study/prereg-draft.json",
     # the first study's shared readers, imported rather than copied
     "evals/transcript.py",
     "evals/stated_count.py",
 ]
+
+# freeze.py is deliberately NOT in that list. It runs to produce the pins, so it cannot pin the
+# bytes of the run that is producing them: whatever it recorded about itself would be the state
+# before it finished writing. The freeze commit's own sha is what fixes it, and check_results.py
+# reads that.
+NOT_PINNED_AND_WHY = {
+    "evals/gap-study/freeze.py": "it runs to produce the pins; the freeze commit's sha fixes it",
+}
 
 
 def git(*args: str) -> tuple[int, str]:
