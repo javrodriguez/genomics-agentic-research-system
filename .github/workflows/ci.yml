@@ -42,3 +42,30 @@ jobs:
         # Thresholds unmoved since the freeze, every pinned file unchanged, every control
         # behaving opposite its positive, every hand-labelled grader suite still passing.
         run: python3 evals/check_results.py --controls --lexicon
+
+      # ---- the Gap Study (evals/gap-study), built beside the first study -------------------
+      # Its own harness and checker, run separately so neither study's green can stand in for
+      # the other's. The full-depth checkout above is what lets the ledger check read history;
+      # at depth 1 it refuses rather than passing hollowly, which is the whole reason
+      # fetch-depth: 0 is set.
+      - name: Gap Study harness
+        # Every grader driven to every label it can emit, including the ones that mean the agent
+        # did the wrong thing.
+        run: python3 evals/gap-study/test_harness.py
+      - name: Gap Study contract quotes
+        # Every contract sentence the design rests on is still a byte substring of the blob it
+        # was pinned to. A contract edited after the freeze is a visible failure, not a silent
+        # change of meaning.
+        run: python3 evals/gap-study/contracts.py --check
+      - name: Gap Study fixtures
+        # Each fixture still accepted by the system under test's own front door, and its counts
+        # still equal to what the generator claims. The first study froze a fixture stage 00
+        # refuses outright; this is that lesson, executable.
+        run: python3 evals/gap-study/fixtures/check_fixture.py --all
+      - name: Gap Study language guard
+        # The words and number-shapes a three-take study may not publish. An occurrence is
+        # excused one line at a time, pinned to that line's exact text.
+        run: python3 evals/gap-study/lint_language.py evals/gap-study/
+      - name: Gap Study ledger and controls
+        # Refuses in a shallow clone rather than reporting a pass it cannot support.
+        run: python3 evals/gap-study/check_results.py --ledger --controls
