@@ -247,3 +247,38 @@ cp /Users/rodrij92/glitch/workspaces/genomics-agentic-research-system/data/stagi
 If the agent asks something not on that list, answer with the shortest factual reply and say so
 afterwards, so the deviation is recorded in the ledger rather than discovered later. The two
 sessions must diverge in nothing but the set.
+
+---
+
+## Amendment 2 — 7 Sep 2026, written while still blind to the result, before pair 2 exists
+
+**Pair 2 is driven by a script, not by Javier.** `evals/drive.py` sends the operator lines fixed in
+amendment 1, verbatim, one headless Claude Code turn at a time, and never improvises: after each
+line it checks that the agent reached the wait point the protocol expects, and if it did not, it
+halts and the take is a rehearsal. Nothing else changes. Same repository root as pair 1, same
+permission mode (`auto`), same model (`claude-opus-5`), same input sets, same question.
+
+**Why this is cleaner than the hand-driven pair, not merely faster.** Amendment 1 recorded an
+asymmetry it could not remove: the operator had watched pair 1's answers and the grading session
+had not, so a hand-driven pair 2 was contaminated by that knowledge in ways nobody could fully
+control. A script has seen nothing. It also makes the evaluation reproducible by a stranger from a
+clone with one command, which criterion 3 asked for from the start and which a human at the
+keyboard could never quite deliver.
+
+**What is recorded so the change is auditable.** The driver writes a ledger row per turn with the
+session id, the line sent, the wait-point marker it checked and whether it held, and the timestamp.
+The transcript is the on-disk session file, copied verbatim, never the driver's own log. The
+permission mode and model are read off the transcript's own records, not off this file.
+
+**Still binding from amendment 1:** both pairs are published whatever they say; there is no pair 3;
+if the driver halts on either half, pair 2 is a rehearsal and the task publishes on pair 1.
+
+**One thing the driver does that the operator did not.** Pair 1's stage-00 finalize ran in the
+background and the agent reported completion in reply to a task notification. Headless mode has no
+such notification; the driver instead waits for the machine-written `samples.csv` to appear before
+copying the design table in. That is a wait on a file, not a line sent to the agent, and it is
+recorded in the ledger as such.
+
+On the rule Glitch is built under: the Glitch engine itself never uses `claude -p`. This driver is
+the GARS project's own evaluation harness and lives in the GARS repository; that rule does not
+reach it, and the driver says so in its docstring so nobody wonders later.
