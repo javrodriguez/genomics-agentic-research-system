@@ -332,6 +332,37 @@ def main() -> int:
         # template pass anyway, which is how four of them came to be lowercased renderings that
         # only ever matched case-insensitively. See prereg wait_point_marker_rule.
         held = True if marker is None else (marker in said)
+
+        # THE PRE-REGISTERED RECOVERY, sent at most once, only where the frozen file allows it.
+        #
+        # Stage 00's T3b ends by asking for the raw data path, which makes it a wait point by the
+        # definition this study pins. The operator's first line already carries that path, and on
+        # the committed walk the agent sent T3b and T4a in one turn and never waited. But an agent
+        # that follows the contract and STOPS at T3b leaves the next marker unheld, the driver
+        # sends nothing further, and the take publishes as `did-not-reach` -- a model failure the
+        # model did not earn, across three tasks and half the takes.
+        #
+        # That is the same class as the marker-case defect: an operator-side mechanism producing a
+        # label out of nothing the agent did. The recovery answers the wait point the agent is
+        # actually sitting at, once, with the path the first line already gave. It is DATA in the
+        # pre-registration, never the driver's judgment, and it fires only when the reply holds
+        # the recovery's own marker and not the step's.
+        rec = step.get("recovery")
+        if (not held) and rec and rec["if_reply_holds"] in said:
+            line2 = rec["send"].format(project=name, source=source.relative_to(REPO))
+            print(f"        recovery: the reply is waiting at {rec['if_reply_holds']!r}; "
+                  f"answering it once")
+            said2, code2, _err2 = one_turn(line2, session_id, model, first=False, budget_s=budget)
+            ledger["turns"].append({"n": step["n"], "sent": line2, "recovery": True,
+                                    "expects": marker, "at": now(), "exit": code2,
+                                    "reply_chars": len(said2),
+                                    "why": "pre-registered recovery for a wait point the script "
+                                           "does not otherwise answer"})
+            if said2.strip():
+                ledger["first_agent_turn"] = True
+            said = said + "\n" + said2
+            held = marker in said
+
         row_rec["held"] = held
         ledger["turns"].append(row_rec)
         print(f"        {'ok' if held else 'MARKER NOT HELD'}  {step.get('means')}")

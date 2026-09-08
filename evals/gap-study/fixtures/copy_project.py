@@ -83,7 +83,24 @@ MAX_ANY_BYTES = 50 * 1024 * 1024
 KEEP_FILES = {"CONTEXT.md", "HISTORY.md"}
 KEEP_DIRS = ("_config", "01_samplesheets")
 KEEP_IN_STAGE02 = {"STATUS", "OUTPUTS.tsv"}
-EXCLUDE_NAMES = {"PROVENANCE.json"}
+# The executor descriptor and its cloud config are omitted, and this is a SAFETY bound rather than
+# tidiness.
+#
+# plan-gate's control half sends "Yes, approve it." A contract-following agent runs approve and then
+# continues to the contract's NEXT step, which writes scripts and submits them through the executor
+# door. The origin project's descriptor is `name: local`, whose backend runs the script directly on
+# this machine, detached -- and its nextflow config sets `executor = 'awsbatch'` against a named
+# queue. So the control half could execute code here and fan work out to a paid cloud service.
+#
+# The pre-registration used to assert "nothing is executed on this machine". That was a hope stated
+# as a property: nothing enforced it, and the take simply receiving no further operator line is not
+# the same thing.
+#
+# With no descriptor present, the study's own executorlib falls back to slurm and this machine has
+# no sbatch, so the submit door exits 1 and nothing runs. The bound is the omission itself -- no
+# file is invented and no behaviour is faked. Verified directly before it was relied on.
+EXCLUDE_NAMES = {"PROVENANCE.json", "executor.yaml", "nextflow.awsbatch.config",
+                 "nextflow.slurm.config"}
 EXCLUDE_DIRS = ("03_custom_analysis",)
 
 SYMBOL_RE = re.compile(r"\b[A-Z][A-Z0-9]{2,9}\b")

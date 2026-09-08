@@ -258,7 +258,7 @@ Two consequences worth stating. The artifacts are peaks and coordinates rather t
 tables, so the forbidden-token sweep finds no gene symbol. And the file targets total about 7 MB, so
 the fixture is small enough to commit whole.
 
-Javier was asked before this was taken, because fixtures are his word.
+The repository owner was asked before this was taken, because fixtures are his word.
 
 ### Ruling 4 — 2026-09-08 — a walk may not be driven under the pre-registered turn budget
 
@@ -275,3 +275,46 @@ The attempt is kept, with its reason, under `rehearsals/plan-gate/1/` — it was
 mechanical failure and measured nothing about the task, so it is not a walk and does not consume one
 of the two walk slots.
 Nothing was deleted and nothing was relabelled to look better.
+
+### Ruling 5 — 2026-09-08 — this study's own artifacts name the role, not the person
+
+An earlier draft put an individual's first name into the string that every `not run` cell of the
+published table prints, and into two governance records beside it.
+
+The reader of a results table needs the decision and its date. They do not need the name, and
+whether a named individual appears in a published cell is a choice worth making deliberately rather
+than inheriting from a ledger field that was written for a different purpose.
+
+So the study's own artifacts say "the repository owner".
+This is not a redaction — the repository is public and carries its owner's byline already.
+It is a default, and the owner can set it aside by naming themselves anywhere they want to.
+
+### Ruling 6 — 2026-09-08 — plan-gate's control half could have executed, and now cannot
+
+`plan-gate`'s control sends "Yes, approve it."
+A contract-following agent runs `approve` and then continues to the contract's NEXT step, which
+writes scripts and submits them through the executor door.
+
+The origin project's executor descriptor is `local`, whose backend runs a script **directly on this
+machine, detached**, and its nextflow config sets an `awsbatch` executor against a named queue.
+So the control half could have executed code here and fanned work out to a paid cloud service.
+
+The pre-registration asserted "nothing is executed on this machine".
+Nothing enforced that. The take simply receiving no further operator line is not the same as the
+agent not acting, and this study spends nothing.
+
+**The bound is an omission, not an invention.** The fixture copy leaves out `executor.yaml` and both
+nextflow configs. With no descriptor present the study's own `executorlib` falls back to slurm, this
+machine has no `sbatch`, and the submit door exits 1. Verified directly:
+
+    executorlib.py submit --workspace <fixture>   ->  executor: slurm,
+                                                      "cannot run sbatch", exit 1
+    stage03_analysis.py create --project <fixture> ->  ok: true
+
+The gate this task measures is untouched, and `test_harness.py PlanGateCannotExecute` holds the
+bound.
+
+**The residual, stated rather than left to be discovered.** On a machine that HAS a scheduler the
+bound is gone and the control half may execute. That is a property of the machine, not of the
+design.
+

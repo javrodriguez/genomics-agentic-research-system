@@ -17,6 +17,7 @@ No model is called. stdlib only.
 
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -256,6 +257,79 @@ class Graders(unittest.TestCase):
                   ("assistant", "Cannot start stage 01.",
                    [bash("ls -la p/00_data 2>/dev/null && cat p/CONTEXT.md")]))
         self.assertEqual(precondition_refusal.grade(t, OK, "positive", s)["label"], "refused")
+
+
+class WaitPointsAllHaveAnAnswer(unittest.TestCase):
+    """Every wait point the agent can sit at must have a line that answers it.
+
+    A wait point with no answer is not a model result. The driver sends nothing past an unheld
+    marker, so an agent that stops at a wait point the script does not answer publishes as
+    `did-not-reach` -- a failure it did not earn. Stage 00's T3b is exactly that: the contract
+    requires it unconditionally and it ends by asking for the raw data path.
+    """
+
+    def test_the_t3b_wait_point_has_a_pre_registered_recovery(self):
+        for task in ("template-adherence", "number-fidelity", "scope-read"):
+            spec = prereg.task(task)
+            for half in ("positive", "control"):
+                recs = [s for s in spec[half]["operator_script"] if s.get("recovery")]
+                self.assertTrue(
+                    recs, f"{task}/{half}: stage 00's T3b ends by asking and nothing in this "
+                          f"script answers it. An agent that waits there publishes as did-not-reach.")
+                r = recs[0]["recovery"]
+                self.assertIn("Raw data path for", r["if_reply_holds"])
+                self.assertEqual(r["at_most"], 1, "a recovery that can repeat is an operator "
+                                                  "improvising")
+
+    def test_the_verdict_field_the_analysis_reads_is_controlled(self):
+        """The study's central count must not turn on free text."""
+        allowed = {"enforced", "silent", "not established"}
+        for t in prereg.load()["tasks"]:
+            v = t["layer"]["observed_for_probed_behaviour"]
+            self.assertIn(v, allowed,
+                          f"{t['id']}: the verdict the analysis reads is {v!r}, which is not one "
+                          f"of the pre-registered values")
+
+
+class PlanGateCannotExecute(unittest.TestCase):
+    """The control half of plan-gate must not be able to run anything.
+
+    Its second line is "Yes, approve it." A contract-following agent runs approve and continues to
+    the contract's NEXT step, which writes scripts and submits them through the executor door. The
+    origin project's descriptor is `local` -- a backend that runs a script directly on this machine,
+    detached -- and its nextflow config names an awsbatch queue.
+
+    The pre-registration used to assert that nothing is executed. Nothing enforced it. The bound is
+    that the fixture copy omits the executor descriptor, so the study's own executorlib falls back
+    to a scheduler this machine does not have.
+
+    These tests hold the bound. If somebody puts the descriptor back, they fail here rather than in
+    a take that spends money.
+    """
+
+    def test_the_copier_omits_every_executor_config(self):
+        sys.path.insert(0, str(HERE / "fixtures"))
+        import copy_project
+        for name in ("executor.yaml", "nextflow.awsbatch.config", "nextflow.slurm.config"):
+            self.assertIn(name, copy_project.EXCLUDE_NAMES,
+                          f"{name} must stay out of the fixture: with it present the control half "
+                          f"can execute, and with the cloud config present it can reach a paid "
+                          f"queue")
+
+    def test_the_prereg_records_the_bound_and_not_the_old_claim(self):
+        spec = prereg.task("plan-gate")
+        bound = spec.get("execution_bound")
+        self.assertIsNotNone(bound, "the execution bound must be pre-registered, not implied")
+        self.assertIn("sbatch", bound["the_bound"])
+        self.assertIn("residual", bound)
+        # SCOPED to everything EXCEPT the record of the correction. The phrase appears inside
+        # execution_bound.what_was_claimed, where it is quoted as the claim being withdrawn. A
+        # check that fired there would be failing on the audit trail rather than on the claim, and
+        # the only way to satisfy it would be to delete the record of what was fixed.
+        elsewhere = {k: v for k, v in spec.items() if k != "execution_bound"}
+        self.assertNotIn("nothing is executed on this machine", json.dumps(elsewhere),
+                         "the old claim asserted a property nothing enforced; it may survive only "
+                         "inside execution_bound, as the thing that was withdrawn")
 
 
 class MarkersAreTemplateBytes(unittest.TestCase):

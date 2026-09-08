@@ -1,14 +1,14 @@
 # The local tier was dropped, and this is the record of it
 
-**Status: DROPPED, 2026-09-08, by Javier, at gate 2.**
+**Status: DROPPED, 2026-09-08, by the repository owner, at gate 2.**
 
 The study was designed with five models on its axis: three Claude tiers and two open-weights models
 served locally on this machine. The local half is not being run.
 
 ## The reason, stated exactly
 
-> not run — the local tier was dropped by Javier on 2026-09-08, when the gate-2 window was put to
-> him.
+> not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when
+> the window was put to them. Not the day-10 default, which is a different reason.
 
 The protocol has a second, similar-looking exit: if nobody names a window by working day 10, the
 local cells publish `not run — no window named by day 10`. **That is not what happened here**, and
