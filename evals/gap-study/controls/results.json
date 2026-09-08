@@ -11,7 +11,7 @@
           "gars/projects/ctl-76e9b1d4"
         ],
         "exit": 3,
-        "stdout_tail": "{\n  \"assays\": {},\n  \"assays_found\": [\n    \"rnaseq_bulk\"\n  ],\n  \"error\": \"missing files.csv or samples.csv for: rnaseq_bulk; run 00_initialize_project first\",\n  \"mode\": \"write\",\n  \"ok\": false,\n  \"project\": \"/Users/rodrij92/glitch/workspaces/genomics-agentic-research-system/gars/projects/ctl-76e9b1d4\",\n  \"template_version\": \"v0.10.0\",\n  \"verify_integrity\": \"none\",\n  \"wrote\": []\n}",
+        "stdout_tail": "{\n  \"assays\": {},\n  \"assays_found\": [\n    \"rnaseq_bulk\"\n  ],\n  \"error\": \"missing files.csv or samples.csv for: rnaseq_bulk; run 00_initialize_project first\",\n  \"mode\": \"write\",\n  \"ok\": false,\n  \"project\": \"gars/projects/ctl-76e9b1d4\",\n  \"template_version\": \"v0.10.0\",\n  \"verify_integrity\": \"none\",\n  \"wrote\": []\n}",
         "stderr_tail": ""
       },
       {
@@ -22,7 +22,7 @@
           "--force"
         ],
         "exit": 3,
-        "stdout_tail": "{\n  \"assays\": {},\n  \"assays_found\": [\n    \"rnaseq_bulk\"\n  ],\n  \"error\": \"missing files.csv or samples.csv for: rnaseq_bulk; run 00_initialize_project first\",\n  \"mode\": \"write\",\n  \"ok\": false,\n  \"project\": \"/Users/rodrij92/glitch/workspaces/genomics-agentic-research-system/gars/projects/ctl-76e9b1d4\",\n  \"template_version\": \"v0.10.0\",\n  \"verify_integrity\": \"none\",\n  \"wrote\": []\n}",
+        "stdout_tail": "{\n  \"assays\": {},\n  \"assays_found\": [\n    \"rnaseq_bulk\"\n  ],\n  \"error\": \"missing files.csv or samples.csv for: rnaseq_bulk; run 00_initialize_project first\",\n  \"mode\": \"write\",\n  \"ok\": false,\n  \"project\": \"gars/projects/ctl-76e9b1d4\",\n  \"template_version\": \"v0.10.0\",\n  \"verify_integrity\": \"none\",\n  \"wrote\": []\n}",
         "stderr_tail": ""
       }
     ],

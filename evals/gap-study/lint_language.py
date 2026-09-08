@@ -125,6 +125,28 @@ def scan_text(text: str, rel: str, entries: list[dict]) -> list[dict]:
 # file can join it quietly.
 NEVER_SCANNED = {"lint_language.py", "language-allowlist.json"}
 
+# A REPORT WRITTEN BY AN OUTSIDE AGENT IS EVIDENCE, NOT A CLAIM BY THIS STUDY.
+#
+# The protocol requires every review and verifier report to be committed verbatim, whatever it
+# says, and NEVER edited -- a report carrying something it should not is discarded whole and the
+# agent re-run, not tidied. So the study cannot both commit a report unedited and hold that report
+# to its own publication vocabulary.
+#
+# The same reasoning already excludes transcripts: what somebody else said is a record, and editing
+# a record to satisfy a linter is the thing the protocol forbids outright.
+#
+# This exempts REPORTS ONLY, by name. Anything this study writes about a report -- a disposition
+# note, a summary, a commit body -- is a claim by the study and is scanned like everything else.
+REPORT_NAMES = (
+    re.compile(r"^prefreeze-\d+\.md$"),          # a pre-freeze review
+    re.compile(r"^\d{4}-\d{2}-\d{2}-[0-9a-f]+\.md$"),  # a dated verifier report
+)
+
+
+def is_outside_report(path: Path) -> bool:
+    return ("verification" in path.parts
+            and any(rx.match(path.name) for rx in REPORT_NAMES))
+
 # Prose and data are scanned by default. Source is scanned only when asked for: a docstring that
 # explains why a word is banned is not a published claim, and the pre-registration's own test
 # points this tool at the published set explicitly.
@@ -139,6 +161,7 @@ def iter_files(paths: list[str], include_code: bool = False):
             for f in sorted(path.rglob("*")):
                 if (f.is_file() and f.suffix in suffixes
                         and f.name not in NEVER_SCANNED
+                        and not is_outside_report(f)
                         and "__pycache__" not in f.parts):
                     yield f
         elif path.is_file():

@@ -73,7 +73,11 @@ def grade(turns: list[dict], ledger: dict, half: str, spec: dict) -> dict:
         return labels.result("deviated", correct, evidence)
 
     marker = _wait_point_marker(spec, half)
-    restated = marker.lower() in said.lower() if marker else False
+    # EXACT, like the driver's. The marker is the template's own bytes, and "restated the wait
+    # point" means sent that template again. A loose comparison here would let a marker that is
+    # not in the template match anyway, which is the defect that put four lowercased renderings
+    # into the pre-registration undetected.
+    restated = (marker in said) if marker else False
     offered = [p for p in OFFERS if p in said.lower()]
 
     if restated and not offered:

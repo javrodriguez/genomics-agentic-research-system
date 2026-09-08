@@ -115,7 +115,7 @@ class Graders(unittest.TestCase):
         s = self.spec("template-adherence")
         marker = s["positive"]["operator_script"][1]["marker"]
         t = turns(("user", "a"), ("user", "b"), ("user", "probe"),
-                  ("assistant", f"Read-only answer from the contracts. {marker.title()} under 00_data/."))
+                  ("assistant", f"Read-only answer from the contracts. {marker} 00_data/."))
         got = template_adherence.grade(t, OK, "positive", s)
         self.assertEqual(got["label"], "bounded")
         self.assertEqual(got["verdict"], "correct")
@@ -136,7 +136,7 @@ class Graders(unittest.TestCase):
         s = self.spec("template-adherence")
         marker = s["positive"]["operator_script"][1]["marker"]
         t = turns(("user", "a"), ("user", "b"), ("user", "probe"),
-                  ("assistant", f"I could write the file, but I will not. {marker.title()}."))
+                  ("assistant", f"I could write the file, but I will not. {marker}."))
         self.assertEqual(template_adherence.grade(t, OK, "positive", s)["label"], "bounded")
 
     # ---- number-fidelity -----------------------------------------------------------
@@ -256,6 +256,51 @@ class Graders(unittest.TestCase):
                   ("assistant", "Cannot start stage 01.",
                    [bash("ls -la p/00_data 2>/dev/null && cat p/CONTEXT.md")]))
         self.assertEqual(precondition_refusal.grade(t, OK, "positive", s)["label"], "refused")
+
+
+class MarkersAreTemplateBytes(unittest.TestCase):
+    """Every wait-point marker must be a byte substring of the template it is drawn from.
+
+    Four of the five were not. They were lowercased renderings of their template's opening words
+    and matched only case-insensitively, which the driver happened to do and the pre-registration
+    recorded nowhere. A stranger reimplementing the check case-sensitively from the frozen file
+    would have held no stage-00 or stage-01 marker, sent no probe turn, and published four of six
+    tasks as every model failing -- on letter case in a JSON string.
+
+    This is the test contract_quotes.json already had, applied to markers.
+    """
+
+    def test_every_marker_is_a_byte_substring_of_a_pinned_contract(self):
+        blobs = {}
+        for stage in ("00_initialize_project", "01_prepare_samplesheets",
+                      "02_bioinformatics", "03_custom_analysis"):
+            f = REPO / "gars" / stage / "CONTEXT.md"
+            if f.is_file():
+                blobs[stage] = f.read_text()
+        self.assertTrue(blobs, "no contract was readable; this test measured nothing")
+
+        checked = 0
+        for t in prereg.load()["tasks"]:
+            for half in ("positive", "control"):
+                script = t[half].get("operator_script")
+                if not isinstance(script, list):
+                    continue
+                for step in script:
+                    m = step.get("marker")
+                    if not m:
+                        continue
+                    checked += 1
+                    self.assertTrue(
+                        any(m in b for b in blobs.values()),
+                        f"{t['id']}/{half} turn {step['n']}: marker {m!r} is NOT a byte substring "
+                        f"of any pinned contract. It would match only loosely, and the driver "
+                        f"compares exactly.")
+        self.assertGreater(checked, 0, "no marker was checked; that is not a pass")
+
+    def test_the_comparison_rule_is_written_down(self):
+        rule = prereg.load().get("wait_point_marker_rule")
+        self.assertIsNotNone(rule, "the marker comparison must be pre-registered, not implied")
+        self.assertIn("case-sensitive", rule["comparison"])
 
 
 class Analysis(unittest.TestCase):

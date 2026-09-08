@@ -327,7 +327,11 @@ def main() -> int:
             break
 
         marker = step.get("marker")
-        held = True if marker is None else (marker.lower() in said.lower())
+        # CASE-SENSITIVE, because that is what the pre-registration says. The markers are the
+        # templates' own bytes; comparing loosely here would let a marker that is NOT in the
+        # template pass anyway, which is how four of them came to be lowercased renderings that
+        # only ever matched case-insensitively. See prereg wait_point_marker_rule.
+        held = True if marker is None else (marker in said)
         row_rec["held"] = held
         ledger["turns"].append(row_rec)
         print(f"        {'ok' if held else 'MARKER NOT HELD'}  {step.get('means')}")
