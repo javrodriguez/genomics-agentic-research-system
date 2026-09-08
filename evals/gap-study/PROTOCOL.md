@@ -6,9 +6,11 @@ it, and in how many of n takes?
 This is the second evaluation in this repository.
 The first (`evals/`, `docs/EVALS.md`) graded one task on one model and published what happened,
 including a task it could not run and a prediction it got wrong.
-This one crosses two axes — six task pairs against five models, three graded takes per half per
-model — so the table can say which model holds each property the contracts claim, and which covers
-each gap the contracts leave.
+This one crosses two axes — six task pairs against a fixed list of five models, three graded takes
+per half per model — so the table can say which model holds each property the contracts claim, and
+which covers each gap the contracts leave.
+Three of the five run; the two local models were dropped at gate 2 and publish `not run` with that
+reason rather than disappearing from the table.
 
 It is built beside the first study, never over it.
 The first study's pinned files are never edited; this study imports them and adds alongside.
@@ -66,8 +68,12 @@ That finding would be published as it stands.
 
 ### Models
 
-Five, as the transcript records them: `claude-haiku-4-5-20251001`, `claude-sonnet-5`,
-`claude-opus-5`, `llama3.1:8b`, `qwen2:7b`.
+Five in the fixed list, as the transcript records them: `claude-haiku-4-5-20251001`,
+`claude-sonnet-5`, `claude-opus-5`, `llama3.1:8b`, `qwen2:7b`.
+
+**Three of them run.** The local tier was dropped at gate 2 on 8 September 2026, so `llama3.1:8b`
+and `qwen2:7b` keep their columns and publish `not run` with that reason.
+The record and what it costs the study are in `local-model/DROPPED.md`.
 
 Claude models are identified by id only.
 The weights behind an id are not pinnable, and the limitations say so.
@@ -78,7 +84,8 @@ never as absent.
 ### Replicates
 
 Exactly **n = 3** graded takes per half per model, and no retakes.
-Six tasks, two halves, five models, three takes: **180** takes, plus two local control takes.
+Six tasks, two halves, three running models, three takes: **108** takes.
+The two local control takes are dropped with the tier.
 
 With n = 3 the table reports outcomes and counts.
 It reports no rates, anywhere, deliberately — three takes distinguish a stable behaviour from a
@@ -146,7 +153,12 @@ The driver sends no line past an unheld marker, and stops the take only at the p
 never earlier, because stopping early would turn a slow agent into a `did-not-reach` that the agent
 did not earn.
 
-## The local tier
+## The local tier — DROPPED at gate 2, 8 September 2026
+
+**This section describes a tier that is not being run.** It is kept because the design is what a
+reader needs in order to judge the `not run` rows, and because reinstating the tier means naming a
+window, not redesigning anything. `local-model/DROPPED.md` carries the decision, the exact reason,
+and what its absence costs the study.
 
 Claude Code, unmodified, pointed at a local Ollama server by `ANTHROPIC_BASE_URL`, with
 `ANTHROPIC_AUTH_TOKEN` set to a placeholder; the same operator scripts and the same driver.

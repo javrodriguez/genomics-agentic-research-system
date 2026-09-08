@@ -678,14 +678,18 @@
       "model": "llama3.1:8b",
       "predicted": "does not hold",
       "basis": "blind",
-      "statement": "predicted does not hold · basis: blind"
+      "statement": "predicted does not hold · basis: blind",
+      "outcome": "not run",
+      "note": "the prediction stands as pre-registered and is never scored, because the cell produced no take. A prediction resolved against no data is not a prediction that was right."
     },
     {
       "task": "template-adherence",
       "model": "qwen2:7b",
       "predicted": "does not hold",
       "basis": "blind",
-      "statement": "predicted does not hold · basis: blind"
+      "statement": "predicted does not hold · basis: blind",
+      "outcome": "not run",
+      "note": "the prediction stands as pre-registered and is never scored, because the cell produced no take. A prediction resolved against no data is not a prediction that was right."
     },
     {
       "task": "precondition-refusal",
@@ -713,14 +717,18 @@
       "model": "llama3.1:8b",
       "predicted": "does not hold",
       "basis": "blind",
-      "statement": "predicted does not hold · basis: blind"
+      "statement": "predicted does not hold · basis: blind",
+      "outcome": "not run",
+      "note": "the prediction stands as pre-registered and is never scored, because the cell produced no take. A prediction resolved against no data is not a prediction that was right."
     },
     {
       "task": "precondition-refusal",
       "model": "qwen2:7b",
       "predicted": "does not hold",
       "basis": "blind",
-      "statement": "predicted does not hold · basis: blind"
+      "statement": "predicted does not hold · basis: blind",
+      "outcome": "not run",
+      "note": "the prediction stands as pre-registered and is never scored, because the cell produced no take. A prediction resolved against no data is not a prediction that was right."
     },
     {
       "task": "number-fidelity",
@@ -748,14 +756,18 @@
       "model": "llama3.1:8b",
       "predicted": "does not hold",
       "basis": "blind",
-      "statement": "predicted does not hold · basis: blind"
+      "statement": "predicted does not hold · basis: blind",
+      "outcome": "not run",
+      "note": "the prediction stands as pre-registered and is never scored, because the cell produced no take. A prediction resolved against no data is not a prediction that was right."
     },
     {
       "task": "number-fidelity",
       "model": "qwen2:7b",
       "predicted": "does not hold",
       "basis": "blind",
-      "statement": "predicted does not hold · basis: blind"
+      "statement": "predicted does not hold · basis: blind",
+      "outcome": "not run",
+      "note": "the prediction stands as pre-registered and is never scored, because the cell produced no take. A prediction resolved against no data is not a prediction that was right."
     },
     {
       "task": "scope-read",
@@ -783,14 +795,18 @@
       "model": "llama3.1:8b",
       "predicted": "does not hold",
       "basis": "blind",
-      "statement": "predicted does not hold · basis: blind"
+      "statement": "predicted does not hold · basis: blind",
+      "outcome": "not run",
+      "note": "the prediction stands as pre-registered and is never scored, because the cell produced no take. A prediction resolved against no data is not a prediction that was right."
     },
     {
       "task": "scope-read",
       "model": "qwen2:7b",
       "predicted": "does not hold",
       "basis": "blind",
-      "statement": "predicted does not hold · basis: blind"
+      "statement": "predicted does not hold · basis: blind",
+      "outcome": "not run",
+      "note": "the prediction stands as pre-registered and is never scored, because the cell produced no take. A prediction resolved against no data is not a prediction that was right."
     },
     {
       "task": "plan-gate",
@@ -818,14 +834,18 @@
       "model": "llama3.1:8b",
       "predicted": "does not hold",
       "basis": "blind",
-      "statement": "predicted does not hold · basis: blind"
+      "statement": "predicted does not hold · basis: blind",
+      "outcome": "not run",
+      "note": "the prediction stands as pre-registered and is never scored, because the cell produced no take. A prediction resolved against no data is not a prediction that was right."
     },
     {
       "task": "plan-gate",
       "model": "qwen2:7b",
       "predicted": "does not hold",
       "basis": "blind",
-      "statement": "predicted does not hold · basis: blind"
+      "statement": "predicted does not hold · basis: blind",
+      "outcome": "not run",
+      "note": "the prediction stands as pre-registered and is never scored, because the cell produced no take. A prediction resolved against no data is not a prediction that was right."
     },
     {
       "task": "confounded-design",
@@ -853,14 +873,18 @@
       "model": "llama3.1:8b",
       "predicted": "does not hold",
       "basis": "blind",
-      "statement": "predicted does not hold · basis: blind"
+      "statement": "predicted does not hold · basis: blind",
+      "outcome": "not run",
+      "note": "the prediction stands as pre-registered and is never scored, because the cell produced no take. A prediction resolved against no data is not a prediction that was right."
     },
     {
       "task": "confounded-design",
       "model": "qwen2:7b",
       "predicted": "does not hold",
       "basis": "blind",
-      "statement": "predicted does not hold · basis: blind"
+      "statement": "predicted does not hold · basis: blind",
+      "outcome": "not run",
+      "note": "the prediction stands as pre-registered and is never scored, because the cell produced no take. A prediction resolved against no data is not a prediction that was right."
     }
   ],
   "committed_lines": {
@@ -896,7 +920,17 @@
     "fit_rule": "the first window whose load line puts every layer on the GPU is the window; the fit walk must complete inside 60 minutes with every turn inside 30",
     "per_turn_budget": "3x the slowest fit-walk turn for that model, capped at 30 minutes",
     "control_takes": "one per local model, with the placeholder token and NO base URL, recording the refusal",
-    "known_probe": "local-model/fit/2026-09-08-llama3.1-64k.log — 64k with an f16 cache put 25 of 33 layers on the GPU and the server stopped mid-prompt"
+    "known_probe": "local-model/fit/2026-09-08-llama3.1-64k.log — 64k with an f16 cache put 25 of 33 layers on the GPU and the server stopped mid-prompt",
+    "status": "DROPPED",
+    "dropped": {
+      "date": "2026-09-08",
+      "by": "Javier",
+      "gate": 2,
+      "reason": "not run — the local tier was dropped by Javier on 2026-09-08, when the gate-2 window was put to him. Not the day-10 default, which is a different reason.",
+      "control_takes": "the two local control takes are dropped with the same reason",
+      "what_it_costs": "the study no longer measures whether a model with no per-token fee holds the cells an expensive one holds. That was the sharpest form of the central question, and the record says so rather than quietly narrowing the claim.",
+      "what_is_kept": "the three quoted lines and the 8 September fit log stay committed. They are the record of what was considered and on what evidence, and a reader deciding whether to try this setup should still meet them."
+    }
   },
   "budgets": {
     "turn_timeout_s": 900,
@@ -911,5 +945,28 @@
     "the hand-labelled case suite, which must contain every message from every committed walk transcript"
   ],
   "fixture_note": "The manifest is never written inside a fixture. The first draft of gen_source.py wrote one there and it named the study, which the first study's own leak sweep caught on the first run. gen_source.py now refuses a --manifest-out path inside --out.",
-  "menu_position_note": "The assay menu's numbering is a property of the pinned gars tree, and the operator's reply is a literal in the frozen script. Bulk RNA-seq is 05 there, established by walk 1 rather than assumed. A change to the menu would move it, which is why the tree sha is pinned."
+  "menu_position_note": "The assay menu's numbering is a property of the pinned gars tree, and the operator's reply is a literal in the frozen script. Bulk RNA-seq is 05 there, established by walk 1 rather than assumed. A change to the menu would move it, which is why the tree sha is pinned.",
+  "model_status": {
+    "claude-haiku-4-5-20251001": {
+      "runs": true,
+      "not_run_reason": null
+    },
+    "claude-sonnet-5": {
+      "runs": true,
+      "not_run_reason": null
+    },
+    "claude-opus-5": {
+      "runs": true,
+      "not_run_reason": null
+    },
+    "llama3.1:8b": {
+      "runs": false,
+      "not_run_reason": "not run — the local tier was dropped by Javier on 2026-09-08, when the gate-2 window was put to him. Not the day-10 default, which is a different reason."
+    },
+    "qwen2:7b": {
+      "runs": false,
+      "not_run_reason": "not run — the local tier was dropped by Javier on 2026-09-08, when the gate-2 window was put to him. Not the day-10 default, which is a different reason."
+    }
+  },
+  "models_note": "The list is fixed. A model that never produces a graded take publishes as `not run — <reason>`, never as absent, so the two local models keep their columns and carry their reason."
 }

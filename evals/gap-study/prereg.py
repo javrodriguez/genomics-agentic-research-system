@@ -88,7 +88,24 @@ def task(task_id: str) -> dict:
 
 
 def models() -> list[str]:
+    """EVERY model in the fixed list, including any that will never produce a take.
+
+    A model that never runs publishes as `not run — <reason>`, never as absent. Dropping it from
+    this list would make the table read as though the axis had always been three wide, which is a
+    quieter and less honest claim than the one the record supports. Callers that want only the
+    models which actually run ask for running_models().
+    """
     return list(load()["models"])
+
+
+def running_models() -> list[str]:
+    """The models a take will actually be driven on."""
+    status = load().get("model_status") or {}
+    return [m for m in models() if status.get(m, {}).get("runs", True)]
+
+
+def not_run_reason(model: str) -> str | None:
+    return (load().get("model_status") or {}).get(model, {}).get("not_run_reason")
 
 
 def n() -> int:
@@ -104,7 +121,7 @@ def cells() -> list[tuple[str, str, str, int]]:
     out = []
     for t in sorted(x["id"] for x in load()["tasks"]):
         for half in ("positive", "control"):
-            for m in sorted(models()):
+            for m in sorted(running_models()):
                 for k in range(1, n() + 1):
                     out.append((t, half, m, k))
     return out
@@ -145,7 +162,12 @@ def main() -> int:
         print(f"frozen   : {pre['_frozen']}")
         print(f"status   : {pre.get('status', '?')}")
         print(f"tasks    : {len(pre['tasks'])}  ({', '.join(t['id'] for t in pre['tasks'])})")
-        print(f"models   : {len(pre['models'])}")
+        print(f"models   : {len(pre['models'])} in the fixed list, {len(running_models())} running")
+        for m in models():
+            reason = not_run_reason(m)
+            print(f"           {m:28} {'runs' if not reason else 'NOT RUN'}")
+            if reason:
+                print(f"             {reason}")
         print(f"n        : {pre['n']}  -> {len(cells())} planned takes")
         print(f"take order: {'FIXED' if pre.get('take_order_seed') else 'not yet — seeded at the freeze'}")
         if not pre["_frozen"]:

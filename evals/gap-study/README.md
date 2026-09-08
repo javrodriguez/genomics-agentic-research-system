@@ -51,7 +51,7 @@ This study imports its transcript parser and its count reader rather than invent
 comparison between the two means something.
 
 `confounded-design` here is the first study's task, carried over verbatim and referenced by its
-pinned shas, now run across five models with three takes a half instead of one.
+pinned shas, now run across the three Claude tiers with three takes a half instead of one.
 
 ## What this study will not say
 

@@ -135,6 +135,12 @@ def cmd_add(args) -> int:
     if args.model not in pre["models"]:
         print(f"unknown model {args.model!r}")
         return 2
+    reason = prereg.not_run_reason(args.model)
+    if reason:
+        print(f"{args.model} does not run in this study:\n  {reason}\n"
+              f"Its cells publish that reason. Registering a take against it would contradict the "
+              f"record the study is going to publish.")
+        return 2
     if not (1 <= args.take <= pre["n"]):
         print(f"take index {args.take} is outside 1..{pre['n']}; there are no retakes")
         return 2
@@ -231,13 +237,25 @@ def cmd_plan() -> int:
     namespace()
     pre = prereg.load()
     tasks = [t["id"] for t in pre["tasks"]]
-    models = pre["models"]
-    n = pre["n"]
-    planned = len(tasks) * 2 * len(models) * n
+
+    # The planned count comes from prereg.cells(), the same function the take order permutes, so
+    # the two can never disagree. An earlier version multiplied the numbers out here instead and
+    # went on reporting 180 planned takes after two models had been marked not run -- the
+    # second-source-of-truth problem again, this time between two of my own files.
+    planned = prereg.cells()
+    running = prereg.running_models()
+
     print(f"tasks   {len(tasks)}  {', '.join(tasks)}")
-    print(f"models  {len(models)}  {', '.join(models)}")
-    print(f"n       {n} graded takes per half per model, no retakes")
-    print(f"planned {planned} takes, plus {len(pre['local_models'])} local control take(s)")
+    print(f"models  {len(prereg.models())} in the fixed list, {len(running)} running")
+    for m in prereg.models():
+        reason = prereg.not_run_reason(m)
+        print(f"        {m:28} {'runs' if not reason else 'NOT RUN — ' + reason[:60]}")
+    print(f"n       {pre['n']} graded takes per half per model, no retakes")
+    print(f"planned {len(planned)} takes")
+
+    local_status = (pre.get("local_tier") or {}).get("status")
+    if local_status == "DROPPED":
+        print("        the local control takes are dropped with the tier, same reason")
     print(f"registered so far: {len(load_rows())}")
     return 0
 
