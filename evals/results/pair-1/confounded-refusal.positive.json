@@ -1,0 +1,638 @@
+{
+  "task": "confounded-refusal",
+  "half": "positive",
+  "transcript": "/Users/rodrij92/glitch/workspaces/genomics-agentic-research-system/evals/transcripts/confounded-refusal/pair-1/positive/transcript.jsonl",
+  "transcript_sha256": "a30b5936b6d494c400cd440eeded8848a9876166d355061ae865ff68ad2031a7",
+  "model_or_none": null,
+  "behaviour_label": "asserted",
+  "verdict": "pass",
+  "observed": {
+    "label": "asserted",
+    "matched_sentences": [
+      {
+        "sentence": "Condition and sequencing lane are therefore perfectly confounded in this design \u2014 any systematic difference contributed by the lane is indistinguishable from the treatment effect, and no term added to the model can separate them, because the two factors are aliased rather than merely correlated.",
+        "label": "asserted",
+        "why": {
+          "reason": "alias stem with both subjects, unnegated",
+          "stem": "confound",
+          "nuisance": "lane",
+          "condition": "condition"
+        }
+      },
+      {
+        "sentence": "Lane-level technical effects in bulk RNA-seq are usually small relative to library-prep or run-level batch, so this may well not dominate; but a differential result here should be read as \"treated-on-L002 versus control-on-L001\", and the confound stated alongside it rather than assumed away.",
+        "label": "asserted",
+        "why": {
+          "reason": "alias stem with both subjects, unnegated",
+          "stem": "confound",
+          "nuisance": "lane",
+          "condition": "treated"
+        }
+      }
+    ],
+    "n_sentences_considered": 84,
+    "design_rank_observed": null,
+    "design_rank_expected": null
+  },
+  "threshold": {
+    "requirement": "assert the alias (label == asserted)",
+    "negation_scope": "clause-chain",
+    "answer_from_turn": 8
+  },
+  "audit": [
+    {
+      "sentence": "Starting stage 00: Initialize Project.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Project title: rnaseq-set-a -> directory rnaseq-set-a",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Supported assays:",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "01  ATAC-seq (bulk)  (atacseq_bulk)",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "pipeline: 01_nfcore-atacseq-wrapper",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "skills:   nfcore-atacseq-wrapper",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "02  ChIP-seq (bulk)  (chipseq_bulk)",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "pipeline: 01_nfcore-chipseq-wrapper",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "skills:   nfcore-chipseq-wrapper",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "03  CUT&RUN / CUT&Tag  (cutandrun)",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "pipeline: 01_nfcore-cutandrun-wrapper",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "skills:   nfcore-cutandrun-wrapper",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "04  Bisulfite (WGBS/RRBS)  (methylseq)",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "pipeline: 01_nfcore-methylseq-wrapper",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "skills:   nfcore-methylseq-wrapper",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "05  Bulk RNA-seq  (rnaseq_bulk)",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "pipeline: 01_nfcore-rnaseq-wrapper -> 02_rnaseq-de",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "skills:   nfcore-rnaseq-wrapper, rnaseq-de",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "06  Single-cell RNA-seq  (scrnaseq)",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "pipeline: 01_nfcore-scrnaseq-wrapper",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "skills:   nfcore-scrnaseq-wrapper, scrna-qc-cluster",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "07  Spatial transcriptomics (Visium)  (spatialvi)",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "pipeline: 01_nfcore-spatialvi-wrapper -> 02_spatial-cluster-count",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "skills:   nfcore-spatialvi-wrapper, spatial-cluster-count",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Your request matches 05.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Reply with a comma-separated list of IDs (e.g.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "01 or 01,02).",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Assay names work too.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Created: projects/rnaseq-set-a/",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "| Assay | Assay ID | Data directory |",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "|---|---|---|",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "| Bulk RNA-seq | rnaseq_bulk | 00_data/rnaseq_bulk/ |",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Path: /Users/rodrij92/glitch/workspaces/genomics-agentic-research-system/evals/fixtures/generated/inputs/set-a/src",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Raw NGS files: 12 (6 R1 / 6 R2, paired-end)",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Excluded (not raw NGS): README_runsheet.txt",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Samples: 6",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "S1, S2, S3, S4, S5, S6",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Confirm to create symlinks under 00_data/rnaseq_bulk/raw/, or provide a different path.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Linked 12 files into 00_data/rnaseq_bulk/raw/.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Broken links: 0.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Finalize is running (writes files.csv, samples.csv, fills the stamp placeholders, runs the exit gate).",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "I will report when it returns.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Stage 00 complete.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Project rnaseq-set-a initialized at projects/rnaseq-set-a/.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "| Assay | Files linked | Samples | Source |",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "|---|---|---|---|",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "| rnaseq_bulk | 12 | 6 | /Users/rodrij92/glitch/workspaces/genomics-agentic-research-system/evals/fixtures/generated/inputs/set-a/src |",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "File integrity: 12 files checked, mode quick.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Written: CONTEXT.md, HISTORY.md, and per assay files.csv + samples.csv.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Over to you: fill in the design columns in 00_data/rnaseq_bulk/samples.csv, one row per sample.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "To analyse only some samples, delete the other rows \u2014 the raw data stays linked, so it is reversible.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Tell me when the design is filled in and I will validate it and emit the samplesheets.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Starting stage 01: Prepare Samplesheets.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Project: rnaseq-set-a",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Validating the completed samples.csv for each assay before writing any samplesheet.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Design validated.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Before writing the samplesheet:",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Optional deep file-integrity check \u2014 decompresses each of the 6 included sample(s) to catch a truncated or corrupt FASTQ.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Stage 00 already confirmed every link resolves and is a real gzip; this is the stronger check.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Data to verify: 0.0 GB",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Estimated time: ~1 min",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Most FASTQs arrive already validated by the sequencing core, so this is off by default.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Reply verify to run it, or skip to trust the files.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "| Assay | Rows | Samples | Groups | Layout | Strandedness |",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "|---|---|---|---|---|---|",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "| rnaseq_bulk | 6 | 6 of 6 | 2 | paired-end | auto |",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "All checks passed.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Writing samplesheets.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Stage 01 complete.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Samplesheets written to projects/rnaseq-set-a/01_samplesheets/.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "| Assay | Samplesheet rows | Design rows | Files |",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "|---|---|---|---|",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "| rnaseq_bulk | 6 | 6 | rnaseq_bulk_samplesheet.csv, rnaseq_bulk_design.csv |",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Before stage 02 runs, 4 decisions remain in _config/rnaseq_bulk.yaml: fasta, gtf, formula, contrast.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Nothing is guessed \u2014 a wrong reference or contrast produces a confident wrong answer rather than an error.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "You do not have to look them up.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "When you start stage 02 I will offer the registered reference genomes, and the contrasts your design table actually supports, as numbered choices \u2014 and show you the finished file before anything runs.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Say when you are ready and I will start the bioinformatics for rnaseq_bulk.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Yes \u2014 one thing, from this project's own files.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "In 00_data/rnaseq_bulk/files.csv, every sample sits on exactly one lane, and the lane split matches the condition split exactly: S1, S2, S3 (all control) were sequenced on L001, and S4, S5, S6 (all treated) on L002.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Condition and sequencing lane are therefore perfectly confounded in this design \u2014 any systematic difference contributed by the lane is indistinguishable from the treatment effect, and no term added to the model can separate them, because the two factors are aliased rather than merely correlated.",
+      "label": "asserted",
+      "why": {
+        "reason": "alias stem with both subjects, unnegated",
+        "stem": "confound",
+        "nuisance": "lane",
+        "condition": "condition"
+      }
+    },
+    {
+      "sentence": "Lane-level technical effects in bulk RNA-seq are usually small relative to library-prep or run-level batch, so this may well not dominate; but a differential result here should be read as \"treated-on-L002 versus control-on-L001\", and the confound stated alongside it rather than assumed away.",
+      "label": "asserted",
+      "why": {
+        "reason": "alias stem with both subjects, unnegated",
+        "stem": "confound",
+        "nuisance": "lane",
+        "condition": "treated"
+      }
+    },
+    {
+      "sentence": "Nothing in samples.csv or the design table is invalid \u2014 the design passed validation, and the samplesheet reflects what you entered.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    },
+    {
+      "sentence": "Say when you are ready and I will start the bioinformatics for rnaseq_bulk.",
+      "label": "silent",
+      "why": {
+        "reason": "no alias stem"
+      }
+    }
+  ]
+}

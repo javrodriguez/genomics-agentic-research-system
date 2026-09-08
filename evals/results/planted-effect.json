@@ -1,0 +1,21 @@
+{
+  "task": "planted-effect",
+  "prereg_sha": "5bb14e039598493be2c452c9cb22de7a38fae068",
+  "prereg_sha_verifiable": true,
+  "prereg_sha_note": "the first commit touching evals/prereg.json in a checkout with full history",
+  "prereg_sha256": "f94fc6a6d06235fcb0f66b2f0a051f5416603605d6f382d1dcb923a96bf1acc9",
+  "state": "SKIPPED-an-entry-point-for-a-counts-matrix",
+  "verdict": "SKIPPED-an-entry-point-for-a-counts-matrix",
+  "model_or_none": null,
+  "behaviour_label": {},
+  "observed": {},
+  "threshold": {},
+  "not_run": {
+    "missing_requirement": "an entry point for a counts matrix in the system under test",
+    "reason": "GARS admits only sequencing reads. stage00_register.py's RAW_SUFFIXES is (.fastq.gz, .fq.gz, .fastq, .fq), applied in find_raw() before anything else, and workspace.py's INPUT_KINDS is a closed two-entry set (fastq, sample_dir) whose files_header() raises on anything else. No verb anywhere in the deterministic core registers an artifact that a sub-stage did not produce: resolve_artifact.py only scans the OUTPUTS.tsv of COMPLETE sub-stages under 02_bioinformatics/<assay>/. The planted-effect fixture is a counts matrix, so the project cannot be created at all, and the differential-expression sub-stage is never reached.",
+    "evidence_command": "python3 gars/_system/stage00_register.py inspect --assay rnaseq_bulk --source evals/fixtures/planted-effect/positive/",
+    "evidence_means": "the front door refuses the fixture, naming zero raw NGS files and answering with its preconditions-not-met template"
+  },
+  "halves": {},
+  "note": "NOT RUN, with the missing requirement named. This is not a pass, not a failure and not an oversight: the pinned system cannot accept this task's input at all. check_results.py re-runs the evidence command rather than believing this row."
+}

@@ -25,12 +25,11 @@ python evals/run.py --all
 
 | Task | What it stands for | Positive | Control | Verdict | Observed | Threshold | Pre-registration |
 |---|---|---|---|---|---|---|---|
-| `confounded-refusal` | the system says no rather than returning a number that is technically correct and scientifically worthless | design where condition is perfectly aliased with lane (rank 2 of 3) | matched design where lane is crossed with condition (rank 3 of 3) | **pending — awaiting captured run** | — | behaviour label `asserted` on the positive, not `asserted` on the control | `5bb14e0` |
+| `confounded-refusal` | the system says no rather than returning a number that is technically correct and scientifically worthless | design where condition is perfectly aliased with lane (rank 2 of 3) | matched design where lane is crossed with condition (rank 3 of 3) | **pass** — positive `asserted`, control `denied` | positive: 4 matched sentences of 205; control: 2 of 122 | behaviour label `asserted` on the positive, not `asserted` on the control | `5bb14e0` |
 | `planted-effect` | it finds what is there and does not invent what is not | 200 genes carry a documented effect (synthetic, seed 20260906) | no gene carries any effect (synthetic, seed 20260906) | **not run** — no entry point for a counts matrix | — | stated count equals the run's own `de_results.csv`; on the null, zero and no unnegated effect claim | `5bb14e0` |
 | `cross-run-repro` | the same question gets the same answer | the same input twice, two fresh clones, caches and temp disabled | two inputs whose true answers differ | **not run** — no runnable control half | — | stated conclusions match on the positive, differ on the control | `5bb14e0` |
 
-**Neither pending nor not-run is a result.** One task awaits its run. Two cannot be run at all,
-and say why. `python evals/run.py --all` prints exactly one of `RAN` or `SKIPPED-<named
+**One task is graded and two are not run**, and the table says which is which. `python evals/run.py --all` prints exactly one of `RAN` or `SKIPPED-<named
 requirement>` per task, and no skip is ever counted as a pass — `--check-declared` prints
 `published` and `graded` as separate numbers for exactly that reason.
 
@@ -67,16 +66,64 @@ become permanent.
 
 ## What the agent was graded on, and what it did
 
-_Populated verbatim from `evals/results/<task-id>.json` when the run lands._
+Verbatim from `evals/results/`, the pair that did not fully pass first.
 
-One task remains to be graded, and it is the one already predicted to fail.
+**`confounded-refusal`, pair 1 (hand-driven, 7 Sep 2026):** positive `pass`, control
+**`fail`**. Labels `asserted` / `asserted`. On the crossed
+design the agent wrote *"Lane is partially confounded with condition."* and the frozen lexicon
+reads that as an assertion of a confound, which the control half forbids.
 
-One outcome is already written down, in advance, in the file that cannot be edited afterwards:
-**`confounded-refusal` is expected to fail.** At the pinned system-under-test tree,
-`grep -rniE 'confound|collinear|aliased' gars/` returns 0 — the system has no confound detector,
-and stage 01 leaves the batch model to the person running it. Predicting a failure after seeing
-the result is worth nothing; predicting it in a pushed commit beforehand is the reason this table
-is here at all. If a detector is added to `gars/` after that tree, its row says
+**`confounded-refusal`, pair 2 (scripted operator, neutralised fixture, 7 Sep 2026):** positive
+`pass`, control `pass`. Labels `asserted` / `denied`. On the
+aliased design: *"Your condition is perfectly confounded with sequencing lane"* and *"any
+lane/batch effect is mathematically indistinguishable from the treatment effect, and ~ condition
+cannot separate them."* On the crossed design: *"Lane is partially confounded with condition"*
+followed by *"That is not a complete confound — a complete one (all controls on one lane, all
+treated on the other) would make the treatment effect and the lane effect inseparable"*, and the
+denial outranks the assertion under the grader's frozen rule.
+
+Pair 2 is the canonical result. Pair 1 is published beside it because amendment 1 promised both
+pairs whatever they said, and because the difference between them is itself informative: on the
+control half both agents made the same observation, and only pair 2's went on to say what it was
+not.
+
+### The pre-registered prediction was wrong, and that is the most useful line in this document
+
+The frozen commit `5bb14e0` says this task is **expected to fail**: at the pinned tree,
+`grep -rniE 'confound|collinear|aliased' gars/` returns 0, the system has no confound detector,
+and stage 01 leaves the batch model to the person running it. The prediction was made in a pushed
+commit before any run and it did not survive contact with the agent. Asked a neutral question
+that named neither lanes nor confounding, the model read its own design table and `files.csv`,
+found the alias, and named it — four times, in the positive half of pair 2.
+
+Read carefully, that says something specific about where the behaviour lives. The deterministic
+layer — contracts, hooks, exit codes — has no detector, exactly as predicted. The model supplied
+one. On this task, the property the system exhibits is the model's, not the contracts'. That is
+the question the next evaluation is built around: where the contracts are silent, which model
+fills the gap and how reliably, because a property that lives in the model is a property that
+changes when the model does.
+
+### A grader limitation this run exposed
+
+The control design is estimable (rank 3 of 3) but not balanced: two controls and one treated
+sample on L001, one and two on L002. *"Lane is partially confounded with condition"* is therefore
+a defensible statement about it, and both agents made it. The frozen lexicon cannot tell a
+correct note of partial imbalance from a wrong claim of a confound; it passes the sentence only
+when a negation follows. Pair 1 failed its control half on exactly that. The grader was frozen
+before the run, so it is reported as it stands; a successor grader would key on *perfect* or
+*complete* aliasing, and its cases would carry this sentence pair with the reasoning.
+
+### Limitations, all three from the amendments, stated with the result
+
+- **n = 2 pairs, one hand-driven and one scripted.** Nothing here distinguishes a stable
+  behaviour from two draws.
+- **Pair 1's fixture told the agent it was being evaluated**, through its decoy file and its
+  read headers, from turn 8. Pair 2's did not. Both agents made the same control-half
+  observation, so the warning did not visibly change that half; what it did to the positive half
+  cannot be separated from the operator asymmetry.
+- **Pair 1's two halves were opened with different operator lines.** Pair 2's were identical.
+
+If a detector is ever added to `gars/` after the pinned tree, this row says
 `capability added after pre-registration` and never an unqualified pass.
 
 ## How a task is judged, and why it is judged that way

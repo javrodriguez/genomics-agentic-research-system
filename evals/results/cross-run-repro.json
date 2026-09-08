@@ -1,0 +1,21 @@
+{
+  "task": "cross-run-repro",
+  "prereg_sha": "5bb14e039598493be2c452c9cb22de7a38fae068",
+  "prereg_sha_verifiable": true,
+  "prereg_sha_note": "the first commit touching evals/prereg.json in a checkout with full history",
+  "prereg_sha256": "f94fc6a6d06235fcb0f66b2f0a051f5416603605d6f382d1dcb923a96bf1acc9",
+  "state": "SKIPPED-a-runnable-control-half",
+  "verdict": "SKIPPED-a-runnable-control-half",
+  "model_or_none": null,
+  "behaviour_label": {},
+  "observed": {},
+  "threshold": {},
+  "not_run": {
+    "missing_requirement": "a runnable control half",
+    "reason": "The pre-registration froze this task's control as 'two inputs whose true answers differ: the planted-effect positive counts against its null counts, both already-committed fixtures'. Those are the fixtures the front door refuses. A task without a working control measures nothing -- a grader that reports `same` because it could read neither transcript would pass the positive half while measuring nothing, and only the control can catch that. So the positive half is not run either: half a paired task is not a result.",
+    "evidence_command": "python3 gars/_system/stage00_register.py inspect --assay rnaseq_bulk --source evals/fixtures/planted-effect/control/",
+    "evidence_means": "the same refusal on the null half, which is this task's control input"
+  },
+  "halves": {},
+  "note": "NOT RUN, with the missing requirement named. This is not a pass, not a failure and not an oversight: the pinned system cannot accept this task's input at all. check_results.py re-runs the evidence command rather than believing this row."
+}
