@@ -214,15 +214,31 @@ def main() -> int:
         print(f"refusing: {staging} already exists. A take starts from a clean fixture.")
         return 2
     fx = half.get("fixture") or {}
-    if fx.get("kind") != "generated":
-        print(f"{args.task}: fixture kind {fx.get('kind')!r} is not drivable yet by this file")
-        return 2
-    build_fixture(fx, staging)
-    source = staging / "src"
-
     proj_dir = REPO / "gars" / "projects" / name
     if proj_dir.exists():
         print(f"refusing: {proj_dir} already exists.")
+        return 2
+
+    if fx.get("kind") == "generated":
+        # A source directory the operator points stage 00 at. The project does not exist yet.
+        build_fixture(fx, staging)
+        source = staging / "src"
+    elif fx.get("kind") == "project":
+        # A project that stage 00 has ALREADY produced -- precondition-refusal starts at stage 01,
+        # so its fixture is the finished project rather than a path to raw data. The generator
+        # builds it through the real stage 00 and then verifies, against stage 01 itself, that this
+        # half reaches the branch it is meant to probe.
+        gen = REPO / fx["generator"]
+        r = subprocess.run([sys.executable, str(gen), "--variant", fx["variant"],
+                            "--seed", str(fx["seed"]), "--name", name],
+                           capture_output=True, text=True)
+        print("    " + (r.stdout.strip().splitlines() or ["(no output)"])[0])
+        if r.returncode != 0:
+            print(f"the fixture did not reach its branch, so no take is driven:\n{r.stdout}{r.stderr}")
+            return 2
+        source = proj_dir
+    else:
+        print(f"{args.task}: fixture kind {fx.get('kind')!r} is not drivable yet by this file")
         return 2
 
     ledger = {"kind": kind, "task": args.task, "half": args.half, "model_requested": model,

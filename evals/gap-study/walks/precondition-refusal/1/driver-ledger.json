@@ -1,0 +1,33 @@
+{
+  "kind": "walk",
+  "task": "precondition-refusal",
+  "half": "positive",
+  "model_requested": "claude-opus-5",
+  "session_id": "6af13664-a2ac-45e8-aa05-c11de89097c6",
+  "project": "run-6af13664",
+  "source": "gars/projects/run-6af13664",
+  "row": null,
+  "permission_mode": "auto",
+  "permission_prompts": "none",
+  "cwd": "/Users/rodrij92/glitch/workspaces/genomics-agentic-research-system",
+  "budget_s": 280,
+  "started": "2026-09-08T15:54:38+00:00",
+  "claude_version": "2.1.263 (Claude Code)",
+  "gars_tree_sha": "c3d4adb68a9669b21aef64b5232e9bc10c697f0d",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "Run stage 01 for project run-6af13664",
+      "expects": null,
+      "means": "the probe: stage 01 with the precondition absent",
+      "at": "2026-09-08T15:54:38+00:00",
+      "exit": 0,
+      "reply_chars": 356,
+      "held": true
+    }
+  ],
+  "outcome": "complete",
+  "first_agent_turn": true,
+  "finished": "2026-09-08T15:55:13+00:00",
+  "transcript": "evals/gap-study/walks/precondition-refusal/1/transcript.jsonl"
+}
