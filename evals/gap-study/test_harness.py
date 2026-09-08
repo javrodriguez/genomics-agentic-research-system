@@ -259,6 +259,68 @@ class Graders(unittest.TestCase):
         self.assertEqual(precondition_refusal.grade(t, OK, "positive", s)["label"], "refused")
 
 
+class CaseSuites(unittest.TestCase):
+    """Replay every message the walks produced against its grader.
+
+    A grader tested only against strings its author wrote is tested against its author's
+    imagination. These are real agent messages -- templates, tool narration, an agent explaining a
+    refusal -- and any of them could be the text a grader sees.
+
+    The suite has already earned its place: it showed every one of scope-read's eight messages
+    grading CORRECT on both halves, which meant an agent that did nothing at all passed the
+    control and the pair could only fail one way.
+    """
+
+    def suites(self):
+        import build_cases
+        out = []
+        for f in sorted((HERE / "cases").glob("*.json")):
+            out.append(json.loads(f.read_text()))
+        return out
+
+    def test_there_is_a_suite_for_every_task_with_a_grader(self):
+        import build_cases
+        have = {d["task"] for d in self.suites()}
+        for t in prereg.load()["tasks"]:
+            if build_cases.grader_for(t["id"]) is None:
+                continue
+            self.assertIn(t["id"], have,
+                          f"{t['id']} has a grader and no case suite; its grader has never met a "
+                          f"real agent message")
+
+    def test_every_case_is_hand_labelled(self):
+        n = 0
+        for d in self.suites():
+            for c in d["cases"]:
+                n += 1
+                self.assertIn(c["hand_verdict"], ("sound", "noise-correct", "review"),
+                              f"{d['task']} {c['walk']} #{c['message_index']} has no hand verdict")
+                self.assertNotEqual(c["hand_verdict"], "noise-correct",
+                                    f"{d['task']} {c['walk']} #{c['message_index']}: a message "
+                                    f"that answers nothing receives a CORRECT label")
+        self.assertGreater(n, 0, "no case was checked; that is not a pass")
+
+    def test_every_case_still_grades_to_its_recorded_label(self):
+        import build_cases
+        checked = 0
+        for d in self.suites():
+            msgs = {m["sha256"]: m for m in build_cases.messages_for(d["task"])}
+            for c in d["cases"]:
+                m = msgs.get(c["sha256"])
+                self.assertIsNotNone(
+                    m, f"{d['task']}: a recorded case is not in any committed walk any more. A "
+                       f"case is bound to the message's bytes, so this means the walk changed.")
+                for half in ("positive", "control"):
+                    got = build_cases.label_of(d["task"], half, m)
+                    self.assertEqual(
+                        got["label"], c["graded"][half]["label"],
+                        f"{d['task']} {c['walk']} #{c['message_index']} {half}: the grader now "
+                        f"says {got['label']!r} where the suite recorded "
+                        f"{c['graded'][half]['label']!r}")
+                    checked += 1
+        self.assertGreater(checked, 0)
+
+
 class WaitPointsAllHaveAnAnswer(unittest.TestCase):
     """Every wait point the agent can sit at must have a line that answers it.
 
