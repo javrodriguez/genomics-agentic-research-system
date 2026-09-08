@@ -64,6 +64,23 @@ from pathlib import Path
 SAMPLES = ("A1", "A2", "A3", "B1", "B2", "B3")
 CONDITION = {"A1": "untreated", "A2": "untreated", "A3": "untreated",
              "B1": "treated", "B2": "treated", "B3": "treated"}
+
+# The S-number bcl2fastq assigns, in submission order. It is a SEPARATE field from the sample id
+# and the convention requires it literally.
+#
+# The first version of this generator emitted `A1_A1_L001_R1_001.fastq.gz`, repeating the sample
+# id where the S-number belongs, and GARS refused the whole fixture:
+#
+#   "cannot derive sample IDs: 12 entries do not match the expected convention"   (T5, exit 2)
+#
+# The first study's generator used sample ids that were themselves S1..S6, so its second field
+# satisfied the pattern by coincidence rather than by design, and copying its NAME SHAPE without
+# its sample ids inherited the coincidence and not the rule.
+#
+# This is the first study's own hardest lesson landing on its successor: a fixture was frozen there
+# that stage 00 refuses outright, because every component was verified and the arc never was. Caught
+# here by running GARS's own inspect step against the fixture before a grader was written.
+S_NUMBER = {s: i for i, s in enumerate(SAMPLES, start=1)}
 LANE = "L001"          # one lane for every sample: this study is not about lane structure
 READS = (1, 2)
 READS_PER_FILE = 3
@@ -121,8 +138,16 @@ def gz_bytes(payload: bytes) -> bytes:
 
 
 def fastq_name(sample: str, read: int) -> str:
-    """The bcl2fastq shape stage 00's register step parses."""
-    return f"{sample}_{sample}_{LANE}_R{read}_001.fastq.gz"
+    """The bcl2fastq shape stage 00's register step parses.
+
+    The convention, from the script's own refusal message:
+
+        <sample>_S<n>[_L<lane>]_R<1|2>_<nnn>.fastq.gz
+
+    so `A1_S1_L001_R1_001.fastq.gz` is sample A1, S-number 1, lane 1, read 1. The S-number is its
+    own field and is not the sample id repeated; see S_NUMBER above for what happened when it was.
+    """
+    return f"{sample}_S{S_NUMBER[sample]}_{LANE}_R{read}_001.fastq.gz"
 
 
 def build(variant: str, seed: int) -> dict[str, bytes]:
@@ -155,14 +180,21 @@ def manifest(variant: str, seed: int, files: dict[str, bytes]) -> dict:
     for name in sorted(files):
         payload.update(name.encode())
         payload.update(hashlib.sha256(files[name]).digest())
+    # true_counts is computed ONCE and everything else in the manifest reads it. An earlier version
+    # wrote the same two numbers twice -- once at the top level and once inside true_counts -- which
+    # is the second-source-of-truth problem this manifest exists to prevent, reproduced inside the
+    # manifest itself. It also made a mutation test pass hollow: changing the top-level copy left
+    # the field check_fixture.py actually reads untouched, so the guard stayed green over a fixture
+    # whose manifest lied.
+    true_counts = {"raw_files": len(fastqs), "samples": len(SAMPLES)}
     return {
         "generator": "evals/gap-study/fixtures/gen_source.py",
         "variant": variant,
         "seed": seed,
-        "samples": len(SAMPLES),
-        "raw_files": len(fastqs),
+        "samples": true_counts["samples"],
+        "raw_files": true_counts["raw_files"],
         "non_raw_files": sorted(n.split("/")[-1] for n in files if not n.endswith(".fastq.gz")),
-        "true_counts": {"raw_files": len(fastqs), "samples": len(SAMPLES)},
+        "true_counts": true_counts,
         "fixture_sha256": payload.hexdigest(),
         "note": "true_counts is the ONE source for the counts the operator's control line quotes. "
                 "A number typed into the pre-registration by hand would be a second source and "
