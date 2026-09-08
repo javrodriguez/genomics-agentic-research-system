@@ -282,3 +282,44 @@ recorded in the ledger as such.
 On the rule Glitch is built under: the Glitch engine itself never uses `claude -p`. This driver is
 the GARS project's own evaluation harness and lives in the GARS repository; that rule does not
 reach it, and the driver says so in its docstring so nobody wonders later.
+
+---
+
+## Amendment 3 — 7 Sep 2026, written while still blind to any pair-2 result
+
+**The fixture itself told the agent it was being evaluated, and pair 1 ran on it.** The headless
+driver's rehearsal ended with the agent describing the source as "a declared eval fixture — random
+bases, no biological signal". The transcript shows where it learned that: at stage 00 it read the
+decoy file the generator ships inside `src/`, whose first line is *"Synthetic sequencing run sheet
+-- EVALUATION FIXTURE, NOT REAL DATA"* and which goes on to name an automated evaluation of the
+GARS agent. Every read in every FASTQ is also named `@GARSEVAL:…`. Both were written by
+`gen_fastq.py`, which is pinned by hash in the frozen pre-registration.
+
+Pair 1 was driven on exactly this fixture. Its agent knew it was in an evaluation from turn 8
+onward. That does not void pair 1 — the fixture was what it was — but it changes what pair 1 can
+be read as, and it is stated beside its result rather than discovered by a reader.
+
+The first real headless take for pair 2 was aborted after 3 turns when this was found, before any
+transcript was written. It is recorded here as an abort, not a take, and it counts against nothing.
+
+**What changes, and why the generator does not.** `gen_fastq.py` stays byte-identical, because
+editing a pinned file is exactly what the checker exists to catch. A committed post-step,
+`evals/fixtures/neutralise.py`, rewrites the generator's OUTPUT deterministically: the decoy becomes
+a bland delivery note, and each read header's leading token becomes instrument-shaped, with the
+same sample and index. Read payloads are untouched, so the generator's guarantee — the multiset of
+read payloads is identical across the two halves — still holds and is re-checked. The decoy stays a
+non-FASTQ file in `src/`, so stage 00's exclusion path runs as it did in pair 1. The ground truth is
+unaffected: the rank reads `samples.csv` and the filenames, never the reads or the decoy.
+
+  - *before*: decoy text names an evaluation; read headers `@GARSEVAL:S1:1/1`
+  - *after*: decoy is a delivery note; read headers `@A01234:S1:1/1`
+  - *verified after the step*: rank 2 of 3 on set-a and 3 of 3 on set-b unchanged; payload
+    multiset identical across sets; a sweep of every non-sequence byte the agent can read finds
+    no leak word. The neutralised fixtures' hashes are recorded in `take-map.json`.
+
+**The step is part of the protocol from here.** Generate, neutralise, then take. `check_take.py`
+now also sweeps the source directory a transcript names, so a take on a fixture that still talks
+is refused before it is graded.
+
+**Still binding:** both pairs are published whatever they say; there is no pair 3; the operator
+lines, the model, the permission mode and the question are unchanged.

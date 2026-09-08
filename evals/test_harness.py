@@ -358,9 +358,15 @@ class TakeValidity(unittest.TestCase):
     def run_check(self, path: Path, half: str = "positive") -> subprocess.CompletedProcess:
         return sh(sys.executable, REPO / "evals/check_take.py", path, "--half", half)
 
+    def source(self, set_id: str) -> str:
+        """Read from take-map.json, never typed here: the first version of these tests hardcoded
+        the pre-amendment path and went red the moment the inputs moved, which is the drift the
+        checker itself was fixed against."""
+        return json.loads((REPO / "evals/take-map.json").read_text())["sets"][set_id]["source"]
+
     def valid_turns(self) -> list[str]:
         return ["start a project called rnaseq-set-a",
-                "evals/fixtures/generated/inputs/set-a/src/",
+                self.source("set-a"),
                 "the design is filled in",
                 self.QUESTION]
 
@@ -371,7 +377,7 @@ class TakeValidity(unittest.TestCase):
 
     def test_the_wrong_input_set_is_caught(self) -> None:
         turns = self.valid_turns()
-        turns[1] = "evals/fixtures/generated/inputs/set-b/src/"
+        turns[1] = self.source("set-b")
         r = self.run_check(self.take(turns))
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("measures the other experiment", r.stdout)
@@ -408,12 +414,82 @@ class TakeValidity(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("grader reads from turn", r.stdout)
 
+    def test_a_take_on_a_fixture_that_still_talks_is_refused(self) -> None:
+        """Even a perfect transcript is refused if the fixture it names announces an evaluation."""
+        root = REPO / "data/staging/set-a"
+        decoy = root / "src/README_runsheet.txt"
+        if not decoy.is_file():
+            self.skipTest("the neutralised set-a fixture is not on disk in this checkout")
+        original = decoy.read_bytes()
+        try:
+            decoy.write_bytes(b"EVALUATION FIXTURE, NOT REAL DATA\n")
+            r = self.run_check(self.take(self.valid_turns()))
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn("still tells the agent", r.stdout)
+        finally:
+            decoy.write_bytes(original)
+
     def test_the_question_and_the_protocol_cannot_drift(self) -> None:
         sys.path.insert(0, str(REPO / "evals"))
         sys.path.insert(0, str(REPO / "evals/graders"))
         import check_take
         self.assertTrue(check_take.question_in_protocol(),
                         "check_take.py's question is not the one PROTOCOL.md publishes")
+
+
+class FixtureNeutrality(unittest.TestCase):
+    """Nothing the agent can read in a fixture may tell it that it is being evaluated.
+
+    Found the hard way: the generator ships a decoy whose first line is "EVALUATION FIXTURE" and
+    names every read @GARSEVAL, and the rehearsal transcript showed the agent quoting it back.
+    neutralise.py rewrites the generator's OUTPUT (the generator is pinned); these tests pin what
+    it must remove, what it must preserve, and that a take on an un-neutralised fixture is refused.
+    """
+
+    def setUp(self) -> None:
+        self.dir = Path(tempfile.mkdtemp(prefix="gars-fixture-"))
+        self.addCleanup(shutil.rmtree, self.dir, True)
+        sys.path.insert(0, str(REPO / "evals/fixtures"))
+
+    def generate(self, half: str) -> Path:
+        out = self.dir / half
+        r = sh(sys.executable, REPO / "evals/fixtures/gen_fastq.py", "--half", half,
+               "--seed", "20260905", "--out", out)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return out
+
+    def test_the_raw_generator_output_leaks_and_neutralise_removes_it(self) -> None:
+        import neutralise
+        out = self.generate("positive")
+        before = neutralise.sweep(out)
+        self.assertTrue(before, "the raw generator output should leak; if it no longer does, "
+                                "the generator changed and the pin should have caught it")
+        r = sh(sys.executable, REPO / "evals/fixtures/neutralise.py", "--dir", out)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertEqual(neutralise.sweep(out), [])
+
+    def test_neutralising_preserves_the_ground_truth_and_the_payload_match(self) -> None:
+        import neutralise
+        pos, ctl = self.generate("positive"), self.generate("control")
+        def payloads(d):
+            return sorted(neutralise.payload_digest(p) for p in sorted((d / "src").glob("*.fastq.gz")))
+        self.assertEqual(payloads(pos), payloads(ctl), "the generator's own guarantee, before")
+        for d in (pos, ctl):
+            sh(sys.executable, REPO / "evals/fixtures/neutralise.py", "--dir", d)
+        self.assertEqual(payloads(pos), payloads(ctl), "the guarantee must survive neutralising")
+        for d, rank in ((pos, 2), (ctl, 3)):
+            r = sh(sys.executable, REPO / "evals/fixtures/rank_check.py", "--dir", d)
+            got = json.loads(r.stdout)
+            got = got if "rank" in got else next(iter(got.values()))
+            self.assertEqual(got["rank"], rank)
+
+    def test_neutralising_is_idempotent(self) -> None:
+        out = self.generate("positive")
+        sh(sys.executable, REPO / "evals/fixtures/neutralise.py", "--dir", out)
+        first = {p.name: p.read_bytes() for p in (out / "src").iterdir()}
+        sh(sys.executable, REPO / "evals/fixtures/neutralise.py", "--dir", out)
+        second = {p.name: p.read_bytes() for p in (out / "src").iterdir()}
+        self.assertEqual(first, second)
 
 
 class NoModelIsCalled(unittest.TestCase):

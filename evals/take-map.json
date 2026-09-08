@@ -15,7 +15,13 @@
         "verify": "python3 evals/fixtures/rank_check.py --dir evals/fixtures/generated/inputs/set-a"
       },
       "samples_csv_md5": "4f11b01178e3b6baedc2b12634e6dc0a",
-      "source": "data/staging/set-a/src/"
+      "source": "data/staging/set-a/src/",
+      "neutralised": {
+        "step": "python3 evals/fixtures/neutralise.py --dir data/staging/set-a",
+        "tree_sha256_after": "58da56ad9a6cee030b61aa415021f5620e816ac8a1fa05560fe0895077c79cc7",
+        "decoy_sha256": "8bd3a9684518e01957ec2bffdb5ac89ece478593f9a63e723c34f529f1f15fda",
+        "means": "the bytes the agent is given for this take; generate, neutralise, then take"
+      }
     },
     "set-b": {
       "half": "control",
@@ -30,7 +36,13 @@
         "verify": "python3 evals/fixtures/rank_check.py --dir evals/fixtures/generated/inputs/set-b"
       },
       "samples_csv_md5": "4f11b01178e3b6baedc2b12634e6dc0a",
-      "source": "data/staging/set-b/src/"
+      "source": "data/staging/set-b/src/",
+      "neutralised": {
+        "step": "python3 evals/fixtures/neutralise.py --dir data/staging/set-b",
+        "tree_sha256_after": "5a7f7d801ee5ccdf2ca3e81bf41bb7d91d1f67f03d0a5fa5ef2f0d7d9af84b5b",
+        "decoy_sha256": "8bd3a9684518e01957ec2bffdb5ac89ece478593f9a63e723c34f529f1f15fda",
+        "means": "the bytes the agent is given for this take; generate, neutralise, then take"
+      }
     }
   },
   "matched_by_construction": {
@@ -38,5 +50,6 @@
     "samples_csv_md5": "4f11b01178e3b6baedc2b12634e6dc0a",
     "means": "the twelve read payloads are content-identical across the two sets and the design table is byte-identical; the ONLY difference is which samples sit on which lane, which stage 00 derives from the filenames into a machine-owned files.csv"
   },
-  "pair_2_note": "Amendment 1 (7 Sep 2026) moved the inputs to data/staging/, which names neither an evaluation nor the task. The generator and the seed are unchanged, so the fixtures are byte-for-byte the same experiment; only the path the session sees is different."
+  "pair_2_note": "Amendment 1 (7 Sep 2026) moved the inputs to data/staging/, which names neither an evaluation nor the task. The generator and the seed are unchanged, so the fixtures are byte-for-byte the same experiment; only the path the session sees is different.",
+  "amendment_3_note": "The generator's output announced an evaluation (decoy text) and named every read @GARSEVAL. Pair 1 ran on that output. Pair 2 runs on the neutralised output recorded here; the generator itself is unchanged and still pinned."
 }

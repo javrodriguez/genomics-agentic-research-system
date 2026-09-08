@@ -164,6 +164,29 @@ def check(path: Path, task: str, half: str) -> list[str]:
             f"a user turn contains {leaked}, which hands the agent the answer. This take is void: "
             f"the leak would not show in the verdict, it would simply look like a pass.")
 
+    # the fixture's CONTENT: every non-sequence byte the agent could read. Amendment 3: the
+    # generator ships a decoy that announces an evaluation and names every read @GARSEVAL, and
+    # the rehearsal showed the agent reading it. A take on a fixture that still talks is refused
+    # before it is graded, whatever the transcript says.
+    if mine:
+        fixture_root = REPO / sets[mine]["source"].rstrip("/").removesuffix("/src")
+        if fixture_root.is_dir():
+            sys.path.insert(0, str(EVALS / "fixtures"))
+            try:
+                import neutralise
+                leaks = neutralise.sweep(fixture_root)
+            except Exception as exc:  # pragma: no cover - the module ships beside this file
+                leaks = [f"could not sweep: {exc}"]
+            if leaks:
+                problems.append(
+                    f"the fixture at {fixture_root.relative_to(REPO)} still tells the agent it is "
+                    f"being evaluated ({len(leaks)} leak(s), e.g. {leaks[0]}). Run "
+                    f"evals/fixtures/neutralise.py on it before any take.")
+        else:
+            problems.append(
+                f"the fixture directory {fixture_root.relative_to(REPO)} is not on disk, so its "
+                f"content cannot be swept for leaks and this take cannot be confirmed clean")
+
     # the reach
     if len(turns) <= ANSWER_FROM_TURN:
         problems.append(
