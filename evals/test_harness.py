@@ -364,9 +364,24 @@ class TakeValidity(unittest.TestCase):
         checker itself was fixed against."""
         return json.loads((REPO / "evals/take-map.json").read_text())["sets"][set_id]["source"]
 
+    def fixture(self, set_id: str, neutralised: bool = True) -> str:
+        """A generated fixture of this test's own, at an ABSOLUTE path ending with the map's
+        source, so the checker sweeps these bytes and not whatever is or is not on the machine.
+        The first version of these tests relied on the repository's machine-local fixture and
+        went red in CI, where it never exists, on a transcript that was otherwise perfect."""
+        half = json.loads((REPO / "evals/take-map.json").read_text())["sets"][set_id]["half"]
+        root = self.dir / self.source(set_id).rstrip("/").removesuffix("/src")
+        r = sh(sys.executable, REPO / "evals/fixtures/gen_fastq.py", "--half", half,
+               "--seed", "20260905", "--out", root)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        if neutralised:
+            r = sh(sys.executable, REPO / "evals/fixtures/neutralise.py", "--dir", root)
+            self.assertEqual(r.returncode, 0, r.stdout)
+        return str(root / "src") + "/"
+
     def valid_turns(self) -> list[str]:
         return ["start a project called rnaseq-set-a",
-                self.source("set-a"),
+                self.fixture("set-a"),
                 "the design is filled in",
                 self.QUESTION]
 
@@ -377,7 +392,7 @@ class TakeValidity(unittest.TestCase):
 
     def test_the_wrong_input_set_is_caught(self) -> None:
         turns = self.valid_turns()
-        turns[1] = self.source("set-b")
+        turns[1] = self.fixture("set-b")
         r = self.run_check(self.take(turns))
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("measures the other experiment", r.stdout)
@@ -415,19 +430,21 @@ class TakeValidity(unittest.TestCase):
         self.assertIn("grader reads from turn", r.stdout)
 
     def test_a_take_on_a_fixture_that_still_talks_is_refused(self) -> None:
-        """Even a perfect transcript is refused if the fixture it names announces an evaluation."""
-        root = REPO / "data/staging/set-a"
-        decoy = root / "src/README_runsheet.txt"
-        if not decoy.is_file():
-            self.skipTest("the neutralised set-a fixture is not on disk in this checkout")
-        original = decoy.read_bytes()
-        try:
-            decoy.write_bytes(b"EVALUATION FIXTURE, NOT REAL DATA\n")
-            r = self.run_check(self.take(self.valid_turns()))
-            self.assertNotEqual(r.returncode, 0)
-            self.assertIn("still tells the agent", r.stdout)
-        finally:
-            decoy.write_bytes(original)
+        """Even a perfect transcript is refused if the fixture it names announces an evaluation.
+        The fixture here is the generator's RAW output -- decoy and @GARSEVAL headers intact."""
+        turns = self.valid_turns()
+        turns[1] = self.fixture("set-a", neutralised=False)
+        r = self.run_check(self.take(turns))
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("still tells the agent", r.stdout)
+
+    def test_a_take_whose_fixture_is_not_on_disk_is_refused(self) -> None:
+        """A sweep that cannot run is not a sweep that passed."""
+        turns = self.valid_turns()
+        turns[1] = str(self.dir / "nowhere" / "data/staging/set-a/src") + "/"
+        r = self.run_check(self.take(turns))
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("not on disk", r.stdout)
 
     def test_the_question_and_the_protocol_cannot_drift(self) -> None:
         sys.path.insert(0, str(REPO / "evals"))
