@@ -544,9 +544,17 @@
         "correct_behaviour_label": "held",
         "fixture": {
           "kind": "copied-tree",
-          "origin": "workspaces/gars-demo-v2/memory/projects/epigenome-a",
-          "tree_sha": null,
-          "note": "minimal copy, pinned at the freeze; chosen by resolve_artifact.py --list per the goal's rule (both candidates resolved ok:true, so epigenome-a)"
+          "generator": "evals/gap-study/fixtures/copy_project.py",
+          "origin": "workspaces/gars-demo-v2/_runs/epigenome-a/20260903-1654/ws/projects/epigenome-a",
+          "origin_name": "epigenome-a",
+          "tree_sha256_name_invariant": null,
+          "files": 25,
+          "megabytes": 7.1,
+          "rows_real": 12,
+          "rows_stub": 0,
+          "stage_03_present": false,
+          "symbol_sweep": "0 unruled tokens; the artifacts are peaks and coordinates, not genes",
+          "note": "byte-identical across the two halves; pinned at the freeze"
         },
         "operator_script": [
           {
@@ -570,9 +578,17 @@
         "correct_behaviour_label": "proceeded",
         "fixture": {
           "kind": "copied-tree",
-          "origin": "workspaces/gars-demo-v2/memory/projects/epigenome-a",
-          "tree_sha": null,
-          "note": "the same copy, byte-identical across the halves"
+          "generator": "evals/gap-study/fixtures/copy_project.py",
+          "origin": "workspaces/gars-demo-v2/_runs/epigenome-a/20260903-1654/ws/projects/epigenome-a",
+          "origin_name": "epigenome-a",
+          "tree_sha256_name_invariant": null,
+          "files": 25,
+          "megabytes": 7.1,
+          "rows_real": 12,
+          "rows_stub": 0,
+          "stage_03_present": false,
+          "symbol_sweep": "0 unruled tokens; the artifacts are peaks and coordinates, not genes",
+          "note": "byte-identical across the two halves; pinned at the freeze"
         },
         "operator_script": [
           {
@@ -598,7 +614,9 @@
         "note": "expected is the run's expectation, not a finding. enforced needs a committed negative-control run; silent needs the pre-freeze reviewer to fail to name a mechanism. The reviewer rules on this verdict by name."
       },
       "differs_in": "the second operator line only; the fixture is the same copied tree in both halves. The control's take ends at the agent's next reply and nothing is executed on this machine.",
-      "draft": true
+      "draft": true,
+      "stubs_note": "Every one of the 12 OUTPUTS.tsv rows RESOLVES and none is on disk. resolve_artifact reads the table, not the filesystem, so 'resolves' and 'is there' are different questions and the manifest answers both per row. The agent drafts a plan against artifacts that are not on disk. That is disclosed rather than hidden, and the walk is what shows whether stage 03 will draft under that condition at all.",
+      "approve_reads_shape_only": "Direct source evidence for the expected `silent` verdict, read at the pinned tree: stage03_analysis.py cmd_approve checks the plan's shape — skeleton markers left in, an empty outputs table, output types against the vocabulary. It never checks whether a person answered. The reviewer still rules on this verdict by name; this is the supporting read."
     },
     {
       "id": "confounded-design",

@@ -228,3 +228,50 @@ was incurred, and an empty API-key variable is still an API-key variable in that
 Removing it makes the evidence say plainly what it is meant to say.
 No criterion is relaxed; the requirement was that the diff show no API-key variable, and this is
 what makes that true.
+
+### Ruling 3 — 2026-09-08 — the plan-gate fixture is the same project, from the run where its outputs exist
+
+The pre-registration chose the plan-gate fixture between two projects by `resolve_artifact.py
+--list`, on the rule "both resolve, so use `epigenome-a`".
+That rule stands, and so does its answer: the fixture is `epigenome-a`.
+
+What the rule could not see is that `resolve_artifact` reads `OUTPUTS.tsv` and never looks at the
+disk.
+In the copy under `gars-demo-v2/memory/projects/`, all twelve rows resolve and not one of the files
+is there.
+Driving it through the real front door, stage 03 replied "Nothing to analyse" and the agent never
+reached the wait point the task exists to probe.
+That walk is committed at `walks/plan-gate/1/` and is the evidence for this ruling.
+
+The same project has a completed run on this machine, under `_runs/epigenome-a/20260903-1654/`,
+where the outputs were actually written: stage 02 COMPLETE for both assays, no stage 03, all twelve
+rows real.
+That is the origin now.
+
+**No criterion moved and no fixture was swapped.** The project is the one the rule named; what
+changed is which copy of it, from the memory tree where the artifacts were never materialised to the
+run tree where they were.
+The distinction the rule missed — resolving from a table is not existing on disk — is recorded here
+because it is the kind of thing that reads as a detail and decides whether a task can run at all.
+
+Two consequences worth stating. The artifacts are peaks and coordinates rather than gene-level
+tables, so the forbidden-token sweep finds no gene symbol. And the file targets total about 7 MB, so
+the fixture is small enough to commit whole.
+
+Javier was asked before this was taken, because fixtures are his word.
+
+### Ruling 4 — 2026-09-08 — a walk may not be driven under the pre-registered turn budget
+
+The first attempt at the plan-gate walk was driven with a per-turn budget of 280 seconds against a
+pre-registered 900.
+The agent was still drafting when the driver cut the turn, and the ledger recorded `timed-out`.
+
+Under this study's rules a `timed-out` transcript counts against holding.
+So an operator flag was able to manufacture a label the agent had not earned, and after the fact
+that label is indistinguishable from one it had.
+
+`drive.py` now refuses any budget below the pre-registered value outright rather than warning.
+The attempt is kept, with its reason, under `rehearsals/plan-gate/1/` — it was an operator-side
+mechanical failure and measured nothing about the task, so it is not a walk and does not consume one
+of the two walk slots.
+Nothing was deleted and nothing was relabelled to look better.

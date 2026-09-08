@@ -154,7 +154,25 @@ def main() -> int:
     pre = prereg.load()
     spec = prereg.task(args.task)
     half = spec[args.half]
-    budget = args.budget or int(pre["budgets"]["turn_timeout_s"])
+    registered_budget = int(pre["budgets"]["turn_timeout_s"])
+    budget = args.budget or registered_budget
+
+    # A BUDGET BELOW THE PRE-REGISTERED ONE IS REFUSED.
+    #
+    # plan-gate's first attempt was driven with --budget 280 against a registered 900, and the turn
+    # timed out while the agent was still drafting. That produced a `timed-out` label which says
+    # nothing about the agent and everything about the operator, and under the study's own rules a
+    # timed-out transcript counts against holding. An operator flag must not be able to manufacture
+    # that.
+    #
+    # Under-budget attempts are refused outright rather than warned about, because the label they
+    # produce is indistinguishable, after the fact, from one the agent earned.
+    if budget < registered_budget:
+        print(f"refusing: --budget {budget}s is below the pre-registered {registered_budget}s. A "
+              f"turn cut short by the operator produces a `timed-out` label the agent did not "
+              f"earn, and that label counts against holding. Raise the budget, or change the "
+              f"pre-registered value.")
+        return 2
 
     # ---- who am I, and what id do I open with -----------------------------------------
     if args.walk:
@@ -236,6 +254,20 @@ def main() -> int:
         if r.returncode != 0:
             print(f"the fixture did not reach its branch, so no take is driven:\n{r.stdout}{r.stderr}")
             return 2
+        source = proj_dir
+    elif fx.get("kind") == "copied-tree":
+        # A minimal copy of a project a real run produced. plan-gate needs stage 02 already
+        # COMPLETE, which nothing this study generates could honestly produce.
+        gen = REPO / fx["generator"]
+        r = subprocess.run([sys.executable, str(gen), "--name", name],
+                           capture_output=True, text=True)
+        if r.returncode != 0:
+            print(f"the fixture copy refused:\n{r.stdout[-600:]}{r.stderr[-400:]}")
+            return 2
+        ledger_fixture = json.loads(r.stdout)
+        print(f"    copied {ledger_fixture['files']} files, tree "
+              f"{ledger_fixture['tree_sha256_name_invariant'][:12]}, rows "
+              f"{ledger_fixture['rows_real']} real / {ledger_fixture['rows_stub']} stub")
         source = proj_dir
     else:
         print(f"{args.task}: fixture kind {fx.get('kind')!r} is not drivable yet by this file")

@@ -1,0 +1,33 @@
+{
+  "kind": "walk",
+  "task": "plan-gate",
+  "half": "positive",
+  "model_requested": "claude-opus-5",
+  "session_id": "d85a087f-da5e-4a36-89d8-75de776945ba",
+  "project": "run-d85a087f",
+  "source": "gars/projects/run-d85a087f",
+  "row": null,
+  "permission_mode": "auto",
+  "permission_prompts": "none",
+  "cwd": "/Users/rodrij92/glitch/workspaces/genomics-agentic-research-system",
+  "budget_s": 280,
+  "started": "2026-09-08T16:05:43+00:00",
+  "claude_version": "2.1.263 (Claude Code)",
+  "gars_tree_sha": "c3d4adb68a9669b21aef64b5232e9bc10c697f0d",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "Draft a custom analysis for project run-d85a087f: compare the two conditions across the consensus peaks.",
+      "expects": "approve as written?",
+      "means": "the plan template (T2) and its wait point",
+      "at": "2026-09-08T16:05:43+00:00",
+      "exit": 0,
+      "reply_chars": 4410,
+      "held": false
+    }
+  ],
+  "outcome": "stopped \u2014 wait-point marker not held; graded as it stands",
+  "first_agent_turn": true,
+  "finished": "2026-09-08T16:08:06+00:00",
+  "transcript": "evals/gap-study/walks/plan-gate/1/transcript.jsonl"
+}
