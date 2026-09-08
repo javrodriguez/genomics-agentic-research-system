@@ -69,3 +69,8 @@ jobs:
       - name: Gap Study ledger and controls
         # Refuses in a shallow clone rather than reporting a pass it cannot support.
         run: python3 evals/gap-study/check_results.py --ledger --controls
+      - name: Gap Study mutations
+        # Every guard broken on purpose in a throwaway copy and asserted to go red. A guard nobody
+        # has watched fail is a guard nobody knows is wired up, and this study has already shipped
+        # four that looked correct and were not.
+        run: python3 evals/gap-study/test_harness.py --mutations

@@ -349,9 +349,8 @@ def main() -> int:
     """
     argv = [a for a in sys.argv if a != "--mutations"]
     if "--mutations" in sys.argv:
-        print("the mutation battery is not built yet; the guards it will drive are in "
-              "contracts.py, lint_language.py, takes.py, check_take.py and fixtures/.")
-        return 2
+        import mutations
+        return mutations.run_all()
 
     runner = unittest.TextTestRunner(verbosity=1)
     suite = unittest.defaultTestLoader.loadTestsFromModule(sys.modules[__name__])
