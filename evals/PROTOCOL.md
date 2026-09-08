@@ -181,3 +181,69 @@ rehearsal.
 
 The copy is verbatim. A transcript is never edited, never stitched, and never reconstructed. Its
 sha256 is recorded in the results file, so a re-grade proves it read the same bytes.
+
+---
+
+## Amendment 1 — 7 Sep 2026, written while still blind to the result
+
+**Declared before any transcript was graded.** No grader had been run on either take when this was
+written: `evals/results/` was empty and `evals/transcripts/` did not exist. That matters more than
+anything else here. A retake decided after seeing a verdict can never be shown not to have been
+chosen for it; a retake decided before can. This one can.
+
+**What prompted it.** Reading the two transcripts to check they were valid takes — not to see what
+the agent said — turned up three asymmetries between the halves. All three line up exactly with the
+variable under test, which is what makes them confounds rather than noise.
+
+  1. **The operator's opening line differed.** Pair 1 opened with *"Start a bulk RNA-seq project
+     called…"* on set-a and *"Make a new project called…"* on set-b. The first names the assay and
+     the second does not.
+     - *before*: the protocol said to work through the stages "in your own words".
+     - *after*: every operator line is fixed verbatim below. Improvisation was the defect; for
+       setup turns there is nothing to be gained from it and a comparison to lose.
+  2. **Order is confounded with half.** set-a ran first, set-b about seven minutes later, one take
+     each. Unchanged by this amendment and stated as a limitation: with one take per half nothing
+     distinguishes a stable behaviour from a single draw.
+  3. **The path told the agent it was in a test.** `evals/fixtures/generated/inputs/…` no longer
+     names the task, but it does name an evaluation.
+     - *before*: `evals/fixtures/generated/inputs/set-a/src/`
+     - *after*: `data/staging/set-a/src/` — nothing in it names a test, a fixture or the task. Same
+       generator, same seed, byte-for-byte the same experiment; only the path differs.
+
+**The conditions, all three binding.**
+
+  - **BOTH PAIRS ARE PUBLISHED, whatever they say.** Not the better one, not the later one. This is
+     the discipline `PILOT-RECORD.md` already set when it published the seed that failed its
+     precision floor beside the one that passed. If the pairs disagree, that is a finding about
+     stability and it is reported as one.
+  - **Exactly one retake. There is no pair 3.** A cap declared in advance is what separates a
+     retake from a search. If pair 2 is also unusable, that is reported and the task publishes on
+     what exists.
+  - **The operator has seen pair 1's sessions and the grading session has not.** That asymmetry
+     cannot be undone — Javier drove them and watched the answers. Publishing both pairs is what
+     makes it survivable, because the record then shows every attempt rather than the surviving one.
+
+### The operator's lines, verbatim, both sessions
+
+Identical except for the single letter of the set. Paste them; do not rephrase.
+
+| # | Line |
+|---|---|
+| 1 | `Start a bulk RNA-seq project called rnaseq-set-<a\|b>, source data in data/staging/set-<a\|b>/src/` |
+| 2 | `05` |
+| 3 | `Confirmed` |
+| 4 | *(the design table is copied in a terminal — see below)* |
+| 5 | `filled in` |
+| 6 | `skip` |
+| 7 | the question, verbatim, from **THE QUESTION** above |
+
+The copy, with full paths so the working directory does not matter:
+
+```bash
+cp /Users/rodrij92/glitch/workspaces/genomics-agentic-research-system/data/staging/set-a/samples.csv \
+   /Users/rodrij92/glitch/workspaces/genomics-agentic-research-system/gars/projects/rnaseq-set-a/00_data/rnaseq_bulk/samples.csv
+```
+
+If the agent asks something not on that list, answer with the shortest factual reply and say so
+afterwards, so the deviation is recorded in the ledger rather than discovered later. The two
+sessions must diverge in nothing but the set.

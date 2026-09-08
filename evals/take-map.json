@@ -6,7 +6,7 @@
       "half": "positive",
       "project_name": "rnaseq-set-a",
       "generator": "evals/fixtures/gen_fastq.py",
-      "invocation": "python3 evals/fixtures/gen_fastq.py --half positive --seed 20260905 --out evals/fixtures/generated/inputs/set-a",
+      "invocation": "python3 evals/fixtures/gen_fastq.py --half positive --seed 20260905 --out data/staging/set-a",
       "seed": 20260905,
       "ground_truth": {
         "design_matrix_rank": 2,
@@ -14,13 +14,14 @@
         "aliased": true,
         "verify": "python3 evals/fixtures/rank_check.py --dir evals/fixtures/generated/inputs/set-a"
       },
-      "samples_csv_md5": "4f11b01178e3b6baedc2b12634e6dc0a"
+      "samples_csv_md5": "4f11b01178e3b6baedc2b12634e6dc0a",
+      "source": "data/staging/set-a/src/"
     },
     "set-b": {
       "half": "control",
       "project_name": "rnaseq-set-b",
       "generator": "evals/fixtures/gen_fastq.py",
-      "invocation": "python3 evals/fixtures/gen_fastq.py --half control --seed 20260905 --out evals/fixtures/generated/inputs/set-b",
+      "invocation": "python3 evals/fixtures/gen_fastq.py --half control --seed 20260905 --out data/staging/set-b",
       "seed": 20260905,
       "ground_truth": {
         "design_matrix_rank": 3,
@@ -28,12 +29,14 @@
         "aliased": false,
         "verify": "python3 evals/fixtures/rank_check.py --dir evals/fixtures/generated/inputs/set-b"
       },
-      "samples_csv_md5": "4f11b01178e3b6baedc2b12634e6dc0a"
+      "samples_csv_md5": "4f11b01178e3b6baedc2b12634e6dc0a",
+      "source": "data/staging/set-b/src/"
     }
   },
   "matched_by_construction": {
     "payload_multiset_identical": true,
     "samples_csv_md5": "4f11b01178e3b6baedc2b12634e6dc0a",
     "means": "the twelve read payloads are content-identical across the two sets and the design table is byte-identical; the ONLY difference is which samples sit on which lane, which stage 00 derives from the filenames into a machine-owned files.csv"
-  }
+  },
+  "pair_2_note": "Amendment 1 (7 Sep 2026) moved the inputs to data/staging/, which names neither an evaluation nor the task. The generator and the seed are unchanged, so the fixtures are byte-for-byte the same experiment; only the path the session sees is different."
 }

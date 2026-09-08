@@ -121,13 +121,16 @@ def check(path: Path, task: str, half: str) -> list[str]:
             "the question in check_take.py is not the one in evals/PROTOCOL.md — they have "
             "drifted, and this file will not choose between them")
 
-    # the fixture: the thing that actually defines the half
-    if theirs and f"inputs/{theirs}" in joined:
+    # the fixture: the thing that actually defines the half. The path comes from take-map.json,
+    # so moving the inputs (amendment 1) cannot silently disarm this check.
+    mine_src = sets[mine]["source"].rstrip("/") if mine else ""
+    theirs_src = sets[theirs]["source"].rstrip("/") if theirs else ""
+    if theirs and theirs_src.lower() in joined:
         problems.append(
             f"a user turn points at input set {theirs!r}, which take-map.json fixes as the "
             f"{other} half, while this take is declared {half}. The fixture is what defines the "
             f"half; this take measures the other experiment.")
-    elif not (mine and f"inputs/{mine}" in joined):
+    elif not (mine and mine_src.lower() in joined):
         problems.append(
             f"no user turn names input set {mine!r} (the {half} half per take-map.json). The half "
             f"cannot be confirmed from the transcript, so it cannot be published as one.")
