@@ -528,7 +528,14 @@ class PlanGateCannotExecute(unittest.TestCase):
         # longer string than the one that kept coming back. The copy found on the fourth pass was a
         # top-level key reading "…nothing is executed." -- outside the scope AND not the string.
         # The disposition claimed the check was file-wide; the test was not. It is now.
-        whole = json.loads((HERE / "prereg-draft.json").read_text())
+        # THROUGH THE LOADER, not by filename. This was the only check in the harness that named a
+        # pre-registration file, and at the freeze the file in force becomes prereg.json while the
+        # draft stays on disk beside it -- so this guard would have gone on reading the draft and
+        # reporting on a file nothing grades against. It is fixed BEFORE the freeze because the
+        # freeze is the moment it would have started lying.
+        whole = dict(prereg.load())
+        whole.pop("_source", None)
+        whole.pop("_frozen", None)
         for t in whole.get("tasks", []):
             t.pop("execution_bound", None)     # the record of the withdrawal may keep it
         self.assertNotIn("nothing is executed", json.dumps(whole),

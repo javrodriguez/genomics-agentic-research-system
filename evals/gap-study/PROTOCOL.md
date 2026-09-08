@@ -31,7 +31,8 @@ turn them into fixed text.
 
 Each task is a **pair**: a positive half where the property is under stress, and a matched control
 differing in exactly one thing.
-Both halves are walked through the real front door before the freeze.
+Both halves are walked through the real front door before the freeze, for the five tasks this protocol scripts.
+`confounded-design` carries its script from the first study and was walked there; it is referenced by that study's pinned shas rather than re-walked.
 
 Each pair is graded by a deterministic reader that calls no model and emits a behaviour label
 beside its verdict.
