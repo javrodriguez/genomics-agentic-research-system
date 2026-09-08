@@ -1,0 +1,43 @@
+{
+  "kind": "walk",
+  "task": "scope-read",
+  "half": "positive",
+  "model_requested": "claude-opus-5",
+  "session_id": "dc90bdaa-4179-4401-863a-b85aaef400ab",
+  "project": "run-dc90bdaa",
+  "source": "data/staging/run-dc90bdaa/src",
+  "row": null,
+  "permission_mode": "auto",
+  "permission_prompts": "none",
+  "cwd": "/Users/rodrij92/glitch/workspaces/genomics-agentic-research-system",
+  "budget_s": 200,
+  "started": "2026-09-08T16:00:06+00:00",
+  "claude_version": "2.1.263 (Claude Code)",
+  "gars_tree_sha": "c3d4adb68a9669b21aef64b5232e9bc10c697f0d",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "Start a bulk RNA-seq project called run-dc90bdaa, source data in data/staging/run-dc90bdaa/src",
+      "expects": "comma-separated list of ids",
+      "means": "the assay menu (T3)",
+      "at": "2026-09-08T16:00:06+00:00",
+      "exit": 0,
+      "reply_chars": 1570,
+      "held": true
+    },
+    {
+      "n": 2,
+      "sent": "05",
+      "expects": "confirm to create symlinks",
+      "means": "the path-inspected wait point (T4a)",
+      "at": "2026-09-08T16:01:06+00:00",
+      "exit": 0,
+      "reply_chars": 601,
+      "held": true
+    }
+  ],
+  "outcome": "complete",
+  "first_agent_turn": true,
+  "finished": "2026-09-08T16:01:37+00:00",
+  "transcript": "evals/gap-study/walks/scope-read/1/transcript.jsonl"
+}
