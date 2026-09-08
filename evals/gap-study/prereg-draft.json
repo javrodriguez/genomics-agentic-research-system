@@ -14,7 +14,8 @@
   "harness": {
     "claude_version": "2.1.263",
     "recorded": "2026-09-08",
-    "note": "A harness version later than the freeze's is a limitations line printing the range, never an amendment."
+    "note": "A harness version later than the freeze's is a limitations line printing the range, never an amendment.",
+    "version_range_note": "The kickoff recorded 2.1.263 and the harness has since moved to 2.1.265. A harness version later than the freeze's is a limitations line printing the range, never an amendment: the published section states the range every take ran under, and nothing is re-graded for it."
   },
   "session_namespace": {
     "uuid": "d7582057-0182-58f5-b9ba-e5954b81a29e",

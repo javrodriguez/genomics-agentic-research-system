@@ -129,6 +129,109 @@ def main() -> int:
 
     pins = [pin(p) for p in PINNED]
     d["pinned_files"] = pins
+
+    # THE PER-TASK PINS, filled here rather than left null beside a global list.
+    #
+    # Each task names its grader and its case suite by path with both shas null and a note saying
+    # "pinned at the freeze". If the freeze fills only the global list, those nulls survive into the
+    # frozen file and a reader cannot tell a null-to-fill from a null-by-design.
+    for t in d["tasks"]:
+        for key in ("grader", "grader_cases"):
+            spec = t.get(key) or {}
+            path = spec.get("path")
+            if not path:
+                continue
+            got = pin(path)
+            if got.get("missing"):
+                spec["missing_at_freeze"] = True
+                spec["note"] = (f"{path} does not exist at the freeze. Its cell publishes "
+                                f"`not run — no grader module` rather than a number.")
+                continue
+            spec["git_blob_sha"] = got["git_blob_sha"]
+            spec["sha256"] = got["sha256"]
+            spec.pop("note", None)
+
+    # THE FIXTURE PINS. A fixture is not one file in git, so it is not pinned like one.
+    #
+    #   generated    pinned by its GENERATOR (already in pinned_files) plus its seed and variant,
+    #                and by the content hash the generator computes over the bytes it writes. That
+    #                hash is filled here from `--manifest-only`, which runs the generator without
+    #                writing anything.
+    #   copied-tree  pinned by tree_sha256_name_invariant, computed over the copy with the take's
+    #                project name substituted back to a placeholder.
+    #   project      built by the real stage 00 from a pinned generator and seed, and verified on
+    #                every build against the branch it must reach.
+    #
+    # In each case git_blob_sha stays null BY DESIGN: there is no blob. Recording that here is the
+    # difference between a null a reader can account for and one they have to guess about.
+    for t in d["tasks"]:
+        for half in ("positive", "control"):
+            fx = (t.get(half) or {}).get("fixture")
+            if not isinstance(fx, dict):
+                continue
+            kind = fx.get("kind")
+            fx["git_blob_sha_note"] = ("null by design: a fixture is not a file in git. See "
+                                       "pinned_by below.")
+            if kind == "generated":
+                gen = REPO / fx["generator"]
+                out = subprocess.run(
+                    [sys.executable, str(gen), "--variant", fx["variant"],
+                     "--seed", str(fx["seed"]), "--manifest-only"],
+                    capture_output=True, text=True)
+                try:
+                    man = json.loads(out.stdout)
+                    fx["sha256"] = man["fixture_sha256"]
+                    fx["pinned_by"] = "the generator's blob sha in pinned_files, plus variant, "\
+                                      "seed, and this content hash over the bytes it writes"
+                except (json.JSONDecodeError, KeyError):
+                    fx["pinned_by"] = "UNPINNED: the generator would not report a manifest"
+            elif kind == "copied-tree":
+                fx["pinned_by"] = ("tree_sha256_name_invariant, computed over the copy with the "
+                                   "take's project name substituted back to a placeholder")
+                fx.setdefault("sha256", None)
+                fx["sha256_note"] = "null by design: the pin is the tree hash, not a file hash"
+            elif kind == "project":
+                fx["pinned_by"] = ("the generator's blob sha in pinned_files, plus seed, and the "
+                                   "stage-01 exit code the generator verifies on every build")
+                fx.setdefault("sha256", None)
+                fx["sha256_note"] = ("null by design: the fixture is a project tree built by the "
+                                     "real stage 00, not a file")
+
+    # EVERY REMAINING NULL, CLASSIFIED. A frozen file full of nulls that nobody has accounted for
+    # is a file whose reader has to guess which were intended.
+    remaining = []
+
+    def walk(node, path=""):
+        if isinstance(node, dict):
+            for k, v in node.items():
+                if v is None:
+                    remaining.append(f"{path}.{k}".lstrip("."))
+                else:
+                    walk(v, f"{path}.{k}")
+        elif isinstance(node, list):
+            for i, v in enumerate(node):
+                walk(v, f"{path}[{i}]")
+
+    walk(d)
+    BY_DESIGN = {
+        "marker": "a turn with no wait point to check; the driver checks only that the turn "
+                  "produced text",
+        "not_run_reason": "a model that runs has no reason not to",
+        "error": "a control attempt that was not expected to error",
+        "take_order_seed": "set below, from the review commit",
+        "git_blob_sha": "a fixture is not a file in git; see the fixture's pinned_by",
+        "sha256": "for a copied-tree or project fixture the pin is the tree hash or the verified "
+                  "exit code; see the fixture's pinned_by",
+    }
+    d["nulls_at_freeze"] = {
+        "count": len(remaining),
+        "by_design": {k: v for k, v in BY_DESIGN.items()
+                      if any(r.endswith("." + k) or r == k for r in remaining)},
+        "unaccounted": sorted(r for r in remaining
+                              if r.split(".")[-1] not in BY_DESIGN),
+        "note": "Every null left in the frozen file is either listed as by-design above or named "
+                "as unaccounted. A freeze with unaccounted nulls is refused.",
+    }
     _, gars_tree = git("rev-parse", "HEAD:gars")
     d["system_under_test"]["gars_tree_sha_at_freeze"] = gars_tree
     ver = subprocess.run(["claude", "--version"], capture_output=True, text=True).stdout.strip()
@@ -154,6 +257,21 @@ def main() -> int:
     if uncommitted:
         print(f"\nNOT COMMITTED, so their blob sha is unknown: {uncommitted}")
         print("Commit them first. A pin to an uncommitted file proves nothing.")
+        return 1
+
+    nulls = d["nulls_at_freeze"]
+    print(f"nulls remaining     {nulls['count']}  "
+          f"({len(nulls['by_design'])} class(es) by design, "
+          f"{len(nulls['unaccounted'])} unaccounted)")
+    for k, why in nulls["by_design"].items():
+        print(f"                    {k}: {why}")
+    if nulls["unaccounted"]:
+        print("\nUNACCOUNTED NULLS, so the freeze is refused:")
+        for r in nulls["unaccounted"][:20]:
+            print(f"  - {r}")
+        print("Either fill them or record why they are null by design. A reader of the frozen "
+              "file cannot tell a null-to-fill from a null-by-design, and after the freeze "
+              "nobody can ask.")
         return 1
 
     if not args.write:
