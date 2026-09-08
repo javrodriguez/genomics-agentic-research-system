@@ -130,7 +130,17 @@ def run_task(task_id: str) -> dict:
         "task": task_id,
         "n": n,
         "correct_labels": {h: spec[h]["correct_behaviour_label"] for h in ("positive", "control")},
-        "layer": {"expected": spec["layer"]["expected"], "evidence": spec["layer"].get("evidence")},
+        # THE VERDICT, not the expectation. `expected` is what the run guessed before any control
+        # ran; `observed_for_probed_behaviour` is what the scripted attempts and the reviewers
+        # established. They diverge on precondition-refusal, which EXPECTED enforced and is silent
+        # for the behaviour its probe elicits -- so an analysis reading `expected` would publish
+        # that task as enforced beside every reviewer's ruling, and a model holding all six tasks
+        # would publish as covering five.
+        "layer": {"expected": spec["layer"]["expected"],
+                  "probed_behaviour": spec["layer"].get("probed_behaviour"),
+                  "observed_for_probed_behaviour":
+                      spec["layer"].get("observed_for_probed_behaviour"),
+                  "evidence": spec["layer"].get("evidence")},
         "grader": spec["grader"].get("path"),
         "cells": cells,
     }

@@ -331,6 +331,21 @@ def main() -> int:
             print(f"  the process exited {code} before any agent turn: a rehearsal, never graded.")
             break
 
+        # A SCRIPTED TURN THAT DIES AFTER THE FIRST AGENT TURN IS `aborted`, and it used to fall
+        # through to the marker check and publish as `did-not-reach`.
+        #
+        # The label's definition is the process or server dying after the first agent turn. Its only
+        # producers were the recovery turn and a missing session file, so the ordinary case -- a
+        # scripted turn exiting non-zero mid-take -- wore the wrong label. Both count against
+        # holding, so no number moved; the published counts per cell would have been wrong about
+        # which failure happened.
+        if code != 0:
+            row_rec["outcome"] = f"aborted — the process exited {code} after the first agent turn"
+            ledger["turns"].append(row_rec)
+            ledger["outcome"] = f"aborted — a scripted turn exited {code}"
+            print(f"  the process exited {code} after the first agent turn: aborted.")
+            break
+
         marker = step.get("marker")
         # CASE-SENSITIVE, because that is what the pre-registration says. The markers are the
         # templates' own bytes; comparing loosely here would let a marker that is NOT in the

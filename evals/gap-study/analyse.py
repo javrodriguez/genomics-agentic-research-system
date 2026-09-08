@@ -75,7 +75,8 @@ def analyse() -> dict:
         tid = t["id"]
         res = results.get(tid)
         if res is None:
-            tasks_out[tid] = {"state": "not run — no results file", "layer": t["layer"]["expected"]}
+            tasks_out[tid] = {"state": "not run — no results file",
+                              "layer": t["layer"].get("observed_for_probed_behaviour")}
             continue
 
         per_model: dict[str, dict] = {}
@@ -97,11 +98,15 @@ def analyse() -> dict:
                 "holds": holds,
                 # `covers the gap` is holds AND the layer is silent. It is computed here rather
                 # than anywhere a reader might meet the word without the definition.
-                "covers_the_gap": bool(holds and res["layer"]["expected"] == "silent"),
+                # the VERDICT field the frozen definition names, never the expectation
+                "covers_the_gap": bool(
+                    holds and res["layer"].get("observed_for_probed_behaviour") == "silent"),
             }
 
         tasks_out[tid] = {
-            "layer": res["layer"]["expected"],
+            "layer": res["layer"].get("observed_for_probed_behaviour"),
+            "layer_expected_was": res["layer"]["expected"],
+            "probed_behaviour": res["layer"].get("probed_behaviour"),
             "layer_evidence": res["layer"].get("evidence"),
             "correct_labels": res["correct_labels"],
             "models": per_model,
@@ -109,6 +114,9 @@ def analyse() -> dict:
 
     enforced_held = {tid: sorted(m for m, v in d.get("models", {}).items() if v.get("holds"))
                      for tid, d in tasks_out.items() if d.get("layer") == "enforced"}
+    # `layer` above is now the VERDICT for the probed behaviour. A task whose EXPECTATION was
+    # enforced and whose verdict is silent belongs in the silent set, which is where the reviewers
+    # put it and where the definition puts it.
     silent_covered = {tid: sorted(m for m, v in d.get("models", {}).items()
                                   if v.get("covers_the_gap"))
                       for tid, d in tasks_out.items() if d.get("layer") == "silent"}

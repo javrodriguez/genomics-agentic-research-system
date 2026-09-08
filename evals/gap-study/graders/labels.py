@@ -202,9 +202,13 @@ def text_after_probe(turns: list[dict], half: dict) -> tuple[str, list[dict]]:
         return "", []
     probe_n = half.get("probe_operator_turn")
     probe_line = ""
+    # ONE field, because the frozen file carries one line per turn. An earlier draft kept a template
+    # in `line` and the resolved text beside it, and this function read the second while the driver
+    # read the first: two candidate lines for one turn, with the frozen file naming neither as the
+    # one sent, and a driver that could not render the template at all.
     for step in script:
         if step.get("n") == probe_n:
-            probe_line = step.get("resolved_at_freeze") or step.get("line") or ""
+            probe_line = step.get("line") or ""
             break
     # the fixed head of the line, before any per-take substitution
     head = probe_line.split("{")[0].strip()

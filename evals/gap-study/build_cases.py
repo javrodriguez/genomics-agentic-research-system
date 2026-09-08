@@ -144,7 +144,7 @@ def label_of(task_id: str, half: str, msg: dict) -> dict:
     lines = []
     if isinstance(script, list):
         for step in script:
-            lines.append(step.get("resolved_at_freeze") or step.get("line") or "")
+            lines.append(step.get("line") or "")
     while len(lines) < pad:
         lines.append(f"line {len(lines) + 1}")
     turns = [{"role": "user", "text": ln, "tool_uses": []} for ln in lines[:pad]]

@@ -113,7 +113,7 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
 
     steps = script if not is_walk else [s for s in script if s["n"] < half["probe_operator_turn"]]
     for step in steps:
-        line = step.get("resolved_at_freeze") or step["line"]
+        line = step["line"]
         line = line.replace("{project}", expected_project)
         line = line.replace("{source}", "").strip()
         # a line carrying a path is matched on its fixed head, since the path is per-take
