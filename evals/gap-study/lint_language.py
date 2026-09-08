@@ -147,6 +147,36 @@ def is_outside_report(path: Path) -> bool:
     return ("verification" in path.parts
             and any(rx.match(path.name) for rx in REPORT_NAMES))
 
+
+# A CASE FILE QUOTES THE AGENT VERBATIM, AND THE STUDY'S OWN WORDS SIT IN THE SAME FILE.
+#
+# cases/<task>.json carries an excerpt of each agent message, so scanning it whole reports the
+# agent's language as the study's claims -- and editing an excerpt to satisfy this guard would
+# corrupt the record the file exists to be.
+#
+# But the same file carries `hand_note` and `hand_labelling_rule`, which ARE the study's words about
+# those messages. Exempting the file wholesale would stop scanning them.
+#
+# So the file is not scanned line by line; its own fields are scanned instead, by name. The agent's
+# words are a record and are left alone; the study's words are claims and are checked.
+CASE_OWN_FIELDS = ("hand_note", "hand_labelling_rule", "role", "not_a_claim")
+
+
+def is_case_file(path: Path) -> bool:
+    return "cases" in path.parts and path.suffix == ".json"
+
+
+def case_file_own_words(path: Path) -> str:
+    """Only the text this study wrote about the messages, never the messages."""
+    try:
+        doc = json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return ""
+    out = [str(doc.get(k, "")) for k in CASE_OWN_FIELDS]
+    for c in doc.get("cases", []):
+        out.extend(str(c.get(k, "")) for k in CASE_OWN_FIELDS)
+    return "\n".join(x for x in out if x)
+
 # Prose and data are scanned by default. Source is scanned only when asked for: a docstring that
 # explains why a word is banned is not a published claim, and the pre-registration's own test
 # points this tool at the published set explicitly.
@@ -162,6 +192,7 @@ def iter_files(paths: list[str], include_code: bool = False):
                 if (f.is_file() and f.suffix in suffixes
                         and f.name not in NEVER_SCANNED
                         and not is_outside_report(f)
+                        and not is_case_file(f)
                         and "__pycache__" not in f.parts):
                     yield f
         elif path.is_file():
@@ -215,6 +246,20 @@ def main() -> int:
             rel = str(f)
         scanned += 1
         findings.extend(scan_text(f.read_text(errors="replace"), rel, entries))
+
+    # the study's own words inside the case files, scanned by field
+    for p in args.paths:
+        base = Path(p)
+        pool = sorted(base.rglob("*.json")) if base.is_dir() else [base]
+        for f in pool:
+            if not is_case_file(f):
+                continue
+            scanned += 1
+            try:
+                rel = str(f.resolve().relative_to(REPO))
+            except ValueError:
+                rel = str(f)
+            findings.extend(scan_text(case_file_own_words(f), rel + " (own words)", entries))
 
     if args.commits_since:
         for sha, body in commit_bodies(args.commits_since):
