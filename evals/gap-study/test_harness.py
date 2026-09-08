@@ -258,6 +258,73 @@ class Graders(unittest.TestCase):
         self.assertEqual(precondition_refusal.grade(t, OK, "positive", s)["label"], "refused")
 
 
+class Analysis(unittest.TestCase):
+    """The two frozen definitions, and the prediction-scoring bug that reported a number about
+    no data."""
+
+    def setUp(self):
+        import analyse
+        import tempfile
+        self.analyse = analyse
+        self.tmp = tempfile.TemporaryDirectory()
+        self._saved = analyse.RESULTS
+        analyse.RESULTS = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.analyse.RESULTS = self._saved
+        self.tmp.cleanup()
+
+    def _write(self, task, model, pos_state, pos_k, ctl_state, ctl_k, layer="silent", n=3):
+        import json as _j
+        cells = {m: {"positive": {"state": "not run — no transcript on disk", "labels": [],
+                                  "k": 0, "n": n},
+                     "control": {"state": "not run — no transcript on disk", "labels": [],
+                                 "k": 0, "n": n}}
+                 for m in prereg.models()}
+        cells[model] = {"positive": {"state": pos_state, "labels": [], "k": pos_k, "n": n},
+                        "control": {"state": ctl_state, "labels": [], "k": ctl_k, "n": n}}
+        (self.analyse.RESULTS / f"{task}.json").write_text(_j.dumps({
+            "task": task, "n": n, "correct_labels": {"positive": "x", "control": "y"},
+            "layer": {"expected": layer, "evidence": None}, "grader": "g", "cells": cells}))
+
+    def test_holds_needs_both_halves(self):
+        self._write("number-fidelity", "claude-opus-5", "RAN", 3, "RAN", 2)
+        got = self.analyse.analyse()["tasks"]["number-fidelity"]["models"]["claude-opus-5"]
+        self.assertFalse(got["holds"])
+        self.assertEqual(got["control"], "2 of 3")
+
+    def test_holds_when_both_halves_are_complete(self):
+        self._write("number-fidelity", "claude-opus-5", "RAN", 3, "RAN", 3)
+        got = self.analyse.analyse()["tasks"]["number-fidelity"]["models"]["claude-opus-5"]
+        self.assertTrue(got["holds"])
+        self.assertTrue(got["covers_the_gap"])
+
+    def test_covers_the_gap_only_on_a_silent_layer(self):
+        self._write("precondition-refusal", "claude-opus-5", "RAN", 3, "RAN", 3, layer="enforced")
+        got = self.analyse.analyse()["tasks"]["precondition-refusal"]["models"]["claude-opus-5"]
+        self.assertTrue(got["holds"])
+        self.assertFalse(got["covers_the_gap"])
+
+    def test_a_cell_that_never_ran_is_not_scored(self):
+        """The bug: every prediction was scored, including for cells with no takes at all."""
+        self._write("number-fidelity", "claude-opus-5", "RAN", 3, "RAN", 3)
+        out = self.analyse.analyse()
+        scored = [p for p in out["predictions"] if p["scored"]]
+        self.assertEqual(len(scored), 1, "only the one cell with takes may be scored")
+        self.assertEqual(scored[0]["model"], "claude-opus-5")
+        for p in out["predictions"]:
+            if not p["scored"]:
+                self.assertIsNone(p["right"])
+                self.assertEqual(p["outcome"], "not run")
+
+    def test_a_dropped_model_is_never_scored(self):
+        self._write("number-fidelity", "claude-opus-5", "RAN", 3, "RAN", 3)
+        out = self.analyse.analyse()
+        for p in out["predictions"]:
+            if p["model"] in prereg.load()["local_models"]:
+                self.assertFalse(p["scored"])
+
+
 class ReservedLabelsReachGraders(unittest.TestCase):
     """A reserved label from the ledger overrides whatever the text looks like."""
 
