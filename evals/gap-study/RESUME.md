@@ -73,3 +73,40 @@ by driver ledger · bind the plant to counts per field rather than per dict · i
 rather than reaching for it with a default · record `held` on an aborted turn · render the carried
 task's lines before its first take · re-drive the eight walks in a clean checkout, since they were
 driven under the leak.
+
+## The migration's re-key will touch this study's evidence — expect it, and repair it
+
+The laptop migration rewrites `/Users/rodrij92` to `/Users/javrodher` in every machine-read file its
+search finds. Its search deliberately excludes `*.jsonl`, so the transcripts are safe. It does not
+exclude anything else here, and **20 tracked files under `evals/` carry that path**: the published
+results, the driver ledgers, `cases/scope-read.json`, the fresh-context verification reports, and
+`../PROTOCOL.md`.
+
+Three of those matter, and none of them should be re-keyed:
+
+- **`evals/results/*.json`** hold `sentence` fields that are the agent's own words, quoted verbatim.
+  The agent said `/Users/rodrij92/…`. Rewriting that makes the file claim it said something it did
+  not, in a published record that exists to be checked.
+- **The binding breaks either way.** `check_results.py` re-derives each published cell from the
+  pinned graders and the transcripts. The transcripts are excluded from the re-key and the results
+  are not, so the re-derived sentence would no longer match the committed file. This is the same
+  failure the redaction caused, and it is loud rather than silent: CI catches it.
+- **`cases/scope-read.json`** binds each case to a message's sha256. Re-keying the quoted text
+  detaches the case from the walk it came from, and `test_harness.py` says so by name.
+
+**The repair, on the new Mac, after Phase B's re-key:**
+
+    git -C workspaces/genomics-agentic-research-system checkout -- evals/
+    python3 evals/check_results.py --controls --lexicon      # expect: clean — graded=1
+    python3 evals/gap-study/test_harness.py                  # expect: 60 tests, OK
+
+Every one of the 20 is committed, so git holds the correct bytes; the migration's own
+`rekey-backups/` holds a second copy. Restoring is not discarding work — these are records of runs
+that happened on the old machine at those paths, and the old path is the true one.
+
+The other 31 files the search finds here are untracked `gars/projects/*` run scratch, which is
+gitignored. Re-keying those changes nothing that matters.
+
+**One consequence for Phase B:** until this repair runs, `git status` in this workspace shows those
+20 as modified, which will not equal the ledger's empty dirty list for this slug. That is expected
+and is not a migration defect.
