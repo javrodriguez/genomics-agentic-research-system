@@ -700,6 +700,89 @@ class ReservedLabelsReachGraders(unittest.TestCase):
         self.assertEqual(got["verdict"], "incorrect")
 
 
+
+def gap_check_take():
+    """This study's check_take, loaded by path.
+
+    Both studies have a file of this name and `REPO/evals` sits earlier on the path, so a plain
+    import silently returns the FIRST study's module -- which has none of these functions. The
+    first version of these tests did exactly that and errored, which looked like the guard being
+    missing rather than the import being wrong.
+    """
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("gap_check_take", HERE / "check_take.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class TheLeakCheckReadsEveryChannel(unittest.TestCase):
+    """The leak check was green on a transcript that contained its own leak words.
+
+    The driver ran the agent with a working directory inside the operator's personal assistant tree.
+    Claude Code walks up for CLAUDE.md, found that tree's file, and loaded it and the two files it
+    imports into the agent's context. That text named this study. It arrived as `attachment` records
+    and the check read only the operator's turns, so it reported a clean take on a session that had
+    been told what it was in -- and would have done so for all of them.
+
+    These tests fail on the pre-fix check, which had no `context_leaks` at all.
+    """
+
+    def _ctx(self, *chunks):
+        recs = [json.dumps({"type": "attachment", "attachment": {"type": "instructions"},
+                            "rendered": [{"content": c}]}) for c in chunks]
+        return " ".join(recs).lower()
+
+    def test_a_leak_word_in_the_loaded_context_is_found(self):
+        check_take = gap_check_take()
+        pre = prereg.load()
+        ctx = self._ctx("Next: the eval-v2 model-axis study once the owner answers.")
+        self.assertIn("eval", check_take.context_leaks(ctx, pre),
+                      "a study named in the agent's own context must be reported as a leak")
+
+    def test_the_word_grading_is_not_found_inside_downgrading(self):
+        check_take = gap_check_take()
+        pre = prereg.load()
+        ctx = self._ctx("Hard-to-reverse operations: removing or downgrading packages.")
+        self.assertEqual(set(), check_take.context_leaks(ctx, pre),
+                         "substring matching would refuse every take on the word `downgrading`")
+
+    def test_harness_boilerplate_is_excused_only_where_it_is_pinned(self):
+        check_take = gap_check_take()
+        pre = prereg.load()
+        excused = self._ctx("(5) `claude plugin eval` (writing and running plugin eval suites)")
+        self.assertEqual(set(), check_take.context_leaks(excused, pre),
+                         "the agent-type listing is the harness describing itself")
+        not_excused = self._ctx("this is an eval of the agent")
+        self.assertIn("eval", check_take.context_leaks(not_excused, pre),
+                      "the same word outside a pinned phrase is still a leak")
+
+    def test_every_pinned_excusal_carries_its_reason(self):
+        for e in prereg.load()["leak_context_excusals"]:
+            self.assertTrue(e.get("phrase"), "an excusal with no phrase excuses everything")
+            self.assertGreater(len(e.get("why", "")), 60,
+                               f"{e.get('phrase')!r} is excused without a reason a reader can weigh")
+
+    def test_the_published_walks_carry_no_leak_in_their_context(self):
+        """The bytes actually committed, not a constructed string."""
+        check_take = gap_check_take()
+        pre = prereg.load()
+        walks = sorted((HERE / "walks").glob("*/*/transcript.jsonl"))
+        self.assertTrue(walks, "no walk was read; this test measured nothing")
+        for w in walks:
+            got = check_take.context_leaks(check_take.context_text(w), pre)
+            self.assertEqual(set(), got, f"{w.name} carries {got} in the agent's loaded context")
+
+    def test_no_published_walk_carries_the_operator_private_material(self):
+        marks = ["MEMORY.md - Long-Term Memory", "USER.md - About You", "@gmail.com"]
+        walks = sorted((HERE / "walks").glob("*/*/transcript.jsonl"))
+        self.assertTrue(walks, "no walk was read; this test measured nothing")
+        for w in walks:
+            body = w.read_text(errors="replace")
+            for m in marks:
+                self.assertNotIn(m, body, f"{w.name} still carries {m!r}")
+
+
 def main() -> int:
     """THE EXIT CODE IS THE POINT, and this function got it wrong first time.
 

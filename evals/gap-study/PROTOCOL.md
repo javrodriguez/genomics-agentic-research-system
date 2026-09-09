@@ -340,3 +340,61 @@ bound.
 bound is gone and the control half may execute. That is a property of the machine, not of the
 design.
 
+### Ruling 7 — 2026-09-08 — the slice cap was lifted, by the person whose cap it is
+
+The run reached the pre-registered cap of 30 slices with the pre-registration unfrozen, wrote
+`RESIDUAL.md`, reported BLOCKED and stopped, which is what the state machine says to do.
+
+The repository owner then asked for the work to continue. The cap is one of the things the design
+names as theirs to change, and lifting it is a decision only they can make: a run that talks itself
+past its own cap has no cap.
+
+So this is recorded rather than absorbed. Every slice from here carries the same commit prefix and
+the same evidence, and the run is past its own stated limit with permission and not by drift. The
+`RESIDUAL.md` written at the cap stays in the repository exactly as it was written — it is the
+honest record of where the run stood when it ran out, and deleting it once the work resumed would
+turn a real stopping point into one that never happened.
+
+Nothing else moved. No criterion was relaxed to make the finish reachable.
+
+### Ruling 8 — 2026-09-08 — the agent's own context named this study, and the leak check could not see it
+
+Ten blind reviews read the pre-registration and passed it. None could have found this, because it is
+not in the file. It was found by reading the folder being handed to the eleventh reviewer.
+
+**What was happening.** `drive.py` ran the agent with its working directory set to this repository.
+This repository sits inside the operator's personal assistant tree. Claude Code walks up from the
+working directory looking for `CLAUDE.md`, found that tree's file, and loaded it together with the
+two files it imports — the operator's profile and their long-term memory. One line of that memory
+names this study by its goal id. It reached the agent before the first operator line of every walk.
+
+**Why nothing caught it.** `check_take.py` swept the operator's turns for the pre-registered leak
+words. The leak arrived in `attachment` records, which nothing opened. Run against a committed walk,
+the check reported no leak word while the transcript contained `eval` and `score` — two of the words
+on its own list. A guard cannot be trusted for what it does not read.
+
+**The fix, and the two things it got wrong first.** The sweep now reads the loaded context as well
+as the operator's turns. Matching is on word boundaries, because substring matching finds `grading`
+inside `downgrading`, which is in Claude Code's own stock text and would have refused every take in
+the study. Harness boilerplate — the agent-type listing, which names a plugin-eval feature — is
+excused by pinned phrase with its reason recorded, and only where every occurrence of the word sits
+inside a pinned phrase. Six tests pin this, and blinding the check turns two of them red.
+
+**The driver no longer runs where instructions can be inherited.** `clean_run_tree()` builds a
+checkout of the pinned tree outside that tree and proves there is no `CLAUDE.md` above it before a
+take is driven; a turn with no such tree prepared refuses rather than falling back to this
+repository. A real run in such a checkout carries none of the operator's material and none of the
+words that named this study.
+
+**A control that was never breached, added because nothing was watching it.** This study's own
+materials — the pre-registration, the tasks, the probes, the graders — live under `evals/` in the
+repository the agent works in. No walk ever reached them. The clean checkout has `evals/` removed
+and the checker reports any transcript that mentions those paths.
+
+**What this costs the walks, said plainly.** The eight committed walks were driven under the leak.
+They are kept and not re-driven. What they were used for is mechanical — whether a template renders,
+where a wait point is, what real agent language looks like for the grader cases — and none of that
+turns on the agent's blindness. No take has run, so no published count is affected. A reader who
+wants the walks re-driven clean has a named follow-up rather than a silent one.
+
+**Nothing else moved.** No criterion was relaxed, and the design is unchanged.

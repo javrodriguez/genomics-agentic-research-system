@@ -98,6 +98,66 @@ def neutral_name(session_id: str) -> str:
     return "run-" + session_id.replace("-", "")[:8]
 
 
+
+RUN_ROOT = Path("/private/tmp/gap-study-run")
+
+# The checkout the agent runs in. It is deliberately None until a take sets it, so a turn cannot
+# fall back to this repository -- which is where every leaked take was driven from.
+RUN_TREE: Path | None = None
+
+
+def no_inherited_instructions(tree: Path) -> list[str]:
+    """Every instruction file the agent would inherit from ABOVE its working directory.
+
+    THIS IS THE CHECK THE STUDY DID NOT HAVE, AND ITS ABSENCE COST BOTH STUDIES THEIR BLINDNESS.
+    The driver ran the agent with its working directory inside the operator's personal assistant
+    tree. Claude Code walks up from the working directory looking for CLAUDE.md, found that tree's
+    file, and loaded it together with the two files it imports -- the operator's profile and their
+    long-term memory. That text named this study. It reached the agent before the first operator
+    line and no check opened it, because the leak sweep read the operator's turns only.
+
+    A path is not the fix, because a path is a fact about one machine. The rule is the fix: the
+    checkout the agent runs in must have NO instruction file above it, and the driver proves that
+    on every take rather than trusting where it was pointed.
+    """
+    found = []
+    p = tree.resolve().parent
+    while True:
+        if (p / "CLAUDE.md").is_file():
+            found.append(str(p / "CLAUDE.md"))
+        if p == p.parent:
+            return found
+        p = p.parent
+
+
+def clean_run_tree(commit: str) -> Path:
+    """A checkout of the pinned tree with nothing above it and no study materials inside it.
+
+    `evals/` is removed from the checkout. The pre-registration, the task list, the probes and the
+    graders live there, in the same repository the agent is pointed at. No walk ever reached them,
+    which is why this is a control and not a repair -- an agent that grepped the checkout could read
+    the design of the study it was in, and nothing would have said so.
+    """
+    RUN_ROOT.mkdir(parents=True, exist_ok=True)
+    tree = RUN_ROOT / f"gars-{commit[:12]}"
+    if not (tree / ".git").is_dir():
+        subprocess.run(["git", "clone", "--quiet", "--no-hardlinks", f"file://{REPO}", str(tree)],
+                       check=True, capture_output=True)
+        subprocess.run(["git", "-C", str(tree), "checkout", "--quiet", commit],
+                       check=True, capture_output=True)
+        shutil.rmtree(tree / "evals", ignore_errors=True)
+
+    inherited = no_inherited_instructions(tree)
+    if inherited:
+        raise SystemExit(
+            "REFUSING to drive a take: the agent would inherit instructions from above its working "
+            f"directory -- {inherited}. Claude Code reads every one of these, and anything they "
+            "import, into the agent's context before the first operator line.")
+    if (tree / "evals").exists():
+        raise SystemExit(f"REFUSING: {tree}/evals still exists; the agent could read this study.")
+    return tree
+
+
 def one_turn(line: str, session_id: str, model: str, first: bool,
              budget_s: int) -> tuple[str, int, str]:
     """Send one line. Returns (assistant_text, exit_code, stderr).
@@ -111,7 +171,12 @@ def one_turn(line: str, session_id: str, model: str, first: bool,
     argv += ["--session-id", session_id] if first else ["--resume", session_id]
 
     try:
-        proc = subprocess.run(argv, cwd=str(REPO), capture_output=True, text=True,
+        if RUN_TREE is None:
+            raise SystemExit(
+                "REFUSING: no clean run tree was prepared, so this turn would run in the repository "
+                "itself, under whatever instruction files sit above it. That is how both studies "
+                "lost their blindness. Call clean_run_tree() first.")
+        proc = subprocess.run(argv, cwd=str(RUN_TREE), capture_output=True, text=True,
                               stdin=subprocess.DEVNULL, timeout=budget_s)
     except subprocess.TimeoutExpired:
         return "", 124, f"turn exceeded the pre-registered budget of {budget_s}s"
@@ -281,7 +346,8 @@ def main() -> int:
     ledger = {"kind": kind, "task": args.task, "half": args.half, "model_requested": model,
               "session_id": session_id, "project": name, "source": str(source.relative_to(REPO)),
               "row": args.row, "permission_mode": PERMISSION_MODE, "permission_prompts": "none",
-              "cwd": str(REPO), "budget_s": budget, "started": now(),
+              "cwd": str(RUN_TREE), "run_tree_has_no_inherited_instructions": True,
+              "budget_s": budget, "started": now(),
               "claude_version": subprocess.run(["claude", "--version"], capture_output=True,
                                                text=True).stdout.strip(),
               "gars_tree_sha": subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD:gars"],

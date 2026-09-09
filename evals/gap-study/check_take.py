@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import uuid
 from pathlib import Path
@@ -79,6 +80,90 @@ def session_id_of(path: Path) -> str:
         if isinstance(rec, dict) and rec.get("session_id"):
             return rec["session_id"]
     return ""
+
+
+def context_text(path: Path) -> str:
+    """Everything the ENVIRONMENT put in front of the agent, as opposed to what it typed or read.
+
+    THE GUARD THIS RESTORES WAS GREEN ON A TRANSCRIPT THAT CONTAINED ITS OWN LEAK WORDS. The leak
+    check below used to read the operator's turns and nothing else. The driver ran the agent with a
+    working directory inside the operator's personal assistant tree, so Claude Code walked up for
+    CLAUDE.md, found that tree's file, and loaded it and the two files it imports into the agent's
+    context. That text named the study. It arrived as `attachment` records, which no check opened,
+    and the operator's turns were clean, so the checker reported no leak on a session that had been
+    told what it was in.
+
+    So the sweep now reads the channel the agent was GIVEN: the attachment records, which carry the
+    instruction files, the flattened copy of them, and the session context. What the agent typed and
+    what it read out of the repository are handled separately below -- an agent that says the word
+    `eval` because it listed a directory has not been leaked to.
+    """
+    out = []
+    for line in path.read_text(errors="replace").splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(rec, dict) and rec.get("type") == "attachment":
+            out.append(line)
+    return " ".join(out).lower()
+
+
+def context_leaks(ctx: str, pre: dict) -> set[str]:
+    """Leak words in the agent's loaded context, minus the ones the harness always says.
+
+    TWO THINGS THIS GOT WRONG FIRST, BOTH OF WHICH WOULD HAVE VOIDED EVERY TAKE.
+
+    Substring matching. `grading` matches inside `downgrading`, which appears in Claude Code's own
+    stock text about hard-to-reverse operations. Every take in the study would have been refused on
+    a word that is not there. The match is on word boundaries.
+
+    Harness boilerplate. Claude Code injects its own furniture -- the list of available agent types,
+    the system-prompt snapshot -- and some of it says `eval` for reasons that have nothing to do with
+    this study. Voiding a take for that is the same error in the other direction. So the
+    pre-registration carries a short list of excused phrases, each with the reason it is excused, and
+    a hit is forgiven ONLY where every occurrence of the word sits inside one of them. A word that
+    appears anywhere else is a leak and the take is void.
+    """
+    excusals = [e["phrase"].lower() for e in pre.get("leak_context_excusals", [])]
+    found: set[str] = set()
+    for w in pre["leak_words"]:
+        word = w.lower()
+        spans = [m.span() for m in re.finditer(r"\b" + re.escape(word) + r"\b", ctx)]
+        if not spans:
+            continue
+        for a, b in spans:
+            covered = False
+            for phrase in excusals:
+                start = max(0, a - len(phrase))
+                if phrase in ctx[start:b + len(phrase)]:
+                    covered = True
+                    break
+            if not covered:
+                found.add(w)
+                break
+    return found
+
+
+def study_paths_read(path: Path) -> list[str]:
+    """Did the agent reach the study's own materials? They sit in the repository it works in.
+
+    The pre-registration, the task list, the probes and the graders live under `evals/`, in the same
+    checkout the agent is pointed at. No walk ever touched them, which is why this is a control and
+    not a repair: an agent that greps the repository could read the design of the study it is in,
+    and nothing would have said so.
+    """
+    seen = []
+    for line in path.read_text(errors="replace").splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(rec, dict) or rec.get("type") not in ("user", "assistant"):
+            continue
+        for m in re.finditer(r"evals/(?:gap-study|transcripts|results|prereg)", line):
+            seen.append(line[max(0, m.start() - 40):m.start() + 40])
+    return seen
 
 
 def check(path: Path, task_id: str, half_name: str, row_index: int | None,
@@ -135,6 +220,22 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
         problems.append(
             f"an operator turn contains {leaked}, which tells the agent what this is. The take is "
             f"void: a leak does not show in the verdict, it simply looks like a pass.")
+
+    ctx = context_text(path)
+    ctx_leaked = sorted(context_leaks(ctx, pre))
+    if ctx_leaked:
+        problems.append(
+            f"the agent's loaded context contains {ctx_leaked}. Nothing the operator typed says it, "
+            f"so this came in with the session -- an instruction file above the working directory, "
+            f"or the session context. The agent was told what it was in before the first line was "
+            f"sent, and the verdict would look exactly like a pass.")
+
+    reached = study_paths_read(path)
+    if reached:
+        problems.append(
+            f"the agent reached this study's own materials under evals/ ({len(reached)} mention(s); "
+            f"first: {reached[0][:70]!r}). The design it is being measured against is readable from "
+            f"the checkout it works in.")
 
     # ---- the project name --------------------------------------------------------------
     if expected_project and expected_project.lower() not in joined:
