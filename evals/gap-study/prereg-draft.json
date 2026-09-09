@@ -1262,10 +1262,10 @@
   "take_order_seed": null,
   "take_order_note": "one permutation per axis over every (task, half, model, take), seeded by the sha of the pre-freeze review commit — a sha that does not exist until the review has happened. prereg.py --order <sha> recomputes it.",
   "what_the_walks_fix": [
-    "the operator lines the walks SENT, verbatim -- the pre-probe turns of each task",
+    "the operator lines the walks SENT, verbatim -- the pre-probe turns of each task this file scripts",
     "every wait-point marker those turns check",
     "the reach turn",
-    "the hand-labelled case suites, from every message the committed walks produced"
+    "the hand-labelled case suites: for the scripted tasks, from every message their committed walks produced; for confounded-design, from the FIRST study's committed transcripts, which is where its messages live"
   ],
   "fixture_note": "The manifest is never written inside a fixture. The first draft of gen_source.py wrote one there and it named the study, which the first study's own leak sweep caught on the first run. gen_source.py now refuses a --manifest-out path inside --out.",
   "menu_position_note": "The assay menu's numbering is a property of the pinned gars tree, and the operator's reply is a literal in the frozen script. Bulk RNA-seq is 05 there, established by walk 1 rather than assumed. A change to the menu would move it, which is why the tree sha is pinned.",
@@ -1292,7 +1292,7 @@
     }
   },
   "models_note": "The list is fixed. A model that never produces a graded take publishes as `not run — <reason>`, never as absent, so the two local models keep their columns and carry their reason.",
-  "walk_coverage_note": "Each task's two halves share a byte-identical pre-probe script, and the three stage-00 tasks share one route to the wait point, both checked rather than assumed. A walk therefore covers both halves of its task. Each task still gets its own walk, because the hand-labelled case suite must contain every message from that task's committed walk transcripts.",
+  "walk_coverage_note": "Each task THIS FILE SCRIPTS still gets its own walk, because its hand-labelled case suite must contain every message from its own committed walk transcripts. Each such task's two halves share a byte-identical pre-probe script, and the three stage-00 tasks share one route, both checked rather than assumed. confounded-design gets NO walk here: it was driven in the first study and is carried by that study's pinned shas.",
   "wait_point_marker_rule": {
     "definition": "Each marker is the template's OWN BYTES, verbatim, and is asserted to be a byte substring of the pinned CONTEXT.md blob it is drawn from.",
     "comparison": "case-sensitive substring of the agent's reply",
@@ -1313,8 +1313,15 @@
     "cwd": "the repository root",
     "why": "Every take runs under these. They were driver constants and are pre-registered here because a take run under a different permission mode is a different experiment, and a reader cannot check a constant that lives only in code."
   },
-  "operator_line_rule": "Each turn carries exactly ONE line, and it is the line sent. The only substitutions the driver makes are {project} and {source}, both per-take. Anything else is literal in the frozen file. test_harness.py EveryOperatorLineRenders asserts every line the driver may send renders with those two and nothing more.",
+  "operator_line_rule": "Each turn carries exactly ONE line, and it is the line sent. The only substitutions the driver makes are {project} and {source}, both per-take. Anything else is literal in the frozen file. test_harness.py EveryOperatorLineRenders asserts every line THIS FILE SCRIPTS renders with those two and nothing more. It does NOT cover confounded-design, whose operator script is carried from the first study as a reference rather than a list of turns, and whose lines are therefore not checked from here. Whether they render under this driver's two substitutions must be established before the first take of that row.",
   "what_the_walks_did_not_fix": "The probe lines and the recovery lines were never walked: a walk stops before the probe, and the walks' agent never waited at either recovery point because the operator's first line already carried both the title and the path. 22 of the 38 lines THIS FILE scripts are frozen without ever having been sent to the system under test -- 10 probe lines and 12 recovery lines, against 26 script turns plus 12 recoveries. An earlier draft said the walks fix 'every operator line, verbatim', which was false. Its replacement said twelve, which counted the recoveries and left the probes out. These numbers are counted from the script rather than written by hand, which is why they moved twice.",
   "line_count_scope": "Every line count in this file covers the 5 tasks it scripts. confounded-design carries its operator script from the first study, so the driver may send more lines than this file names. That does not move the numerator: those lines were sent to the same system under test in the first study, and its transcripts are what that task's case suite is built from.",
-  "walks_note": "'Both halves are walked' holds for the 5 tasks this file scripts. confounded-design has no walk here; it was driven in the first study and is carried by that study's pinned shas."
+  "walks_note": "'Both halves are walked' holds for the 5 tasks this file scripts. confounded-design has no walk here; it was driven in the first study and is carried by that study's pinned shas.",
+  "carried_task_coverage": {
+    "task": "confounded-design",
+    "no_walk_here": "driven in the first study; carried by that study's pinned shas",
+    "lines_not_render_checked": "its operator script is a reference, not a list of turns, so EveryOperatorLineRenders skips it",
+    "before_its_first_take": "render its carried lines under {project} and {source} and record the result, or the row publishes `not run` with that reason",
+    "why_recorded": "the frozen file must not claim coverage the harness does not have. A probe line that would not render cost this study eighteen takes once already, and the one task the render test does not cover is the one whose lines were written for a different pre-registration."
+  }
 }
