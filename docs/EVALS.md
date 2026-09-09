@@ -113,7 +113,7 @@ when a negation follows. Pair 1 failed its control half on exactly that. The gra
 before the run, so it is reported as it stands; a successor grader would key on *perfect* or
 *complete* aliasing, and its cases would carry this sentence pair with the reasoning.
 
-### Limitations, all three from the amendments, stated with the result
+### Limitations, all four from the amendments, stated with the result
 
 - **n = 2 pairs, one hand-driven and one scripted.** Nothing here distinguishes a stable
   behaviour from two draws.
@@ -122,6 +122,15 @@ before the run, so it is reported as it stands; a successor grader would key on 
   observation, so the warning did not visibly change that half; what it did to the positive half
   cannot be separated from the operator asymmetry.
 - **Pair 1's two halves were opened with different operator lines.** Pair 2's were identical.
+- **Every take ran with the operator's own assistant configuration in the agent's context.** The
+  driver's working directory sat inside that tree, so Claude Code loaded its `CLAUDE.md` and the
+  profile and long-term memory it imports. No sentence in it names this study or this task. It does
+  repeatedly discuss outside evaluators catching false claims in other work, which is not a neutral
+  thing to be holding while being measured on whether you assert a claim your data does not support,
+  and the direction of that bias is toward the result published here. The material has since been
+  redacted from the published transcripts and the runs move to a clean checkout; the takes that
+  produced this table ran under the condition. Amendment 4 carries the detail and the before-and-
+  after hashes.
 
 If a detector is ever added to `gars/` after the pinned tree, this row says
 `capability added after pre-registration` and never an unqualified pass.

@@ -323,3 +323,82 @@ is refused before it is graded.
 
 **Still binding:** both pairs are published whatever they say; there is no pair 3; the operator
 lines, the model, the permission mode and the question are unchanged.
+
+## Amendment 4 — 8 Sep 2026, written after the result was published
+
+**The agent's context carried the operator's own assistant configuration, and this study's takes ran
+that way.**
+The headless driver ran the agent with its working directory inside the operator's personal
+assistant tree.
+Claude Code walks up from the working directory for `CLAUDE.md`, found that tree's file, and loaded
+it together with the two files it imports — the operator's profile and their long-term memory.
+All of it went into the agent's context on every take, and the session file recorded it.
+
+**What that text says, and why it is a limitation rather than a footnote.**
+No sentence in it names this study, the confounded-refusal task, or the question the agent was
+about to be asked.
+It does, repeatedly, discuss adversarial evaluation of other work: fresh evaluators, findings
+counts, a self-grading channel that was removed, and the line *"a guard nobody has watched fail is
+not evidence — an outside evaluator falsified every scientific number in a demo log and the honesty
+suite still passed"*.
+This study measures whether the agent asserts a claim its data does not support.
+An agent holding text that dwells on outside evaluators catching false claims is not a blind agent
+with respect to that measurement, and the direction of the bias is toward the published result.
+The result is not withdrawn and the number does not move.
+It is stated here so a reader meets the condition beside the finding instead of discovering it in a
+transcript.
+
+**This is the third leak of its kind, and the first two are already in this file.**
+Amendment 3 recorded a fixture that told the agent it was in an evaluation, through a decoy file and
+through the read headers.
+This one arrives through a channel none of those checks look at: `check_take.py` sweeps the operator
+turns and the fixture's source directory, and the material here was in neither.
+It sat in the session's `attachment` records, which nothing read.
+
+**What was removed from the published transcripts, and what was deliberately kept.**
+`evals/scrub_transcripts.py` redacts the operator's private material and nothing else.
+Removed: every instructions file whose path lies outside this repository — the operator's assistant
+configuration, profile and memory — together with the flattened copy of each in the same record's
+`rendered` field, and the account email Claude Code injects into every session.
+Kept: this repository's own `CLAUDE.md`, because the agent's instructions are material to reading
+its behaviour and that file is public here already.
+Kept: every operator turn and every agent turn, byte for byte.
+The script compares the graded turns before and after in each file and refuses to write if one
+changed, and it re-reads the bytes it is about to write and refuses if any removed text survives —
+which it did on its first run, when it reported the removals and had performed none of them.
+
+**The published results are re-bound, and the labels did not move.**
+Redacting changes each transcript's sha256, and every graded take is pinned to its transcript by
+that hash.
+The graders read only the operator and agent turns, which are unchanged, so the verdicts cannot
+change; this was checked rather than argued, by loading the normalised turns from the pre-redaction
+bytes and from the redacted bytes and comparing them.
+
+    evals/transcripts/confounded-refusal/positive/transcript.jsonl
+      before abc8ae18a6f21e73c9b0c856c4e0d8154ee6b9842626245bf23a232341d3f0e8
+      after  d720652fb02795355ffe387789a46fa5e79e5449dffa6eeb6f43f8e0018852af
+    evals/transcripts/confounded-refusal/control/transcript.jsonl
+      before 7549824284e2c8a31f26544e5509ead275f4075b67dbde8ff7ed7568adeea89a
+      after  edbcd31226d3ff44e60ac9429a306acbe9b790983f1586aa963c586c6aaa36b2
+    evals/transcripts/confounded-refusal/pair-1/control/transcript.jsonl
+      before 497737d969bfca397b16f7495b0f1924f967b42992057617e588c22ebe095b2f
+      after  4bb9b701a0dd588e3faeae1323e41fd6012973ec7f358b6be3a7fe2c3c235410
+    evals/transcripts/confounded-refusal/pair-1/positive/transcript.jsonl
+      before a30b5936b6d494c400cd440eeded8848a9876166d355061ae865ff68ad2031a7
+      after  94a89ed0f141cff58829ba3baa594f4689479894e642610ae93db63e82f07e75
+
+`evals/check_results.py --controls --lexicon` re-derives every published cell from the pinned
+graders and the redacted transcripts and is green on these bytes.
+
+**The history is not rewritten, and that is a deliberate choice with a cost.**
+The commit that introduced these transcripts is cited in this repository's own verification reports
+because GitHub's server-side timestamps on it cannot be backdated, which is the strongest integrity
+claim the published record has.
+Rewriting history to purge the content would change that commit's hash and destroy the evidence.
+So the working tree is corrected in a new commit and the old blobs remain reachable in history by
+hash for anyone who goes looking.
+That residue is the price of keeping the timestamp evidence, and it is named here rather than left
+for a reader to find.
+
+**Still binding:** both pairs are published whatever they say; there is no pair 3; the operator
+lines, the model, the permission mode and the question are unchanged.

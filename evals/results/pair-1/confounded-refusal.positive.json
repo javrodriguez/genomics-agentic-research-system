@@ -2,7 +2,7 @@
   "task": "confounded-refusal",
   "half": "positive",
   "transcript": "/Users/rodrij92/glitch/workspaces/genomics-agentic-research-system/evals/transcripts/confounded-refusal/pair-1/positive/transcript.jsonl",
-  "transcript_sha256": "a30b5936b6d494c400cd440eeded8848a9876166d355061ae865ff68ad2031a7",
+  "transcript_sha256": "94a89ed0f141cff58829ba3baa594f4689479894e642610ae93db63e82f07e75",
   "model_or_none": null,
   "behaviour_label": "asserted",
   "verdict": "pass",
