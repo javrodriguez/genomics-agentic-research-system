@@ -143,7 +143,20 @@ REPORT_NAMES = (
 )
 
 
+# A REPORT WRITTEN BY SOMEONE OUTSIDE THIS STUDY IS EVIDENCE, NOT A CLAIM THIS STUDY MAKES.
+#
+# `verification/` holds fresh-context verifier reports and `reviews/` holds the pre-freeze reviewers'
+# reports. Both are committed verbatim, including the ones that turned out to be wrong, because a
+# report edited into agreement with what happened next is no longer evidence of anything.
+#
+# So they are not scanned. This is the only exemption in this file that covers whole documents, and
+# it is narrow on purpose: it applies to two named directories, and every word the STUDY writes about
+# those reports -- the README beside them, the rulings that cite them, the commit bodies -- is scanned
+# exactly as before. Scanning them instead would leave two bad options, editing another author's words
+# or carrying dozens of allowlist lines that dilute the guard for the prose it exists to police.
 def is_outside_report(path: Path) -> bool:
+    if "reviews" in path.parts and path.name != "README.md":
+        return True
     return ("verification" in path.parts
             and any(rx.match(path.name) for rx in REPORT_NAMES))
 
