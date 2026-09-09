@@ -388,7 +388,7 @@ words that named this study.
 
 **A control that was never breached, added because nothing was watching it.** This study's own
 materials — the pre-registration, the tasks, the probes, the graders — live under `evals/` in the
-repository the agent works in. No walk ever reached them. The clean checkout has `evals/` removed
+repository the agent runs in. No walk ever reached them. The clean checkout has `evals/` removed
 and the checker reports any transcript that mentions those paths.
 
 **What this costs the walks, said plainly.** The eight committed walks were driven under the leak.
