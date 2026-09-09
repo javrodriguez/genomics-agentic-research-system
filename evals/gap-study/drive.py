@@ -297,15 +297,28 @@ def main() -> int:
             return 2
 
     # ---- the fixture ------------------------------------------------------------------
-    staging = STAGING / name
+    # THE AGENT RUNS IN A CHECKOUT WITH NOTHING ABOVE IT, AND ITS DATA LIVES THERE TOO.
+    #
+    # Both halves of this matter. The working directory decides which instruction files Claude Code
+    # inherits, which is how this study's own name reached the agent. The SOURCE PATH matters for a
+    # quieter reason: the operator hands it to the agent verbatim, so a path inside the operator's
+    # assistant tree puts that tree's name into the transcript and in front of the agent.
+    global RUN_TREE
+    head = subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD"],
+                          capture_output=True, text=True).stdout.strip()
+    RUN_TREE = clean_run_tree(head)
+
+    staging = RUN_TREE / "data" / "staging" / name
     if staging.exists():
         print(f"refusing: {staging} already exists. A take starts from a clean fixture.")
         return 2
     fx = half.get("fixture") or {}
-    proj_dir = REPO / "gars" / "projects" / name
-    if proj_dir.exists():
-        print(f"refusing: {proj_dir} already exists.")
-        return 2
+    built_dir = REPO / "gars" / "projects" / name      # where the pinned generators write
+    proj_dir = RUN_TREE / "gars" / "projects" / name   # where the agent will find it
+    for d in (built_dir, proj_dir):
+        if d.exists():
+            print(f"refusing: {d} already exists.")
+            return 2
 
     if fx.get("kind") == "generated":
         # A source directory the operator points stage 00 at. The project does not exist yet.
@@ -324,6 +337,11 @@ def main() -> int:
         if r.returncode != 0:
             print(f"the fixture did not reach its branch, so no take is driven:\n{r.stdout}{r.stderr}")
             return 2
+        # The generators are pinned by hash in the pre-registration, so they are not modified to
+        # take a target root. They write where they always wrote, and the result is moved into the
+        # checkout the agent runs in.
+        proj_dir.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(built_dir), str(proj_dir))
         source = proj_dir
     elif fx.get("kind") == "copied-tree":
         # A minimal copy of a project a real run produced. plan-gate needs stage 02 already
@@ -338,13 +356,18 @@ def main() -> int:
         print(f"    copied {ledger_fixture['files']} files, tree "
               f"{ledger_fixture['tree_sha256_name_invariant'][:12]}, rows "
               f"{ledger_fixture['rows_real']} real / {ledger_fixture['rows_stub']} stub")
+        # The generators are pinned by hash in the pre-registration, so they are not modified to
+        # take a target root. They write where they always wrote, and the result is moved into the
+        # checkout the agent runs in.
+        proj_dir.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(built_dir), str(proj_dir))
         source = proj_dir
     else:
         print(f"{args.task}: fixture kind {fx.get('kind')!r} is not drivable yet by this file")
         return 2
 
     ledger = {"kind": kind, "task": args.task, "half": args.half, "model_requested": model,
-              "session_id": session_id, "project": name, "source": str(source.relative_to(REPO)),
+              "session_id": session_id, "project": name, "source": str(source.relative_to(RUN_TREE)),
               "row": args.row, "permission_mode": PERMISSION_MODE, "permission_prompts": "none",
               "cwd": str(RUN_TREE), "run_tree_has_no_inherited_instructions": True,
               "budget_s": budget, "started": now(),
@@ -356,11 +379,11 @@ def main() -> int:
 
     print(f"{kind}: {args.task} / {args.half} / {model}")
     print(f"  session {session_id}")
-    print(f"  project {name}   source {source.relative_to(REPO)}")
+    print(f"  project {name}   source {source.relative_to(RUN_TREE)}")
 
     # ---- the script -------------------------------------------------------------------
     for i, step in enumerate(steps, start=1):
-        line = step["line"].format(project=name, source=source.relative_to(REPO))
+        line = step["line"].format(project=name, source=source.relative_to(RUN_TREE))
         shown = line if len(line) < 64 else line[:61] + "..."
         print(f"  [{i}/{len(steps)}] > {shown}")
         t0 = now()
@@ -435,7 +458,7 @@ def main() -> int:
         # the recovery's own marker and not the step's.
         rec = step.get("recovery")
         if (not held) and rec and rec["if_reply_holds"] in said:
-            line2 = rec["send"].format(project=name, source=source.relative_to(REPO))
+            line2 = rec["send"].format(project=name, source=source.relative_to(RUN_TREE))
             print(f"        recovery: the reply is waiting at {rec['if_reply_holds']!r}; "
                   f"answering it once")
             said2, code2, _err2 = one_turn(line2, session_id, model, first=False, budget_s=budget)

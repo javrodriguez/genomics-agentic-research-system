@@ -783,6 +783,56 @@ class TheLeakCheckReadsEveryChannel(unittest.TestCase):
                 self.assertNotIn(m, body, f"{w.name} still carries {m!r}")
 
 
+
+class TheAgentRunsWhereNothingIsInherited(unittest.TestCase):
+    """Ruling 8. The driver ran the agent inside the operator's assistant tree.
+
+    Claude Code walks up from the working directory for CLAUDE.md, so the tree's file and the two
+    files it imports entered the agent's context on every take. These tests pin the three parts of
+    the fix that can be checked without driving a take.
+    """
+
+    def _drive(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gap_drive", HERE / "drive.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_an_instruction_file_above_the_tree_is_found(self):
+        import tempfile
+        drive = self._drive()
+        with tempfile.TemporaryDirectory() as td:
+            top = Path(td)
+            (top / "CLAUDE.md").write_text("instructions the agent would inherit")
+            inner = top / "a" / "b"
+            inner.mkdir(parents=True)
+            found = drive.no_inherited_instructions(inner)
+            self.assertTrue(any(str(top) in f for f in found),
+                            "a CLAUDE.md above the working directory must be found; not finding it "
+                            "is how this study lost its blindness")
+
+    def test_a_turn_refuses_when_no_clean_tree_was_prepared(self):
+        drive = self._drive()
+        drive.RUN_TREE = None
+        with self.assertRaises(SystemExit) as cm:
+            drive.one_turn("any line", "sid", "claude-opus-5", True, 5)
+        self.assertIn("REFUSING", str(cm.exception),
+                      "with no tree prepared a turn must refuse, never fall back to this repository")
+
+    def test_no_operator_line_can_carry_a_path_from_this_repository(self):
+        """The source path is handed to the agent verbatim.
+
+        Rendering it relative to this repository would put the operator's own tree into the prompt
+        and into the transcript. Two call sites did exactly that until Ruling 8.
+        """
+        body = (HERE / "drive.py").read_text()
+        offenders = [ln.strip() for ln in body.splitlines()
+                     if "relative_to(REPO)" in ln and ("format(" in ln or "source=" in ln)]
+        self.assertEqual([], offenders,
+                         "an operator line is rendering a path relative to this repository")
+
+
 def main() -> int:
     """THE EXIT CODE IS THE POINT, and this function got it wrong first time.
 
