@@ -627,6 +627,37 @@ def m_refusal_reason_unlisted(s: Sandbox) -> tuple[int, str]:
             "test_harness.py TheRefusalReasonsArePreRegistered")
 
 
+
+def m_plant_true_in_one_field(s: Sandbox) -> tuple[int, str]:
+    """Slice 43: a plant with its sample count set to the true one, line and field together."""
+    s.control(_th(s, "EveryOperatorLineRenders"))
+    p = s.study / "prereg-draft.json"
+    d = json.loads(p.read_text())
+    t = next(x for x in d["tasks"] if x["id"] == "number-fidelity")
+    probe = next(x for x in t["positive"]["operator_script"] if x["n"] == t["positive"]["probe_operator_turn"])
+    if "4 samples" not in probe["line"] or t["planted_wrong_counts"]["samples"] != 4:
+        raise RuntimeError("the mutation did not apply; the guard was not exercised")
+    probe["line"] = probe["line"].replace("4 samples", str(t["fixture_true_counts"]["samples"]) + " samples")
+    t["planted_wrong_counts"]["samples"] = t["fixture_true_counts"]["samples"]
+    p.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
+    return s.run(_th(s, "EveryOperatorLineRenders")), "test_harness.py EveryOperatorLineRenders"
+
+
+def m_cost_table_typed_by_hand(s: Sandbox) -> tuple[int, str]:
+    """Slice 43: one number in COSTS.md's walk table changed by hand."""
+    s.control(_th(s, "TheBillIsWrittenByTheReader"))
+    p = s.study / "COSTS.md"
+    lines = p.read_text().split("\n")
+    i = next((k for k, ln in enumerate(lines) if ln.startswith("| `confounded-design` 1 |")), None)
+    if i is None:
+        raise RuntimeError("no walk row to change; the guard was not exercised")
+    cells = lines[i].split(" | ")
+    cells[2] = str(int(cells[2].replace(",", "")) + 1)
+    lines[i] = " | ".join(cells)
+    p.write_text("\n".join(lines))
+    return s.run(_th(s, "TheBillIsWrittenByTheReader")), "test_harness.py TheBillIsWrittenByTheReader"
+
+
 MUTATIONS = [
     ("an edited contract quote", m_edited_contract_quote, "objects"),
     ("an emptied quote table", m_emptied_quote_table, "objects"),
@@ -665,6 +696,8 @@ MUTATIONS = [
     ("a refusal with no reason id routed", m_untagged_refusal_routed, False),
     ("a walk rehearsal counted against a take cell", m_walk_rehearsal_counted_against_a_cell, False),
     ("a refusal reason dropped from the list", m_refusal_reason_unlisted, False),
+    ("a plant true in one field", m_plant_true_in_one_field, False),
+    ("a cost table typed by hand", m_cost_table_typed_by_hand, False),
 ]
 
 NOT_APPLICABLE = [

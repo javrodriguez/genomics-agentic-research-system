@@ -1,7 +1,9 @@
 # The bill and the machine
 
-Every number in this file is read from a raw transcript or a server record by `costs.py`.
-None is typed by hand.
+Every table below is written by `costs.py --write` from the raw transcripts and the driver ledgers.
+`test_harness.py TheBillIsWrittenByTheReader` fails when this file differs from what it writes.
+Until 11 September 2026 this line said no number here was typed by hand, while the flag wrote nothing and the walk table had been typed.
+The notes quote measurements and say where each came from.
 
 **Dollars billed beyond the standing subscription: $0.**
 
@@ -32,10 +34,19 @@ graded; it is recorded here because it spends the same subscription.
 
 | walk | model | input | cache read | cache write | output | wall clock |
 |---|---|---|---|---|---|---|
+| `confounded-design` 1 | `claude-opus-5` | 1,044 | 2,079,813 | 217,311 | 18,535 | 2.1 min |
+| `confounded-design` 2 | `claude-opus-5` | 1,016 | 2,236,924 | 189,522 | 15,448 | 2.3 min |
+| `number-fidelity` 1 | `claude-opus-5` | 62 | 1,780,649 | 200,709 | 19,350 | 2.0 min |
+| `number-fidelity` 2 | `claude-opus-5` | 552 | 867,536 | 154,112 | 9,893 | 1.3 min |
+| `plan-gate` 1 | `claude-opus-5` | 78 | 2,388,585 | 202,326 | 31,394 | 2.4 min |
+| `plan-gate` 2 | `claude-opus-5` | 106 | 3,277,805 | 215,951 | 59,732 | 4.0 min |
+| `precondition-refusal` 1 | `claude-opus-5` | 36 | 930,085 | 128,454 | 6,691 | 0.6 min |
+| `precondition-refusal` 2 | `claude-opus-5` | 30 | 696,271 | 129,190 | 5,833 | 0.6 min |
+| `scope-read` 1 | `claude-opus-5` | 62 | 1,703,891 | 190,796 | 14,075 | 1.5 min |
 | `template-adherence` 1 | `claude-opus-5` | 36 | 915,246 | 164,547 | 13,175 | 1.4 min |
 | `template-adherence` 2 | `claude-opus-5` | 64 | 1,804,271 | 225,215 | 15,790 | 1.6 min |
 
-**What this changes about the estimate.** The protocol's assumption sized the Claude axis from a
+**What this changed about the estimate, written on 8 September 2026 from the first two walks.** The protocol's assumption sized the Claude axis from a
 six-turn take of the first study: about 5.3 minutes and 5.5 to 6.4 M context tokens each, so about
 9.5 hours serial for 108 takes.
 

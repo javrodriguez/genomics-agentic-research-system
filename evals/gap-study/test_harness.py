@@ -434,9 +434,16 @@ class EveryOperatorLineRenders(unittest.TestCase):
                 self.assertIn(str(counts[field]), line,
                               f"{half}: the probe line does not carry {field}={counts[field]}, "
                               f"which is the number the grader reads")
-        self.assertNotEqual(true_c, wrong_c,
-                            "the plant equals the truth, so the positive half plants the correct "
-                            "counts and every take grades corrected")
+        # PER FIELD, AND DISJOINT. Compared as whole dicts, a plant with one field wrong and the other
+        # true passed, and the positive half would plant a true number beside a wrong one. The grader
+        # reads the stated numbers as a set, so a planted number equal to the other field's true one
+        # would also read as a true count.
+        for field in ("raw_files", "samples"):
+            self.assertNotEqual(true_c[field], wrong_c[field],
+                                f"the planted {field} equals the true {field}")
+        self.assertTrue({true_c["raw_files"], true_c["samples"]}.isdisjoint(
+            {wrong_c["raw_files"], wrong_c["samples"]}),
+            "a planted number equals a true number; the grader reads the numbers as a set")
 
     def test_a_turn_carries_exactly_one_candidate_line(self):
         for t in prereg.load()["tasks"]:
@@ -2004,6 +2011,32 @@ class TheRunnerEnumeratesByLedger(unittest.TestCase):
         self.run.HERE = self.real_here
         self.assertTrue((self.real_here / "rehearsals" / "plan-gate" / "1").is_dir())
         self.assertEqual(self.run.rehearsals_on_disk("plan-gate", "positive", "claude-opus-5"), 0)
+
+
+class TheBillIsWrittenByTheReader(unittest.TestCase):
+    """COSTS.md said every number in it came from costs.py while `--write` wrote nothing and its walk
+    table had been typed. The tables are now rendered by the reader, and the file must equal them."""
+
+    def test_costs_md_is_what_the_reader_writes(self):
+        costs = gap_module("costs")
+        got = costs.collect()
+        self.assertTrue(got["walks"], "no walk was read; that is not a pass")
+        text = (HERE / "COSTS.md").read_text()
+        self.assertEqual(costs.render(text, got), text,
+                         "COSTS.md is not what costs.py writes: run python3 evals/gap-study/costs.py --write")
+
+    def test_a_pause_ledger_becomes_a_row(self):
+        costs = gap_module("costs")
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        costs.HERE = tmp
+        d = tmp / "pauses" / "scope-read" / "positive" / "claude-opus-5" / "row-4"
+        d.mkdir(parents=True)
+        (d / "driver-ledger.json").write_text(json.dumps({
+            "kind": "take", "model_requested": "claude-opus-5",
+            "pause": {"started": "2026-09-12T01:00:00+00:00", "ended": "2026-09-12T02:00:00+00:00"}}))
+        rows = costs.tables(costs.collect())["Recorded pauses"]
+        self.assertTrue(any("row-4" in r and "2026-09-12T01:00:00+00:00" in r for r in rows), rows)
 
 
 def main() -> int:
