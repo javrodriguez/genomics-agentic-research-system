@@ -437,3 +437,25 @@ The new walk's and the smokes' published transcripts have that field removed by 
 Whether a graded take's transcript may carry the same removal is not settled here: the rule for a take is that its transcript is the session file copied verbatim, and changing that is the repository owner's word.
 
 **Nothing else moved.** No criterion was relaxed. The tasks, the models, n, the graders and the analysis plan are unchanged.
+
+### Ruling 10 — 2026-09-11 — a published transcript has the account's email address removed, by the repository owner's word
+
+**The question, as it was put.**
+Claude Code injects the signed-in account's email address into every session it records, as `session_context.userEmail`, and no documented setting turns that off (Ruling 9).
+The pre-registration's rule for a graded take was that its transcript is the session file copied verbatim.
+Publishing the takes therefore meant either putting the operator's personal address in every public take transcript or changing that rule, and the rule is the repository owner's.
+
+**The answer.**
+Asked in this session with three options — remove the field and disclose it, publish verbatim, or run the takes under a different login — the repository owner selected "Remove it, disclosed (Recommended)".
+That option read: "Publish each take with only that email field removed by scrub.py, pinned at the freeze. The file's fingerprint before and after sits beside it, and the parts a grader reads are proven unchanged. A limitations line says so. The walks and the first study already get this treatment."
+Recorded at 12:35 America/New_York on 11 September 2026, minutes after the answer.
+
+**What it changes.**
+`transcript_publication` in the pre-registration states the rule and the limitations line.
+`drive.py` removes the field at copy time, for walks and takes alike, so the raw session file never enters this repository.
+`scrub.py` refuses if a record a grader reads would change or if the address survives anywhere, and writes the sha256 before and after beside each transcript.
+`check_take.py` refuses a transcript that still carries the field, and `test_harness.py` binds every scrub record to the bytes beside it.
+
+**What it does not change.**
+Every record a grader reads is byte-identical to the session file.
+No criterion about what the agent did, or about how it is graded or counted, moved.
