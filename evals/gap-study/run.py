@@ -190,10 +190,22 @@ def grade_cell(task_id: str, half: str, model: str, spec: dict, n: int) -> dict:
 
     k = sum(1 for x in out_labels if x["verdict"] == "correct")
     rehearsed = rehearsals_on_disk(task_id, half, model)
-    state = STATE_RAN if len(out_labels) == n else f"{STATE_INCOMPLETE}, {len(out_labels)} of {n}"
+    # REVIEW 17, F4. `incomplete — mechanical` was printed for any short cell, including one short
+    # because its remaining rows were never registered, so a run abandoned partway would publish
+    # "mechanical" where nothing mechanical happened. The reason comes from the record.
+    paused = pauses_on_disk(task_id, half, model)
+    pre = prereg.load()
+    exhausted = rehearsed >= int(pre["rehearsal_cap"]) or paused >= int(pre["pause_cap"])
+    if len(out_labels) == n:
+        state = STATE_RAN
+    elif exhausted:
+        state = f"{STATE_INCOMPLETE}, {len(out_labels)} of {n}"
+    else:
+        state = (f"incomplete — {len(out_labels)} of {n}, and no mechanical reason is on record: "
+                 f"{rehearsed} rehearsal(s), {paused} pause(s), neither at its cap")
     read = sorted({m for x in out_labels for m in x["model_read"]})
     return {"state": state, "labels": out_labels, "k": k, "n": n, "rehearsals": rehearsed,
-            "pauses": pauses_on_disk(task_id, half, model), "models_read": read,
+            "pauses": paused, "models_read": read,
             "harness_versions": sorted(versions)}
 
 

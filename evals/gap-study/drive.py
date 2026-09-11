@@ -617,8 +617,13 @@ def build_fixture(spec: dict, dest: Path) -> dict | None:
                        check=True, capture_output=True, text=True)
         try:
             man = json.loads(man_path.read_text())
-        except (OSError, json.JSONDecodeError):
-            return None
+        except (OSError, json.JSONDecodeError) as exc:
+            # REVIEW 17, F2. It used to return None, and the driver then filed the take with no
+            # fixture record at all, which the checker passes with a note. A take nobody can bind to
+            # its fixture is not a take this study grades.
+            raise SystemExit(f"REFUSING: the generator wrote no readable manifest for this fixture "
+                             f"({exc!r}), so the take could not be bound to the fixture it ran "
+                             f"against. Nothing was sent to a model.")
     return {"kind": "generated", "variant": spec["variant"], "seed": spec["seed"],
             "fixture_sha256": man.get("fixture_sha256")}
 
@@ -855,7 +860,9 @@ def main() -> int:
         # A rate-limit refusal BEFORE any agent turn is a pause, not a take and not a rehearsal.
         # The harness's own report of the refusal is read here too (review 16, blocker 2): stderr is
         # not where any probe has seen it.
-        refusal = err + harness_said + said
+        # REVIEW 17, F3. Joined with no separator, a marker sitting at the join lost its word
+        # boundary and the bounded search missed it: 'Error' + '429 ...' reads as 'Error429'.
+        refusal = "\n".join(x for x in (err, harness_said, said) if x)
         if code != 0 and not ledger["first_agent_turn"] and looks_rate_limited(refusal):
             row_rec["outcome"] = "PAUSE — rate limited before the first agent turn"
             row_rec["held"] = False

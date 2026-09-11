@@ -260,16 +260,56 @@ def _normalised_ledger(led: dict, row: dict, t: Path) -> dict:
     pre = prereg.load()
     half = prereg.task(row["task"])[row["half"]]
     out = dict(led)
-    out["outcome"] = "complete"
-    script = half.get("operator_script")
-    if isinstance(script, list):
-        out["turns"] = [{"n": s["n"]} for s in script]
     sid = ct.session_id_of(t) if t.is_file() else ""
-    if led.get("source") is not None and sid:
-        out["source"] = ct.expected_source_for(half, ct.neutral_name(sid))
+    project = ct.neutral_name(sid) if sid else ""
+    source = ct.expected_source_for(half, project) if project else ""
+
+    # REVIEW 17, BLOCKER 1, ROUTE B. The first version set `outcome` to complete and `turns` to every
+    # scripted row, so an edit TOWARDS that state was invisible to the re-run: a take the driver
+    # legitimately stopped at an unheld marker, correctly published `did-not-reach`, was refused for
+    # the lines it never sent once its outcome was edited to complete, and the refusal survived the
+    # re-run because the re-run assumed the edit. That is the label an operator would most want gone.
+    # Both fields are now re-derived from the transcript, which the ledger cannot edit: the rows are
+    # the scripted steps whose rendered lines the transcript carries, and the outcome is complete when
+    # they are all there and a stop at the last one present otherwise.
+    script = half.get("operator_script")
+    if isinstance(script, list) and t.is_file():
+        ops = [ct.normalise(x) for x in ct.user_text_records(t, pre)[0]]
+        present = [s for s in script
+                   if ct.normalise(ct.render(s["line"], project, source)) in ops]
+        if present:
+            out["turns"] = [{"n": s["n"]} for s in present]
+            out["outcome"] = ("complete" if len(present) == len(script)
+                              else "stopped — wait-point marker not held; graded as it stands")
+
+    if led.get("source") is not None and project:
+        out["source"] = source
     out["budget_s"] = int(pre["budgets"]["turn_timeout_s"])
     out["permission_mode"] = pre["driver_constants"]["permission_mode"]
     out["gars_tree_sha"] = pre["system_under_test"]["gars_tree_sha"]
+
+    # REVIEW 17, BLOCKER 1, ROUTE A. The fixture block is read by the checker and was left alone here,
+    # so one edited character in it produced a refusal that founded a rehearsal. The pinned driver
+    # cannot write any of these wrong: the project generator exits non-zero unless stage 01 reaches the
+    # expected code and the driver refuses before a session opens, the variant is the half's own spec,
+    # the carried fixture's builder refuses a tree that differs from the pin, and a generated fixture's
+    # hash is the manifest of the build the driver ran.
+    spec_fx = half.get("fixture") or {}
+    led_fx = led.get("fixture")
+    if isinstance(led_fx, dict):
+        fx = dict(led_fx)
+        if spec_fx.get("kind"):
+            fx["kind"] = spec_fx["kind"]
+        if spec_fx.get("variant") is not None:
+            fx["variant"] = spec_fx["variant"]
+        if fx.get("stage01_expected_exit") is not None:
+            fx["stage01_check_exit"] = fx["stage01_expected_exit"]
+        pin = spec_fx.get("sha256")
+        if pin:
+            for key in ("tree_sha256_name_invariant", "sha256", "fixture_sha256"):
+                if fx.get(key):
+                    fx[key] = pin
+        out["fixture"] = fx
     return out
 
 
@@ -323,6 +363,21 @@ def attempt_problems(kind: str, d: Path, i: int, row: dict, ct) -> list[str]:
     except (OSError, json.JSONDecodeError):
         return [f"row {i}: the {kind} attempt has no readable driver ledger"]
     problems: list[str] = []
+    # REVIEW 17, BLOCKER 1, ROUTE C. Deleting a graded take's transcript made every check that reads it
+    # vacuous: the checker reported no first agent turn, the bindings never ran, and the attempt was
+    # filed as a rehearsal or a pause with the ledger still recording the agent turn and the published
+    # bytes. The driver writes `first_agent_turn` before it routes anything and never files either of
+    # those with it true, so the ledger refutes the filing on its own.
+    if kind in ("pause", "rehearsal") and led.get("first_agent_turn") \
+            and not (led.get("outcome") or "").startswith("complete"):
+        if kind == "pause" or not _has_agent_text(d / "transcript.jsonl"):
+            problems.append(f"row {i}: the attempt is filed as a {kind} and its own ledger records a "
+                            f"first agent turn; the driver writes that field before it routes the "
+                            f"attempt and never files a {kind} with it")
+    pub = (led.get("published") or {}).get("sha256_after")
+    if pub and not (d / "transcript.jsonl").is_file():
+        problems.append(f"row {i}: the ledger records published transcript bytes and no transcript "
+                        f"sits beside it; the driver publishes the file and the record together")
     recorded = (led.get("attempt") or {}).get("kind")
     if recorded != kind:
         problems.append(f"row {i}: the attempt sits under the {kind} folder and its ledger records "
@@ -380,6 +435,11 @@ def attempt_problems(kind: str, d: Path, i: int, row: dict, ct) -> list[str]:
                                 f"filed as a rehearsal")
             elif ids != reasons:
                 problems.append(f"row {i}: the checker's reasons {ids} are not the recorded {reasons}")
+            if not t.is_file():
+                # A rehearsal after the first agent turn is published and regradable by any reader
+                # (limitations line 6). Without its transcript nothing about it can be re-derived.
+                problems.append(f"row {i}: a rehearsal after the first agent turn carries no "
+                                f"transcript, so nothing in it can be regraded")
             made = _ledger_made_reasons(d, t, row, i, ct, got)
             if made:
                 problems.append(f"row {i}: the refusal(s) {made} disappear when the ledger's own "

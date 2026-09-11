@@ -37,17 +37,22 @@ Review 16 judged the threat model and the twelve limitations lines first, read R
 a refusal that needs the driver ledger to exist was made by the ledger, so it cannot found a rehearsal; and the pause decision now reads what the harness itself reported, not only stderr, which no probe records on a refused turn.
 Its nine follow-ups are all folded, including the two limitations lines that promised more than the code produced.
 
+Review 17 read Ruling 20's two blockers closed and its nine follow-ups folded, confirmed review 16's own reproduction is refused now, and ruled do not freeze on one blocker with three routes, all folded (Ruling 21, `verification/prefreeze-17-disposition.md`):
+the re-run restored six named fields while the pre-registration claimed it restored the ledger, so a rehearsal could still be founded on the fixture block, on an edit towards the state the rule assumed, or on a deleted transcript.
+The outcome and the turns are re-derived from the transcript now, the fixture block is restored from the half's own spec, and an attempt cannot deny the turn its own ledger records.
+Its seven follow-ups are all folded.
+
 ## The next moves, in order
 
-1. **Review 17** as `verification/prefreeze-17.md`, reading the bytes this pass leaves; then its disposition, or the freeze: `freeze.py --review-commit <sha> --write`.
+1. **Review 18** as `verification/prefreeze-18.md`, reading the bytes this pass leaves; then its disposition, or the freeze: `freeze.py --review-commit <sha> --write`.
 2. Then, and only then, the 108 takes.
 
 ## State
 
-- 6 task pairs · 11 walks, 3 of them driven in a built checkout · 136 hand-labelled cases · 208 tests · 78 mutations · 16 reviews · 4 smokes
+- 6 task pairs · 11 walks, 3 of them driven in a built checkout · 136 hand-labelled cases · 217 tests · 84 mutations · 17 reviews · 4 smokes
 - 0 takes graded · not frozen · `gars/` and the first study unchanged by this work
 - The local tier was dropped by the repository owner at gate 2; `local-model/DROPPED.md` is the record
-- Rulings 1–20 in `PROTOCOL.md`
+- Rulings 1–21 in `PROTOCOL.md`
 - `RESIDUAL.md` was written at the slice cap and is kept deliberately, though the cap was lifted (Ruling 7)
 
 ## Carried follow-ups, most valuable first

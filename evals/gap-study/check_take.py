@@ -775,6 +775,13 @@ def fixture_binding_problems(path: Path, half: dict, is_walk: bool = True) -> tu
     # the generator wrote for the bytes of that build.
     got = fx.get("tree_sha256_name_invariant") or fx.get("sha256") or fx.get("fixture_sha256")
     if not got:
+        # REVIEW 17, F2. A missing hash was a note on every kind but `project`, before and after the
+        # freeze, so deleting the fixture block from a take's ledger removed the binding with every
+        # check clean. Once the half's fixture is pinned, its absence is a refusal.
+        if pinned and not is_walk:
+            return [f"[fixture-binding] this take's ledger records no fixture hash, and the half's "
+                    f"fixture is pinned at {pinned[:12]}. A take that cannot be bound to the fixture "
+                    f"it ran against is not graded."], None
         return [], "the driver ledger records no fixture hash, so the fixture binding was not checked"
     if not pinned:
         return [], (f"the fixture binding is unpinned until the freeze (the driver built "

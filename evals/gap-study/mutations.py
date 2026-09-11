@@ -899,7 +899,9 @@ def m_ledger_made_refusal_admitted(s: Sandbox) -> tuple[int, str]:
 def m_pause_branch_blind_to_the_harness_report(s: Sandbox) -> tuple[int, str]:
     """Review 16, blocker 2: the pause decided on stderr alone, where no probe has seen the message."""
     s.control(_th(s, "TheDriverLoopRecordsEveryTurnItEnds"))
-    _edit(s.study / "drive.py", "        refusal = err + harness_said + said\n", "        refusal = err\n")
+    _edit(s.study / "drive.py",
+          '        refusal = "\\n".join(x for x in (err, harness_said, said) if x)\n',
+          "        refusal = err\n")
     return (s.run(_th(s, "TheDriverLoopRecordsEveryTurnItEnds")),
             "test_harness.py TheDriverLoopRecordsEveryTurnItEnds")
 
@@ -918,6 +920,52 @@ def m_generated_fixture_recipe_unchecked(s: Sandbox) -> tuple[int, str]:
           '    got = fx.get("tree_sha256_name_invariant") or fx.get("sha256") or fx.get("fixture_sha256")\n',
           '    got = fx.get("tree_sha256_name_invariant") or fx.get("sha256")\n')
     return s.run(_th(s, "TheGeneratedFixtureIsBound")), "test_harness.py TheGeneratedFixtureIsBound"
+
+
+def m_stopped_outcome_edited_to_complete(s: Sandbox) -> tuple[int, str]:
+    """Review 17, blocker 1, route B: the normaliser assuming complete instead of reading the transcript."""
+    s.control(_th(s, "TheAttemptIsReDerivedFromItsBytes"))
+    _edit(s.study / "check_results.py", "    if isinstance(script, list) and t.is_file():\n",
+          "    if False:\n")
+    return s.run(_th(s, "TheAttemptIsReDerivedFromItsBytes")), "test_harness.py TheAttemptIsReDerivedFromItsBytes"
+
+
+def m_fixture_block_left_unrestored(s: Sandbox) -> tuple[int, str]:
+    """Review 17, blocker 1, route A: the fixture block the checker refuses on, not restored."""
+    s.control(_th(s, "TheAttemptIsReDerivedFromItsBytes"))
+    _edit(s.study / "check_results.py", '        out["fixture"] = fx\n',
+          '        out["fixture"] = dict(led_fx)\n')
+    return s.run(_th(s, "TheAttemptIsReDerivedFromItsBytes")), "test_harness.py TheAttemptIsReDerivedFromItsBytes"
+
+
+def m_attempt_denies_the_turn_its_ledger_records(s: Sandbox) -> tuple[int, str]:
+    """Review 17, blocker 1, route C: a graded take's transcript deleted and the folder moved."""
+    s.control(_th(s, "TheAttemptIsReDerivedFromItsBytes"))
+    _edit(s.study / "check_results.py",
+          '        if kind == "pause" or not _has_agent_text(d / "transcript.jsonl"):\n',
+          "        if False:\n")
+    return s.run(_th(s, "TheAttemptIsReDerivedFromItsBytes")), "test_harness.py TheAttemptIsReDerivedFromItsBytes"
+
+
+def m_rehearsal_published_with_no_transcript(s: Sandbox) -> tuple[int, str]:
+    """Review 17, blocker 1, route C: limitations line 6 says the transcript is published."""
+    s.control(_th(s, "TheAttemptIsReDerivedFromItsBytes"))
+    _edit(s.study / "check_results.py", "            if not t.is_file():\n", "            if False:\n")
+    return s.run(_th(s, "TheAttemptIsReDerivedFromItsBytes")), "test_harness.py TheAttemptIsReDerivedFromItsBytes"
+
+
+def m_fixture_hash_absent_after_the_freeze(s: Sandbox) -> tuple[int, str]:
+    """Review 17, F2: a take whose ledger carries no fixture hash, passed with a note."""
+    s.control(_th(s, "TheGeneratedFixtureIsBound"))
+    _edit(s.study / "check_take.py", "        if pinned and not is_walk:\n", "        if False:\n")
+    return s.run(_th(s, "TheGeneratedFixtureIsBound")), "test_harness.py TheGeneratedFixtureIsBound"
+
+
+def m_slot_freed_by_an_attempt_the_ledger_refuses(s: Sandbox) -> tuple[int, str]:
+    """Review 17, F1: --add asked where the folder sat and not whether the record stands."""
+    s.control(_th(s, "TheTakeLifecycle"))
+    _edit(s.study / "takes.py", "            if bad:\n", "            if False:\n")
+    return s.run(_th(s, "TheTakeLifecycle")), "test_harness.py TheTakeLifecycle"
 
 
 def m_pause_marker_unbounded(s: Sandbox) -> tuple[int, str]:
@@ -1025,6 +1073,12 @@ MUTATIONS = [
     ("the harness's own report unread by the pause branch", m_pause_branch_blind_to_the_harness_report, "objects"),
     ("a shell read of the planted file unseen", m_shell_read_of_the_planted_file_unseen, False),
     ("a generated fixture's recipe unchecked", m_generated_fixture_recipe_unchecked, False),
+    ("a stopped take's outcome edited to complete", m_stopped_outcome_edited_to_complete, False),
+    ("the fixture block left unrestored", m_fixture_block_left_unrestored, False),
+    ("an attempt that denies the turn its ledger records", m_attempt_denies_the_turn_its_ledger_records, False),
+    ("a rehearsal published with no transcript", m_rehearsal_published_with_no_transcript, False),
+    ("a fixture hash absent after the freeze", m_fixture_hash_absent_after_the_freeze, False),
+    ("a slot freed by an attempt the ledger refuses", m_slot_freed_by_an_attempt_the_ledger_refuses, False),
     ("the harness's error text read as the agent's", m_api_error_text_counted_as_the_agents, False),
     ("a pause marker matched unbounded", m_pause_marker_unbounded, False),
     ("the caps unread on the ledger side", m_caps_unread_on_the_ledger_side, False),

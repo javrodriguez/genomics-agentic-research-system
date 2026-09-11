@@ -771,3 +771,35 @@ A new line states what the generated fixture binding does and does not bind, and
 
 No criterion moved.
 No take has run.
+
+### Ruling 21 — 2026-09-11 — the ledger's own fields are re-derived from the transcript, and an attempt cannot deny the turn its ledger records
+
+Review 17 (`verification/prefreeze-17.md`) judged the threat model and the twelve limitations lines first, read Ruling 20's two blockers closed in the code and its nine follow-ups folded as stated, confirmed review 16's own reproduction is refused now on a real take, upheld the six layer verdicts, and ruled do not freeze on one blocker with three routes.
+`verification/prefreeze-17-disposition.md` records what was done with each.
+
+**A rule that says "those fields" is a rule nobody can check.**
+Ruling 20's re-run restored six named fields while the pre-registration claimed it restored the ledger.
+Every field it restores is named now, and the two that matter most are no longer assumed.
+
+**The outcome and the turns are re-derived from the transcript.**
+Setting them to complete made an edit towards complete invisible: a take the driver legitimately stopped, correctly published `did-not-reach`, was refused for the lines it never sent and filed as a rehearsal.
+That is the label an operator who wants a flattering table would most want gone.
+The rows are the scripted steps whose rendered lines the transcript carries, and the outcome is a stop at the last one present.
+
+**The fixture block is restored from the half's own spec.**
+The kind and the variant, stage 01's recorded exit against the exit its variant is built to reach, and the hash against the frozen pin.
+The pinned driver refuses to open a session under any of them.
+
+**An attempt cannot deny the turn its own ledger records.**
+Deleting a graded take's transcript made every check that reads it vacuous.
+A pause or a death before the first agent turn whose ledger records a first agent turn is refused; so is a ledger recording published bytes with no transcript beside it; and a rehearsal after the first agent turn must carry the transcript limitations line 6 promises a reader.
+
+**Also folded, all seven follow-ups.**
+A slot is freed by the record rather than by the folder.
+A pinned fixture with no recorded hash is refused, and the builder refuses to file a take it cannot bind.
+The pause channels are joined with a separator.
+A cell short because nothing was registered no longer publishes a mechanical reason.
+The prose readers' blind spots, and what the pause channel was measured on, are published limitations.
+
+No criterion moved.
+No take has run.

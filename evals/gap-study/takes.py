@@ -220,8 +220,36 @@ def cmd_add(args) -> int:
     def outcome(i: int) -> str | None:
         return attempt_kind(i, commits, by_sid)
 
+    def freeing_problems(i: int) -> list[str]:
+        """REVIEW 17, F1. A rehearsal or a pause frees a slot, and --add asked only where the folder
+        sat. So an attempt that `--ledger` refuses still freed its slot, and the retake would be
+        driven before anything said no. The same check that guards publication guards the retake."""
+        import contextlib
+        import io
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gap_check_results_for_takes",
+                                                      HERE / "check_results.py")
+        cr = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cr)
+        hits = by_sid.get(session_id_for(commits[i]), []) if commits.get(i) else []
+        if not hits:
+            return []
+        kind, d = hits[0]
+        with contextlib.redirect_stdout(io.StringIO()):
+            return cr.attempt_problems(kind, d, i, rows[i], cr._check_take())
+
     slot = [i for i, r in enumerate(rows) if (r["task"], r["half"], r["model"], r["take"])
             == (args.task, args.half, args.model, args.take)]
+    for i in slot:
+        if outcome(i) in ("rehearsal", "pause"):
+            bad = freeing_problems(i)
+            if bad:
+                print(f"row {i}'s attempt freed this slot and the ledger check refuses it:")
+                for b in bad:
+                    print(f"  - {b}")
+                print("A slot is registered again only behind an attempt that stands on its own "
+                      "bytes. Fix the record, not the folder.")
+                return 2
     live = [i for i in slot if outcome(i) not in ("rehearsal", "pause")]
     if live:
         state = "was graded" if outcome(live[0]) == "graded" else "has not been attempted"
