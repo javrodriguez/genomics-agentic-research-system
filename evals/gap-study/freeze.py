@@ -79,6 +79,7 @@ PINNED = [
     "evals/gap-study/mutations.py",
     "evals/gap-study/controls/run_controls.py",
     "evals/gap-study/smoke_run_tree.py",
+    "evals/gap-study/scrub.py",
     # the excusals. Unpinned, anything could be excused after the freeze and the guard would still
     # report clean.
     "evals/gap-study/language-allowlist.json",

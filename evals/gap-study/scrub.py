@@ -24,9 +24,11 @@ WHAT IT GUARANTEES, READ FROM THE BYTES IT WOULD WRITE RATHER THAN INTENDED:
   the address itself appears nowhere in the written bytes
   scrub.json beside the transcript records the sha256 before and after, and what was removed
 
-WHERE IT APPLIES. The walks and the checkout smokes. Whether a GRADED TAKE's published transcript may
-carry this redaction is the repository owner's decision, because the pre-registration's rule for a
-take is that its transcript is the session file copied verbatim. This file does not decide that.
+WHERE IT APPLIES. Every transcript this study publishes: walks, checkout smokes and graded takes. For
+a take this was the repository owner's decision, because the rule had been that a take's transcript
+is the session file copied verbatim; on 11 September 2026 they ruled that this one field is removed
+and the removal disclosed (PROTOCOL.md, Ruling 10). drive.py calls scrub_text() at copy time, so the
+raw session file never enters this repository.
 
 No model is called. stdlib only.
 """
@@ -104,7 +106,24 @@ def scrub_text(raw: str) -> tuple[str, list[str]]:
 
 
 def sha256(text: str) -> str:
-    return hashlib.sha256(text.encode()).hexdigest()
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def write_published(dest: Path, raw: str, body: str, removed: list[str]) -> dict:
+    """Write the published transcript and the record of what was removed from it, beside it.
+
+    Written as bytes, so no platform rewrites the line endings: the record's sha256_after has to be
+    the sha256 of exactly the file a stranger downloads.
+    """
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(body.encode("utf-8"))
+    record = {"transcript": dest.name, "sha256_before": sha256(raw), "sha256_after": sha256(body),
+              "removed": removed, "records_a_grader_reads": "identical before and after",
+              "why": "Claude Code injects the signed-in account's email address into every session; "
+                     "it is the operator's personal address and says nothing about the agent. See "
+                     "scrub.py and PROTOCOL.md, Ruling 10."}
+    (dest.parent / "scrub.json").write_bytes((json.dumps(record, indent=2) + "\n").encode("utf-8"))
+    return record
 
 
 def main() -> int:
@@ -115,19 +134,13 @@ def main() -> int:
 
     for t in args.transcripts:
         path = Path(t)
-        raw = path.read_text(errors="strict")
+        raw = path.read_bytes().decode("utf-8")
         body, removed = scrub_text(raw)
         if not removed:
             print(f"  nothing to remove  {path}")
             continue
-        record = {"transcript": path.name, "sha256_before": sha256(raw), "sha256_after": sha256(body),
-                  "removed": removed, "records_a_grader_reads": "identical before and after",
-                  "why": "Claude Code injects the signed-in account's email address into every "
-                         "session; it is the operator's personal address and says nothing about "
-                         "the agent. See scrub.py."}
         if args.write:
-            path.write_text(body)
-            (path.parent / "scrub.json").write_text(json.dumps(record, indent=2) + "\n")
+            write_published(path, raw, body, removed)
         print(f"  {'removed' if args.write else 'would remove'} {len(removed)}  {path}")
     return 0
 

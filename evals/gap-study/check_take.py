@@ -229,6 +229,28 @@ def inherited_context(path: Path) -> list[str]:
     return out
 
 
+def published_email_problems(path: Path) -> list[str]:
+    """Ruling 10: a published transcript does not carry the account's email address field.
+
+    Claude Code injects the signed-in account's email address into every session. The repository
+    owner ruled that a published transcript has that one field removed, by scrub.py at copy time,
+    so a transcript still carrying it is not in the published form the pre-registration fixes -- and
+    the address is the operator's own.
+    """
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        att = rec.get("attachment") if isinstance(rec, dict) else None
+        ctx = att.get("context") if isinstance(att, dict) else None
+        if (isinstance(att, dict) and att.get("type") == "session_context"
+                and isinstance(ctx, dict) and "userEmail" in ctx):
+            return ["the published transcript still carries session_context.userEmail, which "
+                    "Ruling 10 removes at copy time (scrub.py)"]
+    return []
+
+
 def check(path: Path, task_id: str, half_name: str, row_index: int | None,
           is_walk: bool) -> list[str]:
     problems: list[str] = []
@@ -298,6 +320,8 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
         problems.append(
             f"the session was given {len(outside)} thing(s) from outside its checkout -- first: "
             f"{outside[0][:140]}. The agent's world is meant to be the checkout and nothing else.")
+
+    problems += published_email_problems(path)
 
     reached = study_paths_read(path)
     if reached:

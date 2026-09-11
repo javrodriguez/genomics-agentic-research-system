@@ -318,6 +318,31 @@ def m_study_names_dropped_from_the_leak_list(s: Sandbox) -> tuple[int, str]:
             "test_harness.py TheLeakCheckReadsEveryChannel")
 
 
+def m_published_walk_carries_the_email(s: Sandbox) -> tuple[int, str]:
+    """Ruling 10: a published transcript that still carries the account's email address field."""
+    p = s.study / "walks" / "number-fidelity" / "2" / "transcript.jsonl"
+    out, applied = [], False
+    for line in p.read_text(encoding="utf-8").splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            out.append(line)
+            continue
+        att = rec.get("attachment") if isinstance(rec, dict) else None
+        if isinstance(att, dict) and att.get("type") == "session_context":
+            att.setdefault("context", {})["userEmail"] = "The user's email address is someone@example.com."
+            out.append(json.dumps(rec, ensure_ascii=False))
+            applied = True
+        else:
+            out.append(line)
+    if not applied:
+        raise RuntimeError("the mutation did not apply; the guard was not exercised")
+    p.write_bytes(("\n".join(out) + "\n").encode("utf-8"))
+    return (s.run([str(s.study / "check_take.py"), str(p), "--task", "number-fidelity",
+                   "--half", "control", "--walk"]),
+            "check_take.py on a published walk carrying the email field")
+
+
 MUTATIONS = [
     ("an edited contract quote", m_edited_contract_quote, True),
     ("an emptied quote table", m_emptied_quote_table, True),
@@ -337,6 +362,7 @@ MUTATIONS = [
     ("a checkout that keeps what it excludes", m_run_tree_keeps_what_it_excludes, False),
     ("a checkout named for the study", m_run_tree_named_for_the_study, False),
     ("the study's names dropped from the leak list", m_study_names_dropped_from_the_leak_list, False),
+    ("a published walk carrying the email field", m_published_walk_carries_the_email, False),
 ]
 
 NOT_APPLICABLE = [

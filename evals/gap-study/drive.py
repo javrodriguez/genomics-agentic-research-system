@@ -77,6 +77,7 @@ sys.path.insert(0, str(HERE))
 
 import prereg  # noqa: E402
 import takes as takes_mod  # noqa: E402
+import scrub as scrub_mod  # noqa: E402
 
 PERMISSION_MODE = "auto"
 RATE_LIMIT_MARKERS = ("rate limit", "usage limit", "weekly limit", "resets", "429")
@@ -117,6 +118,24 @@ def session_file(session_id: str) -> Path | None:
     if len(hits) > 1:
         raise SystemExit(f"REFUSING: {len(hits)} session files carry the id {session_id}: {hits}")
     return hits[0] if hits else None
+
+
+def publish_transcript(src: Path, out_root: Path) -> dict:
+    """Copy the session file into the study, with the one removal the repository owner ruled.
+
+    A transcript is the session file Claude Code wrote, with exactly one field removed:
+    `session_context.userEmail`, the signed-in account's email address, which Claude Code injects
+    into every session and no documented setting turns off. The repository owner ruled this on
+    11 September 2026 (PROTOCOL.md, Ruling 10), for walks and graded takes alike.
+
+    scrub.py removes the field, refuses if any record a grader reads would change, and refuses if the
+    address survives anywhere in the bytes. scrub.json beside the transcript records the sha256
+    before and after, so the removal is stated rather than silent. The raw session file stays where
+    Claude Code wrote it and never enters this repository.
+    """
+    raw = src.read_bytes().decode("utf-8")
+    body, removed = scrub_mod.scrub_text(raw)
+    return scrub_mod.write_published(out_root / "transcript.jsonl", raw, body, removed)
 
 
 def neutral_name(session_id: str) -> str:
@@ -626,7 +645,7 @@ def main() -> int:
     ledger["finished"] = now()
     out_root.mkdir(parents=True, exist_ok=True)
     if src is not None:
-        shutil.copy2(src, out_root / "transcript.jsonl")
+        ledger["published"] = publish_transcript(src, out_root)
         ledger["transcript"] = str((out_root / "transcript.jsonl").relative_to(REPO))
     else:
         ledger["transcript"] = None

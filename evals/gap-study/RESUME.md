@@ -16,10 +16,8 @@ Both were proven on real sessions — four smokes under `verification/run-tree-s
 
 ## The next moves, in order
 
-1. **The repository owner's word on the take transcripts' email field.**
-   Claude Code injects the signed-in account's email address into every session, with no documented switch.
-   The walks and smokes are published with that one field removed by `scrub.py`.
-   A take's transcript is pre-registered as the session file copied verbatim, so whether takes get the same removal is the owner's decision, and the pre-registration must say which before it is frozen.
+1. **Ruled — Ruling 10.** The repository owner ruled on 11 September 2026 that published transcripts have the injected account email removed and the removal disclosed.
+   `drive.py` removes it at copy time for walks and takes alike, and `transcript_publication` in the pre-registration states the rule.
 2. **The carried follow-ups that touch pinned bytes**, folded before the next review reads them (below).
 3. **Review 12** as `verification/prefreeze-12.md`, then the freeze: `freeze.py --review-commit <sha> --write`.
 4. Then, and only then, the 108 takes.
@@ -29,7 +27,7 @@ Both were proven on real sessions — four smokes under `verification/run-tree-s
 - 6 task pairs · 9 walks (8 driven under the leak and refused by the checker as it now stands, 1 clean) · 122 hand-labelled cases · 66 tests · 18 mutations · 11 reviews · 4 smokes
 - 0 takes graded · not frozen · `gars/` and the first study unchanged by this work
 - The local tier was dropped by the repository owner at gate 2; `local-model/DROPPED.md` is the record
-- Rulings 1–9 in `PROTOCOL.md`
+- Rulings 1–10 in `PROTOCOL.md`
 - `RESIDUAL.md` was written at the slice cap and is kept deliberately, though the cap was lifted (Ruling 7)
 
 ## Carried follow-ups, most valuable first

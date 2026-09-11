@@ -872,6 +872,82 @@ class TheAgentRunsWhereNothingIsInherited(unittest.TestCase):
                          "an operator line is rendering a path relative to this repository")
 
 
+class TheTranscriptIsPublishedAsRuled(unittest.TestCase):
+    """Ruling 10. A transcript is the session file with one field removed, and says so beside itself."""
+
+    def _drive(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gap_drive_publish", HERE / "drive.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    @staticmethod
+    def _published_files(name: str) -> list[Path]:
+        return (sorted(HERE.glob(f"walks/*/*/{name}"))
+                + sorted(HERE.glob(f"verification/run-tree-smoke/*/{name}"))
+                + sorted(HERE.glob(f"transcripts/**/{name}")))
+
+    def test_publishing_removes_the_email_and_nothing_a_grader_reads(self):
+        import hashlib
+        import tempfile
+        drive = self._drive()
+        sentence = "The user's email address is someone@example.com. Use it only to identify the user."
+        records = [
+            {"type": "attachment", "attachment": {"type": "session_context",
+                                                  "context": {"userEmail": sentence,
+                                                              "gitStatus": "Status:"}},
+             "rendered": [{"content": sentence}]},
+            {"type": "user", "message": {"role": "user", "content": "Start a project"}},
+            {"type": "assistant", "message": {"role": "assistant",
+                                              "content": [{"type": "text", "text": "Done."}]}},
+        ]
+        with tempfile.TemporaryDirectory() as td:
+            src = Path(td) / "session.jsonl"
+            src.write_bytes(("\n".join(json.dumps(r) for r in records) + "\n").encode("utf-8"))
+            out = Path(td) / "published"
+            record = drive.publish_transcript(src, out)
+            body = (out / "transcript.jsonl").read_bytes()
+            self.assertNotIn(b"someone@example.com", body, "the address survived publication")
+            self.assertEqual(["session_context.userEmail"], record["removed"])
+            self.assertEqual(hashlib.sha256(body).hexdigest(),
+                             json.loads((out / "scrub.json").read_text())["sha256_after"],
+                             "the scrub record does not describe the bytes it sits beside")
+
+            def graded(raw: bytes) -> list[str]:
+                return [ln for ln in raw.decode("utf-8").splitlines()
+                        if json.loads(ln).get("type") in ("user", "assistant")]
+            self.assertEqual(graded(src.read_bytes()), graded(body),
+                             "publication changed a record a grader reads")
+            self.assertIn(b"someone@example.com", src.read_bytes(),
+                          "the session file itself must be left where Claude Code wrote it")
+
+    def test_every_scrub_record_describes_the_transcript_beside_it(self):
+        import hashlib
+        records = self._published_files("scrub.json")
+        self.assertTrue(records, "no scrub record was read; this test measured nothing")
+        for r in records:
+            t = r.parent / "transcript.jsonl"
+            self.assertTrue(t.is_file(), f"{r} describes no transcript")
+            self.assertEqual(hashlib.sha256(t.read_bytes()).hexdigest(),
+                             json.loads(r.read_text())["sha256_after"],
+                             f"{r.parent} : the scrub record describes different bytes")
+
+    def test_no_published_transcript_carries_the_email_field(self):
+        check_take = gap_check_take()
+        files = self._published_files("transcript.jsonl")
+        self.assertTrue(files, "no published transcript was read; this test measured nothing")
+        for f in files:
+            self.assertEqual([], check_take.published_email_problems(f), f"{f.parent}")
+
+    def test_a_walk_driven_in_a_built_checkout_has_a_scrub_record(self):
+        ledgers = [p for p in sorted(HERE.glob("walks/*/*/driver-ledger.json"))
+                   if "run_tree_built_from" in json.loads(p.read_text())]
+        self.assertTrue(ledgers, "no walk was driven in a built checkout; this test measured nothing")
+        for p in ledgers:
+            self.assertTrue((p.parent / "scrub.json").is_file(), f"{p.parent} has no scrub record")
+
+
 class TheRunTreeCarriesNothing(unittest.TestCase):
     """Review 11, blockers 1 to 3 and follow-ups 5 and 7, read through git rather than asserted.
 
