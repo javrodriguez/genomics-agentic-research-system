@@ -188,10 +188,21 @@ def study_paths_read(path: Path) -> list[str]:
             rec = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if not isinstance(rec, dict) or rec.get("type") not in ("user", "assistant"):
+        if not isinstance(rec, dict):
             continue
-        for m in re.finditer(r"evals/(?:gap-study|transcripts|results|prereg)", line):
-            seen.append(line[max(0, m.start() - 40):m.start() + 40])
+        # REVIEW 13, F1. What a tool was asked to open, and what a tool returned; never the agent's prose,
+        # where merely naming a path would void its own take.
+        content = (rec.get("message") or {}).get("content")
+        blobs: list[str] = []
+        if rec.get("type") == "assistant" and isinstance(content, list):
+            blobs += [json.dumps(x.get("input") or {}) for x in content
+                      if isinstance(x, dict) and x.get("type") == "tool_use"]
+        elif rec.get("type") == "user" and isinstance(content, list):
+            blobs += [json.dumps(x.get("content")) for x in content
+                      if isinstance(x, dict) and x.get("type") == "tool_result"]
+        for s in blobs:
+            for m in re.finditer(r"evals/(?:gap-study|transcripts|results|prereg)", s):
+                seen.append(s[max(0, m.start() - 40):m.start() + 40])
     return seen
 
 
@@ -306,6 +317,8 @@ def model_problems(path: Path, expected: str) -> list[str]:
         except json.JSONDecodeError:
             continue
         if isinstance(rec, dict) and rec.get("type") == "assistant":
+            if rec.get("isApiErrorMessage") is True:
+                continue
             m = (rec.get("message") or {}).get("model")
             seen[m] = seen.get(m, 0) + 1
     others_seen = sorted(str(m) for m in seen if m != expected)
@@ -314,6 +327,30 @@ def model_problems(path: Path, expected: str) -> list[str]:
                 f"attempt is registered to {expected!r}. The counts are published per model, so a "
                 f"session on another model is not this cell's take."]
     return []
+
+
+def agent_turn_count(path: Path) -> int:
+    """Assistant records with text that the model wrote (review 13, F1).
+
+    The harness writes an assistant-role record of its own when it reports an API error: model
+    `<synthetic>`, `isApiErrorMessage: true` (verification/api-error-probe.txt). It is not the model
+    speaking, so it neither binds a model nor counts as the agent's first turn.
+    """
+    n = 0
+    for line in path.read_text(errors="replace").splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(rec, dict) or rec.get("type") != "assistant" or rec.get("isApiErrorMessage") is True:
+            continue
+        content = (rec.get("message") or {}).get("content")
+        if isinstance(content, list) and any(isinstance(b, dict) and b.get("type") == "text" and (b.get("text") or "").strip()
+                                             for b in content):
+            n += 1
+        elif isinstance(content, str) and content.strip():
+            n += 1
+    return n
 
 
 def constant_problems(ledger: dict | None, pre: dict) -> list[str]:
@@ -331,6 +368,11 @@ def constant_problems(ledger: dict | None, pre: dict) -> list[str]:
     if ledger.get("permission_mode") != want_mode:
         out.append(f"[constant-binding] the take ran in permission mode {ledger.get('permission_mode')!r}, "
                    f"not the pre-registered {want_mode!r}")
+    # REVIEW 13, F3. The checkout is exported from HEAD; a take is bound to the gars tree the study froze.
+    want_tree = pre["system_under_test"]["gars_tree_sha"]
+    if ledger.get("gars_tree_sha") != want_tree:
+        out.append(f"[constant-binding] the take ran against gars tree {str(ledger.get('gars_tree_sha'))[:12]}, "
+                   f"and the pre-registration pins {want_tree[:12]}: a different system under test")
     return out
 
 
@@ -356,6 +398,17 @@ def memory_section_offered(path: Path) -> bool:
         if isinstance(att, dict) and att.get("type") == "prompt_snapshot":
             return True  # the harness offered its auto-memory
     return False
+
+
+def prompt_snapshot_present(path: Path) -> bool:
+    """Whether the session recorded its system prompt at all (review 13, F5).
+
+    memory_section_offered() reads one phrase in one record type, read at harness 2.1.267. If the
+    harness stopped writing that record, the check would pass having read nothing, so a take must
+    carry one.
+    """
+    snapshot_found = any('"prompt_snapshot"' in line for line in path.read_text(errors="replace").splitlines())
+    return snapshot_found
 
 
 def user_text_records(path: Path, pre: dict) -> tuple[list[str], list[str], list[str]]:
@@ -511,6 +564,63 @@ def operator_line_problems(ops: list[str], steps: list[dict], expected_project: 
     return problems
 
 
+def continuation_problems(turns: list[dict], steps: list[dict], harness: list[str], project: str,
+                          source: str) -> list[str]:
+    """Every line the operator sent after a wait point, proven against the reply before it (review 13, blocker 2).
+
+    Ruling 12 proved a stop: a take the driver stopped at an unheld marker must show the marker absent.
+    Nothing proved a continuation, so a take driven past an unheld marker -- which the frozen file labels
+    `did-not-reach` -- passed as complete with its probe answer graded, on the driver's word that each
+    marker held. Now, for each step with a marker that is followed by a further line, the marker must be in
+    the agent's text between that step's line and the next; where a recovery was sent, the recovery's own
+    marker must be in the reply before it, the step's marker absent there, and the step's marker in the
+    reply after it. These are what `stopped_take_rule` and the recovery rule say happened.
+    """
+    ops = [(i, normalise(x["text"])) for i, x in enumerate(turns)
+           if x["role"] == "user" and x["text"].strip() and x["text"] not in harness]
+
+    def text_between(a: int, b: int) -> str:
+        return "\n".join(x["text"] for x in turns[a + 1:b] if x["role"] == "assistant" and x["text"])
+
+    positions = []
+    k = 0
+    for s in steps:
+        want = normalise(render(s["line"], project, source))
+        while k < len(ops) and ops[k][1] != want:
+            k += 1
+        if k >= len(ops):
+            break
+        line_pos = ops[k][0]
+        k += 1
+        rec_pos = None
+        rec = s.get("recovery")
+        if rec and k < len(ops) and ops[k][1] == normalise(render(rec["send"], project, source)):
+            rec_pos = ops[k][0]
+            k += 1
+        positions.append((s, line_pos, rec_pos))
+
+    out: list[str] = []
+    for idx, (s, line_pos, rec_pos) in enumerate(positions[:-1]):
+        marker = s.get("marker")
+        nxt = positions[idx + 1][1]
+        if rec_pos is not None:
+            before, after = text_between(line_pos, rec_pos), text_between(rec_pos, nxt)
+            if s["recovery"]["if_reply_holds"] not in before:
+                out.append(f"[continued-past-unheld-marker] operator turn {s['n']}'s recovery was sent, and the "
+                           f"reply before it does not hold {s['recovery']['if_reply_holds']!r}")
+            if marker and marker in before:
+                out.append(f"[continued-past-unheld-marker] operator turn {s['n']}'s recovery was sent after a "
+                           f"reply that already held the step's marker")
+            if marker and marker not in after:
+                out.append(f"[continued-past-unheld-marker] operator turn {positions[idx + 1][0]['n']} was sent, "
+                           f"and no reply to turn {s['n']} holds its marker {marker!r}")
+        elif marker and marker not in text_between(line_pos, nxt):
+            out.append(f"[continued-past-unheld-marker] operator turn {positions[idx + 1][0]['n']} was sent, and "
+                       f"the reply to turn {s['n']} does not hold its marker {marker!r}; the frozen file labels "
+                       f"that take did-not-reach")
+    return out
+
+
 def fixture_binding_problems(path: Path, half: dict, is_walk: bool = True) -> tuple[list[str], str | None]:
     """The fixture the driver built, from its ledger beside the transcript, against this half's spec.
 
@@ -582,7 +692,7 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
         print(f"  NOTE     {len(harness)} user record(s) delivered by the harness, not the operator; "
               f"not counted as operator lines")
 
-    if not any(t["role"] == "assistant" and t["text"].strip() for t in turns):
+    if agent_turn_count(path) == 0:
         problems.append("[no-first-agent-turn] " + 
             "no agent turn produced text. Without a first agent turn this is a rehearsal by "
             "definition, not a take that happened to go badly.")
@@ -604,7 +714,10 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
     expected_source = expected_source_for(half, expected_project)
     required, stop_problems = required_steps(steps, path, turns, is_walk, expected_project, expected_source)
     problems += stop_problems
-    problems += operator_line_problems(ops, required, expected_project, expected_source)
+    line_problems = operator_line_problems(ops, required, expected_project, expected_source)
+    problems += line_problems
+    if not line_problems:
+        problems += continuation_problems(turns, required, harness, expected_project, expected_source)
 
     # ---- the fixture ---------------------------------------------------------------------
     fx_problems, fx_note = fixture_binding_problems(path, half, is_walk)
@@ -719,6 +832,9 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
 
     problems += model_problems(path, row["model"])
     problems += constant_problems(ledger, pre)
+    if not prompt_snapshot_present(path):
+        problems.append("[inherited-context] the session recorded no system-prompt snapshot, so whether the "
+                        "harness offered its memory folder could not be read")
     if memory_section_offered(path):
         problems.append("[inherited-context] the session was offered the harness's persistent memory folder "
                         "outside its checkout; takes run with CLAUDE_CODE_DISABLE_AUTO_MEMORY=1")

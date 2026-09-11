@@ -1,0 +1,4 @@
+api-error probe, 11 September 2026: a one-turn headless session on a model id that does not exist, the driver's flags
+exit 1 | stdout head {"duration_api_ms":0,"stop_reason":"stop_sequence","session_id":"22f16430-89c4-4652-a6c4-b6a4700aa5c8","total_cost_usd":0,"usage":{"output_tokens_details":{"thi
+session files: 1
+assistant record: model '<synthetic>' | blocks ['text'] | error-ish top-level keys {'error': 'model_not_found', 'isApiErrorMessage': True, 'apiErrorStatus': 404}

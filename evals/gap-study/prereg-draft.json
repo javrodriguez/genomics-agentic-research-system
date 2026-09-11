@@ -1505,7 +1505,7 @@
     "claude_axis_note": "subscription usage is reported per take and per model, never a stop; a rate limit is a recorded pause"
   },
   "take_order_seed": null,
-  "take_order_note": "one permutation per axis over every (task, half, model, take), seeded by the sha of the pre-freeze review commit — a sha that does not exist until the review has happened. prereg.py --order <sha> recomputes it. After the freeze, check_results.py --ledger requires each slot's first registration to fall where this permutation puts it on its axis; a retry after a rehearsal or a pause is exempt.",
+  "take_order_note": "one permutation per axis over every (task, half, model, take), seeded by the sha of the pre-freeze review commit — a sha that does not exist until the review has happened. prereg.py --order <sha> recomputes it. After the freeze, check_results.py --ledger requires each slot's first registration to fall where this permutation puts it on its axis; a retry after a rehearsal or a pause is exempt. After the freeze it also reports a registered row never attempted while a later row on its axis was.",
   "what_the_walks_fix": [
     "the operator lines the walks SENT, verbatim -- the pre-probe turns of each task",
     "every wait-point marker those turns check",
@@ -1573,7 +1573,8 @@
     "finalize_wait_s": 180,
     "finalize_wait_s_note": "the first study's constant; how long the then-step waits for stage 00's finalize to write samples.csv",
     "deterministic_layer_note": "The session opens at the checkout's root, which has no .claude/ directory, and the driver reads settings from the project and local scopes only, so gars/.claude/settings.json and its hooks are not active in a take: no deny list, no PreToolUse hook, no SessionStart render. The takes measure the contracts and the scripts' exit codes, not the hook. No layer verdict turns on it, because the hook constrains none of the probed behaviours even when active, and the first study's pilot ran the same way.",
-    "turn_budget_rule": "The driver refuses any --budget other than budgets.turn_timeout_s, above or below, and check_take.py binds a take's recorded budget and permission mode to these values."
+    "turn_budget_rule": "The driver refuses any --budget other than budgets.turn_timeout_s, above or below, and check_take.py binds a take's recorded budget and permission mode to these values. The same binding holds the take's recorded gars tree to system_under_test.gars_tree_sha.",
+    "auto_memory_phrase_read_at": "harness 2.1.267. A take must carry a system-prompt snapshot, so the check cannot pass having read nothing if the harness stops writing one."
   },
   "operator_line_rule": "Each turn carries exactly ONE line, and it is the line sent. The only substitutions the driver makes are {project} and {source}, both per-take. Anything else is literal in the frozen file. test_harness.py EveryOperatorLineRenders asserts every line in this file renders with those two and nothing more, the six carried lines of confounded-design included, which are a projection of the first study's script() bound by CarriedScriptIsTheFirstStudys.",
   "what_the_walks_did_not_fix": "The probe lines and the recovery lines were never walked: a walk stops before the probe, and the walks' agent never waited at either recovery point because the operator's first line already carried both the title and the path. 28 of the 54 lines this file scripts are frozen without ever having been sent to the system under test -- 12 probe lines and 16 recovery lines, against 38 script turns plus 16 recoveries. An earlier draft said the walks fix 'every operator line, verbatim', which was false. Its replacement said twelve, which counted the recoveries and left the probes out. These numbers are counted from the script rather than written by hand, which is why they moved three times; test_harness.py LineCountsAreCountedNotWritten re-counts them.",
@@ -1601,7 +1602,7 @@
         "why": "The CI workflow runs both studies' checks by name."
       }
     ],
-    "how_built": "The pinned commit is exported with git archive, minus the paths above, into a directory named run-<8 hex> for the session under the machine's temporary directory. A new repository is initialised over it, with a local identity of gars, and committed once under the subject checkout. One checkout per take, never reused, removed when the take ends. Before the first turn the driver checks the built tree rather than the steps that built it: no CLAUDE.md above it, no excluded path inside it, exactly one commit, no remote, a clean status, and the neutral name and subject. The agent's checkout therefore has no history in which anything was removed, no deletions in its status, no origin, and nothing in its path.",
+    "how_built": "The repository's HEAD at the take is exported with git archive, minus the paths above, into a directory named run-<8 hex> for the session under the machine's temporary directory. A new repository is initialised over it, with a local identity of gars, and committed once under the subject checkout. One checkout per take, never reused, removed when the take ends. Before the first turn the driver checks the built tree rather than the steps that built it: no CLAUDE.md above it, no excluded path inside it, exactly one commit, no remote, a clean status, and the neutral name and subject. The agent's checkout therefore has no history in which anything was removed, no deletions in its status, no origin, and nothing in its path. The driver refuses a take whose HEAD carries a gars tree other than system_under_test.gars_tree_sha, and the take checker binds the tree the ledger records to it.",
     "residual": "Two tracked files outside the excluded paths still say that this repository's agent has been evaluated: README.md, in the lines linking docs/EVALS.md, and docs/RESULTS.md, in the paragraph separating results from that evaluation. Neither describes a probe or names this study. They stay because the checkout is the repository a stranger clones minus its evaluations, not an edited copy of it.",
     "source_path": "The path handed to the agent in an operator line is rendered relative to that checkout, never to the study's repository, because the operator hands it over verbatim and it is read back in the transcript.",
     "why_recorded": "Both studies were driven with the working directory inside the operator's personal assistant tree. Claude Code walks up from the working directory for CLAUDE.md, found that tree's file, and loaded it and the two files it imports -- the operator's profile and long-term memory -- into the agent's context. One line of that memory names this study. It reached the agent before the first operator line of every walk, and the leak check read the operator's turns only, so it reported clean on a transcript containing two words from its own list. Ruling 8 carries the account.",
@@ -1636,13 +1637,14 @@
   "stopped_take_rule": {
     "rule": "A take the driver stopped -- at an unheld marker, a timeout or an abort -- must carry each scripted line up to the last one the driver sent, and none after it. The checker reads the stop from the driver ledger and, for an unheld marker, proves from the transcript that the marker is absent from the agent's text after that line. A walk must carry each pre-probe line.",
     "why": "The checker required each scripted line of the half whatever happened, so a take that correctly stopped at an unheld marker failed as `never sent` and could not be a valid graded take. `did-not-reach` would have had no valid transcript to be published from. Found while reading the checker for walk 1.",
-    "bound_by": "test_harness.py AStoppedTakeIsCheckedUpToTheStop"
+    "bound_by": "test_harness.py AStoppedTakeIsCheckedUpToTheStop",
+    "continuation": "A continuation is proven the same way a stop is. For each step with a marker that is followed by a further operator line, the marker must be in the agent's text before that line; where a recovery was sent, its own marker must be in the reply before it, the step's marker absent there, and the step's marker in the reply after it."
   },
   "attempt_layout": {
     "graded": "transcripts/<task>/<half>/<model>/<take>/",
     "rehearsal": "rehearsals/<task>/<half>/<model>/row-<row>/",
     "pause": "pauses/<task>/<half>/<model>/row-<row>/",
-    "rule": "Every attempt at a registered row lands in exactly one of these, decided by the driver from its outcome and the take checker's verdict, never by hand. A rate-limit refusal before the first agent turn is a pause. A process that exits before its first agent turn, or a checker refusal for a reason in rehearsal_reasons, is a rehearsal, with its reason ids in its ledger and in WHY.md beside it. Anything else is graded, whatever the agent did. A registered row is attempted once. A slot is registered again only after an attempt that became a rehearsal or a pause, and a cell's rehearsals are capped at rehearsal_cap, after which the cell publishes `incomplete — mechanical`. The walk-era rehearsal at rehearsals/plan-gate/1/ predates this layout, is a walk, and is never counted against a cell. check_results.py --ledger re-derives every committed attempt from its own bytes: the ledger's recorded kind must equal its folder, a graded take must pass the take checker, a rehearsal must carry WHY.md and exactly the checker's reasons, and a pause must record a pause and no agent text.",
+    "rule": "Every attempt at a registered row lands in exactly one of these, decided by the driver from its outcome and the take checker's verdict, never by hand. A rate-limit refusal before the first agent turn is a pause. A process that exits before its first agent turn, or a checker refusal for a reason in rehearsal_reasons, is a rehearsal, with its reason ids in its ledger and in WHY.md beside it. Anything else is graded, whatever the agent did. A registered row is attempted once. A slot is registered again only after an attempt that became a rehearsal or a pause, and a cell's rehearsals are capped at rehearsal_cap, after which the cell publishes `incomplete — mechanical`. The walk-era rehearsal at rehearsals/plan-gate/1/ predates this layout, is a walk, and is never counted against a cell. check_results.py --ledger re-derives every committed attempt from its own bytes: the ledger's recorded kind must equal its folder, a graded take must pass the take checker, a rehearsal must carry WHY.md and exactly the checker's reasons, and a pause must record a pause and no agent text. Every folder under the three roots holding a driver ledger or a transcript that no attempt's ledger ties to a session id is reported by --ledger, and run.py refuses a ledger that names no take, no session id or no attempt record.",
     "why": "Before this, every attempt was written to its take's folder and a slot could be registered once, so a slot whose attempt became a rehearsal or a pause could never be retried, and the runner would have counted the walk-era rehearsal against a take cell. Found reading the take ledger on 11 September 2026, before any take.",
     "bound_by": "test_harness.py TheTakeLifecycle, TheAttemptIsRoutedByRule, TheRunnerEnumeratesByLedger"
   },
@@ -1664,7 +1666,8 @@
     "session-binding": "the transcript is not bound by its session id to a committed ledger row of this task and half",
     "invocation": "the checker was called with a ledger row for a walk, or without one for a take",
     "model-binding": "an assistant record carries a model other than the one the attempt is registered to",
-    "constant-binding": "the take's ledger shows a turn budget or permission mode other than the pre-registered ones, or no ledger"
+    "constant-binding": "the take's ledger shows a turn budget or permission mode other than the pre-registered ones, or no ledger",
+    "continued-past-unheld-marker": "an operator line was sent after a reply that did not hold the previous step's marker, or a recovery was sent where its own marker was not held"
   },
   "source_by_fixture_kind": {
     "generated": "data/staging/{project}/src",
@@ -1672,5 +1675,11 @@
     "project": "gars/projects/{project}",
     "copied-tree": "gars/projects/{project}",
     "rule": "The source path the driver hands the agent, relative to the take's checkout. The take checker renders every scripted line and recovery with it and compares each operator turn to the whole rendered line; a take's ledger must record the same source."
-  }
+  },
+  "harness_assistant_records": {
+    "rule": "An assistant-role record carrying isApiErrorMessage true is the harness reporting an API error, not the model speaking. It is exempt from the model binding and is not an agent turn.",
+    "measured": "verification/api-error-probe.txt: a one-turn session on a model id that does not exist wrote one assistant record, with model <synthetic>, isApiErrorMessage true, apiErrorStatus 404 and error model_not_found.",
+    "bound_by": "test_harness.py TheHarnessOwnAssistantRecords"
+  },
+  "binding_residual": "The session binding proves a take's row was committed before its session opened. It does not prove that only one session was opened for that id: a session file removed from the operator's machine before the driver files the attempt leaves nothing in this repository. The published limitations say so, beside the email removal."
 }

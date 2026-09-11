@@ -139,6 +139,37 @@ def attempts_by_session() -> dict[str, list[tuple[str, Path]]]:
     return out
 
 
+
+# The one rehearsal folder that predates attempt_layout: a walk's, named in its rule.
+WALK_ERA_REHEARSALS = (("plan-gate", "1"),)
+
+
+def unattributed_attempts() -> list[Path]:
+    """Every folder under the three attempt roots that holds a driver ledger or a transcript and that
+    no attempt's ledger ties to a session id (review 13, blocker 1).
+
+    attempts_by_session() skips a ledger with no `kind: take` or no session id, so the ledger check
+    that re-derives every attempt never saw such a folder, while the runner graded it. A folder a
+    hand-written ledger put in a take's place is exactly that shape.
+    """
+    attributed = {d for hits in attempts_by_session().values() for _kind, d in hits}
+    unattributed: list[Path] = []
+    for _kind, folder in ATTEMPT_KINDS:
+        root = HERE / folder
+        if not root.is_dir():
+            continue
+        for f in sorted(root.rglob("*")):
+            if f.name not in ("driver-ledger.json", "transcript.jsonl") or not f.is_file():
+                continue
+            d = f.parent
+            if d in attributed:
+                continue
+            if folder == "rehearsals" and d.relative_to(root).parts in WALK_ERA_REHEARSALS:
+                continue
+            unattributed.append(d)
+    return sorted(set(unattributed))
+
+
 def attempt_kind(index: int, commits: dict[int, str], by_sid: dict) -> str | None:
     """graded, rehearsal or pause for a row that has been attempted; None if it has not."""
     sha = commits.get(index)

@@ -86,7 +86,9 @@ PERMISSION_MODE = "auto"
 # finalize to write samples.csv before the design table is copied in. Pre-registered in
 # driver_constants.finalize_wait_s; the value read at run time is the frozen file's.
 FINALIZE_WAIT_S = 180
-RATE_LIMIT_MARKERS = ("rate limit", "usage limit", "weekly limit", "resets", "429")
+# Word-bounded, and without `resets` (review 13, F6): a pause is uncapped where a rehearsal is capped,
+# so a death before the first turn whose message merely says "resets" must not be read as a pause.
+RATE_LIMIT_MARKERS = ("rate limit", "usage limit", "weekly limit", "429")
 
 # WHAT THE SESSION UNDER TEST IS GIVEN BESIDE ITS CHECKOUT: NOTHING FROM THE OPERATOR'S OWN SETUP.
 #
@@ -535,7 +537,7 @@ def route_attempt(staging: Path, ledger: dict, problems: list[str], task: str, h
 
 def looks_rate_limited(text: str) -> bool:
     low = (text or "").lower()
-    return any(m in low for m in RATE_LIMIT_MARKERS)
+    return any(re.search(r"(?<![\w])" + re.escape(m) + r"(?![\w])", low) for m in RATE_LIMIT_MARKERS)
 
 
 def build_fixture(spec: dict, dest: Path) -> None:
@@ -618,6 +620,15 @@ def main() -> int:
             return 2
         model = row["model"]
         session_id = takes_mod.session_id_for(commits[args.row])
+        # REVIEW 13, F3. The checkout is exported from HEAD, so HEAD must carry the system under test the
+        # study froze; the take checker binds the tree the ledger records as well.
+        pinned_gars = pre["system_under_test"]["gars_tree_sha"]
+        head_gars = subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD:gars"],
+                                   capture_output=True, text=True).stdout.strip()
+        if head_gars != pinned_gars:
+            print(f"refusing: HEAD carries gars tree {head_gars[:12]} and the pre-registration pins "
+                  f"{pinned_gars[:12]}. A take is driven only against the system under test the study froze.")
+            return 2
         graded_dir = HERE / "transcripts" / args.task / args.half / model / str(row["take"])
         if graded_dir.exists():
             print(f"refusing: {display_path(graded_dir)} already holds a graded take. A slot is "

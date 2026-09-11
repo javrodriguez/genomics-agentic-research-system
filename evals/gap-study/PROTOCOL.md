@@ -649,3 +649,32 @@ Committing the plan-gate fixture's bytes would publish a real run's outputs, whi
 
 No criterion moved.
 No take has run.
+
+### Ruling 17 — 2026-09-11 — review 13's two blockers are folded: every attempt folder is claimed or reported, and every continuation is proven
+
+Review 13 (`verification/prefreeze-13.md`) read review 12's three blockers closed in the code and ruled do not freeze, with two blockers and six follow-ups; each was verified against the code.
+`verification/prefreeze-13-disposition.md` records what was done with each.
+
+**Which folders are attempts.**
+The ledger check re-derived every attempt it enumerated, and it enumerated only ledgers naming a take and a session id, while the runner graded any folder with a ledger.
+Now `--ledger` reports every folder under the three attempt roots holding a ledger or a transcript that no attempt's ledger ties to a session id, even with no row registered, and the runner refuses a ledger that names no take, no session id or no attempt record.
+After the freeze it also reports a registered row never attempted while a later row on its axis was.
+
+**A continuation is proven like a stop.**
+Ruling 12 proved that a driver's stop at an unheld marker was legitimate; nothing proved that a line sent after a wait point followed a held marker.
+The take checker now requires, before each further operator line, the previous step's marker in the agent's reply, and around a recovery its own marker before it, the step's marker absent there and present after it.
+A take driven past an unheld marker is refused with a new reason id, `continued-past-unheld-marker`.
+
+**Also folded.**
+The harness's own API-error record, measured by a probe (`verification/api-error-probe.txt`), is exempt from the model binding and is not an agent turn.
+The study-materials check reads what tools were asked and returned, not the agent's prose.
+A take's gars tree is bound to the pinned tree, and the driver refuses a HEAD carrying another; the file now says the checkout is exported from HEAD.
+The ledger's record of published bytes is bound to the transcript.
+A take must carry a system-prompt snapshot, so the memory check cannot pass having read nothing.
+Only a rate-limit message makes a pause: the `resets` marker is gone and the rest are word-bounded.
+
+**Stated as a residual.**
+The session binding proves a row was committed before its session opened; it cannot prove only one session was opened for that id, and the limitations will say so.
+
+No criterion moved.
+No take has run.

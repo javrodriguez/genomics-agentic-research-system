@@ -724,6 +724,79 @@ def m_write_detector_reads_one_segment(s: Sandbox) -> tuple[int, str]:
     return s.run(_th(s, "WriteDetectorReadsEverySegment")), "test_harness.py WriteDetectorReadsEverySegment"
 
 
+
+def m_unattributed_folder_unseen(s: Sandbox) -> tuple[int, str]:
+    """Review 13, blocker 1: folders no attempt ledger claims, not listed."""
+    s.control(_th(s, "TheLedgerSeesEveryFolder"))
+    _edit(s.study / "takes.py", "    return sorted(set(unattributed))\n", "    return []\n")
+    return s.run(_th(s, "TheLedgerSeesEveryFolder")), "test_harness.py TheLedgerSeesEveryFolder"
+
+
+def m_runner_grades_a_fieldless_ledger(s: Sandbox) -> tuple[int, str]:
+    s.control(_th(s, "TheLedgerSeesEveryFolder"))
+    _edit(s.study / "run.py",
+          '        if ledger.get("kind") != "take" or not ledger.get("session_id") or not isinstance(ledger.get("attempt"), dict):\n',
+          "        if False:\n")
+    return s.run(_th(s, "TheLedgerSeesEveryFolder")), "test_harness.py TheLedgerSeesEveryFolder"
+
+
+def m_continuation_unproven(s: Sandbox) -> tuple[int, str]:
+    """Review 13, blocker 2: a line sent after an unheld marker, unexamined."""
+    s.control(_th(s, "EveryContinuationIsProven"))
+    _edit(s.study / "check_take.py", "        elif marker and marker not in text_between(line_pos, nxt):\n",
+          "        elif False:\n")
+    return s.run(_th(s, "EveryContinuationIsProven")), "test_harness.py EveryContinuationIsProven"
+
+
+def m_api_error_record_bound_as_a_model(s: Sandbox) -> tuple[int, str]:
+    """Review 13, F1: the harness's own API-error record read as the model speaking."""
+    s.control(_th(s, "TheHarnessOwnAssistantRecords"))
+    _edit(s.study / "check_take.py", '            if rec.get("isApiErrorMessage") is True:\n                continue\n', "")
+    return s.run(_th(s, "TheHarnessOwnAssistantRecords")), "test_harness.py TheHarnessOwnAssistantRecords"
+
+
+def m_prose_mention_voids_a_take(s: Sandbox) -> tuple[int, str]:
+    s.control(_th(s, "TheHarnessOwnAssistantRecords"))
+    _edit(s.study / "check_take.py", "        for s in blobs:\n", "        for s in blobs + [line]:\n")
+    return s.run(_th(s, "TheHarnessOwnAssistantRecords")), "test_harness.py TheHarnessOwnAssistantRecords"
+
+
+def m_gars_tree_unbound(s: Sandbox) -> tuple[int, str]:
+    """Review 13, F3."""
+    s.control(_th(s, "TheModelAndTheConstantsAreBound"))
+    _edit(s.study / "check_take.py", '    if ledger.get("gars_tree_sha") != want_tree:\n', "    if False:\n")
+    return s.run(_th(s, "TheModelAndTheConstantsAreBound")), "test_harness.py TheModelAndTheConstantsAreBound"
+
+
+def m_published_bytes_unbound(s: Sandbox) -> tuple[int, str]:
+    """Review 13, F4."""
+    s.control(_th(s, "TheAttemptIsReDerivedFromItsBytes"))
+    _edit(s.study / "check_results.py", '        if pub.get("sha256_after") != sha256(t):\n', "        if False:\n")
+    return s.run(_th(s, "TheAttemptIsReDerivedFromItsBytes")), "test_harness.py TheAttemptIsReDerivedFromItsBytes"
+
+
+def m_snapshot_absence_passes(s: Sandbox) -> tuple[int, str]:
+    """Review 13, F5."""
+    s.control(_th(s, "TheAutoMemorySectionIsBound"))
+    _edit(s.study / "check_take.py", "    return snapshot_found\n", "    return True\n")
+    return s.run(_th(s, "TheAutoMemorySectionIsBound")), "test_harness.py TheAutoMemorySectionIsBound"
+
+
+def m_resets_read_as_a_pause(s: Sandbox) -> tuple[int, str]:
+    """Review 13, F6."""
+    s.control(_th(s, "TheRateLimitMarkersAreBounded"))
+    _edit(s.study / "drive.py", 'RATE_LIMIT_MARKERS = ("rate limit", "usage limit", "weekly limit", "429")',
+          'RATE_LIMIT_MARKERS = ("rate limit", "usage limit", "weekly limit", "resets", "429")')
+    return s.run(_th(s, "TheRateLimitMarkersAreBounded")), "test_harness.py TheRateLimitMarkersAreBounded"
+
+
+def m_skipped_row_unseen(s: Sandbox) -> tuple[int, str]:
+    """Review 13, F2."""
+    s.control(_th(s, "TheTakeOrderIsEnforced"))
+    _edit(s.study / "check_results.py", "        if not attempted.get(i) and i < last.get(ax, -1):\n", "        if False:\n")
+    return s.run(_th(s, "TheTakeOrderIsEnforced")), "test_harness.py TheTakeOrderIsEnforced"
+
+
 MUTATIONS = [
     ("an edited contract quote", m_edited_contract_quote, "objects"),
     ("an emptied quote table", m_emptied_quote_table, "objects"),
@@ -773,6 +846,16 @@ MUTATIONS = [
     ("a project variant unbound", m_project_variant_unbound, False),
     ("the take order unenforced", m_take_order_unenforced, False),
     ("the write detector reading one segment", m_write_detector_reads_one_segment, False),
+    ("a folder no attempt ledger claims, unseen", m_unattributed_folder_unseen, False),
+    ("a ledger naming no take, graded", m_runner_grades_a_fieldless_ledger, False),
+    ("a continuation past an unheld marker, unproven", m_continuation_unproven, False),
+    ("the harness's API-error record bound as a model", m_api_error_record_bound_as_a_model, False),
+    ("a path named in prose voiding a take", m_prose_mention_voids_a_take, False),
+    ("the gars tree unbound", m_gars_tree_unbound, False),
+    ("published bytes unbound", m_published_bytes_unbound, False),
+    ("a missing prompt snapshot passing", m_snapshot_absence_passes, False),
+    ("a reset connection read as a pause", m_resets_read_as_a_pause, False),
+    ("a skipped row unseen", m_skipped_row_unseen, False),
 ]
 
 NOT_APPLICABLE = [

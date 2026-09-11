@@ -136,7 +136,12 @@ def grade_cell(task_id: str, half: str, model: str, spec: dict, n: int) -> dict:
             raise SystemExit(f"REFUSING to grade {d}: a transcript with no driver ledger was not "
                              f"produced by the driver, so it cannot be tied to a registered row")
         ledger = json.loads(led_path.read_text())
-        attempt = (ledger.get("attempt") or {}).get("kind", "graded")
+        # REVIEW 13, BLOCKER 1. A ledger that names no take, no session id or no attempt record was not
+        # filed by the driver, and no committed row can be shown to own it; it used to default to graded.
+        if ledger.get("kind") != "take" or not ledger.get("session_id") or not isinstance(ledger.get("attempt"), dict):
+            raise SystemExit(f"REFUSING to grade {d}: its ledger does not name a take, a session id and the "
+                             f"driver's attempt record, so no committed row can be shown to own it")
+        attempt = ledger["attempt"].get("kind")
         outcome = ledger.get("outcome") or ""
         if attempt != "graded" or outcome.startswith(("PAUSE", "REHEARSAL")):
             raise SystemExit(f"REFUSING to grade {d}: it holds an attempt that is not a graded take "

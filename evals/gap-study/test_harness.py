@@ -2031,7 +2031,9 @@ class TheRunnerEnumeratesByLedger(unittest.TestCase):
     def ledger(self, rel, **fields):
         d = self.tmp / rel
         d.mkdir(parents=True)
-        (d / "driver-ledger.json").write_text(json.dumps({"kind": "take", **fields}))
+        (d / "driver-ledger.json").write_text(json.dumps({"kind": "take",
+                                                          "session_id": "00000000-0000-5000-8000-000000000000",
+                                                          **fields}))
         return d
 
     def test_a_take_with_a_ledger_and_no_transcript_is_graded_from_the_ledger(self):
@@ -2194,21 +2196,30 @@ class TheAttemptIsReDerivedFromItsBytes(unittest.TestCase):
             return gap_check_take().reason_ids(problems)
 
     def attempt(self, kind, outcome, recorded=None, reasons=(), agent_text=True, why=True):
+        import hashlib
         tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, tmp, True)
         d = tmp / kind
         d.mkdir()
-        (d / "driver-ledger.json").write_text(json.dumps({
-            "kind": "take", "outcome": outcome, "first_agent_turn": agent_text,
-            "attempt": {"kind": recorded or kind, "reasons": list(reasons)}}))
         recs = [{"type": "user", "message": {"role": "user", "content": "a line"}}]
         if agent_text:
             recs.append({"type": "assistant", "message": {"role": "assistant", "model": "claude-opus-5",
                                                           "content": [{"type": "text", "text": "a reply"}]}})
         (d / "transcript.jsonl").write_text("\n".join(json.dumps(r) for r in recs) + "\n")
+        (d / "driver-ledger.json").write_text(json.dumps({
+            "kind": "take", "outcome": outcome, "first_agent_turn": agent_text,
+            "published": {"sha256_after": hashlib.sha256((d / "transcript.jsonl").read_bytes()).hexdigest()},
+            "attempt": {"kind": recorded or kind, "reasons": list(reasons)}}))
         if why and kind == "rehearsal":
             (d / "WHY.md").write_text("why\n")
         return d
+
+    def test_an_edited_transcript_is_found(self):
+        d = self.attempt("graded", "complete")
+        with (d / "transcript.jsonl").open("a") as fh:
+            fh.write(json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": "added"}]}}) + "\n")
+        got = self.problems("graded", d)
+        self.assertTrue(any("published" in p for p in got), got)
 
     def problems(self, kind, d, checker_problems=()):
         return gap_module("check_results").attempt_problems(kind, d, 0, self.ROW,
@@ -2279,11 +2290,13 @@ class TheModelAndTheConstantsAreBound(unittest.TestCase):
     def test_a_takes_budget_and_mode_are_the_frozen_constants(self):
         pre = prereg.load()
         ok = {"budget_s": int(pre["budgets"]["turn_timeout_s"]),
-              "permission_mode": pre["driver_constants"]["permission_mode"]}
+              "permission_mode": pre["driver_constants"]["permission_mode"],
+              "gars_tree_sha": pre["system_under_test"]["gars_tree_sha"]}
         self.assertEqual(self.ct.constant_problems(ok, pre), [])
         self.assertTrue(self.ct.constant_problems({**ok, "budget_s": ok["budget_s"] + 2700}, pre))
         self.assertTrue(self.ct.constant_problems({**ok, "permission_mode": "default"}, pre))
         self.assertTrue(self.ct.constant_problems(None, pre))
+        self.assertTrue(self.ct.constant_problems({**ok, "gars_tree_sha": "0" * 40}, pre))
 
 
 class TheAutoMemorySectionIsBound(unittest.TestCase):
@@ -2300,6 +2313,16 @@ class TheAutoMemorySectionIsBound(unittest.TestCase):
         p.write_text(json.dumps({"type": "assistant", "message": {"content": [
             {"type": "text", "text": "I have no persistent file-based memory here."}]}}) + "\n")
         self.assertFalse(gap_check_take().memory_section_offered(p))
+
+    def test_a_snapshot_is_required_so_the_check_reads_something(self):
+        ct = gap_check_take()
+        walk = HERE / "walks" / "confounded-design" / "2" / "transcript.jsonl"
+        if walk.is_file():
+            self.assertTrue(ct.prompt_snapshot_present(walk))
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / "t.jsonl").write_text(json.dumps({"type": "user", "message": {"content": "a line"}}) + "\n")
+        self.assertFalse(ct.prompt_snapshot_present(tmp / "t.jsonl"))
 
     def test_the_switch_is_pre_registered_and_set(self):
         self.assertEqual(prereg.load()["driver_constants"]["isolation_env"].get("CLAUDE_CODE_DISABLE_AUTO_MEMORY"), "1")
@@ -2330,6 +2353,14 @@ class TheProjectFixtureIsBound(unittest.TestCase):
 
 class TheTakeOrderIsEnforced(unittest.TestCase):
     """Review 12, F2."""
+
+    def test_a_skipped_row_is_found(self):
+        cr = gap_module("check_results")
+        rows = [{"task": "a", "half": "positive", "model": "m", "take": 1},
+                {"task": "b", "half": "positive", "model": "m", "take": 1}]
+        axis = lambda m: "claude"
+        self.assertTrue(cr.gap_problems(rows, {0: False, 1: True}, axis))
+        self.assertEqual(cr.gap_problems(rows, {0: True, 1: False}, axis), [])
 
     def test_first_registrations_follow_the_permutation_and_retries_are_exempt(self):
         cr = gap_module("check_results")
@@ -2362,6 +2393,149 @@ class WriteDetectorReadsEverySegment(unittest.TestCase):
 
     def test_an_interpreter_write_is_a_named_limitation(self):
         self.assertEqual(labels._bash_writes(f"python3 - <<EOF\nopen('{self.TARGET}', 'w').write('x')\nEOF"), [])
+
+
+class EveryContinuationIsProven(unittest.TestCase):
+    """Review 13, blocker 2: a take driven past an unheld marker passed as complete."""
+
+    def test_a_take_driven_past_unheld_markers_is_refused(self):
+        ct = gap_check_take()
+        spec = prereg.task("scope-read")["positive"]
+        name = "run-5c7c3cc7"
+        source = ct.expected_source_for(spec, name)
+        turns = []
+        for s in spec["operator_script"]:
+            turns.append({"role": "user", "text": s["line"].format(project=name, source=source), "tool_uses": []})
+            turns.append({"role": "assistant", "text": "Sure, done.", "tool_uses": []})
+        got = ct.continuation_problems(turns, spec["operator_script"], [], name, source)
+        self.assertTrue(got and all(p.startswith("[continued-past-unheld-marker]") for p in got), got)
+
+    def test_a_recovery_sent_where_its_marker_was_not_held_is_refused(self):
+        ct = gap_check_take()
+        spec = prereg.task("number-fidelity")["positive"]
+        s1, s2, probe = spec["operator_script"]
+        name = "run-5c7c3cc7"
+        source = ct.expected_source_for(spec, name)
+        turns = [{"role": "user", "text": s1["line"].format(project=name, source=source), "tool_uses": []},
+                 {"role": "assistant", "text": "hello", "tool_uses": []},
+                 {"role": "user", "text": s1["recovery"]["send"].format(project=name, source=source), "tool_uses": []},
+                 {"role": "assistant", "text": s1["marker"], "tool_uses": []},
+                 {"role": "user", "text": s2["line"].format(project=name, source=source), "tool_uses": []},
+                 {"role": "assistant", "text": s2["marker"], "tool_uses": []},
+                 {"role": "user", "text": probe["line"].format(project=name, source=source), "tool_uses": []}]
+        got = ct.continuation_problems(turns, spec["operator_script"], [], name, source)
+        self.assertTrue(any("recovery was sent" in p for p in got), got)
+
+    def test_the_real_walks_are_proven(self):
+        import transcript as tx
+        ct = gap_check_take()
+        pre = prereg.load()
+        checked = 0
+        for rel, task, half in (("confounded-design/2", "confounded-design", "positive"),
+                                ("number-fidelity/2", "number-fidelity", "control")):
+            path = HERE / "walks" / rel / "transcript.jsonl"
+            if not path.is_file():
+                continue
+            spec = prereg.task(task)[half]
+            steps = [s for s in spec["operator_script"] if s["n"] < spec["probe_operator_turn"]]
+            name = ct.neutral_name(ct.session_id_of(path))
+            _ops, harness, _unknown = ct.user_text_records(path, pre)
+            got = ct.continuation_problems(tx.load(path)["turns"], steps, harness, name,
+                                           ct.expected_source_for(spec, name))
+            self.assertEqual(got, [], rel)
+            checked += 1
+        self.assertGreater(checked, 0, "no walk was read; that is not a pass")
+
+
+class TheHarnessOwnAssistantRecords(unittest.TestCase):
+    """Review 13, F1: the harness's API-error record, measured by a probe, is not the model speaking."""
+
+    def transcript(self, recs):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        p = tmp / "t.jsonl"
+        p.write_text("\n".join(json.dumps(r) for r in recs) + "\n")
+        return p
+
+    def test_an_api_error_record_is_neither_a_model_nor_an_agent_turn(self):
+        ct = gap_check_take()
+        p = self.transcript([{"type": "assistant", "isApiErrorMessage": True, "error": "model_not_found",
+                              "message": {"model": "<synthetic>", "content": [{"type": "text", "text": "API Error: 404"}]}}])
+        self.assertEqual(ct.model_problems(p, "claude-opus-5"), [])
+        self.assertEqual(ct.agent_turn_count(p), 0)
+
+    def test_the_same_model_name_without_the_flag_is_bound(self):
+        ct = gap_check_take()
+        p = self.transcript([{"type": "assistant", "message": {"model": "<synthetic>",
+                                                               "content": [{"type": "text", "text": "x"}]}}])
+        self.assertTrue(ct.model_problems(p, "claude-opus-5"))
+        self.assertEqual(ct.agent_turn_count(p), 1)
+
+    def test_the_probe_is_committed_and_shows_the_shape(self):
+        text = (HERE / "verification" / "api-error-probe.txt").read_text()
+        self.assertIn("'isApiErrorMessage': True", text)
+        self.assertIn("<synthetic>", text)
+
+    def test_a_path_named_in_prose_is_not_a_read_and_a_tool_call_is(self):
+        ct = gap_check_take()
+        prose = self.transcript([{"type": "assistant", "message": {"content": [
+            {"type": "text", "text": "I will not open evals/gap-study/prereg-draft.json."}]}}])
+        self.assertEqual(ct.study_paths_read(prose), [])
+        tool = self.transcript([{"type": "assistant", "message": {"content": [
+            {"type": "tool_use", "name": "Read", "input": {"file_path": "evals/gap-study/prereg-draft.json"}}]}}])
+        self.assertTrue(ct.study_paths_read(tool))
+
+
+class TheLedgerSeesEveryFolder(unittest.TestCase):
+    """Review 13, blocker 1: a folder whose ledger names no session id was invisible to --ledger."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def put(self, rel, ledger=None, transcript=True):
+        d = self.tmp / rel
+        d.mkdir(parents=True)
+        if ledger is not None:
+            (d / "driver-ledger.json").write_text(json.dumps(ledger))
+        if transcript:
+            (d / "transcript.jsonl").write_text("{}\n")
+
+    def test_a_planted_folder_is_unattributed(self):
+        takes = gap_module("takes")
+        takes.HERE = self.tmp
+        self.put("transcripts/scope-read/positive/claude-opus-5/1", {"outcome": "complete", "project": "run-deadbeef"})
+        self.put("transcripts/scope-read/positive/claude-opus-5/2",
+                 {"kind": "take", "session_id": "s-1", "attempt": {"kind": "graded"}})
+        self.put("rehearsals/plan-gate/1", {"kind": "walk"})
+        self.put("pauses/scope-read/positive/claude-opus-5/row-3")
+        got = [str(p.relative_to(self.tmp)) for p in takes.unattributed_attempts()]
+        self.assertEqual(got, ["pauses/scope-read/positive/claude-opus-5/row-3",
+                               "transcripts/scope-read/positive/claude-opus-5/1"])
+
+    def test_the_walk_era_rehearsal_is_the_one_the_pre_registration_names(self):
+        self.assertIn("rehearsals/plan-gate/1/", prereg.load()["attempt_layout"]["rule"])
+        self.assertEqual(gap_module("takes").WALK_ERA_REHEARSALS, (("plan-gate", "1"),))
+
+    def test_the_runner_refuses_a_ledger_that_names_no_take(self):
+        run = gap_module("run")
+        run.TRANSCRIPTS = self.tmp / "transcripts"
+        run.HERE = self.tmp
+        self.put("transcripts/number-fidelity/positive/claude-opus-5/1",
+                 {"outcome": "complete", "attempt": {"kind": "graded"}})
+        with self.assertRaises(SystemExit):
+            run.grade_cell("number-fidelity", "positive", "claude-opus-5", prereg.task("number-fidelity"), 3)
+
+
+class TheRateLimitMarkersAreBounded(unittest.TestCase):
+    """Review 13, F6: a pause is uncapped, so only a rate-limit message may make one."""
+
+    def test_a_rate_limit_is_a_pause_and_a_reset_connection_is_not(self):
+        drive = gap_drive()
+        self.assertTrue(drive.looks_rate_limited("You've hit your weekly limit · resets 6am"))
+        self.assertTrue(drive.looks_rate_limited("HTTP 429 Too Many Requests"))
+        self.assertFalse(drive.looks_rate_limited("connection resets by peer"))
+        self.assertFalse(drive.looks_rate_limited("status 4290"))
 
 
 def main() -> int:

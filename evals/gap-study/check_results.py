@@ -115,6 +115,13 @@ def check_ledger() -> list[str]:
 
     rows = takes_mod.load_rows()
     commits = takes_mod.row_commits()
+    # REVIEW 13, BLOCKER 1. Before anything about rows: every folder under the attempt roots that no
+    # attempt's ledger ties to a session id is a problem, with or without a registered row, because the
+    # runner would otherwise grade what this check never saw.
+    for d in takes_mod.unattributed_attempts():
+        problems.append(f"{d.relative_to(HERE)} holds a driver ledger or a transcript that no attempt's "
+                        f"ledger ties to a session id: it was never registered, or its ledger was written by hand")
+
     if not rows:
         print("  the ledger is empty: no take has been registered")
         return problems
@@ -146,6 +153,7 @@ def check_ledger() -> list[str]:
                             f"({[str(h[1].relative_to(HERE)) for h in hits]}); a row is attempted once")
 
     counts = {"graded": 0, "rehearsal": 0, "pause": 0, "not attempted": 0}
+    attempted: dict[int, bool] = {}
     matched = 0
     for i, row in enumerate(rows):
         sha = commits.get(i)
@@ -153,6 +161,7 @@ def check_ledger() -> list[str]:
             continue
         want = takes_mod.session_id_for(sha)
         hits = by_sid.get(want, [])
+        attempted[i] = bool(hits)
         if not hits:
             counts["not attempted"] += 1
             continue
@@ -173,7 +182,7 @@ def check_ledger() -> list[str]:
                                 f"uuid5(namespace, {sha[:12]}) = {want}")
             else:
                 matched += 1
-    problems += _order_problems_for(rows)
+    problems += _order_problems_for(rows, attempted)
     print(f"  {len(rows)} row(s): {counts['graded']} graded, {counts['rehearsal']} rehearsal(s), "
           f"{counts['pause']} pause(s), {counts['not attempted']} not attempted; {matched} transcript(s) "
           f"bound to their row's commit")
@@ -195,10 +204,8 @@ def _check_take():
 
 
 def _has_agent_text(t: Path) -> bool:
-    if not t.is_file():
-        return False
-    import transcript as tx
-    return any(x["role"] == "assistant" and x["text"].strip() for x in tx.load(t)["turns"])
+    """An agent turn as the take checker defines one: the harness's own API-error record is not one."""
+    return t.is_file() and _check_take().agent_turn_count(t) > 0
 
 
 def attempt_problems(kind: str, d: Path, i: int, row: dict, ct) -> list[str]:
@@ -224,6 +231,12 @@ def attempt_problems(kind: str, d: Path, i: int, row: dict, ct) -> list[str]:
     outcome = led.get("outcome") or ""
     t = d / "transcript.jsonl"
     agent_text = _has_agent_text(t)
+    if t.is_file():
+        # REVIEW 13, F4. The published bytes are bound to the ledger's own record of them, so an edited
+        # transcript needs an edited ledger, which history shows, not only an edited sidecar.
+        pub = led.get("published") or {}
+        if pub.get("sha256_after") != sha256(t):
+            problems.append(f"row {i}: the transcript's bytes are not the ones its ledger records as published")
 
     def checked() -> list[str]:
         if not t.is_file():
@@ -293,12 +306,32 @@ def order_problems(rows: list[dict], order_by_axis: dict, axis_of) -> list[str]:
     return out
 
 
-def _order_problems_for(rows: list[dict]) -> list[str]:
+def gap_problems(rows: list[dict], attempted: dict, axis_of) -> list[str]:
+    """A registered row never attempted while a later row on its axis was (review 13, F2).
+
+    Such a slot stays registered and cannot be retried, so its cell publishes short with no rehearsal
+    and no reason: the cheapest way to lose a take without a word.
+    """
+    last: dict = {}
+    for i, r in enumerate(rows):
+        if attempted.get(i):
+            last[axis_of(r["model"])] = i
+    out = []
+    for i, r in enumerate(rows):
+        ax = axis_of(r["model"])
+        if not attempted.get(i) and i < last.get(ax, -1):
+            out.append(f"row {i} was never attempted, and a later row on the {ax} axis was: a registered "
+                       f"take was skipped")
+    return out
+
+
+def _order_problems_for(rows: list[dict], attempted: dict) -> list[str]:
     pre = prereg.load()
     if not prereg.is_frozen() or not pre.get("take_order_seed"):
-        print("  take order: checked after the freeze, when its seed exists")
+        print("  take order and skipped rows: checked after the freeze, when the order's seed exists")
         return []
-    return order_problems(rows, prereg.order(pre["take_order_seed"]), prereg.axis_of)
+    return (order_problems(rows, prereg.order(pre["take_order_seed"]), prereg.axis_of)
+            + gap_problems(rows, attempted, prereg.axis_of))
 
 
 def _session_id_of(path: Path) -> str:
