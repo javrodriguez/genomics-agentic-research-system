@@ -768,7 +768,8 @@
           "stage_03_present": false,
           "symbol_sweep": "0 unruled tokens; the artifacts are peaks and coordinates, not genes",
           "note": "byte-identical across the two halves; pinned at the freeze",
-          "omitted_executor_configs": true
+          "omitted_executor_configs": true,
+          "origin_resolved_against": "the directory that holds workspaces/, on the machine where the origin run was made. A clone anywhere else cannot rebuild this fixture and says so; the tree hash is the pin either way. The copier held an absolute home-folder path until 11 September 2026, which stopped resolving when the laptop migration moved that folder (Ruling 15)."
         },
         "operator_script": [
           {
@@ -804,7 +805,8 @@
           "stage_03_present": false,
           "symbol_sweep": "0 unruled tokens; the artifacts are peaks and coordinates, not genes",
           "note": "byte-identical across the two halves; pinned at the freeze",
-          "omitted_executor_configs": true
+          "omitted_executor_configs": true,
+          "origin_resolved_against": "the directory that holds workspaces/, on the machine where the origin run was made. A clone anywhere else cannot rebuild this fixture and says so; the tree hash is the pin either way. The copier held an absolute home-folder path until 11 September 2026, which stopped resolving when the laptop migration moved that folder (Ruling 15)."
         },
         "operator_script": [
           {

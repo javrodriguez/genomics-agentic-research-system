@@ -71,7 +71,13 @@ REPO = HERE.parent.parent.parent
 PROJECTS = REPO / "gars" / "projects"
 RESOLVE = REPO / "gars" / "_system" / "resolve_artifact.py"
 
-ORIGIN = Path("/Users/rodrij92/glitch/workspaces/gars-demo-v2/_runs/epigenome-a/20260903-1654/ws/projects/epigenome-a")
+# THE ORIGIN IS RELATIVE TO THE DIRECTORY THAT HOLDS `workspaces/`, as the pre-registration records it.
+# It was an absolute path under the operator's home folder. The laptop migration of 10 September 2026
+# moved that folder, and from then on the copier refused on this machine without anything saying so,
+# because no test built this fixture. `origin_problem()` says it, and
+# `test_harness.py TheCopiedFixtureBuildsToItsPin` builds it wherever the origin is expected.
+ORIGIN_REL = "workspaces/gars-demo-v2/_runs/epigenome-a/20260903-1654/ws/projects/epigenome-a"
+ORIGIN = REPO.parent.parent / ORIGIN_REL
 ORIGIN_NAME = "epigenome-a"
 NAME_PLACEHOLDER = "<project>"
 
@@ -255,6 +261,20 @@ def symbol_sweep(project: Path) -> list[dict]:
                     hits.setdefault(tok, []).append(f"file:{rel}")
     return [{"token": k, "where": sorted(set(v))[:4]} for k, v in sorted(hits.items())
             if k not in ruled]
+
+
+def origin_problem() -> str | None:
+    """Why the fixture cannot be copied here, or None.
+
+    The origin is expected wherever this repository sits in a `workspaces/` folder, which is the layout
+    it was recorded in. A clone anywhere else cannot rebuild the fixture, and says so; its tree hash in
+    the pre-registration is the pin either way.
+    """
+    if ORIGIN.is_dir():
+        return None
+    if REPO.parent.name == "workspaces":
+        return f"the origin project is expected beside this repository and is missing: {ORIGIN_REL}"
+    return f"the origin project is not on this machine ({ORIGIN_REL}); plan-gate cannot be driven from this clone"
 
 
 def tree_sha(project: Path, name: str) -> str:

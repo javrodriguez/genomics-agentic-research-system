@@ -591,3 +591,21 @@ A pause ledger records which pre-registered rate-limit marker matched, not the r
 
 No criterion moved.
 No take has run.
+
+### Ruling 15 — 2026-09-11 — the plan-gate fixture's origin is the pre-registered relative path, and a test builds the fixture
+
+**What was wrong.**
+The plan-gate fixture is copied from a run on this machine (Ruling 3).
+The copier named that run by an absolute path under the operator's home folder.
+The laptop migration of 10 September 2026 moved that folder, and from then on the copier refused here.
+Nothing went red, because no test built the fixture: the harness checked the copier's exclusions and never ran it.
+Every plan-gate walk and take would have refused at the fixture.
+Found on 11 September 2026 while preparing the inputs for review 12, and reproduced before any change.
+
+**What changed.**
+The copier resolves the origin from the relative path the pre-registration already recorded, against the directory that holds `workspaces/`, and says plainly when it is missing.
+`test_harness.py TheCopiedFixtureBuildsToItsPin` binds the copier's origin to the pre-registered one, builds the fixture and requires its tree hash to equal the pin, and points the origin at a missing folder to watch the message appear.
+The old path named a personal username in a public file; it stays in the history as it was written.
+
+No criterion moved.
+No take has run.

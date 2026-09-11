@@ -716,6 +716,10 @@ NOT_APPLICABLE = [
      "scratch tree with synthetic takes"),
     ("a gars sha differing from the freeze",
      "the freeze has not happened, so there is no pinned sha to differ from"),
+    ("a copied fixture whose origin no longer resolves",
+     "the sandbox does not sit in a workspaces folder, so the origin cannot resolve there and the guard "
+     "skips; TheCopiedFixtureBuildsToItsPin carries its own negative control, which points the origin at "
+     "a missing folder and requires the message"),
     ("a carried fixture whose tree hash differs from the freeze",
      "no fixture pin exists before the freeze; the builder's refusal on a disagreeing pin is "
      "unit-tested instead (TheCarriedFixtureBuilds)"),

@@ -2039,6 +2039,54 @@ class TheBillIsWrittenByTheReader(unittest.TestCase):
         self.assertTrue(any("row-4" in r and "2026-09-12T01:00:00+00:00" in r for r in rows), rows)
 
 
+class TheCopiedFixtureBuildsToItsPin(unittest.TestCase):
+    """plan-gate's fixture was never built by a test. When the laptop migration moved the operator's
+    home folder, the copier's absolute origin stopped resolving, and every plan-gate walk and take would
+    have refused with nothing in the harness going red. Found preparing review 12's inputs."""
+
+    def cp(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gap_copy_project", HERE / "fixtures" / "copy_project.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_the_origin_is_the_pre_registered_relative_path(self):
+        cp = self.cp()
+        for half in ("positive", "control"):
+            self.assertEqual(cp.ORIGIN_REL, prereg.task("plan-gate")[half]["fixture"]["origin"])
+        self.assertFalse(Path(cp.ORIGIN_REL).is_absolute(), "an absolute origin names one machine's home folder")
+
+    def test_the_fixture_builds_and_hashes_to_its_pin(self):
+        cp = self.cp()
+        problem = cp.origin_problem()
+        if problem and REPO.parent.name != "workspaces":
+            self.skipTest(problem)
+        self.assertIsNone(problem, problem)
+        name = "run-0f0f0f0f"
+        dest = cp.PROJECTS / name
+        self.assertFalse(dest.exists(), f"{dest} already exists")
+        try:
+            import contextlib
+            import io
+            with contextlib.redirect_stdout(io.StringIO()):
+                built = cp.copy_tree(name)
+            got = cp.tree_sha(built["dest"], name)
+        finally:
+            shutil.rmtree(dest, ignore_errors=True)
+        for half in ("positive", "control"):
+            self.assertEqual(got, prereg.task("plan-gate")[half]["fixture"]["tree_sha256_name_invariant"],
+                             "the copied fixture does not hash to its pre-registered pin")
+
+    def test_a_missing_origin_is_said_where_it_is_expected(self):
+        """The negative control, inside the test: the sandbox is not in a workspaces folder, so the
+        mutation battery cannot host this guard (see mutations.NOT_APPLICABLE)."""
+        cp = self.cp()
+        cp.ORIGIN = Path(tempfile.gettempdir()) / "no-such-origin-for-this-test"
+        cp.REPO = Path(tempfile.gettempdir()) / "workspaces" / "repo"
+        self.assertIn("expected beside this repository", cp.origin_problem() or "")
+
+
 def main() -> int:
     """THE EXIT CODE IS THE POINT, and this function got it wrong first time.
 
