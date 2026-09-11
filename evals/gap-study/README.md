@@ -52,6 +52,8 @@ comparison between the two means something.
 
 `confounded-design` here is the first study's task, carried over verbatim and referenced by its
 pinned shas, now run across the three Claude tiers with three takes a half instead of one.
+Its six operator lines are in the pre-registration, projected from the first study's driver and
+bound to it by test (Ruling 11 in `PROTOCOL.md`).
 
 ## What this study will not say
 

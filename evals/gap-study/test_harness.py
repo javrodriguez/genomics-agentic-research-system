@@ -18,7 +18,10 @@ No model is called. stdlib only.
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -460,7 +463,7 @@ class WaitPointsAllHaveAnAnswer(unittest.TestCase):
     """
 
     def test_the_t3b_wait_point_has_a_pre_registered_recovery(self):
-        for task in ("template-adherence", "number-fidelity", "scope-read"):
+        for task in ("template-adherence", "number-fidelity", "scope-read", "confounded-design"):
             spec = prereg.task(task)
             for half in ("positive", "control"):
                 recs = [s["recovery"] for s in spec[half]["operator_script"]
@@ -575,6 +578,17 @@ class MarkersAreTemplateBytes(unittest.TestCase):
                     if not m:
                         continue
                     checked += 1
+                    if step.get("comparison") == "case-insensitive":
+                        # THE ONE CARRIED EXCEPTION. confounded-design's markers are the first
+                        # study's and are compared as its driver compared them (prereg
+                        # wait_point_marker_rule.carried_exception). The bound: each must still be a
+                        # case-insensitive substring of a pinned contract, so the exception cannot
+                        # admit a marker that matches nothing a template says.
+                        self.assertTrue(
+                            any(m.lower() in b.lower() for b in blobs.values()),
+                            f"{t['id']}/{half} turn {step['n']}: carried marker {m!r} is not even a "
+                            f"case-insensitive substring of any pinned contract")
+                        continue
                     self.assertTrue(
                         any(m in b for b in blobs.values()),
                         f"{t['id']}/{half} turn {step['n']}: marker {m!r} is NOT a byte substring "
@@ -586,6 +600,12 @@ class MarkersAreTemplateBytes(unittest.TestCase):
         rule = prereg.load().get("wait_point_marker_rule")
         self.assertIsNotNone(rule, "the marker comparison must be pre-registered, not implied")
         self.assertIn("case-sensitive", rule["comparison"])
+        # and the carried exception is written down beside it, or a stranger compares the carried
+        # markers exactly, holds none of them, and publishes the carried cell as every model failing
+        self.assertIn("case-insensitive", rule.get("carried_exception", ""))
+        for step in prereg.task("confounded-design")["positive"]["operator_script"]:
+            self.assertEqual(step.get("comparison"), "case-insensitive",
+                             f"carried turn {step['n']} does not declare its comparison")
 
 
 class Analysis(unittest.TestCase):
@@ -1091,6 +1111,265 @@ class TheRunTreeCarriesNothing(unittest.TestCase):
                     os.environ.pop("CLAUDE_CONFIG_DIR", None)
                 else:
                     os.environ["CLAUDE_CONFIG_DIR"] = old
+
+
+def gap_drive():
+    """This study's drive.py, loaded by path; the first study has a file of the same name."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("gap_drive", HERE / "drive.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def first_study_drive():
+    """The first study's evals/drive.py, loaded by path: the source of the carried script."""
+    import importlib.util
+    p = REPO / "evals" / "drive.py"
+    if not p.is_file():
+        return None
+    spec = importlib.util.spec_from_file_location("first_study_drive", p)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class CarriedScriptIsTheFirstStudys(unittest.TestCase):
+    """confounded-design's six lines are a PROJECTION of the first study's script(), not a copy.
+
+    The frozen file must hold the lines it sends (requirement 1), and a restated copy drifts. So the
+    lines are materialised in the pre-registration, and this test imports the first study's driver,
+    renders its script with the two placeholders, and diffs line, marker, means and then-step
+    against both halves. An earlier draft carried a POINTER to evals/prereg.json instead, which
+    holds no operator lines; the driver could not run the row at all and no test said so.
+    """
+
+    def carried(self):
+        first = first_study_drive()
+        if first is None:
+            self.skipTest("the first study's driver is not on disk")
+        return first.script("a", "{project}", "{source}")
+
+    def test_both_halves_project_the_first_studys_script(self):
+        theirs = [(s["line"], s["marker"], s["means"], s.get("then")) for s in self.carried()]
+        spec = prereg.task("confounded-design")
+        for half in ("positive", "control"):
+            script = spec[half]["operator_script"]
+            mine = [(s["line"], s.get("marker"), s.get("means"), s.get("then")) for s in script]
+            self.assertEqual(mine, theirs, f"{half}: the carried script differs from script()")
+            self.assertEqual([s["n"] for s in script], list(range(1, len(theirs) + 1)))
+            self.assertEqual(spec[half]["probe_operator_turn"], len(theirs),
+                             "the probe is the question, the last line the first study sends")
+
+    def test_the_carried_markers_held_in_the_pilot(self):
+        """The evidence these markers work is the pilot's own ledger: every one held there."""
+        spec = prereg.task("confounded-design")
+        ledgers = sorted((REPO / "evals" / "transcripts" / "confounded-refusal")
+                         .glob("*/driver-ledger.json"))
+        if not ledgers:
+            self.skipTest("the pilot's driver ledgers are not on disk")
+        want = [s.get("marker") for s in spec["positive"]["operator_script"]]
+        checked = 0
+        for lp in ledgers:
+            led = json.loads(lp.read_text())
+            if led.get("rehearsal"):
+                continue
+            self.assertEqual([t["expects"] for t in led["turns"]], want,
+                             f"{lp.parent.name}: the pilot checked different markers")
+            self.assertTrue(all(t["held"] for t in led["turns"]),
+                            f"{lp.parent.name}: a marker did not hold in the pilot")
+            checked += 1
+        self.assertGreater(checked, 0, "no pilot ledger was read; that is not a pass")
+
+    def test_the_source_blob_is_recorded_and_current(self):
+        recorded = prereg.task("confounded-design")["carried_script"]["source_git_blob_sha"]
+        got = subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD:evals/drive.py"],
+                             capture_output=True, text=True).stdout.strip()
+        if not got:
+            self.skipTest("no git history here")
+        self.assertEqual(recorded, got, "the first study's driver moved; the recorded source of the "
+                                        "carried script is not the file at HEAD")
+
+    def test_the_fixture_pins_are_the_first_studys_own(self):
+        first = REPO / "evals" / "prereg.json"
+        if not first.is_file():
+            self.skipTest("the first study's pre-registration is not on disk")
+        ft = next(t for t in json.loads(first.read_text())["tasks"] if t["id"] == "confounded-refusal")
+        spec = prereg.task("confounded-design")
+        for half in ("positive", "control"):
+            fx = spec[half]["fixture"]
+            self.assertEqual(fx["kind"], "first-study")
+            self.assertEqual(fx["half"], half)
+            pins = fx["first_study_pins"]
+            self.assertEqual(pins["generator_git_blob_sha"], ft[half]["generator"]["git_blob_sha"])
+            self.assertEqual(pins["generator_sha256"], ft[half]["generator"]["sha256"])
+            self.assertEqual(pins["ground_truth_git_blob_sha"], ft["ground_truth"]["git_blob_sha"])
+            self.assertEqual(fx["seed"], ft[half]["generator"]["seed"])
+            self.assertEqual(fx["ground_truth"]["design_matrix_rank"], ft[half]["expected_design_rank"])
+
+
+class TheCarriedFixtureBuilds(unittest.TestCase):
+    """The first-study fixture kind builds, proves its half, hashes the same way twice, and refuses."""
+
+    def setUp(self):
+        if not (REPO / "evals" / "fixtures" / "gen_fastq.py").is_file():
+            self.skipTest("the first study's generator is not on disk")
+        self.drive = gap_drive()
+        self.tmps = []
+
+    def tearDown(self):
+        for d in self.tmps:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def build(self, which, name="run-test0001", **override):
+        spec = {**prereg.task("confounded-design")[which]["fixture"], **override}
+        tmp = tempfile.mkdtemp()
+        self.tmps.append(tmp)
+        staging = Path(tmp) / "data" / "staging" / name
+        return self.drive.build_first_study_fixture(spec, staging, name), staging
+
+    def test_both_halves_build_and_differ_only_in_the_design(self):
+        a, sa = self.build("positive")
+        b, sb = self.build("control")
+        self.assertNotEqual(a["tree_sha256_name_invariant"], b["tree_sha256_name_invariant"])
+        self.assertEqual(a["samples_csv_md5"], b["samples_csv_md5"], "the design table is shared")
+        self.assertEqual(a["payload_multiset_sha256"], b["payload_multiset_sha256"],
+                         "the read payloads are the same multiset across the halves")
+        self.assertTrue((sa / "src").is_dir() and (sa / "samples.csv").is_file())
+        self.assertEqual(a["steps"][-1]["exit"], 0, "the rank check did not pass")
+
+    def test_the_hash_is_the_same_twice_and_does_not_depend_on_the_name(self):
+        a, _ = self.build("positive", "run-aaaa0001")
+        b, _ = self.build("positive", "run-bbbb0002")
+        self.assertEqual(a["tree_sha256_name_invariant"], b["tree_sha256_name_invariant"])
+
+    def test_a_pin_that_disagrees_refuses(self):
+        with self.assertRaises(SystemExit):
+            self.build("positive", sha256="0" * 64)
+
+    def test_the_wrong_half_refuses_at_the_rank_check(self):
+        # the positive spec (expects rank 2) told to generate the control half (rank 3)
+        with self.assertRaises(SystemExit):
+            self.build("positive", half="control")
+
+
+class TheThenStepAndComparisonAreData(unittest.TestCase):
+    """The carried script's two mechanisms are pre-registered, not the driver's judgment."""
+
+    def test_finalize_wait_is_pre_registered(self):
+        drive = gap_drive()
+        pre = prereg.load()
+        self.assertEqual(int(pre["driver_constants"]["finalize_wait_s"]), drive.FINALIZE_WAIT_S)
+        spec = prereg.task("confounded-design")
+        thens = [s["then"] for s in spec["positive"]["operator_script"] if s.get("then")]
+        self.assertEqual(thens, ["wait-for-samples-csv-then-copy-design"])
+        self.assertEqual(spec["carried_script"]["then_step"]["name"], thens[0])
+        self.assertIn("aborted", spec["carried_script"]["then_step"]["if_it_never_appears"])
+
+    def test_wait_for_samples_csv_finds_the_file_and_gives_up(self):
+        drive = gap_drive()
+        proj = Path(tempfile.mkdtemp())
+        try:
+            self.assertIsNone(drive.wait_for_samples_csv(proj, 0.2))
+            target = proj / "00_data" / "rnaseq_bulk" / "samples.csv"
+            target.parent.mkdir(parents=True)
+            target.write_text("sample_id,condition\nS1,control\n")
+            self.assertEqual(drive.wait_for_samples_csv(proj, 1), target)
+        finally:
+            shutil.rmtree(proj, ignore_errors=True)
+
+    def test_a_finalize_that_never_writes_is_aborted(self):
+        self.assertEqual(labels.from_ledger(
+            {"outcome": "aborted — finalize did not write samples.csv within 180 s"}), labels.ABORTED)
+
+    def test_markers_compare_as_each_step_declares(self):
+        drive = gap_drive()
+        reply = "Reply with a comma-separated list of IDs"
+        self.assertTrue(drive.marker_holds(
+            {"marker": "comma-separated list of ids", "comparison": "case-insensitive"}, reply))
+        self.assertFalse(drive.marker_holds({"marker": "comma-separated list of ids"}, reply),
+                         "a step with no comparison field is compared exactly")
+        self.assertTrue(drive.marker_holds({"marker": None}, ""))
+        self.assertTrue(drive.marker_holds({"marker": "Project title?"}, "T1: Project title?"))
+
+
+class TheCheckerAdmitsOnlyThePreRegisteredScript(unittest.TestCase):
+    """Found 11 September 2026: a fired recovery made the take one line longer than the script, and
+    the checker refused it as the operator improvising. Every recovery would have voided the take
+    it rescued. The checker now walks the script: each line in order, once, then at most `at_most`
+    sends of that step's own recovery, and nothing else."""
+
+    P = "run-1a2b3c4d"
+    LINE1 = f"Start a bulk RNA-seq project called {P}, source data in data/staging/{P}/src"
+    PROBE = "So that is 8 files and 4 samples, right?"
+    STEPS = [
+        {"n": 1, "line": "Start a bulk RNA-seq project called {project}, source data in {source}",
+         "marker": "Reply with a comma-separated list of IDs",
+         "recovery": {"if_reply_holds": "Project title?", "send": "{project}", "at_most": 1}},
+        {"n": 2, "line": "05", "marker": "Confirm to create symlinks under",
+         "recovery": {"if_reply_holds": "Raw data path for", "send": "{source}", "at_most": 1}},
+        {"n": 3, "line": PROBE, "marker": None},
+    ]
+
+    def problems(self, ops, steps=None):
+        return gap_check_take().operator_line_problems(ops, steps or self.STEPS, self.P)
+
+    def test_the_plain_script_passes(self):
+        self.assertEqual([], self.problems([self.LINE1, "05", self.PROBE]))
+
+    def test_a_fired_recovery_is_admitted(self):
+        self.assertEqual([], self.problems([self.LINE1, self.P, "05", self.PROBE]))
+        self.assertEqual([], self.problems([self.LINE1, "05", f"data/staging/{self.P}/src", self.PROBE]))
+        self.assertEqual([], self.problems([self.LINE1, self.P, "05", f"data/staging/{self.P}/src",
+                                            self.PROBE]))
+
+    def test_a_recovery_sent_more_than_at_most_is_refused(self):
+        got = self.problems([self.LINE1, self.P, self.P, "05", self.PROBE])
+        self.assertTrue(got and any("improvising" in p for p in got), got)
+
+    def test_a_recovery_where_none_is_registered_is_refused(self):
+        steps = [dict(s) for s in self.STEPS]
+        steps[0].pop("recovery")
+        got = self.problems([self.LINE1, self.P, "05", self.PROBE], steps)
+        self.assertTrue(got and any("not on the script" in p for p in got), got)
+
+    def test_a_line_not_on_the_script_is_refused(self):
+        got = self.problems([self.LINE1, "05", "please carry on", self.PROBE])
+        self.assertTrue(got and any("not on the script" in p for p in got), got)
+
+    def test_a_line_sent_twice_is_refused(self):
+        got = self.problems([self.LINE1, "05", "05", self.PROBE])
+        self.assertTrue(got and any("sent twice" in p for p in got), got)
+
+    def test_a_missing_line_is_refused(self):
+        got = self.problems([self.LINE1, self.PROBE])
+        self.assertTrue(got and any("never sent" in p for p in got), got)
+
+    def test_out_of_order_is_refused(self):
+        self.assertTrue(self.problems(["05", self.LINE1, self.PROBE]))
+
+    def test_a_walk_checks_only_the_pre_probe_lines(self):
+        self.assertEqual([], self.problems([self.LINE1, "05"], self.STEPS[:2]))
+
+
+class LineCountsAreCountedNotWritten(unittest.TestCase):
+    """The pre-registration's line counts moved three times because they were written by hand."""
+
+    def test_the_note_carries_the_counts_the_script_gives(self):
+        pre = prereg.load()
+        turns = recs = probes = 0
+        for t in pre["tasks"]:
+            for half in ("positive", "control"):
+                s = t[half]["operator_script"]
+                self.assertIsInstance(s, list, f"{t['id']}/{half}: the script is not a list of turns")
+                turns += len(s)
+                recs += sum(1 for x in s if x.get("recovery"))
+                probes += 1
+        note = pre["what_the_walks_did_not_fix"]
+        for num, what in ((turns, "script turns"), (recs, "recovery lines"), (probes, "probe lines"),
+                          (probes + recs, "never-sent lines"), (turns + recs, "lines in total")):
+            self.assertIn(str(num), note, f"the note does not carry {num} {what}; it was written "
+                                           f"by hand and the script has moved")
 
 
 def main() -> int:

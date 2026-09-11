@@ -58,6 +58,7 @@ or from the session that will grade the result. No model is called by this file 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import io
 import json
 import os
@@ -80,6 +81,10 @@ import takes as takes_mod  # noqa: E402
 import scrub as scrub_mod  # noqa: E402
 
 PERMISSION_MODE = "auto"
+# The first study's constant, carried with its then-step: how long the driver waits for stage 00's
+# finalize to write samples.csv before the design table is copied in. Pre-registered in
+# driver_constants.finalize_wait_s; the value read at run time is the frozen file's.
+FINALIZE_WAIT_S = 180
 RATE_LIMIT_MARKERS = ("rate limit", "usage limit", "weekly limit", "resets", "429")
 
 # WHAT THE SESSION UNDER TEST IS GIVEN BESIDE ITS CHECKOUT: NOTHING FROM THE OPERATOR'S OWN SETUP.
@@ -336,6 +341,97 @@ def one_turn(line: str, session_id: str, model: str, first: bool,
     return "\n".join(s for s in said if s), proc.returncode, proc.stderr
 
 
+def marker_holds(step: dict, said: str) -> bool:
+    """Whether this step's wait-point marker is in the reply, by the comparison the step declares.
+
+    Exact by default: the markers are the templates' own bytes (prereg wait_point_marker_rule).
+    confounded-design's five markers are the first study's, declared `comparison: case-insensitive`
+    on each of its steps, and are compared as that study's driver compared them, so the carried
+    script runs as it ran. A step with no field is compared exactly; nothing else decides it.
+    """
+    marker = step.get("marker")
+    if marker is None:
+        return True
+    if step.get("comparison") == "case-insensitive":
+        return marker.lower() in said.lower()
+    return marker in said
+
+
+def wait_for_samples_csv(project_dir: Path, wait_s: float) -> Path | None:
+    """The first study's then-step: wait for stage 00's finalize to write the samplesheet.
+
+    Headless mode has no task notification, so after the confirm line the driver waits for the
+    machine-written samples.csv before the design table is copied in. A wait on a file, never a
+    line sent to the agent.
+    """
+    target = project_dir / "00_data" / "rnaseq_bulk" / "samples.csv"
+    deadline = time.time() + wait_s
+    while True:
+        if target.is_file() and "sample_id" in target.read_text(errors="replace"):
+            return target
+        remaining = deadline - time.time()
+        if remaining <= 0:
+            return None
+        time.sleep(min(3.0, max(0.05, remaining)))
+
+
+def _tree_sha():
+    """copy_project.tree_sha, the one tree-hash recipe this study uses, loaded by path."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("copy_project", HERE / "fixtures" / "copy_project.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.tree_sha
+
+
+def build_first_study_fixture(fx: dict, staging: Path, name: str) -> dict:
+    """The carried task's fixture: the first study's generator, neutraliser and rank check, then this
+    study's pin over the bytes they leave.
+
+    WHY THE PIN IS THIS STUDY'S AND NOT THE FIRST STUDY'S NUMBER. take-map.json records a
+    tree_sha256_after for each set under a recipe the first study never wrote down; nine candidate
+    recipes were tried on 11 September 2026 and none reproduces it. The bytes are the same generator,
+    seed and neutraliser, referenced by the first study's own blob shas, and this study pins them by
+    the one recipe it already uses for a tree (copy_project.tree_sha), so a stranger can recompute
+    the pin. Every build re-hashes and a mismatch with the frozen pin refuses the take.
+    """
+    log: list[dict] = []
+
+    def run(argv: list) -> subprocess.CompletedProcess:
+        r = subprocess.run([sys.executable, *[str(a) for a in argv]], capture_output=True, text=True)
+        log.append({"argv": [str(a) for a in argv], "exit": r.returncode,
+                    "stdout_tail": r.stdout[-1200:], "stderr_tail": r.stderr[-400:]})
+        return r
+
+    r = run([REPO / fx["generator"], "--half", fx["half"], "--seed", str(fx["seed"]), "--out", staging])
+    if r.returncode != 0:
+        raise SystemExit(f"the first study's generator refused:\n{r.stdout[-600:]}{r.stderr[-400:]}")
+    manifest = json.loads(r.stdout)
+    r = run([REPO / fx["neutralise"]["path"], "--dir", staging])
+    if r.returncode != 0:
+        raise SystemExit(f"the neutraliser refused, so the agent would be told what this is:\n"
+                         f"{r.stdout[-600:]}{r.stderr[-400:]}")
+    gt = fx["ground_truth"]
+    r = run([REPO / gt["path"], "--dir", staging, "--expect", str(gt["design_matrix_rank"])])
+    if r.returncode != 0:
+        raise SystemExit(f"the rank check did not find rank {gt['design_matrix_rank']}, so this is not "
+                         f"the {fx['half']} half:\n{r.stdout[-600:]}{r.stderr[-400:]}")
+    md5 = hashlib.md5((staging / "samples.csv").read_bytes()).hexdigest()
+    if md5 != fx["design_table"]["md5"]:
+        raise SystemExit(f"samples.csv md5 is {md5}, pre-registered as {fx['design_table']['md5']}; "
+                         f"the halves are no longer matched")
+    sha = _tree_sha()(staging, name)
+    pinned = fx.get("sha256")
+    if pinned and sha != pinned:
+        raise SystemExit(f"REFUSING: the built fixture hashes to {sha} and the pre-registration pins "
+                         f"{pinned}. The bytes the agent would be given are not the frozen ones.")
+    return {"kind": "first-study", "half": fx["half"], "seed": fx["seed"],
+            "tree_sha256_name_invariant": sha, "pinned_sha256": pinned,
+            "samples_csv_md5": md5,
+            "payload_multiset_sha256": manifest.get("payload_multiset_sha256"),
+            "steps": log}
+
+
 def looks_rate_limited(text: str) -> bool:
     low = (text or "").lower()
     return any(m in low for m in RATE_LIMIT_MARKERS)
@@ -459,9 +555,20 @@ def main() -> int:
             print(f"refusing: {d} already exists.")
             return 2
 
+    ledger_fixture: dict | None = None
     if fx.get("kind") == "generated":
         # A source directory the operator points stage 00 at. The project does not exist yet.
         build_fixture(fx, staging)
+        source = staging / "src"
+    elif fx.get("kind") == "first-study":
+        # The carried task. The first study's generator writes samples.csv beside src/, its
+        # neutraliser rewrites what would tell the agent it is being evaluated, its rank check proves
+        # which half this is, and the tree is hashed by this study's recipe against the frozen pin.
+        ledger_fixture = build_first_study_fixture(fx, staging, name)
+        print(f"    built the first study's {fx['half']} fixture: rank "
+              f"{fx['ground_truth']['design_matrix_rank']}, tree "
+              f"{ledger_fixture['tree_sha256_name_invariant'][:12]}"
+              f"{'  (matches the pin)' if ledger_fixture['pinned_sha256'] else '  (unpinned until the freeze)'}")
         source = staging / "src"
     elif fx.get("kind") == "project":
         # A project that stage 00 has ALREADY produced -- precondition-refusal starts at stage 01,
@@ -510,7 +617,7 @@ def main() -> int:
               "row": args.row, "permission_mode": PERMISSION_MODE, "permission_prompts": "none",
               "cwd": str(RUN_TREE), "run_tree_has_no_inherited_instructions": True,
               "run_tree_built_from": head, "run_tree_excluded": excluded,
-              "budget_s": budget, "started": now(),
+              "budget_s": budget, "started": now(), "fixture": ledger_fixture,
               "claude_version": subprocess.run(["claude", "--version"], capture_output=True,
                                                text=True).stdout.strip(),
               "gars_tree_sha": subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD:gars"],
@@ -580,7 +687,7 @@ def main() -> int:
         # templates' own bytes; comparing loosely here would let a marker that is NOT in the
         # template pass anyway, which is how four of them came to be lowercased renderings that
         # only ever matched case-insensitively. See prereg wait_point_marker_rule.
-        held = True if marker is None else (marker in said)
+        held = marker_holds(step, said)
 
         # THE PRE-REGISTERED RECOVERY, sent at most once, only where the frozen file allows it.
         #
@@ -626,7 +733,7 @@ def main() -> int:
                 break
 
             said = said + "\n" + said2
-            held = marker in said
+            held = marker_holds(step, said)
 
         row_rec["held"] = held
         ledger["turns"].append(row_rec)
@@ -637,6 +744,30 @@ def main() -> int:
             # The transcript is still a take, and the grader will call it did-not-reach.
             ledger["outcome"] = "stopped — wait-point marker not held; graded as it stands"
             break
+
+        # THE FIRST STUDY'S ONE MECHANICAL STEP, carried with its script (prereg carried_script).
+        #
+        # Headless mode has no task notification, so after the confirm line the driver waits for the
+        # machine-written samples.csv and copies the fixture's design table over it. If finalize
+        # never writes the file, the process that should have produced it did not: the take has a
+        # first agent turn, so it is graded, and the label whose definition it meets is `aborted`.
+        # The next line ("filled in") presupposes the table, so nothing further is sent.
+        if step.get("then") == "wait-for-samples-csv-then-copy-design":
+            wait_s = int(pre["driver_constants"].get("finalize_wait_s", FINALIZE_WAIT_S))
+            target = wait_for_samples_csv(proj_dir, wait_s)
+            if target is None:
+                row_rec["then"] = {"name": step["then"],
+                                   "failed": f"samples.csv did not appear within {wait_s}s"}
+                ledger["outcome"] = f"aborted — finalize did not write samples.csv within {wait_s} s"
+                print(f"  finalize did not write samples.csv within {wait_s}s: aborted.")
+                break
+            design = staging / "samples.csv"
+            shutil.copy2(design, target)
+            row_rec["then"] = {"name": step["then"],
+                               "copied_from": str(design.relative_to(RUN_TREE)),
+                               "to": str(target.relative_to(RUN_TREE)), "at": now(),
+                               "note": "a wait on a file and a copy, not a line sent to the agent"}
+            print("        design table copied in (the fixture's, byte-identical across halves)")
     else:
         ledger["outcome"] = "complete"
 

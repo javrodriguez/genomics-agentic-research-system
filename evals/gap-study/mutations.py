@@ -52,10 +52,18 @@ class Sandbox:
         self.root = Path(self.tmp.name)
         (self.root / "evals").mkdir(parents=True)
         shutil.copytree(HERE, self.root / "evals" / "gap-study")
-        for f in ("transcript.py", "stated_count.py"):
+        # the first study's readers, and the files the carried task is bound to: its driver (the
+        # source of the carried script), its pre-registration (the pins) and its pilot ledgers
+        for f in ("transcript.py", "stated_count.py", "drive.py", "prereg.json", "take-map.json"):
             src = REPO / "evals" / f
             if src.is_file():
                 shutil.copy2(src, self.root / "evals" / f)
+        for half in ("positive", "control"):
+            src = REPO / "evals" / "transcripts" / "confounded-refusal" / half / "driver-ledger.json"
+            if src.is_file():
+                dst = self.root / "evals" / "transcripts" / "confounded-refusal" / half / "driver-ledger.json"
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dst)
         # the system under test, for the fixture guard
         gars = REPO / "gars"
         if gars.is_dir():
@@ -343,6 +351,46 @@ def m_published_walk_carries_the_email(s: Sandbox) -> tuple[int, str]:
             "check_take.py on a published walk carrying the email field")
 
 
+def m_carried_line_edited(s: Sandbox) -> tuple[int, str]:
+    """A carried operator line edited in the draft: the projection is no longer script()."""
+    p = s.study / "prereg-draft.json"
+    d = json.loads(p.read_text())
+    t = next(t for t in d["tasks"] if t["id"] == "confounded-design")
+    step = t["positive"]["operator_script"][1]
+    if step["line"] != "05":
+        raise RuntimeError("the mutation did not apply; the guard was not exercised")
+    step["line"] = "5"
+    p.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
+    return (s.run([str(s.study / "test_harness.py"), "CarriedScriptIsTheFirstStudys"]),
+            "test_harness.py CarriedScriptIsTheFirstStudys")
+
+
+def m_recovery_read_as_improvisation(s: Sandbox) -> tuple[int, str]:
+    """The checker with its recovery allowance removed: the take a recovery rescued is refused."""
+    p = s.study / "check_take.py"
+    text = p.read_text()
+    mutated = text.replace('        if rec:\n            at_most = int(rec.get("at_most", 1))',
+                           '        if False:\n            at_most = int(rec.get("at_most", 1))')
+    if mutated == text:
+        raise RuntimeError("the mutation did not apply; the guard was not exercised")
+    p.write_text(mutated)
+    return (s.run([str(s.study / "test_harness.py"), "TheCheckerAdmitsOnlyThePreRegisteredScript"]),
+            "test_harness.py TheCheckerAdmitsOnlyThePreRegisteredScript")
+
+
+def m_carried_marker_compared_exactly(s: Sandbox) -> tuple[int, str]:
+    """The driver ignoring a step's declared comparison: no carried marker would ever hold."""
+    p = s.study / "drive.py"
+    text = p.read_text()
+    mutated = text.replace('    if step.get("comparison") == "case-insensitive":\n'
+                           '        return marker.lower() in said.lower()\n', '')
+    if mutated == text:
+        raise RuntimeError("the mutation did not apply; the guard was not exercised")
+    p.write_text(mutated)
+    return (s.run([str(s.study / "test_harness.py"), "TheThenStepAndComparisonAreData"]),
+            "test_harness.py TheThenStepAndComparisonAreData")
+
+
 MUTATIONS = [
     ("an edited contract quote", m_edited_contract_quote, True),
     ("an emptied quote table", m_emptied_quote_table, True),
@@ -363,6 +411,9 @@ MUTATIONS = [
     ("a checkout named for the study", m_run_tree_named_for_the_study, False),
     ("the study's names dropped from the leak list", m_study_names_dropped_from_the_leak_list, False),
     ("a published walk carrying the email field", m_published_walk_carries_the_email, False),
+    ("a carried operator line edited", m_carried_line_edited, False),
+    ("a recovery line read as improvisation", m_recovery_read_as_improvisation, False),
+    ("a carried marker compared exactly", m_carried_marker_compared_exactly, False),
 ]
 
 NOT_APPLICABLE = [
@@ -381,6 +432,9 @@ NOT_APPLICABLE = [
      "scratch tree with synthetic takes"),
     ("a gars sha differing from the freeze",
      "the freeze has not happened, so there is no pinned sha to differ from"),
+    ("a carried fixture whose tree hash differs from the freeze",
+     "no fixture pin exists before the freeze; the builder's refusal on a disagreeing pin is "
+     "unit-tested instead (TheCarriedFixtureBuilds)"),
 ]
 
 

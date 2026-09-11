@@ -34,6 +34,7 @@ import argparse
 import hashlib
 import json
 import subprocess
+import tempfile
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -88,6 +89,16 @@ PINNED = [
     # the first study's shared readers, imported rather than copied
     "evals/transcript.py",
     "evals/stated_count.py",
+    # the first study's own files the carried task rests on: its driver (the source of the carried
+    # script), generator, neutraliser, rank check, classifier, case suite and take map. The first
+    # study pins most of these itself; pinning them here too means THIS checker goes red if they move.
+    "evals/drive.py",
+    "evals/fixtures/gen_fastq.py",
+    "evals/fixtures/neutralise.py",
+    "evals/fixtures/rank_check.py",
+    "evals/graders/confounded_refusal.py",
+    "evals/fixtures/lexicon_cases_task1.json",
+    "evals/take-map.json",
 ]
 
 # freeze.py is deliberately NOT in that list. It runs to produce the pins, so it cannot pin the
@@ -222,6 +233,20 @@ def main() -> int:
                 fx.setdefault("sha256", None)
                 fx["sha256_note"] = ("null by design: the fixture is a project tree built by the "
                                      "real stage 00, not a file")
+            elif kind == "first-study":
+                # The carried task's fixture, built fresh in a temporary directory by the first
+                # study's pinned generator and neutraliser and hashed by this study's one tree
+                # recipe. The driver rebuilds and re-hashes on every take and refuses a mismatch.
+                import drive  # noqa: PLC0415  (loaded here so a draft-only freeze never imports it)
+                with tempfile.TemporaryDirectory() as tmp:
+                    staging = Path(tmp) / "data" / "staging" / "<project>"
+                    rec = drive.build_first_study_fixture({**fx, "sha256": None}, staging, "<project>")
+                fx["sha256"] = rec["tree_sha256_name_invariant"]
+                fx["pinned_by"] = ("the first study's generator, seed and neutraliser (their blob shas "
+                                   "in pinned_files and first_study_pins), the rank check's expected "
+                                   "rank, the design table's md5, and this tree_sha256_name_invariant "
+                                   "over the neutralised staging directory, which the driver "
+                                   "recomputes on every build")
 
     # EVERY REMAINING NULL, CLASSIFIED. A frozen file full of nulls that nobody has accounted for
     # is a file whose reader has to guess which were intended.

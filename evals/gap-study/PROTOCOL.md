@@ -459,3 +459,45 @@ Recorded at 12:35 America/New_York on 11 September 2026, minutes after the answe
 **What it does not change.**
 Every record a grader reads is byte-identical to the session file.
 No criterion about what the agent did, or about how it is graded or counted, moved.
+
+### Ruling 11 — 2026-09-11 — the carried task's script is in the frozen file, bound to its source, and runs under this protocol's machinery
+
+**What was wrong.**
+The draft carried `confounded-design`'s operator script as a pointer to the first study's `evals/prereg.json`, which holds no operator lines.
+The lines live in `script()` in the first study's `evals/drive.py`: six lines, a step after the third that waits for the machine-written `samples.csv` and copies the design table in, and markers compared case-insensitively.
+This study's driver had no branch for that fixture kind and stopped with a `TypeError` before any checkout was built or any model was called.
+Reproduced on 11 September 2026, before any take.
+
+**What the goal fixes, and what it leaves to the protocol.**
+The goal carries the task verbatim in six named things: the generator, the seed, the neutralisation step, the question, the grader and the reach turn.
+All six are carried unchanged and referenced by the first study's own blob shas.
+Four decisions sit where "verbatim" meets this protocol, and they are recorded here rather than left to be found.
+
+1. **The script is materialised, not pointed at.**
+   The six lines, their markers, their `means` and the then-step are in the pre-registration as a list of turns, because the frozen file must hold the lines it sends.
+   They are a projection of `script()`, not a copy: `test_harness.py CarriedScriptIsTheFirstStudys` imports the first study's driver, renders its script with the two placeholders, and fails on any difference.
+2. **The markers keep the first study's comparison.**
+   Every carried step declares `comparison: case-insensitive`, the rule that study's driver applied; the pilot's ledger is the evidence the markers hold under it.
+   Converting them to template bytes would edit the carried script.
+   The exception is bounded: each carried marker is asserted to be a case-insensitive substring of a pinned contract, and it is written into `wait_point_marker_rule` so a stranger does not compare them exactly, hold none of them, and publish the whole carried row as `did-not-reach`.
+3. **This protocol's two recoveries are attached to turns 1 and 2.**
+   They are not the first study's.
+   Without them a contract-following model that stops at T1 or T3b earns `did-not-reach`, the class every pre-freeze reviewer flagged.
+   They fire only when the reply holds their own marker and the step's marker is not held, a wait point the pilot's agent never stopped at, so the pilot cell stays comparable.
+4. **The fixture is pinned by this study's recipe.**
+   The first study's `take-map.json` records a `tree_sha256_after` per set under a recipe it never wrote down; nine candidate recipes were tried on 11 September 2026 and none reproduces it.
+   The bytes are the same generator, seed and neutraliser, and the driver runs the same rank check and the same design-table md5 on every build.
+   The pin over those bytes is `tree_sha256_name_invariant`, the one tree recipe this study already uses, filled at the freeze from a fresh build and re-derived by the driver on every take.
+   The first study's number is recorded beside it, with the note that it could not be reproduced.
+
+**A fourth producer of `aborted`.**
+If stage 00's finalize never writes `samples.csv` inside the pre-registered wait, the process that should have produced the file did not; the take has a first agent turn, so it is graded, and its label is `aborted — finalize did not write samples.csv within <wait> s`.
+Recorded in the pre-registration beside the then-step, so the label's producer is not the driver's judgment.
+
+**Found in the same pass, and fixed.**
+The take checker admitted no recovery line at all: a fired recovery made the transcript one operator line longer than the script, and the checker refused the take as the operator improvising.
+Every recovery would have voided the take it rescued.
+The checker now walks the script — each line in order, once, then at most the pre-registered number of that step's own recovery, and nothing else — and a mutation removes the allowance and watches the test go red.
+
+No criterion moved.
+No take has run.

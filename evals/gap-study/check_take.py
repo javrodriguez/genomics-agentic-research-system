@@ -251,6 +251,111 @@ def published_email_problems(path: Path) -> list[str]:
     return []
 
 
+def _line_head(line: str, expected_project: str) -> str:
+    """The fixed head of a scripted line, rendered for this take; a line carrying a path is matched on
+    the part before the path, since the path is per-take."""
+    line = line.replace("{project}", expected_project).replace("{source}", "").strip()
+    needle = normalise(line).lower()
+    return needle.split(" in ")[0] if " in " in needle else needle
+
+
+def _is_recovery_send(op: str, rec: dict, expected_project: str) -> bool:
+    """Is this operator turn the step's pre-registered recovery line, rendered for this take?"""
+    got = normalise(op).strip()
+    send = rec["send"].strip()
+    if send == "{source}":
+        # the source path is per-take: it carries the project's neutral name and has no spaces
+        return bool(expected_project) and expected_project in got and " " not in got
+    want = normalise(send.replace("{project}", expected_project)).strip()
+    return got.lower() == want.lower()
+
+
+def operator_line_problems(ops: list[str], steps: list[dict], expected_project: str) -> list[str]:
+    """The operator's turns against the script: each step's line, in order, once; then at most
+    `at_most` sends of THAT step's pre-registered recovery; and nothing else.
+
+    FOUND 11 SEPTEMBER 2026, BEFORE ANY TAKE. The previous check counted: every line present once,
+    and `len(ops) > len(steps)` was improvisation. A recovery is a real operator turn, sent by the
+    driver from the frozen file, so on the take it rescued the count came out one high and the
+    checker refused the take as the operator improvising. Every recovery would have voided the take
+    it existed to save, and a reader of the rehearsal folder would have seen "improvising" beside a
+    line the pre-registration itself named.
+
+    A recovery is admitted only where the frozen file attaches one, only immediately after the step
+    it answers, only as many times as `at_most` allows, and only as the rendered `send`. Anything
+    else the operator sent is still improvisation and still refused.
+    """
+    problems: list[str] = []
+    norm = [normalise(o).lower() for o in ops]
+    heads = [_line_head(s["line"], expected_project) for s in steps]
+    unexplained: list[int] = []
+    i = 0
+    for idx, step in enumerate(steps):
+        head = heads[idx]
+        nxt = heads[idx + 1] if idx + 1 < len(heads) else None
+
+        def is_next(k: int) -> bool:
+            return bool(nxt) and nxt in norm[k]
+
+        if not head:
+            problems.append(f"operator turn {step['n']} renders to nothing; the script is broken")
+            continue
+        pos = next((k for k in range(i, len(ops)) if head in norm[k]), None)
+        if pos is None:
+            problems.append(f"operator turn {step['n']} was never sent: {head[:70]!r}")
+            continue
+        unexplained.extend(range(i, pos))
+        i = pos + 1
+        while i < len(ops) and head in norm[i] and not is_next(i):
+            problems.append(f"operator turn {step['n']} was sent twice; it is sent once")
+            i += 1
+        rec = step.get("recovery")
+        if rec:
+            at_most = int(rec.get("at_most", 1))
+            used = 0
+            while i < len(ops) and _is_recovery_send(ops[i], rec, expected_project) and not is_next(i):
+                used += 1
+                if used > at_most:
+                    problems.append(f"the recovery for operator turn {step['n']} was sent {used} "
+                                    f"times and the frozen file allows {at_most}; a recovery that "
+                                    f"repeats is the operator improvising")
+                i += 1
+    unexplained.extend(range(i, len(ops)))
+    for k in unexplained:
+        problems.append(f"operator turn {k + 1} is not on the script: {ops[k][:70]!r}. A line that "
+                        f"is not on the script is the operator improvising.")
+    return problems
+
+
+def fixture_binding_problems(path: Path, half: dict) -> tuple[list[str], str | None]:
+    """The fixture the driver built, from its ledger beside the transcript, against this half's pin.
+
+    The fixture is what defines the half. For the five tasks whose halves share one fixture the
+    check is vacuous; for confounded-design the halves differ before the probe, and a take pointed
+    at the other half's fixture measures the other experiment. Returns (problems, note): a note
+    where the comparison could not be made, so a silent pass is never printed for it.
+    """
+    ledger_path = path.parent / "driver-ledger.json"
+    pinned = (half.get("fixture") or {}).get("sha256")
+    if not ledger_path.is_file():
+        return [], "no driver ledger beside the transcript, so the fixture binding was not checked"
+    try:
+        ledger = json.loads(ledger_path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        return [f"the driver ledger beside the transcript is unreadable ({exc!r})"], None
+    fx = ledger.get("fixture") or {}
+    got = fx.get("tree_sha256_name_invariant") or fx.get("sha256")
+    if not got:
+        return [], "the driver ledger records no fixture hash, so the fixture binding was not checked"
+    if not pinned:
+        return [], (f"the fixture binding is unpinned until the freeze (the driver built "
+                    f"{got[:12]}; the pre-registration pins nothing yet)")
+    if got != pinned:
+        return [f"the fixture the driver built ({got[:12]}) is not this half's pinned fixture "
+                f"({pinned[:12]}). The take measures the other experiment."], None
+    return [], None
+
+
 def check(path: Path, task_id: str, half_name: str, row_index: int | None,
           is_walk: bool) -> list[str]:
     problems: list[str] = []
@@ -274,30 +379,21 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
         problems.append("the transcript records no session id, so it cannot be tied to a ledger row")
     expected_project = neutral_name(sid) if sid else ""
 
-    # ---- the operator lines: verbatim, and once ---------------------------------------
+    # ---- the operator lines: verbatim, in order, once, and nothing else -----------------
     script = half["operator_script"]
     if isinstance(script, str):
-        problems.append(f"this task's operator script is carried from another study ({script}); "
-                        f"check it with that study's own checker")
+        problems.append(f"this task's operator script is a reference ({script}), not a list of "
+                        f"turns; the frozen file must hold the lines it sends")
         return problems
 
     steps = script if not is_walk else [s for s in script if s["n"] < half["probe_operator_turn"]]
-    for step in steps:
-        line = step["line"]
-        line = line.replace("{project}", expected_project)
-        line = line.replace("{source}", "").strip()
-        # a line carrying a path is matched on its fixed head, since the path is per-take
-        needle = normalise(line).lower()
-        head = needle.split(" in ")[0] if " in " in needle else needle
-        seen = sum(1 for o in ops if head and head in normalise(o).lower())
-        if seen == 0:
-            problems.append(f"operator turn {step['n']} was never sent: {head[:70]!r}")
-        elif seen > 1:
-            problems.append(f"operator turn {step['n']} was sent {seen} times; it is sent once")
+    problems += operator_line_problems(ops, steps, expected_project)
 
-    if len(ops) > len(steps):
-        problems.append(f"the operator sent {len(ops)} lines and the script fixes {len(steps)}. "
-                        f"A line that is not on the script is the operator improvising.")
+    # ---- the fixture ---------------------------------------------------------------------
+    fx_problems, fx_note = fixture_binding_problems(path, half)
+    problems += fx_problems
+    if fx_note:
+        print(f"  NOTE     {fx_note}")
 
     # ---- the leak ----------------------------------------------------------------------
     leaked = sorted({w for w in pre["leak_words"] if w.lower() in joined})
