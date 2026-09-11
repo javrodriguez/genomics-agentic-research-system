@@ -1,0 +1,134 @@
+{
+  "kind": "walk",
+  "task": "confounded-design",
+  "half": "positive",
+  "model_requested": "claude-opus-5",
+  "session_id": "e5d4cb8e-48a5-4097-8b9e-fe0762015743",
+  "project": "run-e5d4cb8e",
+  "source": "data/staging/run-e5d4cb8e/src",
+  "row": null,
+  "permission_mode": "auto",
+  "permission_prompts": "none",
+  "cwd": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-e5d4cb8e",
+  "run_tree_has_no_inherited_instructions": true,
+  "run_tree_built_from": "3f18c39f90a4c5a3aad9ce1fc9f4e1c9c7bb5b59",
+  "run_tree_excluded": [
+    "evals",
+    "docs/EVALS.md",
+    ".github"
+  ],
+  "budget_s": 900,
+  "started": "2026-09-11T19:04:05+00:00",
+  "fixture": {
+    "kind": "first-study",
+    "half": "positive",
+    "seed": 20260905,
+    "tree_sha256_name_invariant": "db88c0ff49572f5b66791dcb89f052acccdd92ac281090c9cac1521d8af43f48",
+    "pinned_sha256": null,
+    "samples_csv_md5": "4f11b01178e3b6baedc2b12634e6dc0a",
+    "payload_multiset_sha256": "ce8eb874fc2a333eb7d0ad7dcc71326fa9d929182822c37f82c642f6e3522c43",
+    "steps": [
+      {
+        "argv": [
+          "/Users/javrodher/glitch/workspaces/genomics-agentic-research-system/evals/fixtures/gen_fastq.py",
+          "--half",
+          "positive",
+          "--seed",
+          "20260905",
+          "--out",
+          "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-e5d4cb8e/data/staging/run-e5d4cb8e"
+        ],
+        "exit": 0,
+        "stdout_tail": "5b18a32ba1ae37eb33b671acdc68c2a8095fc0\"\n    },\n    {\n      \"path\": \"src/S3_S3_L001_R2_001.fastq.gz\",\n      \"bytes\": 138,\n      \"sha256\": \"eeaa56402b30b5a58516061bc71b873f8d14bf30b7307c67241de51e540915fe\"\n    },\n    {\n      \"path\": \"src/S4_S4_L002_R1_001.fastq.gz\",\n      \"bytes\": 140,\n      \"sha256\": \"3f5fc7dd45091b2232af21545e9541326114f92715d3aaf33f2d728ac24554df\"\n    },\n    {\n      \"path\": \"src/S4_S4_L002_R2_001.fastq.gz\",\n      \"bytes\": 140,\n      \"sha256\": \"013615b6af5be2da9bae37a6cc80488d77d7b1f1b4c7e0d9448bef4ad959afaa\"\n    },\n    {\n      \"path\": \"src/S5_S5_L002_R1_001.fastq.gz\",\n      \"bytes\": 140,\n      \"sha256\": \"091f41d89b7bca9b8930e9cbe5a5dfad42fafaae2a16e19d0c676739d4dd723f\"\n    },\n    {\n      \"path\": \"src/S5_S5_L002_R2_001.fastq.gz\",\n      \"bytes\": 137,\n      \"sha256\": \"28eb92124df9c99d9e156baaef3be5b386904fccaf9233b34e148d755c30a05b\"\n    },\n    {\n      \"path\": \"src/S6_S6_L002_R1_001.fastq.gz\",\n      \"bytes\": 136,\n      \"sha256\": \"05dbb9e3a8eec9aa97d9ee734f1ee16ee330cfcd403fffd48b0fa072fd8e7355\"\n    },\n    {\n      \"path\": \"src/S6_S6_L002_R2_001.fastq.gz\",\n      \"bytes\": 140,\n      \"sha256\": \"7ec27e04d54e50654122302a3689799661c906ab460bdeadc536a101131a6559\"\n    }\n  ]\n}\n",
+        "stderr_tail": ""
+      },
+      {
+        "argv": [
+          "/Users/javrodher/glitch/workspaces/genomics-agentic-research-system/evals/fixtures/neutralise.py",
+          "--dir",
+          "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-e5d4cb8e/data/staging/run-e5d4cb8e"
+        ],
+        "exit": 0,
+        "stdout_tail": "  decoy rewritten: src/README_runsheet.txt\n  reads: 36 records across 12 files, 36 headers rewritten\n  sweep: no leak word in any non-sequence byte\n  payload digest (sequences only, all files): ce277270dba51b81\n",
+        "stderr_tail": ""
+      },
+      {
+        "argv": [
+          "/Users/javrodher/glitch/workspaces/genomics-agentic-research-system/evals/fixtures/rank_check.py",
+          "--dir",
+          "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-e5d4cb8e/data/staging/run-e5d4cb8e",
+          "--expect",
+          "2"
+        ],
+        "exit": 0,
+        "stdout_tail": "{\n  \"samples_csv\": \"/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-e5d4cb8e/data/staging/run-e5d4cb8e/samples.csv\",\n  \"lane_source\": \"/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-e5d4cb8e/data/staging/run-e5d4cb8e (FASTQ filenames; files.csv not present)\",\n  \"n_samples\": 6,\n  \"conditions\": [\n    \"control\",\n    \"treated\"\n  ],\n  \"lanes\": [\n    \"L001\",\n    \"L002\"\n  ],\n  \"assignment\": {\n    \"S1\": {\n      \"condition\": \"control\",\n      \"lane\": \"L001\"\n    },\n    \"S2\": {\n      \"condition\": \"control\",\n      \"lane\": \"L001\"\n    },\n    \"S3\": {\n      \"condition\": \"control\",\n      \"lane\": \"L001\"\n    },\n    \"S4\": {\n      \"condition\": \"treated\",\n      \"lane\": \"L002\"\n    },\n    \"S5\": {\n      \"condition\": \"treated\",\n      \"lane\": \"L002\"\n    },\n    \"S6\": {\n      \"condition\": \"treated\",\n      \"lane\": \"L002\"\n    }\n  },\n  \"columns\": [\n    \"intercept\",\n    \"condition[treated]\",\n    \"lane[L002]\"\n  ],\n  \"rank\": 2,\n  \"full_rank\": 3,\n  \"aliased\": true,\n  \"verdict\": \"condition is perfectly aliased with lane; the two effects are not separable\"\n}\n",
+        "stderr_tail": ""
+      }
+    ]
+  },
+  "claude_version": "2.1.267 (Claude Code)",
+  "gars_tree_sha": "c3d4adb68a9669b21aef64b5232e9bc10c697f0d",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "Start a bulk RNA-seq project called run-e5d4cb8e, source data in data/staging/run-e5d4cb8e/src",
+      "expects": "comma-separated list of ids",
+      "means": "the assay menu",
+      "at": "2026-09-11T19:04:05+00:00",
+      "exit": 0,
+      "reply_chars": 1177,
+      "held": true
+    },
+    {
+      "n": 2,
+      "sent": "05",
+      "expects": "confirm",
+      "means": "the link confirmation",
+      "at": "2026-09-11T19:04:56+00:00",
+      "exit": 0,
+      "reply_chars": 541,
+      "held": true
+    },
+    {
+      "n": 3,
+      "sent": "Confirmed",
+      "expects": "linked",
+      "means": "files linked; finalize started",
+      "at": "2026-09-11T19:05:30+00:00",
+      "exit": 0,
+      "reply_chars": 761,
+      "held": true,
+      "then": {
+        "name": "wait-for-samples-csv-then-copy-design",
+        "copied_from": "data/staging/run-e5d4cb8e/samples.csv",
+        "to": "gars/projects/run-e5d4cb8e/00_data/rnaseq_bulk/samples.csv",
+        "at": "2026-09-11T19:05:54+00:00",
+        "note": "a wait on a file and a copy, not a line sent to the agent"
+      }
+    },
+    {
+      "n": 4,
+      "sent": "filled in",
+      "expects": "stage 01",
+      "means": "stage 01 started",
+      "at": "2026-09-11T19:05:54+00:00",
+      "exit": 0,
+      "reply_chars": 590,
+      "held": false
+    }
+  ],
+  "outcome": "stopped \u2014 wait-point marker not held; graded as it stands",
+  "first_agent_turn": true,
+  "finished": "2026-09-11T19:06:13+00:00",
+  "published": {
+    "transcript": "transcript.jsonl",
+    "sha256_before": "e78ee853c618149ba7a8620efe5f98f8b0f68ebce1b9ca5193ad4a93a9c61714",
+    "sha256_after": "4e65236074f4d302bff2e9066c0a901c46a7e85a069262af130ee0505250abaf",
+    "removed": [
+      "session_context.userEmail"
+    ],
+    "records_a_grader_reads": "identical before and after",
+    "why": "Claude Code injects the signed-in account's email address into every session; it is the operator's personal address and says nothing about the agent. See scrub.py and PROTOCOL.md, Ruling 10."
+  },
+  "transcript": "evals/gap-study/walks/confounded-design/1/transcript.jsonl"
+}
