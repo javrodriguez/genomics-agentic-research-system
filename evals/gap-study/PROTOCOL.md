@@ -609,3 +609,43 @@ The old path named a personal username in a public file; it stays in the history
 
 No criterion moved.
 No take has run.
+
+### Ruling 16 — 2026-09-11 — review 12's three blockers are folded, with six of its follow-ups and the auto-memory channel
+
+Review 12 (`verification/prefreeze-12.md`) ruled do not freeze, with three blockers and nine follow-ups; each was verified against the code before any change.
+`verification/prefreeze-12-disposition.md` records what was done with every finding.
+This ruling records what changed in the rules a take is held to.
+
+**A scripted line is matched whole.**
+The take checker compared the head of each line, with its per-take path blanked, by containment.
+scope-read's probe puts text after its path, so its whole positive row could never pass, and the two-character head of the `05` turn sat inside any source path whose neutral name carried it.
+Each operator turn is now compared for equality, after whitespace normalisation, with the line rendered from the take's project and the source its fixture kind implies (`source_by_fixture_kind`), and a take's ledger must record that same source.
+
+**An attempt is re-derived from its own bytes.**
+Its kind came from the folder it sat in, so moving a graded take into `rehearsals/` freed its slot with every check clean.
+`check_results.py --ledger` now requires the ledger's recorded kind to equal the folder, a graded take to pass the take checker, a rehearsal to carry its WHY.md and exactly the checker's reasons, and a pause to record a pause and no agent text; after the freeze it also requires each slot's first registration to fall where the pre-registered order puts it.
+
+**The model and the constants are bound, not recorded.**
+Every assistant record must carry the model the attempt is registered to.
+A take's recorded turn budget and permission mode must equal the frozen constants, and the driver refuses a budget above the registered one as well as below it.
+Two reason ids were added for these refusals.
+
+**The harness's auto-memory is switched off for takes.**
+While review 12 ran, every headless session in both studies, the pilot included, was found to carry a system-prompt section offering a persistent memory folder under the operator's home.
+The isolation flags did not remove it; `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` does, measured with and without it (`verification/auto-memory-smoke.txt`).
+It is now in the pre-registered isolation environment, and a take still offered the section is refused.
+The committed walks predate the switch and carry the section; the checker notes it on a walk and does not refuse the walk for it.
+The folder offered was empty for every session, so no operator material reached any agent through it.
+
+**Also folded.**
+The project fixture's variant and stage 01's exit are recorded and bound to the half.
+The write detector reads every command segment, newline-separated commands and `&>`, and no longer counts a copied source as written; an interpreter's own write is named as beyond it.
+New ledgers carry no home-folder path.
+A step's row precedes its recovery's.
+The file now says that the tree's hooks do not load at the checkout root, that a first turn which dies with no agent text is a rehearsal, and which pairs were walked.
+
+**Declined.**
+Committing the plan-gate fixture's bytes would publish a real run's outputs, which the goal does not ask for; its tree hash is the pin.
+
+No criterion moved.
+No take has run.

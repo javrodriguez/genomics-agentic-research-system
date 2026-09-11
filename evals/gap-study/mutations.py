@@ -547,9 +547,10 @@ def m_recovery_failure_drops_its_step_row(s: Sandbox) -> tuple[int, str]:
     text = p.read_text()
     a = text.index("            if code2 == 124:\n")
     b = text.index('                ledger["outcome"] = "timed-out"\n', a)
-    if 'ledger["turns"].insert(' not in text[a:b]:
+    line = '                ledger["turns"].append(row_rec)\n'
+    if text[a:b].count(line) != 1:
         raise RuntimeError("the mutation did not apply; the guard was not exercised")
-    p.write_text(text[:a] + "            if code2 == 124:\n" + text[b:])
+    p.write_text(text[:a] + text[a:b].replace(line, "") + text[b:])
     return (s.run(_th(s, "TheDriverLoopRecordsEveryTurnItEnds")),
             "test_harness.py TheDriverLoopRecordsEveryTurnItEnds")
 
@@ -658,6 +659,71 @@ def m_cost_table_typed_by_hand(s: Sandbox) -> tuple[int, str]:
     return s.run(_th(s, "TheBillIsWrittenByTheReader")), "test_harness.py TheBillIsWrittenByTheReader"
 
 
+
+def m_checker_line_drops_its_source(s: Sandbox) -> tuple[int, str]:
+    """Review 12, blocker 1: the rendered line with its per-take source blanked, as the old head was."""
+    s.control(_th(s, "EveryTaskScriptPassesTheChecker"))
+    _edit(s.study / "check_take.py", 'return line.replace("{project}", project).replace("{source}", source)',
+          'return line.replace("{project}", project).replace("{source}", "")')
+    return s.run(_th(s, "EveryTaskScriptPassesTheChecker")), "test_harness.py EveryTaskScriptPassesTheChecker"
+
+
+def m_attempt_kind_taken_from_its_folder(s: Sandbox) -> tuple[int, str]:
+    """Review 12, blocker 2: the ledger's recorded kind no longer compared with the folder."""
+    s.control(_th(s, "TheAttemptIsReDerivedFromItsBytes"))
+    _edit(s.study / "check_results.py", "    if recorded != kind:\n", "    if False:\n")
+    return s.run(_th(s, "TheAttemptIsReDerivedFromItsBytes")), "test_harness.py TheAttemptIsReDerivedFromItsBytes"
+
+
+def m_graded_take_not_rechecked(s: Sandbox) -> tuple[int, str]:
+    s.control(_th(s, "TheAttemptIsReDerivedFromItsBytes"))
+    _edit(s.study / "check_results.py", "            if graded_problems:\n", "            if False:\n")
+    return s.run(_th(s, "TheAttemptIsReDerivedFromItsBytes")), "test_harness.py TheAttemptIsReDerivedFromItsBytes"
+
+
+def m_model_not_bound(s: Sandbox) -> tuple[int, str]:
+    """Review 12, blocker 3: a transcript on another model passes."""
+    s.control(_th(s, "TheModelAndTheConstantsAreBound"))
+    _edit(s.study / "check_take.py", "    if others_seen:\n", "    if False:\n")
+    return s.run(_th(s, "TheModelAndTheConstantsAreBound")), "test_harness.py TheModelAndTheConstantsAreBound"
+
+
+def m_budget_above_the_registered_one_accepted(s: Sandbox) -> tuple[int, str]:
+    """Review 12, blocker 3: the budget refused only below, as Ruling 4 left it."""
+    s.control(_th(s, "TheDriverLoopRecordsEveryTurnItEnds"))
+    _edit(s.study / "drive.py", "    if budget != registered_budget:\n", "    if budget < registered_budget:\n")
+    return (s.run(_th(s, "TheDriverLoopRecordsEveryTurnItEnds")),
+            "test_harness.py TheDriverLoopRecordsEveryTurnItEnds")
+
+
+def m_auto_memory_section_unseen(s: Sandbox) -> tuple[int, str]:
+    s.control(_th(s, "TheAutoMemorySectionIsBound"))
+    _edit(s.study / "check_take.py", "            return True  # the harness offered its auto-memory\n",
+          "            return False\n")
+    return s.run(_th(s, "TheAutoMemorySectionIsBound")), "test_harness.py TheAutoMemorySectionIsBound"
+
+
+def m_project_variant_unbound(s: Sandbox) -> tuple[int, str]:
+    """Review 12, F1."""
+    s.control(_th(s, "TheProjectFixtureIsBound"))
+    _edit(s.study / "check_take.py", '        if fx.get("variant") != spec.get("variant"):\n', "        if False:\n")
+    return s.run(_th(s, "TheProjectFixtureIsBound")), "test_harness.py TheProjectFixtureIsBound"
+
+
+def m_take_order_unenforced(s: Sandbox) -> tuple[int, str]:
+    """Review 12, F2."""
+    s.control(_th(s, "TheTakeOrderIsEnforced"))
+    _edit(s.study / "check_results.py", "        if j >= len(order) or tuple(order[j]) != slot:\n", "        if False:\n")
+    return s.run(_th(s, "TheTakeOrderIsEnforced")), "test_harness.py TheTakeOrderIsEnforced"
+
+
+def m_write_detector_reads_one_segment(s: Sandbox) -> tuple[int, str]:
+    """Review 12, F3: the whole command read as one segment again."""
+    s.control(_th(s, "WriteDetectorReadsEverySegment"))
+    _edit(s.study / "graders" / "labels.py", "        if w in _SEPARATORS:\n", "        if False:\n")
+    return s.run(_th(s, "WriteDetectorReadsEverySegment")), "test_harness.py WriteDetectorReadsEverySegment"
+
+
 MUTATIONS = [
     ("an edited contract quote", m_edited_contract_quote, "objects"),
     ("an emptied quote table", m_emptied_quote_table, "objects"),
@@ -698,6 +764,15 @@ MUTATIONS = [
     ("a refusal reason dropped from the list", m_refusal_reason_unlisted, False),
     ("a plant true in one field", m_plant_true_in_one_field, False),
     ("a cost table typed by hand", m_cost_table_typed_by_hand, False),
+    ("a checked line with its source blanked", m_checker_line_drops_its_source, False),
+    ("an attempt's kind taken from its folder", m_attempt_kind_taken_from_its_folder, False),
+    ("a graded take never re-checked", m_graded_take_not_rechecked, False),
+    ("a transcript on another model accepted", m_model_not_bound, False),
+    ("a budget above the registered one accepted", m_budget_above_the_registered_one_accepted, True),
+    ("the auto-memory section unseen", m_auto_memory_section_unseen, False),
+    ("a project variant unbound", m_project_variant_unbound, False),
+    ("the take order unenforced", m_take_order_unenforced, False),
+    ("the write detector reading one segment", m_write_detector_reads_one_segment, False),
 ]
 
 NOT_APPLICABLE = [

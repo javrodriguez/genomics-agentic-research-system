@@ -97,6 +97,21 @@ def rehearsals_on_disk(task_id: str, half: str, model: str) -> int:
     return n
 
 
+def models_read(t: Path) -> list[str]:
+    """The model ids the transcript's assistant records carry: what a cell is counted under (review 12)."""
+    if not t.is_file():
+        return []
+    seen = set()
+    for line in t.read_text(errors="replace").splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(rec, dict) and rec.get("type") == "assistant":
+            seen.add(str((rec.get("message") or {}).get("model")))
+    return sorted(seen)
+
+
 def grade_cell(task_id: str, half: str, model: str, spec: dict, n: int) -> dict:
     reason = prereg.not_run_reason(model)
     if reason:
@@ -140,6 +155,7 @@ def grade_cell(task_id: str, half: str, model: str, spec: dict, n: int) -> dict:
         out_labels.append({
             "take": d.name,
             "transcript_sha256": sha,
+            "model_read": models_read(t),
             "label": got["label"],
             "verdict": got["verdict"],
             "evidence": got["evidence"],
@@ -148,7 +164,9 @@ def grade_cell(task_id: str, half: str, model: str, spec: dict, n: int) -> dict:
     k = sum(1 for x in out_labels if x["verdict"] == "correct")
     rehearsed = rehearsals_on_disk(task_id, half, model)
     state = STATE_RAN if len(out_labels) == n else f"{STATE_INCOMPLETE}, {len(out_labels)} of {n}"
-    return {"state": state, "labels": out_labels, "k": k, "n": n, "rehearsals": rehearsed}
+    read = sorted({m for x in out_labels for m in x["model_read"]})
+    return {"state": state, "labels": out_labels, "k": k, "n": n, "rehearsals": rehearsed,
+            "models_read": read}
 
 
 def run_task(task_id: str) -> dict:

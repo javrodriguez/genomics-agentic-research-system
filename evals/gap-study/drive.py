@@ -62,6 +62,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -102,7 +103,11 @@ RATE_LIMIT_MARKERS = ("rate limit", "usage limit", "weekly limit", "resets", "42
 # each transcript afterwards and refuses a take that was given either anyway, so these are controls
 # whose effect is measured, not promises.
 ISOLATION_FLAGS = ("--setting-sources", "project,local", "--strict-mcp-config")
-ISOLATION_ENV = {"ENABLE_CLAUDEAI_MCP_SERVERS": "false"}
+# CLAUDE_CODE_DISABLE_AUTO_MEMORY: the harness otherwise offers every headless session a persistent
+# memory folder under the operator's home, and the flags above do not remove it. Documented at
+# code.claude.com/docs/en/memory; measured on a one-turn smoke with and without it
+# (verification/auto-memory-smoke.txt). check_take refuses a take whose system prompt still offers it.
+ISOLATION_ENV = {"ENABLE_CLAUDEAI_MCP_SERVERS": "false", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}
 
 
 def now() -> str:
@@ -418,7 +423,10 @@ def build_first_study_fixture(fx: dict, staging: Path, name: str) -> dict:
     # output still goes to the console with the refusal.
     def run(argv: list) -> subprocess.CompletedProcess:
         r = subprocess.run([sys.executable, *[str(a) for a in argv]], capture_output=True, text=True)
-        log.append({"argv": [str(a) for a in argv], "exit": r.returncode})
+        # Paths shown relative to the repository: an absolute one names the operator's home folder in a
+        # published ledger (review 12, F5).
+        log.append({"argv": [display_path(a) if isinstance(a, Path) else str(a) for a in argv],
+                    "exit": r.returncode})
         return r
 
     r = run([REPO / fx["generator"], "--half", fx["half"], "--seed", str(fx["seed"]), "--out", staging])
@@ -564,11 +572,13 @@ def main() -> int:
     #
     # Under-budget attempts are refused outright rather than warned about, because the label they
     # produce is indistinguishable, after the fact, from one the agent earned.
-    if budget < registered_budget:
-        print(f"refusing: --budget {budget}s is below the pre-registered {registered_budget}s. A "
-              f"turn cut short by the operator produces a `timed-out` label the agent did not "
-              f"earn, and that label counts against holding. Raise the budget, or change the "
-              f"pre-registered value.")
+    # REVIEW 12, BLOCKER 3. Below the pre-registered budget a turn is cut short and wears a `timed-out`
+    # the agent did not earn (Ruling 4). ABOVE it, a slow turn the frozen file would label `timed-out`
+    # is graded instead. Either is a different experiment, so both are refused.
+    if budget != registered_budget:
+        print(f"refusing: --budget {budget}s is not the pre-registered {registered_budget}s. Below it a "
+              f"turn is cut short and wears a `timed-out` the agent did not earn; above it a slow turn "
+              f"that the frozen file labels `timed-out` is graded instead.")
         return 2
 
     # ---- who am I, and what id do I open with -----------------------------------------
@@ -687,6 +697,13 @@ def main() -> int:
         if r.returncode != 0:
             print(f"the fixture did not reach its branch, so no take is driven:\n{r.stdout}{r.stderr}")
             return 2
+        # REVIEW 12, F1. precondition-refusal's halves differ only in the project variant, so the ledger
+        # records the variant built and stage 01's exit on it, and check_take binds both to the half.
+        first = (r.stdout.strip().splitlines() or [""])[0]
+        m = re.search(r"exits (\d+) \(expected (\d+)\)", first)
+        ledger_fixture = {"kind": "project", "variant": fx["variant"], "seed": fx["seed"],
+                          "stage01_check_exit": int(m.group(1)) if m else None,
+                          "stage01_expected_exit": int(m.group(2)) if m else None}
         # The generators are pinned by hash in the pre-registration, so they are not modified to
         # take a target root. They write where they always wrote, and the result is moved into the
         # checkout the agent runs in.
@@ -816,16 +833,18 @@ def main() -> int:
         # pre-registration, never the driver's judgment, and it fires only when the reply holds
         # the recovery's own marker and not the step's.
         rec = step.get("recovery")
+        rec_row = None
         if (not held) and rec and rec["if_reply_holds"] in said:
             line2 = rec["send"].format(project=name, source=source.relative_to(RUN_TREE))
             print(f"        recovery: the reply is waiting at {rec['if_reply_holds']!r}; "
                   f"answering it once")
             said2, code2, _err2 = one_turn(line2, session_id, model, first=False, budget_s=budget)
-            ledger["turns"].append({"n": step["n"], "sent": line2, "recovery": True,
-                                    "expects": marker, "at": now(), "exit": code2,
-                                    "reply_chars": len(said2),
-                                    "why": "pre-registered recovery for a wait point the script "
-                                           "does not otherwise answer"})
+            # The recovery row is recorded AFTER the step row it answers, in every branch (review 12, F7).
+            rec_row = {"n": step["n"], "sent": line2, "recovery": True,
+                       "expects": marker, "at": now(), "exit": code2,
+                       "reply_chars": len(said2),
+                       "why": "pre-registered recovery for a wait point the script "
+                              "does not otherwise answer"}
             if said2.strip():
                 ledger["first_agent_turn"] = True
 
@@ -836,17 +855,19 @@ def main() -> int:
             # Ruling 4's defect, an operator-side failure wearing a label the agent did not earn,
             # reintroduced by the fix for Ruling 4's own class.
             if code2 == 124:
-                # The step row is recorded too, before the recovery row. It used to be dropped here,
-                # so the ledger said the take stopped one step earlier than the line it sent, and the
-                # checker then refused that line as not on the script.
+                # The step row is recorded first, then the recovery row. The step row used to be dropped
+                # here, so the ledger said the take stopped one step earlier than the line it sent, and
+                # the checker then refused that line as not on the script.
                 row_rec["held"] = False
-                ledger["turns"].insert(len(ledger["turns"]) - 1, row_rec)
+                ledger["turns"].append(row_rec)
+                ledger["turns"].append(rec_row)
                 ledger["outcome"] = "timed-out"
                 print(f"        recovery turn exceeded the {budget}s budget")
                 break
             if code2 != 0:
                 row_rec["held"] = False
-                ledger["turns"].insert(len(ledger["turns"]) - 1, row_rec)
+                ledger["turns"].append(row_rec)
+                ledger["turns"].append(rec_row)
                 ledger["outcome"] = f"aborted — the recovery turn exited {code2}"
                 print(f"        recovery turn exited {code2}")
                 break
@@ -856,6 +877,8 @@ def main() -> int:
 
         row_rec["held"] = held
         ledger["turns"].append(row_rec)
+        if rec_row is not None:
+            ledger["turns"].append(rec_row)
         print(f"        {'ok' if held else 'MARKER NOT HELD'}  {step.get('means')}")
 
         if not held:
@@ -905,9 +928,15 @@ def main() -> int:
     if kind == "take":
         # Checked in place, then routed by rule: a pause, a rehearsal with its reason ids, or graded.
         problems: list[str] = []
-        if not (ledger["outcome"] or "").startswith(("PAUSE", "REHEARSAL")) and ledger["transcript"]:
-            problems = _gap_check_take().check(out_root / "transcript.jsonl", args.task, args.half,
-                                               args.row, False)
+        if not (ledger["outcome"] or "").startswith(("PAUSE", "REHEARSAL")):
+            ct = _gap_check_take()
+            if ledger["transcript"]:
+                problems = ct.check(out_root / "transcript.jsonl", args.task, args.half, args.row, False)
+            elif not ledger["first_agent_turn"]:
+                # REVIEW 12, F9. No session file and no agent turn is a death before the first agent
+                # turn, whatever the outcome string says, so it is a rehearsal by definition.
+                problems = [f"[{ct.NO_FIRST_AGENT_TURN}] no session file was written and no agent turn "
+                            f"was recorded"]
         out_root, reasons = route_attempt(out_root, ledger, problems, args.task, args.half, model,
                                           row["take"], args.row)
         print(f"  attempt  {ledger['attempt']['kind']}"

@@ -270,23 +270,92 @@ def published_email_problems(path: Path) -> list[str]:
     return []
 
 
-def _line_head(line: str, expected_project: str) -> str:
-    """The fixed head of a scripted line, rendered for this take; a line carrying a path is matched on
-    the part before the path, since the path is per-take."""
-    line = line.replace("{project}", expected_project).replace("{source}", "").strip()
-    needle = normalise(line).lower()
-    return needle.split(" in ")[0] if " in " in needle else needle
+def expected_source_for(half: dict, project: str) -> str:
+    """The source path the driver hands the agent for this half, from the fixture kind.
+
+    Data, not a constant here: `source_by_fixture_kind` in the pre-registration. The driver builds the
+    same path (`drive.py`), and a take's ledger records the one it sent, which check() compares.
+    """
+    kinds = prereg.load().get("source_by_fixture_kind") or {}
+    tmpl = kinds.get((half.get("fixture") or {}).get("kind"))
+    return tmpl.replace("{project}", project) if tmpl else ""
 
 
-def _is_recovery_send(op: str, rec: dict, expected_project: str) -> bool:
-    """Is this operator turn the step's pre-registered recovery line, rendered for this take?"""
-    got = normalise(op).strip()
-    send = rec["send"].strip()
-    if send == "{source}":
-        # the source path is per-take: it carries the project's neutral name and has no spaces
-        return bool(expected_project) and expected_project in got and " " not in got
-    want = normalise(send.replace("{project}", expected_project)).strip()
-    return got.lower() == want.lower()
+def render(line: str, project: str, source: str) -> str:
+    """A scripted line as the driver sends it for this take."""
+    return line.replace("{project}", project).replace("{source}", source)
+
+
+def _ledger_beside(path: Path) -> dict | None:
+    try:
+        return json.loads((path.parent / "driver-ledger.json").read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def model_problems(path: Path, expected: str) -> list[str]:
+    """REVIEW 12, BLOCKER 3. Every assistant record must carry the model the attempt is registered to.
+
+    The counts are published per model, and the session id alone does not bind one: anyone can
+    compute it from the row's commit and open a session with it under another model.
+    """
+    seen: dict = {}
+    for line in path.read_text(errors="replace").splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(rec, dict) and rec.get("type") == "assistant":
+            m = (rec.get("message") or {}).get("model")
+            seen[m] = seen.get(m, 0) + 1
+    others_seen = sorted(str(m) for m in seen if m != expected)
+    if others_seen:
+        return [f"[model-binding] the transcript's assistant records carry {others_seen}, and this "
+                f"attempt is registered to {expected!r}. The counts are published per model, so a "
+                f"session on another model is not this cell's take."]
+    return []
+
+
+def constant_problems(ledger: dict | None, pre: dict) -> list[str]:
+    """REVIEW 12, BLOCKER 3. A take's budget and permission mode are the frozen constants."""
+    if not ledger:
+        return ["[constant-binding] a take with no driver ledger cannot show the turn budget and "
+                "permission mode it ran under"]
+    out = []
+    want_budget = int(pre["budgets"]["turn_timeout_s"])
+    want_mode = pre["driver_constants"]["permission_mode"]
+    if ledger.get("budget_s") != want_budget:
+        out.append(f"[constant-binding] the take ran with a {ledger.get('budget_s')}s turn budget and the "
+                   f"pre-registered budget is {want_budget}s. Below it a turn is cut short; above it a "
+                   f"slow turn the frozen file labels timed-out is graded instead.")
+    if ledger.get("permission_mode") != want_mode:
+        out.append(f"[constant-binding] the take ran in permission mode {ledger.get('permission_mode')!r}, "
+                   f"not the pre-registered {want_mode!r}")
+    return out
+
+
+AUTO_MEMORY_MARK = "persistent file-based memory"
+
+
+def memory_section_offered(path: Path) -> bool:
+    """Whether the harness's system prompt offered the session a persistent memory folder.
+
+    Found 11 September 2026 while review 12 ran: every headless session in both studies, the pilot
+    included, carried Claude Code's auto-memory section pointing at a folder under the operator's
+    home. The isolation flags do not remove it; `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` does, measured on
+    a smoke with and without it. Read from the `prompt_snapshot` record, never from text the agent wrote.
+    """
+    for line in path.read_text(errors="replace").splitlines():
+        if AUTO_MEMORY_MARK not in line:
+            continue
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        att = rec.get("attachment") if isinstance(rec, dict) else None
+        if isinstance(att, dict) and att.get("type") == "prompt_snapshot":
+            return True  # the harness offered its auto-memory
+    return False
 
 
 def user_text_records(path: Path, pre: dict) -> tuple[list[str], list[str], list[str]]:
@@ -332,7 +401,7 @@ def user_text_records(path: Path, pre: dict) -> tuple[list[str], list[str], list
 
 
 def required_steps(steps: list[dict], path: Path, turns: list[dict], is_walk: bool,
-                   expected_project: str) -> tuple[list[dict], list[str]]:
+                   expected_project: str, expected_source: str) -> tuple[list[dict], list[str]]:
     """The scripted lines this transcript must carry, and any problem with where the driver stopped.
 
     A walk carries each pre-probe line. A take carries each line up to the last one the driver sent
@@ -368,9 +437,9 @@ def required_steps(steps: list[dict], path: Path, turns: list[dict], is_walk: bo
         step = next((s for s in steps if s["n"] == last), None)
         marker = (step or {}).get("marker")
         if marker:
-            head = _line_head(step["line"], expected_project)
+            want = normalise(render(step["line"], expected_project, expected_source))
             idx = max((i for i, t in enumerate(turns)
-                       if t["role"] == "user" and head and head in normalise(t["text"]).lower()),
+                       if t["role"] == "user" and want and normalise(t["text"]) == want),
                       default=None)
             after = ("\n".join(t["text"] for t in turns[idx + 1:] if t["role"] == "assistant")
                      if idx is not None else "")
@@ -382,50 +451,53 @@ def required_steps(steps: list[dict], path: Path, turns: list[dict], is_walk: bo
     return required, problems
 
 
-def operator_line_problems(ops: list[str], steps: list[dict], expected_project: str) -> list[str]:
+def operator_line_problems(ops: list[str], steps: list[dict], expected_project: str,
+                           expected_source: str) -> list[str]:
     """The operator's turns against the script: each step's line, in order, once; then at most
     `at_most` sends of THAT step's pre-registered recovery; and nothing else.
 
-    FOUND 11 SEPTEMBER 2026, BEFORE ANY TAKE. The previous check counted: every line present once,
-    and `len(ops) > len(steps)` was improvisation. A recovery is a real operator turn, sent by the
-    driver from the frozen file, so on the take it rescued the count came out one high and the
-    checker refused the take as the operator improvising. Every recovery would have voided the take
-    it existed to save, and a reader of the rehearsal folder would have seen "improvising" beside a
-    line the pre-registration itself named.
+    WHOLE LINES, RENDERED AS THE DRIVER RENDERS THEM (review 12, blocker 1). The first version matched
+    a line's head with the per-take path blanked out and tested containment. scope-read's probe puts
+    text after its path, so its head was in no line the driver sends and that whole row could never
+    pass; and the head of the `05` turn is two characters, which a source path carrying the neutral name
+    contains about one take in forty, so a fired recovery read as the line sent twice. Each turn is now
+    compared for equality, after whitespace normalisation, with the line rendered from this take's
+    project and the source its fixture kind implies.
 
-    A recovery is admitted only where the frozen file attaches one, only immediately after the step
-    it answers, only as many times as `at_most` allows, and only as the rendered `send`. Anything
-    else the operator sent is still improvisation and still refused.
+    FOUND 11 SEPTEMBER 2026, BEFORE ANY TAKE. A recovery is a real operator turn, sent by the driver
+    from the frozen file; it is admitted only where the file attaches one, immediately after its step,
+    at most `at_most` times, and only as its rendered `send`.
     """
     problems: list[str] = []
-    norm = [normalise(o).lower() for o in ops]
-    heads = [_line_head(s["line"], expected_project) for s in steps]
+    norm = [normalise(o) for o in ops]
+    lines = [normalise(render(s["line"], expected_project, expected_source)) for s in steps]
     unexplained: list[int] = []
     i = 0
     for idx, step in enumerate(steps):
-        head = heads[idx]
-        nxt = heads[idx + 1] if idx + 1 < len(heads) else None
+        want = lines[idx]
+        nxt = lines[idx + 1] if idx + 1 < len(lines) else None
 
         def is_next(k: int) -> bool:
-            return bool(nxt) and nxt in norm[k]
+            return nxt is not None and norm[k] == nxt
 
-        if not head:
+        if not want:
             problems.append("[operator-lines] " + f"operator turn {step['n']} renders to nothing; the script is broken")
             continue
-        pos = next((k for k in range(i, len(ops)) if head in norm[k]), None)
+        pos = next((k for k in range(i, len(ops)) if norm[k] == want), None)
         if pos is None:
-            problems.append("[operator-lines] " + f"operator turn {step['n']} was never sent: {head[:70]!r}")
+            problems.append("[operator-lines] " + f"operator turn {step['n']} was never sent: {want[:70]!r}")
             continue
         unexplained.extend(range(i, pos))
         i = pos + 1
-        while i < len(ops) and head in norm[i] and not is_next(i):
+        while i < len(ops) and norm[i] == want and not is_next(i):
             problems.append("[operator-lines] " + f"operator turn {step['n']} was sent twice; it is sent once")
             i += 1
         rec = step.get("recovery")
         if rec:
             at_most = int(rec.get("at_most", 1))
+            send = normalise(render(rec["send"], expected_project, expected_source))
             used = 0
-            while i < len(ops) and _is_recovery_send(ops[i], rec, expected_project) and not is_next(i):
+            while i < len(ops) and norm[i] == send and not is_next(i):
                 used += 1
                 if used > at_most:
                     problems.append("[operator-lines] " + f"the recovery for operator turn {step['n']} was sent {used} "
@@ -439,16 +511,18 @@ def operator_line_problems(ops: list[str], steps: list[dict], expected_project: 
     return problems
 
 
-def fixture_binding_problems(path: Path, half: dict) -> tuple[list[str], str | None]:
-    """The fixture the driver built, from its ledger beside the transcript, against this half's pin.
+def fixture_binding_problems(path: Path, half: dict, is_walk: bool = True) -> tuple[list[str], str | None]:
+    """The fixture the driver built, from its ledger beside the transcript, against this half's spec.
 
-    The fixture is what defines the half. For the five tasks whose halves share one fixture the
-    check is vacuous; for confounded-design the halves differ before the probe, and a take pointed
-    at the other half's fixture measures the other experiment. Returns (problems, note): a note
-    where the comparison could not be made, so a silent pass is never printed for it.
+    The fixture is what defines the half. For three tasks the halves share one fixture and the check is
+    vacuous; for confounded-design the halves differ in their generated tree, and for
+    precondition-refusal in the project variant (review 12, F1), so a take pointed at the other half's
+    fixture measures the other experiment. Returns (problems, note): a note where the comparison could
+    not be made, so a silent pass is never printed for it.
     """
     ledger_path = path.parent / "driver-ledger.json"
-    pinned = (half.get("fixture") or {}).get("sha256")
+    spec = half.get("fixture") or {}
+    pinned = spec.get("sha256")
     if not ledger_path.is_file():
         return [], "no driver ledger beside the transcript, so the fixture binding was not checked"
     try:
@@ -456,6 +530,20 @@ def fixture_binding_problems(path: Path, half: dict) -> tuple[list[str], str | N
     except (OSError, json.JSONDecodeError) as exc:
         return [f"[fixture-binding] the driver ledger beside the transcript is unreadable ({exc!r})"], None
     fx = ledger.get("fixture") or {}
+    if spec.get("kind") == "project":
+        if not fx:
+            if is_walk:
+                return [], "this walk predates the project fixture record, so its variant was not checked"
+            return [f"[fixture-binding] a take on a project fixture must record the variant it built and "
+                    f"stage 01's exit on it"], None
+        out = []
+        if fx.get("variant") != spec.get("variant"):
+            out.append(f"[fixture-binding] the driver built the {fx.get('variant')!r} project and this "
+                       f"half's fixture is {spec.get('variant')!r}. The take measures the other half.")
+        if fx.get("stage01_check_exit") is None or fx.get("stage01_check_exit") != fx.get("stage01_expected_exit"):
+            out.append(f"[fixture-binding] stage 01 --check exited {fx.get('stage01_check_exit')} on the "
+                       f"built project, not the {fx.get('stage01_expected_exit')} its variant is built to reach")
+        return out, None
     got = fx.get("tree_sha256_name_invariant") or fx.get("sha256")
     if not got:
         return [], "the driver ledger records no fixture hash, so the fixture binding was not checked"
@@ -513,12 +601,13 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
         return problems
 
     steps = script if not is_walk else [s for s in script if s["n"] < half["probe_operator_turn"]]
-    required, stop_problems = required_steps(steps, path, turns, is_walk, expected_project)
+    expected_source = expected_source_for(half, expected_project)
+    required, stop_problems = required_steps(steps, path, turns, is_walk, expected_project, expected_source)
     problems += stop_problems
-    problems += operator_line_problems(ops, required, expected_project)
+    problems += operator_line_problems(ops, required, expected_project, expected_source)
 
     # ---- the fixture ---------------------------------------------------------------------
-    fx_problems, fx_note = fixture_binding_problems(path, half)
+    fx_problems, fx_note = fixture_binding_problems(path, half, is_walk)
     problems += fx_problems
     if fx_note:
         print(f"  NOTE     {fx_note}")
@@ -546,6 +635,11 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
             f"{outside[0][:140]}. The agent's world is meant to be the checkout and nothing else.")
 
     problems += published_email_problems(path)
+
+    ledger = _ledger_beside(path)
+    if ledger and ledger.get("source") is not None and ledger.get("source") != expected_source:
+        problems.append(f"[fixture-binding] the driver handed the agent the source {ledger.get('source')!r}, "
+                        f"and this half's fixture kind implies {expected_source!r}")
 
     reached = study_paths_read(path)
     if reached:
@@ -589,6 +683,14 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
         elif mine == theirs:
             print(f"  NOTE     {task_id}'s two halves send identical lines before the probe and "
                   f"differ in fixture, so the half is decided by the fixture binding above.")
+        wanted_model = (ledger or {}).get("model_requested")
+        if wanted_model:
+            problems += model_problems(path, wanted_model)
+        else:
+            print("  NOTE     no driver ledger names this walk's model, so the model binding was not checked")
+        if memory_section_offered(path):
+            print("  NOTE     this walk was offered the harness's auto-memory folder; walks predate the "
+                  "switch that removes it, and a take offered it is refused")
         return problems
 
     if row_index is None:
@@ -615,6 +717,11 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
                 f"uuid5(namespace, {commits[row_index][:12]}) is {want}. Either this is not the "
                 f"session that row registered, or the row was committed after the fact.")
 
+    problems += model_problems(path, row["model"])
+    problems += constant_problems(ledger, pre)
+    if memory_section_offered(path):
+        problems.append("[inherited-context] the session was offered the harness's persistent memory folder "
+                        "outside its checkout; takes run with CLAUDE_CODE_DISABLE_AUTO_MEMORY=1")
     return problems
 
 

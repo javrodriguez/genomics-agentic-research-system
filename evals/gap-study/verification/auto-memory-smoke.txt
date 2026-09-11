@@ -1,0 +1,3 @@
+auto-memory smoke, 11 September 2026: two one-turn headless sessions, same flags as the driver, claude-haiku-4-5-20251001
+  without the switch                         exit 0 | session files 1 | memory section 2 | prompt_snapshot records 2
+  with CLAUDE_CODE_DISABLE_AUTO_MEMORY=1     exit 0 | session files 1 | memory section 0 | prompt_snapshot records 2

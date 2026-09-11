@@ -100,7 +100,10 @@ class WriteDetector(unittest.TestCase):
         self.assertEqual(labels._bash_writes("echo hi >> out.txt"), ["out.txt"])
 
     def test_mutators_are_writes(self):
-        self.assertEqual(labels._bash_writes("cp a b"), ["a", "b"])
+        # A copy writes its destination and only reads its source (review 12, F3); the first version
+        # reported both, which would call a take that copied the samplesheet away an invention of it.
+        self.assertEqual(labels._bash_writes("cp a b"), ["b"])
+        self.assertEqual(labels._bash_writes("mv a b"), ["a", "b"])
         self.assertEqual(labels._bash_writes("sed -i '' s/x/y/ f.txt"), ["f.txt"])
 
     def test_reads_are_read(self):
@@ -1363,6 +1366,11 @@ class TheCarriedFixtureBuilds(unittest.TestCase):
         self.assertTrue((sa / "src").is_dir() and (sa / "samples.csv").is_file())
         self.assertEqual(a["steps"][-1]["exit"], 0, "the rank check did not pass")
 
+    def test_the_build_record_names_no_home_folder(self):
+        rec, _ = self.build("positive")
+        self.assertNotIn(str(Path.home()), json.dumps(rec["steps"]),
+                         "the fixture's build record would publish the operator's home folder")
+
     def test_the_hash_is_the_same_twice_and_does_not_depend_on_the_name(self):
         a, _ = self.build("positive", "run-aaaa0001")
         b, _ = self.build("positive", "run-bbbb0002")
@@ -1438,7 +1446,8 @@ class TheCheckerAdmitsOnlyThePreRegisteredScript(unittest.TestCase):
     ]
 
     def problems(self, ops, steps=None):
-        return gap_check_take().operator_line_problems(ops, steps or self.STEPS, self.P)
+        return gap_check_take().operator_line_problems(ops, steps or self.STEPS, self.P,
+                                                       f"data/staging/{self.P}/src")
 
     def test_the_plain_script_passes(self):
         self.assertEqual([], self.problems([self.LINE1, "05", self.PROBE]))
@@ -1557,26 +1566,27 @@ class AStoppedTakeIsCheckedUpToTheStop(unittest.TestCase):
         self.ct = gap_check_take()
         self.turns = tx.load(self.path)["turns"]
         self.project = self.ct.neutral_name(self.ct.session_id_of(self.path))
+        self.source = f"data/staging/{self.project}/src"
         spec = prereg.task("confounded-design")["positive"]
         self.steps = [s for s in spec["operator_script"] if s["n"] < spec["probe_operator_turn"]]
 
     def test_a_walk_carries_every_pre_probe_line(self):
-        req, probs = self.ct.required_steps(self.steps, self.path, self.turns, True, self.project)
+        req, probs = self.ct.required_steps(self.steps, self.path, self.turns, True, self.project, self.source)
         self.assertEqual([s["n"] for s in req], [1, 2, 3, 4, 5])
         self.assertEqual(probs, [])
 
     def test_a_take_that_stopped_correctly_passes_up_to_its_stop(self):
         steps = [dict(s) for s in self.steps]
         steps[3]["marker"] = steps[3]["first_study_marker"]   # `stage 01`, absent from the reply
-        req, probs = self.ct.required_steps(steps, self.path, self.turns, False, self.project)
+        req, probs = self.ct.required_steps(steps, self.path, self.turns, False, self.project, self.source)
         self.assertEqual([s["n"] for s in req], [1, 2, 3, 4])
         self.assertEqual(probs, [])
         ops, _harness, _unknown = self.ct.user_text_records(self.path, prereg.load())
-        self.assertEqual([], self.ct.operator_line_problems(ops, req, self.project),
+        self.assertEqual([], self.ct.operator_line_problems(ops, req, self.project, self.source),
                          "a correctly stopped take must pass the operator-line check")
 
     def test_a_stop_at_a_held_marker_is_refused(self):
-        req, probs = self.ct.required_steps(self.steps, self.path, self.turns, False, self.project)
+        req, probs = self.ct.required_steps(self.steps, self.path, self.turns, False, self.project, self.source)
         self.assertEqual([s["n"] for s in req], [1, 2, 3, 4])
         self.assertTrue(probs and "manufactures" in probs[0], probs)
 
@@ -1670,6 +1680,45 @@ class TheDriverLoopRecordsEveryTurnItEnds(unittest.TestCase):
         self.assertEqual(led["outcome"].split(" — ")[0], "timed-out")
         self.assertEqual([(r["n"], bool(r.get("recovery")), r.get("held")) for r in led["turns"]],
                          [(1, False, False), (1, True, None)])
+
+    def test_a_recovery_that_succeeds_is_recorded_after_its_step(self):
+        led = self.drive_walk([("Project title?", 0, ""), ("Reply with a comma-separated list of IDs", 0, ""),
+                               ("Confirm to create symlinks under", 0, "")])
+        # "complete", then the driver's note that no session file exists: no model ran, so none was written
+        self.assertTrue(led["outcome"].startswith("complete"), led["outcome"])
+        self.assertEqual([(r["n"], bool(r.get("recovery")), r.get("held")) for r in led["turns"]],
+                         [(1, False, True), (1, True, None), (2, False, True)])
+
+    def test_a_walk_ledger_names_no_home_folder_and_the_source_its_kind_implies(self):
+        led = self.drive_walk([("Reply with a comma-separated list of IDs", 0, ""),
+                               ("Confirm to create symlinks under", 0, "")])
+        sent = led.pop("_sent")
+        self.assertEqual(led["source"], gap_check_take().expected_source_for(
+            prereg.task("number-fidelity")["positive"], led["project"]))
+        self.assertNotIn(str(Path.home()), json.dumps(led), "a published ledger names the operator's home")
+        self.assertTrue(sent)
+
+    def test_a_budget_other_than_the_registered_one_is_refused(self):
+        import contextlib
+        import io
+        registered = int(prereg.load()["budgets"]["turn_timeout_s"])
+        for budget in (registered + 100, registered - 100):
+            drive = gap_drive()
+            tmp = Path(tempfile.mkdtemp())
+            self.addCleanup(shutil.rmtree, tmp, True)
+            drive.HERE = tmp
+            drive.one_turn = lambda *a, **k: ("", 1, "no turn should be sent")
+            saved = sys.argv
+            sys.argv = ["drive.py", "--task", "number-fidelity", "--half", "positive", "--walk",
+                        "--model", "claude-opus-5", "--budget", str(budget)]
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    code = drive.main()
+            finally:
+                sys.argv = saved
+                if drive.RUN_TREE is not None:
+                    shutil.rmtree(drive.RUN_TREE, ignore_errors=True)
+            self.assertEqual(code, 2, f"--budget {budget} against a registered {registered} was not refused")
 
     def test_a_scripted_turn_that_dies_after_the_first_agent_turn_is_aborted_and_recorded(self):
         led = self.drive_walk([("Reply with a comma-separated list of IDs", 0, ""), ("", 1, "boom")])
@@ -2085,6 +2134,234 @@ class TheCopiedFixtureBuildsToItsPin(unittest.TestCase):
         cp.ORIGIN = Path(tempfile.gettempdir()) / "no-such-origin-for-this-test"
         cp.REPO = Path(tempfile.gettempdir()) / "workspaces" / "repo"
         self.assertIn("expected beside this repository", cp.origin_problem() or "")
+
+
+class EveryTaskScriptPassesTheChecker(unittest.TestCase):
+    """Review 12, blocker 1: the checker was driven on one task's probe and no walk carries a probe
+    line, so scope-read's positive row could not pass it and nothing saw. Every task's script, both
+    halves, rendered exactly as drive.py renders it, with and without the recoveries firing, and with
+    neutral names that carry the menu number the old head matched inside the source path."""
+
+    NAMES = ("run-5c7c3cc7", "run-05ab12cd", "run-a05bc0de")
+
+    def sent(self, script, name, source, fire):
+        ops = []
+        for s in script:
+            ops.append(s["line"].format(project=name, source=source))
+            if fire and s.get("recovery"):
+                ops.append(s["recovery"]["send"].format(project=name, source=source))
+        return ops
+
+    def test_every_script_rendered_as_the_driver_renders_it_passes(self):
+        ct = gap_check_take()
+        checked = 0
+        for t in prereg.load()["tasks"]:
+            for half in ("positive", "control"):
+                script = t[half]["operator_script"]
+                for name in self.NAMES:
+                    source = ct.expected_source_for(t[half], name)
+                    self.assertTrue(source, f"{t['id']}/{half}: its fixture kind implies no source")
+                    for fire in (False, True):
+                        got = ct.operator_line_problems(self.sent(script, name, source, fire), script, name, source)
+                        self.assertEqual(got, [], f"{t['id']}/{half} name={name} recoveries fired={fire}")
+                        checked += 1
+        self.assertGreater(checked, 0, "no script was checked; that is not a pass")
+
+    def test_a_line_sent_with_another_source_is_refused(self):
+        ct = gap_check_take()
+        spec = prereg.task("scope-read")["positive"]
+        name = "run-5c7c3cc7"
+        ops = self.sent(spec["operator_script"], name, "data/staging/elsewhere/src", False)
+        self.assertTrue(ct.operator_line_problems(ops, spec["operator_script"], name,
+                                                  ct.expected_source_for(spec, name)))
+
+
+class TheAttemptIsReDerivedFromItsBytes(unittest.TestCase):
+    """Review 12, blocker 2: an attempt's kind came from its folder alone."""
+
+    ROW = {"task": "scope-read", "half": "positive", "model": "claude-opus-5", "take": 1}
+
+    class FakeChecker:
+        NO_FIRST_AGENT_TURN = "no-first-agent-turn"
+
+        def __init__(self, problems):
+            self.problems = problems
+
+        def check(self, *a, **k):
+            return list(self.problems)
+
+        def reason_ids(self, problems):
+            return gap_check_take().reason_ids(problems)
+
+    def attempt(self, kind, outcome, recorded=None, reasons=(), agent_text=True, why=True):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        d = tmp / kind
+        d.mkdir()
+        (d / "driver-ledger.json").write_text(json.dumps({
+            "kind": "take", "outcome": outcome, "first_agent_turn": agent_text,
+            "attempt": {"kind": recorded or kind, "reasons": list(reasons)}}))
+        recs = [{"type": "user", "message": {"role": "user", "content": "a line"}}]
+        if agent_text:
+            recs.append({"type": "assistant", "message": {"role": "assistant", "model": "claude-opus-5",
+                                                          "content": [{"type": "text", "text": "a reply"}]}})
+        (d / "transcript.jsonl").write_text("\n".join(json.dumps(r) for r in recs) + "\n")
+        if why and kind == "rehearsal":
+            (d / "WHY.md").write_text("why\n")
+        return d
+
+    def problems(self, kind, d, checker_problems=()):
+        return gap_module("check_results").attempt_problems(kind, d, 0, self.ROW,
+                                                            self.FakeChecker(list(checker_problems)))
+
+    def test_consistent_attempts_pass(self):
+        self.assertEqual(self.problems("graded", self.attempt("graded", "complete")), [])
+        self.assertEqual(self.problems("rehearsal", self.attempt("rehearsal", "complete", reasons=["operator-lines"]),
+                                       ["[operator-lines] x"]), [])
+        self.assertEqual(self.problems("rehearsal", self.attempt(
+            "rehearsal", "REHEARSAL — the process died before its first agent turn",
+            reasons=["no-first-agent-turn"], agent_text=False)), [])
+        self.assertEqual(self.problems("pause", self.attempt("pause", "PAUSE", agent_text=False)), [])
+
+    def test_a_graded_take_moved_into_rehearsals_is_found(self):
+        d = self.attempt("rehearsal", "complete", recorded="graded", why=False)
+        got = self.problems("rehearsal", d)
+        self.assertTrue(any("records 'graded'" in p for p in got), got)
+        self.assertTrue(any("graded take filed as a rehearsal" in p for p in got), got)
+
+    def test_a_graded_take_the_checker_refuses_is_found(self):
+        got = self.problems("graded", self.attempt("graded", "complete"), ["[operator-lines] x"])
+        self.assertTrue(any("does not pass the take checker" in p for p in got), got)
+
+    def test_a_rehearsal_without_its_reasons_or_why_is_found(self):
+        self.assertTrue(self.problems("rehearsal", self.attempt("rehearsal", "complete", reasons=["operator-lines"],
+                                                                why=False), ["[operator-lines] x"]))
+        self.assertTrue(self.problems("rehearsal", self.attempt("rehearsal", "complete", reasons=["operator-lines"]),
+                                      ["[leak-in-operator-turn] y"]))
+        self.assertTrue(self.problems("rehearsal", self.attempt(
+            "rehearsal", "REHEARSAL — the process died", reasons=["no-first-agent-turn"], agent_text=True)))
+
+    def test_a_pause_with_agent_text_or_another_outcome_is_found(self):
+        self.assertTrue(self.problems("pause", self.attempt("pause", "PAUSE", agent_text=True)))
+        self.assertTrue(self.problems("pause", self.attempt("pause", "complete", agent_text=False)))
+
+
+class TheModelAndTheConstantsAreBound(unittest.TestCase):
+    """Review 12, blocker 3."""
+
+    WALK = HERE / "walks" / "number-fidelity" / "2"
+
+    def setUp(self):
+        if not (self.WALK / "transcript.jsonl").is_file():
+            self.skipTest("number-fidelity walk 2 is not on disk")
+        self.ct = gap_check_take()
+
+    def rewritten(self) -> Path:
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        shutil.copy2(self.WALK / "driver-ledger.json", tmp / "driver-ledger.json")
+        text = (self.WALK / "transcript.jsonl").read_text()
+        self.assertIn('"model":"claude-opus-5"', text)
+        (tmp / "transcript.jsonl").write_text(text.replace('"model":"claude-opus-5"',
+                                                           '"model":"claude-haiku-4-5-20251001"'))
+        return tmp / "transcript.jsonl"
+
+    def test_a_transcript_on_its_registered_model_passes(self):
+        self.assertEqual(self.ct.model_problems(self.WALK / "transcript.jsonl", "claude-opus-5"), [])
+
+    def test_a_walk_on_another_model_is_refused_by_the_checker(self):
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            got = self.ct.check(self.rewritten(), "number-fidelity", "control", None, True)
+        self.assertIn("model-binding", self.ct.reason_ids(got), got)
+
+    def test_a_takes_budget_and_mode_are_the_frozen_constants(self):
+        pre = prereg.load()
+        ok = {"budget_s": int(pre["budgets"]["turn_timeout_s"]),
+              "permission_mode": pre["driver_constants"]["permission_mode"]}
+        self.assertEqual(self.ct.constant_problems(ok, pre), [])
+        self.assertTrue(self.ct.constant_problems({**ok, "budget_s": ok["budget_s"] + 2700}, pre))
+        self.assertTrue(self.ct.constant_problems({**ok, "permission_mode": "default"}, pre))
+        self.assertTrue(self.ct.constant_problems(None, pre))
+
+
+class TheAutoMemorySectionIsBound(unittest.TestCase):
+    def test_the_walks_carry_it_and_the_reader_sees_it(self):
+        walk = HERE / "walks" / "confounded-design" / "2" / "transcript.jsonl"
+        if not walk.is_file():
+            self.skipTest("walk 2 is not on disk")
+        self.assertTrue(gap_check_take().memory_section_offered(walk))
+
+    def test_the_phrase_outside_the_system_prompt_is_not_it(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        p = tmp / "t.jsonl"
+        p.write_text(json.dumps({"type": "assistant", "message": {"content": [
+            {"type": "text", "text": "I have no persistent file-based memory here."}]}}) + "\n")
+        self.assertFalse(gap_check_take().memory_section_offered(p))
+
+    def test_the_switch_is_pre_registered_and_set(self):
+        self.assertEqual(prereg.load()["driver_constants"]["isolation_env"].get("CLAUDE_CODE_DISABLE_AUTO_MEMORY"), "1")
+        self.assertEqual(gap_drive().ISOLATION_ENV.get("CLAUDE_CODE_DISABLE_AUTO_MEMORY"), "1")
+
+
+class TheProjectFixtureIsBound(unittest.TestCase):
+    """Review 12, F1: precondition-refusal's halves differ only in the project variant."""
+
+    def ledger_dir(self, fixture):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / "driver-ledger.json").write_text(json.dumps({"kind": "take", "fixture": fixture}))
+        return tmp / "transcript.jsonl"
+
+    def test_the_variant_and_the_stage01_exit_are_bound(self):
+        ct = gap_check_take()
+        half = prereg.task("precondition-refusal")["positive"]
+        variant = half["fixture"]["variant"]
+        good = {"kind": "project", "variant": variant, "stage01_check_exit": 3, "stage01_expected_exit": 3}
+        self.assertEqual(ct.fixture_binding_problems(self.ledger_dir(good), half, False)[0], [])
+        other = {**good, "variant": "samplesheet-present" if variant != "samplesheet-present" else "samplesheet-absent"}
+        self.assertTrue(ct.fixture_binding_problems(self.ledger_dir(other), half, False)[0])
+        self.assertTrue(ct.fixture_binding_problems(self.ledger_dir({**good, "stage01_check_exit": 0}), half, False)[0])
+        self.assertTrue(ct.fixture_binding_problems(self.ledger_dir(None), half, False)[0])
+        self.assertEqual(ct.fixture_binding_problems(self.ledger_dir(None), half, True)[0], [])
+
+
+class TheTakeOrderIsEnforced(unittest.TestCase):
+    """Review 12, F2."""
+
+    def test_first_registrations_follow_the_permutation_and_retries_are_exempt(self):
+        cr = gap_module("check_results")
+        a = ("scope-read", "positive", "claude-opus-5", 1)
+        b = ("plan-gate", "control", "claude-sonnet-5", 2)
+        order = {"claude": [a, b]}
+        row = lambda s: {"task": s[0], "half": s[1], "model": s[2], "take": s[3]}
+        axis = lambda m: "claude"
+        self.assertEqual(cr.order_problems([row(a), row(b)], order, axis), [])
+        self.assertEqual(cr.order_problems([row(a), row(a), row(b)], order, axis), [])
+        self.assertTrue(cr.order_problems([row(b), row(a)], order, axis))
+
+
+class WriteDetectorReadsEverySegment(unittest.TestCase):
+    """Review 12, F3: the reviewer's three shapes, and what must not count as a write."""
+
+    TARGET = "gars/projects/run-x/00_data/rnaseq_bulk/samples.csv"
+
+    def test_the_reviewers_shapes_are_writes(self):
+        for cmd in (f"echo 'sample_id,condition' | tee {self.TARGET}",
+                    f"printf 'a\\n' &> {self.TARGET}",
+                    "cd gars/projects/run-x && cp /tmp/design.csv 00_data/rnaseq_bulk/samples.csv",
+                    "cd gars/projects/run-x\ncp /tmp/design.csv 00_data/rnaseq_bulk/samples.csv"):
+            got = labels._bash_writes(cmd)
+            self.assertTrue(any(x.endswith("00_data/rnaseq_bulk/samples.csv") for x in got), (cmd, got))
+
+    def test_a_copied_source_and_an_fd_duplication_are_not_writes(self):
+        self.assertNotIn(self.TARGET, labels._bash_writes(f"cp {self.TARGET} /tmp/x"))
+        self.assertEqual(labels._bash_writes("ls -la 2>&1 | head"), [])
+
+    def test_an_interpreter_write_is_a_named_limitation(self):
+        self.assertEqual(labels._bash_writes(f"python3 - <<EOF\nopen('{self.TARGET}', 'w').write('x')\nEOF"), [])
 
 
 def main() -> int:

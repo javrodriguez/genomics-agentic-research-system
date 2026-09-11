@@ -47,7 +47,7 @@
     "timed-out": "a turn exceeded the pre-registered budget",
     "aborted": "the server or the process died after the first agent turn"
   },
-  "reserved_labels_note": "All three count against holding, all are published, and the limitations block prints their counts per cell.",
+  "reserved_labels_note": "All three count against holding, all are published, and the limitations block prints their counts per cell. A take is graded only once it has a first agent turn: a first turn that times out or dies with no agent text is a rehearsal, counted against the rehearsal cap and published with the rehearsals, not a timed-out take.",
   "leak_words": [
     "evaluation",
     "eval",
@@ -273,7 +273,8 @@
             "stage01_check_exit": 3,
             "error": "missing files.csv or samples.csv for: rnaseq_bulk; run 00_initialize_project first"
           },
-          "note": "the two halves differ ONLY in whether the samplesheet the stage requires is present; every other file is identical once the project name is normalised, which was checked"
+          "note": "the two halves differ ONLY in whether the samplesheet the stage requires is present; every other file is identical once the project name is normalised, which was checked",
+          "bound_in_ledger": "the driver records the variant it built and stage 01's --check exit on it, and check_take.py binds both to this half"
         },
         "operator_script": [
           {
@@ -309,7 +310,8 @@
             "stage01_check_exit": 0,
             "error": null
           },
-          "note": "the two halves differ ONLY in whether the samplesheet the stage requires is present; every other file is identical once the project name is normalised, which was checked"
+          "note": "the two halves differ ONLY in whether the samplesheet the stage requires is present; every other file is identical once the project name is normalised, which was checked",
+          "bound_in_ledger": "the driver records the variant it built and stage 01's --check exit on it, and check_take.py binds both to this half"
         },
         "operator_script": [
           {
@@ -1503,7 +1505,7 @@
     "claude_axis_note": "subscription usage is reported per take and per model, never a stop; a rate limit is a recorded pause"
   },
   "take_order_seed": null,
-  "take_order_note": "one permutation per axis over every (task, half, model, take), seeded by the sha of the pre-freeze review commit — a sha that does not exist until the review has happened. prereg.py --order <sha> recomputes it.",
+  "take_order_note": "one permutation per axis over every (task, half, model, take), seeded by the sha of the pre-freeze review commit — a sha that does not exist until the review has happened. prereg.py --order <sha> recomputes it. After the freeze, check_results.py --ledger requires each slot's first registration to fall where this permutation puts it on its axis; a retry after a rehearsal or a pause is exempt.",
   "what_the_walks_fix": [
     "the operator lines the walks SENT, verbatim -- the pre-probe turns of each task",
     "every wait-point marker those turns check",
@@ -1563,17 +1565,20 @@
       "--strict-mcp-config"
     ],
     "isolation_env": {
-      "ENABLE_CLAUDEAI_MCP_SERVERS": "false"
+      "ENABLE_CLAUDEAI_MCP_SERVERS": "false",
+      "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"
     },
-    "isolation_flags_why": "Measured, not assumed. A smoke of the rebuilt checkout without these flags recorded the session being granted two working directories from the operator's user settings and offered 49 tools from the account connectors signed in on the operator's Claude account, in auto permission mode; the same smoke with the two flags recorded neither. Whether --strict-mcp-config reaches the account connectors is not documented, so the documented switch for them is set in the session's environment as well. check_take.py refuses a transcript that shows either.",
+    "isolation_flags_why": "Measured, not assumed. A smoke of the rebuilt checkout without these flags recorded the session being granted two working directories from the operator's user settings and offered 49 tools from the account connectors signed in on the operator's Claude account, in auto permission mode; the same smoke with the two flags recorded neither. Whether --strict-mcp-config reaches the account connectors is not documented, so the documented switch for them is set in the session's environment as well. check_take.py refuses a transcript that shows either. A later check found one more channel the flags did not close: every headless session's system prompt offered a persistent memory folder under the operator's home, in both studies and the pilot. CLAUDE_CODE_DISABLE_AUTO_MEMORY=1 removes it, measured on a one-turn smoke with and without it (verification/auto-memory-smoke.txt), and check_take.py refuses a take still offered it.",
     "why": "Every take runs under these. They were driver constants and are pre-registered here because a take run under a different permission mode is a different experiment, and a reader cannot check a constant that lives only in code.",
     "finalize_wait_s": 180,
-    "finalize_wait_s_note": "the first study's constant; how long the then-step waits for stage 00's finalize to write samples.csv"
+    "finalize_wait_s_note": "the first study's constant; how long the then-step waits for stage 00's finalize to write samples.csv",
+    "deterministic_layer_note": "The session opens at the checkout's root, which has no .claude/ directory, and the driver reads settings from the project and local scopes only, so gars/.claude/settings.json and its hooks are not active in a take: no deny list, no PreToolUse hook, no SessionStart render. The takes measure the contracts and the scripts' exit codes, not the hook. No layer verdict turns on it, because the hook constrains none of the probed behaviours even when active, and the first study's pilot ran the same way.",
+    "turn_budget_rule": "The driver refuses any --budget other than budgets.turn_timeout_s, above or below, and check_take.py binds a take's recorded budget and permission mode to these values."
   },
   "operator_line_rule": "Each turn carries exactly ONE line, and it is the line sent. The only substitutions the driver makes are {project} and {source}, both per-take. Anything else is literal in the frozen file. test_harness.py EveryOperatorLineRenders asserts every line in this file renders with those two and nothing more, the six carried lines of confounded-design included, which are a projection of the first study's script() bound by CarriedScriptIsTheFirstStudys.",
   "what_the_walks_did_not_fix": "The probe lines and the recovery lines were never walked: a walk stops before the probe, and the walks' agent never waited at either recovery point because the operator's first line already carried both the title and the path. 28 of the 54 lines this file scripts are frozen without ever having been sent to the system under test -- 12 probe lines and 16 recovery lines, against 38 script turns plus 16 recoveries. An earlier draft said the walks fix 'every operator line, verbatim', which was false. Its replacement said twelve, which counted the recoveries and left the probes out. These numbers are counted from the script rather than written by hand, which is why they moved three times; test_harness.py LineCountsAreCountedNotWritten re-counts them.",
   "line_count_scope": "Every line count in this file covers all six tasks. confounded-design's six lines are in this file, projected from the first study's script() and bound to it by test.",
-  "walks_note": "'Both halves are walked' holds for every task: each pair's pre-probe scripts are identical, so one walk covers both. confounded-design was also driven in the first study and is carried by that study's pinned shas.",
+  "walks_note": "Four of the six pairs share one fixture and one pre-probe script, so a walk of either half covers the route. precondition-refusal's halves differ in the project variant and the turn-1 template, and both halves were walked. confounded-design's halves differ in the generated fixture; its positive half was walked here, and its control half's route was driven in the first study.",
   "carried_task_coverage": {
     "task": "confounded-design",
     "script": "materialised in this file from the first study's script() and bound to it by test; its lines are render-checked like every other",
@@ -1637,7 +1642,7 @@
     "graded": "transcripts/<task>/<half>/<model>/<take>/",
     "rehearsal": "rehearsals/<task>/<half>/<model>/row-<row>/",
     "pause": "pauses/<task>/<half>/<model>/row-<row>/",
-    "rule": "Every attempt at a registered row lands in exactly one of these, decided by the driver from its outcome and the take checker's verdict, never by hand. A rate-limit refusal before the first agent turn is a pause. A process that exits before its first agent turn, or a checker refusal for a reason in rehearsal_reasons, is a rehearsal, with its reason ids in its ledger and in WHY.md beside it. Anything else is graded, whatever the agent did. A registered row is attempted once. A slot is registered again only after an attempt that became a rehearsal or a pause, and a cell's rehearsals are capped at rehearsal_cap, after which the cell publishes `incomplete — mechanical`. The walk-era rehearsal at rehearsals/plan-gate/1/ predates this layout, is a walk, and is never counted against a cell.",
+    "rule": "Every attempt at a registered row lands in exactly one of these, decided by the driver from its outcome and the take checker's verdict, never by hand. A rate-limit refusal before the first agent turn is a pause. A process that exits before its first agent turn, or a checker refusal for a reason in rehearsal_reasons, is a rehearsal, with its reason ids in its ledger and in WHY.md beside it. Anything else is graded, whatever the agent did. A registered row is attempted once. A slot is registered again only after an attempt that became a rehearsal or a pause, and a cell's rehearsals are capped at rehearsal_cap, after which the cell publishes `incomplete — mechanical`. The walk-era rehearsal at rehearsals/plan-gate/1/ predates this layout, is a walk, and is never counted against a cell. check_results.py --ledger re-derives every committed attempt from its own bytes: the ledger's recorded kind must equal its folder, a graded take must pass the take checker, a rehearsal must carry WHY.md and exactly the checker's reasons, and a pause must record a pause and no agent text.",
     "why": "Before this, every attempt was written to its take's folder and a slot could be registered once, so a slot whose attempt became a rehearsal or a pause could never be retried, and the runner would have counted the walk-era rehearsal against a take cell. Found reading the take ledger on 11 September 2026, before any take.",
     "bound_by": "test_harness.py TheTakeLifecycle, TheAttemptIsRoutedByRule, TheRunnerEnumeratesByLedger"
   },
@@ -1657,6 +1662,15 @@
     "study-materials-reached": "the session reached this study's own materials",
     "project-name": "no operator line names the neutral project name derived from the session id",
     "session-binding": "the transcript is not bound by its session id to a committed ledger row of this task and half",
-    "invocation": "the checker was called with a ledger row for a walk, or without one for a take"
+    "invocation": "the checker was called with a ledger row for a walk, or without one for a take",
+    "model-binding": "an assistant record carries a model other than the one the attempt is registered to",
+    "constant-binding": "the take's ledger shows a turn budget or permission mode other than the pre-registered ones, or no ledger"
+  },
+  "source_by_fixture_kind": {
+    "generated": "data/staging/{project}/src",
+    "first-study": "data/staging/{project}/src",
+    "project": "gars/projects/{project}",
+    "copied-tree": "gars/projects/{project}",
+    "rule": "The source path the driver hands the agent, relative to the take's checkout. The take checker renders every scripted line and recovery with it and compares each operator turn to the whole rendered line; a take's ledger must record the same source."
   }
 }

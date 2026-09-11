@@ -314,7 +314,7 @@ def main() -> int:
 
     man = {
         "fixture": "plan-gate",
-        "origin": str(ORIGIN), "origin_name": ORIGIN_NAME,
+        "origin": ORIGIN_REL, "origin_name": ORIGIN_NAME,
         "chosen_by": "the pre-registered rule named the other candidate; driving it through the "
                      "front door showed the system refuses it (walks/plan-gate/1). See Ruling 3.",
         "files": len([p for p in dest.rglob("*") if p.is_file()]),

@@ -164,6 +164,7 @@ def check_ledger() -> list[str]:
         if tuple(rel[1:4]) != where or rel[4] != expected_leaf:
             problems.append(f"row {i}: its {kind} attempt sits at {'/'.join(rel)}, which is not the "
                             f"folder its row names")
+        problems += attempt_problems(kind, d, i, row, _check_take())
         t = d / "transcript.jsonl"
         if kind == "graded" and t.is_file():
             got = _session_id_of(t)
@@ -172,10 +173,132 @@ def check_ledger() -> list[str]:
                                 f"uuid5(namespace, {sha[:12]}) = {want}")
             else:
                 matched += 1
+    problems += _order_problems_for(rows)
     print(f"  {len(rows)} row(s): {counts['graded']} graded, {counts['rehearsal']} rehearsal(s), "
           f"{counts['pause']} pause(s), {counts['not attempted']} not attempted; {matched} transcript(s) "
           f"bound to their row's commit")
     return problems
+
+
+_CT = None
+
+
+def _check_take():
+    """This study's check_take, loaded once by path: the first study has a file of the same name."""
+    global _CT
+    if _CT is None:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gap_check_take_for_results", HERE / "check_take.py")
+        _CT = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(_CT)
+    return _CT
+
+
+def _has_agent_text(t: Path) -> bool:
+    if not t.is_file():
+        return False
+    import transcript as tx
+    return any(x["role"] == "assistant" and x["text"].strip() for x in tx.load(t)["turns"])
+
+
+def attempt_problems(kind: str, d: Path, i: int, row: dict, ct) -> list[str]:
+    """An attempt re-derived from its own bytes, against the folder it sits in (review 12, blocker 2).
+
+    The folder was the only thing that decided an attempt's kind, so one `git mv` turned a graded take
+    into a rehearsal, freed its slot, and left every check clean. Now the ledger's own record of the
+    attempt must agree with its folder, a graded take must pass the take checker with its row, a
+    rehearsal must carry its WHY.md and either the driver's death-before-first-turn or exactly the
+    checker's reasons, and a pause must record a pause and no agent text.
+    """
+    import contextlib
+    import io
+    try:
+        led = json.loads((d / "driver-ledger.json").read_text())
+    except (OSError, json.JSONDecodeError):
+        return [f"row {i}: the {kind} attempt has no readable driver ledger"]
+    problems: list[str] = []
+    recorded = (led.get("attempt") or {}).get("kind")
+    if recorded != kind:
+        problems.append(f"row {i}: the attempt sits under the {kind} folder and its ledger records "
+                        f"{recorded!r}. An attempt's kind is decided by the driver, never by moving it.")
+    outcome = led.get("outcome") or ""
+    t = d / "transcript.jsonl"
+    agent_text = _has_agent_text(t)
+
+    def checked() -> list[str]:
+        if not t.is_file():
+            return [f"[{ct.NO_FIRST_AGENT_TURN}] no transcript"]
+        with contextlib.redirect_stdout(io.StringIO()):
+            return ct.check(t, row["task"], row["half"], i, False)
+
+    if kind == "graded":
+        if outcome.startswith(("PAUSE", "REHEARSAL")):
+            problems.append(f"row {i}: a graded take records the outcome {outcome.split(' ')[0]!r}")
+        if t.is_file():
+            graded_problems = checked()
+            if graded_problems:
+                problems.append(f"row {i}: the graded take does not pass the take checker "
+                                f"({sorted(set(ct.reason_ids(graded_problems)))})")
+        elif not (led.get("first_agent_turn") and "no session file" in outcome):
+            problems.append(f"row {i}: a graded take with no transcript must record a first agent turn "
+                            f"and a missing session file")
+    elif kind == "rehearsal":
+        if not (d / "WHY.md").is_file():
+            problems.append(f"row {i}: a rehearsal carries no WHY.md naming its reasons")
+        reasons = sorted((led.get("attempt") or {}).get("reasons") or [])
+        if outcome.startswith("REHEARSAL"):
+            if agent_text:
+                problems.append(f"row {i}: recorded as a death before the first agent turn, and its "
+                                f"transcript holds agent text")
+            if reasons != [ct.NO_FIRST_AGENT_TURN]:
+                problems.append(f"row {i}: a death before the first agent turn records reasons {reasons}")
+        else:
+            got = checked()
+            ids = sorted(set(ct.reason_ids(got)))
+            if not got:
+                problems.append(f"row {i}: the take checker passes this attempt, so it is a graded take "
+                                f"filed as a rehearsal")
+            elif ids != reasons:
+                problems.append(f"row {i}: the checker's reasons {ids} are not the recorded {reasons}")
+    elif kind == "pause":
+        if not outcome.startswith("PAUSE"):
+            problems.append(f"row {i}: a pause records the outcome {outcome.split(' ')[0]!r}")
+        if agent_text:
+            problems.append(f"row {i}: a pause is a refusal before the first agent turn, and its "
+                            f"transcript holds agent text")
+    return problems
+
+
+def order_problems(rows: list[dict], order_by_axis: dict, axis_of) -> list[str]:
+    """Each slot's FIRST registration falls where the pre-registered order puts it (review 12, F2).
+
+    A retry after a rehearsal or a pause registers its slot again later, and is skipped.
+    """
+    seen: set = set()
+    k: dict = {}
+    out: list[str] = []
+    for i, r in enumerate(rows):
+        slot = (r["task"], r["half"], r["model"], r["take"])
+        if slot in seen:
+            continue
+        seen.add(slot)
+        axis = axis_of(r["model"])
+        j = k.get(axis, 0)
+        k[axis] = j + 1
+        order = order_by_axis.get(axis) or []
+        if j >= len(order) or tuple(order[j]) != slot:
+            there = tuple(order[j]) if j < len(order) else "nothing"
+            out.append(f"row {i}: {slot} is registration {j + 1} on the {axis} axis, and the "
+                       f"pre-registered order puts {there} there")
+    return out
+
+
+def _order_problems_for(rows: list[dict]) -> list[str]:
+    pre = prereg.load()
+    if not prereg.is_frozen() or not pre.get("take_order_seed"):
+        print("  take order: checked after the freeze, when its seed exists")
+        return []
+    return order_problems(rows, prereg.order(pre["take_order_seed"]), prereg.axis_of)
 
 
 def _session_id_of(path: Path) -> str:
