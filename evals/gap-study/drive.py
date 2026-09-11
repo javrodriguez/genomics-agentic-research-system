@@ -324,8 +324,8 @@ def run_tree_problems(tree: Path, session_id: str, exclude: list[str]) -> list[s
     return out
 
 
-def stream_text(stdout: str) -> str:
-    """The agent's own text in a turn's stream, never the harness's own API-error record.
+def stream_split(stdout: str) -> tuple[str, str]:
+    """A turn's stream read for two different things: what the AGENT said, and what the HARNESS reported.
 
     REVIEW 15, BLOCKER 3. When the API refuses a request the harness writes an assistant record of its
     own and the process exits 1. The checker already excludes it from the agent-turn count; the driver
@@ -333,9 +333,18 @@ def stream_text(stdout: str) -> str:
     first agent turn, was skipped: a rate limit would have been filed as a death before the first turn
     and counted against the rehearsal cap. Measured in the stream the driver reads
     (verification/api-error-stream-probe.txt): model `<synthetic>`, `is_api_error_message` true; the
-    session file spells the same flag `isApiErrorMessage`, and both are skipped here.
+    session file spells the same flag `isApiErrorMessage`, and both are kept out of the agent's text here.
+
+    REVIEW 16, BLOCKER 2. Skipping that record also dropped its words from the only place any probe has
+    shown a rate-limit message, and the pause branch was left deciding on stderr, which no probe records
+    on a refused turn. A rate limit before the first agent turn would then have been filed as a death
+    before the first turn: the same false record review 15 described, reintroduced by the fix for it.
+    The harness's own words are kept here, apart from the agent's, and the branch that decides a pause
+    reads both. The closing `result` record reports the same failure in a field the driver never read,
+    so it is collected too.
     """
     said: list[str] = []
+    harness: list[str] = []
     for raw in stdout.splitlines():
         raw = raw.strip()
         if not raw:
@@ -344,20 +353,38 @@ def stream_text(stdout: str) -> str:
             rec = json.loads(raw)
         except json.JSONDecodeError:
             continue
-        if rec.get("type") != "assistant":
+        kind = rec.get("type")
+        if kind == "result":
+            if (rec.get("is_error") or rec.get("isError")
+                    or str(rec.get("subtype") or "").startswith("error")):
+                harness.extend(str(rec.get(k)) for k in ("result", "error") if rec.get(k))
             continue
-        if rec.get("is_api_error_message") or rec.get("isApiErrorMessage"):
+        if kind != "assistant":
             continue
         content = (rec.get("message") or {}).get("content")
-        if isinstance(content, list):
-            said.extend(b.get("text", "") for b in content
-                        if isinstance(b, dict) and b.get("type") == "text")
-    return "\n".join(s for s in said if s)
+        texts = ([b.get("text", "") for b in content
+                  if isinstance(b, dict) and b.get("type") == "text"]
+                 if isinstance(content, list) else [])
+        if rec.get("is_api_error_message") or rec.get("isApiErrorMessage"):
+            harness.extend(texts)
+            continue
+        said.extend(texts)
+    return "\n".join(s for s in said if s), "\n".join(s for s in harness if s)
+
+
+def stream_text(stdout: str) -> str:
+    """What the agent itself said in this turn: the reply a wait-point marker is read against."""
+    return stream_split(stdout)[0]
+
+
+def stream_error_text(stdout: str) -> str:
+    """What the harness itself reported in this turn, which is where a rate limit arrives."""
+    return stream_split(stdout)[1]
 
 
 def one_turn(line: str, session_id: str, model: str, first: bool,
-             budget_s: int) -> tuple[str, int, str]:
-    """Send one line. Returns (assistant_text, exit_code, stderr).
+             budget_s: int) -> tuple[str, int, str, str]:
+    """Send one line. Returns (assistant_text, exit_code, stderr, the harness's own error text).
 
     stdin is CLOSED deliberately: headless Claude Code reads anything left on stdin into the
     prompt, and a smoke test in the first study proved it by swallowing the test script itself.
@@ -377,9 +404,10 @@ def one_turn(line: str, session_id: str, model: str, first: bool,
                               stdin=subprocess.DEVNULL, timeout=budget_s,
                               env={**os.environ, **ISOLATION_ENV})
     except subprocess.TimeoutExpired:
-        return "", 124, f"turn exceeded the pre-registered budget of {budget_s}s"
+        return "", 124, f"turn exceeded the pre-registered budget of {budget_s}s", ""
 
-    return stream_text(proc.stdout), proc.returncode, proc.stderr
+    said, harness = stream_split(proc.stdout)
+    return said, proc.returncode, proc.stderr, harness
 
 
 def marker_holds(step: dict, said: str) -> bool:
@@ -792,7 +820,8 @@ def main() -> int:
         shown = line if len(line) < 64 else line[:61] + "..."
         print(f"  [{i}/{len(steps)}] > {shown}")
         t0 = now()
-        said, code, err = one_turn(line, session_id, model, first=(i == 1), budget_s=budget)
+        said, code, err, harness_said = one_turn(line, session_id, model, first=(i == 1),
+                                                 budget_s=budget)
 
         row_rec = {"n": step["n"], "sent": line, "expects": step.get("marker"),
                    "means": step.get("means"), "at": t0, "exit": code,
@@ -802,7 +831,10 @@ def main() -> int:
             ledger["first_agent_turn"] = True
 
         # A rate-limit refusal BEFORE any agent turn is a pause, not a take and not a rehearsal.
-        if code != 0 and not ledger["first_agent_turn"] and looks_rate_limited(err + said):
+        # The harness's own report of the refusal is read here too (review 16, blocker 2): stderr is
+        # not where any probe has seen it.
+        refusal = err + harness_said + said
+        if code != 0 and not ledger["first_agent_turn"] and looks_rate_limited(refusal):
             row_rec["outcome"] = "PAUSE — rate limited before the first agent turn"
             row_rec["held"] = False
             ledger["turns"].append(row_rec)
@@ -810,7 +842,7 @@ def main() -> int:
             # Which pre-registered marker matched, not the refusal's own text: a rate-limit message
             # can carry a percentage, and the ledger is a published file the language guard reads.
             ledger["pause"] = {"started": t0, "ended": now(),
-                               "matched": matched_marker(err + said)}
+                               "matched": matched_marker(refusal)}
             print("  PAUSE: rate limited before the first agent turn. The slot is retried; this "
                   "is neither a take nor a rehearsal.")
             break
@@ -874,7 +906,8 @@ def main() -> int:
             line2 = rec["send"].format(project=name, source=source.relative_to(RUN_TREE))
             print(f"        recovery: the reply is waiting at {rec['if_reply_holds']!r}; "
                   f"answering it once")
-            said2, code2, _err2 = one_turn(line2, session_id, model, first=False, budget_s=budget)
+            said2, code2, _err2, _harness2 = one_turn(line2, session_id, model, first=False,
+                                                      budget_s=budget)
             # The recovery row is recorded AFTER the step row it answers, in every branch (review 12, F7).
             rec_row = {"n": step["n"], "sent": line2, "recovery": True,
                        "expects": marker, "at": now(), "exit": code2,

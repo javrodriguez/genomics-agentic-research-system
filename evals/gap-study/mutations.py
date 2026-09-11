@@ -884,8 +884,24 @@ def m_api_error_text_counted_as_the_agents(s: Sandbox) -> tuple[int, str]:
     """Review 15, blocker 3: the harness's error record read as the agent's first turn."""
     s.control(_th(s, "TheRateLimitMarkersAreBounded"))
     _edit(s.study / "drive.py",
-          '        if rec.get("is_api_error_message") or rec.get("isApiErrorMessage"):\n            continue\n', "")
+          '        if rec.get("is_api_error_message") or rec.get("isApiErrorMessage"):\n',
+          "        if False:\n")
     return s.run(_th(s, "TheRateLimitMarkersAreBounded")), "test_harness.py TheRateLimitMarkersAreBounded"
+
+
+def m_ledger_made_refusal_admitted(s: Sandbox) -> tuple[int, str]:
+    """Review 16, blocker 1: a refusal the edited ledger itself produced, filed as a rehearsal."""
+    s.control(_th(s, "TheAttemptIsReDerivedFromItsBytes"))
+    _edit(s.study / "check_results.py", "            if made:\n", "            if False:\n")
+    return s.run(_th(s, "TheAttemptIsReDerivedFromItsBytes")), "test_harness.py TheAttemptIsReDerivedFromItsBytes"
+
+
+def m_pause_branch_blind_to_the_harness_report(s: Sandbox) -> tuple[int, str]:
+    """Review 16, blocker 2: the pause decided on stderr alone, where no probe has seen the message."""
+    s.control(_th(s, "TheDriverLoopRecordsEveryTurnItEnds"))
+    _edit(s.study / "drive.py", "        refusal = err + harness_said + said\n", "        refusal = err\n")
+    return (s.run(_th(s, "TheDriverLoopRecordsEveryTurnItEnds")),
+            "test_harness.py TheDriverLoopRecordsEveryTurnItEnds")
 
 
 def m_pause_marker_unbounded(s: Sandbox) -> tuple[int, str]:
@@ -987,6 +1003,10 @@ MUTATIONS = [
     ("a stop at a step with no wait point", m_stop_at_a_markerless_step_admitted, False),
     ("a line sent after a recorded stop", m_line_after_a_stop_admitted, False),
     ("a rehearsal naming a reason the driver refuses", m_driver_decided_rehearsal_reason_accepted, False),
+    ("a refusal the ledger itself made, filed as a rehearsal", m_ledger_made_refusal_admitted, False),
+    # "objects": this guard drives the driver's own loop, which builds a real checkout by `git archive`
+    # and reads the system tree, so the sandbox needs the repository's objects to be green unmutated.
+    ("the harness's own report unread by the pause branch", m_pause_branch_blind_to_the_harness_report, "objects"),
     ("the harness's error text read as the agent's", m_api_error_text_counted_as_the_agents, False),
     ("a pause marker matched unbounded", m_pause_marker_unbounded, False),
     ("the caps unread on the ledger side", m_caps_unread_on_the_ledger_side, False),

@@ -100,7 +100,7 @@ def main() -> int:
     report["checkout"]["sweep_hits"] = hits
 
     budget = int(pre["budgets"]["turn_timeout_s"])
-    said, code, err = drive.one_turn(LINE, sid, args.model, True, budget)
+    said, code, err, harness_said = drive.one_turn(LINE, sid, args.model, True, budget)
     report["turn"] = {"exit": code, "reply": said[:200], "stderr_tail": err.strip()[-400:]}
 
     src = drive.session_file(sid)

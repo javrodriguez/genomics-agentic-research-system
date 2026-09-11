@@ -1664,7 +1664,10 @@ class TheDriverLoopRecordsEveryTurnItEnds(unittest.TestCase):
 
         def fake(line, session_id, model, first, budget_s):
             sent.append(line)
-            return replies[len(sent) - 1] if len(sent) <= len(replies) else ("", 1, "no more replies")
+            r = replies[len(sent) - 1] if len(sent) <= len(replies) else ("", 1, "no more replies")
+            # (reply, exit code, stderr, the harness's own report of the turn). A case that does not
+            # exercise the fourth leaves it out, so each case reads as the thing it is about.
+            return (tuple(r) + ("", "", "", ""))[:4]
 
         drive.one_turn = fake
         saved = sys.argv
@@ -1728,6 +1731,20 @@ class TheDriverLoopRecordsEveryTurnItEnds(unittest.TestCase):
                 if drive.RUN_TREE is not None:
                     shutil.rmtree(drive.RUN_TREE, ignore_errors=True)
             self.assertEqual(code, 2, f"--budget {budget} against a registered {registered} was not refused")
+
+    def test_a_rate_limit_the_harness_reports_is_a_pause_when_stderr_says_nothing(self):
+        """REVIEW 16, BLOCKER 2. The branch, driven, on the channel a probe has actually measured.
+
+        Review 15's fold kept the harness's error record out of the agent's text, which is right, and
+        left the pause decision reading stderr, which no probe has ever seen carry the message. This
+        drives the first turn to a refusal whose words arrive only in the harness's own record, and
+        requires a pause: filed as a rehearsal instead, a rate limit would count against the rehearsal
+        cap and its cell would publish as mechanical with no pause recorded.
+        """
+        led = self.drive_walk([("", 1, "", "API Error: 429 Too Many Requests")])
+        self.assertTrue(led["outcome"].startswith("PAUSE"), led["outcome"])
+        self.assertEqual(led["pause"]["matched"], "429")
+        self.assertFalse(led["first_agent_turn"])
 
     def test_a_scripted_turn_that_dies_after_the_first_agent_turn_is_aborted_and_recorded(self):
         led = self.drive_walk([("Reply with a comma-separated list of IDs", 0, ""), ("", 1, "boom")])
@@ -2288,6 +2305,59 @@ class TheAttemptIsReDerivedFromItsBytes(unittest.TestCase):
         got = self.problems("rehearsal", d, ["[constant-binding] the take ran with another budget"])
         self.assertTrue(any("cannot have written this record" in p for p in got), got)
 
+    def test_a_refusal_the_ledger_itself_made_is_not_a_rehearsal_reason(self):
+        """REVIEW 16, BLOCKER 1, reproduced against the real checker and closed.
+
+        Variant A of the review: `outcome` edited to a stop at the probe turn, which carries no wait
+        point, so the checker refuses the take with a reason the driver's own loop cannot produce. The
+        refusal is then recorded as the rehearsal's reason and every committed check reads clean, with
+        the take out of the count and its slot registered again. The normalised re-run is what names it:
+        the reason is gone once the ledger's own fields are read as the driver writes them, while a
+        refusal the session earned -- here the missing session id -- survives it.
+        """
+        import contextlib
+        import io
+        cr = gap_module("check_results")
+        ct = gap_check_take()
+        probe_n = prereg.task("scope-read")["positive"]["probe_operator_turn"]
+        d = self.attempt("rehearsal", "complete")
+        t = d / "transcript.jsonl"
+        led = json.loads((d / "driver-ledger.json").read_text())
+        led["outcome"] = "stopped — wait-point marker not held; graded as it stands"
+        led["turns"] = [{"n": probe_n}]
+        (d / "driver-ledger.json").write_text(json.dumps(led))
+        with contextlib.redirect_stdout(io.StringIO()):
+            got = ct.check(t, self.ROW["task"], self.ROW["half"], 0, False)
+        ids = sorted(set(ct.reason_ids(got)))
+        self.assertIn("stop-without-a-wait-point", ids)
+        self.assertIn("no-session-id", ids)
+        led["attempt"] = {"kind": "rehearsal", "reasons": ids}
+        (d / "driver-ledger.json").write_text(json.dumps(led))
+
+        made = cr._ledger_made_reasons(d, t, self.ROW, 0, ct, got)
+        self.assertIn("stop-without-a-wait-point", made)
+        self.assertNotIn("no-session-id", made)
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            problems = cr.attempt_problems("rehearsal", d, 0, self.ROW, ct)
+        self.assertTrue(any("made by an edit to the ledger" in p for p in problems), problems)
+
+    def test_the_normalised_ledger_holds_the_frozen_constants_and_every_scripted_turn(self):
+        cr = gap_module("check_results")
+        pre = prereg.load()
+        half = prereg.task(self.ROW["task"])[self.ROW["half"]]
+        d = self.attempt("rehearsal", "complete")
+        led = json.loads((d / "driver-ledger.json").read_text())
+        led.update({"budget_s": 1, "permission_mode": "bypassPermissions", "gars_tree_sha": "0" * 40,
+                    "outcome": "stopped — wait-point marker not held; graded as it stands",
+                    "turns": [{"n": 1}]})
+        out = cr._normalised_ledger(led, self.ROW, d / "transcript.jsonl")
+        self.assertEqual(out["outcome"], "complete")
+        self.assertEqual([r["n"] for r in out["turns"]], [s["n"] for s in half["operator_script"]])
+        self.assertEqual(out["budget_s"], int(pre["budgets"]["turn_timeout_s"]))
+        self.assertEqual(out["permission_mode"], pre["driver_constants"]["permission_mode"])
+        self.assertEqual(out["gars_tree_sha"], pre["system_under_test"]["gars_tree_sha"])
+
     def test_a_pause_with_agent_text_or_another_outcome_is_found(self):
         self.assertTrue(self.problems("pause", self.attempt("pause", "PAUSE", agent_text=True)))
         self.assertTrue(self.problems("pause", self.attempt("pause", "complete", agent_text=False)))
@@ -2645,6 +2715,24 @@ class TheRateLimitMarkersAreBounded(unittest.TestCase):
         self.assertEqual(drive.stream_text(err), "")
         self.assertEqual(drive.stream_text(camel), "")
         self.assertEqual(drive.stream_text(err + "\n" + ok), "hello")
+
+    def test_the_harness_own_report_is_kept_apart_from_the_agents(self):
+        """REVIEW 16, BLOCKER 2: kept out of the agent's text, and kept for the pause decision."""
+        drive = gap_drive()
+        err = json.dumps({"type": "assistant", "is_api_error_message": True,
+                          "message": {"model": "<synthetic>",
+                                      "content": [{"type": "text", "text": "API Error: rate limit reached"}]}})
+        res = json.dumps({"type": "result", "is_error": True, "subtype": "error_during_execution",
+                          "result": "Claude usage limit reached; try again later"})
+        ok = json.dumps({"type": "assistant", "message": {"model": "claude-opus-5",
+                                                          "content": [{"type": "text", "text": "hello"}]}})
+        self.assertEqual(drive.stream_text(err + "\n" + res), "")
+        self.assertIn("rate limit", drive.stream_error_text(err))
+        self.assertIn("usage limit", drive.stream_error_text(res))
+        self.assertTrue(drive.looks_rate_limited(drive.stream_error_text(res)))
+        # the agent's own words are never collected as the harness's
+        self.assertEqual(drive.stream_error_text(ok), "")
+        self.assertEqual(drive.stream_text(ok), "hello")
 
     def test_a_rate_limit_is_a_pause_and_a_reset_connection_is_not(self):
         drive = gap_drive()

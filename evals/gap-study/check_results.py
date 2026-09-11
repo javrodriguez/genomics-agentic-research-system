@@ -237,6 +237,66 @@ def _has_agent_text(t: Path) -> bool:
     return t.is_file() and _check_take().agent_turn_count(t) > 0
 
 
+def _normalised_ledger(led: dict, row: dict, t: Path) -> dict:
+    """This attempt's ledger with every field the PINNED DRIVER decides put back to what it writes.
+
+    The driver ends a take at `complete` unless a marker went unheld, a budget ran out or the process
+    died; it sends every scripted line up to where it stopped; it computes the source from the half's
+    fixture kind; and it refuses to run under any turn budget, permission mode or system tree other
+    than the frozen ones. Those are the fields an operator would have to edit, and this is what they
+    held before the edit.
+    """
+    ct = _check_take()
+    pre = prereg.load()
+    half = prereg.task(row["task"])[row["half"]]
+    out = dict(led)
+    out["outcome"] = "complete"
+    script = half.get("operator_script")
+    if isinstance(script, list):
+        out["turns"] = [{"n": s["n"]} for s in script]
+    sid = ct.session_id_of(t) if t.is_file() else ""
+    if led.get("source") is not None and sid:
+        out["source"] = ct.expected_source_for(half, ct.neutral_name(sid))
+    out["budget_s"] = int(pre["budgets"]["turn_timeout_s"])
+    out["permission_mode"] = pre["driver_constants"]["permission_mode"]
+    out["gars_tree_sha"] = pre["system_under_test"]["gars_tree_sha"]
+    return out
+
+
+def _ledger_made_reasons(d: Path, t: Path, row: dict, i: int, ct, got: list[str]) -> list[str]:
+    """REVIEW 16, BLOCKER 1. Which of this attempt's refusals exist only because its ledger says so.
+
+    Review 15's blocker 2 was closed by naming five reasons the driver decides before a model runs, and
+    refusing a rehearsal that records one. The class is larger than the list: the checker reads several
+    of its refusals out of the ledger, and the ledger is a file an operator can edit. Editing one field
+    makes the checker refuse the take; a refusal is a reason; a reason makes an admissible rehearsal;
+    and a rehearsal leaves the count with its slot registered again. Review 16 reproduced it three
+    ways on a take the checker passes -- through `outcome`, through a truncated `turns`, and through
+    `source` -- each leaving every committed check clean.
+
+    Naming more ids would close those three and not the class. This closes the class: the checker is
+    run again on the same transcript with the ledger's driver-written fields normalised, and any
+    refusal that disappears was made by the ledger rather than by the session. A refusal that needs
+    the ledger to exist was made by the ledger. Refusals the normalised run ADDS are ignored; the only
+    question asked here is which of the recorded ones survive without the edit.
+    """
+    import contextlib
+    import io
+    if not t.is_file():
+        return []
+    try:
+        led = json.loads((d / "driver-ledger.json").read_text())
+    except (OSError, json.JSONDecodeError):
+        return []
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        (tmp / "transcript.jsonl").write_bytes(t.read_bytes())
+        (tmp / "driver-ledger.json").write_text(json.dumps(_normalised_ledger(led, row, t)))
+        with contextlib.redirect_stdout(io.StringIO()):
+            after = ct.check(tmp / "transcript.jsonl", row["task"], row["half"], i, False)
+    return sorted(set(ct.reason_ids(got)) - set(ct.reason_ids(after)))
+
+
 def attempt_problems(kind: str, d: Path, i: int, row: dict, ct) -> list[str]:
     """An attempt re-derived from its own bytes, against the folder it sits in (review 12, blocker 2).
 
@@ -310,6 +370,12 @@ def attempt_problems(kind: str, d: Path, i: int, row: dict, ct) -> list[str]:
                                 f"filed as a rehearsal")
             elif ids != reasons:
                 problems.append(f"row {i}: the checker's reasons {ids} are not the recorded {reasons}")
+            made = _ledger_made_reasons(d, t, row, i, ct, got)
+            if made:
+                problems.append(f"row {i}: the refusal(s) {made} disappear when the ledger's own "
+                                f"driver-written fields are read as the driver writes them, so they "
+                                f"were made by an edit to the ledger and not by the session. A rehearsal "
+                                f"cannot be founded on them.")
     elif kind == "pause":
         # REVIEW 14, BLOCKER 1. A pause frees a slot on the driver's record alone, so it must at least
         # name the pre-registered marker it matched and when it waited; its count is capped and published.
