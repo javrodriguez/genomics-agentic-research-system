@@ -146,6 +146,10 @@ def grade_cell(task_id: str, half: str, model: str, spec: dict, n: int) -> dict:
         return {"state": f"not run — no grader module for {task_id}", "labels": [], "k": 0, "n": n}
 
     out_labels: list[dict] = []
+    # REVIEW 16, F6. Every take records the harness version it ran under and nothing read it, so the
+    # limitations line promising the versions was written by hand into a section this study says is
+    # machine-derived. It is read here, from the same ledgers the labels come from.
+    versions: set[str] = set()
     for d in paths:
         led_path = d / "driver-ledger.json"
         if not led_path.is_file():
@@ -163,6 +167,8 @@ def grade_cell(task_id: str, half: str, model: str, spec: dict, n: int) -> dict:
             raise SystemExit(f"REFUSING to grade {d}: it holds an attempt that is not a graded take "
                              f"({attempt}, {outcome.split(' ')[0]}), which belongs under rehearsals/ "
                              f"or pauses/ and is never graded")
+        if ledger.get("claude_version"):
+            versions.add(str(ledger["claude_version"]))
         t = d / "transcript.jsonl"
         if t.is_file():
             data = tx.load(t)
@@ -187,7 +193,8 @@ def grade_cell(task_id: str, half: str, model: str, spec: dict, n: int) -> dict:
     state = STATE_RAN if len(out_labels) == n else f"{STATE_INCOMPLETE}, {len(out_labels)} of {n}"
     read = sorted({m for x in out_labels for m in x["model_read"]})
     return {"state": state, "labels": out_labels, "k": k, "n": n, "rehearsals": rehearsed,
-            "pauses": pauses_on_disk(task_id, half, model), "models_read": read}
+            "pauses": pauses_on_disk(task_id, half, model), "models_read": read,
+            "harness_versions": sorted(versions)}
 
 
 def run_task(task_id: str) -> dict:

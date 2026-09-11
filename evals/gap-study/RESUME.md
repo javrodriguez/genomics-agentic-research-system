@@ -33,17 +33,21 @@ Review 15 judged that statement first and ruled do not freeze on three defects a
 a recorded stop must sit at a wait point; a rehearsal may not name a reason the driver refuses to run under; and the driver no longer reads the harness's own error record as the agent's first turn.
 The threat model now says what is bound rather than what is safe.
 
+Review 16 judged the threat model and the twelve limitations lines first, read Ruling 19's three blockers closed, upheld the six layer verdicts, and ruled do not freeze on two findings, both folded (Ruling 20, `verification/prefreeze-16-disposition.md`):
+a refusal that needs the driver ledger to exist was made by the ledger, so it cannot found a rehearsal; and the pause decision now reads what the harness itself reported, not only stderr, which no probe records on a refused turn.
+Its nine follow-ups are all folded, including the two limitations lines that promised more than the code produced.
+
 ## The next moves, in order
 
-1. **Review 16** as `verification/prefreeze-16.md`, reading the bytes this pass leaves; then its disposition, or the freeze: `freeze.py --review-commit <sha> --write`.
+1. **Review 17** as `verification/prefreeze-17.md`, reading the bytes this pass leaves; then its disposition, or the freeze: `freeze.py --review-commit <sha> --write`.
 2. Then, and only then, the 108 takes.
 
 ## State
 
-- 6 task pairs · 11 walks, 3 of them driven in a built checkout · 136 hand-labelled cases · 193 tests · 74 mutations · 15 reviews · 4 smokes
+- 6 task pairs · 11 walks, 3 of them driven in a built checkout · 136 hand-labelled cases · 208 tests · 78 mutations · 16 reviews · 4 smokes
 - 0 takes graded · not frozen · `gars/` and the first study unchanged by this work
 - The local tier was dropped by the repository owner at gate 2; `local-model/DROPPED.md` is the record
-- Rulings 1–19 in `PROTOCOL.md`
+- Rulings 1–20 in `PROTOCOL.md`
 - `RESIDUAL.md` was written at the slice cap and is kept deliberately, though the cap was lifted (Ruling 7)
 
 ## Carried follow-ups, most valuable first

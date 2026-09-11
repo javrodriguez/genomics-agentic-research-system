@@ -104,6 +104,8 @@ def analyse() -> dict:
             }
 
         tasks_out[tid] = {
+            "harness_versions": sorted({v for m in res["cells"].values() for c in m.values()
+                                        for v in (c.get("harness_versions") or [])}),
             "layer": res["layer"]["observed_for_probed_behaviour"],
             "layer_expected_was": res["layer"]["expected"],
             "probed_behaviour": res["layer"]["probed_behaviour"],
@@ -148,6 +150,9 @@ def analyse() -> dict:
     return {
         "definitions": pre["analysis_plan"],
         "tasks": tasks_out,
+        # REVIEW 16, F6: read out of the graded takes' own ledgers, never written by hand.
+        "harness_versions": sorted({v for d in tasks_out.values()
+                                    for v in (d.get("harness_versions") or [])}),
         "models_that_hold_each_enforced_task": enforced_held,
         "models_that_cover_each_silent_task": silent_covered,
         "predictions": preds,
@@ -210,6 +215,11 @@ def main() -> int:
 
     for line in comparison_lines(out):
         print(line)
+    print()
+
+    vs = out["harness_versions"]
+    print("harness versions across every graded take: "
+          + (", ".join(vs) if vs else "none — no take has been graded"))
     print()
 
     scored = [p for p in out["predictions"] if p["scored"]]

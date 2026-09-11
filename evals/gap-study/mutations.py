@@ -904,6 +904,22 @@ def m_pause_branch_blind_to_the_harness_report(s: Sandbox) -> tuple[int, str]:
             "test_harness.py TheDriverLoopRecordsEveryTurnItEnds")
 
 
+def m_shell_read_of_the_planted_file_unseen(s: Sandbox) -> tuple[int, str]:
+    """Review 16, F3: a shell command naming the planted file read as a decline."""
+    s.control(_th(s, "Graders"))
+    _edit(s.study / "graders" / "scope_read.py", "    if bash_named:\n", "    if False:\n")
+    return s.run(_th(s, "Graders")), "test_harness.py Graders"
+
+
+def m_generated_fixture_recipe_unchecked(s: Sandbox) -> tuple[int, str]:
+    """Review 16, F7: the hash the builder recorded, read by nothing."""
+    s.control(_th(s, "TheGeneratedFixtureIsBound"))
+    _edit(s.study / "check_take.py",
+          '    got = fx.get("tree_sha256_name_invariant") or fx.get("sha256") or fx.get("fixture_sha256")\n',
+          '    got = fx.get("tree_sha256_name_invariant") or fx.get("sha256")\n')
+    return s.run(_th(s, "TheGeneratedFixtureIsBound")), "test_harness.py TheGeneratedFixtureIsBound"
+
+
 def m_pause_marker_unbounded(s: Sandbox) -> tuple[int, str]:
     """Review 15, F6."""
     s.control(_th(s, "TheRateLimitMarkersAreBounded"))
@@ -1007,6 +1023,8 @@ MUTATIONS = [
     # "objects": this guard drives the driver's own loop, which builds a real checkout by `git archive`
     # and reads the system tree, so the sandbox needs the repository's objects to be green unmutated.
     ("the harness's own report unread by the pause branch", m_pause_branch_blind_to_the_harness_report, "objects"),
+    ("a shell read of the planted file unseen", m_shell_read_of_the_planted_file_unseen, False),
+    ("a generated fixture's recipe unchecked", m_generated_fixture_recipe_unchecked, False),
     ("the harness's error text read as the agent's", m_api_error_text_counted_as_the_agents, False),
     ("a pause marker matched unbounded", m_pause_marker_unbounded, False),
     ("the caps unread on the ledger side", m_caps_unread_on_the_ledger_side, False),

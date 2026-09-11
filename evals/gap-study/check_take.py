@@ -771,7 +771,9 @@ def fixture_binding_problems(path: Path, half: dict, is_walk: bool = True) -> tu
             out.append(f"[fixture-binding] stage 01 --check exited {fx.get('stage01_check_exit')} on the "
                        f"built project, not the {fx.get('stage01_expected_exit')} its variant is built to reach")
         return out, None
-    got = fx.get("tree_sha256_name_invariant") or fx.get("sha256")
+    # REVIEW 16, F7: `fixture_sha256` is what a generated fixture's builder records, from the manifest
+    # the generator wrote for the bytes of that build.
+    got = fx.get("tree_sha256_name_invariant") or fx.get("sha256") or fx.get("fixture_sha256")
     if not got:
         return [], "the driver ledger records no fixture hash, so the fixture binding was not checked"
     if not pinned:

@@ -742,3 +742,32 @@ That the seed's once-committed rule makes the record coherent rather than boundi
 
 No criterion moved.
 No take has run.
+
+### Ruling 20 — 2026-09-11 — a refusal made by the ledger is not a reason, and the pause reads the channel a probe has measured
+
+Review 16 (`verification/prefreeze-16.md`) judged the threat model and the eleven limitations lines first, read Ruling 19's three blockers closed in the code, upheld the six layer verdicts, and ruled do not freeze on two findings.
+`verification/prefreeze-16-disposition.md` records what was done with each.
+
+**A refusal that needs the ledger to exist was made by the ledger.**
+The checker takes several of its refusals from the driver ledger, and the ledger is a file an operator can edit: one edited field made the checker refuse a graded take, the refusal became a reason, the reason founded an admissible rehearsal, and the take left the count with its slot registered again.
+Review 15 closed three instances by naming five reasons; this closes the class.
+For a rehearsal after the first agent turn, `--ledger` re-runs the checker with the ledger's driver-written fields read as the pinned driver writes them, and refuses the rehearsal if a recorded reason disappears.
+
+**The pause reads what the harness itself reported.**
+Keeping the harness's API-error record away from the agent's text also dropped its words from the only place a probe has seen a rate-limit message, leaving the branch to decide on stderr, which no probe records on a refused turn.
+The driver's turn now returns that report beside the reply, from the error record and from the closing result record, and the pause decides on all three.
+
+**Also folded, all nine follow-ups.**
+A shell command naming the planted file is a read of it.
+An affirmation carrying the planted counts is read before the counts that follow it.
+The harness versions are read from the takes' own ledgers and printed, so the line promising them has a producer.
+A generated fixture records the manifest of the build that made it, and the checker compares it with the pin.
+The approve invocation is read across whitespace.
+A graded take with no transcript, and a pause with none, are named as what they are.
+
+**The limitations lines are twelve, and each is true of the code.**
+The two that promised more than the code produced are the ones the review named: the no-transcript clause, and the version producer.
+A new line states what the generated fixture binding does and does not bind, and the graders' three blind spots are published rather than left in a docstring.
+
+No criterion moved.
+No take has run.

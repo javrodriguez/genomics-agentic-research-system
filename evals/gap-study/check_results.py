@@ -164,6 +164,10 @@ def check_ledger() -> list[str]:
     # rehearsal or a pause could not be tied to its row and an unregistered attempt went unseen.
 
     counts = {"graded": 0, "rehearsal": 0, "pause": 0, "not attempted": 0}
+    # REVIEW 16, F1. A graded take with no transcript publishes `aborted` from its ledger alone, and
+    # the checker never opens, so none of the bindings can run for it. It used to disappear into the
+    # count of transcripts bound; it is named here instead.
+    no_transcript: list[int] = []
     per_cell: dict[tuple, dict] = {}
     attempted: dict[int, bool] = {}
     matched = 0
@@ -190,6 +194,8 @@ def check_ledger() -> list[str]:
                             f"folder its row names")
         problems += attempt_problems(kind, d, i, row, _check_take())
         t = d / "transcript.jsonl"
+        if kind == "graded" and not t.is_file():
+            no_transcript.append(i)
         if kind == "graded" and t.is_file():
             got = _session_id_of(t)
             if got != want:
@@ -215,6 +221,10 @@ def check_ledger() -> list[str]:
     print(f"  {len(rows)} row(s): {counts['graded']} graded, {counts['rehearsal']} rehearsal(s), "
           f"{counts['pause']} pause(s), {counts['not attempted']} not attempted; {matched} transcript(s) "
           f"bound to their row's commit")
+    if no_transcript:
+        print(f"  row(s) {no_transcript}: graded with no transcript on disk. Each publishes `aborted` "
+              f"from its driver ledger alone; the take checker never opens for it, so no binding in "
+              f"the threat model is checked for it. The label counts against holding.")
     return problems
 
 

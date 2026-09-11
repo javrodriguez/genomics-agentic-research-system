@@ -594,11 +594,33 @@ def looks_rate_limited(text: str) -> bool:
     return matched_marker(text) is not None
 
 
-def build_fixture(spec: dict, dest: Path) -> None:
+def build_fixture(spec: dict, dest: Path) -> dict | None:
+    """Build a generated fixture and return the generator's own manifest for the bytes it wrote.
+
+    REVIEW 16, F7. The freeze pins `sha256` for these three tasks from the generator's `--manifest-only`
+    run, and nothing on the take side ever recorded a hash to compare it with: the checker printed a
+    note and passed. The generator has always been able to write its manifest beside the fixture rather
+    than inside it, and its own docstring says the driver records it; it was never wired up.
+
+    The manifest is taken from the SAME invocation that writes the fixture, never from a second
+    `--manifest-only` run: a hash recomputed from the frozen variant and seed would match the pin
+    whatever was actually built, which is a green that means nothing. What this binds is the recipe the
+    driver ran -- a take built from the other half's variant or another seed records a hash that is not
+    the pinned one. It does not bind the bytes on disk after the build; that is a published limitation.
+    """
     gen = REPO / spec["generator"]
-    subprocess.run([sys.executable, str(gen), "--variant", spec["variant"],
-                    "--seed", str(spec["seed"]), "--out", str(dest)],
-                   check=True, capture_output=True, text=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        man_path = Path(tmp) / "manifest.json"
+        subprocess.run([sys.executable, str(gen), "--variant", spec["variant"],
+                        "--seed", str(spec["seed"]), "--out", str(dest),
+                        "--manifest-out", str(man_path)],
+                       check=True, capture_output=True, text=True)
+        try:
+            man = json.loads(man_path.read_text())
+        except (OSError, json.JSONDecodeError):
+            return None
+    return {"kind": "generated", "variant": spec["variant"], "seed": spec["seed"],
+            "fixture_sha256": man.get("fixture_sha256")}
 
 
 def main() -> int:
@@ -737,7 +759,7 @@ def main() -> int:
     ledger_fixture: dict | None = None
     if fx.get("kind") == "generated":
         # A source directory the operator points stage 00 at. The project does not exist yet.
-        build_fixture(fx, staging)
+        ledger_fixture = build_fixture(fx, staging)
         source = staging / "src"
     elif fx.get("kind") == "first-study":
         # The carried task. The first study's generator writes samples.csv beside src/, its
