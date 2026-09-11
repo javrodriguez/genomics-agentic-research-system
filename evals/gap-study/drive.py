@@ -324,6 +324,37 @@ def run_tree_problems(tree: Path, session_id: str, exclude: list[str]) -> list[s
     return out
 
 
+def stream_text(stdout: str) -> str:
+    """The agent's own text in a turn's stream, never the harness's own API-error record.
+
+    REVIEW 15, BLOCKER 3. When the API refuses a request the harness writes an assistant record of its
+    own and the process exits 1. The checker already excludes it from the agent-turn count; the driver
+    did not, so `first_agent_turn` went true on it and the pause branch, which fires only before the
+    first agent turn, was skipped: a rate limit would have been filed as a death before the first turn
+    and counted against the rehearsal cap. Measured in the stream the driver reads
+    (verification/api-error-stream-probe.txt): model `<synthetic>`, `is_api_error_message` true; the
+    session file spells the same flag `isApiErrorMessage`, and both are skipped here.
+    """
+    said: list[str] = []
+    for raw in stdout.splitlines():
+        raw = raw.strip()
+        if not raw:
+            continue
+        try:
+            rec = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        if rec.get("type") != "assistant":
+            continue
+        if rec.get("is_api_error_message") or rec.get("isApiErrorMessage"):
+            continue
+        content = (rec.get("message") or {}).get("content")
+        if isinstance(content, list):
+            said.extend(b.get("text", "") for b in content
+                        if isinstance(b, dict) and b.get("type") == "text")
+    return "\n".join(s for s in said if s)
+
+
 def one_turn(line: str, session_id: str, model: str, first: bool,
              budget_s: int) -> tuple[str, int, str]:
     """Send one line. Returns (assistant_text, exit_code, stderr).
@@ -348,21 +379,7 @@ def one_turn(line: str, session_id: str, model: str, first: bool,
     except subprocess.TimeoutExpired:
         return "", 124, f"turn exceeded the pre-registered budget of {budget_s}s"
 
-    said: list[str] = []
-    for raw in proc.stdout.splitlines():
-        raw = raw.strip()
-        if not raw:
-            continue
-        try:
-            rec = json.loads(raw)
-        except json.JSONDecodeError:
-            continue
-        if rec.get("type") == "assistant":
-            content = (rec.get("message") or {}).get("content")
-            if isinstance(content, list):
-                said.extend(b.get("text", "") for b in content
-                            if isinstance(b, dict) and b.get("type") == "text")
-    return "\n".join(s for s in said if s), proc.returncode, proc.stderr
+    return stream_text(proc.stdout), proc.returncode, proc.stderr
 
 
 def marker_holds(step: dict, said: str) -> bool:
@@ -535,9 +552,18 @@ def route_attempt(staging: Path, ledger: dict, problems: list[str], task: str, h
     return dest, reasons
 
 
-def looks_rate_limited(text: str) -> bool:
+def matched_marker(text: str) -> str | None:
+    """The pre-registered rate-limit marker this text carries, by the same bounded search that decides
+    a pause (review 15, F6): the marker recorded and the marker that admitted the pause are one."""
     low = (text or "").lower()
-    return any(re.search(r"(?<![\w])" + re.escape(m) + r"(?![\w])", low) for m in RATE_LIMIT_MARKERS)
+    for m in RATE_LIMIT_MARKERS:
+        if re.search(r"(?<![\w])" + re.escape(m) + r"(?![\w])", low):
+            return m
+    return None
+
+
+def looks_rate_limited(text: str) -> bool:
+    return matched_marker(text) is not None
 
 
 def build_fixture(spec: dict, dest: Path) -> None:
@@ -784,8 +810,7 @@ def main() -> int:
             # Which pre-registered marker matched, not the refusal's own text: a rate-limit message
             # can carry a percentage, and the ledger is a published file the language guard reads.
             ledger["pause"] = {"started": t0, "ended": now(),
-                               "matched": next((m for m in RATE_LIMIT_MARKERS
-                                                if m in (err + said).lower()), None)}
+                               "matched": matched_marker(err + said)}
             print("  PAUSE: rate limited before the first agent turn. The slot is retried; this "
                   "is neither a take nor a rehearsal.")
             break

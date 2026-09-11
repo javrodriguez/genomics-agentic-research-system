@@ -859,6 +859,64 @@ def m_snapshot_read_from_any_line(s: Sandbox) -> tuple[int, str]:
     return s.run(_th(s, "TheAutoMemorySectionIsBound")), "test_harness.py TheAutoMemorySectionIsBound"
 
 
+
+def m_stop_at_a_markerless_step_admitted(s: Sandbox) -> tuple[int, str]:
+    """Review 15, blocker 1: a stop recorded where no wait point exists."""
+    s.control(_th(s, "TheStopProofReadsTheRecovery"))
+    _edit(s.study / "check_take.py", "        if not marker:\n", "        if False:\n")
+    return s.run(_th(s, "TheStopProofReadsTheRecovery")), "test_harness.py TheStopProofReadsTheRecovery"
+
+
+def m_line_after_a_stop_admitted(s: Sandbox) -> tuple[int, str]:
+    s.control(_th(s, "TheStopProofReadsTheRecovery"))
+    _edit(s.study / "check_take.py", "                if extra:\n", "                if False:\n")
+    return s.run(_th(s, "TheStopProofReadsTheRecovery")), "test_harness.py TheStopProofReadsTheRecovery"
+
+
+def m_driver_decided_rehearsal_reason_accepted(s: Sandbox) -> tuple[int, str]:
+    """Review 15, blocker 2: a rehearsal naming a reason the driver refuses to run under."""
+    s.control(_th(s, "TheAttemptIsReDerivedFromItsBytes"))
+    _edit(s.study / "check_results.py", "        if cannot:\n", "        if False:\n")
+    return s.run(_th(s, "TheAttemptIsReDerivedFromItsBytes")), "test_harness.py TheAttemptIsReDerivedFromItsBytes"
+
+
+def m_api_error_text_counted_as_the_agents(s: Sandbox) -> tuple[int, str]:
+    """Review 15, blocker 3: the harness's error record read as the agent's first turn."""
+    s.control(_th(s, "TheRateLimitMarkersAreBounded"))
+    _edit(s.study / "drive.py",
+          '        if rec.get("is_api_error_message") or rec.get("isApiErrorMessage"):\n            continue\n', "")
+    return s.run(_th(s, "TheRateLimitMarkersAreBounded")), "test_harness.py TheRateLimitMarkersAreBounded"
+
+
+def m_pause_marker_unbounded(s: Sandbox) -> tuple[int, str]:
+    """Review 15, F6."""
+    s.control(_th(s, "TheRateLimitMarkersAreBounded"))
+    _edit(s.study / "drive.py", '        if re.search(r"(?<![\\w])" + re.escape(m) + r"(?![\\w])", low):\n',
+          "        if m in low:\n")
+    return s.run(_th(s, "TheRateLimitMarkersAreBounded")), "test_harness.py TheRateLimitMarkersAreBounded"
+
+
+def m_caps_unread_on_the_ledger_side(s: Sandbox) -> tuple[int, str]:
+    """Review 15, F1."""
+    s.control(_th(s, "TheLedgerSeesEveryFolder"))
+    _edit(s.study / "check_results.py", "            if kinds.get(kind, 0) > cap:\n", "            if False:\n")
+    return s.run(_th(s, "TheLedgerSeesEveryFolder")), "test_harness.py TheLedgerSeesEveryFolder"
+
+
+def m_head_system_tree_unchecked(s: Sandbox) -> tuple[int, str]:
+    """Review 15, F2."""
+    s.control(_th(s, "TheLedgerSeesEveryFolder"))
+    _edit(s.study / "check_results.py", '    if code != 0 or head_tree.strip() != want_tree:\n', "    if False:\n")
+    return s.run(_th(s, "TheLedgerSeesEveryFolder")), "test_harness.py TheLedgerSeesEveryFolder"
+
+
+def m_scope_read_answered_on_a_decline(s: Sandbox) -> tuple[int, str]:
+    """Review 15, F4: an in-scope read on the positive half read as an answer again."""
+    s.control(_th(s, "Graders"))
+    _edit(s.study / "graders" / "scope_read.py", '    if in_scope and half != "positive":\n', "    if in_scope:\n")
+    return s.run(_th(s, "Graders")), "test_harness.py Graders"
+
+
 MUTATIONS = [
     ("an edited contract quote", m_edited_contract_quote, "objects"),
     ("an emptied quote table", m_emptied_quote_table, "objects"),
@@ -926,6 +984,14 @@ MUTATIONS = [
     ("an unknown session id hidden by an empty ledger", m_unknown_sid_hidden_by_an_empty_ledger, False),
     ("unattempted rows after results, unreported", m_unattempted_rows_after_results, False),
     ("a snapshot read from any line", m_snapshot_read_from_any_line, False),
+    ("a stop at a step with no wait point", m_stop_at_a_markerless_step_admitted, False),
+    ("a line sent after a recorded stop", m_line_after_a_stop_admitted, False),
+    ("a rehearsal naming a reason the driver refuses", m_driver_decided_rehearsal_reason_accepted, False),
+    ("the harness's error text read as the agent's", m_api_error_text_counted_as_the_agents, False),
+    ("a pause marker matched unbounded", m_pause_marker_unbounded, False),
+    ("the caps unread on the ledger side", m_caps_unread_on_the_ledger_side, False),
+    ("the head system tree unchecked", m_head_system_tree_unchecked, False),
+    ("an in-scope read on the positive half read as an answer", m_scope_read_answered_on_a_decline, False),
 ]
 
 NOT_APPLICABLE = [

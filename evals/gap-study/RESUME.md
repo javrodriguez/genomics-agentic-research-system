@@ -29,17 +29,21 @@ Review 14 read those closed and ruled do not freeze on three narrower blockers, 
 pauses are capped, evidenced and counted; a stop is proven against the recovery; and the checkout the session saw is bound by its git status and its instruction file's bytes.
 The pre-registration now states its threat model and the limitations lines the published section will carry.
 
+Review 15 judged that statement first and ruled do not freeze on three defects a single edited record or the driver itself produces, all folded (Ruling 19, `verification/prefreeze-15-disposition.md`):
+a recorded stop must sit at a wait point; a rehearsal may not name a reason the driver refuses to run under; and the driver no longer reads the harness's own error record as the agent's first turn.
+The threat model now says what is bound rather than what is safe.
+
 ## The next moves, in order
 
-1. **Review 15** as `verification/prefreeze-15.md`, reading the bytes this pass leaves; then its disposition, or the freeze: `freeze.py --review-commit <sha> --write`.
+1. **Review 16** as `verification/prefreeze-16.md`, reading the bytes this pass leaves; then its disposition, or the freeze: `freeze.py --review-commit <sha> --write`.
 2. Then, and only then, the 108 takes.
 
 ## State
 
-- 6 task pairs · 11 walks, 3 of them driven in a built checkout · 136 hand-labelled cases · 185 tests · 66 mutations · 14 reviews · 4 smokes
+- 6 task pairs · 11 walks, 3 of them driven in a built checkout · 136 hand-labelled cases · 193 tests · 74 mutations · 15 reviews · 4 smokes
 - 0 takes graded · not frozen · `gars/` and the first study unchanged by this work
 - The local tier was dropped by the repository owner at gate 2; `local-model/DROPPED.md` is the record
-- Rulings 1–18 in `PROTOCOL.md`
+- Rulings 1–19 in `PROTOCOL.md`
 - `RESIDUAL.md` was written at the slice cap and is kept deliberately, though the cap was lifted (Ruling 7)
 
 ## Carried follow-ups, most valuable first

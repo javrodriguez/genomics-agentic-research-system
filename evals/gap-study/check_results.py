@@ -113,6 +113,14 @@ def check_ledger() -> list[str]:
                 "clone every ancestry test passes vacuously. Clone at full depth "
                 "(fetch-depth: 0 in CI) and run it again."]
 
+    # REVIEW 15, F2. The checkout is exported from HEAD, so HEAD must carry the pinned system tree.
+    pre = prereg.load()
+    want_tree = pre["system_under_test"]["gars_tree_sha"]
+    code, head_tree = git("rev-parse", "HEAD:gars")
+    if code != 0 or head_tree.strip() != want_tree:
+        problems.append(f"HEAD carries gars tree {(head_tree.strip() or 'none')[:12]} and the "
+                        f"pre-registration pins {want_tree[:12]}")
+
     rows = takes_mod.load_rows()
     commits = takes_mod.row_commits()
     # REVIEW 13, BLOCKER 1. Before anything about rows: every folder under the attempt roots that no
@@ -156,6 +164,7 @@ def check_ledger() -> list[str]:
     # rehearsal or a pause could not be tied to its row and an unregistered attempt went unseen.
 
     counts = {"graded": 0, "rehearsal": 0, "pause": 0, "not attempted": 0}
+    per_cell: dict[tuple, dict] = {}
     attempted: dict[int, bool] = {}
     matched = 0
     for i, row in enumerate(rows):
@@ -170,6 +179,9 @@ def check_ledger() -> list[str]:
             continue
         kind, d = hits[0]
         counts[kind] += 1
+        cell = (row["task"], row["half"], row["model"])
+        per_cell.setdefault(cell, {})
+        per_cell[cell][kind] = per_cell[cell].get(kind, 0) + 1
         rel = d.relative_to(HERE).parts
         where = (row["task"], row["half"], row["model"])
         expected_leaf = str(row["take"]) if kind == "graded" else f"row-{i}"
@@ -185,6 +197,15 @@ def check_ledger() -> list[str]:
                                 f"uuid5(namespace, {sha[:12]}) = {want}")
             else:
                 matched += 1
+    # REVIEW 15, F1. The caps and n were enforced where a row is written and nowhere else, so a row
+    # appended by hand and committed read the same as one --add wrote.
+    limits = {"graded": int(pre["n"]), "pause": int(pre["pause_cap"]), "rehearsal": int(pre["rehearsal_cap"])}
+    for cell, kinds in sorted(per_cell.items()):
+        for kind, cap in limits.items():
+            if kinds.get(kind, 0) > cap:
+                problems.append(f"{cell[0]} / {cell[1]} / {cell[2]}: {kinds[kind]} {kind} attempts, and the "
+                                f"pre-registration allows {cap}")
+
     problems += _order_problems_for(rows, attempted)
     # REVIEW 14, F3. Once results are committed the run is declared finished, and a registered row never
     # attempted is a take lost without a reason; its cell would publish as mechanical when nothing was.
@@ -267,6 +288,14 @@ def attempt_problems(kind: str, d: Path, i: int, row: dict, ct) -> list[str]:
         if not (d / "WHY.md").is_file():
             problems.append(f"row {i}: a rehearsal carries no WHY.md naming its reasons")
         reasons = sorted((led.get("attempt") or {}).get("reasons") or [])
+        # REVIEW 15, BLOCKER 2. The checker reads some of its refusals from the ledger itself, so an
+        # edited constant makes a rehearsal "consistent" with a record the driver cannot have written:
+        # it refuses those before it opens a session.
+        cannot = sorted(set(reasons) & set(prereg.load().get("driver_decided_reasons") or []))
+        if cannot:
+            problems.append(f"row {i}: the rehearsal records reason(s) {cannot}, which the driver decides "
+                            f"before or without a model and refuses to run under, so it cannot have "
+                            f"written this record")
         if outcome.startswith("REHEARSAL"):
             if agent_text:
                 problems.append(f"row {i}: recorded as a death before the first agent turn, and its "

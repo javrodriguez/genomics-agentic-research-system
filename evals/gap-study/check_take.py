@@ -465,7 +465,8 @@ def user_text_records(path: Path, pre: dict) -> tuple[list[str], list[str], list
 
 
 def required_steps(steps: list[dict], path: Path, turns: list[dict], is_walk: bool,
-                   expected_project: str, expected_source: str) -> tuple[list[dict], list[str]]:
+                   expected_project: str, expected_source: str,
+                   harness: list[str] | tuple = ()) -> tuple[list[dict], list[str]]:
     """The scripted lines this transcript must carry, and any problem with where the driver stopped.
 
     A walk carries each pre-probe line. A take carries each line up to the last one the driver sent
@@ -500,29 +501,45 @@ def required_steps(steps: list[dict], path: Path, turns: list[dict], is_walk: bo
     if outcome.startswith("stopped"):
         step = next((s for s in steps if s["n"] == last), None)
         marker = (step or {}).get("marker")
-        if marker:
+        rec = (step or {}).get("recovery")
+        if not marker:
+            # REVIEW 15, BLOCKER 1. Every task's probe turn carries no marker, so a `stopped` outcome
+            # whose last line is the probe was proven by nothing and published `did-not-reach` from the
+            # ledger alone. The driver cannot stop there: a step with no marker always holds.
+            problems.append(f"[stop-without-a-wait-point] the ledger records a stop at operator turn "
+                            f"{last}, which carries no wait point to hold; the driver stops only where a "
+                            f"marker was not held, so this is a state it cannot produce")
+        else:
             want = normalise(render(step["line"], expected_project, expected_source))
-            idx = max((i for i, t in enumerate(turns)
-                       if t["role"] == "user" and want and normalise(t["text"]) == want),
+            idx = max((i for i, x in enumerate(turns)
+                       if x["role"] == "user" and want and normalise(x["text"]) == want),
                       default=None)
-            after = ("\n".join(t["text"] for t in turns[idx + 1:] if t["role"] == "assistant")
+            after = ("\n".join(x["text"] for x in turns[idx + 1:] if x["role"] == "assistant")
                      if idx is not None else "")
+            send = normalise(render(rec["send"], expected_project, expected_source)) if rec else None
             if marker in after:
-                problems.append("[stop-at-held-marker] " + 
-                    f"the driver stopped at operator turn {last} because its marker was not held, and "
-                    f"the marker {marker!r} is in the agent's reply after that line. A stop at a held "
-                    f"wait point manufactures `did-not-reach`.")
-            # REVIEW 14, BLOCKER 2. The mirror clause for a recovery: a stop at a reply holding the
-            # recovery's own marker, with no recovery sent, is a pre-registered answer withheld.
-            rec = (step or {}).get("recovery")
+                problems.append(f"[stop-at-held-marker] the driver stopped at operator turn {last} "
+                                f"because its marker was not held, and the marker {marker!r} is in the "
+                                f"agent's reply after that line. A stop at a held wait point "
+                                f"manufactures `did-not-reach`.")
             if rec and idx is not None:
-                send = normalise(render(rec["send"], expected_project, expected_source))
-                sent_recovery = any(x["role"] == "user" and normalise(x["text"]) == send for x in turns[idx + 1:])
+                sent_recovery = any(x["role"] == "user" and normalise(x["text"]) == send
+                                    for x in turns[idx + 1:])
                 if not sent_recovery and rec["if_reply_holds"] in after:
                     problems.append(f"[stop-at-held-marker] the driver stopped at operator turn {last} with no "
                                     f"recovery sent, and the reply holds the recovery's own marker "
                                     f"{rec['if_reply_holds']!r}; withholding a pre-registered recovery "
                                     f"manufactures `did-not-reach`.")
+            if idx is not None:
+                # The driver sends nothing past an unheld marker, so a further line means the ledger's
+                # `stopped` is not what happened (review 15, blocker 1).
+                extra = [x for x in turns[idx + 1:]
+                         if x["role"] == "user" and x["text"].strip() and x["text"] not in harness
+                         and (send is None or normalise(x["text"]) != send)]
+                if extra:
+                    problems.append(f"[stop-without-a-wait-point] the ledger records a stop at operator "
+                                    f"turn {last} and {len(extra)} further operator line(s) were sent; the "
+                                    f"driver sends nothing past an unheld marker")
     return required, problems
 
 
@@ -812,7 +829,8 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
 
     steps = script if not is_walk else [s for s in script if s["n"] < half["probe_operator_turn"]]
     expected_source = expected_source_for(half, expected_project)
-    required, stop_problems = required_steps(steps, path, turns, is_walk, expected_project, expected_source)
+    required, stop_problems = required_steps(steps, path, turns, is_walk, expected_project,
+                                             expected_source, harness)
     problems += stop_problems
     line_problems = operator_line_problems(ops, required, expected_project, expected_source)
     problems += line_problems

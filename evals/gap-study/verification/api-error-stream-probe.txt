@@ -1,0 +1,3 @@
+api-error stream probe, 11 September 2026: the driver's own output format on a model id that does not exist
+exit 1
+  assistant event: model '<synthetic>' | flags {'error': 'model_not_found', 'is_api_error_message': True} | text ["There's an issue with the selected model (claude-no-such-mod"]
