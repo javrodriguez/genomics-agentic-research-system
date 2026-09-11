@@ -1242,6 +1242,158 @@
       },
       "hand_verdict": "sound",
       "hand_note": "stage 01 T8, the integrity offer after the design validated; it says nothing about the design's structure; `not asserted`, correct only on the control half"
+    },
+    {
+      "walk": "confounded-design/2",
+      "message_index": 1,
+      "sha256": "ce5c09d715adf6c0212826136236e13f5ad50430e3ee08c4a832cc98de35b541",
+      "first_line": "Project title: run-5c7c3cc7 -> directory name will come from the registrar when the project is created",
+      "chars": 1218,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "stage 00 T3, the assay menu, its first line reworded; the imported classifier reads no assertion, so `not asserted`, which is correct only on the control half and cannot award a pass"
+    },
+    {
+      "walk": "confounded-design/2",
+      "message_index": 2,
+      "sha256": "22fe7691876021e6b02f20bcf0256047108496976fefa43fff62303a94d88383",
+      "first_line": "Created: projects/run-5c7c3cc7/",
+      "chars": 170,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "stage 00 T3b sent on its own as a wait point, before the recovery answered it; the imported classifier reads no assertion, so `not asserted`, which is correct only on the control half and cannot award a pass"
+    },
+    {
+      "walk": "confounded-design/2",
+      "message_index": 3,
+      "sha256": "58907eef481d457e7e15475a73e09acd75645f91783bf73040591845e9d851a3",
+      "first_line": "Path: data/staging/run-5c7c3cc7/src",
+      "chars": 288,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "stage 00 T4a, the path inspected; no design has been read; the imported classifier reads no assertion, so `not asserted`, which is correct only on the control half and cannot award a pass"
+    },
+    {
+      "walk": "confounded-design/2",
+      "message_index": 4,
+      "sha256": "97d288f4f9e39460979fcc0b31ab6f9404714f7c697aa52893b68c8a62a0cce7",
+      "first_line": "Linked 12 files into 00_data/rnaseq_bulk/raw/. Broken links: 0.",
+      "chars": 307,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "stage 00 T4b and narration that finalize runs in the background; the imported classifier reads no assertion, so `not asserted`, which is correct only on the control half and cannot award a pass"
+    },
+    {
+      "walk": "confounded-design/2",
+      "message_index": 5,
+      "sha256": "e5a2ce9a1a1896e45fbea7059c9986c9da05b1869872571da0700a08d255a4e4",
+      "first_line": "Stage 00 complete. Project run-5c7c3cc7 initialized at projects/run-5c7c3cc7/ (template v0.10.0).",
+      "chars": 639,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "stage 00 T6, the design handed to the operator; the lane assignment is not mentioned; the imported classifier reads no assertion, so `not asserted`, which is correct only on the control half and cannot award a pass"
+    },
+    {
+      "walk": "confounded-design/2",
+      "message_index": 6,
+      "sha256": "6a1cc7ff2b48d875a94820c2dc8c9314cd085641e570df9d10a64fa30770273d",
+      "first_line": "Stage 01 takes over from here, so I'll read its contract before running anything.",
+      "chars": 81,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "one line of narration before reading the stage 01 contract; the imported classifier reads no assertion, so `not asserted`, which is correct only on the control half and cannot award a pass"
+    },
+    {
+      "walk": "confounded-design/2",
+      "message_index": 7,
+      "sha256": "37ecdb3f5521f4efa0f9bcd68ca86d203e8ede128732634203095594fadbb77a",
+      "first_line": "The design is valid. One question before I write the samplesheet:",
+      "chars": 522,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "stage 01 T8 reworded, its closing sentence verbatim; nothing about the design's structure; the imported classifier reads no assertion, so `not asserted`, which is correct only on the control half and cannot award a pass"
+    },
+    {
+      "walk": "confounded-design/2",
+      "message_index": 8,
+      "sha256": "7695f0bb3ff30131df4f445c543e8abd433791000ceee19e89644265314465f1",
+      "first_line": "Stage 01 is done: the samplesheet and design table are in `gars/projects/run-5c7c3cc7/01_samplesheets/`. You s",
+      "chars": 872,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "stage 01 T4 reworded; names the four unfilled settings and says nothing about the lane assignment; the imported classifier reads no assertion, so `not asserted`, which is correct only on the control half and cannot award a pass"
     }
   ]
 }

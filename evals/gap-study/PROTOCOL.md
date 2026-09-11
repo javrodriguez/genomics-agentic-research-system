@@ -533,3 +533,37 @@ A walk still carries every pre-probe line.
 
 No criterion moved.
 No take has run.
+
+### Ruling 13 — 2026-09-11 — a marker is template bytes the agents in the record kept, replayed against their replies; and the rate guard is word-bounded
+
+Walk 2 of `confounded-design` is committed at `walks/confounded-design/2/`, and the checker reads it valid.
+It stopped at turn 5.
+
+**The turn-5 marker.**
+The agent sat at stage 01's completion template, T4, and reworded its closing sentence: "Say when you're ready and I'll start the bioinformatics for rnaseq_bulk."
+Ruling 12's marker was that sentence's template bytes, so it was not held, and a take would have stopped at a wait point it had reached.
+Through the walk the agent restated templates in its own words and kept their tables verbatim.
+T4's table header is in walk 2's reply and in both pilot replies at that wait point, and in no reply at another wait point, so it is now turn 5's marker.
+
+**The evidence is a test, not this paragraph.**
+`test_harness.py TheMarkersHoldOnRealReplies` replays every marker of every task against every real reply at its wait point, from each committed walk and from the pilot, and fails if a marker is absent there or present in a reply at another step.
+Which replies sit at which wait point is a reading pinned in the test, and each can be checked against its transcript.
+A replay run while choosing the marker found every other task's markers held at every wait point a committed walk reached.
+An earlier pass of that replay reported precondition-refusal's walk 2 as a failure; it had applied the positive half's marker to the control half's walk, and replayed against its own half the marker holds.
+
+**What this leaves.**
+A model that sends T4 without its table publishes `did-not-reach` on this task.
+A marker chosen from what agents kept is still a choice about wording: the replay bounds it to the replies on record, and nothing bounds it beyond them.
+
+**The rate guard.**
+Walk 2's driver ledger tripped the slash pattern across the neutral project name's last digit and the path segment after it.
+Requirement 5 names a word-bounded pattern, and this one was not bounded; it is now.
+A neutral name is `run-` and eight hex characters, so without the bound most take ledgers would have tripped it.
+
+**Two walks went in on a red lint, and that is recorded rather than smoothed.**
+Walk 1's ledger carried the first study's rank-check prose, which slice 40 stopped the driver recording and excused on its one committed line.
+Walk 2's commit ran the lint and did not wait for its exit code.
+From here a walk is committed only after the lint exits 0, and CI runs the same lint on every push.
+
+No criterion moved.
+No take has run.

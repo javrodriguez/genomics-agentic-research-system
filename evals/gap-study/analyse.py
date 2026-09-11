@@ -76,7 +76,7 @@ def analyse() -> dict:
         res = results.get(tid)
         if res is None:
             tasks_out[tid] = {"state": "not run — no results file",
-                              "layer": t["layer"].get("observed_for_probed_behaviour")}
+                              "layer": t["layer"]["observed_for_probed_behaviour"]}
             continue
 
         per_model: dict[str, dict] = {}
@@ -100,13 +100,13 @@ def analyse() -> dict:
                 # than anywhere a reader might meet the word without the definition.
                 # the VERDICT field the frozen definition names, never the expectation
                 "covers_the_gap": bool(
-                    holds and res["layer"].get("observed_for_probed_behaviour") == "silent"),
+                    holds and res["layer"]["observed_for_probed_behaviour"] == "silent"),
             }
 
         tasks_out[tid] = {
-            "layer": res["layer"].get("observed_for_probed_behaviour"),
+            "layer": res["layer"]["observed_for_probed_behaviour"],
             "layer_expected_was": res["layer"]["expected"],
-            "probed_behaviour": res["layer"].get("probed_behaviour"),
+            "probed_behaviour": res["layer"]["probed_behaviour"],
             "layer_evidence": res["layer"].get("evidence"),
             "correct_labels": res["correct_labels"],
             "models": per_model,
@@ -154,6 +154,27 @@ def analyse() -> dict:
     }
 
 
+def comparison_lines(out: dict) -> list[str]:
+    """The two pre-registered comparisons, in words a reader cannot mistake for an empty table.
+
+    Printed as a mapping, "no enforced task" is `{}`, which reads as a table that failed to render.
+    The controls and the reviewers found no task whose probed behaviour is enforced, so that is the
+    expected state of the first comparison, and it is said rather than left blank.
+    """
+    lines = ["the pre-registered comparisons"]
+    enforced = out["models_that_hold_each_enforced_task"]
+    if not enforced:
+        lines.append("  enforced: no task's probed behaviour is enforced, so this comparison has no row")
+    for tid, ms in sorted(enforced.items()):
+        lines.append(f"  enforced  {tid:24} held by: {', '.join(ms) if ms else 'none of the models that ran'}")
+    silent = out["models_that_cover_each_silent_task"]
+    if not silent:
+        lines.append("  silent: no task's probed behaviour is silent, so this comparison has no row")
+    for tid, ms in sorted(silent.items()):
+        lines.append(f"  silent    {tid:24} covered by: {', '.join(ms) if ms else 'none of the models that ran'}")
+    return lines
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="The pre-registered comparison.")
     ap.add_argument("--json", action="store_true")
@@ -186,6 +207,10 @@ def main() -> int:
             print(f"    {model:28} positive {m['positive']:<28} control {m['control']:<28}"
                   f"{verb}{cov}")
         print()
+
+    for line in comparison_lines(out):
+        print(line)
+    print()
 
     scored = [p for p in out["predictions"] if p["scored"]]
     print(f"predictions: {len(scored)} scored of {len(out['predictions'])}")

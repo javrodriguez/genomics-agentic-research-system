@@ -1008,11 +1008,11 @@
           {
             "n": 5,
             "line": "skip",
-            "marker": "Say when you are ready and I will start the bioinformatics for",
+            "marker": "| Assay | Samplesheet rows | Design rows | Files |",
             "means": "the stage-01 approval wait point",
             "first_study_marker": "ready",
             "template": "stage 01 T4",
-            "marker_fixed_by": "Ruling 12: the first study's `ready` is a fragment of this template; the template's own bytes replace it"
+            "marker_fixed_by": "walks/confounded-design/2: the agent sat at stage 01 T4 and reworded its closing sentence (\"Say when you're ready and I'll start the bioinformatics for\"), so Ruling 12's sentence marker was not held. T4's table header was verbatim in that reply and in both pilot replies, and in no reply at another wait point (Ruling 13)."
           },
           {
             "n": 6,
@@ -1124,11 +1124,11 @@
           {
             "n": 5,
             "line": "skip",
-            "marker": "Say when you are ready and I will start the bioinformatics for",
+            "marker": "| Assay | Samplesheet rows | Design rows | Files |",
             "means": "the stage-01 approval wait point",
             "first_study_marker": "ready",
             "template": "stage 01 T4",
-            "marker_fixed_by": "Ruling 12: the first study's `ready` is a fragment of this template; the template's own bytes replace it"
+            "marker_fixed_by": "walks/confounded-design/2: the agent sat at stage 01 T4 and reworded its closing sentence (\"Say when you're ready and I'll start the bioinformatics for\"), so Ruling 12's sentence marker was not held. T4's table header was verbatim in that reply and in both pilot replies, and in no reply at another wait point (Ruling 13)."
           },
           {
             "n": 6,

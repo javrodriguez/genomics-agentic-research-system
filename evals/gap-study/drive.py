@@ -143,6 +143,14 @@ def publish_transcript(src: Path, out_root: Path) -> dict:
     return scrub_mod.write_published(out_root / "transcript.jsonl", raw, body, removed)
 
 
+def display_path(path: Path) -> str:
+    """A path as a reader should see it: relative to the repository when it is inside it."""
+    try:
+        return str(path.relative_to(REPO))
+    except ValueError:
+        return str(path)
+
+
 def neutral_name(session_id: str) -> str:
     """The project and staging name. Unique, reproducible, and it says nothing.
 
@@ -664,6 +672,7 @@ def main() -> int:
         # A rate-limit refusal BEFORE any agent turn is a pause, not a take and not a rehearsal.
         if code != 0 and not ledger["first_agent_turn"] and looks_rate_limited(err + said):
             row_rec["outcome"] = "PAUSE — rate limited before the first agent turn"
+            row_rec["held"] = False
             ledger["turns"].append(row_rec)
             ledger["outcome"] = "PAUSE"
             ledger["pause"] = {"started": t0, "ended": now(), "detail": err.strip()[:400]}
@@ -673,6 +682,7 @@ def main() -> int:
 
         if code == 124:
             row_rec["outcome"] = "timed-out"
+            row_rec["held"] = False
             ledger["turns"].append(row_rec)
             ledger["outcome"] = "timed-out"
             print(f"  turn exceeded the {budget}s budget")
@@ -680,6 +690,7 @@ def main() -> int:
 
         if code != 0 and not ledger["first_agent_turn"]:
             row_rec["outcome"] = f"process exited {code} before any agent turn"
+            row_rec["held"] = False
             ledger["turns"].append(row_rec)
             ledger["outcome"] = "REHEARSAL — the process died before its first agent turn"
             print(f"  the process exited {code} before any agent turn: a rehearsal, never graded.")
@@ -695,6 +706,7 @@ def main() -> int:
         # which failure happened.
         if code != 0:
             row_rec["outcome"] = f"aborted — the process exited {code} after the first agent turn"
+            row_rec["held"] = False
             ledger["turns"].append(row_rec)
             ledger["outcome"] = f"aborted — a scripted turn exited {code}"
             print(f"  the process exited {code} after the first agent turn: aborted.")
@@ -742,10 +754,17 @@ def main() -> int:
             # Ruling 4's defect, an operator-side failure wearing a label the agent did not earn,
             # reintroduced by the fix for Ruling 4's own class.
             if code2 == 124:
+                # The step row is recorded too, before the recovery row. It used to be dropped here,
+                # so the ledger said the take stopped one step earlier than the line it sent, and the
+                # checker then refused that line as not on the script.
+                row_rec["held"] = False
+                ledger["turns"].insert(len(ledger["turns"]) - 1, row_rec)
                 ledger["outcome"] = "timed-out"
                 print(f"        recovery turn exceeded the {budget}s budget")
                 break
             if code2 != 0:
+                row_rec["held"] = False
+                ledger["turns"].insert(len(ledger["turns"]) - 1, row_rec)
                 ledger["outcome"] = f"aborted — the recovery turn exited {code2}"
                 print(f"        recovery turn exited {code2}")
                 break
@@ -795,7 +814,7 @@ def main() -> int:
     out_root.mkdir(parents=True, exist_ok=True)
     if src is not None:
         ledger["published"] = publish_transcript(src, out_root)
-        ledger["transcript"] = str((out_root / "transcript.jsonl").relative_to(REPO))
+        ledger["transcript"] = display_path(out_root / "transcript.jsonl")
     else:
         ledger["transcript"] = None
         ledger["outcome"] = (ledger["outcome"] or "") + f" — no session file for {session_id}"
@@ -806,7 +825,7 @@ def main() -> int:
     shutil.rmtree(RUN_TREE, ignore_errors=True)
 
     print(f"\n  outcome  {ledger['outcome']}")
-    print(f"  ledger   {(out_root / 'driver-ledger.json').relative_to(REPO)}")
+    print(f"  ledger   {display_path(out_root / 'driver-ledger.json')}")
     if ledger["transcript"]:
         print(f"  transcript {ledger['transcript']}")
     return 0

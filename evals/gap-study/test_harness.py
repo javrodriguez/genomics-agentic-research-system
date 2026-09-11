@@ -748,6 +748,23 @@ class Analysis(unittest.TestCase):
                         "the task is silent for the behaviour it probes, so holding it covers a "
                         "gap; reading `expected` would say otherwise")
 
+    def test_an_empty_enforced_comparison_is_said_in_words(self):
+        self._write("number-fidelity", "claude-opus-5", "RAN", 3, "RAN", 3)
+        lines = self.analyse.comparison_lines(self.analyse.analyse())
+        self.assertTrue(any("no task's probed behaviour is enforced" in ln for ln in lines), lines)
+        self.assertTrue(any("number-fidelity" in ln and "claude-opus-5" in ln for ln in lines), lines)
+
+    def test_a_results_file_without_the_verdict_field_refuses(self):
+        """The verdict field is indexed: a default would publish `covers the gap` as false in silence."""
+        import json as _j
+        self._write("number-fidelity", "claude-opus-5", "RAN", 3, "RAN", 3)
+        f = self.analyse.RESULTS / "number-fidelity.json"
+        d = _j.loads(f.read_text())
+        del d["layer"]["observed_for_probed_behaviour"]
+        f.write_text(_j.dumps(d))
+        with self.assertRaises(KeyError):
+            self.analyse.analyse()
+
     def test_a_cell_that_never_ran_is_not_scored(self):
         """The bug: every prediction was scored, including for cells with no takes at all."""
         self._write("number-fidelity", "claude-opus-5", "RAN", 3, "RAN", 3)
@@ -1555,6 +1572,218 @@ class AStoppedTakeIsCheckedUpToTheStop(unittest.TestCase):
         req, probs = self.ct.required_steps(self.steps, self.path, self.turns, False, self.project)
         self.assertEqual([s["n"] for s in req], [1, 2, 3, 4])
         self.assertTrue(probs and "manufactures" in probs[0], probs)
+
+
+class TheDriverOutcomesMapToTheirLabels(unittest.TestCase):
+    """The driver writes outcome strings and labels.from_ledger reads them; nothing tied the two.
+
+    A new or reworded outcome that the reader does not recognise publishes its take with no reserved
+    label, as though the take had completed. Every outcome string in drive.py must be in this table,
+    and must read as the label the table names.
+    """
+
+    EXPECTED = {
+        "PAUSE": None,
+        "timed-out": labels.TIMED_OUT,
+        "REHEARSAL — the process died before its first agent turn": None,
+        "aborted — a scripted turn exited X": labels.ABORTED,
+        "aborted — the recovery turn exited X": labels.ABORTED,
+        "stopped — wait-point marker not held; graded as it stands": labels.DID_NOT_REACH,
+        "aborted — finalize did not write samples.csv within X s": labels.ABORTED,
+        "complete": None,
+    }
+
+    def outcomes(self) -> list[str]:
+        src = (HERE / "drive.py").read_text()
+        return [re.sub(r"\{[^}]*\}", "X", o.lstrip("f").strip('"'))
+                for o in re.findall(r'ledger\["outcome"\]\s*=\s*(f?"[^"\n]*")', src)]
+
+    def test_every_outcome_the_driver_writes_reads_as_its_label(self):
+        got = self.outcomes()
+        self.assertTrue(got, "no outcome string was found in drive.py; this test measured nothing")
+        for o in got:
+            self.assertIn(o, self.EXPECTED,
+                          f"the driver writes {o!r} and nothing says which label it must produce")
+            self.assertEqual(labels.from_ledger({"outcome": o}), self.EXPECTED[o],
+                             f"{o!r} reads as {labels.from_ledger({'outcome': o})!r}")
+
+    def test_a_missing_session_file_is_aborted_on_any_take_outcome(self):
+        for o, want in self.EXPECTED.items():
+            got = labels.from_ledger({"outcome": o + " — no session file for X"})
+            if o.startswith(("PAUSE", "REHEARSAL")):
+                self.assertIsNone(got, f"{o!r} was never a take")
+            elif o.startswith("timed-out"):
+                self.assertEqual(got, labels.TIMED_OUT)
+            else:
+                self.assertEqual(got, labels.ABORTED, f"{o!r} with no session file reads as {got!r}")
+
+
+class TheDriverLoopRecordsEveryTurnItEnds(unittest.TestCase):
+    """The driver's own loop, run end to end with no model: `one_turn` replaced by a fixed script.
+
+    Nothing drove this loop before except a real walk, so a branch no walk reached was unmeasured.
+    A recovery turn that timed out or failed dropped its step's row from the ledger, and the checker
+    then read the take as stopping one step before the line it sent. Each case here builds a real
+    checkout and a real fixture, sends nothing to any model, and reads the ledger the loop wrote.
+    """
+
+    def drive_walk(self, replies: list[tuple[str, int, str]]) -> dict:
+        import contextlib
+        import io
+        drive = gap_drive()
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        drive.HERE = tmp
+        sent = []
+
+        def fake(line, session_id, model, first, budget_s):
+            sent.append(line)
+            return replies[len(sent) - 1] if len(sent) <= len(replies) else ("", 1, "no more replies")
+
+        drive.one_turn = fake
+        saved = sys.argv
+        sys.argv = ["drive.py", "--task", "number-fidelity", "--half", "positive", "--walk",
+                    "--model", "claude-opus-5"]
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = drive.main()
+        finally:
+            sys.argv = saved
+            if drive.RUN_TREE is not None:
+                shutil.rmtree(drive.RUN_TREE, ignore_errors=True)
+        self.assertEqual(code, 0)
+        ledgers = sorted(tmp.glob("walks/number-fidelity/*/driver-ledger.json"))
+        self.assertEqual(len(ledgers), 1, "the loop wrote no ledger")
+        led = json.loads(ledgers[0].read_text())
+        led["_sent"] = sent
+        return led
+
+    def test_a_recovery_that_times_out_keeps_its_step_row(self):
+        led = self.drive_walk([("Project title?", 0, ""), ("", 124, "")])
+        self.assertEqual(led["outcome"].split(" — ")[0], "timed-out")
+        self.assertEqual([(r["n"], bool(r.get("recovery")), r.get("held")) for r in led["turns"]],
+                         [(1, False, False), (1, True, None)])
+
+    def test_a_scripted_turn_that_dies_after_the_first_agent_turn_is_aborted_and_recorded(self):
+        led = self.drive_walk([("Reply with a comma-separated list of IDs", 0, ""), ("", 1, "boom")])
+        self.assertTrue(led["outcome"].startswith("aborted — a scripted turn exited 1"), led["outcome"])
+        self.assertEqual([(r["n"], r.get("held")) for r in led["turns"]], [(1, True), (2, False)])
+
+
+class TheMarkersHoldOnRealReplies(unittest.TestCase):
+    """Every marker, replayed against every real reply at its wait point: each committed walk, and
+    the pilot for the carried task.
+
+    Walk 2 of confounded-design found the agent sitting at stage 01 T4 with that template's closing
+    sentence reworded, so a sentence marker stopped a take that had reached the wait point, and
+    `did-not-reach` would have measured template adherence inside a task that measures something
+    else. A marker is chosen from what agents in the record kept verbatim, and this is the evidence:
+    each (walk, step) listed sits at that step's wait point, by a reading pinned here that a reader
+    can check against the transcript, and the step's marker must hold in its reply and in no reply at
+    another step. plan-gate walk 1 reached no wait point (Ruling 3). template-adherence walk 1 sent the
+    menu number the script no longer sends, so its turn 2 never reached T4a.
+    """
+
+    AT_WAIT_POINT = {
+        "walks/confounded-design/1": [1, 2, 3, 4],
+        "walks/confounded-design/2": [1, 2, 3, 4, 5],
+        "pilot/positive": [1, 2, 3, 4, 5],
+        "pilot/control": [1, 2, 3, 4, 5],
+        "walks/number-fidelity/1": [1, 2],
+        "walks/number-fidelity/2": [1, 2],
+        "walks/scope-read/1": [1, 2],
+        "walks/template-adherence/1": [1],
+        "walks/template-adherence/2": [1, 2],
+        "walks/precondition-refusal/1": [1],
+        "walks/precondition-refusal/2": [1],
+        "walks/plan-gate/1": [],
+        "walks/plan-gate/2": [1],
+    }
+
+    def source(self, name: str) -> tuple[Path, str, str]:
+        """(directory, task, half) for a walk or a pilot transcript."""
+        if name.startswith("pilot/"):
+            half = name.split("/", 1)[1]
+            return REPO / "evals" / "transcripts" / "confounded-refusal" / half, "confounded-design", half
+        d = HERE / name
+        led = json.loads((d / "driver-ledger.json").read_text())
+        return d, name.split("/")[1], led["half"]
+
+    def spans(self, d: Path) -> dict:
+        """step n -> the agent's text after that step's line (and its recovery), up to the next line."""
+        import transcript as tx
+        ct = gap_check_take()
+        led = json.loads((d / "driver-ledger.json").read_text())
+        path = d / "transcript.jsonl"
+        turns = tx.load(path)["turns"]
+        _ops, harness, _unknown = ct.user_text_records(path, prereg.load())
+        op_idx = [i for i, x in enumerate(turns)
+                  if x["role"] == "user" and x["text"].strip() and x["text"] not in harness]
+        self.assertEqual(len(op_idx), len(led["turns"]),
+                         f"{d}: the operator turns and the ledger rows do not pair")
+        out: dict = {}
+        for k, (row, i) in enumerate(zip(led["turns"], op_idx)):
+            j = op_idx[k + 1] if k + 1 < len(op_idx) else len(turns)
+            text = "\n".join(x["text"] for x in turns[i + 1:j] if x["role"] == "assistant")
+            out[row["n"]] = out.get(row["n"], "") + "\n" + text
+        return out
+
+    def test_the_table_names_every_committed_walk(self):
+        on_disk = {f"walks/{p.parent.parent.name}/{p.parent.name}"
+                   for p in HERE.glob("walks/*/*/transcript.jsonl")}
+        self.assertEqual(on_disk, {k for k in self.AT_WAIT_POINT if k.startswith("walks/")},
+                         "a committed walk is not in the replay table, so its markers were never replayed")
+
+    def test_each_marker_holds_at_its_wait_point_and_nowhere_else(self):
+        checked = 0
+        for name, ns in self.AT_WAIT_POINT.items():
+            d, task, half = self.source(name)
+            if not (d / "transcript.jsonl").is_file():
+                self.skipTest(f"{name} is not on disk")
+            steps = {s["n"]: s for s in prereg.task(task)[half]["operator_script"]}
+            spans = self.spans(d)
+            for n in ns:
+                m = steps[n]["marker"]
+                checked += 1
+                self.assertIn(m, spans.get(n, ""),
+                              f"{name} turn {n}: the reply sits at the wait point and the marker "
+                              f"{m!r} is not in it, so the driver would stop a take that reached it")
+            for n, text in spans.items():
+                for n2, s2 in steps.items():
+                    if n2 != n and s2.get("marker") and s2["marker"] in text:
+                        self.fail(f"{name}: turn {n2}'s marker {s2['marker']!r} holds in turn {n}'s "
+                                  f"reply, so the driver would move on from a wait point not reached")
+        self.assertGreater(checked, 0, "no marker was replayed; that is not a pass")
+
+
+class TheLanguageGuardIsWordBounded(unittest.TestCase):
+    """Requirement 5 names a word-bounded pattern, and the slash pattern was not bounded.
+
+    Walk 2's driver ledger went in on a red lint: a path through the neutral project name matched the
+    rate shape across the name's last digit and the next path segment. A neutral name is `run-` plus
+    eight hex characters, so most take ledgers would have tripped it, and the road from there was a
+    stream of excusals or a guard nobody reads.
+    """
+
+    def rx(self) -> str:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gap_lint", HERE / "lint_language.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return next(rx for name, rx, _why in mod.PATTERNS if name == "ratio-slash")
+
+    def test_a_rate_is_still_caught(self):
+        for s in ("held 3/3", "2 / 3 takes", "k was 1/3."):
+            self.assertRegex(s, self.rx())
+
+    def test_a_path_through_a_neutral_name_is_not_a_rate(self):
+        led = HERE / "walks" / "confounded-design" / "2" / "driver-ledger.json"
+        if not led.is_file():
+            self.skipTest("walk 2 is not on disk")
+        line = led.read_text().splitlines()[119]
+        self.assertIn("run-5c7c3cc7/00_data", line)
+        self.assertIsNone(re.search(self.rx(), line), line)
+        self.assertIsNone(re.search(self.rx(), "gars/projects/run-0a1b2c37/00_data/x"))
 
 
 def main() -> int:

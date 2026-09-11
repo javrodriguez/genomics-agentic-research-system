@@ -52,7 +52,10 @@ ALLOWLIST = HERE / "language-allowlist.json"
 PATTERNS: list[tuple[str, str, str]] = [
     ("percentage", r"\d+\s*(?:%|percent\b)",
      "n = 3 does not support a rate; the table publishes counts"),
-    ("ratio-slash", r"\d+\s*/\s*\d+",
+    # WORD-BOUNDED, as requirement 5 says. Unbounded, it matched walk 2's driver ledger across a
+    # neutral project name ending in a digit and the path segment after it -- and a neutral name is
+    # `run-` plus eight hex characters, so most take ledgers would have tripped it.
+    ("ratio-slash", r"\b\d+\s*/\s*\d+\b",
      "a `k / n` shape reads as a rate; the study writes 'k of n'"),
     ("out-of", r"\bout of\b",
      "'three out of three' is a rate in words"),

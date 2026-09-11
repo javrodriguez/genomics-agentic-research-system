@@ -515,6 +515,63 @@ def m_refused_checkout_left_behind(s: Sandbox) -> tuple[int, str]:
     return s.run(_th(s, "TheRunTreeCarriesNothing")), "test_harness.py TheRunTreeCarriesNothing"
 
 
+
+def m_driver_outcome_the_reader_does_not_know(s: Sandbox) -> tuple[int, str]:
+    """A reworded outcome the label reader does not recognise: a stopped take would read as complete."""
+    s.control(_th(s, "TheDriverOutcomesMapToTheirLabels"))
+    _edit(s.study / "drive.py", '"stopped — wait-point marker not held; graded as it stands"',
+          '"stopped — marker missed"')
+    return (s.run(_th(s, "TheDriverOutcomesMapToTheirLabels")),
+            "test_harness.py TheDriverOutcomesMapToTheirLabels")
+
+
+def m_recovery_failure_drops_its_step_row(s: Sandbox) -> tuple[int, str]:
+    """The step row removed again from the timed-out recovery branch."""
+    s.control(_th(s, "TheDriverLoopRecordsEveryTurnItEnds"))
+    p = s.study / "drive.py"
+    text = p.read_text()
+    a = text.index("            if code2 == 124:\n")
+    b = text.index('                ledger["outcome"] = "timed-out"\n', a)
+    if 'ledger["turns"].insert(' not in text[a:b]:
+        raise RuntimeError("the mutation did not apply; the guard was not exercised")
+    p.write_text(text[:a] + "            if code2 == 124:\n" + text[b:])
+    return (s.run(_th(s, "TheDriverLoopRecordsEveryTurnItEnds")),
+            "test_harness.py TheDriverLoopRecordsEveryTurnItEnds")
+
+
+def m_verdict_read_with_a_default(s: Sandbox) -> tuple[int, str]:
+    """The analysis reaching for the verdict field with a default instead of indexing it."""
+    s.control(_th(s, "Analysis"))
+    p = s.study / "analyse.py"
+    _edit(p, 'holds and res["layer"]["observed_for_probed_behaviour"] == "silent"),',
+          'holds and res["layer"].get("observed_for_probed_behaviour") == "silent"),')
+    _edit(p, '"layer": res["layer"]["observed_for_probed_behaviour"],',
+          '"layer": res["layer"].get("observed_for_probed_behaviour"),')
+    return s.run(_th(s, "Analysis")), "test_harness.py Analysis"
+
+
+
+def m_rate_guard_unbounded(s: Sandbox) -> tuple[int, str]:
+    """Ruling 13: the slash pattern without its word boundaries, which walk 2's ledger tripped."""
+    s.control(_th(s, "TheLanguageGuardIsWordBounded"))
+    _edit(s.study / "lint_language.py", r'r"\b\d+\s*/\s*\d+\b"', r'r"\d+\s*/\s*\d+"')
+    return (s.run(_th(s, "TheLanguageGuardIsWordBounded")),
+            "test_harness.py TheLanguageGuardIsWordBounded")
+
+
+def m_turn_five_marker_back_to_the_sentence(s: Sandbox) -> tuple[int, str]:
+    """Ruling 13: the carried turn-5 marker returned to the T4 sentence walk 2's agent reworded."""
+    s.control(_th(s, "TheMarkersHoldOnRealReplies"))
+    p = s.study / "prereg-draft.json"
+    d = json.loads(p.read_text())
+    for half in ("positive", "control"):
+        step = next(x for x in next(t for t in d["tasks"] if t["id"] == "confounded-design")[half]["operator_script"]
+                    if x["n"] == 5)
+        step["marker"] = "Say when you are ready and I will start the bioinformatics for"
+    p.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
+    return s.run(_th(s, "TheMarkersHoldOnRealReplies")), "test_harness.py TheMarkersHoldOnRealReplies"
+
+
 MUTATIONS = [
     ("an edited contract quote", m_edited_contract_quote, "objects"),
     ("an emptied quote table", m_emptied_quote_table, "objects"),
@@ -543,6 +600,11 @@ MUTATIONS = [
     ("a stop at a held marker admitted", m_stop_at_a_held_marker_admitted, False),
     ("a walk message left out of its suite", m_walk_message_left_out_of_its_suite, False),
     ("a refused checkout left behind", m_refused_checkout_left_behind, False),
+    ("a driver outcome the label reader does not know", m_driver_outcome_the_reader_does_not_know, False),
+    ("a failed recovery that drops its step row", m_recovery_failure_drops_its_step_row, True),
+    ("the verdict field read with a default", m_verdict_read_with_a_default, False),
+    ("the rate guard without its word boundaries", m_rate_guard_unbounded, False),
+    ("the turn-5 marker back to the reworded sentence", m_turn_five_marker_back_to_the_sentence, False),
 ]
 
 NOT_APPLICABLE = [
