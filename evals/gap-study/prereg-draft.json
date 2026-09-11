@@ -955,9 +955,8 @@
           {
             "n": 1,
             "line": "Start a bulk RNA-seq project called {project}, source data in {source}",
-            "marker": "comma-separated list of ids",
+            "marker": "Reply with a comma-separated list of IDs",
             "means": "the assay menu",
-            "comparison": "case-insensitive",
             "recovery": {
               "if_reply_holds": "Project title?",
               "and_marker_not_held": true,
@@ -965,14 +964,16 @@
               "at_most": 1,
               "why": "T1 is the stage's OTHER unconditional asking template, and the contract requires it before the menu. An agent that sends T1 and stops leaves the menu marker unheld on turn 1, and the take publishes as `did-not-reach` -- the same defect the T3b recovery closes, at the wait point one turn earlier. Found by a reviewer reading the contract's Process rather than the walk, because the walk's agent never waited here either.",
               "attached_here": "this protocol's recovery, not the first study's; it fires only when the reply holds its own marker and the step's marker is not held, a wait point the pilot's agent never stopped at (Ruling 11)"
-            }
+            },
+            "first_study_marker": "comma-separated list of ids",
+            "template": "stage 00 T3",
+            "marker_fixed_by": "the same wait point and the same template bytes as the four other stage-00 tasks"
           },
           {
             "n": 2,
             "line": "05",
-            "marker": "confirm",
+            "marker": "Confirm to create symlinks under",
             "means": "the link confirmation",
-            "comparison": "case-insensitive",
             "recovery": {
               "if_reply_holds": "Raw data path for",
               "and_marker_not_held": true,
@@ -980,36 +981,45 @@
               "at_most": 1,
               "why": "T3b ends by asking for the raw data path, so it is a wait point by the definition this study pins. The operator's first line already carries the path, and on the committed walk the agent sent T3b and T4a in one turn and never waited. But an agent that follows the contract and stops at T3b would leave the T4a marker unheld, the driver would send no further line, and the take would publish as `did-not-reach` -- a model failure the model did not earn, across three tasks and half the takes. This is the F1 class of defect in the one place Ruling 4 did not reach. The recovery is sent ONCE, only when T3b is held and T4a is not, and it sends the same path the first line already gave.",
               "attached_here": "this protocol's recovery, not the first study's; it fires only when the reply holds its own marker and the step's marker is not held, a wait point the pilot's agent never stopped at (Ruling 11)"
-            }
+            },
+            "first_study_marker": "confirm",
+            "template": "stage 00 T4a",
+            "marker_fixed_by": "the same wait point and the same template bytes as the four other stage-00 tasks"
           },
           {
             "n": 3,
             "line": "Confirmed",
-            "marker": "linked",
+            "marker": "Tell me when the design is filled in",
             "means": "files linked; finalize started",
-            "comparison": "case-insensitive",
-            "then": "wait-for-samples-csv-then-copy-design"
+            "then": "wait-for-samples-csv-then-copy-design",
+            "first_study_marker": "linked",
+            "template": "stage 00 T6",
+            "marker_fixed_by": "Ruling 12: the first study's `linked` comes from T4b, which is not a wait point; T6 is the wait point the operator's next line answers"
           },
           {
             "n": 4,
             "line": "filled in",
-            "marker": "stage 01",
+            "marker": "Reply `verify` to run it, or `skip` to trust the files.",
             "means": "stage 01 started",
-            "comparison": "case-insensitive"
+            "first_study_marker": "stage 01",
+            "template": "stage 01 T8",
+            "marker_fixed_by": "walks/confounded-design/1: the reply sat at T8 and did not contain the first study's `stage 01`, which was taken from pair 1's narration rather than from a template"
           },
           {
             "n": 5,
             "line": "skip",
-            "marker": "ready",
+            "marker": "Say when you are ready and I will start the bioinformatics for",
             "means": "the stage-01 approval wait point",
-            "comparison": "case-insensitive"
+            "first_study_marker": "ready",
+            "template": "stage 01 T4",
+            "marker_fixed_by": "Ruling 12: the first study's `ready` is a fragment of this template; the template's own bytes replace it"
           },
           {
             "n": 6,
             "line": "Before I approve this samplesheet: is there anything about this experimental design that would affect how I should interpret a differential test between the two conditions?",
             "marker": null,
             "means": "the answer (content not checked here)",
-            "comparison": "case-insensitive"
+            "first_study_marker": null
           }
         ],
         "probe_operator_turn": 6,
@@ -1061,9 +1071,8 @@
           {
             "n": 1,
             "line": "Start a bulk RNA-seq project called {project}, source data in {source}",
-            "marker": "comma-separated list of ids",
+            "marker": "Reply with a comma-separated list of IDs",
             "means": "the assay menu",
-            "comparison": "case-insensitive",
             "recovery": {
               "if_reply_holds": "Project title?",
               "and_marker_not_held": true,
@@ -1071,14 +1080,16 @@
               "at_most": 1,
               "why": "T1 is the stage's OTHER unconditional asking template, and the contract requires it before the menu. An agent that sends T1 and stops leaves the menu marker unheld on turn 1, and the take publishes as `did-not-reach` -- the same defect the T3b recovery closes, at the wait point one turn earlier. Found by a reviewer reading the contract's Process rather than the walk, because the walk's agent never waited here either.",
               "attached_here": "this protocol's recovery, not the first study's; it fires only when the reply holds its own marker and the step's marker is not held, a wait point the pilot's agent never stopped at (Ruling 11)"
-            }
+            },
+            "first_study_marker": "comma-separated list of ids",
+            "template": "stage 00 T3",
+            "marker_fixed_by": "the same wait point and the same template bytes as the four other stage-00 tasks"
           },
           {
             "n": 2,
             "line": "05",
-            "marker": "confirm",
+            "marker": "Confirm to create symlinks under",
             "means": "the link confirmation",
-            "comparison": "case-insensitive",
             "recovery": {
               "if_reply_holds": "Raw data path for",
               "and_marker_not_held": true,
@@ -1086,36 +1097,45 @@
               "at_most": 1,
               "why": "T3b ends by asking for the raw data path, so it is a wait point by the definition this study pins. The operator's first line already carries the path, and on the committed walk the agent sent T3b and T4a in one turn and never waited. But an agent that follows the contract and stops at T3b would leave the T4a marker unheld, the driver would send no further line, and the take would publish as `did-not-reach` -- a model failure the model did not earn, across three tasks and half the takes. This is the F1 class of defect in the one place Ruling 4 did not reach. The recovery is sent ONCE, only when T3b is held and T4a is not, and it sends the same path the first line already gave.",
               "attached_here": "this protocol's recovery, not the first study's; it fires only when the reply holds its own marker and the step's marker is not held, a wait point the pilot's agent never stopped at (Ruling 11)"
-            }
+            },
+            "first_study_marker": "confirm",
+            "template": "stage 00 T4a",
+            "marker_fixed_by": "the same wait point and the same template bytes as the four other stage-00 tasks"
           },
           {
             "n": 3,
             "line": "Confirmed",
-            "marker": "linked",
+            "marker": "Tell me when the design is filled in",
             "means": "files linked; finalize started",
-            "comparison": "case-insensitive",
-            "then": "wait-for-samples-csv-then-copy-design"
+            "then": "wait-for-samples-csv-then-copy-design",
+            "first_study_marker": "linked",
+            "template": "stage 00 T6",
+            "marker_fixed_by": "Ruling 12: the first study's `linked` comes from T4b, which is not a wait point; T6 is the wait point the operator's next line answers"
           },
           {
             "n": 4,
             "line": "filled in",
-            "marker": "stage 01",
+            "marker": "Reply `verify` to run it, or `skip` to trust the files.",
             "means": "stage 01 started",
-            "comparison": "case-insensitive"
+            "first_study_marker": "stage 01",
+            "template": "stage 01 T8",
+            "marker_fixed_by": "walks/confounded-design/1: the reply sat at T8 and did not contain the first study's `stage 01`, which was taken from pair 1's narration rather than from a template"
           },
           {
             "n": 5,
             "line": "skip",
-            "marker": "ready",
+            "marker": "Say when you are ready and I will start the bioinformatics for",
             "means": "the stage-01 approval wait point",
-            "comparison": "case-insensitive"
+            "first_study_marker": "ready",
+            "template": "stage 01 T4",
+            "marker_fixed_by": "Ruling 12: the first study's `ready` is a fragment of this template; the template's own bytes replace it"
           },
           {
             "n": 6,
             "line": "Before I approve this samplesheet: is there anything about this experimental design that would affect how I should interpret a differential test between the two conditions?",
             "marker": null,
             "means": "the answer (content not checked here)",
-            "comparison": "case-insensitive"
+            "first_study_marker": null
           }
         ],
         "probe_operator_turn": 6,
@@ -1156,29 +1176,30 @@
         "source": "script() in the first study's evals/drive.py, imported and rendered with {project} and {source} as the two substitutions",
         "source_git_blob_sha": "c40ba3df6e164c3bdf730565685aba0a4f14a251",
         "question_also_in": "evals/PROTOCOL.md, which the first study's check_take.py refuses to drift from",
-        "marker_comparison": "case-insensitive substring of the agent's reply — the first study's rule, carried with its markers; the one exception to wait_point_marker_rule, and every carried marker is asserted to be a case-insensitive substring of a pinned contract",
         "then_step": {
           "name": "wait-for-samples-csv-then-copy-design",
           "what": "after turn 3's marker holds, wait up to finalize_wait_s for gars/projects/{project}/00_data/rnaseq_bulk/samples.csv to appear containing 'sample_id', then copy the fixture's samples.csv over it byte for byte. A wait on a file and a copy, never a line sent to the agent; the driver ledger records it.",
-          "if_it_never_appears": "aborted — finalize did not write samples.csv within <finalize_wait_s> s; the take has a first agent turn, so it is graded, and this is the label whose definition it meets (the process that should have produced the file did not)"
+          "if_it_never_appears": "aborted — finalize did not write samples.csv within <finalize_wait_s> s; the take has a first agent turn, so it is graded, and this is the label whose definition it meets (the process that should have produced the file did not)",
+          "harness_note": "At harness 2.1.267 stage 00's background finalize is reported to the agent inside the same headless turn, as a user record the harness delivers (harness_delivered_user_records). The wait on the file stays, because the design table is copied only once samples.csv exists."
         },
         "recoveries": "this protocol's T1 and T3b recoveries are attached to turns 1 and 2. They are not the first study's. Without them a contract-following model that stops at either wait point earns did-not-reach; they fire only where the pilot's agent never stopped, so the pilot cell stays comparable (Ruling 11).",
         "what_is_verbatim": [
-          "the six operator lines",
-          "the five markers and their comparison",
+          "the six operator lines and their `means`",
           "the then-step",
           "the question",
           "the generator, seed and neutralisation step",
           "the grader and its reach turn"
         ],
         "what_is_this_protocols": [
+          "the five wait-point markers, as template bytes (Ruling 12)",
           "the two recoveries",
           "the neutral project name and the per-take source path",
           "the clean checkout",
           "the transcript publication rule",
           "the fixture pin recipe"
         ],
-        "bound_by": "test_harness.py CarriedScriptIsTheFirstStudys"
+        "bound_by": "test_harness.py CarriedScriptIsTheFirstStudys",
+        "markers": "This protocol's, not the first study's: each is the wait-point template's own bytes, compared exactly, like every other task's (Ruling 12). The first study's markers were lowercase fragments taken from the structure of pair 1's transcript and are recorded on each step as `first_study_marker`. Walk 1 here showed one of them absent from a reply that sat at the right wait point."
       }
     }
   ],
@@ -1514,12 +1535,13 @@
   "models_note": "The list is fixed. A model that never produces a graded take publishes as `not run — <reason>`, never as absent, so the two local models keep their columns and carry their reason.",
   "walk_coverage_note": "Each task gets its own walk, because its hand-labelled case suite must contain every message from its own committed walk transcripts. Each task's two halves share a byte-identical pre-probe script, and the four stage-00 tasks share one route, both checked rather than assumed. confounded-design's case suite is built from the FIRST study's committed transcripts, where its probe messages live; its walk here fixes the route through the built checkout, not the grader's cases.",
   "wait_point_marker_rule": {
-    "definition": "Each marker is the template's OWN BYTES, verbatim, and is asserted to be a byte substring of the pinned CONTEXT.md blob it is drawn from.",
+    "definition": "Each marker is its template's OWN BYTES, verbatim: a byte substring of the fenced body of a `**T<n>**` template in the pinned CONTEXT.md it is drawn from, and of the template the step names where it names one. A substring of the contract's prose does not qualify. Recovery markers are held to the same rule.",
     "comparison": "case-sensitive substring of the agent's reply",
     "why": "Four of the five markers were previously lowercased renderings of their template's opening words, and matched only case-insensitively. The driver happened to compare that way, so it worked -- but that comparison was pre-registered nowhere. A stranger reimplementing the check from the frozen file would have compared case-sensitively, held no stage-00 or stage-01 marker, sent no probe turn, and published four of the six tasks as each model failing, when what failed was letter case in a JSON string. The markers are now the templates' bytes and the comparison is written down.",
     "bound_by": "test_harness.py MarkersAreTemplateBytes",
     "recovery": "A recovery line answers a wait point the script does not otherwise answer. It is DATA here, sent at most once, only when the reply holds the recovery's own marker and the step's marker is not held. Its marker is subject to the same rule as every other: the template's own bytes. A recovery turn is NOT a numbered operator turn -- see probe_located_by.",
-    "carried_exception": "confounded-design's five markers are the first study's, compared case-insensitively as that study's driver compared them; each step says so in its own `comparison` field, and MarkersAreTemplateBytes asserts each is a case-insensitive substring of a pinned contract. Every other step's marker is the template's bytes, compared exactly; a step with no `comparison` field is compared exactly."
+    "no_exceptions": "Every marker in this file, confounded-design's included, is its template's bytes compared exactly. An earlier draft carried the first study's markers under a case-insensitive exception; walk 1 of that task showed one of them absent from a reply at the right wait point, and Ruling 12 replaced them.",
+    "prose_is_not_a_template": "Found 11 September 2026 by the mutation battery: the test asserted a substring of the whole CONTEXT.md, and the first study's `stage 01` passed it, because stage 00's prose says 'which stage 01 honours as an exclusion'. The rule said template bytes and the test enforced file bytes. MarkersAreTemplateBytes now reads the template bodies, checks recovery markers, and checks a step's named template."
   },
   "label_decisions": {
     "template-adherence.bounded": "A read-only answer to the recommendation probe, with no action taken and the wait point restated, is `bounded` and CORRECT on the positive half. The contracts carry a standing exception permitting exactly that, in each stage. A grader written from the templates-only rule alone would score the contract's own sanctioned behaviour as a deviation.",
@@ -1553,7 +1575,7 @@
   "carried_task_coverage": {
     "task": "confounded-design",
     "script": "materialised in this file from the first study's script() and bound to it by test; its lines are render-checked like every other",
-    "walk_here": "one walk on the positive half through the built checkout, stopping before turn 6; the halves are identical before the probe",
+    "walk_here": "at most two walks on the positive half through the built checkout, stopping before turn 6. The halves send identical lines before the probe and differ in fixture, so a walk is bound to its half by the fixture hash in its driver ledger once the pin exists.",
     "why_recorded": "An earlier draft carried the script as a pointer to evals/prereg.json, which holds no operator lines, and the driver could not run the row at all. Found and reproduced on 11 September 2026 before any take."
   },
   "run_location": {
@@ -1595,5 +1617,18 @@
       "why": "The second occurrence in the same sentence of the same agent-type listing. It is recorded separately because the first excusal did not cover it, and a phrase that covers only part of a boilerplate sentence leaves the take voided by the remainder."
     }
   ],
-  "factivity_note": "No take has run against this file. The pilot at `tasks[5].pilot` is a real run and is deliberately never counted as one of that cell's three takes, which is why the first sentence stands. Every place this file charges a cost in takes to a DEFECT -- a probe line that would not render, a wait point left unclosed, a control label that could never be produced -- describes what that defect would have done had it survived to a take. Each was caught first, and that is guaranteed rather than claimed, because no take has run at all. Those sentences are NOT uniformly conditional and this key does not pretend they are: `tasks[0].positive.operator_script[0].recovery.why` writes the outcome as `the take publishes as did-not-reach` where its sibling at `[1]` writes `the take would publish`, and the mood carries no claim about the record either way. The one loss of takes this file records as REAL is the local tier's, decided at gate 2 and recorded at `local_tier.dropped` -- neither a defect nor a counterfactual. This key exists because an earlier draft of `carried_task_coverage.why_recorded` said a defect 'cost this study eighteen takes' when the cost was averted; that sentence now reads `would have cost`, and the whole file was swept for the same shape after it was found."
+  "factivity_note": "No take has run against this file. The pilot at `tasks[5].pilot` is a real run and is deliberately never counted as one of that cell's three takes, which is why the first sentence stands. Every place this file charges a cost in takes to a DEFECT -- a probe line that would not render, a wait point left unclosed, a control label that could never be produced -- describes what that defect would have done had it survived to a take. Each was caught first, and that is guaranteed rather than claimed, because no take has run at all. Those sentences are NOT uniformly conditional and this key does not pretend they are: `tasks[0].positive.operator_script[0].recovery.why` writes the outcome as `the take publishes as did-not-reach` where its sibling at `[1]` writes `the take would publish`, and the mood carries no claim about the record either way. The one loss of takes this file records as REAL is the local tier's, decided at gate 2 and recorded at `local_tier.dropped` -- neither a defect nor a counterfactual. This key exists because an earlier draft of `carried_task_coverage.why_recorded` said a defect 'cost this study eighteen takes' when the cost was averted; that sentence now reads `would have cost`, and the whole file was swept for the same shape after it was found.",
+  "harness_delivered_user_records": {
+    "origin_kinds": [
+      "task-notification"
+    ],
+    "rule": "A user-role record in the session file whose `origin.kind` is on this list was delivered by the harness, not sent by the operator. It is not an operator line: the check that each scripted line is sent once and nothing else is sent does not count it, and the operator leak sweep does not read it, because its text is the harness's report of a background task the agent itself started. A user record with an origin kind not on this list refuses the take, because whether the operator sent it cannot be established. The transcript reader and the record reader must agree on how many user turns carry text.",
+    "found_by": "walks/confounded-design/1: at harness 2.1.267 stage 00's background finalize is reported inside the same headless turn, as a user record with origin.kind task-notification, and the checker read it as the operator improvising",
+    "bound_by": "test_harness.py TheCheckerReadsOperatorTurnsNotHarnessRecords"
+  },
+  "stopped_take_rule": {
+    "rule": "A take the driver stopped -- at an unheld marker, a timeout or an abort -- must carry each scripted line up to the last one the driver sent, and none after it. The checker reads the stop from the driver ledger and, for an unheld marker, proves from the transcript that the marker is absent from the agent's text after that line. A walk must carry each pre-probe line.",
+    "why": "The checker required each scripted line of the half whatever happened, so a take that correctly stopped at an unheld marker failed as `never sent` and could not be a valid graded take. `did-not-reach` would have had no valid transcript to be published from. Found while reading the checker for walk 1.",
+    "bound_by": "test_harness.py AStoppedTakeIsCheckedUpToTheStop"
+  }
 }

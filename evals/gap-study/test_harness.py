@@ -18,6 +18,7 @@ No model is called. stdlib only.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -338,6 +339,28 @@ class CaseSuites(unittest.TestCase):
                                     f"that answers nothing receives a CORRECT label")
         self.assertGreater(n, 0, "no case was checked; that is not a pass")
 
+    def test_every_walk_message_is_a_case(self):
+        """Requirement 1: each suite holds every message from every committed walk transcript.
+
+        The other tests here read the suite outward -- each case still exists and still grades as
+        recorded. Nothing read it inward, so a walk committed after its suite was built would leave
+        its messages out and every test would stay green.
+        """
+        import build_cases
+        checked = 0
+        for task in prereg.load()["tasks"]:
+            if build_cases.grader_for(task["id"]) is None:
+                continue
+            f = HERE / "cases" / f"{task['id']}.json"
+            have = ({c["sha256"] for c in json.loads(f.read_text())["cases"]}
+                    if f.is_file() else set())
+            for m in build_cases.messages_for(task["id"]):
+                checked += 1
+                self.assertIn(m["sha256"], have,
+                              f"{task['id']}: {m['walk']} message {m['message_index']} is not in "
+                              f"the case suite, so its grader has never been shown it")
+        self.assertGreater(checked, 0, "no walk message was read; that is not a pass")
+
     def test_every_case_still_grades_to_its_recorded_label(self):
         import build_cases
         checked = 0
@@ -558,54 +581,90 @@ class MarkersAreTemplateBytes(unittest.TestCase):
     This is the test contract_quotes.json already had, applied to markers.
     """
 
-    def test_every_marker_is_a_byte_substring_of_a_pinned_contract(self):
-        blobs = {}
-        for stage in ("00_initialize_project", "01_prepare_samplesheets",
-                      "02_bioinformatics", "03_custom_analysis"):
-            f = REPO / "gars" / stage / "CONTEXT.md"
-            if f.is_file():
-                blobs[stage] = f.read_text()
-        self.assertTrue(blobs, "no contract was readable; this test measured nothing")
+    STAGES = ("00_initialize_project", "01_prepare_samplesheets", "02_bioinformatics",
+              "03_custom_analysis")
 
+    def template_bodies(self) -> dict:
+        """Every template's fenced body, keyed by (stage, template id), from the pinned contracts.
+
+        A template is a `**T<n> — <title>**` heading and the first fenced block after it, before the
+        next heading. Stage 00's T3 has prose between the two, so the block is looked for in the
+        heading's section rather than directly under it.
+        """
+        out = {}
+        for stage_dir in self.STAGES:
+            f = REPO / "gars" / stage_dir / "CONTEXT.md"
+            if not f.is_file():
+                continue
+            text = f.read_text()
+            heads = list(re.finditer(r"^\*\*(T\d+[a-z]?) — [^\n]*\*\*[ \t]*$", text, re.M))
+            for i, h in enumerate(heads):
+                end = heads[i + 1].start() if i + 1 < len(heads) else len(text)
+                m = re.search(r"^```[^\n]*\n(.*?)\n```", text[h.end():end], re.M | re.S)
+                if m:
+                    out[("stage " + stage_dir[:2], h.group(1))] = m.group(1)
+        return out
+
+    def test_every_template_heading_has_a_body(self):
+        """The reader must find every template, or a marker in the one it misses looks invalid."""
+        bodies = self.template_bodies()
+        for stage_dir in self.STAGES:
+            f = REPO / "gars" / stage_dir / "CONTEXT.md"
+            if not f.is_file():
+                continue
+            heads = re.findall(r"^\*\*(T\d+[a-z]?) — [^\n]*\*\*[ \t]*$", f.read_text(), re.M)
+            got = [tid for (stage, tid) in bodies if stage == "stage " + stage_dir[:2]]
+            self.assertEqual(sorted(heads), sorted(got),
+                             f"{stage_dir}: a template heading with no body the reader could find")
+
+    def test_every_marker_is_a_byte_substring_of_a_template(self):
+        """Template bytes, not contract bytes.
+
+        FOUND 11 SEPTEMBER 2026 BY THE MUTATION BATTERY. This test used to accept a substring of the
+        whole CONTEXT.md. The first study's `stage 01` marker, put back on purpose, passed it, because
+        stage 00's prose says "which stage 01 honours as an exclusion". The rule said template bytes;
+        the test enforced file bytes, and a marker drawn from prose would hold in a reply that sent
+        no template at all. Recovery markers are held to the same rule, and a step that names its
+        template is checked against that template.
+        """
+        bodies = self.template_bodies()
+        self.assertTrue(bodies, "no template was readable; this test measured nothing")
         checked = 0
         for t in prereg.load()["tasks"]:
             for half in ("positive", "control"):
-                script = t[half].get("operator_script")
-                if not isinstance(script, list):
-                    continue
-                for step in script:
-                    m = step.get("marker")
-                    if not m:
-                        continue
-                    checked += 1
-                    if step.get("comparison") == "case-insensitive":
-                        # THE ONE CARRIED EXCEPTION. confounded-design's markers are the first
-                        # study's and are compared as its driver compared them (prereg
-                        # wait_point_marker_rule.carried_exception). The bound: each must still be a
-                        # case-insensitive substring of a pinned contract, so the exception cannot
-                        # admit a marker that matches nothing a template says.
+                for step in t[half]["operator_script"]:
+                    for kind, m in (("marker", step.get("marker")),
+                                    ("recovery marker", (step.get("recovery") or {}).get("if_reply_holds"))):
+                        if not m:
+                            continue
+                        checked += 1
+                        where = [k for k, body in bodies.items() if m in body]
                         self.assertTrue(
-                            any(m.lower() in b.lower() for b in blobs.values()),
-                            f"{t['id']}/{half} turn {step['n']}: carried marker {m!r} is not even a "
-                            f"case-insensitive substring of any pinned contract")
-                        continue
-                    self.assertTrue(
-                        any(m in b for b in blobs.values()),
-                        f"{t['id']}/{half} turn {step['n']}: marker {m!r} is NOT a byte substring "
-                        f"of any pinned contract. It would match only loosely, and the driver "
-                        f"compares exactly.")
+                            where,
+                            f"{t['id']}/{half} turn {step['n']}: {kind} {m!r} is NOT a byte substring "
+                            f"of any template body. A fragment of the contract's prose is not a wait "
+                            f"point, and it could hold where no template was sent.")
+                        named = step.get("template") if kind == "marker" else None
+                        if named:
+                            stage, tid = named.rsplit(" ", 1)
+                            self.assertIn((stage, tid), where,
+                                          f"{t['id']}/{half} turn {step['n']}: marker {m!r} is not "
+                                          f"in {named}, the template the step names")
         self.assertGreater(checked, 0, "no marker was checked; that is not a pass")
 
     def test_the_comparison_rule_is_written_down(self):
         rule = prereg.load().get("wait_point_marker_rule")
         self.assertIsNotNone(rule, "the marker comparison must be pre-registered, not implied")
         self.assertIn("case-sensitive", rule["comparison"])
-        # and the carried exception is written down beside it, or a stranger compares the carried
-        # markers exactly, holds none of them, and publishes the carried cell as every model failing
-        self.assertIn("case-insensitive", rule.get("carried_exception", ""))
-        for step in prereg.task("confounded-design")["positive"]["operator_script"]:
-            self.assertEqual(step.get("comparison"), "case-insensitive",
-                             f"carried turn {step['n']} does not declare its comparison")
+        # NO EXCEPTION. The carried markers were once compared loosely under a per-step field;
+        # Ruling 12 replaced them with template bytes and withdrew the exception.
+        self.assertNotIn("carried_exception", rule)
+        for task in prereg.load()["tasks"]:
+            for half in ("positive", "control"):
+                for step in task[half]["operator_script"]:
+                    self.assertNotIn("comparison", step,
+                                     f"{task['id']}/{half} turn {step['n']} declares its own "
+                                     f"comparison; the driver compares every marker exactly")
 
 
 class Analysis(unittest.TestCase):
@@ -1071,6 +1130,42 @@ class TheRunTreeCarriesNothing(unittest.TestCase):
             finally:
                 shutil.rmtree(tree, ignore_errors=True)
 
+    def test_a_refused_checkout_leaves_nothing(self):
+        """The first carried follow-up: a refusal used to leave its checkout in the temp directory."""
+        import tempfile
+        import uuid
+        drive = self._drive()
+        with tempfile.TemporaryDirectory() as td:
+            repo, head = self._repo(Path(td))
+            sid = str(uuid.uuid4())
+            drive.run_tree_problems = lambda *a, **k: ["refused for the test"]
+            with self.assertRaises(SystemExit):
+                drive.clean_run_tree(head, sid, self.EXCLUDE, repo=repo)
+            left = drive.run_tree_path(sid)
+            try:
+                self.assertFalse(left.exists(),
+                                 "a refused checkout was left in the machine's temporary directory")
+            finally:
+                # A test that finds the leak must not become the leak: the mutation that removes the
+                # driver's cleanup left one checkout behind per battery run until this was added.
+                shutil.rmtree(left, ignore_errors=True)
+
+    def test_a_checkout_that_fails_to_build_leaves_nothing(self):
+        import subprocess
+        import tempfile
+        import uuid
+        drive = self._drive()
+        with tempfile.TemporaryDirectory() as td:
+            repo, _head = self._repo(Path(td))
+            sid = str(uuid.uuid4())
+            with self.assertRaises(subprocess.CalledProcessError):
+                drive.clean_run_tree("0" * 40, sid, self.EXCLUDE, repo=repo)
+            left = drive.run_tree_path(sid)
+            try:
+                self.assertFalse(left.exists(), "a checkout whose archive failed was left behind")
+            finally:
+                shutil.rmtree(left, ignore_errors=True)
+
     def test_a_dirty_status_is_a_problem_the_driver_reports(self):
         import shutil
         import tempfile
@@ -1151,12 +1246,18 @@ class CarriedScriptIsTheFirstStudys(unittest.TestCase):
         return first.script("a", "{project}", "{source}")
 
     def test_both_halves_project_the_first_studys_script(self):
-        theirs = [(s["line"], s["marker"], s["means"], s.get("then")) for s in self.carried()]
+        carried = self.carried()
+        theirs = [(s["line"], s["means"], s.get("then")) for s in carried]
         spec = prereg.task("confounded-design")
         for half in ("positive", "control"):
             script = spec[half]["operator_script"]
-            mine = [(s["line"], s.get("marker"), s.get("means"), s.get("then")) for s in script]
+            mine = [(s["line"], s.get("means"), s.get("then")) for s in script]
             self.assertEqual(mine, theirs, f"{half}: the carried script differs from script()")
+            # The markers are this protocol's (Ruling 12). The first study's are recorded beside
+            # them, and must be script()'s, so the record of what changed cannot drift either.
+            self.assertEqual([s.get("first_study_marker") for s in script],
+                             [s["marker"] for s in carried],
+                             f"{half}: the recorded first-study markers are not script()'s")
             self.assertEqual([s["n"] for s in script], list(range(1, len(theirs) + 1)))
             self.assertEqual(spec[half]["probe_operator_turn"], len(theirs),
                              "the probe is the question, the last line the first study sends")
@@ -1168,7 +1269,7 @@ class CarriedScriptIsTheFirstStudys(unittest.TestCase):
                          .glob("*/driver-ledger.json"))
         if not ledgers:
             self.skipTest("the pilot's driver ledgers are not on disk")
-        want = [s.get("marker") for s in spec["positive"]["operator_script"]]
+        want = [s.get("first_study_marker") for s in spec["positive"]["operator_script"]]
         checked = 0
         for lp in ledgers:
             led = json.loads(lp.read_text())
@@ -1282,15 +1383,16 @@ class TheThenStepAndComparisonAreData(unittest.TestCase):
         self.assertEqual(labels.from_ledger(
             {"outcome": "aborted — finalize did not write samples.csv within 180 s"}), labels.ABORTED)
 
-    def test_markers_compare_as_each_step_declares(self):
+    def test_markers_are_compared_exactly(self):
         drive = gap_drive()
         reply = "Reply with a comma-separated list of IDs"
-        self.assertTrue(drive.marker_holds(
-            {"marker": "comma-separated list of ids", "comparison": "case-insensitive"}, reply))
-        self.assertFalse(drive.marker_holds({"marker": "comma-separated list of ids"}, reply),
-                         "a step with no comparison field is compared exactly")
+        self.assertFalse(
+            drive.marker_holds({"marker": "comma-separated list of ids",
+                                "comparison": "case-insensitive"}, reply),
+            "a step must not be able to declare its way out of the exact comparison")
+        self.assertTrue(drive.marker_holds({"marker": "Reply with a comma-separated list of IDs"},
+                                           reply))
         self.assertTrue(drive.marker_holds({"marker": None}, ""))
-        self.assertTrue(drive.marker_holds({"marker": "Project title?"}, "T1: Project title?"))
 
 
 class TheCheckerAdmitsOnlyThePreRegisteredScript(unittest.TestCase):
@@ -1370,6 +1472,89 @@ class LineCountsAreCountedNotWritten(unittest.TestCase):
                           (probes + recs, "never-sent lines"), (turns + recs, "lines in total")):
             self.assertIn(str(num), note, f"the note does not carry {num} {what}; it was written "
                                            f"by hand and the script has moved")
+
+
+WALK_CD_1 = HERE / "walks" / "confounded-design" / "1"
+
+
+class TheCheckerReadsOperatorTurnsNotHarnessRecords(unittest.TestCase):
+    """Walk 1 of confounded-design: the harness reported a background task inside the headless turn
+    as a user record, and the checker counted it as the operator improvising (Ruling 12)."""
+
+    def setUp(self):
+        self.path = WALK_CD_1 / "transcript.jsonl"
+        if not self.path.is_file():
+            self.skipTest("walk 1 of confounded-design is not on disk")
+        self.ct = gap_check_take()
+
+    def test_the_notification_is_the_harness_and_the_lines_are_the_ledgers(self):
+        ops, harness, unknown = self.ct.user_text_records(self.path, prereg.load())
+        ledger = json.loads((WALK_CD_1 / "driver-ledger.json").read_text())
+        self.assertEqual(ops, [r["sent"] for r in ledger["turns"]],
+                         "the operator lines read off the records are not the lines the driver sent")
+        self.assertEqual(len(harness), 1, "walk 1 carries exactly one harness notification")
+        self.assertTrue(harness[0].lstrip().startswith("<task-notification>"))
+        self.assertEqual(unknown, [])
+
+    def test_an_origin_the_pre_registration_does_not_name_refuses(self):
+        pre = dict(prereg.load())
+        pre["harness_delivered_user_records"] = {"origin_kinds": []}
+        ops, harness, unknown = self.ct.user_text_records(self.path, pre)
+        self.assertEqual(harness, [])
+        self.assertEqual(len(unknown), 1, "an unnamed origin must surface, not pass as either side")
+
+    def test_the_two_readers_agree_on_every_committed_walk(self):
+        import transcript as tx
+        pre = prereg.load()
+        n = 0
+        for p in sorted(HERE.glob("walks/*/*/transcript.jsonl")):
+            turns = tx.load(p)["turns"]
+            ops, harness, unknown = self.ct.user_text_records(p, pre)
+            self.assertEqual(sum(1 for x in turns if x["role"] == "user" and x["text"].strip()),
+                             len(ops) + len(harness) + len(unknown),
+                             f"{p.parent}: the transcript reader and the record reader disagree")
+            n += 1
+        self.assertGreater(n, 0, "no walk was read; that is not a pass")
+
+
+class AStoppedTakeIsCheckedUpToTheStop(unittest.TestCase):
+    """A take the driver stopped is graded (requirement 4), so the checker must be able to pass it.
+
+    Driven on walk 1's real transcript and ledger, which stopped at turn 4. Under the first study's
+    marker for that turn the stop was legitimate; under the template bytes that replaced it, the
+    marker IS in the reply, and the same stop is the operator manufacturing `did-not-reach`.
+    """
+
+    def setUp(self):
+        self.path = WALK_CD_1 / "transcript.jsonl"
+        if not self.path.is_file():
+            self.skipTest("walk 1 of confounded-design is not on disk")
+        import transcript as tx
+        self.ct = gap_check_take()
+        self.turns = tx.load(self.path)["turns"]
+        self.project = self.ct.neutral_name(self.ct.session_id_of(self.path))
+        spec = prereg.task("confounded-design")["positive"]
+        self.steps = [s for s in spec["operator_script"] if s["n"] < spec["probe_operator_turn"]]
+
+    def test_a_walk_carries_every_pre_probe_line(self):
+        req, probs = self.ct.required_steps(self.steps, self.path, self.turns, True, self.project)
+        self.assertEqual([s["n"] for s in req], [1, 2, 3, 4, 5])
+        self.assertEqual(probs, [])
+
+    def test_a_take_that_stopped_correctly_passes_up_to_its_stop(self):
+        steps = [dict(s) for s in self.steps]
+        steps[3]["marker"] = steps[3]["first_study_marker"]   # `stage 01`, absent from the reply
+        req, probs = self.ct.required_steps(steps, self.path, self.turns, False, self.project)
+        self.assertEqual([s["n"] for s in req], [1, 2, 3, 4])
+        self.assertEqual(probs, [])
+        ops, _harness, _unknown = self.ct.user_text_records(self.path, prereg.load())
+        self.assertEqual([], self.ct.operator_line_problems(ops, req, self.project),
+                         "a correctly stopped take must pass the operator-line check")
+
+    def test_a_stop_at_a_held_marker_is_refused(self):
+        req, probs = self.ct.required_steps(self.steps, self.path, self.turns, False, self.project)
+        self.assertEqual([s["n"] for s in req], [1, 2, 3, 4])
+        self.assertTrue(probs and "manufactures" in probs[0], probs)
 
 
 def main() -> int:

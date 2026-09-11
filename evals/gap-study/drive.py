@@ -232,37 +232,46 @@ def clean_run_tree(commit: str, session_id: str, exclude: list[str], repo: Path 
                          f"a reused one carries the previous take's project beside this one.")
     tree.mkdir(parents=True)
 
-    spec = [f":(exclude){p}" for p in exclude]
-    archive = subprocess.run(["git", "-C", str(repo), "archive", "--format=tar", commit, "--", ".",
-                              *spec], check=True, capture_output=True)
-    with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as tar:
-        if hasattr(tarfile, "tar_filter"):
-            tar.extractall(tree, filter="tar")
-        else:
-            tar.extractall(tree)
+    # A CHECKOUT THAT IS REFUSED, OR FAILS TO BUILD, IS REMOVED BEFORE THE REFUSAL. The first version
+    # raised and left it in the machine's temporary directory: the two run-tree mutations left 44 of
+    # their synthetic repository there by 11 September 2026, and every run of the battery added
+    # more. A real take refused here would have left a copy of the pinned tree behind.
+    try:
+        spec = [f":(exclude){p}" for p in exclude]
+        archive = subprocess.run(["git", "-C", str(repo), "archive", "--format=tar", commit, "--", ".",
+                                  *spec], check=True, capture_output=True)
+        with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as tar:
+            if hasattr(tarfile, "tar_filter"):
+                tar.extractall(tree, filter="tar")
+            else:
+                tar.extractall(tree)
 
-    g = ["git", "-C", str(tree)]
-    subprocess.run(g + ["init", "-q"], check=True, capture_output=True)
-    # `main`, whatever the machine's default: the harness tells the agent the main branch is `main`,
-    # and a checkout on `master` beside that sentence is a detail an agent can remark on.
-    subprocess.run(g + ["symbolic-ref", "HEAD", "refs/heads/main"], check=True, capture_output=True)
-    # The identity goes in the checkout's own config, because that is where Claude Code reads the git
-    # user it shows the agent; a -c on one command would leave the operator's global name in view.
-    for key, val in (("user.name", TREE_IDENTITY[0]), ("user.email", TREE_IDENTITY[1]),
-                     ("commit.gpgsign", "false")):
-        subprocess.run(g + ["config", key, val], check=True, capture_output=True)
-    # The staging area the driver writes fixtures into is machine-local in the study's repository
-    # (git-excluded there, not ignored), so it is excluded here too; otherwise the agent's first view
-    # of the checkout's status would list it as untracked.
-    (tree / ".git" / "info").mkdir(parents=True, exist_ok=True)
-    with (tree / ".git" / "info" / "exclude").open("a") as fh:
-        fh.write("data/staging/\n")
-    subprocess.run(g + ["add", "-A"], check=True, capture_output=True)
-    subprocess.run(g + ["commit", "-q", "--no-verify", "-m", TREE_SUBJECT],
-                   check=True, capture_output=True)
+        g = ["git", "-C", str(tree)]
+        subprocess.run(g + ["init", "-q"], check=True, capture_output=True)
+        # `main`, whatever the machine's default: the harness tells the agent the main branch is `main`,
+        # and a checkout on `master` beside that sentence is a detail an agent can remark on.
+        subprocess.run(g + ["symbolic-ref", "HEAD", "refs/heads/main"], check=True, capture_output=True)
+        # The identity goes in the checkout's own config, because that is where Claude Code reads the git
+        # user it shows the agent; a -c on one command would leave the operator's global name in view.
+        for key, val in (("user.name", TREE_IDENTITY[0]), ("user.email", TREE_IDENTITY[1]),
+                         ("commit.gpgsign", "false")):
+            subprocess.run(g + ["config", key, val], check=True, capture_output=True)
+        # The staging area the driver writes fixtures into is machine-local in the study's repository
+        # (git-excluded there, not ignored), so it is excluded here too; otherwise the agent's first view
+        # of the checkout's status would list it as untracked.
+        (tree / ".git" / "info").mkdir(parents=True, exist_ok=True)
+        with (tree / ".git" / "info" / "exclude").open("a") as fh:
+            fh.write("data/staging/\n")
+        subprocess.run(g + ["add", "-A"], check=True, capture_output=True)
+        subprocess.run(g + ["commit", "-q", "--no-verify", "-m", TREE_SUBJECT],
+                       check=True, capture_output=True)
 
-    problems = run_tree_problems(tree, session_id, exclude)
+        problems = run_tree_problems(tree, session_id, exclude)
+    except BaseException:
+        shutil.rmtree(tree, ignore_errors=True)
+        raise
     if problems:
+        shutil.rmtree(tree, ignore_errors=True)
         raise SystemExit("REFUSING to drive a take in this checkout:\n  - " + "\n  - ".join(problems))
     return tree
 
@@ -342,19 +351,15 @@ def one_turn(line: str, session_id: str, model: str, first: bool,
 
 
 def marker_holds(step: dict, said: str) -> bool:
-    """Whether this step's wait-point marker is in the reply, by the comparison the step declares.
+    """Whether this step's wait-point marker is in the reply: the template's own bytes, compared exactly.
 
-    Exact by default: the markers are the templates' own bytes (prereg wait_point_marker_rule).
-    confounded-design's five markers are the first study's, declared `comparison: case-insensitive`
-    on each of its steps, and are compared as that study's driver compared them, so the carried
-    script runs as it ran. A step with no field is compared exactly; nothing else decides it.
+    Every marker, the carried task's included (Ruling 12). An earlier version honoured a per-step
+    case-insensitive comparison for the first study's markers. Walk 1 of confounded-design showed one
+    of those markers absent from a reply sitting at the right wait point, so the markers were
+    replaced with template bytes rather than compared loosely, and the exception is gone.
     """
     marker = step.get("marker")
-    if marker is None:
-        return True
-    if step.get("comparison") == "case-insensitive":
-        return marker.lower() in said.lower()
-    return marker in said
+    return True if marker is None else marker in said
 
 
 def wait_for_samples_csv(project_dir: Path, wait_s: float) -> Path | None:
@@ -397,25 +402,38 @@ def build_first_study_fixture(fx: dict, staging: Path, name: str) -> dict:
     """
     log: list[dict] = []
 
+    # THE LEDGER RECORDS RESULTS, NOT THE TOOLS' PROSE. The first version kept each tool's stdout
+    # tail, and the rank check's verdict sentence says the design is "perfectly aliased" -- a word
+    # this study's language guard bans from every file it publishes, for a reason that has nothing
+    # to do with linear algebra. Walk 1's ledger went in carrying it, on a red lint. So each step
+    # records its argv, its exit code and the fields a reader needs, parsed; a failing step's
+    # output still goes to the console with the refusal.
     def run(argv: list) -> subprocess.CompletedProcess:
         r = subprocess.run([sys.executable, *[str(a) for a in argv]], capture_output=True, text=True)
-        log.append({"argv": [str(a) for a in argv], "exit": r.returncode,
-                    "stdout_tail": r.stdout[-1200:], "stderr_tail": r.stderr[-400:]})
+        log.append({"argv": [str(a) for a in argv], "exit": r.returncode})
         return r
 
     r = run([REPO / fx["generator"], "--half", fx["half"], "--seed", str(fx["seed"]), "--out", staging])
     if r.returncode != 0:
         raise SystemExit(f"the first study's generator refused:\n{r.stdout[-600:]}{r.stderr[-400:]}")
     manifest = json.loads(r.stdout)
+    log[-1]["result"] = {"payload_multiset_sha256": manifest.get("payload_multiset_sha256"),
+                         "samples_csv_md5": manifest.get("samples_csv_md5")}
     r = run([REPO / fx["neutralise"]["path"], "--dir", staging])
     if r.returncode != 0:
         raise SystemExit(f"the neutraliser refused, so the agent would be told what this is:\n"
                          f"{r.stdout[-600:]}{r.stderr[-400:]}")
+    log[-1]["result"] = {"sweep_clean": "sweep: no leak word" in r.stdout}
     gt = fx["ground_truth"]
     r = run([REPO / gt["path"], "--dir", staging, "--expect", str(gt["design_matrix_rank"])])
     if r.returncode != 0:
         raise SystemExit(f"the rank check did not find rank {gt['design_matrix_rank']}, so this is not "
                          f"the {fx['half']} half:\n{r.stdout[-600:]}{r.stderr[-400:]}")
+    try:
+        got = json.loads(r.stdout)
+        log[-1]["result"] = {k: got.get(k) for k in ("rank", "full_rank", "aliased")}
+    except json.JSONDecodeError:
+        log[-1]["result"] = {"unparsed": True}
     md5 = hashlib.md5((staging / "samples.csv").read_bytes()).hexdigest()
     if md5 != fx["design_table"]["md5"]:
         raise SystemExit(f"samples.csv md5 is {md5}, pre-registered as {fx['design_table']['md5']}; "

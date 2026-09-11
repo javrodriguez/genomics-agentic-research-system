@@ -61,62 +61,51 @@ def grader_for(task_id: str):
         return None
 
 
-# `confounded-design` is carried from the first study and has no walk HERE. Its real agent messages
-# live in that study's committed transcripts, which is where its cases come from. Sourcing them from
-# an empty directory and reporting no cases would leave the one grader this study did not write as
-# the only one that never met a real message.
+# `confounded-design` is carried from the first study. Its probe messages live in that study's
+# committed transcripts, so its cases come from there; and since slice 39 it is walked HERE too, and
+# requirement 1 puts every message from every committed walk transcript into the suite. So a carried
+# task reads BOTH sources. The first version returned after the carried source, which would have
+# left this study's own walks of the task out of its suite without a word.
 CARRIED_SOURCES = {
     "confounded-design": REPO / "evals" / "transcripts",
 }
 
 
+def _messages(transcript: Path, walk_name: str) -> list[dict]:
+    out = []
+    data = tx.load(transcript)
+    idx = 0
+    for turn in data["turns"]:
+        if turn["role"] != "assistant" or not turn["text"].strip():
+            continue
+        idx += 1
+        out.append({
+            "walk": walk_name,
+            "message_index": idx,
+            "sha256": hashlib.sha256(turn["text"].encode()).hexdigest(),
+            "first_line": turn["text"].strip().splitlines()[0][:110],
+            "chars": len(turn["text"]),
+            "_text": turn["text"],
+            "_tools": turn["tool_uses"],
+        })
+    return out
+
+
 def messages_for(task_id: str) -> list[dict]:
     """Every agent message from every committed walk of this task, in order.
 
-    For a carried task, from the study it was carried from.
+    For a carried task, the study it was carried from first, then this study's own walks.
     """
-    out = []
+    out: list[dict] = []
     carried = CARRIED_SOURCES.get(task_id)
     if carried and carried.is_dir():
         for t in sorted(carried.rglob("transcript.jsonl")):
-            data = tx.load(t)
-            idx = 0
-            for turn in data["turns"]:
-                if turn["role"] != "assistant" or not turn["text"].strip():
-                    continue
-                idx += 1
-                out.append({
-                    "walk": "first-study/" + str(t.parent.relative_to(carried)),
-                    "message_index": idx,
-                    "sha256": hashlib.sha256(turn["text"].encode()).hexdigest(),
-                    "first_line": turn["text"].strip().splitlines()[0][:110],
-                    "chars": len(turn["text"]),
-                    "_text": turn["text"],
-                    "_tools": turn["tool_uses"],
-                })
-        return out
-
+            out += _messages(t, "first-study/" + str(t.parent.relative_to(carried)))
     root = WALKS / task_id
-    if not root.is_dir():
-        return out
-    for walk in sorted(root.glob("*/transcript.jsonl")):
-        data = tx.load(walk)
-        idx = 0
-        for turn in data["turns"]:
-            if turn["role"] != "assistant" or not turn["text"].strip():
-                continue
-            idx += 1
-            out.append({
-                "walk": str(walk.parent.relative_to(WALKS)),
-                "message_index": idx,
-                "sha256": hashlib.sha256(turn["text"].encode()).hexdigest(),
-                "first_line": turn["text"].strip().splitlines()[0][:110],
-                "chars": len(turn["text"]),
-                "_text": turn["text"],
-                "_tools": turn["tool_uses"],
-            })
+    if root.is_dir():
+        for walk in sorted(root.glob("*/transcript.jsonl")):
+            out += _messages(walk, str(walk.parent.relative_to(WALKS)))
     return out
-
 
 def label_of(task_id: str, half: str, msg: dict) -> dict:
     """What the grader says when this message is the text it reads.

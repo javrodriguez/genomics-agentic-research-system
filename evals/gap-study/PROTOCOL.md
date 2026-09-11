@@ -501,3 +501,35 @@ The checker now walks the script — each line in order, once, then at most the 
 
 No criterion moved.
 No take has run.
+
+### Ruling 12 — 2026-09-11 — the carried markers are template bytes, a harness notification is not an operator line, and a stopped take is checked up to its stop
+
+Walk 1 of `confounded-design` was driven with slice 39's driver and stopped at turn 4.
+It is committed at `walks/confounded-design/1/` as it stands, and the checker reads it not valid.
+Both of its reasons were on the operator's side, and one of them reached the other five tasks.
+
+**The carried markers.**
+Ruling 11 kept the first study's five markers under a case-insensitive exception.
+Those markers were lowercase fragments taken from the structure of pair 1's transcript, not from a template.
+At turn 4 the agent went straight to stage 01's integrity offer, T8, without saying `stage 01`, so the marker was not held at a reply that sat at the right wait point.
+The markers are now the templates' own bytes, compared exactly, like every other task's: stage 00 T3, T4a and T6, then stage 01 T8 and T4.
+The first study's marker is recorded on each step beside the new one.
+The case-insensitive exception in Ruling 11 is withdrawn, and the lines, their `means`, the then-step and the question stay as the first study sent them.
+
+**A notification the harness delivers.**
+At harness 2.1.267 stage 00's background finalize is reported to the agent inside the same headless turn, as a user-role record with `origin.kind: task-notification`.
+The first study's driver was written when headless mode had no such notification.
+The shared transcript reader cannot tell that record from a line the operator typed, so the checker counted it and refused the walk as the operator improvising.
+Any take whose agent started a background task, in any of the six tasks, would have been refused the same way.
+The checker now reads operator lines off the records: no origin is the operator's, an origin kind named in `harness_delivered_user_records` is the harness's, and any other origin refuses the take.
+
+**A take the driver stopped.**
+Reading the checker for this walk showed it required every scripted line of a take whatever happened.
+The driver sends nothing past an unheld marker, a timeout or an abort, and requirement 4 grades that take anyway.
+So a take that stopped correctly would have failed the checker as `never sent`, and `did-not-reach` would have had no valid transcript to be published from.
+A take now carries each line up to the last one the driver sent and none after it.
+Because the stop is the operator's own record, the checker does not take it on trust: for an unheld marker it proves from the transcript that the marker is absent from the agent's text after that line.
+A walk still carries every pre-probe line.
+
+No criterion moved.
+No take has run.

@@ -270,6 +270,99 @@ def _is_recovery_send(op: str, rec: dict, expected_project: str) -> bool:
     return got.lower() == want.lower()
 
 
+def user_text_records(path: Path, pre: dict) -> tuple[list[str], list[str], list[str]]:
+    """(operator lines, harness-delivered texts, unknown-origin texts), in transcript order.
+
+    FOUND ON WALK 1 OF confounded-design, 11 SEPTEMBER 2026. At harness 2.1.267 a background task's
+    completion is reported to the agent inside the same headless turn, as a user-role record carrying
+    `origin.kind: task-notification`. The shared transcript reader cannot tell it from a line the
+    operator typed, so the checker counted it as a sixth operator line and refused the walk as the
+    operator improvising. Every take whose agent started a background task would have gone the same way.
+
+    So the operator's lines are read off the RECORDS: a user record with text and no origin is the
+    operator's; one whose origin kind the pre-registration names (harness_delivered_user_records) is
+    the harness's; any other origin refuses, because who sent it cannot be established.
+    """
+    kinds = set((pre.get("harness_delivered_user_records") or {}).get("origin_kinds") or [])
+    ops: list[str] = []
+    harness: list[str] = []
+    unknown: list[str] = []
+    for line in path.read_text(errors="replace").splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(rec, dict) or rec.get("type") != "user":
+            continue
+        msg = rec.get("message") if isinstance(rec.get("message"), dict) else rec
+        content = msg.get("content")
+        if tx._tool_results_from_content(content):
+            continue
+        text = tx._text_from_content(content)
+        if not text.strip():
+            continue
+        origin = rec.get("origin")
+        kind = origin.get("kind") if isinstance(origin, dict) else None
+        if kind is None:
+            ops.append(text)
+        elif kind in kinds:
+            harness.append(text)
+        else:
+            unknown.append(f"{kind}: {text[:60]}")
+    return ops, harness, unknown
+
+
+def required_steps(steps: list[dict], path: Path, turns: list[dict], is_walk: bool,
+                   expected_project: str) -> tuple[list[dict], list[str]]:
+    """The scripted lines this transcript must carry, and any problem with where the driver stopped.
+
+    A walk carries each pre-probe line. A take carries each line up to the last one the driver sent
+    and none after it: the driver sends nothing past an unheld marker, a timeout or an abort, and the
+    take is still graded (requirement 4). The first version required every line whatever happened,
+    so a take that stopped correctly failed as `never sent`, and `did-not-reach` had no valid
+    transcript to be published from.
+
+    The stop is read from the driver ledger, which is the operator's own record, so it is not taken
+    on trust: for an unheld marker the transcript must show the marker absent from the agent's text
+    after that line. A driver that stopped at a held wait point would manufacture `did-not-reach`.
+    """
+    if is_walk:
+        return steps, []
+    ledger_path = path.parent / "driver-ledger.json"
+    if not ledger_path.is_file():
+        return steps, []
+    try:
+        ledger = json.loads(ledger_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return steps, []
+    outcome = ledger.get("outcome") or ""
+    if outcome.startswith("complete"):
+        return steps, []
+    sent = [r.get("n") for r in ledger.get("turns") or [] if not r.get("recovery")]
+    sent = [n for n in sent if isinstance(n, int)]
+    if not sent:
+        return steps, []
+    last = max(sent)
+    required = [s for s in steps if s["n"] <= last]
+    problems: list[str] = []
+    if outcome.startswith("stopped"):
+        step = next((s for s in steps if s["n"] == last), None)
+        marker = (step or {}).get("marker")
+        if marker:
+            head = _line_head(step["line"], expected_project)
+            idx = max((i for i, t in enumerate(turns)
+                       if t["role"] == "user" and head and head in normalise(t["text"]).lower()),
+                      default=None)
+            after = ("\n".join(t["text"] for t in turns[idx + 1:] if t["role"] == "assistant")
+                     if idx is not None else "")
+            if marker in after:
+                problems.append(
+                    f"the driver stopped at operator turn {last} because its marker was not held, and "
+                    f"the marker {marker!r} is in the agent's reply after that line. A stop at a held "
+                    f"wait point manufactures `did-not-reach`.")
+    return required, problems
+
+
 def operator_line_problems(ops: list[str], steps: list[dict], expected_project: str) -> list[str]:
     """The operator's turns against the script: each step's line, in order, once; then at most
     `at_most` sends of THAT step's pre-registered recovery; and nothing else.
@@ -365,8 +458,22 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
 
     data = tx.load(path)
     turns = data["turns"]
-    ops = [t["text"] for t in turns if t["role"] == "user" and t["text"].strip()]
+    ops, harness, unknown = user_text_records(path, pre)
     joined = normalise(" ".join(ops)).lower()
+
+    n_user = sum(1 for t in turns if t["role"] == "user" and t["text"].strip())
+    if n_user != len(ops) + len(harness) + len(unknown):
+        problems.append(
+            f"the transcript reader counts {n_user} user turn(s) with text and the record reader "
+            f"counts {len(ops) + len(harness) + len(unknown)}. The two disagree, so which turns the "
+            f"operator sent cannot be established.")
+    if unknown:
+        problems.append(
+            f"{len(unknown)} user record(s) carry a harness origin the pre-registration does not "
+            f"name -- first: {unknown[0]!r}. Whether the operator sent it cannot be established.")
+    if harness:
+        print(f"  NOTE     {len(harness)} user record(s) delivered by the harness, not the operator; "
+              f"not counted as operator lines")
 
     if not any(t["role"] == "assistant" and t["text"].strip() for t in turns):
         problems.append(
@@ -387,7 +494,9 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
         return problems
 
     steps = script if not is_walk else [s for s in script if s["n"] < half["probe_operator_turn"]]
-    problems += operator_line_problems(ops, steps, expected_project)
+    required, stop_problems = required_steps(steps, path, turns, is_walk, expected_project)
+    problems += stop_problems
+    problems += operator_line_problems(ops, required, expected_project)
 
     # ---- the fixture ---------------------------------------------------------------------
     fx_problems, fx_note = fixture_binding_problems(path, half)
@@ -452,10 +561,15 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
         theirs = [(s["n"], s["line"], s.get("marker"))
                   for s in spec[other]["operator_script"]
                   if isinstance(s, dict) and s["n"] < spec[other]["probe_operator_turn"]]
-        if mine == theirs:
+        def fixture_of(h: str) -> dict:
+            return {k: v for k, v in (spec[h].get("fixture") or {}).items() if k != "half"}
+        if mine == theirs and fixture_of(half_name) == fixture_of(other):
             print(f"  NOTE     the half is NOT determinable from a walk of {task_id}: its two "
                   f"halves send identical lines before the probe, on the same fixture. This run "
                   f"checked the operator side, not which half it was.")
+        elif mine == theirs:
+            print(f"  NOTE     {task_id}'s two halves send identical lines before the probe and "
+                  f"differ in fixture, so the half is decided by the fixture binding above.")
         return problems
 
     if row_index is None:

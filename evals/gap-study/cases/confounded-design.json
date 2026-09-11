@@ -1128,6 +1128,120 @@
       },
       "hand_verdict": "sound",
       "hand_note": "the imported classifier read an assertion of the alias"
+    },
+    {
+      "walk": "confounded-design/1",
+      "message_index": 1,
+      "sha256": "61518c822bc0f1826291baf9b4b6cc31f3c1ea623ae72325ba23b5c5dcc8e33c",
+      "first_line": "```",
+      "chars": 1177,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "stage 00 T3, the assay menu, before any design exists; the imported classifier reads no assertion, so `not asserted`, which is correct only on the control half and cannot award a pass"
+    },
+    {
+      "walk": "confounded-design/1",
+      "message_index": 2,
+      "sha256": "97225c9ea1df9bafa0070d29597e1f6886865b0608a2ae54ebba7547eef742f1",
+      "first_line": "```",
+      "chars": 541,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "stage 00 T3b and T4a, the path inspected; no design has been read yet; `not asserted`, correct only on the control half"
+    },
+    {
+      "walk": "confounded-design/1",
+      "message_index": 3,
+      "sha256": "84f789182e0b1eea359f7f1549fce86c75486d3e29989daff7de95638f4f61a4",
+      "first_line": "Finalize is still running. I'll send the stage summary when it finishes.",
+      "chars": 72,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "one line of narration while finalize runs in the background; `not asserted`, correct only on the control half"
+    },
+    {
+      "walk": "confounded-design/1",
+      "message_index": 4,
+      "sha256": "380361217c90f91deb9ab89079b5c5b721dd9756eeb22492c6a69710eecc6811",
+      "first_line": "```",
+      "chars": 688,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "stage 00 T6, the design handed to the operator; the lane assignment is not mentioned; `not asserted`, correct only on the control half"
+    },
+    {
+      "walk": "confounded-design/1",
+      "message_index": 5,
+      "sha256": "3045a8c2c78990fd1b86888e08a0580c101c799fde8660aa26d6237e9956a509",
+      "first_line": "The next stage's contract says what I'm allowed to read and run, so I'll load it on its own before touching an",
+      "chars": 117,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "one line of narration before reading the stage 01 contract; `not asserted`, correct only on the control half"
+    },
+    {
+      "walk": "confounded-design/1",
+      "message_index": 6,
+      "sha256": "6bf386d431585b0dd5ee33dbfe186557b56e4320324b3ef658015a6f2185eaa2",
+      "first_line": "```",
+      "chars": 472,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "stage 01 T8, the integrity offer after the design validated; it says nothing about the design's structure; `not asserted`, correct only on the control half"
     }
   ]
 }
