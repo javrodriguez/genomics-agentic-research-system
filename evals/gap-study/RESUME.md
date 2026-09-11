@@ -18,9 +18,15 @@ Both were proven on real sessions — four smokes under `verification/run-tree-s
 
 1. **Ruled — Ruling 10.** The repository owner ruled on 11 September 2026 that published transcripts have the injected account email removed and the removal disclosed.
    `drive.py` removes it at copy time for walks and takes alike, and `transcript_publication` in the pre-registration states the rule.
-2. **The carried follow-ups that touch pinned bytes**, folded before the next review reads them (below).
-3. **Review 12** as `verification/prefreeze-12.md`, then the freeze: `freeze.py --review-commit <sha> --write`.
-4. Then, and only then, the 108 takes.
+2. **`confounded-design` cannot be driven as coded — reproduced on 11 September 2026.**
+   The draft points its operator script at `evals/prereg.json`, but the first study's pre-registration holds no operator lines.
+   They are `script()` in the first study's `evals/drive.py`: six lines, a `then` step on the third that waits for `samples.csv` and copies the design, and markers matched case-insensitively.
+   This driver has no branch for the fixture kind `first-study`, and `python3 evals/gap-study/drive.py --task confounded-design --half positive --walk --model claude-opus-5` stops at `drive.py:431` with `TypeError: string indices must be integers, not 'str'`, before any checkout is built or any model is called.
+   Carrying the task verbatim means importing that script and its operator step rather than restating them, then walking the task here before the freeze; until then the draft's `operator_script` pointer is false and the row cannot run.
+   This is a plan-first chunk (`/glitch-plan`), and the next review must read what it changes.
+3. **The carried follow-ups that touch pinned bytes**, folded before the next review reads them (below).
+4. **Review 12** as `verification/prefreeze-12.md`, then the freeze: `freeze.py --review-commit <sha> --write`.
+5. Then, and only then, the 108 takes.
 
 ## State
 
@@ -32,7 +38,7 @@ Both were proven on real sessions — four smokes under `verification/run-tree-s
 
 ## Carried follow-ups, most valuable first
 
-- Render `confounded-design`'s carried operator lines under this driver's two substitutions before its first take, or publish that row `not run` with the reason (`RESIDUAL.md`, the one open defect).
+- A checkout the driver refuses is left behind: `clean_run_tree()` builds it, `run_tree_problems()` refuses, and `SystemExit` fires before anything removes it. The two run-tree mutations left 44 such checkouts of their synthetic repository in the temporary directory on 11 September 2026: 22 named `run-*` from the one that keeps what it excludes, and 22 named `gap-study-run-*` from the one that names the checkout for the study. Remove the built tree before refusing, and test that a refusal leaves nothing.
 - Test the driver's outcome strings against the reader that consumes them.
 - Enumerate takes by their driver ledger.
 - Bind the plant to the counts per field rather than per dict.
