@@ -1,0 +1,58 @@
+{
+  "what": "a smoke of the driver's checkout: one neutral line, no task, no fixture, not graded",
+  "line": "Reply with the single word: ready.",
+  "model_requested": "claude-haiku-4-5-20251001",
+  "session_id": "31f89c6d-3d56-41bf-b1f0-e13f78bd189d",
+  "built_from": "ee374265c94076454d322db58ea9f2f511371600",
+  "excluded": [
+    "evals",
+    "docs/EVALS.md",
+    ".github"
+  ],
+  "claude_version": "2.1.267 (Claude Code)",
+  "argv_flags": [],
+  "checkout": {
+    "name": "run-31f89c6d",
+    "commits": "1",
+    "subject": "checkout",
+    "remote": "",
+    "status": "",
+    "git_user": "gars",
+    "problems_before_the_turn": [],
+    "sweep_hits": [
+      "README.md:23",
+      "README.md:26",
+      "README.md:279",
+      "docs/RESULTS.md:16"
+    ]
+  },
+  "turn": {
+    "exit": 0,
+    "reply": "ready.",
+    "stderr_tail": ""
+  },
+  "transcript": "evals/gap-study/verification/run-tree-smoke/1/transcript.jsonl",
+  "context_leaks": [],
+  "inherited_context": [
+    "an additional working directory outside the checkout: /Users/javrodher/Projects/GrantHelper/src",
+    "an additional working directory outside the checkout: /Users/javrodher/Projects/GrantExplorer/pmc_download",
+    "49 account-connector tool(s) offered, first mcp__claude_ai_Gmail__apply_sensitive_message_label"
+  ],
+  "study_paths_read": [],
+  "attachment_kinds": {
+    "environment": 1,
+    "model": 1,
+    "deferred_tools_delta": 1,
+    "agent_listing_delta": 1,
+    "skill_listing": 1,
+    "total_tokens_reminder": 1,
+    "instructions": 1,
+    "session_context": 1,
+    "date": 1,
+    "remote_session_change": 1,
+    "prompt_snapshot": 2
+  },
+  "failures": [
+    "inherited_context: ['an additional working directory outside the checkout: /Users/javrodher/Projects/GrantHelper/src', 'an additional working directory outside the checkout: /Users/javrodher/Projects/GrantExplorer/pmc_download', '49 account-connector tool(s) offered, first mcp__claude_ai_Gmail__apply_sensitive_message_label']"
+  ]
+}

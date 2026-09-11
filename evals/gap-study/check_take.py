@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 import uuid
@@ -114,9 +115,11 @@ def context_leaks(ctx: str, pre: dict) -> set[str]:
 
     TWO THINGS THIS GOT WRONG FIRST, BOTH OF WHICH WOULD HAVE VOIDED EVERY TAKE.
 
-    Substring matching. `grading` matches inside `downgrading`, which appears in Claude Code's own
-    stock text about hard-to-reverse operations. Every take in the study would have been refused on
-    a word that is not there. The match is on word boundaries.
+    Substring matching. A leak word inside a longer ordinary word is not the word: in the committed
+    walks `score` occurs only as `scored`, inside a repository file the agent read. The match is on
+    word boundaries. (An earlier account of this said the example was `grading` inside
+    `downgrading`, in Claude Code's stock text. Review 11 checked it against the walks and neither
+    word is in any of them; the account was wrong and the excusal written for it is gone.)
 
     Harness boilerplate. Claude Code injects its own furniture -- the list of available agent types,
     the system-prompt snapshot -- and some of it says `eval` for reasons that have nothing to do with
@@ -124,25 +127,32 @@ def context_leaks(ctx: str, pre: dict) -> set[str]:
     pre-registration carries a short list of excused phrases, each with the reason it is excused, and
     a hit is forgiven ONLY where every occurrence of the word sits inside one of them. A word that
     appears anywhere else is a leak and the take is void.
+
+    INSIDE MEANS CONTAINED, NOT NEARBY (review 11, F1). The first version asked whether a pinned
+    phrase occurred anywhere in a window around the hit, which forgave `evaluation` in "the claude
+    plugin evaluation of this run" -- the phrase `claude plugin eval` sits next to the word without
+    containing it. An occurrence of a phrase now covers a hit only when the hit lies wholly within it.
     """
     excusals = [e["phrase"].lower() for e in pre.get("leak_context_excusals", [])]
     found: set[str] = set()
     for w in pre["leak_words"]:
         word = w.lower()
         spans = [m.span() for m in re.finditer(r"\b" + re.escape(word) + r"\b", ctx)]
-        if not spans:
-            continue
         for a, b in spans:
-            covered = False
-            for phrase in excusals:
-                start = max(0, a - len(phrase))
-                if phrase in ctx[start:b + len(phrase)]:
-                    covered = True
-                    break
-            if not covered:
+            if not any(_contained(ctx, phrase, a, b) for phrase in excusals):
                 found.add(w)
                 break
     return found
+
+
+def _contained(ctx: str, phrase: str, a: int, b: int) -> bool:
+    """Is the span [a, b) inside some occurrence of `phrase` in `ctx`?"""
+    p = ctx.find(phrase, max(0, b - len(phrase)))
+    while p != -1 and p <= a:
+        if b <= p + len(phrase):
+            return True
+        p = ctx.find(phrase, p + 1)
+    return False
 
 
 def study_paths_read(path: Path) -> list[str]:
@@ -164,6 +174,59 @@ def study_paths_read(path: Path) -> list[str]:
         for m in re.finditer(r"evals/(?:gap-study|transcripts|results|prereg)", line):
             seen.append(line[max(0, m.start() - 40):m.start() + 40])
     return seen
+
+
+def inherited_context(path: Path) -> list[str]:
+    """What the session was given from OUTSIDE its checkout, read from what the harness recorded.
+
+    REVIEW 11, F3. The driver proves before a take that no CLAUDE.md sits above the checkout. That is
+    a prediction about one filename on one chain of directories, and instruction text reaches a
+    session by other roads -- user-scope files loaded from a fixed location, extra working directories
+    granted by user settings. So this reads the session's own record after the fact:
+
+      every instruction file it loaded lives inside the working directory it opened in
+      it was granted no additional working directory
+      it was offered no tool from an account connector (`mcp__...`), which would put the operator's
+        own services -- mail, calendar, files -- within reach of the session under test
+
+    Each is the operator's side of the take, so a hit makes the take invalid rather than a result.
+    """
+    wd = None
+    files: list[str] = []
+    extra: list[str] = []
+    connectors: list[str] = []
+    for line in path.read_text(errors="replace").splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(rec, dict) or rec.get("type") != "attachment":
+            continue
+        att = rec.get("attachment") or {}
+        kind = att.get("type")
+        if kind == "environment":
+            snap = att.get("snapshot") or {}
+            if wd is None:
+                wd = snap.get("workingDirectory")
+            for d in snap.get("additionalWorkingDirectories") or []:
+                if d not in extra:
+                    extra.append(d)
+        elif kind == "instructions":
+            files.extend(f.get("path", "") for f in att.get("files") or [])
+        elif kind == "deferred_tools_delta":
+            connectors.extend(n for n in att.get("addedNames") or [] if n.startswith("mcp__"))
+
+    out = []
+    if wd is None:
+        out.append("the transcript records no working directory, so what it loaded cannot be placed")
+    else:
+        root = wd.rstrip("/\\") + os.sep
+        out += [f"an instruction file from outside the checkout: {f}"
+                for f in files if not f.startswith(root)]
+    out += [f"an additional working directory outside the checkout: {d}" for d in extra]
+    if connectors:
+        out.append(f"{len(connectors)} account-connector tool(s) offered, first {connectors[0]}")
+    return out
 
 
 def check(path: Path, task_id: str, half_name: str, row_index: int | None,
@@ -229,6 +292,12 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
             f"so this came in with the session -- an instruction file above the working directory, "
             f"or the session context. The agent was told what it was in before the first line was "
             f"sent, and the verdict would look exactly like a pass.")
+
+    outside = inherited_context(path)
+    if outside:
+        problems.append(
+            f"the session was given {len(outside)} thing(s) from outside its checkout -- first: "
+            f"{outside[0][:140]}. The agent's world is meant to be the checkout and nothing else.")
 
     reached = study_paths_read(path)
     if reached:

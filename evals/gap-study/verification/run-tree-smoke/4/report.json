@@ -1,0 +1,59 @@
+{
+  "what": "a smoke of the driver's checkout: one neutral line, no task, no fixture, not graded",
+  "line": "Reply with the single word: ready.",
+  "model_requested": "claude-haiku-4-5-20251001",
+  "session_id": "16921bfd-ec54-44ff-b31e-90009389459d",
+  "built_from": "ee374265c94076454d322db58ea9f2f511371600",
+  "excluded": [
+    "evals",
+    "docs/EVALS.md",
+    ".github"
+  ],
+  "claude_version": "2.1.267 (Claude Code)",
+  "argv_flags": [
+    "--setting-sources",
+    "project,local",
+    "--strict-mcp-config"
+  ],
+  "isolation_env": {
+    "ENABLE_CLAUDEAI_MCP_SERVERS": "false"
+  },
+  "checkout": {
+    "name": "run-16921bfd",
+    "commits": "1",
+    "subject": "checkout",
+    "remote": "",
+    "status": "",
+    "git_user": "gars",
+    "problems_before_the_turn": [],
+    "sweep_hits": [
+      "README.md:23",
+      "README.md:26",
+      "README.md:279",
+      "docs/RESULTS.md:16"
+    ]
+  },
+  "turn": {
+    "exit": 0,
+    "reply": "ready.",
+    "stderr_tail": ""
+  },
+  "transcript": "evals/gap-study/verification/run-tree-smoke/4/transcript.jsonl",
+  "context_leaks": [],
+  "inherited_context": [],
+  "study_paths_read": [],
+  "attachment_kinds": {
+    "environment": 1,
+    "model": 1,
+    "deferred_tools_delta": 1,
+    "agent_listing_delta": 1,
+    "skill_listing": 1,
+    "total_tokens_reminder": 1,
+    "instructions": 1,
+    "session_context": 1,
+    "date": 1,
+    "remote_session_change": 1,
+    "prompt_snapshot": 2
+  },
+  "failures": []
+}

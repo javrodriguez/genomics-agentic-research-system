@@ -58,10 +58,14 @@ or from the session that will grade the result. No model is called by this file 
 from __future__ import annotations
 
 import argparse
+import io
 import json
+import os
 import shutil
 import subprocess
 import sys
+import tarfile
+import tempfile
 import time
 import uuid
 from datetime import datetime, timezone
@@ -74,18 +78,45 @@ sys.path.insert(0, str(HERE))
 import prereg  # noqa: E402
 import takes as takes_mod  # noqa: E402
 
-STAGING = REPO / "data" / "staging"          # machine-local, git-excluded
 PERMISSION_MODE = "auto"
 RATE_LIMIT_MARKERS = ("rate limit", "usage limit", "weekly limit", "resets", "429")
+
+# WHAT THE SESSION UNDER TEST IS GIVEN BESIDE ITS CHECKOUT: NOTHING FROM THE OPERATOR'S OWN SETUP.
+#
+# The first smoke of the rebuilt checkout (verification/run-tree-smoke/1) showed a headless session
+# opened in a clean temporary directory still receiving two things from the operator's user scope:
+# the extra working directories their user settings grant, and the tools of the account connectors
+# signed in on their Claude account -- mail, calendar and files -- offered to an agent running in auto
+# permission mode. Neither is in the checkout and a stranger's clone has neither. The committed walks
+# carry both. `--setting-sources project,local` reads settings from the checkout alone, and
+# `--strict-mcp-config` with no `--mcp-config` admitted no MCP server in the second smoke. Whether
+# that flag reaches the account connectors is not documented, so the documented switch for them,
+# `ENABLE_CLAUDEAI_MCP_SERVERS=false` (code.claude.com/docs/en/mcp), is set in the session's own
+# environment as well, rather than resting on a side effect. check_take.inherited_context() reads
+# each transcript afterwards and refuses a take that was given either anyway, so these are controls
+# whose effect is measured, not promises.
+ISOLATION_FLAGS = ("--setting-sources", "project,local", "--strict-mcp-config")
+ISOLATION_ENV = {"ENABLE_CLAUDEAI_MCP_SERVERS": "false"}
 
 
 def now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
-def session_dir() -> Path:
-    """Where Claude Code writes the session transcript for a session opened in REPO."""
-    return Path.home() / ".claude" / "projects" / ("-" + str(REPO).strip("/").replace("/", "-"))
+def session_file(session_id: str) -> Path | None:
+    """The session transcript Claude Code wrote for this id, wherever it put it.
+
+    REVIEW 11, BLOCKER 3. The first version derived the directory from REPO. Since the session stopped
+    opening in REPO it looked in the wrong place, so every take would have finished with no
+    transcript. Predicting the directory means copying Claude Code's rule for naming it, which is a
+    fact about one harness version. The session id is a uuid this driver imposed, so the file is
+    found by that id, and more than one match refuses rather than picking one.
+    """
+    base = Path(os.environ.get("CLAUDE_CONFIG_DIR") or (Path.home() / ".claude")) / "projects"
+    hits = sorted(base.glob(f"*/{session_id}.jsonl"))
+    if len(hits) > 1:
+        raise SystemExit(f"REFUSING: {len(hits)} session files carry the id {session_id}: {hits}")
+    return hits[0] if hits else None
 
 
 def neutral_name(session_id: str) -> str:
@@ -99,11 +130,14 @@ def neutral_name(session_id: str) -> str:
 
 
 
-RUN_ROOT = Path("/private/tmp/gap-study-run")
-
 # The checkout the agent runs in. It is deliberately None until a take sets it, so a turn cannot
 # fall back to this repository -- which is where every leaked take was driven from.
 RUN_TREE: Path | None = None
+
+# The one commit the checkout carries, and who it says made it. Neither names anything: Claude Code
+# puts the subjects of the latest commits and the git user in front of the agent on its first turn.
+TREE_SUBJECT = "checkout"
+TREE_IDENTITY = ("gars", "gars@localhost")
 
 
 def no_inherited_instructions(tree: Path) -> list[str]:
@@ -130,32 +164,116 @@ def no_inherited_instructions(tree: Path) -> list[str]:
         p = p.parent
 
 
-def clean_run_tree(commit: str) -> Path:
-    """A checkout of the pinned tree with nothing above it and no study materials inside it.
+def run_tree_path(session_id: str) -> Path:
+    """Where this take's checkout lives: the machine's temporary directory, named for the session.
 
-    `evals/` is removed from the checkout. The pre-registration, the task list, the probes and the
-    graders live there, in the same repository the agent is pointed at. No walk ever reached them,
-    which is why this is a control and not a repair -- an agent that grepped the checkout could read
-    the design of the study it was in, and nothing would have said so.
+    REVIEW 11, BLOCKER 2. The first version hard-coded a root named after this study, and Claude Code
+    hands the agent its working directory -- so the path said what the take was. The checkout now
+    carries the same neutral name as the project (`run-<8 hex>`), under whatever temporary directory
+    the machine has, which is a property of the machine rather than a directory this file names.
     """
-    RUN_ROOT.mkdir(parents=True, exist_ok=True)
-    tree = RUN_ROOT / f"gars-{commit[:12]}"
-    if not (tree / ".git").is_dir():
-        subprocess.run(["git", "clone", "--quiet", "--no-hardlinks", f"file://{REPO}", str(tree)],
-                       check=True, capture_output=True)
-        subprocess.run(["git", "-C", str(tree), "checkout", "--quiet", commit],
-                       check=True, capture_output=True)
-        shutil.rmtree(tree / "evals", ignore_errors=True)
+    return Path(tempfile.gettempdir()).resolve() / neutral_name(session_id)
 
+
+def excluded_from_run_tree(pre: dict) -> list[str]:
+    """The paths the pre-registration leaves out of the checkout. Data, not a constant here."""
+    return [e["path"] for e in pre["run_location"]["excluded_from_the_run_tree"]]
+
+
+def clean_run_tree(commit: str, session_id: str, exclude: list[str], repo: Path = REPO) -> Path:
+    """This take's own checkout of the pinned tree: no study inside it, no history, nothing above it.
+
+    REVIEW 11, BLOCKER 1. The first version cloned this repository and deleted `evals/` from the
+    working tree. A clone carries its history, so every deleted file stayed one `git show` away, and
+    the deletions appeared in `git status` -- which Claude Code puts in front of the agent on its first
+    turn, beside the subjects of the latest commits, which name this study. Deleting the folder did
+    not hide the study; it advertised it.
+
+    So nothing is cloned. The pinned commit is exported with `git archive`, minus the paths the
+    pre-registration excludes, into a directory of its own; a new repository is initialised over it
+    and committed once, under a subject and an identity that name nothing. The agent's checkout has
+    one commit, a clean status, no remote (review 11, F7), and no history in which anything was
+    removed.
+
+    ONE CHECKOUT PER TAKE (review 11, F5). A reused one carried the previous take's project beside the
+    next. The checkout is new, or the take refuses.
+
+    Every property is checked on the BUILT tree before it is returned, rather than trusted from the
+    steps that built it. The first version's guards were verified against constructed strings, and
+    the defect sat in the part no test drove.
+    """
+    tree = run_tree_path(session_id)
+    if tree.exists():
+        raise SystemExit(f"REFUSING: {tree} already exists. Every take gets a checkout of its own; "
+                         f"a reused one carries the previous take's project beside this one.")
+    tree.mkdir(parents=True)
+
+    spec = [f":(exclude){p}" for p in exclude]
+    archive = subprocess.run(["git", "-C", str(repo), "archive", "--format=tar", commit, "--", ".",
+                              *spec], check=True, capture_output=True)
+    with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as tar:
+        if hasattr(tarfile, "tar_filter"):
+            tar.extractall(tree, filter="tar")
+        else:
+            tar.extractall(tree)
+
+    g = ["git", "-C", str(tree)]
+    subprocess.run(g + ["init", "-q"], check=True, capture_output=True)
+    # `main`, whatever the machine's default: the harness tells the agent the main branch is `main`,
+    # and a checkout on `master` beside that sentence is a detail an agent can remark on.
+    subprocess.run(g + ["symbolic-ref", "HEAD", "refs/heads/main"], check=True, capture_output=True)
+    # The identity goes in the checkout's own config, because that is where Claude Code reads the git
+    # user it shows the agent; a -c on one command would leave the operator's global name in view.
+    for key, val in (("user.name", TREE_IDENTITY[0]), ("user.email", TREE_IDENTITY[1]),
+                     ("commit.gpgsign", "false")):
+        subprocess.run(g + ["config", key, val], check=True, capture_output=True)
+    # The staging area the driver writes fixtures into is machine-local in the study's repository
+    # (git-excluded there, not ignored), so it is excluded here too; otherwise the agent's first view
+    # of the checkout's status would list it as untracked.
+    (tree / ".git" / "info").mkdir(parents=True, exist_ok=True)
+    with (tree / ".git" / "info" / "exclude").open("a") as fh:
+        fh.write("data/staging/\n")
+    subprocess.run(g + ["add", "-A"], check=True, capture_output=True)
+    subprocess.run(g + ["commit", "-q", "--no-verify", "-m", TREE_SUBJECT],
+                   check=True, capture_output=True)
+
+    problems = run_tree_problems(tree, session_id, exclude)
+    if problems:
+        raise SystemExit("REFUSING to drive a take in this checkout:\n  - " + "\n  - ".join(problems))
+    return tree
+
+
+def run_tree_problems(tree: Path, session_id: str, exclude: list[str]) -> list[str]:
+    """Everything wrong with a checkout the agent is about to be put in. Empty means nothing.
+
+    Each check is a channel Claude Code was seen, in the committed walks, to put in front of the
+    agent: the instruction files above the working directory, the working directory's own name, and
+    the git state -- status, the latest commit subjects, the remote.
+    """
+    out = []
     inherited = no_inherited_instructions(tree)
     if inherited:
-        raise SystemExit(
-            "REFUSING to drive a take: the agent would inherit instructions from above its working "
-            f"directory -- {inherited}. Claude Code reads every one of these, and anything they "
-            "import, into the agent's context before the first operator line.")
-    if (tree / "evals").exists():
-        raise SystemExit(f"REFUSING: {tree}/evals still exists; the agent could read this study.")
-    return tree
+        out.append(f"the agent would inherit instructions from above its working directory: "
+                   f"{inherited}. Claude Code reads every one, and anything they import.")
+    for p in exclude:
+        if (tree / p).exists():
+            out.append(f"{p} is in the checkout, so the agent could read this study")
+    if tree.name != neutral_name(session_id):
+        out.append(f"the checkout is named {tree.name!r}, not the neutral name for its session")
+
+    def git(*a: str) -> str:
+        return subprocess.run(["git", "-C", str(tree), *a], capture_output=True,
+                              text=True).stdout.strip()
+
+    if git("rev-list", "--all", "--count") != "1":
+        out.append("the checkout carries more than one commit, so it carries history")
+    if git("remote"):
+        out.append("the checkout has a remote, which names where it came from")
+    if git("status", "--porcelain"):
+        out.append("the checkout's status is not clean, and the agent is shown its status")
+    if git("log", "-1", "--format=%s") != TREE_SUBJECT:
+        out.append("the checkout's one commit does not carry the neutral subject")
+    return out
 
 
 def one_turn(line: str, session_id: str, model: str, first: bool,
@@ -167,7 +285,7 @@ def one_turn(line: str, session_id: str, model: str, first: bool,
     """
     argv = ["claude", "-p", line, "--output-format", "stream-json", "--verbose",
             "--permission-mode", PERMISSION_MODE, "--permission-prompts", "none",
-            "--model", model]
+            "--model", model, *ISOLATION_FLAGS]
     argv += ["--session-id", session_id] if first else ["--resume", session_id]
 
     try:
@@ -177,7 +295,8 @@ def one_turn(line: str, session_id: str, model: str, first: bool,
                 "itself, under whatever instruction files sit above it. That is how both studies "
                 "lost their blindness. Call clean_run_tree() first.")
         proc = subprocess.run(argv, cwd=str(RUN_TREE), capture_output=True, text=True,
-                              stdin=subprocess.DEVNULL, timeout=budget_s)
+                              stdin=subprocess.DEVNULL, timeout=budget_s,
+                              env={**os.environ, **ISOLATION_ENV})
     except subprocess.TimeoutExpired:
         return "", 124, f"turn exceeded the pre-registered budget of {budget_s}s"
 
@@ -306,7 +425,8 @@ def main() -> int:
     global RUN_TREE
     head = subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD"],
                           capture_output=True, text=True).stdout.strip()
-    RUN_TREE = clean_run_tree(head)
+    excluded = excluded_from_run_tree(pre)
+    RUN_TREE = clean_run_tree(head, session_id, excluded)
 
     staging = RUN_TREE / "data" / "staging" / name
     if staging.exists():
@@ -370,6 +490,7 @@ def main() -> int:
               "session_id": session_id, "project": name, "source": str(source.relative_to(RUN_TREE)),
               "row": args.row, "permission_mode": PERMISSION_MODE, "permission_prompts": "none",
               "cwd": str(RUN_TREE), "run_tree_has_no_inherited_instructions": True,
+              "run_tree_built_from": head, "run_tree_excluded": excluded,
               "budget_s": budget, "started": now(),
               "claude_version": subprocess.run(["claude", "--version"], capture_output=True,
                                                text=True).stdout.strip(),
@@ -501,16 +622,20 @@ def main() -> int:
         ledger["outcome"] = "complete"
 
     # ---- the transcript is the session file, copied verbatim ---------------------------
-    src = session_dir() / f"{session_id}.jsonl"
+    src = session_file(session_id)
     ledger["finished"] = now()
     out_root.mkdir(parents=True, exist_ok=True)
-    if src.is_file():
+    if src is not None:
         shutil.copy2(src, out_root / "transcript.jsonl")
         ledger["transcript"] = str((out_root / "transcript.jsonl").relative_to(REPO))
     else:
         ledger["transcript"] = None
-        ledger["outcome"] = (ledger["outcome"] or "") + f" — no session file at {src}"
+        ledger["outcome"] = (ledger["outcome"] or "") + f" — no session file for {session_id}"
     (out_root / "driver-ledger.json").write_text(json.dumps(ledger, indent=2) + "\n")
+
+    # The checkout was this take's alone and is rebuilt from the pinned commit on demand; the
+    # evidence is the transcript and the ledger above, both outside it.
+    shutil.rmtree(RUN_TREE, ignore_errors=True)
 
     print(f"\n  outcome  {ledger['outcome']}")
     print(f"  ledger   {(out_root / 'driver-ledger.json').relative_to(REPO)}")

@@ -280,6 +280,44 @@ def m_grading_against_a_draft(s: Sandbox) -> tuple[int, str]:
     return s.run([str(s.study / "run.py"), "--all"]), "run.py --all against a draft"
 
 
+def m_run_tree_keeps_what_it_excludes(s: Sandbox) -> tuple[int, str]:
+    """The checkout built without its exclusions: the study is back in front of the agent."""
+    p = s.study / "drive.py"
+    text = p.read_text()
+    mutated = text.replace("*spec], check=True", "], check=True")
+    if mutated == text:
+        raise RuntimeError("the mutation did not apply; the guard was not exercised")
+    p.write_text(mutated)
+    return (s.run([str(s.study / "test_harness.py"), "TheRunTreeCarriesNothing"]),
+            "test_harness.py TheRunTreeCarriesNothing")
+
+
+def m_run_tree_named_for_the_study(s: Sandbox) -> tuple[int, str]:
+    """The checkout's name says what the take is, and the agent is shown its working directory."""
+    p = s.study / "drive.py"
+    text = p.read_text()
+    mutated = text.replace("return Path(tempfile.gettempdir()).resolve() / neutral_name(session_id)",
+                           "return Path(tempfile.gettempdir()).resolve() / "
+                           "('gap-study-' + neutral_name(session_id))")
+    if mutated == text:
+        raise RuntimeError("the mutation did not apply; the guard was not exercised")
+    p.write_text(mutated)
+    return (s.run([str(s.study / "test_harness.py"), "TheRunTreeCarriesNothing"]),
+            "test_harness.py TheRunTreeCarriesNothing")
+
+
+def m_study_names_dropped_from_the_leak_list(s: Sandbox) -> tuple[int, str]:
+    """Review 11, F2: a leak list that cannot name the study reports clean on a leaked walk."""
+    p = s.study / "prereg-draft.json"
+    d = json.loads(p.read_text())
+    d["leak_words"] = [w for w in d["leak_words"]
+                       if w not in ("gap-study", "gap study", "prereg", "pre-registration",
+                                    "pre-registered")]
+    p.write_text(json.dumps(d, indent=2, ensure_ascii=False))
+    return (s.run([str(s.study / "test_harness.py"), "TheLeakCheckReadsEveryChannel"]),
+            "test_harness.py TheLeakCheckReadsEveryChannel")
+
+
 MUTATIONS = [
     ("an edited contract quote", m_edited_contract_quote, True),
     ("an emptied quote table", m_emptied_quote_table, True),
@@ -296,6 +334,9 @@ MUTATIONS = [
     ("a take with no agent turn", m_take_with_no_agent_turn, False),
     ("a leaked word in an operator turn", m_leaked_word_in_an_operator_turn, False),
     ("grading against a draft", m_grading_against_a_draft, False),
+    ("a checkout that keeps what it excludes", m_run_tree_keeps_what_it_excludes, False),
+    ("a checkout named for the study", m_run_tree_named_for_the_study, False),
+    ("the study's names dropped from the leak list", m_study_names_dropped_from_the_leak_list, False),
 ]
 
 NOT_APPLICABLE = [

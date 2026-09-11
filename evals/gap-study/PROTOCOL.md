@@ -398,3 +398,42 @@ turns on the agent's blindness. No take has run, so no published count is affect
 wants the walks re-driven clean has a named follow-up rather than a silent one.
 
 **Nothing else moved.** No criterion was relaxed, and the design is unchanged.
+
+### Ruling 9 — 2026-09-11 — the checkout is built rather than cloned, and the session is given nothing from the operator's own setup
+
+Review 11 read Ruling 8's fix and ruled against it: four blockers, three of them in the part of the driver no test drove, and one in a sentence.
+It was right on all four, and `verification/prefreeze-11-disposition.md` records what was done with each finding.
+This ruling records what changed, because two of Ruling 8's own particulars were wrong and rulings are append-only.
+
+**Two particulars of Ruling 8, corrected here rather than edited there.**
+Ruling 8 says substring matching found `grading` inside `downgrading`, in Claude Code's own stock text.
+Neither word occurs in any committed walk; the evidenced case of a leak word inside a longer word is `score`, which the walks carry only as `scored`.
+The excusal written for `downgrading` is removed.
+Ruling 8 also says the leaked line named this study by its goal id, yet nothing on the leak list could name the study, so the check it installed was green on the walks it cites.
+The study's own names are on the list now, and on the committed walks the check reports them in the git status of seven walks of eight.
+
+**The clean checkout carried the study.**
+Ruling 8's checkout was a clone with `evals/` deleted.
+A clone keeps its history, and the deletions appeared in the git status Claude Code shows the agent on its first turn, beside commit subjects that name the study.
+The checkout also kept its origin, was reused across takes, and sat under a directory named for the study.
+It is now exported from the pinned commit with `git archive` into a new repository of one commit with no remote, named `run-<8 hex>` under the machine's temporary directory, one per take; `run_location.how_built` states it, and the driver checks the built tree before the first turn.
+`docs/EVALS.md` and `.github/` are excluded beside `evals/`, because both describe the evaluations by name, and `run_location.residual` names the lines elsewhere that still mention them.
+The driver also looked for the session file where a session opened in this repository would write it, so it would have found no transcript for any take; it now finds the file by the session id it imposed.
+
+**The session was given the operator's user scope.**
+Read from the session's own record after the fact, a headless session in a clean checkout was still granted two working directories from the operator's user settings and offered the tools of the account connectors signed in on the operator's Claude account — mail, calendar and files — in auto permission mode.
+All eight committed walks carry both.
+The driver now sends `--setting-sources project,local` and `--strict-mcp-config` and sets `ENABLE_CLAUDEAI_MCP_SERVERS=false`, pre-registered under `driver_constants`.
+`check_take.py` refuses a transcript that shows an instruction file from outside its checkout, an extra working directory, or a connector tool.
+
+**Checked on real sessions, not only on tests.**
+Four smokes of one neutral line, committed under `verification/run-tree-smoke/`, record the checkout's git state and what each session was given, before and after the isolation.
+One walk, `number-fidelity` walk 2, was driven end to end in such a checkout — the fixture built inside it, a resumed turn, the transcript found by id — and `check_take.py` reads it valid.
+Run over the eight earlier walks, the same checker now refuses all eight: each for the inheritance above, and seven for the study's name in their git status.
+
+**The transcripts published from these runs carry one field fewer.**
+Claude Code injects the signed-in account's email address into every session, and no documented setting removes it.
+The new walk's and the smokes' published transcripts have that field removed by `scrub.py`, which asserts that every record a grader reads is unchanged and writes the sha256 before and after beside each transcript; the eight earlier walks already had it removed.
+Whether a graded take's transcript may carry the same removal is not settled here: the rule for a take is that its transcript is the session file copied verbatim, and changing that is the repository owner's word.
+
+**Nothing else moved.** No criterion was relaxed. The tasks, the models, n, the graders and the analysis plan are unchanged.

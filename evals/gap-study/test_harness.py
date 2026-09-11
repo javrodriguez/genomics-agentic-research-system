@@ -740,12 +740,25 @@ class TheLeakCheckReadsEveryChannel(unittest.TestCase):
         self.assertIn("eval", check_take.context_leaks(ctx, pre),
                       "a study named in the agent's own context must be reported as a leak")
 
-    def test_the_word_grading_is_not_found_inside_downgrading(self):
+    def test_a_leak_word_inside_a_longer_word_is_not_the_word(self):
+        """The evidenced case: in the committed walks `score` occurs only as `scored`.
+
+        (This test used to be about `grading` inside `downgrading` in Claude Code's stock text.
+        Review 11 found neither word in any committed walk, so the example was wrong and is gone.)
+        """
         check_take = gap_check_take()
         pre = prereg.load()
-        ctx = self._ctx("Hard-to-reverse operations: removing or downgrading packages.")
+        ctx = self._ctx("the reproduction campaign scored three projects")
         self.assertEqual(set(), check_take.context_leaks(ctx, pre),
-                         "substring matching would refuse every take on the word `downgrading`")
+                         "a word-boundary match must not find `score` inside `scored`")
+
+    def test_an_excusal_forgives_only_what_it_contains(self):
+        """Review 11, F1: the phrase next to a word forgave the word, and it must not."""
+        check_take = gap_check_take()
+        pre = prereg.load()
+        ctx = self._ctx("the claude plugin evaluation of this run")
+        self.assertIn("evaluation", check_take.context_leaks(ctx, pre),
+                      "`claude plugin eval` does not contain `evaluation`, so it cannot excuse it")
 
     def test_harness_boilerplate_is_excused_only_where_it_is_pinned(self):
         check_take = gap_check_take()
@@ -763,15 +776,41 @@ class TheLeakCheckReadsEveryChannel(unittest.TestCase):
             self.assertGreater(len(e.get("why", "")), 60,
                                f"{e.get('phrase')!r} is excused without a reason a reader can weigh")
 
-    def test_the_published_walks_carry_no_leak_in_their_context(self):
-        """The bytes actually committed, not a constructed string."""
+    def test_the_guard_sees_the_study_named_in_each_walks_git_status(self):
+        """The bytes actually committed, read through the channel the guard claims to cover.
+
+        This test used to assert the opposite -- that the published walks carry no leak -- and it was
+        green for a reason it did not name (review 11, F6): the scrub had already removed the
+        instruction files, and nothing on the leak list could name this study (F2). The walks were
+        driven in the study's own repository, so Claude Code showed the agent its git status and the
+        subjects of the latest commits, which name the study. Every walk whose git status carries one
+        of the study's names must be reported by the guard, on those exact bytes.
+        """
+        import re
         check_take = gap_check_take()
         pre = prereg.load()
+        names = ("gap-study", "gap study", "prereg")
         walks = sorted((HERE / "walks").glob("*/*/transcript.jsonl"))
         self.assertTrue(walks, "no walk was read; this test measured nothing")
+        named_any = False
         for w in walks:
+            status = ""
+            for line in w.read_text(errors="replace").splitlines():
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(rec, dict) or rec.get("type") != "attachment":
+                    continue
+                if (rec.get("attachment") or {}).get("type") == "session_context":
+                    status += line.lower()
+            expected = {n for n in names if re.search(r"\b" + re.escape(n) + r"\b", status)}
+            named_any = named_any or bool(expected)
             got = check_take.context_leaks(check_take.context_text(w), pre)
-            self.assertEqual(set(), got, f"{w.name} carries {got} in the agent's loaded context")
+            self.assertTrue(expected <= got,
+                            f"{w.parent.parent.name}/{w.parent.name}: its git status names "
+                            f"{sorted(expected)} and the guard reported {sorted(got)}")
+        self.assertTrue(named_any, "no walk's git status named the study, so this measured nothing")
 
     def test_no_published_walk_carries_the_operator_private_material(self):
         marks = ["MEMORY.md - Long-Term Memory", "USER.md - About You", "@gmail.com"]
@@ -831,6 +870,151 @@ class TheAgentRunsWhereNothingIsInherited(unittest.TestCase):
                      if "relative_to(REPO)" in ln and ("format(" in ln or "source=" in ln)]
         self.assertEqual([], offenders,
                          "an operator line is rendering a path relative to this repository")
+
+
+class TheRunTreeCarriesNothing(unittest.TestCase):
+    """Review 11, blockers 1 to 3 and follow-ups 5 and 7, read through git rather than asserted.
+
+    The first checkout was a clone with `evals/` deleted. That kept the study one `git show` away,
+    listed its deletions in the status Claude Code shows the agent, kept an origin, reused one tree
+    for every take, and sat under a root named for the study. These tests build a real checkout from
+    a real repository whose history holds the study, and read the result the way the harness does.
+    """
+
+    EXCLUDE = ["evals", "docs/EVALS.md", ".github"]
+
+    def test_what_the_pre_registration_says_is_what_the_driver_does(self):
+        """A constant described in the frozen file and a constant in code drift apart silently."""
+        drive = self._drive()
+        pre = prereg.load()
+        self.assertEqual(tuple(pre["driver_constants"]["isolation_flags"]), drive.ISOLATION_FLAGS,
+                         "the pre-registered isolation flags are not the ones the driver sends")
+        self.assertEqual(pre["driver_constants"]["isolation_env"], drive.ISOLATION_ENV,
+                         "the pre-registered isolation environment is not the one the driver sets")
+        self.assertEqual(sorted(self.EXCLUDE), sorted(drive.excluded_from_run_tree(pre)),
+                         "the pre-registered exclusions are not the ones these tests build with")
+        self.assertEqual(pre["driver_constants"]["permission_mode"], drive.PERMISSION_MODE)
+
+    def _drive(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gap_drive_tree", HERE / "drive.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def _repo(self, td: Path) -> tuple[Path, str]:
+        import subprocess
+        repo = td / "src"
+        (repo / "evals" / "gap-study").mkdir(parents=True)
+        (repo / "evals" / "gap-study" / "prereg.json").write_text('{"a": 1}\n')
+        (repo / "docs").mkdir()
+        (repo / "docs" / "EVALS.md").write_text("the first study\n")
+        (repo / ".github").mkdir()
+        (repo / ".github" / "ci.yml").write_text("run: evals/gap-study/test_harness.py\n")
+        (repo / "gars").mkdir()
+        (repo / "gars" / "CLAUDE.md").write_text("the system under test\n")
+        g = ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t",
+             "-c", "commit.gpgsign=false"]
+        subprocess.run(["git", "init", "-q", str(repo)], check=True, capture_output=True)
+        subprocess.run(g + ["add", "-A"], check=True, capture_output=True)
+        subprocess.run(g + ["commit", "-qm", "slice 01: the gap study opens"], check=True,
+                       capture_output=True)
+        head = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], check=True,
+                              capture_output=True, text=True).stdout.strip()
+        return repo, head
+
+    def _build(self, drive, td: Path):
+        import uuid
+        repo, head = self._repo(td)
+        sid = str(uuid.uuid4())
+        return drive.clean_run_tree(head, sid, self.EXCLUDE, repo=repo), sid
+
+    def test_the_checkout_has_no_study_no_history_no_origin_and_a_neutral_name(self):
+        import shutil
+        import subprocess
+        import tempfile
+        drive = self._drive()
+        with tempfile.TemporaryDirectory() as td:
+            tree, sid = self._build(drive, Path(td))
+            try:
+                def git(*a):
+                    return subprocess.run(["git", "-C", str(tree), *a], capture_output=True,
+                                          text=True)
+                for p in self.EXCLUDE:
+                    self.assertFalse((tree / p).exists(), f"{p} is in the agent's checkout")
+                self.assertTrue((tree / "gars" / "CLAUDE.md").is_file(),
+                                "the system under test must be in the checkout")
+                self.assertNotEqual(0, git("show", "HEAD:evals/gap-study/prereg.json").returncode,
+                                    "the pre-registration is one `git show` away from the agent")
+                self.assertEqual("1", git("rev-list", "--all", "--count").stdout.strip(),
+                                 "the checkout carries history")
+                self.assertEqual("", git("remote").stdout.strip(), "the checkout names its origin")
+                self.assertEqual("", git("status", "--porcelain").stdout.strip(),
+                                 "the agent is shown a status that lists what was removed")
+                self.assertEqual(drive.TREE_SUBJECT, git("log", "-1", "--format=%s").stdout.strip(),
+                                 "the agent is shown a commit subject that names something")
+                self.assertEqual(drive.TREE_IDENTITY[0], git("config", "user.name").stdout.strip())
+                self.assertEqual(drive.neutral_name(sid), tree.name,
+                                 "the agent is shown its working directory, so its name must be neutral")
+                self.assertEqual([], drive.run_tree_problems(tree, sid, self.EXCLUDE))
+            finally:
+                shutil.rmtree(tree, ignore_errors=True)
+
+    def test_a_checkout_is_never_reused(self):
+        import shutil
+        import tempfile
+        drive = self._drive()
+        with tempfile.TemporaryDirectory() as td:
+            tree, sid = self._build(drive, Path(td))
+            try:
+                repo_head = __import__("subprocess").run(
+                    ["git", "-C", str(Path(td) / "src"), "rev-parse", "HEAD"],
+                    capture_output=True, text=True).stdout.strip()
+                with self.assertRaises(SystemExit):
+                    drive.clean_run_tree(repo_head, sid, self.EXCLUDE, repo=Path(td) / "src")
+            finally:
+                shutil.rmtree(tree, ignore_errors=True)
+
+    def test_a_dirty_status_is_a_problem_the_driver_reports(self):
+        import shutil
+        import tempfile
+        drive = self._drive()
+        with tempfile.TemporaryDirectory() as td:
+            tree, sid = self._build(drive, Path(td))
+            try:
+                (tree / "stray.txt").write_text("x\n")
+                self.assertTrue(any("status" in p for p in
+                                    drive.run_tree_problems(tree, sid, self.EXCLUDE)),
+                                "an untracked file is in the status the agent is shown")
+            finally:
+                shutil.rmtree(tree, ignore_errors=True)
+
+    def test_the_session_file_is_found_by_its_id_and_never_guessed(self):
+        """Review 11, blocker 3: the directory was predicted from the wrong working directory."""
+        import os
+        import tempfile
+        import uuid
+        drive = self._drive()
+        with tempfile.TemporaryDirectory() as td:
+            sid = str(uuid.uuid4())
+            d = Path(td) / "projects" / "-private-var-folders-x-T-run-abcd1234"
+            d.mkdir(parents=True)
+            (d / f"{sid}.jsonl").write_text("{}\n")
+            old = os.environ.get("CLAUDE_CONFIG_DIR")
+            os.environ["CLAUDE_CONFIG_DIR"] = td
+            try:
+                self.assertEqual(d / f"{sid}.jsonl", drive.session_file(sid))
+                self.assertIsNone(drive.session_file(str(uuid.uuid4())))
+                twin = Path(td) / "projects" / "elsewhere"
+                twin.mkdir()
+                (twin / f"{sid}.jsonl").write_text("{}\n")
+                with self.assertRaises(SystemExit):
+                    drive.session_file(sid)
+            finally:
+                if old is None:
+                    os.environ.pop("CLAUDE_CONFIG_DIR", None)
+                else:
+                    os.environ["CLAUDE_CONFIG_DIR"] = old
 
 
 def main() -> int:
