@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 import tempfile
 import sys
@@ -86,6 +87,8 @@ PINNED = [
     "evals/gap-study/language-allowlist.json",
     # what the frozen file was frozen FROM
     "evals/gap-study/prereg-draft.json",
+    # the instruction file every take loads at its checkout's root, bound by content (review 14)
+    "CLAUDE.md",
     # the first study's shared readers, imported rather than copied
     "evals/transcript.py",
     "evals/stated_count.py",
@@ -128,6 +131,26 @@ def pin(path: str) -> dict:
     }
 
 
+def review_file_problems(review_commit: str) -> tuple[list[str], str | None]:
+    """The seed commit must land exactly one review report, committed exactly once (review 14, F5).
+
+    The take order is seeded by the review commit's sha. A report re-committed under another message or
+    time yields another sha and another order, so the operator could choose among as many orders as it
+    cared to commit. One report, one commit, recorded in the frozen file, lets a reader see it was not.
+    """
+    code, touched = git("show", "--name-only", "--format=", review_commit)
+    if code != 0:
+        return [f"{review_commit[:12]} cannot be read"], None
+    reports = [ln for ln in touched.splitlines()
+               if re.search(r"^evals/gap-study/verification/prefreeze-\d+\.md$", ln)]
+    if len(reports) != 1:
+        return [f"{review_commit[:12]} lands {len(reports)} pre-freeze review reports; the seed must land exactly one"], None
+    code, hist = git("log", "--format=%H", "--", reports[0])
+    if len(hist.split()) != 1:
+        return [f"{reports[0]} was committed {len(hist.split())} times; the seed would be one of several candidates"], None
+    return [], reports[0]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Freeze the pre-registration, once.")
     ap.add_argument("--review-commit", required=True,
@@ -152,8 +175,15 @@ def main() -> int:
               f"pre-freeze review, not some other commit.\nIt touched:\n{touched[:400]}")
         return 2
 
+    problems, review_file = review_file_problems(args.review_commit)
+    if problems:
+        print("refusing: " + " ".join(problems))
+        return 2
+
     d = json.loads(DRAFT.read_text())
     reviewed_sha256 = hashlib.sha256(DRAFT.read_bytes()).hexdigest()
+    d["pre_freeze_review_file"] = review_file
+    d["pre_freeze_review_sha256"] = hashlib.sha256((REPO / review_file).read_bytes()).hexdigest()
 
     d["status"] = "FROZEN. Read-only to the run. A later change is published as `amended`, with " \
                   "before and after and both regrades side by side, never corrected in place."
@@ -296,6 +326,7 @@ def main() -> int:
 
     print(f"draft sha256        {reviewed_sha256}")
     print(f"review commit       {args.review_commit[:12]}")
+    print(f"review report       {review_file}  sha256 {d['pre_freeze_review_sha256']}  (committed once)")
     print(f"gars tree at freeze {gars_tree[:12]}"
           f"  {'(unchanged since the first study)' if gars_tree == d['system_under_test']['gars_tree_sha'] else '(CHANGED — every row must say so)'}")
     print(f"harness             {ver}")

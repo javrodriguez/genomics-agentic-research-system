@@ -236,6 +236,12 @@ def cmd_add(args) -> int:
     if len(counted) >= pre["n"]:
         print(f"that cell already has {len(counted)} registered takes and n is {pre['n']}")
         return 2
+    paused = [i for i in cell if outcome(i) == "pause"]
+    if len(paused) >= int(pre["pause_cap"]):
+        print(f"that cell has had {len(paused)} pauses and the cap is {pre['pause_cap']}. A pause frees a "
+              f"slot on the driver's record alone, so it is capped like a rehearsal; the cell publishes "
+              f"`incomplete — mechanical` and no further attempt is registered.")
+        return 2
     rehearsed = [i for i in cell if outcome(i) == "rehearsal"]
     if len(rehearsed) >= int(pre["rehearsal_cap"]):
         print(f"that cell has had {len(rehearsed)} rehearsals and the cap is {pre['rehearsal_cap']}. "

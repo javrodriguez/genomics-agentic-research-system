@@ -112,6 +112,22 @@ def models_read(t: Path) -> list[str]:
     return sorted(seen)
 
 
+def pauses_on_disk(task_id: str, half: str, model: str) -> int:
+    """Take pauses for this cell (review 14): published beside the rehearsals, both capped."""
+    root = HERE / "pauses" / task_id / half / model
+    if not root.is_dir():
+        return 0
+    n = 0
+    for led in root.glob("*/driver-ledger.json"):
+        try:
+            row = json.loads(led.read_text())
+        except json.JSONDecodeError:
+            continue
+        if row.get("kind") == "take":
+            n += 1
+    return n
+
+
 def grade_cell(task_id: str, half: str, model: str, spec: dict, n: int) -> dict:
     reason = prereg.not_run_reason(model)
     if reason:
@@ -171,7 +187,7 @@ def grade_cell(task_id: str, half: str, model: str, spec: dict, n: int) -> dict:
     state = STATE_RAN if len(out_labels) == n else f"{STATE_INCOMPLETE}, {len(out_labels)} of {n}"
     read = sorted({m for x in out_labels for m in x["model_read"]})
     return {"state": state, "labels": out_labels, "k": k, "n": n, "rehearsals": rehearsed,
-            "models_read": read}
+            "pauses": pauses_on_disk(task_id, half, model), "models_read": read}
 
 
 def run_task(task_id: str) -> dict:

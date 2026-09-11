@@ -88,7 +88,7 @@ PERMISSION_MODE = "auto"
 FINALIZE_WAIT_S = 180
 # Word-bounded, and without `resets` (review 13, F6): a pause is uncapped where a rehearsal is capped,
 # so a death before the first turn whose message merely says "resets" must not be read as a pause.
-RATE_LIMIT_MARKERS = ("rate limit", "usage limit", "weekly limit", "429")
+RATE_LIMIT_MARKERS = ("rate limit", "usage limit", "weekly limit", "429")  # = driver_constants.rate_limit_markers
 
 # WHAT THE SESSION UNDER TEST IS GIVEN BESIDE ITS CHECKOUT: NOTHING FROM THE OPERATOR'S OWN SETUP.
 #

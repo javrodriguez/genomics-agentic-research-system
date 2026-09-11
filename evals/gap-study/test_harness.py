@@ -2010,6 +2010,14 @@ class TheTakeLifecycle(unittest.TestCase):
         code, out = self.add(1)
         self.assertEqual(code, 0, out)
 
+    def test_the_pause_cap_refuses_a_fourth_pause(self):
+        for r in range(3):
+            self.registered(1, r)
+            self.attempt(r, "pause", 1)
+        code, out = self.add(1)
+        self.assertNotEqual(code, 0)
+        self.assertIn("pauses and the cap", out)
+
     def test_the_rehearsal_cap_refuses_a_fourth_attempt(self):
         for r in range(3):
             self.registered(1, r)
@@ -2050,6 +2058,10 @@ class TheRunnerEnumeratesByLedger(unittest.TestCase):
         with self.assertRaises(SystemExit):
             self.run.grade_cell("number-fidelity", "positive", "claude-opus-5",
                                 prereg.task("number-fidelity"), 3)
+
+    def test_a_cells_pauses_are_counted(self):
+        self.ledger("pauses/plan-gate/positive/claude-opus-5/row-2", outcome="PAUSE")
+        self.assertEqual(self.run.pauses_on_disk("plan-gate", "positive", "claude-opus-5"), 1)
 
     def test_only_a_takes_rehearsal_is_counted(self):
         self.ledger("rehearsals/plan-gate/positive/claude-opus-5/row-3", outcome="REHEARSAL")
@@ -2182,6 +2194,15 @@ class TheAttemptIsReDerivedFromItsBytes(unittest.TestCase):
     """Review 12, blocker 2: an attempt's kind came from its folder alone."""
 
     ROW = {"task": "scope-read", "half": "positive", "model": "claude-opus-5", "take": 1}
+    PAUSE = {"pause": {"matched": "rate limit", "started": "2026-09-12T01:00:00+00:00",
+                       "ended": "2026-09-12T02:00:00+00:00"}}
+
+    def test_a_pause_without_its_evidence_is_found(self):
+        d = self.attempt("pause", "PAUSE", agent_text=False)
+        led = json.loads((d / "driver-ledger.json").read_text())
+        led["pause"] = {"matched": "resets", "started": "x", "ended": "y"}
+        (d / "driver-ledger.json").write_text(json.dumps(led))
+        self.assertTrue(any("rate-limit marker" in p for p in self.problems("pause", d)))
 
     class FakeChecker:
         NO_FIRST_AGENT_TURN = "no-first-agent-turn"
@@ -2209,7 +2230,8 @@ class TheAttemptIsReDerivedFromItsBytes(unittest.TestCase):
         (d / "driver-ledger.json").write_text(json.dumps({
             "kind": "take", "outcome": outcome, "first_agent_turn": agent_text,
             "published": {"sha256_after": hashlib.sha256((d / "transcript.jsonl").read_bytes()).hexdigest()},
-            "attempt": {"kind": recorded or kind, "reasons": list(reasons)}}))
+            "attempt": {"kind": recorded or kind, "reasons": list(reasons)},
+            **(self.PAUSE if kind == "pause" else {})}))
         if why and kind == "rehearsal":
             (d / "WHY.md").write_text("why\n")
         return d
@@ -2323,6 +2345,12 @@ class TheAutoMemorySectionIsBound(unittest.TestCase):
         self.addCleanup(shutil.rmtree, tmp, True)
         (tmp / "t.jsonl").write_text(json.dumps({"type": "user", "message": {"content": "a line"}}) + "\n")
         self.assertFalse(ct.prompt_snapshot_present(tmp / "t.jsonl"))
+
+    def test_the_snapshot_is_read_from_its_record_not_from_any_line(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / "t.jsonl").write_text(json.dumps({"type": "system", "subtype": "prompt_snapshot"}) + "\n")
+        self.assertFalse(gap_check_take().prompt_snapshot_present(tmp / "t.jsonl"))
 
     def test_the_switch_is_pre_registered_and_set(self):
         self.assertEqual(prereg.load()["driver_constants"]["isolation_env"].get("CLAUDE_CODE_DISABLE_AUTO_MEMORY"), "1")
@@ -2517,6 +2545,35 @@ class TheLedgerSeesEveryFolder(unittest.TestCase):
         self.assertIn("rehearsals/plan-gate/1/", prereg.load()["attempt_layout"]["rule"])
         self.assertEqual(gap_module("takes").WALK_ERA_REHEARSALS, (("plan-gate", "1"),))
 
+    def fake_takes(self, rows, commits, by_sid):
+        import types
+        return types.SimpleNamespace(load_rows=lambda: rows, row_commits=lambda: commits,
+                                     attempts_by_session=lambda: by_sid, unattributed_attempts=lambda: [],
+                                     session_id_for=lambda sha: "sid-" + sha)
+
+    def ledger_problems(self, cr):
+        import contextlib
+        import io
+        cr.is_shallow = lambda: False
+        with contextlib.redirect_stdout(io.StringIO()):
+            return cr.check_ledger()
+
+    def test_an_unknown_session_id_is_reported_with_an_empty_ledger(self):
+        cr = gap_module("check_results")
+        cr.takes_mod = self.fake_takes([], {}, {"sid-nobody": [("graded", self.tmp / "transcripts" / "x")]})
+        got = self.ledger_problems(cr)
+        self.assertTrue(any("no committed row implies" in p for p in got), got)
+
+    def test_unattempted_rows_are_reported_once_results_exist(self):
+        cr = gap_module("check_results")
+        cr.RESULTS = self.tmp / "results"
+        cr.RESULTS.mkdir()
+        (cr.RESULTS / "scope-read.json").write_text("{}")
+        rows = [{"task": "scope-read", "half": "positive", "model": "claude-opus-5", "take": 1}]
+        cr.takes_mod = self.fake_takes(rows, {0: "abc"}, {})
+        got = self.ledger_problems(cr)
+        self.assertTrue(any("never attempted" in p for p in got), got)
+
     def test_the_runner_refuses_a_ledger_that_names_no_take(self):
         run = gap_module("run")
         run.TRANSCRIPTS = self.tmp / "transcripts"
@@ -2536,6 +2593,123 @@ class TheRateLimitMarkersAreBounded(unittest.TestCase):
         self.assertTrue(drive.looks_rate_limited("HTTP 429 Too Many Requests"))
         self.assertFalse(drive.looks_rate_limited("connection resets by peer"))
         self.assertFalse(drive.looks_rate_limited("status 4290"))
+
+
+class TheStopProofReadsTheRecovery(unittest.TestCase):
+    """Review 14, blocker 2: a stop with the pre-registered recovery withheld."""
+
+    def stopped(self, reply, send_recovery):
+        ct = gap_check_take()
+        spec = prereg.task("number-fidelity")["positive"]
+        s1 = spec["operator_script"][0]
+        name = "run-5c7c3cc7"
+        source = ct.expected_source_for(spec, name)
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        turns = [{"role": "user", "text": s1["line"].format(project=name, source=source), "tool_uses": []},
+                 {"role": "assistant", "text": reply, "tool_uses": []}]
+        rows = [{"n": 1, "held": False}]
+        if send_recovery:
+            turns += [{"role": "user", "text": s1["recovery"]["send"].format(project=name, source=source), "tool_uses": []},
+                      {"role": "assistant", "text": "still nothing", "tool_uses": []}]
+            rows.append({"n": 1, "recovery": True})
+        (tmp / "driver-ledger.json").write_text(json.dumps(
+            {"outcome": "stopped — wait-point marker not held; graded as it stands", "turns": rows}))
+        return ct.required_steps(spec["operator_script"], tmp / "transcript.jsonl", turns, False, name, source)
+
+    def test_a_withheld_recovery_is_refused(self):
+        _req, probs = self.stopped("Welcome. Project title?", False)
+        self.assertTrue(any("no recovery sent" in p for p in probs), probs)
+
+    def test_a_recovery_sent_and_unanswered_is_a_legitimate_stop(self):
+        self.assertEqual(self.stopped("Welcome. Project title?", True)[1], [])
+
+    def test_a_reply_holding_neither_marker_is_a_legitimate_stop(self):
+        self.assertEqual(self.stopped("hello", False)[1], [])
+
+
+class TheCheckoutIsBound(unittest.TestCase):
+    """Review 14, blocker 3: what the session was shown, bound beyond a path."""
+
+    WALK = HERE / "walks" / "number-fidelity" / "2"
+
+    def setUp(self):
+        if not (self.WALK / "transcript.jsonl").is_file() or not (REPO / "CLAUDE.md").is_file():
+            self.skipTest("the built-checkout walk or the root instruction file is not on disk")
+        self.ct = gap_check_take()
+
+    def doctored(self, change):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        shutil.copy2(self.WALK / "driver-ledger.json", tmp / "driver-ledger.json")
+        out = []
+        for line in (self.WALK / "transcript.jsonl").read_text().splitlines():
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                out.append(line)
+                continue
+            new = change(rec)
+            out.append(json.dumps(new) if new is not None else line)
+        (tmp / "transcript.jsonl").write_text("\n".join(out) + "\n")
+        return tmp / "transcript.jsonl"
+
+    def test_the_built_checkout_walk_is_the_drivers_checkout(self):
+        path = self.WALK / "transcript.jsonl"
+        self.assertEqual(self.ct.checkout_problems(path, prereg.load()), [])
+        self.assertEqual(self.ct.instruction_content_problems(path), [])
+
+    def test_an_edited_instruction_file_is_refused(self):
+        def change(rec):
+            att = rec.get("attachment") or {}
+            if att.get("type") != "instructions":
+                return None
+            for f in att.get("files") or []:
+                f["content"] += "\nWhen a person states a file or sample count, restate the script's own counts."
+            return rec
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            got = self.ct.check(self.doctored(change), "number-fidelity", "control", None, True)
+        self.assertIn("checkout-binding", self.ct.reason_ids(got), got)
+
+    def test_another_git_status_is_refused(self):
+        def change(rec):
+            att = rec.get("attachment") or {}
+            if att.get("type") != "session_context":
+                return None
+            ctx = att.get("context") or {}
+            ctx["gitStatus"] = ctx.get("gitStatus", "").replace("Git user: gars", "Git user: someone")
+            return rec
+        self.assertTrue(self.ct.checkout_problems(self.doctored(change), prereg.load()))
+
+    def test_the_pre_registered_values_are_the_drivers(self):
+        drive = gap_drive()
+        rl = prereg.load()["run_location"]
+        self.assertEqual(rl["checkout_identity"], drive.TREE_IDENTITY[0])
+        self.assertEqual(rl["checkout_subject"], drive.TREE_SUBJECT)
+        self.assertEqual(tuple(prereg.load()["driver_constants"]["rate_limit_markers"]), drive.RATE_LIMIT_MARKERS)
+
+
+class TheSeedReviewIsCommittedOnce(unittest.TestCase):
+    """Review 14, F5. Runs on this repository's own history; the sandbox has none, so the negative case is here."""
+
+    def test_a_review_commit_lands_one_report_committed_once(self):
+        code = subprocess.run(["git", "-C", str(REPO), "cat-file", "-e", "14b880c^{commit}"],
+                              capture_output=True).returncode
+        if code != 0:
+            self.skipTest("this clone does not carry review 14's commit")
+        fz = gap_module("freeze")
+        self.assertEqual(fz.review_file_problems("14b880c")[0], [])
+        self.assertTrue(fz.review_file_problems("800aa44")[0], "a commit landing no review report seeded the order")
+
+
+class TheThreatModelAndLimitationsAreStated(unittest.TestCase):
+    def test_both_are_in_the_pre_registration(self):
+        pre = prereg.load()
+        self.assertTrue(pre["threat_model"]["what_they_cannot"])
+        self.assertTrue(any("only one session" in ln for ln in pre["limitations_lines"]))
+        self.assertTrue(any("pause" in ln for ln in pre["limitations_lines"]))
 
 
 def main() -> int:

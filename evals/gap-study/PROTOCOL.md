@@ -678,3 +678,35 @@ The session binding proves a row was committed before its session opened; it can
 
 No criterion moved.
 No take has run.
+
+### Ruling 18 — 2026-09-11 — review 14's three blockers are folded, and the threat model the checks answer to is stated
+
+Review 14 (`verification/prefreeze-14.md`) read review 13's two blockers closed in the code, upheld the six layer verdicts, and ruled do not freeze on three narrower blockers; each was verified against the code.
+`verification/prefreeze-14-disposition.md` records what was done with each finding.
+
+**A pause is capped, evidenced and counted.**
+A pause freed a slot on the driver's record alone, with no cap, so one slot could be attempted without bound and the ledger check stayed clean.
+Pauses are now capped per half per model like rehearsals (`pause_cap`), a pause ledger must name the pre-registered rate-limit marker it matched and when it waited, and each cell's results record its pauses beside its rehearsals.
+
+**A stop is proven against the recovery too.**
+The stop proof read the step's marker and not the recovery's, so a stop at a reply that held the recovery's own marker, with the recovery withheld, passed and published `did-not-reach`.
+A stop at a step that carries a recovery now needs the recovery sent, or its marker absent from the reply.
+
+**The checkout the session saw is bound.**
+The instruction file the session loaded was bound by its path only.
+The take checker now requires the session's own record of its git status to show the driver's checkout, and the instruction files it loaded to carry the pinned tree's bytes; the freeze pins the root `CLAUDE.md`.
+
+**Also folded.**
+An attempt carrying a session id no committed row implies is reported even with no row registered.
+Once results are committed, a registered row never attempted is reported.
+The freeze requires the review report that seeds the take order to have been committed exactly once, and records it.
+The prompt snapshot is read from its record, not from any line that names it.
+
+**The threat model, stated.**
+Fourteen reviews have each found a narrower way for an operator to move a record.
+The pre-registration now says what the checks defend, which is the pinned driver's own failures, a misfiled or moved attempt, and a hand edit to any one record, and what they cannot, which is a complete and coherent set of records fabricated by the operator, or a second session opened for one row.
+It also fixes the limitations lines a published section will carry, including the ones review 14 named: pauses and deaths before the first turn are the driver's records and are counted per cell, and the timed-out and aborted labels come from the driver's per-turn record.
+A later review is asked to judge findings against that statement.
+
+No criterion moved.
+No take has run.

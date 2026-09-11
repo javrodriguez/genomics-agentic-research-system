@@ -122,6 +122,18 @@ def check_ledger() -> list[str]:
         problems.append(f"{d.relative_to(HERE)} holds a driver ledger or a transcript that no attempt's "
                         f"ledger ties to a session id: it was never registered, or its ledger was written by hand")
 
+    # REVIEW 14, F1. An attempt whose session id no committed row implies is reported before the
+    # empty-ledger return too: with no row registered, a planted folder with a made-up id was graded.
+    by_sid = takes_mod.attempts_by_session()
+    sid_row = {takes_mod.session_id_for(commits[i]): i for i in range(len(rows)) if i in commits}
+    for sid, hits in by_sid.items():
+        if sid not in sid_row:
+            problems.append(f"an attempt at {hits[0][1]} carries session id {sid}, which no committed "
+                            f"row implies: it was never registered")
+        if len(hits) > 1:
+            problems.append(f"row {sid_row.get(sid)} has {len(hits)} attempts "
+                            f"({[str(h[1].relative_to(HERE)) for h in hits]}); a row is attempted once")
+
     if not rows:
         print("  the ledger is empty: no take has been registered")
         return problems
@@ -142,15 +154,6 @@ def check_ledger() -> list[str]:
     # EVERY ATTEMPT BELONGS TO EXACTLY ONE COMMITTED ROW, in the folder its kind puts it in
     # (prereg attempt_layout). The first version read only transcripts under the graded layout, so a
     # rehearsal or a pause could not be tied to its row and an unregistered attempt went unseen.
-    by_sid = takes_mod.attempts_by_session()
-    sid_row = {takes_mod.session_id_for(commits[i]): i for i in range(len(rows)) if i in commits}
-    for sid, hits in by_sid.items():
-        if sid not in sid_row:
-            problems.append(f"an attempt at {hits[0][1]} carries session id {sid}, which no committed "
-                            f"row implies: it was never registered")
-        if len(hits) > 1:
-            problems.append(f"row {sid_row.get(sid)} has {len(hits)} attempts "
-                            f"({[str(h[1].relative_to(HERE)) for h in hits]}); a row is attempted once")
 
     counts = {"graded": 0, "rehearsal": 0, "pause": 0, "not attempted": 0}
     attempted: dict[int, bool] = {}
@@ -183,6 +186,11 @@ def check_ledger() -> list[str]:
             else:
                 matched += 1
     problems += _order_problems_for(rows, attempted)
+    # REVIEW 14, F3. Once results are committed the run is declared finished, and a registered row never
+    # attempted is a take lost without a reason; its cell would publish as mechanical when nothing was.
+    if any(RESULTS.glob("*.json")) and counts["not attempted"]:
+        problems.append(f"results are committed and {counts['not attempted']} registered row(s) were never "
+                        f"attempted; their cells would publish as incomplete for no recorded reason")
     print(f"  {len(rows)} row(s): {counts['graded']} graded, {counts['rehearsal']} rehearsal(s), "
           f"{counts['pause']} pause(s), {counts['not attempted']} not attempted; {matched} transcript(s) "
           f"bound to their row's commit")
@@ -274,6 +282,13 @@ def attempt_problems(kind: str, d: Path, i: int, row: dict, ct) -> list[str]:
             elif ids != reasons:
                 problems.append(f"row {i}: the checker's reasons {ids} are not the recorded {reasons}")
     elif kind == "pause":
+        # REVIEW 14, BLOCKER 1. A pause frees a slot on the driver's record alone, so it must at least
+        # name the pre-registered marker it matched and when it waited; its count is capped and published.
+        pause = led.get("pause") or {}
+        markers = prereg.load()["driver_constants"]["rate_limit_markers"]
+        if pause.get("matched") not in markers or not pause.get("started") or not pause.get("ended"):
+            problems.append(f"row {i}: a pause must record the pre-registered rate-limit marker it matched and "
+                            f"when it started and ended")
         if not outcome.startswith("PAUSE"):
             problems.append(f"row {i}: a pause records the outcome {outcome.split(' ')[0]!r}")
         if agent_text:

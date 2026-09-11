@@ -75,6 +75,8 @@ class Sandbox:
         if gars.is_dir():
             (self.root / "gars").mkdir()
             shutil.copytree(gars / "_system", self.root / "gars" / "_system")
+            if (REPO / "CLAUDE.md").is_file():
+                shutil.copy2(REPO / "CLAUDE.md", self.root / "CLAUDE.md")
             for f in gars.glob("*/CONTEXT.md"):
                 (self.root / f.relative_to(REPO)).parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(f, self.root / f.relative_to(REPO))
@@ -797,6 +799,66 @@ def m_skipped_row_unseen(s: Sandbox) -> tuple[int, str]:
     return s.run(_th(s, "TheTakeOrderIsEnforced")), "test_harness.py TheTakeOrderIsEnforced"
 
 
+
+def m_pause_uncapped(s: Sandbox) -> tuple[int, str]:
+    """Review 14, blocker 1: pauses free a slot without bound."""
+    s.control(_th(s, "TheTakeLifecycle"))
+    _edit(s.study / "takes.py", '    if len(paused) >= int(pre["pause_cap"]):\n', "    if False:\n")
+    return s.run(_th(s, "TheTakeLifecycle")), "test_harness.py TheTakeLifecycle"
+
+
+def m_pause_unevidenced(s: Sandbox) -> tuple[int, str]:
+    s.control(_th(s, "TheAttemptIsReDerivedFromItsBytes"))
+    _edit(s.study / "check_results.py",
+          '        if pause.get("matched") not in markers or not pause.get("started") or not pause.get("ended"):\n',
+          "        if False:\n")
+    return s.run(_th(s, "TheAttemptIsReDerivedFromItsBytes")), "test_harness.py TheAttemptIsReDerivedFromItsBytes"
+
+
+def m_withheld_recovery_admitted(s: Sandbox) -> tuple[int, str]:
+    """Review 14, blocker 2."""
+    s.control(_th(s, "TheStopProofReadsTheRecovery"))
+    _edit(s.study / "check_take.py", '                if not sent_recovery and rec["if_reply_holds"] in after:\n',
+          "                if False:\n")
+    return s.run(_th(s, "TheStopProofReadsTheRecovery")), "test_harness.py TheStopProofReadsTheRecovery"
+
+
+def m_checkout_status_unread(s: Sandbox) -> tuple[int, str]:
+    """Review 14, blocker 3."""
+    s.control(_th(s, "TheCheckoutIsBound"))
+    _edit(s.study / "check_take.py", "    if not checkout_ok:\n", "    if False:\n")
+    return s.run(_th(s, "TheCheckoutIsBound")), "test_harness.py TheCheckoutIsBound"
+
+
+def m_instruction_content_unread(s: Sandbox) -> tuple[int, str]:
+    s.control(_th(s, "TheCheckoutIsBound"))
+    _edit(s.study / "check_take.py", '        if file_text.rstrip() != (f.get("content") or "").rstrip():\n', "        if False:\n")
+    return s.run(_th(s, "TheCheckoutIsBound")), "test_harness.py TheCheckoutIsBound"
+
+
+def m_unknown_sid_hidden_by_an_empty_ledger(s: Sandbox) -> tuple[int, str]:
+    """Review 14, F1."""
+    s.control(_th(s, "TheLedgerSeesEveryFolder"))
+    _edit(s.study / "check_results.py", "        if sid not in sid_row:\n", "        if False:\n")
+    return s.run(_th(s, "TheLedgerSeesEveryFolder")), "test_harness.py TheLedgerSeesEveryFolder"
+
+
+def m_unattempted_rows_after_results(s: Sandbox) -> tuple[int, str]:
+    """Review 14, F3."""
+    s.control(_th(s, "TheLedgerSeesEveryFolder"))
+    _edit(s.study / "check_results.py", '    if any(RESULTS.glob("*.json")) and counts["not attempted"]:\n', "    if False:\n")
+    return s.run(_th(s, "TheLedgerSeesEveryFolder")), "test_harness.py TheLedgerSeesEveryFolder"
+
+
+def m_snapshot_read_from_any_line(s: Sandbox) -> tuple[int, str]:
+    """Review 14, F6."""
+    s.control(_th(s, "TheAutoMemorySectionIsBound"))
+    _edit(s.study / "check_take.py",
+          '        if isinstance(att, dict) and att.get("type") == "prompt_snapshot":\n            snapshot_found = True\n',
+          "        if True:\n            snapshot_found = True\n")
+    return s.run(_th(s, "TheAutoMemorySectionIsBound")), "test_harness.py TheAutoMemorySectionIsBound"
+
+
 MUTATIONS = [
     ("an edited contract quote", m_edited_contract_quote, "objects"),
     ("an emptied quote table", m_emptied_quote_table, "objects"),
@@ -856,6 +918,14 @@ MUTATIONS = [
     ("a missing prompt snapshot passing", m_snapshot_absence_passes, False),
     ("a reset connection read as a pause", m_resets_read_as_a_pause, False),
     ("a skipped row unseen", m_skipped_row_unseen, False),
+    ("pauses uncapped", m_pause_uncapped, False),
+    ("a pause without its evidence", m_pause_unevidenced, False),
+    ("a withheld recovery admitted", m_withheld_recovery_admitted, False),
+    ("the checkout's git status unread", m_checkout_status_unread, False),
+    ("an instruction file's content unread", m_instruction_content_unread, False),
+    ("an unknown session id hidden by an empty ledger", m_unknown_sid_hidden_by_an_empty_ledger, False),
+    ("unattempted rows after results, unreported", m_unattempted_rows_after_results, False),
+    ("a snapshot read from any line", m_snapshot_read_from_any_line, False),
 ]
 
 NOT_APPLICABLE = [
@@ -874,6 +944,9 @@ NOT_APPLICABLE = [
      "scratch tree with synthetic takes"),
     ("a gars sha differing from the freeze",
      "the freeze has not happened, so there is no pinned sha to differ from"),
+    ("a seed review report committed more than once",
+     "the sandbox carries no history of review commits; TheSeedReviewIsCommittedOnce runs on this "
+     "repository's own history and refuses a commit that lands no report"),
     ("a copied fixture whose origin no longer resolves",
      "the sandbox does not sit in a workspaces folder, so the origin cannot resolve there and the guard "
      "skips; TheCopiedFixtureBuildsToItsPin carries its own negative control, which points the origin at "

@@ -407,7 +407,18 @@ def prompt_snapshot_present(path: Path) -> bool:
     harness stopped writing that record, the check would pass having read nothing, so a take must
     carry one.
     """
-    snapshot_found = any('"prompt_snapshot"' in line for line in path.read_text(errors="replace").splitlines())
+    snapshot_found = False
+    for line in path.read_text(errors="replace").splitlines():
+        if '"prompt_snapshot"' not in line:
+            continue
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        att = rec.get("attachment") if isinstance(rec, dict) else None
+        if isinstance(att, dict) and att.get("type") == "prompt_snapshot":
+            snapshot_found = True
+            break
     return snapshot_found
 
 
@@ -501,6 +512,17 @@ def required_steps(steps: list[dict], path: Path, turns: list[dict], is_walk: bo
                     f"the driver stopped at operator turn {last} because its marker was not held, and "
                     f"the marker {marker!r} is in the agent's reply after that line. A stop at a held "
                     f"wait point manufactures `did-not-reach`.")
+            # REVIEW 14, BLOCKER 2. The mirror clause for a recovery: a stop at a reply holding the
+            # recovery's own marker, with no recovery sent, is a pre-registered answer withheld.
+            rec = (step or {}).get("recovery")
+            if rec and idx is not None:
+                send = normalise(render(rec["send"], expected_project, expected_source))
+                sent_recovery = any(x["role"] == "user" and normalise(x["text"]) == send for x in turns[idx + 1:])
+                if not sent_recovery and rec["if_reply_holds"] in after:
+                    problems.append(f"[stop-at-held-marker] the driver stopped at operator turn {last} with no "
+                                    f"recovery sent, and the reply holds the recovery's own marker "
+                                    f"{rec['if_reply_holds']!r}; withholding a pre-registered recovery "
+                                    f"manufactures `did-not-reach`.")
     return required, problems
 
 
@@ -562,6 +584,84 @@ def operator_line_problems(ops: list[str], steps: list[dict], expected_project: 
         problems.append("[operator-lines] " + f"operator turn {k + 1} is not on the script: {ops[k][:70]!r}. A line that "
                         f"is not on the script is the operator improvising.")
     return problems
+
+
+def checkout_problems(path: Path, pre: dict) -> list[str]:
+    """The checkout the session opened in, from the session's own record of its git status (review 14, blocker 3).
+
+    The session id is computable by anyone from a row's commit, so a session could be opened by hand in a
+    doctored checkout. The session records the git status it was shown, and the driver's checkout has a
+    fixed shape: its own identity, a clean status and one commit with a neutral subject.
+    """
+    rl = pre["run_location"]
+    gs = ""
+    for line in path.read_text(errors="replace").splitlines():
+        if '"session_context"' not in line:
+            continue
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        att = rec.get("attachment") if isinstance(rec, dict) else None
+        if isinstance(att, dict) and att.get("type") == "session_context":
+            gs = (att.get("context") or {}).get("gitStatus") or ""
+            break
+    if not gs:
+        return ["[checkout-binding] the session recorded no git status, so the checkout it opened in cannot be shown"]
+    user = re.search(r"^Git user: (.*)$", gs, re.M)
+    status = gs.split("Status:", 1)[1].split("Recent commits:", 1)[0].strip() if "Status:" in gs and "Recent commits:" in gs else None
+    commits = gs.split("Recent commits:", 1)[1].strip().splitlines() if "Recent commits:" in gs else []
+    checkout_ok = (user is not None and user.group(1).strip() == rl["checkout_identity"] and status == "(clean)"
+                   and len(commits) == 1 and commits[0].strip().endswith(" " + rl["checkout_subject"]))
+    if not checkout_ok:
+        return [f"[checkout-binding] the session's git status is not the driver's checkout (git user "
+                f"{rl['checkout_identity']}, a clean status, one commit named {rl['checkout_subject']!r})"]
+    return []
+
+
+def instruction_content_problems(path: Path) -> list[str]:
+    """The instruction files the session loaded, bound to this repository's bytes (review 14, blocker 3).
+
+    The path alone was checked, so a session opened in a checkout whose root CLAUDE.md said something
+    the study did not pin passed. The harness records each file's content; it equals the file in the
+    pinned tree with its trailing newline dropped (measured on both built-checkout walks), so the bytes
+    are compared with trailing whitespace ignored. The freeze pins the root CLAUDE.md and the gars tree.
+    """
+    wd = None
+    files: list[dict] = []
+    for line in path.read_text(errors="replace").splitlines():
+        if '"attachment"' not in line:
+            continue
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        att = rec.get("attachment") if isinstance(rec, dict) else None
+        if not isinstance(att, dict):
+            continue
+        if att.get("type") == "environment" and wd is None:
+            wd = (att.get("snapshot") or {}).get("workingDirectory")
+        elif att.get("type") == "instructions":
+            files.extend(att.get("files") or [])
+    if not files:
+        return ["[checkout-binding] the session recorded no instruction file, so what it was told cannot be shown"]
+    if wd is None:
+        return ["[checkout-binding] the session recorded no working directory, so its instruction files cannot be placed"]
+    out: list[str] = []
+    for f in files:
+        try:
+            rel = Path(f.get("path") or "").relative_to(Path(wd))
+        except ValueError:
+            continue  # outside the checkout: inherited_context reports it
+        repo_file = REPO / rel
+        if not repo_file.is_file():
+            out.append(f"[checkout-binding] the session loaded {rel}, which the pinned tree does not carry")
+            continue
+        file_text = repo_file.read_text(errors="replace")
+        if file_text.rstrip() != (f.get("content") or "").rstrip():
+            out.append(f"[checkout-binding] the session loaded {rel} with content other than the pinned tree's; "
+                       f"the agent was told something the study did not pin")
+    return out
 
 
 def continuation_problems(turns: list[dict], steps: list[dict], harness: list[str], project: str,
@@ -796,6 +896,8 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
         elif mine == theirs:
             print(f"  NOTE     {task_id}'s two halves send identical lines before the probe and "
                   f"differ in fixture, so the half is decided by the fixture binding above.")
+        problems += checkout_problems(path, pre)
+        problems += instruction_content_problems(path)
         wanted_model = (ledger or {}).get("model_requested")
         if wanted_model:
             problems += model_problems(path, wanted_model)
@@ -832,6 +934,8 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
 
     problems += model_problems(path, row["model"])
     problems += constant_problems(ledger, pre)
+    problems += checkout_problems(path, pre)
+    problems += instruction_content_problems(path)
     if not prompt_snapshot_present(path):
         problems.append("[inherited-context] the session recorded no system-prompt snapshot, so whether the "
                         "harness offered its memory folder could not be read")
