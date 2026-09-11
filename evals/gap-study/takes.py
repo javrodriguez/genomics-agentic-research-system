@@ -116,6 +116,38 @@ def row_commits() -> dict[int, str]:
     return seen
 
 
+# Where an attempt at a registered row can land (prereg attempt_layout). An attempt is found by the
+# session id in its driver ledger, which is the only thing that ties it to a row.
+ATTEMPT_KINDS = (("graded", "transcripts"), ("rehearsal", "rehearsals"), ("pause", "pauses"))
+
+
+def attempts_by_session() -> dict[str, list[tuple[str, Path]]]:
+    """session id -> every take attempt folder whose driver ledger carries it, with its kind."""
+    out: dict[str, list[tuple[str, Path]]] = {}
+    for kind, folder in ATTEMPT_KINDS:
+        root = HERE / folder
+        if not root.is_dir():
+            continue
+        for led in sorted(root.glob("*/*/*/*/driver-ledger.json")):
+            try:
+                d = json.loads(led.read_text())
+            except (OSError, json.JSONDecodeError):
+                continue
+            if d.get("kind") != "take" or not d.get("session_id"):
+                continue
+            out.setdefault(d["session_id"], []).append((kind, led.parent))
+    return out
+
+
+def attempt_kind(index: int, commits: dict[int, str], by_sid: dict) -> str | None:
+    """graded, rehearsal or pause for a row that has been attempted; None if it has not."""
+    sha = commits.get(index)
+    if sha is None:
+        return None
+    hits = by_sid.get(session_id_for(sha), [])
+    return hits[0][0] if hits else None
+
+
 def cmd_add(args) -> int:
     pre = prereg.load()
     if prereg.is_frozen() is False and not args.allow_draft:
@@ -146,15 +178,38 @@ def cmd_add(args) -> int:
         return 2
 
     rows = load_rows()
-    dupe = [r for r in rows if (r["task"], r["half"], r["model"], r["take"])
+    # A SLOT IS REGISTERED AGAIN ONLY AFTER A REHEARSAL OR A PAUSE (prereg attempt_layout).
+    #
+    # The first version refused any second row for a slot, so a slot whose attempt became a
+    # rehearsal or a pause could never be retried, which requirement 4 says it is. A slot whose row
+    # has not been attempted, or whose attempt was graded, still refuses: there are no retakes.
+    commits = row_commits()
+    by_sid = attempts_by_session()
+
+    def outcome(i: int) -> str | None:
+        return attempt_kind(i, commits, by_sid)
+
+    slot = [i for i, r in enumerate(rows) if (r["task"], r["half"], r["model"], r["take"])
             == (args.task, args.half, args.model, args.take)]
-    if dupe:
-        print(f"that cell's take {args.take} is already registered at row {rows.index(dupe[0])}")
+    live = [i for i in slot if outcome(i) not in ("rehearsal", "pause")]
+    if live:
+        state = "was graded" if outcome(live[0]) == "graded" else "has not been attempted"
+        print(f"that cell's take {args.take} is already registered at row {live[0]}, and that row "
+              f"{state}. A slot is registered again only after an attempt that became a rehearsal "
+              f"or a pause; there are no retakes.")
         return 2
 
-    cell = [r for r in rows if (r["task"], r["half"], r["model"]) == (args.task, args.half, args.model)]
-    if len(cell) >= pre["n"]:
-        print(f"that cell already has {len(cell)} registered takes and n is {pre['n']}")
+    cell = [i for i, r in enumerate(rows)
+            if (r["task"], r["half"], r["model"]) == (args.task, args.half, args.model)]
+    counted = [i for i in cell if outcome(i) not in ("rehearsal", "pause")]
+    if len(counted) >= pre["n"]:
+        print(f"that cell already has {len(counted)} registered takes and n is {pre['n']}")
+        return 2
+    rehearsed = [i for i in cell if outcome(i) == "rehearsal"]
+    if len(rehearsed) >= int(pre["rehearsal_cap"]):
+        print(f"that cell has had {len(rehearsed)} rehearsals and the cap is {pre['rehearsal_cap']}. "
+              f"It publishes `incomplete — mechanical` with each reason, and no further attempt is "
+              f"registered.")
         return 2
 
     rows.append({
@@ -217,12 +272,13 @@ def cmd_audit() -> int:
                 f"commit {sha[:12]} introduced {len(idxs)} rows ({idxs}). They would share one "
                 f"session id, so the pre-registration binding would prove nothing for any of them.")
 
+    by_sid = attempts_by_session()
     print(f"{len(rows)} row(s), {len(per_commit)} commit(s)")
     for i, r in enumerate(rows):
         sha = commits.get(i, "")
         sid = session_id_for(sha) if sha else "(uncommitted)"
         print(f"  {i:3}  {r['task']:22} {r['half']:8} {r['model']:28} take {r['take']}  "
-              f"{sha[:12] or '-':12}  {sid}")
+              f"{sha[:12] or '-':12}  {sid}  {attempt_kind(i, commits, by_sid) or 'not attempted'}")
 
     if problems:
         print(f"\n{len(problems)} problem(s):")

@@ -567,3 +567,27 @@ From here a walk is committed only after the lint exits 0, and CI runs the same 
 
 No criterion moved.
 No take has run.
+
+### Ruling 14 — 2026-09-11 — an attempt is routed by rule to one of three folders, and a slot is retried only after a rehearsal or a pause
+
+**What was wrong, found reading the take ledger before any take.**
+Every attempt at a registered row was written to its take's folder under `transcripts/`, and the ledger refused a second row for a slot.
+Requirement 4 says a rehearsal's order slot is retried and a pause retries the same slot, so a slot whose attempt became either could never be retried.
+The "pre-registered list" of operator-side reasons that requirement names did not exist; the checker's refusals carried no reason id.
+The runner found takes by their transcripts, so a take whose session file was never found was invisible, and it counted every ledger under `rehearsals/<task>/` against a cell, walk-era rehearsal included.
+The ledger check read only graded transcripts, so a rehearsal or a pause could not be tied to its row.
+
+**What the pre-registration now fixes.**
+`attempt_layout` names three folders: graded takes at their take index, rehearsals and pauses at their ledger row.
+The driver writes each attempt outside the repository, runs the take checker on it in place, and routes it: a rate-limit refusal before the first agent turn to `pauses/`; a death before the first agent turn, or a checker refusal, to `rehearsals/` with its reason ids in the ledger and in a WHY.md beside it; anything else to `transcripts/`, whatever the agent did.
+`rehearsal_reasons` lists sixteen reason ids with one line each, every refusal the checker gives opens with one, and a test binds the two both ways.
+A registered row is attempted once.
+A slot is registered again only after an attempt that became a rehearsal or a pause, and a cell's fourth rehearsal is refused with `incomplete — mechanical`.
+The runner enumerates graded takes by their driver ledger and refuses a rehearsal or a pause filed as a graded take.
+The ledger check ties every attempt to exactly one committed row and to the folder its row names.
+
+**One more thing the pause record no longer carries.**
+A pause ledger records which pre-registered rate-limit marker matched, not the refusal's own text, which can carry a percentage into a file the language guard reads.
+
+No criterion moved.
+No take has run.

@@ -132,23 +132,49 @@ def check_ledger() -> list[str]:
             problems.append(f"commit {sha[:12]} introduced {len(idxs)} rows ({idxs}); they would "
                             f"share one session id and the binding would prove nothing")
 
+    # EVERY ATTEMPT BELONGS TO EXACTLY ONE COMMITTED ROW, in the folder its kind puts it in
+    # (prereg attempt_layout). The first version read only transcripts under the graded layout, so a
+    # rehearsal or a pause could not be tied to its row and an unregistered attempt went unseen.
+    by_sid = takes_mod.attempts_by_session()
+    sid_row = {takes_mod.session_id_for(commits[i]): i for i in range(len(rows)) if i in commits}
+    for sid, hits in by_sid.items():
+        if sid not in sid_row:
+            problems.append(f"an attempt at {hits[0][1]} carries session id {sid}, which no committed "
+                            f"row implies: it was never registered")
+        if len(hits) > 1:
+            problems.append(f"row {sid_row.get(sid)} has {len(hits)} attempts "
+                            f"({[str(h[1].relative_to(HERE)) for h in hits]}); a row is attempted once")
+
+    counts = {"graded": 0, "rehearsal": 0, "pause": 0, "not attempted": 0}
     matched = 0
     for i, row in enumerate(rows):
         sha = commits.get(i)
         if sha is None:
             continue
         want = takes_mod.session_id_for(sha)
-        d = HERE / "transcripts" / row["task"] / row["half"] / row["model"] / str(row["take"])
-        t = d / "transcript.jsonl"
-        if not t.is_file():
+        hits = by_sid.get(want, [])
+        if not hits:
+            counts["not attempted"] += 1
             continue
-        got = _session_id_of(t)
-        if got != want:
-            problems.append(f"row {i}: the transcript's session id {got} is not "
-                            f"uuid5(namespace, {sha[:12]}) = {want}")
-        else:
-            matched += 1
-    print(f"  {len(rows)} row(s), {matched} transcript(s) bound to their row's commit")
+        kind, d = hits[0]
+        counts[kind] += 1
+        rel = d.relative_to(HERE).parts
+        where = (row["task"], row["half"], row["model"])
+        expected_leaf = str(row["take"]) if kind == "graded" else f"row-{i}"
+        if tuple(rel[1:4]) != where or rel[4] != expected_leaf:
+            problems.append(f"row {i}: its {kind} attempt sits at {'/'.join(rel)}, which is not the "
+                            f"folder its row names")
+        t = d / "transcript.jsonl"
+        if kind == "graded" and t.is_file():
+            got = _session_id_of(t)
+            if got != want:
+                problems.append(f"row {i}: the transcript's session id {got} is not "
+                                f"uuid5(namespace, {sha[:12]}) = {want}")
+            else:
+                matched += 1
+    print(f"  {len(rows)} row(s): {counts['graded']} graded, {counts['rehearsal']} rehearsal(s), "
+          f"{counts['pause']} pause(s), {counts['not attempted']} not attempted; {matched} transcript(s) "
+          f"bound to their row's commit")
     return problems
 
 

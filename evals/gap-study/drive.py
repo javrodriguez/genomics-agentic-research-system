@@ -458,6 +458,73 @@ def build_first_study_fixture(fx: dict, staging: Path, name: str) -> dict:
             "steps": log}
 
 
+def _gap_check_take():
+    """This study's check_take, loaded by path: the first study has a file of the same name."""
+    import importlib.util
+    # Beside THIS file, not under HERE: HERE is where attempts are written, and a test points it at a
+    # temporary folder; the checker's source does not move with it.
+    spec = importlib.util.spec_from_file_location("gap_check_take_for_drive",
+                                                  Path(__file__).resolve().parent / "check_take.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def route_attempt(staging: Path, ledger: dict, problems: list[str], task: str, half: str,
+                  model: str, take: int, row: int) -> tuple[Path, list[str]]:
+    """Move a finished attempt to where the pre-registration says it belongs, and say why.
+
+    A rate-limit refusal before the first agent turn is a pause. A process that died before its first
+    agent turn, or a checker refusal, is a rehearsal, with its reason ids. Anything else is graded,
+    whatever the agent did. Nothing here reads what the agent said.
+    """
+    ct = _gap_check_take()
+    reasons_listed = prereg.load()["rehearsal_reasons"]
+    outcome = ledger.get("outcome") or ""
+    if outcome.startswith("PAUSE"):
+        kind, reasons = "pause", []
+        dest = HERE / "pauses" / task / half / model / f"row-{row}"
+    elif outcome.startswith("REHEARSAL"):
+        kind, reasons = "rehearsal", [ct.NO_FIRST_AGENT_TURN]
+        dest = HERE / "rehearsals" / task / half / model / f"row-{row}"
+    elif problems:
+        tagged = ct.reason_ids(problems)
+        if len(tagged) != len(problems):
+            raise SystemExit("REFUSING to route this attempt: the checker gave a refusal with no "
+                             "pre-registered reason id, so it cannot be routed by rule. Staged at "
+                             f"{staging}")
+        kind, reasons = "rehearsal", sorted(set(tagged))
+        dest = HERE / "rehearsals" / task / half / model / f"row-{row}"
+    else:
+        kind, reasons = "graded", []
+        dest = HERE / "transcripts" / task / half / model / str(take)
+
+    unlisted = [r for r in reasons if r not in reasons_listed]
+    if unlisted:
+        raise SystemExit(f"REFUSING to route this attempt: reason(s) {unlisted} are not in the "
+                         f"pre-registered list. Staged at {staging}")
+    if dest.exists():
+        raise SystemExit(f"REFUSING to route this attempt: {dest} already exists. Staged at {staging}")
+
+    ledger["attempt"] = {"kind": kind, "reasons": reasons}
+    if ledger.get("transcript"):
+        ledger["transcript"] = display_path(dest / "transcript.jsonl")
+    (staging / "driver-ledger.json").write_text(json.dumps(ledger, indent=2) + "\n")
+    if kind == "rehearsal":
+        lines = ["# Why this attempt is a rehearsal", "",
+                 f"Row {row} of the take ledger: `{task}` / `{half}` / `{model}` / take {take}.", "",
+                 "It is kept and never graded. Its reasons, from the pre-registered list:", ""]
+        lines += [f"- `{r}` — {reasons_listed[r]}" for r in reasons]
+        if kind == "rehearsal" and outcome.startswith("REHEARSAL") is False:
+            lines += ["", "The checker's own output is reproduced by:", "", "```",
+                      f"python3 evals/gap-study/check_take.py {display_path(dest / 'transcript.jsonl')} "
+                      f"--task {task} --half {half} --row {row}", "```"]
+        (staging / "WHY.md").write_text("\n".join(lines) + "\n")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(staging), str(dest))
+    return dest, reasons
+
+
 def looks_rate_limited(text: str) -> bool:
     low = (text or "").lower()
     return any(m in low for m in RATE_LIMIT_MARKERS)
@@ -541,7 +608,18 @@ def main() -> int:
             return 2
         model = row["model"]
         session_id = takes_mod.session_id_for(commits[args.row])
-        out_root = HERE / "transcripts" / args.task / args.half / model / str(row["take"])
+        graded_dir = HERE / "transcripts" / args.task / args.half / model / str(row["take"])
+        if graded_dir.exists():
+            print(f"refusing: {display_path(graded_dir)} already holds a graded take. A slot is "
+                  f"graded once; there are no retakes.")
+            return 2
+        if session_id in takes_mod.attempts_by_session():
+            print(f"refusing: row {args.row} has already been attempted. A registered row is attempted "
+                  f"once; a slot is retried by registering a new row after a rehearsal or a pause.")
+            return 2
+        # The attempt is written outside the repository first, checked in place, and routed by rule
+        # at the end (route_attempt), so no attempt is ever written where it does not belong.
+        out_root = Path(tempfile.mkdtemp(prefix="attempt-"))
         kind = "take"
 
     name = neutral_name(session_id)
@@ -675,7 +753,11 @@ def main() -> int:
             row_rec["held"] = False
             ledger["turns"].append(row_rec)
             ledger["outcome"] = "PAUSE"
-            ledger["pause"] = {"started": t0, "ended": now(), "detail": err.strip()[:400]}
+            # Which pre-registered marker matched, not the refusal's own text: a rate-limit message
+            # can carry a percentage, and the ledger is a published file the language guard reads.
+            ledger["pause"] = {"started": t0, "ended": now(),
+                               "matched": next((m for m in RATE_LIMIT_MARKERS
+                                                if m in (err + said).lower()), None)}
             print("  PAUSE: rate limited before the first agent turn. The slot is retried; this "
                   "is neither a take nor a rehearsal.")
             break
@@ -819,6 +901,17 @@ def main() -> int:
         ledger["transcript"] = None
         ledger["outcome"] = (ledger["outcome"] or "") + f" — no session file for {session_id}"
     (out_root / "driver-ledger.json").write_text(json.dumps(ledger, indent=2) + "\n")
+
+    if kind == "take":
+        # Checked in place, then routed by rule: a pause, a rehearsal with its reason ids, or graded.
+        problems: list[str] = []
+        if not (ledger["outcome"] or "").startswith(("PAUSE", "REHEARSAL")) and ledger["transcript"]:
+            problems = _gap_check_take().check(out_root / "transcript.jsonl", args.task, args.half,
+                                               args.row, False)
+        out_root, reasons = route_attempt(out_root, ledger, problems, args.task, args.half, model,
+                                          row["take"], args.row)
+        print(f"  attempt  {ledger['attempt']['kind']}"
+              + (f"  reasons {', '.join(reasons)}" if reasons else ""))
 
     # The checkout was this take's alone and is rebuilt from the pinned commit on demand; the
     # evidence is the transcript and the ledger above, both outside it.

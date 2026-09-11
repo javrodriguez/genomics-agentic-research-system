@@ -43,6 +43,7 @@ sys.path.insert(0, str(REPO / "evals"))
 
 import prereg  # noqa: E402
 import transcript as tx  # noqa: E402
+import labels  # noqa: E402
 
 RESULTS = HERE / "results"
 TRANSCRIPTS = HERE / "transcripts"
@@ -61,14 +62,27 @@ def grader_for(task_id: str):
 
 
 def takes_on_disk(task_id: str, half: str, model: str) -> list[Path]:
+    """Every graded take folder for this cell: each holding a driver ledger or a transcript.
+
+    ENUMERATED BY LEDGER, NOT BY TRANSCRIPT. A take whose session file was never found has a ledger
+    and no transcript, and its label is `aborted`; enumerating transcripts made it invisible, and the
+    cell read as short a take rather than carrying the take it had.
+    """
     root = TRANSCRIPTS / task_id / half / model
     if not root.is_dir():
         return []
-    return sorted(p for p in root.glob("*/transcript.jsonl"))
+    dirs = {p.parent for p in root.glob("*/driver-ledger.json")}
+    dirs |= {p.parent for p in root.glob("*/transcript.jsonl")}
+    return sorted(dirs)
 
 
 def rehearsals_on_disk(task_id: str, half: str, model: str) -> int:
-    root = HERE / "rehearsals" / task_id
+    """Take rehearsals for this cell, from their own layout (prereg attempt_layout).
+
+    The first version counted every ledger under rehearsals/<task>/ by half and model, which would
+    have charged the walk-era plan-gate rehearsal to a take cell. Only a take's rehearsal counts.
+    """
+    root = HERE / "rehearsals" / task_id / half / model
     if not root.is_dir():
         return 0
     n = 0
@@ -77,8 +91,9 @@ def rehearsals_on_disk(task_id: str, half: str, model: str) -> int:
             row = json.loads(led.read_text())
         except json.JSONDecodeError:
             continue
-        if row.get("half") == half and row.get("model_requested") == model:
-            n += 1
+        if row.get("kind") != "take":
+            continue
+        n += 1
     return n
 
 
@@ -100,14 +115,31 @@ def grade_cell(task_id: str, half: str, model: str, spec: dict, n: int) -> dict:
         return {"state": f"not run — no grader module for {task_id}", "labels": [], "k": 0, "n": n}
 
     out_labels: list[dict] = []
-    for p in paths:
-        led_path = p.parent / "driver-ledger.json"
-        ledger = json.loads(led_path.read_text()) if led_path.is_file() else {}
-        data = tx.load(p)
-        got = grader.grade(data["turns"], ledger, half, spec)
+    for d in paths:
+        led_path = d / "driver-ledger.json"
+        if not led_path.is_file():
+            raise SystemExit(f"REFUSING to grade {d}: a transcript with no driver ledger was not "
+                             f"produced by the driver, so it cannot be tied to a registered row")
+        ledger = json.loads(led_path.read_text())
+        attempt = (ledger.get("attempt") or {}).get("kind", "graded")
+        outcome = ledger.get("outcome") or ""
+        if attempt != "graded" or outcome.startswith(("PAUSE", "REHEARSAL")):
+            raise SystemExit(f"REFUSING to grade {d}: it holds an attempt that is not a graded take "
+                             f"({attempt}, {outcome.split(' ')[0]}), which belongs under rehearsals/ "
+                             f"or pauses/ and is never graded")
+        t = d / "transcript.jsonl"
+        if t.is_file():
+            data = tx.load(t)
+            got = grader.grade(data["turns"], ledger, half, spec)
+            sha = data["sha256"]
+        else:
+            got = labels.result(labels.from_ledger(ledger) or labels.ABORTED,
+                                spec[half]["correct_behaviour_label"],
+                                [f"no transcript on disk; driver ledger outcome: {outcome}"])
+            sha = None
         out_labels.append({
-            "take": p.parent.name,
-            "transcript_sha256": data["sha256"],
+            "take": d.name,
+            "transcript_sha256": sha,
             "label": got["label"],
             "verdict": got["verdict"],
             "evidence": got["evidence"],

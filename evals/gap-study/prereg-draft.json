@@ -1630,5 +1630,31 @@
     "rule": "A take the driver stopped -- at an unheld marker, a timeout or an abort -- must carry each scripted line up to the last one the driver sent, and none after it. The checker reads the stop from the driver ledger and, for an unheld marker, proves from the transcript that the marker is absent from the agent's text after that line. A walk must carry each pre-probe line.",
     "why": "The checker required each scripted line of the half whatever happened, so a take that correctly stopped at an unheld marker failed as `never sent` and could not be a valid graded take. `did-not-reach` would have had no valid transcript to be published from. Found while reading the checker for walk 1.",
     "bound_by": "test_harness.py AStoppedTakeIsCheckedUpToTheStop"
+  },
+  "attempt_layout": {
+    "graded": "transcripts/<task>/<half>/<model>/<take>/",
+    "rehearsal": "rehearsals/<task>/<half>/<model>/row-<row>/",
+    "pause": "pauses/<task>/<half>/<model>/row-<row>/",
+    "rule": "Every attempt at a registered row lands in exactly one of these, decided by the driver from its outcome and the take checker's verdict, never by hand. A rate-limit refusal before the first agent turn is a pause. A process that exits before its first agent turn, or a checker refusal for a reason in rehearsal_reasons, is a rehearsal, with its reason ids in its ledger and in WHY.md beside it. Anything else is graded, whatever the agent did. A registered row is attempted once. A slot is registered again only after an attempt that became a rehearsal or a pause, and a cell's rehearsals are capped at rehearsal_cap, after which the cell publishes `incomplete — mechanical`. The walk-era rehearsal at rehearsals/plan-gate/1/ predates this layout, is a walk, and is never counted against a cell.",
+    "why": "Before this, every attempt was written to its take's folder and a slot could be registered once, so a slot whose attempt became a rehearsal or a pause could never be retried, and the runner would have counted the walk-era rehearsal against a take cell. Found reading the take ledger on 11 September 2026, before any take.",
+    "bound_by": "test_harness.py TheTakeLifecycle, TheAttemptIsRoutedByRule, TheRunnerEnumeratesByLedger"
+  },
+  "rehearsal_reasons": {
+    "no-first-agent-turn": "the process exited, or the transcript holds no agent text, before the agent's first turn",
+    "readers-disagree": "the transcript reader and the record reader count different numbers of user turns",
+    "unknown-harness-origin": "a user record carries a harness origin this file does not name",
+    "no-session-id": "the transcript records no session id",
+    "script-not-a-list": "the half's operator script is not a list of turns",
+    "operator-lines": "a scripted line was not sent, was sent twice or in the wrong order, a recovery exceeded its limit, or a line not on the script was sent",
+    "stop-at-held-marker": "the driver stopped at a marker it read as unheld, and the agent's reply holds it",
+    "fixture-binding": "the fixture the driver built is not the half's pinned fixture, or the record of it is unreadable",
+    "leak-in-operator-turn": "an operator line contains a pre-registered leak word",
+    "leak-in-loaded-context": "the session's loaded context contains a leak word outside a pinned excusal",
+    "inherited-context": "the session was given an instruction file, a working directory or a connector tool from outside its checkout",
+    "account-email": "the published transcript still carries the account's email address field",
+    "study-materials-reached": "the session reached this study's own materials",
+    "project-name": "no operator line names the neutral project name derived from the session id",
+    "session-binding": "the transcript is not bound by its session id to a committed ledger row of this task and half",
+    "invocation": "the checker was called with a ledger row for a walk, or without one for a take"
   }
 }

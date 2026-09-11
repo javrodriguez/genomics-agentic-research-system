@@ -1786,6 +1786,226 @@ class TheLanguageGuardIsWordBounded(unittest.TestCase):
         self.assertIsNone(re.search(self.rx(), "gars/projects/run-0a1b2c37/00_data/x"))
 
 
+def gap_module(name: str):
+    """A module of THIS study by path; the first study has files named run.py, drive.py and more."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(f"gap_{name}_{id(object())}", HERE / f"{name}.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class TheRefusalReasonsArePreRegistered(unittest.TestCase):
+    """Requirement 4 names a pre-registered list of operator-side reasons; the checker's refusals
+    now carry ids from it, and this binds the two both ways."""
+
+    def used(self) -> set:
+        # Only a tag that OPENS A STRING LITERAL, which is how every refusal is written. The first
+        # version matched any bracketed word followed by a space, so it read `list[str] =` and
+        # `norm[i] and` as reason ids and failed on type hints rather than on the list.
+        return set(re.findall(r'(?:"|f")\[([a-z][a-z-]+)\] ', (HERE / "check_take.py").read_text()))
+
+    def test_every_reason_the_checker_gives_is_listed(self):
+        listed = set(prereg.load()["rehearsal_reasons"])
+        self.assertTrue(self.used(), "no reason id found in check_take.py; this test measured nothing")
+        self.assertEqual(self.used() - listed, set(), "the checker gives a reason the list does not hold")
+
+    def test_every_listed_reason_has_a_producer(self):
+        listed = set(prereg.load()["rehearsal_reasons"])
+        self.assertEqual(listed - self.used(), set(), "a listed reason nothing can produce")
+
+    def test_every_refusal_on_a_real_walk_opens_with_its_reason(self):
+        ct = gap_check_take()
+        path = HERE / "walks" / "confounded-design" / "1" / "transcript.jsonl"
+        if not path.is_file():
+            self.skipTest("walk 1 of confounded-design is not on disk")
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            problems = ct.check(path, "confounded-design", "positive", None, True)
+        self.assertTrue(problems, "walk 1 is not valid as a walk, so the checker must refuse it")
+        self.assertEqual(len(ct.reason_ids(problems)), len(problems), problems)
+        self.assertIn("operator-lines", ct.reason_ids(problems))
+
+
+class TheAttemptIsRoutedByRule(unittest.TestCase):
+    """drive.route_attempt, with the study root pointed at a temporary folder."""
+
+    def route(self, outcome, problems, take=2, row=7, precreate=None):
+        drive = gap_drive()
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        drive.HERE = tmp
+        if precreate:
+            (tmp / precreate).mkdir(parents=True)
+        staging = tmp / "staging"
+        staging.mkdir()
+        (staging / "transcript.jsonl").write_text("{}\n")
+        ledger = {"kind": "take", "outcome": outcome, "transcript": str(staging / "transcript.jsonl")}
+        dest, reasons = drive.route_attempt(staging, ledger, problems, "scope-read", "positive",
+                                            "claude-opus-5", take, row)
+        return tmp, dest, reasons, json.loads((dest / "driver-ledger.json").read_text())
+
+    CELL = "scope-read/positive/claude-opus-5"
+
+    def test_a_pause_goes_to_pauses(self):
+        tmp, dest, reasons, led = self.route("PAUSE", [])
+        self.assertEqual(dest, tmp / "pauses" / self.CELL / "row-7")
+        self.assertEqual(led["attempt"], {"kind": "pause", "reasons": []})
+
+    def test_a_death_before_the_first_agent_turn_is_a_rehearsal(self):
+        tmp, dest, reasons, led = self.route("REHEARSAL — the process died before its first agent turn", [])
+        self.assertEqual(dest, tmp / "rehearsals" / self.CELL / "row-7")
+        self.assertEqual(reasons, ["no-first-agent-turn"])
+        self.assertTrue((dest / "WHY.md").is_file())
+
+    def test_a_checker_refusal_is_a_rehearsal_with_its_reasons(self):
+        tmp, dest, reasons, led = self.route("complete", ["[operator-lines] x", "[leak-in-operator-turn] y",
+                                                          "[operator-lines] z"])
+        self.assertEqual(dest, tmp / "rehearsals" / self.CELL / "row-7")
+        self.assertEqual(reasons, ["leak-in-operator-turn", "operator-lines"])
+        self.assertIn("leak-in-operator-turn", (dest / "WHY.md").read_text())
+
+    def test_a_clean_attempt_is_graded_at_its_take_whatever_the_agent_did(self):
+        for outcome in ("complete", "stopped — wait-point marker not held; graded as it stands",
+                        "timed-out", "aborted — a scripted turn exited 1"):
+            tmp, dest, reasons, led = self.route(outcome, [])
+            self.assertEqual(dest, tmp / "transcripts" / self.CELL / "2", outcome)
+            self.assertEqual(led["attempt"]["kind"], "graded")
+
+    def test_an_untagged_refusal_is_not_routed(self):
+        with self.assertRaises(SystemExit):
+            self.route("complete", ["something with no reason id"])
+
+    def test_an_unlisted_reason_is_not_routed(self):
+        with self.assertRaises(SystemExit):
+            self.route("complete", ["[not-a-listed-reason] x"])
+
+    def test_a_destination_that_exists_is_not_overwritten(self):
+        with self.assertRaises(SystemExit):
+            self.route("complete", [], precreate="transcripts/" + self.CELL + "/2")
+
+
+class TheTakeLifecycle(unittest.TestCase):
+    """takes.py --add in a real repository: a slot held while its attempt is pending or graded,
+    released by a rehearsal or a pause, and the rehearsal cap."""
+
+    CELL = ("scope-read", "positive", "claude-opus-5")
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.study = self.tmp / "evals" / "gap-study"
+        self.study.mkdir(parents=True)
+        for f in ("takes.py", "prereg.py", "prereg-draft.json"):
+            shutil.copy2(HERE / f, self.study / f)
+        self.git("init", "-q")
+        self.commit("base")
+
+    def git(self, *a):
+        return subprocess.run(["git", "-C", str(self.tmp), "-c", "user.name=t", "-c", "user.email=t@t",
+                               "-c", "commit.gpgsign=false", *a], capture_output=True, text=True)
+
+    def commit(self, msg):
+        self.git("add", "-A")
+        self.git("commit", "-qm", msg)
+
+    def takes(self, *a):
+        r = subprocess.run([sys.executable, str(self.study / "takes.py"), *a], capture_output=True,
+                           text=True, cwd=str(self.tmp))
+        return r.returncode, r.stdout + r.stderr
+
+    def add(self, take):
+        task, half, model = self.CELL
+        return self.takes("--add", "--task", task, "--half", half, "--model", model, "--take", str(take),
+                          "--allow-draft")
+
+    def attempt(self, row, kind, take):
+        code, out = self.takes("--session-id", str(row))
+        self.assertEqual(code, 0, out)
+        sid = re.search(r"session id\s+(\S+)", out).group(1)
+        leaf = str(take) if kind == "graded" else f"row-{row}"
+        folder = {"graded": "transcripts", "rehearsal": "rehearsals", "pause": "pauses"}[kind]
+        d = self.study / folder / "/".join(self.CELL) / leaf
+        d.mkdir(parents=True)
+        (d / "driver-ledger.json").write_text(json.dumps({"kind": "take", "session_id": sid,
+                                                          "attempt": {"kind": kind}}))
+
+    def registered(self, take, row):
+        code, out = self.add(take)
+        self.assertEqual(code, 0, out)
+        self.commit(f"take: row {row}")
+
+    def test_a_slot_is_held_while_its_attempt_is_pending_or_graded(self):
+        self.registered(1, 0)
+        code, out = self.add(1)
+        self.assertNotEqual(code, 0)
+        self.assertIn("has not been attempted", out)
+        self.attempt(0, "graded", 1)
+        code, out = self.add(1)
+        self.assertNotEqual(code, 0)
+        self.assertIn("was graded", out)
+
+    def test_a_slot_is_released_by_a_rehearsal_or_a_pause(self):
+        self.registered(1, 0)
+        self.attempt(0, "rehearsal", 1)
+        self.registered(1, 1)
+        self.attempt(1, "pause", 1)
+        code, out = self.add(1)
+        self.assertEqual(code, 0, out)
+
+    def test_the_rehearsal_cap_refuses_a_fourth_attempt(self):
+        for r in range(3):
+            self.registered(1, r)
+            self.attempt(r, "rehearsal", 1)
+        code, out = self.add(1)
+        self.assertNotEqual(code, 0)
+        self.assertIn("rehearsals and the cap", out)
+
+
+class TheRunnerEnumeratesByLedger(unittest.TestCase):
+    def setUp(self):
+        self.run = gap_module("run")
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.real_here = self.run.HERE
+        self.run.TRANSCRIPTS = self.tmp / "transcripts"
+        self.run.HERE = self.tmp
+
+    def ledger(self, rel, **fields):
+        d = self.tmp / rel
+        d.mkdir(parents=True)
+        (d / "driver-ledger.json").write_text(json.dumps({"kind": "take", **fields}))
+        return d
+
+    def test_a_take_with_a_ledger_and_no_transcript_is_graded_from_the_ledger(self):
+        self.ledger("transcripts/number-fidelity/positive/claude-opus-5/1",
+                    outcome="complete — no session file for x", attempt={"kind": "graded"})
+        cell = self.run.grade_cell("number-fidelity", "positive", "claude-opus-5",
+                                   prereg.task("number-fidelity"), 3)
+        self.assertEqual([x["label"] for x in cell["labels"]], ["aborted"])
+        self.assertTrue(cell["state"].startswith("incomplete"), cell["state"])
+
+    def test_a_rehearsal_under_transcripts_is_refused(self):
+        self.ledger("transcripts/number-fidelity/positive/claude-opus-5/1",
+                    outcome="complete", attempt={"kind": "rehearsal"})
+        with self.assertRaises(SystemExit):
+            self.run.grade_cell("number-fidelity", "positive", "claude-opus-5",
+                                prereg.task("number-fidelity"), 3)
+
+    def test_only_a_takes_rehearsal_is_counted(self):
+        self.ledger("rehearsals/plan-gate/positive/claude-opus-5/row-3", outcome="REHEARSAL")
+        walkish = self.tmp / "rehearsals/plan-gate/positive/claude-opus-5/row-4"
+        walkish.mkdir(parents=True)
+        (walkish / "driver-ledger.json").write_text(json.dumps({"kind": "walk"}))
+        self.assertEqual(self.run.rehearsals_on_disk("plan-gate", "positive", "claude-opus-5"), 1)
+
+    def test_the_walk_era_rehearsal_is_never_counted_against_a_cell(self):
+        self.run.HERE = self.real_here
+        self.assertTrue((self.real_here / "rehearsals" / "plan-gate" / "1").is_dir())
+        self.assertEqual(self.run.rehearsals_on_disk("plan-gate", "positive", "claude-opus-5"), 0)
+
+
 def main() -> int:
     """THE EXIT CODE IS THE POINT, and this function got it wrong first time.
 

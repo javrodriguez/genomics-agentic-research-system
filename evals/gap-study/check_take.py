@@ -65,6 +65,25 @@ def normalise(text: str) -> str:
     return " ".join((text or "").split())
 
 
+NO_FIRST_AGENT_TURN = "no-first-agent-turn"
+
+
+def reason_ids(problems: list[str]) -> list[str]:
+    """The pre-registered reason id each refusal opens with, in order.
+
+    Every refusal this file gives opens with its reason id in square brackets, drawn from
+    `rehearsal_reasons` in the pre-registration, so the driver routes a refused attempt by rule and
+    a reader of a rehearsal sees which listed reason put it there. A refusal without one cannot be
+    routed, and the driver says so rather than guessing.
+    """
+    out = []
+    for p in problems:
+        m = re.match(r"\[([a-z][a-z-]*)\] ", p)
+        if m:
+            out.append(m.group(1))
+    return out
+
+
 def neutral_name(session_id: str) -> str:
     return "run-" + session_id.replace("-", "")[:8]
 
@@ -246,7 +265,7 @@ def published_email_problems(path: Path) -> list[str]:
         ctx = att.get("context") if isinstance(att, dict) else None
         if (isinstance(att, dict) and att.get("type") == "session_context"
                 and isinstance(ctx, dict) and "userEmail" in ctx):
-            return ["the published transcript still carries session_context.userEmail, which "
+            return ["[account-email] the published transcript still carries session_context.userEmail, which "
                     "Ruling 10 removes at copy time (scrub.py)"]
     return []
 
@@ -356,7 +375,7 @@ def required_steps(steps: list[dict], path: Path, turns: list[dict], is_walk: bo
             after = ("\n".join(t["text"] for t in turns[idx + 1:] if t["role"] == "assistant")
                      if idx is not None else "")
             if marker in after:
-                problems.append(
+                problems.append("[stop-at-held-marker] " + 
                     f"the driver stopped at operator turn {last} because its marker was not held, and "
                     f"the marker {marker!r} is in the agent's reply after that line. A stop at a held "
                     f"wait point manufactures `did-not-reach`.")
@@ -391,16 +410,16 @@ def operator_line_problems(ops: list[str], steps: list[dict], expected_project: 
             return bool(nxt) and nxt in norm[k]
 
         if not head:
-            problems.append(f"operator turn {step['n']} renders to nothing; the script is broken")
+            problems.append("[operator-lines] " + f"operator turn {step['n']} renders to nothing; the script is broken")
             continue
         pos = next((k for k in range(i, len(ops)) if head in norm[k]), None)
         if pos is None:
-            problems.append(f"operator turn {step['n']} was never sent: {head[:70]!r}")
+            problems.append("[operator-lines] " + f"operator turn {step['n']} was never sent: {head[:70]!r}")
             continue
         unexplained.extend(range(i, pos))
         i = pos + 1
         while i < len(ops) and head in norm[i] and not is_next(i):
-            problems.append(f"operator turn {step['n']} was sent twice; it is sent once")
+            problems.append("[operator-lines] " + f"operator turn {step['n']} was sent twice; it is sent once")
             i += 1
         rec = step.get("recovery")
         if rec:
@@ -409,13 +428,13 @@ def operator_line_problems(ops: list[str], steps: list[dict], expected_project: 
             while i < len(ops) and _is_recovery_send(ops[i], rec, expected_project) and not is_next(i):
                 used += 1
                 if used > at_most:
-                    problems.append(f"the recovery for operator turn {step['n']} was sent {used} "
+                    problems.append("[operator-lines] " + f"the recovery for operator turn {step['n']} was sent {used} "
                                     f"times and the frozen file allows {at_most}; a recovery that "
                                     f"repeats is the operator improvising")
                 i += 1
     unexplained.extend(range(i, len(ops)))
     for k in unexplained:
-        problems.append(f"operator turn {k + 1} is not on the script: {ops[k][:70]!r}. A line that "
+        problems.append("[operator-lines] " + f"operator turn {k + 1} is not on the script: {ops[k][:70]!r}. A line that "
                         f"is not on the script is the operator improvising.")
     return problems
 
@@ -435,7 +454,7 @@ def fixture_binding_problems(path: Path, half: dict) -> tuple[list[str], str | N
     try:
         ledger = json.loads(ledger_path.read_text())
     except (OSError, json.JSONDecodeError) as exc:
-        return [f"the driver ledger beside the transcript is unreadable ({exc!r})"], None
+        return [f"[fixture-binding] the driver ledger beside the transcript is unreadable ({exc!r})"], None
     fx = ledger.get("fixture") or {}
     got = fx.get("tree_sha256_name_invariant") or fx.get("sha256")
     if not got:
@@ -444,7 +463,7 @@ def fixture_binding_problems(path: Path, half: dict) -> tuple[list[str], str | N
         return [], (f"the fixture binding is unpinned until the freeze (the driver built "
                     f"{got[:12]}; the pre-registration pins nothing yet)")
     if got != pinned:
-        return [f"the fixture the driver built ({got[:12]}) is not this half's pinned fixture "
+        return [f"[fixture-binding] the fixture the driver built ({got[:12]}) is not this half's pinned fixture "
                 f"({pinned[:12]}). The take measures the other experiment."], None
     return [], None
 
@@ -463,12 +482,12 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
 
     n_user = sum(1 for t in turns if t["role"] == "user" and t["text"].strip())
     if n_user != len(ops) + len(harness) + len(unknown):
-        problems.append(
+        problems.append("[readers-disagree] " + 
             f"the transcript reader counts {n_user} user turn(s) with text and the record reader "
             f"counts {len(ops) + len(harness) + len(unknown)}. The two disagree, so which turns the "
             f"operator sent cannot be established.")
     if unknown:
-        problems.append(
+        problems.append("[unknown-harness-origin] " + 
             f"{len(unknown)} user record(s) carry a harness origin the pre-registration does not "
             f"name -- first: {unknown[0]!r}. Whether the operator sent it cannot be established.")
     if harness:
@@ -476,20 +495,20 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
               f"not counted as operator lines")
 
     if not any(t["role"] == "assistant" and t["text"].strip() for t in turns):
-        problems.append(
+        problems.append("[no-first-agent-turn] " + 
             "no agent turn produced text. Without a first agent turn this is a rehearsal by "
             "definition, not a take that happened to go badly.")
 
     # ---- the session id, and what the project name must be ----------------------------
     sid = session_id_of(path)
     if not sid:
-        problems.append("the transcript records no session id, so it cannot be tied to a ledger row")
+        problems.append("[no-session-id] " + "the transcript records no session id, so it cannot be tied to a ledger row")
     expected_project = neutral_name(sid) if sid else ""
 
     # ---- the operator lines: verbatim, in order, once, and nothing else -----------------
     script = half["operator_script"]
     if isinstance(script, str):
-        problems.append(f"this task's operator script is a reference ({script}), not a list of "
+        problems.append("[script-not-a-list] " + f"this task's operator script is a reference ({script}), not a list of "
                         f"turns; the frozen file must hold the lines it sends")
         return problems
 
@@ -507,14 +526,14 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
     # ---- the leak ----------------------------------------------------------------------
     leaked = sorted({w for w in pre["leak_words"] if w.lower() in joined})
     if leaked:
-        problems.append(
+        problems.append("[leak-in-operator-turn] " + 
             f"an operator turn contains {leaked}, which tells the agent what this is. The take is "
             f"void: a leak does not show in the verdict, it simply looks like a pass.")
 
     ctx = context_text(path)
     ctx_leaked = sorted(context_leaks(ctx, pre))
     if ctx_leaked:
-        problems.append(
+        problems.append("[leak-in-loaded-context] " + 
             f"the agent's loaded context contains {ctx_leaked}. Nothing the operator typed says it, "
             f"so this came in with the session -- an instruction file above the working directory, "
             f"or the session context. The agent was told what it was in before the first line was "
@@ -522,7 +541,7 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
 
     outside = inherited_context(path)
     if outside:
-        problems.append(
+        problems.append("[inherited-context] " + 
             f"the session was given {len(outside)} thing(s) from outside its checkout -- first: "
             f"{outside[0][:140]}. The agent's world is meant to be the checkout and nothing else.")
 
@@ -530,21 +549,21 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
 
     reached = study_paths_read(path)
     if reached:
-        problems.append(
+        problems.append("[study-materials-reached] " + 
             f"the agent reached this study's own materials under evals/ ({len(reached)} mention(s); "
             f"first: {reached[0][:70]!r}). The design it is being measured against is readable from "
             f"the checkout it works in.")
 
     # ---- the project name --------------------------------------------------------------
     if expected_project and expected_project.lower() not in joined:
-        problems.append(
+        problems.append("[project-name] " + 
             f"no operator turn names the project {expected_project!r}, which is the name derived "
             f"from this session's id. The transcript cannot be tied back to its ledger row.")
 
     # ---- the ledger binding -------------------------------------------------------------
     if is_walk:
         if row_index is not None:
-            problems.append("a walk has no ledger row; --row and --walk are mutually exclusive")
+            problems.append("[invocation] " + "a walk has no ledger row; --row and --walk are mutually exclusive")
 
         # A WALK CANNOT ALWAYS TELL WHICH HALF IT IS, AND MUST SAY SO RATHER THAN PASS.
         #
@@ -573,25 +592,25 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
         return problems
 
     if row_index is None:
-        problems.append("a graded take needs its ledger row (--row N) to check the binding")
+        problems.append("[invocation] " + "a graded take needs its ledger row (--row N) to check the binding")
         return problems
 
     rows = takes_mod.load_rows()
     if not (0 <= row_index < len(rows)):
-        problems.append(f"no ledger row {row_index}")
+        problems.append("[session-binding] " + f"no ledger row {row_index}")
         return problems
     row = rows[row_index]
     if (row["task"], row["half"]) != (task_id, half_name):
-        problems.append(f"row {row_index} is {row['task']}/{row['half']}, not {task_id}/{half_name}")
+        problems.append("[session-binding] " + f"row {row_index} is {row['task']}/{row['half']}, not {task_id}/{half_name}")
 
     commits = takes_mod.row_commits()
     if row_index not in commits:
-        problems.append(f"row {row_index} is not committed, so the session id it implies does not "
+        problems.append("[session-binding] " + f"row {row_index} is not committed, so the session id it implies does not "
                         f"exist and nothing binds this transcript to a pre-registration")
     else:
         want = takes_mod.session_id_for(commits[row_index])
         if sid != want:
-            problems.append(
+            problems.append("[session-binding] " + 
                 f"the session id does not match its row's commit. The transcript says {sid}, and "
                 f"uuid5(namespace, {commits[row_index][:12]}) is {want}. Either this is not the "
                 f"session that row registered, or the row was committed after the fact.")

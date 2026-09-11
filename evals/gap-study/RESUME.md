@@ -24,6 +24,9 @@ The mutation battery had hollow reds: guards that were red before any mutation.
 24 guards now prove themselves green first, and the rest are named in the battery's own output.
 A refused checkout no longer stays in the temporary directory.
 
+Every attempt at a registered row is now routed by rule (Ruling 14): a pause, a rehearsal with its pre-registered reason ids, or a graded take.
+A slot is retried only after a rehearsal or a pause, and a cell's rehearsals are capped.
+
 ## The next moves, in order
 
 1. **The carried follow-ups that touch pinned bytes** (below), folded before the next review reads them.
@@ -32,15 +35,15 @@ A refused checkout no longer stays in the temporary directory.
 
 ## State
 
-- 6 task pairs · 11 walks, 3 of them driven in a built checkout · 136 hand-labelled cases · 112 tests · 32 mutations · 11 reviews · 4 smokes
+- 6 task pairs · 11 walks, 3 of them driven in a built checkout · 136 hand-labelled cases · 129 tests · 37 mutations, 30 of them watched green first · 11 reviews · 4 smokes
 - 0 takes graded · not frozen · `gars/` and the first study unchanged by this work
 - The local tier was dropped by the repository owner at gate 2; `local-model/DROPPED.md` is the record
-- Rulings 1–13 in `PROTOCOL.md`
+- Rulings 1–14 in `PROTOCOL.md`
 - `RESIDUAL.md` was written at the slice cap and is kept deliberately, though the cap was lifted (Ruling 7)
 
 ## Carried follow-ups, most valuable first
 
-- A take whose outcome is a rehearsal or a pause is written under `transcripts/` like a graded take, and the runner enumerates takes by transcript rather than by driver ledger. Route rehearsals and pauses to their own folders and enumerate by ledger.
+- `costs.py --write` accepts the flag and writes nothing, and COSTS.md's walk table was typed. Make the reader write the tables, and bind the file to its output.
 - Bind the plant to the counts per field rather than per dict.
 - The write detector is weaker than the tree's own guard, in the direction that credits a violating agent. A residual for review 12 to rule on.
 - Whether the deterministic layer loads at a session opened at the checkout's root. The session loads the root orientation file, which points at `gars/CLAUDE.md`, and in walk 1 of the carried task the agent read that file on its first tool call. A residual for review 12.

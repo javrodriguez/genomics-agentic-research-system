@@ -196,32 +196,47 @@ def m_excusal_pinned_to_the_wrong_text(s: Sandbox) -> tuple[int, str]:
     return s.run(_lint(s)), "lint_language.py over the study"
 
 
+def _rows(s: Sandbox, takes: tuple[int, ...]) -> None:
+    rows = [{"task": "scope-read", "half": "positive", "model": "claude-opus-5", "take": k,
+             "order_index": k, "fixture_sha": "x",
+             "environment_class": "claude-subscription-headless"} for k in takes]
+    (s.study / "takes.json").write_text(json.dumps({"role": "test", "rows": rows}, indent=2))
+
+
+def _add(s: Sandbox, take: int) -> tuple[int, str]:
+    return s.run_out([str(s.study / "takes.py"), "--add", "--task", "scope-read", "--half", "positive",
+                      "--model", "claude-opus-5", "--take", str(take), "--allow-draft"])
+
+
 def m_take_index_outside_n(s: Sandbox) -> tuple[int, str]:
     """A take index outside 1..n, with n left where the pre-registration fixed it.
 
     THIS MUTATION USED TO PASS FOR THE WRONG REASON. It raised n to 4 and then registered take 4 --
     which is legal under n = 4, so the guard should have ALLOWED it. It came back red anyway,
     because the sandbox had no git repository and takes.py died reading the ledger's status before
-    it reached any check.
-
-    A false red is worth no more than a false green: both say a guard fired when it did not. The
-    sandbox now has a real repository, and the mutation asks the question it meant to ask.
+    it reached any check. It now also requires the refusal to name the index.
     """
-    return (s.run([str(s.study / "takes.py"), "--add", "--task", "scope-read", "--half",
-                   "positive", "--model", "claude-opus-5", "--take", "4", "--allow-draft"]),
-            "takes.py --add with take 4 where n is 3")
+    code, out = _add(s, 4)
+    return Sandbox.expect(code, out, "outside 1.."), "takes.py --add with take 4 where n is 3"
 
 
 def m_fourth_graded_take(s: Sandbox) -> tuple[int, str]:
-    """A fourth take in a cell where n is three."""
-    p = s.study / "takes.json"
-    rows = [{"task": "scope-read", "half": "positive", "model": "claude-opus-5", "take": k,
-             "order_index": k, "fixture_sha": "x",
-             "environment_class": "claude-subscription-headless"} for k in (1, 2, 3)]
-    p.write_text(json.dumps({"role": "test", "rows": rows}, indent=2))
-    return (s.run([str(s.study / "takes.py"), "--add", "--task", "scope-read", "--half",
-                   "positive", "--model", "claude-opus-5", "--take", "1", "--allow-draft"]),
-            "takes.py --add a fourth take")
+    """A slot registered again while its first attempt is pending: the one road to a fourth take.
+
+    HOLLOW UNTIL 11 SEPTEMBER 2026. It wrote three rows and never committed them, so takes.py refused
+    for the uncommitted ledger before any take check ran. It now commits, proves an ordinary third
+    take registers, and requires the refusal to name the registered slot.
+    """
+    _rows(s, (1, 2))
+    s.commit("take: two rows")
+    code, out = _add(s, 3)
+    if code != 0:
+        raise RuntimeError(f"the control is red: an ordinary third take did not register: {out[-200:]}")
+    s.controlled = True
+    _rows(s, (1, 2, 3))
+    s.commit("take: three rows")
+    code, out = _add(s, 2)
+    return Sandbox.expect(code, out, "already registered"), "takes.py --add a slot whose attempt is pending"
 
 
 def m_tampered_namespace(s: Sandbox) -> tuple[int, str]:
@@ -572,6 +587,46 @@ def m_turn_five_marker_back_to_the_sentence(s: Sandbox) -> tuple[int, str]:
     return s.run(_th(s, "TheMarkersHoldOnRealReplies")), "test_harness.py TheMarkersHoldOnRealReplies"
 
 
+
+def m_slot_not_released_by_a_rehearsal(s: Sandbox) -> tuple[int, str]:
+    """Slice 42: every earlier row holds its slot, so a rehearsed slot can never be retried."""
+    s.control(_th(s, "TheTakeLifecycle"))
+    _edit(s.study / "takes.py", '    live = [i for i in slot if outcome(i) not in ("rehearsal", "pause")]\n',
+          "    live = slot\n")
+    return s.run(_th(s, "TheTakeLifecycle")), "test_harness.py TheTakeLifecycle"
+
+
+def m_rehearsal_cap_unenforced(s: Sandbox) -> tuple[int, str]:
+    s.control(_th(s, "TheTakeLifecycle"))
+    _edit(s.study / "takes.py", '    if len(rehearsed) >= int(pre["rehearsal_cap"]):\n', "    if False:\n")
+    return s.run(_th(s, "TheTakeLifecycle")), "test_harness.py TheTakeLifecycle"
+
+
+def m_untagged_refusal_routed(s: Sandbox) -> tuple[int, str]:
+    """Slice 42: a refusal with no reason id routed anyway, as a rehearsal nobody can explain."""
+    s.control(_th(s, "TheAttemptIsRoutedByRule"))
+    _edit(s.study / "drive.py", "        if len(tagged) != len(problems):\n", "        if False:\n")
+    return s.run(_th(s, "TheAttemptIsRoutedByRule")), "test_harness.py TheAttemptIsRoutedByRule"
+
+
+def m_walk_rehearsal_counted_against_a_cell(s: Sandbox) -> tuple[int, str]:
+    s.control(_th(s, "TheRunnerEnumeratesByLedger"))
+    _edit(s.study / "run.py", '        if row.get("kind") != "take":\n            continue\n', "")
+    return s.run(_th(s, "TheRunnerEnumeratesByLedger")), "test_harness.py TheRunnerEnumeratesByLedger"
+
+
+def m_refusal_reason_unlisted(s: Sandbox) -> tuple[int, str]:
+    """Slice 42: a reason the checker gives, dropped from the pre-registered list."""
+    s.control(_th(s, "TheRefusalReasonsArePreRegistered"))
+    p = s.study / "prereg-draft.json"
+    d = json.loads(p.read_text())
+    if d["rehearsal_reasons"].pop("stop-at-held-marker", None) is None:
+        raise RuntimeError("the mutation did not apply; the guard was not exercised")
+    p.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
+    return (s.run(_th(s, "TheRefusalReasonsArePreRegistered")),
+            "test_harness.py TheRefusalReasonsArePreRegistered")
+
+
 MUTATIONS = [
     ("an edited contract quote", m_edited_contract_quote, "objects"),
     ("an emptied quote table", m_emptied_quote_table, "objects"),
@@ -605,6 +660,11 @@ MUTATIONS = [
     ("the verdict field read with a default", m_verdict_read_with_a_default, False),
     ("the rate guard without its word boundaries", m_rate_guard_unbounded, False),
     ("the turn-5 marker back to the reworded sentence", m_turn_five_marker_back_to_the_sentence, False),
+    ("a rehearsed slot that is never released", m_slot_not_released_by_a_rehearsal, False),
+    ("the rehearsal cap unenforced", m_rehearsal_cap_unenforced, False),
+    ("a refusal with no reason id routed", m_untagged_refusal_routed, False),
+    ("a walk rehearsal counted against a take cell", m_walk_rehearsal_counted_against_a_cell, False),
+    ("a refusal reason dropped from the list", m_refusal_reason_unlisted, False),
 ]
 
 NOT_APPLICABLE = [
