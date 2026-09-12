@@ -1875,7 +1875,7 @@
     {
       "path": "evals/gap-study/lint_language.py",
       "git_blob_sha": "d38d8d0bdd8d4ce7ed964c77906bf403e5b71349",
-      "sha256": "bdcebf69f5d9e5768c113b8dd3f01060f985947b2978482a72bb112676f6a47f",
+      "sha256": "ac24d9e252102e155cd2df31ad2a71013f877aa1393194d63f20b4fc59e2d88e",
       "uncommitted": false
     },
     {
@@ -1923,13 +1923,13 @@
     {
       "path": "evals/gap-study/test_harness.py",
       "git_blob_sha": "1dfcb38892de72a4795c22f58666ee0db07fb505",
-      "sha256": "cdaf0379ae3a3bf8e3c8a7b86bcf174e6bba341eb93a8572cce61ec52257bab3",
+      "sha256": "4f90e8660ce67c88e8e26e514a1864ae2b94a4f0fa0da3aa678f47d1b703ca01",
       "uncommitted": false
     },
     {
       "path": "evals/gap-study/mutations.py",
       "git_blob_sha": "ece092a25770e36b2d8ff86d79cdddeb5ba361ee",
-      "sha256": "c083e18c446910a71e99d7a239cfcbccbf149ac80e7906ccc547eed6954f50a8",
+      "sha256": "a7ad225c5dfda68a60fd9a01e30af1155e2dcb9101aba37349bbac2280a399bb",
       "uncommitted": false
     },
     {
@@ -1953,7 +1953,7 @@
     {
       "path": "evals/gap-study/language-allowlist.json",
       "git_blob_sha": "8bc195522ee5655035649f933d49ddf52e9cfb3a",
-      "sha256": "b5cf597536b5ade4b1ee0736616823ca4bca8e75ec583b6c85f034fc16b2a06d",
+      "sha256": "fbfbf302acda0335b1acab492552d32dc224cbe4d8806618af5c7ad8432cb1d0",
       "uncommitted": false
     },
     {
@@ -2724,6 +2724,72 @@
           "path": "evals/gap-study/mutations.py",
           "sha256_before": "4e558d5823fa395088f6fefc1df6257e0ebd2eaa7f904072d5234000ef2e1c47",
           "sha256_after": "c083e18c446910a71e99d7a239cfcbccbf149ac80e7906ccc547eed6954f50a8"
+        }
+      ],
+      "note": "Published as an amendment rather than corrected in place: each file's pinned sha256 before this change is kept here beside the one now in force."
+    },
+    {
+      "n": 2,
+      "at": "2026-09-12T22:43:22+00:00",
+      "title": "the filled ledger turned the language guard and five tests red, and they are repaired",
+      "why": "The 108 takes produced the first real take records, and two instruments had never read one. The language guard scanned every driver ledger and scrub record as though it were a claim by the study, and its `k / n` rule matched the model and take segments of the paths inside them. Separately, tests that had been written against an empty ledger or an empty study folder met the run's real rows and folders: three collided with real take folders, and five that pass ledger row 0 to the take checker were carried into the session binding, which reads git history, so in a copy with no git 21 mutation guards were red before their mutation. No criterion, grader, threshold, label, fixture, operator script, marker or pre-registered sentence is touched, and the results regrade byte-identical.",
+      "found_by": "the study's own gate and mutation battery, run after the 108 takes against the files they produced",
+      "no_take_had_run": false,
+      "takes_run_before_this_amendment": 108,
+      "criteria_unchanged": true,
+      "what_changed": [
+        "lint_language.py: driver-ledger.json and scrub.json under transcripts/, rehearsals/ or pauses/ are records the pinned driver writes, not claims by the study, and are not scanned; every other file in those folders and everywhere else still is.",
+        "language-allowlist.json: two excusals in COSTS.md, each pinned to its exact line: an input-token count on the confounded-design row for claude-opus-5, and a wall clock on the precondition-refusal control row for claude-sonnet-5.",
+        "language-allowlist.json: 111 excusals, one per exact line, for the progress counter the take loop wrote into the subject of 109 take commits already pushed. Pushed history is not rewritten, so each line is excused rather than the rule narrowed, and an edited line brings its finding back.",
+        "test_harness.py: TheTakeRecordsAreRecordsNotClaims binds the exclusion both ways, so a take record is skipped and a walk, a results file, COSTS.md and a notes file beside it are still scanned.",
+        "test_harness.py: three tests that built take folders inside the study build them in scratch trees, because the run's real folders collided with them.",
+        "test_harness.py: five tests that pass ledger row 0 to check_take read an empty ledger they own (gap_check_take_on_an_empty_ledger) instead of the study's live one.",
+        "mutations.py: two guards for the exclusion, one that ignores where the file is and one that swallows every JSON file."
+      ],
+      "before": {
+        "language_guard": "111 findings across 289 inputs: 109 in take records (108 ratio-slash matches on model and take path segments, 1 hundred on a row index) and 2 in COSTS.md; over commit bodies since the freeze, 111 findings in 109 take-commit subjects",
+        "tests": "243 tests, 2 failures",
+        "mutations": "105 mutations, 21 did not go red: each one's control was red before the mutation",
+        "evidence": "evals/gap-study/verification/amendment-2-battery-before.txt"
+      },
+      "after": {
+        "language_guard": "clean over the study's files and over commit bodies since the freeze, 115 excused lines on record",
+        "tests": "245 tests, OK",
+        "mutations": "105 mutations, every one red when broken, 98 watched green first",
+        "evidence": "evals/gap-study/verification/amendment-2-battery.txt"
+      },
+      "regrades": {
+        "side_by_side": "identical: run.py --all on the amended bytes rewrote each results file byte-identical to the frozen instrument's output. No file that run.py, a grader or analyse.py reads was changed.",
+        "results_sha256": {
+          "confounded-design.json": "d5322175fafd8e4f81c0b66880d53dfed8223c902234bc9e1bcc7418cb5679bb",
+          "number-fidelity.json": "2e8badc0a04b4336d77022ffee59ef6f080c005965eba4df710bee393d789dbd",
+          "plan-gate.json": "66571ef0c5c100347752bac10b39517c32f7f4a862d2a019a956d43f898bbd36",
+          "precondition-refusal.json": "6d4b57b23a7975c29221e10fd77d9cc640d1cd230571d97ff615dcb3c4a32d3b",
+          "scope-read.json": "be67807d16b282a62667c0094e718e5830e59ced28b9d901e19b6c05bab8e435",
+          "template-adherence.json": "8a4c28cc10046b52954f1af6044d00aa5f5f3f39534188a1b093af90fcb98d37"
+        }
+      },
+      "residual": "Ten mutations are still listed as not applicable, with reasons written before any take existed; with the takes run, several could now apply. Recorded here and not repaired by this amendment.",
+      "files": [
+        {
+          "path": "evals/gap-study/lint_language.py",
+          "sha256_before": "bdcebf69f5d9e5768c113b8dd3f01060f985947b2978482a72bb112676f6a47f",
+          "sha256_after": "ac24d9e252102e155cd2df31ad2a71013f877aa1393194d63f20b4fc59e2d88e"
+        },
+        {
+          "path": "evals/gap-study/language-allowlist.json",
+          "sha256_before": "b5cf597536b5ade4b1ee0736616823ca4bca8e75ec583b6c85f034fc16b2a06d",
+          "sha256_after": "fbfbf302acda0335b1acab492552d32dc224cbe4d8806618af5c7ad8432cb1d0"
+        },
+        {
+          "path": "evals/gap-study/test_harness.py",
+          "sha256_before": "cdaf0379ae3a3bf8e3c8a7b86bcf174e6bba341eb93a8572cce61ec52257bab3",
+          "sha256_after": "4f90e8660ce67c88e8e26e514a1864ae2b94a4f0fa0da3aa678f47d1b703ca01"
+        },
+        {
+          "path": "evals/gap-study/mutations.py",
+          "sha256_before": "c083e18c446910a71e99d7a239cfcbccbf149ac80e7906ccc547eed6954f50a8",
+          "sha256_after": "a7ad225c5dfda68a60fd9a01e30af1155e2dcb9101aba37349bbac2280a399bb"
         }
       ],
       "note": "Published as an amendment rather than corrected in place: each file's pinned sha256 before this change is kept here beside the one now in force."

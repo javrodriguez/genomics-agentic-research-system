@@ -1,0 +1,124 @@
+105 mutation(s); each applied to a throwaway copy, the guard run there, the copy discarded
+
+  red  ctl exit 1   an edited contract quote                         contracts.py --check
+  red  ctl exit 2   an emptied quote table                           contracts.py --check
+  red  ctl exit 1   a banned rate word in a results file             lint_language.py over the study
+  red  ctl exit 1   a percentage in a results file                   lint_language.py over the study
+  red  ctl exit 1   an excusal pinned to text that changed           lint_language.py over the study
+  red      exit 2   a take index outside n                           takes.py --add with take 4 where n is 3
+  red  ctl exit 2   a fourth graded take                             takes.py --add a slot whose attempt is pending
+  red      exit 1   a tampered session namespace                     takes.py --plan
+  red      exit 1   two ledger rows in one commit                    takes.py --audit
+  red      exit 1   a ledger check handed no history                 check_results.py --ledger with no history
+  red      exit 1   a fixture that names the task                    neutralise.sweep over the built fixture
+  red      exit 2   a manifest written inside the fixture            gen_source.py --manifest-out inside --out
+  red  ctl exit 1   a take with no agent turn                        check_take.py on a clean walk with every agent record removed
+  red  ctl exit 1   a leaked word in an operator turn                check_take.py on a clean walk with a leaked word
+  red      exit 1   grading against a draft                          run.py --all against a draft
+  red  ctl exit 1   a checkout that keeps what it excludes           test_harness.py TheRunTreeCarriesNothing
+  red  ctl exit 1   a checkout named for the study                   test_harness.py TheRunTreeCarriesNothing
+  red  ctl exit 1   the study's names dropped from the leak list     test_harness.py TheLeakCheckReadsEveryChannel
+  red  ctl exit 1   a published walk carrying the email field        check_take.py on a published walk carrying the email field
+  red  ctl exit 1   a carried operator line edited                   test_harness.py CarriedScriptIsTheFirstStudys
+  red  ctl exit 1   a recovery line read as improvisation            test_harness.py TheCheckerAdmitsOnlyThePreRegisteredScript
+  red  ctl exit 1   a marker compared loosely                        test_harness.py TheThenStepAndComparisonAreData
+  red  ctl exit 1   a carried marker that is not template bytes      test_harness.py MarkersAreTemplateBytes
+  red  ctl exit 1   a harness notification read as an operator line  test_harness.py TheCheckerReadsOperatorTurnsNotHarnessRecords
+  red  ctl exit 1   a stop at a held marker admitted                 test_harness.py AStoppedTakeIsCheckedUpToTheStop
+  red  ctl exit 1   a walk message left out of its suite             test_harness.py CaseSuites
+  red  ctl exit 1   a refused checkout left behind                   test_harness.py TheRunTreeCarriesNothing
+  red  ctl exit 1   a driver outcome the label reader does not know  test_harness.py TheDriverOutcomesMapToTheirLabels
+  red  ctl exit 1   a failed recovery that drops its step row        test_harness.py TheDriverLoopRecordsEveryTurnItEnds
+  red  ctl exit 1   the verdict field read with a default            test_harness.py Analysis
+  red  ctl exit 1   the rate guard without its word boundaries       test_harness.py TheLanguageGuardIsWordBounded
+  red  ctl exit 1   the turn-5 marker back to the reworded sentence  test_harness.py TheMarkersHoldOnRealReplies
+  red  ctl exit 1   a rehearsed slot that is never released          test_harness.py TheTakeLifecycle
+  red  ctl exit 1   the rehearsal cap unenforced                     test_harness.py TheTakeLifecycle
+  red  ctl exit 1   a refusal with no reason id routed               test_harness.py TheAttemptIsRoutedByRule
+  red  ctl exit 1   a walk rehearsal counted against a take cell     test_harness.py TheRunnerEnumeratesByLedger
+  red  ctl exit 1   a refusal reason dropped from the list           test_harness.py TheRefusalReasonsArePreRegistered
+  red  ctl exit 1   a plant true in one field                        test_harness.py EveryOperatorLineRenders
+  red  ctl exit 1   a cost table typed by hand                       test_harness.py TheBillIsWrittenByTheReader
+  red  ctl exit 1   a checked line with its source blanked           test_harness.py EveryTaskScriptPassesTheChecker
+  GREEN     exit 0   an attempt's kind taken from its folder          raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 16 tests in 0.188s |  | FAILED (errors=4)')
+  GREEN     exit 0   a graded take never re-checked                   raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 16 tests in 0.189s |  | FAILED (errors=4)')
+  red  ctl exit 1   a transcript on another model accepted           test_harness.py TheModelAndTheConstantsAreBound
+  red  ctl exit 1   a budget above the registered one accepted       test_harness.py TheDriverLoopRecordsEveryTurnItEnds
+  red  ctl exit 1   the auto-memory section unseen                   test_harness.py TheAutoMemorySectionIsBound
+  red  ctl exit 1   a project variant unbound                        test_harness.py TheProjectFixtureIsBound
+  red  ctl exit 1   the take order unenforced                        test_harness.py TheTakeOrderIsEnforced
+  red  ctl exit 1   the write detector reading one segment           test_harness.py WriteDetectorReadsEverySegment
+  red  ctl exit 1   a folder no attempt ledger claims, unseen        test_harness.py TheLedgerSeesEveryFolder
+  red  ctl exit 1   a ledger naming no take, graded                  test_harness.py TheLedgerSeesEveryFolder
+  red  ctl exit 1   a continuation past an unheld marker, unproven   test_harness.py EveryContinuationIsProven
+  red  ctl exit 1   the harness's API-error record bound as a model  test_harness.py TheHarnessOwnAssistantRecords
+  red  ctl exit 1   a path named in prose voiding a take             test_harness.py TheHarnessOwnAssistantRecords
+  red  ctl exit 1   the gars tree unbound                            test_harness.py TheModelAndTheConstantsAreBound
+  GREEN     exit 0   published bytes unbound                          raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 16 tests in 0.191s |  | FAILED (errors=4)')
+  red  ctl exit 1   a missing prompt snapshot passing                test_harness.py TheAutoMemorySectionIsBound
+  red  ctl exit 1   a reset connection read as a pause               test_harness.py TheRateLimitMarkersAreBounded
+  red  ctl exit 1   a skipped row unseen                             test_harness.py TheTakeOrderIsEnforced
+  red  ctl exit 1   pauses uncapped                                  test_harness.py TheTakeLifecycle
+  GREEN     exit 0   a pause without its evidence                     raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 16 tests in 0.185s |  | FAILED (errors=4)')
+  red  ctl exit 1   a withheld recovery admitted                     test_harness.py TheStopProofReadsTheRecovery
+  red  ctl exit 1   the checkout's git status unread                 test_harness.py TheCheckoutIsBound
+  red  ctl exit 1   an instruction file's content unread             test_harness.py TheCheckoutIsBound
+  red  ctl exit 1   an unknown session id hidden by an empty ledger  test_harness.py TheLedgerSeesEveryFolder
+  red  ctl exit 1   unattempted rows after results, unreported       test_harness.py TheLedgerSeesEveryFolder
+  red  ctl exit 1   a snapshot read from any line                    test_harness.py TheAutoMemorySectionIsBound
+  red  ctl exit 1   a stop at a step with no wait point              test_harness.py TheStopProofReadsTheRecovery
+  red  ctl exit 1   a line sent after a recorded stop                test_harness.py TheStopProofReadsTheRecovery
+  GREEN     exit 0   a rehearsal naming a reason the driver refuses   raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 16 tests in 0.184s |  | FAILED (errors=4)')
+  GREEN     exit 0   a refusal the ledger itself made, filed as a rehearsal raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 16 tests in 0.184s |  | FAILED (errors=4)')
+  red  ctl exit 1   the harness's own report unread by the pause branch test_harness.py TheDriverLoopRecordsEveryTurnItEnds
+  red  ctl exit 1   a shell read of the planted file unseen          test_harness.py Graders
+  red  ctl exit 1   a generated fixture's recipe unchecked           test_harness.py TheGeneratedFixtureIsBound
+  GREEN     exit 0   a stopped take's outcome edited to complete      raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 16 tests in 0.188s |  | FAILED (errors=4)')
+  GREEN     exit 0   the fixture block left unrestored                raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 16 tests in 0.187s |  | FAILED (errors=4)')
+  GREEN     exit 0   an attempt that denies the turn its ledger records raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 16 tests in 0.187s |  | FAILED (errors=4)')
+  GREEN     exit 0   a rehearsal published with no transcript         raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 16 tests in 0.188s |  | FAILED (errors=4)')
+  red  ctl exit 1   a fixture hash absent after the freeze           test_harness.py TheGeneratedFixtureIsBound
+  red  ctl exit 1   a slot freed by an attempt the ledger refuses    test_harness.py TheTakeLifecycle
+  GREEN     exit 0   a fixture field deleted rather than edited       raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 16 tests in 0.189s |  | FAILED (errors=4)')
+  GREEN     exit 0   a cut turn published as complete                 raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 11 tests in 0.149s |  | FAILED (errors=3)')
+  GREEN     exit 0   an outcome read only where it says complete      raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 11 tests in 0.145s |  | FAILED (errors=3)')
+  GREEN     exit 0   the fixture block merged rather than replaced    raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 16 tests in 0.186s |  | FAILED (errors=4)')
+  red  ctl exit 1   a copied-tree pin unread                         test_harness.py TheGeneratedFixtureIsBound
+  GREEN     exit 0   a cut outcome bound to nothing                   raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 11 tests in 0.145s |  | FAILED (errors=3)')
+  red  ctl exit 1   a generated fixture not refused before the session test_harness.py TheGeneratedFixtureIsBound
+  red  ctl exit 1   registration order that is not the drive order   test_harness.py TheTakeLifecycle
+  red  ctl exit 1   an exhausted cell not skipped in the order       test_harness.py TheOrderSurvivesAnExhaustedCell
+  GREEN     exit 0   an aborted outcome with no abort behind it       raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 11 tests in 0.143s |  | FAILED (errors=3)')
+  GREEN     exit 0   a no-session clause beside a transcript          raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 11 tests in 0.147s |  | FAILED (errors=3)')
+  GREEN     exit 0   a finish unproven by any stop reason             raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 11 tests in 0.151s |  | FAILED (errors=3)')
+  GREEN     exit 0   a turn row that is not on the script             raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 11 tests in 0.145s |  | FAILED (errors=3)')
+  red  ctl exit 1   the cut naming unpublished                       test_harness.py TheRunnerEnumeratesByLedger
+  red  ctl exit 1   the exhausted-cell skip unwired at its call site test_harness.py TheLedgerChecksTheOrderEndToEnd
+  red  ctl exit 1   a first registration in an exhausted cell        test_harness.py TheLedgerChecksTheOrderEndToEnd
+  GREEN     exit 0   a recovery row the script attaches nowhere       raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 11 tests in 0.143s |  | FAILED (errors=3)')
+  GREEN     exit 0   the same turn row twice                          raised RuntimeError('the guard is red BEFORE the mutation (exit 1): Ran 11 tests in 0.140s |  | FAILED (errors=3)')
+  red  ctl exit 1   the cut count absent from the comparison         test_harness.py Analysis
+  red  ctl exit 1   a take-record exclusion that ignores where the file is test_harness.py TheTakeRecordsAreRecordsNotClaims
+  red  ctl exit 1   a take-record exclusion that swallows every JSON file test_harness.py TheTakeRecordsAreRecordsNotClaims
+  red  ctl exit 1   the harness's error text read as the agent's     test_harness.py TheRateLimitMarkersAreBounded
+  red  ctl exit 1   a pause marker matched unbounded                 test_harness.py TheRateLimitMarkersAreBounded
+  red  ctl exit 1   the caps unread on the ledger side               test_harness.py TheLedgerSeesEveryFolder
+  red  ctl exit 1   the head system tree unchecked                   test_harness.py TheLedgerSeesEveryFolder
+  red  ctl exit 1   an in-scope read on the positive half read as an answer test_harness.py Graders
+
+77 of 105 guards were watched green unmutated before going red (`ctl`). The rest run a command that writes, or a guard with no unmutated form.
+
+10 mutation(s) NOT APPLICABLE yet, listed rather than dropped:
+  n/a   a moved threshold after the freeze           a threshold is pinned by the frozen file's own sha256, and nothing is pinned before the freeze. check_results.py's default check is what catches it, and it already refuses today because no file carries a sha yet
+  n/a   a local transcript with no server log        the local tier was dropped at gate 2, so no local take will exist to mutate
+  n/a   a transcript whose session id does not match its row's commit no take has run before the freeze; check_take.py's binding is unit-tested instead
+  n/a   a row committed after its transcript's takes: commit same reason: there is no takes: commit yet
+  n/a   a doctored results file re-graded            no results file exists before the freeze; the regrade path is driven end to end in a scratch tree with synthetic takes
+  n/a   a gars sha differing from the freeze         the freeze has not happened, so there is no pinned sha to differ from
+  n/a   a seed review report committed more than once the sandbox carries no history of review commits; TheSeedReviewIsCommittedOnce runs on this repository's own history and refuses a commit that lands no report
+  n/a   a copied fixture whose origin no longer resolves the sandbox does not sit in a workspaces folder, so the origin cannot resolve there and the guard skips; TheCopiedFixtureBuildsToItsPin carries its own negative control, which points the origin at a missing folder and requires the message
+  n/a   a freeze that pins a generated fixture by nothing review 20's F5 is a refusal inside freeze.py's main(), which needs a scratch repository with git history, a committed review report, every pinned file and a generator that fails --manifest-only: a fixture larger than the change it would guard. The change is kept and stated here rather than covered by a guard that does not exist; the freeze runs once, and check_results.py re-hashes every pinned file afterwards
+  n/a   a carried fixture whose tree hash differs from the freeze no fixture pin exists before the freeze; the builder's refusal on a disagreeing pin is unit-tested instead (TheCarriedFixtureBuilds)
+
+21 guard(s) did NOT go red: ["an attempt's kind taken from its folder", 'a graded take never re-checked', 'published bytes unbound', 'a pause without its evidence', 'a rehearsal naming a reason the driver refuses', 'a refusal the ledger itself made, filed as a rehearsal', "a stopped take's outcome edited to complete", 'the fixture block left unrestored', 'an attempt that denies the turn its ledger records', 'a rehearsal published with no transcript', 'a fixture field deleted rather than edited', 'a cut turn published as complete', 'an outcome read only where it says complete', 'the fixture block merged rather than replaced', 'a cut outcome bound to nothing', 'an aborted outcome with no abort behind it', 'a no-session clause beside a transcript', 'a finish unproven by any stop reason', 'a turn row that is not on the script', 'a recovery row the script attaches nowhere', 'the same turn row twice']
+A guard that cannot fail is not protecting anything.

@@ -989,3 +989,48 @@ The gate on the amended bytes: 243 tests OK; 103 mutations, every one red when b
 
 No criterion moved.
 No take has run.
+
+### Ruling 29 — 2026-09-12 — amendment 2: the filled ledger turned the language guard and five tests red, and they are repaired
+
+The owner's decision, on the fork put to them after the 108 takes: amend the language guard so it stops reading path segments in driver ledgers, and publish it as a small amendment.
+`verification/amendment-2.md` carries it in full, and `amendments[1]` in the frozen file carries it machine-readably.
+
+**A record the driver writes is not a claim the study makes.**
+The guard read each driver ledger and scrub record, and its `k / n` rule matched path segments inside them: 109 of its 111 findings.
+Those two file names under the three take folders are no longer scanned; everything else still is, and a test and two mutations bind the exclusion both ways.
+The other two findings were numbers in `COSTS.md`, and each is excused against its exact line.
+The guard's scan of commit bodies since the freeze, which checklist line 9 requires and the take loop's gate never ran, found 111 progress counters in the subjects of 109 take commits already pushed; each exact line is excused, because pushed history is not rewritten.
+
+**A test reads a ledger it owns.**
+Found while verifying the guard: five tests pass ledger row 0 and relied on the ledger being empty, and three built folders where the run's real ones now sit.
+In a mutation sandbox the first five errored, and 21 guards reported their control red before any mutation.
+They now read an empty ledger and scratch trees of their own.
+
+**Both regrades, side by side: identical.**
+No file a grade is computed from was touched, and `run.py --all` rewrote each results file byte-identical.
+
+The gate on the amended bytes: 245 tests OK; 105 mutations, each red when broken, 98 watched green first; the language guard clean over the study's files and over commit bodies since the freeze, with 115 excused lines on record.
+Ten mutations still carry not-applicable reasons written before any take existed, and that is recorded rather than repaired here.
+
+No criterion moved.
+No number moved.
+
+### Ruling 30 — 2026-09-12 — the owner's word on two gaps in checklist line 10
+
+Both were put to the owner as questions, and both answers are quoted as given.
+
+**The diff baseline.**
+Requirement 7 and checklist line 10 check `git diff bcade21 HEAD -- docs/EVALS.md` for added lines only.
+The first study's own amendment `50a2bdc`, landed after this study's kickoff and not an ancestor of it, changed one line of that file, so the check as written cannot pass for a reason this study did not cause.
+The answer: "Measure from 50a2bdc (Recommended)".
+The check this study runs is `git diff 50a2bdc HEAD -- docs/EVALS.md`, added lines only, and the one changed line is attributed to the first study's amendment by commit.
+
+**The named test that was never written.**
+Checklist line 10 names `test_harness.py TwoMinuteRead`, and no such class exists.
+The answer: "Add it as amendment 3 (Recommended)".
+It is written as amendment 3 and published with before and after hashes, and it moves no number.
+
+**One call made under that answer, and flagged as such.**
+Checklist line 9 names `test_harness.py NoRateNoBannedWord`, which does not exist either.
+The same reasoning covers it, so it is written into amendment 3 beside `TwoMinuteRead`, not raised as a third question.
+This is the operator's reading of the owner's answer, not the owner's word, and it is recorded as that.

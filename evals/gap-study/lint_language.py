@@ -193,6 +193,27 @@ def case_file_own_words(path: Path) -> str:
         out.extend(str(c.get(k, "")) for k in CASE_OWN_FIELDS)
     return "\n".join(x for x in out if x)
 
+# A TAKE'S MACHINE RECORD IS A RECORD, NOT A CLAIM BY THIS STUDY. Amendment 2, 12 September 2026.
+#
+# Beside every graded, rehearsed or paused attempt the pinned driver writes `driver-ledger.json` and the
+# scrubber writes `scrub.json`: session ids, file paths, hashes, exit codes, token counts and times.
+# The transcript beside them is already outside this guard, for the reason given above: what happened
+# is a record, and editing a record to satisfy a linter is what the protocol forbids. These two files
+# are the same kind of record in another format. The run's first scan of real take output reported 109
+# findings in them, 108 of them the `k / n` rule matching a path segment such as
+# `claude-haiku-4-5-20251001/1`, and none of the 109 was a sentence the study wrote.
+#
+# NARROW ON PURPOSE. Only those two file names, and only under the three directories an attempt is
+# filed in. A walk's ledger is still scanned, and so is every file this study writes about a take:
+# the results, the analysis, the cost tables and the published section. No pattern is changed.
+TAKE_ROOTS = ("transcripts", "rehearsals", "pauses")
+TAKE_RECORD_NAMES = ("driver-ledger.json", "scrub.json")
+
+
+def is_take_record(path: Path) -> bool:
+    return path.name in TAKE_RECORD_NAMES and any(root in path.parts for root in TAKE_ROOTS)
+
+
 # Prose and data are scanned by default. Source is scanned only when asked for: a docstring that
 # explains why a word is banned is not a published claim, and the pre-registration's own test
 # points this tool at the published set explicitly.
@@ -209,6 +230,7 @@ def iter_files(paths: list[str], include_code: bool = False):
                         and f.name not in NEVER_SCANNED
                         and not is_outside_report(f)
                         and not is_case_file(f)
+                        and not is_take_record(f)
                         and "__pycache__" not in f.parts):
                     yield f
         elif path.is_file():

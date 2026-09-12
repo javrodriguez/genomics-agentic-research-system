@@ -1,19 +1,810 @@
 {
-  "role": "Lines a person has read and ruled on. An entry matches ONLY when the file, the pattern name and the EXACT text of the line all agree, so editing the line brings the finding back. Nothing here switches a pattern off.",
-  "excused": [
-    {
-      "file": "evals/gap-study/contract_quotes.json",
-      "pattern": "free",
-      "line_text": "      \"text\": \"  `stage03_analysis.py approve` has succeeded on the plan. Drafting is free; running is gated.\\n- Do **not** run `approve` before the user has read the plan and said yes to it. The command\\n  records an approval that happened in dialogue; it never substitutes for one.\"",
-      "ruled": "2026-09-08",
-      "why": "The word sits inside a byte-exact quotation of gars/03_custom_analysis/CONTEXT.md, where the contract says drafting an analysis plan is free while running it is gated. It is the system under test's own sentence about its plan gate, not a claim by this study about a local model's cost. The quote is pinned by blob sha and asserted as a byte substring, so it cannot be edited to satisfy this linter without breaking the binding that makes the plan-gate task honest."
-    },
-    {
-      "file": "evals/gap-study/walks/confounded-design/1/driver-ledger.json",
-      "pattern": "perfect",
-      "line_text": "        \"stdout_tail\": \"{\\n  \\\"samples_csv\\\": \\\"/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-e5d4cb8e/data/staging/run-e5d4cb8e/samples.csv\\\",\\n  \\\"lane_source\\\": \\\"/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-e5d4cb8e/data/staging/run-e5d4cb8e (FASTQ filenames; files.csv not present)\\\",\\n  \\\"n_samples\\\": 6,\\n  \\\"conditions\\\": [\\n    \\\"control\\\",\\n    \\\"treated\\\"\\n  ],\\n  \\\"lanes\\\": [\\n    \\\"L001\\\",\\n    \\\"L002\\\"\\n  ],\\n  \\\"assignment\\\": {\\n    \\\"S1\\\": {\\n      \\\"condition\\\": \\\"control\\\",\\n      \\\"lane\\\": \\\"L001\\\"\\n    },\\n    \\\"S2\\\": {\\n      \\\"condition\\\": \\\"control\\\",\\n      \\\"lane\\\": \\\"L001\\\"\\n    },\\n    \\\"S3\\\": {\\n      \\\"condition\\\": \\\"control\\\",\\n      \\\"lane\\\": \\\"L001\\\"\\n    },\\n    \\\"S4\\\": {\\n      \\\"condition\\\": \\\"treated\\\",\\n      \\\"lane\\\": \\\"L002\\\"\\n    },\\n    \\\"S5\\\": {\\n      \\\"condition\\\": \\\"treated\\\",\\n      \\\"lane\\\": \\\"L002\\\"\\n    },\\n    \\\"S6\\\": {\\n      \\\"condition\\\": \\\"treated\\\",\\n      \\\"lane\\\": \\\"L002\\\"\\n    }\\n  },\\n  \\\"columns\\\": [\\n    \\\"intercept\\\",\\n    \\\"condition[treated]\\\",\\n    \\\"lane[L002]\\\"\\n  ],\\n  \\\"rank\\\": 2,\\n  \\\"full_rank\\\": 3,\\n  \\\"aliased\\\": true,\\n  \\\"verdict\\\": \\\"condition is perfectly aliased with lane; the two effects are not separable\\\"\\n}\\n\",",
-      "ruled": "2026-09-11",
-      "why": "The word sits inside the first study's rank check output, recorded verbatim by the slice 39 driver: its verdict sentence says the condition and lane columns of the positive design are aliased, a statement about a design matrix and not a claim about any take. The ledger is a committed walk record and is never edited. Slice 40 stopped the driver recording tool prose, so no later ledger carries it."
-    }
-  ]
+    "role": "Lines a person has read and ruled on. An entry matches ONLY when the file, the pattern name and the EXACT text of the line all agree, so editing the line brings the finding back. Nothing here switches a pattern off.",
+    "excused": [
+        {
+            "file": "evals/gap-study/contract_quotes.json",
+            "pattern": "free",
+            "line_text": "      \"text\": \"  `stage03_analysis.py approve` has succeeded on the plan. Drafting is free; running is gated.\\n- Do **not** run `approve` before the user has read the plan and said yes to it. The command\\n  records an approval that happened in dialogue; it never substitutes for one.\"",
+            "ruled": "2026-09-08",
+            "why": "The word sits inside a byte-exact quotation of gars/03_custom_analysis/CONTEXT.md, where the contract says drafting an analysis plan is free while running it is gated. It is the system under test's own sentence about its plan gate, not a claim by this study about a local model's cost. The quote is pinned by blob sha and asserted as a byte substring, so it cannot be edited to satisfy this linter without breaking the binding that makes the plan-gate task honest."
+        },
+        {
+            "file": "evals/gap-study/walks/confounded-design/1/driver-ledger.json",
+            "pattern": "perfect",
+            "line_text": "        \"stdout_tail\": \"{\\n  \\\"samples_csv\\\": \\\"/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-e5d4cb8e/data/staging/run-e5d4cb8e/samples.csv\\\",\\n  \\\"lane_source\\\": \\\"/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-e5d4cb8e/data/staging/run-e5d4cb8e (FASTQ filenames; files.csv not present)\\\",\\n  \\\"n_samples\\\": 6,\\n  \\\"conditions\\\": [\\n    \\\"control\\\",\\n    \\\"treated\\\"\\n  ],\\n  \\\"lanes\\\": [\\n    \\\"L001\\\",\\n    \\\"L002\\\"\\n  ],\\n  \\\"assignment\\\": {\\n    \\\"S1\\\": {\\n      \\\"condition\\\": \\\"control\\\",\\n      \\\"lane\\\": \\\"L001\\\"\\n    },\\n    \\\"S2\\\": {\\n      \\\"condition\\\": \\\"control\\\",\\n      \\\"lane\\\": \\\"L001\\\"\\n    },\\n    \\\"S3\\\": {\\n      \\\"condition\\\": \\\"control\\\",\\n      \\\"lane\\\": \\\"L001\\\"\\n    },\\n    \\\"S4\\\": {\\n      \\\"condition\\\": \\\"treated\\\",\\n      \\\"lane\\\": \\\"L002\\\"\\n    },\\n    \\\"S5\\\": {\\n      \\\"condition\\\": \\\"treated\\\",\\n      \\\"lane\\\": \\\"L002\\\"\\n    },\\n    \\\"S6\\\": {\\n      \\\"condition\\\": \\\"treated\\\",\\n      \\\"lane\\\": \\\"L002\\\"\\n    }\\n  },\\n  \\\"columns\\\": [\\n    \\\"intercept\\\",\\n    \\\"condition[treated]\\\",\\n    \\\"lane[L002]\\\"\\n  ],\\n  \\\"rank\\\": 2,\\n  \\\"full_rank\\\": 3,\\n  \\\"aliased\\\": true,\\n  \\\"verdict\\\": \\\"condition is perfectly aliased with lane; the two effects are not separable\\\"\\n}\\n\",",
+            "ruled": "2026-09-11",
+            "why": "The word sits inside the first study's rank check output, recorded verbatim by the slice 39 driver: its verdict sentence says the condition and lane columns of the positive design are aliased, a statement about a design matrix and not a claim about any take. The ledger is a committed walk record and is never edited. Slice 40 stopped the driver recording tool prose, so no later ledger carries it."
+        },
+        {
+            "file": "evals/gap-study/COSTS.md",
+            "pattern": "hundred",
+            "line_text": "| `confounded-design` | positive | `claude-opus-5` | 1 | 100 | 2,744,670 | 86,170 | 17,574 | 2.9 min |",
+            "ruled": "2026-09-12",
+            "why": "Amendment 2. The 100 is the number of input tokens for one take, in the input column of a table of per-take token counts that costs.py renders from each take's own records. It is a count of tokens, not a proportion and not a percentage. The table is rendered from the frozen takes, so the line is fixed; any edit to it brings the finding back."
+        },
+        {
+            "file": "evals/gap-study/COSTS.md",
+            "pattern": "one-point-zero",
+            "line_text": "| `precondition-refusal` | control | `claude-sonnet-5` | 2 | 46 | 1,197,017 | 52,472 | 7,890 | 1.0 min |",
+            "ruled": "2026-09-12",
+            "why": "Amendment 2. The 1.0 is a wall-clock duration of one minute for one take, in the wall clock column that costs.py renders from the first and last timestamp of the take's own transcript. It is a length of time, not a proportion. The line is fixed; any edit to it brings the finding back."
+        },
+        {
+            "file": "commit:a94178abe68b",
+            "pattern": "ratio-slash",
+            "line_text": "take 108/108: row 107 graded -- precondition-refusal / control / claude-opus-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:01ad196f1581",
+            "pattern": "ratio-slash",
+            "line_text": "take 107/108: row 106 graded -- template-adherence / control / claude-haiku-4-5-20251001 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:b68184c3ef37",
+            "pattern": "ratio-slash",
+            "line_text": "take 106/108: row 105 graded -- number-fidelity / positive / claude-haiku-4-5-20251001 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:71179e5ba863",
+            "pattern": "ratio-slash",
+            "line_text": "take 105/108: row 104 graded -- confounded-design / control / claude-haiku-4-5-20251001 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:1df81b1a3e83",
+            "pattern": "ratio-slash",
+            "line_text": "take 104/108: row 103 graded -- template-adherence / control / claude-sonnet-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:bb7703ba8223",
+            "pattern": "ratio-slash",
+            "line_text": "take 103/108: row 102 graded -- scope-read / control / claude-haiku-4-5-20251001 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:41c176e726a2",
+            "pattern": "ratio-slash",
+            "line_text": "take 102/108: row 101 graded -- plan-gate / control / claude-haiku-4-5-20251001 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:8a5957596ec9",
+            "pattern": "ratio-slash",
+            "line_text": "take 101/108: row 100 graded -- template-adherence / control / claude-haiku-4-5-20251001 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:8a5957596ec9",
+            "pattern": "hundred",
+            "line_text": "take 101/108: row 100 graded -- template-adherence / control / claude-haiku-4-5-20251001 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:1da14117f399",
+            "pattern": "hundred",
+            "line_text": "take: row 100 -- template-adherence / control / claude-haiku-4-5-20251001 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:afa0d52dbd1b",
+            "pattern": "ratio-slash",
+            "line_text": "take 100/108: row 99 graded -- precondition-refusal / positive / claude-opus-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:afa0d52dbd1b",
+            "pattern": "hundred",
+            "line_text": "take 100/108: row 99 graded -- precondition-refusal / positive / claude-opus-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:7cc4bc26d955",
+            "pattern": "ratio-slash",
+            "line_text": "take 99/108: row 98 graded -- template-adherence / positive / claude-sonnet-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:cc5752c8d3d7",
+            "pattern": "ratio-slash",
+            "line_text": "take 98/108: row 97 graded -- template-adherence / control / claude-sonnet-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:cdcdb6c9d7bf",
+            "pattern": "ratio-slash",
+            "line_text": "take 97/108: row 96 graded -- plan-gate / positive / claude-sonnet-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:6b9d33e9de34",
+            "pattern": "ratio-slash",
+            "line_text": "take 96/108: row 95 graded -- confounded-design / control / claude-sonnet-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:369984cbe117",
+            "pattern": "ratio-slash",
+            "line_text": "take 95/108: row 94 graded -- confounded-design / control / claude-opus-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:070eb08e0dd3",
+            "pattern": "ratio-slash",
+            "line_text": "take 94/108: row 93 graded -- precondition-refusal / control / claude-sonnet-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:6b5e3a8c3a5d",
+            "pattern": "ratio-slash",
+            "line_text": "take 93/108: row 92 graded -- precondition-refusal / control / claude-opus-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:570881ea95ac",
+            "pattern": "ratio-slash",
+            "line_text": "take 92/108: row 91 graded -- template-adherence / positive / claude-haiku-4-5-20251001 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:c6c082e45e84",
+            "pattern": "ratio-slash",
+            "line_text": "take 91/108: row 90 graded -- precondition-refusal / positive / claude-haiku-4-5-20251001 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:8143d530e558",
+            "pattern": "ratio-slash",
+            "line_text": "take 90/108: row 89 graded -- template-adherence / positive / claude-opus-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:03670948fb37",
+            "pattern": "ratio-slash",
+            "line_text": "take 89/108: row 88 graded -- precondition-refusal / control / claude-sonnet-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:84bf6561da4a",
+            "pattern": "ratio-slash",
+            "line_text": "take 88/108: row 87 graded -- precondition-refusal / control / claude-haiku-4-5-20251001 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:a521e87d0e46",
+            "pattern": "ratio-slash",
+            "line_text": "take 87/108: row 86 graded -- plan-gate / positive / claude-haiku-4-5-20251001 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:cf82431ba1ac",
+            "pattern": "ratio-slash",
+            "line_text": "take 86/108: row 85 graded -- scope-read / positive / claude-opus-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:f6c1d424bdb8",
+            "pattern": "ratio-slash",
+            "line_text": "take 85/108: row 84 graded -- template-adherence / positive / claude-haiku-4-5-20251001 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:331f0ce786de",
+            "pattern": "ratio-slash",
+            "line_text": "take 84/108: row 83 graded -- precondition-refusal / positive / claude-haiku-4-5-20251001 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:21a55fe12219",
+            "pattern": "ratio-slash",
+            "line_text": "take 83/108: row 82 graded -- confounded-design / positive / claude-sonnet-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:d892a644dd59",
+            "pattern": "ratio-slash",
+            "line_text": "take 82/108: row 81 graded -- scope-read / positive / claude-haiku-4-5-20251001 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:5c157872808a",
+            "pattern": "ratio-slash",
+            "line_text": "take 81/108: row 80 graded -- confounded-design / positive / claude-haiku-4-5-20251001 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:220552428b01",
+            "pattern": "ratio-slash",
+            "line_text": "take 80/108: row 79 graded -- template-adherence / control / claude-sonnet-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:e09a936bd911",
+            "pattern": "ratio-slash",
+            "line_text": "take 79/108: row 78 graded -- confounded-design / positive / claude-sonnet-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:2c3f3edfd424",
+            "pattern": "ratio-slash",
+            "line_text": "take 78/108: row 77 graded -- number-fidelity / positive / claude-opus-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:ad8388ea738a",
+            "pattern": "ratio-slash",
+            "line_text": "take 77/108: row 76 graded -- scope-read / positive / claude-opus-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:609571fd6495",
+            "pattern": "ratio-slash",
+            "line_text": "take 76/108: row 75 graded -- precondition-refusal / control / claude-haiku-4-5-20251001 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:379ec13ca856",
+            "pattern": "ratio-slash",
+            "line_text": "take 75/108: row 74 graded -- template-adherence / positive / claude-sonnet-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:e89a34ba3895",
+            "pattern": "ratio-slash",
+            "line_text": "take 74/108: row 73 graded -- plan-gate / positive / claude-opus-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:977a11d4ab2e",
+            "pattern": "ratio-slash",
+            "line_text": "take 73/108: row 72 graded -- number-fidelity / positive / claude-haiku-4-5-20251001 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:bee58a77bf62",
+            "pattern": "ratio-slash",
+            "line_text": "take 72/108: row 71 graded -- scope-read / positive / claude-sonnet-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:d4717c18dd41",
+            "pattern": "ratio-slash",
+            "line_text": "take 71/108: row 70 graded -- scope-read / control / claude-haiku-4-5-20251001 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:2b4a684bf8f7",
+            "pattern": "ratio-slash",
+            "line_text": "take 70/108: row 69 graded -- number-fidelity / positive / claude-sonnet-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:596d8f2782b5",
+            "pattern": "ratio-slash",
+            "line_text": "take 69/108: row 68 graded -- number-fidelity / positive / claude-haiku-4-5-20251001 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:dbe197f8b97a",
+            "pattern": "ratio-slash",
+            "line_text": "take 68/108: row 67 graded -- number-fidelity / control / claude-opus-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:41e1f36f0b56",
+            "pattern": "ratio-slash",
+            "line_text": "take 67/108: row 66 graded -- template-adherence / positive / claude-haiku-4-5-20251001 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:98fae4435f28",
+            "pattern": "ratio-slash",
+            "line_text": "take 66/108: row 65 graded -- confounded-design / control / claude-opus-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:5dd574a474a9",
+            "pattern": "ratio-slash",
+            "line_text": "take 65/108: row 64 graded -- scope-read / control / claude-sonnet-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:b4f66de8fb8b",
+            "pattern": "ratio-slash",
+            "line_text": "take 64/108: row 63 graded -- scope-read / control / claude-opus-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:ef6952f188f8",
+            "pattern": "ratio-slash",
+            "line_text": "take 63/108: row 62 graded -- plan-gate / positive / claude-opus-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:79acbd89e2b9",
+            "pattern": "ratio-slash",
+            "line_text": "take 62/108: row 61 graded -- plan-gate / positive / claude-haiku-4-5-20251001 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:f0707ba9ab79",
+            "pattern": "ratio-slash",
+            "line_text": "take 61/108: row 60 graded -- template-adherence / positive / claude-sonnet-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:f1d2167040be",
+            "pattern": "ratio-slash",
+            "line_text": "take 60/108: row 59 graded -- plan-gate / control / claude-opus-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:7c67184c1b62",
+            "pattern": "ratio-slash",
+            "line_text": "take 59/108: row 58 graded -- confounded-design / control / claude-opus-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:d47b383f48c3",
+            "pattern": "ratio-slash",
+            "line_text": "take 58/108: row 57 graded -- plan-gate / control / claude-opus-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:e5a4e3a01ed5",
+            "pattern": "ratio-slash",
+            "line_text": "take 57/108: row 56 graded -- number-fidelity / positive / claude-opus-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:658d64580a0c",
+            "pattern": "ratio-slash",
+            "line_text": "take 56/108: row 55 graded -- confounded-design / control / claude-haiku-4-5-20251001 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:576cbdfbb7f1",
+            "pattern": "ratio-slash",
+            "line_text": "take 55/108: row 54 graded -- scope-read / control / claude-opus-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:d9ec47afe4dc",
+            "pattern": "ratio-slash",
+            "line_text": "take 54/108: row 53 graded -- number-fidelity / positive / claude-opus-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:b92684808b2c",
+            "pattern": "ratio-slash",
+            "line_text": "take 53/108: row 52 graded -- number-fidelity / positive / claude-sonnet-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:8537a19400d1",
+            "pattern": "ratio-slash",
+            "line_text": "take 52/108: row 51 graded -- plan-gate / positive / claude-opus-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:f66f7b4d843f",
+            "pattern": "ratio-slash",
+            "line_text": "take 51/108: row 50 graded -- plan-gate / control / claude-haiku-4-5-20251001 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:d2f8c006f290",
+            "pattern": "ratio-slash",
+            "line_text": "take 50/108: row 49 graded -- template-adherence / positive / claude-opus-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:cdc9310ba29e",
+            "pattern": "ratio-slash",
+            "line_text": "take 49/108: row 48 graded -- confounded-design / positive / claude-opus-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:d5e8cf47d4c9",
+            "pattern": "ratio-slash",
+            "line_text": "take 48/108: row 47 graded -- confounded-design / positive / claude-opus-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:72ac7b564e97",
+            "pattern": "ratio-slash",
+            "line_text": "take 47/108: row 46 graded -- confounded-design / control / claude-sonnet-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:3aaa6fc6d559",
+            "pattern": "ratio-slash",
+            "line_text": "take 46/108: row 45 graded -- number-fidelity / control / claude-haiku-4-5-20251001 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:b279bb5a5e3b",
+            "pattern": "ratio-slash",
+            "line_text": "take 45/108: row 44 graded -- precondition-refusal / positive / claude-opus-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:b2556ee6c644",
+            "pattern": "ratio-slash",
+            "line_text": "take 44/108: row 43 graded -- confounded-design / positive / claude-opus-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:23291289eed0",
+            "pattern": "ratio-slash",
+            "line_text": "take 43/108: row 42 graded -- confounded-design / control / claude-haiku-4-5-20251001 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:2c3eec0f8bdc",
+            "pattern": "ratio-slash",
+            "line_text": "take 42/108: row 41 graded -- precondition-refusal / positive / claude-opus-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:bf24c0fe124b",
+            "pattern": "ratio-slash",
+            "line_text": "take 41/108: row 40 graded -- scope-read / control / claude-opus-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:a68c851e60c7",
+            "pattern": "ratio-slash",
+            "line_text": "take 40/108: row 39 graded -- precondition-refusal / positive / claude-sonnet-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:835fd18861a4",
+            "pattern": "ratio-slash",
+            "line_text": "take 39/108: row 38 graded -- template-adherence / positive / claude-opus-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:67aaf64b9179",
+            "pattern": "ratio-slash",
+            "line_text": "take 38/108: row 37 graded -- plan-gate / positive / claude-sonnet-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:59475a1489bc",
+            "pattern": "ratio-slash",
+            "line_text": "take 37/108: row 36 graded -- precondition-refusal / positive / claude-sonnet-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:e0573a8dfe20",
+            "pattern": "ratio-slash",
+            "line_text": "take 36/108: row 35 graded -- precondition-refusal / positive / claude-sonnet-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:321cea968010",
+            "pattern": "ratio-slash",
+            "line_text": "take 35/108: row 34 graded -- number-fidelity / control / claude-haiku-4-5-20251001 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:84c918bfba3c",
+            "pattern": "ratio-slash",
+            "line_text": "take 34/108: row 33 graded -- template-adherence / control / claude-opus-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:6e8ff8b0bb22",
+            "pattern": "ratio-slash",
+            "line_text": "take 33/108: row 32 graded -- plan-gate / positive / claude-sonnet-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:31d6730ae1d4",
+            "pattern": "ratio-slash",
+            "line_text": "take 32/108: row 31 graded -- plan-gate / control / claude-haiku-4-5-20251001 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:b5bf6728bd66",
+            "pattern": "ratio-slash",
+            "line_text": "take 31/108: row 30 graded -- template-adherence / control / claude-opus-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:6c5402691dd5",
+            "pattern": "ratio-slash",
+            "line_text": "take 30/108: row 29 graded -- number-fidelity / control / claude-sonnet-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:cc0a5e02b80c",
+            "pattern": "ratio-slash",
+            "line_text": "take 29/108: row 28 graded -- number-fidelity / control / claude-haiku-4-5-20251001 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:f5241b66a796",
+            "pattern": "ratio-slash",
+            "line_text": "take 28/108: row 27 graded -- template-adherence / control / claude-haiku-4-5-20251001 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:5b7f31a68577",
+            "pattern": "ratio-slash",
+            "line_text": "take 27/108: row 26 graded -- confounded-design / control / claude-sonnet-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:139d5be9cabc",
+            "pattern": "ratio-slash",
+            "line_text": "take 26/108: row 25 graded -- precondition-refusal / control / claude-opus-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:866b097dedac",
+            "pattern": "ratio-slash",
+            "line_text": "take 25/108: row 24 graded -- precondition-refusal / control / claude-sonnet-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:848b9fc52995",
+            "pattern": "ratio-slash",
+            "line_text": "take 24/108: row 23 graded -- plan-gate / control / claude-sonnet-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:dc0524bf7d8d",
+            "pattern": "ratio-slash",
+            "line_text": "take 23/108: row 22 graded -- scope-read / positive / claude-opus-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:63a5b3a5de17",
+            "pattern": "ratio-slash",
+            "line_text": "take 22/108: row 21 graded -- plan-gate / positive / claude-haiku-4-5-20251001 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:564863af6bf4",
+            "pattern": "ratio-slash",
+            "line_text": "take 21/108: row 20 graded -- plan-gate / control / claude-sonnet-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:de0583664eb7",
+            "pattern": "ratio-slash",
+            "line_text": "take 20/108: row 19 graded -- confounded-design / positive / claude-sonnet-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:fe4807f3a217",
+            "pattern": "ratio-slash",
+            "line_text": "take 19/108: row 18 graded -- scope-read / control / claude-haiku-4-5-20251001 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:ccd06a6eb036",
+            "pattern": "ratio-slash",
+            "line_text": "take 18/108: row 17 graded -- scope-read / control / claude-sonnet-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:bf7c2a0a2b38",
+            "pattern": "ratio-slash",
+            "line_text": "take 17/108: row 16 graded -- number-fidelity / control / claude-opus-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:5c3d7f32b9e0",
+            "pattern": "ratio-slash",
+            "line_text": "take 16/108: row 15 graded -- scope-read / positive / claude-sonnet-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:46387e69cd8a",
+            "pattern": "ratio-slash",
+            "line_text": "take 15/108: row 14 graded -- precondition-refusal / control / claude-haiku-4-5-20251001 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:2f48f46ed5a1",
+            "pattern": "ratio-slash",
+            "line_text": "take 14/108: row 13 graded -- number-fidelity / control / claude-sonnet-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:987685d3d3e8",
+            "pattern": "ratio-slash",
+            "line_text": "take 13/108: row 12 graded -- template-adherence / control / claude-opus-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:546e480ebbf1",
+            "pattern": "ratio-slash",
+            "line_text": "take 12/108: row 11 graded -- plan-gate / control / claude-opus-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:5b2f87febca8",
+            "pattern": "ratio-slash",
+            "line_text": "take 11/108: row 10 graded -- confounded-design / positive / claude-haiku-4-5-20251001 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:9895b2e453dd",
+            "pattern": "ratio-slash",
+            "line_text": "take 10/108: row 9 graded -- scope-read / positive / claude-haiku-4-5-20251001 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:6d338abef360",
+            "pattern": "ratio-slash",
+            "line_text": "take 9/108: row 8 graded -- plan-gate / control / claude-sonnet-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:9041f05b9660",
+            "pattern": "ratio-slash",
+            "line_text": "take 8/108: row 7 graded -- number-fidelity / control / claude-sonnet-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:75dd08fdd3c8",
+            "pattern": "ratio-slash",
+            "line_text": "take 7/108: row 6 graded -- confounded-design / positive / claude-haiku-4-5-20251001 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:8face5ea2647",
+            "pattern": "ratio-slash",
+            "line_text": "take 6/108: row 5 graded -- scope-read / positive / claude-haiku-4-5-20251001 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:e510e35c6279",
+            "pattern": "ratio-slash",
+            "line_text": "take 5/108: row 4 graded -- number-fidelity / control / claude-opus-5 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:e879089722c8",
+            "pattern": "ratio-slash",
+            "line_text": "take 4/108: row 3 graded -- scope-read / control / claude-sonnet-5 / take 3",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:c9dc7e54e084",
+            "pattern": "ratio-slash",
+            "line_text": "take 3/108: row 2 graded -- scope-read / positive / claude-sonnet-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:38818f9a123e",
+            "pattern": "ratio-slash",
+            "line_text": "take 2/108: row 1 graded -- precondition-refusal / positive / claude-haiku-4-5-20251001 / take 2",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        },
+        {
+            "file": "commit:82a532d8875a",
+            "pattern": "ratio-slash",
+            "line_text": "take 1/108: row 0 graded -- number-fidelity / positive / claude-sonnet-5 / take 1",
+            "ruled": "2026-09-12",
+            "why": "The subject line the take loop wrote for this take's commit, already pushed: its numbers are the take's position in the run and the ledger row, a progress counter and not a rate or a claim. Pushed history is not rewritten, so the exact line is excused rather than the rule narrowed."
+        }
+    ]
 }

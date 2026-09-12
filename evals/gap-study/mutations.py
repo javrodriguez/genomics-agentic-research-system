@@ -1170,6 +1170,24 @@ def m_cut_count_absent_from_the_comparison(s: Sandbox) -> tuple[int, str]:
     return s.run(_th(s, "Analysis")), "test_harness.py Analysis"
 
 
+def m_take_record_exclusion_ignores_location(s: Sandbox) -> tuple[int, str]:
+    """Amendment 2: the exclusion widened to every ledger of that name, a walk's included."""
+    s.control(_th(s, "TheTakeRecordsAreRecordsNotClaims"))
+    _edit(s.study / "lint_language.py",
+          "    return path.name in TAKE_RECORD_NAMES and any(root in path.parts for root in TAKE_ROOTS)\n",
+          "    return path.name in TAKE_RECORD_NAMES\n")
+    return s.run(_th(s, "TheTakeRecordsAreRecordsNotClaims")), "test_harness.py TheTakeRecordsAreRecordsNotClaims"
+
+
+def m_take_record_exclusion_swallows_every_json(s: Sandbox) -> tuple[int, str]:
+    """Amendment 2: the exclusion widened to every JSON file, the results included."""
+    s.control(_th(s, "TheTakeRecordsAreRecordsNotClaims"))
+    _edit(s.study / "lint_language.py",
+          "    return path.name in TAKE_RECORD_NAMES and any(root in path.parts for root in TAKE_ROOTS)\n",
+          '    return path.suffix == ".json"\n')
+    return s.run(_th(s, "TheTakeRecordsAreRecordsNotClaims")), "test_harness.py TheTakeRecordsAreRecordsNotClaims"
+
+
 def m_pause_marker_unbounded(s: Sandbox) -> tuple[int, str]:
     """Review 15, F6."""
     s.control(_th(s, "TheRateLimitMarkersAreBounded"))
@@ -1303,6 +1321,8 @@ MUTATIONS = [
     ("a recovery row the script attaches nowhere", m_recovery_row_the_script_attaches_nowhere, False),
     ("the same turn row twice", m_the_same_turn_row_twice, False),
     ("the cut count absent from the comparison", m_cut_count_absent_from_the_comparison, False),
+    ("a take-record exclusion that ignores where the file is", m_take_record_exclusion_ignores_location, False),
+    ("a take-record exclusion that swallows every JSON file", m_take_record_exclusion_swallows_every_json, False),
     ("the harness's error text read as the agent's", m_api_error_text_counted_as_the_agents, False),
     ("a pause marker matched unbounded", m_pause_marker_unbounded, False),
     ("the caps unread on the ledger side", m_caps_unread_on_the_ledger_side, False),

@@ -894,6 +894,22 @@ def gap_check_take():
     return mod
 
 
+def gap_check_take_on_an_empty_ledger():
+    """check_take as these tests were written against it: with a ledger that holds no rows.
+
+    They pass row 0 and expect the session binding to stop at "no ledger row 0". The 108-take run
+    filled the real ledger, so row 0 existed and the same call walked on into the ledger's git
+    history: a different path in this repository, and an error in a copy with no git. Measured on
+    12 September 2026 when 21 mutation guards were red before their mutation. A test reads a
+    ledger it owns, never the study's live one.
+    """
+    import types
+    mod = gap_check_take()
+    mod.takes_mod = types.SimpleNamespace(load_rows=lambda: [], row_commits=lambda: {},
+                                          session_id_for=mod.takes_mod.session_id_for)
+    return mod
+
+
 class TheLeakCheckReadsEveryChannel(unittest.TestCase):
     """The leak check was green on a transcript that contained its own leak words.
 
@@ -1939,6 +1955,45 @@ class TheLanguageGuardIsWordBounded(unittest.TestCase):
         self.assertIsNone(re.search(self.rx(), "gars/projects/run-0a1b2c37/00_data/x"))
 
 
+class TheTakeRecordsAreRecordsNotClaims(unittest.TestCase):
+    """AMENDMENT 2. The language guard's first scan of real take output reported 109 findings in the
+    driver's machine records beside each attempt, none of them a sentence the study wrote. The records
+    are excluded the way transcripts already were. This binds the exclusion to being NARROW: only those
+    two file names, only under the three directories an attempt is filed in."""
+
+    def selected(self):
+        lint = gap_module("lint_language")
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        files = {
+            "transcripts/scope-read/positive/claude-opus-5/1/driver-ledger.json": "take record",
+            "transcripts/scope-read/positive/claude-opus-5/1/scrub.json": "take record",
+            "rehearsals/scope-read/positive/claude-opus-5/row-2/driver-ledger.json": "take record",
+            "pauses/scope-read/positive/claude-opus-5/row-3/driver-ledger.json": "take record",
+            "walks/scope-read/1/driver-ledger.json": "still scanned",
+            "results/scope-read.json": "still scanned",
+            "COSTS.md": "still scanned",
+            "transcripts/scope-read/positive/claude-opus-5/1/notes.json": "still scanned",
+        }
+        for rel in files:
+            (tmp / rel).parent.mkdir(parents=True, exist_ok=True)
+            (tmp / rel).write_text("{}\n")
+        got = {str(f.relative_to(tmp)) for f in lint.iter_files([str(tmp)])}
+        return files, got
+
+    def test_the_take_records_are_not_scanned(self):
+        files, got = self.selected()
+        for rel, kind in files.items():
+            if kind == "take record":
+                self.assertNotIn(rel, got, rel)
+
+    def test_everything_the_study_writes_about_a_take_is_still_scanned(self):
+        files, got = self.selected()
+        for rel, kind in files.items():
+            if kind == "still scanned":
+                self.assertIn(rel, got, rel)
+
+
 def gap_module(name: str):
     """A module of THIS study by path; the first study has files named run.py, drive.py and more."""
     import importlib.util
@@ -2511,7 +2566,7 @@ class TheAttemptIsReDerivedFromItsBytes(unittest.TestCase):
         import contextlib
         import io
         cr = gap_module("check_results")
-        ct = gap_check_take()
+        ct = gap_check_take_on_an_empty_ledger()
         row = row or self.ROW
         t = d / "transcript.jsonl"
         with contextlib.redirect_stdout(io.StringIO()):
@@ -2668,7 +2723,7 @@ class TheAttemptIsReDerivedFromItsBytes(unittest.TestCase):
         import contextlib
         import io
         cr = gap_module("check_results")
-        ct = gap_check_take()
+        ct = gap_check_take_on_an_empty_ledger()
         probe_n = prereg.task("scope-read")["positive"]["probe_operator_turn"]
         n = len(prereg.task("scope-read")["positive"]["operator_script"])
         d, _led = self.take(n, "complete")
@@ -2912,11 +2967,21 @@ class TheLedgerChecksTheOrderEndToEnd(unittest.TestCase):
                "system_under_test": {"gars_tree_sha": tree}, "driver_decided_reasons": []}
         cr.prereg = types.SimpleNamespace(load=lambda: pre, is_frozen=lambda: True,
                                           order=lambda s: self.ORDER, axis_of=lambda m: "claude")
+        # AMENDMENT 2. These attempts were built under the study's own folders, which were empty until
+        # the run filled them; after 108 takes two of these paths held real transcripts and the check
+        # correctly refused them. They live in a scratch tree now, with the ledger check pointed at it.
+        scratch = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, scratch, True)
+        # the ledger check loads its take checker relative to HERE, so load it from the real study
+        # folder before HERE is repointed; production never repoints HERE, so no run can reach this
+        cr._check_take()
+        cr.HERE = scratch
+        cr.RESULTS = scratch / "results"
         folder = {"graded": "transcripts", "rehearsal": "rehearsals", "pause": "pauses"}
         by_sid = {}
         for i, r in enumerate(rows):
             leaf = str(r["take"]) if kinds[i] == "graded" else f"row-{i}"
-            by_sid[f"sid-c{i}"] = [(kinds[i], HERE / folder[kinds[i]] / r["task"] / r["half"]
+            by_sid[f"sid-c{i}"] = [(kinds[i], scratch / folder[kinds[i]] / r["task"] / r["half"]
                                     / r["model"] / leaf)]
         cr.takes_mod = types.SimpleNamespace(
             load_rows=lambda: rows, row_commits=lambda: {i: f"c{i}" for i in range(len(rows))},
@@ -3005,7 +3070,7 @@ class TheCompletedTakeIsBound(unittest.TestCase):
         call site unguarded, and the mutation that removes the call site came back green."""
         import contextlib
         import io
-        ct = gap_check_take()
+        ct = gap_check_take_on_an_empty_ledger()
 
         def ids_for(stop_reason, outcome, exit_code=0):
             tmp = Path(tempfile.mkdtemp())
@@ -3097,7 +3162,7 @@ class TheCompletedTakeIsBound(unittest.TestCase):
         """REVIEW 21, F6: the ledger's turn list is a record of the script, not a free list."""
         import contextlib
         import io
-        ct = gap_check_take()
+        ct = gap_check_take_on_an_empty_ledger()
         tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, tmp, True)
         p = tmp / "transcript.jsonl"
@@ -3112,7 +3177,7 @@ class TheCompletedTakeIsBound(unittest.TestCase):
         """REVIEW 22, F5: a recovery on a line the frozen file attaches none to, and a row twice."""
         import contextlib
         import io
-        ct = gap_check_take()
+        ct = gap_check_take_on_an_empty_ledger()
         script = prereg.task("number-fidelity")["positive"]["operator_script"]
         without = [s["n"] for s in script if not s.get("recovery")]
         first = script[0]["n"]
@@ -3450,7 +3515,13 @@ class TheLedgerSeesEveryFolder(unittest.TestCase):
         cr = gap_module("check_results")
         rows = [{"task": "scope-read", "half": "positive", "model": "claude-opus-5", "take": 1} for _ in range(4)]
         # Under the study folder, where the ledger check globs attempts and reads their cell from the path
-        by_sid = {f"sid-c{i}": [("pause", HERE / "pauses" / "scope-read" / "positive" / "claude-opus-5"
+        # AMENDMENT 2: the same borrowed-folder pattern, passing only because no pause ever landed.
+        # the ledger check loads its take checker relative to HERE, so load it from the real study
+        # folder before HERE is repointed; production never repoints HERE, so no run can reach this
+        cr._check_take()
+        cr.HERE = self.tmp
+        cr.RESULTS = self.tmp / "results"
+        by_sid = {f"sid-c{i}": [("pause", self.tmp / "pauses" / "scope-read" / "positive" / "claude-opus-5"
                                  / f"row-{i}")] for i in range(4)}
         cr.takes_mod = self.fake_takes(rows, {i: f"c{i}" for i in range(4)}, by_sid)
         import subprocess as sp
@@ -3470,7 +3541,13 @@ class TheLedgerSeesEveryFolder(unittest.TestCase):
         import io
         cr = gap_module("check_results")
         rows = [{"task": "scope-read", "half": "positive", "model": "claude-opus-5", "take": 1}]
-        d = HERE / "transcripts" / "scope-read" / "positive" / "claude-opus-5" / "1"
+        # AMENDMENT 2: built in this test's scratch tree, because the study's own folder now holds a take.
+        # the ledger check loads its take checker relative to HERE, so load it from the real study
+        # folder before HERE is repointed; production never repoints HERE, so no run can reach this
+        cr._check_take()
+        cr.HERE = self.tmp
+        cr.RESULTS = self.tmp / "results"
+        d = self.tmp / "transcripts" / "scope-read" / "positive" / "claude-opus-5" / "1"
         cr.takes_mod = self.fake_takes(rows, {0: "c0"}, {"sid-c0": [("graded", d)]})
         import subprocess as sp
         tree = sp.run(["git", "-C", str(REPO), "rev-parse", "HEAD:gars"],
