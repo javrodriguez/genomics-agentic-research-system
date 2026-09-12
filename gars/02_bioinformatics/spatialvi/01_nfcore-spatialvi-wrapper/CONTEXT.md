@@ -50,7 +50,7 @@ This sub-stage performs the steps in Process and nothing else.
 **Wrapper invocation.** From the workspace root, on stock python:
 
 ```bash
-python3 _system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py <subcommand> \
+python3 "${GARS_WRAPPERS:-_system/wrappers}"/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py <subcommand> \
     --project projects/<title>
 ```
 

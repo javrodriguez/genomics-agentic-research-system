@@ -55,11 +55,11 @@ This sub-stage performs the steps in Process and nothing else.
 environment arrives via `$GARS_PY` inside `submit.sh`:
 
 ```bash
-python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py check   \
+python3 "${GARS_WRAPPERS:-_system/wrappers}"/spatial-cluster-count/spatial_cluster_count.py check   \
     --project projects/<title> --h5ad <resolved path>
-python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py prepare \
+python3 "${GARS_WRAPPERS:-_system/wrappers}"/spatial-cluster-count/spatial_cluster_count.py prepare \
     --project projects/<title> --h5ad <resolved path>
-python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py collect \
+python3 "${GARS_WRAPPERS:-_system/wrappers}"/spatial-cluster-count/spatial_cluster_count.py collect \
     --project projects/<title> --model "<model id>" --h5ad-from <sub-stage>
 ```
 
