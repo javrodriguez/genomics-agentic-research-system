@@ -173,6 +173,7 @@ def check_ledger() -> list[str]:
     cut_but_finished: list[int] = []
     per_cell: dict[tuple, dict] = {}
     attempted: dict[int, bool] = {}
+    kinds: dict[int, str] = {}
     matched = 0
     for i, row in enumerate(rows):
         sha = commits.get(i)
@@ -185,6 +186,7 @@ def check_ledger() -> list[str]:
             counts["not attempted"] += 1
             continue
         kind, d = hits[0]
+        kinds[i] = kind
         counts[kind] += 1
         cell = (row["task"], row["half"], row["model"])
         per_cell.setdefault(cell, {})
@@ -218,7 +220,7 @@ def check_ledger() -> list[str]:
                 problems.append(f"{cell[0]} / {cell[1]} / {cell[2]}: {kinds[kind]} {kind} attempts, and the "
                                 f"pre-registration allows {cap}")
 
-    problems += _order_problems_for(rows, attempted)
+    problems += _order_problems_for(rows, attempted, kinds)
     # REVIEW 14, F3. Once results are committed the run is declared finished, and a registered row never
     # attempted is a take lost without a reason; its cell would publish as mechanical when nothing was.
     if any(RESULTS.glob("*.json")) and counts["not attempted"]:
@@ -506,27 +508,49 @@ def attempt_problems(kind: str, d: Path, i: int, row: dict, ct) -> list[str]:
     return problems
 
 
-def order_problems(rows: list[dict], order_by_axis: dict, axis_of) -> list[str]:
+def order_problems(rows: list[dict], order_by_axis: dict, axis_of, kind_of=None) -> list[str]:
     """Each slot's FIRST registration falls where the pre-registered order puts it (review 12, F2).
 
     A retry after a rehearsal or a pause registers its slot again later, and is skipped.
+
+    REVIEW 21, BLOCKER 1. So is a slot the rules no longer allow to be registered. When a cell reaches
+    its rehearsal cap or its pause cap, `takes.py --add` refuses every further take in that cell and the
+    cell publishes short: its remaining slots are never registered, by the pre-registration's own path.
+    This check compared the next registration with the permutation's next entry regardless, so the first
+    exhausted cell put every later first registration on that axis out of step, `--ledger` went red for
+    the rest of the run, and the only remedy after the freeze would have been an amendment to this file
+    with numbers already on the table. An exhausted cell's unregistered slots are passed over here, the
+    way a retry is.
     """
+    pre = prereg.load()
+    caps = {"rehearsal": int(pre.get("rehearsal_cap") or 0), "pause": int(pre.get("pause_cap") or 0)}
+    counts: dict = {}
+
+    def exhausted(cell: tuple) -> bool:
+        c = counts.get(cell) or {}
+        return any(cap and c.get(kind, 0) >= cap for kind, cap in caps.items())
+
     seen: set = set()
     k: dict = {}
     out: list[str] = []
     for i, r in enumerate(rows):
         slot = (r["task"], r["half"], r["model"], r["take"])
-        if slot in seen:
-            continue
-        seen.add(slot)
-        axis = axis_of(r["model"])
-        j = k.get(axis, 0)
-        k[axis] = j + 1
-        order = order_by_axis.get(axis) or []
-        if j >= len(order) or tuple(order[j]) != slot:
-            there = tuple(order[j]) if j < len(order) else "nothing"
-            out.append(f"row {i}: {slot} is registration {j + 1} on the {axis} axis, and the "
-                       f"pre-registered order puts {there} there")
+        if slot not in seen:
+            seen.add(slot)
+            axis = axis_of(r["model"])
+            order = order_by_axis.get(axis) or []
+            j = k.get(axis, 0)
+            while j < len(order) and tuple(order[j]) != slot and exhausted(tuple(order[j])[:3]):
+                j += 1
+            k[axis] = j + 1
+            if j >= len(order) or tuple(order[j]) != slot:
+                there = tuple(order[j]) if j < len(order) else "nothing"
+                out.append(f"row {i}: {slot} is registration {j + 1} on the {axis} axis, and the "
+                           f"pre-registered order puts {there} there")
+        kind = kind_of(i) if kind_of else None
+        if kind in caps:
+            counts.setdefault(slot[:3], {})
+            counts[slot[:3]][kind] = counts[slot[:3]].get(kind, 0) + 1
     return out
 
 
@@ -549,12 +573,13 @@ def gap_problems(rows: list[dict], attempted: dict, axis_of) -> list[str]:
     return out
 
 
-def _order_problems_for(rows: list[dict], attempted: dict) -> list[str]:
+def _order_problems_for(rows: list[dict], attempted: dict, kinds: dict | None = None) -> list[str]:
     pre = prereg.load()
     if not prereg.is_frozen() or not pre.get("take_order_seed"):
         print("  take order and skipped rows: checked after the freeze, when the order's seed exists")
         return []
-    return (order_problems(rows, prereg.order(pre["take_order_seed"]), prereg.axis_of)
+    return (order_problems(rows, prereg.order(pre["take_order_seed"]), prereg.axis_of,
+                           (kinds or {}).get)
             + gap_problems(rows, attempted, prereg.axis_of))
 
 

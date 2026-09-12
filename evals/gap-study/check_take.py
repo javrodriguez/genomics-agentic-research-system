@@ -420,6 +420,12 @@ def completion_problems(path: Path, ledger: dict | None, pre: dict | None = None
 
     if not outcome.startswith(("timed-out", "aborted", "PAUSE", "REHEARSAL")):
         sr = last_stop_reason(path)
+        # REVIEW 21, F2. With no record carrying the field the reading passed having measured nothing,
+        # and a harness version that stops writing it would leave every take's finish unproven. The
+        # same shape as the prompt-snapshot rule: a take must carry what the check reads.
+        if sr is None and agent_turn_count(path) > 0:
+            out.append("[outcome-binding] no assistant record in this take carries a stop reason, so "
+                       "nothing shows whether its last reply ended or was cut")
         if sr and sr != "end_turn":
             out.append(f"[outcome-binding] the ledger records {outcome!r} and the transcript's last "
                        f"reply stopped at {sr!r} rather than at the end of a turn. Every committed walk "
@@ -984,6 +990,15 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
 
     ledger = _ledger_beside(path)
     problems += completion_problems(path, ledger)
+    # REVIEW 21, F6. The turn list records the script, not whatever the operator writes: a row whose
+    # number is not a line this half sends left `required` unchanged and passed.
+    if ledger and isinstance(script, list):
+        step_ns = {s["n"] for s in script}
+        for row in ledger.get("turns") or []:
+            if row.get("n") not in step_ns:
+                problems.append(f"[outcome-binding] the ledger records a turn {row.get('n')!r}, which is "
+                                f"not a line on this half's script")
+                break
     if ledger and ledger.get("source") is not None and ledger.get("source") != expected_source:
         problems.append(f"[fixture-binding] the driver handed the agent the source {ledger.get('source')!r}, "
                         f"and this half's fixture kind implies {expected_source!r}")

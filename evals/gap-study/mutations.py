@@ -1056,6 +1056,52 @@ def m_registration_order_not_the_drive_order(s: Sandbox) -> tuple[int, str]:
     return s.run(_th(s, "TheTakeLifecycle")), "test_harness.py TheTakeLifecycle"
 
 
+def m_exhausted_cell_not_skipped_in_the_order(s: Sandbox) -> tuple[int, str]:
+    """Review 21, blocker 1: the order check going red for the rest of the run after a cap is reached."""
+    s.control(_th(s, "TheOrderSurvivesAnExhaustedCell"))
+    _edit(s.study / "check_results.py",
+          "            while j < len(order) and tuple(order[j]) != slot and exhausted(tuple(order[j])[:3]):\n",
+          "            while False:\n")
+    return s.run(_th(s, "TheOrderSurvivesAnExhaustedCell")), "test_harness.py TheOrderSurvivesAnExhaustedCell"
+
+
+def m_aborted_with_no_abort_behind_it(s: Sandbox) -> tuple[int, str]:
+    """Review 21, F3: the cut binding's aborted branch, which no mutation covered."""
+    s.control(_th(s, "TheCompletedTakeIsBound"))
+    _edit(s.study / "check_take.py",
+          '    elif outcome.startswith("aborted") and not no_session:\n', "    elif False:\n")
+    return s.run(_th(s, "TheCompletedTakeIsBound")), "test_harness.py TheCompletedTakeIsBound"
+
+
+def m_no_session_clause_beside_a_transcript(s: Sandbox) -> tuple[int, str]:
+    """Review 21, F3: the clause the driver appends only when it found no session file."""
+    s.control(_th(s, "TheCompletedTakeIsBound"))
+    _edit(s.study / "check_take.py", "    if no_session and path.is_file():\n", "    if False:\n")
+    return s.run(_th(s, "TheCompletedTakeIsBound")), "test_harness.py TheCompletedTakeIsBound"
+
+
+def m_finish_unproven_by_any_stop_reason(s: Sandbox) -> tuple[int, str]:
+    """Review 21, F2: the reading passing having measured nothing."""
+    s.control(_th(s, "TheCompletedTakeIsBound"))
+    _edit(s.study / "check_take.py", "        if sr is None and agent_turn_count(path) > 0:\n",
+          "        if False:\n")
+    return s.run(_th(s, "TheCompletedTakeIsBound")), "test_harness.py TheCompletedTakeIsBound"
+
+
+def m_turn_row_not_on_the_script(s: Sandbox) -> tuple[int, str]:
+    """Review 21, F6: the ledger's turn list read as a free list."""
+    s.control(_th(s, "TheCompletedTakeIsBound"))
+    _edit(s.study / "check_take.py", '            if row.get("n") not in step_ns:\n', "            if False:\n")
+    return s.run(_th(s, "TheCompletedTakeIsBound")), "test_harness.py TheCompletedTakeIsBound"
+
+
+def m_cut_naming_unpublished(s: Sandbox) -> tuple[int, str]:
+    """Review 21, F1: the naming a reader of the published files would never meet."""
+    s.control(_th(s, "TheRunnerEnumeratesByLedger"))
+    _edit(s.study / "run.py", '            "cut_after_end_turn": cut_after_end_turn,\n', "")
+    return s.run(_th(s, "TheRunnerEnumeratesByLedger")), "test_harness.py TheRunnerEnumeratesByLedger"
+
+
 def m_pause_marker_unbounded(s: Sandbox) -> tuple[int, str]:
     """Review 15, F6."""
     s.control(_th(s, "TheRateLimitMarkersAreBounded"))
@@ -1175,6 +1221,12 @@ MUTATIONS = [
     ("a cut outcome bound to nothing", m_cut_outcome_bound_to_nothing, False),
     ("a generated fixture not refused before the session", m_generated_fixture_not_refused_before_the_session, False),
     ("registration order that is not the drive order", m_registration_order_not_the_drive_order, False),
+    ("an exhausted cell not skipped in the order", m_exhausted_cell_not_skipped_in_the_order, False),
+    ("an aborted outcome with no abort behind it", m_aborted_with_no_abort_behind_it, False),
+    ("a no-session clause beside a transcript", m_no_session_clause_beside_a_transcript, False),
+    ("a finish unproven by any stop reason", m_finish_unproven_by_any_stop_reason, False),
+    ("a turn row that is not on the script", m_turn_row_not_on_the_script, False),
+    ("the cut naming unpublished", m_cut_naming_unpublished, False),
     ("the harness's error text read as the agent's", m_api_error_text_counted_as_the_agents, False),
     ("a pause marker matched unbounded", m_pause_marker_unbounded, False),
     ("the caps unread on the ledger side", m_caps_unread_on_the_ledger_side, False),

@@ -97,6 +97,24 @@ def rehearsals_on_disk(task_id: str, half: str, model: str) -> int:
     return n
 
 
+_CT = None
+
+
+def _gap_check_take():
+    """This study's check_take, loaded once by path: the first study has a file of the same name."""
+    global _CT
+    if _CT is None:
+        import importlib.util
+        # BESIDE ITS OWN FILE, never HERE: the tests repoint HERE at a scratch tree, and a loader that
+        # followed it raised rather than reading the checker. The same shape bit takes.py and
+        # route_attempt before this.
+        spec = importlib.util.spec_from_file_location(
+            "gap_check_take_for_run", Path(__file__).resolve().parent / "check_take.py")
+        _CT = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(_CT)
+    return _CT
+
+
 def models_read(t: Path) -> list[str]:
     """The model ids the transcript's assistant records carry: what a cell is counted under (review 12)."""
     if not t.is_file():
@@ -191,8 +209,15 @@ def grade_cell(task_id: str, half: str, model: str, spec: dict, n: int) -> dict:
                                 spec[half]["correct_behaviour_label"],
                                 [f"no transcript on disk; driver ledger outcome: {outcome}"])
             sha = None
+        # REVIEW 21, F1. Limitations line 4 promises a reader that a take published as cut whose last
+        # reply ended is named. It was named on the ledger check's screen and nowhere a reader of the
+        # published files would meet it.
+        cut_after_end_turn = bool(
+            outcome.startswith(("timed-out", "aborted")) and t.is_file()
+            and _gap_check_take().last_stop_reason(t) == "end_turn")
         out_labels.append({
             "take": d.name,
+            "cut_after_end_turn": cut_after_end_turn,
             "transcript_sha256": sha,
             "model_read": models_read(t),
             "label": got["label"],

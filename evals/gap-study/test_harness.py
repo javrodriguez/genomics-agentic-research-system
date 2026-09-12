@@ -2178,6 +2178,26 @@ class TheRunnerEnumeratesByLedger(unittest.TestCase):
         self.assertEqual([x["label"] for x in cell["labels"]], ["aborted"])
         self.assertTrue(cell["state"].startswith("incomplete"), cell["state"])
 
+    def test_a_take_published_as_cut_whose_last_reply_ended_is_named_in_its_own_record(self):
+        """REVIEW 21, F1: limitations line 4 promised a reader a naming they could only see by running
+        the ledger check."""
+        def cell_for(stop_reason, outcome):
+            d = self.ledger("transcripts/number-fidelity/positive/claude-opus-5/1",
+                            outcome=outcome, attempt={"kind": "graded"},
+                            turns=[{"n": 1, "exit": 124}])
+            (d / "transcript.jsonl").write_text(json.dumps({
+                "type": "assistant", "message": {"role": "assistant", "model": "claude-opus-5",
+                                                 "stop_reason": stop_reason,
+                                                 "content": [{"type": "text", "text": "a reply"}]}}) + "\n")
+            cell = self.run.grade_cell("number-fidelity", "positive", "claude-opus-5",
+                                       prereg.task("number-fidelity"), 3)
+            shutil.rmtree(d)
+            return cell["labels"][0]
+
+        self.assertTrue(cell_for("end_turn", "timed-out")["cut_after_end_turn"])
+        self.assertFalse(cell_for("tool_use", "timed-out")["cut_after_end_turn"])
+        self.assertFalse(cell_for("end_turn", "complete")["cut_after_end_turn"])
+
     def test_the_harness_own_model_id_is_not_published_as_a_model_read(self):
         """REVIEW 20, F6: the checker and the driver exclude it; this published field did not."""
         d = self.ledger("transcripts/number-fidelity/positive/claude-opus-5/1",
@@ -2462,6 +2482,7 @@ class TheAttemptIsReDerivedFromItsBytes(unittest.TestCase):
                          "message": {"role": "user", "content": ct.render(s["line"], project, source)}})
             recs.append({"type": "assistant", "sessionId": sid,
                          "message": {"role": "assistant", "model": row["model"],
+                                     "stop_reason": "end_turn",
                                      "content": [{"type": "text", "text": "a reply"}]}})
         (d / "transcript.jsonl").write_text("\n".join(json.dumps(r) for r in recs) + "\n")
         led = {"kind": "take", "session_id": sid, "outcome": outcome, "first_agent_turn": True,
@@ -2796,6 +2817,48 @@ class TheGeneratedFixtureIsBound(unittest.TestCase):
         self.assertIn("unpinned until the freeze", note)
 
 
+class TheOrderSurvivesAnExhaustedCell(unittest.TestCase):
+    """REVIEW 21, BLOCKER 1. A cell that reaches its rehearsal or pause cap can register no further
+    take, by the pre-registration's own path, so its remaining slots never appear. The order check
+    compared the next registration with the permutation's next entry regardless, and every later first
+    registration on that axis was reported for the rest of the run."""
+
+    CELL = ("scope-read", "positive", "claude-opus-5")
+    NEXT = ("plan-gate", "control", "claude-opus-5")
+
+    def fixture(self, kind):
+        order = {"claude": [(*self.CELL, 1), (*self.CELL, 2), (*self.CELL, 3),
+                            (*self.NEXT, 1), (*self.NEXT, 2)]}
+        row = lambda c, k: {"task": c[0], "half": c[1], "model": c[2], "take": k}
+        # the cap's worth of attempts on the first slot, then the cell can register nothing more
+        cap = int(prereg.load()["rehearsal_cap" if kind == "rehearsal" else "pause_cap"])
+        rows = [row(self.CELL, 1) for _ in range(cap)] + [row(self.NEXT, 1), row(self.NEXT, 2)]
+        kinds = {i: kind for i in range(cap)}
+        kinds[cap] = "graded"
+        kinds[cap + 1] = "graded"
+        return rows, order, kinds
+
+    def test_the_unregistered_slots_of_an_exhausted_cell_are_passed_over(self):
+        cr = gap_module("check_results")
+        for kind in ("rehearsal", "pause"):
+            rows, order, kinds = self.fixture(kind)
+            self.assertEqual(cr.order_problems(rows, order, lambda m: "claude", kinds.get), [], kind)
+
+    def test_without_the_kinds_the_same_rows_are_reported(self):
+        """The negative control: the skip is what clears it, not the rows."""
+        cr = gap_module("check_results")
+        rows, order, _kinds = self.fixture("rehearsal")
+        self.assertTrue(cr.order_problems(rows, order, lambda m: "claude"))
+
+    def test_a_registration_out_of_order_is_still_reported(self):
+        cr = gap_module("check_results")
+        rows, order, kinds = self.fixture("rehearsal")
+        rows.append({"task": self.CELL[0], "half": self.CELL[1], "model": self.CELL[2], "take": 2})
+        kinds[len(rows) - 1] = "graded"
+        got = cr.order_problems(rows, order, lambda m: "claude", kinds.get)
+        self.assertTrue(any("pre-registered order puts" in p for p in got), got)
+
+
 class TheCompletedTakeIsBound(unittest.TestCase):
     """REVIEW 18, BLOCKER 2. `timed-out` and `aborted` are read from the ledger's outcome before any
     grader reads a turn, and the checker read that outcome against the transcript only through the
@@ -2922,6 +2985,34 @@ class TheCompletedTakeIsBound(unittest.TestCase):
             self.assertEqual(ct.completion_problems(self.transcript("tool_use"),
                                                     {"outcome": outcome,
                                                      "turns": [{"n": 1, "exit": 1}]}), [], outcome)
+
+    def test_a_finish_nothing_can_prove_is_refused(self):
+        """REVIEW 21, F2: with no record carrying the field, the reading passed having measured nothing."""
+        ct = gap_check_take()
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        p = tmp / "transcript.jsonl"
+        p.write_text(json.dumps({"type": "assistant", "message": {
+            "role": "assistant", "model": "claude-opus-5",
+            "content": [{"type": "text", "text": "a reply"}]}}) + "\n")
+        got = ct.completion_problems(p, {"outcome": "complete", "turns": [{"n": 1, "exit": 0}]})
+        self.assertEqual(ct.reason_ids(got), ["outcome-binding"])
+        self.assertIn("carries a stop reason", got[0])
+
+    def test_a_turn_row_that_is_not_a_line_on_the_script_is_refused(self):
+        """REVIEW 21, F6: the ledger's turn list is a record of the script, not a free list."""
+        import contextlib
+        import io
+        ct = gap_check_take()
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        p = tmp / "transcript.jsonl"
+        p.write_text(self.transcript("end_turn").read_text())
+        (tmp / "driver-ledger.json").write_text(json.dumps(
+            {"outcome": "complete", "turns": [{"n": 1, "exit": 0}, {"n": 99, "exit": 0}]}))
+        with contextlib.redirect_stdout(io.StringIO()):
+            got = ct.check(p, "scope-read", "positive", 0, False)
+        self.assertTrue(any("not a line on this half's script" in x for x in got), got)
 
     def test_the_reason_is_pre_registered_and_refused_as_a_rehearsal_reason(self):
         pre = prereg.load()

@@ -59,17 +59,22 @@ Ruling 23 had bound a completed take to the driver's record and left a CUT outco
 A take published as cut must now carry the cut the driver writes, and what the transcript cannot refute -- a cut that lands after the last reply ended -- is named by the ledger check rather than claimed as refused.
 Its seven follow-ups are folded or answered, including the registration order becoming the drive order, and two sentences about the carried grader corrected: its window is a property of that grader rather than of this protocol, and its classifier can lose a label rather than only dilute it.
 
+Review 21 confirmed Ruling 24's blocker closed in the code, built a graded take in a clone that passes every committed check, found no route opened by the folds, and ruled do not freeze on one defect, folded (Ruling 25, `verification/prefreeze-21-disposition.md`).
+That defect moves no label and no count: once a cell reached its rehearsal or pause cap its remaining slots could never be registered, and the take-order check reported every later first registration on that axis for the rest of the run, so the first exhausted cell would have forced an amendment to a pinned checker after numbers existed.
+Those slots are passed over now, the way a retry is.
+Its six follow-ups are folded, including the cut naming reaching each take's published record and a graded take having to carry the stop reason its finish is read from.
+
 ## The next moves, in order
 
-1. **Review 21** as `verification/prefreeze-21.md`, reading the bytes this pass leaves; then its disposition, or the freeze: `freeze.py --review-commit <sha> --write`.
+1. **Review 22** as `verification/prefreeze-22.md`, reading the bytes this pass leaves; then its disposition, or the freeze: `freeze.py --review-commit <sha> --write`.
 2. Then, and only then, the 108 takes.
 
 ## State
 
-- 6 task pairs · 11 walks, 3 of them driven in a built checkout · 136 hand-labelled cases · 232 tests · 92 mutations · 20 reviews · 4 smokes
+- 6 task pairs · 11 walks, 3 of them driven in a built checkout · 136 hand-labelled cases · 238 tests · 98 mutations · 21 reviews · 4 smokes
 - 0 takes graded · not frozen · `gars/` and the first study unchanged by this work
 - The local tier was dropped by the repository owner at gate 2; `local-model/DROPPED.md` is the record
-- Rulings 1–24 in `PROTOCOL.md`
+- Rulings 1–25 in `PROTOCOL.md`
 - `RESIDUAL.md` was written at the slice cap and is kept deliberately, though the cap was lifted (Ruling 7)
 
 ## Carried follow-ups, most valuable first

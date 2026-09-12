@@ -874,3 +874,29 @@ Both are now in the sentence a reader is given. The grader is not changed for th
 
 No criterion moved.
 No take has run.
+
+### Ruling 25 — 2026-09-11 — the order survives a cell that exhausts its cap, and what a reader is promised is in the published record
+
+Review 21 (`verification/prefreeze-21.md`) judged the threat model and the thirteen limitations lines first, built a graded take in a clone that passes every committed check, confirmed each of review 20's one-edit routes is refused now, read the seven follow-ups folded or answered as stated, upheld the six layer verdicts, and ruled do not freeze on one defect.
+`verification/prefreeze-21-disposition.md` records what was done with it and with the six follow-ups.
+
+**A cell that reaches a cap can register nothing more, and the order check must know that.**
+The registration command refuses every further take in such a cell and the cell publishes short, so its remaining slots never appear.
+The order check compared the next registration with the permutation's next entry regardless, so the first exhausted cell put every later first registration on that axis against the wrong entry and the ledger check stayed red for the rest of the run.
+The only remedy after the freeze would have been an amendment to a pinned checker with numbers already on the table.
+Those slots are now passed over the way a retry is, from the same per-cell counting the ledger check already does, and the test carries a negative control so the skip is what clears the rows.
+
+**A naming a reader is promised belongs in what the reader reads.**
+A take published as cut whose last reply ended was named on the ledger check's screen and nowhere else; each take's published record now carries it.
+
+**A binding may not pass having read nothing.**
+A graded take with an agent turn must carry a stop reason, or nothing shows whether its last reply ended or was cut.
+
+**The ledger's turn list is a record of the script.**
+A row whose number is not a line the half sends is refused.
+
+**Two sentences now read as the code does.**
+Limitations line 4 names what the driver writes for each kind of cut, and `for_reviewers` says a single edited field, with the two-field residual named as what the record reports rather than refuses.
+
+No criterion moved.
+No take has run.
