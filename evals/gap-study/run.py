@@ -163,6 +163,14 @@ def grade_cell(task_id: str, half: str, model: str, spec: dict, n: int) -> dict:
                              f"driver's attempt record, so no committed row can be shown to own it")
         attempt = ledger["attempt"].get("kind")
         outcome = ledger.get("outcome") or ""
+        # REVIEW 19, BLOCKER 1. `labels.from_ledger` returns no reserved label for an outcome it does
+        # not recognise, so a deleted or reworded outcome graded a cut take from its partial reply. The
+        # checker refuses it; this is the belt on the grading side.
+        shapes = tuple(prereg.load().get("driver_outcome_shapes") or ())
+        if not outcome.startswith(shapes):
+            raise SystemExit(f"REFUSING to grade {d}: its ledger records the outcome {outcome!r}, which "
+                             f"is not one of the shapes the pinned driver writes. A take whose outcome "
+                             f"the driver did not write cannot be graded from its transcript.")
         if attempt != "graded" or outcome.startswith(("PAUSE", "REHEARSAL")):
             raise SystemExit(f"REFUSING to grade {d}: it holds an attempt that is not a graded take "
                              f"({attempt}, {outcome.split(' ')[0]}), which belongs under rehearsals/ "

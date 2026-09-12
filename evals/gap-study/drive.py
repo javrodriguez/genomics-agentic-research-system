@@ -812,6 +812,15 @@ def main() -> int:
             print(f"the fixture copy refused:\n{r.stdout[-600:]}{r.stderr[-400:]}")
             return 2
         ledger_fixture = json.loads(r.stdout)
+        # REVIEW 19, BLOCKER 3. The carried builder refuses a tree that differs from its pin before a
+        # session opens; this one printed the hash and compared it with nothing, so a take could be
+        # driven from an altered origin project and honestly recorded.
+        pin = fx.get("sha256") or fx.get("tree_sha256_name_invariant")
+        built = ledger_fixture.get("tree_sha256_name_invariant")
+        if pin and built != pin:
+            print(f"REFUSING: the copied fixture hashes to {str(built)[:12]} and this half pins "
+                  f"{str(pin)[:12]}. Nothing was sent to a model.")
+            return 2
         print(f"    copied {ledger_fixture['files']} files, tree "
               f"{ledger_fixture['tree_sha256_name_invariant'][:12]}, rows "
               f"{ledger_fixture['rows_real']} real / {ledger_fixture['rows_stub']} stub")

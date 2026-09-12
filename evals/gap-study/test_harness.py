@@ -2531,6 +2531,22 @@ class TheAttemptIsReDerivedFromItsBytes(unittest.TestCase):
             self.assertIn("fixture-binding", ids, label)
             self.assertIn("fixture-binding", made, label)
 
+    def test_a_fixture_key_added_does_not_survive_the_re_run(self):
+        """REVIEW 19, BLOCKER 2. The block was merged, so a hash key the ledger carried and the driver
+        never writes was kept, and the checker reads the three hash keys in a fixed order."""
+        cr = gap_module("check_results")
+        row = {"task": "scope-read", "half": "positive", "model": "claude-opus-5", "take": 1}
+        n = len(prereg.task(row["task"])[row["half"]]["operator_script"])
+        d, _led = self.take(n, "complete", row=row,
+                            fixture={"kind": "generated", "variant": "with-planted-qc",
+                                     "seed": 20260908, "fixture_sha256": "f" * 64,
+                                     "tree_sha256_name_invariant": "b" * 64, "sha256": "c" * 64})
+        led = json.loads((d / "driver-ledger.json").read_text())
+        out = cr._normalised_ledger(led, row, d / "transcript.jsonl")
+        self.assertNotIn("tree_sha256_name_invariant", out["fixture"])
+        self.assertNotIn("sha256", out["fixture"])
+        self.assertEqual(set(out["fixture"]), {"kind", "variant", "seed"})
+
     def test_the_driver_fixture_is_built_from_the_spec_alone(self):
         """The record the pinned driver writes, per kind, with nothing read from the ledger."""
         cr = gap_module("check_results")
@@ -2710,6 +2726,21 @@ class TheGeneratedFixtureIsBound(unittest.TestCase):
         finally:
             drive.REPO = saved
 
+    def test_a_copied_tree_fixture_is_bound_by_its_tree_hash(self):
+        """REVIEW 19, BLOCKER 3: the freeze leaves `sha256` null for that kind by design."""
+        ct = gap_check_take()
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / "driver-ledger.json").write_text(json.dumps(
+            {"fixture": {"kind": "copied-tree", "tree_sha256_name_invariant": "z" * 64}}))
+        half = {"fixture": {"kind": "copied-tree", "sha256": None,
+                            "tree_sha256_name_invariant": "a" * 64}}
+        problems, note = ct.fixture_binding_problems(tmp / "transcript.jsonl", half, False)
+        self.assertTrue(any("fixture-binding" in p for p in problems), (problems, note))
+        self.assertIsNone(note)
+        half["fixture"]["tree_sha256_name_invariant"] = "z" * 64
+        self.assertEqual(ct.fixture_binding_problems(tmp / "transcript.jsonl", half, False), ([], None))
+
     def test_before_the_freeze_it_says_so_rather_than_passing_silently(self):
         problems, note = self.checked("a" * 64, None)
         self.assertEqual(problems, [])
@@ -2783,6 +2814,39 @@ class TheCompletedTakeIsBound(unittest.TestCase):
         self.assertIn("outcome-binding", ids_for("tool_use", "complete"))
         self.assertNotIn("outcome-binding", ids_for("end_turn", "complete"))
         self.assertNotIn("outcome-binding", ids_for("tool_use", "timed-out"))
+
+    def test_an_outcome_the_driver_never_writes_is_refused(self):
+        """REVIEW 19, BLOCKER 1. The first version read the outcome only where it said `complete`, so
+        deleting the field, blanking it or rewording it graded a cut take from its partial reply."""
+        ct = gap_check_take()
+        cut = self.transcript("tool_use")
+        for outcome in (None, "", "finished", "Complete", "done — the take ran"):
+            got = ct.completion_problems(cut, {"outcome": outcome, "turns": [{"n": 1, "exit": 124}]})
+            self.assertEqual(ct.reason_ids(got), ["outcome-binding"], repr(outcome))
+            self.assertIn("not one the pinned driver writes", got[0])
+        # every shape the driver does write passes the vocabulary gate
+        for outcome in ("complete", "stopped — wait-point marker not held; graded as it stands",
+                        "timed-out", "aborted — a scripted turn exited 1", "PAUSE",
+                        "REHEARSAL — the process died before its first agent turn"):
+            got = ct.completion_problems(self.transcript("end_turn"),
+                                         {"outcome": outcome, "turns": [{"n": 1, "exit": 0}]})
+            self.assertEqual(got, [], outcome)
+
+    def test_a_turn_row_with_no_exit_code_is_refused(self):
+        """REVIEW 19, F2: the driver writes one for every turn it sends."""
+        ct = gap_check_take()
+        got = ct.completion_problems(self.transcript("end_turn"),
+                                     {"outcome": "complete", "turns": [{"n": 1}]})
+        self.assertEqual(ct.reason_ids(got), ["outcome-binding"])
+        self.assertIn("no exit code", got[0])
+
+    def test_a_pause_records_a_non_zero_exit_and_is_not_refused_for_it(self):
+        ct = gap_check_take()
+        for outcome in ("PAUSE — rate limited before the first agent turn",
+                        "REHEARSAL — the process died before its first agent turn"):
+            self.assertEqual(ct.completion_problems(self.transcript("tool_use"),
+                                                    {"outcome": outcome,
+                                                     "turns": [{"n": 1, "exit": 1}]}), [], outcome)
 
     def test_the_reason_is_pre_registered_and_refused_as_a_rehearsal_reason(self):
         pre = prereg.load()

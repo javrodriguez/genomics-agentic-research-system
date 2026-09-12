@@ -48,17 +48,23 @@ and a take the driver cut at its last scripted turn could publish as one that fi
 The block is rebuilt from the half's own spec now, and a completed take is bound to the driver's per-turn record and to where its last reply stopped.
 Its four follow-ups are all folded.
 
+Review 19 read Ruling 22's two blockers closed for the shapes review 18 wrote down and its four follow-ups folded, and ruled do not freeze on three findings, all folded (Ruling 23, `verification/prefreeze-19-disposition.md`).
+Four reviews in a row had found the previous fold one spelling short -- a value edited, deleted, added, then a field whose name the check did not test for -- so this fold inverts both readings instead of listing shapes.
+A graded take's outcome must be one the pinned driver writes, pre-registered as `driver_outcome_shapes`, and anything else is refused;
+the fixture block is replaced by what the driver writes rather than merged with it;
+and a copied-tree fixture is bound by its tree hash, which the freeze fills and the checker had not read.
+
 ## The next moves, in order
 
-1. **Review 19** as `verification/prefreeze-19.md`, reading the bytes this pass leaves; then its disposition, or the freeze: `freeze.py --review-commit <sha> --write`.
+1. **Review 20** as `verification/prefreeze-20.md`, reading the bytes this pass leaves; then its disposition, or the freeze: `freeze.py --review-commit <sha> --write`.
 2. Then, and only then, the 108 takes.
 
 ## State
 
-- 6 task pairs · 11 walks, 3 of them driven in a built checkout · 136 hand-labelled cases · 223 tests · 86 mutations · 18 reviews · 4 smokes
+- 6 task pairs · 11 walks, 3 of them driven in a built checkout · 136 hand-labelled cases · 228 tests · 89 mutations · 19 reviews · 4 smokes
 - 0 takes graded · not frozen · `gars/` and the first study unchanged by this work
 - The local tier was dropped by the repository owner at gate 2; `local-model/DROPPED.md` is the record
-- Rulings 1–22 in `PROTOCOL.md`
+- Rulings 1–23 in `PROTOCOL.md`
 - `RESIDUAL.md` was written at the slice cap and is kept deliberately, though the cap was lifted (Ruling 7)
 
 ## Carried follow-ups, most valuable first

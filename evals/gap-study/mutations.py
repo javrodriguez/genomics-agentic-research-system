@@ -933,8 +933,8 @@ def m_stopped_outcome_edited_to_complete(s: Sandbox) -> tuple[int, str]:
 def m_fixture_block_left_unrestored(s: Sandbox) -> tuple[int, str]:
     """Review 17, blocker 1, route A: the fixture block the checker refuses on, not restored."""
     s.control(_th(s, "TheAttemptIsReDerivedFromItsBytes"))
-    _edit(s.study / "check_results.py", '        out["fixture"] = fx\n',
-          '        out["fixture"] = dict(led_fx)\n')
+    _edit(s.study / "check_results.py", '        out["fixture"] = _driver_fixture(spec_fx)\n',
+          '        out["fixture"] = dict(led.get("fixture") or {})\n')
     return s.run(_th(s, "TheAttemptIsReDerivedFromItsBytes")), "test_harness.py TheAttemptIsReDerivedFromItsBytes"
 
 
@@ -971,8 +971,9 @@ def m_slot_freed_by_an_attempt_the_ledger_refuses(s: Sandbox) -> tuple[int, str]
 def m_fixture_field_deleted_rather_than_edited(s: Sandbox) -> tuple[int, str]:
     """Review 18, blocker 1: the block restored only where the ledger still carries a field."""
     s.control(_th(s, "TheAttemptIsReDerivedFromItsBytes"))
-    _edit(s.study / "check_results.py", "        fx.update(_driver_fixture(spec_fx))\n",
-          "        fx.update({k: v for k, v in _driver_fixture(spec_fx).items() if k in fx})\n")
+    _edit(s.study / "check_results.py", '        out["fixture"] = _driver_fixture(spec_fx)\n',
+          '        out["fixture"] = {k: v for k, v in _driver_fixture(spec_fx).items()\n'
+          '                          if k in (led.get("fixture") or {})}\n')
     return s.run(_th(s, "TheAttemptIsReDerivedFromItsBytes")), "test_harness.py TheAttemptIsReDerivedFromItsBytes"
 
 
@@ -982,6 +983,31 @@ def m_cut_turn_published_as_complete(s: Sandbox) -> tuple[int, str]:
     _edit(s.study / "check_take.py", "    problems += completion_problems(path, ledger)\n",
           "    problems += []\n")
     return s.run(_th(s, "TheCompletedTakeIsBound")), "test_harness.py TheCompletedTakeIsBound"
+
+
+def m_outcome_read_only_where_it_says_complete(s: Sandbox) -> tuple[int, str]:
+    """Review 19, blocker 1: the outcome gate reading one spelling instead of the driver's vocabulary."""
+    s.control(_th(s, "TheCompletedTakeIsBound"))
+    _edit(s.study / "check_take.py", '    shapes = tuple(pre.get("driver_outcome_shapes") or ())\n',
+          '    shapes = ("",)\n')
+    return s.run(_th(s, "TheCompletedTakeIsBound")), "test_harness.py TheCompletedTakeIsBound"
+
+
+def m_fixture_block_merged_rather_than_replaced(s: Sandbox) -> tuple[int, str]:
+    """Review 19, blocker 2: a hash key added to the ledger, kept by the merge."""
+    s.control(_th(s, "TheAttemptIsReDerivedFromItsBytes"))
+    _edit(s.study / "check_results.py", '        out["fixture"] = _driver_fixture(spec_fx)\n',
+          '        out["fixture"] = {**(led.get("fixture") or {}), **_driver_fixture(spec_fx)}\n')
+    return s.run(_th(s, "TheAttemptIsReDerivedFromItsBytes")), "test_harness.py TheAttemptIsReDerivedFromItsBytes"
+
+
+def m_copied_tree_pin_unread(s: Sandbox) -> tuple[int, str]:
+    """Review 19, blocker 3: the pin read from a key the freeze leaves null for that kind."""
+    s.control(_th(s, "TheGeneratedFixtureIsBound"))
+    _edit(s.study / "check_take.py",
+          '    pinned = spec.get("sha256") or spec.get("tree_sha256_name_invariant")\n',
+          '    pinned = spec.get("sha256")\n')
+    return s.run(_th(s, "TheGeneratedFixtureIsBound")), "test_harness.py TheGeneratedFixtureIsBound"
 
 
 def m_pause_marker_unbounded(s: Sandbox) -> tuple[int, str]:
@@ -1097,6 +1123,9 @@ MUTATIONS = [
     ("a slot freed by an attempt the ledger refuses", m_slot_freed_by_an_attempt_the_ledger_refuses, False),
     ("a fixture field deleted rather than edited", m_fixture_field_deleted_rather_than_edited, False),
     ("a cut turn published as complete", m_cut_turn_published_as_complete, False),
+    ("an outcome read only where it says complete", m_outcome_read_only_where_it_says_complete, False),
+    ("the fixture block merged rather than replaced", m_fixture_block_merged_rather_than_replaced, False),
+    ("a copied-tree pin unread", m_copied_tree_pin_unread, False),
     ("the harness's error text read as the agent's", m_api_error_text_counted_as_the_agents, False),
     ("a pause marker matched unbounded", m_pause_marker_unbounded, False),
     ("the caps unread on the ledger side", m_caps_unread_on_the_ledger_side, False),

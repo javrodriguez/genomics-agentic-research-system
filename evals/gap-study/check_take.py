@@ -369,38 +369,61 @@ def last_stop_reason(path: Path) -> str | None:
     return out
 
 
-def completion_problems(path: Path, ledger: dict | None) -> list[str]:
-    """REVIEW 18, BLOCKER 2. A take the driver CUT may not publish as one that finished.
+def completion_problems(path: Path, ledger: dict | None, pre: dict | None = None) -> list[str]:
+    """REVIEW 18, BLOCKER 2 and REVIEW 19, BLOCKER 1. A take the driver CUT may not publish as one
+    that finished, and the reading is against the driver's own vocabulary rather than one spelling.
 
-    `timed-out` and `aborted` are assigned from the ledger's outcome alone, before any grader reads a
-    turn, and the checker read that outcome against the transcript in one place: a `complete` outcome
-    needs every scripted line, which a cut at the LAST scripted turn leaves present. So one edit of
-    one field graded the cut reply as if the turn had finished, and the per-turn exit code the driver
-    writes was read by nothing. Two readings bind it, one from the driver's own record and one from
-    the transcript, so the edit is no longer a single field either way.
+    `timed-out` and `aborted` are assigned from the ledger's outcome before any grader reads a turn.
+    The first version of this check read that outcome only where it OPENED WITH `complete`, so the
+    field could be deleted, blanked, miscased or written as any other word, and a take cut at its
+    probe turn was graded from a partial reply with every committed check clean. Enumerating the
+    shapes a reviewer wrote down leaves the next spelling open, so the binding reads the other way
+    round: the outcome must be one the pinned driver writes (`driver_outcome_shapes`), and anything
+    else is refused.
 
-    The transcript reading is measured, not assumed: every one of the eleven committed walks ends its
-    last assistant record with `end_turn`, and the one timed-out attempt on record
-    (rehearsals/plan-gate/1) ends with `tool_use`.
+    Then both directions. A turn row carries an exit code, and a non-zero one means the driver cut
+    the take: 124 is `timed-out`, anything else is `aborted`. A take not recorded as cut must end its
+    last reply at the end of a turn. That reading is measured, not assumed: every one of the eleven
+    committed walks ends its last assistant record at `end_turn`, and the one cut attempt on record
+    (rehearsals/plan-gate/1) ends at `tool_use`.
     """
-    outcome = (ledger or {}).get("outcome") or ""
-    if not outcome.startswith("complete"):
+    if ledger is None:
         return []
+    pre = prereg.load() if pre is None else pre
+    shapes = tuple(pre.get("driver_outcome_shapes") or ())
+    if not shapes:
+        return []
+    outcome = ledger.get("outcome")
+    if not isinstance(outcome, str) or not outcome.startswith(shapes):
+        return [f"[outcome-binding] the ledger records the outcome {outcome!r}, which is not one the "
+                f"pinned driver writes. A take whose outcome the driver did not write is graded from a "
+                f"reply nobody can say it finished."]
+
     out: list[str] = []
-    for row in (ledger or {}).get("turns") or []:
-        code = row.get("exit")
-        if not isinstance(code, int) or code == 0:
-            continue
-        label = "timed-out" if code == 124 else "aborted"
-        out.append(f"[outcome-binding] the ledger records a completed take and its own turn "
-                   f"{row.get('n')} exited {code}; the driver publishes that take as {label}, and a "
-                   f"take it cut is not one that finished")
-        break
-    sr = last_stop_reason(path)
-    if sr and sr != "end_turn":
-        out.append(f"[outcome-binding] the ledger records a completed take and the transcript's last "
-                   f"reply stopped at {sr!r} rather than at the end of a turn. Every committed walk "
-                   f"ends its last reply at the end of a turn; a cut one does not.")
+    # A pause and a death before the first agent turn ARE non-zero exits; that is what they record.
+    routed = outcome.startswith(("PAUSE", "REHEARSAL"))
+    if not routed:
+        for row in ledger.get("turns") or []:
+            code = row.get("exit")
+            if not isinstance(code, int):
+                out.append(f"[outcome-binding] turn {row.get('n')} records no exit code, and the driver "
+                           f"writes one for every turn it sends")
+                break
+            if code == 0:
+                continue
+            want = "timed-out" if code == 124 else "aborted"
+            if not outcome.startswith(want):
+                out.append(f"[outcome-binding] the ledger records {outcome!r} and its own turn "
+                           f"{row.get('n')} exited {code}; the driver publishes that take as {want}, and "
+                           f"a take it cut is not one that finished")
+            break
+
+    if not outcome.startswith(("timed-out", "aborted", "PAUSE", "REHEARSAL")):
+        sr = last_stop_reason(path)
+        if sr and sr != "end_turn":
+            out.append(f"[outcome-binding] the ledger records {outcome!r} and the transcript's last "
+                       f"reply stopped at {sr!r} rather than at the end of a turn. Every committed walk "
+                       f"ends its last reply at the end of a turn; a cut one does not.")
     return out
 
 
@@ -800,7 +823,11 @@ def fixture_binding_problems(path: Path, half: dict, is_walk: bool = True) -> tu
     """
     ledger_path = path.parent / "driver-ledger.json"
     spec = half.get("fixture") or {}
-    pinned = spec.get("sha256")
+    # REVIEW 19, BLOCKER 3. The copied-tree fixture carries its pin as the tree hash and the freeze
+    # leaves `sha256` null for that kind by design, so this read nothing for plan-gate: after the
+    # freeze all eighteen of its takes would have printed "unpinned until the freeze" and been bound
+    # to no fixture at all, under a spec that says it is pinned there.
+    pinned = spec.get("sha256") or spec.get("tree_sha256_name_invariant")
     if not ledger_path.is_file():
         return [], "no driver ledger beside the transcript, so the fixture binding was not checked"
     try:
@@ -835,6 +862,10 @@ def fixture_binding_problems(path: Path, half: dict, is_walk: bool = True) -> tu
                     f"it ran against is not graded."], None
         return [], "the driver ledger records no fixture hash, so the fixture binding was not checked"
     if not pinned:
+        if prereg.is_frozen() and not is_walk:
+            return [f"[fixture-binding] the frozen file pins no fixture for this half, so this take "
+                    f"(built {got[:12]}) is bound to nothing. A binding the freeze was meant to fill "
+                    f"and did not is a check that passes having measured nothing."], None
         return [], (f"the fixture binding is unpinned until the freeze (the driver built "
                     f"{got[:12]}; the pre-registration pins nothing yet)")
     if got != pinned:

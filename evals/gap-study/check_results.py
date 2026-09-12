@@ -303,10 +303,12 @@ def _normalised_ledger(led: dict, row: dict, t: Path) -> dict:
     # the ledger's own copy of what it should be, so both fields edited together passed.
     spec_fx = half.get("fixture") or {}
     if spec_fx:
-        led_fx = led.get("fixture")
-        fx = dict(led_fx) if isinstance(led_fx, dict) else {}
-        fx.update(_driver_fixture(spec_fx))
-        out["fixture"] = fx
+        # REVIEW 19, BLOCKER 2. Merging kept every key the ledger carried, and the checker reads the
+        # three hash keys in a fixed order: a `tree_sha256_name_invariant` ADDED to a generated take's
+        # block is read before the real hash, refuses once the half is pinned, and survived this re-run
+        # because the merge preserved it. Edited, deleted, added: the block is REPLACED by what the
+        # driver writes, so none of the three is a shape this has to enumerate.
+        out["fixture"] = _driver_fixture(spec_fx)
     return out
 
 

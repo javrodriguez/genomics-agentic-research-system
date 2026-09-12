@@ -826,3 +826,28 @@ The control-first battery caught it. The test now drives the checker end to end.
 
 No criterion moved.
 No take has run.
+
+### Ruling 23 — 2026-09-11 — the outcome is read against the driver's vocabulary, and the fixture block is replaced rather than merged
+
+Review 19 (`verification/prefreeze-19.md`) judged the threat model and the thirteen limitations lines first, read Ruling 22's two blockers closed for the shapes review 18 wrote down and its four follow-ups folded as stated, upheld the six layer verdicts, and ruled do not freeze on three findings.
+`verification/prefreeze-19-disposition.md` records what was done with each.
+
+**Stop enumerating shapes.**
+Four reviews in a row found the previous fold one spelling short: a value edited, deleted, added, and then a field whose name the check did not test for.
+A fold that lists what the last reviewer wrote down leaves the next shape open, so both readings are inverted here.
+
+**A graded take's outcome must be one the pinned driver writes.**
+The completion binding returned nothing unless the outcome opened with `complete`, and nothing else in the graded route reads that field, so deleting it, blanking it or rewording it graded a take cut at its probe turn from a partial reply.
+The vocabulary is pre-registered as `driver_outcome_shapes` and anything outside it is refused, a non-zero per-turn exit must be matched by an outcome that says the take was cut, a row with no exit code is refused, and a take not recorded as cut must end its last reply at the end of a turn.
+`run.py` refuses to grade a ledger whose outcome the driver never wrote.
+
+**The fixture block is replaced by what the driver writes.**
+Merging kept every key the ledger carried, and the checker reads the three hash keys in a fixed order, so one added key founded a rehearsal on any generated-fixture take after the freeze.
+Edited, deleted and added are one case now.
+
+**A copied-tree fixture is bound by its tree hash.**
+The pin was read from a key the freeze leaves null for that kind, so after the freeze every plan-gate take would have been bound to nothing under a spec that says it is pinned.
+The driver refuses a copied tree that differs from the pin before a session opens, and a frozen file that pins no fixture for a half is a refusal rather than a note.
+
+No criterion moved.
+No take has run.
