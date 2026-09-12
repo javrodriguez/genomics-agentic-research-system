@@ -1,0 +1,24 @@
+review 18 blindness check, read from the reviewer's own session file (298 records, 76 attachment records, 57 tool calls)
+
+1. Operator material in the loaded context (attachment records). Markers that exist only in the operator's assistant tree:
+   the operator's open-items list     0
+   the goal id                        0
+   the assistant's memory folder      0
+   the assistant's identity file      0
+   the operator's objective line      0
+   the study's working name           0
+   the account email, injected by the harness into every session (Ruling 10) 4
+
+   The plan's four words, with where each occurs in the loaded context:
+   'glitch'                     0
+   'Javier'                     2
+      ... attachment":{"type":"session_context","context":{"userEmail":"The user's email address is <account email>. Use it only to identify 
+      ... s questions, you can use the following context: # userEmail The user's email address is <account email>. Use it only to identify 
+   'MEMORY.md'                  0
+   'Waiting on'                 0
+
+2. What the session was given from outside its folder (check_take.inherited_context): 0
+
+3. Absolute paths in the reviewer's tool inputs that are not inside its folder: 2
+   - (a search pattern the reviewer used on its own report, not a path it read)
+   - <harness task folder>
