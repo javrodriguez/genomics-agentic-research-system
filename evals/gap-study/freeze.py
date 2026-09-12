@@ -309,12 +309,45 @@ def main() -> int:
         "sha256": "for a copied-tree or project fixture the pin is the tree hash or the verified "
                   "exit code; see the fixture's pinned_by",
     }
+    # CONDITIONAL, NOT BLANKET. The freeze refused on 11 September 2026 because
+    # `first_study_marker` was null on the carried task's probe turn in both halves. It is null there
+    # for the reason `marker` is: that turn has no wait point, in this study and in the first, and the
+    # field records the marker as the first study wrote it. Excusing the field by name would also
+    # excuse a first-study marker missing from a turn that DOES have a wait point, which would be a
+    # real gap, so this is accounted only where that step's own marker is null and anything else stays
+    # unaccounted.
+    CONDITIONAL = {
+        "first_study_marker": "the carried task's turn has no wait point, so the first study recorded "
+                              "no marker there either; accounted only where that step's own marker is "
+                              "null, and unaccounted anywhere else",
+    }
+
+    def _at(path: str):
+        node = d
+        for part in path.split("."):
+            name = re.match(r"[^\[]*", part).group(0)
+            if name:
+                node = node[name]
+            for i in re.findall(r"\[(\d+)\]", part):
+                node = node[int(i)]
+        return node
+
+    def accounted(path: str) -> bool:
+        leaf = path.split(".")[-1]
+        if leaf in BY_DESIGN:
+            return True
+        if leaf in CONDITIONAL and "." in path:
+            parent = _at(path.rsplit(".", 1)[0])
+            return isinstance(parent, dict) and parent.get("marker") is None
+        return False
+
     d["nulls_at_freeze"] = {
         "count": len(remaining),
-        "by_design": {k: v for k, v in BY_DESIGN.items()
-                      if any(r.endswith("." + k) or r == k for r in remaining)},
-        "unaccounted": sorted(r for r in remaining
-                              if r.split(".")[-1] not in BY_DESIGN),
+        "by_design": {**{k: v for k, v in BY_DESIGN.items()
+                         if any(r.endswith("." + k) or r == k for r in remaining)},
+                      **{k: v for k, v in CONDITIONAL.items()
+                         if any(r.split(".")[-1] == k and accounted(r) for r in remaining)}},
+        "unaccounted": sorted(r for r in remaining if not accounted(r)),
         "note": "Every null left in the frozen file is either listed as by-design above or named "
                 "as unaccounted. A freeze with unaccounted nulls is refused.",
     }
