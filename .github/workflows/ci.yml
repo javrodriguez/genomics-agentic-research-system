@@ -66,9 +66,26 @@ jobs:
         # The words and number-shapes a three-take study may not publish. An occurrence is
         # excused one line at a time, pinned to that line's exact text.
         run: python3 evals/gap-study/lint_language.py evals/gap-study/
-      - name: Gap Study ledger and controls
+      - name: Gap Study ledger
         # Refuses in a shallow clone rather than reporting a pass it cannot support.
-        run: python3 evals/gap-study/check_results.py --ledger --controls
+        run: python3 evals/gap-study/check_results.py --ledger
+      - name: Gap Study controls, as published
+        # --controls exits 1 when any model carries one label on both halves of a task (checklist
+        # line 7). Once results exist that is a finding the study publishes, not a broken build, so
+        # the step re-derives it and requires it byte-identical to the committed record: it goes red
+        # only if the finding changes. Before any results file is committed it must exit 0.
+        run: |
+          set +e
+          python3 evals/gap-study/check_results.py --controls > "$RUNNER_TEMP/controls.txt" 2>&1
+          code=$?
+          set -e
+          printf 'exit %s\n' "$code" >> "$RUNNER_TEMP/controls.txt"
+          if [ -f evals/gap-study/verification/controls-as-published.txt ]; then
+            diff evals/gap-study/verification/controls-as-published.txt "$RUNNER_TEMP/controls.txt"
+          else
+            cat "$RUNNER_TEMP/controls.txt"
+            test "$code" -eq 0
+          fi
       - name: Gap Study mutations
         # Every guard broken on purpose in a throwaway copy and asserted to go red. A guard nobody
         # has watched fail is a guard nobody knows is wired up, and this study has already shipped

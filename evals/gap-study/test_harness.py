@@ -1749,6 +1749,22 @@ class TheDriverLoopRecordsEveryTurnItEnds(unittest.TestCase):
             return (tuple(r) + ("", "", "", ""))[:4]
 
         drive.one_turn = fake
+        # The loop records the harness version before its first turn by running `claude --version`.
+        # A machine with no harness installed -- the CI runner -- errored there, so the loop was only
+        # ever measured on the operator's machine. That one call is answered with the version the
+        # freeze recorded, inside the driver module only; every other subprocess runs as it would.
+        import subprocess as real_subprocess
+        import types
+        frozen_version = prereg.load()["harness"]["claude_version_at_freeze"]
+
+        def run(argv, *a, **k):
+            if list(argv[:2]) == ["claude", "--version"]:
+                return real_subprocess.CompletedProcess(argv, 0, frozen_version + "\n", "")
+            return real_subprocess.run(argv, *a, **k)
+
+        drive.subprocess = types.SimpleNamespace(**{n: getattr(real_subprocess, n) for n in dir(real_subprocess)
+                                                    if not n.startswith("__")})
+        drive.subprocess.run = run
         saved = sys.argv
         sys.argv = ["drive.py", "--task", "number-fidelity", "--half", "positive", "--walk",
                     "--model", "claude-opus-5"]
@@ -1993,6 +2009,225 @@ class TheTakeRecordsAreRecordsNotClaims(unittest.TestCase):
             if kind == "still scanned":
                 self.assertIn(rel, got, rel)
 
+
+# ---------------------------------------------------------------------------------------------------
+# AMENDMENT 3. The published section, bound to the files it reports.
+#
+# Checklist lines 9 and 10 name `test_harness.py NoRateNoBannedWord` and `test_harness.py TwoMinuteRead`,
+# and neither class existed. The owner ruled the second is written as an amendment (Ruling 30); the
+# first is the same gap and is written beside it, flagged there as the operator's reading.
+
+EVALS_MD = REPO / "docs" / "EVALS.md"
+SECTION_TITLE = "# The Gap Study"
+SUMMARY_START = "<!-- gap-study:summary -->"
+SUMMARY_END = "<!-- /gap-study:summary -->"
+SECTION_END = "<!-- /gap-study -->"
+FIRST_STUDY_HEADING = "# Layer B — grading the agent"
+# Ruling 30: the first study's own amendment changed one line of the file after this study's kickoff,
+# so "added lines only" is measured from that amendment rather than from the first study's DONE commit.
+EVALS_BASELINE = "50a2bdc"
+SUMMARY_WORD_CAP = 350
+GATE_BRIEF = HERE / "verification" / "gate-1-brief.md"
+ANALYSIS_JSON = HERE / "analysis.json"
+
+
+def rendered_words(text: str) -> int:
+    """The words a reader reads in two minutes.
+
+    A comment is not read and neither is a link's target, so both are dropped first. A word is a run
+    of letters and digits, and a model id or a task id joined by hyphens, dots or colons is one word:
+    `claude-haiku-4-5-20251001` is read as one name, and `0 of 3` is three words.
+    """
+    text = re.sub(r"<!--.*?-->", " ", text, flags=re.S)
+    text = re.sub(r"\]\([^)]*\)", "]", text)
+    return len(re.findall(r"[A-Za-z0-9]+(?:['’.:_-][A-Za-z0-9]+)*", text))
+
+
+def published_section(text: str):
+    """(section, summary) as published in docs/EVALS.md, None when no section, and a string naming
+    the defect when the markers are there but not exactly once each and in order."""
+    lines = text.splitlines()
+    marks = [SECTION_TITLE, SUMMARY_START, SUMMARY_END, SECTION_END]
+    counts = [lines.count(m) for m in marks]
+    if counts == [0, 0, 0, 0]:
+        return None
+    if counts != [1, 1, 1, 1]:
+        return f"each marker must stand on its own line exactly once; found {dict(zip(marks, counts))}"
+    at = [lines.index(m) for m in marks]
+    if at != sorted(at):
+        return f"the markers are out of order: {dict(zip(marks, at))}"
+    return "\n".join(lines[at[0]:at[3] + 1]), "\n".join(lines[at[1] + 1:at[2]])
+
+
+def results_on_disk() -> bool:
+    return any((HERE / "results").glob("*.json"))
+
+
+def the_section(test: unittest.TestCase):
+    """The published section, required once any results file exists and skipped before."""
+    if not EVALS_MD.is_file():
+        test.skipTest("no docs/EVALS.md in this tree")
+    got = published_section(EVALS_MD.read_text())
+    if got is None:
+        if results_on_disk():
+            test.fail("results exist and docs/EVALS.md carries no section for them")
+        test.skipTest("no results and no published section yet")
+    if isinstance(got, str):
+        test.fail(got)
+    return got
+
+
+class TwoMinuteRead(unittest.TestCase):
+    """CHECKLIST LINE 10. The summary block is at most 350 words, and says what the files say."""
+
+    def test_the_counting_rule_counts_what_a_reader_reads(self):
+        self.assertEqual(rendered_words("0 of 3"), 3)
+        self.assertEqual(rendered_words("`claude-haiku-4-5-20251001` positive"), 2)
+        self.assertEqual(rendered_words("[`71ff09e`](https://github.com/a/b/commit/71ff09e3)"), 1)
+        self.assertEqual(rendered_words("<!-- a comment is never read --> two words"), 2)
+        self.assertEqual(rendered_words("| `scope-read` | 3 of 3 |"), 4)
+
+    def test_the_markers_are_refused_when_they_are_not_once_each_and_in_order(self):
+        good = "\n".join([SECTION_TITLE, SUMMARY_START, "x", SUMMARY_END, SECTION_END])
+        self.assertIsInstance(published_section(good), tuple)
+        self.assertIsNone(published_section("no section here"))
+        self.assertIsInstance(published_section(good + "\n" + SUMMARY_END), str)
+        swapped = "\n".join([SECTION_TITLE, SUMMARY_END, "x", SUMMARY_START, SECTION_END])
+        self.assertIsInstance(published_section(swapped), str)
+
+    def test_the_summary_block_is_at_most_350_words(self):
+        _, summary = the_section(self)
+        n = rendered_words(summary)
+        self.assertLessEqual(n, SUMMARY_WORD_CAP, f"the summary block is {n} words")
+
+    def test_the_section_stands_above_the_first_studys(self):
+        section, _ = the_section(self)
+        text = EVALS_MD.read_text()
+        self.assertIn(FIRST_STUDY_HEADING, text.splitlines())
+        self.assertLess(text.index(section), text.index(FIRST_STUDY_HEADING + "\n"))
+
+    def table(self, summary):
+        rows = [ln for ln in summary.splitlines() if ln.startswith("| Task |")]
+        self.assertEqual(len(rows), 1, "the summary carries exactly one results table")
+        models = re.findall(r"`([^`]+)` positive \| control", rows[0])
+        self.assertTrue(models, "no model columns found; this check would pass vacuously")
+        body = {}
+        for ln in summary.splitlines():
+            m = re.match(r"^\| `([a-z-]+)` \|(.*)\|\s*$", ln)
+            if m:
+                body[m.group(1)] = [c.strip() for c in m.group(2).split("|")]
+        return models, body
+
+    def test_each_count_in_the_table_is_the_results_files(self):
+        _, summary = the_section(self)
+        models, body = self.table(summary)
+        tasks = sorted(p.stem for p in (HERE / "results").glob("*.json"))
+        self.assertEqual(sorted(body), tasks, "the table's tasks are not the results files' tasks")
+        for task in tasks:
+            cells = json.loads((HERE / "results" / f"{task}.json").read_text())["cells"]
+            self.assertEqual(len(body[task]), 2 * len(models), task)
+            for i, model in enumerate(models):
+                for j, half in enumerate(("positive", "control")):
+                    c = cells[model][half]
+                    dnr = sum(1 for lab in c["labels"] if lab["label"] == "did-not-reach")
+                    want = f"{c['k']} of {c['n']}" + (f", {dnr} did-not-reach" if dnr else "")
+                    self.assertEqual(body[task][2 * i + j], want, f"{task} / {model} / {half}")
+
+    def test_the_limitations_name_each_count_requirement_7_names(self):
+        _, summary = the_section(self)
+        cut = summary.split("**Limitations.**", 1)
+        self.assertEqual(len(cut), 2, "no limitations block in the summary")
+        lim = cut[1]
+        for phrase in ("timed-out", "aborted", "incomplete", "rehearsals", "pauses", "not run",
+                       "n = 3", "id only", "RECIPE.md", "`gars/`", "operator asymmetry"):
+            self.assertIn(phrase, lim, phrase)
+        versions = set()
+        for p in (HERE / "results").glob("*.json"):
+            for halves in json.loads(p.read_text())["cells"].values():
+                for c in halves.values():
+                    versions.update(v.split(" ")[0] for v in c.get("harness_versions", []))
+        self.assertTrue(versions, "no harness version in the results; this check would pass vacuously")
+        for v in versions:
+            self.assertIn(v, lim, f"harness version {v} is not in the limitations")
+
+    def test_the_committed_lines_are_byte_identical(self):
+        section, _ = the_section(self)
+        lines = section.splitlines()
+        for rel in prereg.load()["committed_lines"].values():
+            if not rel.endswith(".md"):
+                continue
+            # The committed line is the file's first quotation, directly under its source and date;
+            # login-line.md goes on to quote that sentence's two neighbours as context, and those are
+            # not the line.
+            quote = [ln for ln in (REPO / rel).read_text().splitlines() if ln.startswith("> ")]
+            self.assertTrue(quote, f"{rel} carries no quoted line")
+            self.assertIn(quote[0], lines, f"{rel}'s line is not in the section byte-identical")
+
+    def test_the_file_only_gained_lines_since_the_first_studys_last_amendment(self):
+        the_section(self)
+        known = subprocess.run(["git", "-C", str(REPO), "cat-file", "-e", EVALS_BASELINE + "^{commit}"],
+                               capture_output=True)
+        if known.returncode != 0:
+            self.skipTest(f"{EVALS_BASELINE} is not in this clone's history")
+        diff = subprocess.run(["git", "-C", str(REPO), "diff", EVALS_BASELINE, "--", "docs/EVALS.md"],
+                              capture_output=True, text=True)
+        self.assertEqual(diff.returncode, 0, diff.stderr)
+        removed = [ln for ln in diff.stdout.splitlines() if ln.startswith("-") and not ln.startswith("---")]
+        self.assertEqual(removed, [], "docs/EVALS.md lost lines since the first study's last amendment")
+
+
+class NoRateNoBannedWord(unittest.TestCase):
+    """CHECKLIST LINE 9. The language guard over the published section, the analysis, the gate brief
+    and the bodies of every commit touching the study since the freeze."""
+
+    def scan(self, paths, commits_since=None):
+        argv = [sys.executable, str(HERE / "lint_language.py"), *[str(p) for p in paths]]
+        if commits_since:
+            argv += ["--commits-since", commits_since]
+        return subprocess.run(argv, capture_output=True, text=True, cwd=str(REPO))
+
+    def as_file(self, text):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        p = tmp / "section.md"
+        p.write_text(text)
+        return p
+
+    def test_the_scan_reads_the_text_it_is_given(self):
+        """The negative control: without it, a scan that read nothing would pass as clean."""
+        self.assertEqual(self.scan([self.as_file("a robust result\n")]).returncode, 1)
+        self.assertEqual(self.scan([self.as_file("3 of 3 on the positive half\n")]).returncode, 0)
+
+    def test_the_section_the_analysis_and_the_gate_brief_are_clean(self):
+        section, _ = the_section(self)
+        for p in (ANALYSIS_JSON, GATE_BRIEF):
+            self.assertTrue(p.is_file(), f"{p.relative_to(REPO)} is required once results exist")
+        got = self.scan([self.as_file(section + "\n"), ANALYSIS_JSON, GATE_BRIEF])
+        self.assertEqual(got.returncode, 0, got.stdout[-2000:])
+
+    def test_the_commit_bodies_since_the_freeze_are_clean(self):
+        log = subprocess.run(["git", "-C", str(REPO), "log", "--reverse", "--format=%H", "--",
+                              "evals/gap-study/prereg.json"], capture_output=True, text=True)
+        shallow = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--is-shallow-repository"],
+                                 capture_output=True, text=True).stdout.strip()
+        if log.returncode != 0 or not log.stdout.split() or shallow == "true":
+            self.skipTest("the freeze commit cannot be read from this checkout")
+        got = self.scan([], commits_since=log.stdout.split()[0])
+        self.assertEqual(got.returncode, 0, got.stdout[-2000:])
+
+
+class ThePublishedAnalysisIsRegenerated(unittest.TestCase):
+    """analysis.json is scanned as published, so it must be what analyse.py writes from the results,
+    or the scan reads a file nothing regenerates."""
+
+    def test_analysis_json_is_what_analyse_writes(self):
+        if not results_on_disk():
+            self.skipTest("no results yet")
+        self.assertTrue(ANALYSIS_JSON.is_file(), "results exist and analysis.json does not")
+        out = subprocess.run([sys.executable, str(HERE / "analyse.py"), "--json"], capture_output=True,
+                             text=True, cwd=str(REPO))
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertEqual(ANALYSIS_JSON.read_text(), out.stdout)
 
 def gap_module(name: str):
     """A module of THIS study by path; the first study has files named run.py, drive.py and more."""

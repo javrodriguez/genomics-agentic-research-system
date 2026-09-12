@@ -1923,13 +1923,13 @@
     {
       "path": "evals/gap-study/test_harness.py",
       "git_blob_sha": "1dfcb38892de72a4795c22f58666ee0db07fb505",
-      "sha256": "4f90e8660ce67c88e8e26e514a1864ae2b94a4f0fa0da3aa678f47d1b703ca01",
+      "sha256": "cd53c41327806a474ab191fe473368a28aed349193c224eebaedb7f06b09441b",
       "uncommitted": false
     },
     {
       "path": "evals/gap-study/mutations.py",
       "git_blob_sha": "ece092a25770e36b2d8ff86d79cdddeb5ba361ee",
-      "sha256": "a7ad225c5dfda68a60fd9a01e30af1155e2dcb9101aba37349bbac2280a399bb",
+      "sha256": "c2827265b128d5fdac42779b92ad94c265fece0eb42c93bcbc948a3d03d252f5",
       "uncommitted": false
     },
     {
@@ -2790,6 +2790,61 @@
           "path": "evals/gap-study/mutations.py",
           "sha256_before": "c083e18c446910a71e99d7a239cfcbccbf149ac80e7906ccc547eed6954f50a8",
           "sha256_after": "a7ad225c5dfda68a60fd9a01e30af1155e2dcb9101aba37349bbac2280a399bb"
+        }
+      ],
+      "note": "Published as an amendment rather than corrected in place: each file's pinned sha256 before this change is kept here beside the one now in force."
+    },
+    {
+      "n": 3,
+      "at": "2026-09-12T23:10:54+00:00",
+      "title": "the tests the checklist names are written, and the driver loop's tests stop needing the operator's harness",
+      "why": "Checklist lines 9 and 10 name test_harness.py NoRateNoBannedWord and TwoMinuteRead, and neither class existed, so both lines could only be checked by hand. The owner ruled the second is written as an amendment (Ruling 30); the first is the same gap and is written under the same ruling, flagged as the operator's reading. Separately, six driver-loop tests ran the real `claude --version` and errored on any machine without the harness, which kept CI red on that class since slice 41.",
+      "found_by": "reading the checklist's commands against the harness, and a fresh clone run on a PATH with no harness installed",
+      "no_take_had_run": false,
+      "takes_run_before_this_amendment": 108,
+      "criteria_unchanged": true,
+      "owner_ruling": "Ruling 30",
+      "what_changed": [
+        "test_harness.py: TwoMinuteRead binds the published section to the files it reports: the summary block at most 350 words as a reader reads them, the section above the first study's, each table count equal to the results file, the limitations naming each count requirement 7 names and the recorded harness version, the committed lines byte-identical, and docs/EVALS.md only gaining lines since 50a2bdc.",
+        "test_harness.py: NoRateNoBannedWord runs the language guard over the section, analysis.json, the gate brief and the commit bodies since the freeze, with a negative control proving the scan reads what it is given.",
+        "test_harness.py: ThePublishedAnalysisIsRegenerated requires analysis.json to be what analyse.py --json writes.",
+        "test_harness.py: the driver loop's tests answer `claude --version` with the version the freeze recorded, inside the driver module only.",
+        "mutations.py: five guards for the new classes, and the sandbox carries docs/EVALS.md."
+      ],
+      "before": {
+        "tests": "245 tests; on a machine without the harness, 6 errors",
+        "mutations": "105 mutations"
+      },
+      "after": {
+        "tests": "257 tests, OK, and OK on a fresh clone with no harness on PATH",
+        "mutations": "110 mutations, every one red when broken, 103 watched green first",
+        "in_a_tree_with_no_results": "105 guards red when broken, the five over the published section not applicable with their reason",
+        "evidence": [
+          "evals/gap-study/verification/amendment-3-battery.txt",
+          "evals/gap-study/verification/amendment-3-battery-no-results.txt"
+        ]
+      },
+      "regrades": {
+        "side_by_side": "identical: no file that run.py, a grader or analyse.py reads was changed, and run.py --all rewrites each results file byte-identical.",
+        "results_sha256": {
+          "confounded-design.json": "d5322175fafd8e4f81c0b66880d53dfed8223c902234bc9e1bcc7418cb5679bb",
+          "number-fidelity.json": "2e8badc0a04b4336d77022ffee59ef6f080c005965eba4df710bee393d789dbd",
+          "plan-gate.json": "66571ef0c5c100347752bac10b39517c32f7f4a862d2a019a956d43f898bbd36",
+          "precondition-refusal.json": "6d4b57b23a7975c29221e10fd77d9cc640d1cd230571d97ff615dcb3c4a32d3b",
+          "scope-read.json": "be67807d16b282a62667c0094e718e5830e59ced28b9d901e19b6c05bab8e435",
+          "template-adherence.json": "8a4c28cc10046b52954f1af6044d00aa5f5f3f39534188a1b093af90fcb98d37"
+        }
+      },
+      "files": [
+        {
+          "path": "evals/gap-study/test_harness.py",
+          "sha256_before": "4f90e8660ce67c88e8e26e514a1864ae2b94a4f0fa0da3aa678f47d1b703ca01",
+          "sha256_after": "cd53c41327806a474ab191fe473368a28aed349193c224eebaedb7f06b09441b"
+        },
+        {
+          "path": "evals/gap-study/mutations.py",
+          "sha256_before": "a7ad225c5dfda68a60fd9a01e30af1155e2dcb9101aba37349bbac2280a399bb",
+          "sha256_after": "c2827265b128d5fdac42779b92ad94c265fece0eb42c93bcbc948a3d03d252f5"
         }
       ],
       "note": "Published as an amendment rather than corrected in place: each file's pinned sha256 before this change is kept here beside the one now in force."

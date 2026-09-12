@@ -44,6 +44,16 @@ def _run(argv: list[str], cwd: Path) -> int:
                           cwd=str(cwd)).returncode
 
 
+class NotYetApplicable(Exception):
+    """Raised by a mutation whose guard has nothing to read in this tree yet.
+
+    Printed as n/a with its reason, beside the static list, and never counted as red. It exists for
+    the guards over the published section, which is committed with the first results: in a tree
+    with no results file those guards skip, so a mutation there would come back green and look like
+    a dead guard. Where a results file exists, a section that is missing or broken is a failure.
+    """
+
+
 class Sandbox:
     """A throwaway copy of the study, optionally inside a real git repository."""
 
@@ -67,6 +77,11 @@ class Sandbox:
             src = REPO / "evals" / rel
             if src.is_dir():
                 shutil.copytree(src, self.root / "evals" / rel)
+        # AMENDMENT 3: the published section, which TwoMinuteRead and NoRateNoBannedWord read.
+        src = REPO / "docs" / "EVALS.md"
+        if src.is_file():
+            (self.root / "docs").mkdir(exist_ok=True)
+            shutil.copy2(src, self.root / "docs" / "EVALS.md")
         src = REPO / "evals" / "fixtures" / "neutralise.py"
         if src.is_file():
             (self.root / "evals" / "fixtures").mkdir(parents=True, exist_ok=True)
@@ -1188,6 +1203,61 @@ def m_take_record_exclusion_swallows_every_json(s: Sandbox) -> tuple[int, str]:
     return s.run(_th(s, "TheTakeRecordsAreRecordsNotClaims")), "test_harness.py TheTakeRecordsAreRecordsNotClaims"
 
 
+def _evals_md(s: Sandbox) -> Path:
+    return s.root / "docs" / "EVALS.md"
+
+
+def _needs_results(s: Sandbox) -> None:
+    if not any((s.study / "results").glob("*.json")):
+        raise NotYetApplicable("no results file is in this tree, so the published section this guards "
+                               "is not committed yet; with results present the guard is required")
+
+
+def m_summary_over_the_cap(s: Sandbox) -> tuple[int, str]:
+    """Amendment 3: the two-minute read padded past 350 words."""
+    _needs_results(s)
+    s.control(_th(s, "TwoMinuteRead"))
+    _edit(_evals_md(s), "\n<!-- /gap-study:summary -->\n",
+          "\n" + " ".join(["padding"] * 60) + "\n<!-- /gap-study:summary -->\n")
+    return s.run(_th(s, "TwoMinuteRead")), "test_harness.py TwoMinuteRead"
+
+
+def m_table_count_edited(s: Sandbox) -> tuple[int, str]:
+    """Amendment 3: one count in the published table no longer the results file's."""
+    _needs_results(s)
+    s.control(_th(s, "TwoMinuteRead"))
+    p = _evals_md(s)
+    text = p.read_text()
+    row = next(ln for ln in text.splitlines() if ln.startswith("| `number-fidelity` |"))
+    _edit(p, row, row.replace("| 3 of 3 |", "| 2 of 3 |", 1))
+    return s.run(_th(s, "TwoMinuteRead")), "test_harness.py TwoMinuteRead"
+
+
+def m_committed_line_reworded(s: Sandbox) -> tuple[int, str]:
+    """Amendment 3: the vendor's unsupported line reworded in the section."""
+    _needs_results(s)
+    s.control(_th(s, "TwoMinuteRead"))
+    _edit(_evals_md(s), "> Anthropic doesn't endorse,", "> Anthropic does not endorse,")
+    return s.run(_th(s, "TwoMinuteRead")), "test_harness.py TwoMinuteRead"
+
+
+def m_banned_word_in_the_section(s: Sandbox) -> tuple[int, str]:
+    """Amendment 3: a banned word written into the published section."""
+    _needs_results(s)
+    s.control(_th(s, "NoRateNoBannedWord"))
+    _edit(_evals_md(s), "\n<!-- /gap-study:summary -->\n", "\nA robust result.\n<!-- /gap-study:summary -->\n")
+    return s.run(_th(s, "NoRateNoBannedWord")), "test_harness.py NoRateNoBannedWord"
+
+
+def m_analysis_json_stale(s: Sandbox) -> tuple[int, str]:
+    """Amendment 3: the published analysis no longer what analyse.py writes."""
+    _needs_results(s)
+    s.control(_th(s, "ThePublishedAnalysisIsRegenerated"))
+    p = s.study / "analysis.json"
+    p.write_text(p.read_text().replace("claude-opus-5", "claude-sonnet-5", 1))
+    return s.run(_th(s, "ThePublishedAnalysisIsRegenerated")), "test_harness.py ThePublishedAnalysisIsRegenerated"
+
+
 def m_pause_marker_unbounded(s: Sandbox) -> tuple[int, str]:
     """Review 15, F6."""
     s.control(_th(s, "TheRateLimitMarkersAreBounded"))
@@ -1323,6 +1393,11 @@ MUTATIONS = [
     ("the cut count absent from the comparison", m_cut_count_absent_from_the_comparison, False),
     ("a take-record exclusion that ignores where the file is", m_take_record_exclusion_ignores_location, False),
     ("a take-record exclusion that swallows every JSON file", m_take_record_exclusion_swallows_every_json, False),
+    ("a summary over the two-minute cap", m_summary_over_the_cap, False),
+    ("a table count that is not the results file's", m_table_count_edited, False),
+    ("a committed line reworded in the section", m_committed_line_reworded, False),
+    ("a banned word in the published section", m_banned_word_in_the_section, False),
+    ("a stale published analysis", m_analysis_json_stale, False),
     ("the harness's error text read as the agent's", m_api_error_text_counted_as_the_agents, False),
     ("a pause marker matched unbounded", m_pause_marker_unbounded, False),
     ("the caps unread on the ledger side", m_caps_unread_on_the_ledger_side, False),
@@ -1369,11 +1444,16 @@ def run_all() -> int:
     print(f"{len(MUTATIONS)} mutation(s); each applied to a throwaway copy, the guard run there, "
           f"the copy discarded\n")
     failures = []
+    pending = []
     controlled = 0
     for name, fn, needs_git in MUTATIONS:
         s = Sandbox(git=needs_git)
         try:
             code, guard = fn(s)
+        except NotYetApplicable as why:
+            pending.append((name, str(why)))
+            print(f"  n/a         {name:48} {why}")
+            continue
         except Exception as exc:  # a mutation that cannot even run is a failure of this file
             code, guard = 0, f"raised {exc!r}"
         finally:
@@ -1385,16 +1465,17 @@ def run_all() -> int:
         print(f"  {'red ' if ok else 'GREEN'} {mark} exit {code:<3} {name:48} {guard}")
         if not ok:
             failures.append(name)
-    print(f"\n{controlled} of {len(MUTATIONS)} guards were watched green unmutated before going red "
+    applied = len(MUTATIONS) - len(pending)
+    print(f"\n{controlled} of {applied} guards were watched green unmutated before going red "
           f"(`ctl`). The rest run a command that writes, or a guard with no unmutated form.")
 
-    print(f"\n{len(NOT_APPLICABLE)} mutation(s) NOT APPLICABLE yet, listed rather than dropped:")
-    for name, why in NOT_APPLICABLE:
+    print(f"\n{len(NOT_APPLICABLE) + len(pending)} mutation(s) NOT APPLICABLE yet, listed rather than dropped:")
+    for name, why in NOT_APPLICABLE + pending:
         print(f"  n/a   {name:44} {why}")
 
     if failures:
         print(f"\n{len(failures)} guard(s) did NOT go red: {failures}")
         print("A guard that cannot fail is not protecting anything.")
         return 1
-    print(f"\nevery one of the {len(MUTATIONS)} guards went red when broken")
+    print(f"\nevery one of the {applied} guards went red when broken")
     return 0

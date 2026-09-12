@@ -1034,3 +1034,21 @@ It is written as amendment 3 and published with before and after hashes, and it 
 Checklist line 9 names `test_harness.py NoRateNoBannedWord`, which does not exist either.
 The same reasoning covers it, so it is written into amendment 3 beside `TwoMinuteRead`, not raised as a third question.
 This is the operator's reading of the owner's answer, not the owner's word, and it is recorded as that.
+
+### Ruling 31 — 2026-09-12 — amendment 3: the tests the checklist names are written
+
+Under Ruling 30, `TwoMinuteRead` and `NoRateNoBannedWord` are written, with `ThePublishedAnalysisIsRegenerated` beside them so the analysis they scan is one something regenerates.
+Each is required once a results file exists, and each has mutations that watch it fail.
+`verification/amendment-3.md` carries it in full, and `amendments[2]` in the frozen file carries it machine-readably.
+
+**A test that needs the operator's machine is not a test of the study.**
+Six driver-loop tests ran the real harness for its version string, and CI, which has no harness, has been red on that class since slice 41.
+That one call is answered with the version the freeze recorded, inside the driver module only.
+CI now also splits the ledger check from the controls check, and requires the controls finding byte-identical to its committed record once results exist.
+
+**Both regrades, side by side: identical.**
+
+The gate on the amended bytes: 257 tests OK, here and on a fresh clone with no harness on PATH; 110 mutations, each red when broken, 103 watched green first; on a fresh clone with no results and no harness, 105 red and the five over the section not applicable with their reason.
+
+No criterion moved.
+No number moved.
