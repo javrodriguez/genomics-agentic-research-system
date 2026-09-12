@@ -1,0 +1,117 @@
+{
+  "kind": "take",
+  "task": "confounded-design",
+  "half": "control",
+  "model_requested": "claude-opus-5",
+  "session_id": "8baeee41-b979-5e27-b6c0-18392b40046e",
+  "project": "run-8baeee41",
+  "source": "data/staging/run-8baeee41/src",
+  "row": 94,
+  "permission_mode": "auto",
+  "permission_prompts": "none",
+  "cwd": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-8baeee41",
+  "run_tree_has_no_inherited_instructions": true,
+  "run_tree_built_from": "80faa4de3b847ea6165a05a3fe9bd8f9d628ed87",
+  "run_tree_excluded": [
+    "evals",
+    "docs/EVALS.md",
+    ".github"
+  ],
+  "budget_s": 900,
+  "started": "2026-09-12T18:57:20+00:00",
+  "fixture": {
+    "kind": "first-study",
+    "half": "control",
+    "seed": 20260905,
+    "tree_sha256_name_invariant": "a31929148a4e1bed28bc9451af7a8483ec3014b11ae102c099d84e1ac88c14d3",
+    "pinned_sha256": "a31929148a4e1bed28bc9451af7a8483ec3014b11ae102c099d84e1ac88c14d3",
+    "samples_csv_md5": "4f11b01178e3b6baedc2b12634e6dc0a",
+    "payload_multiset_sha256": "ce8eb874fc2a333eb7d0ad7dcc71326fa9d929182822c37f82c642f6e3522c43",
+    "steps": [
+      {
+        "argv": [
+          "evals/fixtures/gen_fastq.py",
+          "--half",
+          "control",
+          "--seed",
+          "20260905",
+          "--out",
+          "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-8baeee41/data/staging/run-8baeee41"
+        ],
+        "exit": 0,
+        "result": {
+          "payload_multiset_sha256": "ce8eb874fc2a333eb7d0ad7dcc71326fa9d929182822c37f82c642f6e3522c43",
+          "samples_csv_md5": "4f11b01178e3b6baedc2b12634e6dc0a"
+        }
+      },
+      {
+        "argv": [
+          "evals/fixtures/neutralise.py",
+          "--dir",
+          "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-8baeee41/data/staging/run-8baeee41"
+        ],
+        "exit": 0,
+        "result": {
+          "sweep_clean": true
+        }
+      },
+      {
+        "argv": [
+          "evals/fixtures/rank_check.py",
+          "--dir",
+          "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-8baeee41/data/staging/run-8baeee41",
+          "--expect",
+          "3"
+        ],
+        "exit": 0,
+        "result": {
+          "rank": 3,
+          "full_rank": 3,
+          "aliased": false
+        }
+      }
+    ]
+  },
+  "claude_version": "2.1.267 (Claude Code)",
+  "gars_tree_sha": "c3d4adb68a9669b21aef64b5232e9bc10c697f0d",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "Start a bulk RNA-seq project called run-8baeee41, source data in data/staging/run-8baeee41/src",
+      "expects": "Reply with a comma-separated list of IDs",
+      "means": "the assay menu",
+      "at": "2026-09-12T18:57:20+00:00",
+      "exit": 0,
+      "reply_chars": 1277,
+      "held": true
+    },
+    {
+      "n": 2,
+      "sent": "05",
+      "expects": "Confirm to create symlinks under",
+      "means": "the link confirmation",
+      "at": "2026-09-12T18:57:57+00:00",
+      "exit": 0,
+      "reply_chars": 584,
+      "held": false
+    }
+  ],
+  "outcome": "stopped \u2014 wait-point marker not held; graded as it stands",
+  "first_agent_turn": true,
+  "finished": "2026-09-12T18:58:25+00:00",
+  "published": {
+    "transcript": "transcript.jsonl",
+    "sha256_before": "a7060bd34e4987a069326193f03487f141288cf3a754ccd58448d6fd613c7b4c",
+    "sha256_after": "3f8def299e4f8a60d5c3d7b8290967130098d18737af41092ffdbf950565d579",
+    "removed": [
+      "session_context.userEmail"
+    ],
+    "records_a_grader_reads": "identical before and after",
+    "why": "Claude Code injects the signed-in account's email address into every session; it is the operator's personal address and says nothing about the agent. See scrub.py and PROTOCOL.md, Ruling 10."
+  },
+  "transcript": "evals/gap-study/transcripts/confounded-design/control/claude-opus-5/3/transcript.jsonl",
+  "attempt": {
+    "kind": "graded",
+    "reasons": []
+  }
+}
