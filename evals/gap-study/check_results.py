@@ -294,22 +294,46 @@ def _normalised_ledger(led: dict, row: dict, t: Path) -> dict:
     # expected code and the driver refuses before a session opens, the variant is the half's own spec,
     # the carried fixture's builder refuses a tree that differs from the pin, and a generated fixture's
     # hash is the manifest of the build the driver ran.
+    # REVIEW 18, BLOCKER 1. The first version restored a field only where the ledger still carried
+    # one, and the checker refuses on exactly the absences that skipped: a project take with no
+    # block, an exit that does not equal its recorded expected exit, and a missing hash once the half
+    # is pinned. So a DELETION produced a refusal the re-run could not see as the ledger's doing, and
+    # after the freeze one deletion reached every take. The block is rebuilt from the half's own spec
+    # whether or not the ledger carries it. REVIEW 18, F1 rides here too: stage 01's exit was bound to
+    # the ledger's own copy of what it should be, so both fields edited together passed.
     spec_fx = half.get("fixture") or {}
-    led_fx = led.get("fixture")
-    if isinstance(led_fx, dict):
-        fx = dict(led_fx)
-        if spec_fx.get("kind"):
-            fx["kind"] = spec_fx["kind"]
-        if spec_fx.get("variant") is not None:
-            fx["variant"] = spec_fx["variant"]
-        if fx.get("stage01_expected_exit") is not None:
-            fx["stage01_check_exit"] = fx["stage01_expected_exit"]
-        pin = spec_fx.get("sha256")
-        if pin:
-            for key in ("tree_sha256_name_invariant", "sha256", "fixture_sha256"):
-                if fx.get(key):
-                    fx[key] = pin
+    if spec_fx:
+        led_fx = led.get("fixture")
+        fx = dict(led_fx) if isinstance(led_fx, dict) else {}
+        fx.update(_driver_fixture(spec_fx))
         out["fixture"] = fx
+    return out
+
+
+def _driver_fixture(spec_fx: dict) -> dict:
+    """The fixture record the pinned driver writes for this half, from the pre-registration alone.
+
+    Every value here is one the driver refuses to open a session without: the generators take the
+    half's variant and seed, the project generator exits non-zero unless stage 01 reaches the exit the
+    frozen file records for that branch, and the carried builder refuses a tree that differs from the
+    pin.
+    """
+    kind = spec_fx.get("kind")
+    out: dict = {"kind": kind}
+    if spec_fx.get("variant") is not None:
+        out["variant"] = spec_fx["variant"]
+    if spec_fx.get("seed") is not None:
+        out["seed"] = spec_fx["seed"]
+    if kind == "project":
+        want = (spec_fx.get("verified_branch") or {}).get("stage01_check_exit")
+        out["stage01_check_exit"] = want
+        out["stage01_expected_exit"] = want
+    pin = spec_fx.get("sha256") or spec_fx.get("tree_sha256_name_invariant")
+    if pin:
+        if kind in ("copied-tree", "first-study"):
+            out["tree_sha256_name_invariant"] = pin
+        else:
+            out["fixture_sha256"] = pin
     return out
 
 

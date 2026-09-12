@@ -803,3 +803,26 @@ The prose readers' blind spots, and what the pause channel was measured on, are 
 
 No criterion moved.
 No take has run.
+
+### Ruling 22 — 2026-09-11 — a field deleted is not a field edited, and a take the driver cut is not one that finished
+
+Review 18 (`verification/prefreeze-18.md`) judged the threat model and the thirteen limitations lines first, read Ruling 21's three routes closed for the shapes review 17 wrote down and its seven follow-ups folded as stated, upheld the six layer verdicts, and ruled do not freeze on two findings.
+`verification/prefreeze-18-disposition.md` records what was done with each.
+
+**The fixture block is rebuilt from the half's own spec whether or not the ledger carries it.**
+Restoring field by field where a field existed left every absence untouched, and the checker refuses on exactly those absences: a project take with no block, an exit that does not equal its recorded expected exit, a missing hash once the half is pinned.
+So a deletion founded a rehearsal the second run could not see as the ledger's doing, and after the freeze one deletion would have reached every take.
+Stage 01's exit and its expected exit now both come from the frozen file, so they can no longer be edited to agree with each other.
+
+**A take published as complete is bound to the driver's record and to the transcript.**
+`timed-out` and `aborted` come from the ledger's outcome before any grader reads a turn, and a cut at the last scripted turn leaves every scripted line present, so one edit graded a cut reply as a finished one.
+A completed take may not carry a non-zero exit code in its own per-turn record, and its last reply may not stop short of the end of a turn.
+The reason is `outcome-binding`, and it is a reason the pinned driver cannot produce, so a rehearsal founded on it is refused.
+The transcript reading is measured: every committed walk ends its last reply at the end of a turn, and the one timed-out attempt on record ends at a tool call.
+
+**A guard whose test calls the reading and not the call site is hollow.**
+The first version of the second check had a mutation come back green because every test called the function directly.
+The control-first battery caught it. The test now drives the checker end to end.
+
+No criterion moved.
+No take has run.

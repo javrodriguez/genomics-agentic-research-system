@@ -42,17 +42,23 @@ the re-run restored six named fields while the pre-registration claimed it resto
 The outcome and the turns are re-derived from the transcript now, the fixture block is restored from the half's own spec, and an attempt cannot deny the turn its own ledger records.
 Its seven follow-ups are all folded.
 
+Review 18 read Ruling 21's three routes closed for the shapes review 17 wrote down and its seven follow-ups folded, and ruled do not freeze on two findings, both folded (Ruling 22, `verification/prefreeze-18-disposition.md`):
+a field DELETED from the fixture block was not a field edited, because the restore ran only where a field was present and the checker refuses on exactly those absences;
+and a take the driver cut at its last scripted turn could publish as one that finished, from one ledger field nothing read against the transcript.
+The block is rebuilt from the half's own spec now, and a completed take is bound to the driver's per-turn record and to where its last reply stopped.
+Its four follow-ups are all folded.
+
 ## The next moves, in order
 
-1. **Review 18** as `verification/prefreeze-18.md`, reading the bytes this pass leaves; then its disposition, or the freeze: `freeze.py --review-commit <sha> --write`.
+1. **Review 19** as `verification/prefreeze-19.md`, reading the bytes this pass leaves; then its disposition, or the freeze: `freeze.py --review-commit <sha> --write`.
 2. Then, and only then, the 108 takes.
 
 ## State
 
-- 6 task pairs · 11 walks, 3 of them driven in a built checkout · 136 hand-labelled cases · 217 tests · 84 mutations · 17 reviews · 4 smokes
+- 6 task pairs · 11 walks, 3 of them driven in a built checkout · 136 hand-labelled cases · 223 tests · 86 mutations · 18 reviews · 4 smokes
 - 0 takes graded · not frozen · `gars/` and the first study unchanged by this work
 - The local tier was dropped by the repository owner at gate 2; `local-model/DROPPED.md` is the record
-- Rulings 1–21 in `PROTOCOL.md`
+- Rulings 1–22 in `PROTOCOL.md`
 - `RESIDUAL.md` was written at the slice cap and is kept deliberately, though the cap was lifted (Ruling 7)
 
 ## Carried follow-ups, most valuable first

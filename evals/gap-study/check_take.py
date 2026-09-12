@@ -353,6 +353,57 @@ def agent_turn_count(path: Path) -> int:
     return n
 
 
+def last_stop_reason(path: Path) -> str | None:
+    """The stop reason of the last assistant record that carries one."""
+    out = None
+    for line in path.read_text(errors="replace").splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(rec, dict) or rec.get("type") != "assistant":
+            continue
+        sr = (rec.get("message") or {}).get("stop_reason")
+        if sr:
+            out = sr
+    return out
+
+
+def completion_problems(path: Path, ledger: dict | None) -> list[str]:
+    """REVIEW 18, BLOCKER 2. A take the driver CUT may not publish as one that finished.
+
+    `timed-out` and `aborted` are assigned from the ledger's outcome alone, before any grader reads a
+    turn, and the checker read that outcome against the transcript in one place: a `complete` outcome
+    needs every scripted line, which a cut at the LAST scripted turn leaves present. So one edit of
+    one field graded the cut reply as if the turn had finished, and the per-turn exit code the driver
+    writes was read by nothing. Two readings bind it, one from the driver's own record and one from
+    the transcript, so the edit is no longer a single field either way.
+
+    The transcript reading is measured, not assumed: every one of the eleven committed walks ends its
+    last assistant record with `end_turn`, and the one timed-out attempt on record
+    (rehearsals/plan-gate/1) ends with `tool_use`.
+    """
+    outcome = (ledger or {}).get("outcome") or ""
+    if not outcome.startswith("complete"):
+        return []
+    out: list[str] = []
+    for row in (ledger or {}).get("turns") or []:
+        code = row.get("exit")
+        if not isinstance(code, int) or code == 0:
+            continue
+        label = "timed-out" if code == 124 else "aborted"
+        out.append(f"[outcome-binding] the ledger records a completed take and its own turn "
+                   f"{row.get('n')} exited {code}; the driver publishes that take as {label}, and a "
+                   f"take it cut is not one that finished")
+        break
+    sr = last_stop_reason(path)
+    if sr and sr != "end_turn":
+        out.append(f"[outcome-binding] the ledger records a completed take and the transcript's last "
+                   f"reply stopped at {sr!r} rather than at the end of a turn. Every committed walk "
+                   f"ends its last reply at the end of a turn; a cut one does not.")
+    return out
+
+
 def constant_problems(ledger: dict | None, pre: dict) -> list[str]:
     """REVIEW 12, BLOCKER 3. A take's budget and permission mode are the frozen constants."""
     if not ledger:
@@ -877,6 +928,7 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
     problems += published_email_problems(path)
 
     ledger = _ledger_beside(path)
+    problems += completion_problems(path, ledger)
     if ledger and ledger.get("source") is not None and ledger.get("source") != expected_source:
         problems.append(f"[fixture-binding] the driver handed the agent the source {ledger.get('source')!r}, "
                         f"and this half's fixture kind implies {expected_source!r}")

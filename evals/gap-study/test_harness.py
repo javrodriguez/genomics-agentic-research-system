@@ -2503,6 +2503,49 @@ class TheAttemptIsReDerivedFromItsBytes(unittest.TestCase):
             self.assertIn("fixture-binding", ids, field)
             self.assertIn("fixture-binding", made, field)
 
+    def test_a_fixture_field_deleted_is_restored_like_one_edited(self):
+        """REVIEW 18, BLOCKER 1. The restore ran field by field where a field was present, and the
+        checker refuses on exactly the absences that skipped."""
+        row = {"task": "precondition-refusal", "half": "positive", "model": "claude-opus-5", "take": 1}
+        spec = prereg.task(row["task"])[row["half"]]["fixture"]
+        want = spec["verified_branch"]["stage01_check_exit"]
+        good = {"kind": "project", "variant": spec["variant"], "seed": spec["seed"],
+                "stage01_check_exit": want, "stage01_expected_exit": want}
+        n = len(prereg.task(row["task"])[row["half"]]["operator_script"])
+        d, _led = self.take(n, "complete", row=row, fixture=good)
+        ids, _made = self.ledger_made(d, row)
+        self.assertNotIn("fixture-binding", ids, "the untouched take is refused before any edit")
+
+        for label, block in (("the block deleted", None), ("the block emptied", {}),
+                             ("the expected exit deleted",
+                              {k: v for k, v in good.items() if k != "stage01_expected_exit"}),
+                             ("the variant deleted",
+                              {k: v for k, v in good.items() if k != "variant"})):
+            led = json.loads((d / "driver-ledger.json").read_text())
+            if block is None:
+                led.pop("fixture", None)
+            else:
+                led["fixture"] = block
+            (d / "driver-ledger.json").write_text(json.dumps(led))
+            ids, made = self.ledger_made(d, row)
+            self.assertIn("fixture-binding", ids, label)
+            self.assertIn("fixture-binding", made, label)
+
+    def test_the_driver_fixture_is_built_from_the_spec_alone(self):
+        """The record the pinned driver writes, per kind, with nothing read from the ledger."""
+        cr = gap_module("check_results")
+        got = cr._driver_fixture({"kind": "project", "variant": "v", "seed": 1,
+                                  "verified_branch": {"stage01_check_exit": 3}})
+        self.assertEqual(got["stage01_check_exit"], 3)
+        self.assertEqual(got["stage01_expected_exit"], 3)
+        self.assertEqual(cr._driver_fixture({"kind": "generated", "variant": "v", "seed": 1,
+                                             "sha256": "a" * 64})["fixture_sha256"], "a" * 64)
+        self.assertEqual(cr._driver_fixture({"kind": "first-study", "sha256": "b" * 64})
+                         ["tree_sha256_name_invariant"], "b" * 64)
+        self.assertEqual(cr._driver_fixture({"kind": "copied-tree",
+                                             "tree_sha256_name_invariant": "c" * 64})
+                         ["tree_sha256_name_invariant"], "c" * 64)
+
     def test_an_attempt_whose_ledger_records_the_turn_it_denies_is_refused(self):
         """REVIEW 17, BLOCKER 1, ROUTE C. Deleting a graded take's transcript made the checks vacuous."""
         import contextlib
@@ -2671,6 +2714,80 @@ class TheGeneratedFixtureIsBound(unittest.TestCase):
         problems, note = self.checked("a" * 64, None)
         self.assertEqual(problems, [])
         self.assertIn("unpinned until the freeze", note)
+
+
+class TheCompletedTakeIsBound(unittest.TestCase):
+    """REVIEW 18, BLOCKER 2. `timed-out` and `aborted` are read from the ledger's outcome before any
+    grader reads a turn, and the checker read that outcome against the transcript only through the
+    scripted lines, which a cut at the LAST scripted turn leaves whole."""
+
+    def transcript(self, stop_reason):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        p = tmp / "transcript.jsonl"
+        p.write_text("\n".join(json.dumps(r) for r in [
+            {"type": "user", "message": {"role": "user", "content": "a line"}},
+            {"type": "assistant", "message": {"role": "assistant", "model": "claude-opus-5",
+                                              "stop_reason": stop_reason,
+                                              "content": [{"type": "text", "text": "a reply"}]}}]) + "\n")
+        return p
+
+    def test_every_committed_walk_ends_its_last_reply_at_the_end_of_a_turn(self):
+        """The fact the transcript reading rests on, measured rather than assumed."""
+        ct = gap_check_take()
+        seen = 0
+        for p in sorted((HERE / "walks").glob("*/*/transcript.jsonl")):
+            self.assertEqual(ct.last_stop_reason(p), "end_turn", str(p))
+            seen += 1
+        self.assertGreater(seen, 0, "no walk was read; that is not a pass")
+        cut = HERE / "rehearsals" / "plan-gate" / "1" / "transcript.jsonl"
+        self.assertTrue(cut.is_file(), "the one timed-out attempt on record is missing")
+        self.assertEqual(ct.last_stop_reason(cut), "tool_use")
+
+    def test_a_cut_turn_cannot_be_published_as_a_take_that_finished(self):
+        ct = gap_check_take()
+        p = self.transcript("end_turn")
+        self.assertEqual(ct.completion_problems(p, {"outcome": "complete", "turns": [{"n": 1, "exit": 0}]}), [])
+
+        for code, label in ((124, "timed-out"), (1, "aborted")):
+            got = ct.completion_problems(p, {"outcome": "complete",
+                                             "turns": [{"n": 1, "exit": 0}, {"n": 2, "exit": code}]})
+            self.assertEqual(ct.reason_ids(got), ["outcome-binding"], code)
+            self.assertIn(label, got[0])
+
+        cut = self.transcript("tool_use")
+        got = ct.completion_problems(cut, {"outcome": "complete", "turns": [{"n": 1, "exit": 0}]})
+        self.assertEqual(ct.reason_ids(got), ["outcome-binding"])
+
+        # the take the driver itself published: no refusal, because the outcome is the true one
+        self.assertEqual(ct.completion_problems(cut, {"outcome": "timed-out",
+                                                      "turns": [{"n": 1, "exit": 124}]}), [])
+
+    def test_the_checker_itself_carries_the_refusal(self):
+        """The wiring, not only the reading: a guard whose test calls the function directly leaves the
+        call site unguarded, and the mutation that removes the call site came back green."""
+        import contextlib
+        import io
+        ct = gap_check_take()
+
+        def ids_for(stop_reason, outcome):
+            tmp = Path(tempfile.mkdtemp())
+            self.addCleanup(shutil.rmtree, tmp, True)
+            p = tmp / "transcript.jsonl"
+            p.write_text(self.transcript(stop_reason).read_text())
+            (tmp / "driver-ledger.json").write_text(json.dumps(
+                {"outcome": outcome, "turns": [{"n": 1, "exit": 0}]}))
+            with contextlib.redirect_stdout(io.StringIO()):
+                return ct.reason_ids(ct.check(p, "scope-read", "positive", 0, False))
+
+        self.assertIn("outcome-binding", ids_for("tool_use", "complete"))
+        self.assertNotIn("outcome-binding", ids_for("end_turn", "complete"))
+        self.assertNotIn("outcome-binding", ids_for("tool_use", "timed-out"))
+
+    def test_the_reason_is_pre_registered_and_refused_as_a_rehearsal_reason(self):
+        pre = prereg.load()
+        self.assertIn("outcome-binding", pre["rehearsal_reasons"])
+        self.assertIn("outcome-binding", pre["driver_decided_reasons"])
 
 
 class TheModelAndTheConstantsAreBound(unittest.TestCase):

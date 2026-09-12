@@ -968,6 +968,22 @@ def m_slot_freed_by_an_attempt_the_ledger_refuses(s: Sandbox) -> tuple[int, str]
     return s.run(_th(s, "TheTakeLifecycle")), "test_harness.py TheTakeLifecycle"
 
 
+def m_fixture_field_deleted_rather_than_edited(s: Sandbox) -> tuple[int, str]:
+    """Review 18, blocker 1: the block restored only where the ledger still carries a field."""
+    s.control(_th(s, "TheAttemptIsReDerivedFromItsBytes"))
+    _edit(s.study / "check_results.py", "        fx.update(_driver_fixture(spec_fx))\n",
+          "        fx.update({k: v for k, v in _driver_fixture(spec_fx).items() if k in fx})\n")
+    return s.run(_th(s, "TheAttemptIsReDerivedFromItsBytes")), "test_harness.py TheAttemptIsReDerivedFromItsBytes"
+
+
+def m_cut_turn_published_as_complete(s: Sandbox) -> tuple[int, str]:
+    """Review 18, blocker 2: a take the driver cut, published as one that finished."""
+    s.control(_th(s, "TheCompletedTakeIsBound"))
+    _edit(s.study / "check_take.py", "    problems += completion_problems(path, ledger)\n",
+          "    problems += []\n")
+    return s.run(_th(s, "TheCompletedTakeIsBound")), "test_harness.py TheCompletedTakeIsBound"
+
+
 def m_pause_marker_unbounded(s: Sandbox) -> tuple[int, str]:
     """Review 15, F6."""
     s.control(_th(s, "TheRateLimitMarkersAreBounded"))
@@ -1079,6 +1095,8 @@ MUTATIONS = [
     ("a rehearsal published with no transcript", m_rehearsal_published_with_no_transcript, False),
     ("a fixture hash absent after the freeze", m_fixture_hash_absent_after_the_freeze, False),
     ("a slot freed by an attempt the ledger refuses", m_slot_freed_by_an_attempt_the_ledger_refuses, False),
+    ("a fixture field deleted rather than edited", m_fixture_field_deleted_rather_than_edited, False),
+    ("a cut turn published as complete", m_cut_turn_published_as_complete, False),
     ("the harness's error text read as the agent's", m_api_error_text_counted_as_the_agents, False),
     ("a pause marker matched unbounded", m_pause_marker_unbounded, False),
     ("the caps unread on the ledger side", m_caps_unread_on_the_ledger_side, False),
