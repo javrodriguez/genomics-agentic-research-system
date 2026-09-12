@@ -54,17 +54,22 @@ A graded take's outcome must be one the pinned driver writes, pre-registered as 
 the fixture block is replaced by what the driver writes rather than merged with it;
 and a copied-tree fixture is bound by its tree hash, which the freeze fills and the checker had not read.
 
+Review 20 read Ruling 23's three blockers closed in the code and its four follow-ups folded, and ruled do not freeze on one defect, folded (Ruling 24, `verification/prefreeze-20-disposition.md`):
+Ruling 23 had bound a completed take to the driver's record and left a CUT outcome bound to nothing, so one edit published a behavioural failure as a failure of the harness.
+A take published as cut must now carry the cut the driver writes, and what the transcript cannot refute -- a cut that lands after the last reply ended -- is named by the ledger check rather than claimed as refused.
+Its seven follow-ups are folded or answered, including the registration order becoming the drive order, and two sentences about the carried grader corrected: its window is a property of that grader rather than of this protocol, and its classifier can lose a label rather than only dilute it.
+
 ## The next moves, in order
 
-1. **Review 20** as `verification/prefreeze-20.md`, reading the bytes this pass leaves; then its disposition, or the freeze: `freeze.py --review-commit <sha> --write`.
+1. **Review 21** as `verification/prefreeze-21.md`, reading the bytes this pass leaves; then its disposition, or the freeze: `freeze.py --review-commit <sha> --write`.
 2. Then, and only then, the 108 takes.
 
 ## State
 
-- 6 task pairs · 11 walks, 3 of them driven in a built checkout · 136 hand-labelled cases · 228 tests · 89 mutations · 19 reviews · 4 smokes
+- 6 task pairs · 11 walks, 3 of them driven in a built checkout · 136 hand-labelled cases · 232 tests · 92 mutations · 20 reviews · 4 smokes
 - 0 takes graded · not frozen · `gars/` and the first study unchanged by this work
 - The local tier was dropped by the repository owner at gate 2; `local-model/DROPPED.md` is the record
-- Rulings 1–23 in `PROTOCOL.md`
+- Rulings 1–24 in `PROTOCOL.md`
 - `RESIDUAL.md` was written at the slice cap and is kept deliberately, though the cap was lifted (Ruling 7)
 
 ## Carried follow-ups, most valuable first

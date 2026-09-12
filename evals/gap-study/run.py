@@ -107,7 +107,11 @@ def models_read(t: Path) -> list[str]:
             rec = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if isinstance(rec, dict) and rec.get("type") == "assistant":
+        # REVIEW 20, F6. The harness writes an assistant record of its own when the API refuses a
+        # request, carrying the model `<synthetic>`; the checker and the driver both exclude it, and
+        # this published field did not.
+        if isinstance(rec, dict) and rec.get("type") == "assistant" \
+                and not (rec.get("isApiErrorMessage") or rec.get("is_api_error_message")):
             seen.add(str((rec.get("message") or {}).get("model")))
     return sorted(seen)
 

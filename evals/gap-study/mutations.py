@@ -28,6 +28,7 @@ the difference between a guard that passed and one that was never driven.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -205,6 +206,24 @@ def _rows(s: Sandbox, takes: tuple[int, ...]) -> None:
     (s.study / "takes.json").write_text(json.dumps({"role": "test", "rows": rows}, indent=2))
 
 
+def _attempt(s: Sandbox, row: int, take: int, kind: str = "graded") -> None:
+    """Leave the record the driver leaves for an attempt on this row.
+
+    REVIEW 20, F4: a row is registered only once every row before it has been attempted, so a setup
+    that writes rows and registers the next one has to leave the attempts too. Before that rule, this
+    file could register three takes with nothing driven, which no real run can do.
+    """
+    code, out = s.run_out([str(s.study / "takes.py"), "--session-id", str(row)])
+    m = re.search(r"session id\s+(\S+)", out)
+    if code != 0 or not m:
+        raise RuntimeError(f"no session id for row {row}: {out[-200:]}")
+    d = s.study / "transcripts" / "scope-read" / "positive" / "claude-opus-5" / str(take)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "driver-ledger.json").write_text(json.dumps(
+        {"kind": "take", "session_id": m.group(1), "attempt": {"kind": kind},
+         "outcome": "complete — no session file for x", "first_agent_turn": True}))
+
+
 def _add(s: Sandbox, take: int) -> tuple[int, str]:
     return s.run_out([str(s.study / "takes.py"), "--add", "--task", "scope-read", "--half", "positive",
                       "--model", "claude-opus-5", "--take", str(take), "--allow-draft"])
@@ -229,8 +248,12 @@ def m_fourth_graded_take(s: Sandbox) -> tuple[int, str]:
     for the uncommitted ledger before any take check ran. It now commits, proves an ordinary third
     take registers, and requires the refusal to name the registered slot.
     """
+    _rows(s, (1,))
+    s.commit("take: row 0")
+    _attempt(s, 0, 1)
     _rows(s, (1, 2))
-    s.commit("take: two rows")
+    s.commit("take: row 1")
+    _attempt(s, 1, 2)
     code, out = _add(s, 3)
     if code != 0:
         raise RuntimeError(f"the control is red: an ordinary third take did not register: {out[-200:]}")
@@ -1010,6 +1033,29 @@ def m_copied_tree_pin_unread(s: Sandbox) -> tuple[int, str]:
     return s.run(_th(s, "TheGeneratedFixtureIsBound")), "test_harness.py TheGeneratedFixtureIsBound"
 
 
+def m_cut_outcome_bound_to_nothing(s: Sandbox) -> tuple[int, str]:
+    """Review 20, blocker 1: a behavioural failure published as timed-out or aborted by one edit."""
+    s.control(_th(s, "TheCompletedTakeIsBound"))
+    _edit(s.study / "check_take.py",
+          '    if outcome.startswith("timed-out") and not (last or {}).get("exit") == 124:\n',
+          "    if False:\n")
+    return s.run(_th(s, "TheCompletedTakeIsBound")), "test_harness.py TheCompletedTakeIsBound"
+
+
+def m_generated_fixture_not_refused_before_the_session(s: Sandbox) -> tuple[int, str]:
+    """Review 20, F1: the mismatch left to the checker, where no record can clear it."""
+    s.control(_th(s, "TheGeneratedFixtureIsBound"))
+    _edit(s.study / "drive.py", "    if pin and got != pin:\n", "    if False:\n")
+    return s.run(_th(s, "TheGeneratedFixtureIsBound")), "test_harness.py TheGeneratedFixtureIsBound"
+
+
+def m_registration_order_not_the_drive_order(s: Sandbox) -> tuple[int, str]:
+    """Review 20, F4: every row registered first and driven in any order afterwards."""
+    s.control(_th(s, "TheTakeLifecycle"))
+    _edit(s.study / "takes.py", "    if waiting:\n", "    if False:\n")
+    return s.run(_th(s, "TheTakeLifecycle")), "test_harness.py TheTakeLifecycle"
+
+
 def m_pause_marker_unbounded(s: Sandbox) -> tuple[int, str]:
     """Review 15, F6."""
     s.control(_th(s, "TheRateLimitMarkersAreBounded"))
@@ -1126,6 +1172,9 @@ MUTATIONS = [
     ("an outcome read only where it says complete", m_outcome_read_only_where_it_says_complete, False),
     ("the fixture block merged rather than replaced", m_fixture_block_merged_rather_than_replaced, False),
     ("a copied-tree pin unread", m_copied_tree_pin_unread, False),
+    ("a cut outcome bound to nothing", m_cut_outcome_bound_to_nothing, False),
+    ("a generated fixture not refused before the session", m_generated_fixture_not_refused_before_the_session, False),
+    ("registration order that is not the drive order", m_registration_order_not_the_drive_order, False),
     ("the harness's error text read as the agent's", m_api_error_text_counted_as_the_agents, False),
     ("a pause marker matched unbounded", m_pause_marker_unbounded, False),
     ("the caps unread on the ledger side", m_caps_unread_on_the_ledger_side, False),
@@ -1156,6 +1205,12 @@ NOT_APPLICABLE = [
      "the sandbox does not sit in a workspaces folder, so the origin cannot resolve there and the guard "
      "skips; TheCopiedFixtureBuildsToItsPin carries its own negative control, which points the origin at "
      "a missing folder and requires the message"),
+    ("a freeze that pins a generated fixture by nothing",
+     "review 20's F5 is a refusal inside freeze.py's main(), which needs a scratch repository with git "
+     "history, a committed review report, every pinned file and a generator that fails --manifest-only: "
+     "a fixture larger than the change it would guard. The change is kept and stated here rather than "
+     "covered by a guard that does not exist; the freeze runs once, and check_results.py re-hashes every "
+     "pinned file afterwards"),
     ("a carried fixture whose tree hash differs from the freeze",
      "no fixture pin exists before the freeze; the builder's refusal on a disagreeing pin is "
      "unit-tested instead (TheCarriedFixtureBuilds)"),

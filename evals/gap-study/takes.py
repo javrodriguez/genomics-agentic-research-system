@@ -258,6 +258,17 @@ def cmd_add(args) -> int:
               f"or a pause; there are no retakes.")
         return 2
 
+    # REVIEW 20, F4. The pre-registered order bound registration and not the order takes are driven:
+    # every row could be registered first and driven in any order afterwards, and nothing a reader can
+    # check would show it. A row is registered only once every committed row before it has been
+    # attempted, so the registration order is the drive order.
+    waiting = [i for i in range(len(rows)) if outcome(i) is None]
+    if waiting:
+        print(f"row(s) {waiting} are registered and not yet attempted. The pre-registered order is the "
+              f"order takes are driven, so a row is registered only after every row before it has been "
+              f"attempted.")
+        return 2
+
     cell = [i for i, r in enumerate(rows)
             if (r["task"], r["half"], r["model"]) == (args.task, args.half, args.model)]
     counted = [i for i in cell if outcome(i) not in ("rehearsal", "pause")]

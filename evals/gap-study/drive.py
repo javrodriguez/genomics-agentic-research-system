@@ -624,8 +624,16 @@ def build_fixture(spec: dict, dest: Path) -> dict | None:
             raise SystemExit(f"REFUSING: the generator wrote no readable manifest for this fixture "
                              f"({exc!r}), so the take could not be bound to the fixture it ran "
                              f"against. Nothing was sent to a model.")
+    # REVIEW 20, F1. The carried and copied builders refuse a tree that differs from their pin before a
+    # session opens; this one recorded the hash and left the mismatch to the checker, where it becomes a
+    # refusal no record can clear. Symmetry costs three lines and gives the state a name.
+    got = man.get("fixture_sha256")
+    pin = spec.get("sha256")
+    if pin and got != pin:
+        raise SystemExit(f"REFUSING: the generated fixture hashes to {str(got)[:12]} and this half pins "
+                         f"{str(pin)[:12]}. Nothing was sent to a model.")
     return {"kind": "generated", "variant": spec["variant"], "seed": spec["seed"],
-            "fixture_sha256": man.get("fixture_sha256")}
+            "fixture_sha256": got}
 
 
 def main() -> int:

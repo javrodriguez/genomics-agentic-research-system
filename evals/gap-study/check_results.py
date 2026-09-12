@@ -168,6 +168,9 @@ def check_ledger() -> list[str]:
     # the checker never opens, so none of the bindings can run for it. It used to disappear into the
     # count of transcripts bound; it is named here instead.
     no_transcript: list[int] = []
+    # REVIEW 20, BLOCKER 1. A legitimate cut can land after the agent's last reply ended, so a claimed
+    # cut cannot be refused from the transcript the way a claimed finish can. It is named instead.
+    cut_but_finished: list[int] = []
     per_cell: dict[tuple, dict] = {}
     attempted: dict[int, bool] = {}
     matched = 0
@@ -196,6 +199,9 @@ def check_ledger() -> list[str]:
         t = d / "transcript.jsonl"
         if kind == "graded" and not t.is_file():
             no_transcript.append(i)
+        if kind == "graded" and t.is_file() and str(led_outcome(d)).startswith(("timed-out", "aborted")) \
+                and _check_take().last_stop_reason(t) == "end_turn":
+            cut_but_finished.append(i)
         if kind == "graded" and t.is_file():
             got = _session_id_of(t)
             if got != want:
@@ -221,6 +227,10 @@ def check_ledger() -> list[str]:
     print(f"  {len(rows)} row(s): {counts['graded']} graded, {counts['rehearsal']} rehearsal(s), "
           f"{counts['pause']} pause(s), {counts['not attempted']} not attempted; {matched} transcript(s) "
           f"bound to their row's commit")
+    if cut_but_finished:
+        print(f"  row(s) {cut_but_finished}: published as cut by their ledger while their last reply "
+              f"ends at the end of a turn. A cut can land after the agent's last reply ended, so this "
+              f"is named rather than refused; a reader can weigh it.")
     if no_transcript:
         print(f"  row(s) {no_transcript}: graded with no transcript on disk. Each publishes `aborted` "
               f"from its driver ledger alone; the take checker never opens for it, so no binding in "
@@ -240,6 +250,14 @@ def _check_take():
         _CT = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(_CT)
     return _CT
+
+
+def led_outcome(d: Path) -> str:
+    """The outcome recorded beside an attempt, or the empty string if it has no readable ledger."""
+    try:
+        return json.loads((d / "driver-ledger.json").read_text()).get("outcome") or ""
+    except (OSError, json.JSONDecodeError, AttributeError):
+        return ""
 
 
 def _has_agent_text(t: Path) -> bool:

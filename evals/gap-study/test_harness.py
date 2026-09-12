@@ -2115,6 +2115,19 @@ class TheTakeLifecycle(unittest.TestCase):
         self.assertNotEqual(code, 0, out)
         self.assertIn("freed this slot and the ledger check refuses it", out)
 
+    def test_a_row_is_registered_only_once_the_rows_before_it_were_attempted(self):
+        """REVIEW 20, F4: the order bound registration and not the order takes are driven."""
+        self.registered(1, 0)
+        task, half, model = self.CELL
+        code, out = self.takes("--add", "--task", task, "--half", half, "--model", model,
+                               "--take", "2", "--allow-draft")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("not yet attempted", out)
+        self.attempt(0, "graded", 1)
+        code, out = self.takes("--add", "--task", task, "--half", half, "--model", model,
+                               "--take", "2", "--allow-draft")
+        self.assertEqual(code, 0, out)
+
     def test_a_slot_is_released_by_a_rehearsal_or_a_pause(self):
         self.registered(1, 0)
         self.attempt(0, "rehearsal", 1)
@@ -2164,6 +2177,17 @@ class TheRunnerEnumeratesByLedger(unittest.TestCase):
                                    prereg.task("number-fidelity"), 3)
         self.assertEqual([x["label"] for x in cell["labels"]], ["aborted"])
         self.assertTrue(cell["state"].startswith("incomplete"), cell["state"])
+
+    def test_the_harness_own_model_id_is_not_published_as_a_model_read(self):
+        """REVIEW 20, F6: the checker and the driver exclude it; this published field did not."""
+        d = self.ledger("transcripts/number-fidelity/positive/claude-opus-5/1",
+                        outcome="complete", attempt={"kind": "graded"})
+        (d / "transcript.jsonl").write_text("\n".join(json.dumps(r) for r in [
+            {"type": "assistant", "isApiErrorMessage": True,
+             "message": {"model": "<synthetic>", "content": [{"type": "text", "text": "API Error"}]}},
+            {"type": "assistant", "message": {"model": "claude-opus-5",
+                                              "content": [{"type": "text", "text": "hi"}]}}]) + "\n")
+        self.assertEqual(self.run.models_read(d / "transcript.jsonl"), ["claude-opus-5"])
 
     def test_a_cells_harness_versions_come_from_its_takes_ledgers(self):
         """REVIEW 16, F6: every take records the version and nothing read it."""
@@ -2708,6 +2732,31 @@ class TheGeneratedFixtureIsBound(unittest.TestCase):
         self.assertTrue(any("records no fixture hash" in p for p in problems), problems)
         self.assertIsNone(note)
 
+    def test_the_builder_refuses_a_fixture_that_is_not_the_pinned_one(self):
+        """REVIEW 20, F1: the carried and copied builders refuse before a session opens; this one did
+        not, so a mismatch became a refusal no record could clear."""
+        drive = gap_drive()
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / "gen.py").write_text(
+            "import argparse, json, pathlib\n"
+            "a = argparse.ArgumentParser()\n"
+            "for f in ('--variant', '--seed', '--out', '--manifest-out'): a.add_argument(f)\n"
+            "n = a.parse_args()\n"
+            "pathlib.Path(n.out).mkdir(parents=True, exist_ok=True)\n"
+            "pathlib.Path(n.manifest_out).write_text(json.dumps({'fixture_sha256': 'b' * 64}))\n")
+        saved = drive.REPO
+        drive.REPO = tmp
+        try:
+            spec = {"generator": "gen.py", "variant": "x", "seed": 1, "sha256": "a" * 64}
+            with self.assertRaises(SystemExit):
+                drive.build_fixture(spec, tmp / "out")
+            # the same build against its own hash is filed
+            spec["sha256"] = "b" * 64
+            self.assertEqual(drive.build_fixture(spec, tmp / "out2")["fixture_sha256"], "b" * 64)
+        finally:
+            drive.REPO = saved
+
     def test_the_builder_refuses_rather_than_filing_a_take_it_cannot_bind(self):
         drive = gap_drive()
         tmp = Path(tempfile.mkdtemp())
@@ -2801,19 +2850,21 @@ class TheCompletedTakeIsBound(unittest.TestCase):
         import io
         ct = gap_check_take()
 
-        def ids_for(stop_reason, outcome):
+        def ids_for(stop_reason, outcome, exit_code=0):
             tmp = Path(tempfile.mkdtemp())
             self.addCleanup(shutil.rmtree, tmp, True)
             p = tmp / "transcript.jsonl"
             p.write_text(self.transcript(stop_reason).read_text())
             (tmp / "driver-ledger.json").write_text(json.dumps(
-                {"outcome": outcome, "turns": [{"n": 1, "exit": 0}]}))
+                {"outcome": outcome, "turns": [{"n": 1, "exit": exit_code}]}))
             with contextlib.redirect_stdout(io.StringIO()):
                 return ct.reason_ids(ct.check(p, "scope-read", "positive", 0, False))
 
         self.assertIn("outcome-binding", ids_for("tool_use", "complete"))
         self.assertNotIn("outcome-binding", ids_for("end_turn", "complete"))
-        self.assertNotIn("outcome-binding", ids_for("tool_use", "timed-out"))
+        # a cut outcome with the cut behind it passes; one without it does not (review 20)
+        self.assertNotIn("outcome-binding", ids_for("tool_use", "timed-out", exit_code=124))
+        self.assertIn("outcome-binding", ids_for("end_turn", "timed-out"))
 
     def test_an_outcome_the_driver_never_writes_is_refused(self):
         """REVIEW 19, BLOCKER 1. The first version read the outcome only where it said `complete`, so
@@ -2824,13 +2875,37 @@ class TheCompletedTakeIsBound(unittest.TestCase):
             got = ct.completion_problems(cut, {"outcome": outcome, "turns": [{"n": 1, "exit": 124}]})
             self.assertEqual(ct.reason_ids(got), ["outcome-binding"], repr(outcome))
             self.assertIn("not one the pinned driver writes", got[0])
-        # every shape the driver does write passes the vocabulary gate
-        for outcome in ("complete", "stopped — wait-point marker not held; graded as it stands",
-                        "timed-out", "aborted — a scripted turn exited 1", "PAUSE",
-                        "REHEARSAL — the process died before its first agent turn"):
+        # every shape the driver does write passes, with the record the driver writes beside it
+        for outcome, rows in (("complete", [{"n": 1, "exit": 0}]),
+                              ("stopped — wait-point marker not held; graded as it stands",
+                               [{"n": 1, "exit": 0}]),
+                              ("timed-out", [{"n": 1, "exit": 0}, {"n": 2, "exit": 124}]),
+                              ("aborted — a scripted turn exited 1", [{"n": 1, "exit": 1}]),
+                              ("aborted — finalize did not write samples.csv within 180 s",
+                               [{"n": 1, "exit": 0, "then": {"failed": "samples.csv did not appear"}}]),
+                              ("PAUSE", [{"n": 1, "exit": 1}]),
+                              ("REHEARSAL — the process died before its first agent turn",
+                               [{"n": 1, "exit": 1}])):
             got = ct.completion_problems(self.transcript("end_turn"),
-                                         {"outcome": outcome, "turns": [{"n": 1, "exit": 0}]})
+                                         {"outcome": outcome, "turns": rows})
             self.assertEqual(got, [], outcome)
+
+    def test_a_finished_take_cannot_be_published_as_cut(self):
+        """REVIEW 20, BLOCKER 1. The binding read one way: a non-zero exit forced a cut outcome, and a
+        cut outcome forced nothing. One edit turned a behavioural failure into a harness failure."""
+        ct = gap_check_take()
+        done = self.transcript("end_turn")
+        rows = [{"n": 1, "exit": 0}, {"n": 2, "exit": 0}]
+        for outcome, phrase in (("timed-out", "the driver writes 124"),
+                                ("aborted — a scripted turn exited 1", "no failed then-step")):
+            got = ct.completion_problems(done, {"outcome": outcome, "turns": rows})
+            self.assertEqual(ct.reason_ids(got), ["outcome-binding"], outcome)
+            self.assertIn(phrase, got[0])
+        # the same edit through the clause the driver appends when it found no session file
+        got = ct.completion_problems(done, {"outcome": "complete — no session file for x",
+                                            "turns": rows})
+        self.assertEqual(ct.reason_ids(got), ["outcome-binding"])
+        self.assertIn("a transcript sits beside it", got[0])
 
     def test_a_turn_row_with_no_exit_code_is_refused(self):
         """REVIEW 19, F2: the driver writes one for every turn it sends."""

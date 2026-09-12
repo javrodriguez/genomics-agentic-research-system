@@ -851,3 +851,26 @@ The driver refuses a copied tree that differs from the pin before a session open
 
 No criterion moved.
 No take has run.
+
+### Ruling 24 — 2026-09-11 — a cut take must carry the cut, and the registration order is the drive order
+
+Review 20 (`verification/prefreeze-20.md`) judged the threat model and the thirteen limitations lines first, read Ruling 23's three blockers closed in the code and not only in a test, read its four follow-ups folded as stated, upheld the six layer verdicts, and ruled do not freeze on one defect.
+`verification/prefreeze-20-disposition.md` records what was done with it and with the seven follow-ups.
+
+**The binding read one way, and now reads both.**
+Ruling 23 bound a completed take to the driver's record and left a cut outcome bound to nothing, so one edit published a behavioural failure as a failure of the harness.
+A take published as `timed-out` must carry exit 124 on its last turn row; one published as `aborted` must carry a non-zero exit there, or a failed pre-registered then-step, or the no-session-file clause; and that clause must not sit beside a transcript.
+
+**What the transcript cannot refute is named rather than claimed.**
+A legitimate cut can land after the agent's last reply has ended, so a claimed cut cannot be refuted the way a claimed finish can.
+The ledger check names every take published as cut whose last reply ends at the end of a turn, and limitations line 4 says that is a naming and not a refusal.
+
+**A row is registered only once every row before it has been attempted.**
+The pre-registered order bound registration and not driving, so every row could have been registered first and driven in any order, with nothing a reader could check to show it.
+
+**A carried grader's behaviour is described as its own, not as this protocol's.**
+The window that starts inside the first operator turn's tool loop is a property of the grader carried from the first study, true in that study's own transcripts; and its classifier puts a denial above an assertion, so the carried task's label can be lost, not only diluted.
+Both are now in the sentence a reader is given. The grader is not changed for this.
+
+No criterion moved.
+No take has run.

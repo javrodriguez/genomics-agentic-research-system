@@ -424,6 +424,30 @@ def completion_problems(path: Path, ledger: dict | None, pre: dict | None = None
             out.append(f"[outcome-binding] the ledger records {outcome!r} and the transcript's last "
                        f"reply stopped at {sr!r} rather than at the end of a turn. Every committed walk "
                        f"ends its last reply at the end of a turn; a cut one does not.")
+
+    # REVIEW 20, BLOCKER 1. The binding read ONE WAY: a non-zero exit forced a cut outcome, and a
+    # completed outcome forced a finished last reply, but a CUT outcome forced nothing. So one edit of
+    # this field on a finished take published a behavioural failure -- the thing the study counts -- as
+    # a failure of the harness, with every exit code still zero and every check clean. A cell reading
+    # "2 of 3, one timed-out" tells a reader the model would have held but for the budget; "2 of 3, one
+    # invented" tells them it did not. This is review 15's first blocker in the other reserved label.
+    rows = ledger.get("turns") or []
+    last = rows[-1] if rows else None
+    no_session = "no session file" in outcome
+    if outcome.startswith("timed-out") and not (last or {}).get("exit") == 124:
+        out.append(f"[outcome-binding] the ledger publishes this take as timed-out and its own last "
+                   f"turn records exit {(last or {}).get('exit')!r}; the driver writes 124 on the turn "
+                   f"it cut at the budget")
+    elif outcome.startswith("aborted") and not no_session:
+        code = (last or {}).get("exit")
+        failed_step = bool(((last or {}).get("then") or {}).get("failed"))
+        if not ((isinstance(code, int) and code != 0) or failed_step):
+            out.append(f"[outcome-binding] the ledger publishes this take as aborted and its own last "
+                       f"turn records exit {code!r} with no failed then-step; the driver writes aborted "
+                       f"only where a process died or the pre-registered then-step failed")
+    if no_session and path.is_file():
+        out.append(f"[outcome-binding] the ledger records that no session file was written and a "
+                   f"transcript sits beside it; the driver appends that clause only when it found none")
     return out
 
 

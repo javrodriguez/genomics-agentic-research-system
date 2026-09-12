@@ -250,8 +250,13 @@ def main() -> int:
                     fx["sha256"] = man["fixture_sha256"]
                     fx["pinned_by"] = "the generator's blob sha in pinned_files, plus variant, "\
                                       "seed, and this content hash over the bytes it writes"
-                except (json.JSONDecodeError, KeyError):
-                    fx["pinned_by"] = "UNPINNED: the generator would not report a manifest"
+                except (json.JSONDecodeError, KeyError) as exc:
+                    # REVIEW 20, F5. It wrote a frozen file with an unpinned fixture and let every take
+                    # on that task be refused afterwards, which is an amendment where a refusal here is
+                    # a retry. The freeze is irreversible; this is the last place to stop.
+                    raise SystemExit(f"REFUSING to freeze: the generator for {t['id']}/{half} would not "
+                                     f"report a manifest ({exc!r}), so its fixture would be pinned by "
+                                     f"nothing and every take on it refused. Nothing was written.")
             elif kind == "copied-tree":
                 fx["pinned_by"] = ("tree_sha256_name_invariant, computed over the copy with the "
                                    "take's project name substituted back to a placeholder")
