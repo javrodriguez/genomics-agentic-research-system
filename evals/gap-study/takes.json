@@ -288,6 +288,15 @@
       "order_index": -1,
       "fixture_sha": "",
       "environment_class": "claude-subscription-headless"
+    },
+    {
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 3,
+      "order_index": -1,
+      "fixture_sha": "",
+      "environment_class": "claude-subscription-headless"
     }
   ]
 }
