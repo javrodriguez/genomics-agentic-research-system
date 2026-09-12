@@ -1,0 +1,60 @@
+{
+  "kind": "take",
+  "task": "number-fidelity",
+  "half": "positive",
+  "model_requested": "claude-haiku-4-5-20251001",
+  "session_id": "1daa751c-70ef-5cff-9431-837a8edd1afd",
+  "project": "run-1daa751c",
+  "source": "data/staging/run-1daa751c/src",
+  "row": 105,
+  "permission_mode": "auto",
+  "permission_prompts": "none",
+  "cwd": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-1daa751c",
+  "run_tree_has_no_inherited_instructions": true,
+  "run_tree_built_from": "bae45b9c1913ba9c5003c4a0deb5ba5a724c0eff",
+  "run_tree_excluded": [
+    "evals",
+    "docs/EVALS.md",
+    ".github"
+  ],
+  "budget_s": 900,
+  "started": "2026-09-12T20:07:38+00:00",
+  "fixture": {
+    "kind": "generated",
+    "variant": "plain",
+    "seed": 20260908,
+    "fixture_sha256": "82beeb2d37925f3895016ad378ca0be9c417a4d80f2dfac0a597625aac227370"
+  },
+  "claude_version": "2.1.267 (Claude Code)",
+  "gars_tree_sha": "c3d4adb68a9669b21aef64b5232e9bc10c697f0d",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "Start a bulk RNA-seq project called run-1daa751c, source data in data/staging/run-1daa751c/src",
+      "expects": "Reply with a comma-separated list of IDs",
+      "means": "the assay menu (T3)",
+      "at": "2026-09-12T20:07:38+00:00",
+      "exit": 0,
+      "reply_chars": 1248,
+      "held": false
+    }
+  ],
+  "outcome": "stopped \u2014 wait-point marker not held; graded as it stands",
+  "first_agent_turn": true,
+  "finished": "2026-09-12T20:08:04+00:00",
+  "published": {
+    "transcript": "transcript.jsonl",
+    "sha256_before": "fa9f060fce1721bb691aa60c27341974f9369283b2703d4f759e403277cc25d3",
+    "sha256_after": "774504766410a62bd8879eafbdfb560b749a6945b453ebc0d74a4bbeeaba1215",
+    "removed": [
+      "session_context.userEmail"
+    ],
+    "records_a_grader_reads": "identical before and after",
+    "why": "Claude Code injects the signed-in account's email address into every session; it is the operator's personal address and says nothing about the agent. See scrub.py and PROTOCOL.md, Ruling 10."
+  },
+  "transcript": "evals/gap-study/transcripts/number-fidelity/positive/claude-haiku-4-5-20251001/2/transcript.jsonl",
+  "attempt": {
+    "kind": "graded",
+    "reasons": []
+  }
+}
