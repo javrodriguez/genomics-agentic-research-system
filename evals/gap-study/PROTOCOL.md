@@ -927,3 +927,35 @@ A recovery row for a line the frozen file attaches none to, and the same row twi
 
 No criterion moved.
 No take has run.
+
+### Ruling 27 — 2026-09-12 — the pre-registration is frozen, and freezing turned two of the study's own guards red
+
+Review 23 (`verification/prefreeze-23.md`) ruled **do freeze**, the first such ruling in twelve reviews.
+It read Ruling 26's blocker closed in the code, reproduced review 22's scenario end to end and found the pinned ledger check clean, upheld the six layer verdicts as `silent`, judged the threat model and the thirteen limitations lines honest, and found nothing that blocks a freeze.
+`verification/prefreeze-23-disposition.md` records its four follow-ups, none folded, and why.
+
+**The freeze.**
+`prereg.json` is in force, seeded by the commit that landed review 23, pinning 42 files and 108 cells, with no unaccounted nulls.
+The draft is byte-identical to the bytes review 23 read.
+
+**It refused once, and the refusal was answered rather than widened.**
+A field was null on the carried task's probe turn in both halves with nothing accounting for it.
+It is null there because that turn has no wait point, in this study and in the first.
+The account is conditional, in the one file the freeze does not pin: the field is accounted only where that step's own marker is also null, so the same null on a turn that has a wait point would still refuse a freeze.
+
+**Freezing turned two pinned tests red and stopped twenty-four guards firing.**
+Both tests assert pre-freeze behaviour, and the behaviour that changed is the behaviour freezing exists to switch on.
+Sixteen of the guards are controlled by a class holding one of those two tests, so the battery sees them red before any mutation.
+Seven are inert because the sandbox reads the frozen file while the mutation edits the draft.
+One existed to prove the runner refuses a draft.
+
+**Both files are pinned, so every remedy is an amendment.**
+No take has run, so any amendment is provably before any number exists, and the protocol publishes an amendment with before and after and both regrades side by side, never corrected in place.
+Whether to amend, or to run the takes with this stated in the published record, is a decision about what the study claims about itself, and it belongs to the repository's owner.
+
+**The sequencing defect, recorded so a later study does not repeat it.**
+A reviewer may not run the freeze, and no pass ran it into a scratch tree either, so the effect of freezing on the harness was unexercised until it was irreversible.
+A study that freezes should rehearse its own freeze in a throwaway copy and put the whole gate through it first.
+
+No criterion moved.
+No take has run.
