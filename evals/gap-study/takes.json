@@ -1,0 +1,14 @@
+{
+  "role": "One row per pre-registered take, append-only. A row is committed before its take runs; the take's session id is uuid5(namespace, the sha of that row's commit) and is deliberately not stored here.",
+  "rows": [
+    {
+      "task": "number-fidelity",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 1,
+      "order_index": -1,
+      "fixture_sha": "",
+      "environment_class": "claude-subscription-headless"
+    }
+  ]
+}
