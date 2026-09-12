@@ -283,7 +283,7 @@ frozen before the first run:
 |---|---|
 | Bulk RNA-seq (`rnaseq_bulk`) | **Live-proven end to end** on real patient-derived data (stage 00 → 01 → nf-core/rnaseq → DE with per-task Slurm dispatch); the wrapper switchover separately validated on a 4-sample two-condition cohort — published fold-changes vs normalized group ratios r = 0.999952 |
 | ATAC-seq, ChIP-seq, CUT&Tag | **Live-proven** in the reproduction campaign (nf-core pipelines complete on real GEO cohorts under Slurm; results in [docs/RESULTS.md](docs/RESULTS.md)) |
-| Single-cell RNA-seq (`scrnaseq`) | **Live-proven in two venues** — nf-core/scrnaseq 4.2.0 + the scanpy QC/clustering sub-stage ran to green exit gates on macOS/Docker and on Slurm/Apptainer, with identical downstream numbers (same cells, same 198 clusters) on both |
+| Single-cell RNA-seq (`scrnaseq`) | **Live-proven in two venues** — nf-core/scrnaseq 4.2.0 + the scanpy QC/clustering sub-stage ran to green exit gates on macOS/Docker and on Slurm/Apptainer, with identical downstream numbers (same cells, same 198 clusters) on both. **The Docker venue is a record of that run, not a road this README can walk you down:** the Dependencies block below installs `apptainer` and `squashfuse`, which conda-forge ships for Linux only, and no Docker environment recipe is published here. |
 | Spatial transcriptomics (`spatialvi`, Visium, downstream mode) | **Live-proven on the cluster** — full run + all three artifact gates including MultiQC (a commit pin, stated as such: the pipeline has no current release) |
 | Methylation (`methylseq`) | Wired end to end and offline-tested; awaits its first live run (the campaign's WGBS fetch is pending a clean re-download) |
 
@@ -345,6 +345,12 @@ conda install -y -n gars-bio -c conda-forge apptainer squashfuse
 
 conda create -y -n gars-nxf -c bioconda -c conda-forge "nextflow=26.04.6" "openjdk>=17,<26"
 ```
+
+**This block is Linux-only, and it is the only stage-02 environment published here.** `apptainer`
+and `squashfuse` are shipped by conda-forge for Linux alone, so the block cannot complete on macOS.
+The assay table above records a macOS/Docker run for single-cell RNA-seq; that environment is not
+published, so a reader on macOS cannot reach stage 02 by following this page. Said plainly rather
+than left to be discovered partway through an install.
 
 `clawbio` is a historical dependency: the skills it ships are retired from every sub-stage
 (decision 0029) and nothing invokes them, but the environment as-built and lockfile-pinned
