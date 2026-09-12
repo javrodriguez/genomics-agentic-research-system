@@ -64,17 +64,22 @@ That defect moves no label and no count: once a cell reached its rehearsal or pa
 Those slots are passed over now, the way a retry is.
 Its six follow-ups are folded, including the cut naming reaching each take's published record and a graded take having to carry the stop reason its finish is read from.
 
+Review 22 read review 21's six follow-ups folded, found no route opened by them, and ruled do not freeze on one finding, folded (Ruling 26, `verification/prefreeze-22-disposition.md`):
+Ruling 25's fold was closed in a test and open in the code, because the per-cell cap loop used the same variable name as the row-to-kind map it passes to the order check, so the skip was dead at its only call site.
+The loop target is renamed; a test now drives the ledger check itself with a frozen order and a cell at its cap; and a second mutation blanks the argument at the call site rather than the function body, so the wiring is attacked as well as the reading.
+Its five follow-ups are folded, including the read side now refusing a first registration in a cell that has reached its cap.
+
 ## The next moves, in order
 
-1. **Review 22** as `verification/prefreeze-22.md`, reading the bytes this pass leaves; then its disposition, or the freeze: `freeze.py --review-commit <sha> --write`.
+1. **Review 23** as `verification/prefreeze-23.md`, reading the bytes this pass leaves; then its disposition, or the freeze: `freeze.py --review-commit <sha> --write`.
 2. Then, and only then, the 108 takes.
 
 ## State
 
-- 6 task pairs · 11 walks, 3 of them driven in a built checkout · 136 hand-labelled cases · 238 tests · 98 mutations · 21 reviews · 4 smokes
+- 6 task pairs · 11 walks, 3 of them driven in a built checkout · 136 hand-labelled cases · 243 tests · 103 mutations · 22 reviews · 4 smokes
 - 0 takes graded · not frozen · `gars/` and the first study unchanged by this work
 - The local tier was dropped by the repository owner at gate 2; `local-model/DROPPED.md` is the record
-- Rulings 1–25 in `PROTOCOL.md`
+- Rulings 1–26 in `PROTOCOL.md`
 - `RESIDUAL.md` was written at the slice cap and is kept deliberately, though the cap was lifted (Ruling 7)
 
 ## Carried follow-ups, most valuable first

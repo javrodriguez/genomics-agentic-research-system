@@ -900,3 +900,30 @@ Limitations line 4 names what the driver writes for each kind of cut, and `for_r
 
 No criterion moved.
 No take has run.
+
+### Ruling 26 — 2026-09-11 — a guard is tested and mutated where it runs, not only where it is written
+
+Review 22 (`verification/prefreeze-22.md`) judged the threat model and the thirteen limitations lines first, read review 21's six follow-ups folded as stated, upheld the six layer verdicts, and ruled do not freeze on one finding.
+`verification/prefreeze-22-disposition.md` records what was done with it and with the five follow-ups.
+
+**Ruling 25's fold was closed in a test and open in the code.**
+The skip that passes over an exhausted cell's slots lives in the order check and was dead at the one call site that runs it: the per-cell cap loop used the same name as the row-to-kind map, a `for` target assigns to the function's local, and what arrived was the last cell's counts.
+The loop target is renamed.
+
+**The lesson Ruling 22 recorded, applied to the mutation as well as the test.**
+Every order test called the function directly, the ledger check's own fakes reported the file unfrozen so the post-freeze branch ran in no end-to-end test, and the mutation edited the function body so it went red on dead code.
+A test now drives the ledger check itself with a frozen order and a cell at its cap, and a second mutation blanks the argument at the call site.
+A guard is tested and mutated where it runs.
+
+**A rule enforced only where rows are written is not in the record.**
+The registration command refuses a take in a cell that has reached a cap; the ledger check accepted one, and reports it now.
+
+**What a reader is shown carries what the record knows.**
+The count of takes published as cut whose last reply ended reaches the comparison, not only each take's own record.
+
+**Two smaller corrections.**
+The threat model names the fields of a take row that a check reads, and says the others decide no label and no count.
+A recovery row for a line the frozen file attaches none to, and the same row twice, are refused.
+
+No criterion moved.
+No take has run.

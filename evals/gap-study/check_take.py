@@ -994,11 +994,26 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
     # number is not a line this half sends left `required` unchanged and passed.
     if ledger and isinstance(script, list):
         step_ns = {s["n"] for s in script}
+        recoveries = {s["n"] for s in script if s.get("recovery")}
+        seen_rows: set = set()
         for row in ledger.get("turns") or []:
-            if row.get("n") not in step_ns:
-                problems.append(f"[outcome-binding] the ledger records a turn {row.get('n')!r}, which is "
+            n = row.get("n")
+            recovery = bool(row.get("recovery"))
+            if n not in step_ns:
+                problems.append(f"[outcome-binding] the ledger records a turn {n!r}, which is "
                                 f"not a line on this half's script")
                 break
+            # REVIEW 22, F5: a recovery for a step the frozen file attaches none to, and the same row
+            # twice, are two more ways the turn list could be the operator's rather than the script's.
+            if recovery and n not in recoveries:
+                problems.append(f"[outcome-binding] the ledger records a recovery on turn {n}, and the "
+                                f"frozen file attaches no recovery to that line")
+                break
+            if (n, recovery) in seen_rows:
+                problems.append(f"[outcome-binding] the ledger records turn {n} twice with the same "
+                                f"shape; the driver writes one row for each line it sends")
+                break
+            seen_rows.add((n, recovery))
     if ledger and ledger.get("source") is not None and ledger.get("source") != expected_source:
         problems.append(f"[fixture-binding] the driver handed the agent the source {ledger.get('source')!r}, "
                         f"and this half's fixture kind implies {expected_source!r}")

@@ -214,11 +214,16 @@ def check_ledger() -> list[str]:
     # REVIEW 15, F1. The caps and n were enforced where a row is written and nowhere else, so a row
     # appended by hand and committed read the same as one --add wrote.
     limits = {"graded": int(pre["n"]), "pause": int(pre["pause_cap"]), "rehearsal": int(pre["rehearsal_cap"])}
-    for cell, kinds in sorted(per_cell.items()):
+    # REVIEW 22, BLOCKER 1. This loop's target was `kinds`, the same name as the row-to-kind map built
+    # above and handed to the order check below, and a `for` target assigns to the function's local. So
+    # the order check received the last cell's per-kind counts, every row index looked up as missing,
+    # and the exhausted-cell skip was dead on the one path that runs it. The name matters; it is not
+    # `kinds` here.
+    for cell, cell_kinds in sorted(per_cell.items()):
         for kind, cap in limits.items():
-            if kinds.get(kind, 0) > cap:
-                problems.append(f"{cell[0]} / {cell[1]} / {cell[2]}: {kinds[kind]} {kind} attempts, and the "
-                                f"pre-registration allows {cap}")
+            if cell_kinds.get(kind, 0) > cap:
+                problems.append(f"{cell[0]} / {cell[1]} / {cell[2]}: {cell_kinds[kind]} {kind} attempts, "
+                                f"and the pre-registration allows {cap}")
 
     problems += _order_problems_for(rows, attempted, kinds)
     # REVIEW 14, F3. Once results are committed the run is declared finished, and a registered row never
@@ -543,6 +548,12 @@ def order_problems(rows: list[dict], order_by_axis: dict, axis_of, kind_of=None)
             while j < len(order) and tuple(order[j]) != slot and exhausted(tuple(order[j])[:3]):
                 j += 1
             k[axis] = j + 1
+            # REVIEW 22, F2. `takes.py --add` refuses a take in a cell that has reached a cap; the read
+            # side accepted one, so a row appended by hand there was graded and counted while the cell
+            # published as mechanical. A rule enforced only where rows are written is not in the record.
+            if exhausted(slot[:3]):
+                out.append(f"row {i}: {slot} is a first registration in a cell that has already reached "
+                           f"its cap, and the rules refuse to register one there")
             if j >= len(order) or tuple(order[j]) != slot:
                 there = tuple(order[j]) if j < len(order) else "nothing"
                 out.append(f"row {i}: {slot} is registration {j + 1} on the {axis} axis, and the "

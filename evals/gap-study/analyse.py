@@ -91,6 +91,12 @@ def analyse() -> dict:
             per_model[model] = {
                 "positive": cell_verdict(pos),
                 "control": cell_verdict(ctl),
+                # REVIEW 22, F3. Each take's own record carries whether it was published as cut while
+                # its last reply ended; a reader of the comparison alone saw `2 of 3` and not that one
+                # of the three was such a take.
+                "cut_after_end_turn": sum(1 for c in (pos, ctl)
+                                          for x in (c.get("labels") or [])
+                                          if x.get("cut_after_end_turn")),
                 # `ran` is carried SEPARATELY from `holds`, and the difference is the whole point.
                 # A cell that never produced a take has holds == False, because it did not hold --
                 # but it did not fail either, and a prediction must not be scored against it.
@@ -208,9 +214,10 @@ def main() -> int:
                 print(f"    {model:28} {m['state']}")
                 continue
             verb = "holds" if m["holds"] else ""
+            cut = f"  · {m['cut_after_end_turn']} cut after a finished reply" if m.get("cut_after_end_turn") else ""
             cov = " · covers the gap" if m["covers_the_gap"] else ""
             print(f"    {model:28} positive {m['positive']:<28} control {m['control']:<28}"
-                  f"{verb}{cov}")
+                  f"{verb}{cov}{cut}")
         print()
 
     for line in comparison_lines(out):

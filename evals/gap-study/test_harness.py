@@ -739,16 +739,16 @@ class Analysis(unittest.TestCase):
         self.tmp.cleanup()
 
     def _write(self, task, model, pos_state, pos_k, ctl_state, ctl_k, layer="silent", n=3,
-               versions=()):
+               versions=(), labels=()):
         import json as _j
         cells = {m: {"positive": {"state": "not run — no transcript on disk", "labels": [],
                                   "k": 0, "n": n},
                      "control": {"state": "not run — no transcript on disk", "labels": [],
                                  "k": 0, "n": n}}
                  for m in prereg.models()}
-        cells[model] = {"positive": {"state": pos_state, "labels": [], "k": pos_k, "n": n,
+        cells[model] = {"positive": {"state": pos_state, "labels": list(labels), "k": pos_k, "n": n,
                                      "harness_versions": list(versions)},
-                        "control": {"state": ctl_state, "labels": [], "k": ctl_k, "n": n,
+                        "control": {"state": ctl_state, "labels": list(labels), "k": ctl_k, "n": n,
                                     "harness_versions": list(versions)}}
         (self.analyse.RESULTS / f"{task}.json").write_text(_j.dumps({
             "task": task, "n": n, "correct_labels": {"positive": "x", "control": "y"},
@@ -773,6 +773,17 @@ class Analysis(unittest.TestCase):
         got = self.analyse.analyse()["tasks"]["number-fidelity"]["models"]["claude-opus-5"]
         self.assertTrue(got["holds"])
         self.assertTrue(got["covers_the_gap"])
+
+    def test_the_cut_count_reaches_the_comparison(self):
+        """REVIEW 22, F3: a reader of the comparison alone saw the counts and not the claimed cuts."""
+        self._write("number-fidelity", "claude-opus-5", "RAN", 3, "RAN", 3,
+                    labels=[{"cut_after_end_turn": True}, {"cut_after_end_turn": False}])
+        got = self.analyse.analyse()["tasks"]["number-fidelity"]["models"]["claude-opus-5"]
+        # the helper writes the same labels into both halves, so one in each
+        self.assertEqual(got["cut_after_end_turn"], 2)
+        self._write("scope-read", "claude-opus-5", "RAN", 3, "RAN", 3)
+        clean = self.analyse.analyse()["tasks"]["scope-read"]["models"]["claude-opus-5"]
+        self.assertEqual(clean["cut_after_end_turn"], 0)
 
     def test_the_harness_versions_are_read_from_the_cells(self):
         """REVIEW 16, F6. The limitations line promised a version range nothing produced."""
@@ -2859,6 +2870,69 @@ class TheOrderSurvivesAnExhaustedCell(unittest.TestCase):
         self.assertTrue(any("pre-registered order puts" in p for p in got), got)
 
 
+class TheLedgerChecksTheOrderEndToEnd(unittest.TestCase):
+    """REVIEW 22, BLOCKER 1. Every order test called `order_problems` directly, and the ledger check's
+    own fakes reported the file unfrozen, so the post-freeze branch ran in no test at all. A loop
+    target four lines above the call site rebound the map the skip reads, and the guard was alive in
+    its function and dead where it runs. This drives the check itself."""
+
+    CELL = ("scope-read", "positive", "claude-opus-5")
+    NEXT = ("plan-gate", "control", "claude-opus-5")
+    ORDER = {"claude": [(*CELL, 1), (*CELL, 2), (*CELL, 3), (*NEXT, 1), (*NEXT, 2)]}
+
+    def problems_for(self, rows, kinds):
+        import contextlib
+        import io
+        import subprocess as sp
+        import types
+        cr = gap_module("check_results")
+        tree = sp.run(["git", "-C", str(REPO), "rev-parse", "HEAD:gars"],
+                      capture_output=True, text=True).stdout.strip()
+        pre = {"n": 3, "pause_cap": 3, "rehearsal_cap": 3, "take_order_seed": "seed",
+               "system_under_test": {"gars_tree_sha": tree}, "driver_decided_reasons": []}
+        cr.prereg = types.SimpleNamespace(load=lambda: pre, is_frozen=lambda: True,
+                                          order=lambda s: self.ORDER, axis_of=lambda m: "claude")
+        folder = {"graded": "transcripts", "rehearsal": "rehearsals", "pause": "pauses"}
+        by_sid = {}
+        for i, r in enumerate(rows):
+            leaf = str(r["take"]) if kinds[i] == "graded" else f"row-{i}"
+            by_sid[f"sid-c{i}"] = [(kinds[i], HERE / folder[kinds[i]] / r["task"] / r["half"]
+                                    / r["model"] / leaf)]
+        cr.takes_mod = types.SimpleNamespace(
+            load_rows=lambda: rows, row_commits=lambda: {i: f"c{i}" for i in range(len(rows))},
+            attempts_by_session=lambda: by_sid, unattributed_attempts=lambda: [],
+            session_id_for=lambda sha: "sid-" + sha)
+        cr.attempt_problems = lambda *a, **k: []
+        cr.is_shallow = lambda: False
+        with contextlib.redirect_stdout(io.StringIO()):
+            return cr.check_ledger()
+
+    def rows_to_the_cap(self):
+        row = lambda c, k: {"task": c[0], "half": c[1], "model": c[2], "take": k}
+        rows = [row(self.CELL, 1) for _ in range(3)] + [row(self.NEXT, 1), row(self.NEXT, 2)]
+        kinds = {0: "rehearsal", 1: "rehearsal", 2: "rehearsal", 3: "graded", 4: "graded"}
+        return rows, kinds
+
+    def test_the_ledger_check_passes_over_an_exhausted_cells_slots(self):
+        rows, kinds = self.rows_to_the_cap()
+        self.assertEqual(self.problems_for(rows, kinds), [])
+
+    def test_a_registration_out_of_order_is_still_reported_end_to_end(self):
+        rows, kinds = self.rows_to_the_cap()
+        rows[3] = {"task": self.NEXT[0], "half": self.NEXT[1], "model": self.NEXT[2], "take": 2}
+        rows[4] = {"task": self.NEXT[0], "half": self.NEXT[1], "model": self.NEXT[2], "take": 1}
+        got = self.problems_for(rows, kinds)
+        self.assertTrue(any("pre-registered order puts" in p for p in got), got)
+
+    def test_a_first_registration_inside_an_exhausted_cell_is_reported(self):
+        """REVIEW 22, F2: the registration command refuses it and the read side accepted it."""
+        rows, kinds = self.rows_to_the_cap()
+        rows.insert(3, {"task": self.CELL[0], "half": self.CELL[1], "model": self.CELL[2], "take": 2})
+        kinds = {0: "rehearsal", 1: "rehearsal", 2: "rehearsal", 3: "graded", 4: "graded", 5: "graded"}
+        got = self.problems_for(rows, kinds)
+        self.assertTrue(any("already reached its cap" in p for p in got), got)
+
+
 class TheCompletedTakeIsBound(unittest.TestCase):
     """REVIEW 18, BLOCKER 2. `timed-out` and `aborted` are read from the ledger's outcome before any
     grader reads a turn, and the checker read that outcome against the transcript only through the
@@ -3013,6 +3087,30 @@ class TheCompletedTakeIsBound(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             got = ct.check(p, "scope-read", "positive", 0, False)
         self.assertTrue(any("not a line on this half's script" in x for x in got), got)
+
+    def test_a_turn_list_that_is_not_the_scripts_is_refused(self):
+        """REVIEW 22, F5: a recovery on a line the frozen file attaches none to, and a row twice."""
+        import contextlib
+        import io
+        ct = gap_check_take()
+        script = prereg.task("number-fidelity")["positive"]["operator_script"]
+        without = [s["n"] for s in script if not s.get("recovery")]
+        first = script[0]["n"]
+
+        def ids_for(turns):
+            tmp = Path(tempfile.mkdtemp())
+            self.addCleanup(shutil.rmtree, tmp, True)
+            p = tmp / "transcript.jsonl"
+            p.write_text(self.transcript("end_turn").read_text())
+            (tmp / "driver-ledger.json").write_text(json.dumps({"outcome": "complete", "turns": turns}))
+            with contextlib.redirect_stdout(io.StringIO()):
+                return ct.check(p, "number-fidelity", "positive", 0, False)
+
+        got = ids_for([{"n": first, "exit": 0}, {"n": first, "exit": 0}])
+        self.assertTrue(any("twice with the same" in x for x in got), got)
+        if without:
+            got = ids_for([{"n": without[0], "exit": 0, "recovery": True}])
+            self.assertTrue(any("attaches no recovery" in x for x in got), got)
 
     def test_the_reason_is_pre_registered_and_refused_as_a_rehearsal_reason(self):
         pre = prereg.load()

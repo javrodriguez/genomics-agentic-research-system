@@ -1091,7 +1091,7 @@ def m_finish_unproven_by_any_stop_reason(s: Sandbox) -> tuple[int, str]:
 def m_turn_row_not_on_the_script(s: Sandbox) -> tuple[int, str]:
     """Review 21, F6: the ledger's turn list read as a free list."""
     s.control(_th(s, "TheCompletedTakeIsBound"))
-    _edit(s.study / "check_take.py", '            if row.get("n") not in step_ns:\n', "            if False:\n")
+    _edit(s.study / "check_take.py", "            if n not in step_ns:\n", "            if False:\n")
     return s.run(_th(s, "TheCompletedTakeIsBound")), "test_harness.py TheCompletedTakeIsBound"
 
 
@@ -1100,6 +1100,55 @@ def m_cut_naming_unpublished(s: Sandbox) -> tuple[int, str]:
     s.control(_th(s, "TheRunnerEnumeratesByLedger"))
     _edit(s.study / "run.py", '            "cut_after_end_turn": cut_after_end_turn,\n', "")
     return s.run(_th(s, "TheRunnerEnumeratesByLedger")), "test_harness.py TheRunnerEnumeratesByLedger"
+
+
+def m_exhausted_cell_skip_unwired(s: Sandbox) -> tuple[int, str]:
+    """Review 22, blocker 1: the skip alive in its function and dead at the one call site that runs it.
+
+    The sibling mutation edits the function body, which the direct-call tests see. This one blanks the
+    argument the ledger check passes, which only an end-to-end test sees. Both are needed: that is the
+    whole lesson of the shadowed variable.
+    """
+    s.control(_th(s, "TheLedgerChecksTheOrderEndToEnd"))
+    _edit(s.study / "check_results.py",
+          "    problems += _order_problems_for(rows, attempted, kinds)\n",
+          "    problems += _order_problems_for(rows, attempted, {})\n")
+    return s.run(_th(s, "TheLedgerChecksTheOrderEndToEnd")), "test_harness.py TheLedgerChecksTheOrderEndToEnd"
+
+
+def m_first_registration_in_an_exhausted_cell(s: Sandbox) -> tuple[int, str]:
+    """Review 22, F2: the rule enforced where rows are written and not where they are read.
+
+    The control is the end-to-end class, because that is where the case lives; pointed at the
+    direct-call class this came back green, which is review 22's own lesson repeating inside its fold.
+    """
+    s.control(_th(s, "TheLedgerChecksTheOrderEndToEnd"))
+    _edit(s.study / "check_results.py", "            if exhausted(slot[:3]):\n", "            if False:\n")
+    return s.run(_th(s, "TheLedgerChecksTheOrderEndToEnd")), "test_harness.py TheLedgerChecksTheOrderEndToEnd"
+
+
+def m_recovery_row_the_script_attaches_nowhere(s: Sandbox) -> tuple[int, str]:
+    """Review 22, F5."""
+    s.control(_th(s, "TheCompletedTakeIsBound"))
+    _edit(s.study / "check_take.py", "            if recovery and n not in recoveries:\n",
+          "            if False:\n")
+    return s.run(_th(s, "TheCompletedTakeIsBound")), "test_harness.py TheCompletedTakeIsBound"
+
+
+def m_the_same_turn_row_twice(s: Sandbox) -> tuple[int, str]:
+    """Review 22, F5."""
+    s.control(_th(s, "TheCompletedTakeIsBound"))
+    _edit(s.study / "check_take.py", "            if (n, recovery) in seen_rows:\n",
+          "            if False:\n")
+    return s.run(_th(s, "TheCompletedTakeIsBound")), "test_harness.py TheCompletedTakeIsBound"
+
+
+def m_cut_count_absent_from_the_comparison(s: Sandbox) -> tuple[int, str]:
+    """Review 22, F3: a reader of the comparison alone never met the fact line 4 promises."""
+    s.control(_th(s, "Analysis"))
+    _edit(s.study / "analyse.py", '                                          if x.get("cut_after_end_turn")),\n',
+          "                                          if False),\n")
+    return s.run(_th(s, "Analysis")), "test_harness.py Analysis"
 
 
 def m_pause_marker_unbounded(s: Sandbox) -> tuple[int, str]:
@@ -1113,7 +1162,9 @@ def m_pause_marker_unbounded(s: Sandbox) -> tuple[int, str]:
 def m_caps_unread_on_the_ledger_side(s: Sandbox) -> tuple[int, str]:
     """Review 15, F1."""
     s.control(_th(s, "TheLedgerSeesEveryFolder"))
-    _edit(s.study / "check_results.py", "            if kinds.get(kind, 0) > cap:\n", "            if False:\n")
+    # the loop target was renamed when it turned out to shadow the order check's map (review 22)
+    _edit(s.study / "check_results.py", "            if cell_kinds.get(kind, 0) > cap:\n",
+          "            if False:\n")
     return s.run(_th(s, "TheLedgerSeesEveryFolder")), "test_harness.py TheLedgerSeesEveryFolder"
 
 
@@ -1227,6 +1278,12 @@ MUTATIONS = [
     ("a finish unproven by any stop reason", m_finish_unproven_by_any_stop_reason, False),
     ("a turn row that is not on the script", m_turn_row_not_on_the_script, False),
     ("the cut naming unpublished", m_cut_naming_unpublished, False),
+    ("the exhausted-cell skip unwired at its call site", m_exhausted_cell_skip_unwired, True),
+    # the control drives check_ledger, which reads the system tree from git: it needs a repository
+    ("a first registration in an exhausted cell", m_first_registration_in_an_exhausted_cell, True),
+    ("a recovery row the script attaches nowhere", m_recovery_row_the_script_attaches_nowhere, False),
+    ("the same turn row twice", m_the_same_turn_row_twice, False),
+    ("the cut count absent from the comparison", m_cut_count_absent_from_the_comparison, False),
     ("the harness's error text read as the agent's", m_api_error_text_counted_as_the_agents, False),
     ("a pause marker matched unbounded", m_pause_marker_unbounded, False),
     ("the caps unread on the ledger side", m_caps_unread_on_the_ledger_side, False),
