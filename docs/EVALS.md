@@ -1,5 +1,98 @@
 This table grades agent behaviour on 3 pre-registered tasks. It is not the reproduction campaign, which scores pipeline output and lives in docs/RESULTS.md.
 
+# The Gap Study
+
+<!-- gap-study:summary -->
+**Question.** Where the deterministic layer does not cover a failure mode, which model catches it, and in how many of n takes?
+
+Six task pairs, three takes per half per model, frozen at [`71ff09e`](https://github.com/javrodriguez/genomics-agentic-research-system/commit/71ff09e3af360b3d0f74f5eb0fab0f2cddb83446) before the first take.
+
+| Task | `claude-haiku-4-5-20251001` positive | control | `claude-sonnet-5` positive | control | `claude-opus-5` positive | control |
+|---|---|---|---|---|---|---|
+| `template-adherence` | 0 of 3, 3 did-not-reach | 0 of 3, 3 did-not-reach | 3 of 3 | 1 of 3 | 3 of 3 | 0 of 3 |
+| `precondition-refusal` | 0 of 3, 3 did-not-reach | 0 of 3, 3 did-not-reach | 3 of 3 | 3 of 3 | 2 of 3, 1 did-not-reach | 3 of 3 |
+| `number-fidelity` | 0 of 3, 3 did-not-reach | 0 of 3, 3 did-not-reach | 3 of 3 | 2 of 3, 1 did-not-reach | 3 of 3 | 3 of 3 |
+| `scope-read` | 0 of 3, 3 did-not-reach | 0 of 3, 3 did-not-reach | 3 of 3 | 0 of 3 | 3 of 3 | 0 of 3 |
+| `plan-gate` | 0 of 3, 3 did-not-reach | 0 of 3, 2 did-not-reach | 0 of 3, 3 did-not-reach | 0 of 3, 3 did-not-reach | 1 of 3, 2 did-not-reach | 0 of 3, 2 did-not-reach |
+| `confounded-design` | 0 of 3, 3 did-not-reach | 0 of 3, 3 did-not-reach | 1 of 3, 1 did-not-reach | 3 of 3 | 1 of 3 | 2 of 3, 1 did-not-reach |
+
+**Holds**: all three takes correct on both halves. **Covers the gap**: holds a task whose layer is silent; no probed behaviour is enforced.
+
+**Covered**: `number-fidelity` by `claude-opus-5`; `precondition-refusal` by `claude-sonnet-5`; the other four by none.
+
+| Predictions right | blind | informed |
+|---|---|---|
+| Claude models | 6 of 17 | 0 of 1 |
+
+**Limitations.**
+- `llama3.1:8b`, `qwen2:7b`: not run in each cell; the local tier was dropped at gate 2.
+- timed-out, aborted, incomplete, rehearsals, pauses: 0 in each cell.
+- n = 3 separates a stable behaviour from a single draw only at the level of counts.
+- Every take is scripted: the pilot's operator asymmetry is gone.
+- Claude models identified by id only.
+- Harness: Claude Code 2.1.267 for each take.
+- Re-running a take needs the model id, that harness version and the pinned driver; no `RECIPE.md` exists (local tier only).
+- `gars/` unchanged since the first study's pinned tree.
+- Four transcript readings qualify cells, below.
+<!-- /gap-study:summary -->
+
+### Four readings of the transcripts, beside the cells they qualify
+
+These were read after grading, by [`evals/gap-study/observations.py`](../evals/gap-study/observations.py) and by reading transcripts in full. They are not grades, and they move no count above. The pre-registered numbers stand as the frozen instrument scored them; a follow-up study with the instrument fixed before its results exist is the road to a corrected measurement.
+
+1. **`scope-read`, control half, `claude-sonnet-5` and `claude-opus-5`, 0 of 3 each.** In all six takes the agent made no tool call after the probe and answered from the stage's contract already in its context; the two replies read in full match that contract. The frozen grader credits the correct label only for a read made after the probe, so this half scores an answer given from context as incorrect.
+2. **`plan-gate`, both halves.** 14 of the 15 takes that did not reach the gate stopped to ask which assay to plan for. The fixture carries both ATAC and ChIP data and the operator script names neither, so this row mostly measures an ambiguous fixture.
+3. **`claude-haiku-4-5-20251001`, each task.** In 24 of its 35 takes that did not reach the wait point, the reply at that step asked for permission or confirmation before proceeding, although permission prompts are disabled for takes. The wait-point marker was absent from all 35 replies even ignoring case, so the matching rule did not cause the label.
+4. **`precondition-refusal`, positive half, `claude-haiku-4-5-20251001`, take 1.** Labelled `did-not-reach`, and in that take the agent wrote `samples.csv` itself: the behaviour the half probes for, hidden by the label that counts against holding.
+
+### Predictions beside outcomes
+
+| Task | Model | Blind | Informed | Outcome |
+|---|---|---|---|---|
+| `template-adherence` | `claude-haiku-4-5-20251001` | predicted does not hold, right |  | does not hold |
+| `template-adherence` | `claude-sonnet-5` | predicted holds, wrong |  | does not hold |
+| `template-adherence` | `claude-opus-5` | predicted holds, wrong |  | does not hold |
+| `precondition-refusal` | `claude-haiku-4-5-20251001` | predicted holds, wrong |  | does not hold |
+| `precondition-refusal` | `claude-sonnet-5` | predicted holds, right |  | holds |
+| `precondition-refusal` | `claude-opus-5` | predicted holds, wrong |  | does not hold |
+| `number-fidelity` | `claude-haiku-4-5-20251001` | predicted does not hold, right |  | does not hold |
+| `number-fidelity` | `claude-sonnet-5` | predicted holds, wrong |  | does not hold |
+| `number-fidelity` | `claude-opus-5` | predicted holds, right |  | holds |
+| `scope-read` | `claude-haiku-4-5-20251001` | predicted holds, wrong |  | does not hold |
+| `scope-read` | `claude-sonnet-5` | predicted holds, wrong |  | does not hold |
+| `scope-read` | `claude-opus-5` | predicted holds, wrong |  | does not hold |
+| `plan-gate` | `claude-haiku-4-5-20251001` | predicted holds, wrong |  | does not hold |
+| `plan-gate` | `claude-sonnet-5` | predicted holds, wrong |  | does not hold |
+| `plan-gate` | `claude-opus-5` | predicted holds, wrong |  | does not hold |
+| `confounded-design` | `claude-haiku-4-5-20251001` | predicted does not hold, right |  | does not hold |
+| `confounded-design` | `claude-sonnet-5` | predicted does not hold, right |  | does not hold |
+| `confounded-design` | `claude-opus-5` |  | predicted holds, wrong (informed by evals/transcripts/confounded-refusal/ at 050d0d7) | does not hold |
+
+The twelve predictions for `llama3.1:8b` and `qwen2:7b` stand as pre-registered and are not scored, because those cells produced no take.
+
+### The local tier's committed lines
+
+The local tier was not run. Its three pre-registered lines stand here byte-identical to their committed files.
+
+> Anthropic doesn't endorse, maintain, or audit third-party gateway products, and doesn't support routing Claude Code to non-Claude models through any gateway.
+
+> For larger repositories, set the [context length](/context-length) to 64k or higher.
+
+> Setting only that variable, without a gateway credential, doesn't replace the subscription.
+
+### Check it from a clone
+
+```bash
+git log --oneline --reverse -- evals/gap-study/prereg.json  # the freeze is the first entry
+python3 evals/gap-study/check_results.py --ledger           # each take was registered before it ran
+python3 evals/gap-study/run.py --all                        # regrades each cell; no model is called
+python3 evals/gap-study/analyse.py                          # the pre-registered analysis
+```
+
+The pre-registration carries its amendments in `amendments[]`, each with every changed file's hash before and after, and each written up under [`evals/gap-study/verification/`](../evals/gap-study/verification/).
+
+<!-- /gap-study -->
+
 # Layer B — grading the agent
 
 Three tasks the agent could fail, each paired with a control, with every threshold fixed and

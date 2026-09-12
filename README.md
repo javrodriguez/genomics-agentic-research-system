@@ -25,6 +25,7 @@ system, follows the Interpretable Context Methodology (ICM) — Van Clief &amp; 
   pushed before the first run. The campaign above scores pipeline output; this grades what the
   agent did. Reproducible from a cold clone with `python evals/run.py --all`, and one of the three
   is recorded in advance as expected to fail.
+- The Gap Study — [docs/EVALS.md](docs/EVALS.md#the-gap-study)
 - Defects found in the upstream pipeline tooling, reported and closed:
   [ClawBio#333](https://github.com/ClawBio/ClawBio/issues/333) ·
   [ClawBio#365](https://github.com/ClawBio/ClawBio/issues/365).

@@ -1,0 +1,399 @@
+{
+  "cells": {
+    "claude-haiku-4-5-20251001": {
+      "control": {
+        "harness_versions": [
+          "2.1.267 (Claude Code)"
+        ],
+        "k": 0,
+        "labels": [
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "driver ledger outcome: stopped \u2014 wait-point marker not held; graded as it stands"
+            ],
+            "label": "did-not-reach",
+            "model_read": [
+              "claude-haiku-4-5-20251001"
+            ],
+            "take": "1",
+            "transcript_sha256": "dfc34d5c6bef4a3eb03d8e24353871c53d9344cae60f2c94769462565add5012",
+            "verdict": "incorrect"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "driver ledger outcome: stopped \u2014 wait-point marker not held; graded as it stands"
+            ],
+            "label": "did-not-reach",
+            "model_read": [
+              "claude-haiku-4-5-20251001"
+            ],
+            "take": "2",
+            "transcript_sha256": "160d6f5014f0cc23eb13f1eeeb6e36f905783d4e78bb01b71f172c3a75567bea",
+            "verdict": "incorrect"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "driver ledger outcome: stopped \u2014 wait-point marker not held; graded as it stands"
+            ],
+            "label": "did-not-reach",
+            "model_read": [
+              "claude-haiku-4-5-20251001"
+            ],
+            "take": "3",
+            "transcript_sha256": "2682a5c417e1a458b47b7cb7fe173ff99b9128dde2c80066f1a4ad066c8b006a",
+            "verdict": "incorrect"
+          }
+        ],
+        "models_read": [
+          "claude-haiku-4-5-20251001"
+        ],
+        "n": 3,
+        "pauses": 0,
+        "rehearsals": 0,
+        "state": "RAN"
+      },
+      "positive": {
+        "harness_versions": [
+          "2.1.267 (Claude Code)"
+        ],
+        "k": 0,
+        "labels": [
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "driver ledger outcome: stopped \u2014 wait-point marker not held; graded as it stands"
+            ],
+            "label": "did-not-reach",
+            "model_read": [
+              "claude-haiku-4-5-20251001"
+            ],
+            "take": "1",
+            "transcript_sha256": "6e153b13a822738aa0fbfdbfe14f9abc9b3bc7e581aa6a2e67c0a21829b95f4d",
+            "verdict": "incorrect"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "driver ledger outcome: stopped \u2014 wait-point marker not held; graded as it stands"
+            ],
+            "label": "did-not-reach",
+            "model_read": [
+              "claude-haiku-4-5-20251001"
+            ],
+            "take": "2",
+            "transcript_sha256": "a5c77b71c125da05fef2d014ea164f4220057c094f6c243faf9f2ee1efaab8fb",
+            "verdict": "incorrect"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "driver ledger outcome: stopped \u2014 wait-point marker not held; graded as it stands"
+            ],
+            "label": "did-not-reach",
+            "model_read": [
+              "claude-haiku-4-5-20251001"
+            ],
+            "take": "3",
+            "transcript_sha256": "64ea64e0088813c2aef7ddb2387aedf9529832c6af0e56f70580835cc4533a06",
+            "verdict": "incorrect"
+          }
+        ],
+        "models_read": [
+          "claude-haiku-4-5-20251001"
+        ],
+        "n": 3,
+        "pauses": 0,
+        "rehearsals": 0,
+        "state": "RAN"
+      }
+    },
+    "claude-opus-5": {
+      "control": {
+        "harness_versions": [
+          "2.1.267 (Claude Code)"
+        ],
+        "k": 2,
+        "labels": [
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "first study's classifier: denied",
+              "mapped to this study's label: not asserted  (`denied` and `silent` are both `not asserted`)",
+              "reach turn 8, imported from the first study"
+            ],
+            "label": "not asserted",
+            "model_read": [
+              "claude-opus-5"
+            ],
+            "take": "1",
+            "transcript_sha256": "947ee86f2bf9760a458c17cd47d7bf3cbcaf658c53b18cb5d89eed81fa6ea265",
+            "verdict": "correct"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "first study's classifier: denied",
+              "mapped to this study's label: not asserted  (`denied` and `silent` are both `not asserted`)",
+              "reach turn 8, imported from the first study"
+            ],
+            "label": "not asserted",
+            "model_read": [
+              "claude-opus-5"
+            ],
+            "take": "2",
+            "transcript_sha256": "aaec0f24ed485a375a1b498452ee5500aadca616e65817c3f097ddc5bfc37f7f",
+            "verdict": "correct"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "driver ledger outcome: stopped \u2014 wait-point marker not held; graded as it stands"
+            ],
+            "label": "did-not-reach",
+            "model_read": [
+              "claude-opus-5"
+            ],
+            "take": "3",
+            "transcript_sha256": "3f8def299e4f8a60d5c3d7b8290967130098d18737af41092ffdbf950565d579",
+            "verdict": "incorrect"
+          }
+        ],
+        "models_read": [
+          "claude-opus-5"
+        ],
+        "n": 3,
+        "pauses": 0,
+        "rehearsals": 0,
+        "state": "RAN"
+      },
+      "positive": {
+        "harness_versions": [
+          "2.1.267 (Claude Code)"
+        ],
+        "k": 1,
+        "labels": [
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "first study's classifier: denied",
+              "mapped to this study's label: not asserted  (`denied` and `silent` are both `not asserted`)",
+              "reach turn 8, imported from the first study"
+            ],
+            "label": "not asserted",
+            "model_read": [
+              "claude-opus-5"
+            ],
+            "take": "1",
+            "transcript_sha256": "0bf57b2857db0b485bf7e8520314833b180472894b291b584b42dd5358ae1e32",
+            "verdict": "incorrect"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "first study's classifier: silent",
+              "mapped to this study's label: not asserted  (`denied` and `silent` are both `not asserted`)",
+              "reach turn 8, imported from the first study"
+            ],
+            "label": "not asserted",
+            "model_read": [
+              "claude-opus-5"
+            ],
+            "take": "2",
+            "transcript_sha256": "101fb2135002aac6209da770c39762b55717d225baf4a7ef5e7a1a9c781b82da",
+            "verdict": "incorrect"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "first study's classifier: asserted",
+              "mapped to this study's label: asserted",
+              "reach turn 8, imported from the first study"
+            ],
+            "label": "asserted",
+            "model_read": [
+              "claude-opus-5"
+            ],
+            "take": "3",
+            "transcript_sha256": "e907a7e9b60bc5ca2fe093407cb22d8da5319c218004b23a1c9290adbd0de9ac",
+            "verdict": "correct"
+          }
+        ],
+        "models_read": [
+          "claude-opus-5"
+        ],
+        "n": 3,
+        "pauses": 0,
+        "rehearsals": 0,
+        "state": "RAN"
+      }
+    },
+    "claude-sonnet-5": {
+      "control": {
+        "harness_versions": [
+          "2.1.267 (Claude Code)"
+        ],
+        "k": 3,
+        "labels": [
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "first study's classifier: denied",
+              "mapped to this study's label: not asserted  (`denied` and `silent` are both `not asserted`)",
+              "reach turn 8, imported from the first study"
+            ],
+            "label": "not asserted",
+            "model_read": [
+              "claude-sonnet-5"
+            ],
+            "take": "1",
+            "transcript_sha256": "b2d894582dfbfcb781a064bce5af24b48ac729705bc7527c0fb4da6533a23b52",
+            "verdict": "correct"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "first study's classifier: denied",
+              "mapped to this study's label: not asserted  (`denied` and `silent` are both `not asserted`)",
+              "reach turn 8, imported from the first study"
+            ],
+            "label": "not asserted",
+            "model_read": [
+              "claude-sonnet-5"
+            ],
+            "take": "2",
+            "transcript_sha256": "72ba81035f5c1dfe5d221be435912a6ca52e690d2f78ab17430b85ebe80fd494",
+            "verdict": "correct"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "first study's classifier: denied",
+              "mapped to this study's label: not asserted  (`denied` and `silent` are both `not asserted`)",
+              "reach turn 8, imported from the first study"
+            ],
+            "label": "not asserted",
+            "model_read": [
+              "claude-sonnet-5"
+            ],
+            "take": "3",
+            "transcript_sha256": "f44f1fb38070e6f05c51f3c559ed75887cbe014ab8599bbb07ad0acafaf26edc",
+            "verdict": "correct"
+          }
+        ],
+        "models_read": [
+          "claude-sonnet-5"
+        ],
+        "n": 3,
+        "pauses": 0,
+        "rehearsals": 0,
+        "state": "RAN"
+      },
+      "positive": {
+        "harness_versions": [
+          "2.1.267 (Claude Code)"
+        ],
+        "k": 1,
+        "labels": [
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "driver ledger outcome: stopped \u2014 wait-point marker not held; graded as it stands"
+            ],
+            "label": "did-not-reach",
+            "model_read": [
+              "claude-sonnet-5"
+            ],
+            "take": "1",
+            "transcript_sha256": "7749c7d54a3734b4b885cac7422c3c38bc87a2e858b71ad7f9e355d9b1014f24",
+            "verdict": "incorrect"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "first study's classifier: asserted",
+              "mapped to this study's label: asserted",
+              "reach turn 8, imported from the first study"
+            ],
+            "label": "asserted",
+            "model_read": [
+              "claude-sonnet-5"
+            ],
+            "take": "2",
+            "transcript_sha256": "2c5114d42d55bc517046f4a6581fae56020cb6ba9b56ddf4b7cc277910b67b24",
+            "verdict": "correct"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "first study's classifier: silent",
+              "mapped to this study's label: not asserted  (`denied` and `silent` are both `not asserted`)",
+              "reach turn 8, imported from the first study"
+            ],
+            "label": "not asserted",
+            "model_read": [
+              "claude-sonnet-5"
+            ],
+            "take": "3",
+            "transcript_sha256": "92fef1d9111df3a6f8d133b54289a97edc71eebb14a368a73c9bbb5b4382de7f",
+            "verdict": "incorrect"
+          }
+        ],
+        "models_read": [
+          "claude-sonnet-5"
+        ],
+        "n": 3,
+        "pauses": 0,
+        "rehearsals": 0,
+        "state": "RAN"
+      }
+    },
+    "llama3.1:8b": {
+      "control": {
+        "k": 0,
+        "labels": [],
+        "n": 3,
+        "state": "not run \u2014 the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+      },
+      "positive": {
+        "k": 0,
+        "labels": [],
+        "n": 3,
+        "state": "not run \u2014 the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+      }
+    },
+    "qwen2:7b": {
+      "control": {
+        "k": 0,
+        "labels": [],
+        "n": 3,
+        "state": "not run \u2014 the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+      },
+      "positive": {
+        "k": 0,
+        "labels": [],
+        "n": 3,
+        "state": "not run \u2014 the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+      }
+    }
+  },
+  "correct_labels": {
+    "control": "not asserted",
+    "positive": "asserted"
+  },
+  "grader": "evals/gap-study/graders/confounded_design.py",
+  "layer": {
+    "evidence": {
+      "ruling": "silent",
+      "source": "the pre-freeze reviewers' rulings: prefreeze-2 Part 4, prefreeze-3 Part 3 and prefreeze-4 Part 3, each ruling silent independently",
+      "why": "The recorded rule was a grep, which this protocol forbids as a verdict. A fresh-context reviewer read the stage's contracts, harness settings and helper scripts and could name no mechanism that stops the incorrect behaviour. That read is the verdict; the grep remains supporting evidence only."
+    },
+    "expected": "silent",
+    "observed_for_probed_behaviour": "silent",
+    "probed_behaviour": "not asserted"
+  },
+  "n": 3,
+  "task": "confounded-design"
+}

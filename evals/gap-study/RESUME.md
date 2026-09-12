@@ -1,6 +1,6 @@
 # Where the Gap Study stands
 
-**12 September 2026. THE PRE-REGISTRATION IS FROZEN AND AMENDED ONCE. No take has run. Spend $0.**
+**12 September 2026. THE 108 TAKES ARE GRADED AND GATE 1 IS OPEN. Frozen, amended three times, no criterion moved. The results commit is local and waits for the repository owner's word. Spend $0.**
 
 Every byte of this study is inside this repository.
 The pre-freeze reviews are under `reviews/` (2 to 11) and `verification/` (12 onward), with their dispositions beside them.
@@ -79,19 +79,33 @@ No take had run, so there is nothing to regrade.
 
 The gate on the amended bytes: 243 tests OK; 103 mutations, every one red when broken, 96 watched green first; 54 pinned files re-hashed clean; the ledger, the language guard and the cost check clean; the first study green.
 
+**The 108 takes ran in the pre-registered order, and each is graded.**
+`check_results.py --ledger` binds all 108 transcripts to their row's commit; no cell took a rehearsal or a pause, and no take timed out or aborted.
+Each ran against the frozen `gars/` tree under Claude Code 2.1.267.
+One other session's commit to `gars/` blocked the driver's pin mid-run; its author reverted it, and the run resumed on the pinned tree.
+
+**Amendment 2 (Ruling 29, `verification/amendment-2.md`).** The first real take records turned the language guard and five tests red: the guard read driver ledgers as claims, and tests written against an empty ledger met a full one. Repaired, both regrades identical.
+
+**Ruling 30.** The owner's word on two gaps in checklist line 10: `docs/EVALS.md` is measured from `50a2bdc`, and the missing `TwoMinuteRead` is written as an amendment.
+
+**Amendment 3 (Ruling 31, `verification/amendment-3.md`).** `TwoMinuteRead`, `NoRateNoBannedWord` and `ThePublishedAnalysisIsRegenerated` are written; six driver-loop tests stop needing the operator's harness, which had kept CI red since slice 41; CI checks the controls finding against its committed record. Both regrades identical.
+
+**The published section is written, with four readings of the transcripts beside the cells they qualify.**
+They were read after grading by `observations.py` and move no count: `scope-read`'s control half scores an answer from context as incorrect; `plan-gate`'s fixture carries two assays its script never picks between; `claude-haiku-4-5-20251001` asked for permission at the wait point in 24 of its 35 stopped takes; and one of its `precondition-refusal` takes is labelled `did-not-reach` while it wrote the file the half probes for.
+
 ## The next move
 
-1. **The 108 takes**, driven in the pre-registered order, `takes.py --add` then `drive.py` per row. Gate 1 stops before the first results push.
-
-Nothing is pushed since `c44c27e`: the freeze commit is local, so the published repository does not yet carry a frozen study.
+1. **Gate 1 is the repository owner's.** The results, `analysis.json`, the section in `docs/EVALS.md`, the README link, `observations.py`, the gate brief and the controls record are one local commit. GitHub holds `a94178a`: amendments 2 and 3 and the results commit are local. The push of the amendments was refused because the signed-in token lacks the `workflow` scope amendment 3's change to `ci.yml` needs, which only the owner can grant. On the owner's word, a `ruling:` commit quoting it, then one push.
+2. After the push: CI green at HEAD, then the checklist's final pass by one fresh-context verifier from a fresh clone.
+3. Proposed as the next goal, not this one: a follow-up pre-registration with the instrument fixed before its results exist (the `scope-read` control grader and the `plan-gate` fixture).
 
 ## State
 
-- 6 task pairs · 11 walks, 3 of them driven in a built checkout · 136 hand-labelled cases · 243 tests · 103 mutations · 22 reviews · 4 smokes
-- 0 takes graded · not frozen · `gars/` and the first study unchanged by this work
-- The local tier was dropped by the repository owner at gate 2; `local-model/DROPPED.md` is the record
-- Rulings 1–28 in `PROTOCOL.md`
-- `RESIDUAL.md` was written at the slice cap and is kept deliberately, though the cap was lifted (Ruling 7)
+- 6 task pairs · 108 graded takes, 0 rehearsals, 0 pauses · 257 tests · 110 mutations, 103 watched green first · 23 reviews · 3 amendments
+- cells: 36 RAN, 24 local cells not run (dropped at gate 2) · predictions scored 18: blind 6 right of 17, informed 0 right of 1
+- `gars/` and the first study unchanged by this work
+- Rulings 1–31 in `PROTOCOL.md`
+- Ten mutations still carry not-applicable reasons written before any take existed; several could apply now (amendment 2 records it)
 
 ## Carried follow-ups, most valuable first
 

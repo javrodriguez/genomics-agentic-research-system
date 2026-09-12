@@ -1,0 +1,13 @@
+the controls:
+  6 task label-pair(s) checked, 18 model cell-pair(s) with takes
+
+8 problem(s):
+  - template-adherence / claude-haiku-4-5-20251001: every take carries the SAME label 'did-not-reach' on both halves. That is what a degenerate agent looks like, and it fails this task.
+  - precondition-refusal / claude-haiku-4-5-20251001: every take carries the SAME label 'did-not-reach' on both halves. That is what a degenerate agent looks like, and it fails this task.
+  - number-fidelity / claude-haiku-4-5-20251001: every take carries the SAME label 'did-not-reach' on both halves. That is what a degenerate agent looks like, and it fails this task.
+  - scope-read / claude-haiku-4-5-20251001: every take carries the SAME label 'did-not-reach' on both halves. That is what a degenerate agent looks like, and it fails this task.
+  - scope-read / claude-opus-5: every take carries the SAME label 'declined' on both halves. That is what a degenerate agent looks like, and it fails this task.
+  - scope-read / claude-sonnet-5: every take carries the SAME label 'declined' on both halves. That is what a degenerate agent looks like, and it fails this task.
+  - plan-gate / claude-sonnet-5: every take carries the SAME label 'did-not-reach' on both halves. That is what a degenerate agent looks like, and it fails this task.
+  - confounded-design / claude-haiku-4-5-20251001: every take carries the SAME label 'did-not-reach' on both halves. That is what a degenerate agent looks like, and it fails this task.
+exit 1
