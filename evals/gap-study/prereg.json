@@ -1923,13 +1923,13 @@
     {
       "path": "evals/gap-study/test_harness.py",
       "git_blob_sha": "1dfcb38892de72a4795c22f58666ee0db07fb505",
-      "sha256": "10ae2d6a0c958f332d255ed382e8f346c809a7f82f193eb0f0ae2f3637d179ed",
+      "sha256": "cdaf0379ae3a3bf8e3c8a7b86bcf174e6bba341eb93a8572cce61ec52257bab3",
       "uncommitted": false
     },
     {
       "path": "evals/gap-study/mutations.py",
       "git_blob_sha": "ece092a25770e36b2d8ff86d79cdddeb5ba361ee",
-      "sha256": "4e558d5823fa395088f6fefc1df6257e0ebd2eaa7f904072d5234000ef2e1c47",
+      "sha256": "c083e18c446910a71e99d7a239cfcbccbf149ac80e7906ccc547eed6954f50a8",
       "uncommitted": false
     },
     {
@@ -2688,5 +2688,45 @@
       ]
     ],
     "local": []
-  }
+  },
+  "amendments": [
+    {
+      "n": 1,
+      "at": "2026-09-12T11:23:22+00:00",
+      "title": "the freeze turned two of the study's own guards red, and they are repaired",
+      "why": "Freezing switches on code paths that were dormant: `prereg.is_frozen()` becomes true and the per-half fixture pins fill. Two tests in the pinned harness asserted the behaviour of the DRAFT rather than the behaviour of the check, and failed the moment the freeze landed. Through them, 24 of 103 mutation guards stopped firing: 16 because their control class held one of those two tests, so the battery saw the guard red before any mutation; 7 because the sandbox now carries the frozen file while those mutations edited the draft, so they changed a file nothing reads; and 1 because its premise was that the runner refuses a draft. No criterion, grader, threshold, label, fixture or pre-registered text is touched.",
+      "found_by": "the study's own gate, run against the bytes the freeze produced",
+      "no_take_had_run": true,
+      "criteria_unchanged": true,
+      "what_changed": [
+        "test_harness.py: the unpinned-half test asserts the note before the freeze AND the refusal after it, by stubbing is_frozen, instead of asserting the draft's answer alone.",
+        "test_harness.py: the normalised-fixture test compares the block with the record the driver writes from the spec, instead of naming the three keys it carries while the pin is null.",
+        "mutations.py: seven guards edit the pre-registration the code actually reads, frozen or draft, rather than the draft alone.",
+        "mutations.py: the guard that proves the runner refuses a draft removes the frozen file from its sandbox first, which is what puts the sandbox back into the state the guard names."
+      ],
+      "before": {
+        "tests": "243 tests, 2 failures",
+        "mutations": "103 mutations, 24 did not go red: 16 control red before the mutation, 7 mutated and still green, 1 premise removed by the freeze",
+        "evidence": "evals/gap-study/verification/post-freeze-battery.txt"
+      },
+      "after": {
+        "tests": "243 tests, OK",
+        "mutations": "103 mutations, every one red when broken, 96 watched green first"
+      },
+      "regrades": "none, and that is checkable: no take had run, no results file existed, and the ledger was empty, so there is nothing to regrade. The amendment is provably before any number exists.",
+      "files": [
+        {
+          "path": "evals/gap-study/test_harness.py",
+          "sha256_before": "10ae2d6a0c958f332d255ed382e8f346c809a7f82f193eb0f0ae2f3637d179ed",
+          "sha256_after": "cdaf0379ae3a3bf8e3c8a7b86bcf174e6bba341eb93a8572cce61ec52257bab3"
+        },
+        {
+          "path": "evals/gap-study/mutations.py",
+          "sha256_before": "4e558d5823fa395088f6fefc1df6257e0ebd2eaa7f904072d5234000ef2e1c47",
+          "sha256_after": "c083e18c446910a71e99d7a239cfcbccbf149ac80e7906ccc547eed6954f50a8"
+        }
+      ],
+      "note": "Published as an amendment rather than corrected in place: each file's pinned sha256 before this change is kept here beside the one now in force."
+    }
+  ]
 }

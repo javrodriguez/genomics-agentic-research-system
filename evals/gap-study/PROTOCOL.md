@@ -959,3 +959,33 @@ A study that freezes should rehearse its own freeze in a throwaway copy and put 
 
 No criterion moved.
 No take has run.
+
+### Ruling 28 — 2026-09-12 — amendment 1: the guards freezing turned red are repaired, and the repair is published
+
+The owner's decision, on the fork Ruling 27 recorded: amend, and publish it as an amendment.
+`verification/amendment-1.md` carries it in full, and `amendments[0]` in the frozen file carries it machine-readably, with each amended file's pinned sha256 from before this change kept beside the one now in force.
+
+**Two tests asserted the state of the file rather than the behaviour of the check.**
+One expected a note where a half's fixture carries no pin, which is the answer only while the file is a draft; the other named the keys the normalised fixture block carries while that pin is null.
+Both now assert the same thing in either state, one by stubbing the frozen predicate and checking both answers, the other by comparing with the record the driver writes from the spec.
+
+**A mutation must change what the code reads.**
+Seven guards edited the draft after the sandbox began carrying the frozen file, so they changed a file nothing reads and came back green with their control green on both sides.
+They edit whichever pre-registration is in force.
+The guard that proves the runner refuses a draft removes the frozen file from its sandbox first, which is what puts the sandbox back into the state that guard names.
+
+**What the amendment did not touch.**
+No criterion, grader, threshold, label, fixture, operator script, marker or pre-registered sentence.
+`prereg-draft.json` still hashes to the bytes review 23 read, and every other pinned file to what the freeze pinned.
+
+**Both regrades, side by side: there are none.**
+No take had run, no results file existed and the ledger was empty, so there is nothing to regrade and the amendment is provably before any number exists.
+
+**One shape repeated inside the amendment itself.**
+A sentence written into it tripped the language guard, and that one red made three lint-controlled guards report their control red before any mutation.
+One broken control disarms every guard that shares it, which is the same mechanism as the sixteen this amendment repairs.
+
+The gate on the amended bytes: 243 tests OK; 103 mutations, every one red when broken, 96 watched green first; 54 pinned files re-hashed clean; the ledger, the language guard and the cost check clean; the first study green.
+
+No criterion moved.
+No take has run.

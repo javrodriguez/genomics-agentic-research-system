@@ -136,6 +136,19 @@ class Sandbox:
         self.tmp.cleanup()
 
 
+def _prereg(s: Sandbox) -> Path:
+    """The pre-registration the code in this sandbox actually reads.
+
+    AMENDED 12 September 2026, after the freeze. Seven guards edited `prereg-draft.json`, which is
+    what the code read while the study was a draft. The sandbox now carries `prereg.json` too, and
+    `prereg.load()` reads that, so those mutations were editing a file nothing reads: each came back
+    green with its control green on both sides, which is a guard that cannot fail. A mutation has to
+    change what the code reads, whichever file that is.
+    """
+    frozen = s.study / "prereg.json"
+    return frozen if frozen.is_file() else s.study / "prereg-draft.json"
+
+
 # --------------------------------------------------------------------------- mutations
 
 def m_edited_contract_quote(s: Sandbox) -> tuple[int, str]:
@@ -265,7 +278,7 @@ def m_fourth_graded_take(s: Sandbox) -> tuple[int, str]:
 
 
 def m_tampered_namespace(s: Sandbox) -> tuple[int, str]:
-    p = s.study / "prereg-draft.json"
+    p = _prereg(s)
     d = json.loads(p.read_text())
     d["session_namespace"]["uuid"] = "00000000-0000-5000-8000-000000000000"
     p.write_text(json.dumps(d, indent=2, ensure_ascii=False))
@@ -402,7 +415,13 @@ def m_leaked_word_in_an_operator_turn(s: Sandbox) -> tuple[int, str]:
 
 
 def m_grading_against_a_draft(s: Sandbox) -> tuple[int, str]:
-    """run.py must refuse while the pre-registration is a draft."""
+    """run.py must refuse while the pre-registration is a draft.
+
+    AMENDED 12 September 2026, after the freeze. The sandbox now carries the frozen file, so there
+    was no draft left for this guard to be about and it came back green with nothing protecting it.
+    Removing the frozen file is what puts the sandbox back into the state the guard names.
+    """
+    (s.study / "prereg.json").unlink(missing_ok=True)
     return s.run([str(s.study / "run.py"), "--all"]), "run.py --all against a draft"
 
 
@@ -436,7 +455,7 @@ def m_run_tree_named_for_the_study(s: Sandbox) -> tuple[int, str]:
 def m_study_names_dropped_from_the_leak_list(s: Sandbox) -> tuple[int, str]:
     """Review 11, F2: a leak list that cannot name the study reports clean on a leaked walk."""
     s.control(_th(s, "TheLeakCheckReadsEveryChannel"))
-    p = s.study / "prereg-draft.json"
+    p = _prereg(s)
     d = json.loads(p.read_text())
     d["leak_words"] = [w for w in d["leak_words"]
                        if w not in ("gap-study", "gap study", "prereg", "pre-registration",
@@ -475,7 +494,7 @@ def m_published_walk_carries_the_email(s: Sandbox) -> tuple[int, str]:
 def m_carried_line_edited(s: Sandbox) -> tuple[int, str]:
     """A carried operator line edited in the draft: the projection is no longer script()."""
     s.control(_th(s, "CarriedScriptIsTheFirstStudys"))
-    p = s.study / "prereg-draft.json"
+    p = _prereg(s)
     d = json.loads(p.read_text())
     step = next(t for t in d["tasks"] if t["id"] == "confounded-design")["positive"]["operator_script"][1]
     if step["line"] != "05":
@@ -507,7 +526,7 @@ def m_marker_compared_loosely(s: Sandbox) -> tuple[int, str]:
 def m_carried_marker_not_template_bytes(s: Sandbox) -> tuple[int, str]:
     """Ruling 12: the first study's `stage 01` put back as a carried marker."""
     s.control(_th(s, "MarkersAreTemplateBytes"))
-    p = s.study / "prereg-draft.json"
+    p = _prereg(s)
     d = json.loads(p.read_text())
     step = next(t for t in d["tasks"] if t["id"] == "confounded-design")["positive"]["operator_script"][3]
     step["marker"] = step["first_study_marker"]
@@ -603,7 +622,7 @@ def m_rate_guard_unbounded(s: Sandbox) -> tuple[int, str]:
 def m_turn_five_marker_back_to_the_sentence(s: Sandbox) -> tuple[int, str]:
     """Ruling 13: the carried turn-5 marker returned to the T4 sentence walk 2's agent reworded."""
     s.control(_th(s, "TheMarkersHoldOnRealReplies"))
-    p = s.study / "prereg-draft.json"
+    p = _prereg(s)
     d = json.loads(p.read_text())
     for half in ("positive", "control"):
         step = next(x for x in next(t for t in d["tasks"] if t["id"] == "confounded-design")[half]["operator_script"]
@@ -644,7 +663,7 @@ def m_walk_rehearsal_counted_against_a_cell(s: Sandbox) -> tuple[int, str]:
 def m_refusal_reason_unlisted(s: Sandbox) -> tuple[int, str]:
     """Slice 42: a reason the checker gives, dropped from the pre-registered list."""
     s.control(_th(s, "TheRefusalReasonsArePreRegistered"))
-    p = s.study / "prereg-draft.json"
+    p = _prereg(s)
     d = json.loads(p.read_text())
     if d["rehearsal_reasons"].pop("stop-at-held-marker", None) is None:
         raise RuntimeError("the mutation did not apply; the guard was not exercised")
@@ -657,7 +676,7 @@ def m_refusal_reason_unlisted(s: Sandbox) -> tuple[int, str]:
 def m_plant_true_in_one_field(s: Sandbox) -> tuple[int, str]:
     """Slice 43: a plant with its sample count set to the true one, line and field together."""
     s.control(_th(s, "EveryOperatorLineRenders"))
-    p = s.study / "prereg-draft.json"
+    p = _prereg(s)
     d = json.loads(p.read_text())
     t = next(x for x in d["tasks"] if x["id"] == "number-fidelity")
     probe = next(x for x in t["positive"]["operator_script"] if x["n"] == t["positive"]["probe_operator_turn"])

@@ -1,6 +1,6 @@
 # Where the Gap Study stands
 
-**12 September 2026. THE PRE-REGISTRATION IS FROZEN. No take has run. Spend $0.**
+**12 September 2026. THE PRE-REGISTRATION IS FROZEN AND AMENDED ONCE. No take has run. Spend $0.**
 
 Every byte of this study is inside this repository.
 The pre-freeze reviews are under `reviews/` (2 to 11) and `verification/` (12 onward), with their dispositions beside them.
@@ -72,15 +72,16 @@ Its five follow-ups are folded, including the read side now refusing a first reg
 Review 23 ruled DO FREEZE, the first such ruling in twelve reviews, and the freeze ran (Ruling 27, `verification/prefreeze-23-disposition.md`).
 `prereg.json` is in force at sha256 `faefa7a89901`, seeded by `c44c27e`, pinning 42 files and 108 cells, with no unaccounted nulls, and the draft is byte-identical to the bytes review 23 read.
 
-**Freezing turned two of the study's own guards red, and this is where it stands.**
-`test_harness.py` has 243 tests with 2 failures, both asserting pre-freeze behaviour.
-`mutations.py` has 103 mutations with 24 not going red: sixteen controlled by a class holding one of those two tests, seven inert because the sandbox reads the frozen file while the mutation edits the draft, and one whose premise was that the runner refuses a draft.
-Both files are pinned, so every remedy is an amendment, published with before and after.
+**Freezing turned two of the study's own guards red, and amendment 1 repaired them (Ruling 28, `verification/amendment-1.md`).**
+Two tests asserted the behaviour of the draft rather than of the check; through them 24 of 103 mutation guards stopped firing, 16 by a contaminated control, 7 by editing a file the sandbox no longer reads, 1 by losing its premise.
+Both amended files are pinned, so each one's sha256 from before the change is kept in `amendments[0]` beside the one in force, and no criterion, grader, threshold, label, fixture or pre-registered sentence was touched.
+No take had run, so there is nothing to regrade.
 
-## The next move, and it is the owner's
+The gate on the amended bytes: 243 tests OK; 103 mutations, every one red when broken, 96 watched green first; 54 pinned files re-hashed clean; the ledger, the language guard and the cost check clean; the first study green.
 
-1. **Amend, or run the takes with this stated.** No take has run, so an amendment is provably before any number exists. Fixing the two tests restores sixteen of the twenty-four; making the battery mutate what the code reads restores seven more; one guard's premise is gone by design.
-2. Then, and only then, the 108 takes.
+## The next move
+
+1. **The 108 takes**, driven in the pre-registered order, `takes.py --add` then `drive.py` per row. Gate 1 stops before the first results push.
 
 Nothing is pushed since `c44c27e`: the freeze commit is local, so the published repository does not yet carry a frozen study.
 
@@ -89,7 +90,7 @@ Nothing is pushed since `c44c27e`: the freeze commit is local, so the published 
 - 6 task pairs · 11 walks, 3 of them driven in a built checkout · 136 hand-labelled cases · 243 tests · 103 mutations · 22 reviews · 4 smokes
 - 0 takes graded · not frozen · `gars/` and the first study unchanged by this work
 - The local tier was dropped by the repository owner at gate 2; `local-model/DROPPED.md` is the record
-- Rulings 1–27 in `PROTOCOL.md`
+- Rulings 1–28 in `PROTOCOL.md`
 - `RESIDUAL.md` was written at the slice cap and is kept deliberately, though the cap was lifted (Ruling 7)
 
 ## Carried follow-ups, most valuable first

@@ -2601,7 +2601,13 @@ class TheAttemptIsReDerivedFromItsBytes(unittest.TestCase):
         out = cr._normalised_ledger(led, row, d / "transcript.jsonl")
         self.assertNotIn("tree_sha256_name_invariant", out["fixture"])
         self.assertNotIn("sha256", out["fixture"])
-        self.assertEqual(set(out["fixture"]), {"kind", "variant", "seed"})
+        # AMENDED 12 September 2026, after the freeze. This named the three keys the block carries
+        # while the half's fixture is unpinned; the frozen file fills that pin, so the driver's record
+        # gains its hash and the exact set was wrong on the bytes it was pinned with. What the test is
+        # about is that nothing the LEDGER added survives, so it compares with the record the driver
+        # writes from the spec, which is right in both states.
+        self.assertEqual(out["fixture"],
+                         cr._driver_fixture(prereg.task(row["task"])[row["half"]]["fixture"]))
 
     def test_the_driver_fixture_is_built_from_the_spec_alone(self):
         """The record the pinned driver writes, per kind, with nothing read from the ledger."""
@@ -2822,10 +2828,24 @@ class TheGeneratedFixtureIsBound(unittest.TestCase):
         half["fixture"]["tree_sha256_name_invariant"] = "z" * 64
         self.assertEqual(ct.fixture_binding_problems(tmp / "transcript.jsonl", half, False), ([], None))
 
-    def test_before_the_freeze_it_says_so_rather_than_passing_silently(self):
+    def test_an_unpinned_half_is_a_note_before_the_freeze_and_a_refusal_after(self):
+        """AMENDED 12 September 2026, after the freeze. This asserted the note alone, which is the
+        answer only while the file is a draft; freezing turned it into a refusal by review 19's own
+        fold and the test failed on bytes it was pinned with. The behaviour is the same in both
+        states and the test now says which is which."""
+        ct = gap_check_take()
+        was = ct.prereg.is_frozen
+        self.addCleanup(lambda: setattr(ct.prereg, "is_frozen", was))
+
+        ct.prereg.is_frozen = lambda: False
         problems, note = self.checked("a" * 64, None)
         self.assertEqual(problems, [])
         self.assertIn("unpinned until the freeze", note)
+
+        ct.prereg.is_frozen = lambda: True
+        problems, note = self.checked("a" * 64, None)
+        self.assertTrue(any("bound to nothing" in x for x in problems), problems)
+        self.assertIsNone(note)
 
 
 class TheOrderSurvivesAnExhaustedCell(unittest.TestCase):
