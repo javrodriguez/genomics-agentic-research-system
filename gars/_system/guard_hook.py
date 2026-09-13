@@ -19,6 +19,12 @@ Deliberately conservative: every deny below is an action NO contract ever instru
 positive would block a legitimate stage step, which is worse than a miss -- misses are still
 covered by prose and by 0444.
 
+Two shapes are refused even though they are not a named write, because they are exactly the
+shapes a bypass takes and no contract instructs either (decision 0042): a call the guard cannot
+read (not a JSON object, or a crash inside the checks) -- a hook that crashes must never become
+a hook that allows -- and a write the scanner cannot see that names a protected path (inline
+interpreter code, or a command shlex cannot parse).
+
 Runs on stock python 3.6.8, stdlib only, like every `_system/` helper.
 """
 
@@ -46,7 +52,18 @@ READ_ONLY = [
     "projects/_index.md",
     "projects/*/00_data/*/files.csv",
     "projects/*/01_samplesheets/*",
+    # The stage 03 approval record: written only by `stage03_analysis.py approve` (0042).
+    "projects/*/03_custom_analysis/*/PLAN.md.approved",
 ]
+
+APPROVAL_RECORD = "PLAN.md.approved"
+
+# Inline code runs a string, so the target scan never sees what it writes (decision 0042).
+# A shell's -c string is scanned like any command; any other interpreter's inline code is
+# refused when it names a protected path. No contract runs inline interpreter code.
+SHELLS = ("bash", "sh", "zsh", "dash")
+INTERPRETERS = ("python", "perl", "ruby", "node", "rscript", "r")
+SEPARATORS = ("|", ";", "&&", "||", "&")
 
 # Bash substrings that install into the locked environments. The environments are pinned by
 # lockfiles (_references/*.lock.txt); an ad-hoc install silently unpins them.
@@ -103,20 +120,64 @@ def check_write_tool(tool_input, root, cwd):
             if rel == "projects/_index.md":
                 deny("Blocked: projects/_index.md is generated. Rebuild it with "
                      "`bash _system/build_projects_index.sh` instead of editing it.")
+            if os.path.basename(rel) == APPROVAL_RECORD:
+                deny("Blocked: %s is the stage 03 approval record. It is written only by "
+                     "`_system/stage03_analysis.py approve`, after the user has said yes to "
+                     "the plan; never write or edit it (decision 0042)." % rel)
             deny("Blocked: %s is part of the GARS template, updated only by `git pull`. "
                  "A workspace session never edits contracts, references, templates or "
                  "_system/ code. See CLAUDE.md, Scope Boundaries." % rel)
 
 
-def bash_write_targets(command):
-    """Targets a shell command writes to: redirections, tee/rm/mv/cp/sed -i arguments.
+def names_protected(text):
+    """True when a string mentions a template path or an approval record anywhere in it."""
+    return any(prefix in text for prefix in PROTECTED_PREFIXES) or APPROVAL_RECORD in text
 
-    Best-effort token scan -- shlex, no shell emulation. Unparseable commands yield no
-    targets (conservative in the allow direction; prose still governs)."""
+
+def inline_code_args(tokens):
+    """For each inline-code invocation in a token list: (kind, args), where kind is "shell"
+    or "interpreter" and args are the tokens up to the next separator.
+
+    `bash -c CODE`, `sh -lc CODE`; `python3 -c`, `perl -e` / `-pi -e`, `ruby -e`, `node -e`,
+    `Rscript -e`, `R -e`. A versioned name (`python3.12`) or a path (`/usr/bin/perl`) counts."""
+    found = []
+    for i, tok in enumerate(tokens):
+        name = os.path.basename(tok).lower()
+        if name.startswith("python"):
+            name = "python"
+        kind = "shell" if name in SHELLS else "interpreter" if name in INTERPRETERS else None
+        if kind is None:
+            continue
+        args = []
+        for arg in tokens[i + 1:]:
+            if arg in SEPARATORS:
+                break
+            args.append(arg)
+        flags = [a for a in args if a.startswith("-") and not a.startswith("--")]
+        if kind == "shell":
+            inline = any("c" in f[1:] for f in flags)
+        elif name in ("perl", "ruby"):
+            inline = any(("e" in f[1:]) or ("E" in f[1:]) or ("i" in f[1:]) for f in flags)
+        elif name == "python":
+            inline = "-c" in flags
+        else:
+            inline = any(f in ("-e", "-E") for f in flags)
+        if inline:
+            found.append((kind, args))
+    return found
+
+
+def bash_write_targets(command):
+    """Targets a shell command writes to: redirections, tee/rm/mv/cp/sed -i arguments,
+    dd of=, ln/install destinations, touch/truncate/chmod/chown operands.
+
+    Best-effort token scan -- shlex, no shell emulation. Returns None when the command cannot
+    be parsed, so the caller decides: refused if it names a protected path (decision 0042),
+    allowed otherwise, as before."""
     try:
         tokens = shlex.split(command, posix=True)
     except ValueError:
-        return []
+        return None
     targets = []
     i = 0
     while i < len(tokens):
@@ -158,12 +219,45 @@ def bash_write_targets(command):
                         targets.append(arg)
                         break
             i += 1; continue
+        if tok == "dd":
+            for arg in tokens[i + 1:]:
+                if arg in SEPARATORS:
+                    break
+                if arg.startswith("of="):
+                    targets.append(arg[3:])
+            i += 1; continue
+        if tok in ("ln", "install"):
+            args = []
+            for arg in tokens[i + 1:]:
+                if arg in SEPARATORS:
+                    break
+                if not arg.startswith("-"):
+                    args.append(arg)
+            if len(args) >= 2:
+                targets.append(args[-1])
+            i += 1; continue
+        if tok in ("touch", "truncate", "chmod", "chown"):
+            # chmod/chown take a mode or owner first and truncate -s a size: those operands
+            # are listed too, and are harmless -- they never resolve to a protected path.
+            for arg in tokens[i + 1:]:
+                if arg in SEPARATORS:
+                    break
+                if not arg.startswith("-"):
+                    targets.append(arg)
+            i += 1; continue
         i += 1
     return targets
 
 
-def check_bash(tool_input, root, cwd):
+UNREADABLE = ("Blocked: the guard could not read this tool call, so it cannot tell whether the "
+              "call is safe. A call it cannot judge is refused, never waved through (decision "
+              "0042). Retry the call; if this keeps happening, stop and report it.")
+
+
+def check_bash(tool_input, root, cwd, depth=0):
     command = tool_input.get("command") or ""
+    if not isinstance(command, str):
+        deny(UNREADABLE)
     lowered = " ".join(command.lower().split())
 
     for pat in INSTALL_PATTERNS:
@@ -186,7 +280,29 @@ def check_bash(tool_input, root, cwd):
                      "`_system/stage00_register.py finalize`. Do not chmod, remove or move it; "
                      "to change the cohort, edit samples.csv. See decision 0018.")
 
-    for target in bash_write_targets(command):
+    targets = bash_write_targets(command)
+    if targets is None:
+        if names_protected(command):
+            deny("Blocked: the command could not be parsed (unbalanced quotes?) and it names a "
+                 "protected path. A write the guard cannot see is refused when it touches "
+                 "_system/, _references/, _templates/, .claude/ or an approval record "
+                 "(decision 0042). Fix the quoting, or run the _system/ script directly.")
+        targets = []
+    else:
+        for kind, args in inline_code_args(shlex.split(command, posix=True)):
+            if kind == "shell" and depth < 3:
+                # A shell's -c string is a command: scan it exactly like one.
+                for code in args:
+                    if not code.startswith("-"):
+                        check_bash({"command": code}, root, cwd, depth + 1)
+            elif names_protected(" ".join(args)):
+                deny("Blocked: inline code (%s) that names a protected path. The target "
+                     "scan cannot see what inline code writes, so it is refused when it "
+                     "touches _system/, _references/, _templates/, .claude/ or an approval "
+                     "record; no contract runs inline code there (decision 0042). Run the "
+                     "_system/ script as a file instead." % " ".join(args[:1] or ["-c"]))
+
+    for target in targets:
         rel = rel_to_root(target, root, cwd)
         if rel is None:
             continue
@@ -197,6 +313,10 @@ def check_bash(tool_input, root, cwd):
                 deny("Blocked: the command writes to %s, which is part of the GARS template "
                      "(updated only by `git pull`). A workspace session never modifies "
                      "_system/, _references/, _templates/ or .claude/. See CLAUDE.md." % rel)
+        if os.path.basename(rel) == APPROVAL_RECORD:
+            deny("Blocked: the command writes to %s, the stage 03 approval record. It is "
+                 "written only by `_system/stage03_analysis.py approve`, after the user has "
+                 "said yes to the plan (decision 0042)." % rel)
         if rel.startswith("projects/") and (rel.endswith("files.csv")
                                             or "/01_samplesheets/" in rel):
             deny("Blocked: the command writes to %s, which is machine-owned. It is produced "
@@ -206,18 +326,26 @@ def check_bash(tool_input, root, cwd):
 
 def main():
     try:
-        payload = json.load(sys.stdin)
-    except Exception:
-        sys.exit(0)  # nothing to judge; allow
+        payload = json.loads(sys.stdin.read())
+    except ValueError:
+        payload = None
+    if not isinstance(payload, dict) or not isinstance(payload.get("tool_input") or {}, dict):
+        deny(UNREADABLE)
     tool = payload.get("tool_name") or ""
     tool_input = payload.get("tool_input") or {}
     cwd = payload.get("cwd") or ""
     root = workspace_root()
 
-    if tool in WRITE_TOOLS:
-        check_write_tool(tool_input, root, cwd)
-    elif tool == "Bash":
-        check_bash(tool_input, root, cwd)
+    try:
+        if tool in WRITE_TOOLS:
+            check_write_tool(tool_input, root, cwd)
+        elif tool == "Bash":
+            check_bash(tool_input, root, cwd)
+    except Exception as exc:  # deny() raises SystemExit, which is not an Exception
+        deny("Blocked: the guard failed while checking this call (%s: %s), so it cannot tell "
+             "whether the call is safe. A call it cannot judge is refused (decision 0042). "
+             "Report it: this is a defect in _system/guard_hook.py."
+             % (type(exc).__name__, exc))
     sys.exit(0)
 
 
