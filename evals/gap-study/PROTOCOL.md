@@ -1052,3 +1052,19 @@ The gate on the amended bytes: 257 tests OK, here and on a fresh clone with no h
 
 No criterion moved.
 No number moved.
+
+### Ruling 32 — 2026-09-12 — gate 1 closed by the owner: publish as graded
+
+The run stopped at gate 1 with the results commit `4feb164` local, and put four options to the owner: publish as committed with the four readings beside the cells they qualify; publish with a labelled post hoc second look; change the wording first; or hold for a follow-up study.
+The recommendation given was the first, with the `workflow` scope granted for the push, no comparative sentence for now, and the follow-up study proposed as the next goal.
+
+The owner's words, at 2026-09-12 21:04 EDT (2026-09-13T01:04:14Z): "Let’s follow your suggestions"
+
+**What that rules.**
+The results are published exactly as the frozen instrument scored them, with the four readings beside the cells they qualify, and nothing is rescored.
+No comparative or evaluative sentence about a model is published; gate 3 stays open, and the draft in `verification/gate-1-brief.md` stays in no public file.
+A follow-up pre-registration, with the `scope-read` control grader and the `plan-gate` fixture fixed before its results exist, is proposed as the next goal and is not part of this study.
+
+**What it does not do by itself.**
+The push needs the `workflow` scope on the owner's GitHub token, which only the owner can grant.
+Until then this ruling and the three commits before it stay on this machine.
