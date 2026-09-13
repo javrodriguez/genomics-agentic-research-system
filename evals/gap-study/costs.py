@@ -16,9 +16,10 @@ the only thing that opens it that way.
 
 WHAT IT REPORTS, AND WHAT IT REFUSES TO. Tokens by class and wall clock from the first to the last
 timestamp. It does not convert either into money. The study's claim is that no dollar was billed
-beyond the standing subscription, and that claim is evidenced by the recorded environment of each
-take -- no API-key variable, the subscription login the only credential -- not by a rate card this
-file would have to invent.
+beyond the standing subscription. That is the operator's statement: the driver recorded no per-take
+environment, so no committed file shows the credential a take ran under (Ruling 34). This docstring
+said until 13 September 2026 that each take's recorded environment evidenced it, and no such record
+exists. Nor does this file invent a rate card to put a number on it.
 
 A take with no usage records is reported as unmeasured rather than as zero. Zero is a measurement.
 """
@@ -211,8 +212,8 @@ def main() -> int:
     if unmeasured:
         print(f"\n{len(unmeasured)} transcript(s) carry no usage records and are reported "
               f"unmeasured, never as zero.")
-    print("\ndollars billed beyond the standing subscription: $0 — evidenced by each take's "
-          "recorded environment, not by this file.")
+    print("\ndollars billed beyond the standing subscription: $0, as the operator states it — no "
+          "committed file records the environment or credential a take ran under.")
     return 0
 
 

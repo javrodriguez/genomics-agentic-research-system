@@ -1258,6 +1258,41 @@ def m_analysis_json_stale(s: Sandbox) -> tuple[int, str]:
     return s.run(_th(s, "ThePublishedAnalysisIsRegenerated")), "test_harness.py ThePublishedAnalysisIsRegenerated"
 
 
+def m_moved_threshold_after_the_freeze(s: Sandbox) -> tuple[int, str]:
+    """Amendment 4, checklist line 12: a criterion edited in the frozen file after its freeze commit."""
+    s.control(_th(s, "TheFrozenFileMovesOnlyByAmendment"))
+    _edit(s.study / "prereg.json", '  "rehearsal_cap": 3,\n', '  "rehearsal_cap": 4,\n')
+    return s.run(_th(s, "TheFrozenFileMovesOnlyByAmendment")), "test_harness.py TheFrozenFileMovesOnlyByAmendment"
+
+
+def m_session_id_not_its_rows(s: Sandbox) -> tuple[int, str]:
+    """Amendment 4, checklist line 12: a transcript whose session id does not match its row's commit."""
+    s.control(_th(s, "TheLedgerBindsEachTranscriptToItsRow"))
+    _edit(s.study / "check_results.py", "            if got != want:\n", "            if False:\n")
+    return s.run(_th(s, "TheLedgerBindsEachTranscriptToItsRow")), "test_harness.py TheLedgerBindsEachTranscriptToItsRow"
+
+
+def m_row_committed_after_its_transcript(s: Sandbox) -> tuple[int, str]:
+    """Amendment 4, checklist line 12: the session id no longer a function of the row's commit, so a row
+    committed after its transcript implies the id the transcript already carries."""
+    s.control(_th(s, "TheLedgerBindsEachTranscriptToItsRow"))
+    _edit(s.study / "takes.py", "    return str(uuid.uuid5(namespace(), row_commit_sha))\n",
+          '    return str(uuid.uuid5(namespace(), "any commit"))\n')
+    return s.run(_th(s, "TheLedgerBindsEachTranscriptToItsRow")), "test_harness.py TheLedgerBindsEachTranscriptToItsRow"
+
+
+def m_doctored_results_file_regraded(s: Sandbox) -> tuple[int, str]:
+    """Amendment 4, checklist line 12: a results file edited by hand, caught by re-deriving it."""
+    _needs_results(s)
+    argv = [str(s.study / "check_results.py"), "--regrade"]
+    s.control(argv)
+    p = s.study / "results" / "number-fidelity.json"
+    text = p.read_text()
+    assert text.count('"k": 3') >= 1, "no count to doctor"
+    p.write_text(text.replace('"k": 3', '"k": 2', 1))
+    return s.run(argv), "check_results.py --regrade"
+
+
 def m_pause_marker_unbounded(s: Sandbox) -> tuple[int, str]:
     """Review 15, F6."""
     s.control(_th(s, "TheRateLimitMarkersAreBounded"))
@@ -1401,26 +1436,17 @@ MUTATIONS = [
     ("the harness's error text read as the agent's", m_api_error_text_counted_as_the_agents, False),
     ("a pause marker matched unbounded", m_pause_marker_unbounded, False),
     ("the caps unread on the ledger side", m_caps_unread_on_the_ledger_side, False),
-    ("the head system tree unchecked", m_head_system_tree_unchecked, False),
+    ("a gars sha differing from the freeze (the head system tree unchecked)", m_head_system_tree_unchecked, False),
+    ("a moved threshold after the freeze", m_moved_threshold_after_the_freeze, True),
+    ("a transcript whose session id does not match its row's commit", m_session_id_not_its_rows, False),
+    ("a row committed after its transcript's commit", m_row_committed_after_its_transcript, False),
+    ("a doctored results file re-graded", m_doctored_results_file_regraded, False),
     ("an in-scope read on the positive half read as an answer", m_scope_read_answered_on_a_decline, False),
 ]
 
 NOT_APPLICABLE = [
-    ("a moved threshold after the freeze",
-     "a threshold is pinned by the frozen file's own sha256, and nothing is pinned before the "
-     "freeze. check_results.py's default check is what catches it, and it already refuses today "
-     "because no file carries a sha yet"),
     ("a local transcript with no server log",
      "the local tier was dropped at gate 2, so no local take will exist to mutate"),
-    ("a transcript whose session id does not match its row's commit",
-     "no take has run before the freeze; check_take.py's binding is unit-tested instead"),
-    ("a row committed after its transcript's takes: commit",
-     "same reason: there is no takes: commit yet"),
-    ("a doctored results file re-graded",
-     "no results file exists before the freeze; the regrade path is driven end to end in a "
-     "scratch tree with synthetic takes"),
-    ("a gars sha differing from the freeze",
-     "the freeze has not happened, so there is no pinned sha to differ from"),
     ("a seed review report committed more than once",
      "the sandbox carries no history of review commits; TheSeedReviewIsCommittedOnce runs on this "
      "repository's own history and refuses a commit that lands no report"),

@@ -2229,6 +2229,116 @@ class ThePublishedAnalysisIsRegenerated(unittest.TestCase):
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertEqual(ANALYSIS_JSON.read_text(), out.stdout)
 
+class TheFrozenFileMovesOnlyByAmendment(unittest.TestCase):
+    """AMENDMENT 4, checklist line 12's "a moved threshold after the freeze". The pins covered the files
+    the frozen file names and not the frozen file, so a criterion edited after the freeze was refused by
+    nothing but a reader running git diff."""
+
+    def base(self):
+        return {"n": 3, "analysis_plan": {"holds": "all three"},
+                "pinned_files": [{"path": "a.py", "sha256": "A0"}, {"path": "b.py", "sha256": "B0"}],
+                "amendments": []}
+
+    def amended(self):
+        import copy
+        now = copy.deepcopy(self.base())
+        now["pinned_files"][0]["sha256"] = "A2"
+        now["amendments"] = [
+            {"n": 1, "files": [{"path": "a.py", "sha256_before": "A0", "sha256_after": "A1"}]},
+            {"n": 2, "files": [{"path": "a.py", "sha256_before": "A1", "sha256_after": "A2"}]}]
+        return now
+
+    def problems(self, frozen, now):
+        return gap_module("check_results").frozen_content_problems(frozen, now)
+
+    def test_a_recorded_chain_of_amendments_is_clean(self):
+        self.assertEqual(self.problems(self.base(), self.amended()), [])
+
+    def test_a_moved_criterion_is_refused(self):
+        now = self.amended()
+        now["n"] = 4
+        self.assertTrue(any("`n` differs from the freeze" in p for p in self.problems(self.base(), now)))
+
+    def test_a_pin_moved_with_no_amendment_is_refused(self):
+        now = self.base()
+        now["pinned_files"][1]["sha256"] = "B9"
+        self.assertTrue(any("no amendment records it" in p for p in self.problems(self.base(), now)))
+
+    def test_a_broken_chain_is_refused(self):
+        now = self.amended()
+        now["amendments"][1]["files"][0]["sha256_before"] = "AX"
+        self.assertTrue(any("sha256_before is not the pin it replaced" in p for p in self.problems(self.base(), now)))
+
+    def test_this_repositorys_frozen_file_moved_only_by_amendment(self):
+        cr = gap_module("check_results")
+        frozen, why = cr.frozen_bytes()
+        if frozen is None:
+            self.skipTest(why)
+        now = json.loads((HERE / "prereg.json").read_text())
+        self.assertEqual(cr.frozen_content_problems(frozen, now), [])
+
+
+class TheLedgerBindsEachTranscriptToItsRow(unittest.TestCase):
+    """AMENDMENT 4, checklist line 12's "a transcript whose session id does not match its row's commit" and
+    "a row committed after its transcript's commit". The ledger check refused both, and no test planted
+    either, so the refusal could be removed with every test green. A row committed after its transcript
+    is the same failure seen from the other side: the session id is derived from the row's commit, so a
+    later commit implies a different id than the transcript carries."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def problems(self, transcript_sid, row_commit="c0", session_id_for=None):
+        import contextlib
+        import io
+        import subprocess as sp
+        import types
+        takes = gap_module("takes")
+        cr = gap_module("check_results")
+        cr._check_take()
+        cr.HERE = self.tmp
+        cr.RESULTS = self.tmp / "results"
+        rows = [{"task": "scope-read", "half": "positive", "model": "claude-opus-5", "take": 1}]
+        d = self.tmp / "transcripts" / "scope-read" / "positive" / "claude-opus-5" / "1"
+        d.mkdir(parents=True)
+        (d / "transcript.jsonl").write_text(json.dumps({"type": "user", "sessionId": transcript_sid}) + "\n")
+        sid_for = session_id_for or takes.session_id_for
+        cr.takes_mod = types.SimpleNamespace(
+            load_rows=lambda: rows, row_commits=lambda: {0: row_commit},
+            attempts_by_session=lambda: {sid_for(row_commit): [("graded", d)]},
+            unattributed_attempts=lambda: [], session_id_for=sid_for)
+        tree = sp.run(["git", "-C", str(REPO), "rev-parse", "HEAD:gars"], capture_output=True, text=True).stdout.strip()
+        pre = {"n": 3, "pause_cap": 3, "rehearsal_cap": 3, "system_under_test": {"gars_tree_sha": tree},
+               "driver_decided_reasons": []}
+        cr.prereg = types.SimpleNamespace(load=lambda: pre, is_frozen=lambda: False, order=lambda s: {},
+                                          axis_of=lambda m: "claude")
+        cr.attempt_problems = lambda *a, **k: []
+        cr.is_shallow = lambda: False
+        with contextlib.redirect_stdout(io.StringIO()):
+            return cr.check_ledger()
+
+    def test_a_transcript_from_its_rows_session_is_bound(self):
+        takes = gap_module("takes")
+        got = self.problems(takes.session_id_for("c0"))
+        self.assertFalse(any("session id" in p for p in got), got)
+
+    def test_a_transcript_whose_session_id_is_not_its_rows_is_refused(self):
+        takes = gap_module("takes")
+        got = self.problems(takes.session_id_for("some-other-commit"))
+        self.assertTrue(any("is not uuid5(namespace" in p for p in got), got)
+
+    def test_a_row_committed_after_its_transcript_is_refused(self):
+        """The transcript was opened under the session id of the commit that existed then; the row that
+        claims it was committed later, at a different sha."""
+        takes = gap_module("takes")
+        got = self.problems(takes.session_id_for("the-commit-before"), row_commit="the-later-row-commit")
+        self.assertTrue(any("is not uuid5(namespace" in p for p in got), got)
+
+    def test_the_session_id_is_a_function_of_the_commit(self):
+        takes = gap_module("takes")
+        self.assertNotEqual(takes.session_id_for("the-commit-before"), takes.session_id_for("the-later-row-commit"))
+
 def gap_module(name: str):
     """A module of THIS study by path; the first study has files named run.py, drive.py and more."""
     import importlib.util

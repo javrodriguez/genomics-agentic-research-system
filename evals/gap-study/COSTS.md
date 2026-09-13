@@ -5,13 +5,13 @@ Every table below is written by `costs.py --write` from the raw transcripts and 
 Until 11 September 2026 this line said no number here was typed by hand, while the flag wrote nothing and the walk table had been typed.
 The notes quote measurements and say where each came from.
 
-**Dollars billed beyond the standing subscription: $0.**
+**Dollars billed beyond the standing subscription: $0, as the operator states it. The committed files do not evidence it take by take.**
 
-The evidence for that claim, rather than the claim alone:
+What the files show, and what they do not:
 
-- each take's recorded environment shows no API-key variable, so no per-token API billing path was
-  configured;
-- the subscription login is the only Claude credential, and a placeholder is the only local one;
+- the driver ran each Claude take with the operator's own shell environment plus the pre-registered isolation variables, and recorded no per-take environment, so no committed record shows that no API-key variable was set for a take (Ruling 34); until 13 September 2026 this list said each take's recorded environment showed it, and no such record exists;
+- no committed transcript or ledger records which credential a take's session used;
+- the local tier did not run, so no placeholder credential was used;
 - there is no `.env` under `evals/gap-study/`;
 - `grep -E "boto3|stripe|billing" evals/gap-study/*.py` returns nothing.
 

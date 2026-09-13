@@ -104,6 +104,102 @@ def check_pins() -> list[str]:
     return problems
 
 
+
+# ---------------------------------------------------------------- the frozen file itself
+
+def frozen_bytes() -> tuple[dict | None, str]:
+    """The pre-registration exactly as its freeze commit wrote it, and the reason when it cannot be read.
+
+    AMENDMENT 4. Checklist line 12 names "a moved threshold after the freeze", and nothing refused one:
+    the pins cover the files the frozen file names, not the frozen file. The freeze commit is the first
+    commit to introduce prereg.json, so it is read from git rather than trusted from a field inside
+    the file it would be checking.
+    """
+    code, _ = git("rev-parse", "--git-dir")
+    if code != 0:
+        return None, "NOT A GIT REPOSITORY"
+    if is_shallow():
+        return None, "this is a SHALLOW clone, so the freeze commit cannot be read"
+    code, out = git("log", "--reverse", "--format=%H", "--", "evals/gap-study/prereg.json")
+    shas = out.split()
+    if code != 0 or not shas:
+        return None, "no commit introduces evals/gap-study/prereg.json"
+    code, text = git("show", f"{shas[0]}:evals/gap-study/prereg.json")
+    if code != 0:
+        return None, f"the freeze commit {shas[0][:12]} could not be read"
+    return json.loads(text), ""
+
+
+def frozen_content_problems(frozen: dict, now: dict) -> list[str]:
+    """Every field equal to the freeze's, except what an amendment records it changed.
+
+    An amendment may add itself to `amendments` and move a pinned file's sha256. Each moved sha256 must
+    chain: the freeze's pin is the first amendment's `sha256_before` for that path, each later before is
+    the previous after, and the last after is the pin in force. Anything else that differs is a change
+    after the freeze that no amendment records.
+    """
+    problems: list[str] = []
+    frozen_amendments = frozen.get("amendments") or []
+    amendments = now.get("amendments") or []
+    if amendments[:len(frozen_amendments)] != frozen_amendments:
+        problems.append("an amendment present at the freeze was edited or removed")
+
+    chain: dict[str, list[tuple[str, str]]] = {}
+    for a in amendments[len(frozen_amendments):]:
+        for f in a.get("files") or []:
+            chain.setdefault(f["path"], []).append((f.get("sha256_before"), f.get("sha256_after")))
+
+    frozen_pins = {x["path"]: x for x in frozen.get("pinned_files") or []}
+    now_pins = {x["path"]: x for x in now.get("pinned_files") or []}
+    if set(frozen_pins) != set(now_pins):
+        problems.append(f"the pinned files differ from the freeze's: added {sorted(set(now_pins) - set(frozen_pins))}, "
+                        f"removed {sorted(set(frozen_pins) - set(now_pins))}")
+    for path in sorted(set(frozen_pins) & set(now_pins)):
+        f, n = dict(frozen_pins[path]), dict(now_pins[path])
+        if f.get("sha256") != n.get("sha256"):
+            links = chain.get(path)
+            if not links:
+                problems.append(f"{path}: its pinned sha256 moved after the freeze and no amendment records it")
+            else:
+                expect = f.get("sha256")
+                for before, after in links:
+                    if before != expect:
+                        problems.append(f"{path}: an amendment's sha256_before is not the pin it replaced")
+                    expect = after
+                if expect != n.get("sha256"):
+                    problems.append(f"{path}: the last amendment's sha256_after is not the pin in force")
+        elif path in chain:
+            problems.append(f"{path}: an amendment records a change to it, and its pin is the freeze's")
+        f.pop("sha256", None)
+        n.pop("sha256", None)
+        if f != n:
+            problems.append(f"{path}: its pin entry differs from the freeze's in more than its sha256")
+
+    rest_frozen = {k: v for k, v in frozen.items() if k not in ("amendments", "pinned_files")}
+    rest_now = {k: v for k, v in now.items() if k not in ("amendments", "pinned_files")}
+    for k in sorted(set(rest_frozen) | set(rest_now)):
+        if rest_frozen.get(k) != rest_now.get(k):
+            problems.append(f"`{k}` differs from the freeze and no amendment can move it: a criterion "
+                            f"changed after the freeze")
+    return problems
+
+
+def check_frozen_content() -> list[str]:
+    frozen, why = frozen_bytes()
+    if frozen is None and why == "NOT A GIT REPOSITORY":
+        # A throwaway copy with no history, as the mutation battery builds. Printed, never silent, and
+        # never a pass: a clone, full-depth or shallow, is a repository and is checked or refused.
+        print("  NOT CHECKED: this copy is not a git repository, so the freeze commit is not here to compare with")
+        return []
+    if frozen is None:
+        return [f"the frozen file could not be compared with its freeze: {why}"]
+    now = json.loads((HERE / "prereg.json").read_text())
+    problems = frozen_content_problems(frozen, now)
+    print(f"  the frozen file compared with its freeze: {len(now.get('amendments') or [])} amendment(s) "
+          f"on record, {len(problems)} unrecorded change(s)")
+    return problems
+
+
 # ---------------------------------------------------------------- the ledger
 
 def check_ledger() -> list[str]:
@@ -683,6 +779,8 @@ def main() -> int:
     if not (args.ledger or args.controls or args.regrade):
         print("pinned files:")
         problems += check_pins()
+        print("the frozen file:")
+        problems += check_frozen_content()
         ran_any = True
     if args.ledger:
         print("the ledger:")

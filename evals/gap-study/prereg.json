@@ -1905,13 +1905,13 @@
     {
       "path": "evals/gap-study/check_results.py",
       "git_blob_sha": "28ea348899a5cc75fbefd13f216c1414733c34aa",
-      "sha256": "e67142d1deade1076d3c0f3a7490d8a593074863253202b560e2e7db04b3040c",
+      "sha256": "851e086a1bbe27889e7d512083caae359f3b224f62a5fbcac2017fa4608b6efa",
       "uncommitted": false
     },
     {
       "path": "evals/gap-study/costs.py",
       "git_blob_sha": "a077cb26ac01d358fe29b8019111f0cedf19df26",
-      "sha256": "e139cbda63629312036650079a555d1731c670593be12bb77f8ec27cc8d06e39",
+      "sha256": "a48b23d797f17713fd6034a43f56e56d64a38fad43cc5ff781e1ddc22c6bc237",
       "uncommitted": false
     },
     {
@@ -1923,13 +1923,13 @@
     {
       "path": "evals/gap-study/test_harness.py",
       "git_blob_sha": "1dfcb38892de72a4795c22f58666ee0db07fb505",
-      "sha256": "cd53c41327806a474ab191fe473368a28aed349193c224eebaedb7f06b09441b",
+      "sha256": "99dffd0e33e0c63e347a92e5a9a11d069079c5d78053398b88ac9b2141973d90",
       "uncommitted": false
     },
     {
       "path": "evals/gap-study/mutations.py",
       "git_blob_sha": "ece092a25770e36b2d8ff86d79cdddeb5ba361ee",
-      "sha256": "c2827265b128d5fdac42779b92ad94c265fece0eb42c93bcbc948a3d03d252f5",
+      "sha256": "fd5e789b5d145f841f02dd483ad5c767ab31858fa2c2d1e8eef41f01e51b00c6",
       "uncommitted": false
     },
     {
@@ -2845,6 +2845,71 @@
           "path": "evals/gap-study/mutations.py",
           "sha256_before": "a7ad225c5dfda68a60fd9a01e30af1155e2dcb9101aba37349bbac2280a399bb",
           "sha256_after": "c2827265b128d5fdac42779b92ad94c265fece0eb42c93bcbc948a3d03d252f5"
+        }
+      ],
+      "note": "Published as an amendment rather than corrected in place: each file's pinned sha256 before this change is kept here beside the one now in force."
+    },
+    {
+      "n": 4,
+      "at": "2026-09-13T02:17:25+00:00",
+      "title": "the guards checklist line 12 names are applied, a moved criterion is refused, and the bill stops claiming evidence it does not have",
+      "why": "The final verifier's first report ruled line 12 FAIL: six of the mutations it names were listed not applicable with reasons written before any take existed. Five could apply once the takes ran. One had no check behind it at all: nothing compared the frozen file with its freeze, so a criterion edited after the freeze was refused only by a reader running git diff. The same report ruled line 13 FAIL, and reading why showed COSTS.md and costs.py claiming each take's recorded environment as evidence for the bill, when the driver recorded no per-take environment.",
+      "found_by": "the final verifier's first report, verification/2026-09-12-95c4923.md",
+      "no_take_had_run": false,
+      "takes_run_before_this_amendment": 108,
+      "criteria_unchanged": true,
+      "owner_ruling": "Ruling 33",
+      "what_changed": [
+        "check_results.py: its default run compares the frozen file with the commit that introduced it; only the amendments list and pinned sha256 values an amendment records may differ, and each moved sha256 must chain from the freeze's pin through every amendment to the pin in force. A shallow clone, or a repository without that commit, is refused; a copy that is not a git repository prints that it was not checked.",
+        "costs.py: its docstring and closing line say the $0 is the operator's statement and that no committed file records the environment or credential a take ran under.",
+        "test_harness.py: TheFrozenFileMovesOnlyByAmendment, including this repository's own frozen file against its freeze; TheLedgerBindsEachTranscriptToItsRow, which plants a transcript from another row's session and a row committed after its transcript.",
+        "mutations.py: four guards applied (a moved threshold after the freeze, a transcript whose session id is not its row's, a row committed after its transcript, a doctored results file re-graded), and the head-tree guard named as the checklist names it. A local transcript with no server log stays not applicable: the local tier was dropped at gate 2."
+      ],
+      "unpinned_correction": "COSTS.md's list of evidence for the $0 said each take's recorded environment showed no API-key variable; it is rewritten to what the files show, and says what it said before (Ruling 34).",
+      "before": {
+        "tests": "257 tests",
+        "mutations": "110 mutations, 10 listed not applicable"
+      },
+      "after": {
+        "tests": "266 tests, OK",
+        "mutations": "114 mutations, every one red when broken, 107 watched green first",
+        "in_a_fresh_clone_with_the_results_and_no_harness": "114 mutations, every one red when broken, 107 watched green first",
+        "evidence": [
+          "evals/gap-study/verification/amendment-4-battery.txt",
+          "evals/gap-study/verification/amendment-4-battery-clone.txt"
+        ]
+      },
+      "regrades": {
+        "side_by_side": "identical: no file that run.py, a grader or analyse.py reads was changed, and run.py --all rewrites each results file byte-identical.",
+        "results_sha256": {
+          "confounded-design.json": "d5322175fafd8e4f81c0b66880d53dfed8223c902234bc9e1bcc7418cb5679bb",
+          "number-fidelity.json": "2e8badc0a04b4336d77022ffee59ef6f080c005965eba4df710bee393d789dbd",
+          "plan-gate.json": "66571ef0c5c100347752bac10b39517c32f7f4a862d2a019a956d43f898bbd36",
+          "precondition-refusal.json": "6d4b57b23a7975c29221e10fd77d9cc640d1cd230571d97ff615dcb3c4a32d3b",
+          "scope-read.json": "be67807d16b282a62667c0094e718e5830e59ced28b9d901e19b6c05bab8e435",
+          "template-adherence.json": "8a4c28cc10046b52954f1af6044d00aa5f5f3f39534188a1b093af90fcb98d37"
+        }
+      },
+      "files": [
+        {
+          "path": "evals/gap-study/check_results.py",
+          "sha256_before": "e67142d1deade1076d3c0f3a7490d8a593074863253202b560e2e7db04b3040c",
+          "sha256_after": "851e086a1bbe27889e7d512083caae359f3b224f62a5fbcac2017fa4608b6efa"
+        },
+        {
+          "path": "evals/gap-study/costs.py",
+          "sha256_before": "e139cbda63629312036650079a555d1731c670593be12bb77f8ec27cc8d06e39",
+          "sha256_after": "a48b23d797f17713fd6034a43f56e56d64a38fad43cc5ff781e1ddc22c6bc237"
+        },
+        {
+          "path": "evals/gap-study/test_harness.py",
+          "sha256_before": "cd53c41327806a474ab191fe473368a28aed349193c224eebaedb7f06b09441b",
+          "sha256_after": "99dffd0e33e0c63e347a92e5a9a11d069079c5d78053398b88ac9b2141973d90"
+        },
+        {
+          "path": "evals/gap-study/mutations.py",
+          "sha256_before": "c2827265b128d5fdac42779b92ad94c265fece0eb42c93bcbc948a3d03d252f5",
+          "sha256_after": "fd5e789b5d145f841f02dd483ad5c767ab31858fa2c2d1e8eef41f01e51b00c6"
         }
       ],
       "note": "Published as an amendment rather than corrected in place: each file's pinned sha256 before this change is kept here beside the one now in force."

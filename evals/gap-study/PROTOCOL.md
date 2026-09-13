@@ -1068,3 +1068,52 @@ A follow-up pre-registration, with the `scope-read` control grader and the `plan
 **What it does not do by itself.**
 The push needs the `workflow` scope on the owner's GitHub token, which only the owner can grant.
 Until then this ruling and the three commits before it stay on this machine.
+
+### Ruling 33 — 2026-09-12 — the owner's word: a line passes as amended where a recorded ruling accounts for it
+
+The final verifier's first report (`verification/2026-09-12-95c4923.md`) ruled FAIL on lines 1, 2, 3, 4, 5, 8, 10, 12 and 13 against their own text.
+Several of those can never pass as written: the local tier was dropped at gate 2, line 10's baseline moved by Ruling 30, and the freeze commit and the Claude takes are in history as they are.
+So a literal all-pass cannot be reached, and the owner was asked how the study is declared done.
+
+The question put: "The final verifier can't return a literal ALL PASS: the dropped local tier, the moved line-10 baseline, a freeze commit pushed without its own CI run, and no per-take environment record on the Claude takes all fail the checklist's text permanently. How should the study be declared done?"
+The owner's answer, at 2026-09-12 22:03 EDT (2026-09-13T02:03:51Z): "Pass as amended (Recommended)", whose description read: keep the verifier's literal ruling on every line, and add a second ruling, PASS where a recorded ruling accounts for the failure; DONE when every line passes or is accounted for.
+
+**What that rules.**
+Each verifier keeps ruling every line against its own text, and publishes that ruling.
+Beside it, the verifier rules the line as amended, and may call it accounted for only by naming a ruling, an amendment or a record in the clone that accounts for the whole difference.
+The study is done when the last report shows every line as PASS or as accounted for, with no line failing for a reason no record accounts for.
+
+### Ruling 34 — 2026-09-12 — no take recorded its environment, and the bill's evidence said it did
+
+Checklist line 13 names the driver's per-take environment records as the evidence that no dollar was billed beyond the subscription.
+The driver ran each Claude take with the operator's own shell environment plus the pre-registered isolation variables, and recorded no per-take environment; no committed transcript or ledger records which credential a take's session used.
+The first verifier found this, and no ruling accounted for it.
+
+It cannot be recorded after the fact.
+What can be done is to stop claiming it: `COSTS.md` and `costs.py` said that each take's recorded environment evidenced the $0, and they are corrected to say that the $0 is the operator's statement and that no committed file evidences it take by take.
+That correction was published after the files had carried the claim since the takes were committed, and the corrected text says so.
+
+### Ruling 35 — 2026-09-12 — the freeze commit has no CI run of its own
+
+Checklist line 1 asks that the freeze commit's CI run be created before that commit's own date, on GitHub's clock.
+The freeze commit `71ff09e` was pushed together with the commits after it, so GitHub ran CI on the pushed head and never on the freeze commit itself.
+The first verifier found the push that carried it: its CI run was created before the earliest `take:` commit, which is the ordering the line exists to prove.
+History is not rewritten, so no run can be created for `71ff09e` now; the line is accounted for by that earlier run on the push that carried the freeze, and by this ruling.
+
+### Ruling 36 — 2026-09-12 — amendment 4: the guards line 12 names are applied, and a moved criterion is refused
+
+`verification/amendment-4.md` carries it in full, and `amendments[3]` in the frozen file carries it machine-readably.
+
+**A frozen file nothing compares with its freeze is frozen by convention.**
+The pins covered every file the frozen file names, and not the frozen file.
+Its default check now reads the freeze commit from git and refuses any difference no amendment records, including a pinned hash that does not chain through the amendments.
+
+**A refusal no test plants can be removed with every test green.**
+The ledger refused a transcript whose session id is not its row's; a test now plants one, and a second plants a row committed after its transcript.
+
+**Both regrades, side by side: identical.**
+
+The gate on the amended bytes: 266 tests OK; 114 mutations, each red when broken, 107 watched green first; in a fresh clone with the results and no harness, 114, each red.
+
+No criterion moved.
+No number moved.
