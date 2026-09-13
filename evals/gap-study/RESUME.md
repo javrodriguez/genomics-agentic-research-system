@@ -1,6 +1,6 @@
 # Where the Gap Study stands
 
-**12 September 2026. THE 108 TAKES ARE GRADED AND GATE 1 IS OPEN. Frozen, amended three times, no criterion moved. The results commit is local and waits for the repository owner's word. Spend $0.**
+**13 September 2026. THE GAP STUDY IS DONE, as the owner defined done in Ruling 33. Results published as graded, gate 1 closed (Ruling 32), four amendments, no criterion moved. The final verifier's report on `a463ed5` rules each checklist line passed or accounted for. Spend $0, as the operator states it (Ruling 34).**
 
 Every byte of this study is inside this repository.
 The pre-freeze reviews are under `reviews/` (2 to 11) and `verification/` (12 onward), with their dispositions beside them.
@@ -93,19 +93,23 @@ One other session's commit to `gars/` blocked the driver's pin mid-run; its auth
 **The published section is written, with four readings of the transcripts beside the cells they qualify.**
 They were read after grading by `observations.py` and move no count: `scope-read`'s control half scores an answer from context as incorrect; `plan-gate`'s fixture carries two assays its script never picks between; `claude-haiku-4-5-20251001` asked for permission at the wait point in 24 of its 35 stopped takes; and one of its `precondition-refusal` takes is labelled `did-not-reach` while it wrote the file the half probes for.
 
+**Gate 1 closed on the owner's word (Ruling 32), and everything was pushed.** CI is green at each pushed commit since, the first green since slice 41.
+
+**The final verifier, twice.** Its first report (`verification/2026-09-12-95c4923.md`) ruled nine lines FAIL. Two had no record behind them: the freeze commit has no CI run of its own, and no take recorded its environment, while `COSTS.md` claimed that record as evidence for the bill. The owner ruled how done is declared (Ruling 33); Rulings 34 and 35 record the two gaps, the bill's wording is corrected, and amendment 4 (Ruling 36) applies the guards line 12 names and refuses a criterion moved after the freeze. Its second report (`verification/2026-09-12-a463ed5.md`) rules each line passed or accounted for: AS AMENDED DONE.
+
 ## The next move
 
-1. **Gate 1 is the repository owner's.** The results, `analysis.json`, the section in `docs/EVALS.md`, the README link, `observations.py`, the gate brief and the controls record are one local commit. GitHub holds `a94178a`: amendments 2 and 3 and the results commit are local. The push of the amendments was refused because the signed-in token lacks the `workflow` scope amendment 3's change to `ci.yml` needs, which only the owner can grant. On the owner's word, a `ruling:` commit quoting it, then one push.
-2. After the push: CI green at HEAD, then the checklist's final pass by one fresh-context verifier from a fresh clone.
-3. Proposed as the next goal, not this one: a follow-up pre-registration with the instrument fixed before its results exist (the `scope-read` control grader and the `plan-gate` fixture).
+1. Nothing in this study. Its checklist is verified; retiring the goal is the owner's word.
+2. Proposed as the next goal: a follow-up pre-registration with the `scope-read` control grader and the `plan-gate` fixture fixed before its results exist.
+3. Gate 3 stays open: no comparative sentence about a model is published.
 
 ## State
 
-- 6 task pairs · 108 graded takes, 0 rehearsals, 0 pauses · 257 tests · 110 mutations, 103 watched green first · 23 reviews · 3 amendments
+- 6 task pairs · 108 graded takes, 0 rehearsals, 0 pauses · 266 tests · 114 mutations, 107 watched green first · 23 reviews · 4 amendments · 2 final verifier reports
 - cells: 36 RAN, 24 local cells not run (dropped at gate 2) · predictions scored 18: blind 6 right of 17, informed 0 right of 1
 - `gars/` and the first study unchanged by this work
-- Rulings 1–31 in `PROTOCOL.md`
-- Ten mutations still carry not-applicable reasons written before any take existed; several could apply now (amendment 2 records it)
+- Rulings 1–36 in `PROTOCOL.md`
+- Five mutations stay not applicable with their reasons; none of them is one checklist line 12 names except the local one, which the dropped tier accounts for
 
 ## Carried follow-ups, most valuable first
 
