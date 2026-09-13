@@ -19,11 +19,13 @@ Deliberately conservative: every deny below is an action NO contract ever instru
 positive would block a legitimate stage step, which is worse than a miss -- misses are still
 covered by prose and by 0444.
 
-Two shapes are refused even though they are not a named write, because they are exactly the
-shapes a bypass takes and no contract instructs either (decision 0042): a call the guard cannot
-read (not a JSON object, or a crash inside the checks) -- a hook that crashes must never become
-a hook that allows -- and a write the scanner cannot see that names a protected path (inline
-interpreter code, or a command shlex cannot parse).
+Decision 0042 adds two refusals of calls that are not a named write, because they are shapes a
+bypass takes and no contract instructs either: a call the guard cannot read (not a JSON object,
+or anything raising inside the hook) -- a hook that crashes must never become a hook that
+allows -- and, for the SPELLINGS LISTED BELOW ONLY, a write the scanner cannot see that names a
+protected path (a shell's -c string, `-c`/`-e` inline interpreter code, an unparseable
+command). This is a token scan, not a sandbox: other spellings of the same writes still pass,
+and 0042 lists them. The durable fix is a typed tool surface (spec R-092), not more patterns.
 
 Runs on stock python 3.6.8, stdlib only, like every `_system/` helper.
 """
@@ -187,10 +189,12 @@ def bash_write_targets(command):
         if tok.startswith((">", ">>")) and len(tok) > 1 and not tok.startswith(">&"):
             targets.append(tok.lstrip(">")); i += 1; continue
         if tok == "tee":
+            # Skip flags rather than stop at them: `tee -a FILE` writes FILE (decision 0042).
             j = i + 1
-            while j < len(tokens) and not tokens[j].startswith("-") \
-                    and tokens[j] not in ("|", ";", "&&", "||"):
-                targets.append(tokens[j]); j += 1
+            while j < len(tokens) and tokens[j] not in SEPARATORS:
+                if not tokens[j].startswith("-"):
+                    targets.append(tokens[j])
+                j += 1
             i = j; continue
         if tok == "rm":
             for arg in tokens[i + 1:]:
@@ -200,14 +204,9 @@ def bash_write_targets(command):
                     targets.append(arg)
             i += 1; continue
         if tok in ("mv", "cp"):
-            args = []
-            for arg in tokens[i + 1:]:
-                if arg in ("|", ";", "&&", "||"):
-                    break
-                if not arg.startswith("-"):
-                    args.append(arg)
+            args = operands(tokens, i)
             if len(args) >= 2:
-                targets.append(args[-1])
+                targets.extend(destinations(args, sources_too=(tok == "mv")))
             i += 1; continue
         if tok == "sed":
             rest = tokens[i + 1:]
@@ -219,34 +218,52 @@ def bash_write_targets(command):
                         targets.append(arg)
                         break
             i += 1; continue
-        if tok == "dd":
+        # The verbs added by decision 0042 count only in command position, so a read that
+        # merely mentions one (`grep chmod _system/x`) is not taken for a write.
+        at_command = i == 0 or tokens[i - 1] in SEPARATORS
+        if tok == "dd" and at_command:
             for arg in tokens[i + 1:]:
                 if arg in SEPARATORS:
                     break
                 if arg.startswith("of="):
                     targets.append(arg[3:])
             i += 1; continue
-        if tok in ("ln", "install"):
-            args = []
-            for arg in tokens[i + 1:]:
-                if arg in SEPARATORS:
-                    break
-                if not arg.startswith("-"):
-                    args.append(arg)
+        if tok in ("ln", "install") and at_command:
+            args = operands(tokens, i)
             if len(args) >= 2:
-                targets.append(args[-1])
+                targets.extend(destinations(args))
             i += 1; continue
-        if tok in ("touch", "truncate", "chmod", "chown"):
+        if tok in ("touch", "truncate", "chmod", "chown") and at_command:
             # chmod/chown take a mode or owner first and truncate -s a size: those operands
             # are listed too, and are harmless -- they never resolve to a protected path.
-            for arg in tokens[i + 1:]:
-                if arg in SEPARATORS:
-                    break
-                if not arg.startswith("-"):
-                    targets.append(arg)
+            targets.extend(operands(tokens, i))
             i += 1; continue
         i += 1
     return targets
+
+
+def operands(tokens, i):
+    """The non-flag arguments of the command at tokens[i], up to the next separator."""
+    found = []
+    for arg in tokens[i + 1:]:
+        if arg in SEPARATORS:
+            break
+        if not arg.startswith("-"):
+            found.append(arg)
+    return found
+
+
+def destinations(args, sources_too=False):
+    """Where cp/mv/ln/install write: the last operand and, in case it is a directory, each
+    source's basename inside it -- so `cp PLAN.md.approved <dir>/` is seen (decision 0042).
+    `mv` also removes its sources, so they are writes too."""
+    dest = args[-1]
+    found = [dest]
+    for src in args[:-1]:
+        found.append(dest.rstrip("/") + "/" + os.path.basename(src.rstrip("/")))
+        if sources_too:
+            found.append(src)
+    return found
 
 
 UNREADABLE = ("Blocked: the guard could not read this tool call, so it cannot tell whether the "
@@ -309,7 +326,9 @@ def check_bash(tool_input, root, cwd, depth=0):
         if rel == "projects/_index.md":
             continue  # build_projects_index.sh legitimately redirects into it
         for prefix in PROTECTED_PREFIXES:
-            if rel.startswith(prefix):
+            # `rel + "/" == prefix` catches the directory itself (`chmod -R a+w _system`,
+            # `cp x _system/`): normpath has already dropped any trailing slash.
+            if rel.startswith(prefix) or rel + "/" == prefix:
                 deny("Blocked: the command writes to %s, which is part of the GARS template "
                      "(updated only by `git pull`). A workspace session never modifies "
                      "_system/, _references/, _templates/ or .claude/. See CLAUDE.md." % rel)
@@ -325,18 +344,21 @@ def check_bash(tool_input, root, cwd, depth=0):
 
 
 def main():
+    # Everything that can raise sits inside the try -- reading stdin, a payload nested deep
+    # enough to exhaust the JSON parser, a working directory that no longer exists -- because
+    # the harness treats any exit other than 2 as "allow" (decision 0042).
     try:
-        payload = json.loads(sys.stdin.read())
-    except ValueError:
-        payload = None
-    if not isinstance(payload, dict) or not isinstance(payload.get("tool_input") or {}, dict):
-        deny(UNREADABLE)
-    tool = payload.get("tool_name") or ""
-    tool_input = payload.get("tool_input") or {}
-    cwd = payload.get("cwd") or ""
-    root = workspace_root()
-
-    try:
+        try:
+            payload = json.loads(sys.stdin.read())
+        except ValueError:
+            payload = None
+        if not isinstance(payload, dict) \
+                or not isinstance(payload.get("tool_input") or {}, dict):
+            deny(UNREADABLE)
+        tool = payload.get("tool_name") or ""
+        tool_input = payload.get("tool_input") or {}
+        cwd = payload.get("cwd") or ""
+        root = workspace_root()
         if tool in WRITE_TOOLS:
             check_write_tool(tool_input, root, cwd)
         elif tool == "Bash":
@@ -345,7 +367,7 @@ def main():
         deny("Blocked: the guard failed while checking this call (%s: %s), so it cannot tell "
              "whether the call is safe. A call it cannot judge is refused (decision 0042). "
              "Report it: this is a defect in _system/guard_hook.py."
-             % (type(exc).__name__, exc))
+             % (type(exc).__name__, str(exc)[:200]))
     sys.exit(0)
 
 

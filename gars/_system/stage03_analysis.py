@@ -203,9 +203,12 @@ def approval_holds(plan_path, record_path):
         return False, "there is no %s beside it" % APPROVAL_RECORD
     try:
         expected = json.loads(record_path.read_text(encoding="utf-8"))["plan_sha256"]
-    except (ValueError, KeyError, TypeError):
+    except (OSError, ValueError, KeyError, TypeError):
         return False, "%s is unreadable" % APPROVAL_RECORD
-    actual = hashlib.sha256(plan_path.read_bytes()).hexdigest()
+    try:
+        actual = hashlib.sha256(plan_path.read_bytes()).hexdigest()
+    except OSError:
+        return False, "PLAN.md is unreadable"
     if actual != expected:
         return False, ("PLAN.md changed after approval (sha256 now %s, approved %s)"
                        % (actual[:12], str(expected)[:12]))
@@ -228,7 +231,7 @@ def cmd_approve(args, workspace):
     text = plan_path.read_text(encoding="utf-8")
     record_path = adir / APPROVAL_RECORD
 
-    if "Status: APPROVED" in text:
+    if re.search(r"^Status: APPROVED", text, re.M):
         holds, why = approval_holds(plan_path, record_path)
         if holds:
             result["ok"] = True
@@ -238,6 +241,13 @@ def cmd_approve(args, workspace):
                            "and its record together, so either this stamp was not written by "
                            "`approve` or the plan changed after approval. A change of mind is a "
                            "new analysis: run `create` again (decision 0042)." % why)
+        return emit(result, EXIT_REFUSED)
+    if record_path.exists():
+        # The plan was approved once and has since been set back to DRAFT. Re-approving would
+        # silently re-bind the record to an edited plan; approval is once per analysis.
+        result["error"] = ("%s already exists for this analysis, but PLAN.md is no longer "
+                           "stamped. Approval happens once per analysis; a change of mind is a "
+                           "new analysis: run `create` again (decision 0042)." % APPROVAL_RECORD)
         return emit(result, EXIT_REFUSED)
 
     n_fill = text.count(FILL)
