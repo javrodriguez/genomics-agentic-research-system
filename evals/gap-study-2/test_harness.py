@@ -17,7 +17,10 @@ No model is called. stdlib only.
 
 from __future__ import annotations
 
+import contextlib
+import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -28,12 +31,15 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
-# Round 2, CP0: this study's own directory goes BEFORE evals/ on the path. The first study has files
-# of the same names (check_take.py, check_results.py, drive.py, run.py, freeze.py), and with evals/
-# first a plain import returned the first study's module.
-sys.path.insert(0, str(REPO / "evals"))
-sys.path.insert(0, str(HERE))
+# Round 2: this study's own directory FIRST, its graders second, and the first study's evals/ only
+# APPENDED, for `transcript`, which this study does not carry. The first study has files of the same
+# names (check_take.py, check_results.py, drive.py, run.py, freeze.py), and with evals/ first a plain
+# import returned the first study's module. CP0 moved this study ahead of evals/; CP1 stops putting
+# evals/ at the front at all, so no later insert can leave it ahead.
+if str(REPO / "evals") not in sys.path:
+    sys.path.append(str(REPO / "evals"))
 sys.path.insert(0, str(HERE / "graders"))
+sys.path.insert(0, str(HERE))
 
 import study  # noqa: E402
 import labels  # noqa: E402
@@ -43,6 +49,125 @@ import precondition_refusal  # noqa: E402
 import prereg  # noqa: E402
 import scope_read  # noqa: E402
 import template_adherence  # noqa: E402
+
+
+# ---------------------------------------------------------------------------------------------------
+# ROUND 2, CP1. The tests own their fixtures, and the suite reads no live state.
+#
+# Round 1's suite read the study's own walks, rehearsals, cost table and history. Each was empty when the
+# test reading it was written and filled as the run went on (Ruling 29), and a test that reads where takes
+# land measures whatever landed there. Every such read now goes to test-fixtures/, a small synthetic tree
+# the tests own; or to round 1's committed files, read as data through study.ROUND1; or to a throwaway
+# repository the test builds. What can only be checked once something is published lives in a `...Live`
+# class, which says on every run why it is not yet applicable.
+
+FIXTURES = HERE / "test-fixtures"
+FIXTURE_STUDY = FIXTURES / "study"
+FIXTURE_WALKS = FIXTURE_STUDY / "walks"
+FIXTURE_CHECKOUT = FIXTURES / "checkout"
+
+# Where a take, a result or the published section lands. TheSuiteNeverReadsLiveState re-runs the suite
+# with every one of these poisoned.
+LIVE_STATE = tuple([HERE / name for name in ("takes.json", "transcripts", "rehearsals", "pauses", "walks",
+                                             "results", "analysis.json", "COSTS.md", "prereg.json")]
+                   + [HERE / "verification" / "gate-1-brief.md", HERE / "verification" / "run-tree-smoke",
+                      REPO / "docs" / "EVALS.md"])
+POISON_ENV = "GAP_STUDY_2_POISON_LIVE_STATE"
+LIVE_READ_MARK = "LIVE-STATE READ:"
+
+
+class LiveStateRead(RuntimeError):
+    """A read of live state by a run that was told to read none."""
+
+
+def _live_path(raw) -> Path | None:
+    if isinstance(raw, bytes):
+        raw = os.fsdecode(raw)
+    if not isinstance(raw, (str, os.PathLike)):
+        return None
+    p = Path(os.path.abspath(os.fspath(raw)))
+    for root in LIVE_STATE:
+        if p == root or root in p.parents:
+            return p
+    return None
+
+
+def poison_live_state() -> None:
+    """Every open, directory scan or listing under LIVE_STATE is printed, then refused.
+
+    An audit hook rather than a repointed constant: the modules here build these paths inline from their
+    own HERE (costs.collect, takes.attempts_by_session, run.rehearsals_on_disk), and a constant repointed in
+    one loaded copy of a module is not repointed in the next copy a test loads. The line is printed before
+    the refusal, so a read that library code catches and swallows is still seen by the run that asked.
+    """
+    def hook(event, args):
+        if event not in ("open", "os.scandir", "os.listdir") or not args:
+            return
+        p = _live_path(args[0])
+        if p is not None:
+            sys.stderr.write(f"{LIVE_READ_MARK} {event} {p}\n")
+            raise LiveStateRead(f"{event} {p}")
+    sys.addaudithook(hook)
+
+
+if os.environ.get(POISON_ENV) == "1":
+    poison_live_state()
+
+
+@contextlib.contextmanager
+def injected_prereg(pre: dict):
+    """The pre-registration every module in this process reads, replaced for the block and put back."""
+    saved = prereg._cache
+    prereg._cache = pre
+    try:
+        yield pre
+    finally:
+        prereg._cache = saved
+
+
+def fixture_check_take():
+    """check_take with its pinned tree pointed at the fixture checkout the synthetic walks were built in.
+
+    A walk records the instruction file it loaded, and the checker binds that content to the pinned tree's
+    bytes. Bound to this repository's gars/CLAUDE.md, a fixture would go red on every edit of that file;
+    bound to test-fixtures/checkout/, it is red only when the checker changes.
+    """
+    mod = gap_check_take()
+    mod.REPO = FIXTURE_CHECKOUT
+    return mod
+
+
+class ScratchRepo:
+    """A throwaway git repository a test builds, so no test reads this repository's own history."""
+
+    def __init__(self, test: unittest.TestCase):
+        self.root = Path(tempfile.mkdtemp())
+        test.addCleanup(shutil.rmtree, self.root, True)
+        subprocess.run(["git", "init", "-q", str(self.root)], check=True, capture_output=True)
+
+    def git(self, *args: str) -> subprocess.CompletedProcess:
+        return subprocess.run(["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t",
+                               "-c", "commit.gpgsign=false", *args], capture_output=True, text=True)
+
+    def commit(self, message: str) -> str:
+        self.git("add", "-A")
+        r = self.git("commit", "-q", "--allow-empty", "-m", message)
+        if r.returncode != 0:
+            raise AssertionError(f"the scratch commit failed: {r.stderr.strip()}")
+        return self.git("rev-parse", "HEAD").stdout.strip()
+
+
+def gars_repo(test: unittest.TestCase) -> tuple[Path, str]:
+    """A throwaway repository whose HEAD carries a gars/ tree, and that tree's sha.
+
+    The ledger check reads HEAD:gars. Read from this repository, the tests went red the day gars/ moved
+    (Ruling 38) and passed or failed on a tree no test chose.
+    """
+    repo = ScratchRepo(test)
+    (repo.root / "gars").mkdir()
+    (repo.root / "gars" / "CLAUDE.md").write_text("the system under test\n")
+    repo.commit("checkout")
+    return repo.root, repo.git("rev-parse", "HEAD:gars").stdout.strip()
 
 
 def turns(*items) -> list[dict]:
@@ -321,9 +446,10 @@ class CarriedGraderReproducesTheFirstStudy(unittest.TestCase):
         return sorted((REPO / "evals" / "transcripts").rglob("transcript.jsonl"))
 
     def test_both_graders_agree_on_every_committed_transcript(self):
-        sys.path.insert(0, str(REPO / "evals" / "graders"))
+        # Round 2, CP1: confounded_design loads the first study's classifier from its own file and registers
+        # it under its own name, so nothing here puts evals/graders on the path ahead of this study.
         import confounded_design as mine
-        import confounded_refusal as theirs
+        theirs = sys.modules["confounded_refusal"]
         import transcript as tx
         spec = prereg.task("confounded-design")
 
@@ -343,9 +469,8 @@ class CarriedGraderReproducesTheFirstStudy(unittest.TestCase):
                 f"two are comparable.")
 
     def test_the_reach_turn_is_imported_not_restated(self):
-        sys.path.insert(0, str(REPO / "evals" / "graders"))
         import confounded_design as mine
-        import confounded_refusal as theirs
+        theirs = sys.modules["confounded_refusal"]
         self.assertEqual(mine.ANSWER_FROM_TURN, theirs.ANSWER_FROM_TURN,
                          "a copied reach turn drifts; it must be the first study's own value")
 
@@ -360,24 +485,72 @@ class CaseSuites(unittest.TestCase):
     The suite has already earned its place: it showed every one of scope-read's eight messages
     grading CORRECT on both halves, which meant an agent that did nothing at all passed the
     control and the pair could only fail one way.
+
+    ROUND 2, CP1. The suites were carried byte-identical from round 1 (Decision 7), and the walks they were
+    built from are round 1's, so those walks are read as data, through a path (study.ROUND1). This study's
+    own walks do not exist before CP3, and reading them made every check here measure an empty folder.
+    CaseSuitesOnOwnedFixtures drives the same checks on a synthetic walk and its suite, and shows each fail.
     """
 
-    def suites(self):
+    CASES = HERE / "cases"
+    WALKS = study.ROUND1 / "walks"
+    TASKS: tuple | None = None   # None: every task with a grader
+
+    def setUp(self):
         import build_cases
-        out = []
-        for f in sorted((HERE / "cases").glob("*.json")):
-            out.append(json.loads(f.read_text()))
-        return out
+        self.bc = build_cases
+        self.assertTrue(self.WALKS.is_dir(), f"{self.WALKS} is not on disk, so these checks would read nothing")
+        saved = build_cases.WALKS
+        build_cases.WALKS = self.WALKS
+        self.addCleanup(setattr, build_cases, "WALKS", saved)
+
+    def suites(self, cases: Path | None = None) -> list[dict]:
+        return [json.loads(f.read_text()) for f in sorted((cases or self.CASES).glob("*.json"))]
+
+    def tasks(self) -> list[str]:
+        return [t["id"] for t in prereg.load()["tasks"]
+                if self.bc.grader_for(t["id"]) is not None and (self.TASKS is None or t["id"] in self.TASKS)]
+
+    def missing_messages(self, cases: Path | None = None) -> tuple[int, list[str]]:
+        """(walk messages read, each one its task's suite does not hold)."""
+        checked, missing = 0, []
+        for task in self.tasks():
+            f = (cases or self.CASES) / f"{task}.json"
+            have = {c["sha256"] for c in json.loads(f.read_text())["cases"]} if f.is_file() else set()
+            for m in self.bc.messages_for(task):
+                checked += 1
+                if m["sha256"] not in have:
+                    missing.append(f"{task}: {m['walk']} message {m['message_index']} is not in the case "
+                                   f"suite, so its grader has never been shown it")
+        return checked, missing
+
+    def moved_cases(self, cases: Path | None = None) -> tuple[int, list[str]]:
+        """(labels compared, each recorded case its walk or its grader no longer agrees with)."""
+        checked, moved = 0, []
+        for d in self.suites(cases):
+            if self.TASKS is not None and d["task"] not in self.TASKS:
+                continue
+            msgs = {m["sha256"]: m for m in self.bc.messages_for(d["task"])}
+            for c in d["cases"]:
+                m = msgs.get(c["sha256"])
+                if m is None:
+                    moved.append(f"{d['task']}: a recorded case is not in any committed walk any more. A "
+                                 f"case is bound to the message's bytes, so this means the walk changed.")
+                    continue
+                for half in ("positive", "control"):
+                    got = self.bc.label_of(d["task"], half, m)
+                    checked += 1
+                    if got["label"] != c["graded"][half]["label"]:
+                        moved.append(f"{d['task']} {c['walk']} #{c['message_index']} {half}: the grader now "
+                                     f"says {got['label']!r} where the suite recorded "
+                                     f"{c['graded'][half]['label']!r}")
+        return checked, moved
 
     def test_there_is_a_suite_for_every_task_with_a_grader(self):
-        import build_cases
         have = {d["task"] for d in self.suites()}
-        for t in prereg.load()["tasks"]:
-            if build_cases.grader_for(t["id"]) is None:
-                continue
-            self.assertIn(t["id"], have,
-                          f"{t['id']} has a grader and no case suite; its grader has never met a "
-                          f"real agent message")
+        for t in self.tasks():
+            self.assertIn(t, have, f"{t} has a grader and no case suite; its grader has never met a real "
+                                   f"agent message")
 
     def test_every_case_is_hand_labelled(self):
         n = 0
@@ -398,40 +571,45 @@ class CaseSuites(unittest.TestCase):
         recorded. Nothing read it inward, so a walk committed after its suite was built would leave
         its messages out and every test would stay green.
         """
-        import build_cases
-        checked = 0
-        for task in prereg.load()["tasks"]:
-            if build_cases.grader_for(task["id"]) is None:
-                continue
-            f = HERE / "cases" / f"{task['id']}.json"
-            have = ({c["sha256"] for c in json.loads(f.read_text())["cases"]}
-                    if f.is_file() else set())
-            for m in build_cases.messages_for(task["id"]):
-                checked += 1
-                self.assertIn(m["sha256"], have,
-                              f"{task['id']}: {m['walk']} message {m['message_index']} is not in "
-                              f"the case suite, so its grader has never been shown it")
+        checked, missing = self.missing_messages()
         self.assertGreater(checked, 0, "no walk message was read; that is not a pass")
+        self.assertEqual(missing, [])
 
     def test_every_case_still_grades_to_its_recorded_label(self):
-        import build_cases
-        checked = 0
-        for d in self.suites():
-            msgs = {m["sha256"]: m for m in build_cases.messages_for(d["task"])}
-            for c in d["cases"]:
-                m = msgs.get(c["sha256"])
-                self.assertIsNotNone(
-                    m, f"{d['task']}: a recorded case is not in any committed walk any more. A "
-                       f"case is bound to the message's bytes, so this means the walk changed.")
-                for half in ("positive", "control"):
-                    got = build_cases.label_of(d["task"], half, m)
-                    self.assertEqual(
-                        got["label"], c["graded"][half]["label"],
-                        f"{d['task']} {c['walk']} #{c['message_index']} {half}: the grader now "
-                        f"says {got['label']!r} where the suite recorded "
-                        f"{c['graded'][half]['label']!r}")
-                    checked += 1
-        self.assertGreater(checked, 0)
+        checked, moved = self.moved_cases()
+        self.assertEqual(moved, [])
+        self.assertGreater(checked, 0, "no label was compared; that is not a pass")
+
+
+class CaseSuitesOnOwnedFixtures(CaseSuites):
+    """The same checks on a synthetic walk and the suite built from it, each shown failing."""
+
+    CASES = FIXTURES / "cases"
+    WALKS = FIXTURE_WALKS
+    TASKS = ("number-fidelity",)
+
+    def edited_suite(self, edit) -> Path:
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        d = json.loads((self.CASES / "number-fidelity.json").read_text())
+        edit(d)
+        (tmp / "number-fidelity.json").write_text(json.dumps(d))
+        return tmp
+
+    def test_a_walk_message_left_out_of_its_suite_is_found(self):
+        self.assertEqual(self.missing_messages()[1], [], "the fixture suite is not whole before the edit")
+        self.assertTrue(self.missing_messages(self.edited_suite(lambda d: d["cases"].pop()))[1])
+
+    def test_a_flipped_label_is_found(self):
+        def flip(d):
+            g = d["cases"][0]["graded"]["positive"]
+            g["label"] = "corrected" if g["label"] != "corrected" else "agreed"
+        self.assertTrue(self.moved_cases(self.edited_suite(flip))[1])
+
+    def test_a_case_no_walk_carries_is_found(self):
+        def orphan(d):
+            d["cases"][0]["sha256"] = "0" * 64
+        self.assertTrue(self.moved_cases(self.edited_suite(orphan))[1])
 
 
 class EveryOperatorLineRenders(unittest.TestCase):
@@ -864,11 +1042,27 @@ class Analysis(unittest.TestCase):
                 self.assertEqual(p["outcome"], "not run")
 
     def test_a_dropped_model_is_never_scored(self):
-        self._write("number-fidelity", "claude-opus-5", "RAN", 3, "RAN", 3)
-        out = self.analyse.analyse()
-        for p in out["predictions"]:
-            if p["model"] in prereg.load()["local_models"]:
-                self.assertFalse(p["scored"])
+        """ROUND 2, CP1. Round 1 found its dropped models under `local_models`, a key this draft does not
+        have (amendment A5), so the draft is injected: one model marked not run, with a prediction on it."""
+        import copy
+        dropped = "claude-dropped-for-this-test"
+        pre = copy.deepcopy(prereg.load())
+        pre["models"] = list(pre["models"]) + [dropped]
+        pre["model_status"] = {**(pre.get("model_status") or {}),
+                               dropped: {"runs": False, "not_run_reason": "dropped for this test"}}
+        pre["predictions"] = list(pre["predictions"]) + [
+            {"task": "number-fidelity", "model": dropped, "predicted": "holds", "basis": "blind",
+             "statement": "predicted holds"}]
+        with injected_prereg(pre):
+            self._write("number-fidelity", "claude-opus-5", "RAN", 3, "RAN", 3)
+            out = self.analyse.analyse()
+        mine = [p for p in out["predictions"] if p["model"] == dropped]
+        self.assertTrue(mine, "no prediction names the dropped model; this measured nothing")
+        for p in mine:
+            self.assertFalse(p["scored"])
+            self.assertEqual(p["outcome"], "not run")
+        self.assertTrue(any(p["scored"] for p in out["predictions"]),
+                        "nothing was scored at all, so not scoring the dropped model shows nothing")
 
 
 class ReservedLabelsReachGraders(unittest.TestCase):
@@ -987,8 +1181,10 @@ class TheLeakCheckReadsEveryChannel(unittest.TestCase):
         import re
         check_take = gap_check_take()
         pre = prereg.load()
+        # ROUND 2, CP1: the walks are fixtures the tests own. One was driven before the built checkout
+        # existed, so its git status names the study, as round 1's first walks did.
         names = ("gap-study", "gap study", "prereg")
-        walks = sorted((HERE / "walks").glob("*/*/transcript.jsonl"))
+        walks = sorted(FIXTURE_WALKS.glob("*/*/transcript.jsonl"))
         self.assertTrue(walks, "no walk was read; this test measured nothing")
         named_any = False
         for w in walks:
@@ -1010,14 +1206,25 @@ class TheLeakCheckReadsEveryChannel(unittest.TestCase):
                             f"{sorted(expected)} and the guard reported {sorted(got)}")
         self.assertTrue(named_any, "no walk's git status named the study, so this measured nothing")
 
+    PRIVATE_MARKS = ("MEMORY.md - Long-Term Memory", "USER.md - About You", "@gmail.com")
+
+    def private_material(self, path: Path) -> list[str]:
+        body = path.read_text(errors="replace")
+        return [m for m in self.PRIVATE_MARKS if m in body]
+
     def test_no_published_walk_carries_the_operator_private_material(self):
-        marks = ["MEMORY.md - Long-Term Memory", "USER.md - About You", "@gmail.com"]
-        walks = sorted((HERE / "walks").glob("*/*/transcript.jsonl"))
+        walks = sorted(FIXTURE_WALKS.glob("*/*/transcript.jsonl"))
         self.assertTrue(walks, "no walk was read; this test measured nothing")
         for w in walks:
-            body = w.read_text(errors="replace")
-            for m in marks:
-                self.assertNotIn(m, body, f"{w.name} still carries {m!r}")
+            self.assertEqual(self.private_material(w), [], f"{w.parent} still carries private material")
+        # the negative control: the same sweep over a copy that loaded a private file
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        planted = tmp / "transcript.jsonl"
+        planted.write_text(walks[0].read_text() + json.dumps(
+            {"type": "attachment", "attachment": {"type": "instructions",
+                                                  "files": [{"content": "# USER.md - About You"}]}}) + "\n")
+        self.assertEqual(self.private_material(planted), ["USER.md - About You"])
 
 
 
@@ -1082,9 +1289,9 @@ class TheTranscriptIsPublishedAsRuled(unittest.TestCase):
 
     @staticmethod
     def _published_files(name: str) -> list[Path]:
-        return (sorted(HERE.glob(f"walks/*/*/{name}"))
-                + sorted(HERE.glob(f"verification/run-tree-smoke/*/{name}"))
-                + sorted(HERE.glob(f"transcripts/**/{name}")))
+        # ROUND 2, CP1: the published walks are fixtures the tests own. The study's own walks, smoke and
+        # transcripts are checked by check_take.py and check_results.py when they exist, not read here.
+        return sorted(FIXTURE_STUDY.glob(f"walks/*/*/{name}"))
 
     def test_publishing_removes_the_email_and_nothing_a_grader_reads(self):
         import hashlib
@@ -1139,7 +1346,7 @@ class TheTranscriptIsPublishedAsRuled(unittest.TestCase):
             self.assertEqual([], check_take.published_email_problems(f), f"{f.parent}")
 
     def test_a_walk_driven_in_a_built_checkout_has_a_scrub_record(self):
-        ledgers = [p for p in sorted(HERE.glob("walks/*/*/driver-ledger.json"))
+        ledgers = [p for p in sorted(FIXTURE_STUDY.glob("walks/*/*/driver-ledger.json"))
                    if "run_tree_built_from" in json.loads(p.read_text())]
         self.assertTrue(ledgers, "no walk was driven in a built checkout; this test measured nothing")
         for p in ledgers:
@@ -1599,7 +1806,9 @@ class LineCountsAreCountedNotWritten(unittest.TestCase):
                                            f"by hand and the script has moved")
 
 
-WALK_CD_1 = HERE / "walks" / "confounded-design" / "1"
+# ROUND 2, CP1: a synthetic walk shaped as round 1's walk 1 of confounded-design was: stopped at turn 4, with
+# a harness notification inside a headless turn and the harness's auto-memory section in its prompt.
+WALK_CD_1 = FIXTURE_WALKS / "confounded-design" / "1"
 
 
 class TheCheckerReadsOperatorTurnsNotHarnessRecords(unittest.TestCase):
@@ -1608,8 +1817,7 @@ class TheCheckerReadsOperatorTurnsNotHarnessRecords(unittest.TestCase):
 
     def setUp(self):
         self.path = WALK_CD_1 / "transcript.jsonl"
-        if not self.path.is_file():
-            self.skipTest("walk 1 of confounded-design is not on disk")
+        self.assertTrue(self.path.is_file(), "the confounded-design walk fixture is missing")
         self.ct = gap_check_take()
 
     def test_the_notification_is_the_harness_and_the_lines_are_the_ledgers(self):
@@ -1632,7 +1840,7 @@ class TheCheckerReadsOperatorTurnsNotHarnessRecords(unittest.TestCase):
         import transcript as tx
         pre = prereg.load()
         n = 0
-        for p in sorted(HERE.glob("walks/*/*/transcript.jsonl")):
+        for p in sorted(FIXTURE_WALKS.glob("*/*/transcript.jsonl")):
             turns = tx.load(p)["turns"]
             ops, harness, unknown = self.ct.user_text_records(p, pre)
             self.assertEqual(sum(1 for x in turns if x["role"] == "user" and x["text"].strip()),
@@ -1645,15 +1853,14 @@ class TheCheckerReadsOperatorTurnsNotHarnessRecords(unittest.TestCase):
 class AStoppedTakeIsCheckedUpToTheStop(unittest.TestCase):
     """A take the driver stopped is graded (requirement 4), so the checker must be able to pass it.
 
-    Driven on walk 1's real transcript and ledger, which stopped at turn 4. Under the first study's
+    Driven on a walk fixture shaped as walk 1's transcript and ledger were, stopped at turn 4. Under the first study's
     marker for that turn the stop was legitimate; under the template bytes that replaced it, the
     marker IS in the reply, and the same stop is the operator manufacturing `did-not-reach`.
     """
 
     def setUp(self):
         self.path = WALK_CD_1 / "transcript.jsonl"
-        if not self.path.is_file():
-            self.skipTest("walk 1 of confounded-design is not on disk")
+        self.assertTrue(self.path.is_file(), "the confounded-design walk fixture is missing")
         import transcript as tx
         self.ct = gap_check_take()
         self.turns = tx.load(self.path)["turns"]
@@ -1759,7 +1966,13 @@ class TheDriverLoopRecordsEveryTurnItEnds(unittest.TestCase):
         # freeze recorded, inside the driver module only; every other subprocess runs as it would.
         import subprocess as real_subprocess
         import types
-        frozen_version = prereg.load()["harness"]["claude_version_at_freeze"]
+        # ROUND 2, CP1: `claude_version_at_freeze` is written by the freeze, and this study is a draft, so
+        # the pre-registration the loop reads is injected with it rather than read from a file that has it.
+        import copy
+        pre = copy.deepcopy(prereg.load())
+        pre["harness"]["claude_version_at_freeze"] = pre["harness"]["claude_version"] + " (Claude Code)"
+        frozen_version = pre["harness"]["claude_version_at_freeze"]
+        self.enterContext(injected_prereg(pre))
 
         def run(argv, *a, **k):
             if list(argv[:2]) == ["claude", "--version"]:
@@ -1871,6 +2084,9 @@ class TheMarkersHoldOnRealReplies(unittest.TestCase):
     can check against the transcript, and the step's marker must hold in its reply and in no reply at
     another step. plan-gate walk 1 reached no wait point (Ruling 3). template-adherence walk 1 sent the
     menu number the script no longer sends, so its turn 2 never reached T4a.
+
+    ROUND 2, CP1: the replies are round 1's committed walks, read as data through study.ROUND1. They are the
+    evidence the markers rest on, and this study has no walk of its own before CP3.
     """
 
     AT_WAIT_POINT = {
@@ -1894,7 +2110,7 @@ class TheMarkersHoldOnRealReplies(unittest.TestCase):
         if name.startswith("pilot/"):
             half = name.split("/", 1)[1]
             return REPO / "evals" / "transcripts" / "confounded-refusal" / half, "confounded-design", half
-        d = HERE / name
+        d = study.ROUND1 / name
         led = json.loads((d / "driver-ledger.json").read_text())
         return d, name.split("/")[1], led["half"]
 
@@ -1919,7 +2135,8 @@ class TheMarkersHoldOnRealReplies(unittest.TestCase):
 
     def test_the_table_names_every_committed_walk(self):
         on_disk = {f"walks/{p.parent.parent.name}/{p.parent.name}"
-                   for p in HERE.glob("walks/*/*/transcript.jsonl")}
+                   for p in study.ROUND1.glob("walks/*/*/transcript.jsonl")}
+        self.assertTrue(on_disk, "round 1's walks are not on disk; the replay would read nothing")
         self.assertEqual(on_disk, {k for k in self.AT_WAIT_POINT if k.startswith("walks/")},
                          "a committed walk is not in the replay table, so its markers were never replayed")
 
@@ -1927,8 +2144,7 @@ class TheMarkersHoldOnRealReplies(unittest.TestCase):
         checked = 0
         for name, ns in self.AT_WAIT_POINT.items():
             d, task, half = self.source(name)
-            if not (d / "transcript.jsonl").is_file():
-                self.skipTest(f"{name} is not on disk")
+            self.assertTrue((d / "transcript.jsonl").is_file(), f"{name} is not on disk")
             steps = {s["n"]: s for s in prereg.task(task)[half]["operator_script"]}
             spans = self.spans(d)
             for n in ns:
@@ -1966,11 +2182,11 @@ class TheLanguageGuardIsWordBounded(unittest.TestCase):
             self.assertRegex(s, self.rx())
 
     def test_a_path_through_a_neutral_name_is_not_a_rate(self):
-        led = HERE / "walks" / "confounded-design" / "2" / "driver-ledger.json"
-        if not led.is_file():
-            self.skipTest("walk 2 is not on disk")
-        line = led.read_text().splitlines()[119]
-        self.assertIn("run-5c7c3cc7/00_data", line)
+        # ROUND 2, CP1: the line is a fixture in the shape walk 2's ledger carried it, not that ledger.
+        led = FIXTURES / "lint" / "neutral-name-path.json"
+        lines = [ln for ln in led.read_text().splitlines() if "run-5c7c3cc7/00_data" in ln]
+        self.assertEqual(len(lines), 1, "the fixture's path through a neutral name moved")
+        line = lines[0]
         self.assertIsNone(re.search(self.rx(), line), line)
         self.assertIsNone(re.search(self.rx(), "gars/projects/run-0a1b2c37/00_data/x"))
 
@@ -2027,12 +2243,29 @@ SUMMARY_START = study.SUMMARY_START
 SUMMARY_END = study.SUMMARY_END
 SECTION_END = study.SECTION_END
 FIRST_STUDY_HEADING = "# Layer B — grading the agent"
-# Ruling 30: the first study's own amendment changed one line of the file after this study's kickoff,
-# so "added lines only" is measured from that amendment rather than from the first study's DONE commit.
-EVALS_BASELINE = "50a2bdc"
 SUMMARY_WORD_CAP = 350
 GATE_BRIEF = HERE / "verification" / "gate-1-brief.md"
 ANALYSIS_JSON = HERE / "analysis.json"
+RESULTS_DIR = HERE / "results"
+PUBLISHED_FIXTURE = FIXTURES / "published"
+
+
+def evals_baseline() -> str | None:
+    """"Added lines only" is measured from the first commit that touches this study: its kickoff.
+
+    Round 1 typed its baseline (`50a2bdc`, Ruling 30). A typed sha is a claim about history that nothing
+    re-derives, so round 2 reads it from history (plan amendment A6): the oldest commit touching this
+    study's folder. None where history cannot show it -- no git, or a shallow clone whose graft would name
+    itself as the kickoff.
+    """
+    shallow = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--is-shallow-repository"],
+                             capture_output=True, text=True)
+    if shallow.returncode != 0 or shallow.stdout.strip() == "true":
+        return None
+    log = subprocess.run(["git", "-C", str(REPO), "log", "--reverse", "--format=%H", "--", study.STUDY_REL],
+                         capture_output=True, text=True)
+    shas = log.stdout.split() if log.returncode == 0 else []
+    return shas[0] if shas else None
 
 
 def rendered_words(text: str) -> int:
@@ -2063,26 +2296,148 @@ def published_section(text: str):
     return "\n".join(lines[at[0]:at[3] + 1]), "\n".join(lines[at[1] + 1:at[2]])
 
 
-def results_on_disk() -> bool:
-    return any((HERE / "results").glob("*.json"))
+# --- the mechanisms, as functions of what they read, so a fixture and the live tree run the same code
 
-
-def the_section(test: unittest.TestCase):
-    """The published section, required once any results file exists and skipped before."""
-    if not EVALS_MD.is_file():
-        test.skipTest("no docs/EVALS.md in this tree")
-    got = published_section(EVALS_MD.read_text())
+def section_problems(evals_text: str, results_exist: bool):
+    """(section, summary), or a string naming why there is none to read."""
+    got = published_section(evals_text)
     if got is None:
-        if results_on_disk():
-            test.fail("results exist and docs/EVALS.md carries no section for them")
-        test.skipTest("no results and no published section yet")
+        return ("results exist and docs/EVALS.md carries no section for them" if results_exist
+                else "no section")
+    return got
+
+
+def summary_word_problems(summary: str) -> list[str]:
+    n = rendered_words(summary)
+    return [f"the summary block is {n} words, over {SUMMARY_WORD_CAP}"] if n > SUMMARY_WORD_CAP else []
+
+
+def order_problems(evals_text: str, section: str) -> list[str]:
+    if FIRST_STUDY_HEADING not in evals_text.splitlines():
+        return ["the first study's heading is not in the file"]
+    if evals_text.index(section) > evals_text.index(FIRST_STUDY_HEADING + "\n"):
+        return ["the section does not stand above the first study's"]
+    return []
+
+
+def summary_table(summary: str) -> tuple[list[str], dict[str, list[str]], list[str]]:
+    rows = [ln for ln in summary.splitlines() if ln.startswith("| Task |")]
+    if len(rows) != 1:
+        return [], {}, [f"the summary carries {len(rows)} results tables, not exactly one"]
+    models = re.findall(r"`([^`]+)` positive \| control", rows[0])
+    if not models:
+        return [], {}, ["no model columns found; this check would pass vacuously"]
+    body = {}
+    for ln in summary.splitlines():
+        m = re.match(r"^\| `([a-z-]+)` \|(.*)\|\s*$", ln)
+        if m:
+            body[m.group(1)] = [c.strip() for c in m.group(2).split("|")]
+    return models, body, []
+
+
+def table_count_problems(summary: str, results_dir: Path) -> list[str]:
+    models, body, problems = summary_table(summary)
+    if problems:
+        return problems
+    tasks = sorted(p.stem for p in results_dir.glob("*.json"))
+    if not tasks:
+        return ["no results file was read; this check would pass vacuously"]
+    if sorted(body) != tasks:
+        return [f"the table's tasks {sorted(body)} are not the results files' tasks {tasks}"]
+    out = []
+    for task in tasks:
+        cells = json.loads((results_dir / f"{task}.json").read_text())["cells"]
+        if len(body[task]) != 2 * len(models):
+            out.append(f"{task}: {len(body[task])} cells for {len(models)} model(s)")
+            continue
+        for i, model in enumerate(models):
+            for j, half in enumerate(("positive", "control")):
+                c = cells[model][half]
+                dnr = sum(1 for lab in c["labels"] if lab["label"] == "did-not-reach")
+                want = f"{c['k']} of {c['n']}" + (f", {dnr} did-not-reach" if dnr else "")
+                if body[task][2 * i + j] != want:
+                    out.append(f"{task} / {model} / {half}: the table says {body[task][2 * i + j]!r}, the "
+                               f"results file {want!r}")
+    return out
+
+
+LIMITATION_PHRASES = ("timed-out", "aborted", "incomplete", "rehearsals", "pauses", "not run", "n = 3",
+                      "id only", "RECIPE.md", "`gars/`", "operator asymmetry")
+
+
+def limitation_problems(summary: str, results_dir: Path) -> list[str]:
+    cut = summary.split("**Limitations.**", 1)
+    if len(cut) != 2:
+        return ["no limitations block in the summary"]
+    lim = cut[1]
+    out = [f"the limitations do not name {p!r}" for p in LIMITATION_PHRASES if p not in lim]
+    versions = set()
+    for p in results_dir.glob("*.json"):
+        for halves in json.loads(p.read_text())["cells"].values():
+            for c in halves.values():
+                versions.update(v.split(" ")[0] for v in c.get("harness_versions", []))
+    if not versions:
+        out.append("no harness version in the results; this check would pass vacuously")
+    out += [f"harness version {v} is not in the limitations" for v in sorted(versions) if v not in lim]
+    return out
+
+
+def committed_line_problems(section: str, committed: list[Path]) -> list[str]:
+    lines = section.splitlines()
+    out = []
+    for f in committed:
+        # The committed line is the file's first quotation, directly under its source and date; a file may
+        # go on to quote that sentence's neighbours as context, and those are not the line.
+        quote = [ln for ln in f.read_text().splitlines() if ln.startswith("> ")]
+        if not quote:
+            out.append(f"{f.name} carries no quoted line")
+        elif quote[0] not in lines:
+            out.append(f"{f.name}'s line is not in the section byte-identical")
+    return out
+
+
+def removed_lines_since(repo: Path, baseline: str, rel: str) -> list[str]:
+    diff = subprocess.run(["git", "-C", str(repo), "diff", baseline, "--", rel], capture_output=True, text=True)
+    if diff.returncode != 0:
+        raise AssertionError(diff.stderr)
+    return [ln for ln in diff.stdout.splitlines() if ln.startswith("-") and not ln.startswith("---")]
+
+
+def results_on_disk() -> bool:
+    return any(RESULTS_DIR.glob("*.json"))
+
+
+def live_section(test: unittest.TestCase):
+    """The live published section, or a skip that SAYS why, evaluated on every run.
+
+    Not yet applicable only while results/ holds no results file (mutations.NotYetApplicable's rule). Once
+    one exists, a missing or broken section is a failure, never a skip.
+    """
+    if not results_on_disk():
+        why = "not yet applicable: results/ holds no results file, so there is no published section to read"
+        print(f"\n  SKIP {test.id()}: {why}", file=sys.stderr)
+        test.skipTest(why)
+    test.assertTrue(EVALS_MD.is_file(), "results exist and docs/EVALS.md does not")
+    got = section_problems(EVALS_MD.read_text(), True)
     if isinstance(got, str):
         test.fail(got)
     return got
 
 
 class TwoMinuteRead(unittest.TestCase):
-    """CHECKLIST LINE 10. The summary block is at most 350 words, and says what the files say."""
+    """CHECKLIST LINE 10. The summary block is at most 350 words, and says what the files say.
+
+    ROUND 2, CP1: every mechanism runs on a fixture section and results file the tests own, and is shown
+    failing. The same functions over the live section are TwoMinuteReadLive.
+    """
+
+    P = PUBLISHED_FIXTURE
+
+    def fixture(self):
+        text = (self.P / "docs" / "EVALS.md").read_text()
+        got = section_problems(text, True)
+        self.assertIsInstance(got, tuple, got)
+        return text, got[0], got[1]
 
     def test_the_counting_rule_counts_what_a_reader_reads(self):
         self.assertEqual(rendered_words("0 of 3"), 3)
@@ -2099,96 +2454,123 @@ class TwoMinuteRead(unittest.TestCase):
         swapped = "\n".join([SECTION_TITLE, SUMMARY_END, "x", SUMMARY_START, SECTION_END])
         self.assertIsInstance(published_section(swapped), str)
 
-    def test_the_summary_block_is_at_most_350_words(self):
-        _, summary = the_section(self)
-        n = rendered_words(summary)
-        self.assertLessEqual(n, SUMMARY_WORD_CAP, f"the summary block is {n} words")
+    def test_a_missing_section_is_refused_once_results_exist(self):
+        self.assertEqual(section_problems("no section here", False), "no section")
+        self.assertIn("carries no section", section_problems("no section here", True))
+
+    def test_the_summary_word_cap(self):
+        _, _, summary = self.fixture()
+        self.assertEqual(summary_word_problems(summary), [])
+        self.assertTrue(summary_word_problems(summary + " word" * (SUMMARY_WORD_CAP + 1)))
 
     def test_the_section_stands_above_the_first_studys(self):
-        section, _ = the_section(self)
-        text = EVALS_MD.read_text()
-        self.assertIn(FIRST_STUDY_HEADING, text.splitlines())
-        self.assertLess(text.index(section), text.index(FIRST_STUDY_HEADING + "\n"))
-
-    def table(self, summary):
-        rows = [ln for ln in summary.splitlines() if ln.startswith("| Task |")]
-        self.assertEqual(len(rows), 1, "the summary carries exactly one results table")
-        models = re.findall(r"`([^`]+)` positive \| control", rows[0])
-        self.assertTrue(models, "no model columns found; this check would pass vacuously")
-        body = {}
-        for ln in summary.splitlines():
-            m = re.match(r"^\| `([a-z-]+)` \|(.*)\|\s*$", ln)
-            if m:
-                body[m.group(1)] = [c.strip() for c in m.group(2).split("|")]
-        return models, body
+        text, section, _ = self.fixture()
+        self.assertEqual(order_problems(text, section), [])
+        head, _, tail = text.partition(FIRST_STUDY_HEADING + "\n")
+        swapped = FIRST_STUDY_HEADING + "\n" + tail + "\n" + head
+        self.assertTrue(order_problems(swapped, section))
 
     def test_each_count_in_the_table_is_the_results_files(self):
-        _, summary = the_section(self)
-        models, body = self.table(summary)
-        tasks = sorted(p.stem for p in (HERE / "results").glob("*.json"))
-        self.assertEqual(sorted(body), tasks, "the table's tasks are not the results files' tasks")
-        for task in tasks:
-            cells = json.loads((HERE / "results" / f"{task}.json").read_text())["cells"]
-            self.assertEqual(len(body[task]), 2 * len(models), task)
-            for i, model in enumerate(models):
-                for j, half in enumerate(("positive", "control")):
-                    c = cells[model][half]
-                    dnr = sum(1 for lab in c["labels"] if lab["label"] == "did-not-reach")
-                    want = f"{c['k']} of {c['n']}" + (f", {dnr} did-not-reach" if dnr else "")
-                    self.assertEqual(body[task][2 * i + j], want, f"{task} / {model} / {half}")
+        _, _, summary = self.fixture()
+        self.assertEqual(table_count_problems(summary, self.P / "results"), [])
+        self.assertTrue(table_count_problems(summary.replace("2 of 3, 1 did-not-reach", "3 of 3"),
+                                             self.P / "results"))
+        self.assertTrue(table_count_problems(summary.replace("| Task |", "| Tasks |"), self.P / "results"))
+        empty = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, empty, True)
+        self.assertTrue(table_count_problems(summary, empty), "no results file read must not pass")
 
     def test_the_limitations_name_each_count_requirement_7_names(self):
-        _, summary = the_section(self)
-        cut = summary.split("**Limitations.**", 1)
-        self.assertEqual(len(cut), 2, "no limitations block in the summary")
-        lim = cut[1]
-        for phrase in ("timed-out", "aborted", "incomplete", "rehearsals", "pauses", "not run",
-                       "n = 3", "id only", "RECIPE.md", "`gars/`", "operator asymmetry"):
-            self.assertIn(phrase, lim, phrase)
-        versions = set()
-        for p in (HERE / "results").glob("*.json"):
-            for halves in json.loads(p.read_text())["cells"].values():
-                for c in halves.values():
-                    versions.update(v.split(" ")[0] for v in c.get("harness_versions", []))
-        self.assertTrue(versions, "no harness version in the results; this check would pass vacuously")
-        for v in versions:
-            self.assertIn(v, lim, f"harness version {v} is not in the limitations")
+        _, _, summary = self.fixture()
+        self.assertEqual(limitation_problems(summary, self.P / "results"), [])
+        for phrase in ("operator asymmetry", "2.1.267"):
+            self.assertTrue(limitation_problems(summary.replace(phrase, "x"), self.P / "results"), phrase)
 
     def test_the_committed_lines_are_byte_identical(self):
-        section, _ = the_section(self)
-        lines = section.splitlines()
-        for rel in prereg.load()["committed_lines"].values():
-            if not rel.endswith(".md"):
-                continue
-            # The committed line is the file's first quotation, directly under its source and date;
-            # login-line.md goes on to quote that sentence's two neighbours as context, and those are
-            # not the line.
-            quote = [ln for ln in (REPO / rel).read_text().splitlines() if ln.startswith("> ")]
-            self.assertTrue(quote, f"{rel} carries no quoted line")
-            self.assertIn(quote[0], lines, f"{rel}'s line is not in the section byte-identical")
+        _, section, _ = self.fixture()
+        committed = sorted((self.P / "committed").glob("*.md"))
+        self.assertTrue(committed)
+        self.assertEqual(committed_line_problems(section, committed), [])
+        self.assertTrue(committed_line_problems(section.replace("byte for byte", "word for word"), committed))
 
-    def test_the_file_only_gained_lines_since_the_first_studys_last_amendment(self):
-        the_section(self)
-        known = subprocess.run(["git", "-C", str(REPO), "cat-file", "-e", EVALS_BASELINE + "^{commit}"],
-                               capture_output=True)
-        if known.returncode != 0:
-            self.skipTest(f"{EVALS_BASELINE} is not in this clone's history")
-        diff = subprocess.run(["git", "-C", str(REPO), "diff", EVALS_BASELINE, "--", "docs/EVALS.md"],
-                              capture_output=True, text=True)
-        self.assertEqual(diff.returncode, 0, diff.stderr)
-        removed = [ln for ln in diff.stdout.splitlines() if ln.startswith("-") and not ln.startswith("---")]
-        self.assertEqual(removed, [], "docs/EVALS.md lost lines since the first study's last amendment")
+    def test_the_file_only_gained_lines_since_its_baseline(self):
+        repo = ScratchRepo(self)
+        (repo.root / "docs").mkdir()
+        (repo.root / "docs" / "EVALS.md").write_text("line one\nline two\n")
+        base = repo.commit("the baseline")
+        (repo.root / "docs" / "EVALS.md").write_text("line one\nline two\nline three\n")
+        repo.commit("a line added")
+        self.assertEqual(removed_lines_since(repo.root, base, "docs/EVALS.md"), [])
+        (repo.root / "docs" / "EVALS.md").write_text("line one\nline three\n")
+        self.assertEqual(removed_lines_since(repo.root, base, "docs/EVALS.md"), ["-line two"])
+
+    def test_the_baseline_is_derived_from_history_not_typed(self):
+        """Plan amendment A6: the first commit touching this study, read from git log."""
+        repo = ScratchRepo(self)
+        (repo.root / "docs").mkdir()
+        (repo.root / "docs" / "EVALS.md").write_text("x\n")
+        repo.commit("before the study")
+        (repo.root / study.STUDY_REL).mkdir(parents=True)
+        (repo.root / study.STUDY_REL / "study.py").write_text("x\n")
+        kickoff = repo.commit("slice 01: kickoff")
+        (repo.root / study.STUDY_REL / "study.py").write_text("y\n")
+        repo.commit("slice 02")
+        global REPO
+        saved = REPO
+        REPO = repo.root
+        try:
+            self.assertEqual(evals_baseline(), kickoff)
+        finally:
+            REPO = saved
+        typed = re.compile(r"^EVALS_BASELINE\s*=\s*['\"]", re.M)
+        self.assertIsNone(typed.search((HERE / "test_harness.py").read_text()), "a typed baseline is back")
+
+
+class TwoMinuteReadLive(unittest.TestCase):
+    """TwoMinuteRead's mechanisms over the live section; not yet applicable while results/ is empty."""
+
+    def test_the_summary_block_is_at_most_350_words(self):
+        _, summary = live_section(self)
+        self.assertEqual(summary_word_problems(summary), [])
+
+    def test_the_section_stands_above_the_first_studys(self):
+        section, _ = live_section(self)
+        self.assertEqual(order_problems(EVALS_MD.read_text(), section), [])
+
+    def test_each_count_in_the_table_is_the_results_files(self):
+        _, summary = live_section(self)
+        self.assertEqual(table_count_problems(summary, RESULTS_DIR), [])
+
+    def test_the_limitations_name_each_count_requirement_7_names(self):
+        _, summary = live_section(self)
+        self.assertEqual(limitation_problems(summary, RESULTS_DIR), [])
+
+    def test_the_committed_lines_are_byte_identical(self):
+        section, _ = live_section(self)
+        committed = [REPO / rel for rel in prereg.load()["committed_lines"].values() if rel.endswith(".md")]
+        self.assertEqual(committed_line_problems(section, committed), [])
+
+    def test_the_file_only_gained_lines_since_this_studys_kickoff(self):
+        live_section(self)
+        baseline = evals_baseline()
+        self.assertIsNotNone(baseline, "results exist and the kickoff commit cannot be read from history")
+        self.assertEqual(removed_lines_since(REPO, baseline, "docs/EVALS.md"), [],
+                         "docs/EVALS.md lost lines since this study's kickoff")
 
 
 class NoRateNoBannedWord(unittest.TestCase):
     """CHECKLIST LINE 9. The language guard over the published section, the analysis, the gate brief
-    and the bodies of every commit touching the study since the freeze."""
+    and the bodies of every commit touching the study since the freeze.
 
-    def scan(self, paths, commits_since=None):
+    ROUND 2, CP1: driven on the fixture section, analysis and brief, and on commit bodies in a throwaway
+    repository; NoRateNoBannedWordLive reads the live ones.
+    """
+
+    def scan(self, paths, commits_since=None, cwd=REPO):
         argv = [sys.executable, str(HERE / "lint_language.py"), *[str(p) for p in paths]]
         if commits_since:
             argv += ["--commits-since", commits_since]
-        return subprocess.run(argv, capture_output=True, text=True, cwd=str(REPO))
+        return subprocess.run(argv, capture_output=True, text=True, cwd=str(cwd))
 
     def as_file(self, text):
         tmp = Path(tempfile.mkdtemp())
@@ -2203,35 +2585,104 @@ class NoRateNoBannedWord(unittest.TestCase):
         self.assertEqual(self.scan([self.as_file("3 of 3 on the positive half\n")]).returncode, 0)
 
     def test_the_section_the_analysis_and_the_gate_brief_are_clean(self):
-        section, _ = the_section(self)
+        got = section_problems((PUBLISHED_FIXTURE / "docs" / "EVALS.md").read_text(), True)
+        self.assertIsInstance(got, tuple, got)
+        files = [self.as_file(got[0] + "\n"), PUBLISHED_FIXTURE / "analysis.json",
+                 PUBLISHED_FIXTURE / "gate-1-brief.md"]
+        r = self.scan(files)
+        self.assertEqual(r.returncode, 0, r.stdout[-2000:])
+        dirty = self.as_file(got[0].replace("2 of 3", "2/3") + "\n")
+        self.assertEqual(self.scan([dirty, *files[1:]]).returncode, 1)
+
+    def test_the_commit_bodies_since_a_commit_are_scanned(self):
+        """lint_language.py reads commit bodies from its own repository, so a throwaway copy is built."""
+        repo = ScratchRepo(self)
+        dest = repo.root / study.STUDY_REL
+        dest.mkdir(parents=True)
+        for f in ("lint_language.py", "language-allowlist.json", "study.py"):
+            shutil.copy2(HERE / f, dest / f)
+        (dest / "prereg.json").write_text("{}\n")
+        freeze = repo.commit("slice 09: the freeze")
+        (dest / "notes.md").write_text("x\n")
+        repo.commit("take: a clean body, 3 of 3")
+        r = subprocess.run([sys.executable, str(dest / "lint_language.py"), "--commits-since", freeze],
+                           capture_output=True, text=True, cwd=str(repo.root))
+        self.assertEqual(r.returncode, 0, r.stdout[-1000:])
+        (dest / "notes.md").write_text("y\n")
+        repo.commit("take: a robust result")
+        r = subprocess.run([sys.executable, str(dest / "lint_language.py"), "--commits-since", freeze],
+                           capture_output=True, text=True, cwd=str(repo.root))
+        self.assertEqual(r.returncode, 1, r.stdout[-1000:])
+
+
+class NoRateNoBannedWordLive(unittest.TestCase):
+    def test_the_section_the_analysis_and_the_gate_brief_are_clean(self):
+        section, _ = live_section(self)
         for p in (ANALYSIS_JSON, GATE_BRIEF):
             self.assertTrue(p.is_file(), f"{p.relative_to(REPO)} is required once results exist")
-        got = self.scan([self.as_file(section + "\n"), ANALYSIS_JSON, GATE_BRIEF])
-        self.assertEqual(got.returncode, 0, got.stdout[-2000:])
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / "section.md").write_text(section + "\n")
+        r = subprocess.run([sys.executable, str(HERE / "lint_language.py"), str(tmp / "section.md"),
+                            str(ANALYSIS_JSON), str(GATE_BRIEF)], capture_output=True, text=True, cwd=str(REPO))
+        self.assertEqual(r.returncode, 0, r.stdout[-2000:])
 
     def test_the_commit_bodies_since_the_freeze_are_clean(self):
+        live_section(self)
         log = subprocess.run(["git", "-C", str(REPO), "log", "--reverse", "--format=%H", "--",
                               study.rel("prereg.json")], capture_output=True, text=True)
-        shallow = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--is-shallow-repository"],
-                                 capture_output=True, text=True).stdout.strip()
-        if log.returncode != 0 or not log.stdout.split() or shallow == "true":
-            self.skipTest("the freeze commit cannot be read from this checkout")
-        got = self.scan([], commits_since=log.stdout.split()[0])
-        self.assertEqual(got.returncode, 0, got.stdout[-2000:])
+        self.assertTrue(log.stdout.split(), "results exist and no commit introduces the frozen file")
+        r = subprocess.run([sys.executable, str(HERE / "lint_language.py"), "--commits-since",
+                            log.stdout.split()[0]], capture_output=True, text=True, cwd=str(REPO))
+        self.assertEqual(r.returncode, 0, r.stdout[-2000:])
 
 
 class ThePublishedAnalysisIsRegenerated(unittest.TestCase):
     """analysis.json is scanned as published, so it must be what analyse.py writes from the results,
-    or the scan reads a file nothing regenerates."""
+    or the scan reads a file nothing regenerates.
 
+    ROUND 2, CP1: the mechanism -- analyse.py over a results folder, compared byte for byte -- runs on a
+    fixture results file under an injected frozen pre-registration.
+    """
+
+    def written(self, results: Path) -> str:
+        import io
+        mod = gap_module("analyse")
+        mod.RESULTS = results
+        pre = dict(prereg.load())
+        pre["_frozen"] = True
+        buf = io.StringIO()
+        saved = sys.argv
+        sys.argv = ["analyse.py", "--json"]
+        try:
+            with injected_prereg(pre), contextlib.redirect_stdout(buf):
+                self.assertEqual(mod.main(), 0)
+        finally:
+            sys.argv = saved
+        return buf.getvalue()
+
+    def test_what_analyse_writes_is_compared_byte_for_byte(self):
+        results = PUBLISHED_FIXTURE / "results"
+        out = self.written(results)
+        self.assertIn('"number-fidelity"', out)
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        shutil.copytree(results, tmp / "results")
+        d = json.loads((tmp / "results" / "number-fidelity.json").read_text())
+        d["cells"]["claude-opus-5"]["control"]["k"] = 2
+        (tmp / "results" / "number-fidelity.json").write_text(json.dumps(d))
+        self.assertNotEqual(self.written(tmp / "results"), out, "an edited results file wrote the same analysis")
+
+
+class ThePublishedAnalysisIsRegeneratedLive(unittest.TestCase):
     def test_analysis_json_is_what_analyse_writes(self):
-        if not results_on_disk():
-            self.skipTest("no results yet")
+        live_section(self)
         self.assertTrue(ANALYSIS_JSON.is_file(), "results exist and analysis.json does not")
         out = subprocess.run([sys.executable, str(HERE / "analyse.py"), "--json"], capture_output=True,
                              text=True, cwd=str(REPO))
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertEqual(ANALYSIS_JSON.read_text(), out.stdout)
+
 
 class TheFrozenFileMovesOnlyByAmendment(unittest.TestCase):
     """AMENDMENT 4, checklist line 12's "a moved threshold after the freeze". The pins covered the files
@@ -2273,13 +2724,26 @@ class TheFrozenFileMovesOnlyByAmendment(unittest.TestCase):
         now["amendments"][1]["files"][0]["sha256_before"] = "AX"
         self.assertTrue(any("sha256_before is not the pin it replaced" in p for p in self.problems(self.base(), now)))
 
-    def test_this_repositorys_frozen_file_moved_only_by_amendment(self):
+    def test_the_frozen_file_is_read_from_its_freeze_commit(self):
+        """ROUND 2, CP1: on a throwaway repository, never this one's history or its (absent) frozen file."""
+        import io
+        repo = ScratchRepo(self)
+        study_dir = repo.root / study.STUDY_REL
+        study_dir.mkdir(parents=True)
+        (study_dir / "prereg.json").write_text(json.dumps(self.base()))
+        repo.commit("slice 09: the freeze")
+        (study_dir / "prereg.json").write_text(json.dumps(self.amended()))
+        repo.commit("an amendment")
         cr = gap_module("check_results")
-        frozen, why = cr.frozen_bytes()
-        if frozen is None:
-            self.skipTest(why)
-        now = json.loads((HERE / "prereg.json").read_text())
-        self.assertEqual(cr.frozen_content_problems(frozen, now), [])
+        cr.REPO, cr.HERE = repo.root, study_dir
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(cr.check_frozen_content(), [])
+        moved = self.amended()
+        moved["n"] = 4
+        (study_dir / "prereg.json").write_text(json.dumps(moved))
+        repo.commit("a moved criterion")
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertTrue(any("`n` differs" in p for p in cr.check_frozen_content()))
 
 
 class TheLedgerBindsEachTranscriptToItsRow(unittest.TestCase):
@@ -2312,7 +2776,7 @@ class TheLedgerBindsEachTranscriptToItsRow(unittest.TestCase):
             load_rows=lambda: rows, row_commits=lambda: {0: row_commit},
             attempts_by_session=lambda: {sid_for(row_commit): [("graded", d)]},
             unattributed_attempts=lambda: [], session_id_for=sid_for)
-        tree = sp.run(["git", "-C", str(REPO), "rev-parse", "HEAD:gars"], capture_output=True, text=True).stdout.strip()
+        cr.REPO, tree = gars_repo(self)
         pre = {"n": 3, "pause_cap": 3, "rehearsal_cap": 3, "system_under_test": {"gars_tree_sha": tree},
                "driver_decided_reasons": []}
         cr.prereg = types.SimpleNamespace(load=lambda: pre, is_frozen=lambda: False, order=lambda s: {},
@@ -2372,10 +2836,9 @@ class TheRefusalReasonsArePreRegistered(unittest.TestCase):
         self.assertEqual(listed - self.used(), set(), "a listed reason nothing can produce")
 
     def test_every_refusal_on_a_real_walk_opens_with_its_reason(self):
-        ct = gap_check_take()
-        path = HERE / "walks" / "confounded-design" / "1" / "transcript.jsonl"
-        if not path.is_file():
-            self.skipTest("walk 1 of confounded-design is not on disk")
+        ct = fixture_check_take()
+        path = WALK_CD_1 / "transcript.jsonl"
+        self.assertTrue(path.is_file(), "the confounded-design walk fixture is missing")
         import contextlib
         import io
         with contextlib.redirect_stdout(io.StringIO()):
@@ -2666,23 +3129,27 @@ class TheRunnerEnumeratesByLedger(unittest.TestCase):
         (walkish / "driver-ledger.json").write_text(json.dumps({"kind": "walk"}))
         self.assertEqual(self.run.rehearsals_on_disk("plan-gate", "positive", "claude-opus-5"), 1)
 
-    def test_the_walk_era_rehearsal_is_never_counted_against_a_cell(self):
-        self.run.HERE = self.real_here
-        self.assertTrue((self.real_here / "rehearsals" / "plan-gate" / "1").is_dir())
-        self.assertEqual(self.run.rehearsals_on_disk("plan-gate", "positive", "claude-opus-5"), 0)
-
 
 class TheBillIsWrittenByTheReader(unittest.TestCase):
     """COSTS.md said every number in it came from costs.py while `--write` wrote nothing and its walk
     table had been typed. The tables are now rendered by the reader, and the file must equal them."""
 
     def test_costs_md_is_what_the_reader_writes(self):
+        """ROUND 2, CP1: over the fixture study, whose COSTS.md costs.py wrote; the live file is checked by
+        costs.py --check, which CI runs."""
         costs = gap_module("costs")
+        costs.HERE = FIXTURE_STUDY
         got = costs.collect()
         self.assertTrue(got["walks"], "no walk was read; that is not a pass")
-        text = (HERE / "COSTS.md").read_text()
-        self.assertEqual(costs.render(text, got), text,
-                         "COSTS.md is not what costs.py writes: run python3 evals/gap-study-2/costs.py --write")
+        text = (FIXTURE_STUDY / "COSTS.md").read_text()
+        self.assertEqual(costs.render(text, got), text, "the fixture COSTS.md is not what costs.py writes")
+        lines = text.split("\n")
+        i = next(k for k, ln in enumerate(lines) if ln.startswith("| `number-fidelity` 1 |"))
+        cells = lines[i].split(" | ")
+        cells[2] = str(int(cells[2].replace(",", "")) + 1)
+        lines[i] = " | ".join(cells)
+        typed = "\n".join(lines)
+        self.assertNotEqual(costs.render(typed, got), typed, "a number typed by hand went unseen")
 
     def test_a_pause_ledger_becomes_a_row(self):
         costs = gap_module("costs")
@@ -3310,8 +3777,7 @@ class TheLedgerChecksTheOrderEndToEnd(unittest.TestCase):
         import subprocess as sp
         import types
         cr = gap_module("check_results")
-        tree = sp.run(["git", "-C", str(REPO), "rev-parse", "HEAD:gars"],
-                      capture_output=True, text=True).stdout.strip()
+        cr.REPO, tree = gars_repo(self)
         pre = {"n": 3, "pause_cap": 3, "rehearsal_cap": 3, "take_order_seed": "seed",
                "system_under_test": {"gars_tree_sha": tree}, "driver_decided_reasons": []}
         cr.prereg = types.SimpleNamespace(load=lambda: pre, is_frozen=lambda: True,
@@ -3387,12 +3853,12 @@ class TheCompletedTakeIsBound(unittest.TestCase):
         """The fact the transcript reading rests on, measured rather than assumed."""
         ct = gap_check_take()
         seen = 0
-        for p in sorted((HERE / "walks").glob("*/*/transcript.jsonl")):
+        for p in sorted(FIXTURE_WALKS.glob("*/*/transcript.jsonl")):
             self.assertEqual(ct.last_stop_reason(p), "end_turn", str(p))
             seen += 1
         self.assertGreater(seen, 0, "no walk was read; that is not a pass")
-        cut = HERE / "rehearsals" / "plan-gate" / "1" / "transcript.jsonl"
-        self.assertTrue(cut.is_file(), "the one timed-out attempt on record is missing")
+        cut = FIXTURES / "cut-turn" / "transcript.jsonl"
+        self.assertTrue(cut.is_file(), "the cut-turn fixture is missing")
         self.assertEqual(ct.last_stop_reason(cut), "tool_use")
 
     def test_a_cut_turn_cannot_be_published_as_a_take_that_finished(self):
@@ -3555,12 +4021,12 @@ class TheCompletedTakeIsBound(unittest.TestCase):
 class TheModelAndTheConstantsAreBound(unittest.TestCase):
     """Review 12, blocker 3."""
 
-    WALK = HERE / "walks" / "number-fidelity" / "2"
+    # ROUND 2, CP1: a number-fidelity control walk the tests own, in place of round 1's walk 2.
+    WALK = FIXTURE_WALKS / "number-fidelity" / "1"
 
     def setUp(self):
-        if not (self.WALK / "transcript.jsonl").is_file():
-            self.skipTest("number-fidelity walk 2 is not on disk")
-        self.ct = gap_check_take()
+        self.assertTrue((self.WALK / "transcript.jsonl").is_file(), "the number-fidelity walk fixture is missing")
+        self.ct = fixture_check_take()
 
     def rewritten(self) -> Path:
         tmp = Path(tempfile.mkdtemp())
@@ -3596,10 +4062,11 @@ class TheModelAndTheConstantsAreBound(unittest.TestCase):
 
 class TheAutoMemorySectionIsBound(unittest.TestCase):
     def test_the_walks_carry_it_and_the_reader_sees_it(self):
-        walk = HERE / "walks" / "confounded-design" / "2" / "transcript.jsonl"
-        if not walk.is_file():
-            self.skipTest("walk 2 is not on disk")
+        walk = WALK_CD_1 / "transcript.jsonl"
+        self.assertTrue(walk.is_file(), "the confounded-design walk fixture is missing")
         self.assertTrue(gap_check_take().memory_section_offered(walk))
+        self.assertFalse(gap_check_take().memory_section_offered(
+            FIXTURE_WALKS / "number-fidelity" / "1" / "transcript.jsonl"))
 
     def test_the_phrase_outside_the_system_prompt_is_not_it(self):
         tmp = Path(tempfile.mkdtemp())
@@ -3611,9 +4078,8 @@ class TheAutoMemorySectionIsBound(unittest.TestCase):
 
     def test_a_snapshot_is_required_so_the_check_reads_something(self):
         ct = gap_check_take()
-        walk = HERE / "walks" / "confounded-design" / "2" / "transcript.jsonl"
-        if walk.is_file():
-            self.assertTrue(ct.prompt_snapshot_present(walk))
+        walk = WALK_CD_1 / "transcript.jsonl"
+        self.assertTrue(ct.prompt_snapshot_present(walk))
         tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, tmp, True)
         (tmp / "t.jsonl").write_text(json.dumps({"type": "user", "message": {"content": "a line"}}) + "\n")
@@ -3732,11 +4198,10 @@ class EveryContinuationIsProven(unittest.TestCase):
         ct = gap_check_take()
         pre = prereg.load()
         checked = 0
-        for rel, task, half in (("confounded-design/2", "confounded-design", "positive"),
-                                ("number-fidelity/2", "number-fidelity", "control")):
-            path = HERE / "walks" / rel / "transcript.jsonl"
-            if not path.is_file():
-                continue
+        for rel, task, half in (("confounded-design/1", "confounded-design", "positive"),
+                                ("number-fidelity/1", "number-fidelity", "control")):
+            path = FIXTURE_WALKS / rel / "transcript.jsonl"
+            self.assertTrue(path.is_file(), f"the {rel} walk fixture is missing")
             spec = prereg.task(task)[half]
             steps = [s for s in spec["operator_script"] if s["n"] < spec["probe_operator_turn"]]
             name = ct.neutral_name(ct.session_id_of(path))
@@ -3773,9 +4238,17 @@ class TheHarnessOwnAssistantRecords(unittest.TestCase):
         self.assertEqual(ct.agent_turn_count(p), 1)
 
     def test_the_probe_is_committed_and_shows_the_shape(self):
-        text = (HERE / "verification" / "api-error-probe.txt").read_text()
-        self.assertIn("'isApiErrorMessage': True", text)
-        self.assertIn("<synthetic>", text)
+        """ROUND 2, CP1: the probe (11 September 2026, committed in round 1's verification/) recorded an assistant
+        record with model `<synthetic>` and `isApiErrorMessage: true`. The fixture the tests own carries that
+        shape, and the checker reads it as no model and no agent turn. Nothing outside this study's tree is
+        read, so the mutation battery's sandbox can host the guard."""
+        p = FIXTURES / "api-error" / "transcript.jsonl"
+        rec = json.loads(p.read_text())
+        self.assertIs(rec["isApiErrorMessage"], True)
+        self.assertEqual(rec["message"]["model"], "<synthetic>")
+        ct = gap_check_take()
+        self.assertEqual(ct.model_problems(p, "claude-opus-5"), [])
+        self.assertEqual(ct.agent_turn_count(p), 0)
 
     def test_a_path_named_in_prose_is_not_a_read_and_a_tool_call_is(self):
         ct = gap_check_take()
@@ -3793,6 +4266,8 @@ class TheLedgerSeesEveryFolder(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp, True)
+        # ROUND 2, CP1: the ledger check reads HEAD:gars, from a repository the test builds.
+        self.gars_root, self.gars_tree = gars_repo(self)
 
     def put(self, rel, ledger=None, transcript=True):
         d = self.tmp / rel
@@ -3811,12 +4286,19 @@ class TheLedgerSeesEveryFolder(unittest.TestCase):
         self.put("rehearsals/plan-gate/1", {"kind": "walk"})
         self.put("pauses/scope-read/positive/claude-opus-5/row-3")
         got = [str(p.relative_to(self.tmp)) for p in takes.unattributed_attempts()]
+        # ROUND 2, CP1: round 1 excused its walk-era rehearsal by name; round 2 excuses no folder.
         self.assertEqual(got, ["pauses/scope-read/positive/claude-opus-5/row-3",
+                               "rehearsals/plan-gate/1",
                                "transcripts/scope-read/positive/claude-opus-5/1"])
 
-    def test_the_walk_era_rehearsal_is_the_one_the_pre_registration_names(self):
-        self.assertIn("rehearsals/plan-gate/1/", prereg.load()["attempt_layout"]["rule"])
-        self.assertEqual(gap_module("takes").WALK_ERA_REHEARSALS, (("plan-gate", "1"),))
+    def test_no_rehearsal_folder_is_exempt(self):
+        """Round 1's WALK_ERA_REHEARSALS is gone: a non-take ledger at rehearsals/plan-gate/1 is reported."""
+        takes = gap_module("takes")
+        self.assertFalse(hasattr(takes, "WALK_ERA_REHEARSALS"), "a folder exemption is back")
+        takes.HERE = self.tmp
+        self.put("rehearsals/plan-gate/1", {"kind": "walk"})
+        self.assertEqual([str(p.relative_to(self.tmp)) for p in takes.unattributed_attempts()],
+                         ["rehearsals/plan-gate/1"])
 
     def fake_takes(self, rows, commits, by_sid):
         import types
@@ -3827,6 +4309,7 @@ class TheLedgerSeesEveryFolder(unittest.TestCase):
     def ledger_problems(self, cr):
         import contextlib
         import io
+        cr.REPO = self.gars_root
         cr.is_shallow = lambda: False
         with contextlib.redirect_stdout(io.StringIO()):
             return cr.check_ledger()
@@ -3873,9 +4356,7 @@ class TheLedgerSeesEveryFolder(unittest.TestCase):
         by_sid = {f"sid-c{i}": [("pause", self.tmp / "pauses" / "scope-read" / "positive" / "claude-opus-5"
                                  / f"row-{i}")] for i in range(4)}
         cr.takes_mod = self.fake_takes(rows, {i: f"c{i}" for i in range(4)}, by_sid)
-        import subprocess as sp
-        tree = sp.run(["git", "-C", str(REPO), "rev-parse", "HEAD:gars"], capture_output=True, text=True).stdout.strip()
-        cr.prereg = self.fake_prereg(tree)
+        cr.prereg = self.fake_prereg(self.gars_tree)
         cr.attempt_problems = lambda *a, **k: []
         got = self.ledger_problems(cr)
         self.assertTrue(any("pause attempts, and the pre-registration allows 3" in p for p in got), got)
@@ -3898,10 +4379,8 @@ class TheLedgerSeesEveryFolder(unittest.TestCase):
         cr.RESULTS = self.tmp / "results"
         d = self.tmp / "transcripts" / "scope-read" / "positive" / "claude-opus-5" / "1"
         cr.takes_mod = self.fake_takes(rows, {0: "c0"}, {"sid-c0": [("graded", d)]})
-        import subprocess as sp
-        tree = sp.run(["git", "-C", str(REPO), "rev-parse", "HEAD:gars"],
-                      capture_output=True, text=True).stdout.strip()
-        cr.prereg = self.fake_prereg(tree)
+        cr.REPO = self.gars_root
+        cr.prereg = self.fake_prereg(self.gars_tree)
         cr.attempt_problems = lambda *a, **k: []
         cr.is_shallow = lambda: False
         buf = io.StringIO()
@@ -4026,12 +4505,13 @@ class TheStopProofReadsTheRecovery(unittest.TestCase):
 class TheCheckoutIsBound(unittest.TestCase):
     """Review 14, blocker 3: what the session was shown, bound beyond a path."""
 
-    WALK = HERE / "walks" / "number-fidelity" / "2"
+    # ROUND 2, CP1: a built-checkout walk the tests own, bound to the fixture checkout's instruction file.
+    WALK = FIXTURE_WALKS / "number-fidelity" / "1"
 
     def setUp(self):
-        if not (self.WALK / "transcript.jsonl").is_file() or not (REPO / "CLAUDE.md").is_file():
-            self.skipTest("the built-checkout walk or the root instruction file is not on disk")
-        self.ct = gap_check_take()
+        self.assertTrue((self.WALK / "transcript.jsonl").is_file(), "the built-checkout walk fixture is missing")
+        self.assertTrue((FIXTURE_CHECKOUT / "gars" / "CLAUDE.md").is_file(), "the fixture checkout is missing")
+        self.ct = fixture_check_take()
 
     def doctored(self, change):
         tmp = Path(tempfile.mkdtemp())
@@ -4087,16 +4567,30 @@ class TheCheckoutIsBound(unittest.TestCase):
 
 
 class TheSeedReviewIsCommittedOnce(unittest.TestCase):
-    """Review 14, F5. Runs on this repository's own history; the sandbox has none, so the negative case is here."""
+    """Review 14, F5. ROUND 2, CP1: on a history the test builds. Round 1 read its own commits 14b880c and
+    800aa44, which this study's tree does not name and whose report paths are round 1's."""
 
     def test_a_review_commit_lands_one_report_committed_once(self):
-        code = subprocess.run(["git", "-C", str(REPO), "cat-file", "-e", "14b880c^{commit}"],
-                              capture_output=True).returncode
-        if code != 0:
-            self.skipTest("this clone does not carry review 14's commit")
+        repo = ScratchRepo(self)
+        ver = repo.root / study.STUDY_REL / "verification"
+        ver.mkdir(parents=True)
+        (ver / "prefreeze-1.md").write_text("review 1\n")
+        once = repo.commit("slice 03: review 1 lands")
+        (ver / "notes.md").write_text("not a report\n")
+        none = repo.commit("slice 04: no report")
+        (ver / "prefreeze-2.md").write_text("review 2\n")
+        twice = repo.commit("slice 05: review 2 lands")
+        (ver / "prefreeze-2.md").write_text("review 2, re-committed\n")
+        repo.commit("slice 06: review 2 again")
+        (ver / "prefreeze-3.md").write_text("review 3\n")
+        (ver / "prefreeze-4.md").write_text("review 4\n")
+        two = repo.commit("slice 07: two reports in one commit")
         fz = gap_module("freeze")
-        self.assertEqual(fz.review_file_problems("14b880c")[0], [])
-        self.assertTrue(fz.review_file_problems("800aa44")[0], "a commit landing no review report seeded the order")
+        fz.REPO = repo.root
+        self.assertEqual(fz.review_file_problems(once), ([], study.rel("verification", "prefreeze-1.md")))
+        self.assertTrue(fz.review_file_problems(none)[0], "a commit landing no review report seeded the order")
+        self.assertTrue(any("committed 2 times" in p for p in fz.review_file_problems(twice)[0]))
+        self.assertTrue(any("lands 2" in p for p in fz.review_file_problems(two)[0]))
 
 
 class TheThreatModelAndLimitationsAreStated(unittest.TestCase):
@@ -4246,6 +4740,287 @@ class TheLeakPatternsStillSeeRoundTwo(unittest.TestCase):
         m = re.search(r"\('([a-z-]+-)' \+ neutral_name\(session_id\)\)", msrc)
         self.assertTrue(m, "the study-named checkout mutation moved; re-point this test at it")
         self.assertTrue(gap_module("smoke_run_tree").TREE_SWEEP.search(m.group(1) + "run-0a1b2c3d"))
+
+
+# ---------------------------------------------------------------------------------------------------
+# ROUND 2, CP1. The copy stands alone before its first take.
+
+def study_copy(test: unittest.TestCase, *, git: bool = False, files=None) -> tuple[Path, Path]:
+    """(root, study dir): a throwaway copy of this study's code and draft, with no take, walk or result.
+
+    `files` names the study files copied; None copies the tree minus the fixtures and every live-state name.
+    With `git`, the copy is a repository whose HEAD carries a gars/ tree, and the copy's draft pins that tree.
+    """
+    root = Path(tempfile.mkdtemp())
+    test.addCleanup(shutil.rmtree, root, True)
+    dest = root / study.STUDY_REL
+    skip = {p.name for p in LIVE_STATE if p.parent == HERE} | {"test-fixtures", "__pycache__", "verification"}
+    if files is None:
+        shutil.copytree(HERE, dest, ignore=lambda _d, names: [n for n in names if n in skip])
+    else:
+        dest.mkdir(parents=True)
+        for f in files:
+            shutil.copy2(HERE / f, dest / f)
+    shutil.copy2(REPO / "evals" / "transcript.py", root / "evals" / "transcript.py")
+    if git:
+        repo = ScratchRepo(test)
+        shutil.rmtree(repo.root)
+        subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
+        repo.root = root
+        (root / "gars").mkdir()
+        (root / "gars" / "CLAUDE.md").write_text("the system under test\n")
+        repo.commit("base")
+        tree = repo.git("rev-parse", "HEAD:gars").stdout.strip()
+        draft = json.loads((dest / "prereg-draft.json").read_text())
+        draft["system_under_test"]["gars_tree_sha"] = tree
+        (dest / "prereg-draft.json").write_text(json.dumps(draft, indent=2, ensure_ascii=False) + "\n")
+        repo.commit("the copy's draft pins its own gars tree")
+    return root, dest
+
+
+def run_py(script: Path, *args: str, cwd: Path) -> subprocess.CompletedProcess:
+    env = {k: v for k, v in os.environ.items() if k != POISON_ENV}
+    return subprocess.run([sys.executable, str(script), *args], capture_output=True, text=True, cwd=str(cwd),
+                          env=env)
+
+
+class CheckResultsBeforeTheFreeze(unittest.TestCase):
+    """check_results.py on an unfrozen study: it says so and names the draft, and refuses by name anything a
+    take or a result leaves before the freeze."""
+
+    def setUp(self):
+        self.root, self.dest = study_copy(self, git=True)
+        self.draft_sha = hashlib.sha256((self.dest / "prereg-draft.json").read_bytes()).hexdigest()
+
+    def check(self, *args):
+        return run_py(self.dest / "check_results.py", *args, cwd=self.root)
+
+    def test_the_empty_study_is_not_frozen_and_passes(self):
+        r = self.check()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn(f"not frozen — draft sha256 {self.draft_sha}", r.stdout)
+
+    def test_each_record_a_take_leaves_is_refused_by_name(self):
+        plants = {
+            "a ledger row": ("takes.json", json.dumps({"rows": [{"task": "scope-read", "half": "positive",
+                                                                  "model": "claude-opus-5", "take": 1}]}),
+                             "takes.json"),
+            "a transcripts file": ("transcripts/scope-read/positive/claude-opus-5/1/transcript.jsonl", "{}\n",
+                                   "transcripts/"),
+            "a rehearsals file": ("rehearsals/scope-read/positive/claude-opus-5/row-0/driver-ledger.json", "{}\n",
+                                  "rehearsals/"),
+            "a pauses file": ("pauses/scope-read/positive/claude-opus-5/row-0/driver-ledger.json", "{}\n",
+                              "pauses/"),
+            "a results file": ("results/scope-read.json", "{}\n", "results/"),
+        }
+        for kind, (rel, body, named) in plants.items():
+            with self.subTest(kind):
+                p = self.dest / rel
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text(body)
+                try:
+                    r = self.check()
+                    self.assertEqual(r.returncode, 1, r.stdout)
+                    self.assertIn(f"not frozen — draft sha256 {self.draft_sha}", r.stdout)
+                    self.assertIn(named, r.stdout)
+                finally:
+                    top = self.dest / rel.split("/")[0]
+                    shutil.rmtree(top) if top.is_dir() else top.unlink()
+                self.assertEqual(self.check().returncode, 0, "the plant was not removed")
+
+    def test_the_flagged_checks_pass_and_say_they_read_the_draft(self):
+        for flag in ("--ledger", "--controls", "--regrade"):
+            with self.subTest(flag):
+                r = self.check(flag)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertIn(f"not frozen — draft sha256 {self.draft_sha}", r.stdout)
+
+
+class CostsCheckBeforeTheFirstTake(unittest.TestCase):
+    """costs.py --check with no COSTS.md passes only while nothing it would have to record exists."""
+
+    def setUp(self):
+        self.root, self.dest = study_copy(self, files=("costs.py",))
+
+    def check(self):
+        return run_py(self.dest / "costs.py", "--check", cwd=self.root)
+
+    def test_nothing_on_disk_is_no_takes_yet(self):
+        r = self.check()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("no takes yet", r.stdout)
+
+    def test_any_record_makes_it_refuse(self):
+        rec = json.dumps({"type": "assistant", "message": {"model": "claude-opus-5", "content": []}}) + "\n"
+        plants = {
+            "a ledger row": ("takes.json", json.dumps({"rows": [{"task": "t"}]})),
+            "an unreadable ledger": ("takes.json", "{not json"),
+            "a transcript": ("transcripts/scope-read/positive/claude-opus-5/1/transcript.jsonl", rec),
+            "a walk": ("walks/scope-read/1/transcript.jsonl", rec),
+            "a pause record": ("pauses/scope-read/positive/claude-opus-5/row-0/driver-ledger.json",
+                               json.dumps({"kind": "take", "pause": {}})),
+        }
+        for kind, (rel, body) in plants.items():
+            with self.subTest(kind):
+                p = self.dest / rel
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text(body)
+                try:
+                    r = self.check()
+                    self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+                    self.assertNotIn("no takes yet", r.stdout)
+                finally:
+                    top = self.dest / rel.split("/")[0]
+                    shutil.rmtree(top) if top.is_dir() else top.unlink()
+        self.assertEqual(self.check().returncode, 0, "a plant was not removed")
+
+
+class RoundTwoHasOneAxis(unittest.TestCase):
+    """Amendment A5 removed the local tier; the take order and the axes must not read it."""
+
+    SEED = "0123456789abcdef0123456789abcdef01234567"
+
+    def test_the_order_has_one_axis_over_every_cell(self):
+        got = prereg.order(self.SEED)
+        self.assertEqual(list(got), ["claude"])
+        self.assertEqual(len(prereg.cells()), 108)
+        self.assertEqual(sorted(tuple(c) for c in got["claude"]), sorted(prereg.cells()))
+
+    def test_every_model_is_on_the_claude_axis(self):
+        for m in prereg.models():
+            self.assertEqual(prereg.axis_of(m), "claude", m)
+
+    def test_a_draft_with_no_local_tier_does_not_raise(self):
+        import copy
+        pre = copy.deepcopy(prereg.load())
+        for key in ("local_models", "local_tier"):
+            pre.pop(key, None)
+        with injected_prereg(pre):
+            self.assertEqual(len(prereg.order(self.SEED)["claude"]), 108)
+            self.assertEqual(prereg.axis_of("any-model"), "claude")
+
+
+class TakesPlanReadsNoLocalTier(unittest.TestCase):
+    def test_the_plan_is_108_takes_and_says_nothing_local(self):
+        root, dest = study_copy(self, files=("takes.py", "prereg.py", "prereg-draft.json", "study.py"))
+        r = run_py(dest / "takes.py", "--plan", cwd=root)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("planned 108 takes", r.stdout)
+        self.assertEqual([ln for ln in r.stdout.splitlines() if "local" in ln.lower()], [])
+
+
+CARRIED_PROBE = """
+import json, sys
+here, planted = sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else None
+if planted:
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("confounded_refusal", planted)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["confounded_refusal"] = mod
+    spec.loader.exec_module(mod)
+sys.path.insert(0, here + "/graders")
+try:
+    import confounded_design
+except ImportError as exc:
+    print(json.dumps({"import_error": str(exc)}))
+    raise SystemExit(0)
+import labels
+print(json.dumps({"path": sys.path, "carried": sys.modules["confounded_refusal"].__file__,
+                  "labels": labels.__file__}))
+"""
+
+
+class TheCarriedGraderIsLoadedByPath(unittest.TestCase):
+    """confounded_design loads the first study's classifier from its pinned file, never by a path search that
+    puts evals/ ahead of this study; each case in a fresh interpreter, so no earlier import decides it."""
+
+    def probe(self, planted: Path | None = None) -> dict:
+        argv = [sys.executable, "-c", CARRIED_PROBE, str(HERE)] + ([str(planted)] if planted else [])
+        r = subprocess.run(argv, capture_output=True, text=True, cwd=str(tempfile.gettempdir()))
+        self.assertEqual(r.returncode, 0, r.stderr[-1500:])
+        return json.loads(r.stdout.strip().splitlines()[-1])
+
+    def test_this_studys_graders_come_first_and_the_first_studys_are_not_on_the_path(self):
+        got = self.probe()
+        path = [str(Path(p).resolve()) if p else p for p in got["path"]]
+        mine, evals = str((HERE / "graders").resolve()), str((REPO / "evals").resolve())
+        self.assertIn(mine, path)
+        if evals in path:
+            self.assertLess(path.index(mine), path.index(evals), "evals/ is ahead of this study's graders")
+        self.assertNotIn(str((REPO / "evals" / "graders").resolve()), path)
+        self.assertEqual(Path(got["carried"]).resolve(), (REPO / "evals" / "graders" / "confounded_refusal.py").resolve())
+        self.assertEqual(Path(got["labels"]).resolve().parent, (HERE / "graders").resolve())
+
+    def test_a_lookalike_already_loaded_is_refused(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp, True)
+        fake = tmp / "confounded_refusal.py"
+        fake.write_text("ANSWER_FROM_TURN = 0\n")
+        self.assertIn("import_error", self.probe(fake))
+
+
+class BuildCasesImportsRoundTwo(unittest.TestCase):
+    def test_every_grader_resolves_under_this_study(self):
+        code = ("import json, sys\nsys.path.insert(0, sys.argv[1])\nimport build_cases, prereg\n"
+                "print(json.dumps({'first': sys.path[0], 'graders': {t['id']: build_cases.grader_for(t['id']).__file__ "
+                "for t in prereg.load()['tasks']}}))")
+        r = subprocess.run([sys.executable, "-c", code, str(HERE)], capture_output=True, text=True,
+                           cwd=str(tempfile.gettempdir()))
+        self.assertEqual(r.returncode, 0, r.stderr[-1500:])
+        got = json.loads(r.stdout.strip().splitlines()[-1])
+        self.assertEqual(Path(got["first"]).resolve(), HERE.resolve())
+        self.assertEqual(len(got["graders"]), 6)
+        for task, f in got["graders"].items():
+            self.assertEqual(Path(f).resolve().parent, (HERE / "graders").resolve(), task)
+
+
+class TheControlTailsCarryNoMachinePath(unittest.TestCase):
+    def test_the_checkout_prefix_is_stripped_from_both_tails(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gap_run_controls", HERE / "controls" / "run_controls.py")
+        rc = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(rc)
+        where = str(rc.REPO) + "/x"
+        got = rc.run(["-c", f"import sys; print({where!r}); print({where!r}, file=sys.stderr)"])
+        self.assertEqual(got["exit"], 0)
+        for tail in ("stdout_tail", "stderr_tail"):
+            self.assertIn("x", got[tail])
+            self.assertNotIn(str(rc.REPO), got[tail], f"{tail} carries this machine's checkout path")
+
+
+class TheSuiteNeverReadsLiveState(unittest.TestCase):
+    """Ruling 29, as a run rather than a promise: the suite again, in a fresh interpreter in which every open or
+    listing under the ledger, the attempt roots, the walks, the results and the published files is printed and
+    refused. The `...Live` classes are the checks whose job is to read those, and are left out by name."""
+
+    def classes(self) -> list[str]:
+        mod = sys.modules[__name__]
+        return sorted(name for name, obj in vars(mod).items()
+                      if isinstance(obj, type) and issubclass(obj, unittest.TestCase)
+                      and obj.__module__ == mod.__name__ and not name.endswith("Live")
+                      and name != type(self).__name__)
+
+    def poisoned(self, argv: list[str]) -> subprocess.CompletedProcess:
+        return subprocess.run([sys.executable, *argv], capture_output=True, text=True, cwd=str(REPO),
+                              env={**os.environ, POISON_ENV: "1"})
+
+    def test_a_live_read_is_refused_in_a_poisoned_run(self):
+        """The negative control: the poison sees a read, so a clean run below means none was made."""
+        code = ("import sys; sys.argv = ['x']; sys.path.insert(0, sys.argv[0] if False else %r)\n"
+                "import test_harness as t\nopen(t.HERE / 'takes.json')" % str(HERE))
+        r = self.poisoned(["-c", code])
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn(LIVE_READ_MARK, r.stderr)
+
+    def test_the_suite_passes_with_every_live_path_refused(self):
+        names = self.classes()
+        self.assertGreater(len(names), 50)
+        r = self.poisoned([str(HERE / "test_harness.py"), *names])
+        reads = sorted({ln for ln in r.stderr.splitlines() if ln.startswith(LIVE_READ_MARK)})
+        self.assertEqual(reads, [], "the suite read live state")
+        self.assertEqual(r.returncode, 0, r.stderr[-3000:])
+        ran = re.search(r"^Ran (\d+) tests?", r.stderr, re.M)
+        self.assertTrue(ran and int(ran.group(1)) > 250, "the poisoned run did not run the suite; that is not a pass")
 
 
 def main() -> int:

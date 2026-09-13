@@ -127,7 +127,7 @@
       "round_1_path": "evals/gap-study/contract_quotes.json",
       "round_1_blob": "f576516153e32adb973f777a16b4fb06e005e770",
       "copy_sha256": "d97471f1f10c4449830be5f5165abcf1f1ec1f99cf80e1552ebea17af1c0d348",
-      "edited_after_copy": false
+      "edited_after_copy": true
     },
     {
       "path": "evals/gap-study-2/contracts.py",
@@ -141,7 +141,7 @@
       "round_1_path": "evals/gap-study/controls/results.json",
       "round_1_blob": "9d4b8f6d30aaa2ded5f33694a4dce1edec66500e",
       "copy_sha256": "178ed55bd3cd4197fa5e8d6c843174051068692bdd6b2e9d3ac636a4e485a85e",
-      "edited_after_copy": false
+      "edited_after_copy": true
     },
     {
       "path": "evals/gap-study-2/controls/run_controls.py",
@@ -211,7 +211,7 @@
       "round_1_path": "evals/gap-study/graders/confounded_design.py",
       "round_1_blob": "146812dc3b6e98573b38d60137eb40827aa0def7",
       "copy_sha256": "8ec7231d1cb55741983a53488e39006099b53aa329c553017cf5041ce36787a1",
-      "edited_after_copy": false
+      "edited_after_copy": true
     },
     {
       "path": "evals/gap-study-2/graders/labels.py",

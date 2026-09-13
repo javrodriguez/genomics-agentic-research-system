@@ -769,6 +769,30 @@ def check_regrade() -> list[str]:
     return problems
 
 
+# ---------------------------------------------------------------- before the freeze
+
+def draft_sha256() -> str:
+    return sha256(prereg.DRAFT) if prereg.DRAFT.is_file() else "none (no draft on disk)"
+
+
+def prefreeze_records() -> list[str]:
+    """Everything on disk that a take or a result leaves, named. Empty is the only state in which an
+    unfrozen study has nothing for the pins to bind."""
+    found: list[str] = []
+    rows = takes_mod.load_rows()
+    if rows:
+        found.append(f"{takes_mod.LEDGER.name} holds {len(rows)} registered row(s)")
+    for _kind, folder in takes_mod.ATTEMPT_KINDS:
+        root = HERE / folder
+        files = [f for f in root.rglob("*") if f.is_file()] if root.is_dir() else []
+        if files:
+            found.append(f"{folder}/ holds {len(files)} file(s)")
+    results = sorted(RESULTS.glob("*.json")) if RESULTS.is_dir() else []
+    if results:
+        found.append(f"results/ holds {len(results)} results file(s)")
+    return found
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Bind the published numbers to the bytes.")
     ap.add_argument("--ledger", action="store_true")
@@ -778,6 +802,27 @@ def main() -> int:
 
     ran_any = False
     problems: list[str] = []
+
+    # Round 2, CP1. Before the freeze there is no prereg.json: the default check re-hashed nothing and
+    # failed on the missing freeze commit, which reads as a broken study rather than an unfrozen one.
+    # So the default says it is not frozen, names the draft by its sha256, and passes only while no
+    # take or result exists; anything a take leaves before the freeze is refused by name. The three
+    # flagged checks keep their behaviour (they read the draft and are driven pre-freeze by the
+    # mutation battery), and say that they read an unfrozen draft.
+    if not prereg.is_frozen():
+        print(f"not frozen — draft sha256 {draft_sha256()}")
+        if not (args.ledger or args.controls or args.regrade):
+            found = prefreeze_records()
+            if found:
+                print(f"\n{len(found)} problem(s):")
+                for f in found:
+                    print(f"  - {f} before the freeze. No take may be registered, attempted or graded "
+                          f"against a draft.")
+                return 1
+            print("  no take, attempt or result exists, so there is nothing yet for the pins to bind; "
+                  "the pinned files and the frozen file are checked from the freeze on")
+            return 0
+        print("  the checks below read the draft")
 
     if not (args.ledger or args.controls or args.regrade):
         print("pinned files:")

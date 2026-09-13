@@ -98,6 +98,17 @@ def collect() -> dict:
 
 
 COSTS = HERE / "COSTS.md"
+LEDGER = HERE / "takes.json"
+
+
+def registered_rows() -> int:
+    """How many rows the take ledger holds; an unreadable ledger counts as not empty."""
+    if not LEDGER.is_file():
+        return 0
+    try:
+        return len(json.loads(LEDGER.read_text())["rows"])
+    except (OSError, json.JSONDecodeError, KeyError, TypeError):
+        return 1
 
 
 def _n(x: int) -> str:
@@ -173,6 +184,17 @@ def main() -> int:
     args = ap.parse_args()
 
     got = collect()
+    if args.check and not COSTS.is_file():
+        # Round 2, CP1: COSTS.md is written with the first take. Before it, --check has nothing to
+        # compare, which is a pass only while nothing exists that it would have to record.
+        registered = registered_rows()
+        on_disk = len(got["takes"]) + len(got["walks"]) + len(got["pauses"])
+        if registered == 0 and on_disk == 0:
+            print("no takes yet")
+            return 0
+        print(f"{COSTS.name} does not exist, and {registered} registered row(s) and {on_disk} take, walk "
+              f"or pause record(s) on disk would be in it. Run: python3 evals/gap-study-2/costs.py --write")
+        return 1
     if args.write or args.check:
         current = COSTS.read_text()
         wanted = render(current, got)

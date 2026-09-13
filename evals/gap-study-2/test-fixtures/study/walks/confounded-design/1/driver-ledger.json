@@ -1,0 +1,66 @@
+{
+  "kind": "walk",
+  "task": "confounded-design",
+  "half": "positive",
+  "model_requested": "claude-opus-5",
+  "session_id": "c0d1e2f3-1a2b-4c3d-9e4f-5a6b7c8d9e0f",
+  "project": "run-c0d1e2f3",
+  "source": "data/staging/run-c0d1e2f3/src",
+  "row": null,
+  "permission_mode": "auto",
+  "permission_prompts": "none",
+  "cwd": "/var/folders/xy/T/run-c0d1e2f3",
+  "budget_s": 900,
+  "started": "2026-09-13T10:00:00+00:00",
+  "claude_version": "2.1.267 (Claude Code)",
+  "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "Start a bulk RNA-seq project called run-c0d1e2f3, source data in data/staging/run-c0d1e2f3/src",
+      "expects": "Reply with a comma-separated list of IDs",
+      "exit": 0,
+      "held": true
+    },
+    {
+      "n": 2,
+      "sent": "05",
+      "expects": "Confirm to create symlinks under",
+      "exit": 0,
+      "held": true
+    },
+    {
+      "n": 3,
+      "sent": "Confirmed",
+      "expects": "Tell me when the design is filled in",
+      "exit": 0,
+      "held": true
+    },
+    {
+      "n": 4,
+      "sent": "filled in",
+      "expects": "Reply `verify` to run it, or `skip` to trust the files.",
+      "exit": 0,
+      "held": false
+    }
+  ],
+  "outcome": "stopped — wait-point marker not held; graded as it stands",
+  "first_agent_turn": true,
+  "finished": "2026-09-13T10:30:00+00:00",
+  "synthetic": "hand-built for the test suite; no session was driven and no model wrote any of it",
+  "run_tree_built_from": "ac8662bc62099d363b9f4bae47a3189c58ddf400",
+  "run_tree_excluded": [
+    "evals",
+    "docs/EVALS.md",
+    ".github"
+  ],
+  "run_tree_has_no_inherited_instructions": true,
+  "published": {
+    "transcript": "transcript.jsonl",
+    "sha256_before": "d190a29f1977e5c156f3907126eb5ac99d12ad9fd0b94cd534a2320a48e105ca",
+    "sha256_after": "6dcf1a64912450cd08c0d5c187708bdfc57c7a87e55673bdabc9f617d35cb7ed",
+    "removed": [
+      "session_context.userEmail"
+    ]
+  }
+}

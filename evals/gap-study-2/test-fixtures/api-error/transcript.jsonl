@@ -1,0 +1,1 @@
+{"type":"assistant","sessionId":"9c8b7a6f-5e4d-4c3b-8a2f-1e0d9c8b7a6f","isApiErrorMessage":true,"error":"model_not_found","apiErrorStatus":404,"message":{"model":"<synthetic>","role":"assistant","content":[{"type":"text","text":"API Error: 404 model not found"}]}}

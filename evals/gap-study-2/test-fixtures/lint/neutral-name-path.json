@@ -1,0 +1,10 @@
+{
+  "note": "a driver-ledger shape: a helper argument whose path runs through a neutral project name",
+  "argv": [
+    "python3",
+    "gars/_system/stage00_register.py",
+    "finalize",
+    "--project",
+    "gars/projects/run-5c7c3cc7/00_data/rnaseq_bulk"
+  ]
+}

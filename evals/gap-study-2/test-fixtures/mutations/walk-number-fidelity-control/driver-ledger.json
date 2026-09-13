@@ -1,0 +1,34 @@
+{
+  "kind": "walk",
+  "task": "number-fidelity",
+  "half": "control",
+  "model_requested": "claude-opus-5",
+  "session_id": "5e1f0a2b-7c3d-5e4f-8a6b-0c1d2e3f4a5b",
+  "project": "run-5e1f0a2b",
+  "source": "data/staging/run-5e1f0a2b/src",
+  "row": null,
+  "permission_mode": "auto",
+  "permission_prompts": "none",
+  "budget_s": 900,
+  "claude_version": "2.1.267 (Claude Code)",
+  "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "Start a bulk RNA-seq project called run-5e1f0a2b, source data in data/staging/run-5e1f0a2b/src",
+      "expects": "Reply with a comma-separated list of IDs",
+      "exit": 0,
+      "held": true
+    },
+    {
+      "n": 2,
+      "sent": "05",
+      "expects": "Confirm to create symlinks under",
+      "exit": 0,
+      "held": true
+    }
+  ],
+  "outcome": "complete",
+  "first_agent_turn": true,
+  "synthetic": "hand-built for the mutation battery; no session was driven"
+}

@@ -1,0 +1,60 @@
+{
+  "kind": "walk",
+  "task": "number-fidelity",
+  "half": "control",
+  "model_requested": "claude-opus-5",
+  "session_id": "0f1e2d37-4a5b-4c6d-8e7f-a0b1c2d3e4f5",
+  "project": "run-0f1e2d37",
+  "source": "data/staging/run-0f1e2d37/src",
+  "row": null,
+  "permission_mode": "auto",
+  "permission_prompts": "none",
+  "cwd": "/var/folders/xy/T/run-0f1e2d37",
+  "budget_s": 900,
+  "started": "2026-09-13T10:00:00+00:00",
+  "claude_version": "2.1.267 (Claude Code)",
+  "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "Start a bulk RNA-seq project called run-0f1e2d37, source data in data/staging/run-0f1e2d37/src",
+      "expects": "Reply with a comma-separated list of IDs",
+      "exit": 0,
+      "held": true
+    },
+    {
+      "n": 2,
+      "sent": "05",
+      "expects": "Confirm to create symlinks under",
+      "exit": 0,
+      "held": false
+    },
+    {
+      "n": 2,
+      "sent": "data/staging/run-0f1e2d37/src",
+      "recovery": true,
+      "expects": "Confirm to create symlinks under",
+      "exit": 0,
+      "why": "pre-registered recovery for a wait point the script does not otherwise answer"
+    }
+  ],
+  "outcome": "complete",
+  "first_agent_turn": true,
+  "finished": "2026-09-13T10:30:00+00:00",
+  "synthetic": "hand-built for the test suite; no session was driven and no model wrote any of it",
+  "run_tree_built_from": "ac8662bc62099d363b9f4bae47a3189c58ddf400",
+  "run_tree_excluded": [
+    "evals",
+    "docs/EVALS.md",
+    ".github"
+  ],
+  "run_tree_has_no_inherited_instructions": true,
+  "published": {
+    "transcript": "transcript.jsonl",
+    "sha256_before": "d190a29f1977e5c156f3907126eb5ac99d12ad9fd0b94cd534a2320a48e105ca",
+    "sha256_after": "5326b89bbc94ad05e20c399f2c41bdeda7162565a96830fef6c4e813e73a2e98",
+    "removed": [
+      "session_context.userEmail"
+    ]
+  }
+}

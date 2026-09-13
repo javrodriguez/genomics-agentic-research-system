@@ -1,0 +1,8 @@
+{
+  "synthetic": "hand-built for the test suite; no session was driven and no model wrote any of it",
+  "tasks": {
+    "number-fidelity": {
+      "positive": "2 of 3"
+    }
+  }
+}

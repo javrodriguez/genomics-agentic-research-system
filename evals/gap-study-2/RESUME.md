@@ -22,10 +22,22 @@ Steps 1 and 2, done alongside the build: `origin/main` was still `ac8662b` with 
 
 One absolute path remains in the copy, by design: `cases/scope-read.json:148` quotes a round-1 transcript line, and Decision 7 keeps the case suites byte-identical (the same line is in round 1's committed file).
 
+## CP1 — the copy runs standalone, green (slice 02)
+
+**Built and gated on 13 September 2026; committed with this file, pushed together with the kickoff.**
+
+- The suite reads no live state: 308 tests OK, and the 9 skips are exactly the three `…Live` checks, which skip only while `results/` has no results file. `TheSuiteNeverReadsLiveState` re-runs the suite with every live record refused.
+- Mutation battery: exit 0, and all 121 guards went red when broken, 114 of them after a green control. The other seven run a command that writes, or have no unmutated form. No topic modules yet.
+- `check_results.py` (default, `--ledger`, `--controls`, `--regrade`), `costs.py --check`, `contracts.py --check`, `fixtures/check_fixture.py --all`, `prereg.py --status` and `copy_manifest.py --check` all exit 0 on the empty study. The language guard is clean with one excused line, a byte-exact contract quote, re-ruled from empty.
+- The negative controls at gars tree `8a54e0f8` give round 1's six verdicts and exit codes (see the plan-gate note in the commit body).
+- A new CI job, `gap-study-2`, runs these at every pushed commit at full depth; the two existing jobs are unchanged.
+
 ## Next
 
-**CP1 — the copy runs standalone, green, in CI (slice 02).** Owned fixtures for every live-state read, `EVALS_BASELINE` derived from history, pre-freeze branches in `check_results.py` / `costs.py` / `takes.py`, the contract quotes re-pinned at `ac8662b`, the allowlist re-ruled, `controls/results.json` regenerated, and the `gap-study-2` CI job.
+**CP2 — round 1's process lessons as guards (slice 03).** Not-applicable entries become evaluated predicates; the `head_readers` inventory; `checklist_named_tests`; the done-line 12 mutation map; `commit_msg.py`, `ci_conclusion.py`, `clean_clone_battery.sh`, `check_checklist_names.py`.
+
+**CP1 as planned, for the record — the copy runs standalone, green, in CI (slice 02).** Owned fixtures for every live-state read, `EVALS_BASELINE` derived from history, pre-freeze branches in `check_results.py` / `costs.py` / `takes.py`, the contract quotes re-pinned at `ac8662b`, the allowlist re-ruled, `controls/results.json` regenerated, and the `gap-study-2` CI job.
 
 ## Open for Javier
 
-J1–J4 in the plan (plan-gate approve regex, a scope-read `misanswered` label, what `asked-to-proceed` covers, stripping inherited session variables). The build does not wait; blind review 1 does.
+Nothing on the instrument: J1–J4 were ruled on 13 September 2026 and are recorded in the goal file's Rulings. The approve detection is fixed in round 2 (J1); a wrong scope-read control answer is `misanswered` (J2); `asked-to-proceed` takes the broad reading, report-only stops included (J3); the twelve inherited Claude Code session variables are stripped from each take's environment (J4).

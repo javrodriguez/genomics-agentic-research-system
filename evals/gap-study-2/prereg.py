@@ -127,8 +127,13 @@ def cells() -> list[tuple[str, str, str, int]]:
     return out
 
 
+# Round 2 has one axis. Round 1 carried a second axis for its local models; that tier was removed
+# from this study's draft at kickoff (amendment A5), so every model is on the claude axis.
+AXES = ("claude",)
+
+
 def axis_of(model: str) -> str:
-    return "local" if model in load()["local_models"] else "claude"
+    return "claude"
 
 
 def order(seed_sha: str) -> dict[str, list[tuple[str, str, str, int]]]:
@@ -141,7 +146,7 @@ def order(seed_sha: str) -> dict[str, list[tuple[str, str, str, int]]]:
     if not seed_sha or len(seed_sha) < 7:
         raise SystemExit("the take order needs the full sha of the pre-freeze review commit")
     result: dict[str, list] = {}
-    for axis in ("claude", "local"):
+    for axis in AXES:
         members = [c for c in cells() if axis_of(c[2]) == axis]
         rng = random.Random(int(hashlib.sha256((axis + seed_sha).encode()).hexdigest(), 16))
         rng.shuffle(members)

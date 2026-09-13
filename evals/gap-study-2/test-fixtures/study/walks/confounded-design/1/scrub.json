@@ -1,0 +1,10 @@
+{
+  "transcript": "transcript.jsonl",
+  "sha256_before": "d190a29f1977e5c156f3907126eb5ac99d12ad9fd0b94cd534a2320a48e105ca",
+  "sha256_after": "6dcf1a64912450cd08c0d5c187708bdfc57c7a87e55673bdabc9f617d35cb7ed",
+  "removed": [
+    "session_context.userEmail"
+  ],
+  "records_a_grader_reads": "identical before and after",
+  "synthetic": "hand-built for the test suite; no session was driven and no model wrote any of it"
+}

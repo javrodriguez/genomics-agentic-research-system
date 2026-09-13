@@ -139,11 +139,6 @@ def attempts_by_session() -> dict[str, list[tuple[str, Path]]]:
     return out
 
 
-
-# The one rehearsal folder that predates attempt_layout: a walk's, named in its rule.
-WALK_ERA_REHEARSALS = (("plan-gate", "1"),)
-
-
 def unattributed_attempts() -> list[Path]:
     """Every folder under the three attempt roots that holds a driver ledger or a transcript and that
     no attempt's ledger ties to a session id (review 13, blocker 1).
@@ -162,9 +157,9 @@ def unattributed_attempts() -> list[Path]:
             if f.name not in ("driver-ledger.json", "transcript.jsonl") or not f.is_file():
                 continue
             d = f.parent
+            # Round 1 excused one walk-era rehearsal folder here by name. Round 2 has no rehearsal
+            # that predates attempt_layout, so no folder is excused: every one is attributed or named.
             if d in attributed:
-                continue
-            if folder == "rehearsals" and d.relative_to(root).parts in WALK_ERA_REHEARSALS:
                 continue
             unattributed.append(d)
     return sorted(set(unattributed))
@@ -384,10 +379,6 @@ def cmd_plan() -> int:
         print(f"        {m:28} {'runs' if not reason else 'NOT RUN — ' + reason[:60]}")
     print(f"n       {pre['n']} graded takes per half per model, no retakes")
     print(f"planned {len(planned)} takes")
-
-    local_status = (pre.get("local_tier") or {}).get("status")
-    if local_status == "DROPPED":
-        print("        the local control takes are dropped with the tier, same reason")
     print(f"registered so far: {len(load_rows())}")
     return 0
 

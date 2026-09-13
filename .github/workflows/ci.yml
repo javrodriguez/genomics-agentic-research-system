@@ -106,3 +106,52 @@ jobs:
         # has watched fail is a guard nobody knows is wired up, and this study has already shipped
         # four that looked correct and were not.
         run: python3 evals/gap-study/test_harness.py --mutations
+
+  gap-study-2:
+    # ---- the Gap Study, round 2 (evals/gap-study-2), checked at HEAD while the study runs ----------
+    # Round 2 is a copy of round 1's harness with its own name, paths and fixtures. While it runs, its
+    # guards are checked at every pushed commit; a later change pins this job to round 2's done commit,
+    # as the job above is pinned to round 1's. Round 1's job and the suite job are left as they were.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: the kickoff baseline, the ledger and the frozen-file checks read the
+          # commits that started, froze and registered the study, and refuse in a shallow clone.
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Gap Study round 2 copy
+        # Every copied file still traces to round 1's blob, every edit is flagged, and round 1 is
+        # unchanged.
+        run: python3 evals/gap-study-2/copy_manifest.py --check
+      - name: Gap Study round 2 harness
+        run: python3 evals/gap-study-2/test_harness.py
+      - name: Gap Study round 2 contract quotes
+        run: python3 evals/gap-study-2/contracts.py --check
+      - name: Gap Study round 2 fixtures
+        run: python3 evals/gap-study-2/fixtures/check_fixture.py --all
+      - name: Gap Study round 2 language guard
+        run: python3 evals/gap-study-2/lint_language.py evals/gap-study-2/
+      - name: Gap Study round 2 ledger
+        run: python3 evals/gap-study-2/check_results.py --ledger
+      - name: Gap Study round 2 controls, as published
+        # Before any results file is committed this must exit 0; once results exist, the step
+        # requires the re-derived finding byte-identical to the committed record.
+        run: |
+          set +e
+          python3 evals/gap-study-2/check_results.py --controls > "$RUNNER_TEMP/controls.txt" 2>&1
+          code=$?
+          set -e
+          printf 'exit %s\n' "$code" >> "$RUNNER_TEMP/controls.txt"
+          if [ -f evals/gap-study-2/verification/controls-as-published.txt ]; then
+            diff evals/gap-study-2/verification/controls-as-published.txt "$RUNNER_TEMP/controls.txt"
+          else
+            cat "$RUNNER_TEMP/controls.txt"
+            test "$code" -eq 0
+          fi
+      - name: Gap Study round 2 costs
+        run: python3 evals/gap-study-2/costs.py --check
+      - name: Gap Study round 2 mutations
+        run: python3 evals/gap-study-2/test_harness.py --mutations

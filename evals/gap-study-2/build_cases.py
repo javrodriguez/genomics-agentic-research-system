@@ -42,9 +42,13 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
-sys.path.insert(0, str(HERE))
+# Round 2, CP1: this study's directory first, its graders second, and the first study's evals/ only
+# APPENDED (for `transcript`, which this study does not carry). With evals/ at the front, a grader or
+# module of the same name there would have been the one imported.
+if str(REPO / "evals") not in sys.path:
+    sys.path.append(str(REPO / "evals"))
 sys.path.insert(0, str(HERE / "graders"))
-sys.path.insert(0, str(REPO / "evals"))
+sys.path.insert(0, str(HERE))
 
 import prereg  # noqa: E402
 import transcript as tx  # noqa: E402

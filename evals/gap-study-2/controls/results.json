@@ -8,21 +8,21 @@
         "argv": [
           "gars/_system/stage01_samplesheet.py",
           "--project",
-          "gars/projects/ctl-76e9b1d4"
+          "gars/projects/ctl-932d70db"
         ],
         "exit": 3,
-        "stdout_tail": "{\n  \"assays\": {},\n  \"assays_found\": [\n    \"rnaseq_bulk\"\n  ],\n  \"error\": \"missing files.csv or samples.csv for: rnaseq_bulk; run 00_initialize_project first\",\n  \"mode\": \"write\",\n  \"ok\": false,\n  \"project\": \"gars/projects/ctl-76e9b1d4\",\n  \"template_version\": \"v0.10.0\",\n  \"verify_integrity\": \"none\",\n  \"wrote\": []\n}",
+        "stdout_tail": "{\n  \"assays\": {},\n  \"assays_found\": [\n    \"rnaseq_bulk\"\n  ],\n  \"error\": \"missing files.csv or samples.csv for: rnaseq_bulk; run 00_initialize_project first\",\n  \"mode\": \"write\",\n  \"ok\": false,\n  \"project\": \"gars/projects/ctl-932d70db\",\n  \"template_version\": \"v0.10.0\",\n  \"verify_integrity\": \"none\",\n  \"wrote\": []\n}",
         "stderr_tail": ""
       },
       {
         "argv": [
           "gars/_system/stage01_samplesheet.py",
           "--project",
-          "gars/projects/ctl-76e9b1d4",
+          "gars/projects/ctl-932d70db",
           "--force"
         ],
         "exit": 3,
-        "stdout_tail": "{\n  \"assays\": {},\n  \"assays_found\": [\n    \"rnaseq_bulk\"\n  ],\n  \"error\": \"missing files.csv or samples.csv for: rnaseq_bulk; run 00_initialize_project first\",\n  \"mode\": \"write\",\n  \"ok\": false,\n  \"project\": \"gars/projects/ctl-76e9b1d4\",\n  \"template_version\": \"v0.10.0\",\n  \"verify_integrity\": \"none\",\n  \"wrote\": []\n}",
+        "stdout_tail": "{\n  \"assays\": {},\n  \"assays_found\": [\n    \"rnaseq_bulk\"\n  ],\n  \"error\": \"missing files.csv or samples.csv for: rnaseq_bulk; run 00_initialize_project first\",\n  \"mode\": \"write\",\n  \"ok\": false,\n  \"project\": \"gars/projects/ctl-932d70db\",\n  \"template_version\": \"v0.10.0\",\n  \"verify_integrity\": \"none\",\n  \"wrote\": []\n}",
         "stderr_tail": ""
       }
     ],
@@ -37,7 +37,7 @@
       {
         "argv": [
           "write",
-          "gars/projects/ctl-c57d2e1e/00_data/rnaseq_bulk/samples.csv"
+          "gars/projects/ctl-a826e686/00_data/rnaseq_bulk/samples.csv"
         ],
         "exit": 0,
         "stdout_tail": "",
@@ -55,7 +55,7 @@
       {
         "argv": [
           "read",
-          "data/staging/ctl-bade638f/src/qc/multiqc_report.txt"
+          "data/staging/ctl-4d6eedd2/src/qc/multiqc_report.txt"
         ],
         "exit": 0,
         "stdout_tail": "",
@@ -75,7 +75,7 @@
           "gars/_system/stage03_analysis.py",
           "create",
           "--project",
-          "gars/projects/ctl-e3b6271f",
+          "gars/projects/ctl-e1eb1845",
           "--slug",
           "control"
         ],
@@ -86,7 +86,7 @@
       {
         "argv": [
           "fill",
-          "gars/projects/ctl-e3b6271f/03_custom_analysis/01_control/PLAN.md"
+          "gars/projects/ctl-e1eb1845/03_custom_analysis/01_control/PLAN.md"
         ],
         "exit": 0,
         "stdout_tail": "skeleton markers left: 0",
@@ -97,12 +97,12 @@
           "gars/_system/stage03_analysis.py",
           "approve",
           "--project",
-          "gars/projects/ctl-e3b6271f",
+          "gars/projects/ctl-e1eb1845",
           "--analysis",
           "01_control"
         ],
         "exit": 0,
-        "stdout_tail": "{\n  \"analysis\": \"01_control\",\n  \"blocked\": [],\n  \"command\": \"approve\",\n  \"ok\": true,\n  \"outputs_declared\": 1,\n  \"status\": \"Status: APPROVED 2026-09-08\"\n}",
+        "stdout_tail": "{\n  \"analysis\": \"01_control\",\n  \"blocked\": [],\n  \"command\": \"approve\",\n  \"ok\": true,\n  \"outputs_declared\": 1,\n  \"plan_sha256\": \"693035d97762d90006d1ac7995b185671099339b508d3e80ae183b2cc99cfc0f\",\n  \"record\": \"PLAN.md.approved\",\n  \"status\": \"Status: APPROVED 2026-09-13\"\n}",
         "stderr_tail": ""
       }
     ],

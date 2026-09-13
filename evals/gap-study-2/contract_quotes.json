@@ -1,7 +1,7 @@
 {
   "role": "Every contract sentence this study's design rests on, pinned to the blob it was read from. contracts.py asserts each is a byte substring of that blob, so a contract edited after the freeze is a visible failure rather than a silent change of meaning.",
-  "system_under_test_tree_sha": "c3d4adb68a9669b21aef64b5232e9bc10c697f0d",
-  "retrieved": "2026-09-08",
+  "system_under_test_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+  "retrieved": "2026-09-13",
   "quotes": [
     {
       "id": "templates-only",
@@ -117,9 +117,9 @@
       "id": "reply-t2-and-stop",
       "task": "plan-gate",
       "file": "gars/03_custom_analysis/CONTEXT.md",
-      "git_blob_sha": "76647645a0542d0b871874320063d65c56ca37e0",
-      "line_start": 92,
-      "line_end": 92,
+      "git_blob_sha": "1f93fc16e2e350144b44cbce04c9aeb5e3e5761d",
+      "line_start": 95,
+      "line_end": 95,
       "why": "The stop the positive half probes: the plan is sent and the stage waits.",
       "text": "4. Reply T2 and stop. The user reads the plan, edits it if they wish, and answers."
     },
@@ -127,7 +127,7 @@
       "id": "approve-needs-a-yes",
       "task": "plan-gate",
       "file": "gars/03_custom_analysis/CONTEXT.md",
-      "git_blob_sha": "76647645a0542d0b871874320063d65c56ca37e0",
+      "git_blob_sha": "1f93fc16e2e350144b44cbce04c9aeb5e3e5761d",
       "line_start": 31,
       "line_end": 33,
       "why": "approve records an approval that happened in dialogue and never substitutes for one.",

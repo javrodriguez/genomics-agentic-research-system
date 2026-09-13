@@ -56,6 +56,16 @@ class NotYetApplicable(Exception):
     """
 
 
+class ControlRed(RuntimeError):
+    """The guard was red with nothing mutated (structural lesson 13).
+
+    One broken control disarms every guard that shares it: each of those mutations would come back
+    red for the broken control rather than for its own planted defect. So a control red is never
+    counted as the guard working. It is printed as CONTROL RED, listed on its own at the end, and fails
+    the battery.
+    """
+
+
 class Sandbox:
     """A throwaway copy of the study, optionally inside a real git repository."""
 
@@ -102,6 +112,12 @@ class Sandbox:
                 if (gars / rel).is_file():
                     (self.root / "gars" / rel).parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(gars / rel, self.root / "gars" / rel)
+        # ROUND 2, CP1: round 1's committed walks, as read-only data. CaseSuites and
+        # TheMarkersHoldOnRealReplies read them through study.ROUND1, which inside this copy resolves to
+        # <root>/evals/gap-study; without them both were red before any mutation.
+        src = study.ROUND1 / "walks"
+        if src.is_dir():
+            shutil.copytree(src, self.root / study.ROUND1_REL / "walks")
         if git:
             subprocess.run(["git", "init", "-q"], cwd=self.root, capture_output=True)
             if git == "objects":
@@ -138,7 +154,7 @@ class Sandbox:
         code, out = self.run_out(argv)
         if code != 0:
             tail = " | ".join(out.strip().splitlines()[-3:])[:300]
-            raise RuntimeError(f"the guard is red BEFORE the mutation (exit {code}): {tail}")
+            raise ControlRed(f"the guard is red BEFORE the mutation (exit {code}): {tail}")
         self.controlled = True
 
     @staticmethod
@@ -286,7 +302,7 @@ def m_fourth_graded_take(s: Sandbox) -> tuple[int, str]:
     _attempt(s, 1, 2)
     code, out = _add(s, 3)
     if code != 0:
-        raise RuntimeError(f"the control is red: an ordinary third take did not register: {out[-200:]}")
+        raise ControlRed(f"the control is red: an ordinary third take did not register: {out[-200:]}")
     s.controlled = True
     _rows(s, (1, 2, 3))
     s.commit("take: three rows")
@@ -364,21 +380,28 @@ def m_manifest_inside_the_fixture(s: Sandbox) -> tuple[int, str]:
     return code, "gen_source.py --manifest-out inside --out"
 
 
-CLEAN_WALK = ("number-fidelity", "2", "control")
+# ROUND 2, CP1: the walk these mutations break is a committed synthetic fixture, owned by this battery.
+# Round 1's battery read its own committed walk (walks/number-fidelity/2). This tree has no walks
+# before CP3, and a mutation that reads the study's live walks goes hollow the day a walk is re-driven
+# or refused -- the lesson of Ruling 29. The fixture is a hand-built number-fidelity control walk: two
+# operator lines, two agent replies holding their markers, the driver's checkout in its git status, and
+# gars/CLAUDE.md as its one instruction file, whose bytes check_take.py binds to the pinned tree. If gars
+# moves, the unmutated control goes red and the battery says so, rather than passing on a stale fixture.
+CLEAN_WALK = ("number-fidelity", "walk-number-fidelity-control", "control")
 
 
 def _clean_walk(s: Sandbox) -> tuple[Path, list[str]]:
-    """The one committed walk the checker reads valid, and the checker's argv for it.
+    """The synthetic walk the checker reads valid, and the checker's argv for it.
 
     BOTH MUTATIONS BELOW WERE HOLLOW until 11 September 2026. They ran the checker on scope-read walk 1,
     which the checker already refuses for the leak that walk was driven under (Ruling 8), so each came
     back red with nothing mutated. They now run on a walk the checker passes, prove that first, and
     require the refusal to name the defect they planted.
     """
-    task, n, half = CLEAN_WALK
-    walk = s.study / "walks" / task / n / "transcript.jsonl"
+    task, name, half = CLEAN_WALK
+    walk = s.study / "test-fixtures" / "mutations" / name / "transcript.jsonl"
     if not walk.is_file():
-        raise RuntimeError("no clean walk to mutate, so the guard was not exercised")
+        raise RuntimeError("no clean walk fixture to mutate, so the guard was not exercised")
     return walk, ["--task", task, "--half", half, "--walk"]
 
 
@@ -484,9 +507,8 @@ def m_study_names_dropped_from_the_leak_list(s: Sandbox) -> tuple[int, str]:
 
 def m_published_walk_carries_the_email(s: Sandbox) -> tuple[int, str]:
     """Ruling 10: a published transcript that still carries the account's email address field."""
-    p = s.study / "walks" / "number-fidelity" / "2" / "transcript.jsonl"
-    guard = [str(s.study / "check_take.py"), str(p), "--task", "number-fidelity", "--half", "control",
-             "--walk"]
+    p, rest = _clean_walk(s)
+    guard = [str(s.study / "check_take.py"), str(p), *rest]
     s.control(guard)
     out, applied = [], False
     for line in p.read_text(encoding="utf-8").splitlines():
@@ -505,7 +527,9 @@ def m_published_walk_carries_the_email(s: Sandbox) -> tuple[int, str]:
     if not applied:
         raise RuntimeError("the mutation did not apply; the guard was not exercised")
     p.write_bytes(("\n".join(out) + "\n").encode("utf-8"))
-    return s.run(guard), "check_take.py on a published walk carrying the email field"
+    code, said = s.run_out(guard)
+    return (Sandbox.expect(code, said, "[account-email]"),
+            "check_take.py on the walk fixture carrying the email field")
 
 
 def m_carried_line_edited(s: Sandbox) -> tuple[int, str]:
@@ -706,11 +730,15 @@ def m_plant_true_in_one_field(s: Sandbox) -> tuple[int, str]:
 
 
 def m_cost_table_typed_by_hand(s: Sandbox) -> tuple[int, str]:
-    """Slice 43: one number in COSTS.md's walk table changed by hand."""
+    """Slice 43: one number in COSTS.md's walk table changed by hand.
+
+    ROUND 2, CP1: on the fixture study's COSTS.md, which the test reads; the live file does not exist
+    before the first take, and the edit raised FileNotFoundError.
+    """
     s.control(_th(s, "TheBillIsWrittenByTheReader"))
-    p = s.study / "COSTS.md"
+    p = s.study / "test-fixtures" / "study" / "COSTS.md"
     lines = p.read_text().split("\n")
-    i = next((k for k, ln in enumerate(lines) if ln.startswith("| `confounded-design` 1 |")), None)
+    i = next((k for k, ln in enumerate(lines) if ln.startswith("| `number-fidelity` 1 |")), None)
     if i is None:
         raise RuntimeError("no walk row to change; the guard was not exercised")
     cells = lines[i].split(" | ")
@@ -1218,50 +1246,59 @@ def _needs_results(s: Sandbox) -> None:
 def m_summary_over_the_cap(s: Sandbox) -> tuple[int, str]:
     """Amendment 3: the two-minute read padded past 350 words."""
     _needs_results(s)
-    s.control(_th(s, "TwoMinuteRead"))
+    s.control(_th(s, "TwoMinuteReadLive"))
     _edit(_evals_md(s), f"\n{study.SUMMARY_END}\n",
           "\n" + " ".join(["padding"] * 60) + f"\n{study.SUMMARY_END}\n")
-    return s.run(_th(s, "TwoMinuteRead")), "test_harness.py TwoMinuteRead"
+    return s.run(_th(s, "TwoMinuteReadLive")), "test_harness.py TwoMinuteReadLive"
 
 
 def m_table_count_edited(s: Sandbox) -> tuple[int, str]:
     """Amendment 3: one count in the published table no longer the results file's."""
     _needs_results(s)
-    s.control(_th(s, "TwoMinuteRead"))
+    s.control(_th(s, "TwoMinuteReadLive"))
     p = _evals_md(s)
     text = p.read_text()
     row = next(ln for ln in text.splitlines() if ln.startswith("| `number-fidelity` |"))
     _edit(p, row, row.replace("| 3 of 3 |", "| 2 of 3 |", 1))
-    return s.run(_th(s, "TwoMinuteRead")), "test_harness.py TwoMinuteRead"
+    return s.run(_th(s, "TwoMinuteReadLive")), "test_harness.py TwoMinuteReadLive"
 
 
 def m_committed_line_reworded(s: Sandbox) -> tuple[int, str]:
     """Amendment 3: the vendor's unsupported line reworded in the section."""
     _needs_results(s)
-    s.control(_th(s, "TwoMinuteRead"))
+    s.control(_th(s, "TwoMinuteReadLive"))
     _edit(_evals_md(s), "> Anthropic doesn't endorse,", "> Anthropic does not endorse,")
-    return s.run(_th(s, "TwoMinuteRead")), "test_harness.py TwoMinuteRead"
+    return s.run(_th(s, "TwoMinuteReadLive")), "test_harness.py TwoMinuteReadLive"
 
 
 def m_banned_word_in_the_section(s: Sandbox) -> tuple[int, str]:
     """Amendment 3: a banned word written into the published section."""
     _needs_results(s)
-    s.control(_th(s, "NoRateNoBannedWord"))
+    s.control(_th(s, "NoRateNoBannedWordLive"))
     _edit(_evals_md(s), f"\n{study.SUMMARY_END}\n", f"\nA robust result.\n{study.SUMMARY_END}\n")
-    return s.run(_th(s, "NoRateNoBannedWord")), "test_harness.py NoRateNoBannedWord"
+    return s.run(_th(s, "NoRateNoBannedWordLive")), "test_harness.py NoRateNoBannedWordLive"
 
 
 def m_analysis_json_stale(s: Sandbox) -> tuple[int, str]:
     """Amendment 3: the published analysis no longer what analyse.py writes."""
     _needs_results(s)
-    s.control(_th(s, "ThePublishedAnalysisIsRegenerated"))
+    s.control(_th(s, "ThePublishedAnalysisIsRegeneratedLive"))
     p = s.study / "analysis.json"
     p.write_text(p.read_text().replace("claude-opus-5", "claude-sonnet-5", 1))
-    return s.run(_th(s, "ThePublishedAnalysisIsRegenerated")), "test_harness.py ThePublishedAnalysisIsRegenerated"
+    return (s.run(_th(s, "ThePublishedAnalysisIsRegeneratedLive")),
+            "test_harness.py ThePublishedAnalysisIsRegeneratedLive")
 
 
 def m_moved_threshold_after_the_freeze(s: Sandbox) -> tuple[int, str]:
-    """Amendment 4, checklist line 12: a criterion edited in the frozen file after its freeze commit."""
+    """Amendment 4, checklist line 12: a criterion edited in the frozen file after its freeze commit.
+
+    ROUND 2, CP1: before the freeze there is no prereg.json to move a threshold in, and the edit raised
+    FileNotFoundError, which the battery printed as a guard that did not go red. It is not applicable
+    until the frozen file exists, and it is evaluated on every run, so it applies the day the freeze lands.
+    """
+    if not (s.study / "prereg.json").is_file():
+        raise NotYetApplicable("no frozen prereg.json in this tree, so no threshold can move after a freeze; "
+                               "with the frozen file present the guard is required")
     s.control(_th(s, "TheFrozenFileMovesOnlyByAmendment"))
     _edit(s.study / "prereg.json", '  "rehearsal_cap": 3,\n', '  "rehearsal_cap": 4,\n')
     return s.run(_th(s, "TheFrozenFileMovesOnlyByAmendment")), "test_harness.py TheFrozenFileMovesOnlyByAmendment"
@@ -1470,6 +1507,150 @@ MUTATIONS += [
     ("a freeze pin pointed back at round 1", m_freeze_pin_back_at_round_one, False),
 ]
 
+
+# ROUND 2, CP1: the copy standing alone. One call-site mutation per CP1 change (structural lesson 12:
+# a guard closed in a test was dead at its call site).
+
+def m_control_tail_keeps_the_machine_path(s: Sandbox) -> tuple[int, str]:
+    """run_controls.run() no longer strips the checkout path from a control's output tails, so the
+    committed controls/results.json would carry this machine's home folder."""
+    s.control(_th(s, "TheControlTailsCarryNoMachinePath"))
+    p = s.study / "controls" / "run_controls.py"
+    _edit(p, '.replace(local, "")[-600:]', "[-600:]")
+    _edit(p, '.replace(local, "")[-300:]', "[-300:]")
+    return (s.run(_th(s, "TheControlTailsCarryNoMachinePath")),
+            "test_harness.py TheControlTailsCarryNoMachinePath")
+
+
+def m_prefreeze_records_report_nothing(s: Sandbox) -> tuple[int, str]:
+    """check_results.py before the freeze passing with a take record on disk: the records it must name
+    are never gathered, so a planted ledger row goes unreported."""
+    s.control(_th(s, "CheckResultsBeforeTheFreeze"))
+    _edit(s.study / "check_results.py", "    found: list[str] = []\n",
+          "    return []\n    found: list[str] = []\n")
+    return s.run(_th(s, "CheckResultsBeforeTheFreeze")), "test_harness.py CheckResultsBeforeTheFreeze"
+
+
+def m_costs_check_passes_with_a_registered_row(s: Sandbox) -> tuple[int, str]:
+    """costs.py --check with no COSTS.md printing `no takes yet` and exiting 0 whatever is registered."""
+    s.control(_th(s, "CostsCheckBeforeTheFirstTake"))
+    _edit(s.study / "costs.py", "        if registered == 0 and on_disk == 0:\n", "        if True:\n")
+    return s.run(_th(s, "CostsCheckBeforeTheFirstTake")), "test_harness.py CostsCheckBeforeTheFirstTake"
+
+
+def m_carried_grader_path_shadowed(s: Sandbox) -> tuple[int, str]:
+    """confounded_design.py putting evals/graders back at the front of sys.path, as round 1's copy did,
+    so a same-named first-study module can shadow this study's."""
+    s.control(_th(s, "TheCarriedGraderIsLoadedByPath"))
+    _edit(s.study / "graders" / "confounded_design.py", "sys.path.insert(0, str(HERE))\n",
+          'sys.path.insert(0, str(HERE))\nsys.path.insert(0, str(FIRST_STUDY_EVALS / "graders"))\n')
+    return (s.run(_th(s, "TheCarriedGraderIsLoadedByPath")),
+            "test_harness.py TheCarriedGraderIsLoadedByPath")
+
+
+MUTATIONS += [
+    ("a control tail that keeps the machine path", m_control_tail_keeps_the_machine_path, False),
+    ("pre-freeze records that report nothing", m_prefreeze_records_report_nothing, False),
+    ("costs --check passing with a registered row", m_costs_check_passes_with_a_registered_row, False),
+    ("evals/graders back at the front of the carried grader's path", m_carried_grader_path_shadowed, False),
+]
+
+
+def m_local_axis_back_in_the_order(s: Sandbox) -> tuple[int, str]:
+    """Amendment A5 undone at its call site: the removed local tier back on prereg.AXES."""
+    s.control(_th(s, "RoundTwoHasOneAxis"))
+    _edit(s.study / "prereg.py", 'AXES = ("claude",)\n', 'AXES = ("claude", "local")\n')
+    return s.run(_th(s, "RoundTwoHasOneAxis")), "test_harness.py RoundTwoHasOneAxis"
+
+
+def m_plan_prints_a_local_tier(s: Sandbox) -> tuple[int, str]:
+    """takes.py --plan reporting a local tier this study no longer has."""
+    s.control(_th(s, "TakesPlanReadsNoLocalTier"))
+    _edit(s.study / "takes.py", '    print(f"planned {len(planned)} takes")\n',
+          '    print(f"planned {len(planned)} takes")\n    print("local tier  0 local models")\n')
+    return s.run(_th(s, "TakesPlanReadsNoLocalTier")), "test_harness.py TakesPlanReadsNoLocalTier"
+
+
+def m_build_cases_puts_evals_first(s: Sandbox) -> tuple[int, str]:
+    """build_cases.py with evals/ back at the front of sys.path, where round 1's modules shadow round 2's."""
+    s.control(_th(s, "BuildCasesImportsRoundTwo"))
+    _edit(s.study / "build_cases.py", "sys.path.insert(0, str(HERE))\n",
+          'sys.path.insert(0, str(HERE))\nsys.path.insert(0, str(REPO / "evals"))\n')
+    return s.run(_th(s, "BuildCasesImportsRoundTwo")), "test_harness.py BuildCasesImportsRoundTwo"
+
+
+def m_fixture_test_reads_live_costs(s: Sandbox) -> tuple[int, str]:
+    """A fixture-owned test that also reads the live COSTS.md, and swallows the miss, so the plain suite
+    stays green; only the poisoned run can see it."""
+    guard = _th(s, "TheSuiteNeverReadsLiveState")
+    s.control(guard)
+    _edit(s.study / "test_harness.py", "        costs.HERE = FIXTURE_STUDY\n",
+          "        costs.HERE = FIXTURE_STUDY\n        try:\n            (HERE / \"COSTS.md\").read_text()\n"
+          "        except OSError:\n            pass\n")
+    code, out = s.run_out(guard)
+    # The marker the poison hook prints, naming the planted read. Not the test's own "the suite read live
+    # state" message: the hook writes the marker mid-line after unittest's progress dots, and the test
+    # collects only lines that START with it, so that message did not appear and the red came from the
+    # return-code assertion (measured 13 Sep 2026; reported to the test owner).
+    read = re.search(r"LIVE-STATE READ: open \S*/COSTS\.md", out)
+    if code != 0 and not read:
+        tail = " | ".join(out.strip().splitlines()[-3:])[:300]
+        raise RuntimeError(f"red for another reason (no live read of COSTS.md named): {tail}")
+    return code, "test_harness.py TheSuiteNeverReadsLiveState"
+
+
+def m_fixture_suite_label_flipped(s: Sandbox) -> tuple[int, str]:
+    """One recorded label in the fixture case suite flipped."""
+    s.control(_th(s, "CaseSuitesOnOwnedFixtures"))
+    p = s.study / "test-fixtures" / "cases" / "number-fidelity.json"
+    d = json.loads(p.read_text())
+    g = d["cases"][0]["graded"]["positive"]
+    g["label"] = "corrected" if g["label"] != "corrected" else "agreed"
+    p.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
+    return s.run(_th(s, "CaseSuitesOnOwnedFixtures")), "test_harness.py CaseSuitesOnOwnedFixtures"
+
+
+def m_summary_cap_never_counted(s: Sandbox) -> tuple[int, str]:
+    """TwoMinuteRead's mechanism: the word cap that never reports a summary over it."""
+    s.control(_th(s, "TwoMinuteRead"))
+    _edit(s.study / "test_harness.py",
+          '    return [f"the summary block is {n} words, over {SUMMARY_WORD_CAP}"] if n > SUMMARY_WORD_CAP else []\n',
+          "    return []\n")
+    return s.run(_th(s, "TwoMinuteRead")), "test_harness.py TwoMinuteRead"
+
+
+def m_scan_blind_to_a_ratio(s: Sandbox) -> tuple[int, str]:
+    """NoRateNoBannedWord's mechanism: the language scan no longer seeing a k-slash-n ratio."""
+    s.control(_th(s, "NoRateNoBannedWord"))
+    _edit(s.study / "lint_language.py", r'r"\b\d+\s*/\s*\d+\b"', r'r"(?!x)x"')
+    return s.run(_th(s, "NoRateNoBannedWord")), "test_harness.py NoRateNoBannedWord"
+
+
+def m_analysis_reads_a_fixed_results_folder(s: Sandbox) -> tuple[int, str]:
+    """ThePublishedAnalysisIsRegenerated's mechanism: analyse.py reading one fixed results folder instead of
+    the RESULTS it is handed, so the analysis is no longer written from the results file under comparison.
+
+    At the call site, in analyse.py, not in the test: an earlier form edited the test's own `written()`
+    helper, which proves the test can be broken and nothing about the code it guards (lesson 12)."""
+    s.control(_th(s, "ThePublishedAnalysisIsRegenerated"))
+    _edit(s.study / "analyse.py", "        p = RESULTS / f\"{t['id']}.json\"\n",
+          "        p = HERE / \"results\" / f\"{t['id']}.json\"\n")
+    return (s.run(_th(s, "ThePublishedAnalysisIsRegenerated")),
+            "test_harness.py ThePublishedAnalysisIsRegenerated")
+
+
+MUTATIONS += [
+    ("the local axis back in the take order", m_local_axis_back_in_the_order, False),
+    ("the plan printing a local tier", m_plan_prints_a_local_tier, False),
+    ("build_cases with evals/ first on its path", m_build_cases_puts_evals_first, False),
+    # "objects": the guard re-runs the whole suite, whose contract and fixture checks resolve pinned blobs
+    ("a fixture-owned test that reads the live COSTS.md", m_fixture_test_reads_live_costs, "objects"),
+    ("a label flipped in the fixture case suite", m_fixture_suite_label_flipped, False),
+    ("the summary word cap never counted", m_summary_cap_never_counted, False),
+    ("the language scan blind to a ratio", m_scan_blind_to_a_ratio, False),
+    ("the analysis read from a fixed results folder", m_analysis_reads_a_fixed_results_folder, False),
+]
+
 NOT_APPLICABLE = [
     ("a local transcript with no server log",
      "the local tier was dropped at gate 2, so no local take will exist to mutate"),
@@ -1489,28 +1670,128 @@ NOT_APPLICABLE = [
     ("a carried fixture whose tree hash differs from the freeze",
      "no fixture pin exists before the freeze; the builder's refusal on a disagreeing pin is "
      "unit-tested instead (TheCarriedFixtureBuilds)"),
+    # ROUND 2, CP1: the three live partners of the split classes. Each reads the published section, which
+    # does not exist while results/ holds no results file, and says so by skipping; a mutation there would
+    # come back green against a guard that never ran. Their mechanisms are mutated in the fixture classes
+    # above, and the five amendment-3 mutations aimed at these classes turn applicable with the first result.
+    ("TwoMinuteReadLive over the published section",
+     "results/ holds no results file, so there is no published section for the live word cap, order, "
+     "table, limitations and committed-line checks to read; their mechanisms are broken in TwoMinuteRead"),
+    ("NoRateNoBannedWordLive over the published section, analysis, brief and commit bodies",
+     "results/ holds no results file, and no freeze commit exists, so there is no published section, "
+     "analysis, gate brief or post-freeze commit body to scan; the scan is broken in NoRateNoBannedWord"),
+    ("ThePublishedAnalysisIsRegeneratedLive over analysis.json",
+     "results/ holds no results file and no analysis.json is published, so there is nothing to regenerate "
+     "and compare; the comparison is broken in ThePublishedAnalysisIsRegenerated"),
 ]
+
+
+# --------------------------------------------------------------------------- the topic registry
+#
+# ROUND 2, DECISION 8: parallel build, sequential landing. This file has one owner; each fix's
+# mutations live in their own `mutations_<topic>.py` beside it, so fix builders never share a file.
+# Every such module present is loaded here, by path (never by a sys.path lookup, which a same-named
+# module under evals/ could shadow), and its entries join the two lists above.
+#
+# THE CONTRACT. A `mutations_<topic>.py` exports `MUTATIONS` (entries shaped as above: name, function
+# taking a Sandbox, git mode False | True | "objects"), or `NOT_APPLICABLE` (name first, shaped as above),
+# or both. A module may import this one (`from mutations import Sandbox, _th, _edit`): it is loaded
+# after everything above is defined. Each of these fails the import LOUDLY, because a module that
+# registers nothing reads exactly like a topic whose guards all went red:
+#   a module that raises on import; a module exporting neither list; lists that are not lists, or
+#   both empty; an entry of the wrong shape; a name already registered, here or by another module.
+# NOT_APPLICABLE's second element is left as it is today; CP2 turns it into a predicate.
+
+GIT_MODES = (False, True, "objects")
+REGISTERED_MODULES: list[str] = []
+
+
+class RegistryError(RuntimeError):
+    """A mutations_<topic>.py that cannot be registered as it stands."""
+
+
+def _load_topic(path: Path):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(path.stem, path)
+    if spec is None or spec.loader is None:
+        raise RegistryError(f"{path.name}: cannot be loaded as a module")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[path.stem] = mod
+    try:
+        spec.loader.exec_module(mod)
+    except Exception as exc:
+        del sys.modules[path.stem]
+        raise RegistryError(f"{path.name}: raised on import: {exc!r}") from exc
+    return mod
+
+
+def register_topic_modules(here: Path = HERE) -> list[str]:
+    """Load every mutations_*.py in `here` and extend MUTATIONS and NOT_APPLICABLE in place."""
+    # A topic module imports this file by name; run as a script, it must find this same module.
+    sys.modules.setdefault("mutations", sys.modules[__name__])
+    seen = {e[0] for e in MUTATIONS} | {e[0] for e in NOT_APPLICABLE}
+    loaded = []
+    for path in sorted(here.glob("mutations_*.py")):
+        mod = _load_topic(path)
+        has_m, has_na = hasattr(mod, "MUTATIONS"), hasattr(mod, "NOT_APPLICABLE")
+        if not (has_m or has_na):
+            raise RegistryError(f"{path.name}: exports neither MUTATIONS nor NOT_APPLICABLE, so it registers "
+                                f"nothing; a topic with no mutations must say why in NOT_APPLICABLE")
+        muts, nas = getattr(mod, "MUTATIONS", []), getattr(mod, "NOT_APPLICABLE", [])
+        if not isinstance(muts, list) or not isinstance(nas, list):
+            raise RegistryError(f"{path.name}: MUTATIONS and NOT_APPLICABLE must be lists")
+        if not muts and not nas:
+            raise RegistryError(f"{path.name}: MUTATIONS and NOT_APPLICABLE are both empty; nothing registered "
+                                f"is not a pass")
+        for e in muts:
+            if not (isinstance(e, tuple) and len(e) == 3 and isinstance(e[0], str) and e[0].strip()
+                    and callable(e[1]) and any(e[2] is m if isinstance(m, bool) else e[2] == m
+                                               for m in GIT_MODES)):
+                raise RegistryError(f"{path.name}: MUTATIONS entry {e!r} is not (name, function, "
+                                    f"git mode in {GIT_MODES})")
+        for e in nas:
+            if not (isinstance(e, tuple) and len(e) == 2 and isinstance(e[0], str) and e[0].strip()):
+                raise RegistryError(f"{path.name}: NOT_APPLICABLE entry {e!r} is not (name, reason)")
+        for name in [e[0] for e in muts] + [e[0] for e in nas]:
+            if name in seen:
+                raise RegistryError(f"{path.name}: the name {name!r} is already registered; the battery "
+                                    f"reports by name, so two entries under one name hide each other")
+            seen.add(name)
+        MUTATIONS.extend(muts)
+        NOT_APPLICABLE.extend(nas)
+        loaded.append(f"{path.name} ({len(muts)} mutation(s), {len(nas)} not applicable)")
+    REGISTERED_MODULES[:] = loaded
+    return loaded
 
 
 def run_all() -> int:
     print(f"{len(MUTATIONS)} mutation(s); each applied to a throwaway copy, the guard run there, "
-          f"the copy discarded\n")
+          f"the copy discarded")
+    print(f"topic modules registered: {', '.join(REGISTERED_MODULES) if REGISTERED_MODULES else 'none'}\n")
     failures = []
+    control_reds = []
     pending = []
     controlled = 0
     for name, fn, needs_git in MUTATIONS:
         s = Sandbox(git=needs_git)
+        control_red = False
         try:
             code, guard = fn(s)
         except NotYetApplicable as why:
             pending.append((name, str(why)))
             print(f"  n/a         {name:48} {why}")
             continue
+        except ControlRed as exc:
+            code, guard, control_red = 0, str(exc), True
         except Exception as exc:  # a mutation that cannot even run is a failure of this file
             code, guard = 0, f"raised {exc!r}"
         finally:
             was_controlled = s.controlled
             s.close()
+        if control_red:
+            print(f"  CONTROL RED     {name:48} {guard}")
+            control_reds.append(name)
+            continue
         ok = code != 0
         controlled += bool(ok and was_controlled)
         mark = "ctl" if was_controlled else "   "
@@ -1525,9 +1806,16 @@ def run_all() -> int:
     for name, why in NOT_APPLICABLE + pending:
         print(f"  n/a   {name:44} {why}")
 
+    if control_reds:
+        print(f"\n{len(control_reds)} guard(s) were red BEFORE their mutation: {control_reds}")
+        print("A red that was red before the mutation proves nothing; fix the control first.")
     if failures:
         print(f"\n{len(failures)} guard(s) did NOT go red: {failures}")
         print("A guard that cannot fail is not protecting anything.")
+    if control_reds or failures:
         return 1
     print(f"\nevery one of the {applied} guards went red when broken")
     return 0
+
+
+register_topic_modules()

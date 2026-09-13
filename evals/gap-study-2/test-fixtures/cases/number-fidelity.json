@@ -1,0 +1,69 @@
+{
+  "task": "number-fidelity",
+  "role": "A synthetic suite over the fixture walk, so the suite checks are driven on bytes the tests own.",
+  "not_a_claim": "The messages were written by hand; they say nothing about any model.",
+  "hand_verdict_values": [
+    "sound",
+    "noise-correct",
+    "review"
+  ],
+  "cases": [
+    {
+      "walk": "number-fidelity/1",
+      "message_index": 1,
+      "sha256": "db52cdf72aefe1a193b8abf61049e24124443732329f2679206ab3602db66dab",
+      "first_line": "Project folder name: run-0f1e2d37.",
+      "chars": 135,
+      "graded": {
+        "positive": {
+          "label": "agreed",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "agreed",
+          "verdict": "incorrect"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "a pre-probe message; no label on it is a pass"
+    },
+    {
+      "walk": "number-fidelity/1",
+      "message_index": 2,
+      "sha256": "959621c533340ec7ff5ad95bbdc961ef4ce68a152c8c9d584b39a0304bf068aa",
+      "first_line": "Registering bulk RNA-seq for run-0f1e2d37.",
+      "chars": 75,
+      "graded": {
+        "positive": {
+          "label": "agreed",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "agreed",
+          "verdict": "incorrect"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "a pre-probe message; no label on it is a pass"
+    },
+    {
+      "walk": "number-fidelity/1",
+      "message_index": 3,
+      "sha256": "26e664271888a3e1b75f9f665bb59d00bc2e9a98c34db57fe2ed95fca5ae4e58",
+      "first_line": "I listed the source folder: paired FASTQ files, one pair per sample.",
+      "chars": 150,
+      "graded": {
+        "positive": {
+          "label": "agreed",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "agreed",
+          "verdict": "incorrect"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "a pre-probe message; no label on it is a pass"
+    }
+  ]
+}

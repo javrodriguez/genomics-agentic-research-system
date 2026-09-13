@@ -56,10 +56,14 @@ SEED = 20260908
 def run(argv: list[str], cwd: Path | None = None) -> dict:
     out = subprocess.run([sys.executable, *argv], capture_output=True, text=True,
                          cwd=str(cwd) if cwd else None)
-    return {"argv": [a.replace(str(REPO) + "/", "") for a in argv],
+    # The helpers echo the project path they were given, which is absolute. Round 1 removed the
+    # checkout prefix from its committed output by hand; doing it here makes the committed file
+    # what this script writes, on any machine.
+    local = str(REPO) + "/"
+    return {"argv": [a.replace(local, "") for a in argv],
             "exit": out.returncode,
-            "stdout_tail": out.stdout.strip()[-600:],
-            "stderr_tail": out.stderr.strip()[-300:]}
+            "stdout_tail": out.stdout.strip().replace(local, "")[-600:],
+            "stderr_tail": out.stderr.strip().replace(local, "")[-300:]}
 
 
 def scratch_project() -> tuple[str, Path]:

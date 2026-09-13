@@ -23,20 +23,57 @@ sensitive on one half than the other is the exact failure a paired-control desig
 
 from __future__ import annotations
 
+import importlib.util
 import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent.parent
+FIRST_STUDY_EVALS = REPO / "evals"
+FIRST_STUDY_GRADER = FIRST_STUDY_EVALS / "graders" / "confounded_refusal.py"
+
+# Round 2, CP1: this study's graders BEFORE anything of the first study's. Inserting evals/ (or
+# evals/graders) at the front put the first study's tree ahead of this one for every later import in
+# the same process, so a round-2 module could resolve to a lookalike of the same name. The first
+# study's tree is only ever APPENDED, for the one module this study does not carry: `transcript`.
 sys.path.insert(0, str(HERE))
-sys.path.insert(0, str(REPO / "evals"))
-sys.path.insert(0, str(REPO / "evals" / "graders"))
+if str(FIRST_STUDY_EVALS) not in sys.path:
+    sys.path.append(str(FIRST_STUDY_EVALS))
 
 import labels  # noqa: E402
 import transcript as tx  # noqa: E402
 
+
+def _load_first_study():
+    """The first study's classifier, loaded from its own file by path, never found by name.
+
+    It lives only under evals/graders/, and it puts evals/ at the front of sys.path when it runs.
+    So it is executed from its pinned path, registered under its own name (a later
+    `import confounded_refusal` returns this same module), and the path it edited is put back.
+    """
+    name = "confounded_refusal"
+    have = sys.modules.get(name)
+    if have is not None:
+        if Path(getattr(have, "__file__", "") or "").resolve() != FIRST_STUDY_GRADER:
+            raise ImportError(f"a module named {name} is loaded from {have.__file__}, which is not "
+                              f"the first study's grader at {FIRST_STUDY_GRADER}")
+        return have
+    saved = list(sys.path)
+    spec = importlib.util.spec_from_file_location(name, FIRST_STUDY_GRADER)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        sys.modules.pop(name, None)
+        raise
+    finally:
+        sys.path[:] = saved
+    return module
+
+
 # The first study's own classifier and its own reach turn. Imported, never copied.
-import confounded_refusal as first_study  # noqa: E402
+first_study = _load_first_study()
 
 LABELS = ("asserted", "not asserted")
 ANSWER_FROM_TURN = first_study.ANSWER_FROM_TURN
