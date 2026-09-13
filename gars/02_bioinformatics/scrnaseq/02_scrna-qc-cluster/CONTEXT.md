@@ -47,7 +47,7 @@ This sub-stage performs the steps in Process and nothing else.
 environment arrives via `$GARS_PY` inside `submit.sh`:
 
 ```bash
-python3 _system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py <subcommand> \
+python3 "${GARS_WRAPPERS:-_system/wrappers}"/scrna-qc-cluster/scrna_qc_cluster.py <subcommand> \
     --project projects/<title> --h5ad <resolved path>
 ```
 
