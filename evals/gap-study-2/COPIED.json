@@ -1,0 +1,329 @@
+{
+  "record": "the files round 2 copied from round 1's harness at kickoff, and whether each has since been edited",
+  "base_commit": "ac8662bc62099d363b9f4bae47a3189c58ddf400",
+  "copied_on": "2026-09-13",
+  "method": "git archive of the base commit's round-1 tree, then an explicit per-file list; any archived file in neither the copy list nor the leave list stopped the copy",
+  "fields": {
+    "round_1_blob": "the git blob sha of round_1_path at base_commit; copy_manifest.py --check re-derives it",
+    "copy_sha256": "the sha256 of the bytes AS COPIED, before any edit (equal to the sha256 of round 1's blob); not the file's current hash",
+    "edited_after_copy": "true once any checkpoint has edited the copy; --check refuses a flag that disagrees with the bytes, so a checkpoint that edits a copied file sets it in the same commit"
+  },
+  "classification": {
+    "archived": 505,
+    "copy": 41,
+    "leave": 464,
+    "unclassified": 0
+  },
+  "left_behind": {
+    "files": [
+      "observations.py",
+      "takes.json",
+      "prereg.json",
+      "analysis.json",
+      "COSTS.md",
+      "RESIDUAL.md",
+      "RESUME.md"
+    ],
+    "directories": [
+      "transcripts/",
+      "walks/",
+      "rehearsals/",
+      "pauses/",
+      "reviews/",
+      "verification/",
+      "results/",
+      "local-model/",
+      "__pycache__/"
+    ],
+    "why": "round 1's readings, records and results: round 2 reads what it needs of them as data, by path, and never carries them as its own"
+  },
+  "files": [
+    {
+      "path": "evals/gap-study-2/PROTOCOL.md",
+      "round_1_path": "evals/gap-study/PROTOCOL.md",
+      "round_1_blob": "d4270eae2b48c8cc00ad027740768ce829fbfca1",
+      "copy_sha256": "a5a0cdec3d1176060c002c9c80e916a03a714d32f9369ca75756c875497b112d",
+      "edited_after_copy": false
+    },
+    {
+      "path": "evals/gap-study-2/README.md",
+      "round_1_path": "evals/gap-study/README.md",
+      "round_1_blob": "4b16b1e7d187141542aadc4ca0d04b2a25f313e8",
+      "copy_sha256": "4cf4d388866b47fbdeaad700cd3b7be7ab8622f49d0ae3b4a8136cd4533fb23d",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/analyse.py",
+      "round_1_path": "evals/gap-study/analyse.py",
+      "round_1_blob": "0adb32a88c267d2ac221edc6e8fa99444ee1959a",
+      "copy_sha256": "d16263ba3f87cabaf60dc821da20b1f3016d747170d73d517fdeb6e269d65d3e",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/build_cases.py",
+      "round_1_path": "evals/gap-study/build_cases.py",
+      "round_1_blob": "d1d93ea44a4aa9fb6f844480f20813572ac698d1",
+      "copy_sha256": "2cdd27d3632539d9f2b6d5bb3ca1ddd171a6e577570aee07b1b05d66608546f3",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/cases/confounded-design.json",
+      "round_1_path": "evals/gap-study/cases/confounded-design.json",
+      "round_1_blob": "b7815930db39ff84bc1def64654c09bee2b920c3",
+      "copy_sha256": "ba8e39e7a81a9b030c971ee7fd131320cb991f7f1010b8169b127374ef4606eb",
+      "edited_after_copy": false
+    },
+    {
+      "path": "evals/gap-study-2/cases/number-fidelity.json",
+      "round_1_path": "evals/gap-study/cases/number-fidelity.json",
+      "round_1_blob": "4941d906d538c5d105b094cc74ea52a36c2057e0",
+      "copy_sha256": "fb80bd8f2bf16d3b9010c14efca3b5a4c4252ef56791f8b7e7f28490d1d45822",
+      "edited_after_copy": false
+    },
+    {
+      "path": "evals/gap-study-2/cases/plan-gate.json",
+      "round_1_path": "evals/gap-study/cases/plan-gate.json",
+      "round_1_blob": "eb5c5e15d505d03291c9abd4e29aff0e0fe210a0",
+      "copy_sha256": "670da6ff9c5be7debd8b97c95ecf1c708b1cc57e0c3d5a8536a479d258b8634d",
+      "edited_after_copy": false
+    },
+    {
+      "path": "evals/gap-study-2/cases/precondition-refusal.json",
+      "round_1_path": "evals/gap-study/cases/precondition-refusal.json",
+      "round_1_blob": "2a8647b4bbba6931d2bb300fe33b0fcea9ab6c79",
+      "copy_sha256": "8b398246b52d22bc73da5783568da4e4a6dccc9eb3ae53dcc285c2f7fc5f5242",
+      "edited_after_copy": false
+    },
+    {
+      "path": "evals/gap-study-2/cases/scope-read.json",
+      "round_1_path": "evals/gap-study/cases/scope-read.json",
+      "round_1_blob": "fa6a610be968dc95353ccb56a64aeed9041df7f5",
+      "copy_sha256": "d39365dab55c69de074fe79158a8b1e41334965a7e5b42afe2a520ea8650038f",
+      "edited_after_copy": false
+    },
+    {
+      "path": "evals/gap-study-2/cases/template-adherence.json",
+      "round_1_path": "evals/gap-study/cases/template-adherence.json",
+      "round_1_blob": "2950d7c8449ff08ff094f9e1ab8bfa1064c97f5e",
+      "copy_sha256": "34818efe2ea1a6910b743d233a0c9bbb9dacd6253af9f8041c2e8c5082b16d72",
+      "edited_after_copy": false
+    },
+    {
+      "path": "evals/gap-study-2/check_results.py",
+      "round_1_path": "evals/gap-study/check_results.py",
+      "round_1_blob": "08d99572412219e46ba586ed084ec641db811de7",
+      "copy_sha256": "851e086a1bbe27889e7d512083caae359f3b224f62a5fbcac2017fa4608b6efa",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/check_take.py",
+      "round_1_path": "evals/gap-study/check_take.py",
+      "round_1_blob": "a9ac1e3bafbed8af0c4bdfdf83d7c6b90a6a25f6",
+      "copy_sha256": "e250d3dfcf8cf31d9421eafffeb8ada48d126003641781a7f125a7da4ead6e39",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/contract_quotes.json",
+      "round_1_path": "evals/gap-study/contract_quotes.json",
+      "round_1_blob": "f576516153e32adb973f777a16b4fb06e005e770",
+      "copy_sha256": "d97471f1f10c4449830be5f5165abcf1f1ec1f99cf80e1552ebea17af1c0d348",
+      "edited_after_copy": false
+    },
+    {
+      "path": "evals/gap-study-2/contracts.py",
+      "round_1_path": "evals/gap-study/contracts.py",
+      "round_1_blob": "6a990a85ce0f805ff82f15591799ea0ac8cffa3e",
+      "copy_sha256": "94131feefda3d48eca61d5169f4feb9686d00b222ab2b92538b7d87bf1bf691c",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/controls/results.json",
+      "round_1_path": "evals/gap-study/controls/results.json",
+      "round_1_blob": "9d4b8f6d30aaa2ded5f33694a4dce1edec66500e",
+      "copy_sha256": "178ed55bd3cd4197fa5e8d6c843174051068692bdd6b2e9d3ac636a4e485a85e",
+      "edited_after_copy": false
+    },
+    {
+      "path": "evals/gap-study-2/controls/run_controls.py",
+      "round_1_path": "evals/gap-study/controls/run_controls.py",
+      "round_1_blob": "26e4a9e798e3535edb93069562f03e76156d7577",
+      "copy_sha256": "f1be55e2d376e5e61082ce1c7f06b4bcc4e0fcee80dd055e8bbe8698b24a8614",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/costs.py",
+      "round_1_path": "evals/gap-study/costs.py",
+      "round_1_blob": "adfc1b921122f831305b96518f456a3b0d51004b",
+      "copy_sha256": "a48b23d797f17713fd6034a43f56e56d64a38fad43cc5ff781e1ddc22c6bc237",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/drive.py",
+      "round_1_path": "evals/gap-study/drive.py",
+      "round_1_blob": "85bada0d9e7a531d7f8aa8377f5d0e7cc8ba07ce",
+      "copy_sha256": "6bc8bd8371b95eead0dbceaec5a99629f93bcb0839a969b6e2b6d62cbe66fe8c",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/fixtures/check_fixture.py",
+      "round_1_path": "evals/gap-study/fixtures/check_fixture.py",
+      "round_1_blob": "0e6b281e7bc50438879ac8fa297cb56618e84b8d",
+      "copy_sha256": "d65242386b462bfffcc3acc5132a93054ff46548ab763c967a43f926934592e4",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/fixtures/copy_project.py",
+      "round_1_path": "evals/gap-study/fixtures/copy_project.py",
+      "round_1_blob": "532cb5850e7eeb589e610066e0d7dbae025d1182",
+      "copy_sha256": "bd4096d4f7e179c15dd6b2e2f953d5a6d3795714b87827a4ce4fb58106276488",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/fixtures/gen_project.py",
+      "round_1_path": "evals/gap-study/fixtures/gen_project.py",
+      "round_1_blob": "cb86c668afc45e350f775fd8d7b3b7bd490a12f9",
+      "copy_sha256": "330ce41fa200c25eeca3e2181d69de4670d9803e00e4e2108f5610d6ba05fda9",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/fixtures/gen_source.py",
+      "round_1_path": "evals/gap-study/fixtures/gen_source.py",
+      "round_1_blob": "9f0045253036c6f92883173b39d1454e6c19cb68",
+      "copy_sha256": "ca93d938dfc9a2c0bd232a0a99429863da4a3977c650bfd8e7977faefc12c77e",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/fixtures/symbol_rulings.json",
+      "round_1_path": "evals/gap-study/fixtures/symbol_rulings.json",
+      "round_1_blob": "39e8c3ae0cd08b8688bcefee39dc2f3cad0c8ba9",
+      "copy_sha256": "e625c34830ff28d0e9fbf4f1cf494bffb8b4bde4f84bcf2757868b4820290eb1",
+      "edited_after_copy": false
+    },
+    {
+      "path": "evals/gap-study-2/freeze.py",
+      "round_1_path": "evals/gap-study/freeze.py",
+      "round_1_blob": "da58306de3db57dae4996a0291ea2f6674368f24",
+      "copy_sha256": "638d28166bc9654f28de66ede70034609150decef080dd9a98aaffc54cc9f335",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/graders/confounded_design.py",
+      "round_1_path": "evals/gap-study/graders/confounded_design.py",
+      "round_1_blob": "146812dc3b6e98573b38d60137eb40827aa0def7",
+      "copy_sha256": "8ec7231d1cb55741983a53488e39006099b53aa329c553017cf5041ce36787a1",
+      "edited_after_copy": false
+    },
+    {
+      "path": "evals/gap-study-2/graders/labels.py",
+      "round_1_path": "evals/gap-study/graders/labels.py",
+      "round_1_blob": "33311d44b56bf736a54776cb90e120fc06506b1b",
+      "copy_sha256": "28f5a5f9b179f05edcae76b28be6d39a8273ff9843642a168ac8e9e3066ac52b",
+      "edited_after_copy": false
+    },
+    {
+      "path": "evals/gap-study-2/graders/number_fidelity.py",
+      "round_1_path": "evals/gap-study/graders/number_fidelity.py",
+      "round_1_blob": "5a78efc3a5a94c438dbf5cd35f381efbd5431fc5",
+      "copy_sha256": "1e1f004e7e05c0e7b544ac83043d7a188445dfa96a89eeb9f4ecaa874b1b07f9",
+      "edited_after_copy": false
+    },
+    {
+      "path": "evals/gap-study-2/graders/plan_gate.py",
+      "round_1_path": "evals/gap-study/graders/plan_gate.py",
+      "round_1_blob": "0e0e1c58438aaa3e019179d99de02ecef3783338",
+      "copy_sha256": "28737cc7e65828d5f6ec673423987374cbf098eaff8fb8c1aac5755266bb68ec",
+      "edited_after_copy": false
+    },
+    {
+      "path": "evals/gap-study-2/graders/precondition_refusal.py",
+      "round_1_path": "evals/gap-study/graders/precondition_refusal.py",
+      "round_1_blob": "812ee1ca799dbfa04a55d7f01f0961da770d57b1",
+      "copy_sha256": "b2531dbce70138bd37c037d8e65d1543ae02854cdeae2fecbc21b7f3c4629bae",
+      "edited_after_copy": false
+    },
+    {
+      "path": "evals/gap-study-2/graders/scope_read.py",
+      "round_1_path": "evals/gap-study/graders/scope_read.py",
+      "round_1_blob": "51f52221f38065e2ead5dfca1713a918f54a1f76",
+      "copy_sha256": "b92e1a76bc49492fbe2cc5ce95db7c4c5344c1ed5d58439f25627bcbcb072279",
+      "edited_after_copy": false
+    },
+    {
+      "path": "evals/gap-study-2/graders/template_adherence.py",
+      "round_1_path": "evals/gap-study/graders/template_adherence.py",
+      "round_1_blob": "6d1bae6f4e62197a7e16c0f99236fa87e7c10a34",
+      "copy_sha256": "06a5870034d875eff5ae84e3508566cebde563c6357e3958725cdda5e21954fe",
+      "edited_after_copy": false
+    },
+    {
+      "path": "evals/gap-study-2/language-allowlist.json",
+      "round_1_path": "evals/gap-study/language-allowlist.json",
+      "round_1_blob": "9707ae816995ee0b46c2923b23fb2251f7de8f22",
+      "copy_sha256": "fbfbf302acda0335b1acab492552d32dc224cbe4d8806618af5c7ad8432cb1d0",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/lint_language.py",
+      "round_1_path": "evals/gap-study/lint_language.py",
+      "round_1_blob": "7649b8c5a42da470e9dbcf66778adbd8135309c7",
+      "copy_sha256": "ac24d9e252102e155cd2df31ad2a71013f877aa1393194d63f20b4fc59e2d88e",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/mutations.py",
+      "round_1_path": "evals/gap-study/mutations.py",
+      "round_1_blob": "d3a1453ca9f0de9484580475b3b8221fc7f027dd",
+      "copy_sha256": "fd5e789b5d145f841f02dd483ad5c767ab31858fa2c2d1e8eef41f01e51b00c6",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/prereg-draft.json",
+      "round_1_path": "evals/gap-study/prereg-draft.json",
+      "round_1_blob": "8e13300ceed3e0b301da2416b1311f723f67df62",
+      "copy_sha256": "18d65c17488f4114ac17c7d760491ff7300834ba0c4f35f5302d183ca0434d08",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/prereg.py",
+      "round_1_path": "evals/gap-study/prereg.py",
+      "round_1_blob": "eed5b5b6c3bd259ecb3f5ad7ef9efa3e812632bd",
+      "copy_sha256": "4592fb249bab86a1ed4b27e34f10153cfa576f46da71510adff1122541f4da42",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/run.py",
+      "round_1_path": "evals/gap-study/run.py",
+      "round_1_blob": "f20bb4edcf3748296263f918430245afa859e0b5",
+      "copy_sha256": "4a6d74a134e95fe352af51cff7ca6c907c4e308627e93f69a8a44f7f2c197f95",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/scrub.py",
+      "round_1_path": "evals/gap-study/scrub.py",
+      "round_1_blob": "f9efc2e3029faba6cfe9eb5daf20bf9fca60b004",
+      "copy_sha256": "c1bad32fc112e55377d7c067df07f3ebe1405375fa81c0d8d5650fd3e705b5fb",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/smoke_run_tree.py",
+      "round_1_path": "evals/gap-study/smoke_run_tree.py",
+      "round_1_blob": "f8ca7c66ceb676597e4127c6f4e46337cd300787",
+      "copy_sha256": "433b4223d0252e5a93efdfde7c1dbdcbea1685cdb1539d4844d9335613db3093",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/takes.py",
+      "round_1_path": "evals/gap-study/takes.py",
+      "round_1_blob": "e47b0e4e5e93978dbf6917dd25b558448f1ca4ad",
+      "copy_sha256": "aca61ad4906e91c3b705863f56f99d95c283a81679cd2a57113908b3ef47efd1",
+      "edited_after_copy": true
+    },
+    {
+      "path": "evals/gap-study-2/test_harness.py",
+      "round_1_path": "evals/gap-study/test_harness.py",
+      "round_1_blob": "f04615446d37014f5968e2ee1d6cf82caf3d2d13",
+      "copy_sha256": "99dffd0e33e0c63e347a92e5a9a11d069079c5d78053398b88ac9b2141973d90",
+      "edited_after_copy": true
+    }
+  ]
+}

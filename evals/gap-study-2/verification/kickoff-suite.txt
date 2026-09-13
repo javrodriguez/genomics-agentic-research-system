@@ -1,0 +1,40 @@
+AssertionError: Lists differ: ['14b880c lands 0 pre-freeze review reports; the seed must land exactly one'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'14b880c lands 0 pre-freeze review reports; the seed must land exactly one'
+
+- ['14b880c lands 0 pre-freeze review reports; the seed must land exactly one']
++ []
+
+======================================================================
+FAIL: test_a_walk_driven_in_a_built_checkout_has_a_scrub_record (__main__.TheTranscriptIsPublishedAsRuled.test_a_walk_driven_in_a_built_checkout_has_a_scrub_record)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/glitch/workspaces/genomics-agentic-research-system/evals/gap-study-2/test_harness.py", line 1144, in test_a_walk_driven_in_a_built_checkout_has_a_scrub_record
+    self.assertTrue(ledgers, "no walk was driven in a built checkout; this test measured nothing")
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: [] is not true : no walk was driven in a built checkout; this test measured nothing
+
+======================================================================
+FAIL: test_every_scrub_record_describes_the_transcript_beside_it (__main__.TheTranscriptIsPublishedAsRuled.test_every_scrub_record_describes_the_transcript_beside_it)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/glitch/workspaces/genomics-agentic-research-system/evals/gap-study-2/test_harness.py", line 1126, in test_every_scrub_record_describes_the_transcript_beside_it
+    self.assertTrue(records, "no scrub record was read; this test measured nothing")
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: [] is not true : no scrub record was read; this test measured nothing
+
+======================================================================
+FAIL: test_no_published_transcript_carries_the_email_field (__main__.TheTranscriptIsPublishedAsRuled.test_no_published_transcript_carries_the_email_field)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/glitch/workspaces/genomics-agentic-research-system/evals/gap-study-2/test_harness.py", line 1137, in test_no_published_transcript_carries_the_email_field
+    self.assertTrue(files, "no published transcript was read; this test measured nothing")
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: [] is not true : no published transcript was read; this test measured nothing
+
+----------------------------------------------------------------------
+Ran 276 tests in 14.285s
+
+FAILED (failures=12, errors=9, skipped=26)
