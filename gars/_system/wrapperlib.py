@@ -225,6 +225,31 @@ def check_config_common(cfg, required_keys, fails):
     if work_dir and not os.path.isabs(work_dir) and "://" not in work_dir:
         fails.append(fail("config", "compute.work_dir must be an absolute scratch path "
                                     "or a remote URI (e.g. s3://...), got %r" % work_dir))
+    # Every nf-core wrapper renders work_dir inside double quotes in the generated job script
+    # (`-work-dir "..."`). Inside double quotes bash expands $ (parameter and command
+    # substitution) and backticks, and " or \ end or alter the quoting; a line break has no
+    # place in a path. Refusing exactly those keeps the job script's bytes unchanged for every
+    # legitimate path (decision 0042).
+    expands = sorted(set(c for c in work_dir if c in '$`"\\\n\r'))
+    if expands:
+        fails.append(fail("config", "compute.work_dir contains %s, which the shell would "
+                                    "expand or unquote inside the generated job script; use a "
+                                    "plain path (decision 0042), got %r"
+                                    % (" ".join(repr(c) for c in expands), work_dir)))
+    # The scheduler values are rendered verbatim into the job script's directive lines
+    # (`#SBATCH --partition={partition}`, executorlib.header_lines). Every shipped descriptor
+    # renders them inside a bash comment, where only a line break escapes: that is what this
+    # check closes. It does NOT make a value safe in a descriptor line that is not a comment
+    # (`;`, `|`, `&` and spaces still pass); such a descriptor is a residual named in decision
+    # 0042. Same refusal set as work_dir; no real partition, time, cpu count or memory needs it.
+    for key in ("compute.partition", "compute.time", "compute.cpus", "compute.mem"):
+        value = cfg.get(key, "")
+        breaks = sorted(set(c for c in value if c in '$`"\\\n\r'))
+        if breaks:
+            fails.append(fail("config", "%s contains %s, which would break out of the generated "
+                                        "job script's directive line; use a plain value "
+                                        "(decision 0042), got %r"
+                                        % (key, " ".join(repr(c) for c in breaks), value)))
 
 
 def check_samplesheet(sheet_path, expected_header, fails, path_columns=(1, 2)):

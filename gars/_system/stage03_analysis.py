@@ -12,12 +12,15 @@ Subcommands, in the order a run uses them:
            skeleton whose <FILL: ...> markers say what the drafted plan must contain.
   approve  the human gate, made durable. Refuses while the plan still carries skeleton
            markers, has no Outputs rows, or names an artifact type outside the closed
-           vocabulary; otherwise stamps `Status: APPROVED <date>` into PLAN.md. Run it only
-           after the user has said yes to the plan file -- the flag records the approval,
-           it never substitutes for it.
-  verify   the exit gate. Refuses if the plan is not approved; checks every output the plan
-           declared exists and is non-empty; writes OUTPUTS.tsv (all rows `native`) and
-           STATUS, and returns the history_entry to append verbatim.
+           vocabulary; otherwise stamps `Status: APPROVED <date>` into PLAN.md and writes
+           PLAN.md.approved, the record binding that approval to the stamped plan's sha256.
+           Run it only after the user has said yes to the plan file -- the flag records the
+           approval, it never substitutes for it.
+  verify   the exit gate. Refuses unless PLAN.md.approved exists and its sha256 still matches
+           PLAN.md -- a `Status: APPROVED` line alone is not an approval, and a plan edited
+           after approval is not the plan that was approved (decision 0042); checks every
+           output the plan declared exists and is non-empty; writes OUTPUTS.tsv (all rows
+           `native`) and STATUS, and returns the history_entry to append verbatim.
 
 Exit codes, like every stage helper: 0 ok, 1 failure, 2 refused (a gate), 3 usage.
 Runs on stock python 3.6.8, stdlib only.
@@ -25,6 +28,8 @@ Runs on stock python 3.6.8, stdlib only.
 
 import argparse
 import datetime
+import getpass
+import hashlib
 import json
 import os
 import re
@@ -181,6 +186,35 @@ def cmd_create(args, workspace):
     return emit(result, EXIT_OK)
 
 
+# --- approval record ---------------------------------------------------------------------------
+
+#: Written beside PLAN.md by `approve` and nothing else; binds the approval to the plan's bytes.
+APPROVAL_RECORD = "PLAN.md.approved"
+
+
+def approval_holds(plan_path, record_path):
+    """(True, None) when the record exists and its sha256 matches PLAN.md as it is now.
+
+    The `Status: APPROVED` line is readable and writable by anyone who can edit the plan, so it
+    cannot be the approval on its own (decision 0042). The record can be forged too, by a writer
+    the guard hook does not see -- it raises the cost of a forgery and makes any edit after
+    approval visible; it is not a substitute for an approval command the agent cannot reach."""
+    if not record_path.is_file():
+        return False, "there is no %s beside it" % APPROVAL_RECORD
+    try:
+        expected = json.loads(record_path.read_text(encoding="utf-8"))["plan_sha256"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return False, "%s is unreadable" % APPROVAL_RECORD
+    try:
+        actual = hashlib.sha256(plan_path.read_bytes()).hexdigest()
+    except OSError:
+        return False, "PLAN.md is unreadable"
+    if actual != expected:
+        return False, ("PLAN.md changed after approval (sha256 now %s, approved %s)"
+                       % (actual[:12], str(expected)[:12]))
+    return True, None
+
+
 # --- approve -----------------------------------------------------------------------------------
 
 def cmd_approve(args, workspace):
@@ -195,11 +229,26 @@ def cmd_approve(args, workspace):
         result["error"] = "PLAN.md is missing"
         return emit(result, EXIT_USAGE)
     text = plan_path.read_text(encoding="utf-8")
+    record_path = adir / APPROVAL_RECORD
 
-    if "Status: APPROVED" in text:
-        result["ok"] = True
-        result["already_approved"] = True
-        return emit(result, EXIT_OK)
+    if re.search(r"^Status: APPROVED", text, re.M):
+        holds, why = approval_holds(plan_path, record_path)
+        if holds:
+            result["ok"] = True
+            result["already_approved"] = True
+            return emit(result, EXIT_OK)
+        result["error"] = ("PLAN.md carries an approval stamp, but %s. `approve` writes the stamp "
+                           "and its record together, so either this stamp was not written by "
+                           "`approve` or the plan changed after approval. A change of mind is a "
+                           "new analysis: run `create` again (decision 0042)." % why)
+        return emit(result, EXIT_REFUSED)
+    if record_path.exists():
+        # The plan was approved once and has since been set back to DRAFT. Re-approving would
+        # silently re-bind the record to an edited plan; approval is once per analysis.
+        result["error"] = ("%s already exists for this analysis, but PLAN.md is no longer "
+                           "stamped. Approval happens once per analysis; a change of mind is a "
+                           "new analysis: run `create` again (decision 0042)." % APPROVAL_RECORD)
+        return emit(result, EXIT_REFUSED)
 
     n_fill = text.count(FILL)
     if n_fill:
@@ -246,7 +295,25 @@ def cmd_approve(args, workspace):
     stamp = "Status: APPROVED %s" % (args.date or datetime.date.today().isoformat())
     with ws.atomic_open(plan_path, newline=None) as fh:
         fh.write(text.replace("Status: DRAFT", stamp, 1))
-    result.update({"ok": True, "outputs_declared": len(outputs), "status": stamp})
+    # Hash the bytes as they landed on disk (newline translation is the platform's), then
+    # bind the approval to them. Stamp first, record second: a crash between leaves a stamp
+    # with no record, which verify and approve both refuse -- the safe direction.
+    try:
+        actor = getpass.getuser()
+    except Exception:
+        actor = "unknown"
+    record = {
+        "plan_sha256": hashlib.sha256(plan_path.read_bytes()).hexdigest(),
+        "approved_at": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+        "actor": actor,
+        "tool": "stage03_analysis.py approve",
+        "template_version": ws.template_version(workspace),
+    }
+    with ws.atomic_open(record_path) as fh:
+        json.dump(record, fh, indent=2, sort_keys=True)
+        fh.write("\n")
+    result.update({"ok": True, "outputs_declared": len(outputs), "status": stamp,
+                   "record": APPROVAL_RECORD, "plan_sha256": record["plan_sha256"]})
     return emit(result, EXIT_OK)
 
 
@@ -267,6 +334,14 @@ def cmd_verify(args, workspace):
         result["error"] = ("PLAN.md is not approved; the analysis must not have run. If it "
                            "did, that is the failure to report -- do not approve after the "
                            "fact.")
+        return emit(result, EXIT_REFUSED)
+    holds, why = approval_holds(adir / "PLAN.md", adir / APPROVAL_RECORD)
+    if not holds:
+        result["error"] = ("PLAN.md is not approved: %s. A `Status: APPROVED` line is an approval "
+                           "only when `approve` wrote it together with its record, and a plan "
+                           "edited after approval is a new analysis -- run `create` again. If "
+                           "the analysis already ran, that is the failure to report (decision "
+                           "0042)." % why)
         return emit(result, EXIT_REFUSED)
 
     outputs = parse_outputs_table(text)

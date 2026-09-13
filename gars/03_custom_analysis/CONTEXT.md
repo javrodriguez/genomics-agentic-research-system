@@ -55,10 +55,13 @@ words and the resolvable artifacts; it is the record of intent, and after approv
 frozen. The skeleton's `<FILL: ...>` markers name what each section must contain — `approve`
 refuses while any marker survives, so an empty plan cannot slip through on charm.
 
-**Approved.** `PLAN.md` carries `Status: APPROVED <date>`, stamped by `approve` after its
-gates pass: no skeleton markers, a non-empty Outputs table, every output type in the closed
-vocabulary, every output path relative. Approval is durable — it lives in the file, not in the
-conversation.
+**Approved.** `PLAN.md` carries `Status: APPROVED <date>` **and** `PLAN.md.approved` sits beside
+it, both written by `approve` after its gates pass: no skeleton markers, a non-empty Outputs
+table, every output type in the closed vocabulary, every output path relative. The record binds
+the approval to the plan's sha256 as stamped, so `verify` refuses a plan that was edited after
+approval, and refuses a `Status: APPROVED` line that `approve` did not write (decision 0042).
+Approval is durable — it lives in the files, not in the conversation. `PLAN.md.approved` is
+machine-owned: never write, edit, copy or move it.
 
 **Execution venue.** The plan's Execution section opens with a `Runs:` line, and `approve`
 refuses any value outside this vocabulary: `Runs: batch` — the workspace's configured
