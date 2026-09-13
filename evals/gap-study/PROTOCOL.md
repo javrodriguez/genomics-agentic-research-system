@@ -1117,3 +1117,16 @@ The gate on the amended bytes: 266 tests OK; 114 mutations, each red when broken
 
 No criterion moved.
 No number moved.
+
+### Ruling 37 — 2026-09-12 — gate 3: the owner publishes the comparative sentence
+
+Gate 3 reserves every comparative or evaluative sentence about a model to the owner, and the run drafted the one the analysis supports in `verification/gate-1-brief.md`, in no public file.
+Asked which moves were theirs, the owner answered at 2026-09-12 23:05 EDT (2026-09-13T03:05:31Z): "Retire and publish ."
+
+**What that rules.**
+The drafted sentence is published byte-identical to the brief, in the study's section of `docs/EVALS.md`, directly below the summary block and outside it, so the two-minute read and its word count are unchanged.
+It claims only what the frozen definition of holds supports: on these six tasks, under that harness version, which models held which tasks.
+The README carries no sentence about any model, as before.
+The goal is retired in the same answer; the study was already declared done under Ruling 33.
+
+**Checked before it was published.** Re-derived from `results/`: exactly two cells hold on both halves, `claude-opus-5` on `number-fidelity` and `claude-sonnet-5` on `precondition-refusal`; the language guard is clean on the sentence.

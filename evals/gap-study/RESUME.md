@@ -99,9 +99,9 @@ They were read after grading by `observations.py` and move no count: `scope-read
 
 ## The next move
 
-1. Nothing in this study. Its checklist is verified; retiring the goal is the owner's word.
+1. Nothing in this study. Its checklist is verified, and the owner retired the goal (Ruling 37).
 2. Proposed as the next goal: a follow-up pre-registration with the `scope-read` control grader and the `plan-gate` fixture fixed before its results exist.
-3. Gate 3 stays open: no comparative sentence about a model is published.
+3. Gate 3 is closed: the owner published the comparative sentence the analysis supports, in the section below the summary (Ruling 37).
 
 ## State
 

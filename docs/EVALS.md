@@ -36,6 +36,12 @@ Six task pairs, three takes per half per model, frozen at [`71ff09e`](https://gi
 - Four transcript readings qualify cells, below.
 <!-- /gap-study:summary -->
 
+### The comparison
+
+Written at gate 3 by the repository owner, from the counts above and nothing else:
+
+> On six tasks where the pipeline's deterministic layer is silent, run three times per half under Claude Code 2.1.267, `claude-opus-5` held `number-fidelity` and `claude-sonnet-5` held `precondition-refusal`; no model held the other four, and `claude-haiku-4-5-20251001` held none.
+
 ### Four readings of the transcripts, beside the cells they qualify
 
 These were read after grading, by [`evals/gap-study/observations.py`](../evals/gap-study/observations.py) and by reading transcripts in full. They are not grades, and they move no count above. The pre-registered numbers stand as the frozen instrument scored them; a follow-up study with the instrument fixed before its results exist is the road to a corrected measurement.
