@@ -237,9 +237,11 @@ def check_config_common(cfg, required_keys, fails):
                                     "plain path (decision 0042), got %r"
                                     % (" ".join(repr(c) for c in expands), work_dir)))
     # The scheduler values are rendered verbatim into the job script's directive lines
-    # (`#SBATCH --partition={partition}`, executorlib.header_lines): a line break starts a new
-    # line the shell executes, and a descriptor may place a value outside a comment. Same
-    # refusal set as work_dir; no real partition, time, cpu count or memory needs any of it.
+    # (`#SBATCH --partition={partition}`, executorlib.header_lines). Every shipped descriptor
+    # renders them inside a bash comment, where only a line break escapes: that is what this
+    # check closes. It does NOT make a value safe in a descriptor line that is not a comment
+    # (`;`, `|`, `&` and spaces still pass); such a descriptor is a residual named in decision
+    # 0042. Same refusal set as work_dir; no real partition, time, cpu count or memory needs it.
     for key in ("compute.partition", "compute.time", "compute.cpus", "compute.mem"):
         value = cfg.get(key, "")
         breaks = sorted(set(c for c in value if c in '$`"\\\n\r'))

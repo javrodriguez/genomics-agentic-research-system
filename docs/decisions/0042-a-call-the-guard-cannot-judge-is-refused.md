@@ -16,7 +16,7 @@ symptoms:
   - compute.work_dir with $(...) runs a command when the job script runs
   - a line break in compute.partition/time/cpus/mem adds an executing line to submit.sh
 ---
-# A call the guard cannot judge is refused, an approval is bound to the plan it approved, and work_dir cannot carry shell expansion
+# A call the guard cannot judge is refused, an approval is bound to the plan it approved, and job-script config values cannot carry shell expansion
 
 Number note: 0041 is taken on the sibling branch `task/aegis-v1-0-1-audit` (the v1.0.1 gap assessment); this record takes 0042 so the numbers never collide when both land.
 
@@ -73,7 +73,7 @@ Other `cfg`-derived values checked by the round-2 review are not shell lines: `d
 
 **Migration.** An analysis approved before this change and not yet verified has no record; `verify` refuses it, and the recovery is `create` again.
 Completed analyses are unaffected.
-A config whose `work_dir` contains one of the refused characters fails `check` with the reason.
+A config whose `compute.work_dir`, `compute.partition`, `compute.time`, `compute.cpus` or `compute.mem` contains one of the refused characters fails `check` with the reason.
 
 ## What this does not close (stated, not implied)
 
@@ -86,7 +86,7 @@ Known to still pass on this change:
 - **The approval gate itself:** the agent can still run `stage03_analysis.py approve` before the user says yes, and the recorded `actor` is the OS user, not a verified human. The gate remains the contract's prose (step 6) until an approval command the agent cannot reach exists.
 - **Guard scope:** the hook runs only for Claude Code sessions rooted at `gars/`. A session at the repository root, or another harness, runs unguarded (assessment question D-26, ruled to rows 4 and 15).
 - **Bypass-switch denies** (`--no-verify`, `hooks.gitleaks false`) remain row 15.
-- **The executor descriptor itself.** `_config/executor.yaml`'s `directives` and `submit_argv` lines are rendered verbatim; `executorlib.validate()` checks only their `{tokens}`. The descriptor is a workspace-level file rather than a per-assay value, but a session that can write it can put any line into every generated job script.
+- **The executor descriptor itself.** `_config/executor.yaml`'s `directives` are rendered verbatim into every generated job script, and its `submit_argv` becomes the submit command's arguments; `executorlib.validate()` checks only their `{tokens}` and does not require a directive line to be a comment. So a session that can write the descriptor can put any line into every job script. Section 4's check assumes the directive lines are bash comments, as every shipped descriptor's are: a site descriptor that places `{partition}`, `{time}`, `{cpus}` or `{mem}` outside a comment would let `;`, `|`, `&` or spaces in those values run commands (MAJ-3 verification, MINOR-1).
 
 **Deliberate false positives** (none contract-instructed): inline interpreter code that only *reads* a protected path (`python3 -c "print(open('_references/x').read())"`) is refused; `mv` of an approval record out of its analysis is refused.
 
