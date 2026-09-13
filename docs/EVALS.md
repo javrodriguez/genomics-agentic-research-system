@@ -1,4 +1,5 @@
 This table grades agent behaviour on 3 pre-registered tasks. It is not the reproduction campaign, which scores pipeline output and lives in docs/RESULTS.md.
+That first sentence describes Layer B, the first study, further down this page; the Gap Study, directly below, grades six task pairs on three Claude models.
 
 # The Gap Study
 
