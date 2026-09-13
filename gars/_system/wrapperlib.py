@@ -236,6 +236,18 @@ def check_config_common(cfg, required_keys, fails):
                                     "expand or unquote inside the generated job script; use a "
                                     "plain path (decision 0042), got %r"
                                     % (" ".join(repr(c) for c in expands), work_dir)))
+    # The scheduler values are rendered verbatim into the job script's directive lines
+    # (`#SBATCH --partition={partition}`, executorlib.header_lines): a line break starts a new
+    # line the shell executes, and a descriptor may place a value outside a comment. Same
+    # refusal set as work_dir; no real partition, time, cpu count or memory needs any of it.
+    for key in ("compute.partition", "compute.time", "compute.cpus", "compute.mem"):
+        value = cfg.get(key, "")
+        breaks = sorted(set(c for c in value if c in '$`"\\\n\r'))
+        if breaks:
+            fails.append(fail("config", "%s contains %s, which would break out of the generated "
+                                        "job script's directive line; use a plain value "
+                                        "(decision 0042), got %r"
+                                        % (key, " ".join(repr(c) for c in breaks), value)))
 
 
 def check_samplesheet(sheet_path, expected_header, fails, path_columns=(1, 2)):

