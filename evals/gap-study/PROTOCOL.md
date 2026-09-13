@@ -1130,3 +1130,23 @@ The README carries no sentence about any model, as before.
 The goal is retired in the same answer; the study was already declared done under Ruling 33.
 
 **Checked before it was published.** Re-derived from `results/`: exactly two cells hold on both halves, `claude-opus-5` on `number-fidelity` and `claude-sonnet-5` on `precondition-refusal`; the language guard is clean on the sentence.
+
+### Ruling 38 — 2026-09-12 — the finished study is checked at its done tag
+
+After the study was declared done, a change to `gars/` the owner had approved landed on main (`6be68e9`), and CI went red on one step: the ledger check requires HEAD's `gars/` tree to be the tree the takes ran against.
+That guard was written for the takes phase (review 15, F2: the checkout is exported from HEAD), and every take is still bound to that tree through its own row commit and driver ledger; what no longer holds is HEAD standing still, because `gars/` is the system and is meant to keep changing.
+
+The question put: "How should the finished study stay checkable?", with three options: check it at its done tag, amend the checker, or stop checking it in CI.
+The owner's answer, at 2026-09-12 23:33 EDT (2026-09-13T03:33:12Z): "Check it at its done tag (Recommended)".
+
+**What that rules.**
+The study's done commit is `b735229`, the commit the final verifier's second report was pushed with, whose `gars/` tree is the pinned one.
+CI's Gap Study steps run in their own job, from a full-depth checkout of that commit, unchanged; no pinned study file is amended.
+
+**One change of mechanism, stated rather than hidden.**
+The answer named a tag. The tag `gap-study-v1` was created on `b735229`, and its push was refused: the repository's pre-push scan re-reads the whole history for any new ref, and it stopped on a finding.
+That refusal is a protection, and it was not worked around.
+The job pins the done commit by its full sha, `b735229f5c9213bb20c7e49fb7ceddddbcac7abc`, instead; a sha cannot be moved, so it checks the same commit the tag named, at least as strictly.
+The tag stays on this machine and is not published.
+Main's own CI job keeps the first study and the deterministic core, and `gars/` changes freely.
+The records written after the tag, Ruling 37's sentence and this ruling among them, are documents about the study, not the study's checked state.

@@ -43,11 +43,26 @@ jobs:
         # behaving opposite its positive, every hand-labelled grader suite still passing.
         run: python3 evals/check_results.py --controls --lexicon
 
-      # ---- the Gap Study (evals/gap-study), built beside the first study -------------------
-      # Its own harness and checker, run separately so neither study's green can stand in for
-      # the other's. The full-depth checkout above is what lets the ledger check read history;
-      # at depth 1 it refuses rather than passing hollowly, which is the whole reason
-      # fetch-depth: 0 is set.
+  gap-study:
+    # ---- the Gap Study (evals/gap-study), checked at the commit its final verifier checked ------
+    # Ruling 38. The study is done, and its guards bind the system under test to the tree its takes
+    # ran against: the ledger check requires HEAD's gars/ to be that tree. That was right while takes
+    # ran, and it would fail every later change to gars/, which is meant to keep evolving. So this
+    # job checks out the study's done commit b735229, by full sha because a sha cannot be moved,
+    # at full depth, and runs the study's own checks there, unchanged. The records written after it (the gate-3
+    # sentence, the rulings that followed) are documents, and main's own job does not check them
+    # as the study.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: b735229f5c9213bb20c7e49fb7ceddddbcac7abc
+          # Full history: the ledger and the frozen-file checks read the commits that froze the
+          # study and registered each take, and refuse in a shallow clone.
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - name: Gap Study harness
         # Every grader driven to every label it can emit, including the ones that mean the agent
         # did the wrong thing.
