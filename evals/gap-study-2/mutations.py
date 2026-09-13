@@ -1651,38 +1651,100 @@ MUTATIONS += [
     ("the analysis read from a fixed results folder", m_analysis_reads_a_fixed_results_folder, False),
 ]
 
+# ROUND 2, CP2 (structural lesson 6, amendment 4). A not-applicable entry is (name, predicate). Round 1's
+# second element was a sentence, and sentences went stale: the tree changed under them and the battery kept
+# printing a reason that was no longer true. A predicate reads the sandbox the battery builds and returns the
+# reason while its condition holds, and None once it does not. None fails the battery: the mutation applies
+# now, so it is written and its entry removed. A predicate that raises, or returns anything but a non-empty
+# string or None, fails the battery too, because then nobody knows whether the mutation applies.
+#
+# Converted on 13 Sep 2026. One entry did not survive its own predicate: "a seed review report committed more
+# than once" said TheSeedReviewIsCommittedOnce reads this repository's own history, and since CP1 it builds its
+# own. Evaluated, it applies, so it is a mutation now (mutations_hygiene.py), not an entry here.
+
+def _has_results(s: Sandbox) -> bool:
+    return (s.study / "results").is_dir() and any((s.study / "results").glob("*.json"))
+
+
+def _na_local_tier_dropped(s: Sandbox) -> str | None:
+    draft = json.loads(_prereg(s).read_text())
+    axes = re.search(r"^AXES = \((.*)\)$", (s.study / "prereg.py").read_text(), re.M)
+    if axes is None:
+        raise RuntimeError("prereg.py defines no AXES line, so the local axis cannot be read")
+    if "local_models" in draft or "local_tier" in draft or "local" in axes.group(1):
+        return None
+    return ("the local tier was dropped at gate 2: the pre-registration carries no local_models or local_tier "
+            f"and prereg.AXES is ({axes.group(1)}), so no local take will exist to mutate")
+
+
+def _na_origin_cannot_resolve(s: Sandbox) -> str | None:
+    # The guard's own skip condition (TheCopiedFixtureBuildsToItsPin): the origin resolves only beside a
+    # repository that sits in a folder named `workspaces`. The sandbox's repository is s.root.
+    if s.root.parent.name == "workspaces":
+        return None
+    return ("the sandbox does not sit in a workspaces folder, so the origin cannot resolve there and the guard "
+            "skips; TheCopiedFixtureBuildsToItsPin carries its own negative control, which points the origin at "
+            "a missing folder and requires the message")
+
+
+def _na_no_freeze_rehearsal(s: Sandbox) -> str | None:
+    # The scratch repository this refusal needs is what CP8's freeze rehearsal builds. Once that file exists
+    # the fixture is no longer larger than the change, and the mutation is written against it.
+    if (s.study / "freeze_rehearsal.py").is_file():
+        return None
+    return ("review 20's F5 is a refusal inside freeze.py's main(), which needs a scratch repository with git "
+            "history, a committed review report, every pinned file and a generator that fails --manifest-only, "
+            "and no freeze_rehearsal.py is in this tree to build one: a fixture larger than the change it would "
+            "guard. The freeze runs once, and check_results.py re-hashes every pinned file afterwards")
+
+
+def _na_no_carried_fixture_pin(s: Sandbox) -> str | None:
+    draft = json.loads(_prereg(s).read_text())
+    pins = [((t.get(h) or {}).get("fixture") or {}).get("tree_sha256_name_invariant")
+            for t in draft.get("tasks", []) for h in ("positive", "control")
+            if ((t.get(h) or {}).get("fixture") or {}).get("kind") == "first-study"]
+    if not pins:
+        raise RuntimeError("the pre-registration names no first-study fixture, so there is no pin to look for")
+    if any(pins):
+        return None
+    return ("no carried fixture carries a tree_sha256_name_invariant pin before the freeze; the builder's "
+            "refusal on a disagreeing pin is unit-tested instead (TheCarriedFixtureBuilds)")
+
+
+def _na_no_results_file(s: Sandbox) -> str | None:
+    if _has_results(s):
+        return None
+    return ("results/ holds no results file, so there is no published section for the live word cap, order, "
+            "table, limitations and committed-line checks to read; their mechanisms are broken in TwoMinuteRead")
+
+
+def _na_no_results_and_no_freeze(s: Sandbox) -> str | None:
+    if _has_results(s) or (s.study / "prereg.json").is_file():
+        return None
+    return ("results/ holds no results file, and no frozen prereg.json exists, so there is no published section, "
+            "analysis, gate brief or post-freeze commit body to scan; the scan is broken in NoRateNoBannedWord")
+
+
+def _na_no_published_analysis(s: Sandbox) -> str | None:
+    if _has_results(s) or (s.study / "analysis.json").is_file():
+        return None
+    return ("results/ holds no results file and no analysis.json is published, so there is nothing to regenerate "
+            "and compare; the comparison is broken in ThePublishedAnalysisIsRegenerated")
+
+
 NOT_APPLICABLE = [
-    ("a local transcript with no server log",
-     "the local tier was dropped at gate 2, so no local take will exist to mutate"),
-    ("a seed review report committed more than once",
-     "the sandbox carries no history of review commits; TheSeedReviewIsCommittedOnce runs on this "
-     "repository's own history and refuses a commit that lands no report"),
-    ("a copied fixture whose origin no longer resolves",
-     "the sandbox does not sit in a workspaces folder, so the origin cannot resolve there and the guard "
-     "skips; TheCopiedFixtureBuildsToItsPin carries its own negative control, which points the origin at "
-     "a missing folder and requires the message"),
-    ("a freeze that pins a generated fixture by nothing",
-     "review 20's F5 is a refusal inside freeze.py's main(), which needs a scratch repository with git "
-     "history, a committed review report, every pinned file and a generator that fails --manifest-only: "
-     "a fixture larger than the change it would guard. The change is kept and stated here rather than "
-     "covered by a guard that does not exist; the freeze runs once, and check_results.py re-hashes every "
-     "pinned file afterwards"),
-    ("a carried fixture whose tree hash differs from the freeze",
-     "no fixture pin exists before the freeze; the builder's refusal on a disagreeing pin is "
-     "unit-tested instead (TheCarriedFixtureBuilds)"),
+    ("a local transcript with no server log", _na_local_tier_dropped),
+    ("a copied fixture whose origin no longer resolves", _na_origin_cannot_resolve),
+    ("a freeze that pins a generated fixture by nothing", _na_no_freeze_rehearsal),
+    ("a carried fixture whose tree hash differs from the freeze", _na_no_carried_fixture_pin),
     # ROUND 2, CP1: the three live partners of the split classes. Each reads the published section, which
     # does not exist while results/ holds no results file, and says so by skipping; a mutation there would
     # come back green against a guard that never ran. Their mechanisms are mutated in the fixture classes
     # above, and the five amendment-3 mutations aimed at these classes turn applicable with the first result.
-    ("TwoMinuteReadLive over the published section",
-     "results/ holds no results file, so there is no published section for the live word cap, order, "
-     "table, limitations and committed-line checks to read; their mechanisms are broken in TwoMinuteRead"),
+    ("TwoMinuteReadLive over the published section", _na_no_results_file),
     ("NoRateNoBannedWordLive over the published section, analysis, brief and commit bodies",
-     "results/ holds no results file, and no freeze commit exists, so there is no published section, "
-     "analysis, gate brief or post-freeze commit body to scan; the scan is broken in NoRateNoBannedWord"),
-    ("ThePublishedAnalysisIsRegeneratedLive over analysis.json",
-     "results/ holds no results file and no analysis.json is published, so there is nothing to regenerate "
-     "and compare; the comparison is broken in ThePublishedAnalysisIsRegenerated"),
+     _na_no_results_and_no_freeze),
+    ("ThePublishedAnalysisIsRegeneratedLive over analysis.json", _na_no_published_analysis),
 ]
 
 
@@ -1694,13 +1756,14 @@ NOT_APPLICABLE = [
 # module under evals/ could shadow), and its entries join the two lists above.
 #
 # THE CONTRACT. A `mutations_<topic>.py` exports `MUTATIONS` (entries shaped as above: name, function
-# taking a Sandbox, git mode False | True | "objects"), or `NOT_APPLICABLE` (name first, shaped as above),
-# or both. A module may import this one (`from mutations import Sandbox, _th, _edit`): it is loaded
-# after everything above is defined. Each of these fails the import LOUDLY, because a module that
+# taking a Sandbox, git mode False | True | "objects"), or `NOT_APPLICABLE` ((name, predicate), the
+# predicate taking a Sandbox and returning its reason while the mutation does not apply and None once it
+# does; see above), or both. A module may import this one (`from mutations import Sandbox, _th, _edit`): it
+# is loaded after everything above is defined. Each of these fails the import LOUDLY, because a module that
 # registers nothing reads exactly like a topic whose guards all went red:
 #   a module that raises on import; a module exporting neither list; lists that are not lists, or
 #   both empty; an entry of the wrong shape; a name already registered, here or by another module.
-# NOT_APPLICABLE's second element is left as it is today; CP2 turns it into a predicate.
+# CP2: a NOT_APPLICABLE entry whose second element is a sentence rather than a predicate is the wrong shape.
 
 GIT_MODES = (False, True, "objects")
 REGISTERED_MODULES: list[str] = []
@@ -1750,8 +1813,11 @@ def register_topic_modules(here: Path = HERE) -> list[str]:
                 raise RegistryError(f"{path.name}: MUTATIONS entry {e!r} is not (name, function, "
                                     f"git mode in {GIT_MODES})")
         for e in nas:
-            if not (isinstance(e, tuple) and len(e) == 2 and isinstance(e[0], str) and e[0].strip()):
-                raise RegistryError(f"{path.name}: NOT_APPLICABLE entry {e!r} is not (name, reason)")
+            if not (isinstance(e, tuple) and len(e) == 2 and isinstance(e[0], str) and e[0].strip()
+                    and callable(e[1])):
+                raise RegistryError(f"{path.name}: NOT_APPLICABLE entry {e!r} is not (name, predicate): a "
+                                    f"reason is returned by a predicate over the sandbox, never written as a "
+                                    f"sentence that can go stale")
         for name in [e[0] for e in muts] + [e[0] for e in nas]:
             if name in seen:
                 raise RegistryError(f"{path.name}: the name {name!r} is already registered; the battery "
@@ -1802,20 +1868,84 @@ def run_all() -> int:
     print(f"\n{controlled} of {applied} guards were watched green unmutated before going red "
           f"(`ctl`). The rest run a command that writes, or a guard with no unmutated form.")
 
-    print(f"\n{len(NOT_APPLICABLE) + len(pending)} mutation(s) NOT APPLICABLE yet, listed rather than dropped:")
-    for name, why in NOT_APPLICABLE + pending:
+    listed, na_problems = evaluate_not_applicable()
+    print(f"\n{len(listed) + len(pending)} mutation(s) NOT APPLICABLE yet, listed rather than dropped; "
+          f"each reason below was evaluated on this run's sandbox:")
+    for name, why in listed + pending:
         print(f"  n/a   {name:44} {why}")
 
+    if na_problems:
+        print(f"\n{len(na_problems)} not-applicable entry(ies) could not stay listed:")
+        for p in na_problems:
+            print(f"  NOT APPLICABLE ENTRY WRONG  {p}")
+        print("A reason that is no longer true is a guard nobody wrote; write the mutation and remove the entry.")
     if control_reds:
         print(f"\n{len(control_reds)} guard(s) were red BEFORE their mutation: {control_reds}")
         print("A red that was red before the mutation proves nothing; fix the control first.")
     if failures:
         print(f"\n{len(failures)} guard(s) did NOT go red: {failures}")
         print("A guard that cannot fail is not protecting anything.")
-    if control_reds or failures:
+    if control_reds or failures or na_problems:
         return 1
     print(f"\nevery one of the {applied} guards went red when broken")
     return 0
 
 
+def evaluate_not_applicable(sandbox: Sandbox | None = None) -> tuple[list[tuple[str, str]], list[str]]:
+    """(each entry still not applicable, with the reason its predicate returned; each entry that is wrong).
+
+    Every predicate is run on one sandbox, the tree the battery's mutations run in. An entry is wrong when its
+    predicate returns None (the mutation applies: write it), raises, or returns anything but a non-empty string.
+    """
+    own = sandbox is None
+    s = Sandbox(git=False) if own else sandbox
+    listed: list[tuple[str, str]] = []
+    problems: list[str] = []
+    try:
+        for name, predicate in NOT_APPLICABLE:
+            try:
+                why = predicate(s)
+            except Exception as exc:
+                problems.append(f"{name}: its predicate raised {exc!r}, so whether the mutation applies is unknown")
+                continue
+            if why is None:
+                problems.append(f"{name}: its predicate returned None, so the mutation APPLIES now; write it "
+                                f"and remove this entry")
+            elif not isinstance(why, str) or not why.strip():
+                problems.append(f"{name}: its predicate returned {why!r}, which is neither a reason nor None")
+            else:
+                listed.append((name, why))
+    finally:
+        if own:
+            s.close()
+    return listed, problems
+
+
+def main(argv: list[str] | None = None) -> int:
+    """`python3 mutations.py --not-applicable`: evaluate only the not-applicable predicates, the battery's own way.
+
+    The battery (test_harness.py --mutations) runs these after every mutation; this is the same evaluation on
+    its own, so a test can drive it end to end without running a hundred sandboxes first.
+    """
+    argv = sys.argv[1:] if argv is None else argv
+    if argv != ["--not-applicable"]:
+        print("usage: python3 evals/gap-study-2/mutations.py --not-applicable\n"
+              "       (the full battery runs through: python3 evals/gap-study-2/test_harness.py --mutations)")
+        return 2
+    print(f"topic modules registered: {', '.join(REGISTERED_MODULES) if REGISTERED_MODULES else 'none'}")
+    listed, problems = evaluate_not_applicable()
+    print(f"{len(listed)} not-applicable entry(ies), each reason evaluated on a fresh sandbox:")
+    for name, why in listed:
+        print(f"  n/a   {name:44} {why}")
+    for p in problems:
+        print(f"  NOT APPLICABLE ENTRY WRONG  {p}")
+    if not listed and not problems:
+        print("no not-applicable entry was evaluated. That is not a pass.")
+        return 2
+    return 1 if problems else 0
+
+
 register_topic_modules()
+
+if __name__ == "__main__":
+    raise SystemExit(main())

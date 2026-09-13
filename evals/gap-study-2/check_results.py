@@ -57,6 +57,10 @@ import transcript as tx  # noqa: E402
 
 RESULTS = HERE / "results"
 RAN = "RAN"
+# ROUND 2, CP2 (structural lesson 7): the commit whose gars tree the ledger check reads. Round 1 read the
+# tree at HEAD only, and every such reader went red the day gars/ moved (Ruling 38); `--at <sha>` names the
+# commit instead. The draft's `head_readers` lists this line, and EveryHeadReaderIsListed refuses an unlisted one.
+DEFAULT_AT = "HEAD"
 
 
 def git(*args: str) -> tuple[int, str]:
@@ -205,7 +209,7 @@ def check_frozen_content() -> list[str]:
 
 # ---------------------------------------------------------------- the ledger
 
-def check_ledger() -> list[str]:
+def check_ledger(at: str = DEFAULT_AT) -> list[str]:
     problems: list[str] = []
     if is_shallow():
         return ["this is a SHALLOW clone. The ledger check reads git history, and in a shallow "
@@ -213,11 +217,13 @@ def check_ledger() -> list[str]:
                 "(fetch-depth: 0 in CI) and run it again."]
 
     # REVIEW 15, F2. The checkout is exported from HEAD, so HEAD must carry the pinned system tree.
+    # ROUND 2, CP2: from `at` (HEAD unless --at names a commit). Only this tree read moves with it; the
+    # row commits and their ancestry are still read by takes.py from the checked-out history.
     pre = prereg.load()
     want_tree = pre["system_under_test"]["gars_tree_sha"]
-    code, head_tree = git("rev-parse", "HEAD:gars")
+    code, head_tree = git("rev-parse", f"{at}:gars")
     if code != 0 or head_tree.strip() != want_tree:
-        problems.append(f"HEAD carries gars tree {(head_tree.strip() or 'none')[:12]} and the "
+        problems.append(f"{at} carries gars tree {(head_tree.strip() or 'none')[:12]} and the "
                         f"pre-registration pins {want_tree[:12]}")
 
     rows = takes_mod.load_rows()
@@ -798,6 +804,8 @@ def main() -> int:
     ap.add_argument("--ledger", action="store_true")
     ap.add_argument("--controls", action="store_true")
     ap.add_argument("--regrade", action="store_true")
+    ap.add_argument("--at", default=DEFAULT_AT, metavar="<sha>",
+                    help="the commit whose gars tree --ledger compares with the pin (default: HEAD)")
     args = ap.parse_args()
 
     ran_any = False
@@ -832,7 +840,7 @@ def main() -> int:
         ran_any = True
     if args.ledger:
         print("the ledger:")
-        problems += check_ledger()
+        problems += check_ledger(args.at)
         ran_any = True
     if args.controls:
         print("the controls:")

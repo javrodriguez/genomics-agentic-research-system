@@ -1682,5 +1682,236 @@
     "PAUSE",
     "REHEARSAL"
   ],
-  "driver_outcome_shapes_note": "Every outcome the pinned driver writes opens with one of these, and check_take.py refuses a graded take whose ledger records anything else, absence and a different spelling included. REVIEW 19, BLOCKER 1: the first version of that check read the outcome only where it opened with `complete`, so deleting the field, blanking it or writing another word graded a take the driver had cut at its probe turn from a partial reply, with every committed check clean. Enumerating the shapes a reviewer wrote down leaves the next spelling open, so the binding reads the other way round: the vocabulary is pre-registered here and anything outside it is refused."
+  "driver_outcome_shapes_note": "Every outcome the pinned driver writes opens with one of these, and check_take.py refuses a graded take whose ledger records anything else, absence and a different spelling included. REVIEW 19, BLOCKER 1: the first version of that check read the outcome only where it opened with `complete`, so deleting the field, blanking it or writing another word graded a take the driver had cut at its probe turn from a partial reply, with every committed check clean. Enumerating the shapes a reviewer wrote down leaves the next spelling open, so the binding reads the other way round: the vocabulary is pre-registered here and anything outside it is refused.",
+  "head_readers": {
+    "rule": "Every place this study's code names HEAD as a git revision is listed here, with how many times each file names it and what it reads (structural lesson 7: round 1's HEAD:gars readers went red when gars/ moved, Ruling 38). EveryHeadReaderIsListed finds them by git's revision grammar rather than by a list of spellings: HEAD or @, with ~ or ^ steps, a :path, or the end of a .. range, taken as a whole string literal in Python (an f-string's fields read as {}) and as a word outside a comment in a shell script. It refuses a reader this list does not carry and an entry the code no longer has. A reader of this repository that can read another commit takes --at <sha>, defaulting to HEAD.",
+    "not_seen": "A git command given no revision reads HEAD without naming it (git log -- <path>, git status); those are not listed. Neither is anything under the attempt, walk and results folders, which hold records rather than code.",
+    "readers": [
+      {
+        "file": "check_results.py",
+        "ref": "HEAD",
+        "count": 1,
+        "reads": "DEFAULT_AT, the default of --at: check_ledger compares the gars tree at that commit (<at>:gars) with the pin. The row commits and their ancestry are still read by takes.py from the checked-out history.",
+        "at": "--at <sha>"
+      },
+      {
+        "file": "drive.py",
+        "ref": "HEAD",
+        "count": 2,
+        "reads": "DEFAULT_AT, the default of --at: the checkout is exported from that commit, a take is refused unless its gars tree is the pin, and the ledger records that tree. The second is clean_run_tree's symbolic-ref HEAD refs/heads/main, which sets HEAD in the fresh one-commit checkout rather than reading this repository's.",
+        "at": "--at <sha>"
+      },
+      {
+        "file": "lint_language.py",
+        "ref": "HEAD",
+        "count": 1,
+        "reads": "DEFAULT_AT, the default of --at: --commits-since scans the bodies of <since>..<at> touching the study.",
+        "at": "--at <sha>"
+      },
+      {
+        "file": "freeze.py",
+        "ref": "HEAD:{}",
+        "count": 1,
+        "reads": "pin(): each pinned file's blob sha at HEAD, written into the frozen file.",
+        "at": "none yet: this file is not one of CP2's; the reader is listed so a move of gars/ or of HEAD is seen here"
+      },
+      {
+        "file": "freeze.py",
+        "ref": "HEAD",
+        "count": 1,
+        "reads": "frozen_at_commit_parent: the commit the freeze is written on top of.",
+        "at": "none yet: this file is not one of CP2's; the reader is listed so a move of gars/ or of HEAD is seen here"
+      },
+      {
+        "file": "freeze.py",
+        "ref": "HEAD:gars",
+        "count": 1,
+        "reads": "gars_tree_sha_at_freeze: the system tree the frozen file records.",
+        "at": "none yet: this file is not one of CP2's; the reader is listed so a move of gars/ or of HEAD is seen here"
+      },
+      {
+        "file": "contracts.py",
+        "ref": "HEAD:{}",
+        "count": 1,
+        "reads": "head_blob(): whether a quoted contract file at HEAD is still the blob its quote is pinned to.",
+        "at": "none yet: this file is not one of CP2's; the reader is listed so a move of gars/ or of HEAD is seen here"
+      },
+      {
+        "file": "smoke_run_tree.py",
+        "ref": "HEAD",
+        "count": 1,
+        "reads": "the run-tree smoke exports its checkout from HEAD.",
+        "at": "none yet: this file is not one of CP2's; the reader is listed so a move of gars/ or of HEAD is seen here"
+      },
+      {
+        "file": "clean_clone_battery.sh",
+        "ref": "@",
+        "count": 2,
+        "reads": "the clean clone's own HEAD: the sha it names in its output and the commit count it prints. It reads the clone, whose source --source picks.",
+        "at": "not needed: --source names what is cloned"
+      },
+      {
+        "file": "mutations.py",
+        "ref": "HEAD",
+        "count": 1,
+        "reads": "Sandbox.commit returns the sandbox repository's HEAD.",
+        "at": "not needed: it reads a repository the test or the battery builds, never this one"
+      },
+      {
+        "file": "test_harness.py",
+        "ref": "HEAD",
+        "count": 3,
+        "reads": "ScratchRepo.commit, and the two clean-run-tree tests, each on a repository the test builds.",
+        "at": "not needed: it reads a repository the test or the battery builds, never this one"
+      },
+      {
+        "file": "test_harness.py",
+        "ref": "HEAD:gars",
+        "count": 2,
+        "reads": "gars_repo and study_copy: the gars tree of a repository the test builds.",
+        "at": "not needed: it reads a repository the test or the battery builds, never this one"
+      },
+      {
+        "file": "test_harness.py",
+        "ref": "HEAD:{}",
+        "count": 1,
+        "reads": "the built checkout carries no prereg.json at its HEAD.",
+        "at": "not needed: it reads a repository the test or the battery builds, never this one"
+      },
+      {
+        "file": "test_harness.py",
+        "ref": "HEAD:evals/drive.py",
+        "count": 1,
+        "reads": "the first study's driver blob at THIS repository's HEAD, compared with the carried script's recorded source; the test skips where there is no history. It is the one test read of this repository's HEAD.",
+        "at": "none yet: a test, not a CLI; it reads the history it runs in"
+      },
+      {
+        "file": "tests_hygiene.py",
+        "ref": "HEAD",
+        "count": 2,
+        "reads": "the scratch commit helper on a repository the test builds, and one expected value in the grammar's own test.",
+        "at": "not needed: it reads a repository the test or the battery builds, never this one"
+      },
+      {
+        "file": "tests_hygiene.py",
+        "ref": "@",
+        "count": 2,
+        "reads": "expected values in the grammar's own test; no git command runs.",
+        "at": "not needed: it reads a repository the test or the battery builds, never this one"
+      },
+      {
+        "file": "tests_hygiene.py",
+        "ref": "HEAD:gars",
+        "count": 1,
+        "reads": "an expected value in the grammar's own test; no git command runs.",
+        "at": "not needed: it reads a repository the test or the battery builds, never this one"
+      },
+      {
+        "file": "tests_hygiene.py",
+        "ref": "HEAD:{}",
+        "count": 1,
+        "reads": "an expected value in the grammar's own test; no git command runs.",
+        "at": "not needed: it reads a repository the test or the battery builds, never this one"
+      },
+      {
+        "file": "tests_hygiene.py",
+        "ref": "HEAD~1",
+        "count": 2,
+        "reads": "an expected value in the grammar's own test, and the reader it plants in a list to show the refusal; no git command runs.",
+        "at": "not needed: it reads a repository the test or the battery builds, never this one"
+      },
+      {
+        "file": "tests_hygiene.py",
+        "ref": "{}..HEAD",
+        "count": 1,
+        "reads": "an expected value in the grammar's own test; no git command runs.",
+        "at": "not needed: it reads a repository the test or the battery builds, never this one"
+      }
+    ]
+  },
+  "checklist_named_tests": [
+    "TwoMinuteRead",
+    "NoRateNoBannedWord",
+    "TheDriverLoopRecordsEveryTurnItEnds",
+    "ReservedLabelsReachGraders",
+    "EveryOperatorLineRenders",
+    "PlanGateCannotExecute",
+    "TheCopiedFixtureBuildsToItsPin"
+  ],
+  "checklist_named_tests_pending": {
+    "TheEnvironmentRecordIsWritten": {
+      "checkpoint": "CP3",
+      "module": "tests_environment.py"
+    },
+    "TheEnvironmentRecordIsRequired": {
+      "checkpoint": "CP3",
+      "module": "tests_environment.py"
+    },
+    "TheLedgerCountsEnvironmentRecords": {
+      "checkpoint": "CP3",
+      "module": "tests_environment.py"
+    },
+    "TheBillIsEvidencedTakeByTake": {
+      "checkpoint": "CP3",
+      "module": "tests_environment.py"
+    },
+    "PermissionStopLexicon": {
+      "checkpoint": "CP4",
+      "module": "tests_permission.py"
+    },
+    "NoPhraseInATemplateBody": {
+      "checkpoint": "CP4",
+      "module": "tests_permission.py"
+    },
+    "HeldWaitPointsNeverMatch": {
+      "checkpoint": "CP4",
+      "module": "tests_permission.py"
+    },
+    "PermissionLabelOnlyOnAStop": {
+      "checkpoint": "CP4",
+      "module": "tests_permission.py"
+    },
+    "FinalMessageNotWholeStep": {
+      "checkpoint": "CP4",
+      "module": "tests_permission.py"
+    },
+    "ScopeReadAnswerRule": {
+      "checkpoint": "CP5",
+      "module": "tests_scope_answer.py"
+    },
+    "TheFreezeNeedsARehearsal": {
+      "checkpoint": "CP8",
+      "module": "not named by the plan"
+    },
+    "TheReviewKitMatchesTheDriver": {
+      "checkpoint": "CP8",
+      "module": "not named by the plan"
+    }
+  },
+  "done_line_12_mutations": {
+    "a moved threshold after the freeze": "m_moved_threshold_after_the_freeze",
+    "a doctored results file": "m_doctored_results_file_regraded",
+    "a take with a leaked word": "m_leaked_word_in_an_operator_turn",
+    "a session id that is not its row's": "m_session_id_not_its_rows",
+    "a row committed after its transcript": "m_row_committed_after_its_transcript",
+    "a results file carrying a banned word": "m_banned_word_in_a_results_file",
+    "a graded take with no first agent turn": "m_take_with_no_agent_turn",
+    "a fixture naming the task": "m_fixture_names_the_task",
+    "a fourth graded take": "m_fourth_graded_take",
+    "a gars tree differing from the pin": "m_head_system_tree_unchecked",
+    "an edited case file": "m_case_file_label_flipped",
+    "a rehearsal counted as a take": "m_rehearsal_counted_as_a_graded_take"
+  },
+  "done_line_12_mutations_pending": {
+    "a missing environment record": {
+      "name": "m_environment_record_missing",
+      "checkpoint": "CP3",
+      "module": "mutations_environment.py"
+    },
+    "a permission stop labelled did-not-reach": {
+      "name": "m_permission_stop_labelled_did_not_reach",
+      "checkpoint": "CP4",
+      "module": "mutations_permission.py"
+    }
+  }
 }

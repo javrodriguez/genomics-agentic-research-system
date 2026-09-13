@@ -1,0 +1,8 @@
+SKIPPED TwoMinuteReadLive.test_the_word_cap: no results file
+SKIPPED NoRateNoBannedWordLive.test_the_scan: no results file
+SKIPPED ThePublishedAnalysisIsRegeneratedLive.test_regenerated: no results file
+SKIPPED TheCopiedFixtureBuildsToItsPin.test_the_fixture_builds_and_hashes_to_its_pin: origin not in a workspaces folder
+----------------------------------------------------------------------
+Ran 308 tests in 46.000s
+
+OK (skipped=4)

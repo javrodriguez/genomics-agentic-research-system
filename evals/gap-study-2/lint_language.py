@@ -3,6 +3,7 @@
 
     python3 evals/gap-study-2/lint_language.py <path> [<path> ...]
     python3 evals/gap-study-2/lint_language.py --commits-since <sha>     # commit BODIES
+    python3 evals/gap-study-2/lint_language.py --commits-since <sha> --at <sha>   # up to that commit
     python3 evals/gap-study-2/lint_language.py --list-patterns
 
 WHY THIS EXISTS AS A PROGRAM RATHER THAN A RULE. With n = 3 per cell, a rate is not a thing this
@@ -242,10 +243,15 @@ def iter_files(paths: list[str], include_code: bool = False):
             yield path
 
 
-def commit_bodies(since: str) -> list[tuple[str, str]]:
-    """Every commit touching this study since <sha>, as (sha, body)."""
+# ROUND 2, CP2 (structural lesson 7): the commit the body scan stops at. HEAD unless `--at <sha>` names
+# another; the draft's `head_readers` lists this line, and EveryHeadReaderIsListed refuses an unlisted one.
+DEFAULT_AT = "HEAD"
+
+
+def commit_bodies(since: str, at: str = DEFAULT_AT) -> list[tuple[str, str]]:
+    """Every commit touching this study since <sha>, up to <at>, as (sha, body)."""
     out = subprocess.run(
-        ["git", "-C", str(REPO), "log", "--format=%H", f"{since}..HEAD", "--", study.STUDY_REL],
+        ["git", "-C", str(REPO), "log", "--format=%H", f"{since}..{at}", "--", study.STUDY_REL],
         capture_output=True, text=True)
     if out.returncode != 0:
         print(f"git log failed: {out.stderr.strip()}", file=sys.stderr)
@@ -262,6 +268,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Refuse the words this study may not publish.")
     ap.add_argument("paths", nargs="*")
     ap.add_argument("--commits-since", help="also scan commit bodies touching the study since <sha>")
+    ap.add_argument("--at", default=DEFAULT_AT, metavar="<sha>",
+                    help="with --commits-since: scan up to this commit (default: HEAD)")
     ap.add_argument("--include-code", action="store_true",
                     help="also scan .py sources (off by default; see NEVER_SCANNED)")
     ap.add_argument("--list-patterns", action="store_true")
@@ -302,7 +310,7 @@ def main() -> int:
             findings.extend(scan_text(case_file_own_words(f), rel + " (own words)", entries))
 
     if args.commits_since:
-        for sha, body in commit_bodies(args.commits_since):
+        for sha, body in commit_bodies(args.commits_since, args.at):
             scanned += 1
             findings.extend(scan_text(body, f"commit:{sha[:12]}", entries))
 

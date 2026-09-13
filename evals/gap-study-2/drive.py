@@ -81,6 +81,11 @@ import prereg  # noqa: E402
 import takes as takes_mod  # noqa: E402
 import scrub as scrub_mod  # noqa: E402
 
+# ROUND 2, CP2 (structural lesson 7): the commit the checkout is exported from, whose gars tree a take is
+# bound to. HEAD unless `--at <sha>` names another. Round 1 read HEAD in three places and each went red the
+# day gars/ moved (Ruling 38); the draft's `head_readers` lists this line.
+DEFAULT_AT = "HEAD"
+
 PERMISSION_MODE = "auto"
 # The first study's constant, carried with its then-step: how long the driver waits for stage 00's
 # finalize to write samples.csv before the design table is copied in. Pre-registered in
@@ -645,6 +650,8 @@ def main() -> int:
                     help="a pre-freeze walk: stop BEFORE the probe turn, never graded")
     ap.add_argument("--model", help="required for a walk; a take reads it from its ledger row")
     ap.add_argument("--budget", type=int, default=None, help="per-turn seconds")
+    ap.add_argument("--at", default=DEFAULT_AT, metavar="<sha>",
+                    help="the commit the checkout is exported from and whose gars tree is checked (default: HEAD)")
     args = ap.parse_args()
 
     pre = prereg.load()
@@ -712,10 +719,10 @@ def main() -> int:
         # REVIEW 13, F3. The checkout is exported from HEAD, so HEAD must carry the system under test the
         # study froze; the take checker binds the tree the ledger records as well.
         pinned_gars = pre["system_under_test"]["gars_tree_sha"]
-        head_gars = subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD:gars"],
+        head_gars = subprocess.run(["git", "-C", str(REPO), "rev-parse", f"{args.at}:gars"],
                                    capture_output=True, text=True).stdout.strip()
         if head_gars != pinned_gars:
-            print(f"refusing: HEAD carries gars tree {head_gars[:12]} and the pre-registration pins "
+            print(f"refusing: {args.at} carries gars tree {head_gars[:12]} and the pre-registration pins "
                   f"{pinned_gars[:12]}. A take is driven only against the system under test the study froze.")
             return 2
         graded_dir = HERE / "transcripts" / args.task / args.half / model / str(row["take"])
@@ -752,8 +759,11 @@ def main() -> int:
     # quieter reason: the operator hands it to the agent verbatim, so a path inside the operator's
     # assistant tree puts that tree's name into the transcript and in front of the agent.
     global RUN_TREE
-    head = subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD"],
+    head = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--verify", "--quiet", f"{args.at}^{{commit}}"],
                           capture_output=True, text=True).stdout.strip()
+    if not head:
+        print(f"refusing: --at {args.at} names no commit in this repository, so there is no checkout to export.")
+        return 2
     excluded = excluded_from_run_tree(pre)
     RUN_TREE = clean_run_tree(head, session_id, excluded)
 
@@ -850,7 +860,7 @@ def main() -> int:
               "budget_s": budget, "started": now(), "fixture": ledger_fixture,
               "claude_version": subprocess.run(["claude", "--version"], capture_output=True,
                                                text=True).stdout.strip(),
-              "gars_tree_sha": subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD:gars"],
+              "gars_tree_sha": subprocess.run(["git", "-C", str(REPO), "rev-parse", f"{head}:gars"],
                                               capture_output=True, text=True).stdout.strip(),
               "turns": [], "outcome": None, "first_agent_turn": False}
 

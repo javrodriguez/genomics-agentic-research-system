@@ -32,9 +32,20 @@ One absolute path remains in the copy, by design: `cases/scope-read.json:148` qu
 - The negative controls at gars tree `8a54e0f8` give round 1's six verdicts and exit codes (see the plan-gate note in the commit body).
 - A new CI job, `gap-study-2`, runs these at every pushed commit at full depth; the two existing jobs are unchanged.
 
+CP1 was pushed with the kickoff; CI run 34785635654 on `5d58684` succeeded in all three jobs, and its log shows 308 tests and 121 guards red.
+
+## CP2 — round 1's process lessons as guards, and the four operator tools (slice 03)
+
+**Built and gated on 13 September 2026.**
+
+- Not-applicable battery entries are evaluated predicates. The draft now carries `head_readers` (every HEAD read, each production reader with `--at <sha>`), `checklist_named_tests` (with the classes later checkpoints create listed as pending), and `done_line_12_mutations` (with the CP3 and CP4 entries pending). `EveryHeadReaderIsListed`, `TheChecklistNamedTestsExist` and `EveryDoneLineMutationIsRegistered` guard them.
+- Tools: `commit_msg.py`, `ci_conclusion.py`, `clean_clone_battery.sh`, `check_checklist_names.py`, with `tests_tools.py` and `mutations_tools.py`. `test_harness.py` loads every `tests_*.py`; `mutations.py` registers every `mutations_*.py`.
+- Suite: 365 tests OK, and the 9 skips are the three `…Live` classes. Battery: exit 0; all 135 guards went red when broken, 128 of them after a green control. `check_checklist_names.py` on the goal file exits 0.
+- The clean-clone battery's output is committed in `verification/`, and the file names the tree it tested.
+
 ## Next
 
-**CP2 — round 1's process lessons as guards (slice 03).** Not-applicable entries become evaluated predicates; the `head_readers` inventory; `checklist_named_tests`; the done-line 12 mutation map; `commit_msg.py`, `ci_conclusion.py`, `clean_clone_battery.sh`, `check_checklist_names.py`.
+**CP3 — fix 4: the environment record, and the stripped child environment (slice 04).** J4 is ruled yes, so `stripped_env` is the twelve names. Before the first walk, close the sibling-worktree leak channel named in the plan. Then the env smoke runs unstripped and stripped, and the five walks follow.
 
 **CP1 as planned, for the record — the copy runs standalone, green, in CI (slice 02).** Owned fixtures for every live-state read, `EVALS_BASELINE` derived from history, pre-freeze branches in `check_results.py` / `costs.py` / `takes.py`, the contract quotes re-pinned at `ac8662b`, the allowlist re-ruled, `controls/results.json` regenerated, and the `gap-study-2` CI job.
 

@@ -4995,10 +4995,12 @@ class TheSuiteNeverReadsLiveState(unittest.TestCase):
 
     def classes(self) -> list[str]:
         mod = sys.modules[__name__]
+        # ROUND 2, CP2: the classes the topic modules (tests_*.py) define are part of the suite, so they are
+        # poisoned with it; they are injected here by load_test_modules, with their own __module__.
         return sorted(name for name, obj in vars(mod).items()
                       if isinstance(obj, type) and issubclass(obj, unittest.TestCase)
-                      and obj.__module__ == mod.__name__ and not name.endswith("Live")
-                      and name != type(self).__name__)
+                      and (obj.__module__ == mod.__name__ or name in LOADED_TEST_CLASSES)
+                      and not name.endswith("Live") and name != type(self).__name__)
 
     def poisoned(self, argv: list[str]) -> subprocess.CompletedProcess:
         return subprocess.run([sys.executable, *argv], capture_output=True, text=True, cwd=str(REPO),
@@ -5021,6 +5023,64 @@ class TheSuiteNeverReadsLiveState(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr[-3000:])
         ran = re.search(r"^Ran (\d+) tests?", r.stderr, re.M)
         self.assertTrue(ran and int(ran.group(1)) > 250, "the poisoned run did not run the suite; that is not a pass")
+
+
+# ---------------------------------------------------------------------------------------------------
+# ROUND 2, DECISION 8: parallel build, sequential landing. This file has one owner; each topic's tests live
+# in their own `tests_<topic>.py` beside it, and are loaded here, so builders never share a file.
+#
+# THE CONTRACT. Every tests_*.py in this directory is loaded BY PATH (never by a sys.path lookup, which a
+# same-named module under evals/ could shadow), in sorted order, and every unittest.TestCase subclass the
+# module DEFINES (its __module__ is the topic module's) is injected into this module's namespace under its own
+# name. So `python3 test_harness.py <ClassName>` (loadTestsFromNames against this module), the default run
+# (loadTestsFromModule), and the mutation battery's `_th(s, "<ClassName>")` all resolve it exactly as they
+# resolve a class written in this file. A topic module may `import test_harness` for its helpers: the name is
+# bound to this module before any topic module runs, so the import never loads a second copy.
+#
+# Each of these fails the whole run LOUDLY, because a module that loads nothing reads exactly like a topic
+# whose tests all passed: a module that raises on import; a module that defines no TestCase; a class name that
+# is already defined, in this file or by an earlier topic module.
+
+LOADED_TEST_MODULES: list[str] = []
+LOADED_TEST_CLASSES: list[str] = []
+
+
+class TestModuleError(RuntimeError):
+    """A tests_<topic>.py that cannot be loaded as it stands."""
+
+
+def load_test_modules(here: Path = HERE) -> list[str]:
+    import importlib.util
+    this = sys.modules[__name__]
+    sys.modules.setdefault("test_harness", this)
+    loaded = []
+    for path in sorted(here.glob("tests_*.py")):
+        spec = importlib.util.spec_from_file_location(path.stem, path)
+        if spec is None or spec.loader is None:
+            raise TestModuleError(f"{path.name}: cannot be loaded as a module")
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[path.stem] = mod
+        try:
+            spec.loader.exec_module(mod)
+        except Exception as exc:
+            del sys.modules[path.stem]
+            raise TestModuleError(f"{path.name}: raised on import: {exc!r}") from exc
+        defined = [(name, obj) for name, obj in vars(mod).items()
+                   if isinstance(obj, type) and issubclass(obj, unittest.TestCase) and obj.__module__ == mod.__name__]
+        if not defined:
+            raise TestModuleError(f"{path.name}: defines no unittest.TestCase, so it loads nothing; that is not a pass")
+        for name, obj in defined:
+            if hasattr(this, name):
+                raise TestModuleError(f"{path.name}: the class name {name!r} is already defined; a test is run by "
+                                      f"name, so two classes under one name hide each other")
+            setattr(this, name, obj)
+            LOADED_TEST_CLASSES.append(name)
+        loaded.append(f"{path.name} ({len(defined)} class(es))")
+    LOADED_TEST_MODULES[:] = loaded
+    return loaded
+
+
+load_test_modules()
 
 
 def main() -> int:

@@ -1,0 +1,4 @@
+SKIPPED TwoMinuteReadLive.test_the_word_cap: no results file
+Ran 308 tests in 46.000s
+
+OK (skipped=1)

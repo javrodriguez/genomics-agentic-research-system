@@ -1,0 +1,71 @@
+interpreter: /usr/local/bin/python3.12 (Python 3.12.9)
+source: the repository at a path, its checked-out commit
+clone: ceef6f335a8e45a4ca980f89882cb54cf2a5238b, full depth, 469 commits
+command -v claude inside the cleared environment: not found (exit non-zero), as required
+command -v gh inside the cleared environment: not found (exit non-zero), as required
+environment: env -i HOME=<tmp>/home PATH=<tmp>/bin:/usr/bin:/bin
+
+== suite
+s
+  SKIP __main__.TwoMinuteReadLive.test_the_committed_lines_are_byte_identical: not yet applicable: results/ holds no results file, so there is no published section to read
+s
+  SKIP __main__.TwoMinuteReadLive.test_the_file_only_gained_lines_since_this_studys_kickoff: not yet applicable: results/ holds no results file, so there is no published section to read
+s
+  SKIP __main__.TwoMinuteReadLive.test_the_limitations_name_each_count_requirement_7_names: not yet applicable: results/ holds no results file, so there is no published section to read
+s
+  SKIP __main__.TwoMinuteReadLive.test_the_section_stands_above_the_first_studys: not yet applicable: results/ holds no results file, so there is no published section to read
+s
+  SKIP __main__.TwoMinuteReadLive.test_the_summary_block_is_at_most_350_words: not yet applicable: results/ holds no results file, so there is no published section to read
+s...........
+----------------------------------------------------------------------
+Ran 365 tests in 84.693s
+
+OK (skipped=10)
+SKIPPED NoRateNoBannedWordLive.test_the_commit_bodies_since_the_freeze_are_clean: not yet applicable: results/ holds no results file, so there is no published section to read
+SKIPPED NoRateNoBannedWordLive.test_the_section_the_analysis_and_the_gate_brief_are_clean: not yet applicable: results/ holds no results file, so there is no published section to read
+SKIPPED TheCopiedFixtureBuildsToItsPin.test_the_fixture_builds_and_hashes_to_its_pin: the origin project is not on this machine (workspaces/gars-demo-v2/_runs/epigenome-a/20260903-1654/ws/projects/epigenome-a); plan-gate cannot be driven from this clone
+SKIPPED ThePublishedAnalysisIsRegeneratedLive.test_analysis_json_is_what_analyse_writes: not yet applicable: results/ holds no results file, so there is no published section to read
+SKIPPED TwoMinuteReadLive.test_each_count_in_the_table_is_the_results_files: not yet applicable: results/ holds no results file, so there is no published section to read
+SKIPPED TwoMinuteReadLive.test_the_committed_lines_are_byte_identical: not yet applicable: results/ holds no results file, so there is no published section to read
+SKIPPED TwoMinuteReadLive.test_the_file_only_gained_lines_since_this_studys_kickoff: not yet applicable: results/ holds no results file, so there is no published section to read
+SKIPPED TwoMinuteReadLive.test_the_limitations_name_each_count_requirement_7_names: not yet applicable: results/ holds no results file, so there is no published section to read
+SKIPPED TwoMinuteReadLive.test_the_section_stands_above_the_first_studys: not yet applicable: results/ holds no results file, so there is no published section to read
+SKIPPED TwoMinuteReadLive.test_the_summary_block_is_at_most_350_words: not yet applicable: results/ holds no results file, so there is no published section to read
+SKIPPED NoRateNoBannedWordLive.test_the_commit_bodies_since_the_freeze_are_clean: not yet applicable: results/ holds no results file, so there is no published section to read
+SKIPPED NoRateNoBannedWordLive.test_the_section_the_analysis_and_the_gate_brief_are_clean: not yet applicable: results/ holds no results file, so there is no published section to read
+SKIPPED TheCopiedFixtureBuildsToItsPin.test_the_fixture_builds_and_hashes_to_its_pin: the origin project is not on this machine (workspaces/gars-demo-v2/_runs/epigenome-a/20260903-1654/ws/projects/epigenome-a); plan-gate cannot be driven from this clone
+SKIPPED ThePublishedAnalysisIsRegeneratedLive.test_analysis_json_is_what_analyse_writes: not yet applicable: results/ holds no results file, so there is no published section to read
+SKIPPED TwoMinuteReadLive.test_each_count_in_the_table_is_the_results_files: not yet applicable: results/ holds no results file, so there is no published section to read
+SKIPPED TwoMinuteReadLive.test_the_committed_lines_are_byte_identical: not yet applicable: results/ holds no results file, so there is no published section to read
+SKIPPED TwoMinuteReadLive.test_the_file_only_gained_lines_since_this_studys_kickoff: not yet applicable: results/ holds no results file, so there is no published section to read
+SKIPPED TwoMinuteReadLive.test_the_limitations_name_each_count_requirement_7_names: not yet applicable: results/ holds no results file, so there is no published section to read
+SKIPPED TwoMinuteReadLive.test_the_section_stands_above_the_first_studys: not yet applicable: results/ holds no results file, so there is no published section to read
+SKIPPED TwoMinuteReadLive.test_the_summary_block_is_at_most_350_words: not yet applicable: results/ holds no results file, so there is no published section to read
+suite exit: 0
+
+== skips
+  skip (live class, no results file yet): NoRateNoBannedWordLive.test_the_commit_bodies_since_the_freeze_are_clean
+  skip (live class, no results file yet): NoRateNoBannedWordLive.test_the_section_the_analysis_and_the_gate_brief_are_clean
+  skip (expected, outside a workspaces folder): TheCopiedFixtureBuildsToItsPin.test_the_fixture_builds_and_hashes_to_its_pin
+  skip (live class, no results file yet): ThePublishedAnalysisIsRegeneratedLive.test_analysis_json_is_what_analyse_writes
+  skip (live class, no results file yet): TwoMinuteReadLive.test_each_count_in_the_table_is_the_results_files
+  skip (live class, no results file yet): TwoMinuteReadLive.test_the_committed_lines_are_byte_identical
+  skip (live class, no results file yet): TwoMinuteReadLive.test_the_file_only_gained_lines_since_this_studys_kickoff
+  skip (live class, no results file yet): TwoMinuteReadLive.test_the_limitations_name_each_count_requirement_7_names
+  skip (live class, no results file yet): TwoMinuteReadLive.test_the_section_stands_above_the_first_studys
+  skip (live class, no results file yet): TwoMinuteReadLive.test_the_summary_block_is_at_most_350_words
+skips as expected
+
+== battery
+142 mutation(s); each applied to a throwaway copy, the guard run there, the copy discarded
+topic modules registered: mutations_hygiene.py (8 mutation(s), 0 not applicable), mutations_tools.py (6 mutation(s), 0 not applicable)
+
+
+128 of 135 guards were watched green unmutated before going red (`ctl`). The rest run a command that writes, or a guard with no unmutated form.
+
+14 mutation(s) NOT APPLICABLE yet, listed rather than dropped; each reason below was evaluated on this run's sandbox:
+
+every one of the 135 guards went red when broken
+battery exit: 0
+
+clean clone of ceef6f335a8e45a4ca980f89882cb54cf2a5238b: suite OK, skips as expected, battery green
