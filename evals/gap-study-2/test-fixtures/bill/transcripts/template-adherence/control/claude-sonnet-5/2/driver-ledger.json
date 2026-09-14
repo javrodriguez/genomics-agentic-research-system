@@ -1,0 +1,25 @@
+{
+  "kind": "take",
+  "task": "template-adherence",
+  "half": "control",
+  "model_requested": "claude-sonnet-5",
+  "session_id": "7a2e4c6b-3d5f-5e8a-8b2c-4d6e8f0a2c33",
+  "row": 1,
+  "claude_version": "2.1.267 (Claude Code)",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "operator line one"
+    },
+    {
+      "n": 2,
+      "sent": "operator line two"
+    }
+  ],
+  "outcome": "COMPLETED",
+  "first_agent_turn": true,
+  "environment": {
+    "file": "environment.json",
+    "sha256": "34cdd25b201b646e97799390e02b93ae4a2e3607e149d3ec8fd21a785c8469a0"
+  }
+}

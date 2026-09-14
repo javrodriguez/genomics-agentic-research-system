@@ -20,19 +20,31 @@
 #   4. runs the suite under `env -i HOME=<tmp> PATH=<that bin>:/usr/bin:/bin`, printing every skipped
 #      test by name; then `--mutations` in the same environment;
 #   5. checks the skips against a closed list: the three live classes (TwoMinuteReadLive,
-#      NoRateNoBannedWordLive, ThePublishedAnalysisIsRegeneratedLive), plus exactly one more,
-#      TheCopiedFixtureBuildsToItsPin.test_the_fixture_builds_and_hashes_to_its_pin, which skips outside
-#      a workspaces folder by design. That one must be present; any other skip fails the run.
+#      NoRateNoBannedWordLive, ThePublishedAnalysisIsRegeneratedLive), plus EXPECTED_SKIPS, three exact
+#      test names that skip by design when the copied fixture's origin project is not on this machine,
+#      which is every clone outside a workspaces folder:
+#        TheCopiedFixtureBuildsToItsPin.test_the_fixture_builds_and_hashes_to_its_pin
+#        TheFixtureNamesNoPathOutsideTheRunTree.test_the_copied_tree_hashes_to_its_pin_at_two_roots
+#        TheFixtureNamesNoPathOutsideTheRunTree.test_the_real_copied_tree_names_no_checkout_path
+#      Each must skip exactly once, and its printed reason must name the missing origin
+#      ("the origin project is not on this machine (<origin>)"); an expected name skipping for any other
+#      reason fails, and so does any other skip.
 #
 # Everything printed goes to --out too (default: verification/clean-clone-<sha7>.txt beside this file).
-# Exit 0 suite OK, battery exit 0 and skips as expected; 1 a suite, battery or skip failure; 2 usage;
+# Exit 0 suite OK, battery exit 0 and skips as expected (the closed list above, each expected name once,
+# for its origin reason); 1 a suite, battery or skip failure; 2 usage;
 # 3 an environment problem (no interpreter, clone failed, shallow clone, a harness reachable).
 set -uo pipefail
 
 HERE="$(dirname "$0")"
 STUDY_REL="evals/gap-study-2"
 LIVE_CLASSES="TwoMinuteReadLive NoRateNoBannedWordLive ThePublishedAnalysisIsRegeneratedLive"
-EXPECTED_SKIP="TheCopiedFixtureBuildsToItsPin.test_the_fixture_builds_and_hashes_to_its_pin"
+# Exact names, never patterns: a new skip is added here by name or it fails the run.
+EXPECTED_SKIPS="TheCopiedFixtureBuildsToItsPin.test_the_fixture_builds_and_hashes_to_its_pin
+TheFixtureNamesNoPathOutsideTheRunTree.test_the_copied_tree_hashes_to_its_pin_at_two_roots
+TheFixtureNamesNoPathOutsideTheRunTree.test_the_real_copied_tree_names_no_checkout_path"
+# The start of fixtures/copy_project.py origin_problem()'s reason outside a workspaces folder.
+ORIGIN_REASON="the origin project is not on this machine ("
 
 usage() {
   echo "usage: clean_clone_battery.sh [--source <path-or-sha>] [--out <file>]" >&2
@@ -42,26 +54,36 @@ usage() {
 
 # check_skips <file>: reads `SKIPPED <Class>.<method>: <reason>` lines; exit 0 only on the expected set.
 check_skips() {
-  local file="$1" bad=0 seen_expected=0 name cls ok
+  local file="$1" bad=0 seen="" name cls reason ok expected exp n
   if [ ! -f "$file" ]; then echo "[no-suite-output] $file does not exist"; return 1; fi
   while IFS= read -r line; do
     name="${line#SKIPPED }"; name="${name%%:*}"
+    reason="${line#SKIPPED "$name"}"; reason="${reason#: }"
     cls="${name%%.*}"
+    expected=0
+    for exp in $EXPECTED_SKIPS; do [ "$name" = "$exp" ] && expected=1; done
     ok=0
     for live in $LIVE_CLASSES; do [ "$cls" = "$live" ] && ok=1; done
-    if [ "$name" = "$EXPECTED_SKIP" ]; then
-      seen_expected=$((seen_expected + 1)); ok=1
-      echo "  skip (expected, outside a workspaces folder): $name"
+    if [ "$expected" = 1 ]; then
+      seen="$seen$name
+"
+      case "$reason" in
+        "$ORIGIN_REASON"?*")"*) echo "  skip (expected, the origin project is not on this machine): $name" ;;
+        *) echo "  SKIP FOR ANOTHER REASON: $name: $reason"; bad=1 ;;
+      esac
     elif [ "$ok" = 1 ]; then
       echo "  skip (live class, no results file yet): $name"
     else
       echo "  SKIP NOT EXPECTED: $name"; bad=1
     fi
   done < <(grep -E '^SKIPPED ' "$file")
-  if [ "$seen_expected" != 1 ]; then
-    echo "[expected-skip-count] $EXPECTED_SKIP skipped $seen_expected time(s); exactly once is expected"
-    bad=1
-  fi
+  for exp in $EXPECTED_SKIPS; do
+    n="$(printf '%s' "$seen" | grep -cxF -- "$exp")"
+    if [ "$n" != 1 ]; then
+      echo "[expected-skip-count] $exp skipped $n time(s); exactly once is expected"
+      bad=1
+    fi
+  done
   if [ "$bad" = 0 ]; then echo "skips as expected"; return 0; fi
   echo "[unexpected-skips] the skips differ from the expected set"
   return 1

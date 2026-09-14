@@ -1,0 +1,1025 @@
+{
+  "record": "what the round-2 instrument reads on round 1's committed transcripts — not round 1's result",
+  "instrument": {
+    "checker": "evals/gap-study-2/check_take.py environment_problems(transcript folder, round 1's driver ledger, the pre-registration in force, row_commit null)",
+    "bill": "evals/gap-study-2/costs.py read_environments and bill_line, with row_commits replaced by an empty map",
+    "script": "evals/gap-study-2/verification/round1-regrade/regrade_environment.py",
+    "pre_registration": "evals/gap-study-2/prereg-draft.json",
+    "pre_registration_sha256": "9abbed9297329eb35742948b49a8e4957b61b9ebb1017b34a8b68e2214f6dee9",
+    "round_1_takes": "evals/gap-study/takes.json",
+    "round_1_transcripts": "evals/gap-study/transcripts/<task>/<half>/<model>/<take>/",
+    "row_commit": "not bound: a missing record is refused before the row commit is compared, so no round-1 history is read"
+  },
+  "takes": [
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 1,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 2,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 3,
+      "refusals": [
+        "[environment-record] no environment.json beside the transcript. A take that does not carry the record of the environment its session started in cannot show which credentials it ran with, so the bill is a statement again."
+      ]
+    }
+  ],
+  "counts": {
+    "graded": 108,
+    "refused_environment_record": 108,
+    "evidenced": 0
+  },
+  "dollar_line": "$0 as the operator states it; evidenced by 0 of 108; not evidenced: confounded-design control claude-haiku-4-5-20251001 take 1: no environment record; confounded-design control claude-haiku-4-5-20251001 take 2: no environment record; confounded-design control claude-haiku-4-5-20251001 take 3: no environment record; confounded-design control claude-opus-5 take 1: no environment record; confounded-design control claude-opus-5 take 2: no environment record; confounded-design control claude-opus-5 take 3: no environment record; confounded-design control claude-sonnet-5 take 1: no environment record; confounded-design control claude-sonnet-5 take 2: no environment record; confounded-design control claude-sonnet-5 take 3: no environment record; confounded-design positive claude-haiku-4-5-20251001 take 1: no environment record; confounded-design positive claude-haiku-4-5-20251001 take 2: no environment record; confounded-design positive claude-haiku-4-5-20251001 take 3: no environment record; confounded-design positive claude-opus-5 take 1: no environment record; confounded-design positive claude-opus-5 take 2: no environment record; confounded-design positive claude-opus-5 take 3: no environment record; confounded-design positive claude-sonnet-5 take 1: no environment record; confounded-design positive claude-sonnet-5 take 2: no environment record; confounded-design positive claude-sonnet-5 take 3: no environment record; number-fidelity control claude-haiku-4-5-20251001 take 1: no environment record; number-fidelity control claude-haiku-4-5-20251001 take 2: no environment record; number-fidelity control claude-haiku-4-5-20251001 take 3: no environment record; number-fidelity control claude-opus-5 take 1: no environment record; number-fidelity control claude-opus-5 take 2: no environment record; number-fidelity control claude-opus-5 take 3: no environment record; number-fidelity control claude-sonnet-5 take 1: no environment record; number-fidelity control claude-sonnet-5 take 2: no environment record; number-fidelity control claude-sonnet-5 take 3: no environment record; number-fidelity positive claude-haiku-4-5-20251001 take 1: no environment record; number-fidelity positive claude-haiku-4-5-20251001 take 2: no environment record; number-fidelity positive claude-haiku-4-5-20251001 take 3: no environment record; number-fidelity positive claude-opus-5 take 1: no environment record; number-fidelity positive claude-opus-5 take 2: no environment record; number-fidelity positive claude-opus-5 take 3: no environment record; number-fidelity positive claude-sonnet-5 take 1: no environment record; number-fidelity positive claude-sonnet-5 take 2: no environment record; number-fidelity positive claude-sonnet-5 take 3: no environment record; plan-gate control claude-haiku-4-5-20251001 take 1: no environment record; plan-gate control claude-haiku-4-5-20251001 take 2: no environment record; plan-gate control claude-haiku-4-5-20251001 take 3: no environment record; plan-gate control claude-opus-5 take 1: no environment record; plan-gate control claude-opus-5 take 2: no environment record; plan-gate control claude-opus-5 take 3: no environment record; plan-gate control claude-sonnet-5 take 1: no environment record; plan-gate control claude-sonnet-5 take 2: no environment record; plan-gate control claude-sonnet-5 take 3: no environment record; plan-gate positive claude-haiku-4-5-20251001 take 1: no environment record; plan-gate positive claude-haiku-4-5-20251001 take 2: no environment record; plan-gate positive claude-haiku-4-5-20251001 take 3: no environment record; plan-gate positive claude-opus-5 take 1: no environment record; plan-gate positive claude-opus-5 take 2: no environment record; plan-gate positive claude-opus-5 take 3: no environment record; plan-gate positive claude-sonnet-5 take 1: no environment record; plan-gate positive claude-sonnet-5 take 2: no environment record; plan-gate positive claude-sonnet-5 take 3: no environment record; precondition-refusal control claude-haiku-4-5-20251001 take 1: no environment record; precondition-refusal control claude-haiku-4-5-20251001 take 2: no environment record; precondition-refusal control claude-haiku-4-5-20251001 take 3: no environment record; precondition-refusal control claude-opus-5 take 1: no environment record; precondition-refusal control claude-opus-5 take 2: no environment record; precondition-refusal control claude-opus-5 take 3: no environment record; precondition-refusal control claude-sonnet-5 take 1: no environment record; precondition-refusal control claude-sonnet-5 take 2: no environment record; precondition-refusal control claude-sonnet-5 take 3: no environment record; precondition-refusal positive claude-haiku-4-5-20251001 take 1: no environment record; precondition-refusal positive claude-haiku-4-5-20251001 take 2: no environment record; precondition-refusal positive claude-haiku-4-5-20251001 take 3: no environment record; precondition-refusal positive claude-opus-5 take 1: no environment record; precondition-refusal positive claude-opus-5 take 2: no environment record; precondition-refusal positive claude-opus-5 take 3: no environment record; precondition-refusal positive claude-sonnet-5 take 1: no environment record; precondition-refusal positive claude-sonnet-5 take 2: no environment record; precondition-refusal positive claude-sonnet-5 take 3: no environment record; scope-read control claude-haiku-4-5-20251001 take 1: no environment record; scope-read control claude-haiku-4-5-20251001 take 2: no environment record; scope-read control claude-haiku-4-5-20251001 take 3: no environment record; scope-read control claude-opus-5 take 1: no environment record; scope-read control claude-opus-5 take 2: no environment record; scope-read control claude-opus-5 take 3: no environment record; scope-read control claude-sonnet-5 take 1: no environment record; scope-read control claude-sonnet-5 take 2: no environment record; scope-read control claude-sonnet-5 take 3: no environment record; scope-read positive claude-haiku-4-5-20251001 take 1: no environment record; scope-read positive claude-haiku-4-5-20251001 take 2: no environment record; scope-read positive claude-haiku-4-5-20251001 take 3: no environment record; scope-read positive claude-opus-5 take 1: no environment record; scope-read positive claude-opus-5 take 2: no environment record; scope-read positive claude-opus-5 take 3: no environment record; scope-read positive claude-sonnet-5 take 1: no environment record; scope-read positive claude-sonnet-5 take 2: no environment record; scope-read positive claude-sonnet-5 take 3: no environment record; template-adherence control claude-haiku-4-5-20251001 take 1: no environment record; template-adherence control claude-haiku-4-5-20251001 take 2: no environment record; template-adherence control claude-haiku-4-5-20251001 take 3: no environment record; template-adherence control claude-opus-5 take 1: no environment record; template-adherence control claude-opus-5 take 2: no environment record; template-adherence control claude-opus-5 take 3: no environment record; template-adherence control claude-sonnet-5 take 1: no environment record; template-adherence control claude-sonnet-5 take 2: no environment record; template-adherence control claude-sonnet-5 take 3: no environment record; template-adherence positive claude-haiku-4-5-20251001 take 1: no environment record; template-adherence positive claude-haiku-4-5-20251001 take 2: no environment record; template-adherence positive claude-haiku-4-5-20251001 take 3: no environment record; template-adherence positive claude-opus-5 take 1: no environment record; template-adherence positive claude-opus-5 take 2: no environment record; template-adherence positive claude-opus-5 take 3: no environment record; template-adherence positive claude-sonnet-5 take 1: no environment record; template-adherence positive claude-sonnet-5 take 2: no environment record; template-adherence positive claude-sonnet-5 take 3: no environment record",
+  "effort_read": {
+    "reads": "per model, how many of its round-1 transcripts carry each flag, read from the top-level effort and perTurnEffort keys of assistant records. effort_high: some record says high. effort_other: some record carries another value. no_effort_key: no record carries the key. per_turn_effort_null: the key is present and null on every record that carries it. per_turn_effort_set: some record carries a value. no_per_turn_effort_key: no record carries the key. The transcript does not say where a value came from.",
+    "by_model": {
+      "claude-haiku-4-5-20251001": {
+        "transcripts": 36,
+        "effort_high": 0,
+        "effort_other": 0,
+        "no_effort_key": 36,
+        "per_turn_effort_null": 36,
+        "per_turn_effort_set": 0,
+        "no_per_turn_effort_key": 0
+      },
+      "claude-opus-5": {
+        "transcripts": 36,
+        "effort_high": 36,
+        "effort_other": 0,
+        "no_effort_key": 0,
+        "per_turn_effort_null": 36,
+        "per_turn_effort_set": 0,
+        "no_per_turn_effort_key": 0
+      },
+      "claude-sonnet-5": {
+        "transcripts": 36,
+        "effort_high": 36,
+        "effort_other": 0,
+        "no_effort_key": 0,
+        "per_turn_effort_null": 36,
+        "per_turn_effort_set": 0,
+        "no_per_turn_effort_key": 0
+      }
+    }
+  }
+}

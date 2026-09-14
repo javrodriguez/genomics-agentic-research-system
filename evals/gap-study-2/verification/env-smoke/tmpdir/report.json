@@ -1,0 +1,79 @@
+{
+  "what": "a smoke of the driver's checkout: one neutral line, no task, no fixture, not graded",
+  "line": "Reply with the single word: ready.",
+  "model_requested": "claude-haiku-4-5-20251001",
+  "session_id": "44191224-0fed-4d98-a263-9c71da3a2e76",
+  "strip": "draft",
+  "built_from": "302e9c290ac8674252023ae7957e0ab1d5f5ff99",
+  "excluded": [
+    "evals",
+    "docs/EVALS.md",
+    ".github",
+    "docs/implementation",
+    "docs/reviews",
+    "docs/specs",
+    "docs/decisions/0041-glitch-produces-the-v1-0-1-gap-assessment.md"
+  ],
+  "claude_version": "2.1.267 (Claude Code)",
+  "argv_flags": [
+    "--setting-sources",
+    "project,local",
+    "--strict-mcp-config"
+  ],
+  "isolation_env": {
+    "ENABLE_CLAUDEAI_MCP_SERVERS": "false",
+    "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"
+  },
+  "checkout": {
+    "name": "run-44191224",
+    "commits": "1",
+    "subject": "checkout",
+    "remote": "",
+    "status": "",
+    "git_user": "gars",
+    "problems_before_the_turn": [],
+    "sweep_hits": [
+      "README.md:23",
+      "README.md:26",
+      "README.md:28",
+      "README.md:280",
+      "docs/RESULTS.md:16"
+    ]
+  },
+  "turn": {
+    "exit": 0,
+    "reply": "ready.",
+    "stderr_tail": "",
+    "credential_source": {
+      "key": "system/init.apiKeySource",
+      "apiKeySource": "none"
+    }
+  },
+  "environment": {
+    "file": "environment.json",
+    "sha256": "bcca3fd054a7e35c5de221bf4d604bf99015e4c71f5527f6288eb5318a90ddc4"
+  },
+  "transcript": "transcript.jsonl",
+  "context_leaks": [],
+  "inherited_context": [],
+  "study_paths_read": [],
+  "attachment_kinds": {
+    "environment": 1,
+    "model": 1,
+    "deferred_tools_delta": 1,
+    "agent_listing_delta": 1,
+    "skill_listing": 1,
+    "total_tokens_reminder": 1,
+    "instructions": 1,
+    "session_context": 1,
+    "date": 1,
+    "remote_session_change": 1,
+    "prompt_snapshot": 2
+  },
+  "scratch": {
+    "run_tree_tmp_files": 0,
+    "run_tree_tmp_session_dirs": 0,
+    "os_temp_session_dirs": 0
+  },
+  "failures": []
+}

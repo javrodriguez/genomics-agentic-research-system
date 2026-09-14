@@ -43,9 +43,25 @@ CP1 was pushed with the kickoff; CI run 34785635654 on `5d58684` succeeded in al
 - Suite: 365 tests OK, and the 9 skips are the three `…Live` classes. Battery: exit 0; all 135 guards went red when broken, 128 of them after a green control. `check_checklist_names.py` on the goal file exits 0.
 - The clean-clone battery's output is committed in `verification/`, and the file names the tree it tested.
 
+## CP3 — fix 4: the environment record, the stripped child environment, and two leak channels closed (slice 04)
+
+**Built and gated on 13 September 2026.**
+
+- Every take and walk now writes `environment.json` beside its transcript, before the first turn. It holds variable names only, never values: the names matching the published patterns, the stripped names, the presence of each API-key, billing-route and subscription-token variable, and the harness's own credential source on every turn. The driver stops before any session if an API key or a billing route is set.
+- The child environment drops the twelve inherited Claude Code session names (J4). A name a harness pattern matches, or one on the three credential and billing lists, can never be stripped. The driver and the checker share that rule, and a drift test binds them.
+- `check_take.py` refuses a graded take with no valid record (a walk gets a NOTE). The ledger counts records, the runner refuses symmetrically, and `COSTS.md`'s dollar line is written by the script, evidenced take by take or naming each gap.
+- A new control refuses a session that reads, by absolute path, this repository's checkout, its parent or a sibling worktree. Measured on round 1's 124 transcripts first: it refuses 19 of them and none for a system read.
+- Two leak channels were found by using the instrument and closed before any walk. Round 1's precondition-refusal fixture recorded the study checkout's path in files the agent reads, so every fixture is now built inside the run tree. The run tree also carried v1.0.1 documents that name the study, so those are excluded, and a whitelist test allows sweep hits only in README.md and docs/RESULTS.md, as in round 1.
+- The environment smoke (`verification/env-smoke/`) ran on haiku and sonnet, unstripped and stripped. With the twelve stripped, headless login still opens a session and the agent replies, and the pairs differ only in those names. A subscription login reports the credential source `"none"`, now pre-registered. Sonnet records effort "high" with or without the inherited effort variable.
+- Round 1's committed takes regraded by this instrument: 108 of 108 refused for no environment record, and $0 evidenced by 0 of 108 (`verification/round1-regrade/environment.json`, re-derived by its script).
+- `ci_conclusion.py` resolves a short sha before asking CI.
+- The read control was widened twice before any walk, after other agents' build copies of this repository appeared outside the checkout. It now also refuses any path under the home folder that is not under the take's run tree, and any path under the OS temp folder or `/tmp` that is not under the run tree or the harness's own session folder for that take. Measured on round 1's 124 transcripts, it refuses 21, and each newly refused one is a real read outside the take.
+- Ruling C (14 September 2026): each take's TMPDIR, TMP and TEMP point at `.tmp/` inside its run tree, so tools that honour those variables keep their scratch inside the take. A take that types a literal `/tmp` path is still refused; round 1 has one, and whether to accept that as a limitation is open for Javier before the freeze.
+- A fifth environment smoke ran under that temp folder; a one-line session creates no harness temp folder, so the first walk that runs a tool shows where the harness writes.
+
 ## Next
 
-**CP3 — fix 4: the environment record, and the stripped child environment (slice 04).** J4 is ruled yes, so `stripped_env` is the twelve names. Before the first walk, close the sibling-worktree leak channel named in the plan. Then the env smoke runs unstripped and stripped, and the five walks follow.
+**The five walks** (`walk:` commits, no slice): template-adherence, precondition-refusal, number-fidelity, scope-read, confounded-design, each with `claude-sonnet-5`, each checked by `check_take.py` and read by eye. Then **CP4 — `asked-to-proceed` (slice 05).**
 
 **CP1 as planned, for the record — the copy runs standalone, green, in CI (slice 02).** Owned fixtures for every live-state read, `EVALS_BASELINE` derived from history, pre-freeze branches in `check_results.py` / `costs.py` / `takes.py`, the contract quotes re-pinned at `ac8662b`, the allowlist re-ruled, `controls/results.json` regenerated, and the `gap-study-2` CI job.
 

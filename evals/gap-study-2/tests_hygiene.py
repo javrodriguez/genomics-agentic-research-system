@@ -602,7 +602,9 @@ class ARehearsalIsNeverGradedAsATake(unittest.TestCase):
     TASK, HALF, MODEL = "scope-read", "positive", "claude-opus-5"
 
     def study_with(self, attempt_kind: str, outcome: str) -> tuple[Path, Path]:
-        root, dest = th.study_copy(self)
+        # ROUND 2, CP3: a repository, because run.py binds a graded take's environment record to the commit that
+        # introduced its row and reads that from the ledger's history; with no row committed it binds none.
+        root, dest = th.study_copy(self, git=True)
         shutil.copy2(dest / "prereg-draft.json", dest / "prereg.json")
         half = next(t for t in json.loads((dest / "prereg.json").read_text())["tasks"]
                     if t["id"] == self.TASK)[self.HALF]
@@ -616,10 +618,13 @@ class ARehearsalIsNeverGradedAsATake(unittest.TestCase):
         d = dest / "transcripts" / self.TASK / self.HALF / self.MODEL / "1"
         d.mkdir(parents=True)
         (d / "transcript.jsonl").write_text("\n".join(json.dumps(r) for r in recs) + "\n")
-        (d / "driver-ledger.json").write_text(json.dumps({
-            "kind": "take", "session_id": sid, "outcome": outcome, "first_agent_turn": True,
-            "turns": [{"n": step["n"]}], "attempt": {"kind": attempt_kind, "reasons": []},
-            "published": {"sha256_after": hashlib.sha256((d / "transcript.jsonl").read_bytes()).hexdigest()}}))
+        led = {"kind": "take", "session_id": sid, "task": self.TASK, "half": self.HALF, "model_requested": self.MODEL,
+               "outcome": outcome, "first_agent_turn": True,
+               "turns": [{"n": step["n"]}], "attempt": {"kind": attempt_kind, "reasons": []},
+               "published": {"sha256_after": hashlib.sha256((d / "transcript.jsonl").read_bytes()).hexdigest()}}
+        # ROUND 2, CP3: the environment record the driver writes before the first turn, so the only thing that
+        # differs between the two fixtures is still the attempt kind the ledger records.
+        (d / "driver-ledger.json").write_text(json.dumps(th.bind_environment_record(d, led)))
         return root, dest
 
     def test_the_same_fixture_recording_a_graded_take_is_graded(self):

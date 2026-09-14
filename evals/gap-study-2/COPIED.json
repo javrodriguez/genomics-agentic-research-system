@@ -43,7 +43,7 @@
       "round_1_path": "evals/gap-study/PROTOCOL.md",
       "round_1_blob": "d4270eae2b48c8cc00ad027740768ce829fbfca1",
       "copy_sha256": "a5a0cdec3d1176060c002c9c80e916a03a714d32f9369ca75756c875497b112d",
-      "edited_after_copy": false
+      "edited_after_copy": true
     },
     {
       "path": "evals/gap-study-2/README.md",

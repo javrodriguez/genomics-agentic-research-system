@@ -43,6 +43,7 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE / "graders"))
 
 import prereg  # noqa: E402
+import takes as takes_mod  # noqa: E402
 import transcript as tx  # noqa: E402
 import labels  # noqa: E402
 
@@ -114,6 +115,21 @@ def _gap_check_take():
         _CT = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(_CT)
     return _CT
+
+
+_ROW_COMMIT_BY_SESSION: dict[str, str] | None = None
+
+
+def row_commit_of(session_id: str) -> str | None:
+    """The commit that introduced the row this session id is derived from, or None if no committed row implies it.
+
+    Read once per run from the ledger's history, the way --ledger reads it, and inverted through the same
+    uuid5: the environment record binds that commit, and a take no committed row implies has none to bind.
+    """
+    global _ROW_COMMIT_BY_SESSION
+    if _ROW_COMMIT_BY_SESSION is None:
+        _ROW_COMMIT_BY_SESSION = {takes_mod.session_id_for(sha): sha for sha in takes_mod.row_commits().values()}
+    return _ROW_COMMIT_BY_SESSION.get(session_id)
 
 
 def models_read(t: Path) -> list[str]:
@@ -198,6 +214,15 @@ def grade_cell(task_id: str, half: str, model: str, spec: dict, n: int) -> dict:
             raise SystemExit(f"REFUSING to grade {d}: it holds an attempt that is not a graded take "
                              f"({attempt}, {outcome.split(' ')[0]}), which belongs under rehearsals/ "
                              f"or pauses/ and is never graded")
+        # ROUND 2, CP3 (fix 4). The belt on the grading side of check_results.attempt_problems, which refuses the
+        # same take by the same function: a graded take whose environment record is absent or invalid is not
+        # graded, with or without a transcript, because nothing else shows what it ran under. Never on the
+        # credential source's value (Decision 4).
+        env_problems = _gap_check_take().environment_problems(
+            d / "transcript.jsonl", ledger, prereg.load(), row_commit_of(ledger["session_id"]))
+        if env_problems:
+            raise SystemExit(f"REFUSING to grade {d}: it carries no valid environment record, so what it ran under "
+                             f"is a statement rather than a record: {'; '.join(env_problems)}")
         if ledger.get("claude_version"):
             versions.add(str(ledger["claude_version"]))
         t = d / "transcript.jsonl"

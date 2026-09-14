@@ -1362,7 +1362,7 @@ class TheRunTreeCarriesNothing(unittest.TestCase):
     a real repository whose history holds the study, and read the result the way the harness does.
     """
 
-    EXCLUDE = ["evals", "docs/EVALS.md", ".github"]
+    EXCLUDE = ["evals", "docs/EVALS.md", ".github", "docs/implementation", "docs/reviews", "docs/specs", "docs/decisions/0041-glitch-produces-the-v1-0-1-gap-assessment.md"]
 
     def test_what_the_pre_registration_says_is_what_the_driver_does(self):
         """A constant described in the frozen file and a constant in code drift apart silently."""
@@ -1955,9 +1955,10 @@ class TheDriverLoopRecordsEveryTurnItEnds(unittest.TestCase):
         def fake(line, session_id, model, first, budget_s):
             sent.append(line)
             r = replies[len(sent) - 1] if len(sent) <= len(replies) else ("", 1, "no more replies")
-            # (reply, exit code, stderr, the harness's own report of the turn). A case that does not
-            # exercise the fourth leaves it out, so each case reads as the thing it is about.
-            return (tuple(r) + ("", "", "", ""))[:4]
+            # (reply, exit code, stderr, the harness's own report of the turn, the credential source it
+            # reported). A case that does not exercise the fourth leaves it out, so each case reads as the thing
+            # it is about; the fifth is unreported here (ROUND 2, CP3: tests_environment.py drives it).
+            return (tuple(r) + ("", "", "", ""))[:4] + (None,)
 
         drive.one_turn = fake
         # The loop records the harness version before its first turn by running `claude --version`.
@@ -3031,21 +3032,50 @@ class TheTakeLifecycle(unittest.TestCase):
         self.assertIn("rehearsals and the cap", out)
 
 
+# ROUND 2, CP3 (fix 4). A graded take is refused without the environment record the driver writes beside it, so a
+# hand-built attempt carries one: the driver's own environment_record, from an environment holding none of the
+# listed variables, one per_turn entry per ledger turn row, bound in the ledger by its sha256. The shape the take
+# checker reads, never another one written here.
+FAKE_ROW_COMMIT = "c" * 40
+
+
+def bind_environment_record(d: Path, ledger: dict, *, row: int | None = 0, row_commit: str | None = None) -> dict:
+    """Write environment.json beside the attempt in `d` and return `ledger` naming its bytes; the caller writes it.
+
+    The session id, task, half, model and harness version are the ledger's own, so the checker's bindings hold.
+    """
+    drive = gap_module("drive")
+    rec = drive.environment_record({}, {}, session_id=ledger.get("session_id") or "", row=row, row_commit=row_commit,
+                                   task=ledger.get("task"), half=ledger.get("half"),
+                                   model=ledger.get("model_requested"), claude_version=ledger.get("claude_version"))
+    rec = drive.with_turns(rec, list(ledger.get("turns") or []), {})
+    drive.write_record_atomically(d / "environment.json", rec)
+    return {**ledger, "environment": {"file": "environment.json",
+                                      "sha256": hashlib.sha256((d / "environment.json").read_bytes()).hexdigest()}}
+
+
 class TheRunnerEnumeratesByLedger(unittest.TestCase):
+    SESSION = "00000000-0000-5000-8000-000000000000"
+
     def setUp(self):
+        import types
         self.run = gap_module("run")
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.real_here = self.run.HERE
         self.run.TRANSCRIPTS = self.tmp / "transcripts"
         self.run.HERE = self.tmp
+        # ROUND 2, CP3. grade_cell binds a take's record to the commit that introduced its row, read from the
+        # ledger's history. No row is committed here, and no test reads this repository's history.
+        self.run.takes_mod = types.SimpleNamespace(row_commits=lambda: {},
+                                                   session_id_for=self.run.takes_mod.session_id_for)
 
     def ledger(self, rel, **fields):
         d = self.tmp / rel
         d.mkdir(parents=True)
-        (d / "driver-ledger.json").write_text(json.dumps({"kind": "take",
-                                                          "session_id": "00000000-0000-5000-8000-000000000000",
-                                                          **fields}))
+        led = {"kind": "take", "session_id": self.SESSION, **fields}
+        # ROUND 2, CP3. Every attempt carries the record the driver writes before its first turn.
+        (d / "driver-ledger.json").write_text(json.dumps(bind_environment_record(d, led)))
         return d
 
     def test_a_take_with_a_ledger_and_no_transcript_is_graded_from_the_ledger(self):
@@ -3064,7 +3094,8 @@ class TheRunnerEnumeratesByLedger(unittest.TestCase):
                             outcome=outcome, attempt={"kind": "graded"},
                             turns=[{"n": 1, "exit": 124}])
             (d / "transcript.jsonl").write_text(json.dumps({
-                "type": "assistant", "message": {"role": "assistant", "model": "claude-opus-5",
+                "type": "assistant", "sessionId": self.SESSION,
+                "message": {"role": "assistant", "model": "claude-opus-5",
                                                  "stop_reason": stop_reason,
                                                  "content": [{"type": "text", "text": "a reply"}]}}) + "\n")
             cell = self.run.grade_cell("number-fidelity", "positive", "claude-opus-5",
@@ -3279,22 +3310,34 @@ class TheAttemptIsReDerivedFromItsBytes(unittest.TestCase):
         def reason_ids(self, problems):
             return gap_check_take().reason_ids(problems)
 
+        def environment_problems(self, *a, **k):
+            # ROUND 2, CP3. The record is not faked: the real checker reads it, so each attempt carries a real one.
+            return gap_check_take().environment_problems(*a, **k)
+
+    SESSION = "00000000-0000-5000-8000-0000000000b1"
+
     def attempt(self, kind, outcome, recorded=None, reasons=(), agent_text=True, why=True):
         import hashlib
         tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, tmp, True)
         d = tmp / kind
         d.mkdir()
-        recs = [{"type": "user", "message": {"role": "user", "content": "a line"}}]
+        recs = [{"type": "user", "sessionId": self.SESSION, "message": {"role": "user", "content": "a line"}}]
         if agent_text:
-            recs.append({"type": "assistant", "message": {"role": "assistant", "model": "claude-opus-5",
-                                                          "content": [{"type": "text", "text": "a reply"}]}})
+            recs.append({"type": "assistant", "sessionId": self.SESSION,
+                         "message": {"role": "assistant", "model": "claude-opus-5",
+                                     "content": [{"type": "text", "text": "a reply"}]}})
         (d / "transcript.jsonl").write_text("\n".join(json.dumps(r) for r in recs) + "\n")
-        (d / "driver-ledger.json").write_text(json.dumps({
-            "kind": "take", "outcome": outcome, "first_agent_turn": agent_text,
+        led = {
+            "kind": "take", "session_id": self.SESSION, "task": self.ROW["task"], "half": self.ROW["half"],
+            "model_requested": self.ROW["model"], "claude_version": "2.1.267 (Claude Code)",
+            "outcome": outcome, "first_agent_turn": agent_text,
             "published": {"sha256_after": hashlib.sha256((d / "transcript.jsonl").read_bytes()).hexdigest()},
             "attempt": {"kind": recorded or kind, "reasons": list(reasons)},
-            **(self.PAUSE if kind == "pause" else {})}))
+            **(self.PAUSE if kind == "pause" else {})}
+        # ROUND 2, CP3. The driver writes the environment record before the first turn and routes it with the
+        # attempt, whatever its kind, so each attempt here carries one bound to the row commit problems() passes.
+        (d / "driver-ledger.json").write_text(json.dumps(bind_environment_record(d, led, row_commit=FAKE_ROW_COMMIT)))
         if why and kind == "rehearsal":
             (d / "WHY.md").write_text("why\n")
         return d
@@ -3308,7 +3351,8 @@ class TheAttemptIsReDerivedFromItsBytes(unittest.TestCase):
 
     def problems(self, kind, d, checker_problems=()):
         return gap_module("check_results").attempt_problems(kind, d, 0, self.ROW,
-                                                            self.FakeChecker(list(checker_problems)))
+                                                            self.FakeChecker(list(checker_problems)),
+                                                            row_commit=FAKE_ROW_COMMIT)
 
     def test_consistent_attempts_pass(self):
         self.assertEqual(self.problems("graded", self.attempt("graded", "complete")), [])
@@ -4768,7 +4812,9 @@ def study_copy(test: unittest.TestCase, *, git: bool = False, files=None) -> tup
         subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
         repo.root = root
         (root / "gars").mkdir()
-        (root / "gars" / "CLAUDE.md").write_text("the system under test\n")
+        # ROUND 2, CP3. Neutral words: a take built in the copy records this file as loaded context, and the take
+        # checker refuses a loaded context naming a leak word (the placeholder said "under test").
+        (root / "gars" / "CLAUDE.md").write_text("A checkout of the system.\n")
         repo.commit("base")
         tree = repo.git("rev-parse", "HEAD:gars").stdout.strip()
         draft = json.loads((dest / "prereg-draft.json").read_text())
@@ -4782,6 +4828,85 @@ def run_py(script: Path, *args: str, cwd: Path) -> subprocess.CompletedProcess:
     env = {k: v for k, v in os.environ.items() if k != POISON_ENV}
     return subprocess.run([sys.executable, str(script), *args], capture_output=True, text=True, cwd=str(cwd),
                           env=env)
+
+
+class TheSmokeCallsOneTurnAsItIs(unittest.TestCase):
+    """ROUND 2, CP3. smoke_run_tree.py calls the driver's own one_turn. one_turn gained a fifth value, the credential
+    source, and the smoke still unpacked four, so it would have raised after its checkout was built. Both files are
+    read as source here; neither is run. The smoke itself is run by tests_env_smoke.py, which calls its main() with
+    the parts that open a session replaced, so no real session is opened by the suite."""
+
+    @staticmethod
+    def call_problems(smoke_src: str, drive_src: str) -> list[str]:
+        import ast
+        fn = next((n for n in ast.walk(ast.parse(drive_src))
+                   if isinstance(n, ast.FunctionDef) and n.name == "one_turn"), None)
+        if fn is None:
+            return ["drive.py defines no one_turn"]
+        widths = {len(r.value.elts) if isinstance(r.value, ast.Tuple) else None
+                  for r in ast.walk(fn) if isinstance(r, ast.Return)}
+        if len(widths) != 1 or None in widths:
+            return [f"one_turn's returns are not one tuple width: {sorted(str(w) for w in widths)}"]
+        width = widths.pop()
+        calls = [n for n in ast.walk(ast.parse(smoke_src))
+                 if isinstance(n, ast.Assign) and isinstance(n.value, ast.Call)
+                 and isinstance(n.value.func, ast.Attribute) and n.value.func.attr == "one_turn"]
+        if len(calls) != 1:
+            return [f"smoke_run_tree.py assigns from one_turn {len(calls)} time(s), not once"]
+        target, call = calls[0].targets[0], calls[0].value
+        out = []
+        got = len(target.elts) if isinstance(target, ast.Tuple) else None
+        if got != width:
+            out.append(f"smoke_run_tree.py unpacks {got} value(s) from one_turn, which returns {width}")
+        if len(call.args) + len(call.keywords) != len(fn.args.args):
+            out.append(f"smoke_run_tree.py passes {len(call.args) + len(call.keywords)} argument(s) to one_turn, "
+                       f"which takes {len(fn.args.args)}")
+        return out
+
+    def sources(self) -> tuple[str, str]:
+        return (HERE / "smoke_run_tree.py").read_text(), (HERE / "drive.py").read_text()
+
+    def test_the_smoke_unpacks_every_value_one_turn_returns(self):
+        smoke, drive = self.sources()
+        self.assertEqual(self.call_problems(smoke, drive), [])
+
+    def test_the_four_value_unpacking_is_refused(self):
+        smoke, drive = self.sources()
+        now = "said, code, err, harness_said, source = drive.one_turn("
+        self.assertEqual(smoke.count(now), 1, "the smoke's one_turn call moved; re-point this test at it")
+        got = self.call_problems(smoke.replace(now, "said, code, err, harness_said = drive.one_turn("), drive)
+        self.assertEqual(got, ["smoke_run_tree.py unpacks 4 value(s) from one_turn, which returns 5"])
+
+    def test_the_smoke_records_the_credential_source_it_was_handed(self):
+        smoke, _drive = self.sources()
+        self.assertIn('"credential_source": {"key": drive.CREDENTIAL_SOURCE_KEY, "apiKeySource": source}', smoke)
+
+
+class TheEnvironmentRefusalIsNamedOnce(unittest.TestCase):
+    """ROUND 2, CP3. The take checker refuses a graded take without its environment record, and --ledger asks the
+    same question by name so that a take with no transcript, which the checker never opens, is refused too. A take
+    WITH a transcript was named twice, once by each; it is named once, by the line that says what is missing."""
+
+    def test_a_graded_take_with_a_transcript_and_no_record_is_refused_once(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("once_build_take", FIXTURES / "environment-ledger" / "build_take.py")
+        build = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(build)
+        root, dest = study_copy(self, git=True)
+        repo = ScratchRepo(self)
+        shutil.rmtree(repo.root)
+        repo.root = root
+        draft = json.loads((dest / "prereg-draft.json").read_text())
+        folders = build.build_study(root, dest, draft, repo.commit, takes=(1, 2), lacking=(2,))
+        self.assertTrue((folders[2] / "transcript.jsonl").is_file(), "the take lacking its record has no transcript")
+        r = run_py(dest / "check_results.py", "--ledger", cwd=root)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+
+        def named(row):
+            return [ln for ln in r.stdout.splitlines() if ln.startswith(f"  - row {row}: ") and "environment-record" in ln]
+        self.assertEqual(named(0), [], "the take that carries its record is refused for it")
+        self.assertEqual(len(named(1)), 1, named(1))
+        self.assertIn("[environment-record]", named(1)[0])
 
 
 class CheckResultsBeforeTheFreeze(unittest.TestCase):

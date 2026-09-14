@@ -1,0 +1,95 @@
+{
+  "record": "the environment this take's session was started in: variable names and presence only, never a value",
+  "schema": 1,
+  "session_id": "1435509c-c5a7-5429-be82-f71f6291b62c",
+  "row": 0,
+  "row_commit": "3c1e5b7a9d2f4608b1a3c5e7d9f1b3a5c7e9d1f3",
+  "task": "number-fidelity",
+  "half": "control",
+  "model_requested": "claude-opus-5",
+  "claude_version": "2.1.267 (Claude Code)",
+  "written_before_first_turn": true,
+  "name_patterns": {
+    "harness": [
+      "^ANTHROPIC_",
+      "^CLAUDE_CODE_USE_(BEDROCK|VERTEX|FOUNDRY)$",
+      "^CLAUDE_CODE_SKIP_.*_AUTH$",
+      "^CLAUDE_CODE_OAUTH_TOKEN$",
+      "^CLAUDE_CODE_OAUTH_REFRESH_TOKEN$",
+      "^CLAUDE_CODE_API_KEY_FILE_DESCRIPTOR$",
+      "^CLAUDE_CODE_GATEWAY_TOKEN_FILE_DESCRIPTOR$",
+      "^CLAUDE_CODE_SESSION_ACCESS_TOKEN$",
+      "^CLAUDE_CODE_API_BASE_URL$",
+      "^CLAUDE_CODE_CUSTOM_OAUTH_URL$",
+      "^AWS_",
+      "^GOOGLE_APPLICATION_CREDENTIALS$",
+      "^AZURE_"
+    ],
+    "generic": [
+      "(API_?KEY|AUTH_?TOKEN|ACCESS_?TOKEN|_TOKEN$|SECRET|CREDENTIAL|PASSWORD)"
+    ]
+  },
+  "names_present": [
+    {
+      "name": "AWS_REGION",
+      "matched_by": "harness"
+    },
+    {
+      "name": "CLAUDE_CODE_OAUTH_TOKEN",
+      "matched_by": "harness"
+    },
+    {
+      "name": "GITHUB_TOKEN",
+      "matched_by": "generic"
+    }
+  ],
+  "stripped_names": [
+    "CLAUDE_EFFORT"
+  ],
+  "api_key_variables": {
+    "ANTHROPIC_API_KEY": "absent",
+    "ANTHROPIC_AUTH_TOKEN": "absent",
+    "ANTHROPIC_FOUNDRY_API_KEY": "absent",
+    "ANTHROPIC_AWS_API_KEY": "absent",
+    "CLAUDE_CODE_API_KEY_FILE_DESCRIPTOR": "absent",
+    "AWS_BEARER_TOKEN_BEDROCK": "absent"
+  },
+  "api_key_set": false,
+  "billing_route_variables": {
+    "CLAUDE_CODE_USE_BEDROCK": "absent",
+    "CLAUDE_CODE_USE_VERTEX": "absent",
+    "CLAUDE_CODE_USE_FOUNDRY": "absent",
+    "ANTHROPIC_BASE_URL": "absent",
+    "CLAUDE_CODE_API_BASE_URL": "absent"
+  },
+  "billing_route_set": false,
+  "subscription_token_variables": {
+    "CLAUDE_CODE_OAUTH_TOKEN": "set",
+    "CLAUDE_CODE_OAUTH_REFRESH_TOKEN": "absent",
+    "CLAUDE_CODE_SESSION_ACCESS_TOKEN": "absent"
+  },
+  "credential_source": {
+    "key": "system/init.apiKeySource",
+    "per_turn": [
+      {
+        "n": 1,
+        "recovery": false,
+        "exit": 0,
+        "apiKeySource": "synthetic-source"
+      },
+      {
+        "n": 2,
+        "recovery": false,
+        "exit": 0,
+        "apiKeySource": "synthetic-source"
+      },
+      {
+        "n": 3,
+        "recovery": false,
+        "exit": 0,
+        "apiKeySource": "synthetic-source"
+      }
+    ],
+    "reported": "synthetic-source"
+  }
+}

@@ -1,0 +1,4 @@
+{"type": "system", "subtype": "init", "session_id": "5f0c8e2a-1b3d-5c7e-9a1f-2b4d6f8a0c11", "apiKeySource": "fixture-subscription-source", "model": "claude-opus-5", "timestamp": "2026-09-20T10:00:00Z"}
+{"type": "user", "session_id": "5f0c8e2a-1b3d-5c7e-9a1f-2b4d6f8a0c11", "timestamp": "2026-09-20T10:00:00Z", "message": {"role": "user", "content": "operator line one"}}
+{"type": "assistant", "session_id": "5f0c8e2a-1b3d-5c7e-9a1f-2b4d6f8a0c11", "timestamp": "2026-09-20T10:00:00Z", "message": {"model": "claude-opus-5", "role": "assistant", "content": [{"type": "text", "text": "a reply"}], "usage": {"input_tokens": 41, "output_tokens": 307, "cache_read_input_tokens": 12003, "cache_creation_input_tokens": 2011}}}
+{"type": "result", "subtype": "success", "session_id": "5f0c8e2a-1b3d-5c7e-9a1f-2b4d6f8a0c11", "total_cost_usd": 0.4213, "timestamp": "2026-09-20T10:02:30Z"}

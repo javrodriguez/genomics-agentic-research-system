@@ -1,0 +1,25 @@
+{
+  "record": "The names of the variables in the environment the session under test was given, and whether each listed one was absent, empty or set; never a value.",
+  "schema": 1,
+  "session_id": "@@SESSION_ID@@",
+  "row": "@@ROW@@",
+  "row_commit": "@@ROW_COMMIT@@",
+  "task": "number-fidelity",
+  "half": "control",
+  "model_requested": "claude-opus-5",
+  "claude_version": "2.1.267 (Claude Code)",
+  "written_before_first_turn": true,
+  "name_patterns": "@@NAME_PATTERNS@@",
+  "names_present": [],
+  "stripped_names": [],
+  "api_key_variables": "@@API_KEY_VARIABLES@@",
+  "api_key_set": false,
+  "billing_route_variables": "@@BILLING_ROUTE_VARIABLES@@",
+  "billing_route_set": false,
+  "subscription_token_variables": "@@SUBSCRIPTION_TOKEN_VARIABLES@@",
+  "credential_source": {
+    "key": "system/init.apiKeySource",
+    "per_turn": "@@PER_TURN@@",
+    "reported": "@@API_KEY_SOURCE@@"
+  }
+}

@@ -2,11 +2,15 @@
 
 A synthetic bill: the tables below are what costs.py writes over the walks in this folder, and nothing else.
 
+## Dollars billed beyond the standing subscription
+
+$0 as the operator states it; evidenced by 0 of 0; not evidenced: no graded take is on disk, so no environment record exists to evidence it
+
 ## Per take
 
-| task | half | model | take | input | cache read | cache write | output | wall clock |
-|---|---|---|---|---|---|---|---|---|
-| _(no take has run)_ | | | | | | | | |
+| task | half | model | take | input | cache read | cache write | output | wall clock | environment |
+|---|---|---|---|---|---|---|---|---|---|
+| _(no take has run)_ | | | | | | | | | |
 
 ## Pre-freeze walks
 

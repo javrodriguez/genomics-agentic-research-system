@@ -34,6 +34,15 @@ ledger row that was committed before the session opened.
   the ledger binding   the session id must equal uuid5(namespace, the sha of the commit that
                        introduced this take's row), and that commit must be an ancestor of HEAD.
                        This is the whole pre-registration claim, and it is arithmetic.
+  the environment      a graded take carries environment.json: the names (never the values) of the
+                       variables its session started with, bound to the session, the row's commit
+                       and the ledger's sha256 of its bytes. A walk without one gets a note.
+  the checkout         no tool call and no tool result names a path under this repository's
+                       checkout, the folder that holds it and its sibling worktrees, or the root
+                       above that folder. A take reads its own run tree; those trees hold the study.
+                       Nor a path under the home folder or the temp folder (the OS temp root and
+                       /tmp) outside the run tree, bar the interpreter's install and the harness's
+                       own folder for this session.
 
 Exit 0 only when every check passes. Anything else names what is wrong, and the attempt is a
 rehearsal: kept, never graded, never edited into shape.
@@ -44,10 +53,14 @@ No model is called. stdlib only.
 from __future__ import annotations
 
 import argparse
+import collections
+import hashlib
 import json
 import os
+import posixpath
 import re
 import sys
+import tempfile
 import uuid
 from pathlib import Path
 
@@ -58,6 +71,7 @@ sys.path.insert(0, str(REPO / "evals"))
 sys.path.insert(0, str(HERE))
 
 import prereg  # noqa: E402
+import study  # noqa: E402
 import takes as takes_mod  # noqa: E402
 import transcript as tx  # noqa: E402
 
@@ -204,6 +218,418 @@ def study_paths_read(path: Path) -> list[str]:
         for s in blobs:
             for m in re.finditer(r"evals/(?:gap-study|transcripts|results|prereg)", s):
                 seen.append(s[max(0, m.start() - 40):m.start() + 40])
+    return seen
+
+
+# ---- the checkout: no read of a tree that holds the study --------------------------------------------
+#
+# FOUND 13 SEPTEMBER 2026, BEFORE ANY ROUND-2 WALK. The build lanes create sibling worktrees beside this
+# repository's checkout, named `<repository>--<task>`, and one of them holds planted fixtures in this
+# study's case shape. A take's run tree is a fresh export under the machine's temporary directory, so no
+# working directory or parent path reaches them; an ABSOLUTE path does. study_paths_read() matches
+# `evals/...` only and the run-tree sweep reads only the exported tree, so a Read, Grep or Bash naming
+# the checkout, a sibling or the root above them went unflagged.
+#
+# WHAT IS REFUSED, AND WHY IT IS THE NARROW RULE (measured, not chosen). The first rule tried refused any
+# absolute path that was neither under the run tree nor under a system location. Run over all 124 of round
+# 1's committed transcripts it refused 38, 34 of them graded takes, and not one for a read of the checkout:
+# tool results carry the contracts' and the fixture projects' own text, which names cluster paths
+# (`/gpfs/...`, `/work/v2/...`), placeholders (`/path/to/...`) and home-folder paths (`~/install/...`).
+# Reaching zero would have meant whitelisting the operator's home wholesale. So the refusal names the trees
+# that hold the study, derived at run time from study.REPO and never written as a machine path:
+#
+#   this repository's checkout
+#   the folder that holds it, which holds the `<repository>--<task>` sibling worktrees
+#   the root above that folder, when that folder is named `workspaces`
+#   and, wherever it sits, a path segment named after this repository or `<repository>--<anything>`,
+#   the producer's own naming for a sibling worktree (so a clone somewhere else is seen too)
+#
+# Both channels are read: what a tool was asked to open, and what it returned, because a search from `/`
+# names the sibling only in its result. The agent's prose is not read; naming a path is not reading it.
+# The session's run tree is not consulted: a run tree inside one of these trees is exposed, not excused.
+# The published transcript carries these paths as the session wrote them: scrub.py removes the account
+# email and nothing else, so what the driver checks before publishing is what a reader checks after.
+
+CHECKOUT_REPO: Path = study.REPO
+_PATH_CHARS = re.compile(r"[A-Za-z0-9._-]")
+_PATH_TAIL = re.compile(r"[^\s'\"`<>|;&(){}\[\],*?]*")
+
+
+def checkout_roots(repo: Path | None = None) -> list[tuple[str, str]]:
+    """(placeholder, spelling) for each tree a take must never name, most specific spelling first."""
+    repo = Path(CHECKOUT_REPO if repo is None else repo)
+    found: list[tuple[str, Path]] = []
+    for r in dict.fromkeys((repo, repo.resolve())):
+        found.append(("<this repository's checkout>", r))
+        parent = r.parent
+        if parent != parent.parent:
+            found.append(("<the folder holding the checkout and its siblings>", parent))
+            if parent.name == "workspaces" and parent.parent != parent.parent.parent:
+                found.append(("<the root above the workspaces folder>", parent.parent))
+    try:
+        home = Path.home()
+    except (RuntimeError, KeyError):
+        home = None
+    spellings: set[tuple[str, str]] = set()
+    for label, root in found:
+        forms = {str(root), root.as_posix()}
+        s = root.as_posix()
+        if s.startswith("/private/"):
+            forms.add(s[len("/private"):])
+        elif s.startswith(("/var/", "/tmp/")):
+            forms.add("/private" + s)
+        rel = None
+        if home is not None:
+            try:
+                rel = root.relative_to(home).as_posix()
+            except ValueError:
+                rel = None
+        if rel and rel != ".":
+            forms.update(f"{h}/{rel}" for h in ("~", "$HOME", "${HOME}"))
+        spellings.update((label, f) for f in forms)
+    return sorted(spellings, key=lambda x: (-len(x[1]), x))
+
+
+def sibling_pattern(repo: Path | None = None) -> re.Pattern:
+    """An absolute path with a segment named after this repository, or `<repository>--<anything>`."""
+    name = Path(CHECKOUT_REPO if repo is None else repo).name
+    return re.compile(r"(?:^|(?<=[\s'\"`=(,\[{:]))(?:~|\$HOME|\$\{HOME\}|[A-Za-z]:)?[/\\]"
+                      r"(?:[^\s'\"`<>|;&(){}\[\],*?/\\]+[/\\])*?"
+                      r"(?P<segment>" + re.escape(name) + r"(?:--[A-Za-z0-9._-]+)?)"
+                      r"(?=[/\\\s'\"`<>|;&(){}\[\],*?:]|$)")
+
+
+def _tool_strings(rec: dict) -> list[str]:
+    """Every string in what a tool was asked to open, or in what a tool returned."""
+    content = (rec.get("message") or {}).get("content")
+    if not isinstance(content, list):
+        return []
+    roots: list = []
+    if rec.get("type") == "assistant":
+        roots = [x.get("input") for x in content if isinstance(x, dict) and x.get("type") == "tool_use"]
+    elif rec.get("type") == "user":
+        roots = [x.get("content") for x in content if isinstance(x, dict) and x.get("type") == "tool_result"]
+    out: list[str] = []
+    stack = list(roots)
+    while stack:
+        x = stack.pop()
+        if isinstance(x, str):
+            out.append(x)
+        elif isinstance(x, dict):
+            stack.extend(x.values())
+        elif isinstance(x, list):
+            stack.extend(x)
+    return out
+
+
+def outside_checkout_reads(path: Path, repo: Path | None = None) -> list[str]:
+    """Each place a tool call or its result names a tree that holds the study, with that tree masked.
+
+    The excerpt shows a placeholder for the tree and the path below it, never the machine path, because a
+    refusal is written into a rehearsal's WHY.md, which is committed.
+    """
+    roots = checkout_roots(repo)
+    sibling = sibling_pattern(repo)
+    seen: list[str] = []
+    for line in path.read_text(errors="replace").splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(rec, dict):
+            continue
+        for s in _tool_strings(rec):
+            hit = None
+            for label, form in roots:
+                i = s.find(form)
+                while i != -1 and hit is None:
+                    before = s[i - 1] if i > 0 else ""
+                    after = s[i + len(form)] if i + len(form) < len(s) else ""
+                    if not (before and _PATH_CHARS.match(before)) and not (after and _PATH_CHARS.match(after)):
+                        tail = _PATH_TAIL.match(s, i + len(form)).group(0)
+                        hit = label + tail
+                    i = s.find(form, i + 1)
+                if hit:
+                    break
+            if hit is None:
+                m = sibling.search(s)
+                if m:
+                    hit = "…/" + m.group("segment") + _PATH_TAIL.match(s, m.end()).group(0)
+            if hit:
+                seen.append(hit[:160])
+    return seen
+
+
+# ---- the home folder: every tree under it but the run tree and the interpreter ---------------------------
+#
+# FOUND 13 SEPTEMBER 2026, AFTER CP3 WAS COMMITTED. A build copy of this repository now sits under the
+# operator's home folder and outside the Glitch root, with planted invalid-design fixtures in this study's case
+# shape. None of its segments is named after the repository and it is not beside the checkout, so the rule above
+# does not see it; and other build copies may land anywhere under home, so naming this one would be one spelling
+# short. So a path under the home folder, resolved at check time and never written here, is refused unless it is
+# under the session's own run tree or under the interpreter's own install.
+#
+# MEASURED ON ROUND 1'S 124 TRANSCRIPTS BEFORE IT WAS WRITTEN. Read in both channels and every spelling, home
+# refused 17 (14 graded takes), and most of what it refused beyond the rule above was contract text: the cluster
+# runtime notes name `~/install/...`, `~/.apptainer_cache`, `~/.bashrc`. A tool that reads a real file returns its
+# path spelled out, never with `~`, so the spellings a shell expands (`~`, `$HOME`) are read in what a tool was
+# ASKED to open, and in what a tool returned only the literal home path is. No tool string in round 1 named an
+# interpreter, a conda install or the harness's own files under home; those appear only in records the harness
+# writes itself (the environment and prompt snapshots), which are not tool calls and are not read.
+#
+# THE WHITELIST IS WHAT THE CHECKER'S OWN INTERPRETER RESOLVES, NOT A NAME. sys.base_prefix and sys.prefix, where
+# they sit under home, and only if neither contains the home folder itself nor this repository's checkout. PATH is
+# not read: the PATH at check time is not the take's, and round 1 shows no read that needed it.
+#
+# ONE MORE TREE, BECAUSE IT WAS CHEAP. The run tree is `<temp>/run-<8 hex>`, and another take's run tree beside it
+# would hold another take's project; a path under the temp root naming a `run-<8 hex>` that is not this session's
+# is refused too.
+
+CHECK_HOME: Path | None = None  # None: the home folder of whoever runs the check
+_RUN_TREE_NAME = re.compile(r"run-[0-9a-f]{8}")
+
+
+def _spellings(p: Path) -> set[str]:
+    s = p.as_posix()
+    forms = {s, str(p)}
+    if s.startswith("/private/"):
+        forms.add(s[len("/private"):])
+    elif s.startswith(("/var/", "/tmp/")):
+        forms.add("/private" + s)
+    return forms
+
+
+def _under(full: str, roots) -> bool:
+    return any(full == r or full.startswith(r.rstrip("/") + "/") for r in roots)
+
+
+def interpreter_prefixes(home: Path, repo: Path | None = None) -> list[str]:
+    """The checker's own interpreter install, where it sits under home and holds neither home nor the checkout."""
+    checkout = Path(CHECKOUT_REPO if repo is None else repo)
+    repo_forms = _spellings(checkout) | _spellings(checkout.resolve())
+    home_s = home.as_posix()
+    out: list[str] = []
+    for p in dict.fromkeys((sys.base_prefix, sys.prefix)):
+        # As written and as resolved: a home under a linked folder (macOS /var) is spelled both ways.
+        for prefix in dict.fromkeys((Path(p).as_posix(), Path(p).resolve().as_posix())):
+            if not prefix.startswith(home_s.rstrip("/") + "/"):
+                continue
+            if _under(home_s, [prefix]) or any(_under(r, [prefix]) for r in repo_forms):
+                continue  # a prefix holding home or the checkout would admit what this control exists to refuse
+            out.append(prefix)
+    return out
+
+
+def session_run_tree(path: Path) -> str | None:
+    """The working directory the session opened in, from its own environment record."""
+    for line in path.read_text(errors="replace").splitlines():
+        if '"environment"' not in line:
+            continue
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        att = rec.get("attachment") if isinstance(rec, dict) else None
+        if isinstance(att, dict) and att.get("type") == "environment":
+            wd = (att.get("snapshot") or {}).get("workingDirectory")
+            if wd:
+                return wd
+    return None
+
+
+def outside_home_reads(path: Path, home: Path | None = None, repo: Path | None = None) -> list[str]:
+    """Each place a tool names a path under the home folder, or another take's run tree, outside this session's run
+    tree and the interpreter's install; masked as `<home>/...` or `<temp root>/run-...`."""
+    if home is None:
+        try:
+            home = Path(CHECK_HOME) if CHECK_HOME is not None else Path.home()
+        except (RuntimeError, KeyError):
+            return []
+    home = Path(home)
+    home_forms = sorted(_spellings(home), key=len, reverse=True)
+    wd = session_run_tree(path)
+    tree_forms = _spellings(Path(wd)) if wd else set()
+    allowed = interpreter_prefixes(home, repo)
+    temp_forms = sorted(_spellings(Path(wd).parent), key=len, reverse=True) if wd else []
+    own_tree = Path(wd).name if wd else None
+    seen: list[str] = []
+    for line in path.read_text(errors="replace").splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(rec, dict):
+            continue
+        asked = rec.get("type") == "assistant"
+        spell = [(f, f) for f in home_forms]
+        if asked:
+            spell += [(h, home_forms[0]) for h in ("${HOME}", "$HOME", "~")]
+        for s in _tool_strings(rec):
+            hit = None
+            for form, real in spell:
+                i = s.find(form + "/")
+                while i != -1 and hit is None:
+                    before = s[i - 1] if i > 0 else ""
+                    if not (before and (_PATH_CHARS.match(before) or before in "/$~")):
+                        tail = _PATH_TAIL.match(s, i + len(form)).group(0)
+                        full = real + tail
+                        if not (_under(full, tree_forms) or _under(full, allowed)):
+                            hit = "<home>" + tail
+                    i = s.find(form + "/", i + 1)
+                if hit:
+                    break
+            if hit is None:
+                for form in temp_forms:
+                    for m in re.finditer(re.escape(form) + r"/(run-[0-9a-f]{8})(?![0-9a-f])", s):
+                        before = s[m.start() - 1] if m.start() > 0 else ""
+                        if m.group(1) != own_tree and not (before and _PATH_CHARS.match(before)):
+                            hit = "<temp root>/" + m.group(1) + _PATH_TAIL.match(s, m.end()).group(0)
+                            break
+                    if hit:
+                        break
+            if hit:
+                seen.append(hit[:160])
+    return seen
+
+
+# ---- the temp folder: every tree under it but the run tree and the harness's own session folder -------------
+#
+# FOUND 13 SEPTEMBER 2026, BEFORE ANY ROUND-2 WALK. A local CI replay made full copies of a build of this
+# repository, with planted invalid-design fixtures in this study's case shape, under the OS temp root
+# (`tempfile.mkdtemp`), and wrote logs beside them under /tmp. No segment is named after the repository, the copies
+# are not beside the checkout and not under home, so none of the rules above sees them; and the next copy may land
+# under any name, so naming this one would be one spelling short. So a path under the temp root or under /tmp is
+# refused unless it is under the session's own run tree or the harness's own folder for this session.
+#
+# THE ROOTS. tempfile.gettempdir() as written and as resolved, each with its /private spelling on macOS
+# (`/var/folders/.../T` and `/private/var/folders/.../T`), and /tmp with its /private/tmp spelling. What a tool was
+# ASKED to open is read in every spelling, including the variables a shell expands to a temp folder ($TMPDIR, $TMP,
+# $TEMP, braced or not). Under ruling C the driver points those at the take's own `<run tree>/.tmp`
+# (`driver_constants.run_tree_tmpdir`), so a variable resolves THERE before it is judged: `$TMPDIR/x` is the agent's
+# own scratch and admitted, `$TMPDIR/../x` climbs out and is refused. A literal /tmp or temp-root path by the agent is
+# still refused; that residual is Javier's to rule on. A round-1 transcript resolves the same way (its `.tmp` never
+# existed, so such a path is a read under the run tree; round 1 has none). What a tool RETURNED is read for the
+# literal paths only: a tool that lists or reads a real file prints its path spelled out, and a `$TMPDIR` in a
+# result is the text of a file or a script, not a read (the home rule's asymmetry, for the same reason). A bare
+# `/tmp` with no path below it is not read: round 1's results carry it three times, all in document prose.
+#
+# THE ONE EXCEPTION IS THE HARNESS'S OWN FOLDER, BOUND TO THIS TAKE. Claude Code keeps a session's background-task
+# output and scratchpad at `<tmp>/claude-<uid>/<slug>/<session id>/`, where <slug> is the working directory with
+# every character that is not a letter or a digit turned into `-`. Measured on round 1's 124 transcripts: 72 such
+# paths (tasks/ 21 inputs and 21 results; scratchpad/ 20 inputs and 10 results), and every one names its own
+# transcript's working directory as that slug and its own session id. So only that folder is admitted: the uid is
+# read as digits (a regrade on another machine must not move the count), the slug is derived from this session's run
+# tree and the session id from its transcript. Another project's slug, or this slug with another session, is
+# refused: a Claude Code session opened in a build folder writes its own files there. The temp root, /tmp and
+# `claude-<uid>/` are never admitted whole, and the rules above stay as floors.
+#
+# WHAT IT COSTS ON ROUND 1 (a round-1 reading, not a round-2 cost): one more refused take, confounded-design positive
+# claude-sonnet-5 take 2, whose agent sent stage 00's output to a file it named under /tmp and read it back. Round 1
+# set no temp folder inside the run tree; round 2's driver points TMPDIR, TMP and TEMP at `<run tree>/.tmp/`, so an
+# agent's own scratch is under its run tree and admitted.
+
+CHECK_TEMP: Path | None = None  # None: tempfile.gettempdir() of whoever runs the check
+TMP = "/tmp"
+_TEMP_VARIABLES = ("${TMPDIR}", "$TMPDIR", "${TEMP}", "$TEMP", "${TMP}", "$TMP")
+_HARNESS_FOLDER = re.compile(r"/claude-[0-9]+(?=/|$)(?:/([^/]+))?(?:/([^/]+))?")
+
+
+def run_tree_tmpdir() -> tuple[str, tuple[str, ...]] | None:
+    """The driver's scratch folder inside the run tree and the variables it points there, from the pre-registration
+    (`driver_constants.run_tree_tmpdir`); None when it records none."""
+    try:
+        c = (prereg.load().get("driver_constants") or {}).get("run_tree_tmpdir") or {}
+    except Exception:
+        return None
+    path, names = c.get("path"), c.get("variables")
+    if isinstance(path, str) and path.strip("/.") and isinstance(names, list) and names \
+            and all(isinstance(n, str) and re.fullmatch(r"[A-Z_][A-Z0-9_]*", n) for n in names):
+        return path.strip("/"), tuple(names)
+    return None
+
+
+def harness_slugs(run_tree: str) -> set[str]:
+    """The harness's folder name for a working directory, in each spelling of it: non-alphanumerics become `-`."""
+    return {re.sub(r"[^A-Za-z0-9]", "-", f) for f in _spellings(Path(run_tree))}
+
+
+def temp_roots(temp_root: Path) -> dict[str, str]:
+    """Each spelling of the temp folder and of /tmp, with the label its refusals are masked with."""
+    roots: dict[str, str] = {}
+    for p in (temp_root, temp_root.resolve()):
+        for f in _spellings(p):
+            if f.rstrip("/"):
+                roots[f.rstrip("/")] = "<temp folder>"
+    tmp_forms = {TMP, "/private" + TMP}
+    for f in tmp_forms:
+        roots[f] = "<tmp>"
+    return roots
+
+
+def _masked_harness_tail(tail: str, slugs: set[str], sid: str) -> str:
+    m = _HARNESS_FOLDER.match(tail)
+    if not m:
+        return tail
+    out = "/claude-<n>"
+    if m.group(1) is not None:
+        out += "/<this take's folder>" if m.group(1) in slugs else "/<another folder>"
+    if m.group(2) is not None:
+        out += "/<this session>" if sid and m.group(2) == sid else "/<another session>"
+    return out + tail[m.end():]
+
+
+def outside_temp_reads(path: Path, temp_root: Path | None = None) -> list[str]:
+    """Each place a tool names a path under the temp folder or /tmp outside this session's run tree and the
+    harness's own folder for this session; masked as `<temp folder>/...` or `<tmp>/...`."""
+    if temp_root is None:
+        temp_root = Path(CHECK_TEMP) if CHECK_TEMP is not None else Path(tempfile.gettempdir())
+    roots = temp_roots(Path(temp_root))
+    written = Path(temp_root).as_posix().rstrip("/")
+    wd = session_run_tree(path)
+    sid = session_id_of(path)
+    tree_forms = _spellings(Path(wd)) if wd else set()
+    slugs = harness_slugs(wd) if wd else set()
+    own_slug = "(?:" + "|".join(re.escape(x) for x in sorted(slugs)) + ")" if slugs else None
+    own_session = re.escape(sid) if sid else None
+    harness = [re.compile(re.escape(r) + r"/claude-[0-9]+/" + own_slug + "/" + own_session + r"(?:/|$)")
+               for r in roots] if own_slug and own_session else []
+    allowed = sorted(tree_forms)
+    scratch = run_tree_tmpdir()
+    variables = tuple(f for n in scratch[1] for f in ("${" + n + "}", "$" + n)) if scratch else _TEMP_VARIABLES
+    variable_real = f"{wd.rstrip('/')}/{scratch[0]}" if wd and scratch else written
+    seen: list[str] = []
+    for line in path.read_text(errors="replace").splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(rec, dict):
+            continue
+        spell = [(f, f, label) for f, label in roots.items()]
+        if rec.get("type") == "assistant":
+            spell += [(v, variable_real, "<temp folder>") for v in variables]
+        spell.sort(key=lambda x: len(x[0]), reverse=True)
+        for s in _tool_strings(rec):
+            hit = None
+            judged: set[int] = set()  # a path is judged by its most specific root, never again by /tmp above it
+            for form, real, label in spell:
+                i = s.find(form + "/")
+                while i != -1 and hit is None:
+                    before = s[i - 1] if i > 0 else ""
+                    if i not in judged and not (before and (_PATH_CHARS.match(before) or before in "/$~")):
+                        judged.add(i)
+                        tail = _PATH_TAIL.match(s, i + len(form)).group(0)
+                        # A sentence's full stop is not part of the path: the harness's own error text reads
+                        # "your current working directory is <run tree>." (five round-1 results). Never after
+                        # a `/` or a `.`, so `<run tree>/..` still resolves outside it.
+                        full = posixpath.normpath(real + re.sub(r"(?<=[^/.])[.:,]+$", "", tail))
+                        if not (_under(full, allowed) or any(h.match(full) for h in harness)):
+                            hit = label + _masked_harness_tail(tail, slugs, sid)
+                    i = s.find(form + "/", i + 1)
+                if hit:
+                    break
+            if hit:
+                seen.append(hit[:160])
     return seen
 
 
@@ -905,6 +1331,230 @@ def fixture_binding_problems(path: Path, half: dict, is_walk: bool = True) -> tu
     return [], None
 
 
+# ---- the environment record ---------------------------------------------------------------------------
+#
+# DECISION 4. The bill was a statement in round 1 (Ruling 34): nothing a take left behind showed it ran on
+# the subscription rather than a per-token key. The driver now writes environment.json beside each
+# transcript, before the first turn: the NAMES of the variables its session started with that match the
+# published vocabulary, the presence of each fixed billing name, and the credential source the harness
+# reported on each turn. This reads that record against the pre-registration's `environment_record` block.
+#
+# NEVER ON THE SOURCE'S VALUE. A refusal files the attempt as a rehearsal and frees its slot, so a check that
+# refused a take for the credential source it reported would be a retake route for a take someone wanted
+# gone. The driver stops a non-subscription run under the money line; this checks the record is whole and is
+# this take's, and nothing about what it says.
+#
+# NEVER A VALUE IN A REFUSAL. A string that is not a variable name may be a value written where a name
+# belongs, so the refusal gives its position and length and not the string.
+
+ENVIRONMENT_RECORD_KEYS = ("record", "schema", "session_id", "row", "row_commit", "task", "half",
+                           "model_requested", "claude_version", "written_before_first_turn", "name_patterns",
+                           "names_present", "stripped_names", "api_key_variables", "api_key_set",
+                           "billing_route_variables", "billing_route_set", "subscription_token_variables",
+                           "credential_source")
+VARIABLE_NAME = re.compile(r"^[A-Z_][A-Z0-9_]*$")
+PRESENCE_STATES = ("absent", "empty", "set")
+FIXED_NAME_LISTS = (("api_key_variables", "api_key_set"), ("billing_route_variables", "billing_route_set"),
+                    ("subscription_token_variables", None))
+SHA1_HEX = re.compile(r"^[0-9a-f]{40}$")
+
+
+def matched_by(name: str, patterns: dict) -> str | None:
+    """The published group a variable name matches: re.search, case-sensitive, the harness group first."""
+    for group in ("harness", "generic"):
+        if any(re.search(p, name) for p in patterns.get(group) or []):
+            return group
+    return None
+
+
+def never_stripped(name: str, patterns: dict, fixed: set) -> bool:
+    """A name the driver may never strip: one a HARNESS pattern matches, or one on the three fixed lists.
+
+    The generic shape is not in this rule, as in drive.never_stripped_problems: it is a recording catch-all, and
+    one of J4's twelve inherited session names (CLAUDE_CODE_MESSAGING_TOKEN) has its shape. Found in integration,
+    13 September 2026: the first version refused a name any group matched, so every record written under J4 was
+    refused.
+    """
+    return matched_by(name, patterns) == "harness" or name in fixed
+
+
+def environment_problems(path: Path, ledger: dict | None, pre: dict, row_commit: str | None) -> list[str]:
+    """The environment record beside a transcript, against the pre-registration. `path` is the transcript or
+    its folder; `row_commit` is the sha of the commit that introduced the take's row, or None for a walk."""
+    out: list[str] = []
+
+    def refuse(sentence: str) -> None:
+        out.append("[environment-record] " + sentence)
+
+    spec = pre.get("environment_record")
+    if not isinstance(spec, dict):
+        refuse("the pre-registration carries no environment_record block, so no record can be checked against it")
+        return out
+    folder = path if path.is_dir() else path.parent
+    transcript = folder / "transcript.jsonl" if path.is_dir() else path
+    name = spec.get("file") or "environment.json"
+    rec_path = folder / name
+    if not rec_path.is_file():
+        refuse(f"no {name} beside the transcript. A take that does not carry the record of the environment its "
+               f"session started in cannot show which credentials it ran with, so the bill is a statement again.")
+        return out
+    try:
+        raw = rec_path.read_bytes()
+        rec = json.loads(raw.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        refuse(f"{name} is unreadable ({type(exc).__name__}), so the environment it records cannot be read")
+        return out
+    if not isinstance(rec, dict):
+        refuse(f"{name} holds a {type(rec).__name__}, not the object the driver writes")
+        return out
+
+    missing = [k for k in ENVIRONMENT_RECORD_KEYS if k not in rec]
+    extra = [k for k in rec if k not in ENVIRONMENT_RECORD_KEYS]
+    if missing or extra:
+        shown = [k for k in extra if re.fullmatch(r"[a-z_][a-z0-9_]*", k)]
+        refuse(f"{name} does not carry exactly the schema-{spec.get('schema')} keys: missing {missing}, "
+               f"{len(extra)} not in the schema {shown}. The record is replaced whole, never merged.")
+        return out
+    if rec["schema"] != spec.get("schema"):
+        refuse(f"{name} is schema {rec['schema']!r} and the pre-registration fixes schema {spec.get('schema')!r}")
+    if rec["written_before_first_turn"] is not True:
+        refuse(f"{name} does not record that it was written before the first turn")
+
+    patterns = spec.get("name_patterns") or {}
+    if rec["name_patterns"] != patterns:
+        refuse(f"{name} records name patterns other than the pre-registration's; the names it lists were "
+               f"matched against a vocabulary nobody published")
+
+    if transcript.is_file():
+        sid, whose = session_id_of(transcript), "this transcript's"
+    else:
+        # NO TRANSCRIPT. run.py and check_results.py --ledger grade such a take from its ledger alone, so the
+        # record is bound to the session id the driver wrote there. A transcript that exists and records no
+        # session id is still refused above, by the transcript branch.
+        sid, whose = str((ledger or {}).get("session_id") or ""), "the ledger's (no transcript sits beside it)"
+    if rec["session_id"] != sid:
+        refuse(f"{name} records a session id that is not {whose} ({sid or 'none recorded'}); it is "
+               f"another session's record")
+    if not (rec["row_commit"] is None or (isinstance(rec["row_commit"], str) and SHA1_HEX.match(rec["row_commit"]))):
+        refuse(f"{name} records a row commit that is neither null nor a 40-hex sha")
+    elif row_commit is not None and rec["row_commit"] != row_commit:
+        refuse(f"{name} records the row commit {str(rec['row_commit'])[:12]} and this take's row was introduced by "
+               f"{row_commit[:12]}; the record belongs to another row")
+    if not (rec["row"] is None or (isinstance(rec["row"], int) and not isinstance(rec["row"], bool))):
+        refuse(f"{name} records a row that is neither null nor an integer")
+
+    if not isinstance(ledger, dict):
+        refuse(f"no driver ledger beside the transcript binds {name}'s bytes")
+    else:
+        want = {"file": name, "sha256": hashlib.sha256(raw).hexdigest()}
+        if ledger.get("environment") != want:
+            refuse(f"the driver ledger does not record {name} with the sha256 of its bytes "
+                   f"({want['sha256'][:12]}); a record edited after the take, or another take's, is not bound")
+        if rec["claude_version"] != ledger.get("claude_version"):
+            refuse(f"{name} records harness {rec['claude_version']!r} and the ledger records "
+                   f"{ledger.get('claude_version')!r}")
+        for key in ("task", "half", "model_requested"):
+            if rec[key] != ledger.get(key):
+                refuse(f"{name} records {key} {rec[key]!r} and the ledger records {ledger.get(key)!r}")
+
+    listed: list[str] = []
+    entries = rec["names_present"]
+    if not isinstance(entries, list):
+        refuse(f"{name}'s names_present is not a list")
+        entries = []
+    for i, e in enumerate(entries):
+        if not (isinstance(e, dict) and set(e) == {"name", "matched_by"} and isinstance(e.get("name"), str)):
+            refuse(f"entry {i} of names_present is not a {{name, matched_by}} pair")
+            continue
+        n = e["name"]
+        if not VARIABLE_NAME.match(n):
+            refuse(f"entry {i} of names_present is not a variable name ({len(n)} characters, not shown). The "
+                   f"record carries names only, and a value written where a name belongs is refused unprinted.")
+            continue
+        group = matched_by(n, patterns)
+        if group is None:
+            refuse(f"entry {i} of names_present matches no published pattern ({len(n)} characters, not shown); "
+                   f"the record lists only names the vocabulary matches")
+            continue
+        if e["matched_by"] != group:
+            refuse(f"names_present records {n} as matched by {e['matched_by']!r}; the published patterns, "
+                   f"harness first, match it as {group!r}")
+        listed.append(n)
+    if listed != sorted(set(listed)):
+        refuse(f"{name}'s names_present is not sorted by name with each name once")
+
+    stripped = rec["stripped_names"]
+    allowed = (pre.get("driver_constants") or {}).get("stripped_env")
+    fixed = {n for key, _ in FIXED_NAME_LISTS for n in (spec.get(key) or [])}
+    if not (isinstance(stripped, list) and all(isinstance(n, str) for n in stripped)):
+        refuse(f"{name}'s stripped_names is not a list of names")
+    else:
+        if stripped != sorted(set(stripped)):
+            refuse(f"{name}'s stripped_names is not sorted with each name once")
+        for i, n in enumerate(stripped):
+            if not VARIABLE_NAME.match(n):
+                refuse(f"entry {i} of stripped_names is not a variable name ({len(n)} characters, not shown)")
+            elif never_stripped(n, patterns, fixed):
+                refuse(f"stripped_names holds {n}, which the published vocabulary names; a login or billing "
+                       f"variable is never stripped")
+            elif not isinstance(allowed, list) or n not in allowed:
+                refuse(f"stripped_names holds {n}, which driver_constants.stripped_env does not list")
+
+    for list_key, set_key in FIXED_NAME_LISTS:
+        want_names = spec.get(list_key)
+        got = rec[list_key]
+        if not isinstance(want_names, list):
+            refuse(f"the pre-registration's environment_record carries no {list_key} list")
+            continue
+        if not isinstance(got, dict):
+            refuse(f"{name}'s {list_key} is not a name-to-state object")
+            continue
+        absent_names = [n for n in want_names if n not in got]
+        extra_n = sum(1 for n in got if n not in want_names)
+        if absent_names or extra_n:
+            refuse(f"{name}'s {list_key} is not exactly the pre-registered list: missing {absent_names}, "
+                   f"{extra_n} name(s) not on it")
+        bad = [n for n in want_names if n in got and got[n] not in PRESENCE_STATES]
+        if bad:
+            refuse(f"{name}'s {list_key} records {bad} in a state other than absent, empty or set (not shown)")
+        if set_key is not None:
+            truth = any(got.get(n) == "set" for n in want_names)
+            if rec[set_key] is not truth:
+                refuse(f"{name} records {set_key} {rec[set_key]!r} and its own {list_key} "
+                       f"{'has' if truth else 'has no'} name set; the flag is what the list shows")
+        for n in want_names:
+            state = got.get(n)
+            if state in ("empty", "set") and n not in listed and matched_by(n, patterns):
+                refuse(f"{name}'s {list_key} records {n} as {state} and names_present does not list it")
+            elif state == "absent" and n in listed:
+                refuse(f"names_present lists {n} and {name}'s {list_key} records it absent")
+
+    cs = rec["credential_source"]
+    if not (isinstance(cs, dict) and set(cs) == {"key", "per_turn", "reported"}):
+        refuse(f"{name}'s credential_source is not {{key, per_turn, reported}}")
+        return out
+    if cs["key"] != spec.get("credential_source_key"):
+        refuse(f"{name}'s credential_source reads {cs['key']!r}; the pre-registration reads "
+               f"{spec.get('credential_source_key')!r}")
+    if not (cs["reported"] is None or isinstance(cs["reported"], str)):
+        refuse(f"{name}'s credential_source.reported is neither null nor a string")
+    per_turn = cs["per_turn"]
+    if not isinstance(per_turn, list) or not all(
+            isinstance(t, dict) and set(t) == {"n", "recovery", "exit", "apiKeySource"}
+            and (t["apiKeySource"] is None or isinstance(t["apiKeySource"], str)) for t in per_turn):
+        refuse(f"{name}'s credential_source.per_turn is not a list of {{n, recovery, exit, apiKeySource}} "
+               f"entries with a string or null source")
+    elif isinstance(ledger, dict):
+        ours = collections.Counter((t["n"], bool(t["recovery"])) for t in per_turn)
+        theirs = collections.Counter((r.get("n"), bool(r.get("recovery")))
+                                     for r in ledger.get("turns") or [] if isinstance(r, dict))
+        if ours != theirs:
+            refuse(f"{name}'s credential_source.per_turn records {len(per_turn)} turn(s) and the ledger "
+                   f"{sum(theirs.values())}; they are not one to one by (n, recovery), so a turn's source is "
+                   f"missing or invented")
+    return out
+
+
 def check(path: Path, task_id: str, half_name: str, row_index: int | None,
           is_walk: bool) -> list[str]:
     problems: list[str] = []
@@ -1026,6 +1676,16 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
             f"first: {reached[0][:70]!r}). The design it is being measured against is readable from "
             f"the checkout it works in.")
 
+    outside_reads = outside_checkout_reads(path)
+    outside_reads += outside_home_reads(path)
+    outside_reads += outside_temp_reads(path)
+    if outside_reads:
+        problems.append("[read-outside-the-checkout] " +
+            f"a tool call or its result named a path outside this session's own checkout "
+            f"{len(outside_reads)} time(s) -- first: {outside_reads[0][:120]!r}. This repository's checkout, "
+            f"the folder holding its sibling worktrees and the root above them hold the study; a take reads "
+            f"its own run tree.")
+
     # ---- the project name --------------------------------------------------------------
     if expected_project and expected_project.lower() not in joined:
         problems.append("[project-name] " + 
@@ -1071,6 +1731,9 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
         if memory_section_offered(path):
             print("  NOTE     this walk was offered the harness's auto-memory folder; walks predate the "
                   "switch that removes it, and a take offered it is refused")
+        # DECISION 4: a walk's environment record is read and reported, never refused.
+        for p in environment_problems(path, ledger, pre, None):
+            print(f"  NOTE     {p} (a walk is not refused for it; a take is)")
         return problems
 
     if row_index is None:
@@ -1097,6 +1760,7 @@ def check(path: Path, task_id: str, half_name: str, row_index: int | None,
                 f"uuid5(namespace, {commits[row_index][:12]}) is {want}. Either this is not the "
                 f"session that row registered, or the row was committed after the fact.")
 
+    problems += environment_problems(path, ledger, pre, commits.get(row_index))
     problems += model_problems(path, row["model"])
     problems += constant_problems(ledger, pre)
     problems += checkout_problems(path, pre)

@@ -1,6 +1,8 @@
 SKIPPED TwoMinuteReadLive.test_the_word_cap: no results file
-SKIPPED TheCopiedFixtureBuildsToItsPin.test_the_fixture_builds_and_hashes_to_its_pin: origin not in a workspaces folder
+SKIPPED TheCopiedFixtureBuildsToItsPin.test_the_fixture_builds_and_hashes_to_its_pin: the origin project is not on this machine (workspaces/gars-demo-v2/_runs/epigenome-a/20260903-1654/ws/projects/epigenome-a); plan-gate cannot be driven from this clone
+SKIPPED TheFixtureNamesNoPathOutsideTheRunTree.test_the_copied_tree_hashes_to_its_pin_at_two_roots: the origin project is not on this machine (workspaces/gars-demo-v2/_runs/epigenome-a/20260903-1654/ws/projects/epigenome-a); plan-gate cannot be driven from this clone
+SKIPPED TheFixtureNamesNoPathOutsideTheRunTree.test_the_real_copied_tree_names_no_checkout_path: the origin project is not on this machine (workspaces/gars-demo-v2/_runs/epigenome-a/20260903-1654/ws/projects/epigenome-a); plan-gate cannot be driven from this clone
 SKIPPED SomeOtherCheck.test_something: no git history here
 Ran 308 tests in 46.000s
 
-OK (skipped=3)
+OK (skipped=5)

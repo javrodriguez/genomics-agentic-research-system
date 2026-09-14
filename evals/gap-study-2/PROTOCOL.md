@@ -1150,3 +1150,123 @@ The job pins the done commit by its full sha, `b735229f5c9213bb20c7e49fb7ceddddb
 The tag stays on this machine and is not published.
 Main's own CI job keeps the first study and the deterministic core, and `gars/` changes freely.
 The records written after the tag, Ruling 37's sentence and this ruling among them, are documents about the study, not the study's checked state.
+
+## Round 2 — build records
+
+Round 2's decisions and findings, recorded at the checkpoint that built each.
+
+### CP3 — 2026-09-13 — each take carries the record of its environment, and a read outside the checkout is refused
+
+**The environment record (Decision 4).**
+The driver writes `environment.json` beside each transcript before the first turn.
+It is bound by the session id, by the commit that introduced the take's row, and by the sha256 of its bytes in the driver ledger.
+It names each variable that matches the harness vocabulary or the generic credential shape, never with its value, and records whether each API-key, billing-route and subscription-token variable is absent, empty or set.
+It records the credential source the harness reported on each turn.
+The take checker refuses a graded take without a valid record, as `[environment-record]`, and never refuses on the credential source's value, because a refusal on a value would open a route to a retake.
+A set API-key or billing-route variable stops the driver before any session opens.
+Why: round 1 recorded no per-take environment, so its $0 was the operator's statement (Ruling 34).
+`costs.py` now renders the dollar line from these records, take by take.
+
+**J4: twelve inherited session names are stripped, and that changes the system of measurement.**
+Javier ruled J4 yes on 13 September 2026 at 15:48.
+`driver_constants.stripped_env` lists twelve inherited Claude Code session variables by name, never by pattern, and the driver removes them from each take's environment.
+Without it, a take driven from a Claude Code pane inherits that pane's session identity and effort level.
+Round 1 ran without the strip, so the twelve stripped names are a difference in the system of measurement.
+The four tasks round 2 does not change are therefore a replicate under a changed system under test and driver environment, and they are never pooled with round 1's takes.
+
+**One stripped name also matches the credential shape, and the reading is put to Javier.**
+`CLAUDE_CODE_MESSAGING_TOKEN` is on J4's explicit list, and it also matches the generic credential shape `_TOKEN$`.
+The never-stripped rule (`environment_record.never_stripped`) covers the harness patterns and the three lists: API-key, billing-route and subscription-token.
+It does not cover the generic shape, so the explicit list stands as ruled and the name is stripped with the other eleven.
+That reading is put to Javier for his word.
+
+**A read outside the checkout (the leak control).**
+The GARS guard hook refuses no read.
+It dispatches only write tools and Bash commands (`gars/_system/guard_hook.py:362-365`), it lets a write outside the workspace through (`:110-111`), and its Bash check looks for installs and writes, not for where a read points.
+So the take checker carries its own control, `read-outside-the-checkout`, with a narrow rule.
+A tool input or result is refused when it names, by absolute path, the checkout, the folder above it, the root above a parent folder named `workspaces`, or a path segment named after the repository or after the repository followed by `--`.
+The roots are derived at run time and never written down.
+On round 1's 124 committed transcripts the narrow rule refuses 19: 10 precondition-refusal graded takes, plus 8 walks and 1 rehearsal from the Ruling 8 era, and none for a system read.
+A broad rule, refusing any absolute path outside the checkout that is not a system location, refuses 38, because tool results carry file text such as cluster paths and placeholders.
+The control was widened before any walk, because another agent's build copy of GARS, with a fixtures folder planned in the case shape, now sits under the home folder outside the Glitch folder, reachable by absolute path, and the narrow rule did not see it.
+The widened rule refuses any path under the home folder that is not under the take's run tree or under the checker interpreter's own install.
+Tool inputs are read for every spelling of the home folder: the literal path, `~`, `$HOME` and `${HOME}`.
+Tool results are read for the literal path only.
+The home folder is never whitelisted whole.
+Another take's `run-*` folder in the temporary root is refused as well.
+The narrow checkout rule stays as a floor beneath the widened one.
+On round 1's 124 committed transcripts the widened rule refuses 20, one more than the narrow rule's 19.
+The new refusal is plan-gate control `claude-opus-5` take 2, which ran `ls` on a cluster conda folder under the home folder: a real read outside the checkout.
+No legitimate agent read under the home folder was found.
+The home path appears in 15 harness-written records, which are not tool calls and are not read by the rule.
+The sibling `run-*` rule refuses none of round 1's transcripts.
+Three gaps stay open, and they go to the limitations at CP7.
+A copy outside the home folder and outside the checkout's parent, such as one on a mounted volume, is not seen unless it carries the repository's name.
+A relative path is not seen.
+On a machine whose home folder differs from the one the take ran under, only the `~` and `$HOME` spellings in tool inputs are seen.
+
+**The temporary folder, and ruling C (14 September 2026).**
+A second agent's copy of GARS then appeared in the OS temporary folder, where the home rule does not look: a CI replay's full repository copies and its logs under `/private/tmp`.
+A sealing session's generator had also been written under the harness's own temporary tree.
+Measured on round 1's 124 transcripts, a rule refusing every temporary path outside the run tree would refuse 24, of which 22 are graded takes.
+Every one of those but one is a harness path: `claude-<uid>/<run-tree slug>/<session id>/tasks/…` or `…/scratchpad/…`, bound to its own transcript's run tree and session id in all 72 cases.
+The one other is a take whose agent wrote its own output under `/tmp` and read it back.
+Refusing that take would file a clean take as a rehearsal for its own behaviour, so Javier was asked, and he answered "C".
+The driver now sets `TMPDIR`, `TMP` and `TEMP` to `.tmp/` inside each take's run tree, excluded from the checkout's git status (`driver_constants.run_tree_tmpdir`).
+The take checker refuses a tool input or result naming a path under the OS temporary root or `/tmp` that is not under the take's run tree.
+The one exception is the harness's own session folder, bound to that take's run-tree slug and session id; a sibling project's folder, or the same slug with another session, is refused, and the temporary root is never whitelisted whole.
+In a tool input, `$TMPDIR`, `$TMP`, `$TEMP` and their braced spellings resolve to the take's own `.tmp` before the path is judged, so an agent using those variables stays inside its take.
+On round 1's 124 transcripts the three rules together refuse 21, one more than before: the take that wrote under `/tmp` (confounded-design positive `claude-sonnet-5` take 2).
+Ruling C removes the refusal only for tools that honour those variables.
+An agent that types a literal `/tmp` path, as that round-1 take did, is still refused under C.
+Whether that residual stands as a limitation or needs a narrower rule is put to Javier before the freeze.
+A `cd /tmp` followed by a relative path is not seen, and goes to the limitations at CP7.
+A fifth environment smoke ran under the new temporary folder; a one-line session creates no harness temporary folder at all, so the first walk that runs a tool shows where the harness writes, and a write anywhere else is refused.
+
+**The precondition-refusal fixture named the checkout, and round 2 builds it inside the run tree.**
+Stage 00 records the source path it linked as an absolute path.
+Round 1's generator built the project under the study's checkout and the driver moved it into the run tree afterwards, so round 1's fixture recorded the checkout's path in CONTEXT.md, HISTORY.md and 12 `raw/` link targets, and a control transcript carries it.
+Round 2 builds every fixture inside the run tree (`drive.build_take_fixture`, with `gen_project.py --workspace <run tree>/gars --staging <run tree>/data/staging`).
+So a round-2 agent sees a run-tree path where a round-1 agent saw a checkout path, and that is a difference in the system of measurement.
+The precondition-refusal tree hash now varies with where the run tree sits.
+That kind is pinned by the generator's blob, its seed and stage 01's exit, not by a tree hash, so no pin changed.
+
+**Round 1's effort, as data.**
+`verification/round1-regrade/environment.json` reads round 1's 108 committed graded takes with round 2's instrument, and it is what that instrument reads, not round 1's result.
+Every one of the 108 is refused `[environment-record]`, and `costs.py` evidences 0 of 108.
+The same record counts the effort keys on assistant records, per model.
+`claude-opus-5`: 36 of 36 transcripts carry `"effort": "high"`, with `perTurnEffort` null.
+`claude-sonnet-5`: 36 of 36 carry `"effort": "high"`, with `perTurnEffort` null.
+`claude-haiku-4-5-20251001`: 36 of 36 carry no effort key, and carry `perTurnEffort` null.
+A transcript does not say whether "high" came from an inherited `CLAUDE_EFFORT` or from the model's default, and the record does not guess.
+The environment smoke adds evidence: on harness 2.1.267 a one-turn `claude-sonnet-5` session records `"effort": "high"` with `CLAUDE_EFFORT` stripped as well as inherited, and a `claude-haiku-4-5-20251001` session records no effort key either way.
+Round 1's 108 driver ledgers record the same harness version string, 2.1.267.
+So round 1's "high" reads as the model's default rather than an inherited value, but this is evidence, not proof: the smoke ran one Sonnet turn and no Opus turn, in sessions other than round 1's.
+`regrade_environment.py --check` re-derives the record byte for byte, and `TheRoundOneEnvironmentRegradeReDerives` runs it.
+
+**The environment smoke, and the subscription value (`verification/env-smoke/WHY.md`).**
+Four one-turn smokes ran from a Claude Code pane on harness 2.1.267: a `claude-haiku-4-5-20251001` pair, as the plan named, and a `claude-sonnet-5` pair the lead added for the effort question.
+Each pair ran once with nothing stripped and once with the draft's `stripped_env`, and each run exited 0 and replied with the word asked for ("ready." on Haiku, "ready" on Sonnet).
+The committed records are the second run, driven after the exclusion in the next note; the first run was replaced whole, never merged.
+The unstripped records list `CLAUDE_CODE_MESSAGING_TOKEN` in `names_present`, the one inherited name that matches a recorded pattern.
+The stripped records list the twelve names in `stripped_names`, each present in the pane, and nothing in `names_present`.
+Both comparisons exit 0: the records differ only in the stripped names.
+So a headless session opens under a subscription login with J4's twelve names removed.
+Every turn reported credential source "none", and that string is now the draft's `environment_record.subscription_source`.
+"none" is the harness's own report of a subscription login; the driver writes null, never "none", when a turn's stream carries no init source, and a null turn evidences nothing.
+The take checker reads each of the four records as valid against the updated draft.
+
+**The smoke found documents naming the study in the checkout, and they are excluded.**
+`smoke_run_tree.py` sweeps the exported checkout with `TREE_SWEEP` and reports each matching line.
+Round 1's four run-tree smokes, at `ee37426`, reported 4 hits: 3 in README.md and 1 in docs/RESULTS.md.
+Each of round 2's first environment smokes, at `f7cf4d6`, reported 64.
+The new hits sat in documents the v1.0.1 build added after round 1's checkout: `docs/implementation/v1.0.1_gap_assessment.md` 27, `docs/reviews/v1.0.1_gap_assessment_review.md` 11, `docs/specs/GARS_Unified_Master_Guideline_v1.0.1_FINAL.md` 8, `docs/implementation/v1.0.1_baseline.md` 4, the three security-fix reviews under `docs/reviews/` 4, 2 and 2, and decision 0041 1.
+README.md went from 3 hits to 4: its line 28 now names the Gap Study and links its section of `docs/EVALS.md`.
+An agent in a round-2 take could have opened any of those documents and read about the study, its pre-registration and its paths.
+The draft now excludes `docs/implementation`, `docs/reviews` and `docs/specs` whole, and decision 0041's file alone, because README.md cites other decision files.
+Nothing under `gars/` cites any of them at `f7cf4d6`.
+Re-run after the exclusion, each of the four smokes excluded 7 paths and swept 5 hits, 4 in README.md and 1 in docs/RESULTS.md, and those runs replaced the first ones whole.
+Why: these files post-date round 1's checkout, so excluding them restores the condition round 1's agents ran under, rather than adding a new one.
+README.md stays, as in round 1, because it is the repository's face; `run_location.permitted_sweep_files` names README.md and docs/RESULTS.md as the only files that may still match, and `TheRunTreeCarriesOnlyPermittedSweepHits` refuses any other file that does.
+README.md line 28 at `f7cf4d6` names the study by title, README.md stays in the run tree as it did in round 1's, and that line goes to the limitations at CP7.
+The lead ruled the exclusion before any walk, as a reversible change, and it is put to Javier for his word.

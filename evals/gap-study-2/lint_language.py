@@ -206,11 +206,15 @@ def case_file_own_words(path: Path) -> str:
 # findings in them, 108 of them the `k / n` rule matching a path segment such as
 # `claude-haiku-4-5-20251001/1`, and none of the 109 was a sentence the study wrote.
 #
-# NARROW ON PURPOSE. Only those two file names, and only under the three directories an attempt is
+# NARROW ON PURPOSE. Only those file names, and only under the three directories an attempt is
 # filed in. A walk's ledger is still scanned, and so is every file this study writes about a take:
 # the results, the analysis, the cost tables and the published section. No pattern is changed.
+#
+# ROUND 2, CP3: `environment.json` is the third, the driver's record of the environment a take ran in (variable
+# names, absent/empty/set, the credential source per turn). Its published name patterns carry shapes such as
+# `_TOKEN$`, and a record is never edited to satisfy this guard. A walk's environment.json is still scanned.
 TAKE_ROOTS = ("transcripts", "rehearsals", "pauses")
-TAKE_RECORD_NAMES = ("driver-ledger.json", "scrub.json")
+TAKE_RECORD_NAMES = ("driver-ledger.json", "scrub.json", "environment.json")
 
 
 def is_take_record(path: Path) -> bool:

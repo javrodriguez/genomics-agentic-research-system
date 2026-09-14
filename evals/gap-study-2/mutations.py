@@ -405,12 +405,37 @@ def _clean_walk(s: Sandbox) -> tuple[Path, list[str]]:
     return walk, ["--task", task, "--half", half, "--walk"]
 
 
+def _clean_take(s: Sandbox) -> tuple[Path, list[str]]:
+    """A graded take the checker reads valid, WITH its environment record, and the checker's argv for it.
+
+    ROUND 2, CP3. Done-line 12 names "a graded take with no first agent turn" and "a take with a leaked word", and
+    until CP3 both mutations ran on the walk fixture, because no take fixture existed. The take is rendered from
+    test-fixtures/environment-ledger/ into this sandbox's own repository: its row committed first, its session id
+    derived from that commit, its ledger and environment.json beside it, the checker run with --row as a graded
+    take is. The sandbox must be a git repository (the row's commit is read from history).
+    """
+    import importlib.util
+    path = s.study / "test-fixtures" / "environment-ledger" / "build_take.py"
+    if not path.is_file():
+        raise RuntimeError("no graded-take fixture to mutate, so the guard was not exercised")
+    spec = importlib.util.spec_from_file_location("environment_ledger_build_take", path)
+    build = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(build)
+    pre = json.loads(_prereg(s).read_text())
+    d = build.build_study(s.root, s.study, pre, s.commit, takes=(1,))[1]
+    return d / "transcript.jsonl", ["--task", build.ROW["task"], "--half", build.ROW["half"], "--row", "0"]
+
+
 def m_take_with_no_agent_turn(s: Sandbox) -> tuple[int, str]:
-    """A transcript with no agent turn is a rehearsal, never a take."""
-    walk, rest = _clean_walk(s)
-    s.control([str(s.study / "check_take.py"), str(walk), *rest])
+    """A transcript with no agent turn is a rehearsal, never a take.
+
+    Re-based at CP3 from the walk fixture onto a graded take with its environment record (_clean_take), mutated in
+    its own folder so its ledger and record still sit beside it.
+    """
+    take, rest = _clean_take(s)
+    s.control([str(s.study / "check_take.py"), str(take), *rest])
     keep = []
-    for ln in walk.read_text().splitlines():
+    for ln in take.read_text().splitlines():
         try:
             rec = json.loads(ln)
         except json.JSONDecodeError:
@@ -419,19 +444,18 @@ def m_take_with_no_agent_turn(s: Sandbox) -> tuple[int, str]:
         if isinstance(rec, dict) and rec.get("type") == "assistant":
             continue
         keep.append(ln)
-    p = s.root / "mutated" / "transcript.jsonl"
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text("\n".join(keep) + "\n")
-    code, out = s.run_out([str(s.study / "check_take.py"), str(p), *rest])
+    take.write_text("\n".join(keep) + "\n")
+    code, out = s.run_out([str(s.study / "check_take.py"), str(take), *rest])
     return (Sandbox.expect(code, out, "no agent turn produced text"),
-            "check_take.py on a clean walk with every agent record removed")
+            "check_take.py --row 0 on a clean graded take with every agent record removed")
 
 
 def m_leaked_word_in_an_operator_turn(s: Sandbox) -> tuple[int, str]:
-    walk, rest = _clean_walk(s)
-    s.control([str(s.study / "check_take.py"), str(walk), *rest])
+    """Re-based at CP3 from the walk fixture onto a graded take with its environment record (_clean_take)."""
+    take, rest = _clean_take(s)
+    s.control([str(s.study / "check_take.py"), str(take), *rest])
     lines, done = [], False
-    for ln in walk.read_text().splitlines():
+    for ln in take.read_text().splitlines():
         try:
             rec = json.loads(ln)
         except json.JSONDecodeError:
@@ -446,12 +470,10 @@ def m_leaked_word_in_an_operator_turn(s: Sandbox) -> tuple[int, str]:
         lines.append(ln)
     if not done:
         raise RuntimeError("no operator line to plant the word in, so the guard was not exercised")
-    p = s.root / "mutated" / "transcript.jsonl"
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text("\n".join(lines) + "\n")
-    code, out = s.run_out([str(s.study / "check_take.py"), str(p), *rest])
+    take.write_text("\n".join(lines) + "\n")
+    code, out = s.run_out([str(s.study / "check_take.py"), str(take), *rest])
     return (Sandbox.expect(code, out, "an operator turn contains"),
-            "check_take.py on a clean walk with a leaked word")
+            "check_take.py --row 0 on a clean graded take with a leaked word")
 
 
 def m_grading_against_a_draft(s: Sandbox) -> tuple[int, str]:
@@ -1376,8 +1398,9 @@ MUTATIONS = [
     ("a ledger check handed no history", m_shallow_history, True),
     ("a fixture that names the task", m_fixture_names_the_task, False),
     ("a manifest written inside the fixture", m_manifest_inside_the_fixture, False),
-    ("a take with no agent turn", m_take_with_no_agent_turn, False),
-    ("a leaked word in an operator turn", m_leaked_word_in_an_operator_turn, False),
+    # True since CP3: the graded take these break is bound to its row's commit, read from the sandbox's history.
+    ("a take with no agent turn", m_take_with_no_agent_turn, True),
+    ("a leaked word in an operator turn", m_leaked_word_in_an_operator_turn, True),
     ("grading against a draft", m_grading_against_a_draft, False),
     ("a checkout that keeps what it excludes", m_run_tree_keeps_what_it_excludes, False),
     ("a checkout named for the study", m_run_tree_named_for_the_study, False),
@@ -1583,6 +1606,19 @@ def m_fixture_test_reads_live_costs(s: Sandbox) -> tuple[int, str]:
     """A fixture-owned test that also reads the live COSTS.md, and swallows the miss, so the plain suite
     stays green; only the poisoned run can see it."""
     guard = _th(s, "TheSuiteNeverReadsLiveState")
+    # THE GUARD RE-RUNS THE WHOLE SUITE, SO ITS SANDBOX MUST CARRY WHAT A CLEAN CLONE CARRIES (CP3). Measured
+    # 13 Sep 2026 in the registered "objects" sandbox: the control was red before any mutation because
+    # TheRoundOneReadsOutsideTheCheckoutAreCounted found 11 of round 1's 124 committed transcripts (walks only),
+    # and TheRunTreeCarriesOnlyPermittedSweepHits found no README.md to sweep. Round 1's whole committed tree
+    # (its transcripts, walks, rehearsals and verification) and docs/ are copied in and committed, so the run
+    # tree is exported from a commit that holds them.
+    shutil.copytree(study.ROUND1, s.root / study.ROUND1_REL, dirs_exist_ok=True,
+                    ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(REPO / "docs", s.root / "docs", dirs_exist_ok=True)
+    for f in ("README.md",):
+        if (REPO / f).is_file():
+            shutil.copy2(REPO / f, s.root / f)
+    s.commit("what a clean clone carries")
     s.control(guard)
     _edit(s.study / "test_harness.py", "        costs.HERE = FIXTURE_STUDY\n",
           "        costs.HERE = FIXTURE_STUDY\n        try:\n            (HERE / \"COSTS.md\").read_text()\n"
@@ -1592,7 +1628,10 @@ def m_fixture_test_reads_live_costs(s: Sandbox) -> tuple[int, str]:
     # state" message: the hook writes the marker mid-line after unittest's progress dots, and the test
     # collects only lines that START with it, so that message did not appear and the red came from the
     # return-code assertion (measured 13 Sep 2026; reported to the test owner).
-    read = re.search(r"LIVE-STATE READ: open \S*/COSTS\.md", out)
+    # CP3: with the whole suite now running in a clean-clone sandbox, the outer test prints only the last 3000
+    # characters of the poisoned run, and the marker line falls before them; the hook's own refusal,
+    # `LiveStateRead: open <path>`, is the same hook naming the same read and stays in view. Either names COSTS.md.
+    read = re.search(r"(?:LIVE-STATE READ:|LiveStateRead:) open \S*/COSTS\.md", out)
     if code != 0 and not read:
         tail = " | ".join(out.strip().splitlines()[-3:])[:300]
         raise RuntimeError(f"red for another reason (no live read of COSTS.md named): {tail}")

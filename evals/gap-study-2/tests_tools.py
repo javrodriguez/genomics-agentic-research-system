@@ -16,6 +16,7 @@ No model, no network. stdlib only.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -34,7 +35,11 @@ BATTERY = HERE / "clean_clone_battery.sh"
 CHECKLIST = HERE / "check_checklist_names.py"
 
 TRAILER = "Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
-EXPECTED_SKIP = "TheCopiedFixtureBuildsToItsPin.test_the_fixture_builds_and_hashes_to_its_pin"
+EXPECTED_SKIPS = ("TheCopiedFixtureBuildsToItsPin.test_the_fixture_builds_and_hashes_to_its_pin",
+                  "TheFixtureNamesNoPathOutsideTheRunTree.test_the_copied_tree_hashes_to_its_pin_at_two_roots",
+                  "TheFixtureNamesNoPathOutsideTheRunTree.test_the_real_copied_tree_names_no_checkout_path")
+ORIGIN_REASON = ("the origin project is not on this machine (workspaces/gars-demo-v2/_runs/epigenome-a/20260903-1654/"
+                 "ws/projects/epigenome-a); plan-gate cannot be driven from this clone")
 
 
 def _py(*argv: str) -> subprocess.CompletedProcess:
@@ -177,22 +182,132 @@ class CiConclusionReadsEveryOutcome(unittest.TestCase):
         self.assertEqual(_py(str(CI)).returncode, 4)
 
 
+FAKE_GH = '''#!{python}
+import json, sys
+from pathlib import Path
+Path({log!r}).write_text(json.dumps(sys.argv[1:]))
+sys.stdout.write(Path({canned!r}).read_text())
+'''
+
+
+class CiConclusionResolvesTheCommitFirst(unittest.TestCase):
+    """`gh run list --commit` matches a full sha only, so a short sha read as "no run" beside a run that
+    had succeeded. The tool is copied into a synthetic repository and run there, against a gh on PATH that
+    records the argv it was handed and prints a canned success."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.tmp = Path(tmp.name)
+        repo = self.tmp / "src"
+        (repo / "evals" / "gap-study-2").mkdir(parents=True)
+        self.tool = repo / "evals" / "gap-study-2" / "ci_conclusion.py"
+        shutil.copy2(CI, self.tool)
+        _git(repo, "init", "-q")
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", "one")
+        self.full = _tip(repo)
+        bindir = self.tmp / "bin"
+        bindir.mkdir()
+        self.log = self.tmp / "gh-argv.json"
+        gh = bindir / "gh"
+        gh.write_text(FAKE_GH.format(python=sys.executable, log=str(self.log),
+                                     canned=str(FIX / "gh-success.json")))
+        gh.chmod(0o755)
+        self.env = dict(os.environ, PATH=str(bindir) + os.pathsep + os.environ.get("PATH", ""))
+
+    def conclude(self, arg: str, tool: Path | None = None) -> subprocess.CompletedProcess:
+        return subprocess.run([sys.executable, str(tool or self.tool), arg], capture_output=True, text=True,
+                              env=self.env)
+
+    def commit_gh_received(self) -> str:
+        argv = json.loads(self.log.read_text())
+        return argv[argv.index("--commit") + 1]
+
+    def test_a_short_sha_reaches_gh_as_its_full_sha_and_reads_as_the_full_sha_does(self):
+        short = self.conclude(self.full[:7])
+        self.assertEqual(short.returncode, 0, short.stdout + short.stderr)
+        self.assertEqual(self.commit_gh_received(), self.full)
+        self.log.unlink()
+        full = self.conclude(self.full)
+        self.assertEqual(full.returncode, 0, full.stdout + full.stderr)
+        self.assertEqual(self.commit_gh_received(), self.full)
+        self.assertEqual(short.stdout, full.stdout)
+        self.assertIn(f"{self.full[:12]}: 2 run(s), every one completed with success (exit 0)", full.stdout)
+
+    def test_an_argument_that_resolves_to_no_commit_is_exit_4_and_gh_is_never_run(self):
+        for arg in ("0000000", "not-a-commit", self.full[:39] + ("0" if self.full[39] != "0" else "1")):
+            r = self.conclude(arg)
+            self.assertEqual(r.returncode, 4, arg + ": " + r.stdout)
+            self.assertEqual(len(r.stdout.splitlines()), 1, r.stdout)
+            self.assertIn(repr(arg), r.stdout)
+            self.assertFalse(self.log.exists(), f"gh was run for {arg}")
+
+    def test_a_copy_without_its_own_repository_does_not_resolve_against_an_enclosing_one(self):
+        outer = self.tmp / "outer"
+        (outer / "inner" / "evals" / "gap-study-2").mkdir(parents=True)
+        tool = outer / "inner" / "evals" / "gap-study-2" / "ci_conclusion.py"
+        shutil.copy2(CI, tool)
+        _git(outer, "init", "-q")
+        _git(outer, "add", "-A")
+        _git(outer, "commit", "-qm", "outer")
+        r = self.conclude(_tip(outer), tool)
+        self.assertEqual(r.returncode, 4, r.stdout)
+        self.assertFalse(self.log.exists())
+
+
 class CleanCloneBatteryChecksItsSkips(unittest.TestCase):
+    def check_lines(self, lines: list[str]) -> subprocess.CompletedProcess:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        path = Path(tmp.name) / "suite.txt"
+        path.write_text("".join(lines))
+        return _bash("--check-skips", str(path))
+
+    def expected_lines(self) -> list[str]:
+        return (FIX / "suite-expected.txt").read_text().splitlines(keepends=True)
+
     def test_the_expected_skips_pass_and_are_named(self):
         r = _bash("--check-skips", str(FIX / "suite-expected.txt"))
         self.assertEqual(r.returncode, 0, r.stdout)
-        self.assertIn(f"skip (expected, outside a workspaces folder): {EXPECTED_SKIP}", r.stdout)
+        for name in EXPECTED_SKIPS:
+            self.assertEqual(r.stdout.count(f"skip (expected, the origin project is not on this machine): {name}\n"),
+                             1, name)
         self.assertEqual(r.stdout.count("skip (live class"), 3)
+        self.assertIn("skips as expected", r.stdout)
 
     def test_any_other_skip_fails_by_name(self):
         r = _bash("--check-skips", str(FIX / "suite-extra-skip.txt"))
         self.assertEqual(r.returncode, 1, r.stdout)
         self.assertIn("SKIP NOT EXPECTED: SomeOtherCheck.test_something", r.stdout)
+        self.assertNotIn("[expected-skip-count]", r.stdout)
 
-    def test_the_expected_skip_missing_fails(self):
+    def test_each_expected_skip_missing_or_repeated_fails_by_name(self):
+        for name in EXPECTED_SKIPS:
+            r = self.check_lines([x for x in self.expected_lines() if not x.startswith(f"SKIPPED {name}:")])
+            self.assertEqual(r.returncode, 1, name + ": " + r.stdout)
+            self.assertIn(f"[expected-skip-count] {name} skipped 0 time(s)", r.stdout)
+            self.assertEqual(r.stdout.count("[expected-skip-count]"), 1, r.stdout)
+            twice = self.expected_lines() + [f"SKIPPED {name}: {ORIGIN_REASON}\n"]
+            r = self.check_lines(twice)
+            self.assertEqual(r.returncode, 1, name + ": " + r.stdout)
+            self.assertIn(f"[expected-skip-count] {name} skipped 2 time(s)", r.stdout)
         r = _bash("--check-skips", str(FIX / "suite-missing-expected.txt"))
         self.assertEqual(r.returncode, 1, r.stdout)
-        self.assertIn("[expected-skip-count]", r.stdout)
+        self.assertEqual(r.stdout.count("skipped 0 time(s)"), 3, r.stdout)
+
+    def test_an_expected_name_skipping_for_another_reason_fails(self):
+        others = ("outside a workspaces folder",
+                  "the origin project is expected beside this repository and is missing: workspaces/x",
+                  "the origin project is not on this machine ()",
+                  "the origin project is not on this machine")
+        for name in EXPECTED_SKIPS:
+            for why in others:
+                lines = [f"SKIPPED {name}: {why}\n" if x.startswith(f"SKIPPED {name}:") else x
+                         for x in self.expected_lines()]
+                r = self.check_lines(lines)
+                self.assertEqual(r.returncode, 1, f"{name} / {why}: {r.stdout}")
+                self.assertIn(f"SKIP FOR ANOTHER REASON: {name}: {why}", r.stdout)
 
     def test_bad_arguments_are_usage_errors(self):
         for argv in (["--bogus"], ["--source"], ["--out"], ["--check-skips"], ["--source", ""]):
@@ -204,11 +319,17 @@ class CleanCloneBatteryChecksItsSkips(unittest.TestCase):
 
 
 FAKE_HARNESS = '''import sys, unittest
+WHY = {why!r}
 class TheCopiedFixtureBuildsToItsPin(unittest.TestCase):
     def test_the_fixture_builds_and_hashes_to_its_pin(self):
-        self.skipTest("outside a workspaces folder")
+        self.skipTest(WHY)
     def test_a_sibling_runs(self):
         pass
+class TheFixtureNamesNoPathOutsideTheRunTree(unittest.TestCase):
+    def test_the_copied_tree_hashes_to_its_pin_at_two_roots(self):
+        self.skipTest(WHY)
+    def test_the_real_copied_tree_names_no_checkout_path(self):
+        self.skipTest(WHY)
 {extra}
 if __name__ == "__main__":
     if "--mutations" in sys.argv:
@@ -224,6 +345,12 @@ def _git(cwd: Path, *argv: str) -> None:
                    capture_output=True, check=True)
 
 
+def _tip(repo: Path) -> str:
+    """The full sha a repository the test built is checked out at; never this repository."""
+    return subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"],
+                          capture_output=True, text=True, check=True).stdout.strip()
+
+
 class CleanCloneBatteryRunsInACleanClone(unittest.TestCase):
     """The whole script over a synthetic two-commit repository whose harness takes a second."""
 
@@ -236,7 +363,7 @@ class CleanCloneBatteryRunsInACleanClone(unittest.TestCase):
         (repo / "README").write_text("one\n")
         _git(repo, "add", "-A")
         _git(repo, "commit", "-qm", "one")
-        (repo / "evals" / "gap-study-2" / "test_harness.py").write_text(FAKE_HARNESS.format(extra=extra))
+        (repo / "evals" / "gap-study-2" / "test_harness.py").write_text(FAKE_HARNESS.format(why=ORIGIN_REASON, extra=extra))
         _git(repo, "add", "-A")
         _git(repo, "commit", "-qm", "two")
         self.out = Path(tmp.name) / "out.txt"
@@ -269,7 +396,8 @@ class CleanCloneBatteryRunsInACleanClone(unittest.TestCase):
         self.assertEqual(r.returncode, 0, text + r.stderr)
         for tool in ("claude", "gh"):
             self.assertIn(f"command -v {tool} inside the cleared environment: not found", text)
-        self.assertIn(f"SKIPPED {EXPECTED_SKIP}: outside a workspaces folder", text)
+        for name in EXPECTED_SKIPS:
+            self.assertIn(f"SKIPPED {name}: {ORIGIN_REASON}\n", text)
         self.assertIn("skips as expected", text)
         self.assertIn("suite OK, skips as expected, battery green", text)
 

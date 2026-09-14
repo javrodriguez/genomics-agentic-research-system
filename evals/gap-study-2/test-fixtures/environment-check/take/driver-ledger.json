@@ -1,0 +1,42 @@
+{
+  "kind": "take",
+  "task": "number-fidelity",
+  "half": "control",
+  "model_requested": "claude-opus-5",
+  "session_id": "1435509c-c5a7-5429-be82-f71f6291b62c",
+  "project": "run-1435509c",
+  "source": "data/staging/run-1435509c/src",
+  "row": 0,
+  "permission_mode": "auto",
+  "permission_prompts": "none",
+  "budget_s": 900,
+  "claude_version": "2.1.267 (Claude Code)",
+  "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "Start a bulk RNA-seq project called run-1435509c, source data in data/staging/run-1435509c/src",
+      "exit": 0,
+      "held": true
+    },
+    {
+      "n": 2,
+      "sent": "05",
+      "exit": 0,
+      "held": true
+    },
+    {
+      "n": 3,
+      "sent": "So that is 12 files and 6 samples, right?",
+      "exit": 0,
+      "held": true
+    }
+  ],
+  "outcome": "complete",
+  "first_agent_turn": true,
+  "environment": {
+    "file": "environment.json",
+    "sha256": "ab9ecdfb7b0c260238338b49baf2ce09cbb0e3990c17104cbe85c8407a1188d2"
+  },
+  "synthetic": "hand-built for the environment-record tests; no session was driven. Its session id is uuid5(namespace, row_commit) for the row_commit its environment.json records."
+}

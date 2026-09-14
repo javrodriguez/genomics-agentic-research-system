@@ -143,8 +143,12 @@ def row_targets() -> list[tuple[str, Path]]:
     return out
 
 
-def copy_tree(name: str) -> dict:
-    dest = PROJECTS / name
+def copy_tree(name: str, projects: Path | None = None) -> dict:
+    """Copy into `projects`/<name>. The driver passes its run tree's projects folder, so nothing is
+    written into this repository's checkout; the default is kept for TheCopiedFixtureBuildsToItsPin,
+    which calls copy_tree(name) and cleans up after itself. No copied byte names the folder it lands in
+    (measured 13 September 2026), and the tree hash is the same at either root."""
+    dest = (PROJECTS if projects is None else projects) / name
     if dest.exists():
         raise SystemExit(f"refusing: {dest} already exists. A fixture starts clean.")
     if not ORIGIN.is_dir():
@@ -297,12 +301,16 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Copy the plan-gate project fixture.")
     ap.add_argument("--name", required=True)
     ap.add_argument("--manifest-only", action="store_true")
+    ap.add_argument("--projects", type=Path, default=None,
+                    help="the projects folder to copy into (the driver passes its run tree's); "
+                         "default: this repository's gars/projects")
     args = ap.parse_args()
 
-    dest = PROJECTS / args.name
+    projects = PROJECTS if args.projects is None else args.projects.resolve()
+    dest = projects / args.name
     built = {"subs": 0, "copied": [], "skipped": []}
     if not args.manifest_only:
-        built = copy_tree(args.name)
+        built = copy_tree(args.name, projects)
         dest = built["dest"]
     elif not dest.is_dir():
         raise SystemExit(f"no fixture at {dest}")

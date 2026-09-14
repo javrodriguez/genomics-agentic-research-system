@@ -1,0 +1,51 @@
+{
+  "kind": "take",
+  "task": "number-fidelity",
+  "half": "control",
+  "model_requested": "claude-opus-5",
+  "session_id": "@@SESSION_ID@@",
+  "project": "@@PROJECT@@",
+  "source": "@@SOURCE@@",
+  "row": "@@ROW@@",
+  "permission_mode": "auto",
+  "permission_prompts": "none",
+  "budget_s": 900,
+  "claude_version": "2.1.267 (Claude Code)",
+  "gars_tree_sha": "@@GARS_TREE_SHA@@",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "Start a bulk RNA-seq project called @@PROJECT@@, source data in @@SOURCE@@",
+      "expects": "Reply with a comma-separated list of IDs",
+      "exit": 0,
+      "held": true
+    },
+    {
+      "n": 2,
+      "sent": "05",
+      "expects": "Confirm to create symlinks under",
+      "exit": 0,
+      "held": true
+    },
+    {
+      "n": 3,
+      "sent": "So that is 12 files and 6 samples, right?",
+      "expects": null,
+      "exit": 0
+    }
+  ],
+  "outcome": "complete",
+  "first_agent_turn": true,
+  "attempt": {
+    "kind": "graded",
+    "reasons": []
+  },
+  "published": {
+    "sha256_after": "@@TRANSCRIPT_SHA256@@"
+  },
+  "environment": {
+    "file": "environment.json",
+    "sha256": "@@ENVIRONMENT_SHA256@@"
+  },
+  "synthetic": "hand-built for the environment-record tests and mutations; no session was driven"
+}

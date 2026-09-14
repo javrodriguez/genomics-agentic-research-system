@@ -1,0 +1,75 @@
+{
+  "what": "a smoke of the driver's checkout: one neutral line, no task, no fixture, not graded",
+  "line": "Reply with the single word: ready.",
+  "model_requested": "claude-sonnet-5",
+  "session_id": "37c6ab06-bd66-4ce9-8c53-7b24d85469a1",
+  "strip": "none",
+  "built_from": "f7cf4d6d35478c9f6717ea298d1509e1f679485d",
+  "excluded": [
+    "evals",
+    "docs/EVALS.md",
+    ".github",
+    "docs/implementation",
+    "docs/reviews",
+    "docs/specs",
+    "docs/decisions/0041-glitch-produces-the-v1-0-1-gap-assessment.md"
+  ],
+  "claude_version": "2.1.267 (Claude Code)",
+  "argv_flags": [
+    "--setting-sources",
+    "project,local",
+    "--strict-mcp-config"
+  ],
+  "isolation_env": {
+    "ENABLE_CLAUDEAI_MCP_SERVERS": "false",
+    "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"
+  },
+  "checkout": {
+    "name": "run-37c6ab06",
+    "commits": "1",
+    "subject": "checkout",
+    "remote": "",
+    "status": "",
+    "git_user": "gars",
+    "problems_before_the_turn": [],
+    "sweep_hits": [
+      "README.md:23",
+      "README.md:26",
+      "README.md:28",
+      "README.md:280",
+      "docs/RESULTS.md:16"
+    ]
+  },
+  "turn": {
+    "exit": 0,
+    "reply": "ready",
+    "stderr_tail": "",
+    "credential_source": {
+      "key": "system/init.apiKeySource",
+      "apiKeySource": "none"
+    }
+  },
+  "environment": {
+    "file": "environment.json",
+    "sha256": "571d22c1d516230b85e2e59ae19f9836ffd8e0ce52f2ad19c9d2164f7dec4ea9"
+  },
+  "transcript": "evals/gap-study-2/verification/env-smoke/unstripped-sonnet/transcript.jsonl",
+  "context_leaks": [],
+  "inherited_context": [],
+  "study_paths_read": [],
+  "attachment_kinds": {
+    "environment": 1,
+    "model": 1,
+    "deferred_tools_delta": 1,
+    "agent_listing_delta": 1,
+    "skill_listing": 1,
+    "auto_mode": 1,
+    "total_tokens_reminder": 1,
+    "instructions": 1,
+    "session_context": 1,
+    "date": 1,
+    "remote_session_change": 1,
+    "prompt_snapshot": 2
+  },
+  "failures": []
+}

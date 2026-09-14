@@ -57,6 +57,10 @@ import transcript as tx  # noqa: E402
 
 RESULTS = HERE / "results"
 RAN = "RAN"
+# ROUND 2, CP3 (fix 4): the driver's record of the environment a take ran in, written beside its transcript
+# before the first turn and bound by the ledger's `environment.sha256`. Named here rather than read from
+# takes.py, because the tests hand this module a stand-in for takes.py.
+ENVIRONMENT_RECORD = "environment.json"
 # ROUND 2, CP2 (structural lesson 7): the commit whose gars tree the ledger check reads. Round 1 read the
 # tree at HEAD only, and every such reader went red the day gars/ moved (Ruling 38); `--at <sha>` names the
 # commit instead. The draft's `head_readers` lists this line, and EveryHeadReaderIsListed refuses an unlisted one.
@@ -249,6 +253,7 @@ def check_ledger(at: str = DEFAULT_AT) -> list[str]:
 
     if not rows:
         print("  the ledger is empty: no take has been registered")
+        print(f"  {environment_count_line({}, pre)}")
         return problems
 
     per_commit: dict[str, list[int]] = {}
@@ -279,6 +284,7 @@ def check_ledger(at: str = DEFAULT_AT) -> list[str]:
     per_cell: dict[tuple, dict] = {}
     attempted: dict[int, bool] = {}
     kinds: dict[int, str] = {}
+    graded: dict[int, Path] = {}
     matched = 0
     for i, row in enumerate(rows):
         sha = commits.get(i)
@@ -302,7 +308,9 @@ def check_ledger(at: str = DEFAULT_AT) -> list[str]:
         if tuple(rel[1:4]) != where or rel[4] != expected_leaf:
             problems.append(f"row {i}: its {kind} attempt sits at {'/'.join(rel)}, which is not the "
                             f"folder its row names")
-        problems += attempt_problems(kind, d, i, row, _check_take())
+        problems += attempt_problems(kind, d, i, row, _check_take(), row_commit=sha)
+        if kind == "graded":
+            graded[i] = d
         t = d / "transcript.jsonl"
         if kind == "graded" and not t.is_file():
             no_transcript.append(i)
@@ -339,6 +347,7 @@ def check_ledger(at: str = DEFAULT_AT) -> list[str]:
     print(f"  {len(rows)} row(s): {counts['graded']} graded, {counts['rehearsal']} rehearsal(s), "
           f"{counts['pause']} pause(s), {counts['not attempted']} not attempted; {matched} transcript(s) "
           f"bound to their row's commit")
+    print(f"  {environment_count_line(graded, pre)}")
     if cut_but_finished:
         print(f"  row(s) {cut_but_finished}: published as cut by their ledger while their last reply "
               f"ends at the end of a turn. A cut can land after the agent's last reply ended, so this "
@@ -348,6 +357,62 @@ def check_ledger(at: str = DEFAULT_AT) -> list[str]:
               f"from its driver ledger alone; the take checker never opens for it, so no binding in "
               f"the threat model is checked for it. The label counts against holding.")
     return problems
+
+
+def _bound_environment_record(d: Path) -> dict | None:
+    """The environment record beside this attempt when the attempt carries one, else None.
+
+    CARRIED MEANS READABLE AND BOUND: a JSON object in `environment.json` whose bytes are the ones the attempt's
+    own ledger records (`environment.sha256`). A file the ledger does not name, or names with other bytes, is
+    not the record the driver wrote, so it is not counted; whether a carried record is VALID is the take
+    checker's question (environment_problems), asked in attempt_problems and refused there.
+    """
+    env = d / ENVIRONMENT_RECORD
+    try:
+        led = json.loads((d / "driver-ledger.json").read_text())
+        rec = json.loads(env.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    bound = led.get("environment") if isinstance(led, dict) else None
+    if not isinstance(rec, dict) or not isinstance(bound, dict):
+        return None
+    if bound.get("file") != ENVIRONMENT_RECORD or bound.get("sha256") != sha256(env):
+        return None
+    return rec
+
+
+def environment_count_line(graded: dict[int, Path], pre: dict) -> str:
+    """The one line --ledger prints about the environment records of the graded takes (CP3, fix 4).
+
+    `N of M graded takes carry an environment record; K record no API-key variable set; J record apiKeySource
+    "<value>" on every turn; rows [...]`, where the rows are the graded takes that carry none.
+
+    <value> is the draft's `environment_record.subscription_source`, the value the env smoke observed. While that
+    is null (before the smoke has pinned it) there is no value to compare each turn with, so J counts instead the
+    takes whose record reports ONE source for every turn (`credential_source.reported` non-null; the driver writes
+    null when a turn reported none or two turns differ), and the line names the distinct reported values. The
+    count never refuses on the value: a source other than the subscription's stops the run under the money line,
+    and a refusal here would open a retake route (Decision 4).
+    """
+    value = (pre.get("environment_record") or {}).get("subscription_source")
+    carried = {i: rec for i, rec in ((i, _bound_environment_record(d)) for i, d in sorted(graded.items()))
+               if rec is not None}
+    lacking = sorted(set(graded) - set(carried))
+    no_key = sum(1 for rec in carried.values() if rec.get("api_key_set") is False)
+    head = (f"{len(carried)} of {len(graded)} graded takes carry an environment record; "
+            f"{no_key} record no API-key variable set; ")
+    if value is not None:
+        def every_turn(rec: dict) -> bool:
+            per_turn = (rec.get("credential_source") or {}).get("per_turn")
+            return (isinstance(per_turn, list) and bool(per_turn)
+                    and all(isinstance(t, dict) and t.get("apiKeySource") == value for t in per_turn))
+        on_every = sum(1 for rec in carried.values() if every_turn(rec))
+        return f'{head}{on_every} record apiKeySource "{value}" on every turn; rows {lacking}'
+    reported = [(rec.get("credential_source") or {}).get("reported") for rec in carried.values()]
+    reported = [r for r in reported if r is not None]
+    values = sorted({json.dumps(r) for r in reported})
+    return (f"{head}{len(reported)} record one apiKeySource reported on every turn, values [{', '.join(values)}] "
+            f"(no subscription value is pinned yet); rows {lacking}")
 
 
 _CT = None
@@ -498,12 +563,18 @@ def _ledger_made_reasons(d: Path, t: Path, row: dict, i: int, ct, got: list[str]
         tmp = Path(tmp)
         (tmp / "transcript.jsonl").write_bytes(t.read_bytes())
         (tmp / "driver-ledger.json").write_text(json.dumps(_normalised_ledger(led, row, t)))
+        # ROUND 2, CP3. The environment record is read beside the transcript, as the ledger is, so the re-run
+        # carries it byte for byte. Left behind, every re-run would refuse for a missing record and a refusal
+        # of the record made by an edit to the ledger could never be seen to disappear.
+        env = d / ENVIRONMENT_RECORD
+        if env.is_file():
+            (tmp / ENVIRONMENT_RECORD).write_bytes(env.read_bytes())
         with contextlib.redirect_stdout(io.StringIO()):
             after = ct.check(tmp / "transcript.jsonl", row["task"], row["half"], i, False)
     return sorted(set(ct.reason_ids(got)) - set(ct.reason_ids(after)))
 
 
-def attempt_problems(kind: str, d: Path, i: int, row: dict, ct) -> list[str]:
+def attempt_problems(kind: str, d: Path, i: int, row: dict, ct, row_commit: str | None = None) -> list[str]:
     """An attempt re-derived from its own bytes, against the folder it sits in (review 12, blocker 2).
 
     The folder was the only thing that decided an attempt's kind, so one `git mv` turned a graded take
@@ -511,6 +582,11 @@ def attempt_problems(kind: str, d: Path, i: int, row: dict, ct) -> list[str]:
     attempt must agree with its folder, a graded take must pass the take checker with its row, a
     rehearsal must carry its WHY.md and either the driver's death-before-first-turn or exactly the
     checker's reasons, and a pause must record a pause and no agent text.
+
+    ROUND 2, CP3. A graded take must also carry a valid environment record (`ct.environment_problems`), and a
+    rehearsal or a pause whose ledger names one must carry those bytes. `row_commit` is the commit that
+    introduced row `i`; --ledger passes the one it already read, and a caller that has none leaves it to be
+    read from history here.
     """
     import contextlib
     import io
@@ -558,14 +634,40 @@ def attempt_problems(kind: str, d: Path, i: int, row: dict, ct) -> list[str]:
         if outcome.startswith(("PAUSE", "REHEARSAL")):
             problems.append(f"row {i}: a graded take records the outcome {outcome.split(' ')[0]!r}")
         if t.is_file():
-            graded_problems = checked()
+            # ROUND 2, CP3. check() refuses a graded take without a valid environment record, and the call below
+            # refuses the same take by the same function, naming what is missing. The checker's copy is left out of
+            # this summary so a take is refused for its record once, with or without a transcript.
+            graded_problems = [p for p in checked() if ct.reason_ids([p]) != ["environment-record"]]
             if graded_problems:
                 problems.append(f"row {i}: the graded take does not pass the take checker "
                                 f"({sorted(set(ct.reason_ids(graded_problems)))})")
         elif not (led.get("first_agent_turn") and "no session file" in outcome):
             problems.append(f"row {i}: a graded take with no transcript must record a first agent turn "
                             f"and a missing session file")
-    elif kind == "rehearsal":
+        # ROUND 2, CP3 (fix 4, Decision 4). The driver writes the record before the first turn, so a graded take
+        # without a valid one is refused here, with or without a transcript, exactly as run.py refuses to grade
+        # it. The checker never refuses on the credential source's value.
+        if row_commit is None:
+            row_commit = takes_mod.row_commits().get(i)
+        with contextlib.redirect_stdout(io.StringIO()):
+            env_problems = ct.environment_problems(t, led, prereg.load(), row_commit)
+        if env_problems:
+            problems.append(f"row {i}: the graded take carries no valid environment record: "
+                            f"{'; '.join(env_problems)}")
+    if kind in ("rehearsal", "pause"):
+        # ROUND 2, CP3. A rehearsal frees its slot, so one founded on a deleted record is a retake route. The
+        # driver writes the record before the first turn and routes it with the attempt, and records its bytes
+        # in the ledger; a ledger that names a record with none beside it, or other bytes, was not left so by
+        # the driver. (A record deleted with its ledger entry leaves the checker's own [environment-record]
+        # refusal, which `driver_decided_reasons` refuses as a rehearsal's reason below.)
+        bound = led.get("environment")
+        env = d / ENVIRONMENT_RECORD
+        if bound is not None and not (isinstance(bound, dict) and bound.get("file") == ENVIRONMENT_RECORD
+                                      and env.is_file() and bound.get("sha256") == sha256(env)):
+            problems.append(f"row {i}: the {kind}'s ledger records an environment record and {ENVIRONMENT_RECORD} "
+                            f"beside it is missing or not the bytes it records; the driver routes the record with "
+                            f"the attempt, so a {kind} cannot be founded on a deleted one")
+    if kind == "rehearsal":
         if not (d / "WHY.md").is_file():
             problems.append(f"row {i}: a rehearsal carries no WHY.md naming its reasons")
         reasons = sorted((led.get("attempt") or {}).get("reasons") or [])

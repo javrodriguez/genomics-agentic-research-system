@@ -28,8 +28,9 @@ one commit introduces exactly one row. `--add` refuses while the previous row is
 `--audit` fails a commit that introduced more than one. That guard is the difference between a
 rule and a proof.
 
-The environment class is recorded per row because a local take and a subscription take are not the
-same experiment, and a reader should not have to infer which one a row was from the model id.
+The environment class is recorded per row, so a reader does not have to infer from the model id how a
+row was meant to run. Round 2 has one class: the local tier was removed at CP0. What a take actually
+ran under is not this field's to say; the driver's environment.json beside each take records it.
 
 No model, no network, stdlib only.
 """
@@ -50,7 +51,9 @@ LEDGER = HERE / "takes.json"
 sys.path.insert(0, str(HERE))
 import prereg  # noqa: E402
 
-ENVIRONMENT_CLASSES = ("claude-subscription-headless", "ollama-local", "ollama-local-control")
+# ROUND 2, CP3: the two ollama classes are gone with the local tier (CP0, amendment A5). Their only reader is
+# --environment-class below, so a row can no longer be registered under a tier this study does not have.
+ENVIRONMENT_CLASSES = ("claude-subscription-headless",)
 
 
 def git(*args: str) -> str:
@@ -119,6 +122,9 @@ def row_commits() -> dict[int, str]:
 # Where an attempt at a registered row can land (prereg attempt_layout). An attempt is found by the
 # session id in its driver ledger, which is the only thing that ties it to a row.
 ATTEMPT_KINDS = (("graded", "transcripts"), ("rehearsal", "rehearsals"), ("pause", "pauses"))
+# The files the driver leaves in an attempt folder. ROUND 2, CP3: environment.json joins them, written before
+# the first turn and routed with the attempt, so a folder holding only that record is still an attempt's.
+TAKE_RECORD_FILES = ("driver-ledger.json", "transcript.jsonl", "environment.json")
 
 
 def attempts_by_session() -> dict[str, list[tuple[str, Path]]]:
@@ -140,8 +146,8 @@ def attempts_by_session() -> dict[str, list[tuple[str, Path]]]:
 
 
 def unattributed_attempts() -> list[Path]:
-    """Every folder under the three attempt roots that holds a driver ledger or a transcript and that
-    no attempt's ledger ties to a session id (review 13, blocker 1).
+    """Every folder under the three attempt roots that holds a driver ledger, a transcript or an environment
+    record and that no attempt's ledger ties to a session id (review 13, blocker 1; the record, CP3).
 
     attempts_by_session() skips a ledger with no `kind: take` or no session id, so the ledger check
     that re-derives every attempt never saw such a folder, while the runner graded it. A folder a
@@ -154,7 +160,7 @@ def unattributed_attempts() -> list[Path]:
         if not root.is_dir():
             continue
         for f in sorted(root.rglob("*")):
-            if f.name not in ("driver-ledger.json", "transcript.jsonl") or not f.is_file():
+            if f.name not in TAKE_RECORD_FILES or not f.is_file():
                 continue
             d = f.parent
             # Round 1 excused one walk-era rehearsal folder here by name. Round 2 has no rehearsal

@@ -116,6 +116,61 @@ ISOLATION_FLAGS = ("--setting-sources", "project,local", "--strict-mcp-config")
 # (verification/auto-memory-smoke.txt). check_take refuses a take whose system prompt still offers it.
 ISOLATION_ENV = {"ENABLE_CLAUDEAI_MCP_SERVERS": "false", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}
 
+# ROUND 2, CP3 (Javier's ruling C, 14 Sep 2026): EACH TAKE'S SCRATCH LANDS INSIDE ITS OWN RUN TREE.
+#
+# Round 1's takes wrote scratch files into the machine's temporary folder: one agent redirected stage 00's output
+# there and read its own file back. That folder is also where other copies of this project can sit, so the take
+# checker is to refuse reads of the temp root outside the run tree. It could not do that without refusing a take
+# for its own scratch. So every turn is given a temp folder inside its run tree, named by the variables tools read
+# for one (TMPDIR, and TMP and TEMP for the tools that read those). The folder is git-excluded in the checkout, so
+# the status the agent is shown stays clean. None of the three is on any recorded list or matches a published
+# pattern, so the environment record is unchanged by them; driver_constants.run_tree_tmpdir carries both constants.
+RUN_TREE_TMPDIR = ".tmp"
+RUN_TREE_TMPDIR_VARIABLES = ("TMPDIR", "TMP", "TEMP")
+
+# ROUND 2, CP3 (fix 4, structural lesson 14): THE ENVIRONMENT WAS A STATEMENT, AND IS NOW A RECORD.
+#
+# Round 1 said its takes ran on the subscription and nothing beside a transcript showed it (Ruling 34). And
+# its driver passed os.environ wholesale, so a take driven from a Claude Code pane inherited that pane's
+# session variables, its effort level among them. Two things change here, both data in the draft:
+#
+#   the child environment drops an explicit list of inherited session names (driver_constants.stripped_env,
+#     J4 ruled yes: the twelve names, never a pattern), and the same environment is passed to every turn
+#     and read by the record, so what is recorded is what was given;
+#   environment.json, written beside the transcript before the first turn, names every variable in that
+#     environment matching the published vocabulary (names, never values), says of each listed key,
+#     billing route and subscription token whether it is absent, empty or set, and carries the credential
+#     source the harness reported on every turn.
+#
+# A set API key or a set billing route stops the driver before any session opens: the money line.
+# The vocabulary is read from the 2.1.267 binary; environment_record in the draft carries the same lists,
+# and a test binds the two.
+ENVIRONMENT_RECORD_FILE = "environment.json"
+ENVIRONMENT_SCHEMA = 1
+ENVIRONMENT_RECORD_SENTENCE = ("The names of the variables in the environment the session under test was given, "
+                               "and whether each listed one was absent, empty or set; never a value.")
+HARNESS_NAME_PATTERNS = (
+    "^ANTHROPIC_", "^CLAUDE_CODE_USE_(BEDROCK|VERTEX|FOUNDRY)$", "^CLAUDE_CODE_SKIP_.*_AUTH$",
+    "^CLAUDE_CODE_OAUTH_TOKEN$", "^CLAUDE_CODE_OAUTH_REFRESH_TOKEN$", "^CLAUDE_CODE_API_KEY_FILE_DESCRIPTOR$",
+    "^CLAUDE_CODE_GATEWAY_TOKEN_FILE_DESCRIPTOR$", "^CLAUDE_CODE_SESSION_ACCESS_TOKEN$",
+    "^CLAUDE_CODE_API_BASE_URL$", "^CLAUDE_CODE_CUSTOM_OAUTH_URL$", "^AWS_", "^GOOGLE_APPLICATION_CREDENTIALS$",
+    "^AZURE_",
+)
+GENERIC_NAME_PATTERNS = ("(API_?KEY|AUTH_?TOKEN|ACCESS_?TOKEN|_TOKEN$|SECRET|CREDENTIAL|PASSWORD)",)
+# A set one bills per token.
+API_KEY_VARIABLES = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_FOUNDRY_API_KEY",
+                     "ANTHROPIC_AWS_API_KEY", "CLAUDE_CODE_API_KEY_FILE_DESCRIPTOR", "AWS_BEARER_TOKEN_BEDROCK")
+# A set one moves the session off the subscription.
+BILLING_ROUTE_VARIABLES = ("CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY",
+                           "ANTHROPIC_BASE_URL", "CLAUDE_CODE_API_BASE_URL")
+# Recorded, never counted as an API key, never a stop.
+SUBSCRIPTION_TOKEN_VARIABLES = ("CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CODE_OAUTH_REFRESH_TOKEN",
+                                "CLAUDE_CODE_SESSION_ACCESS_TOKEN")
+CREDENTIAL_SOURCE_KEY = "system/init.apiKeySource"
+# The draft's explicit list, read where every other pre-registered constant is read. Empty when the draft
+# carries none, which is the unstripped condition.
+STRIPPED_ENV: tuple[str, ...] = tuple((prereg.load().get("driver_constants") or {}).get("stripped_env") or ())
+
 
 def now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -278,13 +333,18 @@ def clean_run_tree(commit: str, session_id: str, exclude: list[str], repo: Path 
             subprocess.run(g + ["config", key, val], check=True, capture_output=True)
         # The staging area the driver writes fixtures into is machine-local in the study's repository
         # (git-excluded there, not ignored), so it is excluded here too; otherwise the agent's first view
-        # of the checkout's status would list it as untracked.
+        # of the checkout's status would list it as untracked. The take's own temp folder (ruling C) is
+        # excluded beside it, for the same reason: whatever a tool writes there must not reach that status.
         (tree / ".git" / "info").mkdir(parents=True, exist_ok=True)
         with (tree / ".git" / "info" / "exclude").open("a") as fh:
             fh.write("data/staging/\n")
+            fh.write(f"{RUN_TREE_TMPDIR}/\n")
         subprocess.run(g + ["add", "-A"], check=True, capture_output=True)
         subprocess.run(g + ["commit", "-q", "--no-verify", "-m", TREE_SUBJECT],
                        check=True, capture_output=True)
+        # Made after the one commit and before any turn, here rather than in main(), so every caller of this
+        # function (the driver and the run-tree smoke) gets the folder child_env() points the take at.
+        (tree / RUN_TREE_TMPDIR).mkdir()
 
         problems = run_tree_problems(tree, session_id, exclude)
     except BaseException:
@@ -324,6 +384,14 @@ def run_tree_problems(tree: Path, session_id: str, exclude: list[str]) -> list[s
         out.append("the checkout has a remote, which names where it came from")
     if git("status", "--porcelain"):
         out.append("the checkout's status is not clean, and the agent is shown its status")
+    # The take's temp folder, read on the built tree: present, and excluded, so a file written there later
+    # cannot reach the status (an empty folder never shows in status, so presence alone would prove nothing).
+    if not (tree / RUN_TREE_TMPDIR).is_dir():
+        out.append(f"the take's temp folder {RUN_TREE_TMPDIR}/ is missing from the checkout")
+    elif subprocess.run(["git", "-C", str(tree), "check-ignore", "-q", f"{RUN_TREE_TMPDIR}/probe"],
+                        capture_output=True).returncode != 0:
+        out.append(f"the take's temp folder {RUN_TREE_TMPDIR}/ is not git-excluded, so a file a tool writes there "
+                   f"would show in the git status the agent is shown")
     if git("log", "-1", "--format=%s") != TREE_SUBJECT:
         out.append("the checkout's one commit does not carry the neutral subject")
     return out
@@ -387,9 +455,155 @@ def stream_error_text(stdout: str) -> str:
     return stream_split(stdout)[1]
 
 
+def stream_init_source(stdout: str) -> str | None:
+    """The credential source the harness reported for this turn: the top-level `apiKeySource` of the stream's
+    `type=system, subtype=init` record.
+
+    None when no init record carries a string there. Never the word "none": a source the harness did not
+    report is recorded as unreported, and a spelling of our own would read as a value it gave.
+    """
+    for raw in (stdout or "").splitlines():
+        raw = raw.strip()
+        if not raw:
+            continue
+        try:
+            rec = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(rec, dict) and rec.get("type") == "system" and rec.get("subtype") == "init":
+            src = rec.get("apiKeySource")
+            return src if isinstance(src, str) else None
+    return None
+
+
+def run_tree_temp_env(tree: Path | None) -> dict:
+    """TMPDIR, TMP and TEMP, each set to the run tree's own temp folder; nothing before a run tree exists.
+
+    Before clean_run_tree there is no folder to point at, and no turn can be sent (one_turn refuses), so the only
+    reader then is the money line, which reads names these three are not.
+    """
+    if tree is None:
+        return {}
+    folder = str(tree / RUN_TREE_TMPDIR)
+    return {name: folder for name in RUN_TREE_TMPDIR_VARIABLES}
+
+
+def child_env() -> dict:
+    """The environment every turn's session is given: this process's, minus the stripped names, plus isolation,
+    plus the run tree's temp folder.
+
+    One function, used by one_turn and by the environment record, so the record describes the environment
+    that was passed and not one rebuilt beside it. The temp variables are applied last, so no stripped list can
+    take them out of a take's environment.
+    """
+    return {k: v for k, v in os.environ.items() if k not in STRIPPED_ENV} | ISOLATION_ENV | run_tree_temp_env(RUN_TREE)
+
+
+def matched_by(name: str) -> str | None:
+    """"harness" when a harness pattern matches the name, else "generic" when the generic shape does, else None.
+
+    re.search on the name, case-sensitive, harness patterns tried first.
+    """
+    if any(re.search(p, name) for p in HARNESS_NAME_PATTERNS):
+        return "harness"
+    if any(re.search(p, name) for p in GENERIC_NAME_PATTERNS):
+        return "generic"
+    return None
+
+
+def never_stripped_problems(stripped) -> list[str]:
+    """Every stripped name that may never be stripped: one a harness pattern matches, or on any of the three lists.
+
+    Stripping such a name would hide a key, a billing route or a login from the record and from the money
+    line. The generic shape is not in this rule: it is a recording catch-all, and one of the twelve inherited
+    session names (CLAUDE_CODE_MESSAGING_TOKEN) has its shape.
+    """
+    listed = set(API_KEY_VARIABLES) | set(BILLING_ROUTE_VARIABLES) | set(SUBSCRIPTION_TOKEN_VARIABLES)
+    return [f"{n} is in driver_constants.stripped_env and "
+            + ("is on a listed credential or billing list" if n in listed else "matches a harness name pattern")
+            for n in stripped if n in listed or matched_by(n) == "harness"]
+
+
+def _presence(env, names) -> dict:
+    # Presence and emptiness only: a value is compared with the empty string and never kept.
+    return {n: ("absent" if n not in env else "empty" if env[n] == "" else "set") for n in names}
+
+
+def environment_record(child, parent, *, session_id: str, row: int | None, row_commit: str | None, task: str,
+                       half: str, model: str, claude_version: str) -> dict:
+    """environment.json, schema 1, before its first turn: per_turn empty and nothing reported yet."""
+    api = _presence(child, API_KEY_VARIABLES)
+    route = _presence(child, BILLING_ROUTE_VARIABLES)
+    return {
+        "record": ENVIRONMENT_RECORD_SENTENCE,
+        "schema": ENVIRONMENT_SCHEMA,
+        "session_id": session_id,
+        "row": row,
+        "row_commit": row_commit,
+        "task": task,
+        "half": half,
+        "model_requested": model,
+        "claude_version": claude_version,
+        "written_before_first_turn": True,
+        "name_patterns": {"harness": list(HARNESS_NAME_PATTERNS), "generic": list(GENERIC_NAME_PATTERNS)},
+        "names_present": [{"name": n, "matched_by": matched_by(n)} for n in sorted(child) if matched_by(n)],
+        "stripped_names": sorted(n for n in parent if n in STRIPPED_ENV and n not in child),
+        "api_key_variables": api,
+        "api_key_set": any(v == "set" for v in api.values()),
+        "billing_route_variables": route,
+        "billing_route_set": any(v == "set" for v in route.values()),
+        "subscription_token_variables": _presence(child, SUBSCRIPTION_TOKEN_VARIABLES),
+        "credential_source": {"key": CREDENTIAL_SOURCE_KEY, "per_turn": [], "reported": None},
+    }
+
+
+def money_line_names(rec: dict) -> list[str]:
+    """The API-key and billing-route variable names a record shows set. Any one stops the driver."""
+    return [n for block in ("api_key_variables", "billing_route_variables")
+            for n, state in rec[block].items() if state == "set"]
+
+
+def with_turns(rec: dict, turns: list[dict], sources: dict) -> dict:
+    """The record with one per_turn entry per ledger turn row, recovery rows included, in the ledger's order.
+
+    `n` and `recovery` are copied from the row itself (a step row carries no `recovery` field, so it reads
+    false); `apiKeySource` is what that row's turn reported, or None. `reported` is the one value every turn
+    gave, and None when any turn gave none or two turns differ.
+    """
+    per_turn = [{"n": r["n"], "recovery": bool(r.get("recovery")), "exit": r.get("exit"),
+                 "apiKeySource": sources.get(id(r))} for r in turns]
+    seen = {t["apiKeySource"] for t in per_turn}
+    reported = next(iter(seen)) if len(seen) == 1 and None not in seen else None
+    return {**rec, "credential_source": {**rec["credential_source"], "per_turn": per_turn, "reported": reported}}
+
+
+def write_record_atomically(path: Path, rec: dict) -> None:
+    """Written beside itself and moved into place, so a reader never meets half a record."""
+    tmp = path.with_name(f".{path.name}.partial")
+    tmp.write_text(json.dumps(rec, indent=2) + "\n")
+    os.replace(tmp, path)
+
+
+class TurnRows(list):
+    """ledger["turns"], which rewrites the environment record each time a row is added.
+
+    The loop appends rows in a separate place for each way a turn can end, and a record synced by hand in
+    each would be one place short the day another is written. Appending is the one thing they share.
+    """
+
+    def __init__(self, on_append):
+        super().__init__()
+        self._on_append = on_append
+
+    def append(self, row) -> None:
+        super().append(row)
+        self._on_append()
+
+
 def one_turn(line: str, session_id: str, model: str, first: bool,
-             budget_s: int) -> tuple[str, int, str, str]:
-    """Send one line. Returns (assistant_text, exit_code, stderr, the harness's own error text).
+             budget_s: int) -> tuple[str, int, str, str, str | None]:
+    """Send one line. Returns (assistant_text, exit_code, stderr, the harness's own error text,
+    the credential source the harness reported, or None).
 
     stdin is CLOSED deliberately: headless Claude Code reads anything left on stdin into the
     prompt, and a smoke test in the first study proved it by swallowing the test script itself.
@@ -407,12 +621,14 @@ def one_turn(line: str, session_id: str, model: str, first: bool,
                 "lost their blindness. Call clean_run_tree() first.")
         proc = subprocess.run(argv, cwd=str(RUN_TREE), capture_output=True, text=True,
                               stdin=subprocess.DEVNULL, timeout=budget_s,
-                              env={**os.environ, **ISOLATION_ENV})
-    except subprocess.TimeoutExpired:
-        return "", 124, f"turn exceeded the pre-registered budget of {budget_s}s", ""
+                              env=child_env())
+    except subprocess.TimeoutExpired as exc:
+        # A cut turn's stream up to the cut still carries its init record; the bytes may arrive undecoded.
+        partial = exc.stdout.decode("utf-8", "replace") if isinstance(exc.stdout, bytes) else (exc.stdout or "")
+        return "", 124, f"turn exceeded the pre-registered budget of {budget_s}s", "", stream_init_source(partial)
 
     said, harness = stream_split(proc.stdout)
-    return said, proc.returncode, proc.stderr, harness
+    return said, proc.returncode, proc.stderr, harness, stream_init_source(proc.stdout)
 
 
 def marker_holds(step: dict, said: str) -> bool:
@@ -641,6 +857,87 @@ def build_fixture(spec: dict, dest: Path) -> dict | None:
             "fixture_sha256": got}
 
 
+def build_take_fixture(fx: dict, run_tree: Path, name: str) -> tuple[dict | None, Path | None]:
+    """Build this half's fixture INSIDE the run tree and return (ledger record, source), or (None, None)
+    after saying why nothing can be driven.
+
+    ROUND 2, CP3: EVERY KIND IS BUILT WHERE THE AGENT WILL FIND IT. Round 1 built the precondition-refusal
+    project under this repository's checkout and moved it into the run tree afterwards. Stage 00 records the
+    source path it linked, absolutely, in CONTEXT.md, HISTORY.md and every raw/ link, so the agent read a path
+    inside the checkout; the read-outside-the-checkout control refuses exactly that. The project generator now
+    takes the run tree's workspace and staging folder, and the copied tree the run tree's projects folder, so
+    nothing is written into the checkout and nothing moves. TheFixtureNamesNoPathOutsideTheRunTree builds every
+    kind this way and reads every byte and link target for the checkout.
+    """
+    staging = run_tree / "data" / "staging" / name
+    proj_dir = run_tree / "gars" / "projects" / name   # where the agent will find it
+    kind = fx.get("kind")
+    if kind == "generated":
+        # A source directory the operator points stage 00 at. The project does not exist yet.
+        return build_fixture(fx, staging), staging / "src"
+    if kind == "first-study":
+        # The carried task. The first study's generator writes samples.csv beside src/, its
+        # neutraliser rewrites what would tell the agent it is being evaluated, its rank check proves
+        # which half this is, and the tree is hashed by this study's recipe against the frozen pin.
+        ledger_fixture = build_first_study_fixture(fx, staging, name)
+        print(f"    built the first study's {fx['half']} fixture: rank "
+              f"{fx['ground_truth']['design_matrix_rank']}, tree "
+              f"{ledger_fixture['tree_sha256_name_invariant'][:12]}"
+              f"{'  (matches the pin)' if ledger_fixture['pinned_sha256'] else '  (unpinned until the freeze)'}")
+        return ledger_fixture, staging / "src"
+    if kind == "project":
+        # A project that stage 00 has ALREADY produced -- precondition-refusal starts at stage 01,
+        # so its fixture is the finished project rather than a path to raw data. The generator
+        # builds it through the real stage 00 and then verifies, against stage 01 itself, that this
+        # half reaches the branch it is meant to probe.
+        gen = REPO / fx["generator"]
+        r = subprocess.run([sys.executable, str(gen), "--variant", fx["variant"],
+                            "--seed", str(fx["seed"]), "--name", name,
+                            "--workspace", str(run_tree / "gars"), "--staging", str(run_tree / "data" / "staging")],
+                           capture_output=True, text=True)
+        print("    " + (r.stdout.strip().splitlines() or ["(no output)"])[0])
+        if r.returncode != 0:
+            print(f"the fixture did not reach its branch, so no take is driven:\n{r.stdout}{r.stderr}")
+            return None, None
+        if not proj_dir.is_dir():
+            print(f"the project fixture was not built in the run tree ({proj_dir.relative_to(run_tree)} is "
+                  f"missing), so no take is driven")
+            return None, None
+        # REVIEW 12, F1. precondition-refusal's halves differ only in the project variant, so the ledger
+        # records the variant built and stage 01's exit on it, and check_take binds both to the half.
+        first = (r.stdout.strip().splitlines() or [""])[0]
+        m = re.search(r"exits (\d+) \(expected (\d+)\)", first)
+        return ({"kind": "project", "variant": fx["variant"], "seed": fx["seed"],
+                 "stage01_check_exit": int(m.group(1)) if m else None,
+                 "stage01_expected_exit": int(m.group(2)) if m else None}, proj_dir)
+    if kind == "copied-tree":
+        # A minimal copy of a project a real run produced. plan-gate needs stage 02 already
+        # COMPLETE, which nothing this study generates could honestly produce.
+        gen = REPO / fx["generator"]
+        r = subprocess.run([sys.executable, str(gen), "--name", name,
+                            "--projects", str(run_tree / "gars" / "projects")],
+                           capture_output=True, text=True)
+        if r.returncode != 0:
+            print(f"the fixture copy refused:\n{r.stdout[-600:]}{r.stderr[-400:]}")
+            return None, None
+        ledger_fixture = json.loads(r.stdout)
+        # REVIEW 19, BLOCKER 3. The carried builder refuses a tree that differs from its pin before a
+        # session opens; this one printed the hash and compared it with nothing, so a take could be
+        # driven from an altered origin project and honestly recorded.
+        pin = fx.get("sha256") or fx.get("tree_sha256_name_invariant")
+        built = ledger_fixture.get("tree_sha256_name_invariant")
+        if pin and built != pin:
+            print(f"REFUSING: the copied fixture hashes to {str(built)[:12]} and this half pins "
+                  f"{str(pin)[:12]}. Nothing was sent to a model.")
+            return None, None
+        print(f"    copied {ledger_fixture['files']} files, tree "
+              f"{ledger_fixture['tree_sha256_name_invariant'][:12]}, rows "
+              f"{ledger_fixture['rows_real']} real / {ledger_fixture['rows_stub']} stub")
+        return ledger_fixture, proj_dir
+    print(f"fixture kind {kind!r} is not drivable yet by this file")
+    return None, None
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Drive one take, or one pre-freeze walk.")
     ap.add_argument("--task", required=True)
@@ -679,12 +976,30 @@ def main() -> int:
               f"that the frozen file labels `timed-out` is graded instead.")
         return 2
 
+    # ---- the environment the session is given: the money line, before anything is built -----
+    # ROUND 2, CP3. A stripped name that hides a key, a route or a login is refused, and so is a set API key
+    # or billing route in the environment every turn would be passed. Only names are printed.
+    bad_strip = never_stripped_problems(STRIPPED_ENV)
+    if bad_strip:
+        print("refusing: " + "; ".join(bad_strip) + ". Stripping it would hide it from the environment record "
+              "and from the money line. Nothing was sent.")
+        return 2
+    money = money_line_names(environment_record(child_env(), os.environ, session_id="", row=None,
+                                                row_commit=None, task=args.task, half=args.half, model="",
+                                                claude_version=""))
+    if money:
+        print(f"refusing: {', '.join(money)} set in the environment the session would be given. A set API-key "
+              f"variable bills per token and a set billing-route variable moves the session off the "
+              f"subscription, so no session is opened. Nothing was sent.")
+        return 2
+
     # ---- who am I, and what id do I open with -----------------------------------------
     if args.walk:
         if not args.model:
             ap.error("--walk needs --model")
         model = args.model
         session_id = str(uuid.uuid4())
+        row_commit = None
         # Walks are numbered per TASK and capped at two, per the protocol. Numbering rather than
         # overwriting matters: walk 1 is the evidence for why walk 2's script differs, and the
         # freeze commit has to list every line that changed and why.
@@ -715,7 +1030,8 @@ def main() -> int:
                   f"'pre-registered before it ran' checkable.")
             return 2
         model = row["model"]
-        session_id = takes_mod.session_id_for(commits[args.row])
+        row_commit = commits[args.row]
+        session_id = takes_mod.session_id_for(row_commit)
         # REVIEW 13, F3. The checkout is exported from HEAD, so HEAD must carry the system under test the
         # study froze; the take checker binds the tree the ledger records as well.
         pinned_gars = pre["system_under_test"]["gars_tree_sha"]
@@ -772,84 +1088,16 @@ def main() -> int:
         print(f"refusing: {staging} already exists. A take starts from a clean fixture.")
         return 2
     fx = half.get("fixture") or {}
-    built_dir = REPO / "gars" / "projects" / name      # where the pinned generators write
     proj_dir = RUN_TREE / "gars" / "projects" / name   # where the agent will find it
-    for d in (built_dir, proj_dir):
-        if d.exists():
-            print(f"refusing: {d} already exists.")
-            return 2
+    if proj_dir.exists():
+        print(f"refusing: {proj_dir} already exists.")
+        return 2
 
-    ledger_fixture: dict | None = None
-    if fx.get("kind") == "generated":
-        # A source directory the operator points stage 00 at. The project does not exist yet.
-        ledger_fixture = build_fixture(fx, staging)
-        source = staging / "src"
-    elif fx.get("kind") == "first-study":
-        # The carried task. The first study's generator writes samples.csv beside src/, its
-        # neutraliser rewrites what would tell the agent it is being evaluated, its rank check proves
-        # which half this is, and the tree is hashed by this study's recipe against the frozen pin.
-        ledger_fixture = build_first_study_fixture(fx, staging, name)
-        print(f"    built the first study's {fx['half']} fixture: rank "
-              f"{fx['ground_truth']['design_matrix_rank']}, tree "
-              f"{ledger_fixture['tree_sha256_name_invariant'][:12]}"
-              f"{'  (matches the pin)' if ledger_fixture['pinned_sha256'] else '  (unpinned until the freeze)'}")
-        source = staging / "src"
-    elif fx.get("kind") == "project":
-        # A project that stage 00 has ALREADY produced -- precondition-refusal starts at stage 01,
-        # so its fixture is the finished project rather than a path to raw data. The generator
-        # builds it through the real stage 00 and then verifies, against stage 01 itself, that this
-        # half reaches the branch it is meant to probe.
-        gen = REPO / fx["generator"]
-        r = subprocess.run([sys.executable, str(gen), "--variant", fx["variant"],
-                            "--seed", str(fx["seed"]), "--name", name],
-                           capture_output=True, text=True)
-        print("    " + (r.stdout.strip().splitlines() or ["(no output)"])[0])
-        if r.returncode != 0:
-            print(f"the fixture did not reach its branch, so no take is driven:\n{r.stdout}{r.stderr}")
-            return 2
-        # REVIEW 12, F1. precondition-refusal's halves differ only in the project variant, so the ledger
-        # records the variant built and stage 01's exit on it, and check_take binds both to the half.
-        first = (r.stdout.strip().splitlines() or [""])[0]
-        m = re.search(r"exits (\d+) \(expected (\d+)\)", first)
-        ledger_fixture = {"kind": "project", "variant": fx["variant"], "seed": fx["seed"],
-                          "stage01_check_exit": int(m.group(1)) if m else None,
-                          "stage01_expected_exit": int(m.group(2)) if m else None}
-        # The generators are pinned by hash in the pre-registration, so they are not modified to
-        # take a target root. They write where they always wrote, and the result is moved into the
-        # checkout the agent runs in.
-        proj_dir.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(built_dir), str(proj_dir))
-        source = proj_dir
-    elif fx.get("kind") == "copied-tree":
-        # A minimal copy of a project a real run produced. plan-gate needs stage 02 already
-        # COMPLETE, which nothing this study generates could honestly produce.
-        gen = REPO / fx["generator"]
-        r = subprocess.run([sys.executable, str(gen), "--name", name],
-                           capture_output=True, text=True)
-        if r.returncode != 0:
-            print(f"the fixture copy refused:\n{r.stdout[-600:]}{r.stderr[-400:]}")
-            return 2
-        ledger_fixture = json.loads(r.stdout)
-        # REVIEW 19, BLOCKER 3. The carried builder refuses a tree that differs from its pin before a
-        # session opens; this one printed the hash and compared it with nothing, so a take could be
-        # driven from an altered origin project and honestly recorded.
-        pin = fx.get("sha256") or fx.get("tree_sha256_name_invariant")
-        built = ledger_fixture.get("tree_sha256_name_invariant")
-        if pin and built != pin:
-            print(f"REFUSING: the copied fixture hashes to {str(built)[:12]} and this half pins "
-                  f"{str(pin)[:12]}. Nothing was sent to a model.")
-            return 2
-        print(f"    copied {ledger_fixture['files']} files, tree "
-              f"{ledger_fixture['tree_sha256_name_invariant'][:12]}, rows "
-              f"{ledger_fixture['rows_real']} real / {ledger_fixture['rows_stub']} stub")
-        # The generators are pinned by hash in the pre-registration, so they are not modified to
-        # take a target root. They write where they always wrote, and the result is moved into the
-        # checkout the agent runs in.
-        proj_dir.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(built_dir), str(proj_dir))
-        source = proj_dir
-    else:
-        print(f"{args.task}: fixture kind {fx.get('kind')!r} is not drivable yet by this file")
+    # Built inside the run tree, every kind (round 2, CP3): nothing is built in this repository's checkout
+    # and moved, so no path the agent reads names the checkout.
+    ledger_fixture, source = build_take_fixture(fx, RUN_TREE, name)
+    if source is None:
+        print(f"{args.task}: no take is driven")
         return 2
 
     ledger = {"kind": kind, "task": args.task, "half": args.half, "model_requested": model,
@@ -864,6 +1112,28 @@ def main() -> int:
                                               capture_output=True, text=True).stdout.strip(),
               "turns": [], "outcome": None, "first_agent_turn": False}
 
+    # ---- the environment record, before the first turn ------------------------------------
+    # Built from the same child_env() every turn is passed. Unwritable, nothing is sent: a take with no
+    # record is one the checker refuses, and a session opened for it would be spent on a rehearsal.
+    env_path = out_root / ENVIRONMENT_RECORD_FILE
+    env_rec = environment_record(child_env(), os.environ, session_id=session_id,
+                                 row=None if args.walk else args.row, row_commit=row_commit, task=args.task,
+                                 half=args.half, model=model, claude_version=ledger["claude_version"])
+    turn_sources: dict[int, str | None] = {}
+
+    def sync_environment() -> None:
+        write_record_atomically(env_path, with_turns(env_rec, ledger["turns"], turn_sources))
+
+    try:
+        out_root.mkdir(parents=True, exist_ok=True)
+        sync_environment()
+    except OSError as exc:
+        shutil.rmtree(RUN_TREE, ignore_errors=True)
+        print(f"refusing: the environment record could not be written ({type(exc).__name__}), so no line is "
+              f"sent. Nothing was sent.")
+        return 2
+    ledger["turns"] = TurnRows(sync_environment)
+
     print(f"{kind}: {args.task} / {args.half} / {model}")
     print(f"  session {session_id}")
     print(f"  project {name}   source {source.relative_to(RUN_TREE)}")
@@ -874,12 +1144,14 @@ def main() -> int:
         shown = line if len(line) < 64 else line[:61] + "..."
         print(f"  [{i}/{len(steps)}] > {shown}")
         t0 = now()
-        said, code, err, harness_said = one_turn(line, session_id, model, first=(i == 1),
-                                                 budget_s=budget)
+        # `key_source`, not `source`: that name is the fixture path every line is rendered with.
+        said, code, err, harness_said, key_source = one_turn(line, session_id, model, first=(i == 1),
+                                                             budget_s=budget)
 
         row_rec = {"n": step["n"], "sent": line, "expects": step.get("marker"),
                    "means": step.get("means"), "at": t0, "exit": code,
                    "reply_chars": len(said)}
+        turn_sources[id(row_rec)] = key_source
 
         if said.strip():
             ledger["first_agent_turn"] = True
@@ -962,14 +1234,15 @@ def main() -> int:
             line2 = rec["send"].format(project=name, source=source.relative_to(RUN_TREE))
             print(f"        recovery: the reply is waiting at {rec['if_reply_holds']!r}; "
                   f"answering it once")
-            said2, code2, _err2, _harness2 = one_turn(line2, session_id, model, first=False,
-                                                      budget_s=budget)
+            said2, code2, _err2, _harness2, key_source2 = one_turn(line2, session_id, model, first=False,
+                                                                   budget_s=budget)
             # The recovery row is recorded AFTER the step row it answers, in every branch (review 12, F7).
             rec_row = {"n": step["n"], "sent": line2, "recovery": True,
                        "expects": marker, "at": now(), "exit": code2,
                        "reply_chars": len(said2),
                        "why": "pre-registered recovery for a wait point the script "
                               "does not otherwise answer"}
+            turn_sources[id(rec_row)] = key_source2
             if said2.strip():
                 ledger["first_agent_turn"] = True
 
@@ -1048,6 +1321,12 @@ def main() -> int:
     else:
         ledger["transcript"] = None
         ledger["outcome"] = (ledger["outcome"] or "") + f" — no session file for {session_id}"
+    # The record carries every turn row by now (TurnRows); it is written once more so its bytes are the final
+    # ones, and the ledger binds exactly those bytes. It sits in out_root, so route_attempt moves it with the
+    # folder and the in-place check below reads it where the ledger says.
+    sync_environment()
+    ledger["environment"] = {"file": ENVIRONMENT_RECORD_FILE,
+                             "sha256": hashlib.sha256(env_path.read_bytes()).hexdigest()}
     (out_root / "driver-ledger.json").write_text(json.dumps(ledger, indent=2) + "\n")
 
     if kind == "take":

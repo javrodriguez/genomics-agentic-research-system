@@ -1,0 +1,4 @@
+{"type": "system", "subtype": "init", "session_id": "7a2e4c6b-3d5f-5e8a-8b2c-4d6e8f0a2c33", "apiKeySource": "fixture-subscription-source", "model": "claude-sonnet-5", "timestamp": "2026-09-20T11:00:00Z"}
+{"type": "user", "session_id": "7a2e4c6b-3d5f-5e8a-8b2c-4d6e8f0a2c33", "timestamp": "2026-09-20T11:00:00Z", "message": {"role": "user", "content": "operator line one"}}
+{"type": "assistant", "session_id": "7a2e4c6b-3d5f-5e8a-8b2c-4d6e8f0a2c33", "timestamp": "2026-09-20T11:00:00Z", "message": {"model": "claude-sonnet-5", "role": "assistant", "content": [{"type": "text", "text": "a reply"}], "usage": {"input_tokens": 23, "output_tokens": 211, "cache_read_input_tokens": 8007, "cache_creation_input_tokens": 1409}}}
+{"type": "result", "subtype": "success", "session_id": "7a2e4c6b-3d5f-5e8a-8b2c-4d6e8f0a2c33", "total_cost_usd": 0.4213, "timestamp": "2026-09-20T11:01:12Z"}
