@@ -399,7 +399,7 @@ class TheCheckoutIsTheOnlyReadableTree(unittest.TestCase):
         r = self.run_checker(self.planted_walk(planted_path, "temp"), env)
         self.assertEqual(r.returncode, 1, "a read under the temp folder went unrefused through the command line:\n" + r.stdout)
         self.assertIn(f"'<temp folder>/{rel}'", r.stdout, "a read under the temp folder went unrefused through the command line")
-        self.assertNotIn(str(temp), r.stdout, "the refusal printed the machine path it refused")
+        self.assert_no_machine_path(r.stdout, planted_path, temp)
 
     def planted_walk(self, path: str, name: str) -> Path:
         """The leak walk fixture with one Read of `path` planted after its first agent turn."""
@@ -411,6 +411,24 @@ class TheCheckoutIsTheOnlyReadableTree(unittest.TestCase):
         extra = [json.dumps(r) for r in tool_records({"file_path": path}, result="{}", sid=sid)]
         (folder / "transcript.jsonl").write_text("\n".join(lines[:at] + extra + lines[at:]) + "\n")
         return folder / "transcript.jsonl"
+
+    def assert_no_machine_path(self, stdout: str, refused, root) -> None:
+        """The refusal masks what it refused: the refused path nowhere in the output, and its root nowhere in the
+        refusal line as a path (followed by `/`, not inside a masked label's tail).
+
+        FOUND IN CI ON 14 SEPTEMBER 2026 (Linux, reproduced on this Mac with /tmp resolving to itself). This was a
+        substring check of the root over the whole output. In the battery's sandbox the checkout is `/tmp/tmp<x>`, so
+        the root is the four characters `/tmp`, which occur in the correctly masked `<label>/tmp<x>--row-1/...` and in
+        the checker's own echo of the transcript it was handed (`walk: /tmp/...`, the test's temp folder). Neither
+        is the refused path; the guard went red with nothing mutated. On macOS the root resolves to
+        `/private/tmp` or `/var/folders/...`, which is no substring of either, so it stayed green there.
+        """
+        self.assertNotIn(str(refused), stdout, "the refusal printed the machine path it refused")
+        line = next((ln for ln in stdout.splitlines() if "[read-outside-the-checkout]" in ln), "")
+        self.assertTrue(line, "no read-outside-the-checkout refusal line to read")
+        for r in dict.fromkeys((Path(root).as_posix().rstrip("/"), str(root).rstrip("/"))):
+            self.assertIsNone(re.search(r"(?<![A-Za-z0-9._>-])" + re.escape(r) + "/", line),
+                              "the refusal printed the machine path it refused")
 
     @staticmethod
     def run_checker(t: Path, env: dict | None = None) -> subprocess.CompletedProcess:
@@ -502,7 +520,7 @@ class TheCheckoutIsTheOnlyReadableTree(unittest.TestCase):
         # id; reading the id alone, deleting the checkout rule's call site left this test green (measured).
         self.assertIn(f"'{PARENT_LABEL}/{repo.name}--row-1/evals/fixtures/x.json'", r.stdout,
                       "the sibling read went unrefused through the command line")
-        self.assertNotIn(str(repo.parent), r.stdout, "the refusal printed the machine path it refused")
+        self.assert_no_machine_path(r.stdout, sibling, repo.parent)
 
         # THE HOME RULE, AND ONLY IT. Found in the clean-clone battery, 13 September 2026: there the clone and HOME
         # shared one temporary folder, so a read planted under Path.home() also sat under the checkout's parent, the
@@ -524,7 +542,7 @@ class TheCheckoutIsTheOnlyReadableTree(unittest.TestCase):
                          + h.stdout)
         self.assertIn("'<home>/build-copy/evals/fixtures/x.json'", h.stdout,
                       "a read under the home folder went unrefused through the command line")
-        self.assertNotIn(str(home), h.stdout, "the refusal printed the machine path it refused")
+        self.assert_no_machine_path(h.stdout, clone, home)
 
 
 class TheRoundOneReadsOutsideTheCheckoutAreCounted(unittest.TestCase):

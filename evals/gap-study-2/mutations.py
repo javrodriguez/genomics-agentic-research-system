@@ -154,7 +154,7 @@ class Sandbox:
         code, out = self.run_out(argv)
         if code != 0:
             tail = " | ".join(out.strip().splitlines()[-3:])[:300]
-            raise ControlRed(f"the guard is red BEFORE the mutation (exit {code}): {tail}")
+            raise ControlRed(f"the guard is red BEFORE the mutation (exit {code}): {tail}{failing_tests(out)}")
         self.controlled = True
 
     @staticmethod
@@ -162,11 +162,20 @@ class Sandbox:
         """A red counts only when the refusal names the defect the mutation planted."""
         if code != 0 and phrase not in out:
             tail = " | ".join(out.strip().splitlines()[-3:])[:300]
-            raise RuntimeError(f"red for another reason (no {phrase!r}): {tail}")
+            raise RuntimeError(f"red for another reason (no {phrase!r}): {tail}{failing_tests(out)}")
         return code
 
     def close(self):
         self.tmp.cleanup()
+
+
+def failing_tests(out: str) -> str:
+    """The unittest `FAIL:`/`ERROR:` lines in a guard's output, so a red names its tests, not only its tail.
+
+    Found in CI on 14 September 2026: twelve CONTROL REDs printed "FAILED (failures=1)" and no test name.
+    """
+    names = list(dict.fromkeys(ln.strip() for ln in out.splitlines() if ln.startswith(("FAIL: ", "ERROR: "))))
+    return f" | failing: {'; '.join(names)}" if names else ""
 
 
 def _prereg(s: Sandbox) -> Path:
