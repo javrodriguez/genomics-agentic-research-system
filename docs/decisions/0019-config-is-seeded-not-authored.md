@@ -14,6 +14,10 @@ touches:
 ---
 # The project config is seeded, not authored
 
+> **Correction, 2026-09-13 (0043, owner 2A):** strandedness is not inferred or
+> guaranteed by configure.py. Stage 01 asks for any undeclared RNA strandedness,
+> replication unit and release and writes user-supplied values to project config.
+
 ## What happened
 
 Stage 01 finished and told the user: *"stage 02 reads `_config/<Assay ID>.yaml` and
@@ -44,7 +48,7 @@ the user operates it, when the user decides and the agent operates.
 
 **Stage 00 seeds `_config/` at project creation** from `_templates/config/`:
 
-- `<Assay ID>.yaml` with every derivable value already filled — `strandedness`, `aligner`,
+- `<Assay ID>.yaml` with every derivable value already filled — `aligner`,
   partition, time, cpus, mem, and `work_dir` resolved to the actual user and project.
 - The genuinely scientific keys left marked `<REQUIRED: …>` with an inline example, because no
   stage substitutes a value for them.

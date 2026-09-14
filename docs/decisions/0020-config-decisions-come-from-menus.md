@@ -12,6 +12,10 @@ touches:
 ---
 # The config's scientific decisions come from menus, not free text
 
+> **Correction, 2026-09-13 (0043, owner 2A):** strandedness is not inferred or
+> guaranteed by configure.py. Stage 01 asks for any undeclared RNA strandedness,
+> replication unit and release and writes user-supplied values to project config.
+
 ## The problem
 
 [0019](0019-config-is-seeded-not-authored.md) stopped the user authoring a config from a blank
@@ -73,5 +77,5 @@ agent may write values the user selected, and may never select one for them.
   unverified row is worse than an absent one.
 - **Mouse.** `/gpfs/data/sequence/references/iGenomes/Mus_musculus/Ensembl/` exists on this
   cluster and is the obvious next row, but it has not been run against. It stays out until it has.
-- **`strandedness`, `aligner`, `compute.*`.** Already filled by the seed and rarely wrong; adding
+- **`aligner`, `compute.*`.** Already filled by the seed and rarely wrong; adding
   menus for them would be motion, not safety.

@@ -8,6 +8,7 @@ one complete stage-00 fixture project per directory. Each project contains
 00_data/<assay>/{samples.csv,files.csv,raw/}, _config/<assay>.yaml, and expected.json:
 {"reason": "<failure.check>", "detail_contains": "<required diagnostic substring>",
  "seal_type": "independent_context" or "external_human_seal"}.
+Every RNA/ATAC project needs unit_of_replication and reference_release; RNA also needs strandedness; crossing subjects need paired: paired.
 Paths in files.csv are project-relative; raw inputs must be synthetic, with no
 patient-derived identifiers. Expected reasons use the stage-01 JSON failures'
 check vocabulary. detail_contains distinguishes specific invalid_design refusals.
@@ -50,7 +51,7 @@ class DevelopmentDesignTests(unittest.TestCase):
         data = self.project / '00_data' / assay
         data.mkdir(parents=True, exist_ok=True)
         (self.project / '_config').mkdir(exist_ok=True)
-        (self.project / '_config' / (assay + '.yaml')).write_text('strandedness: auto\n')
+        (self.project / '_config' / (assay + '.yaml')).write_text('strandedness: auto\nunit_of_replication: sample\nreference_release: synthetic-v1\n')
         fields = ['sample_id', 'condition', 'group', 'replicate'] + list(extra or {})
         rows = []
         for i, condition in enumerate(conditions):
@@ -117,6 +118,98 @@ class DevelopmentDesignTests(unittest.TestCase):
         path = data / 'samples.csv'
         path.write_text(path.read_text().replace('DEV1,', 'DEV0,'))
         self.refusal('invalid_design')
+
+    def config(self, text):
+        (self.project / '_config/rnaseq_bulk.yaml').write_text(text)
+
+    def test_required_declarations(self):
+        self.fixture()
+        for key in ('unit_of_replication', 'reference_release'):
+            for value in ('', "''", 'null', '<REQUIRED>'):
+                self.config('strandedness: auto\nunit_of_replication: sample\nreference_release: synthetic-v1\n' + key + ': ' + value + '\n')
+                self.refusal(key + '_undeclared')
+        self.config('strandedness: auto\n')
+        self.refusal('unit_of_replication_undeclared')
+        self.refusal('reference_release_undeclared')
+
+    def test_subject_nesting_and_pairing(self):
+        self.fixture(extra={'subject': ['donor1', 'donor2', 'donor1', 'donor2']})
+        self.refusal('subject_nesting')
+        for paired in ('unpaired', 'paired'):
+            self.config('strandedness: auto\nunit_of_replication: subject\nreference_release: synthetic-v1\npaired: ' + paired + '\n')
+            if paired == 'unpaired':
+                self.refusal('subject_nesting')
+            else:
+                self.assertEqual(check(self.project, write=True)[0], 0)
+                self.assertIn('subject', (self.project / '01_samplesheets/rnaseq_bulk_design.csv').read_text())
+
+    def test_subject_required_and_blank(self):
+        self.fixture()
+        self.config('strandedness: auto\nunit_of_replication: subject\nreference_release: synthetic-v1\n')
+        self.refusal('subject_undeclared')
+        self.fixture(extra={'subject': ['d1', '', 'd3', 'd4']})
+        self.refusal('subject_undeclared')
+
+    def test_declaration_values(self):
+        self.fixture(extra={'subject': ['d1', 'd2', 'd3', 'd4']})
+        for unit in ('sample', 'subject', 'cell_pseudobulk'):
+            self.config('strandedness: auto\nunit_of_replication: ' + unit + '\nreference_release: arbitrary-synthetic-release\n')
+            self.assertEqual(check(self.project)[0], 0)
+        for declaration in ('unit_of_replication: guessed', 'paired: yes'):
+            self.config('strandedness: auto\nunit_of_replication: sample\nreference_release: synthetic-v1\n' + declaration + '\n')
+            self.refusal('config')
+
+    def test_record_write_gates_and_contents(self):
+        self.fixture()
+        record = self.project / '01_samplesheets/rnaseq_bulk_design_check.json'
+        self.assertEqual(check(self.project)[0], 0)
+        self.assertFalse(record.exists())
+        code, result = check(self.project, write=True)
+        self.assertEqual(code, 0)
+        saved = record.read_bytes()
+        payload = json.loads(saved)
+        self.assertEqual(payload, result['assays']['rnaseq_bulk']['design_check'])
+        self.assertEqual(payload['unit_of_replication'], 'sample')
+        self.assertEqual(payload['reference_release'], 'synthetic-v1')
+        self.assertEqual(payload['paired'], '')
+        self.assertTrue(payload['checks'])
+        self.assertTrue(all(c['outcome'] == 'pass' for c in payload['checks']))
+        self.assertIn('reference_release_declaration', [c['check'] for c in payload['checks']])
+        self.assertEqual(check(self.project, write=True)[0], 2)
+        self.assertEqual(record.read_bytes(), saved)
+        for path in record.parent.glob('*.csv'):
+            path.unlink()
+        self.assertEqual(check(self.project, write=True)[0], 2)
+
+    def test_demo_metadata(self):
+        import shutil
+        import gzip
+        shutil.copytree(REPO / 'examples/demo-project', self.project, dirs_exist_ok=True)
+        with (self.project / '00_data/rnaseq_bulk/files.csv').open() as fh:
+            rows = csv.DictReader(line for line in fh if not line.startswith('#'))
+            for row in rows:
+                for key in ('fastq_1', 'fastq_2'):
+                    path = self.project / row[key]
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(gzip.compress(b'@synthetic\nACGT\n+\nIIII\n', mtime=0))
+        self.assertEqual(check(self.project)[0], 0)
+
+    def test_record_exit_gate_detects_tampering(self):
+        import importlib.util
+        from unittest.mock import patch
+        spec = importlib.util.spec_from_file_location('stage01_record_test', SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.fixture()
+        result = module.validate_assay(self.project, 'rnaseq_bulk')
+        original = Path.read_text
+        def tampered(path, *args, **kwargs):
+            if path.name.endswith('_design_check.json'):
+                return '{}'
+            return original(path, *args, **kwargs)
+        with patch.object(Path, 'read_text', tampered):
+            _, failures = module.write_assay(self.project, 'rnaseq_bulk', result)
+        self.assertTrue(any(f['check'] == 'exit_gate' for f in failures))
 
 
 class SealedDesignTests(unittest.TestCase):

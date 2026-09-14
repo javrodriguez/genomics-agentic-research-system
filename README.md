@@ -276,7 +276,7 @@ artifact each stage produces.
 ## Status
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(134 tests, green on macOS and on the cluster); live validation is per-assay. Agent behaviour is
+(141 tests, green on macOS and on the cluster); live validation is per-assay. Agent behaviour is
 graded separately and published in [docs/EVALS.md](docs/EVALS.md), against a pre-registration
 frozen before the first run:
 

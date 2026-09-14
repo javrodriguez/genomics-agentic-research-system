@@ -1,6 +1,6 @@
 ---
 date: 2026-09-13
-status: open
+status: standing
 kind: decision
 touches:
   - gars/_system/stage01_samplesheet.py
@@ -10,7 +10,7 @@ symptoms:
   - "subject nesting has no declared nesting relation"
   - "reference release has no config field"
 ---
-# Row 1 design schema requires owner decisions
+# Row 1 design schema: owner ruling 2A
 
 ## Context
 R-072 defines scientific refusals but not the metadata schema needed to distinguish
@@ -23,27 +23,41 @@ release field. A path substring is not a declaration. Statistical-test records a
 manifest consumer are not yet defined by Row 1's implementation.
 
 ## Decision
-OPEN — no defaults applied to these material choices. Owner questions:
-- How are arbitrary candidate covariates distinguished from identifiers, and how are
-  `Subject`, the nesting relation, and the replication unit declared? A subject occurring
-  across conditions must not be assumed to violate nesting: it may be paired.
-- Where is reference release declared, and when is it chosen without moving the current
-  stage-02 reference menu? R-072 check 8 remains pending this answer.
-- What Row 1 record carries `unit_of_replication` and the design-check output until the
-  manifest's implementation row? No statistical record or manifest is fabricated here.
+Owner ruling **2A, 13 September 2026**:
+1. RNA/ATAC `samples.csv` may append optional `subject` (donor / patient / model),
+   alongside optional `batch`, in either order. Any included blank subject is refused.
+   A subject in multiple conditions is refused unless `_config/<assay>.yaml` declares
+   `paired: paired`. The key `paired` allows `paired` or `unpaired`; missing/blank
+   carries no paired authorization. This is experimental pairing, not read layout.
+2. `_config/<assay>.yaml` declares `unit_of_replication`: `sample`, `subject`, or
+   `cell_pseudobulk`. Missing/blank is refused; `subject` requires a subject column.
+   No default is inferred. Existing sample-ID floors are retained in this row.
+3. `_config/<assay>.yaml` declares `reference_release`. Stage 01 refuses missing/blank
+   declarations, including unfilled placeholders/nulls, and checks only declaration.
+   No genome registry validation is added. Stage 02 keeps the reference menu (0020).
+4. Stage 01 writes `01_samplesheets/<assay>_design_check.json` only alongside its
+   other outputs, after the write gates. It records every executed validation check
+   group, its outcome and findings, and declared replication unit, reference release,
+   and pairing. The exit gate re-reads and compares its full content (0010).
+   A later manifest row consumes it; no manifest is built here.
 
-D-23 and D-24 remain open in the gap assessment. Formula/rank/contrast checks are not moved
-into stage 01, and explicit `strandedness: auto` remains accepted. This record does not
-resolve either question. Missing RNA strandedness is distinct from explicit `auto`.
+These Row 1 declarations apply to rnaseq_bulk and atacseq_bulk. Agents ask for missing
+values and write user-supplied declarations through the existing project config path
+(0019); they do not invent values or move stage 02 menus. RNA strandedness is explicitly
+required; explicit `auto` remains accepted pending D-24. D-23 (formula/rank/contrast)
+and broader candidate covariate roles are not resolved by this ruling.
 
 ## Test-that-proves-it
-`python3 tests/test_stage01_design.py` covers the implemented batch, ATAC floor,
-strandedness and duplicate-ID behaviors using unsealed development fixtures.
-Subject nesting, broader covariates, reference release, statistical records, and full 9/9
-acceptance remain unmeasured. Add acceptance cases after the schema decisions are made.
+`python3 tests/test_stage01_design.py`, unsealed `DevelopmentDesignTests`:
+- `test_subject_nesting_and_pairing`, `test_subject_required_and_blank`
+- `test_required_declarations`, `test_declaration_values`
+- `test_record_write_gates_and_contents`, `test_record_exit_gate_detects_tampering`
+- Existing batch, ATAC floor, strandedness, duplicate-ID and clean-design tests.
+`SealedDesignTests.test_row_1_recall` retains its interface and 3/3 threshold;
+unset sealed fixtures remain SKIPPED, and full 9/9 acceptance remains unmeasured.
 
 ## Status
-Open; owner decision required for the listed parts. No self-approval.
+Standing, owner ruling 2A; implementation is not self-approval of Row 1 exit.
 
 ## Date
 2026-09-13

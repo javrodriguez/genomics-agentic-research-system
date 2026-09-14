@@ -1,0 +1,77 @@
+{
+  "checks": [
+    {
+      "check": "inputs",
+      "failures": [],
+      "outcome": "pass"
+    },
+    {
+      "check": "registry",
+      "failures": [],
+      "outcome": "pass"
+    },
+    {
+      "check": "header",
+      "failures": [],
+      "outcome": "pass"
+    },
+    {
+      "check": "complete_design",
+      "failures": [],
+      "outcome": "pass"
+    },
+    {
+      "check": "duplicate_sample_id",
+      "failures": [],
+      "outcome": "pass"
+    },
+    {
+      "check": "input_units_layout_paths",
+      "failures": [],
+      "outcome": "pass"
+    },
+    {
+      "check": "referential_integrity",
+      "failures": [],
+      "outcome": "pass"
+    },
+    {
+      "check": "unit_of_replication_declaration",
+      "failures": [],
+      "outcome": "pass"
+    },
+    {
+      "check": "reference_release_declaration",
+      "failures": [],
+      "outcome": "pass"
+    },
+    {
+      "check": "paired_declaration",
+      "failures": [],
+      "outcome": "pass"
+    },
+    {
+      "check": "subject_requirement",
+      "failures": [],
+      "outcome": "pass"
+    },
+    {
+      "check": "group_and_replicate_design",
+      "failures": [],
+      "outcome": "pass"
+    },
+    {
+      "check": "samplesheet_config",
+      "failures": [],
+      "outcome": "pass"
+    },
+    {
+      "check": "format_sources",
+      "failures": [],
+      "outcome": "pass"
+    }
+  ],
+  "paired": "unpaired",
+  "reference_release": "synthetic-demo-v1",
+  "unit_of_replication": "sample"
+}

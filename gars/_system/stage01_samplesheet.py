@@ -9,8 +9,8 @@ never writes unless told which gate the user cleared. The agent decides what to 
 stop.
 
 Stdlib only, on purpose: stages 00 and 01 must run with no conda environment (unlike stage 02).
-The consequence is that `_config/<assay>.yaml` is read by a narrow top-level regex for the single
-key this stage needs, not by a YAML parser.
+The consequence is that `_config/<assay>.yaml` is read by a narrow top-level regex for the top-level
+scalars this stage needs, not by a YAML parser.
 
 Usage
 -----
@@ -193,6 +193,8 @@ FORMATS = {
 # Allowed values and defaults for any `config:` column above, keyed by config key.
 CONFIG_RULES = {
     "strandedness": {"values": STRANDEDNESS_VALUES, "default": ""},
+    "unit_of_replication": {"values": {"sample", "subject", "cell_pseudobulk"}, "default": ""},
+    "paired": {"values": {"paired", "unpaired"}, "default": ""},
 }
 
 EXIT_OK, EXIT_FAILURES, EXIT_NEEDS_CONFIRM, EXIT_PRECONDITIONS = 0, 1, 2, 3
@@ -259,7 +261,7 @@ def read_config_scalar(config_path, key):
         return default, None
 
     value = match.split("#", 1)[0].strip().strip("\"'")
-    if not value:
+    if not value or value.lower() in ("null", "~") or value.startswith("<REQUIRED"):
         return default, None
     allowed = rule.get("values")
     if allowed and value not in allowed:
@@ -281,6 +283,17 @@ def validate_assay(project, assay):
     """
     out = {"failures": [], "exclusions": [], "counts": {}}
     fails = out["failures"]
+    checks = []
+    checkpoint = [None, 0]
+
+    def begin(name):
+        if checkpoint[0] is not None:
+            findings = fails[checkpoint[1]:]
+            checks.append({"check": checkpoint[0], "outcome": "fail" if findings else "pass",
+                           "failures": list(findings)})
+        checkpoint[:] = [name, len(fails)]
+
+    begin("inputs")
 
     spec = FORMATS.get(assay)
     if spec is None:
@@ -306,6 +319,7 @@ def validate_assay(project, assay):
     if err:
         return {**out, "failures": [fail("preconditions", err)], "fatal": True}
 
+    begin("registry")
     # files.csv is machine-owned and derived from raw/. Nothing re-checked it against raw/ after
     # stage 00 wrote it, so a truncated or edited registry was consumed as truth: one project had
     # files.csv accounting for 40 of 152 linked FASTQs, and stage 01 reported 10 samples with no
@@ -352,18 +366,22 @@ def validate_assay(project, assay):
                                           "since registration"
                               % (len(vanished), assay, ", ".join(sorted(vanished)[:3]))))
 
+    begin("header")
     header = ws.design_columns(assay)
     for name, got, want in (("samples.csv", samples["fields"], header),
                             ("files.csv", files["fields"], ws.files_header(assay))):
         # R-072: batch is a design covariate, not a sample identifier. Preserve it
-        # through emission. Other metadata roles await decision 0043.
+        # through emission; subject follows owner ruling 0043. Other roles remain unspecified.
         if name == "samples.csv" and assay in ("rnaseq_bulk", "atacseq_bulk"):
-            want = header + (["batch"] if "batch" in got else [])
+            want = header + [c for c in got[len(header):] if c in ("batch", "subject")]
+            if len(got) != len(set(got)):
+                want = header
         if got != want:
             fails.append(fail("header", f"{name} header is {got}, expected {want}"))
     if fails:
         return {**out, "fatal": True}
 
+    begin("complete_design")
     # -- complete design row. The BASE columns must be filled; an assay's extra columns may be
     # blank at this grain -- a ChIP input or an IgG sample legitimately has no `control` of its
     # own. What a non-blank `control` must do is resolve (below); whether every target sample
@@ -385,6 +403,7 @@ def validate_assay(project, assay):
                                   f"samples.csv line {row['_n']}: control {ctrl!r} is not a "
                                   f"{referent} in this design"))
 
+    begin("duplicate_sample_id")
     # -- duplicate sample_id
     seen = {}
     for row in samples["rows"]:
@@ -396,6 +415,7 @@ def validate_assay(project, assay):
         elif sid:
             seen[sid] = row["_n"]
 
+    begin("input_units_layout_paths")
     # -- duplicate input units, and the layout. Both are per input kind: a fastq assay's unit
     # is (sample_id, lane) and its layout is a pairing question; a sample_dir assay's unit is
     # the sample itself, there is no lane and no pairing, and the input is a DIRECTORY -- so
@@ -456,6 +476,7 @@ def validate_assay(project, assay):
                                       f"files.csv line {row['_n']}: {col} {rel!r} does not "
                                       "resolve to a readable file"))
 
+    begin("referential_integrity")
     # -- referential integrity
     sample_ids = [r["sample_id"] for r in samples["rows"] if r["sample_id"]]
     file_ids = {r["sample_id"] for r in files["rows"]}
@@ -471,7 +492,33 @@ def validate_assay(project, assay):
 
     # -- valid design, over included samples only
     incl_rows = [r for r in samples["rows"] if r["sample_id"] in included]
+    declarations = {}
+    if assay in ("rnaseq_bulk", "atacseq_bulk"):
+        for key in ("unit_of_replication", "reference_release", "paired"):
+            begin(key + "_declaration")
+            value, err = read_config_scalar(project / "_config" / (assay + ".yaml"), key)
+            declarations[key] = value
+            if err:
+                fails.append(fail("config", err))
+            elif not value and key != "paired":
+                fails.append(fail(key + "_undeclared", key + " must be declared in _config/" + assay + ".yaml"))
+        begin("subject_requirement")
+        if declarations["unit_of_replication"] == "subject" and "subject" not in samples["fields"]:
+            fails.append(fail("subject_undeclared", "unit_of_replication subject requires a subject column"))
+        if "subject" in samples["fields"]:
+            begin("subject_nesting")
+            subjects = {}
+            for row in incl_rows:
+                if not row.get("subject"):
+                    fails.append(fail("subject_undeclared", "subject is blank for " + row["sample_id"]))
+                else:
+                    subjects.setdefault(row["subject"], set()).add(row["condition"])
+            for subject, conditions in sorted(subjects.items()):
+                if len(conditions) > 1 and declarations["paired"] != "paired":
+                    fails.append(fail("subject_nesting", "subject %r appears in more than one condition; declare paired: paired for a paired design" % subject))
+    out["design_check"] = {**declarations, "checks": []}
     if assay in ("rnaseq_bulk", "atacseq_bulk") and "batch" in samples["fields"]:
+        begin("batch_confounding")
         by_batch = {}
         for row in incl_rows:
             if not row.get("batch"):
@@ -483,6 +530,7 @@ def validate_assay(project, assay):
                               "batch perfectly confounded with condition; batch cannot "
                               "be separated from the condition effect (R-072)"))
     if assay == "atacseq_bulk":
+        begin("atac_replication")
         levels = {}
         for row in incl_rows:
             levels.setdefault(row["condition"], set()).add(row["sample_id"])
@@ -491,6 +539,7 @@ def validate_assay(project, assay):
                 fails.append(fail("insufficient_biological_replicates",
                                   "condition %r has %d biological sample(s); at least 2 "
                                   "per level required (R-143)" % (level, len(ids))))
+    begin("group_and_replicate_design")
     out["_design_fields"] = samples["fields"]
     groups = {}
     for row in incl_rows:
@@ -563,6 +612,7 @@ def validate_assay(project, assay):
             else:
                 reps[key] = row["sample_id"]
 
+    begin("samplesheet_config")
     # -- config-sourced columns
     config_values = {}
     for key in config_columns(fmt):
@@ -594,6 +644,7 @@ def validate_assay(project, assay):
                     # integrity estimate stays honest rather than showing 0 GB.
                     incl_bytes += sum(f.stat().st_size for f in p.rglob("*") if f.is_file())
 
+    begin("format_sources")
     design_by_id = {r["sample_id"]: r for r in incl_rows}
     for _, src in fmt:
         if src.startswith("design:"):
@@ -638,6 +689,8 @@ def validate_assay(project, assay):
     out["_format"] = fmt
     out["_config_values"] = config_values
     out["_design_by_id"] = design_by_id
+    begin(None)
+    out["design_check"]["checks"] = checks
     out["fatal"] = False
     return out
 
@@ -694,9 +747,19 @@ def write_assay(project, assay, res):
         for row in res["_incl_design_rows"]:
             w.writerow([row.get(c, "") for c in res["_design_fields"]])
 
+    record = sheet_dir / f"{assay}_design_check.json"
+    with ws.atomic_open(record) as fh:
+        json.dump(res["design_check"], fh, indent=2, sort_keys=True)
+        fh.write("\n")
+
     # Exit gate: re-read what was written. Checks content, not existence -- a file-exists check
     # passes happily on a table with the wrong rows in it (decision 0010).
     gate = []
+    try:
+        if json.loads(record.read_text(encoding="utf-8")) != res["design_check"]:
+            gate.append(fail("exit_gate", record.name + " does not match the design-check result"))
+    except (OSError, ValueError) as exc:
+        gate.append(fail("exit_gate", record.name + ": " + str(exc)))
     pathcol = path_column(assay)
     back_sheet, err = read_csv(sheet)
     if err:
@@ -727,7 +790,7 @@ def write_assay(project, assay, res):
         gate.append(fail("exit_gate", f"{design.name} sample_id set does not match the "
                                       "included samples"))
 
-    return [str(sheet.relative_to(project)), str(design.relative_to(project))], gate
+    return [str(sheet.relative_to(project)), str(design.relative_to(project)), str(record.relative_to(project))], gate
 
 
 def history_entry(assays, results, wrote, verify="none", version="unknown",
@@ -834,12 +897,16 @@ def main(argv=None):
     exclusions = {a: r["exclusions"] for a, r in results.items() if r["exclusions"]}
     existing = [p.name for a in assays
                 for p in (project / "01_samplesheets" / f"{a}_samplesheet.csv",
-                          project / "01_samplesheets" / f"{a}_design.csv")
+                          project / "01_samplesheets" / f"{a}_design.csv",
+                          project / "01_samplesheets" / f"{a}_design_check.json")
                 if p.is_file()]
 
     if args.verify_integrity == "full":
         for assay, res in results.items():
             problems = integrity.check_many(res["_incl_paths"], "full")
+            res["design_check"]["checks"].append({"check": "integrity",
+                "outcome": "fail" if problems else "pass",
+                "failures": [fail("integrity", "%s %s" % p) for p in problems]})
             for rel, problem in problems:
                 # result["assays"][assay] is a shallow copy of res, so this list is the SAME
                 # object -- appending to both duplicated every finding.
