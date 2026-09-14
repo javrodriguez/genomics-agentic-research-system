@@ -114,6 +114,11 @@ Unfilled `<REQUIRED>` and YAML null markers count as undeclared. Invalid enumera
 → `config`. Stage 01 checks release declaration only, with no genome-registry validation.
 Stage 02 retains its reference menu (0020). Existing sample-ID replication floors remain.
 
+**Declaration provenance.** Declaration entries carry value, provenance (seeded_default,
+declared_in_config, or absent), and history_ref (matching HISTORY.md line or null).
+The JSON report and record expose provenance_warning when paired: paired lacks a
+matching history entry; this warning does not refuse the project.
+
 **Design-check record.** `01_samplesheets/<Assay ID>_design_check.json` contains each
 executed validation check group, outcome (`pass`/`fail`) and findings, plus the declared
 `unit_of_replication`, `reference_release`, and `paired` for RNA/ATAC (empty pairing means
@@ -208,6 +213,9 @@ differential-expression sub-stage of 02_bioinformatics.
    missing top-level keys and preserving other settings. Never invent values or use
    `configure.py apply` to supply these: its stage-02 menus do not write them. If the user
    declares experimental pairing, record `paired: paired` (or explicit `unpaired`).
+   Whenever the agent writes unit_of_replication, reference_release or paired, append
+   a HISTORY.md entry quoting the user's answer verbatim and naming each key and value
+   as `key: value`. This applies to T9 and unsolicited pairing declarations.
    Reference paths and the genome menu remain stage 02's responsibility. Then validate.
 3. Run the validator, from the workspace root:
 
@@ -267,7 +275,8 @@ Stage 01 needs your declarations in _config/<Assay ID>.yaml:
 <missing keys, with allowed values: strandedness auto/forward/reverse/unstranded;
 unit_of_replication sample/subject/cell_pseudobulk; reference_release nonblank release name>
 
-Provide each listed value and I will write it to the project config and validate.
+Provide each listed value and I will write it to the project config, append a HISTORY.md
+entry quoting your answer verbatim and naming each key and value, then validate.
 ```
 
 **T1 — Start**

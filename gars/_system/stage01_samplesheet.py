@@ -270,6 +270,33 @@ def read_config_scalar(config_path, key):
     return value, None
 
 
+def declaration_record(project, assay):
+    """Record config origin by comparison with the stage-00 seed, not inferred authorship."""
+    config = project / "_config" / (assay + ".yaml")
+    seed = Path(__file__).resolve().parent.parent / "_templates/config" / (assay + ".yaml")
+    history = project / "HISTORY.md"
+    lines = history.read_text(encoding="utf-8").splitlines() if history.is_file() else []
+    entries = {}
+    keys = ["unit_of_replication", "reference_release", "paired"]
+    if assay == "rnaseq_bulk":
+        keys.append("strandedness")
+    for key in keys:
+        value, _ = read_config_scalar(config, key)
+        def raw_scalar(path):
+            matches = re.findall(r"^" + key + r":[ \t]*([^\n]*)", path.read_text(encoding="utf-8"), re.M) if path.is_file() else []
+            return matches[-1].split("#", 1)[0].strip().strip("\"'") if matches else None
+        raw, seeded = raw_scalar(config), raw_scalar(seed)
+        provenance = ("seeded_default" if seeded is not None and raw == seeded else
+                      "declared_in_config") if raw is not None else "absent"
+        pattern = re.compile(r"(?<![\w])" + re.escape(key) + r":\s*" +
+                             re.escape(value) + r"(?![\w-])") if value else None
+        history_ref = next(("HISTORY.md:%d: %s" % (n, line)
+                            for n, line in reversed(list(enumerate(lines, 1)))
+                            if pattern and pattern.search(line)), None)
+        entries[key] = {"value": value, "provenance": provenance, "history_ref": history_ref}
+    return entries
+
+
 # --- validation --------------------------------------------------------------------------------
 
 def fail(check, detail):
@@ -517,6 +544,10 @@ def validate_assay(project, assay):
                 if len(conditions) > 1 and declarations["paired"] != "paired":
                     fails.append(fail("subject_nesting", "subject %r appears in more than one condition; declare paired: paired for a paired design" % subject))
     out["design_check"] = {**declarations, "checks": []}
+    if assay in ("rnaseq_bulk", "atacseq_bulk"):
+        out["design_check"]["declarations"] = declaration_record(project, assay)
+        if declarations["paired"] == "paired" and out["design_check"]["declarations"]["paired"]["history_ref"] is None:
+            out["design_check"]["provenance_warning"] = "paired declared without a HISTORY entry quoting the user"
     if assay in ("rnaseq_bulk", "atacseq_bulk") and "batch" in samples["fields"]:
         begin("batch_confounding")
         by_batch = {}

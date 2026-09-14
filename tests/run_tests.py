@@ -188,7 +188,10 @@ class WorkspaceFixture(unittest.TestCase):
 
     def test_05_samplesheet_check_then_write(self):
         cfg = self.project / "_config/rnaseq_bulk.yaml"
-        cfg.write_text(cfg.read_text() + "\nunit_of_replication: sample\nreference_release: synthetic-v1\n")
+        cfg.write_text("\n".join(
+            "unit_of_replication: sample" if line.startswith("unit_of_replication:") else
+            "reference_release: synthetic-v1" if line.startswith("reference_release:") else line
+            for line in cfg.read_text().splitlines()) + "\n")
         code, res, raw = run(self.sheet, ["--project", "projects/tall-test", "--check"], self.ws)
         self.assertEqual(code, 0, raw)
         code, res, raw = run(self.sheet, ["--project", "projects/tall-test"], self.ws)
@@ -621,7 +624,10 @@ class AtacseqWrapperTests(unittest.TestCase):
         with samples_csv.open("w", newline="") as fh:
             csv.writer(fh).writerows(rows)
         cfg = self.project / "_config/atacseq_bulk.yaml"
-        cfg.write_text(cfg.read_text() + "\nunit_of_replication: sample\nreference_release: synthetic-v1\n")
+        cfg.write_text("\n".join(
+            "unit_of_replication: sample" if line.startswith("unit_of_replication:") else
+            "reference_release: synthetic-v1" if line.startswith("reference_release:") else line
+            for line in cfg.read_text().splitlines()) + "\n")
         code, res, raw = run(self.sheet_py, ["--project", "projects/atac-test"], self.ws)
         self.assertEqual(code, 0, raw)
         sheet = self.project / "01_samplesheets" / "atacseq_bulk_samplesheet.csv"

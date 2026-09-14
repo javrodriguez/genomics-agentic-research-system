@@ -1,6 +1,6 @@
 ---
 date: 2026-08-19
-status: standing
+status: superseded # partially by 0043-row-1-open-design-schema.md
 kind: decision
 symptoms:
   - "samplesheet emitted token by token"
@@ -83,7 +83,7 @@ being told which gate the user cleared.
 - **Stdlib only.** Stages 00 and 01 require no conda environment today, unlike stage 02. The
   helpers use `csv`, `pathlib`, `re`, `gzip`, `json` and nothing else, so that stays true. The
   consequence is that `_config/<assay>.yaml` is read by a narrow top-level regex for the one key
-  stage 01 needs (originally `strandedness`; extended by owner ruling 0043), not by a YAML parser.
+  stage 01 needs (`strandedness`), not by a YAML parser.
 - **The rules are stated twice** — as vocabulary in the contract's Definitions, as code in the
   script. Unavoidable. Mitigated by making the script's failures use the contract's exact names
   (`invalid_design`, `referential_integrity`), so a drift between them shows up in the output

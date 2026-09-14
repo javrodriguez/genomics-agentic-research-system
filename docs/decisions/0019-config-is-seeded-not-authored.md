@@ -1,6 +1,6 @@
 ---
 date: 2026-08-21
-status: standing
+status: superseded # partially by 0043-row-1-open-design-schema.md
 kind: lesson
 symptoms:
   - "'I have to write the config file? what?'"
@@ -13,10 +13,6 @@ touches:
   - gars/00_initialize_project/CONTEXT.md
 ---
 # The project config is seeded, not authored
-
-> **Correction, 2026-09-13 (0043, owner 2A):** strandedness is not inferred or
-> guaranteed by configure.py. Stage 01 asks for any undeclared RNA strandedness,
-> replication unit and release and writes user-supplied values to project config.
 
 ## What happened
 
@@ -48,7 +44,7 @@ the user operates it, when the user decides and the agent operates.
 
 **Stage 00 seeds `_config/` at project creation** from `_templates/config/`:
 
-- `<Assay ID>.yaml` with every derivable value already filled — `aligner`,
+- `<Assay ID>.yaml` with every derivable value already filled — `strandedness`, `aligner`,
   partition, time, cpus, mem, and `work_dir` resolved to the actual user and project.
 - The genuinely scientific keys left marked `<REQUIRED: …>` with an inline example, because no
   stage substitutes a value for them.

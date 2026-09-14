@@ -17,6 +17,10 @@
 # libraries set `unstranded` explicitly and the warning disappears.
 strandedness: auto
 
+# Stage 01 asks the user to complete these declarations.
+unit_of_replication: <REQUIRED: declare sample, subject, or cell_pseudobulk at stage 01>
+reference_release: <REQUIRED: declare the reference release at stage 01>
+
 # --- what to align against ---------------------------------------------------------------------
 # Declare EITHER `genome` OR `fasta` + `gtf`, never both.
 #

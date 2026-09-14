@@ -14,7 +14,8 @@ patient-derived identifiers. Expected reasons use the stage-01 JSON failures'
 check vocabulary. detail_contains distinguishes specific invalid_design refusals.
 The runner invokes stage01_samplesheet.py --check, requires exit 1, ok=false,
 and the named reason AND detail in the same failure; unrelated errors do not count.
-Only aggregate recall and seal counts are printed, never fixture contents.
+Only recall, seal counts and per-project counts of failures outside the expected reason
+are printed, never fixture contents.
 Exactly 3/3 is Row 1's exit threshold (full §7.2 remains 9/9). Unset variable is
 SKIPPED, never PASS. Empty/malformed fixture sets fail. Public claims additionally
 require all three external_human_seal fixtures; this runner never edits README.
@@ -159,6 +160,53 @@ class DevelopmentDesignTests(unittest.TestCase):
             self.config('strandedness: auto\nunit_of_replication: sample\nreference_release: synthetic-v1\n' + declaration + '\n')
             self.refusal('config')
 
+    def test_seeded_declarations(self):
+        for assay in ('rnaseq_bulk', 'atacseq_bulk'):
+            self.fixture(assay)
+            seed = (REPO / 'gars/_templates/config' / (assay + '.yaml')).read_text()
+            (self.project / '_config' / (assay + '.yaml')).write_text(seed)
+            code, result = check(self.project)
+            self.assertEqual(code, 1)
+            entries = result['assays'][assay]['design_check']['declarations']
+            for key in ('unit_of_replication', 'reference_release'):
+                self.assertIn(key + ': <REQUIRED:', seed)
+                self.assertEqual(entries[key], dict(value='', provenance='seeded_default', history_ref=None))
+            self.assertEqual(entries['paired'], dict(value='', provenance='absent', history_ref=None))
+            if assay == 'rnaseq_bulk':
+                self.assertEqual(entries['strandedness'], dict(value='auto', provenance='seeded_default', history_ref=None))
+            else:
+                self.assertNotIn('strandedness', entries)
+
+    def test_declared_provenance(self):
+        self.fixture()
+        code, result = check(self.project, write=True)
+        self.assertEqual(code, 0)
+        entries = result['assays']['rnaseq_bulk']['design_check']['declarations']
+        for key, value in (('unit_of_replication', 'sample'), ('reference_release', 'synthetic-v1')):
+            self.assertEqual(entries[key], dict(value=value, provenance='declared_in_config', history_ref=None))
+
+    def test_paired_history_provenance(self):
+        self.fixture(extra={'subject': ['d1', 'd2', 'd1', 'd2']})
+        self.config('strandedness: auto\nunit_of_replication: subject\nreference_release: synthetic-v1\npaired: paired\n')
+        line = '2026-09-14 rnaseq_bulk paired: paired; user answer: "These samples are paired."'
+        (self.project / 'HISTORY.md').write_text(line + '\n')
+        code, result = check(self.project, write=True)
+        self.assertEqual(code, 0)
+        record = result['assays']['rnaseq_bulk']['design_check']
+        self.assertEqual(record['declarations']['paired']['history_ref'], 'HISTORY.md:1: ' + line)
+        self.assertNotIn('provenance_warning', record)
+
+    def test_paired_without_history_warning(self):
+        self.fixture(extra={'subject': ['d1', 'd2', 'd1', 'd2']})
+        self.config('strandedness: auto\nunit_of_replication: subject\nreference_release: synthetic-v1\npaired: paired\n')
+        (self.project / 'HISTORY.md').write_text('paired: unpaired; user answer: "Unpaired."\n')
+        code, result = check(self.project, write=True)
+        self.assertEqual(code, 0)
+        record = result['assays']['rnaseq_bulk']['design_check']
+        self.assertIsNone(record['declarations']['paired']['history_ref'])
+        self.assertEqual(record['provenance_warning'], 'paired declared without a HISTORY entry quoting the user')
+        self.assertEqual(json.loads((self.project / '01_samplesheets/rnaseq_bulk_design_check.json').read_text()), record)
+
     def test_record_write_gates_and_contents(self):
         self.fixture()
         record = self.project / '01_samplesheets/rnaseq_bulk_design_check.json'
@@ -205,7 +253,9 @@ class DevelopmentDesignTests(unittest.TestCase):
         original = Path.read_text
         def tampered(path, *args, **kwargs):
             if path.name.endswith('_design_check.json'):
-                return '{}'
+                payload = json.loads(original(path, *args, **kwargs))
+                payload['declarations']['paired']['history_ref'] = 'forged'
+                return json.dumps(payload)
             return original(path, *args, **kwargs)
         with patch.object(Path, 'read_text', tampered):
             _, failures = module.write_assay(self.project, 'rnaseq_bulk', result)
@@ -220,13 +270,15 @@ class SealedDesignTests(unittest.TestCase):
         projects = sorted(p for p in Path(root).iterdir() if p.is_dir())
         self.assertEqual(len(projects), 3, 'Row 1 requires exactly three sealed projects')
         caught, human = 0, 0
-        for project in projects:
+        for project_number, project in enumerate(projects, 1):
             expected = json.loads((project / 'expected.json').read_text())
             self.assertIn(expected['seal_type'], ('independent_context', 'external_human_seal'))
             self.assertTrue(isinstance(expected['reason'], str) and expected['reason'])
             self.assertTrue(isinstance(expected['detail_contains'], str) and expected['detail_contains'])
             code, result = check(project)
             failures = [f for a in result.get('assays', {}).values() for f in a['failures']]
+            outside = sum(f['check'] != expected['reason'] for f in failures)
+            print('Sealed project %d: failures outside expected reason: %d' % (project_number, outside))
             caught += int(code == 1 and result.get('ok') is False and any(
                 f['check'] == expected['reason'] and expected['detail_contains'] in f['detail']
                 for f in failures))
