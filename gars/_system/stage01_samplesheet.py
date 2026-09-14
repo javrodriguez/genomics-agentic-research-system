@@ -192,7 +192,7 @@ FORMATS = {
 
 # Allowed values and defaults for any `config:` column above, keyed by config key.
 CONFIG_RULES = {
-    "strandedness": {"values": STRANDEDNESS_VALUES, "default": "auto"},
+    "strandedness": {"values": STRANDEDNESS_VALUES, "default": ""},
 }
 
 EXIT_OK, EXIT_FAILURES, EXIT_NEEDS_CONFIRM, EXIT_PRECONDITIONS = 0, 1, 2, 3
@@ -355,6 +355,10 @@ def validate_assay(project, assay):
     header = ws.design_columns(assay)
     for name, got, want in (("samples.csv", samples["fields"], header),
                             ("files.csv", files["fields"], ws.files_header(assay))):
+        # R-072: batch is a design covariate, not a sample identifier. Preserve it
+        # through emission. Other metadata roles await decision 0043.
+        if name == "samples.csv" and assay in ("rnaseq_bulk", "atacseq_bulk"):
+            want = header + (["batch"] if "batch" in got else [])
         if got != want:
             fails.append(fail("header", f"{name} header is {got}, expected {want}"))
     if fails:
@@ -467,12 +471,33 @@ def validate_assay(project, assay):
 
     # -- valid design, over included samples only
     incl_rows = [r for r in samples["rows"] if r["sample_id"] in included]
+    if assay in ("rnaseq_bulk", "atacseq_bulk") and "batch" in samples["fields"]:
+        by_batch = {}
+        for row in incl_rows:
+            if not row.get("batch"):
+                fails.append(fail("incomplete_design", "batch is blank for " + row["sample_id"]))
+            by_batch.setdefault(row.get("batch", ""), set()).add(row["condition"])
+        if (len({r["condition"] for r in incl_rows}) > 1 and by_batch
+                and all(len(levels) == 1 for levels in by_batch.values())):
+            fails.append(fail("confounded_condition",
+                              "batch perfectly confounded with condition; batch cannot "
+                              "be separated from the condition effect (R-072)"))
+    if assay == "atacseq_bulk":
+        levels = {}
+        for row in incl_rows:
+            levels.setdefault(row["condition"], set()).add(row["sample_id"])
+        for level, ids in sorted(levels.items()):
+            if len(ids) < 2:
+                fails.append(fail("insufficient_biological_replicates",
+                                  "condition %r has %d biological sample(s); at least 2 "
+                                  "per level required (R-143)" % (level, len(ids))))
+    out["_design_fields"] = samples["fields"]
     groups = {}
     for row in incl_rows:
         groups.setdefault(row["group"], []).append(row)
     # Group SIZE matters only where groups feed a statistical comparison. For rnaseq that is
     # the DE stage; for cutandrun a group IS the pipeline's sample unit and a one-sample group
-    # (an IgG control) is normal; ChIP/ATAC/methyl groups are organisational only.
+    # (an IgG control) is normal; ChIP/methyl groups are organisational only; ATAC has a condition floor above.
     if assay == "rnaseq_bulk":
         for gname, grows in sorted(groups.items()):
             distinct = {r["sample_id"] for r in grows}
@@ -544,6 +569,10 @@ def validate_assay(project, assay):
         value, err = read_config_scalar(project / "_config" / ("%s.yaml" % assay), key)
         if err:
             fails.append(fail("config", err))
+        elif key == "strandedness" and not value:
+            fails.append(fail("strandedness_undeclared",
+                              "RNA strandedness must be declared in _config/%s.yaml; "
+                              "explicit auto remains accepted pending D-24" % assay))
         else:
             config_values[key] = value
 
@@ -661,9 +690,9 @@ def write_assay(project, assay, res):
 
     with ws.atomic_open(design) as fh:
         w = csv.writer(fh, lineterminator="\n")
-        w.writerow(ws.design_columns(assay))
+        w.writerow(res["_design_fields"])
         for row in res["_incl_design_rows"]:
-            w.writerow([row.get(c, "") for c in ws.design_columns(assay)])
+            w.writerow([row.get(c, "") for c in res["_design_fields"]])
 
     # Exit gate: re-read what was written. Checks content, not existence -- a file-exists check
     # passes happily on a table with the wrong rows in it (decision 0010).

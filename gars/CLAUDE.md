@@ -12,6 +12,8 @@ wrappers — every assay's sub-stage runs on one (decisions 0028-0031).
 
 ## Agent entry point
 
+First, read AGENTS.md.
+
 Before responding to any request: read `CONTEXT.md` for the stage map, then read the `CONTEXT.md`
 of the stage the request maps to. Execute that contract literally.
 

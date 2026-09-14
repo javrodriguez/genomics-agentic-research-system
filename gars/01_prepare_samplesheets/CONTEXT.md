@@ -90,6 +90,14 @@ and design table, and **must be confirmed by the user before anything is written
 - no `(sample_id, lane)` pair appears more than once in `files.csv`;
 - an assay is wholly paired-end or wholly single-end, never mixed.
 
+**Row 1 design checks (R-072, R-143).** RNA and ATAC designs may append `batch`
+after their base columns; it must be filled and is preserved in the emitted design table.
+If every batch belongs to exactly one condition and multiple conditions exist, refuse with
+`confounded_condition`. `sample_id` is never tested as a covariate. Other candidate
+covariates and subject nesting await decision 0043; this is not the complete §7.2 check.
+ATAC requires at least two distinct biological `sample_id` values per `condition`;
+violation → `insufficient_biological_replicates`. Lanes never increase this count.
+
 **Samplesheet.** `01_samplesheets/<Assay ID>_samplesheet.csv`. One row per included `files.csv`
 row, with **columns determined by the assay**, because the samplesheet is the upstream pipeline's
 contract and differs per pipeline. `python3 _system/stage01_samplesheet.py --list-formats` prints
@@ -106,9 +114,9 @@ Paths are absolute **and inside the project** — they point at the symlinks in
 bypass the project's own registration of its data; this is why 02.01 warns that moving a project
 invalidates its samplesheet.
 
-A column sourced from `_config/<Assay ID>.yaml` (such as `strandedness`) falls back to that key's
-documented default when the file or key is absent; an unrecognised *value* is a `config` failure
-rather than a silent default. Multiple rows sharing a `sample` value are merged by nf-core as
+RNA `strandedness` must be explicitly declared in `_config/rnaseq_bulk.yaml`.
+Missing file, missing key, or blank value → `strandedness_undeclared`; an unrecognised value
+remains a `config` failure. Explicit `auto` remains accepted pending D-24. Multiple rows sharing a `sample` value are merged by nf-core as
 technical replicates, which is the intended handling of multi-lane samples.
 
 **Deep file-integrity verification.** Optional, **off by default**, and the reason this stage
@@ -156,7 +164,7 @@ is missing, empty, or unreadable). Both mean stage 00's output was edited or dam
 user there rather than to `samples.csv`.
 
 **Design table.** `01_samplesheets/<Assay ID>_design.csv`, header
-`sample_id,condition,group,replicate`. One row per included `sample_id`. Consumed by the
+`sample_id,condition,group,replicate` (plus optional `batch` for RNA/ATAC). One row per included `sample_id`. Consumed by the
 differential-expression sub-stage of 02_bioinformatics.
 
 **The script's exit codes.** These, and not your reading of its output, determine the branch:
@@ -328,7 +336,7 @@ Written to `projects/<project_title>/01_samplesheets/`, by the script and never 
 | Artifact | Contents |
 |---|---|
 | `<Assay ID>_samplesheet.csv` | Columns per the assay's registered format; one row per included sample-lane, absolute paths inside the project. Consumed by 02_bioinformatics. |
-| `<Assay ID>_design.csv` | `sample_id,condition,group,replicate`. One row per included sample. Consumed by the differential-expression sub-stage of 02_bioinformatics. |
+| `<Assay ID>_design.csv` | `sample_id,condition,group,replicate`, preserving optional RNA/ATAC `batch`. One row per included sample. Consumed by the differential-expression sub-stage of 02_bioinformatics. |
 
 The `HISTORY.md` entry records the **template version this stage ran under** and
 `Deep file-integrity verification: full|none`. The version is stamped per stage, not only at

@@ -14,8 +14,7 @@ three questions:
     status(job_id)       the argv that asks after it -> PENDING | RUNNING | COMPLETED | FAILED
 
 No descriptor file, or `name: slurm`, means the built-in Slurm descriptor, whose bytes are
-identical to what this system generated before the seam existed (pinned by a golden-bytes
-test). A cluster that upgrades GARS notices nothing.
+identical to what this system generated before the seam existed. A cluster that upgrades GARS notices nothing.
 
 The built-in `local` backend runs the generated script under `nohup`-style detachment and
 reports the PID as the job id. It exists so the deterministic core can exercise a real

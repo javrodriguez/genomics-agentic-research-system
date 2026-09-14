@@ -37,6 +37,8 @@ REPO = Path(__file__).resolve().parent.parent
 GARS = REPO / "gars"
 
 sys.path.insert(0, str(GARS / "_system"))
+from test_stage01_design import DevelopmentDesignTests, SealedDesignTests
+
 import workspace  # noqa: E402 -- the single source of truth for the pipeline pins
 
 
@@ -574,10 +576,10 @@ class AtacseqWrapperTests(unittest.TestCase):
                        "| TESTG | Test species | T1 | fixture | %s | %s | %s | MT | 12345 |\n"
                        % (cls.refs / "genome.fa.gz", cls.refs / "genome.gtf.gz",
                           cls.refs / "derived"))
-        # raw data: 2 samples, paired-end
+        # Unsealed development fixture: two biological samples per condition (R-143).
         cls.src = cls.tmp / "seqrun"
         cls.src.mkdir()
-        for s in ("ATAC1_S1", "ATAC2_S2"):
+        for s in ("ATAC1_S1", "ATAC2_S2", "ATAC3_S3", "ATAC4_S4"):
             for r in ("R1", "R2"):
                 write_fastq_gz(cls.src / ("%s_L001_%s_001.fastq.gz" % (s, r)))
         cls.reg_py = cls.ws / "_system" / "stage00_register.py"
@@ -610,10 +612,10 @@ class AtacseqWrapperTests(unittest.TestCase):
             rows = list(csv.reader(fh))
         head = rows[0]
         for i, r in enumerate(rows[1:], 1):
-            cond = "KO" if i == 1 else "WT"
+            cond = "KO" if i <= 2 else "WT"
             r[head.index("condition")] = cond
             r[head.index("group")] = cond
-            r[head.index("replicate")] = "1"
+            r[head.index("replicate")] = str((i - 1) % 2 + 1)
         with samples_csv.open("w", newline="") as fh:
             csv.writer(fh).writerows(rows)
         code, res, raw = run(self.sheet_py, ["--project", "projects/atac-test"], self.ws)
@@ -623,7 +625,7 @@ class AtacseqWrapperTests(unittest.TestCase):
         self.assertEqual(lines[0], "sample,fastq_1,fastq_2,replicate",
                          "the emitted format is the assay's own, not the RNA layout")
         emitted = sorted(l.split(",")[0] for l in lines[1:])
-        self.assertEqual(emitted, ["KO", "WT"],
+        self.assertEqual(emitted, ["KO", "KO", "WT", "WT"],
                          "sample is the GROUP (0035) -- the pipeline's checker demands it")
 
     def test_00b_group_semantics_laws_refuse_early(self):
@@ -657,10 +659,10 @@ class AtacseqWrapperTests(unittest.TestCase):
         self.assertIn("positive integer", msgs)
         # restore the good design for the tests that follow
         for i, r in enumerate(rows[1:], 1):
-            cond = "KO" if i == 1 else "WT"
+            cond = "KO" if i <= 2 else "WT"
             r[head.index("condition")] = cond
             r[head.index("group")] = cond
-            r[head.index("replicate")] = "1"
+            r[head.index("replicate")] = str((i - 1) % 2 + 1)
         with samples_csv.open("w", newline="") as fh:
             csv.writer(fh).writerows(rows)
         code, _, raw = run(self.sheet_py, ["--project", "projects/atac-test", "--force"],
@@ -722,14 +724,15 @@ class AtacseqWrapperTests(unittest.TestCase):
         (ml / "bigwig").mkdir(parents=True, exist_ok=True)
         (self.substage / "run" / "results" / "multiqc" / "narrow_peak").mkdir(
             parents=True, exist_ok=True)
-        for s in samples:
-            (peaks / ("%s_REP1_peaks.narrowPeak" % s)).write_text("chr1\t1\t2\n")
-            (ml / "bigwig" / ("%s_REP1.bigWig" % s)).write_text("bw")
-            (ml / ("%s_REP1.mLb.clN.sorted.bam" % s)).write_text("bam")
-        cols = "\t".join("%s_REP1.bam" % s for s in (include_in_counts or samples))
+        for s in ["%s_REP%d" % (sample, rep) for sample in samples for rep in (1, 2)]:
+            (peaks / ("%s_peaks.narrowPeak" % s)).write_text("chr1\t1\t2\n")
+            (ml / "bigwig" / ("%s.bigWig" % s)).write_text("bw")
+            (ml / ("%s.mLb.clN.sorted.bam" % s)).write_text("bam")
+        cols = "\t".join("%s.bam" % s for s in ["%s_REP%d" % (sample, rep)
+                                for sample in (include_in_counts or samples) for rep in (1, 2)])
         (peaks / "consensus" / "consensus_peaks.mLb.clN.bed").write_text("chr1\t1\t2\tp1\n")
         (peaks / "consensus" / "consensus_peaks.mLb.clN.featureCounts.txt").write_text(
-            "# fc\nGeneid\tChr\tStart\tEnd\tStrand\tLength\t%s\np1\tchr1\t1\t2\t+\t2\t1\t1\n" % cols)
+            "# fc\nGeneid\tChr\tStart\tEnd\tStrand\tLength\t%s\np1\tchr1\t1\t2\t+\t2\t%s\n" % (cols, "\t".join(["1"] * len(cols.split("\t")))))
         (self.substage / "run" / "results" / "multiqc" / "narrow_peak"
          / "multiqc_report.html").write_text("<html>ok</html>")
 
