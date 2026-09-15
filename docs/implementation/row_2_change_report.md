@@ -245,3 +245,131 @@ measured results, and the standing separate-study merge condition still applies.
   growth to ten tasks, and repository-wide sanitization remain separately scoped.
 - The separate study's done commit and merge condition were not verified or waived.
   Frozen paths are unchanged; no merge is performed.
+
+
+## Review round 2 fixes
+
+Date: **2026-09-15**. Reviewed base: `28b20e5`. Independent review:
+`docs/reviews/row_2_review_round2.md` (unchanged and untracked). This section
+supplements the complete earlier report; it does not rewrite its judgments.
+**Row 2 exit remains NOT met. F7 remains open; F8 is only partially repaired.**
+The round-1 statement that no owner rulings were needed does not resolve the
+stronger, conflicting preservation/disclosure requirements in round 2.
+
+| Finding | Changed files | Test / check | Result; red-on-fault seen: yes/no, how |
+|---|---|---|---|
+| F7 BLOCKER — inherited owner/machine information in whole touched files | This appended report records the required ruling; no sanitization of historical documents | Whole-file indicator scan of this round's three touched files; review and original-document read-back | **Open, owner ruling needed. No planted privacy fault.** Zero known account, absolute home/HPC path, job-id or email indicators in this round's touched files does not clear inherited README/DEVELOPMENT disclosures in the earlier row diff. Removing those disclosures rewrites reviewed history; retaining/copying them cannot satisfy the blanket rule without an exception. |
+| F8 MAJOR — previously reviewed documents rewritten | `benchmarks/HOLDOUT.md`, new `benchmarks/HOLDOUT-2026-09-15.md`, this appended report | Scratch `audit.py`: exact byte comparisons against `1163c35` and `28b20e5`; unchanged count guard against reviewed README/DEVELOPMENT in scratch | **Partial fix; owner ruling still needed for README/DEVELOPMENT. Yes, documentary red:** the `28b20e5` HOLDOUT differs from reviewed `1163c35`; the restored file now equals `1163c35` exactly. The dated replacement retains the complete corrected `28b20e5` interface body, including F1-F5 instructions. Restoring the other two documents in scratch makes the unchanged count checker exit 1 with `enforced=3` and `3 problem(s):` (142 stated versus 148 collected). No guard or threshold was weakened. |
+| Unnumbered note — DEVELOPMENT final blank line removed | This report only | Restoration and disclosure dependency above | **Deferred with F8:** repairing that file's historical bytes also requires disposition of its inherited identifying content and current count claims; no isolated in-place whitespace edit is made. Red-on-fault seen: **no**. |
+
+The current owner/scorer instructions are in the dated
+[HOLDOUT replacement](../../benchmarks/HOLDOUT-2026-09-15.md), beside the restored
+historical version. This is document versioning, not a reversal of the scorer
+fixes: scorer, task schemas, public RESPONSE instructions, tests, and strict
+acceptance logic remain unchanged. No independent review is disputed. F1-F6
+retain the review's closed repository-defect disposition, with local regression
+results below; no new agent-performance evidence is inferred.
+
+### Runner results for round 2 (verbatim)
+
+The default non-login `python3` reports `Python 3.8.2`; the supplementary harness
+run uses Python 3.13.2. Commands ran from this repository, with `TMPDIR`, `TEMP`
+and `TMP` exported to the required sibling scratch directory at the start of
+each command body. Test processes disabled bytecode writes, used an intentionally
+absent scratch `GARS_PIPELINES` directory, and unset actual benchmark holdout and
+output-archive variables. Synthetic interface tests supply their own temporary
+fixtures. All new logs, drivers, fixtures, and the commit-message file are under
+scratch `round2-producer/`.
+
+Execution deviation: the first read-only inventory invocation used the tool's
+default login-shell initialization. Its command body exported the three scratch
+variables first, but shell-startup file access and temporary activity were not
+audited. Every subsequent invocation explicitly used `login: false`. No reviewer
+conversation, other build tree, or real held-out slice was intentionally opened;
+only the specified round-2 review was read from the untracked review inputs.
+No live agent session or pipeline was started; no network tool was used.
+
+| Command | Summary line(s), verbatim | Exit |
+|---|---|---|
+| `python3 tests/run_tests.py` | `Ran 148 tests in 251.961s` · `OK (skipped=10)` | 0 |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` | 0 |
+| `python3 tests/check_counts.py` | `suite: 148 tests, from unittest's loader` · `enforced=3` · `clean — every current claim matches the suite` | 0 |
+| `python3 evals/test_harness.py` | `Ran 44 tests in 469.736s` · `FAILED (errors=13)` | 1 |
+| `python3 evals/check_results.py --controls --lexicon` | `clean — graded=1` | 0 |
+| `python3 tests/test_benchmark_discriminates.py` | `Ran 23 tests in 20.641s` · `OK (skipped=1)` | 0 |
+| `python3 evals/bench.py validate` | `valid tasks: 5/5 = 1.000000` | 0 |
+| `python3 evals/bench.py row-exit` | `refused: missing owner run record(s): intact-1, intact-2, intact-3, degraded-1` | 2 |
+| `python3.13 evals/test_harness.py` | `Ran 44 tests in 474.663s` · `OK` | 0 |
+
+Logs use the command labels `suite`, `contracts`, `counts`, `harness`, `results`,
+`benchmark`, `validate`, `strict-exit`, and `harness-py313` under scratch
+`round2-producer/`; `required-results.json` records exact commands, summaries and
+exit codes. The main suite's ten skips are nine environment-dependent cases and
+the missing-owner-cohort acceptance test. The benchmark module's single skip
+names all four absent owner runs. A skipped acceptance test is not a passed exit.
+
+The default-interpreter harness errors are inherited uses of unavailable
+`str.removeprefix`, `str.removesuffix`, and `ast.unparse` in unchanged `evals/test_harness.py`; the
+supplementary Python 3.13.2 run checks the same harness without modifying it.
+The error tally is 1 `removeprefix`, 11 `removesuffix`, and 1 `ast.unparse`.
+An initial diagnostic assertion expecting only the latter two APIs failed; the
+corrected diagnostic includes all three and reports `Harness errors: 1 removeprefix,
+11 removesuffix, 1 ast.unparse; source unchanged`. This round does not claim that the harness passes on Python 3.8.2. The frozen
+results checker still does not supply Row 2 agent evidence.
+
+Additional commands/checks: scratch `audit.py` checks exact HOLDOUT restoration,
+exact corrected-body retention, the earlier report prefix, unchanged review
+hash/untracked status, unchanged pending documents/count guard, whole-row
+protected-path diff, and the bounded whole-file disclosure indicator scan.
+Its exact output is retained in `audit.log`. The scratch reviewed-document count
+control records `suite: 148 tests, from unittest's loader`, `enforced=3`, and
+`3 problem(s):`, exit 1, in `reviewed-count-control.log`; only the two document
+inputs are substituted, with the existing checker and current suite loader.
+`git diff --check` emits no output. Read-only inventory, specification/document
+reads, interpreter probes, and git status/log/diff commands have no test-runner
+summary. Path-limited staging and one `git commit -F` use a scratch message file.
+No review is staged and no remote, push, merge, or pull request is performed.
+
+## Owner rulings needed
+
+1. **F7 BLOCKER — disclosure versus preservation.** Which review option is
+   authorized: "Deliver a fix whose entire touched files satisfy the owner's
+   rule", with an explicit way to reconcile sanitizing reviewed history with
+   append-only preservation, **or** "obtain an explicit owner exception for
+   these inherited lines before approval"? The pending files are README and
+   DEVELOPMENT, including their historical versions. Sanitized replacements
+   alone do not remove disclosures from preserved copies. This producer has
+   selected neither exception nor historical sanitization scope; the earlier
+   added-lines-only answer is insufficient. Protected trees remain excluded.
+2. **F8 MAJOR — immutable-document scope.** For README and DEVELOPMENT, should
+   we "Preserve those reviewed versions and place corrections in separately
+   versioned/addendum documents", **or** "explicitly resolve that the immutable
+   reviewed-document set means formal reviews and assessments while allowing
+   these mutable implementation documents"? HOLDOUT restoration/versioning is
+   already completed independently. For the preservation option, the owner must
+   also resolve the current-count source: restoring the reviewed documents
+   reinstates three 142-count claims while the unchanged guard checks those
+   paths against the current 148-test suite. A versioned status source would
+   need an approved scope decision; no claim has been exempted, no guard changed,
+   and no CI edit proposed or made here. The blanket preservation check remains
+   **NOT green** until these two documents are resolved together with F7.
+
+### Residual gaps still open
+
+- F7 and the README/DEVELOPMENT portion of F8 await the rulings above; this round
+  supplies no approval and makes no claim of whole-row disclosure clearance or
+  blanket preservation compliance. The unnumbered whitespace note waits with F8.
+- Actual intact-1, intact-2, intact-3 and degraded-1 agent runs, recorded observed
+  noise, degraded configuration attestation, and measured discrimination in both
+  partitions are absent. The strict row exit refuses them in this run.
+- RNA and ATAC still need independent rosters, materialized hashed raw inputs,
+  count references and numerical-source provenance. No schema or biological
+  reference was invented; the placeholder tasks cannot pass strict readiness.
+- Actual held-out sealing/access denial, reference and export authorship, prompt
+  fidelity and complete retained traces were not verified. No real slice was read.
+- Cluster and native Python 3.6.8 execution remain unverified; the default
+  Python 3.8.2 harness remains red. Initial login-shell startup activity was not
+  audited. Earlier-row README evidence table, clean-design false-alarm evidence,
+  and later growth to ten tasks remain separately scoped.
+- The separate study's done commit and merge prerequisite were not verified or
+  waived. All protected paths remain unchanged, and no merge is performed.
