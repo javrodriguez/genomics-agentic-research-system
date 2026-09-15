@@ -373,3 +373,132 @@ No review is staged and no remote, push, merge, or pull request is performed.
   and later growth to ten tasks remain separately scoped.
 - The separate study's done commit and merge prerequisite were not verified or
   waived. All protected paths remain unchanged, and no merge is performed.
+
+
+## Review round 3 fixes
+
+Date: **2026-09-15**. Round base: `a994404`. Independent review:
+`docs/reviews/row_2_review_round2.md` (left untracked and unchanged).
+Owner rulings **1A and 2A**, supplied on this date, override the conflicting F7/F8
+findings and the pending questions in the earlier sections. **F7 and F8 are
+withdrawn. Row 2 exit remains NOT met.**
+
+This row introduced no owner or real-machine information.
+
+Ruling 1A applies the disclosure rule to information introduced since `c423366`;
+inherited content is out of scope and removing it would be scope creep. Ruling
+2A freezes decision records, formal reviews, assessments and earlier change-report
+sections. README, DEVELOPMENT, HOLDOUT and other implementation documents are
+living documents whose counts and status stay current through in-place edits.
+The earlier report's blanket preservation/disclosure conclusions are superseded
+by these rulings; its bytes and the formal evidence records remain unchanged.
+
+| Finding | Changed files | Test / check | Result; red-on-fault seen: yes/no, how |
+|---|---|---|---|
+| F7 — withdrawn by ruling 1A | This appended report | Scratch `round3-producer/audit.py`: added-line indicator scan from `c423366`, protected-path diff and frozen-record comparisons | **Closed by owner ruling. No planted fault:** added-line indicator scan reports zero matches; inherited content is retained. This bounded check is not a repository-wide sanitization claim. |
+| F8 — withdrawn by ruling 2A | `benchmarks/HOLDOUT.md`, deleted `benchmarks/HOLDOUT-2026-09-15.md`, `README.md`, `DEVELOPMENT.md`, this appended report | Scratch `audit.py`: exact interface-body comparison against `28b20e5`, dated-copy absence, reference inventory and report-prefix preservation; `python3 tests/check_counts.py` | **Closed by owner ruling and consolidation. No planted fault:** the complete corrected interface is retained at HOLDOUT.md; all three current count claims remain 148 under the unchanged checker. README points to this round and the living interface; DEVELOPMENT's date, review status and local interpreter record are current. |
+| Unnumbered note — DEVELOPMENT final blank line | This report only | `git diff --check` after a trial restoration | **Answered; no planted fault:** restoring the extra blank line produced `DEVELOPMENT.md:390: new blank line at EOF.` (exit 2), so the living document retains its existing single final newline. |
+
+### Reference redirection
+
+**Every earlier reference to `benchmarks/HOLDOUT-2026-09-15.md` now refers to
+[benchmarks/HOLDOUT.md](../../benchmarks/HOLDOUT.md).** This includes both the
+round-2 table's file reference and its “HOLDOUT replacement” link. Those historical
+citations remain verbatim under the append-only rule; this dated redirection
+updates their current destination without rewriting the earlier section.
+No living implementation document references the deleted dated copy. Existing
+HOLDOUT.md links in the decisions and run instructions now reach the corrected
+interface again. Its body is byte-identical to the corrected interface at
+`28b20e5`; only the obsolete dated wrapper is discarded. Scorers, schemas, tests,
+thresholds, guards, frozen records and protected trees are unchanged this round.
+
+### Runner results for round 3 (verbatim)
+
+The required commands ran from the repository root. Each shell command body
+exported `TMPDIR`, `TEMP` and `TMP` to the required sibling `*-scratch/` directory
+first. Logs, drivers, temporary fixtures and the commit-message file are kept in
+scratch `round3-producer/`. Tests disabled bytecode output, pointed `GARS_PIPELINES`
+at an absent scratch directory, and ran without an actual held-out directory or
+output archive. The driver initially cleared an unused archive-variable spelling;
+a presence-only check confirmed the real `GARS_BENCH_OUTPUTS_DIR` was absent from
+the inherited environment, and the driver now explicitly clears that variable.
+Only synthetic interface tests supplied temporary holdout/archive values.
+
+Execution deviation: the first read-only inventory invocation used the tool's
+default login-shell initialization. Its command body exported the scratch
+variables first, but shell-startup file access and temporary activity were not
+audited. All subsequent shell invocations explicitly used `login: false`.
+No reviewer conversation, other build folder, actual private held-out slice or
+network source was intentionally read. Only the specified round-2 review was
+opened among the untracked review inputs. No live agent or pipeline was started.
+
+| Command | Summary line(s), verbatim | Exit |
+|---|---|---|
+| `python3 tests/run_tests.py` | `Ran 148 tests in 201.497s` · `OK (skipped=10)` | 0 |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` | 0 |
+| `python3 tests/check_counts.py` | `suite: 148 tests, from unittest's loader` · `enforced=3` · `clean — every current claim matches the suite` | 0 |
+| `python3 evals/test_harness.py` | `Ran 44 tests in 363.772s` · `FAILED (errors=13)` | 1 |
+| `python3 evals/check_results.py --controls --lexicon` | `clean — graded=1` | 0 |
+| `python3 tests/test_benchmark_discriminates.py` | `Ran 23 tests in 18.216s` · `OK (skipped=1)` | 0 |
+| `python3 evals/bench.py validate` | `valid tasks: 5/5 = 1.000000` | 0 |
+| `python3 evals/bench.py row-exit` | `refused: missing owner run record(s): intact-1, intact-2, intact-3, degraded-1` | 2 |
+| `python3.13 evals/test_harness.py` | `Ran 44 tests in 381.856s` · `OK` | 0 |
+
+The main suite's ten skips are nine environment-dependent cases and one
+missing-owner-cohort acceptance case. The direct benchmark module likewise skips
+that missing cohort once. These results do not pass the named Row 2 exit test.
+The default interpreter is Python 3.8.2: its 13 harness errors are inherited uses
+of unavailable APIs (one `removeprefix`, eleven `removesuffix`, one `ast.unparse`).
+`evals/test_harness.py` is unchanged since `c423366`; the same 44-case harness passes
+on Python 3.13.2. The frozen results checker still grades one task and supplies no
+Row 2 agent evidence. No runner, threshold or guard was changed to obtain green.
+
+Exact commands, exits and summaries are retained in scratch
+`round3-producer/required-results.json`; corresponding logs use the labels
+`suite`, `contracts`, `counts`, `harness`, `results`, `benchmark`, `validate`,
+`strict-exit`, and `harness-py313`. The documentary audit command is
+`python3 "$TMPDIR/round3-producer/audit.py"`; `audit.log` records:
+
+```text
+HOLDOUT: exact corrected body retained; dated copy absent
+Change report: earlier sections preserved byte for byte
+Specified review: unchanged and untracked
+Frozen records: 51/51 unchanged
+Protected paths: no whole-row diff from c423366
+Dated-path references: only frozen report history and its explicit round-3 redirection
+F7 added-line indicator scan from c423366: 0 matches; inherited content retained
+DEVELOPMENT: final newline retained; no added blank line at EOF
+```
+
+The final `git diff --check` is empty. Read-only inventory, document/specification
+reads, interpreter probes, git status/log/diff inspections and scratch-file writes
+have no test-runner summary. Path-limited `git add --` stages only the five changed
+paths; one `git commit -F` uses the scratch message file. Neither untracked review
+is staged, and no remote, push, merge or pull request is performed.
+
+## Owner rulings needed
+
+**None.** Rulings 1A and 2A settle both round-2 questions. F1–F6 retain their
+independent-review closure; F7/F8 are withdrawn under these explicit rulings.
+Missing external evidence below remains missing; the rulings do not waive the
+Row 2 exit or the separate-study merge prerequisite.
+
+### Residual gaps still open
+
+- The actual `intact-1`, `intact-2`, `intact-3` and `degraded-1` agent runs,
+  degraded-configuration attestation, observed noise floor and discrimination
+  in both partitions remain absent. The strict exit refuses in this run.
+- RNA and ATAC still need independent sample rosters, materialized hashed inputs,
+  numerical count references and source provenance; the placeholder tasks cannot
+  satisfy strict readiness.
+- Actual held-out sealing and producer access denial, independent reference and
+  export authorship, prompt fidelity and complete retained traces were not
+  verified. No real held-out slice was read.
+- Cluster and native Python 3.6.8 execution remain unverified. The Python 3.8.2
+  harness remains red for inherited compatibility errors. Initial login-shell
+  startup activity was not audited.
+- The earlier-row README evidence table, clean-design false-alarm measurement and
+  later growth to ten tasks remain separately scoped. Inherited owner/machine
+  content is out of scope under ruling 1A, not a remaining defect of this row.
+- The separate study's done commit and merge prerequisite were not verified or
+  waived. Protected paths are unchanged; no merge is performed.

@@ -277,7 +277,9 @@ artifact each stage produces.
 
 **Seven assays are wired; most are proven live.** The current deterministic suite collects
 148 tests. Expanded-suite cluster execution is unverified; dated local runner
-results and skips are recorded in the [Row 2 report](docs/implementation/row_2_change_report.md).
+results and skips are recorded in the [Row 2 report](docs/implementation/row_2_change_report.md#review-round-3-fixes).
+The [benchmark sealing interface](benchmarks/HOLDOUT.md) is maintained in place;
+Row 2 agent runs, independent nf-core references and held-out measurements remain unmeasured.
 Live validation is per-assay. Agent behaviour is
 graded separately and published in [docs/EVALS.md](docs/EVALS.md), against a pre-registration
 frozen before the first run:
