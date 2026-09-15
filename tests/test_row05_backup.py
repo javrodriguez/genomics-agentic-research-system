@@ -349,6 +349,81 @@ sys.exit(row.main())
                         except ProcessLookupError:
                             pass
 
+    def test_restore_finalization_signals(self):
+        self.register()
+        driver = self.tmp / 'finalization.py'
+        driver.write_text(r'''import importlib.util, os, signal, sys
+from pathlib import Path
+spec = importlib.util.spec_from_file_location('row05', sys.argv[1])
+row = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(row)
+cfg = row.Config(True)
+row.Config = lambda *args: cfg
+row.guards = lambda *args: None
+row.stream = lambda *args, **kwargs: b''
+row.checksum_table = lambda *args: (1, '0' * 32)
+def sql(endpoint, query):
+    with Path(os.environ['SQL_LOG']).open('a') as log:
+        log.write(query + '\n')
+    if query.startswith('SELECT n.nspname'):
+        return 'public.items'
+    return 't'
+cfg.sql = sql
+boundary = os.environ['BOUNDARY']
+fired = []
+def trace(frame, event, arg):
+    if frame.f_code is row.restore_result.__code__ and not fired:
+        hit = (boundary == 'before_result' and event == 'call')
+        # Inspect externally visible file bytes: the first line event after
+        # the real flush, before stdout publication, is the reviewed boundary.
+        hit |= (boundary == 'after_log_flush' and event == 'line'
+                and ', PASS\n' in cfg.log.read_text())
+        hit |= (boundary == 'after_stdout' and event == 'return')
+        if hit:
+            fired.append(1)
+            Path(os.environ['FIRED']).write_text(boundary)
+            os.kill(os.getpid(), getattr(signal, os.environ['FAULT']))
+    return trace
+sys.settrace(trace)
+sys.argv = ['row05.py', 'drill', '--destroy']
+sys.exit(row.main())
+''')
+        historical = '2000-01-01T00:00:00Z, 1.000000, 1.000000, FAIL\n'
+        for boundary in ('before_result', 'after_log_flush', 'after_stdout'):
+            for fault in ('SIGINT', 'SIGTERM', 'SIGHUP'):
+                with self.subTest(boundary=boundary, fault=fault):
+                    log = self.tmp / 'finalization.log'
+                    log.write_text(historical)
+                    sql_log, fired = self.tmp / 'sql.log', self.tmp / 'fired'
+                    if fired.exists():
+                        fired.unlink()
+                    env = dict(self.env, RESTORE_LOG=str(log), SQL_LOG=str(sql_log),
+                               FIRED=str(fired), BOUNDARY=boundary, FAULT=fault)
+                    proc = subprocess.run([sys.executable, str(driver), str(SCRIPTS / 'row05.py')],
+                        env=scrubbed_env(env), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                        universal_newlines=True, timeout=15)
+                    self.assertTrue(fired.exists(), proc.stdout)
+                    self.assertEqual(fired.read_text(), boundary)
+                    self.assertIn('DROP DATABASE', sql_log.read_text())
+                    self.assertIn('CREATE DATABASE', sql_log.read_text())
+                    self.assertNotEqual(proc.returncode, 0, proc.stdout)
+                    self.assertIn('result=FAIL reason=restore_interrupted', proc.stdout)
+                    retained = log.read_text()
+                    self.assertTrue(retained.startswith(historical))
+                    rows = retained[len(historical):].splitlines()
+                    self.assertTrue(rows, 'interrupted invocation left no dated result')
+                    self.assertTrue(rows[-1].endswith(', FAIL'), retained)
+                    self.assertRegex(rows[-1], RESULT)
+                    self.assertEqual(proc.stdout.splitlines()[-1], rows[-1])
+                    if boundary == 'before_result':
+                        self.assertEqual(len(rows), 1)
+                    else:
+                        self.assertEqual(len(rows), 2)
+                        self.assertTrue(rows[0].endswith(', PASS'))
+                        self.assertEqual(rows[0].split(', ')[:2], rows[1].split(', ')[:2])
+                    if boundary != 'after_stdout':
+                        self.assertNotRegex(proc.stdout, r'\bPASS\b')
+
     def test_retention_cold_start_and_scope(self):
         dest = row.Destination(self.env['BACKUP_OFFMACHINE_DEST'])
         dest.mkdir()

@@ -276,7 +276,7 @@ artifact each stage produces.
 ## Status
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(160 tests; measured on this branch: 26 environment skips); live validation is per-assay. Agent behaviour is
+(161 tests; measured on this branch: 26 environment skips); live validation is per-assay. Agent behaviour is
 graded separately and published in [docs/EVALS.md](docs/EVALS.md), against a pre-registration
 frozen before the first run:
 

@@ -561,7 +561,7 @@ def restore_result(config, start, mono, rpo, failures, log=None):
     else:
         log.write(line + '\n')
         log.flush()
-    print(line)
+    print(line, flush=True)
     return 1 if failures else 0
 
 
@@ -586,9 +586,24 @@ def drill(config, destroy=False):
         log = safe_path(str(config.log)).open('a')
     except OSError:
         raise Fail('restore_log_unwritable')
-    with log:
-        return destructive_restore(config, commands, name, digest, canary, expected,
-                                   start, mono, rpo, failures, log)
+    try:
+        with log:
+            return destructive_restore(config, commands, name, digest, canary, expected,
+                                       start, mono, rpo, failures, log)
+    except (Fail, KeyboardInterrupt) as exc:
+        if isinstance(exc, Fail) and str(exc) != 'restore_interrupted':
+            raise
+        # This scope includes result publication and closing the append handle.
+        # A flushed PASS cannot be erased: append a terminal FAIL correction for
+        # the same start/RPO. Block further catchable signals only while recording
+        # that failure; any pending signal is delivered after its record is safe.
+        blocked = signal.pthread_sigmask(signal.SIG_BLOCK,
+                                        (signal.SIGINT, signal.SIGTERM, signal.SIGHUP))
+        try:
+            failures.append('restore_interrupted')
+            return restore_result(config, start, mono, rpo, failures)
+        finally:
+            signal.pthread_sigmask(signal.SIG_SETMASK, blocked)
 
 
 def destructive_restore(config, commands, name, digest, canary, expected,

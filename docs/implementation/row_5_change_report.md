@@ -236,3 +236,113 @@ and Docker-enabled branch still need execution after the authorized merge.
   sealing, actual Brain memory/vault backup and restore, the other four Stage-1
   failure rows, and row-1 evidence/ledger integration remain open as recorded above.
   No later deployment stage was implemented; no public evidence was promoted.
+
+## Review round 2 fixes
+
+2026-09-15 · review: `docs/reviews/row_5_review_round2.md` · producer: Codex.
+
+**Correction:** round 1's R5-F3 “Closed” conclusion was too broad. Its regression
+covered interruption in the restore pipeline, but result finalization remained
+outside the protected scope. Round 2 reproduced the missing dated FAIL and
+PASS-only retained evidence, then extended protection through result publication
+and log close. Prior records remain unchanged; new decision 0046 records the
+correction beside 0045. **The §18 row-5 exit remains NOT met.**
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| R5-F3 MAJOR: interruption during finalization | `infra/backup/row05.py`, `tests/test_row05_backup.py`, `infra/compose/README.md`, `docs/decisions/0046-row-5-terminal-result-addendum.md` | New `Row05OfflineTests.test_restore_finalization_signals`; existing `test_restore_interrupt_after_destruction`, `test_restore_log_validated_before_destruction`, `test_stdout_log_equality_and_rto_threshold`; full runner | **Yes:** all nine subcases failed before the fix: SIGINT/SIGTERM/SIGHUP at entry to result writing, after real log flush before stdout publication, and after stdout publication before return. All now pass: nonzero exit, dated terminal FAIL, preserved history and terminal stdout/log agreement. Any appended PASS remains and is followed by FAIL with the same start date and RPO. Real child cleanup and RTO regressions also pass. Repository defect closed by these tests; independent re-review pending. |
+| R5-F1: already closed at repository level in round-2 review | No further code change | `test_runner_reachability_and_skip_path` in full runner | **No new fault planting:** passes; bytecode suppression and mandatory scratch refusal remain unchanged. CI action is already authorized and deferred below. |
+| R5-F2: already closed in round-2 review | No further code change | `test_slow_backup_remains_selectable`, `test_manifest_state_grid` in full runner | **No new fault planting:** both pass; dump-start RPO, sidecar completion selection and 300-second guard unchanged. |
+| R5-N1 NOTE: routing limit documented | No further routing change; operational explanation retained | Inspection of `infra/compose/README.md`; `test_identity_and_marker_guards_without_database` in full runner | **No new fault planting:** stable/direct endpoint limitation remains explicit; alias/marker test passes. No connection-routing protection claimed. |
+| R5-N2 NOTE: live container path unverified | No further code change | `test_container_storage_survives_runtime_scrub`; synthetic Compose config; database gate | **No new fault planting:** scrub test passes; Compose resolves scratch PG_DATA_DIR. Live execution remains unverified because `docker info` exits 1; all 17 PostgreSQL cases skip. |
+
+Supporting changes: `README.md` and `DEVELOPMENT.md` reflect 161 measured cases
+(19 offline row-5 cases, 17 database-gated cases); the generated decision index
+`docs/decisions/CONTEXT.md` includes 0046. This appended report is the eighth
+changed file. No test, threshold, guard or result/manifest schema was weakened
+or changed to close the finding.
+
+### Terminal-result policy and limits
+
+The protected scope includes destructive work, result publication and closing
+the retained append handle. An interrupt escaping that scope appends/publishes
+terminal FAIL. SIGINT/SIGTERM/SIGHUP are blocked during fallback recording; the
+previous mask is restored afterward. Stdout is explicitly flushed inside the
+protected phase. A pending signal may then produce another failure diagnostic,
+after the dated FAIL already exists.
+
+Filesystem and stdout publication are not atomic. If PASS already reached either
+destination, preserve those bytes and append FAIL for the same invocation. The
+terminal row and nonzero exit govern its outcome; an earlier PASS is not acceptance
+evidence. POSIX signal masking uses the existing Bash/macOS/Linux surface.
+SIGKILL, host/power loss and subsequent log-storage loss remain outside the
+guarantee. Log paths remain trusted operator inputs. The new test uses real
+signals and filesystem writes but doubled SQL, checksums and archive operations;
+it proves result handling, not live PostgreSQL recovery.
+
+### Commands and observed summaries
+
+Every shell set TMPDIR, TEMP and TMP to sibling `gars-row-5-scratch/` before
+work. Tests also set GARS_ROW5_SCRATCH there and disabled bytecode; full/check runs
+used absent scratch paths for GARS_PIPELINES/GARS_REFS. Python 3.13.2 was selected
+for the existing evaluation APIs. Fixtures, logs and the commit-message file stay
+in sibling scratch. The supplied review sufficed to recreate the signal tests;
+no external reviewer files or conversations were requested or read. No daemon
+was started or real database contacted.
+
+| Command/check | Verbatim summary or exit result | Scratch record |
+|---|---|---|
+| New boundary test against pre-fix engine | `Ran 1 test in 8.409s`; `FAILED (failures=9)` | `round2-signals-red.log` |
+| New boundary test plus three existing regressions named above | `Ran 4 tests in 16.901s`; `OK` | `round2-signals-green.log` |
+| `python3 tests/run_tests.py` | `Ran 161 tests in 281.085s`; `OK (skipped=26)` | `round2-full.log` |
+| `python3 evals/test_harness.py` | `Ran 44 tests in 308.151s`; `OK` | `round2-harness.log` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` | `round2-contracts.log` |
+| `python3 tests/check_counts.py` | `enforced=4`; `clean — every current claim matches the suite` | `round2-counts.log` |
+| `python3 evals/check_results.py --controls --lexicon` | `clean — graded=1` | `round2-eval-results.log` |
+| Named combined `bash -n` command plus individual checks of all wrappers | Exit 0; `Bash syntax: 3 wrappers clean` | `round2-bash.log`; tool output |
+| `docker compose -f infra/compose/postgres.compose.yml config` with synthetic settings | Exit 0; `Compose device resolves to synthetic scratch PG_DATA_DIR` | `round2-compose.log` |
+| `docker info` | Exit 1; tests report `SKIPPED: docker info: exit 1` | `round2-docker-info.log`; full log |
+| Grammar via `ast.parse(..., feature_version=(3, 6))` | `Python 3.6 grammar: 2 files clean` | Tool output; syntax only |
+| `bash docs/decisions/build_index.sh`, then byte comparison | `Decision index regeneration: byte-identical`; 0044/0046 each have one complete index row | Tool output; post-commit clean-diff check remains a completion check |
+| `git diff --quiet c423366 -- gars/ evals/ .github/`; `git diff --check` | Exit 0; protected-tree diff empty; whitespace clean | Tool output |
+| `git check-ignore`: backup.env, archive, sidecar, `infra/backup/manifest.tsv` | All four paths printed as ignored | Tool output |
+| Environment example; hardware placeholders; Compose README vocabulary | `36` assignments (minimum 26); `7` Stage-1 placeholders (minimum 5); all 9 Compose variables named | Tool output |
+| Prior decisions / operational logs / review preservation; PASS-row scan | 0044/0045 and both operational logs byte-identical; review unchanged; zero operational PASS rows in each log | Tool output |
+| Added-line identifying-path/credential-pattern scan | `0 hits` (not a dedicated secret scanner) | Tool output |
+| Availability probes | `shellcheck: unavailable`; `age: unavailable`; `python3.6: unavailable` | Tool output |
+
+The initial driver attempt had a string-escaping error: `Ran 1 test in 3.890s`;
+`FAILED (errors=9)`. That fixture error was corrected before the nine valid
+fault reproductions and is not red-on-fault evidence. An initial ignore probe
+used root `manifest.tsv`; the corrected required path
+`infra/backup/manifest.tsv` matched. No final validation failed.
+The full suite skipped 17 PostgreSQL cases plus nine existing environment cases.
+Reachability, forced-container skipping and local loopback exposure passed.
+
+Round-2 review SHA-256: `9d5b3767d54943fe6494ef9fa2b8775340fe653abccfb5291b33fe0e4df22c33`; unchanged and untracked. The other existing
+untracked review remains unstaged too. The single commit uses explicit paths and
+a scratch message file. No push, remote operation, merge or pull request occurred.
+
+## Owner rulings needed
+
+**None newly needed for round 2.** The review confirms the CI setting is already
+authorized for the owner's later merge after the study. It is not an unresolved
+finding or a fresh permission request. The existing exact
+`GARS_ROW5_SCRATCH: ${{ runner.temp }}` setting remains deferred; no protected CI file changed.
+
+### Residual gaps still open
+
+- Live PostgreSQL DROP/CREATE/content verification and container-client storage
+  remain unverified because the Docker gate failed.
+- Real Node 1 recovery and human marker, dated PASS/freshness, RPO ≤24 h,
+  RTO ≤60 min and outside-host exposure 0 remain unmeasured. No Stage-1
+  failure-matrix row is accepted: backup restore is implemented with acceptance
+  unverified; the other four rows remain missing.
+- Hosted CI and its authorized merge setting, nightly scheduling, remote
+  SSH/tailnet copies, age encryption, Python 3.6 runtime and shellcheck remain
+  unverified. Grammar validation is not runtime evidence.
+- Row 8's permitted second sensitive-data destination, public external-human
+  sealing, actual memory/vault backup and restore, and row-1 evidence/ledger
+  integration remain open. No operational PASS row or public claim was promoted.
+- Independent review of this round remains pending. No OS-wide filesystem audit
+  or uncatchable-loss guarantee is claimed.
