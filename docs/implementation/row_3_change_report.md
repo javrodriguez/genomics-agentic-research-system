@@ -427,7 +427,7 @@ Review: `docs/reviews/row_3_review_round2.md`, unchanged and untracked; SHA-256
 The complete 32,888-byte pre-round report, including its round 2 section, remains an exact
 prefix (SHA-256 `dbada1d0a30c56c7153b01f8b6e0a358de2075ce2460e1736bebe7dada4975d9`).
 
-**Owner rulings applied (Javier, 2026-09-15):** 1A limits the owner/real-machine rule to
+**Owner rulings applied (the owner, 2026-09-15):** 1A limits the owner/real-machine rule to
 what a row introduces; content already present at `c423366` is inherited and out of scope.
 Its presence is not a defect, and removing it is scope creep. **F-5 is withdrawn.**
 2A freezes decision records, formal reviews, assessments and earlier change-report sections;
@@ -518,3 +518,97 @@ prerequisite remains unverified and unchanged.
 - The Row 1 branch and the separate study's done-or-BLOCKED merge prerequisite were not
   inspected or verified. Independent re-review remains required; the producer does not approve
   its own work.
+
+
+## Review round 4 fixes
+
+Date: **2026-09-15**. Producer: Codex. Starting commit: `6f680e8`.
+Review: `docs/reviews/row_3_review_round3.md`, unchanged and untracked; SHA-256
+`b19fae9ed5b95314fdd79b6a8549afef512f19432f1cc9ca14958b573e7ddac8`.
+
+The owner authorizes one correction in the frozen round 3 section: its
+"Owner rulings applied" heading now attributes the rulings to **the owner**.
+Every other pre-round report byte is preserved, including the exact 24,281-byte prefix
+at `5502db1` (SHA-256
+`65c9d0a0b30a093340f74f6231e6f03197c5ec6af5c73f6320fdcc4ffce5d792`).
+The owner's rulings 1A and 2A remain controlling: inherited content is out of scope;
+living implementation documents retain current counts and status. F-5 stays withdrawn.
+README and DEVELOPMENT remain byte-identical to their restored versions at `5502db1`.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| F-6 BLOCKER: newly authored owner identification in the round 3 heading | `docs/implementation/row_3_change_report.md` only | `python3.13 "$SCRATCH/round4/check_heading.py" --before`; same command without `--before`; preservation audit | CLOSED. **Yes, document check:** the exact expected generic heading fails against the saved pre-fix report (exit 1), then passes against the corrected report (exit 0). This checks the specific attribution defect; it is not a behavioral mutant or a sealed score. Only the authorized heading line and this new section change. |
+
+### Round 4 verification
+
+Checks ran on **macOS, Python 3.13.2**, with `PYTHONDONTWRITEBYTECODE=1`, global/system Git
+configuration disabled for test processes, an empty scratch `GARS_PIPELINES` directory and
+an empty sealed-set variable. Every shell invocation set `TMPDIR`, `TEMP` and `TMP` to the
+designated sibling scratch folder before commands ran. The first two shell invocations used
+the tool's default login setting; subsequent invocations explicitly used `login=false`.
+All scratch scripts, snapshots, logs, fixtures and the commit-message file stayed in that
+scratch folder. Only the designated round 3 review was read among the untracked review copies;
+no reviewer conversation, other build folder or external sealed set was accessed.
+
+Independent check processes ran concurrently; timings are not performance measurements.
+The direct hook used synthetic push stdin and a scratch interpreter link, without a push or
+source-clone hook installation. Exact runner summaries follow; log names are relative to
+`$SCRATCH/round4/`.
+
+| Command | Exact summary lines | Exit | Log |
+|---|---|---|---|
+| `python3.13 tests/run_tests.py` | `Ran 151 tests in 284.573s`<br>`OK (skipped=9)` | 0 | `full-suite.log` |
+| `python3.13 evals/test_harness.py` | `Ran 44 tests in 332.023s`<br>`OK` | 0 | `harness.log` |
+| `python3.13 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` | 0 | `contracts.log` |
+| `python3.13 tests/check_counts.py` | `suite: 151 tests, from unittest's loader`<br>`enforced=3`<br>`clean — every current claim matches the suite` | 0 | `counts.log` |
+| `python3.13 evals/check_results.py --controls --lexicon` | `clean — graded=1` | 0 | `results.log` |
+| `python3.13 -m unittest discover -s gars/tests -p test_pre_push.py -v` | `Ran 7 tests in 11.918s`<br>`OK` | 0 | `hook-tests.log` |
+| `python3.13 -m unittest discover -s gars/tests -p test_mutation_runner.py -v` | `Ran 9 tests in 8.099s`<br>`OK` | 0 | `mutation-tests.log` |
+| `python3.13 evals/mutate.py` | `unmeasured` | 0 | `mutation-report.log` |
+| `python3.13 evals/mutate.py --require` | `unmeasured` | 1 | `mutation-required.log` |
+| `gars/_system/hooks/pre-push fixture-remote fixture-target` | `Ran 151 tests in 296.924s`<br>`OK (skipped=9)`<br>`pre-push: whole suite passed` | 0 | `direct-hook.log` |
+
+The full suite collects 125 cases from `tests/` and 26 from `gars/tests/`; 142 execute
+successfully and nine skip: seven unavailable pinned-pipeline cases, one unavailable registry
+reference and one missing `anndata` execution dependency. All 26 Row 3 cases execute.
+`WrapperContractTests.test_all_wrapper_contracts` passes with
+`wrapper contracts: 7/7 found/expected nf-core; 10 total wrappers`.
+This establishes structural contracts and missing-project refusals. Mutation report mode
+remains `unmeasured`; required mode exits 1 as intended when no sealed set is supplied.
+No sealed score or complete scientific workflow is established.
+
+| Additional check | Exact summary lines | Exit | Log |
+|---|---|---|---|
+| `python3.13 "$SCRATCH/round4/check_heading.py" --before` | `F-6 heading check: FAIL` | 1 (expected red) | `f6-red.log` |
+| `python3.13 "$SCRATCH/round4/check_heading.py"` | `F-6 heading check: PASS` | 0 | `f6-green.log` |
+| `python3.13 "$SCRATCH/round4/audit_preservation.py"` | `Round scope: one authorized heading replacement plus round 4 append only`<br>`Report prefix: exact 24281 bytes preserved; SHA-256 65c9d0a0b30a093340f74f6231e6f03197c5ec6af5c73f6320fdcc4ffce5d792`<br>`Other tracked entries: 889 byte-identical with modes preserved against 5502db1; README and DEVELOPMENT unchanged`<br>`Supplied round 3 review: unchanged and untracked`<br>`Protected-tree diff against c423366: empty`<br>`git diff --check against HEAD, 5502db1 and c423366: clean` | 0 | `preservation.log` |
+
+The preservation audit compares every other tracked entry's blob hash and executable or
+symlink mode against `5502db1`; this includes every decision record, formal review and
+assessment. It also checks that the entire pre-round report differs only at the authorized
+heading before this append. The earlier round 3 whitespace diagnostic remains historical;
+this round's diff checks against its starting HEAD, `5502db1` and `c423366` are clean.
+The audit is rerun after this append. Path-limited staging contains only this report;
+one round commit uses a scratch message file. No remote operation, push, merge or PR occurs.
+
+## Owner rulings needed
+
+**None for F-6:** the owner supplied the exact authorization and generic attribution.
+No current finding waits on the owner. The existing merge-time suite-location question
+remains open: Row 1 under `tests/` versus the Row 3 specification's `gars/tests/`.
+Both trees continue to run; the owner decides their final location when those branches meet.
+
+### Residual gaps still open
+
+- Ten independently sealed semantic mutants and the >=8/10 score remain **unmeasured**;
+  external-human sealing remains absent. **Row 3 exit remains NOT met.**
+- R-165 trailers/session enforcement, R-166 Linux/Apptainer/pinned-pipeline integration,
+  actual Python 3.6 execution, live Git/gitleaks deployment and role/credential enforcement
+  remain unverified. No Python source changed; no new grammar-only claim is made.
+- Full scientific workflows, real Nextflow cache behavior, biological validity, numerical
+  reproducibility and inherited historical assay, installation and CI claims were not verified.
+  The inherited Python 3.8 harness limitation was not rerun; current harness evidence uses
+  Python 3.13.2. The fixture-extraction note remains outside this one-line correction.
+- The Row 1 branch and the separate study's done-or-BLOCKED merge prerequisite were not
+  inspected or verified. Independent re-review remains required; the producer does not
+  approve its own work. F-1–F-4 remain closed and F-5 remains withdrawn.
