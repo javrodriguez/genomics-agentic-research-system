@@ -288,8 +288,11 @@ def declaration_record(project, assay):
         raw, seeded = raw_scalar(config), raw_scalar(seed)
         provenance = ("seeded_default" if seeded is not None and raw == seeded else
                       "declared_in_config") if raw is not None else "absent"
-        pattern = re.compile(r"(?<![\w])" + re.escape(key) + r":\s*" +
-                             re.escape(value) + r"(?![\w-])") if value else None
+        # HISTORY format: optional prefix ending in horizontal whitespace,
+        # key: value, then a semicolon-delimited comment or end of line.
+        # Compare the whole scalar: punctuation is part of a release value.
+        pattern = re.compile(r"(?:^|[ \t])" + re.escape(key) + r":[ \t]*" +
+                             re.escape(value) + r"[ \t]*(?:;|$)") if value else None
         history_ref = next(("HISTORY.md:%d: %s" % (n, line)
                             for n, line in reversed(list(enumerate(lines, 1)))
                             if pattern and pattern.search(line)), None)

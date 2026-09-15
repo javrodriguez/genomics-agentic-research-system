@@ -71,6 +71,28 @@
       "outcome": "pass"
     }
   ],
+  "declarations": {
+    "paired": {
+      "history_ref": null,
+      "provenance": "declared_in_config",
+      "value": "unpaired"
+    },
+    "reference_release": {
+      "history_ref": null,
+      "provenance": "declared_in_config",
+      "value": "synthetic-demo-v1"
+    },
+    "strandedness": {
+      "history_ref": null,
+      "provenance": "seeded_default",
+      "value": "auto"
+    },
+    "unit_of_replication": {
+      "history_ref": null,
+      "provenance": "declared_in_config",
+      "value": "sample"
+    }
+  },
   "paired": "unpaired",
   "reference_release": "synthetic-demo-v1",
   "unit_of_replication": "sample"

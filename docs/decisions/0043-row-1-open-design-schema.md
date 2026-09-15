@@ -71,3 +71,23 @@ Standing, owner ruling 2A; implementation is not self-approval of Row 1 exit.
 **Partial supersession (F2):** This record partially supersedes 0011's missing-strandedness default and 0019/0020's assumption that all these scientific values are already seeded or supplied through stage-02 menus. Stage 00 still seeds RNA `strandedness: auto`; stage 01 accepts that seed, but refuses missing/blank strandedness. RNA/ATAC templates now seed required placeholders for replication unit and reference release so stage 00 and T4 expose the questions early. Stage 01 obtains user declarations through T9 and records their provenance; stage-02 reference/formula/contrast menus and deterministic artifact ownership remain intact. The in-place historical rewrites in ec2006c are withdrawn: original bodies and reviewed documents are restored to f7cf4d6, with only the superseded status lines changed in 0011/0019/0020. Reviewed-document commentary lives in separate dated addenda.
 
 **F4 boundary:** The sealed runner prints only the count of failures outside the expected reason for each numbered project, without changing catch semantics or the seal interface. Independent resealing against the updated interface remains the owner's work.
+
+## Correction — 15 Sep 2026 (review R2-2)
+
+The 14 Sep partial-supersession paragraph attributes the missing-strandedness default
+to the wrong source. Decision 0011 specifies deterministic artifact ownership and a
+narrow top-level config reader for strandedness; it does not specify an `auto`
+fallback. That fallback was in `gars/_system/stage01_samplesheet.py`'s `CONFIG_RULES`
+and the stage-01 contract at parent `f7cf4d6`. Row 1 removes that code/contract fallback
+and expands 0011's reader scope to the additional declared scalars, preserving its
+stdlib-only and deterministic-ownership constraints.
+
+Decision 0019 already leaves scientific keys as `<REQUIRED>` and permits the agent
+to write user-supplied values. Row 1 extends that same mechanism with replication-unit
+and release placeholders and requests these declarations before stage-01 success.
+Decision 0020 specifically puts FASTA, GTF, formula and contrast behind stage-02 menus;
+those menus remain there. Row 1's release declaration, replication unit and pairing
+are additional stage-01 user declarations, not claims that 0020 had seeded or
+menu-supplied them. Both 0019 and 0020 correctly describe strandedness as seeded;
+stage 00 still seeds `auto` and stage 01 still accepts that explicit value.
+The earlier paragraph and all historical decision bodies remain preserved.

@@ -207,6 +207,37 @@ class DevelopmentDesignTests(unittest.TestCase):
         self.assertEqual(record['provenance_warning'], 'paired declared without a HISTORY entry quoting the user')
         self.assertEqual(json.loads((self.project / '01_samplesheets/rnaseq_bulk_design_check.json').read_text()), record)
 
+    def test_history_requires_exact_key(self):
+        self.fixture(extra={'subject': ['d1', 'd2', 'd1', 'd2']})
+        self.config('strandedness: auto\nunit_of_replication: subject\nreference_release: synthetic-v1\npaired: paired\n')
+        (self.project / 'HISTORY.md').write_text('not-paired: paired\n')
+        code, result = check(self.project, write=True)
+        self.assertEqual(code, 0)
+        record = result['assays']['rnaseq_bulk']['design_check']
+        self.assertIsNone(record['declarations']['paired']['history_ref'])
+        self.assertEqual(record['provenance_warning'], 'paired declared without a HISTORY entry quoting the user')
+
+    def test_history_requires_exact_value(self):
+        self.fixture()
+        for value in ('synthetic-v1.1', 'synthetic-v1 extra', 'synthetic-v1/patch'):
+            with self.subTest(value=value):
+                (self.project / 'HISTORY.md').write_text('reference_release: ' + value + '\n')
+                code, result = check(self.project)
+                self.assertEqual(code, 0)
+                entry = result['assays']['rnaseq_bulk']['design_check']['declarations']['reference_release']
+                self.assertIsNone(entry['history_ref'])
+
+    def test_history_selects_last_exact_entry(self):
+        self.fixture()
+        line = '2026-09-15 rnaseq_bulk reference_release: synthetic-v1; user answer: "synthetic-v1"'
+        (self.project / 'HISTORY.md').write_text(
+            'reference_release: synthetic-v1\n' + line + '\n'
+            'reference_release: synthetic-v1.1\nnot-reference_release: synthetic-v1\n')
+        code, result = check(self.project)
+        self.assertEqual(code, 0)
+        entry = result['assays']['rnaseq_bulk']['design_check']['declarations']['reference_release']
+        self.assertEqual(entry['history_ref'], 'HISTORY.md:2: ' + line)
+
     def test_record_write_gates_and_contents(self):
         self.fixture()
         record = self.project / '01_samplesheets/rnaseq_bulk_design_check.json'
@@ -241,6 +272,12 @@ class DevelopmentDesignTests(unittest.TestCase):
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_bytes(gzip.compress(b'@synthetic\nACGT\n+\nIIII\n', mtime=0))
         self.assertEqual(check(self.project)[0], 0)
+        proc = subprocess.run([sys.executable, str(SCRIPT), '--project', str(self.project), '--force'],
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        record = Path('01_samplesheets/rnaseq_bulk_design_check.json')
+        self.assertEqual((self.project / record).read_bytes(),
+                         (REPO / 'examples/demo-project' / record).read_bytes())
 
     def test_record_exit_gate_detects_tampering(self):
         import importlib.util

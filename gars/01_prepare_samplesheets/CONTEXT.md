@@ -115,7 +115,14 @@ Unfilled `<REQUIRED>` and YAML null markers count as undeclared. Invalid enumera
 Stage 02 retains its reference menu (0020). Existing sample-ID replication floors remain.
 
 **Declaration provenance.** Declaration entries carry value, provenance (seeded_default,
-declared_in_config, or absent), and history_ref (matching HISTORY.md line or null).
+declared_in_config, or absent), and history_ref (last exact matching HISTORY.md line
+with its line number and text, or null). Declaration lines use `key: value` with an
+optional prefix ending in a space or tab, and end after the value (ignoring trailing
+spaces/tabs) or continue with `;` and commentary. Keys and values are matched in full;
+`not-paired: paired` does not declare `paired`, and release `synthetic-v1.1` does not
+match `synthetic-v1`. Example:
+`2026-09-15 rnaseq_bulk paired: paired; user answer: "These samples are paired."`
+This format locates a declaration; it does not authenticate the entry's author.
 The JSON report and record expose provenance_warning when paired: paired lacks a
 matching history entry; this warning does not refuse the project.
 
@@ -215,7 +222,8 @@ differential-expression sub-stage of 02_bioinformatics.
    declares experimental pairing, record `paired: paired` (or explicit `unpaired`).
    Whenever the agent writes unit_of_replication, reference_release or paired, append
    a HISTORY.md entry quoting the user's answer verbatim and naming each key and value
-   as `key: value`. This applies to T9 and unsolicited pairing declarations.
+   using the declaration-line format in Definitions, one key per line. This applies
+   to T9 and unsolicited pairing declarations.
    Reference paths and the genome menu remain stage 02's responsibility. Then validate.
 3. Run the validator, from the workspace root:
 
