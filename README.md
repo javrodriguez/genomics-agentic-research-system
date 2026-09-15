@@ -1,5 +1,9 @@
 # GARS — Genomics Agentic Research System
 
+[![CI](https://github.com/javrodriguez/genomics-agentic-research-system/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/javrodriguez/genomics-agentic-research-system/actions/workflows/ci.yml)
+
+**▶ [Try the interactive demo](https://gars.javrodriguez.dev/)** — step through recordings of real GARS runs (the contract-enforced refusal, the playable human gate) in your browser; no install.
+
 A filesystem-native architecture for running reproducible bioinformatics workflows through an
 LLM agent, on HPC.
 
@@ -25,9 +29,11 @@ system, follows the Interpretable Context Methodology (ICM) — Van Clief &amp; 
 - Defects found in the upstream pipeline tooling, reported and closed:
   [ClawBio#333](https://github.com/ClawBio/ClawBio/issues/333) ·
   [ClawBio#365](https://github.com/ClawBio/ClawBio/issues/365).
-- Run `python3 tests/run_tests.py` and `python3 tests/check_contracts.py` to check a
-  checkout. The dated local result and its environment skips appear under **Status** below;
-  CI execution was not verified in this review round.
+- `python3 tests/run_tests.py` and `python3 tests/check_contracts.py` run green from a cold clone
+  with no setup, and in CI on every push.
+- [PeerPanel](https://github.com/javrodriguez/peerpanel) — a separate demonstration system that
+  evaluates its own multi-agent review pipeline against single-agent baselines and publishes the
+  result the record shows: on planted defects, no arm asserted one.
 
 ---
 
@@ -50,10 +56,8 @@ through fixed message templates, and stops rather than improvising when inputs a
 GARS is not installed. You clone it, and **`gars/` inside your clone is your workspace** — you
 work there directly.
 
-Set `GARS_REPOSITORY_URL` to the repository URL supplied by your distribution.
-
 ```bash
-git clone "$GARS_REPOSITORY_URL" genomics-agentic-research-system
+git clone https://github.com/javrodriguez/genomics-agentic-research-system.git
 cd genomics-agentic-research-system/gars
 ```
 
@@ -265,8 +269,7 @@ python3 tests/run_tests.py         # every helper through its real CLI, in a thr
 python3 tests/check_contracts.py   # contract lint: sections, wait points, script↔contract vocabulary drift
 ```
 
-Tests that need unavailable pinned pipelines, a registry reference, or `anndata` skip with
-an explicit reason. A successful offline run does not establish pipeline integration.
+(Tests that need a pinned nf-core checkout skip cleanly as environment failures off-cluster.)
 Then read [`examples/demo-project/`](examples/demo-project/) — a synthetic project showing every
 artifact each stage produces.
 
@@ -363,10 +366,21 @@ How the layers relate — package managers, workflow engine, containers, and why
 holds one tool rather than the pipeline — is in
 [`docs/execution-model.md`](docs/execution-model.md).
 
-## Maintenance
+## Related work
 
-Issues and questions are welcome. The design is documented in the
-[decision log](docs/decisions/CONTEXT.md), including the reasons behind each choice.
+**[HiC-MCP](https://github.com/javrodriguez/hic-mcp)** — the same "give an agent real scientific
+tools, and make it say what it did" idea at a smaller scale: an MCP server exposing the open2c
+Hi-C stack (cooler, cooltools) over local contact matrices, with a real Micro-C dataset bundled
+so it runs offline. Where GARS gives an agent a whole pipeline under a stage contract, HiC-MCP
+gives it six analyses and holds them to the same rule — every response names its method and its
+scope, and where a result would not be trustworthy the tool says so rather than returning a
+number.
+
+## Author & status
+
+Built and maintained by [Javier Rodriguez Hernaez](https://github.com/javrodriguez) as a
+single-maintainer research system. Issues and questions are welcome; the design is documented
+end to end in the decision log, so a "why is it like this?" usually has a written answer.
 
 ## License
 

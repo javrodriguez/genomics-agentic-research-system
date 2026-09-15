@@ -417,3 +417,104 @@ The separate study's standing merge prerequisite remains unverified and unchange
 - The Row 1 branch and the separate study's merge prerequisite were not inspected or verified.
 - Independent re-review of this corrective commit remains required. The producer does not
   approve its own work, and **Row 3's exit remains NOT met**.
+
+
+## Review round 3 fixes
+
+Date: **2026-09-15**. Producer: Codex. Starting commit: `fe4157f`.
+Review: `docs/reviews/row_3_review_round2.md`, unchanged and untracked; SHA-256
+`70672ee5b434efcfa24994cd1efde35132ad144a2742f6b5794768717fb37182`.
+The complete 32,888-byte pre-round report, including its round 2 section, remains an exact
+prefix (SHA-256 `dbada1d0a30c56c7153b01f8b6e0a358de2075ce2460e1736bebe7dada4975d9`).
+
+**Owner rulings applied (Javier, 2026-09-15):** 1A limits the owner/real-machine rule to
+what a row introduces; content already present at `c423366` is inherited and out of scope.
+Its presence is not a defect, and removing it is scope creep. **F-5 is withdrawn.**
+2A freezes decision records, formal reviews, assessments and earlier change-report sections;
+README, DEVELOPMENT, benchmarks/HOLDOUT and other implementation documents are living
+documents whose counts and status must stay current. This addendum supersedes the round 2
+claim that removing the inherited content was required; the historical section is not edited.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| F-5 BLOCKER — withdrawn by owner ruling 1A; undo the round 2 removal | `README.md`, `DEVELOPMENT.md`, this addendum | `python3.13 "$SCRATCH/round3/audit_preservation.py"`; `python3.13 tests/check_counts.py`; whole suite | Restored both documents byte-for-byte from `5502db1`, including inherited author section, demo link, CI badge, related work, clone URL and live-run history. Counts already match the current suite, so no count/status adjustment was necessary. **Red-on-fault seen: no**; this is a historical-byte restoration verified against Git objects, not a new behavioral fix or sealed mutant. |
+| F-1–F-4 — closed by the supplied independent review | No implementation changes | Whole suite, named hook and mutation regressions included | Existing regressions pass in this run. **Red-on-fault seen: no new replant for F-1/F-2/F-4**; prior independent red evidence is recorded in the supplied review. F-3's macOS count/skip statement matches this run; cluster status remains unverified. |
+
+Evidence for inheritance: `git diff c423366 5502db1 -- README.md DEVELOPMENT.md` changes
+only suite counts and status prose. The restored owner, link and machine-history material
+therefore predates this row. The review's inherited CI/historical-assay observations remain
+unverified: the restoration does not establish those historical claims. The fixture-extraction
+note remains outside this documentation correction; existing gate tests continue to cover it.
+No runtime, test, threshold, guard, CI, decision, review or assessment record changed.
+
+### Round 3 verification
+
+Checks ran on **macOS, Python 3.13.2**, with `PYTHONDONTWRITEBYTECODE=1`, global/system Git
+configuration disabled, an empty scratch `GARS_PIPELINES` directory and no supplied sealed set.
+Every shell invocation set `TMPDIR`, `TEMP` and `TMP` to the designated sibling scratch folder
+before commands; the first used the tool's default login setting and subsequent calls used
+`login=false`. Task scripts, snapshots, command logs and the commit message are in
+`$SCRATCH/round3/`; test fixtures and retained mutation logs also use the scratch root. Independent command processes ran concurrently; timings are not
+performance evidence. The direct hook used synthetic push stdin and a scratch interpreter
+link; it did not push or install a hook in the source clone.
+
+| Command | Exact summary lines | Exit | Log under `$SCRATCH/round3/` |
+|---|---|---|---|
+| `python3.13 tests/run_tests.py` | `Ran 151 tests in 132.887s`<br>`OK (skipped=9)` | 0 | `full-suite.log` |
+| `python3.13 evals/test_harness.py` | `Ran 44 tests in 158.502s`<br>`OK` | 0 | `harness.log` |
+| `python3.13 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` | 0 | `contracts.log` |
+| `python3.13 tests/check_counts.py` | `suite: 151 tests, from unittest's loader`<br>`enforced=3`<br>`clean — every current claim matches the suite` | 0 | `counts.log` |
+| `python3.13 evals/check_results.py --controls --lexicon` | `clean — graded=1` | 0 | `results.log` |
+| `python3.13 -m unittest discover -s gars/tests -p test_pre_push.py -v` | `Ran 7 tests in 6.369s`<br>`OK` | 0 | `hook-tests.log` |
+| `python3.13 evals/mutate.py` | `unmeasured` | 0 | `mutation-report.log` |
+| `python3.13 evals/mutate.py --require` | `unmeasured` | 1 | `mutation-required.log` |
+| `gars/_system/hooks/pre-push fixture-remote fixture-target` | `Ran 151 tests in 142.405s`<br>`OK (skipped=9)`<br>`pre-push: whole suite passed` | 0 | `direct-hook.log` |
+
+The whole suite collects 125 cases from `tests/` and 26 from `gars/tests/`: 142 execute
+successfully and nine skip (seven pinned-pipeline cases, one unavailable registry reference,
+one missing `anndata` dependency). All Row 3 cases execute. The named
+`WrapperContractTests.test_all_wrapper_contracts` passes with
+`wrapper contracts: 7/7 found/expected nf-core; 10 total wrappers`. This is structural and
+missing-project coverage, not full scientific execution. Existing public planted-fault tests
+still exercise their red controls; they do not contribute to the sealed score. Required
+mutation mode exits 1 for the absent sealed set, as intended.
+
+Preservation audit (`preservation.log`): both live documents are byte-identical to `5502db1`;
+the exact pre-round report prefix is preserved; the supplied round 2 review is unchanged and
+untracked; only the three authorized documentation paths differ; decision/review/specification/
+assessment records are unchanged; the protected-tree diff against `c423366` is empty.
+
+**Whitespace check retained as nonzero:** `git diff --check` exits **2** and reports verbatim
+`DEVELOPMENT.md:393: new blank line at EOF.` (`whitespace.log`). The final blank line exists
+in both `git show c423366:DEVELOPMENT.md` and `git show 5502db1:DEVELOPMENT.md`; both end in
+`publish_dir_mode = 'copy'` followed by the existing Markdown punctuation and two newlines.
+It is preserved under the explicit restoration instruction, which permits only necessary
+count/status changes. No whitespace check is relabeled clean or weakened.
+
+Inspection used local repository files/Git objects and the designated scratch folder; no
+reviewer conversation, forbidden build folder, remote or external sealed set was accessed.
+Staging is limited to README, DEVELOPMENT and this report. Both supplied review paths remain
+untracked. One round commit uses a scratch message file; no push, merge, PR or approval occurs.
+
+## Owner rulings needed
+
+**None for this round's finding:** F-5 is withdrawn under the supplied ruling; no policy
+exception remains to decide. The existing merge-time suite-location question remains open:
+Row 1 under `tests/` versus the Row 3 specification's `gars/tests/`. Both trees run; the owner
+chooses their final location when those branches meet. The separate study's standing merge
+prerequisite remains unverified and unchanged.
+
+### Residual gaps still open
+
+- Ten independently sealed semantic mutants and the ≥8/10 score remain **unmeasured**;
+  external-human sealing for public claims remains absent. **Row 3 exit remains NOT met.**
+- R-165 trailers/session enforcement, R-166 Linux/Apptainer/pinned-pipeline integration,
+  actual Python 3.6 execution, live Git/gitleaks deployment and role/credential enforcement
+  remain unverified. No Python source changed; no new grammar-only claim is made.
+- Full scientific workflows, real Nextflow cache behavior, biological validity and numerical
+  reproducibility are not established by the offline fixtures. Restored historical assay,
+  installation and CI claims were not revalidated; the inherited Python 3.8 harness limitation
+  was not rerun. The inherited EOF whitespace diagnostic remains as documented above.
+- The Row 1 branch and the separate study's done-or-BLOCKED merge prerequisite were not
+  inspected or verified. Independent re-review remains required; the producer does not approve
+  its own work.

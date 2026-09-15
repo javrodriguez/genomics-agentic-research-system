@@ -18,7 +18,7 @@ it constrains — template, menu, preflight, or decision — never parked here (
 **Row 3 validation, 2026-09-15:** 151 tests collected on macOS; 142 executed successfully,
 9 skipped (seven pinned-pipeline tests, one registry reference, one missing `anndata`).
 The expanded suite's cluster status is **unverified**. See the
-[round 2 change report](docs/implementation/row_3_change_report.md#review-round-2-fixes).
+[round 1 change report](docs/implementation/row_3_change_report.md#review-round-1-fixes).
 
 **Historical component status as of 2026-08-30**
 
@@ -32,26 +32,37 @@ The expanded suite's cluster status is **unverified**. See the
 | Workspace distribution | **A git checkout.** Clone, work in `gars/`, `git pull` to update. No bespoke machinery. |
 | Per-stage provenance | Every stage stamps the template version it ran under, not only stage 00 |
 | `_system/` helpers | `stage00_register`, `stage01_samplesheet`, `configure`, `adapt_counts`, `resolve_artifact`, `stage03_analysis`, `guard_hook`, `project_state`, `workspace`, `integrity`, `wrapperlib`, `executorlib` (+ `session_state.sh`, `authoring/`) + ten `wrappers/` (seven nf-core pipeline wrappers, `rnaseq-de`, `scrna-qc-cluster`, `spatial-cluster-count`) — stdlib only, stock python 3.6.8, no conda |
-| **Assay #2: `atacseq_bulk`** | **LIVE-PROVEN 2026-08-28** in the reproduction campaign — the ATAC campaign, exit gate clean, cache handling exercised (finds 0034/0035 on the way); scored against the published result in [docs/RESULTS.md](docs/RESULTS.md) |
-| **rnaseq on GARS wrappers** | **LIVE-VALIDATED 2026-08-27** — full chain on the wrapper validation cohort, 0029 numerical check r = 0.999952; the deprecated ClawBio procedures **deleted** the same day (see below) |
-| **Assays #3–#4: chipseq, cutandrun** | **LIVE-PROVEN in the reproduction campaign** — chipseq: the H3K27me3 campaign, gate clean (first live run of the antibody/control machinery), then the H3K4me3 campaign on 2026-08-29; cutandrun: the CUT&Tag campaign, gate clean after five submissions and four shipped fixes (0034/0036/0037/0038), the `-resume`/`--resume-refresh` roads proven with it. Both scored in [docs/RESULTS.md](docs/RESULTS.md) |
+| **Assay #2: `atacseq_bulk`** | **LIVE-PROVEN 2026-08-28** in the reproduction campaign — project `dko-atac`, job 26864112, exit gate clean, `nf-core-atacseq-2.1.2` derived cache populated (finds 0034/0035 on the way); scored against the published result in [docs/RESULTS.md](docs/RESULTS.md) |
+| **rnaseq on GARS wrappers** | **LIVE-VALIDATED 2026-08-27** — full chain on `rnaseq-wrapper-validation`, 0029 numerical check r = 0.999952; the deprecated ClawBio procedures **deleted** the same day (see below) |
+| **Assays #3–#4: chipseq, cutandrun** | **LIVE-PROVEN in the reproduction campaign** — chipseq: `dko-chip-k27`, job 26886620, 3h07m, gate clean (first live run of the antibody/control machinery), then `dko-chip-k4` on 2026-08-29; cutandrun: `cuttag-k562`, job 26877403, gate clean after five submissions and four shipped fixes (0034/0036/0037/0038), the `-resume`/`--resume-refresh` roads proven with it. Both scored in [docs/RESULTS.md](docs/RESULTS.md) |
 | **Assay #5: methylseq** | **Wired end to end offline (0031)** — checkout pinned and tag-verified, format active, config menu, wrapper tested against a faked result tree read from the pipeline's own docs. **The one assay still awaiting its first live run** (the campaign's WGBS fetch is pending a clean re-download) |
 | **Assays #6–#7: scrnaseq, spatialvi** | **LIVE-PROVEN** (v0.10.0, above) — scrnaseq in two venues (macOS/Docker and Slurm/Apptainer, identical downstream numbers); spatialvi on the cluster with all three artifact gates including MultiQC |
-| **Full chain 00 → 02.02** | **RUN END TO END on real data, 2026-08-24** — the RNA validation cohort, 10 samples, 22,783 genes tested |
+| **Full chain 00 → 02.02** | **RUN END TO END on real data, 2026-08-24** — project `leukemia-tall`, 10 samples, 22,783 genes tested |
 | Artifact resolution | `_system/resolve_artifact.py`; **exercised live** — 02.02 resolved `counts_gene` and `design` by type at run time |
-| Stage 03 (`03_custom_analysis`) | **Implemented, plan-gated, LIVE-VALIDATED 2026-08-25** — agent drafts `PLAN.md`, user approves, `_system/stage03_analysis.py` enforces both gates. First real analysis on the RNA validation cohort; driven again for every scored campaign project (the ATAC campaign and the CUT&Tag campaign on 2026-08-28, the H3K27me3 campaign on 2026-08-29) |
+| Stage 03 (`03_custom_analysis`) | **Implemented, plan-gated, LIVE-VALIDATED 2026-08-25** — agent drafts `PLAN.md`, user approves, `_system/stage03_analysis.py` enforces both gates. First real analysis on `leukemia-tall`; driven again for every scored campaign project (`dko-atac` and `cuttag-k562` on 2026-08-28, `3-K27` on 2026-08-29) |
 | Scope enforcement | `gars/.claude/settings.json` + `_system/guard_hook.py` — forbidden writes fail at the tool call ([0022](docs/decisions/0022-scope-boundaries-are-enforced-by-the-harness.md)) |
 | Tests | `tests/run_tests.py` (151) + `tests/check_contracts.py` — run both before committing under `gars/` |
 | Model provenance | Every `HISTORY.md` entry names the model beside the template version ([0024](docs/decisions/0024-the-model-is-part-of-provenance.md)) |
-| Environment setup | Create `gars-bio` and `gars-nxf` from the documented dependency recipes and lockfiles; validate them at the deployment site. |
-| References and cache | Select a registry reference, verify its files, and configure a cache keyed by pipeline version before a live run. |
+| Environments (`gars-bio`, `gars-nxf`) | Installed, verified, locked |
+| Ensembl GRCh38 r116 reference | Downloaded, integrity-verified |
+| Derived-index cache | **Populated**, 59 GB, keyed `nf-core-rnaseq-3.26.0`, verified reusable |
+| Live project `leukemia-tall` | Complete through 02.02. Full cohort registered; an analysis subset confirmed by row-deletion exclusions; `condition,MT,WT` |
+| Test project `test-TALL` | **Gone** — deleted with `bioinfo-research-system/`; superseded by `leukemia-tall` |
 
-### Historical full-chain validation
+### The chain has run end to end, on a version that no longer exists
 
-The early full-chain experiment exercised registration, design, samplesheets, nf-core/rnaseq
-and differential expression. Its arbitrary split of a single-condition cohort tested the
-plumbing only; it did not establish a biological contrast. Historical scientific results and
-limitations remain in the original decision and assessment records.
+Recorded from the v0.1.0 era, on the since-deleted `test-TALL`. First full success after six
+failed pipeline attempts. Project creation -> design -> samplesheets
+-> nf-core/rnaseq -> differential expression, on real data.
+
+- 78,941 genes x 10 samples quantified; `SUBREAD_FEATURECOUNTS` passed 10/10
+- 22,782 genes tested for DE; 264 at padj < 0.05
+- Full QC suite: RSeQC (7 modules), Qualimap, StringTie, bigWigs, samtools stats, MultiQC
+- Derived references cached automatically; 477 GB of scratch reclaimed afterwards
+
+**The DE result is biologically meaningless and that is expected.** All ten samples are
+`condition=WT`; `group` G1/G2 is an arbitrary split, so 264 hits is noise plus cohort
+heterogeneity. It proves the plumbing, nothing more. A real contrast needs real condition labels.
 
 ### Data quality note
 
@@ -61,15 +72,15 @@ in [0032](docs/decisions/0032-lessons-land-where-they-fire.md).
 
 ### Proven live, dated
 
-- **Stage 03 live-validated 2026-08-25** — first real analysis on the RNA validation cohort
-  (the approved heatmap analysis): plan drafted and approved, inputs resolved by type at execution
+- **Stage 03 live-validated 2026-08-25** — first real analysis on `leukemia-tall`
+  (`01_de-top30-heatmap`): plan drafted and approved, inputs resolved by type at execution
   time, `verify` passed, HISTORY entry carries version + model. One deviation observed: the
   agent hand-built the analysis directory instead of running `create` (contained — `approve`
   and `verify` gate on content, not provenance of the directory). Exactly the drift class the
   still-open live compliance harness would catch.
 - **The gars rnaseq path is live-validated (2026-08-27).** Full chain on
-  the wrapper validation cohort (4 samples, MT vs WT): 02.01 (exit gate 5/5,
-  cache reused), 02.02 (19,566 genes tested; the significant set plausibly
+  `rnaseq-wrapper-validation` (4 samples, MT vs WT): 02.01 job 26842968 (1h23m, exit gate 5/5,
+  cache reused), 02.02 job 26851720 (1m18s, 19,566 genes tested; the significant set plausibly
   sized and balanced), and
   the [0029](docs/decisions/0029-the-clawbio-path-is-deprecated.md) numerical check holding on
   that run — published log2FoldChange vs normalized group ratios r = 0.999952, sign agreement
@@ -84,34 +95,36 @@ in [0032](docs/decisions/0032-lessons-land-where-they-fire.md).
   by the PreToolUse hook with its verbatim lockfile message. The layers fire in that order by
   design. Still unexercised live: the hook's Edit branch on machine-owned *project* files
   (`files.csv`), which the deny globs deliberately do not cover.
-- **Derived-reference cache reuse verified 2026-08-25**: the recorded execution trace
-  contained zero index-building processes (`GENOMEGENERATE`, `MAKE_TRANSCRIPTS_FASTA`,
-  `SALMON_INDEX`). This historical observation does not establish cache availability in a
-  new deployment; verify reference paths and cache compatibility there.
+- **Derived-reference cache reuse verified 2026-08-25**: `leukemia-tall`'s execution trace
+  contains zero index-building processes (`GENOMEGENERATE`, `MAKE_TRANSCRIPTS_FASTA`,
+  `SALMON_INDEX`) — the 59 GB cache was consumed, saving ~40 minutes and ~43 GB. Stages 00 and 01 were exercised end to end on
+  2026-08-19 (below), but that run stops at the samplesheet. Whether the moved reference paths
+  and the renamed `_system/` break a sub-stage's `submit.sh` is untested, and needs a cluster.
 
 ### What is not yet proven
 
 - **One assay has never run a live pipeline** (methylseq); rnaseq, atacseq, cutandrun and
-  chipseq are done — chipseq: the H3K27me3 campaign, gate
-  clean, cache handling exercised, first run of the antibody/control machinery live. atacseq: the ATAC campaign, gate clean, cache
-  handling exercised (finds 0034/0035 on the way). cutandrun: the CUT&Tag campaign, gate clean
+  chipseq are done — chipseq: campaign project `dko-chip-k27`, job 26886620, 3h07m, gate
+  clean, cache populated, first run of the antibody/control machinery live. atacseq: campaign project `dko-atac`, job 26864112, gate clean, cache
+  populated (finds 0034/0035 on the way). cutandrun: `cuttag-k562`, job 26877403, gate clean
   after five submissions and four shipped fixes (0034/0036/0037/0038) — the least-proven
   pipeline live-proven, and the `-resume`/`--resume-refresh` roads proven with it. Every mechanical layer is offline-tested; what only a cluster run can prove
   is the pipelines completing under these params, the real output trees matching the gates
   built from their docs, and the ChIP/CUT&RUN control semantics surviving nf-core's own
-  samplesheet validation. One live run per remaining assay is the standing item; check the deployment site
-  has enough file quota before launching Nextflow.
+  samplesheet validation. One live run per remaining assay is the standing item — held until
+  the data_abl file-quota ticket resolves (Nextflow runs are small-file storms).
 - **`atacseq_bulk` detail:** The wrapper chain is tested offline
   through fixture projects and a faked results tree (`AtacseqWrapperTests`, plus the shared
-  workspace fixture it runs against), using the pinned nf-core/atacseq 2.1.2 interface. **Resolved
-  2026-08-28:** the ATAC campaign run took real 2-condition ATAC FASTQs
-  through it and exercised derived-cache handling.
+  workspace fixture it runs against), and the pinned checkout at
+  `~/install/nf-core-pipelines/atacseq-2.1.2` is cloned and tag-verified. **Resolved
+  2026-08-28:** the campaign's `dko-atac` run (job 26864112) took real 2-condition ATAC FASTQs
+  through it and populated the `nf-core-atacseq-2.1.2` derived cache on the way.
 - **The gars wrapper's failure path is now exercised live (2026-08-28)** — the parser-pairing
   failure (0034): structured refusal, STATUS FAILED written honestly, forensics preserved,
   nothing retried. Still unexercised: `--resume` after a mid-pipeline crash and a mid-run
   Slurm failure (this one died at parse, before any pipeline process).
 - **Live compliance drift, instances two and three (2026-08-27).** The first
-  submission for the wrapper validation cohort executed `DEPRECATED-clawbio-path.md` — against the
+  `rnaseq-wrapper-validation` submission executed `DEPRECATED-clawbio-path.md` — against the
   contract's explicit "Never execute" Scope Boundary — and never appended the submission to
   `HISTORY.md`. Found from the log's fingerprints (ClawBio's SkillError banner and the
   `_MANIFEST_VERSION_RE` 'master' warning, which only that path produces); confirmed by a fresh
@@ -136,13 +149,13 @@ work is now live validation:
    five public-data projects (HCT116/DKO1 methylation-loss system + the CUT&Tag protocol set)
    that give every remaining assay its first live run *and* reproduce published results with a
    score per assay. Supersedes the bare "one live run per assay" item (rnaseq already
-   live-validated 2026-08-27). Each first run also settles that assay's derived cache. Confirm file-quota capacity
-   at the deployment site before running the campaign.
+   live-validated 2026-08-27). Each first run also settles that assay's derived cache. Held
+   until the data_abl file-quota ticket resolves.
 
 Item-by-item record of the queue:
 
 1. ~~Live-validate v0.5.0~~ **Done 2026-08-25**: the guard layers fired on deliberate
-   forbidden calls, stage 03 ran a real plan-gated analysis on the RNA validation cohort, and the trace
+   forbidden calls, stage 03 ran a real plan-gated analysis on `leukemia-tall`, and the trace
    showed 0 index-building processes (cache reuse confirmed). Still unproven: the `--resume`
    guard after a crash and a *failed* mid-pipeline Nextflow run.
 2. ~~Build wrapper #1~~ **Done 2026-08-25** ([0028](docs/decisions/0028-wrappers-are-thin-system-helpers.md)):
@@ -155,8 +168,10 @@ Item-by-item record of the queue:
    numerical validation surfaced **ClawBio defect #4** — the retired skill's published
    log2FoldChange column correlates 0.33 with the actual normalized group ratios (the new
    wrapper's: 0.99); p-values and the significant set were correct. Consequence for
-   the RNA validation cohort: its existing `de_results.csv` fold-change VALUES are unreliable (gene calls
-   and padj are fine) — re-run 02.02 under the new wrapper, then compare its fold changes with normalized group ratios.
+   `leukemia-tall`: its existing `de_results.csv` fold-change VALUES are unreliable (gene calls
+   and padj are fine) — re-run 02.02 under the new wrapper, or use the validated table at
+   a cluster-local validation copy (same inputs, corrected LFC)
+   (same inputs, corrected LFC).
 4. ~~Build the remaining three wrappers~~ **Done 2026-08-25**
    ([0031](docs/decisions/0031-all-five-assays-are-wired.md)): chipseq (MACS3, per-antibody
    consensus, derived control_replicate), cutandrun (group-shaped design, spike-in
@@ -229,35 +244,35 @@ here is a decision record trying to be born.
 
 | Date | Change | Detail |
 |---|---|---|
-| 08-29 | **H3K4me3 campaign 02.01 complete — the chipseq cache pays off.** Derived cache reused without an index build. All four K4me3 IPs pass QC: FRiP 0.41–0.52 (vs the k27 failed IP's 0.032). Two recorded observations: one DKO1 replicate is a low-complexity library (57% duplication — effective depth below its raw 13.3M, note beside depth-sensitive comparisons), and DKO1 carries 2–5× more K4me3 peaks per read than HCT116, which is very likely the paper's own CGI-promoter finding — flagged in the QC note as SIGNAL TO REPRODUCE, never a confound to normalise away | — |
-| 08-29 | **H3K27me3 campaign scored (third of five)** — binned Spearman ~0.80 on all healthy GSM-pinned replicate pairs (failed IP: 0.46, quantifying its failure); the paper's K27me3-spreading direction reproduces on both sides; region-class concordance honestly weak (3/6), reported as such. Closed loop on the failed-IP finding: the authors' own deposited z-track for GSM1420155 is 40–100× below its siblings — our QC, our reprocessing and their deposit agree the library failed; their depth-only published QC structurally could not see it (full chain in the project's QC_NOTES.md) | — |
-| 08-28 | **CUT&Tag campaign CLOSED — second scored reproduction.** Stage 03 approved in-channel, Jaccard like-for-like (deposited fragments re-called with identical SEACR mode) h3k4me3 0.34/0.63, h3k27me3 0.17/0.05, matched-vs-cross-mark separation 600× (0.297 vs 0.0005); symmetric FRiP ours 0.95/0.77 + 0.85/0.68 vs deposited 0.61/0.61 + 0.32/0.07 — the deposited K27me3_R2 is mostly background by its own numbers; TSS sharp/broad contrast holds both sides. h3k4me3 reproduces on all three scores; K27me3 diverges quantitatively for stated reasons, direction matching throughout — the honest-read discipline the campaign doc requires | — |
-| 08-28 | **v0.9.5 — unfittable QC is a decision, not a casualty** (campaign find #5): cutandrun's all-samples × all-genes heatmap matrix OOMs at any sane allocation (the aggregate matrix still failed after a larger resource allocation). New surfaces: `qc.gene_heatmaps: false` → `--skip_heatmaps` (recorded per-project decision), and `prepare --resume-refresh` (params-change-then-resume over a terminally FAILED run with Nextflow state — the populated-run gate verifies both). The `-resume` road itself was live-proven: cached tasks restored after interruption. Suite green under the new CI: 46 tests, 7 documented environment-skips | [0038](docs/decisions/0038-unfittable-qc-is-a-decision-not-a-casualty.md) |
-| 08-28 | **v0.9.4 — a pin may carry one recorded patch** (live-fire find #4): cutandrun-3.2.2's local trimgalore module uses legacy DSL output options — an NPE under Nextflow 26, beyond the v1 config parser (0034's recorded boundary). The two-line patch ships in `_references/patches/` (upstream's dev-branch fix verbatim); preflight verifies the patched CONTENT and refuses with `pipeline_patch` + the apply command until it lands. Escalation trigger recorded: a third legacy incompatibility in cutandrun → the legacy-Nextflow env. 44 tests; the drift linter itself caught the missing contract definition mid-build | [0037](docs/decisions/0037-a-pin-may-carry-one-recorded-patch.md) |
-| 08-28 | **ATAC campaign CLOSED with a successful reproduction** — the first scored project: stage 03 plan approved and executed (one script rerun: tabulate-free table rendering); signal Spearman at consensus peaks 0.979-0.987 matched-condition vs 0.526 cross-condition (liftover retention 99.3%); direction asymmetry 4,552 hyper / 523 hypo (ratio 8.7, sign-test p≈0) vs published 23,310/3,166 (7.36) — direction and bias reproduce, absolute counts differ for recorded reasons (different DA method + peak set). Full detail in the project's results/report.md and HISTORY | — |
-| 08-28 | **v0.9.3 — hidden genome-map lookups are parameter surface** (campaign live-fire find #3): cutandrun 3.2.2 resolves the spike-in bowtie2 index from its own genome map (an s3 iGenomes path) even with a local fasta supplied. `spikein.bowtie2` now ships beside `spikein.fasta` in the seeded config (the mirror's exact local twin), required + content-checked in preflight (`genome.1.bt2`), passed explicitly. atacseq live-proven the same day (the ATAC campaign, gate clean, cache handling exercised) | [0036](docs/decisions/0036-hidden-genome-map-lookups-are-parameter-surface.md) |
-| 08-28 | **v0.9.2 — the samplesheet's sample column is the pipeline's** (campaign live-fire find #2): atacseq/chipseq emit `sample = group` per the pipelines' own checkers; chipseq's `control` translated to the control's GROUP (`lookup:control_group`); stage 01 enforces (group, replicate) uniqueness, 1..N contiguity and chipseq antibody-homogeneity early. Corrects 0030's shared-group clause (dated note in place); cutandrun was right all along; the collect gates hardened to GROUP_REPn tokens so a lost replicate cannot hide behind its group. 42 tests; fixtures redone to true semantics with red cases per law | [0035](docs/decisions/0035-the-samplesheet-sample-column-is-the-pipelines.md) |
-| 08-28 | **v0.9.1 — the parser pairing is part of the pin.** Campaign run 1 (ATAC campaign) died at config parse: four of five pins predate Nextflow 26.04.6's strict parser (check_max ×3; methylseq's eager include), and each is its pipeline's latest release. Fix per 0034: `workspace.NEXTFLOW_LEGACY_PARSER` + submit.sh exporting `NXF_SYNTAX_PARSER=v1` for exactly those four; rnaseq untouched; 41 tests (3 new pinning presence/absence). Also the first genuine exercise of the gars wrapper's failure path: structured refusal, honest STATUS, full forensics — the last untested item from the rnaseq saga | [0034](docs/decisions/0034-nextflow-parser-pairing-is-part-of-the-pin.md) |
+| 08-29 | **dko-chip-k4 02.01 complete — the chipseq cache pays off.** 1h49m vs k27's 3h07m (derived cache "reused", no index build). All four K4me3 IPs pass QC: FRiP 0.41–0.52 (vs the k27 failed IP's 0.032). Two recorded observations: dko1_rep1 is a low-complexity library (57% duplication — effective depth below its raw 13.3M, note beside depth-sensitive comparisons), and DKO1 carries 2–5× more K4me3 peaks per read than HCT116, which is very likely the paper's own CGI-promoter finding — flagged in the QC note as SIGNAL TO REPRODUCE, never a confound to normalise away | — |
+| 08-29 | **Campaign project 3-K27 scored (third of five)** — binned Spearman ~0.80 on all healthy GSM-pinned replicate pairs (failed IP: 0.46, quantifying its failure); the paper's K27me3-spreading direction reproduces on both sides; region-class concordance honestly weak (3/6), reported as such. Closed loop on the failed-IP finding: the authors' own deposited z-track for GSM1420155 is 40–100× below its siblings — our QC, our reprocessing and their deposit agree the library failed; their depth-only published QC structurally could not see it (full chain in the project's QC_NOTES.md) | — |
+| 08-28 | **Campaign project 2 (cuttag-k562) CLOSED — second scored reproduction.** Stage 03 approved in-channel, 8m24s: Jaccard like-for-like (deposited fragments re-called with identical SEACR mode) h3k4me3 0.34/0.63, h3k27me3 0.17/0.05, matched-vs-cross-mark separation 600× (0.297 vs 0.0005); symmetric FRiP ours 0.95/0.77 + 0.85/0.68 vs deposited 0.61/0.61 + 0.32/0.07 — the deposited K27me3_R2 is mostly background by its own numbers; TSS sharp/broad contrast holds both sides. h3k4me3 reproduces on all three scores; K27me3 diverges quantitatively for stated reasons, direction matching throughout — the honest-read discipline the campaign doc requires | — |
+| 08-28 | **v0.9.5 — unfittable QC is a decision, not a casualty** (campaign find #5, jobs 26873507/26876410): cutandrun's all-samples × all-genes heatmap matrix OOMs at any sane allocation (per-sample heatmaps genuinely needed the 64→128G bump; the ALL matrix died even there). New surfaces: `qc.gene_heatmaps: false` → `--skip_heatmaps` (recorded per-project decision), and `prepare --resume-refresh` (params-change-then-resume over a terminally FAILED run with Nextflow state — the populated-run gate verifies both). The `-resume` road itself was live-proven: 320 cached tasks in ~100s. Suite green under the new CI: 46 tests, 7 documented environment-skips | [0038](docs/decisions/0038-unfittable-qc-is-a-decision-not-a-casualty.md) |
+| 08-28 | **v0.9.4 — a pin may carry one recorded patch** (live-fire find #4, job 26873422): cutandrun-3.2.2's local trimgalore module uses legacy DSL output options — an NPE under Nextflow 26, beyond the v1 config parser (0034's recorded boundary). The two-line patch ships in `_references/patches/` (upstream's dev-branch fix verbatim); preflight verifies the patched CONTENT and refuses with `pipeline_patch` + the apply command until it lands. Escalation trigger recorded: a third legacy incompatibility in cutandrun → the legacy-Nextflow env. 44 tests; the drift linter itself caught the missing contract definition mid-build | [0037](docs/decisions/0037-a-pin-may-carry-one-recorded-patch.md) |
+| 08-28 | **Campaign project 1 (dko-atac) CLOSED with a successful reproduction** — the first scored project: stage 03 plan approved and executed (one script rerun: tabulate-free table rendering); signal Spearman at consensus peaks 0.979-0.987 matched-condition vs 0.526 cross-condition (liftover retention 99.3%); direction asymmetry 4,552 hyper / 523 hypo (ratio 8.7, sign-test p≈0) vs published 23,310/3,166 (7.36) — direction and bias reproduce, absolute counts differ for recorded reasons (different DA method + peak set). Full detail in the project's results/report.md and HISTORY | — |
+| 08-28 | **v0.9.3 — hidden genome-map lookups are parameter surface** (campaign live-fire find #3, job 26873220): cutandrun 3.2.2 resolves the spike-in bowtie2 index from its own genome map (an s3 iGenomes path) even with a local fasta supplied. `spikein.bowtie2` now ships beside `spikein.fasta` in the seeded config (the mirror's exact local twin), required + content-checked in preflight (`genome.1.bt2`), passed explicitly. atacseq live-proven the same day (project `dko-atac`, 1h51m, gate clean, cache populated) | [0036](docs/decisions/0036-hidden-genome-map-lookups-are-parameter-surface.md) |
+| 08-28 | **v0.9.2 — the samplesheet's sample column is the pipeline's** (campaign live-fire find #2, job 26863963): atacseq/chipseq emit `sample = group` per the pipelines' own checkers; chipseq's `control` translated to the control's GROUP (`lookup:control_group`); stage 01 enforces (group, replicate) uniqueness, 1..N contiguity and chipseq antibody-homogeneity early. Corrects 0030's shared-group clause (dated note in place); cutandrun was right all along; the collect gates hardened to GROUP_REPn tokens so a lost replicate cannot hide behind its group. 42 tests; fixtures redone to true semantics with red cases per law | [0035](docs/decisions/0035-the-samplesheet-sample-column-is-the-pipelines.md) |
+| 08-28 | **v0.9.1 — the parser pairing is part of the pin.** Campaign run 1 (dko-atac job 26863407) died at config parse: four of five pins predate Nextflow 26.04.6's strict parser (check_max ×3; methylseq's eager include), and each is its pipeline's latest release. Fix per 0034: `workspace.NEXTFLOW_LEGACY_PARSER` + submit.sh exporting `NXF_SYNTAX_PARSER=v1` for exactly those four; rnaseq untouched; 41 tests (3 new pinning presence/absence). Also the first genuine exercise of the gars wrapper's failure path: structured refusal, honest STATUS, full forensics — the last untested item from the rnaseq saga | [0034](docs/decisions/0034-nextflow-parser-pairing-is-part-of-the-pin.md) |
 | 08-27 | **v0.9.0 — the ClawBio path is deleted; a session boots knowing the state.** The deprecated procedures removed after the live switchover (contracts' Purpose + boundaries, L0/L1, stage-02's skill teaching, assay map, environment notes, `gars-env.sh` — `GARS_SKILLS` out of the fail-fast list, resolved for inspection only). New: `_system/project_state.py` + a SessionStart hook (rebuilds `projects/_index.md`, prints the catch-up); `kind:` + `symptoms:` frontmatter on all 33 decisions with the index rendering both; the lesson-landing rule adopted, first case the unstranded-library note (now in the rnaseq config template). 38 tests (4 new: render truth, STATUS authority, writes-nothing determinism, single-project flag) | [0032](docs/decisions/0032-lessons-land-where-they-fire.md), [0033](docs/decisions/0033-a-session-boots-knowing-the-state.md) |
-| 08-27 | **rnaseq validated live under the gars wrappers — 0029 switchover criteria met.** Full chain on the wrapper validation cohort: 02.01 (COMPLETED, gate 5/5, HISTORY entries verbatim), 02.02 (19,566 genes tested, significant set plausible and balanced), numerical check r = 0.999952 / sign agreement 100%. A filesystem quota failure also interrupted validation; deployment capacity must be checked before pipeline execution. Historical proposal (not implemented here): warn when the target fileset's file quota is >97% (`mmlsquota -j`). | — |
-| 08-27 | **First gars-wrapper live run submitted** (the wrapper validation cohort) after a false start: the initial submission drifted to the deprecated ClawBio path and failed because the filesystem quota was exhausted. Drift recorded under "What is not yet proven"; rerun prepared and submitted strictly per the current contract, prebuilt indices from the derived cache | — |
+| 08-27 | **rnaseq validated live under the gars wrappers — 0029 switchover criteria met.** Full chain on `rnaseq-wrapper-validation`: 02.01 job 26842968 (COMPLETED 1h23m, gate 5/5, HISTORY entries verbatim), 02.02 job 26851720 (1m18s, 19,566 genes tested, significant set plausible and balanced), numerical check r = 0.999952 / sign agreement 100%. Along the way the abl-fileset ENOSPC was root-caused to the **data_abl file-count quota** (344.3M/350M inodes, 98.4%; blocks fine) — creates fail at the ceiling, lab churn makes it flap; ticket drafted. Remaining assay Nextflow runs held until the quota resolves. Lesson candidate (item 8): preflight warns when the target fileset's file quota is >97% (`mmlsquota -j` is user-runnable) | — |
+| 08-27 | **First gars-wrapper live run submitted** (`rnaseq-wrapper-validation`, job 26842968) after a false start: the initial submission drifted to the deprecated ClawBio path and died on GPFS quota (errno 245, 105/107 tasks complete; 564 GB of disposable `work/` cleared from scratch). Drift recorded under "What is not yet proven"; rerun prepared and submitted strictly per the current contract, prebuilt indices from the derived cache | — |
 | 08-26 | **ClawBio defect report filed upstream**: [ClawBio/ClawBio#365](https://github.com/ClawBio/ClawBio/issues/365), posted verbatim from the draft. Same day: a design review added Next Steps 6–8 (recall gaps) and the status header was brought current | — |
 | 08-25 | **Wrappers #3–#5 (v0.8.0): every assay wired.** chipseq/cutandrun/methylseq checkouts cloned and tag-verified; all five FORMATS active; per-assay config templates + menus (`genome` decision shape); artifact vocabulary +3 (methylation types); contracts for all three sub-stages; SKILL.md for every wrapper; 34 tests. Facts read from the checkouts, not memory — chipseq calls peaks with MACS3, consensus per antibody, cutandrun MultiQC under `04_reporting/`. Two RNA-era stage-01 rules (replicate-uniqueness key, group-of-one refusal) caught encoding bulk-RNA assumptions and made per-assay | [0031](docs/decisions/0031-all-five-assays-are-wired.md) |
-| 08-25 | **rnaseq migrated to gars wrappers (v0.7.0); ClawBio defect #4 found.** `_system/wrapperlib.py` extracted (shared wrapper machinery); `nfcore-rnaseq-wrapper` + `rnaseq-de` rebuilt as gars wrappers; both rnaseq contracts rewritten to the wrapper idiom, ClawBio procedures preserved as `DEPRECATED-clawbio-path.md` with switchover criteria (0029). DE science validated on the RNA validation cohort inputs via three Slurm jobs: tested set, p-values and the significant set match the baseline exactly (padj r=0.99998, 265/265) — and the old skill's published fold changes turned out not to reflect the data (r=0.33 vs 0.99 against normalized group ratios), a fourth silent defect added to the upstream report. Validation also caught two wrapper bugs pre-ship (frozen relative paths; staging on login-node /tmp). Design table made assay-aware (`workspace.design_columns`, 0030): ChIP-family assays gain `antibody`/`control` columns with per-assay referential checks | [0029](docs/decisions/0029-the-clawbio-path-is-deprecated.md), [0030](docs/decisions/0030-the-design-table-is-assay-aware.md) |
-| 08-25 | **Wrapper #1: `nfcore-atacseq-wrapper` (v0.6.0).** First GARS-authored wrapper — one stdlib file cloning the ClawBio *behavior* (preflight, audited params, structured failures, content exit gates) not its 12-module architecture; `submit.sh` generated by code with the requeue guard baked in; native Nextflow `-resume` restores real crash recovery. `atacseq_bulk` promoted to `active`; assay map gains the Source column (clawbio/gars); genome registry rows carry per-assay-keyed cache roots + mito contig + MACS gsize; `configure.py` decisions are per-assay (`peaks` menu); artifact vocabulary +4 types. nf-core/atacseq 2.1.2 pinned and tag-verified. 5 new tests (25 total) | [0028](docs/decisions/0028-wrappers-are-thin-system-helpers.md) |
-| 08-25 | **v0.5.0 live-validated on the RNA validation cohort**: both guard layers fired on deliberate forbidden calls; first stage 03 analysis ran end to end (plan drafted → approved → executed → verified, HISTORY carries version + model); cache reuse confirmed (0 index-building processes in the trace). One deviation: the agent hand-built the analysis directory instead of running `create` — contained by the gates. And one policy change from the run: **stage 03 executes under `sbatch` by default** — the plan's `Runs:` line is a closed two-value vocabulary gated by `approve`; login-node execution exists only as `Runs: login-node (user-requested)` | [0027](docs/decisions/0027-stage-03-runs-under-sbatch-by-default.md) |
+| 08-25 | **rnaseq migrated to gars wrappers (v0.7.0); ClawBio defect #4 found.** `_system/wrapperlib.py` extracted (shared wrapper machinery); `nfcore-rnaseq-wrapper` + `rnaseq-de` rebuilt as gars wrappers; both rnaseq contracts rewritten to the wrapper idiom, ClawBio procedures preserved as `DEPRECATED-clawbio-path.md` with switchover criteria (0029). DE science validated on `leukemia-tall`'s real inputs via three Slurm jobs: tested set, p-values and the significant set match the baseline exactly (padj r=0.99998, 265/265) — and the old skill's published fold changes turned out not to reflect the data (r=0.33 vs 0.99 against normalized group ratios), a fourth silent defect added to the upstream report. Validation also caught two wrapper bugs pre-ship (frozen relative paths; staging on login-node /tmp). Design table made assay-aware (`workspace.design_columns`, 0030): ChIP-family assays gain `antibody`/`control` columns with per-assay referential checks | [0029](docs/decisions/0029-the-clawbio-path-is-deprecated.md), [0030](docs/decisions/0030-the-design-table-is-assay-aware.md) |
+| 08-25 | **Wrapper #1: `nfcore-atacseq-wrapper` (v0.6.0).** First GARS-authored wrapper — one stdlib file cloning the ClawBio *behavior* (preflight, audited params, structured failures, content exit gates) not its 12-module architecture; `submit.sh` generated by code with the requeue guard baked in; native Nextflow `-resume` restores real crash recovery. `atacseq_bulk` promoted to `active`; assay map gains the Source column (clawbio/gars); genome registry rows carry per-assay-keyed cache roots + mito contig + MACS gsize; `configure.py` decisions are per-assay (`peaks` menu); artifact vocabulary +4 types. nf-core/atacseq 2.1.2 cloned and tag-verified at `~/install/nf-core-pipelines/atacseq-2.1.2`. 5 new tests (25 total) | [0028](docs/decisions/0028-wrappers-are-thin-system-helpers.md) |
+| 08-25 | **v0.5.0 live-validated on `leukemia-tall`**: both guard layers fired on deliberate forbidden calls; first stage 03 analysis ran end to end (plan drafted → approved → executed → verified, HISTORY carries version + model); cache reuse confirmed (0 index-building processes in the trace). One deviation: the agent hand-built the analysis directory instead of running `create` — contained by the gates. And one policy change from the run: **stage 03 executes under `sbatch` by default** — the plan's `Runs:` line is a closed two-value vocabulary gated by `approve`; login-node execution exists only as `Runs: login-node (user-requested)` | [0027](docs/decisions/0027-stage-03-runs-under-sbatch-by-default.md) |
 | 08-24 | **v0.5.0 — the assessment's structural gaps closed.** Scope boundaries enforced by the harness (`gars/.claude/settings.json` + `_system/guard_hook.py`); the deterministic core tested (`tests/run_tests.py`, 20 tests, real CLIs in a throwaway workspace) and contracts linted (`tests/check_contracts.py`: sections, wait points, vocabulary drift, token load); every `HISTORY.md` entry names the model beside the template version (`--model` on the 00/01/03 helpers); the bounded voice added to the contract standard; **stage 03 implemented as plan-gated custom analysis** — agent drafts `PLAN.md`, user approves, `stage03_analysis.py` enforces the approval and exit gates, outputs register in `OUTPUTS.tsv` with three new generic types (`table`, `figure`, `report`) | [0022](docs/decisions/0022-scope-boundaries-are-enforced-by-the-harness.md)–[0026](docs/decisions/0026-stage-03-is-plan-gated.md) |
-| 08-12/14 | Repo made canonical; skills de-vendored; `work/` moved to scratch; derived-reference cache implemented and reuse tested; artifact registry implemented; environment centralised in `_system/gars-env.sh`; full chain run end to end on real data | 0004, 0006, 0007, 0009 |
+| 08-12/14 | Repo made canonical; skills de-vendored; `work/` moved to scratch; derived-reference cache designed, populated and verified reusable; artifact registry implemented; environment centralised in `_system/gars-env.sh`; full chain run end to end on real data | 0004, 0006, 0007, 0009 |
 | 08-18 | **ICM restructure (v0.2.0).** Reference files that did not exist in a copied workspace moved into `_references/`; config schema and contract standard extracted from L0/L1 (which carried ~2.5x their token budget); `tools/` → `_system/` and nine empty directories deleted; `_templates/project/` added as the stamp stage 00 copies; `03_custom_analysis` given an explicit not-implemented contract; `projects/_index.md` generated; **Human check** added as the eighth contract section; the decision log split into `docs/decisions/` | — |
 | 08-19 | **Stages 00 and 01 compute deterministically.** Samplesheets and design tables are derived artifacts, so an agent emitting them token by token was the hand-curated index ICM forbids. Both stages reproduce the hand-built reference byte for byte | [0011](docs/decisions/0011-deterministic-artifacts-in-stages-00-01.md) |
 | 08-19 | **v0.2.0 dogfood run, stages 00 → 01**, on a synthetic project. Whole path runs on stock python 3.6.8, no conda. Found one real defect: samplesheet paths used `Path.resolve()`, which follows symlinks — every samplesheet pointed at the sequencing run rather than the project. The exit gate now rejects paths outside the project | — |
 | 08-19 | **Stage 02 preflight passes under v0.2.0.** `unknown_columns: []`, 4 samplesheet rows correctly merged into 2 samples. Execution untested. Also: all four target assays' samplesheet columns registered from each pipeline's own `schema_input.json`, marked `planned`; artifact resolution moved into `resolve_artifact.py` | [0012](docs/decisions/0012-gars-authored-wrappers-live-in-system.md) |
 | 08-19 | Both assay-expansion blockers cleared: wrapper location settled, samplesheet emitter made table-driven and refusing unregistered assays | [0012](docs/decisions/0012-gars-authored-wrappers-live-in-system.md) |
 | 08-19 | **v0.3.0.** Stage 00 offers an assay menu instead of parsing a phrase; assay matching normalises punctuation and case; 02.02 resolves inputs by type; README gained a Getting started | — |
-| 08-20 | **Integrity verification moved to stage 01 and made opt-in.** Stage 00 verified every registered file before the user could exclude any. Integrity verification moved to the selected stage-01 cohort; the original performance evidence remains in decision 0013 | [0013](docs/decisions/0013-integrity-verification-moves-to-stage-01.md) |
+| 08-20 | **Integrity verification moved to stage 01 and made opt-in.** Stage 00 verified every registered file before the user could exclude any — 48 GB to validate a possible 4-sample pilot. Measurement overturned three assumptions: Python's `gzip` beats system `gzip -t` here (15.6 s vs 26.0 s), the work is I/O-bound not CPU-bound (a 2-byte-per-file pass took 3m51s wall at 0.1 s CPU), and concurrency past 4 buys nothing | [0013](docs/decisions/0013-integrity-verification-moves-to-stage-01.md) |
 | 08-24 | **The adaptation's rename moved into code.** A real run analysed 22,783 genes and wrote a DE table with no gene identifier column; the report-writing crash was the only thing that revealed it. [0010](docs/decisions/0010-skill-chaining-defects-and-adaptation.md) had diagnosed this and prescribed "name the column `gene`" eight decisions earlier, but the contract's Definition never encoded the rename and the reshape lived in a `submit.sh` heredoc. Now `_system/adapt_counts.py`, which verifies its own output header. Verified against the real skill: `gene_id` → crash + anonymous table, `gene` → clean run with identifiers | [0021](docs/decisions/0021-the-adaptation-rename-belongs-in-code.md) |
 | 08-21 | Stage 01's closing template still offered to take config values as free text after stage 02 had begun offering them as menus — the third time in a day that a mechanism changed and its description elsewhere did not. Rewritten to hand off to the menus; the seeded config's hints now say where each value comes from; and the rule is recorded in both `CLAUDE.md` and the contract standard: when you change how something works, grep for its **description**, not its identifier | — |
-| 08-24 | **First complete run under the current template.** the RNA validation cohort: the full cohort registered, an analysis subset confirmed by exclusion, config completed from menus, 22,783 genes tested, `de_results.csv` carrying gene identifiers. Every stage stamped its template version into `HISTORY.md`; 02.02 resolved both inputs by artifact type at run time. The chain 00 → 01 → 02.01 → 02.02 is now proven on real data | — |
+| 08-24 | **First complete run under the current template.** `leukemia-tall`: the full cohort registered, an analysis subset confirmed by exclusion, config completed from menus, 22,783 genes tested, `de_results.csv` carrying gene identifiers. Every stage stamped its template version into `HISTORY.md`; 02.02 resolved both inputs by artifact type at run time. The chain 00 → 01 → 02.01 → 02.02 is now proven on real data | — |
 | 08-21 | **Config decisions come from menus, not free text.** The four `<REQUIRED>` keys were still typed by hand, and their typos are expensive — a FASTA paired with the wrong-release GTF silently misannotates every count. `_references/genomes.md` now pairs FASTA + GTF + index cache per reference, so one choice sets all three; the contrast menu is built from the levels actually in the design table, offers ordered pairs so direction is chosen, and refuses a level with fewer than 2 samples; `formula` defaults to `~ condition`, shown for confirmation before anything is written | [0020](docs/decisions/0020-config-decisions-come-from-menus.md) |
 | 08-21 | Stage 00's `T2` asked "which assay types?" and ended there, so the agent waited and the assay menu in step 3 was never sent — the user saw `Supported: Bulk RNA-seq` with no IDs to pick. `T2` predated the menu; deleted, its title line folded into the menu, and the rule recorded in the contract standard: a template ending in a question is a wait point, so no two templates may ask the same thing | — |
 | 08-21 | **The project config is seeded, not authored.** Stage 01's handoff told the user to write two YAML files from a 91-line schema; `_config/` was created empty. Stage 00 now seeds it — every derivable value filled, scientific decisions marked `<REQUIRED>`, `nextflow.slurm.config` copied verbatim — and stage 01 reports the outstanding keys as `config_unfilled` so the handoff names them. Same error as "Then run 01_prepare_samplesheets": the user decides, the agent operates | [0019](docs/decisions/0019-config-is-seeded-not-authored.md) |
@@ -289,45 +304,41 @@ it; reversing one without reading is how the lesson gets lost.
 ## Quick Reference
 
 ### Environments
-
-Create the environments from the [dependency instructions](README.md#dependencies) and
-[lockfiles](gars/_references/environment.md). Set these paths for your deployment:
-
 ```bash
-BIO=/path/to/conda/envs/gars-bio    # scientific tools
-NXF=/path/to/conda/envs/gars-nxf    # workflow engine
+BIO=~/install/miniconda_clean/envs/gars-bio    # clawbio, scikit-learn, pydeseq2, apptainer, squashfuse
+NXF=~/install/miniconda_clean/envs/gars-nxf    # nextflow 26.04.6, openjdk 17
 export PATH="$NXF/bin:$BIO/bin:$PATH"
-export APPTAINER_CACHEDIR=/path/to/container-cache
-export NXF_APPTAINER_CACHEDIR="$APPTAINER_CACHEDIR"
+export APPTAINER_CACHEDIR=~/.apptainer_cache
+export NXF_APPTAINER_CACHEDIR=~/.apptainer_cache
 ```
-
 Never pipe `module load` — it runs in a subshell and silently discards the `PATH` change.
 Invoke skills by interpreter path, not `conda run`, which can swallow output entirely.
 
-### Deployment locations
+### Key locations
+| Path | Contents | State |
+|---|---|---|
+| `PROJECTS/gars/` | **canonical repo** — the template and all development | current |
+| `~/install/nf-core-pipelines/rnaseq-3.26.0` | pinned pipeline checkout | present |
+| `~/install/refs/ensembl-GRCh38-116/` | reference FASTA + GTF | present |
+| `~/install/refs/ensembl-GRCh38-116/derived/nf-core-rnaseq-3.26.0/` | derived-index cache, 59 GB, version-keyed | present, verified reusable |
+| `~/install/miniconda_clean/envs/{gars-bio,gars-nxf}` | the two conda environments | present |
+| `bioinfo-research-system/` | former working copy + `test-TALL` project | **deleted** |
 
-These are configuration requirements, not an inventory of installed files.
-
-| Location | Configure and verify |
-|---|---|
-| `<clone>/gars/` | Workspace in a repository checkout; projects remain gitignored. |
-| `$GARS_PIPELINES` | Pipeline checkouts matching the version pins. |
-| Reference paths in the genome registry | Matching FASTA and GTF files with verified integrity. |
-| `reference.derived_dir` | Derived indexes keyed by reference and pipeline version. |
-| Scientific and workflow environments | Dependencies matching the documented lockfiles. |
-
-This repository is canonical. Validate a deployment with an explicitly supplied test cohort;
-this document makes no claim that a local project, environment, reference or cache is present.
+`bioinfo-research-system/` and the `test-TALL` project are gone (noticed 2026-08-19). This table
+previously called that tree canonical and this repo a "published snapshot", which contradicted
+`CLAUDE.md`. **This repo is canonical**; there is no second working copy. The consequence for
+testing: no project with real FASTQs currently exists, so stage 02 cannot be re-verified until
+one does. The derived-index cache and pinned pipeline survived, so that run is still ~40 minutes
+and 43 GB cheaper than a cold one.
 
 ### Updating a workspace
 
 A workspace is a checkout of this repository; you work in `gars/`.
-Set `GARS_CLONE` to your checkout path.
 
 ```bash
-git -C "$GARS_CLONE" pull                 # take fixes
-git -C "$GARS_CLONE" checkout v0.3.0      # pin to a release
-git -C "$GARS_CLONE" log --oneline gars/  # what changed in the template
+git -C <clone> pull                 # take fixes
+git -C <clone> checkout v0.3.0      # pin to a release
+git -C <clone> log --oneline gars/  # what changed in the template
 ```
 
 **Do not pull between the stages of a running analysis unless the fix is one you need.** Every
@@ -351,10 +362,10 @@ Three config values decide whether it works, and each has cost a real run:
 | Value | Why |
 |---|---|
 | `reference.fasta` + `gtf`, **not** `genome: GRCh38` | the iGenomes GRCh38 is NCBI and has no `gene_biotype`; it fails *after* counts are written (0005, failure 5) |
-| `compute.work_dir` on scratch | size this storage for the workflow and input volume (0006) |
-| `_config/nextflow.slurm.config`, copied unchanged | set `process.queue` to the intended deployment partition (0005, failure 3) |
+| `compute.work_dir` on scratch | a run accumulates 250-350 GB there (0006) |
+| `_config/nextflow.slurm.config`, copied unchanged | without `process.queue`, Nextflow sends ~50 child jobs to the most contended partition (0005, failure 3) |
 
-Set `reference.derived_dir` to a compatible version-keyed cache to avoid rebuilding indexes.
+Set `reference.derived_dir` to the version-keyed cache and the run skips ~43 GB and ~40 minutes.
 
 Checkpoints, in the order they can save you time:
 
@@ -366,20 +377,17 @@ Checkpoints, in the order they can save you time:
 | after 02.02 | the first column of `de_results.csv` holds gene identifiers | the silent defect in 0010 — a complete, plausible table with anonymous genes |
 
 ### Checking a run
-
-Set `GARS_JOB_ID` to the job identifier returned by your scheduler.
-
 ```bash
-S=/path/to/project/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper
-cat "$S/STATUS"                          # authority on sub-stage state
-squeue -j "$GARS_JOB_ID"
-sacct -j "$GARS_JOB_ID"
-grep '\[guard\]' "$S"/*.out              # clean start vs resume vs crashed
-tail "$S/run/logs/stdout.txt"
+S=.../02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper
+cat $S/STATUS                          # authority on sub-stage state
+squeue -j <id>; sacct -j <id>
+grep '\[guard\]' $S/*.out              # clean start vs resume vs crashed
+tail $S/run/logs/stdout.txt
 ```
 
 ### Housekeeping
 
-Configure `compute.work_dir` on deployment scratch storage. Retain failed-run artifacts for
-forensics; after successful completion, verify published results before cleaning disposable
-work files. Results use `publish_dir_mode = 'copy'`.
+Failed-run artifacts from 2026-08-12 (612 GB across four runs) were deleted. `work/` now lives
+on scratch at `/gpfs/scratch/<user>/gars-work/<project>-<assay>` and is disposable once a run
+succeeds, because `results/` is published with `publish_dir_mode = 'copy'`.
+
