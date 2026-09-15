@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+"""R-164 whole-suite gate; any pre-existing hook keeps its stdin and veto."""
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+MARKER = 'GARS_ROW3_PRE_PUSH_V1'
+
+
+def main():
+    payload = sys.stdin.buffer.read()
+    root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel']).decode().strip()
+    previous = Path(__file__).absolute().with_name('pre-push.gars-previous')
+    failed = False
+    if previous.exists() or previous.is_symlink():
+        try:
+            # Each command gets a fresh copy; a gitleaks hook may consume every input byte.
+            code = subprocess.run([str(previous)] + sys.argv[1:], cwd=root,
+                                  input=payload).returncode
+            failed = code != 0
+        except OSError as exc:
+            print('pre-push: previous hook could not run: %s' % exc, file=sys.stderr)
+            failed = True
+    env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
+    try:
+        code = subprocess.run([sys.executable, 'tests/run_tests.py'], cwd=root,
+                              input=payload, env=env).returncode
+        failed = failed or code != 0
+    except OSError as exc:
+        print('pre-push: suite could not run: %s' % exc, file=sys.stderr)
+        failed = True
+    print('pre-push: REFUSED' if failed else 'pre-push: whole suite passed')
+    return 1 if failed else 0
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main())
+    except (OSError, subprocess.CalledProcessError) as exc:
+        print('pre-push: REFUSED (%s)' % exc, file=sys.stderr)
+        sys.exit(1)

@@ -33,6 +33,10 @@ import time
 import unittest
 from pathlib import Path
 
+# An explicitly supplied scratch directory must never silently fall back elsewhere.
+if os.environ.get("TMPDIR"):
+    tempfile.tempdir = os.environ["TMPDIR"]
+
 REPO = Path(__file__).resolve().parent.parent
 GARS = REPO / "gars"
 
@@ -3275,5 +3279,52 @@ class SpatialClusterCountTests(unittest.TestCase):
         self.assertFalse((substage / "run" / ".gars_run_complete").exists())
 
 
+class SuiteResult(unittest.TextTestResult):
+    """Name the first failure in execution order, including subtests and fixtures."""
+    first_failure = None
+
+    def remember_failure(self, test):
+        if self.first_failure is None:
+            self.first_failure = test.id()
+            self.stream.write('\nfirst failing test: %s\n' % self.first_failure)
+
+    def addFailure(self, test, err):
+        self.remember_failure(test)
+        super().addFailure(test, err)
+
+    def addError(self, test, err):
+        self.remember_failure(test)
+        super().addError(test, err)
+
+    def addSubTest(self, test, subtest, err):
+        if err is not None:
+            self.remember_failure(subtest)
+        super().addSubTest(test, subtest, err)
+
+
+def load_tests(loader, standard_tests, pattern):
+    """Keep the original suite and discover both trees through unittest's loader.
+
+    The counting guard calls this same protocol; an empty tree is a collection error.
+    Separate loaders avoid unittest's cached discovery root crossing the two trees.
+    """
+    suite = unittest.TestSuite()
+    for relative in ("tests", "gars/tests"):
+        tree = REPO / relative
+        if not tree.is_dir():
+            raise RuntimeError("collected 0 tests from %s; refused" % relative)
+        discovered = unittest.TestLoader().discover(str(tree), pattern="test_*.py")
+        group = unittest.TestSuite()
+        if relative == "tests":
+            group.addTests(standard_tests)
+        group.addTests(discovered)
+        count = group.countTestCases()
+        print("collected %d tests from %s" % (count, relative), flush=True)
+        if count == 0:
+            raise RuntimeError("collected 0 tests from %s; refused" % relative)
+        suite.addTests(group)
+    return suite
+
+
 if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    unittest.main(testRunner=unittest.TextTestRunner(verbosity=2, resultclass=SuiteResult))
