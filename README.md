@@ -275,8 +275,10 @@ artifact each stage produces.
 
 ## Status
 
-**Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(142 tests, green on macOS and on the cluster); live validation is per-assay. Agent behaviour is
+**Seven assays are wired; most are proven live.** The current deterministic suite collects
+148 tests. Expanded-suite cluster execution is unverified; dated local runner
+results and skips are recorded in the [Row 2 report](docs/implementation/row_2_change_report.md).
+Live validation is per-assay. Agent behaviour is
 graded separately and published in [docs/EVALS.md](docs/EVALS.md), against a pre-registration
 frozen before the first run:
 

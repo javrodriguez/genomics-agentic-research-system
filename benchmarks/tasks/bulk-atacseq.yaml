@@ -34,7 +34,9 @@
           "qc_multiqc": "file"
         },
         "samplesheet": "project/01_samplesheets/atacseq_bulk_samplesheet.csv",
-        "sample_mode": "atacseq"
+        "sample_mode": "atacseq",
+        "expected_samplesheet": null,
+        "reference_counts": {}
       }
     }
   },

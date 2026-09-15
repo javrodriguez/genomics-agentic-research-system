@@ -110,14 +110,22 @@ def validate_task(task, input_root, holdout):
         if kind == 'nonempty':
             require(expected is True, 'nonempty must be true')
         if kind == 'artifact_registry':
-            require(isinstance(expected, dict) and set(expected) == {'types', 'samplesheet', 'sample_mode'},
-                    'artifact_registry requires types, samplesheet, sample_mode')
+            require(isinstance(expected, dict) and set(expected) == {
+                'types', 'samplesheet', 'sample_mode', 'expected_samplesheet', 'reference_counts'},
+                'artifact_registry requires types, samplesheet, sample_mode, expected_samplesheet, reference_counts')
             relative_path(expected['samplesheet'])
             require(expected['sample_mode'] in ('rnaseq', 'atacseq'), 'invalid sample_mode')
             require(isinstance(expected['types'], dict) and expected['types'], 'artifact_registry must name types')
             for typ, rule in expected['types'].items():
                 require(TOKEN.fullmatch(typ) and rule in ('file', 'directory', 'counts', 'bed'),
                         'invalid registry type or content rule')
+            roster = expected['expected_samplesheet']
+            require(roster is None or roster in seen, 'expected samplesheet must name a hashed task input')
+            refs = expected['reference_counts']
+            require(isinstance(refs, dict), 'reference_counts must map count types to hashed inputs')
+            for typ, reference in refs.items():
+                require(expected['types'].get(typ) == 'counts' and reference in seen,
+                        'reference count must name a count type and hashed task input')
     return task
 
 
@@ -138,20 +146,27 @@ def load_tasks(folder, input_root, holdout):
     return tasks
 
 
-def assert_registry(case, path, contract, output_root):
-    rules = contract['types']
-    sheet = contained(output_root, contract['samplesheet'])
+def sample_tokens(sheet, mode):
     with sheet.open(encoding='utf-8', newline='') as handle:
         samples = list(csv.DictReader(handle))
-    case.assertTrue(samples, 'samplesheet must not be empty')
-    expected_samples = set()
+    require(samples, 'samplesheet must not be empty')
+    tokens = set()
     for sample in samples:
-        case.assertTrue(sample.get('sample'), 'missing sample id')
+        require(sample.get('sample'), 'missing sample id')
         token = sample['sample']
-        if contract['sample_mode'] == 'atacseq':
-            case.assertTrue(sample.get('replicate', '').isdigit(), 'missing replicate')
+        if mode == 'atacseq':
+            require(sample.get('replicate', '').isdigit(), 'missing replicate')
             token += '_REP' + sample['replicate']
-        expected_samples.add(token)
+        tokens.add(token)
+    return tokens
+
+
+def assert_registry(case, path, contract, output_root, input_root):
+    rules = contract['types']
+    require(contract['expected_samplesheet'] is not None, 'independent expected samplesheet unresolved')
+    expected_samples = sample_tokens(contained(input_root, contract['expected_samplesheet']), contract['sample_mode'])
+    actual_samples = sample_tokens(contained(output_root, contract['samplesheet']), contract['sample_mode'])
+    case.assertEqual(actual_samples, expected_samples, 'export differs from independent sample roster')
     rows = [line for line in path.read_text(encoding='utf-8').splitlines()
             if line.strip() and not line.startswith('#')]
     registry = {}
@@ -184,12 +199,16 @@ def assert_registry(case, path, contract, output_root):
             offset = 6 if header[:6] == ['Geneid', 'Chr', 'Start', 'End', 'Strand', 'Length'] else (2 if len(header) > 1 and header[1] == 'gene_name' else 1)
             case.assertGreater(len(header), offset, 'counts need samples')
             case.assertEqual(len(set(header)), len(header), 'duplicate sample columns')
-            for sample in expected_samples:
+            matched = []
+            for col in header[offset:]:
                 # featureCounts names BAM paths; compare the complete sample token,
                 # not a substring that lets REP1 stand in for REP10.
-                case.assertTrue(any(re.search(r'(?<![A-Za-z0-9_])' + re.escape(sample) +
-                                              r'(?![A-Za-z0-9_])', col)
-                                    for col in header[offset:]), 'lost sample: ' + sample)
+                matches = [sample for sample in expected_samples if re.search(
+                    r'(?<![A-Za-z0-9_])' + re.escape(sample) + r'(?![A-Za-z0-9_])', col)]
+                case.assertEqual(len(matches), 1, 'unknown or ambiguous count sample')
+                matched.extend(matches)
+            case.assertEqual(len(matched), len(set(matched)), 'duplicate count sample')
+            case.assertEqual(set(matched), expected_samples, 'lost sample')
             ids = set()
             for row in table[1:]:
                 case.assertEqual(len(row), len(header))
@@ -198,6 +217,9 @@ def assert_registry(case, path, contract, output_root):
                 for value in row[offset:]:
                     number = float(value)
                     case.assertTrue(math.isfinite(number) and number >= 0, 'invalid count')
+            if typ in contract['reference_counts']:
+                case.assertEqual(file_sha(artifact), file_sha(contained(input_root, contract['reference_counts'][typ])),
+                                 'counts differ from independent reference')
         if rule == 'bed':
             lines = artifact.read_text(encoding='utf-8').splitlines()
             data = [line for line in lines if line and not line.startswith(('#', 'track', 'browser'))]
@@ -208,15 +230,27 @@ def assert_registry(case, path, contract, output_root):
                 case.assertTrue(row[0] and 0 <= int(row[1]) < int(row[2]), 'invalid BED interval')
 
 
-def score_task(task, output_root):
+def json_equal(actual, expected):
+    if type(actual) is not type(expected):
+        return False
+    if isinstance(expected, dict):
+        return set(actual) == set(expected) and all(json_equal(actual[k], expected[k]) for k in expected)
+    if isinstance(expected, list):
+        return len(actual) == len(expected) and all(json_equal(a, b) for a, b in zip(actual, expected))
+    return actual == expected
+
+
+def score_task(task, output_root, input_root=None):
     case = unittest.TestCase()
     try:
+        input_root = Path(input_root) if input_root is not None else REPO
+        validate_task(task, input_root, task['holdout'])
         for name, contract in task['expected_outputs'].items():
             path = contained(Path(output_root), name)
             case.assertTrue(path.is_file(), 'missing expected output: ' + name)
             kind, expected = next(iter(contract.items()))
             if kind == 'json_equals':
-                case.assertEqual(read_json(path), expected)
+                case.assertTrue(json_equal(read_json(path), expected), 'JSON value or type differs')
             elif kind == 'text_equals':
                 case.assertEqual(path.read_text(encoding='utf-8').strip(), expected)
             elif kind == 'regex':
@@ -224,7 +258,7 @@ def score_task(task, output_root):
             elif kind == 'nonempty':
                 case.assertGreater(path.stat().st_size, 0)
             elif kind == 'artifact_registry':
-                assert_registry(case, path, expected, Path(output_root))
+                assert_registry(case, path, expected, Path(output_root), input_root)
         return {'passed': True, 'reason': 'all artifact assertions passed'}
     except (AssertionError, ValueError, OSError, UnicodeError) as error:
         # Do not persist exception text: it may contain private paths or submitted data.
@@ -247,8 +281,8 @@ def output_manifest(root):
     return result
 
 
-def score_partition(tasks, root):
-    results = {name: score_task(task, root / name) for name, task in sorted(tasks.items())}
+def score_partition(tasks, root, input_root=None):
+    results = {name: score_task(task, root / name, input_root) for name, task in sorted(tasks.items())}
     return {'state': 'measured', 'numerator': sum(int(r['passed']) for r in results.values()),
             'denominator': len(results), 'tasks': results,
             'suite_sha256': digest(tasks)}
@@ -290,7 +324,7 @@ def make_record(outputs, metadata):
         require(seal['seal_type'] in ('independent_context', 'external_human_seal') and
                 seal['producer_access_denied'] is True and seal['suite_sha256'] == digest(tasks),
                 'invalid seal or suite digest')
-        scores['held_out'] = score_partition(tasks, outputs / 'held_out')
+        scores['held_out'] = score_partition(tasks, outputs / 'held_out', root)
         scores['held_out']['seal'] = seal
     record['scores'] = scores
     return record
@@ -339,6 +373,14 @@ def validate_record(record):
         require(type(score['numerator']) is int and type(score['denominator']) is int and
                 score['denominator'] == len(tasks) and
                 score['numerator'] == sum(int(r['passed']) for r in tasks.values()), 'score does not match tasks')
+    archive = os.environ.get('GARS_BENCH_OUTPUTS_DIR')
+    require(archive and archive.strip(), 'GARS_BENCH_OUTPUTS_DIR required to verify retained artifacts')
+    outputs = contained(Path(archive), record['run_id'])
+    require(output_manifest(outputs) == record['outputs'], 'retained output manifest/hash mismatch')
+    metadata = {k: record[k] for k in ('run_id', 'git_sha', 'model', 'prompt_sha256', 'configuration', 'resource')}
+    recomputed = make_record(outputs, metadata)
+    require(json_equal(recomputed['scores'], record['scores']),
+            'record differs from recomputed verdicts, pinned suite, or seal')
     return record
 
 
@@ -389,6 +431,56 @@ def discriminates(intact, degraded, partition='tuned_on'):
     return score_value(degraded, partition) < baseline - floor
 
 
+def reference_readiness(tasks, input_root):
+    """Refuse placeholder nf-core tasks even when their artifact shapes pass."""
+    for name, task in tasks.items():
+        if task['reference_source'] != 'nfcore_test_data_expected_output':
+            continue
+        inputs = {item['path'] for item in task['inputs']}
+        registries = [c['artifact_registry'] for c in task['expected_outputs'].values()
+                      if 'artifact_registry' in c]
+        require(registries, name + ': unresolved required references: no numerical contract')
+        for contract in registries:
+            counts = {typ for typ, rule in contract['types'].items() if rule == 'counts'}
+            require(contract['expected_samplesheet'] is not None and counts and
+                    set(contract['reference_counts']) == counts,
+                    name + ': unresolved required references: expected samplesheet and all reference counts required')
+            with contained(input_root, contract['expected_samplesheet']).open(encoding='utf-8', newline='') as handle:
+                rows = list(csv.DictReader(handle))
+            require(rows, name + ': unresolved required references: empty expected samplesheet')
+            for row in rows:
+                require(row.get('fastq_1') in inputs and
+                        (not row.get('fastq_2') or row['fastq_2'] in inputs),
+                        name + ': unresolved required references: samplesheet FASTQs must be hashed task inputs')
+        for item in task['inputs']:
+            if item['path'].endswith('.json'):
+                descriptor = read_json(contained(input_root, item['path']))
+                require(not isinstance(descriptor, dict) or not descriptor.get('expected_output_gap'),
+                        name + ': unresolved required references: source descriptor still declares a gap')
+
+
+def row_exit(records):
+    """Strict row exit: missing owner evidence is an error, never a skip."""
+    ids = [record['run_id'] for record in records]
+    require(len(ids) == len(set(ids)), 'duplicate owner run ids')
+    required = ('intact-1', 'intact-2', 'intact-3', 'degraded-1')
+    missing = [name for name in required if name not in ids]
+    require(not missing, 'missing owner run record(s): ' + ', '.join(missing))
+    chosen = {record['run_id']: record for record in records}
+    intact = [chosen[name] for name in required[:3]]
+    degraded = chosen['degraded-1']
+    for record in intact + [degraded]:
+        validate_record(record)
+        require(record['scores']['held_out']['state'] == 'measured', 'held_out: unmeasured; row exit NOT met')
+    reference_readiness(load_tasks(REPO / 'benchmarks/tasks', REPO, False), REPO)
+    holdout = Path(os.environ['GARS_BENCH_HOLDOUT_DIR'])
+    reference_readiness(load_tasks(holdout / 'tasks', holdout, True), holdout)
+    for part in PARTITIONS:
+        require(discriminates(intact, degraded, part),
+                part + ': degraded must score below intact mean minus three-repeat range')
+    return True
+
+
 def print_fraction(label, value):
     print(label + ': ' + ratio_text(value.numerator, value.denominator))
 
@@ -407,6 +499,8 @@ def main(argv=None):
     delta.add_argument('after')
     delta.add_argument('--intact', nargs='+', required=True)
     delta.add_argument('--partition', choices=PARTITIONS, default='tuned_on')
+    strict = commands.add_parser('row-exit', help='strict owner-evidence exit; never skips')
+    strict.add_argument('--runs', default=str(REPO / 'evals/runs'))
     args = parser.parse_args(argv)
     try:
         if args.command == 'validate':
@@ -425,6 +519,9 @@ def main(argv=None):
             for field in ('delta', 'noise_floor'):
                 print_fraction(args.partition + ' ' + field, result[field])
             print(result['interpretation'])
+        elif args.command == 'row-exit':
+            row_exit([read_json(p) for p in sorted(Path(args.runs).glob('*.json'))])
+            print('row exit: PASS (verified artifacts, both partitions, resolved references)')
         else:
             parser.error('choose validate, score, or delta')
         return 0

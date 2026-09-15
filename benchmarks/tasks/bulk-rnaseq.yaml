@@ -33,7 +33,9 @@
           "qc_multiqc": "file"
         },
         "samplesheet": "project/01_samplesheets/rnaseq_bulk_samplesheet.csv",
-        "sample_mode": "rnaseq"
+        "sample_mode": "rnaseq",
+        "expected_samplesheet": null,
+        "reference_counts": {}
       }
     }
   },

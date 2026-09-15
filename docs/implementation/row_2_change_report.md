@@ -137,3 +137,111 @@ frozen-path diff is empty, including `evals/gap-study/`, `evals/gap-study-2/`,
 `evals/run.py`, `evals/graders/`, `evals/fixtures/`, `gars/`, and `.github/`.
 Only `bench.py`, `noise_floor.py`, and `runs/` were added under `evals/`.
 No later-row catalogue, release check, demo target, remote, PR or merge was added.
+
+
+## Review round 1 fixes
+
+Date: **2026-09-15**. Reviewed base: `1163c35`. Independent review:
+`docs/reviews/row_2_review.md` (left untracked and unchanged). This section is an
+append-only correction to the earlier report. **Row 2 exit remains NOT met.**
+No agent run, independent biological reference, actual seal, or cluster result
+was created to close a repository finding.
+
+| Finding | Changed files | Test / check | Result; red-on-fault seen: yes/no, how |
+|---|---|---|---|
+| F1 BLOCKER — coherent fabricated verdicts | `evals/bench.py`, `tests/test_benchmark_discriminates.py`, `benchmarks/HOLDOUT.md` | `BenchmarkRecordTests.test_coherent_forgery_and_missing_artifacts_are_red`, `test_changed_artifact_hash_is_red`, existing score-tamper/delta/noise controls | **Closed. Yes:** changing every verdict and the matching total on an empty-output record now raises a recomputation mismatch; missing retained outputs and altered file hashes also raise. The coherent-forgery regression failed against the reviewed scorer before the fix. Every record consumed by comparisons or the exit is re-scored from retained artifacts and hash-validated current inputs. |
+| F2 MAJOR — incomplete exit succeeds | `evals/bench.py`, `tests/test_benchmark_discriminates.py`, `benchmarks/HOLDOUT.md`, two bulk task YAMLs | `test_strict_row_exit_rejects_missing_cohort`, `test_strict_row_exit_requires_holdout_and_discrimination`, `test_strict_reference_readiness_rejects_placeholders`; `bench.py row-exit` | **Closed gate defect. Yes:** strict CLI exits 2 with all four missing ids; actual synthetic output cohorts reject absent held-out measurement, and a measured held-out arm that does not discriminate. Placeholder references reject; a complete synthetic interface cohort passes. Repository development retains the explicit missing-owner SKIP. Actual row exit is still NOT met. |
+| F3 MAJOR — coupled sample deletion | `evals/bench.py`, two bulk task YAMLs, `tests/test_benchmark_discriminates.py`, `benchmarks/HOLDOUT.md` | `BenchmarkTests.test_nfcore_artifact_contracts_accept_and_reject_content` | **Closed scorer defect. Yes:** for RNA and ATAC, deleting a condition from both the exported sheet and every count table fails against the hashed independent roster; restoration passes. Wrong columns, negative counts, missing registry types, and changed reference counts reject. Current nf-core tasks have `expected_samplesheet: null` and fail scoring until owner materialization; no roster was invented. |
+| F4 MINOR — blind response vocabulary missing | new `benchmarks/RESPONSE.md`, `benchmarks/HOLDOUT.md` | Public vocabulary read-back against all three exact task contracts | **Closed. No fault injection:** `public response vocabulary: 3/3 task contracts covered`. Shared instructions define all fields, types, flag and stage strings uniformly; canonical prompt bundles bind that text, all questions, delivered input hashes and extra instructions. Blind runner behavior is not empirically verified. |
+| F5 MINOR — JSON booleans equal numbers | `evals/bench.py`, `tests/test_benchmark_discriminates.py`, `benchmarks/HOLDOUT.md` | `BenchmarkTests.test_json_boolean_numeric_substitutions_are_red` and existing refusal positives | **Closed. Yes:** `0`, `0.0`, `1`, and `1.0` substitutions fail. The new regression failed on numeric zero against the reviewed code before the fix. Equality now preserves nested JSON types. |
+| F6 MINOR — unsupported expanded-suite platform claim | `README.md`, `DEVELOPMENT.md`, this appended report | `tests/check_counts.py`; full suite on macOS / Python 3.13.2 | **Closed. No platform fault injection:** current collection is 148; the dated local run reports ten skips (nine environment, one owner cohort). Expanded-suite cluster execution is explicitly unverified. The count checker remains unchanged and enforces all three current claims. |
+| F7 NOTE — inherited personal/machine text | this report; new decision addendum | Limited added-line disclosure-indicator scan; protected-path diff | **Answered. No fault injection:** no newly introduced indicator matched; this does not establish repository-wide cleanliness. Broader sanitization stays separately scoped because it includes inherited and protected material. |
+
+The arithmetic controls no longer manufacture internally consistent verdicts.
+They score real temporary response files against five pinned synthetic tasks;
+all original fraction values, inequality thresholds, duplicate-repeat assertions,
+and mismatch refusals remain. Suite drift now rejects during re-scoring, earlier
+than the former compatibility check. The owner-record test invokes the same
+strict gate as the CLI once its records exist. Unit-test task suites and synthetic
+seal metadata stay entirely in scratch and never enter `evals/runs/`.
+
+The independent expected sheet is a hashed task input. Exported sample sets and
+count columns must match it independently; count columns represent each expected
+sample once. `reference_counts` names hashed independent count tables, checked by
+exact byte equality when supplied. Strict nf-core readiness requires every count
+reference and materialized FASTQs named by the expected sheet, and rejects source
+descriptors still declaring a gap. No tolerance, guard, or test threshold was
+weakened. Numerical source independence and real pipeline execution still require
+retained owner provenance; directory presence is not wrapper-equivalent validation.
+
+Decision [0046](../decisions/0046-row-2-review-verification-addendum.md) supplements
+0045 without editing it, and corrects the inherited README evidence-table claim:
+that earlier-row table is missing, not present with unmeasured cells. The index was
+regenerated with its existing script. Reviews and reviewed assessments were not
+edited; the earlier bytes of this report are preserved.
+
+### Runner results for this round (verbatim)
+
+All shell invocations set `TMPDIR`, `TEMP`, and `TMP` to the required sibling
+`*-scratch/` directory before running. Scratch writes used the explicit sandbox
+approval mechanism. Tests disabled Python bytecode output, set `GARS_PIPELINES`
+to an absent scratch directory, and unset actual holdout/archive variables.
+Only synthetic interface tests temporarily supplied those variables. No other
+build folder, reviewer conversation, real private holdout, or network was read.
+
+| Command | Summary line(s), verbatim | Exit |
+|---|---|---|
+| `python3 tests/run_tests.py` | `Ran 148 tests in 159.748s` · `OK (skipped=10)` | 0 |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` | 0 |
+| `python3 tests/check_counts.py` | `suite: 148 tests, from unittest's loader` · `enforced=3` · `clean — every current claim matches the suite` | 0 |
+| `python3 evals/test_harness.py` | `Ran 44 tests in 266.274s` · `OK` | 0 |
+| `python3 evals/check_results.py --controls --lexicon` | `clean — graded=1` | 0 |
+| `python3 tests/test_benchmark_discriminates.py` | `Ran 23 tests in 12.215s` · `OK (skipped=1)` | 0 |
+| `python3 evals/bench.py validate` | `valid tasks: 5/5 = 1.000000` | 0 |
+| `python3 evals/bench.py row-exit` | `refused: missing owner run record(s): intact-1, intact-2, intact-3, degraded-1` | 2, expected refusal |
+
+The frozen results checker still supplies no Row 2 agent evidence. The three
+pre-fix controls (JSON numeric substitution, coherent forgery, missing strict gate)
+reported `Ran 3 tests in 0.276s` and `FAILED (failures=2, errors=1)`; the missing
+strict function was the error, not a behavioral result. Their individual behaviors
+now pass in the benchmark module and full suite. Logs are retained in the sibling
+scratch folder as `round1-before.log`, `round1-benchmark.log`, `round1-suite.log`,
+`round1-contracts.log`, `round1-counts.log`, `round1-harness.log`,
+`round1-results.log`, and `round1-strict-exit.log`; the required command/exit/summary
+mapping is `round1-required-results.json`.
+
+Additional checks: Python 3.6 grammar parsing reported
+`Python 3.6 grammar: 3/3 files accepted; native execution unverified` for the scorer,
+noise helper and benchmark tests; `python3 --version` reported `Python 3.13.2`,
+and the platform probe reported `darwin`. Count checking was repeated after the
+status wording changed and again reported `enforced=3` and
+`clean — every current claim matches the suite`. Read-only `pwd`, `rg`, `cat`,
+`sed`, `tail`, and git status/log/diff inspections have no test-runner summary.
+`git diff --check` and the explicit protected-tree diff produced no output.
+No remote, push, merge, pull request, or broad staging command was used.
+
+## Owner rulings needed
+
+**None for this review round.** The owner explicitly approved the hashed expected
+samplesheet field and pre-approved the implementation needed to finish this work.
+The review's alternatives were a hashed task input or an immutable expected
+samplesheet; the approved implementation uses a samplesheet pinned as a task input.
+This authorization does not turn missing data, runs, or sealing evidence into
+measured results, and the standing separate-study merge condition still applies.
+
+### Residual gaps still open
+
+- All four real owner runs, genuine degraded configuration evidence, recorded
+  observed noise, and both-partition agent discrimination remain absent. The
+  strict exit refuses; the repository-suite SKIP is not a Row 2 PASS.
+- nf-core RNA and ATAC need independent sample rosters, pinned materialized raw
+  inputs, numerical count references and source provenance. Both placeholder
+  tasks intentionally remain unable to pass scoring today.
+- Actual held-out sealing, producer read denial, independent reference authorship,
+  agent authorship of exports, complete prompt/trace retention, and disabled
+  design-check/reviewer attestation were not verified by this producer.
+- Expanded-suite cluster and native Python 3.6.8 execution were not verified.
+  Earlier-row missing README evidence table, clean-design false-alarm measurement,
+  growth to ten tasks, and repository-wide sanitization remain separately scoped.
+- The separate study's done commit and merge condition were not verified or waived.
+  Frozen paths are unchanged; no merge is performed.
