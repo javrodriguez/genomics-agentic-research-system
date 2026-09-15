@@ -548,12 +548,10 @@ def restore_list(config):
     return config.compose + ['pg_restore', '-l'] if config.compose else ['pg_restore', '-l']
 
 
-def restore_result(config, start, mono, rpo, failures, log=None):
+def restore_result(config, start, mono, rpo, failures, log=None, publish=True):
     rto = (time.monotonic() - mono) / 60
     if rto > 60:
         failures.append('rto_exceeded')
-    for reason in failures:
-        print('result=FAIL reason=' + reason)
     line = '%s, %.6f, %.6f, %s' % (start.strftime(STAMP), rpo, rto, 'FAIL' if failures else 'PASS')
     if log is None:
         with config.log.open('a') as f:
@@ -561,7 +559,23 @@ def restore_result(config, start, mono, rpo, failures, log=None):
     else:
         log.write(line + '\n')
         log.flush()
-    print(line, flush=True)
+    # Retained evidence must not depend on a writable stdout, including when
+    # publishing a failure diagnostic. A partial PASS cannot be retracted.
+    if publish:
+        try:
+            for reason in failures:
+                print('result=FAIL reason=' + reason)
+            print(line, flush=True)
+        except OSError:
+            # Do not retry the broken stream during interpreter shutdown.
+            sys.stdout = None
+            blocked = signal.pthread_sigmask(signal.SIG_BLOCK,
+                                            (signal.SIGINT, signal.SIGTERM, signal.SIGHUP))
+            try:
+                failures.append('stdout_failed')
+                return restore_result(config, start, mono, rpo, failures, log, publish=False)
+            finally:
+                signal.pthread_sigmask(signal.SIG_SETMASK, blocked)
     return 1 if failures else 0
 
 
@@ -586,6 +600,7 @@ def drill(config, destroy=False):
         log = safe_path(str(config.log)).open('a')
     except OSError:
         raise Fail('restore_log_unwritable')
+    config.restore_terminal = (start, mono, rpo, failures, log)
     try:
         with log:
             return destructive_restore(config, commands, name, digest, canary, expected,
@@ -593,17 +608,20 @@ def drill(config, destroy=False):
     except (Fail, KeyboardInterrupt) as exc:
         if isinstance(exc, Fail) and str(exc) != 'restore_interrupted':
             raise
-        # This scope includes result publication and closing the append handle.
-        # A flushed PASS cannot be erased: append a terminal FAIL correction for
-        # the same start/RPO. Block further catchable signals only while recording
-        # that failure; any pending signal is delivered after its record is safe.
-        blocked = signal.pthread_sigmask(signal.SIG_BLOCK,
-                                        (signal.SIGINT, signal.SIGTERM, signal.SIGHUP))
-        try:
-            failures.append('restore_interrupted')
-            return restore_result(config, start, mono, rpo, failures)
-        finally:
-            signal.pthread_sigmask(signal.SIG_SETMASK, blocked)
+        return interrupted_restore_result(config)
+
+
+def interrupted_restore_result(config):
+    # Also callable by the CLI's signal handler after drill/main have returned.
+    # At those handoffs the retained handle is closed and all children are reaped.
+    start, mono, rpo, failures, _ = config.restore_terminal
+    blocked = signal.pthread_sigmask(signal.SIG_BLOCK,
+                                    (signal.SIGINT, signal.SIGTERM, signal.SIGHUP))
+    try:
+        failures.append('restore_interrupted')
+        return restore_result(config, start, mono, rpo, failures)
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, blocked)
 
 
 def destructive_restore(config, commands, name, digest, canary, expected,
@@ -728,11 +746,21 @@ def main():
             backup(Config())
             return 0
         if mode == 'drill' and args in ([], ['--dry-run'], ['--destroy']):
+            config = None
             def restore_interrupted(*_):
+                terminal = getattr(config, 'restore_terminal', None)
+                if terminal is not None and terminal[-1].closed:
+                    # A return-event signal is outside the returning function's
+                    # try block. Keep this closure installed through CLI exit;
+                    # record before exiting instead of unwinding past the owner
+                    # of the dated result. Active restores still unwind normally
+                    # so pipeline cleanup precedes their failure record.
+                    sys.exit(interrupted_restore_result(config))
                 raise Fail('restore_interrupted')
             for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
                 signal.signal(signum, restore_interrupted)
-            return drill(Config(True), args == ['--destroy'])
+            config = Config(True)
+            return drill(config, args == ['--destroy'])
         raise Fail('invalid_arguments')
     except (Fail, OSError, ValueError, UnicodeError, KeyboardInterrupt) as exc:
         reason = str(exc) if isinstance(exc, Fail) else 'operation_failed'

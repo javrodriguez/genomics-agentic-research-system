@@ -346,3 +346,101 @@ finding or a fresh permission request. The existing exact
   integration remain open. No operational PASS row or public claim was promoted.
 - Independent review of this round remains pending. No OS-wide filesystem audit
   or uncatchable-loss guarantee is claimed.
+
+## Review round 3 fixes
+
+2026-09-15 · review: `docs/reviews/row_5_review_round3.md` · producer: Codex.
+
+**Correction:** round 2's closure of R5-F3 exceeded the boundaries its tests
+covered. This round reproduced signals at drill return, main return and the
+caller's exit handoff, plus a permanently closed stdout pipe. The CLI now retains
+the invocation state in its signal-handler closure through exit. After the retained
+handle closes, that handler records the correction before exiting; active restores
+still unwind through child cleanup. Result logging precedes diagnostics, and stdout
+publication errors append FAIL without using stdout. Decision 0047 is a new dated
+addendum; prior decisions and earlier report sections remain unchanged.
+**The §18 row-5 exit remains NOT met.**
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| R5-F3 MAJOR: failing invocation retains PASS-only evidence | `infra/backup/row05.py`, `tests/test_row05_backup.py`, `infra/compose/README.md`, new `docs/decisions/0047-row-5-command-completion-addendum.md`; living counts/status/index in `README.md`, `DEVELOPMENT.md`, `docs/decisions/CONTEXT.md`; this appended report | New `test_restore_command_completion_signals`, `test_restore_closed_stdout_pipe`; existing `test_restore_finalization_signals`, `test_restore_interrupt_after_destruction`, `test_restore_log_validated_before_destruction`, `test_stdout_log_equality_and_rto_threshold`; full runner | **Yes:** before the engine change, nine SIGINT/SIGTERM/SIGHUP handoff subcases and the real closed-pipe case failed (10 failures across 2 methods); all now pass. Each failing invocation exits nonzero and retains dated terminal FAIL, preserving history, earlier PASS, original start/RPO and the four-column grammar. Healthy stdout ends with the same terminal row. Existing real pipeline-child cleanup and RTO checks pass. R5-F3 closed at repository level; independent re-review pending. |
+| R5-R3-P1 | Living implementation documents | Owner ruling 2A | Withdrawn by ruling 2A; README, DEVELOPMENT, Compose README and the generated decision index remain living documents edited in place. |
+
+R5-F1, R5-F2, R5-N1 and the repository correction for R5-N2 remain closed:
+their runner-reachability, slow-backup/manifest, identity/marker and container-storage
+tests pass in this run; no new fault planting is claimed for those findings.
+Owner ruling 1A applies to row-introduced information; inherited content at
+`c423366` is preserved and is not a defect. No test, threshold, guard, schema,
+protected tree, operational evidence row or historical record was weakened or
+rewritten.
+
+### Commands and observed summaries
+
+All shells set TMPDIR, TEMP and TMP to sibling `gars-row-5-scratch/` before
+commands; tests set GARS_ROW5_SCRATCH there, disabled bytecode and selected
+Python 3.13.2. Full/check environments set GARS_PIPELINES and GARS_REFS to absent
+scratch paths. Fixtures, logs and the commit-message file stay in sibling scratch.
+Only the supplied round-3 review was consulted for external review input; no
+reviewer conversation or linked external probe was read. No daemon was started
+or real database contacted. Independent full/harness/check jobs ran concurrently;
+repository edits stopped while invariant-checking tests were running.
+
+| Command/check | Verbatim summary or exit result | Scratch record |
+|---|---|---|
+| Two new regression methods against pre-fix engine | `Ran 2 tests in 6.792s`; `FAILED (failures=10)` | round3-red.log |
+| Two new methods plus four existing restore regressions | `Ran 6 tests in 24.800s`; `OK` | round3-green.log |
+| `python3 tests/run_tests.py` | `Ran 163 tests in 292.621s`; `OK (skipped=26)` | round3-full.log |
+| `python3 tests/test_row05_backup.py` | `Ran 38 tests in 161.827s`; `OK (skipped=17)` | round3-row-module.log |
+| `python3 evals/test_harness.py` | `Ran 44 tests in 303.498s`; `OK` | round3-harness.log |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` | round3-checks.log |
+| `python3 tests/check_counts.py` | `enforced=4`; `clean — every current claim matches the suite` | round3-checks.log |
+| `python3 evals/check_results.py --controls --lexicon` | `clean — graded=1` | round3-checks.log |
+| Combined and individual `bash -n` checks of all three backup wrappers | `Bash syntax: 3 wrappers clean` | round3-ancillary.log |
+| `docker compose -f infra/compose/postgres.compose.yml config` with synthetic settings | `Compose config: exit 0; device resolves to synthetic scratch PG_DATA_DIR` | round3-compose.log |
+| `docker info` | `docker info: exit 1` | round3-docker-info.log |
+| `ast.parse(..., feature_version=(3, 6))` on both Python files | `Python 3.6 grammar: 2 files clean` | round3-ancillary.log |
+| `bash docs/decisions/build_index.sh` and regeneration byte comparison | `Decision index regeneration: byte-identical` | round3-final-checks.log |
+| `git diff --check`; `git diff --quiet c423366 -- gars/ evals/ .github/` | `Whitespace clean; gars/evals/.github diff from c423366 empty` | round3-ancillary.log |
+| `git check-ignore` on env/archive/sidecar/manifest probes | `Ignore probes: all four paths ignored` | round3-ancillary.log |
+| Environment example, hardware placeholders, Compose README vocabulary | 36 assignments; 7 Stage-1 placeholders; all 9 Compose variables named | round3-ancillary.log |
+| Prior decisions/committed reviews/ops and report-prefix comparison; review hash; operational PASS scan | Byte-identical frozen records; original report prefix intact; review unchanged; zero PASS rows in both operational logs | round3-ancillary.log; round3-final-checks.log |
+| Added-line identifying-path/credential-pattern scan | `0 hits` (not a dedicated secret scanner) | round3-ancillary.log; round3-final-checks.log |
+| Availability probes | `shellcheck: unavailable`; `age: unavailable`; `python3.6: unavailable` | round3-ancillary.log |
+
+Two additive methods bring the runner to 163 collected cases: 137 executed and
+26 skipped. Row 5 contributes 38 cases: 21 offline cases execute and 17 PostgreSQL
+cases skip with `docker info: exit 1`; nine existing environment cases also skip.
+The new signal test's nine combinations are subcases within one method.
+The red run is the intentional pre-fix demonstration, not an unresolved final
+test failure. An ancillary scratch report initially counted the wrong hardware
+placeholder spelling; the corrected literal check found all seven placeholders.
+
+Round-3 review SHA-256:
+`decb99fb958462d94c29c63bae3d60e2c365aeb495f49918c6ef06cc5bf9618f`.
+It remains unchanged and untracked; other pre-existing untracked reviews remain
+unstaged. One round commit uses explicit paths and a scratch message file.
+No push, remote operation, merge or pull request occurred.
+
+## Owner rulings needed
+
+**None.** The authorized
+`GARS_ROW5_SCRATCH: ${{ runner.temp }}` CI setting remains the owner's later
+merge action after the separate study finishes or is BLOCKED; it is not an
+unresolved finding. Protected CI files are unchanged.
+
+### Residual gaps still open
+
+- Live PostgreSQL DROP/CREATE/content verification and container-client storage
+  remain unverified: Docker's availability probe fails.
+- Real Node 1 recovery, human marker, dated PASS/freshness, RPO ≤24 h, RTO ≤60 min,
+  outside-host exposure 0 and the external-human seal remain unmeasured. No
+  Stage-1 failure-matrix row is accepted; the other four rows remain missing.
+- Hosted CI, the separate study's merge prerequisite, nightly scheduling,
+  remote SSH/tailnet copies, age encryption, Python 3.6 runtime and shellcheck
+  remain unverified. Grammar checks are not runtime evidence.
+- Row 8's second sensitive-data route, actual memory/vault recovery and row-1
+  evidence/ledger integration remain open. Both committed operational logs
+  still contain zero PASS rows. No later deployment stage was implemented.
+- Independent re-review is pending. SIGKILL, host/power loss and loss/replacement
+  of trusted log storage remain outside the recording guarantee; no OS-wide
+  filesystem audit was performed.

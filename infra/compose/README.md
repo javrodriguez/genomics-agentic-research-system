@@ -62,12 +62,15 @@ why the spec's literal primary-deletion exit is not implemented. Do not rename t
 source endpoint to evade the guard. A failed/stale archive never yields PASS.
 The destructive drill opens its append log before DROP. Catchable SIGINT, SIGTERM,
 SIGHUP and restore failures clean up pipeline children and record a dated FAIL.
-The protected phase includes result writing, stdout flushing and log close. If an
-interrupt arrives after PASS was appended, a terminal FAIL correction is appended
-for that invocation with the same start date and RPO; existing bytes are preserved.
+The protected phase includes result writing, stdout flushing, log close and the
+CLI return/exit handoffs. If an interrupt arrives after PASS was appended, a terminal
+FAIL correction is appended for that invocation with the same start date and RPO;
+existing bytes are preserved.
 Use the invocation's terminal row and exit status together: an earlier PASS followed
 by FAIL does not establish success. Catchable signals are blocked during failure
-recording and released afterward. See decision 0046 for the round-2 correction.
+recording and released afterward. A broken stdout pipe returns nonzero and appends
+a dated FAIL independently of stdout; the failed stream is disabled before interpreter
+shutdown. See decision 0047 for the command-completion correction.
 Uncatchable loss (SIGKILL, host/power loss), or loss of the log storage after it was
 opened, can prevent that record; a missing result is never evidence of success.
 
