@@ -3275,5 +3275,9 @@ class SpatialClusterCountTests(unittest.TestCase):
         self.assertFalse((substage / "run" / ".gars_run_complete").exists())
 
 
+# Row 2 is a separate file; this runner loads module-level TestCase classes only.
+from test_benchmark_discriminates import BenchmarkTests, BenchmarkRecordTests  # noqa: E402
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

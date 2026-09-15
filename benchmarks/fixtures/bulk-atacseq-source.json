@@ -1,0 +1,10 @@
+{
+  "pipeline": "nf-core/atacseq",
+  "version": "2.1.2",
+  "test_data_reference": "https://github.com/nf-core/atacseq/blob/2.1.2/conf/test.config",
+  "dataset": "nf-core/test-datasets, selected by that pinned test profile",
+  "expected_output_gap": "NFCORE_ATACSEQ_EXPECTED_OUTPUT_NOT_OBTAINED",
+  "provenance_status": "NOT met: test profile and expected numerical outputs require network retrieval and a pinned pipeline run; no output downloaded or invented here. Resolve data commit and file hashes before the owner run.",
+  "project_layout_reference": "examples/demo-project/README.md",
+  "artifact_contract_reference": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md"
+}

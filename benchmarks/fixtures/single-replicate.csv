@@ -1,0 +1,3 @@
+sample_id,condition,batch,biological_unit
+S1217,control,batch_a,S1217
+S9160,treated,batch_a,S9160
