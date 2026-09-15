@@ -84,6 +84,30 @@ class PrePushTests(unittest.TestCase):
                 self.assertEqual((self.root / 'previous-input').read_text(), PUSH_INPUT)
                 sample.write_text(good)
 
+    def test_marker_bearing_unrelated_hook_keeps_veto(self):
+        hook = self.root / '.git/hooks/pre-push'
+        original = '#!/bin/sh\n# GARS_ROW3_PRE_PUSH_V1 mentioned here\nexit 1\n'
+        hook.write_text(original)
+        hook.chmod(0o755)
+        result = run([sys.executable, INSTALLER], self.root)
+        # Either preserve and chain it, or refuse without altering it.
+        saved = hook if result.returncode else hook.with_name('pre-push.gars-previous')
+        self.assertTrue(saved.is_file())
+        self.assertEqual(saved.read_text(), original)
+        self.assertNotEqual(self.invoke(hook).returncode, 0)
+
+    def test_extended_installed_hook_keeps_veto(self):
+        self.assertEqual(run([sys.executable, INSTALLER], self.root).returncode, 0)
+        hook = self.root / '.git/hooks/pre-push'
+        extended = hook.read_text().replace('sys.exit(main())', 'main(); sys.exit(1)')
+        hook.write_text(extended)
+        result = run([sys.executable, INSTALLER], self.root)
+        # An extended GARS hook cannot be chained to itself recursively.
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(hook.read_text(), extended)
+        self.assertFalse(hook.with_name('pre-push.gars-previous').exists())
+        self.assertNotEqual(self.invoke(hook).returncode, 0)
+
     def test_installer_refuses_backup_collision(self):
         hooks = self.root / '.git/hooks'
         for name in ('pre-push', 'pre-push.gars-previous'):

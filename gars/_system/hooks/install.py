@@ -29,10 +29,11 @@ def install(root):
     if target.is_symlink() and target.is_file() and MARKER in target.read_bytes():
         raise RuntimeError('existing GARS hook is a symlink; refusing a recursive chain')
     if target.exists() or target.is_symlink():
-        if target.is_file() and not target.is_symlink() and MARKER in target.read_bytes():
-            target.write_bytes(source.read_bytes())
+        if target.is_file() and not target.is_symlink() and target.read_bytes() == source.read_bytes():
             target.chmod(0o755)
             return
+        if target.is_file() and MARKER in target.read_bytes():
+            raise RuntimeError('marker-bearing hook differs from shipped content; preserving it unchanged')
         if previous.exists() or previous.is_symlink():
             raise RuntimeError('previous-hook backup exists; refusing to overwrite either hook')
         if not os.access(str(target), os.X_OK):

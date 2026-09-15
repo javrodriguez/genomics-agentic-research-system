@@ -134,8 +134,11 @@ GARS_SEALED_MUTANTS_DIR="$SEALED_DIR" python3 evals/mutate.py --require
 Dependencies: Python (stdlib), Git and Bash. Pinned pipelines/Apptainer are optional for the
 offline suite; any existing environment skips must be reported with the score. `GARS_PIPELINES`
 may identify an empty external fixture directory for an explicitly offline run. This is not
-R-166 Linux integration. The runner refuses a dirty source checkout so `run_sha` identifies the tested source,
-then copies the working tree (excluding `.git`) under `TMPDIR`,
+R-166 Linux integration. The runner refuses a dirty source checkout, resolves HEAD as
+`run_sha`, and materializes only that commit's tracked blobs, modes and symlinks under
+`TMPDIR` using Git object reads. Ignored local files (including discovered tests and project
+data), `.git`, and untracked files never enter the tested snapshot. Export attributes do
+not omit tracked files; unsupported entries such as submodules refuse the run. It
 checks the intact whole suite first, then applies one diff at a time. Each probe must match
 its declared before/after observation and leave source files unchanged. A failure to load,
 apply, observe, or restore refuses the run; it is never a kill.
@@ -150,8 +153,22 @@ empty directories and symlink targets are included; `.git` is excluded. This is 
 isolation for trusted independent fault authors, not an operating-system security sandbox.
 
 Output: one JSON row per mutant (`id`, `requirement`, `run_sha`, `status`, `test`, optional
-`reason`), followed by `killed/total` with the actual numbers. Capture stdout/stderr outside
-the checkout. Without `GARS_SEALED_MUTANTS_DIR`, output is `unmeasured`, exit 0 in report mode
+`reason`), followed by `killed/total` with the actual numbers. Each row also records the
+committed snapshot's `snapshot_hash`, the input files' `mutant_diff_sha256` and
+`expected_sha256`, and absolute `baseline_log` / `suite_log` paths. `suite_log` is null when
+an ineffective mutant never reaches suite execution.
+
+The runner retains JSON logs in a new `$TMPDIR/gars-mutation-logs-*` directory and announces
+that directory on stderr before testing. `baseline.json` and `mutant-<id>.json` contain the
+complete suite stdout/stderr and return code, including collection lines, unittest totals,
+skips and skip reasons. Each log binds its output to `run_sha`, `snapshot_hash`, stage and
+`tested_tree_hash`; mutant logs also bind the exact diff and expected-observation bytes via
+their SHA-256 hashes. These logs survive cleanup of the disposable tested tree and are
+retained even if later validation refuses the run. Preserve this directory together with the
+runner stdout/stderr and sealed inputs outside the checkout; logs are evidence of the local
+environment, not Linux integration or an external-human seal.
+
+Without `GARS_SEALED_MUTANTS_DIR`, output is `unmeasured`, exit 0 in report mode
 and exit 1 with `--require`. With a set, report mode exits 0 after a valid measurement;
 `--require` exits 1 unless there are ten effective mutants and at least eight kills.
 Malformed input, failed intact baseline, or integrity drift exits 2. Neither mode edits

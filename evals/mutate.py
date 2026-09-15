@@ -3,6 +3,7 @@
 import argparse
 import ast
 import hashlib
+import io
 import json
 import os
 import re
@@ -50,6 +51,38 @@ def copy_tree(source, target):
                     ignore=lambda folder, names: ['.git'] if Path(folder) == source else [])
 
 
+def committed_tree(root, run_sha, target):
+    """Materialize Git objects, never working-tree files or export attributes."""
+    entries = subprocess.check_output(
+        ['git', '-C', str(root), 'ls-tree', '-rz', '--full-tree', run_sha]).split(b'\0')
+    blobs = []
+    for entry in filter(None, entries):
+        metadata, name = entry.split(b'\t', 1)
+        mode, kind, oid = metadata.split()
+        if kind != b'blob' or mode not in (b'100644', b'100755', b'120000'):
+            raise ValueError('unsupported committed entry: ' + os.fsdecode(name))
+        blobs.append((mode, oid, os.fsdecode(name)))
+    result = subprocess.run(['git', '-C', str(root), 'cat-file', '--batch'],
+                            input=b''.join(oid + b'\n' for mode, oid, name in blobs),
+                            stdout=subprocess.PIPE, check=True)
+    stream = io.BytesIO(result.stdout)
+    target.mkdir()
+    for mode, oid, name in blobs:
+        actual_oid, kind, size = stream.readline().split()
+        if actual_oid != oid or kind != b'blob':
+            raise RuntimeError('committed blob lookup mismatch')
+        content = stream.read(int(size))
+        if len(content) != int(size) or stream.read(1) != b'\n':
+            raise RuntimeError('truncated committed blob')
+        path = target / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if mode == b'120000':
+            path.symlink_to(os.fsdecode(content))
+        else:
+            path.write_bytes(content)
+            path.chmod(0o755 if mode == b'100755' else 0o644)
+
+
 def restore_tree(snapshot, target):
     shutil.rmtree(str(target))
     copy_tree(snapshot, target)
@@ -66,8 +99,11 @@ def execute(argv, root, stdin='', timeout=300):
             'stderr': result.stderr.decode('utf-8', 'replace')}
 
 
-def suite(root):
+def suite(root, log_path=None, binding=None):
     result = execute([sys.executable, 'tests/run_tests.py'], root)
+    if log_path is not None:
+        evidence = dict(binding or {}, **result)
+        log_path.write_text(json.dumps(evidence, sort_keys=True, indent=2) + '\n')
     text = result['stdout'] + '\n' + result['stderr']
     counts = re.findall(r'^collected (\d+) tests from (tests|gars/tests)$', text, re.M)
     if set(tree for count, tree in counts if int(count) > 0) != {'tests', 'gars/tests'}:
@@ -139,7 +175,7 @@ def validate_expected(expected):
         raise ValueError('semantic probe must predict different behaviour')
 
 
-def measure_one(snapshot, target, mutant, run_sha):
+def measure_one(snapshot, target, mutant, run_sha, evidence_dir=None):
     snapshot, target = snapshot.resolve(), target.resolve()
     expected = json.loads((mutant / 'expected.json').read_text())
     validate_expected(expected)
@@ -149,7 +185,13 @@ def measure_one(snapshot, target, mutant, run_sha):
     paths = diff_paths(patch)
     before = tree_hash(target)
     record = {'id': mutant.name, 'requirement': expected['requirement'],
-              'run_sha': run_sha, 'status': 'ineffective', 'test': None}
+              'run_sha': run_sha, 'status': 'ineffective', 'test': None,
+              'snapshot_hash': before,
+              'mutant_diff_sha256': hashlib.sha256((mutant / 'mutant.diff').read_bytes()).hexdigest(),
+              'expected_sha256': hashlib.sha256((mutant / 'expected.json').read_bytes()).hexdigest()}
+    if evidence_dir is not None:
+        record.update(baseline_log=str(evidence_dir / 'baseline.json'), suite_log=None)
+
     try:
         original_syntax = {}
         for name in paths:
@@ -187,7 +229,14 @@ def measure_one(snapshot, target, mutant, run_sha):
             return record
         if observed_after != expected['after']:
             raise ValueError('mutated semantic probe does not match expected.json')
-        code, first = suite(target)
+        log_path = evidence_dir / ('mutant-' + mutant.name + '.json') if evidence_dir is not None else None
+        binding = {key: record[key] for key in
+                   ('id', 'requirement', 'run_sha', 'snapshot_hash',
+                    'mutant_diff_sha256', 'expected_sha256')}
+        binding.update(stage='mutant', tested_tree_hash=changed)
+        code, first = suite(target, log_path, binding)
+        if log_path is not None:
+            record['suite_log'] = str(log_path)
         record.update(status='killed' if code else 'survived', test=first)
         return record
     finally:
@@ -199,7 +248,7 @@ def measure(root, directory):
     dirty = subprocess.check_output(['git', '-C', str(root), 'status', '--porcelain',
                                      '--untracked-files=all'])
     if dirty:
-        raise ValueError('source checkout must be clean so run_sha identifies the tested tree')
+        raise ValueError('source checkout must be clean; only committed objects are tested')
     source_hash = tree_hash(root)
     run_sha = subprocess.check_output(['git', '-C', str(root), 'rev-parse', 'HEAD']).decode().strip()
     mutants = sorted(p for p in directory.iterdir() if p.is_dir())
@@ -210,17 +259,22 @@ def measure(root, directory):
         raise ValueError('TMPDIR must name an existing scratch directory')
     if root == Path(scratch).resolve() or root in Path(scratch).resolve().parents:
         raise ValueError('scratch must be outside the source tree')
+    evidence_dir = Path(tempfile.mkdtemp(prefix='gars-mutation-logs-', dir=scratch)).resolve()
+    print('mutation suite logs: ' + str(evidence_dir), file=sys.stderr, flush=True)
     try:
         with tempfile.TemporaryDirectory(prefix='gars-mutants-', dir=scratch) as temporary:
             snapshot, target = Path(temporary) / 'snapshot', Path(temporary) / 'tree'
-            copy_tree(root, snapshot)
+            committed_tree(root, run_sha, snapshot)
             copy_tree(snapshot, target)
             baseline = tree_hash(target)
-            code, first = suite(target)
+            code, first = suite(target, evidence_dir / 'baseline.json',
+                                {'run_sha': run_sha, 'snapshot_hash': baseline,
+                                 'stage': 'baseline', 'tested_tree_hash': baseline})
             assert_unchanged(target, baseline)
             if code:
                 raise RuntimeError('baseline suite failed: ' + first)
-            records = [measure_one(snapshot, target, mutant, run_sha) for mutant in mutants]
+            records = [measure_one(snapshot, target, mutant, run_sha, evidence_dir)
+                       for mutant in mutants]
     finally:
         assert_unchanged(root, source_hash)
     return records

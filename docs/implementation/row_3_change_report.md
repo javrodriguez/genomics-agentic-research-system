@@ -196,3 +196,116 @@ evals/graders evals/fixtures .github/` is empty. Under `evals/` only the three a
 were added. Under `gars/`, all changes are in `gars/tests/` and `gars/_system/hooks/` (R-164);
 **no changes outside those directories**. The commit is ready for separate review, not
 approved by its producer. Row 3's exit remains **NOT met**.
+
+
+## Review round 1 fixes
+
+Date: **2026-09-15**. Producer: Codex. Reviewed base: `f76492b`.
+Review: `docs/reviews/row_3_review.md`, left untracked and byte-identical (SHA-256
+`2cc3f6eb90c0ac8a3aaa9edbf4175797e9c357ee0d0a1ec0e04902355ae17175`).
+This dated addendum corrects the earlier report; its original bytes remain intact.
+**Repository findings F-1–F-4 addressed; Row 3 exit remains NOT met.**
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| F-1 BLOCKER: ignored tests alter the score at the same SHA | `evals/mutate.py`, `evals/MUTANTS-INTERFACE.md`, `gars/tests/test_mutation_runner.py` | `MutationRunnerTests.test_ignored_discovered_test_cannot_change_committed_score`; existing restoration controls | PASS. **Yes:** against the original runner, the ignored oracle changed the expected surviving mutant to `killed`, producing an assertion failure. After the fix, the mutant survives both with and without the ignored test at identical `run_sha` and committed snapshot hash; the original source tree remains unchanged. |
+| F-2 MAJOR: installer erases marker-bearing vetoes | `gars/_system/hooks/install.py`, `gars/tests/test_pre_push.py` | `PrePushTests.test_marker_bearing_unrelated_hook_keeps_veto`, `test_extended_installed_hook_keeps_veto`; existing composition/collision tests | PASS. **Yes:** both new cases failed against the original installer. Complete shipped bytes now identify an unchanged installation; a modified marker-bearing hook is refused without altering it, and its veto still runs. Ordinary hook chaining, stdin/argument forwarding, repeat installation and collision refusal still pass. |
+| F-3 MAJOR: unsupported cluster/skip claims | `README.md`, `DEVELOPMENT.md`, this addendum | Whole suite, `tests/check_counts.py`, manual evidence/prose comparison | PASS for the dated macOS result; cluster **unverified**. **No:** no planted environmental-claim test. The count guard only establishes numeric consistency; it does not establish platform provenance. Current claims state 151 collected, 142 executed successfully, 9 skipped on macOS. |
+| F-4 MINOR: mutation suite evidence discarded | `evals/mutate.py`, `evals/MUTANTS-INTERFACE.md`, `gars/tests/test_mutation_runner.py` | `MutationRunnerTests.test_full_run_hashes_source_and_records_run_sha` | PASS. **Yes:** running the final assertion against the original runner gives `FAILED (failures=1)` because `baseline_log` is absent. The fixed runner retains baseline and mutant stdout/stderr, return codes, collection totals and skip reasons; the regression checks an explicit skipped toy test in both retained logs. |
+
+F-1 correction: the earlier assertion that a clean working tree alone binds the tested source
+to HEAD was false for ignored inputs. Snapshots now use `git ls-tree` and `git cat-file` to
+materialize committed blobs, executable modes and symlinks. They never copy ignored project
+data or ignored tests. Unsupported Git entry types refuse. The existing source-tree and
+restored-tree integrity checks remain. These are source-provenance controls, not environment
+pinning or an operating-system security boundary.
+
+F-3 correction: updating the count inside “green on macOS and on the cluster” expanded a
+claim without cluster evidence. Preserving surrounding prose did not justify that claim.
+README now identifies the actual dated macOS result; DEVELOPMENT separates that result from
+its historical component status and removes the obsolete six-skip qualifier from the suite
+claim. Historical per-assay results were not rerun or independently revalidated here.
+
+F-4 evidence: every measured mutant row points to retained `baseline.json` and, when the
+suite runs, `mutant-<id>.json` under a unique `$TMPDIR/gars-mutation-logs-*` directory. Logs
+bind `run_sha`, committed snapshot hash and tested-tree hash; mutant logs also bind the diff
+and expected-observation SHA-256 hashes. The directory is announced before the baseline runs
+and survives tested-tree cleanup. A suite log reports its return code, not a premature mutation
+status. No sealed inputs were supplied, inspected or authored in this round.
+
+The review's nonblocking observation about source extraction in `gars/tests/support.py`
+remains: replacing that fixture mechanism is outside these four corrections; its use of the
+production discovery function is still exercised by the gate tests.
+
+### Round 1 verification
+
+All shell invocations set `TMPDIR`, `TEMP` and `TMP` to the designated sibling scratch folder
+before running commands. Test fixtures, logs, retained mutation evidence, the original-runner
+red-control copy and the commit-message file stayed there. Tests used Python 3.13.2 on macOS,
+`PYTHONDONTWRITEBYTECODE=1`, disabled global/system Git configuration, an empty scratch
+`GARS_PIPELINES` directory and no sealed set. No other build folder, reviewer conversation or
+external project data was read. Scratch writes used the approved sandbox escalation.
+
+| Command | Exact summary lines | Exit | Scratch log |
+|---|---|---|---|
+| `python3 tests/run_tests.py` | `Ran 151 tests in 233.324s`<br>`OK (skipped=9)` | 0 | `round1-full-suite.log` |
+| `python3 evals/test_harness.py` | `Ran 44 tests in 275.561s`<br>`OK` | 0 | `round1-harness.log` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` | 0 | `round1-contracts.log` |
+| `python3 tests/check_counts.py` | `suite: 151 tests, from unittest's loader`<br>`enforced=3`<br>`clean — every current claim matches the suite` | 0 | `round1-counts-final.log` |
+| `python3 evals/check_results.py --controls --lexicon` | `clean — graded=1` | 0 | `round1-results.log` |
+| `python3 evals/mutate.py` | `unmeasured` | 0 | `round1-unmeasured.log` |
+| `python3 evals/mutate.py --require` | `unmeasured` | 1 | `round1-unmeasured-required.log` |
+| `gars/_system/hooks/pre-push fixture-remote fixture-target` | `Ran 151 tests in 166.235s`<br>`OK (skipped=9)`<br>`pre-push: whole suite passed` | 0 | `round1-direct-hook.log` |
+| `python3 -m unittest discover -s gars/tests -p test_pre_push.py -v` | `Ran 7 tests in 14.912s`<br>`OK` | 0 | `round1-hook.log` |
+| `python3 -m unittest discover -s gars/tests -p test_mutation_runner.py -v` | `Ran 9 tests in 13.808s`<br>`OK` | 0 | `round1-mutation-final.log` |
+
+Red and intermediate checks (logs also in `$SCRATCH`):
+
+| Log / check | Exact summary lines | Exit |
+|---|---|---|
+| `round1-red-mutation.log` | `Ran 9 tests in 10.166s`<br>`FAILED (failures=1, errors=1)` | 1 |
+| `round1-red-hook.log` | `Ran 7 tests in 15.640s`<br>`FAILED (failures=2)` | 1 |
+| `round1-red-logs.log` | `Ran 1 test in 2.447s`<br>`FAILED (failures=1)` | 1 |
+| `round1-mutation.log` | `Ran 9 tests in 9.155s`<br>`OK` | 0 |
+| `round1-counts.log` | `suite: 151 tests, from unittest's loader`<br>`enforced=4`<br>`1 problem(s):` | 1 |
+
+The initial count check exited 1 because “Row 3 test status” was parsed as a claim of three
+tests. Only the prose changed to “Row 3 validation”; the guard was unchanged and its final
+run enforces all three current claims. The initial old-runner mutation discovery had one
+assertion failure for F-1 and one missing-log KeyError for F-4; F-4 was subsequently reproduced
+as the explicit assertion failure above. The red hook run had two assertion failures.
+These deliberate red controls are not sealed mutants and never contribute to a kill score.
+
+The whole suite collects 125 cases from `tests/` and 26 from `gars/tests/`. Nine inherited
+skips remain: seven pinned-pipeline cases, one unavailable registry reference, and one
+`anndata` execution dependency. All Row 3 cases execute. The named wrapper-contract test
+passes with `wrapper contracts: 7/7 found/expected nf-core; 10 total wrappers`; its structural
+and missing-project coverage has the same limits stated in the original report.
+
+The direct hook reran all 151 cases after the final suite-log metadata adjustment.
+
+Additional checks: `Python 3.6 grammar: 4 changed files parsed`; `git diff --check` clean;
+protected-tree diff against `c423366` empty. The report's original bytes remain an unchanged
+prefix, decision/review/assessment records were not edited, and the review checksum above
+is unchanged. Path-limited staging includes only the eight round files; no hook is installed
+in the source clone, and no push, remote operation, merge or pull request occurs.
+
+## Owner rulings needed
+
+**No new ruling is needed for F-1–F-4.** The existing merge-time suite-location ruling remains
+open: Row 1 under `tests/` versus the Row 3 specification's `gars/tests/`; the owner must settle
+the final location when those branches meet. Both trees continue to run. The standing merge
+condition also remains: wait for the separate study's done commit; do not alter the study or
+CI to compensate for this row's source changes.
+
+### Residual gaps still open
+
+- Ten independently sealed semantic mutants and the ≥8/10 score remain **unmeasured**;
+  external-human sealing for public claims remains absent.
+- R-165 trailers, R-166 Linux/Apptainer/pinned-pipeline integration, actual Python 3.6
+  execution, live Git/gitleaks deployment and full role/credential enforcement remain unverified.
+- Full scientific wrapper workflows, Nextflow cache behavior and biological/numerical
+  reproducibility are not established by these offline fixtures.
+- The Row 1 branch and the separate study's done commit were not inspected or verified.
+- Independent re-review of this corrective commit remains required. The producer does not
+  approve its own changes, and **Row 3's exit is still NOT met**.
