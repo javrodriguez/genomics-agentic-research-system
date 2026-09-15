@@ -309,3 +309,111 @@ CI to compensate for this row's source changes.
 - The Row 1 branch and the separate study's done commit were not inspected or verified.
 - Independent re-review of this corrective commit remains required. The producer does not
   approve its own changes, and **Row 3's exit is still NOT met**.
+
+
+## Review round 2 fixes
+
+Date: **2026-09-15**. Producer: Codex. Reviewed base: `5502db1`.
+Review: `docs/reviews/row_3_review_round2.md`, unchanged and untracked; SHA-256
+`70672ee5b434efcfa24994cd1efde35132ad144a2742f6b5794768717fb37182`.
+This addendum preserves the exact 24,281-byte report at the reviewed base, including the
+original 14,684-byte report. **F-5 addressed; Row 3 exit remains NOT met.** The supplied
+independent review closed F-1–F-4; their implementation is unchanged in this round.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| F-5 BLOCKER: owner identification and real-machine inventory in touched live documents | `README.md`, `DEVELOPMENT.md`, this addendum | Whole-file manual review; `$SCRATCH/round2/audit_docs.py`; shell examples parsed with `bash -n`; preservation audit | PASS. **Yes, for the content audit:** the same checks fail on the saved pre-fix documents (`F-5 content audit: FAIL (0/2 documents clean)`, exit 1) and pass on the final documents (`F-5 content audit: PASS (2/2 documents clean)`, exit 0). This is a document check against observed disclosure categories, not a sealed semantic mutant or a general privacy detector. |
+
+README removes personal attribution, account-specific badges, demo and related-project links;
+cloning uses a caller-supplied repository URL. DEVELOPMENT replaces installation paths and
+present/deleted workspace inventories with generic deployment requirements, and removes local
+job identifiers, private project labels, site quota details and measured storage claims across
+the whole file. Historical scientific outcomes remain identified as historical; the dated
+macOS suite evidence stays explicit. The existing proposed quota-warning threshold remains
+unchanged and is labeled unimplemented. No runtime, test, guard, threshold or CI code changed.
+Decision, review, specification and assessment records are preserved, with no status edits.
+
+Cheap review observations: README's inherited assertion of green CI on every push now states
+that CI was not verified in this round; the offline-test note names all three skip categories.
+The round-1 note about `gars/tests/support.py` fixture extraction stays: redesigning that
+mechanism is outside this documentation correction; its existing gate coverage still runs.
+There are no disputed findings and no new policy exception is requested.
+
+### Round 2 verification
+
+Tests ran on **macOS, Python 3.13.2**, with `PYTHONDONTWRITEBYTECODE=1`, global/system Git
+configuration disabled, `GARS_PIPELINES` pointing to an empty scratch directory, and no supplied
+sealed set. Every shell invocation set `TMPDIR`, `TEMP` and `TMP` to the designated sibling
+scratch folder before commands ran. Logs, snapshots, audit scripts, fixtures and the commit
+message stayed there. The first shell invocation used the tool's default login setting;
+subsequent shell invocations explicitly used `login=false`. No outside project, build folder,
+reviewer conversation or external sealed input was inspected. No network operation occurred.
+
+Independent command processes ran concurrently; timings are not performance evidence.
+The direct hook used synthetic push stdin and a scratch interpreter link to Python 3.13.2;
+it did not push or install a source-clone hook. Commands and runner summaries follow verbatim.
+All paths in the log column are relative to `$SCRATCH/round2/`.
+
+| Command | Exact summary lines | Exit | Log |
+|---|---|---|---|
+| `python3.13 tests/run_tests.py` | `Ran 151 tests in 239.632s`<br>`OK (skipped=9)` | 0 | `full-suite.log` |
+| `python3.13 evals/test_harness.py` | `Ran 44 tests in 285.023s`<br>`OK` | 0 | `harness.log` |
+| `python3.13 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` | 0 | `contracts.log` |
+| `python3.13 tests/check_counts.py` | `suite: 151 tests, from unittest's loader`<br>`enforced=3`<br>`clean — every current claim matches the suite` | 0 | `counts.log` |
+| `python3.13 evals/check_results.py --controls --lexicon` | `clean — graded=1` | 0 | `results.log` |
+| `python3.13 -m unittest discover -s gars/tests -p test_pre_push.py -v` | `Ran 7 tests in 12.491s`<br>`OK` | 0 | `hook-tests.log` |
+| `python3.13 evals/mutate.py` | `unmeasured` | 0 | `mutation-report.log` |
+| `python3.13 evals/mutate.py --require` | `unmeasured` | 1 | `mutation-required.log` |
+| `gars/_system/hooks/pre-push fixture-remote fixture-target` | `Ran 151 tests in 204.369s`<br>`OK (skipped=9)`<br>`pre-push: whole suite passed` | 0 | `direct-hook.log` |
+
+The whole suite collects 125 cases from `tests/` and 26 from `gars/tests/`; 142 execute
+successfully and nine skip (seven pinned-pipeline cases, one unavailable registry reference,
+one missing `anndata` dependency). All Row 3 cases execute. The named
+`WrapperContractTests.test_all_wrapper_contracts` passes and prints
+`wrapper contracts: 7/7 found/expected nf-core; 10 total wrappers`. This covers structure and
+missing-project refusals, not complete scientific workflows. The mutation-required exit 1
+correctly refuses the absent sealed set; no mutation score is claimed.
+
+Additional document and boundary checks:
+
+| Check | Exact summary / result | Exit | Log |
+|---|---|---|---|
+| `python3.13 "$SCRATCH/round2/audit_docs.py" --before` | `F-5 content audit: FAIL (0/2 documents clean)` | 1 (expected red) | `f5-red.log` |
+| Initial post-edit content/shell audit | `F-5 content audit: PASS (2/2 documents clean)` followed by `AssertionError` on the inherited `<id>` scheduler example | 1 | `f5-green.log` |
+| `python3.13 "$SCRATCH/round2/audit_docs.py"` | `F-5 content audit: PASS (2/2 documents clean)`<br>`Setup shell syntax and dated platform evidence: PASS` | 0 | `f5-green-final.log` |
+| `python3.13 "$SCRATCH/round2/audit_preservation.py"` | `Change report: exact 24281-byte reviewed prefix preserved`<br>`Round 2 review: unchanged and untracked`<br>`Round scope: only README, DEVELOPMENT and change report differ`<br>`Decision, review, specification and assessment records: unchanged`<br>`Protected-tree diff against c423366: empty`<br>`git diff --check: clean` | 0 | `preservation.log` |
+
+The syntax failure was fixed with generic `GARS_CLONE` and `GARS_JOB_ID` variables and quoted
+paths; the audit was not weakened. `bash -n` parses the examples without executing their
+clone, update or scheduler commands. The original documents themselves supply the red
+control; no producer-created sealed faults or fault score is involved. The content patterns
+check the observed categories; whole-file manual inspection supplements that bounded audit.
+
+Inspection used repository-local `rg`, `cat`, `sed`, `git status`/`diff` and local Git objects;
+Python scripts wrote only the two live documents, this append, and scratch artifacts.
+Preservation and whitespace checks ran again after this append. Staging is limited to these
+three documentation paths, with one round commit from a scratch message file. Both supplied
+untracked review paths remain untracked; the round-1 review file was not read in this round.
+No push, remote operation, merge, PR, hook installation or independent approval occurred.
+
+## Owner rulings needed
+
+**None for F-5:** generalizing the live documents implements the review's required fix, so no
+amendment of the whole-file rule is needed. The existing merge-time suite-location ruling
+remains open: Row 1 under `tests/` versus the Row 3 specification's `gars/tests/`. Both trees
+continue to run; their final location is for the owner to decide when the branches meet.
+The separate study's standing merge prerequisite remains unverified and unchanged.
+
+### Residual gaps still open
+
+- Ten independently sealed semantic mutants and the ≥8/10 score remain **unmeasured**;
+  external-human sealing for public claims remains absent.
+- R-165 trailers/session enforcement, R-166 Linux/Apptainer/pinned-pipeline integration,
+  actual Python 3.6 execution, live Git/gitleaks deployment and role/credential enforcement
+  remain unverified. No Python grammar check is newly needed: no Python source changed.
+- Full scientific workflows, real Nextflow cache behavior, biological validity and numerical
+  reproducibility are not established by the offline fixtures. Historical assay and CI
+  results were not revalidated, and the inherited Python 3.8 harness limitation was not rerun.
+- The Row 1 branch and the separate study's merge prerequisite were not inspected or verified.
+- Independent re-review of this corrective commit remains required. The producer does not
+  approve its own work, and **Row 3's exit remains NOT met**.
