@@ -127,13 +127,15 @@ class Config:
             raise Fail('invalid_client_mode')
         self.compose = []
         if self.mode == 'container':
-            require(('COMPOSE_PROJECT', 'PG_PASSWORD_FILE'))
+            require(('COMPOSE_PROJECT', 'PG_PASSWORD_FILE', 'PG_DATA_DIR'))
             if not re.fullmatch(r'[a-z0-9][a-z0-9_-]*', self.e['COMPOSE_PROJECT']):
                 raise Fail('invalid_project')
             engine = self.e.get('CONTAINER_ENGINE', 'docker')
             if engine not in ('docker', 'podman'):
                 raise Fail('invalid_engine')
             external_path(self.e['PG_PASSWORD_FILE'])
+            if not external_path(self.e['PG_DATA_DIR']).is_dir():
+                raise Fail('invalid_data_dir')
             self.compose = [engine, 'compose', '-f', str(REPO / 'infra/compose/postgres.compose.yml'),
                             '-p', self.e['COMPOSE_PROJECT'], 'exec', '-T', 'db']
         self.tool = self.e.get('ENC_TOOL', 'auto')
@@ -349,8 +351,9 @@ def manifest(destination):
 
 def candidate(destination, source, start):
     records = manifest(destination)
+    files = dict(destination.list())
     eligible = []
-    for name, mtime in destination.list():
+    for name, mtime in files.items():
         match = ARCHIVE.fullmatch(name)
         if not match or mtime >= start:
             continue
@@ -362,6 +365,10 @@ def candidate(destination, source, start):
             continue
         when = epoch(row[2])
         if when >= start:
+            continue
+        # Archive mtime is normalized to dump start; the sidecar retains its
+        # completion time so a dump completed during this drill is ineligible.
+        if files.get(name + '.sha256', 0) >= start:
             continue
         named = dt.datetime.strptime(match.group(2), '%Y%m%dT%H%M%SZ').replace(tzinfo=dt.timezone.utc).timestamp()
         if max(abs(named - when), abs(mtime - when)) > 300:
@@ -468,6 +475,10 @@ def backup(config):
                    out, 'dump_interrupted')
         dest = Destination(str(config.local))
         stream([dest.reader(name), config.crypt(True), restore_list(config)], reason='archive_unreadable')
+        # RPO measures dump start, irrespective of how long encryption takes.
+        # rsync -a preserves this time at each destination. The sidecar below
+        # keeps its real completion time for the drill-start exclusion guard.
+        os.utime(str(path), (now.timestamp(), now.timestamp()))
         digest = dest.sha(name)
         dest.path(name + '.sha256').write_text(digest + '\n')
         with dest.path('manifest.tsv').open('a', newline='') as f:
@@ -537,15 +548,19 @@ def restore_list(config):
     return config.compose + ['pg_restore', '-l'] if config.compose else ['pg_restore', '-l']
 
 
-def restore_result(config, start, mono, rpo, failures):
+def restore_result(config, start, mono, rpo, failures, log=None):
     rto = (time.monotonic() - mono) / 60
     if rto > 60:
         failures.append('rto_exceeded')
     for reason in failures:
         print('result=FAIL reason=' + reason)
     line = '%s, %.6f, %.6f, %s' % (start.strftime(STAMP), rpo, rto, 'FAIL' if failures else 'PASS')
-    with config.log.open('a') as f:
-        f.write(line + '\n')
+    if log is None:
+        with config.log.open('a') as f:
+            f.write(line + '\n')
+    else:
+        log.write(line + '\n')
+        log.flush()
     print(line)
     return 1 if failures else 0
 
@@ -565,6 +580,19 @@ def drill(config, destroy=False):
         print('result=DRY_RUN action=drop_create_restore_verify rpo_h=%.6f writes=none' % rpo)
         return 0
     failures = ['backup_too_old'] if rpo > 24 else []
+    # Open and retain the append handle before any destructive SQL. Dry-run
+    # never reaches this point and remains write-free.
+    try:
+        log = safe_path(str(config.log)).open('a')
+    except OSError:
+        raise Fail('restore_log_unwritable')
+    with log:
+        return destructive_restore(config, commands, name, digest, canary, expected,
+                                   start, mono, rpo, failures, log)
+
+
+def destructive_restore(config, commands, name, digest, canary, expected,
+                        start, mono, rpo, failures, log):
     # Repeat both guards immediately before destruction; neither has an override.
     guards(config)
     try:
@@ -600,7 +628,11 @@ def drill(config, destroy=False):
             raise Fail('canary_missing')
     except Fail as exc:
         failures.append(str(exc) if str(exc) != 'command_failed' else 'restore_failed')
-    return restore_result(config, start, mono, rpo, failures)
+    except KeyboardInterrupt:
+        failures.append('restore_interrupted')
+    except (OSError, ValueError, UnicodeError):
+        failures.append('restore_failed')
+    return restore_result(config, start, mono, rpo, failures, log=log)
 
 
 def connect(hostname, number):
@@ -665,7 +697,7 @@ def main():
     # Libpq must not consume connection services/options/passwords from the caller.
     for key in list(os.environ):
         if key.startswith('PG') and key not in set(SOURCE + ('PG_CLIENT_MODE', 'PG_PASSWORD_FILE',
-                                                           'PG_BIND_ADDR', 'PG_PORT', 'PG_RESTART')):
+                                                           'PG_BIND_ADDR', 'PG_PORT', 'PG_RESTART', 'PG_DATA_DIR')):
             del os.environ[key]
     os.environ['PGCONNECT_TIMEOUT'] = '5'
     try:
@@ -681,6 +713,10 @@ def main():
             backup(Config())
             return 0
         if mode == 'drill' and args in ([], ['--dry-run'], ['--destroy']):
+            def restore_interrupted(*_):
+                raise Fail('restore_interrupted')
+            for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+                signal.signal(signum, restore_interrupted)
             return drill(Config(True), args == ['--destroy'])
         raise Fail('invalid_arguments')
     except (Fail, OSError, ValueError, UnicodeError, KeyboardInterrupt) as exc:

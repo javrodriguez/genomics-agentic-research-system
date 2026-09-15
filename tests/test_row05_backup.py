@@ -19,6 +19,8 @@ import signal
 import socket
 import subprocess
 import sys
+# Child environment settings cannot suppress imports in this interpreter.
+sys.dont_write_bytecode = True
 import tempfile
 import time
 import unittest
@@ -227,6 +229,125 @@ class Row05OfflineTests(unittest.TestCase):
             f.write('public.items,1,' + '0' * 32 + '\n')
         with self.assertRaisesRegex(row.Fail, 'invalid_canary'):
             row.parse_canary(path)
+
+    def test_slow_backup_remains_selectable(self):
+        cfg = row.Config()
+        now = row.utc().replace(microsecond=0)
+
+        def dump(commands, output=None, reason=None):
+            if output is not None:
+                output.write(b'encrypted fixture')
+            return b''
+
+        # Exercise real publication, rsync and candidate validation. Only the
+        # archive pipeline and start clock are doubled; no ten-minute sleep.
+        for age in (1200, 600):
+            started = now - dt.timedelta(seconds=age)
+            with mock.patch.object(row, 'utc', return_value=started), \
+                 mock.patch.object(row, 'stream', side_effect=dump), \
+                 contextlib.redirect_stdout(io.StringIO()):
+                row.backup(cfg)
+            selected = row.candidate(cfg.off, cfg.src, time.time() + 1)
+            self.assertEqual(selected[0], started.timestamp())
+        # A completed backup published after drill start is still ineligible,
+        # even when its dump started earlier and its archive time is normalized.
+        with self.assertRaisesRegex(row.Fail, 'no_scheduled_backup'):
+            row.candidate(cfg.off, cfg.src, now.timestamp() - 1)
+
+    def test_container_storage_survives_runtime_scrub(self):
+        data = self.tmp / 'pgdata'
+        data.mkdir()
+        env = dict(self.env, PG_CLIENT_MODE='container', COMPOSE_PROJECT='fixture',
+                   PG_PASSWORD_FILE=self.env['PGPASSFILE'], PG_DATA_DIR=str(data))
+        with mock.patch.dict(os.environ, scrubbed_env(env), clear=True), \
+             mock.patch.object(sys, 'argv', ['row05.py', 'backup']), \
+             mock.patch.object(row.signal, 'signal'), mock.patch.object(row, 'backup') as backup:
+            self.assertEqual(row.main(), 0)
+            self.assertEqual(backup.call_args[0][0].e['PG_DATA_DIR'], str(data))
+        for value, reason in [(None, 'missing_PG_DATA_DIR'),
+                              (str(REPO), 'local_dir_in_repo'),
+                              (str(data / 'absent'), 'invalid_data_dir')]:
+            bad = dict(env)
+            if value is None:
+                del bad['PG_DATA_DIR']
+            else:
+                bad['PG_DATA_DIR'] = value
+            self.refused(execute('pg_backup.sh', bad), reason)
+
+    def test_restore_log_validated_before_destruction(self):
+        self.register()
+        cfg = row.Config(True)
+        cfg.log = self.tmp / 'absent' / 'restore.log'
+        with mock.patch.object(row, 'guards'), mock.patch.object(row, 'stream'), \
+             mock.patch.object(cfg, 'sql') as sql:
+            with self.assertRaisesRegex(row.Fail, 'restore_log_unwritable'):
+                row.drill(cfg, True)
+            sql.assert_not_called()
+
+    def test_restore_interrupt_after_destruction(self):
+        self.register()
+        # Real signal delivery into main/drill/stream with synthetic SQL. A
+        # sleeping pipeline child proves cleanup as well as the retained record.
+        driver = self.tmp / 'interrupt.py'
+        driver.write_text('''import importlib.util, os, signal, sys
+from pathlib import Path
+spec = importlib.util.spec_from_file_location('row05', sys.argv[1])
+row = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(row)
+cfg = row.Config(True)
+row.Config = lambda *args: cfg
+row.guards = lambda *args: None
+cfg.sql = lambda endpoint, query: Path(os.environ['SQL_LOG']).open('a').write(query + '\\n')
+real_stream = row.stream
+calls = []
+def stream(*args, **kwargs):
+    calls.append(1)
+    if len(calls) == 1:
+        return b''
+    if os.environ['FAULT'] == 'keyboard':
+        raise KeyboardInterrupt()
+    return real_stream([[sys.executable, '-c',
+        "import os,time;from pathlib import Path;Path(os.environ['READY']).write_text(str(os.getpid()));time.sleep(60)"]])
+row.stream = stream
+sys.argv = ['row05.py', 'drill', '--destroy']
+sys.exit(row.main())
+''')
+        for fault in ('keyboard', 'SIGINT', 'SIGTERM', 'SIGHUP'):
+            with self.subTest(fault=fault):
+                ready = self.tmp / (fault + '-ready')
+                sql_log = self.tmp / (fault + '-sql')
+                log = self.tmp / (fault + '-restore.log')
+                env = dict(self.env, FAULT=fault, READY=str(ready), SQL_LOG=str(sql_log),
+                           RESTORE_LOG=str(log))
+                proc = subprocess.Popen([sys.executable, str(driver), str(SCRIPTS / 'row05.py')],
+                    env=scrubbed_env(env), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                    universal_newlines=True)
+                try:
+                    if fault != 'keyboard':
+                        end = time.monotonic() + 10
+                        while not ready.exists() and time.monotonic() < end and proc.poll() is None:
+                            time.sleep(0.05)
+                        self.assertTrue(ready.exists(), 'restore child never started')
+                        proc.send_signal(getattr(signal, fault))
+                    output = proc.communicate(timeout=15)[0]
+                    self.assertIn('DROP DATABASE', sql_log.read_text())
+                    self.assertIn('CREATE DATABASE', sql_log.read_text())
+                    self.refused(subprocess.CompletedProcess([], proc.returncode, output), 'restore_interrupted')
+                    line = output.splitlines()[-1]
+                    self.assertRegex(line, RESULT)
+                    self.assertEqual(log.read_text(), line + '\n')
+                    if ready.exists():
+                        with self.assertRaises(ProcessLookupError):
+                            os.kill(int(ready.read_text()), 0)
+                finally:
+                    if proc.poll() is None:
+                        proc.kill()
+                        proc.communicate(timeout=15)
+                    if ready.exists():
+                        try:
+                            os.kill(int(ready.read_text()), signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
 
     def test_retention_cold_start_and_scope(self):
         dest = row.Destination(self.env['BACKUP_OFFMACHINE_DEST'])

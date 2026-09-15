@@ -144,3 +144,95 @@ report until row 1's ledger exists.
 - **NOT met: row 1's README evidence/ledger integration.** Neither exists on this branch;
   its `Restore-drill minutes and age` row must remain `unmeasured` after merge. Only README's
   existing test-count sentence changed here. No later deployment stage was implemented.
+
+## Review round 1 fixes
+
+2026-09-15 · review: `docs/reviews/row_5_review.md` · producer: Codex.
+The original report above is retained as a historical record. **Correction to its
+R-134 wording: backup restore is implemented, acceptance unverified; no Stage-1
+failure-matrix row is accepted.** The other four rows remain missing.
+The §18 row-5 exit remains **NOT met**.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| R5-F1 BLOCKER: in-process bytecode | `tests/test_row05_backup.py`, `infra/compose/README.md`, `docs/decisions/0045-row-5-review-reliability-addendum.md` | `Row05OfflineTests.test_runner_reachability_and_skip_path` in fresh scratch fixtures without `PYTHONDONTWRITEBYTECODE` or `PYTHONPYCACHEPREFIX` | **Yes:** original code failed its repository-byte invariant; fixed code passed in a fresh copy of all tracked working-tree files and produced zero `.pyc` files. `sys.dont_write_bytecode` precedes dynamic imports; scratch refusal and byte assertions remain. Code defect closed; protected CI portion deferred below. |
+| R5-F2 MAJOR: slow backup rejected | `infra/backup/row05.py`, `tests/test_row05_backup.py`, `infra/compose/README.md`, new 0045 | `test_slow_backup_remains_selectable`, existing manifest grid and real gpg/rsync test | **Yes:** new regression first raised `timestamp_drift`; now real publication/copy/selection accepts successive simulated 20- and 10-minute backups, including retained older archives. Archive mtime is normalized to dump start; sidecar completion mtime excludes backups completed during the drill. RPO remains start-based and the 300-second guard is unchanged. Pipeline/clock are doubles in the duration test; no long sleep. Closed. |
+| R5-F3 MAJOR: interrupted destructive restore loses FAIL | `infra/backup/row05.py`, `tests/test_row05_backup.py`, `infra/compose/README.md`, new 0045 | `test_restore_interrupt_after_destruction`, `test_restore_log_validated_before_destruction`, existing fault/RTO tests | **Yes:** KeyboardInterrupt/SIGINT initially emitted only `operation_failed`; SIGTERM/SIGHUP emitted no result. All four now return nonzero with `restore_interrupted` and a dated FAIL row identical to stdout after synthetic DROP/CREATE; real pipeline children are reaped. An invalid log initially failed after destruction; now it refuses before any SQL. Documentation excludes uncatchable process/host loss and later log-storage loss from the logging guarantee. Closed. |
+| R5-N1 NOTE: connections not pinned across routing changes | `infra/compose/README.md`, new 0045 | Source inspection of `Config.sql`, `guards`, `destructive_restore`; existing alias/marker test | **No new mutation test:** operational docs explicitly require direct stable endpoints, distinguish the admin `postgres` connection, and require stronger binding before supporting connection-routing proxies. No routing-change protection claimed. Documentation fix closed. |
+| R5-N2 NOTE: PG_DATA_DIR scrubbed | `infra/backup/row05.py`, `tests/test_row05_backup.py`, new 0045 | `test_container_storage_survives_runtime_scrub`; synthetic `docker compose ... config`; database module gate | **Yes:** observer initially failed with `KeyError: PG_DATA_DIR`; main now retains it and container configuration requires an existing absolute directory outside Git without symlink components. Missing, in-repository and absent-directory inputs refuse. Compose resolves the synthetic device path. Code fix closed; live container-client verification remains unverified because `docker info` exits 1. |
+
+Supporting status/count changes: `README.md`, `DEVELOPMENT.md`; decision index
+regenerated with `docs/decisions/build_index.sh`. Four additive test methods bring
+the runner to 160 cases (18 offline row-5 cases and 17 database-gated cases).
+No threshold, test or guard was weakened. Decision 0044 is byte-identical; 0045
+is its dated addendum. Both committed operational logs remain byte-identical and
+contain zero PASS rows. No protected tree changed.
+
+### Commands and observed summaries
+
+Every shell set `TMPDIR`, `TEMP`, and `TMP` to this repository's sibling
+`gars-row-5-scratch/` before commands. Test shells also set `GARS_ROW5_SCRATCH`
+there and `GARS_PIPELINES`/`GARS_REFS` to absent scratch paths. Python bytecode
+was disabled except in the deliberate fresh-fixture experiments. Fixture copies,
+logs and the commit-message file stay in sibling scratch. Local socket access and
+sibling-folder writes used the filesystem approval route. No real database was
+contacted and no daemon was started.
+
+| Command/check | Verbatim summary or exit result | Scratch log |
+|---|---|---|
+| Four new round-1 regression methods, before fixes | `Ran 4 tests in 5.733s`; `FAILED (failures=4, errors=3)` | `round1-regression-red.log` |
+| Same four methods, after fixes | `Ran 4 tests in 5.329s`; `OK` | `round1-regression-green.log` |
+| Fresh relevant-file fixture, ordinary interpreter, targeted runner-reachability case before fix | `Ran 1 test in 0.447s`; `FAILED (failures=1)` | `round1-ci-red.log` |
+| Fresh tracked-file fixture, ordinary interpreter, same targeted case after fix | `Ran 1 test in 2.306s`; `OK`; zero bytecode files | `round1-ci-green.log` |
+| `python3 tests/run_tests.py` | `Ran 160 tests in 103.697s`; `OK (skipped=26)` | `round1-full.log` |
+| `python3 tests/test_row05_backup.py` | `Ran 35 tests in 90.369s`; `OK (skipped=17)` | `round1-row-module.log` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` | `round1-contracts.log` |
+| `python3 tests/check_counts.py` | `enforced=4`; `clean — every current claim matches the suite` | `round1-counts.log` |
+| `python3 evals/test_harness.py` | `Ran 44 tests in 174.147s`; `OK` | `round1-eval-harness.log` |
+| `python3 evals/check_results.py --controls --lexicon` | `clean — graded=1` | `round1-eval-results.log` |
+| `bash -n infra/backup/pg_backup.sh infra/backup/restore_drill.sh infra/backup/test_exposure.sh` | Exit 0, no output | `round1-bash.log` |
+| `docker compose -f infra/compose/postgres.compose.yml config` with synthetic settings | Exit 0; expected scratch `PG_DATA_DIR` is the device path | `round1-compose.log` |
+| `docker info` | Exit 1; database tests print `SKIPPED: docker info: exit 1` | `round1-docker-info.log`, suite logs |
+| `ast.parse(..., feature_version=(3, 6))` on both changed Python files | `Python 3.6 grammar: 2 files clean` | Tool output; syntax only |
+| `bash docs/decisions/build_index.sh` | Exit 0; generated 0045 index row | Tool output |
+| `git diff --check`; scoped diff of `gars/`, `evals/`, `.github/` | Clean; no protected-tree diff | Tool output |
+| `git check-ignore` on backup.env, archive, sidecar, manifest | All four ignored | Tool output |
+| Availability probes | `shellcheck: unavailable`; `age: unavailable`; `python3.6: unavailable` | Tool output |
+
+The red runs above are deliberate fault demonstrations, not hidden failed final
+runs. Final suite skips comprise 17 PostgreSQL cases and 9 existing environment
+skips. The forced-container-skip path runs inside the reachability case.
+The review remains untracked and unchanged (SHA-256
+`2b07b312d776ee5fdf1c793ad6f719945d32e40ed0e903d471cf336e6d9cb208`).
+
+## Owner rulings needed
+
+**R5-F1 protected CI portion:** At the authorized merge after the study finishes,
+will the owner add the review's exact single setting to the existing Test suite
+step? The review specifies this option, with no alternative CI design:
+
+```yaml
+      - name: Test suite
+        env:
+          GARS_ROW5_SCRATCH: ${{ runner.temp }}
+        run: python3 tests/run_tests.py
+```
+
+`.github/` is protected for this round, so this part stops here. No CI edit was
+made. The test-module bytecode correction is complete; the actual hosted CI job
+and Docker-enabled branch still need execution after the authorized merge.
+
+### Residual gaps still open
+
+- R5-F1's CI integration remains deferred as above. R5-N2's default container
+  client path has no live database evidence: the Docker availability probe failed.
+- Real Node 1 restore, human marker pre-step, dated PASS/freshness, RPO ≤24 h,
+  RTO ≤60 min and outside-host exposure 0 remain unverified. Offline doubles and
+  loopback probes do not satisfy those exits.
+- Scheduled nightly execution, remote SSH/tailnet copies, age encryption, Python
+  3.6 runtime execution, and shellcheck remain unverified. SIGKILL/host loss and
+  log-storage loss are not guaranteed to leave a dated result.
+- Authorized second sensitive-data destination (row 8), public external-human
+  sealing, actual Brain memory/vault backup and restore, the other four Stage-1
+  failure rows, and row-1 evidence/ledger integration remain open as recorded above.
+  No later deployment stage was implemented; no public evidence was promoted.

@@ -26,7 +26,12 @@ PG_PORT is the published host port, a different setting. CONTAINER_ENGINE may be
 podman. Host mode requires matching client/server majors and a protected PGPASSFILE.
 A backup role needs read access to every application table; recovery role needs
 createdb and target ownership. Both drill roles need read access to pg_control_system()
-for alias-safe cluster identity checks. Use a dedicated role for each purpose when provisioning.
+for cluster identity checks against stable aliases. These guards assume direct,
+stable endpoints: checks, restore and administrative DROP/CREATE use separate
+connections, including the admin database `postgres`. They do not protect against
+DNS/proxy routing changes between connections or database-dependent routing.
+Connection-routing proxies require stronger binding to the checked server before
+they can be supported. Use a dedicated role for each purpose when provisioning.
 No password is passed as a command argument. Both remote endpoints need rsync,
 SSH key access, and Python 3; set host keys up interactively beforehand.
 
@@ -55,6 +60,16 @@ it is intentionally not recreated by the script. Run dry-run, then `--destroy`.
 The source identity and marker guards cannot be disabled. Decision 0044 records
 why the spec's literal primary-deletion exit is not implemented. Do not rename the
 source endpoint to evade the guard. A failed/stale archive never yields PASS.
+The destructive drill opens its append log before DROP. Catchable SIGINT, SIGTERM,
+SIGHUP and restore failures clean up pipeline children and record a dated FAIL.
+Uncatchable loss (SIGKILL, host/power loss), or loss of the log storage after it was
+opened, can prevent that record; a missing result is never evidence of success.
+
+Archive filenames, manifest times and normalized archive mtimes describe dump
+start for RPO. SHA-256 sidecars retain completion mtimes; a sidecar completed at
+or after drill start makes that backup ineligible. This permits long backups
+without relaxing the 300-second timestamp-drift guard. Destination clocks and
+write access must be trusted; these timestamps are not authenticated scheduling.
 
 Run exposure from a host outside the tailnet, with a known reachable control on a
 third host. Supply the public and tailnet endpoints and all relevant service ports;
@@ -64,8 +79,10 @@ audit listening services and firewall configuration as part of real provisioning
 Both logs in docs/ops are empty evidence templates, not proof of a run.
 
 Tests require GARS_ROW5_SCRATCH plus TMPDIR, TEMP and TMP set to that private
-scratch directory, and PYTHONDONTWRITEBYTECODE=1. CI's existing jobs are unchanged;
-configure that environment externally before running this module. Tests refuse
+scratch directory. The row module disables its own import-time bytecode writes
+and sets PYTHONDONTWRITEBYTECODE=1 for children. CI's existing jobs are unchanged;
+the owner must add `GARS_ROW5_SCRATCH: ${{ runner.temp }}` to the existing test
+step only in the authorized merge after the study finishes. Tests refuse
 without scratch. They scrub inherited database/backup/drill/exposure configuration,
 use `-p gars-row5-<pid>-<random>`, random loopback PG_PORT, COMPOSE_VOLUME_SUFFIX,
 PG_RESTART=no and a random mode-600 password file. The named volume binds a data
