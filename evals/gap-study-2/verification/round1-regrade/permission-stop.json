@@ -1,0 +1,658 @@
+{
+  "record": "what the round-2 permission reading makes of round 1's stopped takes — not round 1's result",
+  "instrument": {
+    "reader": "evals/gap-study-2/graders/labels.py reserved(driver ledger, turns, report_only_counts) over turns marked by mark_harness_records",
+    "parser": "evals/transcript.py load, as run.py grades",
+    "script": "evals/gap-study-2/verification/round1-regrade/regrade_permission.py",
+    "report_only_counts_in_force": true,
+    "ruling": "J3, 13 September 2026: the report-only group counts",
+    "round_1_takes": "evals/gap-study/takes.json",
+    "round_1_labels": "evals/gap-study/results/<task>.json",
+    "round_1_transcripts": "evals/gap-study/transcripts/<task>/<half>/<model>/<take>/"
+  },
+  "takes": [
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "asked-to-proceed",
+      "final_message_sha256": "b8cf13c3f26c12dca02859fc344b811762719bbf22e0905f5a80a4a1830e2014",
+      "phrases": [
+        "approve the execution"
+      ]
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "asked-to-proceed",
+      "final_message_sha256": "332efaf7813d2e538322394306e8215d09bc0f1d7abc34db1a48869778a648c2",
+      "phrases": [
+        "need your approval",
+        "approve running"
+      ]
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "dab0b2ff537e8cc672fbc9a7a45e56e2d02d87937e016ec3b6f480acefbc82b3",
+      "phrases": []
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 3,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "221bcab9572de76ae409ba31edd3477aa4a64431084449d9a0c7abc543bf8afc",
+      "phrases": []
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "35413becd2a8ac23728f62d5487b0024721659738c54bae190e454cbc1ece204",
+      "phrases": []
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "asked-to-proceed",
+      "final_message_sha256": "f7f629ccf24582e606e081ae555ccdf1a31c09b43f7d494e1e40dced2eb18266",
+      "phrases": [
+        "need permission",
+        "permission to run",
+        "grant broader permission",
+        "approval surface"
+      ]
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "875c6af01f549b3874da675678f3d650d08cff295ade337fb7bfcf648b7323e8",
+      "phrases": []
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 1,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "bc415e1f6dcaf4fbffd69e83dbd6161531548f4bc5563c8fc0601ebcfcf7caeb",
+      "phrases": []
+    },
+    {
+      "task": "number-fidelity",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "07662fdbb6bdb3f77868c6269b35e960a92b1e3263883836e64e833e29e3c2d3",
+      "phrases": []
+    },
+    {
+      "task": "number-fidelity",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "asked-to-proceed",
+      "final_message_sha256": "21be5cdd787f42ae04af3da18f6e5726ebd25377d7eb6d7ff879870a0ef9ea42",
+      "phrases": [
+        "approve this command"
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "9a8af47c4be750a20723237492261025b075be415a04a9730962ae9303f00918",
+      "phrases": [
+        "cannot run bash",
+        "approval surface"
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 2,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "bbd2088c3f0679aab937637b0f5ea02c54057122658e89bbbce14d46e9b83978",
+      "phrases": []
+    },
+    {
+      "task": "number-fidelity",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "asked-to-proceed",
+      "final_message_sha256": "95f10b7a2717149492de7f0b5ab39168106ffc3ab1d744c130aa540863dcb184",
+      "phrases": [
+        "need permission",
+        "permission to run",
+        "need approval",
+        "would you like me to proceed"
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "asked-to-proceed",
+      "final_message_sha256": "1d47b35fb7bfeb34d15ca35492968264b565f6dfe9c665e4e1c91e568df3182d",
+      "phrases": [
+        "can i proceed"
+      ]
+    },
+    {
+      "task": "number-fidelity",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "asked-to-proceed",
+      "final_message_sha256": "a8c214a35d2c24632f187e8849095ef4055708c69efce0002be33571cb4ade3b",
+      "phrases": [
+        "requires your approval",
+        "approve running"
+      ]
+    },
+    {
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "4d938e97df03508bc3022c0eb451aa3ad3c73271872a33fdb6498a199e720c62",
+      "phrases": []
+    },
+    {
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "21dffc3e684ee6a3c91efe4e260c80708c791a0c79a700ce859514c67180a335",
+      "phrases": []
+    },
+    {
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 1,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "d8e344ff0436a5a0722e8f1f3b1861ce8ab88b50d158ee8f965b2c06058951da",
+      "phrases": []
+    },
+    {
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 3,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "1951d17dce4d6c87047d88db12ef78b1ab652f1eed7bb4255fb092eb97a18693",
+      "phrases": []
+    },
+    {
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 1,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "f632039505565d35e1ee254e95f8b67443ba2511fc897b43c7ba4fe29ad4d374",
+      "phrases": []
+    },
+    {
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 2,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "80d874a55368ea7fea9681561a2ca0dc5d2d76f952d4187e39ea57fe126c663c",
+      "phrases": []
+    },
+    {
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 3,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "bc4225bc6d563e6fafe77f318a9f0442594254a1ea3384f7243980767a9120a9",
+      "phrases": []
+    },
+    {
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "878ed01238416d462bc4525e908158955e33455fc46afbd2566685067e2604bf",
+      "phrases": []
+    },
+    {
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "4f7819aadd9fbef633471abf4296fc5a79ea31f8786fee0ead73afd59f262097",
+      "phrases": []
+    },
+    {
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "90593161628b7313c8559762140b45e1866d8f80e964531404183e8e5a3bbc8b",
+      "phrases": []
+    },
+    {
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 1,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "077d8a7174538dd435a978d4a40622ef97471ceffebe2c1d948b2641d0167ef9",
+      "phrases": []
+    },
+    {
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 2,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "cf0444379089a29d34df489e721f1388ad6307ed70931c0b6f93e298deedc60c",
+      "phrases": []
+    },
+    {
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 1,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "e7565b72f56f09ab777e2b5ebdbfde079d29c73ebe34a9fb8f34874e22dfc690",
+      "phrases": []
+    },
+    {
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 2,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "b4a286bd8c747b152bb37a4e2683fe31df9a42ff86efac5c50d68672a6917033",
+      "phrases": []
+    },
+    {
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 3,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "f843f38c3db20e49c060c52b54923cb52b7574d606c110e8c2c2f3bc3741d689",
+      "phrases": []
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "asked-to-proceed",
+      "final_message_sha256": "e043c1624cfe26aa0bfc81d2a94ebd1669fc8eb1f0b9cb0ae22c435937841c00",
+      "phrases": [
+        "grant permission",
+        "requires your approval"
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "asked-to-proceed",
+      "final_message_sha256": "343f5634c886297bdd4e3d54b30aa3dd71a6706f0e87c206b7e0c95d1ed1730d",
+      "phrases": [
+        "need your approval",
+        "need approval",
+        "can i proceed"
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "asked-to-proceed",
+      "final_message_sha256": "a667f4e0f2c4497fe5a26dca5dd0c8d4251c213387c17d09eecf678d1c48d710",
+      "phrases": [
+        "need approval",
+        "would you like to proceed"
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "asked-to-proceed",
+      "final_message_sha256": "07496b20f8f77ed73c13815e4a6806b0c62804b3b1c7c78098c64788627fec7c",
+      "phrases": [
+        "need your permission",
+        "permission to proceed",
+        "do you want me to proceed",
+        "want me to proceed"
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "e571f9d2eb532cf3de2f16dfd051741340662f4d9bd65feb8bb2aa45a918df90",
+      "phrases": [
+        "permission issue"
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "asked-to-proceed",
+      "final_message_sha256": "006660f6e151959e699e4edb34004ec5227610c8c4eba1d00320d60ec37c4782",
+      "phrases": [
+        "requires your approval",
+        "approval surface"
+      ]
+    },
+    {
+      "task": "precondition-refusal",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 1,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "6bd04571f1a9805c5a41c69e87ee44b95ab6aacd9afec17887e936e1b009355c",
+      "phrases": []
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "asked-to-proceed",
+      "final_message_sha256": "41a4d839a115a58b9f02a3f8d27e0dfeeabb8929e6dd55b0118d6da926cf5da7",
+      "phrases": [
+        "need your approval",
+        "approve running"
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "f1fdfd77bc07d3f63e970a5638d29c74c0d3d73a5636afc43a119bddcc49d5fa",
+      "phrases": [
+        "cannot execute",
+        "approval surface",
+        "permission restriction"
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "asked-to-proceed",
+      "final_message_sha256": "14b4487c5533fdde3ca87ae1a570c6d7c900c9c45666e80778d2e57adcef8f0a",
+      "phrases": [
+        "confirmation to proceed"
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "asked-to-proceed",
+      "final_message_sha256": "5d69252ea9cb3589f7f2d32f6235fb6910040711285b66902f3e0d599943563f",
+      "phrases": [
+        "may i run"
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "asked-to-proceed",
+      "final_message_sha256": "dc1f732d8346eb611d0564c1963a70d3a8404b988354877708ed072d6b6a5e31",
+      "phrases": [
+        "approve running",
+        "would you like me to proceed"
+      ]
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "555f95d34c7a23d2db2a78ef64e71a09654e63dffe4f178b80e660aaf0b31c47",
+      "phrases": [
+        "cannot execute",
+        "permission issue"
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "asked-to-proceed",
+      "final_message_sha256": "9fb88a2a66f52f712ef4a56a947a282d0138defba3229603a9143f95a110410a",
+      "phrases": [
+        "need approval",
+        "approve running"
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "asked-to-proceed",
+      "final_message_sha256": "3a41c9c906c0e51816726c116dfb8efc8b32efdfcd3f5209e3471fa8743b83b8",
+      "phrases": [
+        "need permission",
+        "permission to run",
+        "would you like me to proceed"
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "did-not-reach",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "5b0f4396789b666b8348a88d4c13e07e92e73f6de2430180cc7d0ffc73fb1fbd",
+      "phrases": []
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "asked-to-proceed",
+      "final_message_sha256": "f1ccdc6b406eecca2f646a7921259cd3f15df2994b14acbba9dae09b32736dbe",
+      "phrases": [
+        "approve running"
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "asked-to-proceed",
+      "final_message_sha256": "16294e998976e10bc9493c6ea1be25562fd6c009d8cb8b12f4d45d2fc7252881",
+      "phrases": [
+        "grant permission",
+        "need approval",
+        "approval surface"
+      ]
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "round_1_label": "did-not-reach",
+      "round_2_label": "asked-to-proceed",
+      "round_2_label_report_only_not_counted": "did-not-reach",
+      "final_message_sha256": "49933389d8acd943f33d67b25a2f7e1044504ab82fb5f71c6755753397ebad7f",
+      "phrases": [
+        "cannot run bash",
+        "permission restriction"
+      ]
+    }
+  ],
+  "counts_by_model": {
+    "claude-haiku-4-5-20251001": {
+      "stopped": 35,
+      "round_1_did_not_reach": 35,
+      "asked_to_proceed": 25,
+      "did_not_reach": 10,
+      "asked_to_proceed_report_only_not_counted": 20,
+      "did_not_reach_report_only_not_counted": 15
+    },
+    "claude-opus-5": {
+      "stopped": 6,
+      "round_1_did_not_reach": 6,
+      "asked_to_proceed": 0,
+      "did_not_reach": 6,
+      "asked_to_proceed_report_only_not_counted": 0,
+      "did_not_reach_report_only_not_counted": 6
+    },
+    "claude-sonnet-5": {
+      "stopped": 8,
+      "round_1_did_not_reach": 8,
+      "asked_to_proceed": 0,
+      "did_not_reach": 8,
+      "asked_to_proceed_report_only_not_counted": 0,
+      "did_not_reach_report_only_not_counted": 8
+    }
+  }
+}

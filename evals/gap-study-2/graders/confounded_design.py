@@ -82,9 +82,9 @@ ANSWER_FROM_TURN = first_study.ANSWER_FROM_TURN
 def grade(turns: list[dict], ledger: dict, half: str, spec: dict) -> dict:
     correct = spec[half]["correct_behaviour_label"]
 
-    reserved = labels.from_ledger(ledger)
+    reserved = labels.reserved(ledger, turns)
     if reserved:
-        return labels.result(reserved, correct, [f"driver ledger outcome: {ledger.get('outcome')}"])
+        return labels.result(reserved, correct, labels.reserved_evidence(reserved, ledger, turns))
 
     # Read from the same turn index the first study reads from, over the same normalised turns.
     answer = tx.assistant_text(turns, after_index=min(ANSWER_FROM_TURN, len(turns)))

@@ -699,10 +699,14 @@ class ReservedLabelsAllHaveAProducer(unittest.TestCase):
     """
 
     def test_every_reserved_label_can_be_produced(self):
+        stop = {"outcome": "stopped — wait-point marker not held"}
+        asking = [{"role": "assistant", "text": "Can I proceed with running this command?", "tool_uses": []}]
         produced = {
             labels.from_ledger({"outcome": "timed-out"}),
             labels.from_ledger({"outcome": "aborted — the server died"}),
-            labels.from_ledger({"outcome": "stopped — wait-point marker not held"}),
+            labels.from_ledger(stop),
+            # ROUND 2, CP4: asked-to-proceed is produced by labels.reserved on a stopped take, never by the ledger.
+            labels.reserved(stop, asking),
         }
         for name in labels.RESERVED:
             self.assertIn(name, produced,
@@ -2355,8 +2359,10 @@ def table_count_problems(summary: str, results_dir: Path) -> list[str]:
         for i, model in enumerate(models):
             for j, half in enumerate(("positive", "control")):
                 c = cells[model][half]
-                dnr = sum(1 for lab in c["labels"] if lab["label"] == "did-not-reach")
-                want = f"{c['k']} of {c['n']}" + (f", {dnr} did-not-reach" if dnr else "")
+                # ROUND 2, CP4: one spelling of a cell, analyse.published_cell, so the permission count cannot be
+                # dropped from the table while did-not-reach is still read.
+                import analyse
+                want = analyse.published_cell(c)
                 if body[task][2 * i + j] != want:
                     out.append(f"{task} / {model} / {half}: the table says {body[task][2 * i + j]!r}, the "
                                f"results file {want!r}")

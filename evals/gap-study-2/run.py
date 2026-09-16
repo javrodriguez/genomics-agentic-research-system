@@ -228,7 +228,10 @@ def grade_cell(task_id: str, half: str, model: str, spec: dict, n: int) -> dict:
         t = d / "transcript.jsonl"
         if t.is_file():
             data = tx.load(t)
-            got = grader.grade(data["turns"], ledger, half, spec)
+            # ROUND 2, CP4. The shared parser keeps a harness API-error record as an assistant turn; the permission
+            # reading skips it, so it is flagged here from the session file itself.
+            turns = labels.mark_harness_records(data["turns"], labels.harness_record_flags(t))
+            got = grader.grade(turns, ledger, half, spec)
             sha = data["sha256"]
         else:
             got = labels.result(labels.from_ledger(ledger) or labels.ABORTED,

@@ -218,42 +218,42 @@
       "round_1_path": "evals/gap-study/graders/labels.py",
       "round_1_blob": "33311d44b56bf736a54776cb90e120fc06506b1b",
       "copy_sha256": "28f5a5f9b179f05edcae76b28be6d39a8273ff9843642a168ac8e9e3066ac52b",
-      "edited_after_copy": false
+      "edited_after_copy": true
     },
     {
       "path": "evals/gap-study-2/graders/number_fidelity.py",
       "round_1_path": "evals/gap-study/graders/number_fidelity.py",
       "round_1_blob": "5a78efc3a5a94c438dbf5cd35f381efbd5431fc5",
       "copy_sha256": "1e1f004e7e05c0e7b544ac83043d7a188445dfa96a89eeb9f4ecaa874b1b07f9",
-      "edited_after_copy": false
+      "edited_after_copy": true
     },
     {
       "path": "evals/gap-study-2/graders/plan_gate.py",
       "round_1_path": "evals/gap-study/graders/plan_gate.py",
       "round_1_blob": "0e0e1c58438aaa3e019179d99de02ecef3783338",
       "copy_sha256": "28737cc7e65828d5f6ec673423987374cbf098eaff8fb8c1aac5755266bb68ec",
-      "edited_after_copy": false
+      "edited_after_copy": true
     },
     {
       "path": "evals/gap-study-2/graders/precondition_refusal.py",
       "round_1_path": "evals/gap-study/graders/precondition_refusal.py",
       "round_1_blob": "812ee1ca799dbfa04a55d7f01f0961da770d57b1",
       "copy_sha256": "b2531dbce70138bd37c037d8e65d1543ae02854cdeae2fecbc21b7f3c4629bae",
-      "edited_after_copy": false
+      "edited_after_copy": true
     },
     {
       "path": "evals/gap-study-2/graders/scope_read.py",
       "round_1_path": "evals/gap-study/graders/scope_read.py",
       "round_1_blob": "51f52221f38065e2ead5dfca1713a918f54a1f76",
       "copy_sha256": "b92e1a76bc49492fbe2cc5ce95db7c4c5344c1ed5d58439f25627bcbcb072279",
-      "edited_after_copy": false
+      "edited_after_copy": true
     },
     {
       "path": "evals/gap-study-2/graders/template_adherence.py",
       "round_1_path": "evals/gap-study/graders/template_adherence.py",
       "round_1_blob": "6d1bae6f4e62197a7e16c0f99236fa87e7c10a34",
       "copy_sha256": "06a5870034d875eff5ae84e3508566cebde563c6357e3958725cdda5e21954fe",
-      "edited_after_copy": false
+      "edited_after_copy": true
     },
     {
       "path": "evals/gap-study-2/language-allowlist.json",

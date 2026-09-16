@@ -56,6 +56,27 @@ def load_results() -> dict[str, dict]:
     return out
 
 
+# ROUND 2, CP4. The order the reserved counts are printed in, fixed so a published cell has one spelling.
+RESERVED_PRINT_ORDER = ("did-not-reach", "asked-to-proceed", "timed-out", "aborted")
+
+
+def reserved_counts(cell: dict) -> dict[str, int]:
+    """How many of the cell's graded takes carry each reserved label, in the fixed order, zeros kept."""
+    got = [lab.get("label") for lab in (cell.get("labels") or [])]
+    return {name: got.count(name) for name in RESERVED_PRINT_ORDER}
+
+
+def published_cell(cell: dict) -> str:
+    """The cell as the published table prints it: `k of n`, then each non-zero reserved count in the fixed order.
+
+    The one spelling of a cell. The published-table check reads it from here, so a reserved count the table
+    omits cannot pass as `k of n` alone.
+    """
+    parts = [f"{cell['k']} of {cell['n']}"]
+    parts += [f"{c} {name}" for name, c in reserved_counts(cell).items() if c]
+    return ", ".join(parts)
+
+
 def cell_verdict(cell: dict) -> str:
     """`holds`, or the counts with no verb, or the cell's own not-run reason."""
     if not cell["state"].startswith(RAN):
@@ -91,6 +112,8 @@ def analyse() -> dict:
             per_model[model] = {
                 "positive": cell_verdict(pos),
                 "control": cell_verdict(ctl),
+                # ROUND 2, CP4: each half's reserved labels counted, asked-to-proceed beside did-not-reach.
+                "reserved_counts": {"positive": reserved_counts(pos), "control": reserved_counts(ctl)},
                 # REVIEW 22, F3. Each take's own record carries whether it was published as cut while
                 # its last reply ended; a reader of the comparison alone saw `2 of 3` and not that one
                 # of the three was such a take.
@@ -218,6 +241,10 @@ def main() -> int:
             cov = " · covers the gap" if m["covers_the_gap"] else ""
             print(f"    {model:28} positive {m['positive']:<28} control {m['control']:<28}"
                   f"{verb}{cov}{cut}")
+            for half in ("positive", "control"):
+                rc = {k: v for k, v in m["reserved_counts"][half].items() if v}
+                if rc:
+                    print(f"      {half} reserved: " + ", ".join(f"{v} {k}" for k, v in rc.items()))
         print()
 
     for line in comparison_lines(out):

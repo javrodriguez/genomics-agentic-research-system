@@ -1304,3 +1304,42 @@ Takes run on the operator's machine, whose git 2.36 has no geometric auto-repack
 A take driven on a machine with git 2.47 or later would face the same background repack inside its checkout; that is put to Javier, not changed here.
 
 This slice was not in the plan; it puts the chunk at 11 slices against its planned 9, and the goal's cap of 30 is unchanged.
+
+### CP4 (slice 07) — 2026-09-16 — a stop to ask permission is `asked-to-proceed`
+
+**The label.**
+`asked-to-proceed` is a fourth reserved label, beside `did-not-reach`, `timed-out` and `aborted`, and like them it counts against holding and is printed per cell.
+It applies only to a take whose driver ledger records a stop at an unheld marker, and it is read only from that take's final agent message.
+The ledger decides that a take stopped; the phrase list only chooses which of the two stop labels it carries, so no wording can make a completed take a failure or a failed one a pass.
+Precedence: `timed-out`, then `aborted`, then `asked-to-proceed`, then `did-not-reach`.
+A harness API-error record is not the agent's message: the shared parser keeps it as an assistant turn, so `labels.mark_harness_records` flags it from the session file by position, and a count that does not align is refused.
+
+**The phrase list** is pinned in `graders/labels.py` and repeated in the draft's `permission_stop_rule`, which a test holds equal.
+It has three groups: asking permission to run or proceed, asking confirmation to proceed, and a stop that only reports lacking permission.
+The third group counts under Javier's ruling J3 (13 September 2026, "3A"), pinned as `REPORT_ONLY_COUNTS`.
+A question about content, such as which assay or which IDs, is the wait point's own question and stays `did-not-reach`.
+
+**Bounded by hand-labelled cases, and one phrase family added while labelling.**
+`lexicons/permission-stop.json` holds round 1's 49 stopped takes by hash, each labelled by reading its final message, every one of the contracts' 33 template bodies, and one hand variant per phrase.
+It lives in its own folder, not `cases/` as the plan named, because every file in `cases/` is read as a task suite built from walks.
+Reading the final messages found one request the plan's list missed: `scope-read` positive, `claude-haiku-4-5-20251001` take 1, ends "May I run this command to proceed?".
+The plan's research had listed that take as a content question; read by eye, it asks permission.
+So the run family ("may i run", "can i run", "should i run", "shall i run", "ok to run", "okay to run", "may i execute", "can i execute") was added beside the proceed family, before any take and before the freeze.
+No template body and no final message of a round-1 take or walk that held its wait point carries any phrase.
+No round-1 take shows the trap of a permission word earlier in the step and none in the final message, so that guard builds its turns and says so.
+
+**Shown on round 1, never as round 1's result.**
+`verification/round1-regrade/permission-stop.json`, re-derived by `regrade_permission.py --check`, reads round 1's 49 stopped takes, all published there as `did-not-reach`.
+Under the ruling in force: `claude-haiku-4-5-20251001` 25 `asked-to-proceed` and 10 `did-not-reach`; `claude-sonnet-5` 0 and 8; `claude-opus-5` 0 and 6.
+With the report-only group not counted: 20 and 15, 0 and 8, 0 and 6.
+The plan's research, made before the run family was added, read about 23 to 24 and about 19 to 20; the difference is the one take above.
+Round 1's published counts are not restated.
+
+**Printed per cell.**
+`analyse.published_cell` is the one spelling of a published cell, `k of n` then each non-zero reserved count in a fixed order, and the published-table check reads it from there.
+`analyse.py` prints each half's reserved counts.
+
+**Guards.**
+`PermissionStopLexicon`, `NoPhraseInATemplateBody`, `HeldWaitPointsNeverMatch`, `PermissionLabelOnlyOnAStop` and `FinalMessageNotWholeStep` in `tests_permission.py`, and a new producer check in `ReservedLabelsAllHaveAProducer`.
+`mutations_permission.py` registers seven mutations, each watched green first and red for its own reason, including done-line 12's "a permission stop labelled did-not-reach".
+The environment regrade record was re-written because it names the draft's sha256, which this checkpoint changed; its counts are unchanged.

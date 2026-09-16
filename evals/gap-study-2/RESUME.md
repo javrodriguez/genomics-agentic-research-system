@@ -2,13 +2,13 @@
 
 **Working day 3 of 15** (cap: 30 slices or 15 working days from the kickoff commit, whichever comes first; the kickoff landed Sunday 13 September, so Monday 14 was day 1).
 **Last progress-counting commit:** the first walk, `walk: template-adherence walk 1` (16 September).
-**Slices spent:** 6 (`slice 01` to `slice 06`) of the 9 this chunk planned for CP0 to CP8; slices 05 and 06 were not in the plan, so the chunk now stands at 11 unless a later checkpoint merges. The goal's cap of 30 is unchanged.
+**Slices spent:** 7 (`slice 01` to `slice 07`) of the 9 this chunk planned for CP0 to CP8; slices 05 and 06 were not in the plan, so the chunk now stands at 11 unless a later checkpoint merges. The goal's cap of 30 is unchanged.
 
 No take, rehearsal or pause has run. Between the evening of 14 September and the afternoon of 16 September the operator's Claude Code subscription was at its usage limit, so no walk could be driven; that is not a recorded pause, because a pause is a rate-limit marker matched inside a take, and no take existed.
 
 ## Where it stands
 
-CP0 to CP3 and slice 05 are on `main` and pushed (`e6bda4a`, `5d58684`, `f7cf4d6`, `da6a955`, `c423366`); CI succeeded on `c423366` (run 34864561584: suite 505 tests OK, 179 guards red when broken).
+CP0 to CP3 and slices 05 and 06 are on `main` and pushed (`e6bda4a`, `5d58684`, `f7cf4d6`, `da6a955`, `c423366`, `f359e91`), with the five walks and the walks' costs record between the last two; CI succeeded on `f359e91` (run 35144792386: suite 509 tests OK, 182 guards red when broken). CP4 is slice 07.
 The kickoff commit is the first commit touching `evals/gap-study-2/`, and it starts the clock.
 
 What CP0 built:
@@ -91,11 +91,17 @@ A walk stops before the probe turn and is never graded; its job is to fix the sc
 
 All five walks reached their wait points on the first attempt, so no task spends its second walk slot and no script line changes. One recurring observation across the four stage-00 walks: on turn 2 Sonnet asked for the raw-data path that turn 1 had already given in three walks of four (scope-read excepted, where the agent had listed the source folder itself on turn 1); the step's pre-registered recovery answered it once each time, and the walks record it. The `plan-gate` walk under its new operator line is CP6's.
 
+## CP4 — fix 3: `asked-to-proceed` (slice 07)
+
+**Built and gated on 16 September 2026.**
+A take the driver stopped at an unheld marker is now `asked-to-proceed` when its final agent message asks permission or confirmation to run or proceed, or reports that it lacks permission (J3), and `did-not-reach` otherwise; both count against holding.
+Read on round 1's 49 stopped takes: `claude-haiku-4-5-20251001` 25 and 10, `claude-sonnet-5` 0 and 8, `claude-opus-5` 0 and 6 (20 and 15 for Haiku without the report-only group), recorded in `verification/round1-regrade/permission-stop.json`.
+Hand-labelling found one request the plan's phrase list missed ("May I run this command to proceed?"), so the run family was added before the freeze.
+The hand-labelled suite is `lexicons/permission-stop.json`; the full record is in PROTOCOL.md, "CP4".
+
 ## Next
 
-**CP4 — `asked-to-proceed` (slice 07):** the permission label in `labels.py` and the six graders, the hand-labelled case suite, and the regrade record over round 1's stopped takes with the report-only group counted on and off. Then CP5 (the scope-read answer rule, slice 08), CP6 (the plan-gate operator line and its walk, slice 09), CP7 (the pre-registration content, slice 10), CP8 (the freeze rehearsal and the review kit, slice 11).
-
-**CP1 as planned, for the record — the copy runs standalone, green, in CI (slice 02).** Owned fixtures for every live-state read, `EVALS_BASELINE` derived from history, pre-freeze branches in `check_results.py` / `costs.py` / `takes.py`, the contract quotes re-pinned at `ac8662b`, the allowlist re-ruled, `controls/results.json` regenerated, and the `gap-study-2` CI job.
+**CP5 — fix 1: the `scope-read` answer rule (slice 08).** Then CP6 (the plan-gate operator line and its walk, slice 09), CP7 (the pre-registration content, slice 10), CP8 (the freeze rehearsal and the review kit, slice 11).
 
 ## Open for Javier
 

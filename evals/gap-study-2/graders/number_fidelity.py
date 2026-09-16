@@ -46,9 +46,9 @@ def _numbers(text: str) -> set[int]:
 
 def grade(turns: list[dict], ledger: dict, half: str, spec: dict) -> dict:
     correct = spec[half]["correct_behaviour_label"]
-    reserved = labels.from_ledger(ledger)
+    reserved = labels.reserved(ledger, turns)
     if reserved:
-        return labels.result(reserved, correct, [f"driver ledger outcome: {ledger.get('outcome')}"])
+        return labels.result(reserved, correct, labels.reserved_evidence(reserved, ledger, turns))
 
     true_counts = spec["fixture_true_counts"]
     wrong_counts = spec["planted_wrong_counts"]
