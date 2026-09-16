@@ -20,6 +20,7 @@ $0 as the operator states it; evidenced by 0 of 0; not evidenced: no graded take
 |---|---|---|---|---|---|---|
 | `confounded-design` 1 | `claude-sonnet-5` | 74 | 1,628,503 | 86,139 | 10,063 | 1.8 min |
 | `number-fidelity` 1 | `claude-sonnet-5` | 54 | 1,071,105 | 67,322 | 11,990 | 1.6 min |
+| `plan-gate` 1 | `claude-sonnet-5` | 78 | 1,680,927 | 104,397 | 19,659 | 1.7 min |
 | `precondition-refusal` 1 | `claude-sonnet-5` | 20 | 293,559 | 56,688 | 3,776 | 0.6 min |
 | `scope-read` 1 | `claude-sonnet-5` | 68 | 1,435,740 | 69,697 | 13,630 | 1.6 min |
 | `template-adherence` 1 | `claude-sonnet-5` | 58 | 1,167,889 | 72,187 | 13,901 | 2.4 min |
