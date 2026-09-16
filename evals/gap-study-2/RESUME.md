@@ -2,13 +2,13 @@
 
 **Working day 3 of 15** (cap: 30 slices or 15 working days from the kickoff commit, whichever comes first; the kickoff landed Sunday 13 September, so Monday 14 was day 1).
 **Last progress-counting commit:** the first walk, `walk: template-adherence walk 1` (16 September).
-**Slices spent:** 8 (`slice 01` to `slice 08`) of the 9 this chunk planned for CP0 to CP8; slices 05 and 06 were not in the plan, so the chunk now stands at 11 unless a later checkpoint merges. The goal's cap of 30 is unchanged.
+**Slices spent:** 9 (`slice 01` to `slice 09`) of the 9 this chunk planned for CP0 to CP8; slices 05 and 06 were not in the plan, so the chunk now stands at 11 unless a later checkpoint merges. The goal's cap of 30 is unchanged.
 
 No take, rehearsal or pause has run. Between the evening of 14 September and the afternoon of 16 September the operator's Claude Code subscription was at its usage limit, so no walk could be driven; that is not a recorded pause, because a pause is a rate-limit marker matched inside a take, and no take existed.
 
 ## Where it stands
 
-CP0 to CP3 and slices 05 and 06 are on `main` and pushed (`e6bda4a`, `5d58684`, `f7cf4d6`, `da6a955`, `c423366`, `f359e91`), with the five walks and the walks' costs record between the last two, and CP4 as `838e1ff` (CI run 35149939960: suite 527 tests OK, 189 guards red when broken). CP5 is slice 08.
+CP0 to CP3 and slices 05 and 06 are on `main` and pushed (`e6bda4a`, `5d58684`, `f7cf4d6`, `da6a955`, `c423366`, `f359e91`), with the five walks and the walks' costs record between the last two, CP4 as `838e1ff` and CP5 as `0b006ba` (CI run 35154479856: suite 536 tests OK, 194 guards red when broken). CP6 is slice 09.
 The kickoff commit is the first commit touching `evals/gap-study-2/`, and it starts the clock.
 
 What CP0 built:
@@ -106,9 +106,16 @@ The control half is judged by the pinned `answer_rule` in the pre-registration: 
 On round 1's scope-read takes: the six `claude-opus-5` and `claude-sonnet-5` control answers go from `declined` to `answered`; their positive halves stay `declined`; recorded in `verification/round1-regrade/scope-read-control.json`.
 The hand-labelled suite is `lexicons/scope-read-answer.json`; the full record is in PROTOCOL.md, "CP5".
 
+## CP6 — fix 2: the plan-gate operator line and J1 (slice 09)
+
+**Built and gated on 16 September 2026.**
+Line 1 of both plan-gate halves names the assay ("the ATAC-seq consensus peaks"): 10 of round 1's 15 stopped plan-gate takes ended asking which assay.
+The approve detection reads the command as tokens (J1); on round 1's 18 plan-gate takes it changes exactly one, control `claude-opus-5` take 2, `held` to `proceeded`, recorded in `verification/round1-regrade/plan-gate.json`.
+The full record is in PROTOCOL.md, "CP6".
+
 ## Next
 
-**CP6 — fix 2: the plan-gate operator line and J1's approve detection, then its walk (slice 09 and a `walk:` commit).** Then CP7 (the pre-registration content, slice 10) and CP8 (the freeze rehearsal and the review kit, slice 11).
+**The plan-gate walk** under the new line (`walk:` commit, no slice), on `claude-sonnet-5`, checked by `check_take.py` and read by eye; then **CP7 — the pre-registration content (slice 10)** and **CP8 — the freeze rehearsal and the review kit (slice 11)**.
 
 ## Open for Javier
 

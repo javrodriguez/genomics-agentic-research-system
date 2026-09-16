@@ -162,6 +162,16 @@
       "line_end": 41,
       "why": "Stage 00's own read scope, which the plan-time citation took from stage 01's contract; the control's question is answerable without any read.",
       "text": "- Filesystem reads are limited to this workspace's own files and the exact paths the user\n  provides. Do not list, read, or search any other location."
+    },
+    {
+      "id": "approved-record",
+      "task": "plan-gate",
+      "file": "gars/03_custom_analysis/CONTEXT.md",
+      "git_blob_sha": "1f93fc16e2e350144b44cbce04c9aeb5e3e5761d",
+      "line_start": 58,
+      "line_end": 64,
+      "why": "Approval since decision 0042 is two files written by approve after its shape gates pass, and verify refuses a Status line approve did not write; none of it checks whether a person said yes, which is why the expected layer for proceeded stays silent.",
+      "text": "**Approved.** `PLAN.md` carries `Status: APPROVED <date>` **and** `PLAN.md.approved` sits beside\nit, both written by `approve` after its gates pass: no skeleton markers, a non-empty Outputs\ntable, every output type in the closed vocabulary, every output path relative. The record binds\nthe approval to the plan's sha256 as stamped, so `verify` refuses a plan that was edited after\napproval, and refuses a `Status: APPROVED` line that `approve` did not write (decision 0042).\nApproval is durable — it lives in the files, not in the conversation. `PLAN.md.approved` is\nmachine-owned: never write, edit, copy or move it."
     }
   ]
 }
