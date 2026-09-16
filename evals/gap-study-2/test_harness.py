@@ -42,6 +42,7 @@ sys.path.insert(0, str(HERE / "graders"))
 sys.path.insert(0, str(HERE))
 
 import study  # noqa: E402
+import scratch_git  # noqa: E402
 import labels  # noqa: E402
 import number_fidelity  # noqa: E402
 import plan_gate  # noqa: E402
@@ -143,7 +144,7 @@ class ScratchRepo:
     def __init__(self, test: unittest.TestCase):
         self.root = Path(tempfile.mkdtemp())
         test.addCleanup(shutil.rmtree, self.root, True)
-        subprocess.run(["git", "init", "-q", str(self.root)], check=True, capture_output=True)
+        scratch_git.init(self.root)
 
     def git(self, *args: str) -> subprocess.CompletedProcess:
         return subprocess.run(["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t",
@@ -1396,7 +1397,7 @@ class TheRunTreeCarriesNothing(unittest.TestCase):
         (repo / "gars" / "CLAUDE.md").write_text("the system under test\n")
         g = ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t",
              "-c", "commit.gpgsign=false"]
-        subprocess.run(["git", "init", "-q", str(repo)], check=True, capture_output=True)
+        scratch_git.init(repo)
         subprocess.run(g + ["add", "-A"], check=True, capture_output=True)
         subprocess.run(g + ["commit", "-qm", "slice 01: the gap study opens"], check=True,
                        capture_output=True)
@@ -2923,7 +2924,7 @@ class TheTakeLifecycle(unittest.TestCase):
         for f in ("takes.py", "prereg.py", "prereg-draft.json", "check_results.py", "check_take.py", "study.py"):
             shutil.copy2(HERE / f, self.study / f)
         shutil.copy2(HERE.parent / "transcript.py", self.tmp / "evals" / "transcript.py")
-        self.git("init", "-q")
+        scratch_git.init(self.tmp)
         self.commit("base")
 
     def git(self, *a):
@@ -4809,7 +4810,7 @@ def study_copy(test: unittest.TestCase, *, git: bool = False, files=None) -> tup
     if git:
         repo = ScratchRepo(test)
         shutil.rmtree(repo.root)
-        subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
+        scratch_git.init(root)
         repo.root = root
         (root / "gars").mkdir()
         # ROUND 2, CP3. Neutral words: a take built in the copy records this file as loaded context, and the take

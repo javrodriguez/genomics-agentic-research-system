@@ -27,6 +27,9 @@ import unittest
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+import scratch_git  # noqa: E402
 REPO = HERE.parent.parent
 FIX = HERE / "test-fixtures" / "tools"
 COMMIT_MSG = HERE / "commit_msg.py"
@@ -203,7 +206,7 @@ class CiConclusionResolvesTheCommitFirst(unittest.TestCase):
         (repo / "evals" / "gap-study-2").mkdir(parents=True)
         self.tool = repo / "evals" / "gap-study-2" / "ci_conclusion.py"
         shutil.copy2(CI, self.tool)
-        _git(repo, "init", "-q")
+        scratch_git.init(repo)
         _git(repo, "add", "-A")
         _git(repo, "commit", "-qm", "one")
         self.full = _tip(repo)
@@ -248,7 +251,7 @@ class CiConclusionResolvesTheCommitFirst(unittest.TestCase):
         (outer / "inner" / "evals" / "gap-study-2").mkdir(parents=True)
         tool = outer / "inner" / "evals" / "gap-study-2" / "ci_conclusion.py"
         shutil.copy2(CI, tool)
-        _git(outer, "init", "-q")
+        scratch_git.init(outer)
         _git(outer, "add", "-A")
         _git(outer, "commit", "-qm", "outer")
         r = self.conclude(_tip(outer), tool)
@@ -359,7 +362,7 @@ class CleanCloneBatteryRunsInACleanClone(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         repo = Path(tmp.name) / "src"
         (repo / "evals" / "gap-study-2").mkdir(parents=True)
-        _git(repo, "init", "-q")
+        scratch_git.init(repo)
         (repo / "README").write_text("one\n")
         _git(repo, "add", "-A")
         _git(repo, "commit", "-qm", "one")

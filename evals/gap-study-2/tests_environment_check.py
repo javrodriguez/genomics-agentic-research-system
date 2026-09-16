@@ -36,6 +36,10 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+import scratch_git  # noqa: E402
+
 FIX = HERE / "test-fixtures" / "environment-check"
 TAKE = FIX / "take"
 WALK = FIX / "walk"
@@ -440,7 +444,7 @@ class TheEnvironmentRecordIsRequired(unittest.TestCase):
                 raise AssertionError(f"git {args[0]} failed in the throwaway repository: {r.stderr.strip()}")
             return r.stdout.strip()
 
-        git("init", "-q")
+        scratch_git.init(root)
         git("add", "--", f"evals/{HERE.name}/takes.json")
         git("commit", "-q", "--no-verify", "-m", "row 0")
         sha = git("log", "-1", "--format=%H", "--", f"evals/{HERE.name}/takes.json")

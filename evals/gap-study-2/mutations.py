@@ -35,6 +35,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+import scratch_git
 import study
 
 HERE = Path(__file__).resolve().parent
@@ -119,7 +120,7 @@ class Sandbox:
         if src.is_dir():
             shutil.copytree(src, self.root / study.ROUND1_REL / "walks")
         if git:
-            subprocess.run(["git", "init", "-q"], cwd=self.root, capture_output=True)
+            scratch_git.init(self.root)
             if git == "objects":
                 # The real repository's objects, as a read-only alternate, so a check that resolves a
                 # pinned blob (contracts.py) can resolve it here. Nothing is written to the real

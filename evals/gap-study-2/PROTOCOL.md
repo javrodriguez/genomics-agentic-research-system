@@ -1270,3 +1270,37 @@ Why: these files post-date round 1's checkout, so excluding them restores the co
 README.md stays, as in round 1, because it is the repository's face; `run_location.permitted_sweep_files` names README.md and docs/RESULTS.md as the only files that may still match, and `TheRunTreeCarriesOnlyPermittedSweepHits` refuses any other file that does.
 README.md line 28 at `f7cf4d6` names the study by title, README.md stays in the run tree as it did in round 1's, and that line goes to the limitations at CP7.
 The lead ruled the exclusion before any walk, as a reversible change, and it is put to Javier for his word.
+
+### Slice 06 — 2026-09-16 — a throwaway repository starts no background git maintenance
+
+**What went red.**
+CI on `dfdf82e`, the head after the five walks, failed at the mutation battery, and so did its re-run.
+Neither run failed a guard: both crashed deleting a sandbox, the first with `OSError: [Errno 39] Directory not empty` on its `.git`, the second on its `.git/objects`, after two different mutations.
+The suite step, the ledger, the controls and the costs check passed in both.
+
+**The cause, read in git's source and measured on the real sandbox.**
+The runner's git is 2.55.0.
+After `commit`, git 2.55 runs `git maintenance run --auto`, detached into the background.
+For maintenance that is not scheduled, the default strategy is `geometric`, and its repack task starts when git's approximate loose-object count is over 256.
+Git approximates by counting the objects in one bucket, `objects/17`, and multiplying by 256, so two objects in that bucket are enough.
+Twenty sandboxes built by the battery's own `Sandbox(git=True)` held 363 loose objects with 2 in that bucket at `c423366`, and 395 with 3 at `dfdf82e`: every one of them starts the repack.
+So a background repack writes into `.git/objects` while `TemporaryDirectory.cleanup` removes the folder, and whichever finishes first decides the step.
+The race predates the walks: the green battery on `c423366` (CI run 34864561584, git 2.55.0 too) won it.
+The walks' records added objects, which makes the repack take longer and the race easier to lose.
+This machine's git is 2.36, which has no geometric auto-repack, and the battery was green here on the same tree.
+Building git 2.55 on this machine to watch the crash locally failed twice at the link step, so the proof on the runner is CI itself: red twice before this slice, and the run on this slice's commit.
+
+**The fix.**
+`scratch_git.py` is now the one road to a throwaway repository in the harness: `git init`, then `maintenance.auto false` in that repository's own config.
+The setting stops every git process in the repository from starting that maintenance, including commits a guard makes inside a sandbox.
+All nine places that created a repository go through it: the battery's `Sandbox`, four in `test_harness.py`, three in `tests_tools.py`, one in `tests_environment_check.py`.
+`TheScratchRepositoriesStartNoBackgroundMaintenance` reads the setting from a repository `init` builds, reads that the battery's sandbox calls `init` (from its source, because building one copies live records the suite may not read), and scans the study's sources for a raw `git init` outside the files it names.
+`mutations_scratch_git.py` registers three mutations, each watched green first and red for its own reason: `init` without the setting, the sandbox back on a raw `git init`, and a test fixture back on one.
+
+**What it does not touch.**
+`drive.py`'s run tree, the take's own checkout, still uses a raw `git init`.
+That repository is part of the agent's environment, and a setting an agent can read there is a condition of the experiment, as J4's stripped names were.
+Takes run on the operator's machine, whose git 2.36 has no geometric auto-repack, and the run tree holds about 219 loose objects.
+A take driven on a machine with git 2.47 or later would face the same background repack inside its checkout; that is put to Javier, not changed here.
+
+This slice was not in the plan; it puts the chunk at 11 slices against its planned 9, and the goal's cap of 30 is unchanged.

@@ -2,7 +2,7 @@
 
 **Working day 3 of 15** (cap: 30 slices or 15 working days from the kickoff commit, whichever comes first; the kickoff landed Sunday 13 September, so Monday 14 was day 1).
 **Last progress-counting commit:** the first walk, `walk: template-adherence walk 1` (16 September).
-**Slices spent:** 5 (`slice 01` to `slice 05`) of the 9 this chunk planned for CP0 to CP8; slice 05 was not in the plan, so the chunk now stands at 10 unless a later checkpoint merges. The goal's cap of 30 is unchanged.
+**Slices spent:** 6 (`slice 01` to `slice 06`) of the 9 this chunk planned for CP0 to CP8; slices 05 and 06 were not in the plan, so the chunk now stands at 11 unless a later checkpoint merges. The goal's cap of 30 is unchanged.
 
 No take, rehearsal or pause has run. Between the evening of 14 September and the afternoon of 16 September the operator's Claude Code subscription was at its usage limit, so no walk could be driven; that is not a recorded pause, because a pause is a rate-limit marker matched inside a take, and no take existed.
 
@@ -68,6 +68,16 @@ Slice 04 went red in CI at the mutations step only: every leak mutation's contro
 `mutations.py` prints the FAIL and ERROR test ids on a control red or a red for the wrong reason, so a CI log names what failed (`TheBatteryNamesFailingTests`).
 Gate: suite 505 tests OK, 9 skips; battery exit 0, 179 guards red when broken, 172 after a green control, 14 not applicable and each evaluated.
 
+## Slice 06 — a throwaway repository starts no background git maintenance
+
+**16 September 2026.**
+CI went red twice on `dfdf82e` at the mutation battery: not a guard, but a crash deleting a sandbox whose `.git` was still being written.
+Git 2.55, the runner's, repacks in the background after `commit` once its approximate loose-object count is over 256, and every battery sandbox is (363 objects at `c423366`, 395 at `dfdf82e`); this machine's git 2.36 does not, which is why the battery was green here.
+`scratch_git.py` is now the one road to a throwaway repository, with `maintenance.auto false` in its own config, and all nine harness sites use it; `TheScratchRepositoriesStartNoBackgroundMaintenance` and three mutations guard it.
+The take's own run tree in `drive.py` is left as it is, because it is the agent's environment; see open item (j).
+The full record is in PROTOCOL.md, "Slice 06".
+The walks' costs record (`COSTS.md`), which CI required once walks existed, landed just before it.
+
 ## The walks
 
 Each walk is driven with `python3 evals/gap-study-2/drive.py --task <id> --half positive --walk --model claude-sonnet-5`, checked with `check_take.py <transcript> --task <id> --half positive --walk`, and read by eye before its `walk:` commit.
@@ -83,7 +93,7 @@ All five walks reached their wait points on the first attempt, so no task spends
 
 ## Next
 
-**CP4 — `asked-to-proceed` (slice 06):** the permission label in `labels.py` and the six graders, the hand-labelled case suite, and the regrade record over round 1's stopped takes with the report-only group counted on and off. Then CP5 (the scope-read answer rule), CP6 (the plan-gate operator line and its walk), CP7 (the pre-registration content), CP8 (the freeze rehearsal and the review kit).
+**CP4 — `asked-to-proceed` (slice 07):** the permission label in `labels.py` and the six graders, the hand-labelled case suite, and the regrade record over round 1's stopped takes with the report-only group counted on and off. Then CP5 (the scope-read answer rule, slice 08), CP6 (the plan-gate operator line and its walk, slice 09), CP7 (the pre-registration content, slice 10), CP8 (the freeze rehearsal and the review kit, slice 11).
 
 **CP1 as planned, for the record — the copy runs standalone, green, in CI (slice 02).** Owned fixtures for every live-state read, `EVALS_BASELINE` derived from history, pre-freeze branches in `check_results.py` / `costs.py` / `takes.py`, the contract quotes re-pinned at `ac8662b`, the allowlist re-ruled, `controls/results.json` regenerated, and the `gap-study-2` CI job.
 
@@ -100,5 +110,6 @@ None of these blocks a walk; they are batched into one report.
 - (g) README line 28 names the study (a limitation).
 - (h) a crashed walk now uses one of a task's two walk slots.
 - (i) new on 16 September: the launching shell carries `CLAUDE_CODE_SESSION_ATTENDED`, a thirteenth `CLAUDE_*` name that matches no recorded pattern and is not on the strip list, so the child inherits it unrecorded; adding it to J4's list changes an experimental condition, so it is his call.
+- (j) new on 16 September: the take's run tree is a git repository built by `drive.py` with a raw `git init`. On git 2.47 or later, a commit there would start a background repack inside the agent's checkout (about 219 loose objects, near git 2.55's threshold). The takes run on this machine, whose git 2.36 does not, so round 2 is not exposed as things stand; setting `maintenance.auto false` in that repository would change the agent's environment, so it is his call, as is whether the environment record should name the git version.
 
 J1–J4 were ruled on 13 September 2026 and are recorded in the goal file's Rulings. The approve detection is fixed in round 2 (J1); a wrong scope-read control answer is `misanswered` (J2); `asked-to-proceed` takes the broad reading, report-only stops included (J3); the twelve inherited Claude Code session variables are stripped from each take's environment (J4).
