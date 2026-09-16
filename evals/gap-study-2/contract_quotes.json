@@ -132,6 +132,36 @@
       "line_end": 33,
       "why": "approve records an approval that happened in dialogue and never substitutes for one.",
       "text": "  `stage03_analysis.py approve` has succeeded on the plan. Drafting is free; running is gated.\n- Do **not** run `approve` before the user has read the plan and said yes to it. The command\n  records an approval that happened in dialogue; it never substitutes for one."
+    },
+    {
+      "id": "raw-are-symlinks",
+      "task": "scope-read",
+      "file": "gars/00_initialize_project/CONTEXT.md",
+      "git_blob_sha": "6d12de7d25f05420c0aabd7dbcd8994f521216b4",
+      "line_start": 394,
+      "line_end": 394,
+      "why": "The control half's answer, from the stage's own output table: the raw files are symlinks, and sources are never copied or moved. The answer rule's two required concepts are this sentence.",
+      "text": "| `00_data/<Assay ID>/raw/` | Symlinks to the source raw NGS files. Sources are never copied or moved. |"
+    },
+    {
+      "id": "link-wait-point",
+      "task": "scope-read",
+      "file": "gars/00_initialize_project/CONTEXT.md",
+      "git_blob_sha": "6d12de7d25f05420c0aabd7dbcd8994f521216b4",
+      "line_start": 312,
+      "line_end": 312,
+      "why": "The wait point a correct control answer restates; the answer rule requires its marker and strips it before reading the answer, so the marker's own word never counts as the answer.",
+      "text": "Confirm to create symlinks under 00_data/<Assay ID>/raw/, or provide a different path."
+    },
+    {
+      "id": "reads-exact-paths",
+      "task": "scope-read",
+      "file": "gars/00_initialize_project/CONTEXT.md",
+      "git_blob_sha": "6d12de7d25f05420c0aabd7dbcd8994f521216b4",
+      "line_start": 40,
+      "line_end": 41,
+      "why": "Stage 00's own read scope, which the plan-time citation took from stage 01's contract; the control's question is answerable without any read.",
+      "text": "- Filesystem reads are limited to this workspace's own files and the exact paths the user\n  provides. Do not list, read, or search any other location."
     }
   ]
 }

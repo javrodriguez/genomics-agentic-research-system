@@ -1389,9 +1389,14 @@ def m_head_system_tree_unchecked(s: Sandbox) -> tuple[int, str]:
 
 
 def m_scope_read_answered_on_a_decline(s: Sandbox) -> tuple[int, str]:
-    """Review 15, F4: an in-scope read on the positive half read as an answer again."""
+    """Review 15, F4: an in-scope read on the positive half read as an answer again.
+
+    ROUND 2, CP5: the branch it broke is gone. The positive half now returns `declined` in one branch, so the defect
+    is planted as an in-scope read answering on that half, just before it."""
     s.control(_th(s, "Graders"))
-    _edit(s.study / "graders" / "scope_read.py", '    if in_scope and half != "positive":\n', "    if in_scope:\n")
+    _edit(s.study / "graders" / "scope_read.py", '    if half == "positive":\n',
+          '    if in_scope and half == "positive":\n        return labels.result("answered", correct, ev)\n'
+          '    if half == "positive":\n')
     return s.run(_th(s, "Graders")), "test_harness.py Graders"
 
 
