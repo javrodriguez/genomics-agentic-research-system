@@ -106,3 +106,17 @@ That reading has a limit: a one-line session that runs no tool creates no harnes
 The take checker admits both places a take's own files can be, the run tree (with its `.tmp`) and the harness's session folder bound to that take's run-tree slug and session id, and refuses every other path under the temp root or `/tmp`.
 The first walk that runs a tool shows where the harness writes, and a write anywhere else is refused, not graded.
 `scrub.py --write` removed `session_context.userEmail` from its transcript.
+
+## The first tool-using walk, and where the harness wrote (16 September 2026)
+
+The smoke above could not say where the harness places its own session folder, because a one-line session runs no tool.
+The first walk of round 2, `walks/template-adherence/1/` (`claude-sonnet-5`, 32 transcript records, 3 operator lines, outcome complete), ran tools on every turn, so it shows it.
+The driver built the run tree under the OS temp root, at `<temp root>/run-<slug>/`, with TMPDIR, TMP and TEMP pointing at `.tmp/` inside it; the driver removes the run tree when the walk ends, so its `.tmp/` was not inspected after the fact.
+The harness wrote its own session folder at `/tmp/claude-<uid>/<run-tree slug>/<session id>/`, holding a `tasks/` folder: the second of the two places the take checker admits, the harness's session folder bound to that walk's run-tree slug and session id.
+Nothing else under the OS temp root or `/tmp` was written during the walk's window (two `bash-edit-diff` entries in the same parent folder carry timestamps outside the window and belong to the operator's own session).
+The take checker read the transcript valid, with no `[read-outside-the-checkout]` refusal, so every path the agent read was inside its run tree.
+The environment record was written before the first turn, lists no matching name, the twelve stripped names, and every API-key, billing-route and subscription-token variable absent.
+
+One limit of the record, found on this walk: the launching shell carried a thirteenth `CLAUDE_*` name, `CLAUDE_CODE_SESSION_ATTENDED`, which matches no recorded pattern and is not on `driver_constants.stripped_env`.
+It is therefore neither recorded nor stripped, and the child inherits it.
+Adding it to the strip list changes a condition of the experiment (J4's reasoning), so it is put to Javier rather than changed here; until ruled, the draft names it as a known inherited name.
