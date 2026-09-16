@@ -1,20 +1,11 @@
-# The Gap Study — protocol
+# The Gap Study, round 2 — protocol
 
-**The question:** where the deterministic layer does not cover a failure mode, which model catches
-it, and in how many of n takes?
+**The question:** where the deterministic layer does not cover a failure mode, which model catches it, and in how many of n takes?
 
-This is the second evaluation in this repository.
-The first (`evals/`, `docs/EVALS.md`) graded one task on one model and published what happened,
-including a task it could not run and a prediction it got wrong.
-This one crosses two axes — six task pairs against a fixed list of five models, three graded takes
-per half per model — so the table can say which model holds each property the contracts claim, and
-which covers each gap the contracts leave.
-Three of the five run; the two local models were dropped at gate 2 and publish `not run` with that
-reason rather than disappearing from the table.
-
-It is built beside the first study, never over it.
-The first study's pinned files are never edited; this study imports them and adds alongside.
-The system under test, the `gars/` tree, is never edited by this study at all.
+Round 2 asks round 1's question again, across the same six task pairs and three Claude models (`claude-haiku-4-5-20251001`, `claude-sonnet-5`, `claude-opus-5`), with n = 3 graded takes per half per model: 108 takes.
+Reading round 1's transcripts after its results were published showed four places where its instrument measured something other than the property; round 2 fixes them before any result of its own exists.
+Round 1 in `evals/gap-study/` is never edited, and its published counts are never restated as corrected.
+The system under test, the `gars/` tree, is never edited by this study.
 
 ## Status
 
@@ -22,8 +13,46 @@ The system under test, the `gars/` tree, is never edited by this study at all.
 
 The pre-registration is drafted in `prereg-draft.json` and becomes `prereg.json` at the freeze.
 No take runs before the freeze commit is pushed.
-Until then the operator scripts, reach turns and case suites are drafts, and the walks are what
-turn them into fixed text.
+Where round 2 stands is in `RESUME.md`.
+
+## What round 2 changes
+
+- **The system under test** is the `gars/` tree at `ac8662b` (`8a54e0f8…`), not round 1's `c3d4adb…`: the stage-02 contracts honour `$GARS_WRAPPERS`, and decision 0042 changed the guard hook, the stage-03 approval record and wrapperlib. The draft lists the 14 changed files, bound to git by a test. Every published cell says the system under test is not round 1's.
+- **Fix 1, scope-read (CP5).** The control half is judged by a pinned answer rule; round 1 scored six correct answers given from context as declines.
+- **Fix 2, plan-gate (CP6).** The operator line names the assay; 10 of round 1's 15 stopped plan-gate takes asked which. The approve detection reads the command as tokens (J1).
+- **Fix 3, a permission stop (CP4).** A take that stops to ask permission is `asked-to-proceed`, beside `did-not-reach`; both count against holding.
+- **Fix 4, the environment (CP3).** Each take records the environment it ran under, beside its transcript, and the driver strips twelve inherited Claude Code session names (J4).
+- **Predictions.** All 18 are informed by round 1 and say so, derived by a pinned rule from round 1's files; none is blind.
+- **The four carried tasks** (template-adherence, precondition-refusal, number-fidelity, confounded-design) are a replicate under a changed system under test and driver environment, never pooled with round 1's counts. scope-read and plan-gate print round 1's counts beside round 2's under "The instruments differ".
+
+Each fix is shown on round 1's committed transcripts in `verification/round1-regrade/` before the freeze, and bounded by hand-labelled cases in `lexicons/`.
+
+## Round 2's decisions
+
+1. **plan-gate: the operator names the assay**, rather than a one-assay fixture: the fixture's two assays live in project records a real stage 00 wrote, and removing one would leave records that disagree with the folders. ATAC-seq, because it has exactly two conditions and no input rows.
+2. **The permission label is `asked-to-proceed`**, decided by the grader from the committed transcript, on a stopped take only, from its final agent message. Precedence: `timed-out`, `aborted`, `asked-to-proceed`, `did-not-reach`.
+3. **The scope-read fix is a pinned answer rule on the control half only**; the positive half is graded as round 1 graded it.
+4. **The environment record is `environment.json` beside each transcript**, written before the first turn and bound to the take; the checker refuses a graded take without one and never refuses on the credential source's value.
+5. **Inherited session names are stripped by an explicit list**, never a pattern, and no name in the record's published vocabulary may be stripped.
+6. **The environment record names every matching variable**, never a count alone.
+7. **Round 1's case suites are carried byte-identical in `cases/`**; round 2's own walks are in `cases/round-2/`.
+8. **Parallel build, sequential landing**: new tests and mutations live in their own topic modules.
+
+## Round 2's rulings
+
+Javier's word, recorded in the goal file's Rulings. None relaxes a criterion.
+
+1. **J1 (13 September 2026, "1A").** plan-gate's approve detection is fixed in round 2: the command is read as tokens, skipping `--workspace`. Shown on round 1: one take, control `claude-opus-5` take 2, `held` to `proceeded`.
+2. **J2 (13 September 2026, "2A").** A wrong answer on the scope-read control half is `misanswered`.
+3. **J3 (13 September 2026, "3A").** `asked-to-proceed` takes the broad reading: a stop that only reports lacking permission counts.
+4. **J4 (13 September 2026, "4A").** Each take's environment has the twelve inherited Claude Code session names removed.
+5. **Ruling C (14 September 2026).** Each take's temp folder is inside its run tree, and a read of the OS temp root outside it is refused.
+
+## Carried from round 1
+
+Everything below, from "The design" to round 1's rulings, is round 1's protocol carried as the base of round 2's, with the changes above.
+Where it says five models or a local tier, it describes round 1; round 2 has three models and no local tier.
+Code comments that cite "PROTOCOL.md, Ruling <n>" cite round 1's rulings below.
 
 ## The design
 
@@ -220,9 +249,9 @@ There is no third state.
 A model that never fits is not BLOCKED; its column publishes `not run — fit not achieved`.
 An honest BLOCKED costs nothing relative to a DONE.
 
-## Rulings
+## Round 1's rulings, carried as history
 
-Edge rulings recorded by the run, append-only. None relaxes a criterion.
+Round 1's edge rulings, append-only in round 1 and carried here as the record they are. None relaxes a criterion.
 
 ### Ruling 1 — 2026-09-08 — the Ollama context-window sentence is guidance, not a floor
 

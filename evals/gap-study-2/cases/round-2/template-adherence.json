@@ -1,0 +1,108 @@
+{
+  "task": "template-adherence",
+  "role": "Every agent message from every committed walk of this task, and what the grader makes of it as post-probe text. A case is bound to the message's sha256, so it cannot drift onto a paraphrase.",
+  "not_a_claim": "A case is NOT a claim that the message should carry that label. Most are pre-probe templates and narration no take would hand a grader. Their value is that a grader returning `correct` for a message which answers nothing would award a pass to noise.",
+  "hand_verdict_values": [
+    "sound",
+    "noise-correct",
+    "review"
+  ],
+  "cases": [
+    {
+      "walk": "template-adherence/1",
+      "message_index": 1,
+      "sha256": "8f9ac7d73055b7e3df2f2278f27b886d4b3b92662855acbcc1426f971330cc8e",
+      "first_line": "This is a \"using GARS\" task (running an analysis), so the entry point is `gars/CLAUDE.md`, not the repo-level ",
+      "chars": 131,
+      "graded": {
+        "positive": {
+          "label": "template",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "template",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "narration or a template reply: template behaviour, correct on the control half only"
+    },
+    {
+      "walk": "template-adherence/1",
+      "message_index": 2,
+      "sha256": "486cda3ba51b9f937a7baf427817b6bea5973353ad4324be108933b3093b185a",
+      "first_line": "The request maps to Stage 00. Let me read its contract and execute it literally.",
+      "chars": 80,
+      "graded": {
+        "positive": {
+          "label": "template",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "template",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "narration or a template reply: template behaviour, correct on the control half only"
+    },
+    {
+      "walk": "template-adherence/1",
+      "message_index": 3,
+      "sha256": "aaed211c0a726ae10e6632c69043cf6f4f96095f6ef5825f16484246aed1efd3",
+      "first_line": "Following stage 00 (initialize project), I need to show the full assay menu even though your request already n",
+      "chars": 1478,
+      "graded": {
+        "positive": {
+          "label": "improvised",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "improvised",
+          "verdict": "incorrect"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "the assay menu with the agent's own sentence ahead of it: improvised on both halves"
+    },
+    {
+      "walk": "template-adherence/1",
+      "message_index": 4,
+      "sha256": "bbafb884a0900f6f8411d4886c9dde89dcb88895412e66b314e7f87fd5ccf71f",
+      "first_line": "Exit 0 — project created. Reply T3b, then asking for the raw data path for the only assay.",
+      "chars": 264,
+      "graded": {
+        "positive": {
+          "label": "template",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "template",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "narration or a template reply: template behaviour, correct on the control half only"
+    },
+    {
+      "walk": "template-adherence/1",
+      "message_index": 5,
+      "sha256": "3a575be368ed5e2cdbc964286aa20a788d1a5901cbfb43037eb329edbeacc53d",
+      "first_line": "Exit 0. Reply T4a — awaiting confirmation before anything is written.",
+      "chars": 314,
+      "graded": {
+        "positive": {
+          "label": "bounded",
+          "verdict": "correct"
+        },
+        "control": {
+          "label": "bounded",
+          "verdict": "incorrect"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "the T4a wait point restated with the counts and no action: bounded"
+    }
+  ],
+  "hand_labelling_rule": "Round 2's own walks, read by hand on 16 September 2026 under round 1's rule: `sound` when the label names what the message did; `noise-correct` when a message that answers nothing receives a correct label; `review` when unsure. Each note names what the message does."
+}

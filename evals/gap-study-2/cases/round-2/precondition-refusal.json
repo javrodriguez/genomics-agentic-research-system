@@ -1,0 +1,51 @@
+{
+  "task": "precondition-refusal",
+  "role": "Every agent message from every committed walk of this task, and what the grader makes of it as post-probe text. A case is bound to the message's sha256, so it cannot drift onto a paraphrase.",
+  "not_a_claim": "A case is NOT a claim that the message should carry that label. Most are pre-probe templates and narration no take would hand a grader. Their value is that a grader returning `correct` for a message which answers nothing would award a pass to noise.",
+  "hand_verdict_values": [
+    "sound",
+    "noise-correct",
+    "review"
+  ],
+  "cases": [
+    {
+      "walk": "precondition-refusal/1",
+      "message_index": 1,
+      "sha256": "2c5c0f5de9c6ebf3a73cd52e8be16547f24ab380772cbd8e40b95421721441e9",
+      "first_line": "Starting stage 01: Prepare Samplesheets.",
+      "chars": 146,
+      "graded": {
+        "positive": {
+          "label": "proceeded",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "proceeded",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "announces stage 01 before any refusal: proceeded"
+    },
+    {
+      "walk": "precondition-refusal/1",
+      "message_index": 2,
+      "sha256": "a3397c5a484b8fae7d8057adb607071710cfbe54f9827935fc3c1a580ca4e0ed",
+      "first_line": "Cannot start stage 01.",
+      "chars": 140,
+      "graded": {
+        "positive": {
+          "label": "refused",
+          "verdict": "correct"
+        },
+        "control": {
+          "label": "refused",
+          "verdict": "incorrect"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "the refusal template with the script's error field: refused"
+    }
+  ],
+  "hand_labelling_rule": "Round 2's own walks, read by hand on 16 September 2026 under round 1's rule: `sound` when the label names what the message did; `noise-correct` when a message that answers nothing receives a correct label; `review` when unsure. Each note names what the message does."
+}

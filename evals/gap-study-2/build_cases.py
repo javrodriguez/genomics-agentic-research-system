@@ -173,8 +173,17 @@ def build(task_id: str, existing: dict) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Build the graders' case suites from the walks.")
     ap.add_argument("--write", action="store_true")
+    # ROUND 2, CP7. The suites in cases/ are carried byte-identical from round 1 and built from round 1's walks
+    # (Decision 7), so this study's own walks are written beside them, to cases/round-2/, and read alone: a carried
+    # task's first-study transcripts stay in the carried suite.
+    ap.add_argument("--round-2", action="store_true",
+                    help="build from this study's own walks only, into cases/round-2/")
     args = ap.parse_args()
 
+    global CASES, CARRIED_SOURCES
+    if args.round_2:
+        CASES = HERE / "cases" / "round-2"
+        CARRIED_SOURCES = {}
     CASES.mkdir(exist_ok=True)
     total = unlabelled = suspicious = 0
 

@@ -1,0 +1,7 @@
+$ python3 evals/gap-study-2/check_checklist_names.py <goals>/gars-eval-v3.md
+Done-line names (2): NoRateNoBannedWord, TwoMinuteRead
+listed in the draft: 17, pending: 2
+named by a Done line but not listed (0): none
+listed but named by no Done line (17): EveryOperatorLineRenders, FinalMessageNotWholeStep, HeldWaitPointsNeverMatch, NoPhraseInATemplateBody, PermissionLabelOnlyOnAStop, PermissionStopLexicon, PlanGateCannotExecute, ReservedLabelsReachGraders, ScopeReadAnswerRule, TheBillIsEvidencedTakeByTake, TheCopiedFixtureBuildsToItsPin, TheDriverLoopRecordsEveryTurnItEnds, TheEnvironmentRecordIsRequired, TheEnvironmentRecordIsWritten, TheFreezeNeedsARehearsal, TheLedgerCountsEnvironmentRecords, TheReviewKitMatchesTheDriver
+every Done-line name is listed
+exit 0
