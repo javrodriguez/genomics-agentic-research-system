@@ -93,6 +93,24 @@ def _live_path(raw) -> Path | None:
     return None
 
 
+def _in_force_read() -> bool:
+    """True while prereg.load() is on the stack: the one read of prereg.json the suite makes by design.
+
+    ROUND 2, CP8. The frozen file is where the freeze lands, so it is in LIVE_STATE and a test that opens it by
+    path is refused. But prereg.load() is how every module reads the pre-registration in force, draft or frozen,
+    and the freeze rehearsal's poisoned run refused that read on the frozen tree: the suite could not read its
+    own specification. A read through prereg.load() is admitted; any other open of the file is still refused,
+    and the negative control below plants one.
+    """
+    target = (HERE / "prereg.py").resolve()
+    f = sys._getframe(1)
+    while f is not None:
+        if f.f_code.co_name == "load" and Path(f.f_code.co_filename).resolve() == target:
+            return True
+        f = f.f_back
+    return False
+
+
 def poison_live_state() -> None:
     """Every open, directory scan or listing under LIVE_STATE is printed, then refused.
 
@@ -105,7 +123,7 @@ def poison_live_state() -> None:
         if event not in ("open", "os.scandir", "os.listdir") or not args:
             return
         p = _live_path(args[0])
-        if p is not None:
+        if p is not None and not (p == HERE / "prereg.json" and _in_force_read()):
             sys.stderr.write(f"{LIVE_READ_MARK} {event} {p}\n")
             raise LiveStateRead(f"{event} {p}")
     sys.addaudithook(hook)
@@ -5152,6 +5170,11 @@ class TheSuiteNeverReadsLiveState(unittest.TestCase):
         r = self.poisoned(["-c", code])
         self.assertNotEqual(r.returncode, 0)
         self.assertIn(LIVE_READ_MARK, r.stderr)
+        # the frozen file too, opened by path rather than through prereg.load(): refused whether or not it exists
+        r = self.poisoned(["-c", code.replace("takes.json", "prereg.json")])
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("prereg.json", r.stderr)
+        self.assertIn(LIVE_READ_MARK, r.stderr, "a direct open of prereg.json was not refused")
 
     def test_the_suite_passes_with_every_live_path_refused(self):
         names = self.classes()

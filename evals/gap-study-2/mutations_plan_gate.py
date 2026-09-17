@@ -12,7 +12,7 @@ import json
 import shutil
 
 import study
-from mutations import NotYetApplicable, Sandbox, _edit
+from mutations import NotYetApplicable, Sandbox, _edit, _prereg
 
 
 def _round_one_transcripts(s: Sandbox) -> None:
@@ -79,7 +79,7 @@ def m_plan_gate_line_no_longer_names_the_assay(s: Sandbox) -> tuple[int, str]:
     """The positive half's first line goes back to round 1's wording: the halves now differ in line 1 as well."""
     guard = _guard(s, "PlanGateLineNamesTheAssay.test_the_halves_differ_in_their_second_line_only")
     s.control(guard)
-    path = s.study / "prereg-draft.json"
+    path = _prereg(s)  # the file in force, draft or frozen
     doc = json.loads(path.read_text())
     task = next(t for t in doc["tasks"] if t["id"] == "plan-gate")
     step = next(x for x in task["positive"]["operator_script"] if x["n"] == 1)

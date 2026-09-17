@@ -86,6 +86,14 @@ def build_take(study_dir: Path, root: Path, pre: dict, *, row: int, take: int, r
     led = json.loads(render("driver-ledger.json"))
     led["row"] = row
     led["gars_tree_sha"] = pre["system_under_test"]["gars_tree_sha"]
+    # ROUND 2, CP8 (rehearsal 4). Once the half's fixture is pinned, a take whose ledger records no fixture hash is
+    # refused, so this take records the pin the pre-registration in force carries, in the driver's shape for a
+    # generated fixture; unpinned (the draft), it records none and the checker notes that, as before.
+    half = next(t for t in pre["tasks"] if t["id"] == ROW["task"])[ROW["half"]]
+    fx = half.get("fixture") or {}
+    if fx.get("sha256"):
+        led["fixture"] = {"kind": fx.get("kind"), "variant": fx.get("variant"), "seed": fx.get("seed"),
+                          "fixture_sha256": fx["sha256"]}
     led["published"]["sha256_after"] = _sha256(t)
 
     env = d / "environment.json"

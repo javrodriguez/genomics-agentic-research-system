@@ -106,7 +106,8 @@ class ThePreRegistrationIsComplete(unittest.TestCase):
         missing = []
         for f in self.pre["fixes"]:
             for key in ("regrade_record", "case_suite", "walk"):
-                if f.get(key) and not (REPO / f[key]).exists():
+                # a fix with no such record says "none: <why>", which the freeze accepts where a null is refused
+                if f.get(key) and not str(f[key]).startswith("none") and not (REPO / f[key]).exists():
                     missing.append(f"{f['fix']}: {key} {f[key]}")
         self.assertFalse(missing, "a fix names a record that does not exist:\n" + "\n".join(missing))
 

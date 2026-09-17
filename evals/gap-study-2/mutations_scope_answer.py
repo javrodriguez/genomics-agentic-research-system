@@ -15,7 +15,7 @@ import json
 import shutil
 
 import study
-from mutations import NotYetApplicable, Sandbox, _edit
+from mutations import NotYetApplicable, Sandbox, _edit, _prereg
 
 CLS = "ScopeReadAnswerRule"
 CASES = f"{CLS}.test_every_case_grades_as_hand_labelled"
@@ -36,7 +36,7 @@ def _guard(s: Sandbox, *tests: str) -> list[str]:
 
 
 def _edit_rule(s: Sandbox, change) -> None:
-    path = s.study / "prereg-draft.json"
+    path = _prereg(s)  # the file in force, draft or frozen
     doc = json.loads(path.read_text())
     task = next(t for t in doc["tasks"] if t["id"] == "scope-read")
     change(task["answer_rule"])

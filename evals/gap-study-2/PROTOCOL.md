@@ -1435,3 +1435,84 @@ Beyond CP4's permission label, which changes nothing here because no plan-gate s
 `mutations_plan_gate.py` registers five mutations, each red for its own reason after a green control.
 
 **Next, in this checkpoint: the plan-gate walk** under the new line, on `claude-sonnet-5`, which asked which assay in all six of its round-1 takes.
+
+### CP7 (slice 10) — 2026-09-16 — the draft says what round 2 is, and each statement is bound to its data
+
+**Predictions.**
+All 18 cells are predicted, none blind, each by one pinned rule: what round 1's committed takes for that cell show when read by round 2's instrument, from round 1's results files and, for scope-read and plan-gate, from the regrade records.
+`ThePreRegistrationIsComplete` re-derives every prediction from those files and refuses one that differs.
+
+**The system under test.**
+`differs_from_round_1` lists the 14 files `git diff --name-only b735229 ac8662b -- gars/` prints, with one line per change, and the test holds the list and both gars tree shas to git.
+
+**Fixes, comparison, replicate note.**
+`fixes` carries one entry per fix and for J1, each naming its round-1 evidence, regrade record, pinned data and case suite; a test checks every named path exists, and a fix with no such record says `none: <why>` where a null would be refused at the freeze.
+Scope-read and plan-gate print round 1's counts beside round 2's under "The instruments differ"; the four carried tasks are a replicate and are never pooled.
+
+**Leak words and limitations.**
+`gap-study-2`, `gars-eval-v3` and `round 2` join the leak words; none occurs in any of the 125 committed transcripts.
+Five limitations lines are added: the environment record's reach, the permission list and the answer rule each fitted on round 1's texts, the inherited effort level, n = 3 graded takes per cell, and a Status line an agent writes by hand.
+
+**Round 2's own walk suites.**
+`cases/round-2/` holds 35 messages from the six walks, hand-labelled sound under round 1's rule; `CaseSuitesOnRoundTwoWalksLive` reads the walks and so is a `...Live` class.
+
+**Guards.**
+`ThePreRegistrationIsComplete` and five mutations in `mutations_prereg_content.py`, each red for its own reason after a green control.
+
+### CP8 (slice 11) — 2026-09-16 — the freeze is rehearsed before it is written, and the blind review kit is committed
+
+**The rehearsal (structural lesson 1).**
+Round 1's freeze switched on dormant code paths and turned 2 tests and 24 guards red after the fact.
+`freeze_rehearsal.py` clones this repository at HEAD into a folder outside the Brain with no remote and background git maintenance off, commits a synthetic review report for the draft's bytes, runs `freeze.py --rehearsal --write` there, and then runs the entire gate on the frozen state: the suite, every checker, the language lint, the mutation battery, the clean-clone battery, and the first `takes.py --add` against the frozen order.
+It writes `verification/freeze-rehearsal-<n>.txt`: line 1 is the draft's sha256, then each step with its exit code, a `not done:` line, and a last line `all green` or `NOT all green`.
+`freeze.py --write` now refuses unless a record for exactly these draft bytes exists and ended green (`rehearsal_problems`), refuses when `claude --version` cannot be read, and prints the commit-body diff restricted to the keys the freeze writes (`FREEZE_WRITTEN_KEYS`, `FREEZE_FILLED_INSIDE`); a freeze that would change any other key is refused.
+`--rehearsal` is refused in a repository that has a remote.
+
+**What the first rehearsal found (16 September 2026).**
+The freeze wrote, and the suite on the frozen state had 13 failures in five causes.
+Each is fixed at its source, not excused:
+
+1. Four new files named HEAD (`freeze_rehearsal.py`, `review_kit/build_kit.py`, `review_kit/commit_review.py`, `tests_freeze_rehearsal.py`) and the draft's `head_readers` did not list them; they are listed with what each reads.
+2. The not-applicable entry "a freeze that pins a generated fixture by nothing" said it waited for a scratch repository that `freeze_rehearsal.py` now builds, so its predicate returned None; the mutation is written (`m_freeze_pins_a_generated_fixture_by_nothing`): in the sandbox's own remote-less repository the freeze writes unbroken, then a generator that answers `--manifest-only` with nothing is committed and the freeze must refuse naming "pinned by nothing"; it is not yet applicable on a machine without `claude`.
+   The predicate for `NoRateNoBannedWordLive` was keyed on the frozen file as well as on results, and the live class skips on results alone; it now keys on results.
+3. `tests_environment_check` reads the pre-registration in force and its hand-built take carried no fixture hash, so the frozen file's filled pin refused the take; the take's ledger now records `FIXTURE_PIN` and the test's pre-registration pins the half to the same value, so the binding reads the same in a draft tree and a frozen one.
+4. `verification/round1-regrade/environment.json` names the pre-registration in force by sha, so the frozen tree's copy was stale; the freeze commit now carries it rewritten (`regrade_environment.py --write`), the rehearsal does the same, and `freeze.py` says so on success.
+5. `TheSuiteNeverReadsLiveState` refused `prereg.load()`'s read of `prereg.json`, which is in `LIVE_STATE` because the freeze lands there; on a frozen tree the suite could not read its own specification.
+   A read through `prereg.load()` is now admitted (`_in_force_read`, by the frame on the stack), any other open of the file is still refused, and the negative control plants one.
+
+Two of the five (1 and 2) were red on the draft tree as well: slice 11 as first committed would have failed CI, and the rehearsal found it before a push did.
+
+**What the third rehearsal found (16 September 2026, the same evening).**
+The second run was stopped by hand once the local battery showed a mutation anchor that had stopped applying (two predicates now opened with the same two lines); the third run froze, passed the suite on the frozen state (571 tests) and every checker, and then its battery reported 9 guards that did not go red, and its clean-clone battery one unexpected skip.
+The nine mutations all edit the pre-registration, and eight of them edited `prereg-draft.json` by path while their guards read the file in force through `prereg.load()`: on a frozen tree the edit changed nothing the guard read.
+They now edit the file in force (`_prereg(s)`), and the one that edited the frozen file by text is edited as JSON, because in the frozen file the same path string sits in `pinned_files` too and a text edit that requires one occurrence refused to apply.
+The ninth, "a moved threshold after the freeze", ran `TheFrozenFileMovesOnlyByAmendment`, a unit test over dicts of its own that reads no file, so it could never go red; it now runs `check_results.py`, whose frozen-content check reads the frozen file against the commit that introduced it, in the sandbox's own repository.
+For that, and for the F5 freeze mutation, every sandbox now carries the first study's fixture tools (each top-level file of `evals/fixtures/`), which the freeze pins and rebuilds the carried fixtures with; and the F5 mutation removes a frozen file from its copy first, the precedent being the amendment-1 note in `mutations.py`, and names its synthetic report with a number no earlier commit used.
+The unexpected skip was `TheFreezeNeedsARehearsal.test_the_rehearsal_record_if_present_names_the_current_draft`, which skips only while no rehearsal record exists: in a clone made before the record is committed, and in the rehearsal's own clone, whose record is written after the clean-clone battery runs.
+`clean_clone_battery.sh` accepts that one skip at most once and only for that exact reason; a skip of it for another reason, or twice, still fails the run.
+Eight mutations were then run by hand in the preserved frozen clone (red) and all thirteen touched ones on the draft tree (red, the threshold one not yet applicable), before the fourth rehearsal.
+
+**What the fourth rehearsal found.**
+Its battery had two controls red on the frozen state, "a take with no agent turn" and "a leaked word in an operator turn": both run `check_take.py` on the graded take that `test-fixtures/environment-ledger/build_take.py` renders, whose ledger recorded no fixture hash, and once the half's fixture is pinned that take is refused before any mutation, the same cause as the hand-built take above.
+The builder now records the pin the pre-registration in force carries, in the driver's shape for a generated fixture, and records none where the draft pins none.
+Both mutations were run by hand in the preserved frozen clone and on the draft tree (red, after a green control) before the fifth rehearsal.
+
+**What the fifth rehearsal found.**
+The suite, every checker and the battery were green on the frozen state; the clean-clone battery, which runs under a cleared environment, had one guard that did not go red: "the reviewer inheriting a stripped session name".
+Its mutation makes the launcher inherit `os.environ`, and under `env -i` that environment carries none of the twelve session names, so the mutated launcher inherited nothing and the guard read it as stripped: a guard whose verdict depended on the shell it ran in.
+The test now plants the twelve names in its own process before it asks for the reviewer's environment, so the mutation is red in a cleared shell as in a full one; reproduced by hand from a frozen clone built the rehearsal's way, then the mutation and the class run under `env -i` (red, and green).
+
+**The review kit.**
+`review_kit/` holds `why.md` (the purpose, the reviewer's first lens), `BRIEF.md` (a template with `{N}` and `{PREVIOUS}`; the threat model and the limitations are judged first; the four fixes and the rehearsal record are judged; the commands the reviewer never runs are named), `build_kit.py` (a remote-less full-history clone at HEAD plus the draft's bytes and `COMMIT`, refused under the Brain or this repository or with uncommitted changes), `launch.py` (`claude -p` with the driver's isolation flags and `drive.child_env()` plus `REVIEWER_ENV`, never a sub-agent, refused where the clone has a remote), `blindness.py` (markers for the goal id, the study, the round, the operator's memory files and the account email, masked in the record), and `commit_review.py` (the report committed unedited with its blindness record; refused when line 1 is not the draft's sha, when it carries an absolute path or a person, or when it has no ruling line).
+`TheReviewKitMatchesTheDriver` holds the launch flags and environment to the driver's constants and the markers to this round; `TheReviewerCannotPush` holds the remote refusals.
+
+**The record.**
+The sixth rehearsal, on the commit that carries every fix above, ended all green: `verification/freeze-rehearsal-1.txt`, whose first line is the draft's sha256, with every step's exit code and tail, the clean clone's verdict, the first ledger row registered against the frozen order, and the `not done` line.
+It is the first record kept: the five runs before it were each replaced by a fix, and what they found is written above rather than in a file the freeze gate would have to look past.
+
+**Not done, by name.**
+The synthetic full ledger of 108 takes the plan named for the rehearsal: no synthetic graded-take generator exists, and the ledger is exercised with one real registered row instead.
+The rehearsal record carries this line.
+
+**Guards.**
+`TheFreezeNeedsARehearsal`, `TheReviewKitMatchesTheDriver`, `TheReviewerCannotPush`; `mutations_freeze_rehearsal.py` registers seven mutations, each red for its own reason after a green control.

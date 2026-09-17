@@ -12,7 +12,7 @@ import json
 import shutil
 
 import study
-from mutations import NotYetApplicable, Sandbox
+from mutations import NotYetApplicable, Sandbox, _prereg
 
 CLS = "ThePreRegistrationIsComplete"
 
@@ -31,7 +31,8 @@ def _round_one_results(s: Sandbox) -> None:
 
 
 def _edit_draft(s: Sandbox, change) -> None:
-    path = s.study / "prereg-draft.json"
+    # the file in force: the guard reads prereg.load(), so on a frozen tree the draft is not what it reads
+    path = _prereg(s)
     doc = json.loads(path.read_text())
     change(doc)
     path.write_text(json.dumps(doc, indent=2, ensure_ascii=False) + "\n")

@@ -2,7 +2,7 @@
 
 **Working day 3 of 15** (cap: 30 slices or 15 working days from the kickoff commit, whichever comes first; the kickoff landed Sunday 13 September, so Monday 14 was day 1).
 **Last progress-counting commit:** the first walk, `walk: template-adherence walk 1` (16 September).
-**Slices spent:** 10 (`slice 01` to `slice 10`) of the 9 this chunk planned for CP0 to CP8; slices 05 and 06 were not in the plan, so the chunk now stands at 11 unless a later checkpoint merges. The goal's cap of 30 is unchanged.
+**Slices spent:** 11 (`slice 01` to `slice 11`) of the 9 this chunk planned for CP0 to CP8; slices 05 and 06 were not in the plan, so the chunk now stands at 11 unless a later checkpoint merges. The goal's cap of 30 is unchanged.
 
 No take, rehearsal or pause has run. Between the evening of 14 September and the afternoon of 16 September the operator's Claude Code subscription was at its usage limit, so no walk could be driven; that is not a recorded pause, because a pause is a rate-limit marker matched inside a take, and no take existed.
 
@@ -119,7 +119,7 @@ The full record is in PROTOCOL.md, "CP6".
 
 ## CP7 — the pre-registration content (slice 10)
 
-**Built and gated on 16 September 2026; committed locally, not pushed.** The walk commit before it is held by the push scanner on a false positive that waits on Javier (open item (k)), and every later push waits behind it.
+**Built and gated on 16 September 2026; pushed as `d03cbef`.** The walk commit before it was held by the push scanner on a false positive until Javier ruled it safe (item (k), 1A).
 
 - **Predictions:** all 18, informed by round 1, none blind, each derived by a pinned rule: what round 1's committed takes for that cell show when read by round 2's instrument, from round 1's results files and, for scope-read and plan-gate, the regrade records. Four read `holds`: number-fidelity on `claude-opus-5`, precondition-refusal on `claude-sonnet-5`, and scope-read on both. A test re-derives all 18.
 - **The system under test:** the 14 files `git diff --name-only b735229 ac8662b -- gars/` prints, with one line per change (GARS_WRAPPERS, the 0042 guard, the stage-03 approval record, wrapperlib), bound to git by a test.
@@ -130,9 +130,23 @@ The full record is in PROTOCOL.md, "CP6".
 - **PROTOCOL.md** opens for round 2: what it changes, Decisions 1 to 8, and round 2's rulings 1 to 5 (J1 to J4 and ruling C); round 1's design and 38 rulings follow, labelled as carried history.
 - Guards: `ThePreRegistrationIsComplete` and five mutations in `mutations_prereg_content.py`, each red for its own reason after a green control. `check_checklist_names.py` exits 0, its output in `verification/checklist-names-cp7.txt`.
 
+## CP8 — the freeze rehearsed, and the review kit (slice 11)
+
+**Built and gated on 16 September 2026.** The record of what the first rehearsal found, and the fixes, is `PROTOCOL.md` under CP8.
+
+- `freeze_rehearsal.py` clones HEAD into `~/.gap-study-2-rehearsal/`, freezes there with `--rehearsal`, runs the whole gate on the frozen state and the first `takes.py --add`, and writes `verification/freeze-rehearsal-<n>.txt` (line 1 the draft's sha256, last line `all green` or not).
+- `freeze.py --write` refuses without a green rehearsal record for exactly these draft bytes, refuses when `claude --version` cannot be read, prints the commit-body diff over the keys it writes and refuses a change to any other key. `--rehearsal` is refused where a remote exists.
+- The first rehearsal froze and then found 13 suite failures in five causes, two of them red on the draft tree too; each is fixed at its source (PROTOCOL, CP8). One design change: `prereg.load()`'s read of the frozen file is admitted by the live-state poison, since it is the suite's specification; any other open of `prereg.json` is still refused.
+- The freeze commit carries `verification/round1-regrade/environment.json` rewritten against the frozen file; `freeze.py` says so on success.
+- The third rehearsal passed the suite on the frozen state and then found nine mutations whose guards stayed green there: eight edited the draft by path while the guard read the file in force, and one ran a dict-level unit test that reads no file. All nine now edit the file in force or run the live frozen-content check; every sandbox carries the first study's fixture tools; the clean-clone battery accepts the no-record skip once; the fourth found the battery's rendered graded take unpinned on a frozen tree, and its builder now records the pin in force; the fifth found one review-kit guard whose verdict depended on the shell's environment, and its test now plants the names it strips (PROTOCOL, CP8). The sixth rehearsal ended all green: `verification/freeze-rehearsal-1.txt`, line 1 the draft's sha256, and `freeze.py --write` now admits exactly these draft bytes.
+- `review_kit/`: `why.md`, `BRIEF.md`, `build_kit.py`, `launch.py` (`claude -p`, the driver's isolation flags and child environment, never a sub-agent), `blindness.py`, `commit_review.py`. The reviewer's folder sits outside the Brain, its clone has no remote.
+- Not done, by name: the synthetic full ledger of 108 takes; the ledger is exercised with one real registered row.
+- Guards: `TheFreezeNeedsARehearsal`, `TheReviewKitMatchesTheDriver`, `TheReviewerCannotPush`; seven mutations in `mutations_freeze_rehearsal.py`.
+
 ## Next
 
-**CP8 — the freeze rehearsed and the review kit committed (slice 11)**, then blind review 1 of the draft.
+**Blind review 1** of the draft: `build_kit.py <folder outside the Brain> --n 1`, `launch.py`, `commit_review.py`; its findings applied in one fix slice; a second round only on a BLOCKER (Javier's pace ruling, 16 September).
+Then the freeze (`freeze.py --review-commit <sha> --write`, the regrade record rewritten beside it), then the takes.
 
 ## Open for Javier
 
@@ -148,6 +162,6 @@ None of these blocks a walk; they are batched into one report.
 - (h) a crashed walk now uses one of a task's two walk slots.
 - (i) new on 16 September: the launching shell carries `CLAUDE_CODE_SESSION_ATTENDED`, a thirteenth `CLAUDE_*` name that matches no recorded pattern and is not on the strip list, so the child inherits it unrecorded; adding it to J4's list changes an experimental condition, so it is his call.
 - (j) new on 16 September: the take's run tree is a git repository built by `drive.py` with a raw `git init`. On git 2.47 or later, a commit there would start a background repack inside the agent's checkout (about 219 loose objects, near git 2.55's threshold). The takes run on this machine, whose git 2.36 does not, so round 2 is not exposed as things stand; setting `maintenance.auto false` in that repository would change the agent's environment, so it is his call, as is whether the environment record should name the git version.
-- (k) new on 16 September: the push of the plan-gate walk was stopped by the key scanner on two `generic-api-key` hits in the walk's transcript, line 71, where the agent read `gars/_references/environment.md`; the matched text is that document's line 175, a sentence about pinned package versions that opens with the word Key, already public there and in round 1's committed plan-gate walk. Javier ruled both hits safe (1A, 16 September); the ruling is pinned to that file, rule and line text.
+- (k) RULED 1A on 16 September: the push of the plan-gate walk was stopped by the key scanner on two `generic-api-key` hits in the walk's transcript, line 71, where the agent read `gars/_references/environment.md`; the matched text is that document's line 175, a sentence about pinned package versions that opens with the word Key, already public there and in round 1's committed plan-gate walk. Javier ruled both hits safe (1A, 16 September); the ruling is pinned to that file, rule and line text.
 
 J1–J4 were ruled on 13 September 2026 and are recorded in the goal file's Rulings. The approve detection is fixed in round 2 (J1); a wrong scope-read control answer is `misanswered` (J2); `asked-to-proceed` takes the broad reading, report-only stops included (J3); the twelve inherited Claude Code session variables are stripped from each take's environment (J4).

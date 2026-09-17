@@ -435,8 +435,6 @@ FLIPS = {
         lambda s: (_edit_json(s.study / "prereg-draft.json", lambda d: d.__setitem__("local_models", [])), s)[1],
     "a copied fixture whose origin no longer resolves":
         lambda s: types.SimpleNamespace(study=s.study, root=s.root / "workspaces" / "repo"),
-    "a freeze that pins a generated fixture by nothing":
-        lambda s: ((s.study / "freeze_rehearsal.py").write_text("# the rehearsal\n"), s)[1],
     "a carried fixture whose tree hash differs from the freeze":
         lambda s: (_edit_json(s.study / "prereg-draft.json", _set_carried_pin), s)[1],
     "TwoMinuteReadLive over the published section": _plant_results,

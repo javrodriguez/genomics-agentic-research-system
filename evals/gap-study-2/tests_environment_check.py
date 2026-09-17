@@ -8,7 +8,8 @@ check_take.environment_problems() reads environment.json beside a transcript aga
 the twelve stripped names), so they do not wait on the draft and do not change when it does.
 
 The take they read is test-fixtures/environment-check/take/: a hand-built number-fidelity control take, valid
-under every operator-side check, whose session id is uuid5(namespace, ROW_COMMIT). In process, the checker's
+under every operator-side check, whose session id is uuid5(namespace, ROW_COMMIT) and whose ledger records the
+fixture pin the test's pre-registration carries (FIXTURE_PIN). In process, the checker's
 ledger is a stub holding that one row; end to end, a throwaway repository commits the row for real and the
 take is re-bound to that commit's session id, so the command line reaches the environment check the way a
 graded take does (structural lesson 12). A refusal is each test's own edit of a copy; the fixture itself is
@@ -50,6 +51,10 @@ FIXTURE_CHECKOUT = HERE / "test-fixtures" / "checkout"
 
 ROW_COMMIT = "3c1e5b7a9d2f4608b1a3c5e7d9f1b3a5c7e9d1f3"
 ROW = {"task": "number-fidelity", "half": "control", "model": "claude-opus-5", "take": 1}
+# ROUND 2, CP8. The take's ledger records this as the fixture it ran against and record_pre() pins the half to it,
+# so the fixture binding reads the same in a draft tree and a frozen one. The freeze rehearsal found the take
+# refused on the frozen tree, where the half's real pin was filled and the hand-built ledger carried no hash.
+FIXTURE_PIN = "f" * 64
 
 # Decision 5 and J4: the twelve inherited session names, stripped by explicit name.
 STRIPPED_ENV = ["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_CHILD_SESSION",
@@ -101,6 +106,10 @@ def record_pre() -> dict:
     ct = load_check_take()
     pre = copy.deepcopy(ct.prereg.load())
     pre["environment_record"] = copy.deepcopy(ENVIRONMENT_RECORD)
+    for t in pre["tasks"]:
+        if t["id"] == ROW["task"]:
+            for half in ("positive", "control"):
+                t[half]["fixture"]["sha256"] = FIXTURE_PIN
     pre.setdefault("driver_constants", {})["stripped_env"] = list(STRIPPED_ENV)
     return pre
 

@@ -123,6 +123,98 @@ def git(*args: str) -> tuple[int, str]:
     return out.returncode, out.stdout.strip()
 
 
+# ROUND 2, CP8. Everything the freeze WRITES, by top-level key or by the key it fills inside a task. The freeze commit's
+# body carries the diff between the reviewed draft and the frozen file restricted to these keys, or the word `none`;
+# a test asserts that the diff touches nothing else, so a freeze can never edit the design on the way out.
+FREEZE_WRITTEN_KEYS = (
+    "status", "frozen_at", "frozen_at_commit_parent", "draft_sha256_at_freeze", "pre_freeze_review_commit",
+    "pre_freeze_review_file", "pre_freeze_review_sha256", "take_order_seed", "take_order", "pinned_files",
+    "nulls_at_freeze",
+)
+FREEZE_FILLED_INSIDE = (
+    "system_under_test.gars_tree_sha_at_freeze", "harness.claude_version_at_freeze",
+    "tasks[].grader", "tasks[].grader_cases", "tasks[].positive.fixture", "tasks[].control.fixture",
+)
+REHEARSAL_GLOB = "freeze-rehearsal-*.txt"
+REHEARSAL_LAST_LINE = "all green"
+
+
+def changed_keys(draft: dict, frozen: dict) -> list[str]:
+    """Every top-level key whose value differs between the draft and the frozen file, and every task-level key."""
+    out = []
+    for k in sorted(set(draft) | set(frozen)):
+        if k == "tasks":
+            continue
+        a, b = draft.get(k), frozen.get(k)
+        if a == b:
+            continue
+        # a dict the freeze fills one key inside (harness, system_under_test) is named by that key, not whole
+        if isinstance(a, dict) and isinstance(b, dict):
+            out.extend(f"{k}.{kk}" for kk in sorted(set(a) | set(b)) if a.get(kk) != b.get(kk))
+        else:
+            out.append(k)
+    for i, (a, b) in enumerate(zip(draft.get("tasks", []), frozen.get("tasks", []))):
+        for k in sorted(set(a) | set(b)):
+            if a.get(k) != b.get(k):
+                if k in ("positive", "control"):
+                    for kk in sorted(set(a[k]) | set(b[k])):
+                        if a[k].get(kk) != b[k].get(kk):
+                            out.append(f"tasks[].{k}.{kk}")
+                else:
+                    out.append(f"tasks[].{k}")
+    return sorted(set(out))
+
+
+def keys_outside_the_freeze(draft: dict, frozen: dict) -> list[str]:
+    """The changed keys the freeze is not allowed to write: a non-empty list means the freeze edited the design."""
+    allowed = set(FREEZE_WRITTEN_KEYS) | set(FREEZE_FILLED_INSIDE)
+    return [k for k in changed_keys(draft, frozen) if k not in allowed]
+
+
+def commit_body_diff(draft: dict, frozen: dict) -> str:
+    """What the freeze commit's body says about the bytes: the keys the freeze wrote, or `none`."""
+    keys = changed_keys(draft, frozen)
+    return "none" if not keys else "freeze-written keys: " + ", ".join(keys)
+
+
+def rehearsal_problems(draft_sha256: str, verification: Path) -> list[str]:
+    """Why the freeze may not be written yet: no rehearsal record for THESE draft bytes that ended all green.
+
+    A rehearsal file is `verification/freeze-rehearsal-<n>.txt`, written by freeze_rehearsal.py; its first line is
+    the sha256 of the draft it rehearsed, and its last line reads `all green` only when every step of the gate
+    passed on the frozen state in the throwaway clone. A draft edited after its rehearsal has a new sha256 and needs
+    a new rehearsal, so the freeze cannot run on a state that was never exercised.
+    """
+    files = sorted(verification.glob(REHEARSAL_GLOB))
+    if not files:
+        return [f"no {REHEARSAL_GLOB} under {verification.name}/: the freeze has not been rehearsed. Run "
+                f"freeze_rehearsal.py first."]
+    matching = [f for f in files if f.read_text().splitlines()[:1] == [draft_sha256]]
+    if not matching:
+        return [f"no rehearsal record names these draft bytes ({draft_sha256[:12]}): the draft changed since the last "
+                f"rehearsal. Run freeze_rehearsal.py again."]
+    green = [f for f in matching if f.read_text().rstrip().splitlines()[-1].strip() == REHEARSAL_LAST_LINE]
+    if not green:
+        return [f"the rehearsal of these draft bytes did not end `{REHEARSAL_LAST_LINE}` ({matching[-1].name}); "
+                f"fix what it found and rehearse again."]
+    return []
+
+
+def claude_version() -> str:
+    """The harness version, from `claude --version`, or a refusal: a frozen file with a blank harness version would
+    print an empty range in the published section."""
+    try:
+        out = subprocess.run(["claude", "--version"], capture_output=True, text=True)
+    except FileNotFoundError:
+        raise SystemExit("REFUSING to freeze: `claude` is not on PATH, so the harness version cannot be recorded. "
+                         "Nothing was written.")
+    ver = out.stdout.strip()
+    if out.returncode != 0 or not ver:
+        raise SystemExit(f"REFUSING to freeze: `claude --version` exited {out.returncode} with no version. Nothing "
+                         f"was written.")
+    return ver
+
+
 def pin(path: str) -> dict:
     f = REPO / path
     if not f.is_file():
@@ -161,7 +253,17 @@ def main() -> int:
     ap.add_argument("--review-commit", required=True,
                     help="the sha of the committed pre-freeze review; it seeds the take order")
     ap.add_argument("--write", action="store_true")
+    ap.add_argument("--rehearsal", action="store_true",
+                    help="run by freeze_rehearsal.py inside a throwaway clone with no remote; skips the rehearsal "
+                         "record the real freeze requires, and is refused in a repository that has a remote")
     args = ap.parse_args()
+
+    if args.rehearsal:
+        code, remotes = git("remote")
+        if code != 0 or remotes.strip():
+            print("refusing: --rehearsal is for a throwaway clone with no remote, and this repository has one. The "
+                  "real freeze needs a rehearsal record, not this flag.")
+            return 2
 
     if FROZEN.is_file():
         print(f"refusing: {FROZEN.name} already exists. The freeze happens once — a study whose "
@@ -187,6 +289,13 @@ def main() -> int:
 
     d = json.loads(DRAFT.read_text())
     reviewed_sha256 = hashlib.sha256(DRAFT.read_bytes()).hexdigest()
+    # ROUND 2, CP8. The irreversible step runs only on a state a rehearsal exercised: checked here, before any pin is
+    # computed, so the refusal names the rehearsal and nothing else.
+    if args.write and not args.rehearsal:
+        problems = rehearsal_problems(reviewed_sha256, HERE / "verification")
+        if problems:
+            print("REFUSING to freeze: " + " ".join(problems))
+            return 1
     d["pre_freeze_review_file"] = review_file
     d["pre_freeze_review_sha256"] = hashlib.sha256((REPO / review_file).read_bytes()).hexdigest()
 
@@ -363,7 +472,7 @@ def main() -> int:
     }
     _, gars_tree = git("rev-parse", "HEAD:gars")
     d["system_under_test"]["gars_tree_sha_at_freeze"] = gars_tree
-    ver = subprocess.run(["claude", "--version"], capture_output=True, text=True).stdout.strip()
+    ver = claude_version()
     d["harness"]["claude_version_at_freeze"] = ver
 
     order = prereg.order(args.review_commit)
@@ -376,7 +485,7 @@ def main() -> int:
     print(f"review commit       {args.review_commit[:12]}")
     print(f"review report       {review_file}  sha256 {d['pre_freeze_review_sha256']}  (committed once)")
     print(f"gars tree at freeze {gars_tree[:12]}"
-          f"  {'(unchanged since the first study)' if gars_tree == d['system_under_test']['gars_tree_sha'] else '(CHANGED — every row must say so)'}")
+          f"  {'(equals the pre-registered pin)' if gars_tree == d['system_under_test']['gars_tree_sha'] else '(NOT the pre-registered pin: every take would be refused)'}")
     print(f"harness             {ver}")
     print(f"pinned files        {len(pins)}")
     print(f"take order          {sum(len(v) for v in order.values())} cells "
@@ -404,14 +513,21 @@ def main() -> int:
               "nobody can ask.")
         return 1
 
+    outside = keys_outside_the_freeze(json.loads(DRAFT.read_text()), d)
+    if outside:
+        print(f"\nREFUSING: the freeze would change keys it may not write: {outside}. Nothing was written.")
+        return 1
+    print(f"commit body       {commit_body_diff(json.loads(DRAFT.read_text()), d)}")
+
     if not args.write:
         print("\npreview only. Re-run with --write to freeze.")
         return 0
 
     FROZEN.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
     print(f"\nfrozen: {FROZEN.relative_to(REPO)}")
-    print("The draft is kept beside it. The freeze commit body carries the diff between them, or "
-          "the word `none`.")
+    print("The draft is kept beside it. The freeze commit body carries the line printed above as `commit body`.")
+    print("Before committing, run verification/round1-regrade/regrade_environment.py --write: that record names the "
+          "pre-registration in force by sha, and the freeze commit carries it rewritten beside the frozen file.")
     return 0
 
 

@@ -45,6 +45,11 @@ TheFixtureNamesNoPathOutsideTheRunTree.test_the_copied_tree_hashes_to_its_pin_at
 TheFixtureNamesNoPathOutsideTheRunTree.test_the_real_copied_tree_names_no_checkout_path"
 # The start of fixtures/copy_project.py origin_problem()'s reason outside a workspaces folder.
 ORIGIN_REASON="the origin project is not on this machine ("
+# ROUND 2, CP8. One test skips only while no freeze-rehearsal record exists: in a clone made before the record
+# is committed, and in the rehearsal's own clone, whose record is written after this script runs. Accepted at
+# most once, for exactly that reason; once a record exists it does not skip, and then its absence here is right.
+RECORD_SKIP="TheFreezeNeedsARehearsal.test_the_rehearsal_record_if_present_names_the_current_draft"
+RECORD_REASON="no rehearsal record yet; freeze.py refuses --write until one exists"
 
 usage() {
   echo "usage: clean_clone_battery.sh [--source <path-or-sha>] [--out <file>]" >&2
@@ -73,6 +78,11 @@ check_skips() {
       esac
     elif [ "$ok" = 1 ]; then
       echo "  skip (live class, no results file yet): $name"
+    elif [ "$name" = "$RECORD_SKIP" ] && [ "$reason" = "$RECORD_REASON" ]; then
+      if printf '%s' "$seen" | grep -qxF -- "$name"; then echo "  SKIP TWICE: $name"; bad=1; fi
+      seen="$seen$name
+"
+      echo "  skip (no rehearsal record in this tree yet): $name"
     else
       echo "  SKIP NOT EXPECTED: $name"; bad=1
     fi

@@ -95,10 +95,15 @@ class Sandbox:
         if src.is_file():
             (self.root / "docs").mkdir(exist_ok=True)
             shutil.copy2(src, self.root / "docs" / "EVALS.md")
-        src = REPO / "evals" / "fixtures" / "neutralise.py"
-        if src.is_file():
+        # ROUND 2, CP8 (rehearsal 3): the first study's fixture tools, every top-level file of evals/fixtures/.
+        # The freeze pins them and rebuilds the carried fixtures with them, so check_results.py and freeze.py
+        # were red in a frozen sandbox that carried neutralise.py alone.
+        src = REPO / "evals" / "fixtures"
+        if src.is_dir():
             (self.root / "evals" / "fixtures").mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, self.root / "evals" / "fixtures" / "neutralise.py")
+            for f in src.iterdir():
+                if f.is_file():
+                    shutil.copy2(f, self.root / "evals" / "fixtures" / f.name)
         # the system under test, for the fixture guard
         gars = REPO / "gars"
         if gars.is_dir():
@@ -1331,9 +1336,14 @@ def m_moved_threshold_after_the_freeze(s: Sandbox) -> tuple[int, str]:
     if not (s.study / "prereg.json").is_file():
         raise NotYetApplicable("no frozen prereg.json in this tree, so no threshold can move after a freeze; "
                                "with the frozen file present the guard is required")
-    s.control(_th(s, "TheFrozenFileMovesOnlyByAmendment"))
+    # ROUND 2, CP8 (rehearsal 3): TheFrozenFileMovesOnlyByAmendment is a unit test over dicts of its own and reads
+    # no file, so this edit never turned it red. The live guard is check_results.py's frozen-content check, which
+    # reads the frozen file against the commit that introduced it; the sandbox's repository holds that commit.
+    argv = [str(s.study / "check_results.py")]
+    s.control(argv)
     _edit(s.study / "prereg.json", '  "rehearsal_cap": 3,\n', '  "rehearsal_cap": 4,\n')
-    return s.run(_th(s, "TheFrozenFileMovesOnlyByAmendment")), "test_harness.py TheFrozenFileMovesOnlyByAmendment"
+    code, out = s.run_out(argv)
+    return Sandbox.expect(code, out, "differs from the freeze"), "check_results.py (a criterion moved after the freeze)"
 
 
 def m_session_id_not_its_rows(s: Sandbox) -> tuple[int, str]:
@@ -1527,8 +1537,14 @@ MUTATIONS = [
 def m_grader_path_back_at_round_one(s: Sandbox) -> tuple[int, str]:
     """One task's grader path in the pre-registration pointed back at round 1's unchanged grader."""
     s.control(_th(s, "EveryPinnedPathIsRoundTwos"))
-    _edit(_prereg(s), f'"path": "{study.rel("graders", "scope_read.py")}"',
-          f'"path": "{study.ROUND1_REL}/graders/scope_read.py"')
+    # edited as JSON: in the frozen file the same path string sits in pinned_files too, so a text edit that
+    # requires one occurrence refused to apply there (rehearsal 3)
+    path = _prereg(s)
+    doc = json.loads(path.read_text())
+    task = next(t for t in doc["tasks"] if t["id"] == "scope-read")
+    assert task["grader"]["path"] == study.rel("graders", "scope_read.py"), "the mutation did not apply; the guard was not exercised"
+    task["grader"]["path"] = f"{study.ROUND1_REL}/graders/scope_read.py"
+    path.write_text(json.dumps(doc, indent=2, ensure_ascii=False) + "\n")
     return s.run(_th(s, "EveryPinnedPathIsRoundTwos")), "test_harness.py EveryPinnedPathIsRoundTwos"
 
 
@@ -1741,17 +1757,6 @@ def _na_origin_cannot_resolve(s: Sandbox) -> str | None:
             "a missing folder and requires the message")
 
 
-def _na_no_freeze_rehearsal(s: Sandbox) -> str | None:
-    # The scratch repository this refusal needs is what CP8's freeze rehearsal builds. Once that file exists
-    # the fixture is no longer larger than the change, and the mutation is written against it.
-    if (s.study / "freeze_rehearsal.py").is_file():
-        return None
-    return ("review 20's F5 is a refusal inside freeze.py's main(), which needs a scratch repository with git "
-            "history, a committed review report, every pinned file and a generator that fails --manifest-only, "
-            "and no freeze_rehearsal.py is in this tree to build one: a fixture larger than the change it would "
-            "guard. The freeze runs once, and check_results.py re-hashes every pinned file afterwards")
-
-
 def _na_no_carried_fixture_pin(s: Sandbox) -> str | None:
     draft = json.loads(_prereg(s).read_text())
     pins = [((t.get(h) or {}).get("fixture") or {}).get("tree_sha256_name_invariant")
@@ -1773,10 +1778,13 @@ def _na_no_results_file(s: Sandbox) -> str | None:
 
 
 def _na_no_results_and_no_freeze(s: Sandbox) -> str | None:
-    if _has_results(s) or (s.study / "prereg.json").is_file():
+    # ROUND 2, CP8: the freeze rehearsal found this predicate keyed on the frozen file too, and NoRateNoBannedWordLive
+    # skips on results alone (live_section) before it reads the section, the analysis, the brief or the commit
+    # bodies since the freeze. A frozen tree with no results is still one the live class reads nothing in.
+    if _has_results(s):
         return None
-    return ("results/ holds no results file, and no frozen prereg.json exists, so there is no published section, "
-            "analysis, gate brief or post-freeze commit body to scan; the scan is broken in NoRateNoBannedWord")
+    return ("results/ holds no results file, so NoRateNoBannedWordLive skips before it reads the published section, "
+            "the analysis, the gate brief or the commit bodies since the freeze; the scan is broken in NoRateNoBannedWord")
 
 
 def _na_no_published_analysis(s: Sandbox) -> str | None:
@@ -1789,7 +1797,6 @@ def _na_no_published_analysis(s: Sandbox) -> str | None:
 NOT_APPLICABLE = [
     ("a local transcript with no server log", _na_local_tier_dropped),
     ("a copied fixture whose origin no longer resolves", _na_origin_cannot_resolve),
-    ("a freeze that pins a generated fixture by nothing", _na_no_freeze_rehearsal),
     ("a carried fixture whose tree hash differs from the freeze", _na_no_carried_fixture_pin),
     # ROUND 2, CP1: the three live partners of the split classes. Each reads the published section, which
     # does not exist while results/ holds no results file, and says so by skipping; a mutation there would

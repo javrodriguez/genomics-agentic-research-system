@@ -10,6 +10,13 @@
   "permission_mode": "auto",
   "permission_prompts": "none",
   "budget_s": 900,
+  "fixture": {
+    "kind": "generated",
+    "variant": "plain",
+    "seed": 20260908,
+    "fixture_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "synthetic": "a pin the test's pre-registration shares (FIXTURE_PIN); no generator built it"
+  },
   "claude_version": "2.1.267 (Claude Code)",
   "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
   "turns": [
