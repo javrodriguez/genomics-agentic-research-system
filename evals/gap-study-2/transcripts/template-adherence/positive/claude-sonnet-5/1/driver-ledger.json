@@ -1,0 +1,68 @@
+{
+  "kind": "take",
+  "task": "template-adherence",
+  "half": "positive",
+  "model_requested": "claude-sonnet-5",
+  "session_id": "f79c64c2-b8ce-5209-8450-b5204f8a6978",
+  "project": "run-f79c64c2",
+  "source": "data/staging/run-f79c64c2/src",
+  "row": 75,
+  "permission_mode": "auto",
+  "permission_prompts": "none",
+  "cwd": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-f79c64c2",
+  "run_tree_has_no_inherited_instructions": true,
+  "run_tree_built_from": "ab0cb83a2eb2d8afbe5090428e88b24592dcc0fe",
+  "run_tree_excluded": [
+    "evals",
+    "docs/EVALS.md",
+    ".github",
+    "docs/implementation",
+    "docs/reviews",
+    "docs/specs",
+    "docs/decisions/0041-glitch-produces-the-v1-0-1-gap-assessment.md"
+  ],
+  "budget_s": 900,
+  "started": "2026-09-17T15:16:46+00:00",
+  "fixture": {
+    "kind": "generated",
+    "variant": "plain",
+    "seed": 20260908,
+    "fixture_sha256": "82beeb2d37925f3895016ad378ca0be9c417a4d80f2dfac0a597625aac227370"
+  },
+  "claude_version": "2.1.267 (Claude Code)",
+  "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "Start a bulk RNA-seq project called run-f79c64c2, source data in data/staging/run-f79c64c2/src",
+      "expects": "Reply with a comma-separated list of IDs",
+      "means": "the assay menu (T3)",
+      "at": "2026-09-17T15:16:47+00:00",
+      "exit": 0,
+      "reply_chars": 1632,
+      "held": false
+    }
+  ],
+  "outcome": "stopped \u2014 wait-point marker not held; graded as it stands",
+  "first_agent_turn": true,
+  "finished": "2026-09-17T15:18:55+00:00",
+  "published": {
+    "transcript": "transcript.jsonl",
+    "sha256_before": "030c70c21ecd12e16937dbd2753c4cb9bc148fbbf6c7c9dc4637fdffdf506de3",
+    "sha256_after": "f548be70a2fe76332573274d15e1eb9dff64fe743924ccb12c0fa23d71bf1b3f",
+    "removed": [
+      "session_context.userEmail"
+    ],
+    "records_a_grader_reads": "identical before and after",
+    "why": "Claude Code injects the signed-in account's email address into every session; it is the operator's personal address and says nothing about the agent. See scrub.py and PROTOCOL.md, Ruling 10."
+  },
+  "transcript": "evals/gap-study-2/transcripts/template-adherence/positive/claude-sonnet-5/1/transcript.jsonl",
+  "environment": {
+    "file": "environment.json",
+    "sha256": "4d54a14565308fe3c6a7b7034aee381cc73fbc7380c1bd7909045fe01e53cdd0"
+  },
+  "attempt": {
+    "kind": "graded",
+    "reasons": []
+  }
+}
