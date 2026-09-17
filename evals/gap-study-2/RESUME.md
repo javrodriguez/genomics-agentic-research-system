@@ -189,9 +189,15 @@ The review's report and blindness record are committed unedited.
 
 **17 September 2026, before the results.** The live two-minute-read test read a `committed_lines` key round 2 never had; it now reads an absent field as none, amendment 7 (PROTOCOL.md, "Amendment 7").
 
+## The takes, the results and the published section (slice 25): gate 1 open
+
+**17 September 2026, 05:57 to 15:18 EDT.** 112 rows, 106 graded takes, 6 rehearsals, 0 pauses, one half capped; graded by `run.py --all` (a second run byte-identical), analysed by `analyse.py`, published above round 1 in `docs/EVALS.md` at the 350-word cap; the controls check's degenerate-cell finding committed as `verification/controls-as-published.txt` (PROTOCOL.md, "The takes, the results and the published section").
+
 ## Next
 
-**The takes**: 108 graded sessions in the frozen order, each registered with `takes.py --add`, driven by `drive.py`, checked by `check_take.py`, committed as `take:` with CI read on every push; then `analyse.py`, the publication, gate 1 and the final verifier.
+**Gate 1**: the results commit waits, unpushed, for the owner's word on `verification/gate-1-brief.md`; then the push, CI, gate 3's sentence (the owner's), the final verifier from a fresh clone, and the done commit.
+
+The old plan text below described the takes as next: in the frozen order, each registered with `takes.py --add`, driven by `drive.py`, checked by `check_take.py`, committed as `take:` with CI read on every push; then `analyse.py`, the publication, gate 1 and the final verifier.
 The old text below this line described the review that has now happened: `build_kit.py <folder outside the Brain> --n 1`, `launch.py`, `commit_review.py`; its findings applied in one fix slice; a second round only on a BLOCKER (Javier's pace ruling, 16 September).
 Then the freeze (`freeze.py --review-commit <sha> --write`, the regrade record rewritten beside it), then the takes.
 

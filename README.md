@@ -26,6 +26,7 @@ system, follows the Interpretable Context Methodology (ICM) — Van Clief &amp; 
   agent did. Reproducible from a cold clone with `python evals/run.py --all`, and one of the three
   is recorded in advance as expected to fail.
 - The Gap Study — [docs/EVALS.md](docs/EVALS.md#the-gap-study)
+- The Gap Study, round 2 — [docs/EVALS.md](docs/EVALS.md#the-gap-study-round-2)
 - Defects found in the upstream pipeline tooling, reported and closed:
   [ClawBio#333](https://github.com/ClawBio/ClawBio/issues/333) ·
   [ClawBio#365](https://github.com/ClawBio/ClawBio/issues/365).

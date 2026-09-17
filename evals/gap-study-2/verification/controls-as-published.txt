@@ -1,0 +1,6 @@
+the controls:
+  6 task label-pair(s) checked, 18 model cell-pair(s) with takes
+
+1 problem(s):
+  - template-adherence / claude-haiku-4-5-20251001: every take carries the SAME label 'asked-to-proceed' on both halves. That is what a degenerate agent looks like, and it fails this task.
+exit 1

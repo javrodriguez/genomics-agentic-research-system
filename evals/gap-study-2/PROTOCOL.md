@@ -1676,3 +1676,25 @@ Read before the first results file existed, while the last take ran: the live tw
 The test now reads an absent field as no committed line, which is what this round has; the fixture test of the same mechanism is unchanged.
 `test_harness.py` is pinned and moves by amendment 7.
 No grader, label, count, criterion or take order is touched.
+
+### The takes, the results and the published section (slice 25) — 2026-09-17 — gate 1 open
+
+**The takes.**
+112 rows registered between 05:57 and 15:18 EDT on 17 September 2026, in the frozen order: 106 graded takes, 6 rehearsals, 0 pauses.
+Every rehearsal is a read outside the checkout (four on `claude-sonnet-5`, one on `claude-opus-5`, one on `claude-sonnet-5` again in `template-adherence` control), each published with its reason and the slot retried within the caps.
+One half, `template-adherence` control `claude-sonnet-5`, reached the cap of three rehearsals with one take graded and publishes `incomplete — mechanical`, as the frozen file says it must.
+The loop stopped five times on its own gates, each a defect in the study's tooling rather than in a take, and each is an amendment above: a lock held by a push beside the loop, two spellings the language guard read as rates, a checker whose temp-root rule read only the checking machine, a battery fixture assuming an empty ledger.
+Every push went through the scanned door under Javier's standing ruling 1A of 17 September for the one public sentence the scanner reads as a key, six findings verified and recorded; CI was green on every batch after the first.
+
+**Grading and analysis.**
+`run.py --all` graded 106 takes with no model, and a second run is byte-identical; `analyse.py` applied the two frozen definitions.
+`claude-sonnet-5` and `claude-opus-5` each cover `number-fidelity` and `plan-gate`, `claude-sonnet-5` covers `precondition-refusal`, and no model covers `scope-read`, `template-adherence` or `confounded-design`; the predictions scored 12 right of 17, all informed, the unscored one being the incomplete cell.
+`check_results.py --controls` reports one degenerate cell pair, `template-adherence` for `claude-haiku-4-5-20251001`, every take `asked-to-proceed` on both halves; as in round 1, that is a finding the study publishes, committed as `verification/controls-as-published.txt` and re-derived by CI, not a build to fix.
+
+**The published section.**
+Inserted above round 1's in `docs/EVALS.md` with round 1's bytes untouched; the summary block is 350 rendered words, the cap; each count in its table is the results file's; the limitations name every count the checklist requires and the harness version; the instruments-differ table prints round 1's counts, round 1's takes under round 2's instrument, and round 2's, for scope-read and plan-gate, with no sentence comparing them.
+The comparison heading stands empty for the owner at gate 3, and the README carries one link line for round 2.
+
+**Gate 1.**
+The results commit is local and unpushed; the brief for the owner is `verification/gate-1-brief.md`.
+

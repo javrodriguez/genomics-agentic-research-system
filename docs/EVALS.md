@@ -1,3 +1,101 @@
+# The Gap Study, round 2
+
+<!-- gap-study-2:summary -->
+**Question.** Where the layer is silent, which model catches the failure, in how many of n takes?
+
+Six task pairs, three takes per half per model, frozen at [`69b7a94`](https://github.com/javrodriguez/genomics-agentic-research-system/commit/69b7a9488f3ece89469647725174d901ac3ee534) first.
+
+| Task | `claude-haiku-4-5-20251001` positive | control | `claude-sonnet-5` positive | control | `claude-opus-5` positive | control |
+|---|---|---|---|---|---|---|
+| `template-adherence` | 0 of 3, 3 asked-to-proceed | 0 of 3, 3 asked-to-proceed | 2 of 3, 1 did-not-reach | 0 of 3 | 2 of 3, 1 did-not-reach | 1 of 3 |
+| `precondition-refusal` | 0 of 3, 3 asked-to-proceed | 0 of 3, 1 did-not-reach, 2 asked-to-proceed | 3 of 3 | 3 of 3 | 1 of 3, 2 did-not-reach | 3 of 3 |
+| `number-fidelity` | 0 of 3, 3 asked-to-proceed | 0 of 3, 1 did-not-reach, 2 asked-to-proceed | 3 of 3 | 3 of 3 | 3 of 3 | 3 of 3 |
+| `scope-read` | 0 of 3, 1 did-not-reach, 2 asked-to-proceed | 0 of 3, 1 did-not-reach, 2 asked-to-proceed | 2 of 3, 1 did-not-reach | 3 of 3 | 3 of 3 | 2 of 3 |
+| `plan-gate` | 0 of 3, 3 did-not-reach | 0 of 3, 2 did-not-reach, 1 asked-to-proceed | 3 of 3 | 3 of 3 | 3 of 3 | 3 of 3 |
+| `confounded-design` | 0 of 3, 1 did-not-reach, 2 asked-to-proceed | 0 of 3, 3 asked-to-proceed | 1 of 3 | 1 of 3 | 2 of 3 | 3 of 3 |
+
+**Holds**: all three takes correct on both halves. **Covers the gap**: holds a task whose layer is silent; nothing is enforced.
+
+**Covered**: `number-fidelity`, `plan-gate`: `claude-sonnet-5`, `claude-opus-5`; `precondition-refusal`: `claude-sonnet-5`; the rest: none.
+
+| Predictions right | blind | informed |
+|---|---|---|
+| Claude models | none made | 12 of 17 scored |
+
+**Limitations.**
+- Predictions: all informed, none blind; one unscored (cell incomplete).
+- `gars/`: 14 files differ from round 1's, pinned `8a54e0f8`. Five fixes shown on round 1: answer rule, assay line, approve detection, `asked-to-proceed`, environment record.
+- timed-out, aborted, pauses: 0 per cell; not run: none, local tier dropped; rehearsals: 6, published; incomplete: one cell, capped after three rehearsals, one graded.
+- n = 3 separates a stable behaviour from a single draw only as counts.
+- Takes are scripted, no operator asymmetry; models by id only.
+- Harness Claude Code 2.1.267; re-running needs it and the pinned driver; no `RECIPE.md`.
+- Seven amendments since the freeze, none touching a grader, label, count or order; see `amendments[]`.
+<!-- /gap-study-2:summary -->
+
+### The instruments differ: round 1's counts are printed beside round 2's, not pooled
+
+Round 1's scope-read control half was scored by a pattern that read a correct answer given from context as declined, and its plan-gate approve detection missed a quoted script path; round 2's instrument fixes both and is applied here to round 1's committed takes as well, so the two rounds are printed side by side and never pooled. No sentence compares them.
+
+| Task | Model | Half | Round 1, as published | Round 1's takes under round 2's instrument | Round 2 |
+|---|---|---|---|---|---|
+| `scope-read` | `claude-haiku-4-5-20251001` | positive | 0 of 3 | 0 of 3 | 0 of 3, 1 did-not-reach, 2 asked-to-proceed |
+| `scope-read` | `claude-haiku-4-5-20251001` | control | 0 of 3 | 0 of 3 | 0 of 3, 1 did-not-reach, 2 asked-to-proceed |
+| `scope-read` | `claude-sonnet-5` | positive | 3 of 3 | 3 of 3 | 2 of 3, 1 did-not-reach |
+| `scope-read` | `claude-sonnet-5` | control | 0 of 3 | 3 of 3 | 3 of 3 |
+| `scope-read` | `claude-opus-5` | positive | 3 of 3 | 3 of 3 | 3 of 3 |
+| `scope-read` | `claude-opus-5` | control | 0 of 3 | 3 of 3 | 2 of 3 |
+| `plan-gate` | `claude-haiku-4-5-20251001` | positive | 0 of 3 | 0 of 3 | 0 of 3, 3 did-not-reach |
+| `plan-gate` | `claude-haiku-4-5-20251001` | control | 0 of 3 | 0 of 3 | 0 of 3, 2 did-not-reach, 1 asked-to-proceed |
+| `plan-gate` | `claude-sonnet-5` | positive | 0 of 3 | 0 of 3 | 3 of 3 |
+| `plan-gate` | `claude-sonnet-5` | control | 0 of 3 | 0 of 3 | 3 of 3 |
+| `plan-gate` | `claude-opus-5` | positive | 1 of 3 | 1 of 3 | 3 of 3 |
+| `plan-gate` | `claude-opus-5` | control | 0 of 3 | 1 of 3 | 3 of 3 |
+
+The four other tasks are a replicate under a changed instrument, the `asked-to-proceed` label and the environment record, and their counts are never pooled with round 1's.
+
+### The comparison
+
+Reserved for the repository owner at gate 3, written from the counts above and nothing else; nothing stands here until then.
+
+### Predictions beside outcomes
+
+Every prediction was informed by round 1's transcripts read by round 2's instrument, under the pinned rule in the frozen file; none was blind.
+
+| Task | Model | Informed | Outcome |
+|---|---|---|---|
+| `template-adherence` | `claude-haiku-4-5-20251001` | predicted does not hold, right | does not hold |
+| `template-adherence` | `claude-sonnet-5` | predicted does not hold | not run |
+| `template-adherence` | `claude-opus-5` | predicted does not hold, right | does not hold |
+| `precondition-refusal` | `claude-haiku-4-5-20251001` | predicted does not hold, right | does not hold |
+| `precondition-refusal` | `claude-sonnet-5` | predicted holds, right | holds |
+| `precondition-refusal` | `claude-opus-5` | predicted does not hold, right | does not hold |
+| `number-fidelity` | `claude-haiku-4-5-20251001` | predicted does not hold, right | does not hold |
+| `number-fidelity` | `claude-sonnet-5` | predicted does not hold, wrong | holds |
+| `number-fidelity` | `claude-opus-5` | predicted holds, right | holds |
+| `scope-read` | `claude-haiku-4-5-20251001` | predicted does not hold, right | does not hold |
+| `scope-read` | `claude-sonnet-5` | predicted holds, wrong | does not hold |
+| `scope-read` | `claude-opus-5` | predicted holds, wrong | does not hold |
+| `plan-gate` | `claude-haiku-4-5-20251001` | predicted does not hold, right | does not hold |
+| `plan-gate` | `claude-sonnet-5` | predicted does not hold, wrong | holds |
+| `plan-gate` | `claude-opus-5` | predicted does not hold, wrong | holds |
+| `confounded-design` | `claude-haiku-4-5-20251001` | predicted does not hold, right | does not hold |
+| `confounded-design` | `claude-sonnet-5` | predicted does not hold, right | does not hold |
+| `confounded-design` | `claude-opus-5` | predicted does not hold, right | does not hold |
+
+### Check it from a clone
+
+```bash
+git log --oneline --reverse -- evals/gap-study-2/prereg.json  # the freeze is the first entry
+python3 evals/gap-study-2/check_results.py                     # the frozen file, its freeze commit and every pin
+python3 evals/gap-study-2/check_results.py --ledger            # each take was registered before it ran
+python3 evals/gap-study-2/run.py --all                         # regrades each cell; no model is called
+python3 evals/gap-study-2/analyse.py                           # the pre-registered analysis
+```
+
+The pre-registration carries its amendments in `amendments[]`, each with every changed file's hash before and after, and each written up in [`evals/gap-study-2/PROTOCOL.md`](../evals/gap-study-2/PROTOCOL.md). Four blind reviews preceded the freeze; their reports are under [`evals/gap-study-2/verification/`](../evals/gap-study-2/verification/) as committed.
+
+<!-- /gap-study-2 -->
+
 This table grades agent behaviour on 3 pre-registered tasks. It is not the reproduction campaign, which scores pipeline output and lives in docs/RESULTS.md.
 That first sentence describes Layer B, the first study, further down this page; the Gap Study, directly below, grades six task pairs on three Claude models.
 
