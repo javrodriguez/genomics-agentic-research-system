@@ -1,0 +1,25 @@
+blindness check, read from the reviewer's own session file (364 records, 75 attachment records, 87 tool calls)
+
+1. Operator material in the loaded context (attachment records):
+   the goal id                        0
+   the study's folder name            154
+   the round's name                   0
+   the operator's open-items list     0
+   the assistant's memory folder      0
+   the assistant's identity file      0
+   the operator's objective line      0
+   the operator's memory file         0
+   this repository, by path           0
+   the account email                  4
+
+2. Absolute paths in the reviewer's tool inputs that are not inside its folder: 10
+   - /tmp/review4
+   - /tmp/review4/;
+   - /tmp/review4/mutations.log
+   - /tmp/review4/mutations.log)
+   - /tmp/review4/mutations.log;
+   - /tmp/review4/suite.log
+   - /tmp/review4/suite.log)
+   - /tmp/review4/suite.log;
+   - /tmp/review4/tasks.txt
+   - /tmp/review4/tasks.txt;
