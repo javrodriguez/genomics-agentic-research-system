@@ -92,7 +92,8 @@ python3 evals/gap-study-2/run.py --all                         # regrades each c
 python3 evals/gap-study-2/analyse.py                           # the pre-registered analysis
 ```
 
-The pre-registration carries its amendments in `amendments[]`, each with every changed file's hash before and after, and each written up in [`evals/gap-study-2/PROTOCOL.md`](../evals/gap-study-2/PROTOCOL.md). Four blind reviews preceded the freeze; their reports are under [`evals/gap-study-2/verification/`](../evals/gap-study-2/verification/) as committed.
+The pre-registration carries its amendments in `amendments[]`, each with every changed file's hash before and after, and each written up in [`evals/gap-study-2/PROTOCOL.md`](../evals/gap-study-2/PROTOCOL.md).
+The summary above was written when seven amendments stood; an eighth, in the battery's own fixtures, landed after it, and the section is append-only from its first commit, so the count that binds is `amendments[]` in the frozen file. Four blind reviews preceded the freeze; their reports are under [`evals/gap-study-2/verification/`](../evals/gap-study-2/verification/) as committed.
 
 <!-- /gap-study-2 -->
 
