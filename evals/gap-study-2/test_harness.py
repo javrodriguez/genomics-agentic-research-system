@@ -2219,9 +2219,10 @@ class TheLanguageGuardIsWordBounded(unittest.TestCase):
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         rx = next(rx for name, rx, _why in mod.PATTERNS if name == "hundred")
-        for s in ("| 100,147 | 22,624 |", "2,100,147 tokens", "1,100 lines"):
+        for s in ("| 100,147 | 22,624 |", "2,100,147 tokens", "1,100 lines",
+                  "evidenced by 100 of 100 environment records", "5 of 100 takes"):  # amendment 6: the count form
             self.assertIsNone(re.search(rx, s), s)
-        for s in ("100 takes", "100, and then", "of 100 "):
+        for s in ("100 takes", "100, and then", "about 100 lines"):
             self.assertRegex(s, rx)
 
     def test_a_path_through_a_neutral_name_is_not_a_rate(self):

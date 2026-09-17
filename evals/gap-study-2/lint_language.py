@@ -66,7 +66,10 @@ PATTERNS: list[tuple[str, str, str]] = [
      "a proportion of one is still a proportion"),
     # AMENDMENT 4 (17 September 2026): a comma followed by three digits is a digit-group separator, so 100,147 is a
     # count of tokens and not a hundred; the costs table's first six-figure count stopped the take loop on this rule.
-    ("hundred", r"(?<![\w.])(?<!\d,)100(?![\w.])(?!,\d{3})",
+    # AMENDMENT 6 (17 September 2026): a hundred in the study's own count form, `100 of 100` or `5 of 100`, is a count
+    # and not a rate; the costs table's dollar line said "evidenced by 100 of 100 environment records" at the
+    # hundredth graded take and the loop stopped on it.
+    ("hundred", r"(?<![\w.])(?<!\d,)(?<!of )100(?![\w.])(?!,\d{3})(?! of \d)",
      "a count of one hundred is almost never what this study means, and reads as a percentage"),
     ("reliab", r"reliab", "reliability is a claim about a rate"),
     ("consisten", r"consisten", "consistency is a claim about a rate"),

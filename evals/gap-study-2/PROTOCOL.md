@@ -1662,3 +1662,10 @@ CI's ledger check refused the first batch of takes at row 26, a plan-gate positi
 The temp-root rule read only the checking machine's temp folder; it now also knows a temp root by its shape (`/var/folders/<xx>/<random>/T`, with its `/private` spelling), so the Mac's routing of row 26 reads the same on Linux, and the leak tests gain that case.
 `check_take.py` and `tests_leak.py` are pinned and move by amendment 5.
 No grader, label, count, criterion or take order is touched; row 26 stays a rehearsal, as the Mac filed it, and its cell was retried as row 27.
+
+### Amendment 6 (slice 23) — 2026-09-17 — a hundred in the study's own count form is a count
+
+At the hundredth graded take the costs table's dollar line read "evidenced by 100 of 100 environment records", and the `hundred` rule read that count as a rate; the loop stopped on the costs table at row 105.
+The rule now leaves a hundred alone where ` of ` follows or precedes it, the study's own `k of n` form; a bare hundred elsewhere is still refused, and the guard's test gains both cases.
+`lint_language.py` and `test_harness.py` are pinned and move by amendment 6.
+No grader, label, count, criterion or take order is touched.

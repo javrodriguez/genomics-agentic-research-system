@@ -2831,7 +2831,7 @@
     {
       "path": "evals/gap-study-2/lint_language.py",
       "git_blob_sha": "e4e75902d0b46dc95c0c5d919ee1e8eea374696f",
-      "sha256": "b2eba923fb42b40317abfb1bd2f4194152c6c998e9925299b067a477b7fc73d7",
+      "sha256": "579e91d14a0c46f627847b9634aa6791e73745cf3fb8ba3a3a2ba3da3768b3b5",
       "uncommitted": false
     },
     {
@@ -2879,7 +2879,7 @@
     {
       "path": "evals/gap-study-2/test_harness.py",
       "git_blob_sha": "bfe28655cf0de5d22f5962df23050a11dbc33188",
-      "sha256": "99911bd16182c221bfaea25a8c755bd3183dde3b44327b93b0fd231487561432",
+      "sha256": "db884f62455dbfd7327b64641ee25360bd111c28922fa9ed78d0769c2b69666c",
       "uncommitted": false
     },
     {
@@ -3726,6 +3726,25 @@
           "path": "evals/gap-study-2/tests_leak.py",
           "sha256_before": "45fc1290a44b98879ff6e29c21de12cba6f6ed4de32ac1a7e15f46706fa0912c",
           "sha256_after": "570b15f3dd661c7cadfa05a8741db8e4a791a901bccb9e8ca488469cfca0d419"
+        }
+      ]
+    },
+    {
+      "n": 6,
+      "date": "2026-09-17",
+      "before_any_take": false,
+      "graded_takes_at_the_time": "100 of 108 planned",
+      "why": "At the hundredth graded take the costs table's dollar line read 'evidenced by 100 of 100 environment records', a count in the study's own k-of-n form, and the language guard's hundred rule read it as a rate, so the take loop stopped on the costs table. The rule now leaves a hundred alone where ' of ' follows it or precedes it, the study's own count form; a bare hundred elsewhere is still refused, and the guard's test gains both cases. No grader, label, count, criterion or take order is touched.",
+      "files": [
+        {
+          "path": "evals/gap-study-2/lint_language.py",
+          "sha256_before": "b2eba923fb42b40317abfb1bd2f4194152c6c998e9925299b067a477b7fc73d7",
+          "sha256_after": "579e91d14a0c46f627847b9634aa6791e73745cf3fb8ba3a3a2ba3da3768b3b5"
+        },
+        {
+          "path": "evals/gap-study-2/test_harness.py",
+          "sha256_before": "99911bd16182c221bfaea25a8c755bd3183dde3b44327b93b0fd231487561432",
+          "sha256_after": "db884f62455dbfd7327b64641ee25360bd111c28922fa9ed78d0769c2b69666c"
         }
       ]
     }
