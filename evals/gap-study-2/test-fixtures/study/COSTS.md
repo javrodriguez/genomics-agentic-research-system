@@ -16,9 +16,9 @@ $0 as the operator states it; evidenced by 0 of 0; not evidenced: no graded take
 
 | walk | model | input | cache read | cache write | output | wall clock |
 |---|---|---|---|---|---|---|
-| `confounded-design` 1 | `claude-opus-5` | 45 | 30,000 | 5,015 | 265 | 13.0 min |
-| `number-fidelity` 1 | `claude-opus-5` | 30 | 20,000 | 4,010 | 210 | 11.0 min |
-| `scope-read` 1 | `claude-opus-5` | 3 | 2,000 | 1,001 | 51 | 5.0 min |
+| `confounded-design` 1 | `claude-opus-5` | 45 | 30,000 | 5,015 | 265 | 13 min |
+| `number-fidelity` 1 | `claude-opus-5` | 30 | 20,000 | 4,010 | 210 | 11 min |
+| `scope-read` 1 | `claude-opus-5` | 3 | 2,000 | 1,001 | 51 | 5 min |
 
 ## Per model
 
