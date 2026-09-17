@@ -64,7 +64,9 @@ PATTERNS: list[tuple[str, str, str]] = [
      "'three out of three' is a rate in words"),
     ("one-point-zero", r"(?<![\w.])1\.0(?![\w.])",
      "a proportion of one is still a proportion"),
-    ("hundred", r"(?<![\w.])100(?![\w.])",
+    # AMENDMENT 4 (17 September 2026): a comma followed by three digits is a digit-group separator, so 100,147 is a
+    # count of tokens and not a hundred; the costs table's first six-figure count stopped the take loop on this rule.
+    ("hundred", r"(?<![\w.])(?<!\d,)100(?![\w.])(?!,\d{3})",
      "a count of one hundred is almost never what this study means, and reads as a percentage"),
     ("reliab", r"reliab", "reliability is a claim about a rate"),
     ("consisten", r"consisten", "consistency is a claim about a rate"),

@@ -1649,3 +1649,9 @@ At row 27 the loop stopped on its own lint: a take that ran one minute rendered 
 `costs.py` is pinned, so the change is amendment 3: a whole number of minutes prints whole (`1 min`), the measured number unchanged, the table re-rendered by the script as every version of it is.
 No grader, label, count, criterion or take order is touched; 24 takes were graded when it landed, none of them regraded because nothing they are graded by moved.
 Three amendments in the first two hours after the freeze, all in the study's own tooling and none in what grades a take: the states a take brings with it, a ledger with a row, a costs table with a duration, are states the rehearsal never reached, and the plan's synthetic full ledger, which the rehearsal record says was not done, is where they would have been reached.
+
+### Amendment 4 (slice 20) — 2026-09-17 — the language guard reads a digit-group separator as part of a number
+
+At row 50 the loop stopped on its own lint again: the costs table's first six-figure token count, written with a comma every three digits, matched the `hundred` rule through the three digits before the comma.
+`lint_language.py` is pinned, so the rule's change is amendment 4: a comma followed by three digits is inside a number; a bare hundred before a comma in prose is still refused; the guard's test gains both cases.
+No grader, label, count, criterion or take order is touched; 48 takes were graded when it landed.

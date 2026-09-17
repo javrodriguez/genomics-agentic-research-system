@@ -2212,6 +2212,18 @@ class TheLanguageGuardIsWordBounded(unittest.TestCase):
         for s in ("held 3/3", "2 / 3 takes", "k was 1/3."):
             self.assertRegex(s, self.rx())
 
+    def test_a_thousands_separator_is_inside_a_number(self):
+        """AMENDMENT 4: 100,147 tokens is a count, not a hundred; a bare 100 before a comma in prose still is."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gap_lint_hundred", HERE / "lint_language.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        rx = next(rx for name, rx, _why in mod.PATTERNS if name == "hundred")
+        for s in ("| 100,147 | 22,624 |", "2,100,147 tokens", "1,100 lines"):
+            self.assertIsNone(re.search(rx, s), s)
+        for s in ("100 takes", "100, and then", "of 100 "):
+            self.assertRegex(s, rx)
+
     def test_a_path_through_a_neutral_name_is_not_a_rate(self):
         # ROUND 2, CP1: the line is a fixture in the shape walk 2's ledger carried it, not that ledger.
         led = FIXTURES / "lint" / "neutral-name-path.json"

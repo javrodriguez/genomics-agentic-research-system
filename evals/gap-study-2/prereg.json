@@ -2831,7 +2831,7 @@
     {
       "path": "evals/gap-study-2/lint_language.py",
       "git_blob_sha": "e4e75902d0b46dc95c0c5d919ee1e8eea374696f",
-      "sha256": "f590225d80e7aad2adcb41113f304a879aa79df133c7c3c61c9eb9e8cff4d133",
+      "sha256": "b2eba923fb42b40317abfb1bd2f4194152c6c998e9925299b067a477b7fc73d7",
       "uncommitted": false
     },
     {
@@ -2879,7 +2879,7 @@
     {
       "path": "evals/gap-study-2/test_harness.py",
       "git_blob_sha": "bfe28655cf0de5d22f5962df23050a11dbc33188",
-      "sha256": "1202c247c3accbc2f111d766ed5c71ae47fee7f56d83ef5adf7c236cd678b2d7",
+      "sha256": "99911bd16182c221bfaea25a8c755bd3183dde3b44327b93b0fd231487561432",
       "uncommitted": false
     },
     {
@@ -3688,6 +3688,25 @@
           "path": "evals/gap-study-2/costs.py",
           "sha256_before": "9443af600fe6d7ec8cd3147a5d39eec3513b2ceb8901c664f925b19c7ed40749",
           "sha256_after": "d26071d1bc94a606d1eafe181d2833006a33c38f82b7bc3ef076428b0e1f565a"
+        }
+      ]
+    },
+    {
+      "n": 4,
+      "date": "2026-09-17",
+      "before_any_take": false,
+      "graded_takes_at_the_time": 48,
+      "why": "The costs table's first six-figure token count, rendered with a digit-group separator, matched the language guard's hundred rule, which read the three digits before the comma as a bare hundred, and the take loop stopped on it. The rule now reads a comma followed by three digits as part of the number; a bare hundred before a comma in prose is still refused, and the guard's test gains both cases. No grader, label, count, criterion or take order is touched.",
+      "files": [
+        {
+          "path": "evals/gap-study-2/lint_language.py",
+          "sha256_before": "f590225d80e7aad2adcb41113f304a879aa79df133c7c3c61c9eb9e8cff4d133",
+          "sha256_after": "b2eba923fb42b40317abfb1bd2f4194152c6c998e9925299b067a477b7fc73d7"
+        },
+        {
+          "path": "evals/gap-study-2/test_harness.py",
+          "sha256_before": "1202c247c3accbc2f111d766ed5c71ae47fee7f56d83ef5adf7c236cd678b2d7",
+          "sha256_after": "99911bd16182c221bfaea25a8c755bd3183dde3b44327b93b0fd231487561432"
         }
       ]
     }
