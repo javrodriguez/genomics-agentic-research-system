@@ -1712,3 +1712,8 @@ The five now run in git sandboxes, and the one whose guard scans commit bodies m
 The three not-applicable entries for those live classes, whose condition was that no results file existed, are removed as their own rule says, the five mutations being theirs; the hygiene test's flips go with them.
 `mutations.py`, `tests_hygiene.py` and `mutations_hygiene.py` are pinned and move by amendment 8; each of the five is red after a green control on this tree.
 No grader, label, count, criterion or take order is touched.
+
+### Round 2 ruling 7 — 2026-09-17 — gate 3 closed by the owner: the comparative sentence published as drafted
+
+Javier answered "1A" in the run's own window after reading the summary block and the drafted sentence, and the sentence in the gate-1 brief stands under the comparison heading, written at gate 3 by the repository owner, from the counts above and nothing else.
+In the same pass the section moved below the first study's disclaimer line, which its harness holds to line 1 of `docs/EVALS.md`, and the summary's amendment count reads eight; the added-lines rule is a two-point diff against the kickoff, so a line the section itself added may change.
