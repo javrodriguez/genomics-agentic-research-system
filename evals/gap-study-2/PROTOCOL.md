@@ -1585,3 +1585,25 @@ Both are cheap, and a frozen ambiguity is forever, so the operator judged one mo
 **Taken in slice 14.**
 The tree binding and the uncommitted-changes refusal reach every pinned file, inside the study or not (`BOUND_OUTSIDE`); the admitted rehearsal record is the latest by number; the rehearsal runs the first study's two checkers in its gate; the approve detection reads `eval`'s string, with a case; the confounded-design source names the first study's reports by path and the tree they ruled on, and names round 2's three reports beside them.
 Deferred, as before: the attempt-folder history, the reset row, the analysis table's zero counts, the honest exit-0 sentences, and the battery entries that accept any red.
+
+### Blind review 4, and the freeze (slice 15) — 2026-09-17 — FROZEN
+
+**The review.**
+A fourth fresh reviewer read the kit at `037b1c4` with review 3's bytes beside the draft for 12 minutes and ruled DO FREEZE: every check green, review 3's follow-ups closed and re-derived, no defect that moves a take, a label or a count.
+Its report and blindness record are committed unedited as `verification/prefreeze-4.md` and `prefreeze-4-blindness.txt`, and its commit, `d234616`, seeds the take order.
+
+**Its follow-ups, deferred by name.**
+The agent's checkout outside `gars/` and the root `CLAUDE.md` is bound to nothing after the freeze: the run tree is exported from the commit `--at` names and the ledger records it, but only the gars tree and `CLAUDE.md` are pinned; a limitation to publish beside the results.
+The rehearsal record's counter counts the clean-clone files, so the fourth rehearsal wrote record 5; cosmetic.
+Limitations line 17 names one of three routes to `misanswered` (a hedge word and an un-negated forbidden pattern are the other two).
+The seed commit is resettable before the push, as a row is; no result exists when the order is chosen.
+And what reviews 1 to 3 deferred stays deferred.
+
+**The freeze.**
+`freeze.py --review-commit d234616 --write` at 09:05 UTC on 17 September 2026, on the draft at sha256 `9b0f…` as `draft_sha256_at_freeze` records it, admitted by `verification/freeze-rehearsal-5.txt` on the study tree the frozen file names.
+The freeze commit, `69b7a94`, carries the frozen file and the round-1 regrade record rewritten against it, and nothing else; `check_results.py` reads it clean: the frozen file compared with its freeze, the freeze commit held to its rehearsal, and every one of the 111 pins held to its committed blob.
+The harness at the freeze is Claude Code 2.1.267; the system under test is gars tree `8a54e0f8`; the take order is fixed, 108 cells on the `claude` axis, the first cell plan-gate control `claude-opus-5` take 1.
+
+**What it took.**
+Four blind reviews, each a fresh headless session outside the Brain with only the kit; eleven rehearsals, six of them stopped or red on something real and fixed at its source before the next; three fix slices.
+The lesson the round adds to the first study's: a rehearsal shows one stage's defects per run, and a review finds what the rehearsal cannot, the places where the record says more than its bytes support.

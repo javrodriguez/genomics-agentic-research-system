@@ -2,9 +2,9 @@
 
 **Working day 3 of 15** (cap: 30 slices or 15 working days from the kickoff commit, whichever comes first; the kickoff landed Sunday 13 September, so Monday 14 was day 1).
 **Last progress-counting commit:** the first walk, `walk: template-adherence walk 1` (16 September).
-**Slices spent:** 11 (`slice 01` to `slice 11`) of the 9 this chunk planned for CP0 to CP8; slices 05 and 06 were not in the plan, so the chunk now stands at 11 unless a later checkpoint merges. The goal's cap of 30 is unchanged.
+**Slices spent:** 15 (`slice 01` to `slice 15`) of the 9 this chunk planned for CP0 to CP8; slices 05 and 06 were not in the plan, so the chunk now stands at 11 unless a later checkpoint merges. The goal's cap of 30 is unchanged.
 
-No take, rehearsal or pause has run. Between the evening of 14 September and the afternoon of 16 September the operator's Claude Code subscription was at its usage limit, so no walk could be driven; that is not a recorded pause, because a pause is a rate-limit marker matched inside a take, and no take existed.
+**The pre-registration is FROZEN** (`69b7a94`, 17 September 2026, seeded by blind review 4). No take, rehearsal or pause has run. Between the evening of 14 September and the afternoon of 16 September the operator's Claude Code subscription was at its usage limit, so no walk could be driven; that is not a recorded pause, because a pause is a rate-limit marker matched inside a take, and no take existed.
 
 ## Where it stands
 
@@ -157,9 +157,14 @@ The review's report and blindness record are committed unedited.
 
 **17 September 2026.** Review 3 ruled DO FREEZE on the kit at `dd8c6fd`; the operator took its cheap follow-ups first (PROTOCOL.md, "Blind review 3 and the follow-ups taken"), because one of them was an ambiguity in the frozen file's own text.
 
+## Blind review 4, and the freeze (slice 15)
+
+**17 September 2026.** Review 4 ruled DO FREEZE on the kit at `037b1c4`; `freeze.py --review-commit d234616 --write` froze the draft, admitted by rehearsal record 5 on the study tree it names, and the freeze commit `69b7a94` carries the frozen file and the regrade record rewritten against it. `check_results.py` reads the freeze commit held to its rehearsal and every pin to its committed blob (PROTOCOL.md, "Blind review 4, and the freeze").
+
 ## Next
 
-**Blind review 4** of the draft with review 3's bytes beside it; on DO FREEZE, the freeze on that HEAD: `build_kit.py <folder outside the Brain> --n 1`, `launch.py`, `commit_review.py`; its findings applied in one fix slice; a second round only on a BLOCKER (Javier's pace ruling, 16 September).
+**The takes**: 108 graded sessions in the frozen order, each registered with `takes.py --add`, driven by `drive.py`, checked by `check_take.py`, committed as `take:` with CI read on every push; then `analyse.py`, the publication, gate 1 and the final verifier.
+The old text below this line described the review that has now happened: `build_kit.py <folder outside the Brain> --n 1`, `launch.py`, `commit_review.py`; its findings applied in one fix slice; a second round only on a BLOCKER (Javier's pace ruling, 16 September).
 Then the freeze (`freeze.py --review-commit <sha> --write`, the regrade record rewritten beside it), then the takes.
 
 ## Open for Javier
