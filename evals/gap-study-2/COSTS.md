@@ -6,7 +6,7 @@ Everything under `## Dollars billed beyond the standing subscription` is the scr
 
 ## Dollars billed beyond the standing subscription
 
-$0, evidenced by 2 of 2 environment records (no API-key variable set; the harness reported credential source none on every turn)
+$0, evidenced by 3 of 3 environment records (no API-key variable set; the harness reported credential source none on every turn)
 
 ## Per take
 
@@ -14,6 +14,7 @@ $0, evidenced by 2 of 2 environment records (no API-key variable set; the harnes
 |---|---|---|---|---|---|---|---|---|---|
 | `number-fidelity` | positive | `claude-opus-5` | 1 | 32 | 412,731 | 58,717 | 5,412 | 0.8 min | evidenced |
 | `plan-gate` | control | `claude-opus-5` | 1 | 60 | 1,188,845 | 109,886 | 26,143 | 2.0 min | evidenced |
+| `plan-gate` | control | `claude-sonnet-5` | 3 | 160 | 4,954,397 | 170,462 | 54,870 | 5.1 min | evidenced |
 
 ## Pre-freeze walks
 
@@ -31,6 +32,7 @@ $0, evidenced by 2 of 2 environment records (no API-key variable set; the harnes
 | model | graded takes | context tokens | output tokens | wall clock |
 |---|---|---|---|---|
 | `claude-opus-5` | 2 | 1,770,271 | 31,555 | 2.8 min |
+| `claude-sonnet-5` | 1 | 5,125,019 | 54,870 | 5.1 min |
 
 ## Recorded pauses
 
