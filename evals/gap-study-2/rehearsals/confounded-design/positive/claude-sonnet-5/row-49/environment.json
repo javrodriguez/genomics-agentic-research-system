@@ -1,0 +1,117 @@
+{
+  "record": "The names of the variables in the environment the session under test was given, and whether each listed one was absent, empty or set; never a value.",
+  "schema": 1,
+  "session_id": "676c84dd-4a10-5f86-bd70-06d3af07fb3c",
+  "row": 49,
+  "row_commit": "a22a852f2d9d6f97fc2a14987b6b22000ef768c4",
+  "task": "confounded-design",
+  "half": "positive",
+  "model_requested": "claude-sonnet-5",
+  "claude_version": "2.1.267 (Claude Code)",
+  "written_before_first_turn": true,
+  "name_patterns": {
+    "harness": [
+      "^ANTHROPIC_",
+      "^CLAUDE_CODE_USE_(BEDROCK|VERTEX|FOUNDRY)$",
+      "^CLAUDE_CODE_SKIP_.*_AUTH$",
+      "^CLAUDE_CODE_OAUTH_TOKEN$",
+      "^CLAUDE_CODE_OAUTH_REFRESH_TOKEN$",
+      "^CLAUDE_CODE_API_KEY_FILE_DESCRIPTOR$",
+      "^CLAUDE_CODE_GATEWAY_TOKEN_FILE_DESCRIPTOR$",
+      "^CLAUDE_CODE_SESSION_ACCESS_TOKEN$",
+      "^CLAUDE_CODE_API_BASE_URL$",
+      "^CLAUDE_CODE_CUSTOM_OAUTH_URL$",
+      "^AWS_",
+      "^GOOGLE_APPLICATION_CREDENTIALS$",
+      "^AZURE_"
+    ],
+    "generic": [
+      "(API_?KEY|AUTH_?TOKEN|ACCESS_?TOKEN|_TOKEN$|SECRET|CREDENTIAL|PASSWORD)"
+    ]
+  },
+  "names_present": [],
+  "stripped_names": [
+    "CLAUDECODE",
+    "CLAUDE_AGENT_SDK_VERSION",
+    "CLAUDE_CODE_CHILD_SESSION",
+    "CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING",
+    "CLAUDE_CODE_ENABLE_TASKS",
+    "CLAUDE_CODE_ENTRYPOINT",
+    "CLAUDE_CODE_EXECPATH",
+    "CLAUDE_CODE_MESSAGING_SOCKET",
+    "CLAUDE_CODE_MESSAGING_TOKEN",
+    "CLAUDE_CODE_SESSION_ID",
+    "CLAUDE_EFFORT",
+    "CLAUDE_PID"
+  ],
+  "api_key_variables": {
+    "ANTHROPIC_API_KEY": "absent",
+    "ANTHROPIC_AUTH_TOKEN": "absent",
+    "ANTHROPIC_FOUNDRY_API_KEY": "absent",
+    "ANTHROPIC_AWS_API_KEY": "absent",
+    "CLAUDE_CODE_API_KEY_FILE_DESCRIPTOR": "absent",
+    "AWS_BEARER_TOKEN_BEDROCK": "absent"
+  },
+  "api_key_set": false,
+  "billing_route_variables": {
+    "CLAUDE_CODE_USE_BEDROCK": "absent",
+    "CLAUDE_CODE_USE_VERTEX": "absent",
+    "CLAUDE_CODE_USE_FOUNDRY": "absent",
+    "ANTHROPIC_BASE_URL": "absent",
+    "CLAUDE_CODE_API_BASE_URL": "absent"
+  },
+  "billing_route_set": false,
+  "subscription_token_variables": {
+    "CLAUDE_CODE_OAUTH_TOKEN": "absent",
+    "CLAUDE_CODE_OAUTH_REFRESH_TOKEN": "absent",
+    "CLAUDE_CODE_SESSION_ACCESS_TOKEN": "absent"
+  },
+  "credential_source": {
+    "key": "system/init.apiKeySource",
+    "per_turn": [
+      {
+        "n": 1,
+        "recovery": false,
+        "exit": 0,
+        "apiKeySource": "none"
+      },
+      {
+        "n": 2,
+        "recovery": false,
+        "exit": 0,
+        "apiKeySource": "none"
+      },
+      {
+        "n": 2,
+        "recovery": true,
+        "exit": 0,
+        "apiKeySource": "none"
+      },
+      {
+        "n": 3,
+        "recovery": false,
+        "exit": 0,
+        "apiKeySource": "none"
+      },
+      {
+        "n": 4,
+        "recovery": false,
+        "exit": 0,
+        "apiKeySource": "none"
+      },
+      {
+        "n": 5,
+        "recovery": false,
+        "exit": 0,
+        "apiKeySource": "none"
+      },
+      {
+        "n": 6,
+        "recovery": false,
+        "exit": 0,
+        "apiKeySource": "none"
+      }
+    ],
+    "reported": "none"
+  }
+}
