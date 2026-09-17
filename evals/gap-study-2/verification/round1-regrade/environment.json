@@ -4,8 +4,8 @@
     "checker": "evals/gap-study-2/check_take.py environment_problems(transcript folder, round 1's driver ledger, the pre-registration in force, row_commit null)",
     "bill": "evals/gap-study-2/costs.py read_environments and bill_line, with row_commits replaced by an empty map",
     "script": "evals/gap-study-2/verification/round1-regrade/regrade_environment.py",
-    "pre_registration": "evals/gap-study-2/prereg-draft.json",
-    "pre_registration_sha256": "89204fe954b265304223f2c8bc3e6434a697edca8781f49fe44b528d25551f24",
+    "pre_registration": "evals/gap-study-2/prereg.json",
+    "pre_registration_sha256": "81b63dced98e3b87411440bc9692b81bf5e558b5eae6b8353f14d875cbb7338e",
     "round_1_takes": "evals/gap-study/takes.json",
     "round_1_transcripts": "evals/gap-study/transcripts/<task>/<half>/<model>/<take>/",
     "row_commit": "not bound: a missing record is refused before the row commit is compared, so no round-1 history is read"
