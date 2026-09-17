@@ -14,7 +14,8 @@ WHAT IT REFUSES, each as one line `[reason-id] sentence`, all of them in one run
                       had to excuse, and a message can say "take 1" instead. An ISO date (2026-09-13) has
                       no solidus and passes; a slashed date (13/09/2026) is refused, so write ISO dates.
   * [subject-prefix]  a subject that does not open with one of `slice NN:` (two digits), `take:`,
-                      `takes:`, `walk:`, `rehearsal:`, `ruling:`, followed by a space and words.
+                      `takes:`, `walk:`, `rehearsal:`, `ruling:`, `review:` (a pre-freeze review committed as it
+                      stands; review 1's own commit was refused for want of it), followed by a space and words.
   * [language:<name>] a finding of the study's own language guard (lint_language.PATTERNS) on the whole
                       message. The allowlist is not consulted: every excusal is pinned to a file, and a
                       commit message is not one.
@@ -36,8 +37,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 
 SOLIDUS_COUNT = re.compile(r"\d+\s*/\s*\d+")
-SUBJECT_PREFIX = re.compile(r"^(?:slice \d{2}|take|takes|walk|rehearsal|ruling): \S")
-PREFIXES = "`slice NN:` (two digits), `take:`, `takes:`, `walk:`, `rehearsal:` or `ruling:`"
+SUBJECT_PREFIX = re.compile(r"^(?:slice \d{2}|take|takes|walk|rehearsal|ruling|review): \S")
+PREFIXES = "`slice NN:` (two digits), `take:`, `takes:`, `walk:`, `rehearsal:`, `ruling:` or `review:`"
 
 
 def _lint_module():

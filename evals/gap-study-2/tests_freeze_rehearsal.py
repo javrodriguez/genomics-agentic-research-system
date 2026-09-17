@@ -56,6 +56,52 @@ class TheFreezeNeedsARehearsal(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             (Path(td) / "freeze-rehearsal-2.txt").write_text("a" * 64 + "\nsteps\nall green\n")
             self.assertEqual(freeze.rehearsal_problems("a" * 64, Path(td)), [])
+            (Path(td) / "freeze-rehearsal-3.txt").write_text(
+                "a" * 64 + "\nprose\n" + freeze.REHEARSAL_TREE_PREFIX + "t" * 64 + "\nsteps\nall green\n")
+            self.assertEqual(freeze.rehearsal_problems("a" * 64, Path(td), "t" * 64), [])
+
+    def test_a_record_for_another_study_tree_refuses(self):
+        """Review 1, blocker 2: a code edit after the rehearsal is a state never exercised."""
+        with tempfile.TemporaryDirectory() as td:
+            (Path(td) / "freeze-rehearsal-1.txt").write_text(
+                "a" * 64 + "\nprose\n" + freeze.REHEARSAL_TREE_PREFIX + "t" * 64 + "\nsteps\nall green\n")
+            got = freeze.rehearsal_problems("a" * 64, Path(td), "u" * 64)
+            self.assertEqual(len(got), 1, "a rehearsal of another study tree was admitted")
+            self.assertIn("another study tree", got[0])
+            (Path(td) / "freeze-rehearsal-2.txt").write_text("a" * 64 + "\nno tree line\nall green\n")
+            got = freeze.rehearsal_problems("a" * 64, Path(td), "u" * 64)
+            self.assertEqual(len(got), 1)
+            self.assertIn("no study tree line", got[0])
+
+    def test_the_study_tree_sha_ignores_the_records_it_excludes(self):
+        """The rehearsal record and the review's files land between the rehearsal and the freeze, so they are not
+        part of the tree the freeze is bound to; a code file is."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "repo"
+            sd = root / "evals" / "gap-study-2"
+            (sd / "verification").mkdir(parents=True)
+            (sd / "code.py").write_text("x = 1\n")
+            import scratch_git
+            scratch_git.init(root)
+            g = ["git", "-C", str(root), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"]
+            subprocess.run(g + ["add", "-A"], check=True, capture_output=True)
+            subprocess.run(g + ["commit", "-qm", "base"], check=True, capture_output=True)
+            saved = freeze.REPO
+            freeze.REPO = root
+            try:
+                before = freeze.study_tree_sha("HEAD")
+                (sd / "verification" / "freeze-rehearsal-1.txt").write_text("r\n")
+                (sd / "verification" / "prefreeze-1.md").write_text("r\n")
+                (sd / "verification" / "prefreeze-1-blindness.txt").write_text("r\n")
+                subprocess.run(g + ["add", "-A"], check=True, capture_output=True)
+                subprocess.run(g + ["commit", "-qm", "records"], check=True, capture_output=True)
+                self.assertEqual(freeze.study_tree_sha("HEAD"), before, "a record changed the bound tree")
+                (sd / "code.py").write_text("x = 2\n")
+                subprocess.run(g + ["add", "-A"], check=True, capture_output=True)
+                subprocess.run(g + ["commit", "-qm", "code"], check=True, capture_output=True)
+                self.assertNotEqual(freeze.study_tree_sha("HEAD"), before, "a code edit left the bound tree unchanged")
+            finally:
+                freeze.REPO = saved
 
     def test_freeze_write_refuses_without_a_rehearsal_in_a_copy(self):
         """freeze.py --write, run in a copy of this study whose verification/ holds no rehearsal, must refuse by name.
@@ -113,14 +159,21 @@ class TheFreezeNeedsARehearsal(unittest.TestCase):
         self.assertEqual(freeze.commit_body_diff(draft, draft), "none")
 
     def test_the_rehearsal_record_if_present_names_the_current_draft(self):
-        """A committed rehearsal record is bound to the draft it rehearsed; a stale one is a finding, not a pass."""
-        records = sorted((HERE / "verification").glob("freeze-rehearsal-*.txt"))
-        if not records:
-            self.skipTest("no rehearsal record yet; freeze.py refuses --write until one exists")
+        """The record for the current draft's bytes, when one exists, is whole: green, a study tree, a not-done line.
+
+        Every record is kept, so an earlier draft's record stays on disk beside the current one; whether the current
+        draft HAS a green record is the freeze gate's question (rehearsal_problems), not this test's. Before CP8's
+        review this test read the latest record and failed on a stale one, which made the suite red in every rehearsal
+        clone after a draft change: the record that would clear it is written only after that suite passes.
+        """
         sha = hashlib.sha256(DRAFT.read_bytes()).hexdigest()
+        records = [p for p in sorted((HERE / "verification").glob("freeze-rehearsal-*.txt"))
+                   if p.read_text().splitlines()[:1] == [sha]]
+        if not records:
+            self.skipTest("no rehearsal record for the current draft yet; freeze.py refuses --write until one exists")
         latest = records[-1].read_text().splitlines()
-        self.assertEqual(latest[0], sha, f"{records[-1].name} rehearsed other draft bytes; rehearse again")
         self.assertEqual(latest[-1].strip(), freeze.REHEARSAL_LAST_LINE, f"{records[-1].name} did not end all green")
+        self.assertTrue(freeze.recorded_tree(records[-1]), f"{records[-1].name} names no study tree")
         self.assertTrue(any("not done" in line for line in latest), "the record must say what it did not run")
 
 

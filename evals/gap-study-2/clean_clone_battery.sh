@@ -49,7 +49,7 @@ ORIGIN_REASON="the origin project is not on this machine ("
 # is committed, and in the rehearsal's own clone, whose record is written after this script runs. Accepted at
 # most once, for exactly that reason; once a record exists it does not skip, and then its absence here is right.
 RECORD_SKIP="TheFreezeNeedsARehearsal.test_the_rehearsal_record_if_present_names_the_current_draft"
-RECORD_REASON="no rehearsal record yet; freeze.py refuses --write until one exists"
+RECORD_REASON="no rehearsal record for the current draft yet; freeze.py refuses --write until one exists"
 
 usage() {
   echo "usage: clean_clone_battery.sh [--source <path-or-sha>] [--out <file>]" >&2

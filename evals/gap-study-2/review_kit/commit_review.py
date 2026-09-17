@@ -3,7 +3,7 @@
 
     python3 evals/gap-study-2/review_kit/commit_review.py <review folder> <N>
 
-Asserts before anything is copied: line 1 of the report is `prereg.json sha256: <the current draft's sha256>`; the
+Asserts before anything is copied: line 1 of the report is `prereg.json sha256: <the sha256 of the kit's prereg.json, the bytes the reviewer read>`; the
 report carries no absolute path and names no person; a ruling line is present. Copies the report to
 verification/prefreeze-<N>.md and the blindness record beside it, lints the commit message, and commits with
 `git commit -F`. The commit lands exactly the two files, which is what freeze.py's review-commit rule reads.
@@ -57,9 +57,14 @@ def main() -> int:
         if not f.is_file():
             print(f"missing: {f.name}")
             return 2
+    # ROUND 2, CP8: the report is bound to the bytes the reviewer was handed, the kit's prereg.json, not to the
+    # draft in force at commit time. Review 1's fix moved the draft before its report was committed, and this refused
+    # the report for it; whether the seed review read the CURRENT bytes is freeze.py's rule, which also requires the
+    # seed to be the latest review committed.
+    read_sha = hashlib.sha256((folder / "prereg.json").read_bytes()).hexdigest()
     draft_sha = hashlib.sha256((STUDY_DIR / "prereg-draft.json").read_bytes()).hexdigest()
     text = report.read_text()
-    problems = report_problems(text, draft_sha)
+    problems = report_problems(text, read_sha)
     if problems:
         print("refusing to commit the report: " + "; ".join(problems))
         return 1
@@ -72,9 +77,10 @@ def main() -> int:
     shutil.copy2(blind, dest_blind)
     ruling = RULING.search(text).group(0).strip("*")
     msg = folder.parent / f"prefreeze-{n}-commit-message.txt"
-    msg.write_text(f"verification: pre-freeze review {n}, committed as it stands\n\nOne fresh reviewer, launched headless "
-                   f"outside the Brain with only the kit, read the draft at its sha256 and ruled: {ruling} The report and "
-                   f"its blindness record are committed unedited.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\n")
+    msg.write_text(f"review: pre-freeze review {n}, committed as it stands\n\nOne fresh reviewer, launched headless "
+                   f"outside the Brain with only the kit, read the draft at sha256 {read_sha[:12]} and ruled: {ruling} "
+                   + ("" if read_sha == draft_sha else f"The draft in force at this commit is {draft_sha[:12]}: it moved after the review, so this review cannot seed a freeze. ")
+                   + "The report and its blindness record are committed unedited.\n\nCo-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>\n")
     lint = subprocess.run([sys.executable, str(STUDY_DIR / "commit_msg.py"), str(msg)], capture_output=True, text=True)
     if lint.returncode != 0:
         print(lint.stdout)

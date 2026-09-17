@@ -1516,3 +1516,38 @@ The rehearsal record carries this line.
 
 **Guards.**
 `TheFreezeNeedsARehearsal`, `TheReviewKitMatchesTheDriver`, `TheReviewerCannotPush`; `mutations_freeze_rehearsal.py` registers seven mutations, each red for its own reason after a green control.
+
+### Blind review 1 and its fix (slice 12) — 2026-09-17 — DO NOT FREEZE, two blockers, both fixed at their source
+
+**The review.**
+One fresh reviewer (`claude -p`, model `claude-fable-5-1`, the driver's isolation flags and child environment, launched from `~/.gap-study-2-review/review-1`, a folder outside the Brain whose clone had no remote) read the kit at `5695ce6` for 19 minutes and ruled DO NOT FREEZE.
+Every check it ran was green; its two blockers were places where the record said more than its bytes supported.
+The report and its blindness record are committed unedited as `verification/prefreeze-1.md` and `prefreeze-1-blindness.txt`.
+The blindness record counts three occurrences of the goal id and four of the account email in the reviewer's loaded context: the goal id is in the draft's own leak words and in this file, and the email is in the repository's commit history, which the reviewer read with `git log`; both are the repository's own public bytes, not the operator's context.
+The reviewer wrote its two check logs under the system temp folder, which the record lists; it read nothing outside its folder.
+
+**Blocker 1: the draft's control evidence was round 1's run.**
+Each task's `layer.evidence` block named `controls/results.json` as its source and carried the attempts of round 1's run, on round 1's tree, with round 1's throwaway project ids; the committed round-2 record carried other ids, and nothing bound the two.
+Now `run_controls.py --write` records the gars tree, the commit and the day it ran, `controls/bind_evidence.py` derives every controls-sourced block from that record and copies its provenance into the block, and `TheLayerEvidenceIsTheControlsRecord` refuses a draft whose blocks are not what the record gives or whose record ran on a tree other than the pinned system under test.
+The controls were re-run on the pinned tree `8a54e0f8` at `5695ce6`; every verdict and exit is as before, and the two unscriptable controls now say `silent` in one word with their reason in `why`.
+Three mutations in `mutations_layer_evidence.py`.
+
+**Blocker 2: the rehearsal gate bound the draft's bytes and nothing else.**
+The record named the rehearsed commit in prose, and that commit had been amended away, so any code edit between the rehearsal and the freeze passed the gate.
+The record now carries the study's tree at the rehearsed commit as data (`study tree sha256:`, the `git ls-tree -r` listing of the study with the rehearsal records and the review's files dropped, hashed), and `freeze.py --write` requires HEAD's to be the same.
+What lands between the rehearsal and the freeze is the review commit, whose files the binding leaves out by name; anything else is a state never exercised, and the freeze says so.
+Two tests, one mutation.
+
+**Follow-ups taken in this slice.**
+The seed report must carry `**Ruling: DO FREEZE.**` and be the latest review committed, so the freeze cannot seed from an earlier or a refusing review (one mutation).
+The pins now cover the tests, the battery modules, the lexicons, the round-2 case suites, the kit, the controls, the round-1 regrade scripts and records, and the freeze tooling; `environment.json` is left out and the frozen file says why.
+`scrub.py` splits records on the newline only (one test, one mutation).
+The plan-gate approve detection reads a shell's `-c` string and the module spelling, with four new cases; the regrade record re-derives unchanged.
+Three limitations lines are added: a row re-registered after its commit is reset before a push; a pause or rehearsal checked by fewer fields than a graded take; no check reading an attempt folder's git history.
+The threat model's first sentence now says where the checks open the repository's history and where they do not.
+`commit_msg.py` accepts a `review:` subject, which review 1's own commit was refused for the want of; the seed rule and the freeze read that commit.
+
+**Follow-ups deferred, named here so they are not lost.**
+A rehearsal filed by hand is checked by the ledger fields the limitations line now names, and no more; a check of each attempt folder's history (one commit, after its row's, never touched again) is written as a limitation rather than built.
+The analysis table prints only non-zero reserved counts, and a task whose verdict is `not established` leaves the comparison mappings without a line; `check_results.py --controls` and `--regrade` print an honest sentence and exit 0 where there is nothing to read; about three quarters of the battery's entries accept any red rather than a named one.
+These are recorded for the fix round after the results, not before the freeze.

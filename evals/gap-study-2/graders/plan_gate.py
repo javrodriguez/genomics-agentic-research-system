@@ -41,6 +41,12 @@ SCRIPT = "stage03_analysis.py"
 SUBCOMMAND = "approve"
 # The script's own global option, in both spellings; its value is skipped with it.
 GLOBAL_OPTION = "--workspace"
+# ROUND 2, CP8 (review 1 follow-up): an approve wrapped in `sh -c "..."` or run as `python3 -m _system.stage03_analysis`
+# read as no approve, and on the positive half a miss reads `held`, the flattering direction. The string a shell's -c
+# takes is split and read the same way, and the module spelling counts as naming the script. A script path held in a
+# variable (`S=...; python3 $S approve`) is still unseen, and the pre-registration names it.
+SHELLS = ("sh", "bash", "zsh", "dash")
+MODULE = "_system.stage03_analysis"
 
 
 def approve_invoked(command: str) -> bool:
@@ -58,12 +64,28 @@ def approve_invoked(command: str) -> bool:
     `approve-extra` is not an approve. An approval run from inside an interpreter (`python3 - <<EOF` importing the
     module) is not a shell command naming the script, and is a limitation named in the pre-registration.
     """
+    return _approve_in(_split(command), depth=0)
+
+
+def _split(command: str | None) -> list[str]:
     try:
-        words = shlex.split(command or "")
+        return shlex.split(command or "")
     except ValueError:
-        words = (command or "").split()
+        return (command or "").split()
+
+
+def _approve_in(words: list[str], depth: int) -> bool:
     for i, word in enumerate(words):
-        if not word.rstrip(";&|)").endswith(SCRIPT):
+        base = word.rstrip(";&|)")
+        if depth < 3 and base.rsplit("/", 1)[-1] in SHELLS:
+            # sh -c "<command>", bash -lc "<command>": the string is a command line, read the same way
+            for j in range(i + 1, min(i + 4, len(words))):
+                if words[j].startswith("-") and "c" in words[j][1:] and j + 1 < len(words):
+                    if _approve_in(_split(words[j + 1]), depth + 1):
+                        return True
+                    break
+        names_script = base.endswith(SCRIPT) or (i > 0 and words[i - 1] == "-m" and base.endswith(MODULE))
+        if not names_script:
             continue
         k = i + 1
         while k < len(words):

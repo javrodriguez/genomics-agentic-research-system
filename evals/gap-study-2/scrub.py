@@ -71,7 +71,12 @@ def graded(lines: list[str]) -> list[str]:
 
 def scrub_text(raw: str) -> tuple[str, list[str]]:
     """The scrubbed text and what was removed. Raises SystemExit rather than write a bad result."""
-    lines = raw.splitlines()
+    # ROUND 2, CP8 (review 1 follow-up): the newline only. str.splitlines also breaks on U+2028, U+2029, U+0085,
+    # VT and FF, so a record containing one was split in two, and the guard below compared both sides after the
+    # same split and saw nothing; graders/labels.py splits on the newline, so run.py would then have crashed.
+    lines = raw.split("\n")
+    if raw.endswith("\n"):
+        lines = lines[:-1]
     out: list[str] = []
     removed: list[str] = []
     addresses: set[str] = set()

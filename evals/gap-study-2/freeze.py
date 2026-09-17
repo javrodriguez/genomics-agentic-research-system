@@ -69,6 +69,20 @@ PINNED = [
     study.rel("fixtures", "symbol_rulings.json"),
     study.rel("contract_quotes.json"),
     study.rel("controls", "results.json"),
+    # ROUND 2, CP8, review 1 follow-up: the tests, the battery, the lexicons, the case suites, the round-1 regrade
+    # scripts and records, the kit and the freeze tooling; an edit to any of them after the freeze changed what the
+    # suite or the battery reported while check_results.py stayed clean. environment.json is not here: the freeze
+    # commit rewrites it against the frozen file after the pins are read, and its own script re-derives it.
+    *sorted(study.rel(p.relative_to(HERE).as_posix())
+            for pattern in ("tests_*.py", "mutations*.py", "lexicons/*.json", "cases/round-2/*.json", "review_kit/*.py",
+                            "controls/*.py", "verification/round1-regrade/*.py", "verification/round1-regrade/*.json")
+            for p in HERE.glob(pattern) if p.name != "environment.json"),
+    study.rel("freeze.py"),
+    study.rel("freeze_rehearsal.py"),
+    study.rel("scratch_git.py"),
+    study.rel("clean_clone_battery.sh"),
+    study.rel("commit_msg.py"),
+    study.rel("scrub.py"),
     study.rel("run.py"),
     study.rel("analyse.py"),
     study.rel("check_take.py"),
@@ -136,6 +150,14 @@ FREEZE_FILLED_INSIDE = (
     "tasks[].grader", "tasks[].grader_cases", "tasks[].positive.fixture", "tasks[].control.fixture",
 )
 REHEARSAL_GLOB = "freeze-rehearsal-*.txt"
+# ROUND 2, CP8, review 1 blocker 2. A record bound the draft's bytes and nothing else, and the commit it named in
+# prose had been rewritten away, so any code edit between the rehearsal and the freeze passed the gate. The record
+# now carries the study tree it rehearsed as data (study_tree_sha), and the freeze requires HEAD's to be the same.
+REHEARSAL_TREE_PREFIX = "study tree sha256: "
+# what the binding leaves out: the records the rehearsal and the review write between the rehearsal and the freeze
+TREE_BINDING_EXCLUDED = (re.compile(r"/verification/freeze-rehearsal-\d+\.txt$"),
+                         re.compile(r"/verification/prefreeze-\d+(-blindness)?\.(md|txt)$"))
+RULING_LINE = "**Ruling: DO FREEZE.**"
 REHEARSAL_LAST_LINE = "all green"
 
 
@@ -177,7 +199,23 @@ def commit_body_diff(draft: dict, frozen: dict) -> str:
     return "none" if not keys else "freeze-written keys: " + ", ".join(keys)
 
 
-def rehearsal_problems(draft_sha256: str, verification: Path) -> list[str]:
+def study_tree_sha(rev: str = "HEAD") -> str:
+    """The study's tree at a revision, as `git ls-tree -r` prints it with the excluded records dropped, hashed."""
+    code, out = git("ls-tree", "-r", rev, "--", study.STUDY_REL)
+    if code != 0 or not out.strip():
+        raise SystemExit(f"REFUSING: the study tree at {rev} cannot be listed ({out.strip()[:200]}). Nothing was written.")
+    kept = [ln for ln in out.splitlines() if not any(p.search(ln) for p in TREE_BINDING_EXCLUDED)]
+    return hashlib.sha256("\n".join(kept).encode("utf-8")).hexdigest()
+
+
+def recorded_tree(record: Path) -> str | None:
+    for ln in record.read_text().splitlines():
+        if ln.startswith(REHEARSAL_TREE_PREFIX):
+            return ln[len(REHEARSAL_TREE_PREFIX):].strip()
+    return None
+
+
+def rehearsal_problems(draft_sha256: str, verification: Path, study_tree: str | None = None) -> list[str]:
     """Why the freeze may not be written yet: no rehearsal record for THESE draft bytes that ended all green.
 
     A rehearsal file is `verification/freeze-rehearsal-<n>.txt`, written by freeze_rehearsal.py; its first line is
@@ -197,6 +235,13 @@ def rehearsal_problems(draft_sha256: str, verification: Path) -> list[str]:
     if not green:
         return [f"the rehearsal of these draft bytes did not end `{REHEARSAL_LAST_LINE}` ({matching[-1].name}); "
                 f"fix what it found and rehearse again."]
+    if study_tree is not None:
+        bound = [f for f in green if recorded_tree(f) == study_tree]
+        if not bound:
+            was = recorded_tree(green[-1])
+            return [f"the green rehearsal of these draft bytes ({green[-1].name}) ran on another study tree "
+                    f"({was[:12] if was else 'no study tree line in the record'}), not this one ({study_tree[:12]}): "
+                    f"a code edit after the rehearsal is a state never exercised. Run freeze_rehearsal.py again."]
     return []
 
 
@@ -245,6 +290,18 @@ def review_file_problems(review_commit: str) -> tuple[list[str], str | None]:
     code, hist = git("log", "--format=%H", "--", reports[0])
     if len(hist.split()) != 1:
         return [f"{reports[0]} was committed {len(hist.split())} times; the seed would be one of several candidates"], None
+    # ROUND 2, CP8, review 1 follow-up: the seed's report must have ruled for the freeze, and must be the latest
+    # review committed, so a freeze cannot seed from an earlier or a refusing review
+    code, body = git("show", f"{review_commit}:{reports[0]}")
+    if RULING_LINE not in body:
+        return [f"{reports[0]} at {review_commit[:12]} carries no `{RULING_LINE}` line: the freeze runs only on a "
+                f"review that ruled for it"], None
+    code, names = git("ls-tree", "-r", "--name-only", "HEAD", "--", study.rel("verification"))
+    numbers = [int(m.group(1)) for ln in names.splitlines() for m in [re.search(r"prefreeze-(\d+)\.md$", ln)] if m]
+    n = int(re.search(r"prefreeze-(\d+)\.md$", reports[0]).group(1))
+    if numbers and n != max(numbers):
+        return [f"{reports[0]} is not the latest review committed (prefreeze-{max(numbers)}.md is): the freeze seeds "
+                f"from the last ruling, not a chosen one"], None
     return [], reports[0]
 
 
@@ -292,7 +349,7 @@ def main() -> int:
     # ROUND 2, CP8. The irreversible step runs only on a state a rehearsal exercised: checked here, before any pin is
     # computed, so the refusal names the rehearsal and nothing else.
     if args.write and not args.rehearsal:
-        problems = rehearsal_problems(reviewed_sha256, HERE / "verification")
+        problems = rehearsal_problems(reviewed_sha256, HERE / "verification", study_tree_sha("HEAD"))
         if problems:
             print("REFUSING to freeze: " + " ".join(problems))
             return 1

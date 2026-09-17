@@ -51,6 +51,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
 sys.path.insert(0, str(HERE))
+import freeze  # noqa: E402
 import scratch_git  # noqa: E402
 import study  # noqa: E402
 
@@ -109,7 +110,9 @@ def main() -> int:
     study_dir = clone / study.STUDY_REL
     env = {k: v for k, v in os.environ.items() if k != "GAP_STUDY_2_POISON_LIVE_STATE"}
     lines = [draft_sha, f"freeze rehearsal {n}, {time.strftime('%Y-%m-%d %H:%M %Z')}, draft sha256 above, "
-                        f"clone of HEAD {subprocess.run(['git', '-C', str(REPO), 'rev-parse', 'HEAD'], capture_output=True, text=True).stdout.strip()[:12]}"]
+                        f"clone of HEAD {subprocess.run(['git', '-C', str(REPO), 'rev-parse', 'HEAD'], capture_output=True, text=True).stdout.strip()[:12]}",
+             # the study tree rehearsed, as data: freeze.py requires HEAD's to be the same when it writes
+             f"{freeze.REHEARSAL_TREE_PREFIX}{freeze.study_tree_sha('HEAD')}"]
     steps: list[tuple[str, int, str]] = []
 
     def step(name: str, argv: list[str], cwd: Path = clone, timeout: int = 3600) -> int:
@@ -122,7 +125,11 @@ def main() -> int:
 
     try:
         # 2. the synthetic review, committed once
-        report = study_dir / "verification" / "prefreeze-1.md"
+        # a number no earlier commit used: the review rule refuses a report path committed more than once, and the
+        # seed must be the latest review
+        taken = [int(m.group(1)) for p in (study_dir / "verification").glob("prefreeze-*.md")
+                 for m in [__import__("re").match(r"prefreeze-(\d+)\.md$", p.name)] if m]
+        report = study_dir / "verification" / f"prefreeze-{max(taken, default=0) + 1}.md"
         report.write_text(f"prereg.json sha256: {draft_sha}\n\nSYNTHETIC: a stand-in report written by freeze_rehearsal.py "
                           f"so the freeze's review-commit rule is exercised; no reviewer wrote it.\n\n"
                           f"**Ruling: DO FREEZE.**\n")

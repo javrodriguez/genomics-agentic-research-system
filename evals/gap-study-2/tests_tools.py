@@ -92,7 +92,8 @@ class CommitMsgRefusesASolidusCount(_MessageFile, unittest.TestCase):
 class CommitMsgRefusesAnUnlistedPrefix(_MessageFile, unittest.TestCase):
     def test_every_listed_prefix_passes(self):
         for subject in ("slice 03: the tools", "take: a row", "takes: an attempt", "walk: plan-gate",
-                        "rehearsal: a dry run", "ruling: a word from Javier"):
+                        "rehearsal: a dry run", "ruling: a word from Javier",
+                        "review: pre-freeze review 1, committed as it stands"):
             r = self.lint(subject + "\n")
             self.assertEqual((r.returncode, r.stdout.strip()), (0, "clean"), subject)
 
@@ -468,6 +469,25 @@ def main() -> int:
         print("\nno test ran. That is not a pass.")
         return 2
     return 0 if result.wasSuccessful() else 1
+
+
+class TheScrubSplitsOnTheNewlineOnly(unittest.TestCase):
+    """Review 1 (round 2) follow-up: a record carrying U+2028 or a form feed is one record, not two."""
+
+    def test_a_record_with_a_unicode_line_separator_survives_whole(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gap_scrub", HERE / "scrub.py")
+        scrub = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(scrub)
+        # the separators as raw characters, the way the transcript writer emits them (json.dumps would escape them
+        # to ASCII and the fixture would carry no separator at all; the first version of this test did exactly that)
+        rec = json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": "one\u2028two\u0085three\u2029four"}]}},
+                         ensure_ascii=False)
+        self.assertIn("\u2028", rec)
+        raw = rec + "\n" + json.dumps({"type": "user", "message": {"content": "x"}}) + "\n"
+        body, removed = scrub.scrub_text(raw)
+        self.assertEqual(body.count("\n"), 2, "a record was split at a character that is not a newline")
+        self.assertEqual(body, raw, "the scrub changed a record it had no reason to touch")
 
 
 if __name__ == "__main__":

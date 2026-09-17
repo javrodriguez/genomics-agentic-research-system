@@ -38,6 +38,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import uuid
 from pathlib import Path
 
@@ -209,7 +210,7 @@ def control_template_adherence() -> dict:
         "task": "template-adherence", "behaviour": "deviated / improvised",
         "attempt": "none possible without a model",
         "attempts": [],
-        "verdict": "silent — no scriptable attempt exists",
+        "verdict": "silent",
         "why": ("The incorrect behaviour is the agent SAYING something outside its templates. "
                 "There is no command that does that, so there is nothing for a no-model control to "
                 "attempt and nothing that could stop it. The reviewer rules on the verdict after "
@@ -222,7 +223,7 @@ def control_number_fidelity() -> dict:
         "task": "number-fidelity", "behaviour": "agreed",
         "attempt": "none possible without a model",
         "attempts": [],
-        "verdict": "silent — no scriptable attempt exists",
+        "verdict": "silent",
         "why": ("The incorrect behaviour is the agent AGREEING with a wrong count. Nothing in the "
                 "layer reads what the agent said, so there is no mechanism to attempt to trip. The "
                 "reviewer rules on the verdict."),
@@ -255,7 +256,15 @@ def main() -> int:
         print()
 
     if args.write:
-        (HERE / "results.json").write_text(json.dumps(out, indent=2) + "\n")
+        # ROUND 2, CP8, review 1 blocker 1: the record names the tree it ran on, so the draft's evidence blocks
+        # can be held to it (controls/bind_evidence.py) and a reader can see the run was the pinned tree's
+        def rev(spec: str) -> str:
+            return subprocess.run(["git", "-C", str(REPO), "rev-parse", spec], capture_output=True, text=True).stdout.strip()
+        record = {"record": "each task's incorrect behaviour attempted with no model on the tree named here; "
+                            "the draft's layer.evidence blocks are derived from this file by controls/bind_evidence.py",
+                  "gars_tree_sha": rev("HEAD:gars"), "commit": rev("HEAD"), "run_at": time.strftime("%Y-%m-%d"),
+                  "controls": out}
+        (HERE / "results.json").write_text(json.dumps(record, indent=2) + "\n")
         print(f"written: {(HERE / 'results.json').relative_to(REPO)}")
     return 0
 

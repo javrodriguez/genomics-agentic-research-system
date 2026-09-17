@@ -4650,23 +4650,32 @@ class TheSeedReviewIsCommittedOnce(unittest.TestCase):
         repo = ScratchRepo(self)
         ver = repo.root / study.STUDY_REL / "verification"
         ver.mkdir(parents=True)
-        (ver / "prefreeze-1.md").write_text("review 1\n")
+        fz = gap_module("freeze")
+        ruled = f"review\n\n{fz.RULING_LINE}\n"
+        (ver / "prefreeze-1.md").write_text(ruled)
         once = repo.commit("slice 03: review 1 lands")
+        fz.REPO = repo.root
+        # judged at this HEAD, where review 1 is the latest: admitted
+        self.assertEqual(fz.review_file_problems(once), ([], study.rel("verification", "prefreeze-1.md")))
         (ver / "notes.md").write_text("not a report\n")
         none = repo.commit("slice 04: no report")
-        (ver / "prefreeze-2.md").write_text("review 2\n")
+        (ver / "prefreeze-2.md").write_text(ruled)
         twice = repo.commit("slice 05: review 2 lands")
-        (ver / "prefreeze-2.md").write_text("review 2, re-committed\n")
+        (ver / "prefreeze-2.md").write_text(ruled + "re-committed\n")
         repo.commit("slice 06: review 2 again")
-        (ver / "prefreeze-3.md").write_text("review 3\n")
-        (ver / "prefreeze-4.md").write_text("review 4\n")
+        (ver / "prefreeze-3.md").write_text(ruled)
+        (ver / "prefreeze-4.md").write_text(ruled)
         two = repo.commit("slice 07: two reports in one commit")
-        fz = gap_module("freeze")
-        fz.REPO = repo.root
-        self.assertEqual(fz.review_file_problems(once), ([], study.rel("verification", "prefreeze-1.md")))
+        (ver / "prefreeze-5.md").write_text("review 5\n\n**Ruling: DO NOT FREEZE.**\n")
+        refused = repo.commit("slice 08: review 5 refuses")
         self.assertTrue(fz.review_file_problems(none)[0], "a commit landing no review report seeded the order")
         self.assertTrue(any("committed 2 times" in p for p in fz.review_file_problems(twice)[0]))
         self.assertTrue(any("lands 2" in p for p in fz.review_file_problems(two)[0]))
+        # ROUND 2, CP8 (review 1 follow-up): the seed must have ruled for the freeze, and be the latest review
+        self.assertTrue(any("no `**Ruling: DO FREEZE.**` line" in p for p in fz.review_file_problems(refused)[0]),
+                        "a review that ruled against the freeze seeded it")
+        self.assertTrue(any("not the latest review committed" in p for p in fz.review_file_problems(once)[0]),
+                        "an earlier review seeded the freeze past a later one")
 
 
 class TheThreatModelAndLimitationsAreStated(unittest.TestCase):

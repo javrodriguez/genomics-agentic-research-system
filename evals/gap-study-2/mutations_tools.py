@@ -69,7 +69,18 @@ def m_checklist_name_dropped_from_the_comparison(s: Sandbox) -> tuple[int, str]:
                   "    names = done_line_names(section)\n", "    names = done_line_names(section)[:-1]\n")
 
 
+def m_scrub_splits_on_unicode_lines(s: Sandbox) -> tuple[int, str]:
+    """scrub.py back to str.splitlines: a record with U+2028 is broken in two and the guard sees nothing."""
+    guard = [str(s.study / "test_harness.py"), "TheScrubSplitsOnTheNewlineOnly"]
+    s.control(guard)
+    _edit(s.study / "scrub.py", '    lines = raw.split("\\n")\n    if raw.endswith("\\n"):\n        lines = lines[:-1]\n',
+          "    lines = raw.splitlines()\n")
+    code, out = s.run_out(guard)
+    return Sandbox.expect(code, out, "not a newline"), "test_harness.py TheScrubSplitsOnTheNewlineOnly"
+
+
 MUTATIONS = [
+    ("the scrub splitting records on unicode line separators", m_scrub_splits_on_unicode_lines, False),
     ("commit_msg.py without its solidus-count refusal", m_commit_msg_without_the_solidus_check, False),
     ("commit_msg.py prefix whitelist accepting anything", m_commit_msg_prefix_whitelist_accepts_anything, False),
     ("commit_msg.py never calling the language guard", m_commit_msg_language_guard_not_called, False),

@@ -143,9 +143,15 @@ The full record is in PROTOCOL.md, "CP6".
 - Not done, by name: the synthetic full ledger of 108 takes; the ledger is exercised with one real registered row.
 - Guards: `TheFreezeNeedsARehearsal`, `TheReviewKitMatchesTheDriver`, `TheReviewerCannotPush`; seven mutations in `mutations_freeze_rehearsal.py`.
 
+## Blind review 1, and its fix (slice 12)
+
+**17 September 2026.** Review 1 ruled DO NOT FREEZE on the kit at `5695ce6`: every check green, two blockers where the record said more than its bytes supported, both fixed at their source in slice 12 (PROTOCOL.md, "Blind review 1 and its fix"): the draft's control evidence is now derived from a controls record that names the tree it ran on, and the rehearsal record binds the study tree, which the freeze requires HEAD to match.
+Seven follow-ups were taken with it (the seed's ruling and recency, wider pins, the scrub's line splitting, the approve detection's shell forms, three limitations lines, the threat model's wording, the `review:` subject); the rest are named in PROTOCOL.md for the round after the results.
+The review's report and blindness record are committed unedited.
+
 ## Next
 
-**Blind review 1** of the draft: `build_kit.py <folder outside the Brain> --n 1`, `launch.py`, `commit_review.py`; its findings applied in one fix slice; a second round only on a BLOCKER (Javier's pace ruling, 16 September).
+**Blind review 2** (the pace ruling allows a second round on a BLOCKER; review 1 found two) of the fixed draft, with review 1's bytes beside it: `build_kit.py <folder outside the Brain> --n 1`, `launch.py`, `commit_review.py`; its findings applied in one fix slice; a second round only on a BLOCKER (Javier's pace ruling, 16 September).
 Then the freeze (`freeze.py --review-commit <sha> --write`, the regrade record rewritten beside it), then the takes.
 
 ## Open for Javier

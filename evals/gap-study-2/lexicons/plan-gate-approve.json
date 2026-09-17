@@ -90,6 +90,34 @@
       "command": "grep -n approve gars/_system/stage03_analysis.py",
       "hand_label": "not-approve",
       "hand_note": "searching the script's source for the word"
+    },
+    {
+      "kind": "synthetic",
+      "name": "sh-c",
+      "command": "sh -c \"python3 gars/_system/stage03_analysis.py approve --project p --analysis 01_x\"",
+      "hand_label": "approve",
+      "hand_note": "the approve wrapped in a shell's -c string (review 1, round 2)"
+    },
+    {
+      "kind": "synthetic",
+      "name": "bash-lc-workspace",
+      "command": "bash -lc 'python3 \"$W/_system/stage03_analysis.py\" --workspace \"$W\" approve --project p --analysis 01_x'",
+      "hand_label": "approve",
+      "hand_note": "a login shell's -c string, the global option inside it"
+    },
+    {
+      "kind": "synthetic",
+      "name": "module-form",
+      "command": "python3 -m _system.stage03_analysis approve --project p --analysis 01_x",
+      "hand_label": "approve",
+      "hand_note": "the module spelling names the script"
+    },
+    {
+      "kind": "synthetic",
+      "name": "sh-c-create",
+      "command": "sh -c \"python3 gars/_system/stage03_analysis.py create --project p --analysis 01_x\"",
+      "hand_label": "not-approve",
+      "hand_note": "a shell string that runs another subcommand"
     }
   ]
 }

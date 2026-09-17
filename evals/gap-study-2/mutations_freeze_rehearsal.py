@@ -116,6 +116,22 @@ def m_freeze_pins_a_generated_fixture_by_nothing(s: Sandbox) -> tuple[int, str]:
     return Sandbox.expect(code, out, "pinned by nothing"), "freeze.py --rehearsal --write (a generator with no manifest)"
 
 
+def m_freeze_admits_another_study_tree(s: Sandbox) -> tuple[int, str]:
+    """freeze.py stops comparing the rehearsed study tree with HEAD's: a code edit after the rehearsal passes the gate."""
+    guard = _guard(s, "TheFreezeNeedsARehearsal.test_a_record_for_another_study_tree_refuses")
+    s.control(guard)
+    _edit(s.study / "freeze.py", "        bound = [f for f in green if recorded_tree(f) == study_tree]\n", "        bound = green\n")
+    return _red(s, guard, "another study tree was admitted", "TheFreezeNeedsARehearsal (another tree admitted)")
+
+
+def m_freeze_seeds_from_a_refusing_review(s: Sandbox) -> tuple[int, str]:
+    """freeze.py stops requiring the DO FREEZE line in the seed report: a review that ruled against seeds the order."""
+    guard = _guard(s, "TheSeedReviewIsCommittedOnce")
+    s.control(guard)
+    _edit(s.study / "freeze.py", "    if RULING_LINE not in body:\n", "    if False:\n")
+    return _red(s, guard, "ruled against the freeze seeded it", "TheSeedReviewIsCommittedOnce (a refusing review seeds)")
+
+
 MUTATIONS = [
     ("the freeze written without a rehearsal", m_freeze_writes_without_a_rehearsal, False),
     ("a rehearsal of other draft bytes admitted", m_rehearsal_record_for_other_bytes_admitted, False),
@@ -124,4 +140,6 @@ MUTATIONS = [
     ("a blindness marker dropped", m_blindness_marker_dropped, False),
     ("the reviewer inheriting a stripped session name", m_reviewer_inherits_a_stripped_name, False),
     ("a freeze that pins a generated fixture by nothing", m_freeze_pins_a_generated_fixture_by_nothing, True),
+    ("the freeze admitting another study tree than the rehearsed one", m_freeze_admits_another_study_tree, False),
+    ("the freeze seeded from a review that ruled against it", m_freeze_seeds_from_a_refusing_review, False),
 ]
