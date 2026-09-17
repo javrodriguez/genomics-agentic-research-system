@@ -1698,3 +1698,10 @@ The comparison heading stands empty for the owner at gate 3, and the README carr
 **Gate 1.**
 The results commit is local and unpushed; the brief for the owner is `verification/gate-1-brief.md`.
 
+### Round 2 ruling 6 — 2026-09-17 — gate 1 closed by the owner: publish as graded
+
+The run stopped at gate 1 with the results commit local, the brief written, and every local check green, and put the results to the owner.
+Javier answered "I approve" in the run's own window on 17 September 2026.
+The results are published as the frozen instrument scored them, with the published section as written and the comparison heading empty; gate 3, the comparative sentence, stays the owner's.
+Also recorded in the goal file's Rulings: the standing ruling 1A of the same day for the one public sentence the push scanner reads as a key, under which six findings in round 2's transcripts were verified and recorded.
+

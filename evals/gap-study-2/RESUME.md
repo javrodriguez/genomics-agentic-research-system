@@ -195,7 +195,7 @@ The review's report and blindness record are committed unedited.
 
 ## Next
 
-**Gate 1**: the results commit waits, unpushed, for the owner's word on `verification/gate-1-brief.md`; then the push, CI, gate 3's sentence (the owner's), the final verifier from a fresh clone, and the done commit.
+**Gate 1 is closed** (Javier: "I approve", 17 September 2026): the results are published as graded and pushed. Next: gate 3's sentence (the owner's, or the heading stays empty), the final verifier from a fresh clone, and the done commit.
 
 The old plan text below described the takes as next: in the frozen order, each registered with `takes.py --add`, driven by `drive.py`, checked by `check_take.py`, committed as `take:` with CI read on every push; then `analyse.py`, the publication, gate 1 and the final verifier.
 The old text below this line described the review that has now happened: `build_kit.py <folder outside the Brain> --n 1`, `launch.py`, `commit_review.py`; its findings applied in one fix slice; a second round only on a BLOCKER (Javier's pace ruling, 16 September).
