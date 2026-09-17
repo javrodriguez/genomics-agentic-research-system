@@ -1,3 +1,6 @@
+This table grades agent behaviour on 3 pre-registered tasks. It is not the reproduction campaign, which scores pipeline output and lives in docs/RESULTS.md.
+That first sentence describes Layer B, the first study, further down this page; the Gap Study, directly below, grades six task pairs on three Claude models.
+
 # The Gap Study, round 2
 
 <!-- gap-study-2:summary -->
@@ -29,7 +32,7 @@ Six task pairs, three takes per half per model, frozen at [`69b7a94`](https://gi
 - n = 3 separates a stable behaviour from a single draw only as counts.
 - Takes are scripted, no operator asymmetry; models by id only.
 - Harness Claude Code 2.1.267; re-running needs it and the pinned driver; no `RECIPE.md`.
-- Seven amendments since the freeze, none touching a grader, label, count or order; see `amendments[]`.
+- Eight amendments since the freeze, none touching a grader, label, count or order; see `amendments[]`.
 <!-- /gap-study-2:summary -->
 
 ### The instruments differ: round 1's counts are printed beside round 2's, not pooled
@@ -92,13 +95,9 @@ python3 evals/gap-study-2/run.py --all                         # regrades each c
 python3 evals/gap-study-2/analyse.py                           # the pre-registered analysis
 ```
 
-The pre-registration carries its amendments in `amendments[]`, each with every changed file's hash before and after, and each written up in [`evals/gap-study-2/PROTOCOL.md`](../evals/gap-study-2/PROTOCOL.md).
-The summary above was written when seven amendments stood; an eighth, in the battery's own fixtures, landed after it, and the section is append-only from its first commit, so the count that binds is `amendments[]` in the frozen file. Four blind reviews preceded the freeze; their reports are under [`evals/gap-study-2/verification/`](../evals/gap-study-2/verification/) as committed.
+The pre-registration carries its amendments in `amendments[]`, each with every changed file's hash before and after, and each written up in [`evals/gap-study-2/PROTOCOL.md`](../evals/gap-study-2/PROTOCOL.md). Four blind reviews preceded the freeze; their reports are under [`evals/gap-study-2/verification/`](../evals/gap-study-2/verification/) as committed.
 
 <!-- /gap-study-2 -->
-
-This table grades agent behaviour on 3 pre-registered tasks. It is not the reproduction campaign, which scores pipeline output and lives in docs/RESULTS.md.
-That first sentence describes Layer B, the first study, further down this page; the Gap Study, directly below, grades six task pairs on three Claude models.
 
 # The Gap Study
 
