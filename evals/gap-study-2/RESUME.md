@@ -197,9 +197,14 @@ The review's report and blindness record are committed unedited.
 
 **17 September 2026, with the results on disk.** The five results-dependent mutations ran their live guards in sandboxes without the history those guards read; they now run in git sandboxes, with a commit after the freeze where the guard scans commit bodies, amendment 8 (PROTOCOL.md, "Amendment 8").
 
+## Amendment 9 (slice 29)
+
+**17 September 2026, after the final verifier's first report.** `analyse.py` now prints every prediction beside its outcome and the round-1-beside-round-2 side-by-side under the plan's heading, and carries the rows in `analysis.json`; a live test binds the published table to them; the allowlist excuses the one numstat line in the verifier's report, committed unedited; amendment 9 (PROTOCOL.md, "Amendment 9").
+The write-ups of amendments 4 to 8 now each state their regrade.
+
 ## Next
 
-**Gate 1 is closed** (Javier: "I approve", 17 September 2026): the results are published as graded and pushed. Gate 3 is closed too (Javier: "1A"): the drafted sentence is published under the comparison heading. Next: the final verifier from a fresh clone, and the done commit.
+**Gate 1 is closed** (Javier: "I approve", 17 September 2026): the results are published as graded and pushed. Gate 3 is closed too (Javier: "1A"): the drafted sentence is published under the comparison heading. The final verifier's first report is in (`verification/verifier-1.md`: 11 PASS, 4 FAIL as written). Lines 2 and 9 are fixed at source by amendment 9 and the regrade statements; lines 5 and 6 read the planned counts (108 rows, exit 0 for all 108) against what happened (112 rows: 106 graded and 6 rehearsals; one capped cell) and are the owner's to rule. Next: the owner's word on lines 5 and 6, a second verifier from a fresh clone, and the done commit.
 
 The old plan text below described the takes as next: in the frozen order, each registered with `takes.py --add`, driven by `drive.py`, checked by `check_take.py`, committed as `take:` with CI read on every push; then `analyse.py`, the publication, gate 1 and the final verifier.
 The old text below this line described the review that has now happened: `build_kit.py <folder outside the Brain> --n 1`, `launch.py`, `commit_review.py`; its findings applied in one fix slice; a second round only on a BLOCKER (Javier's pace ruling, 16 September).

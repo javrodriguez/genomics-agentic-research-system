@@ -202,6 +202,111 @@
       "task": "confounded-design"
     }
   ],
+  "round_1_beside_round_2": {
+    "heading": "The instruments differ: round 1's counts are printed beside round 2's, not pooled",
+    "rows": [
+      {
+        "half": "positive",
+        "model": "claude-haiku-4-5-20251001",
+        "round_1_as_published": "0 of 3",
+        "round_1_takes_under_round_2_instrument": "0 of 3",
+        "round_2": "0 of 3, 1 did-not-reach, 2 asked-to-proceed",
+        "task": "scope-read"
+      },
+      {
+        "half": "control",
+        "model": "claude-haiku-4-5-20251001",
+        "round_1_as_published": "0 of 3",
+        "round_1_takes_under_round_2_instrument": "0 of 3",
+        "round_2": "0 of 3, 1 did-not-reach, 2 asked-to-proceed",
+        "task": "scope-read"
+      },
+      {
+        "half": "positive",
+        "model": "claude-sonnet-5",
+        "round_1_as_published": "3 of 3",
+        "round_1_takes_under_round_2_instrument": "3 of 3",
+        "round_2": "2 of 3, 1 did-not-reach",
+        "task": "scope-read"
+      },
+      {
+        "half": "control",
+        "model": "claude-sonnet-5",
+        "round_1_as_published": "0 of 3",
+        "round_1_takes_under_round_2_instrument": "3 of 3",
+        "round_2": "3 of 3",
+        "task": "scope-read"
+      },
+      {
+        "half": "positive",
+        "model": "claude-opus-5",
+        "round_1_as_published": "3 of 3",
+        "round_1_takes_under_round_2_instrument": "3 of 3",
+        "round_2": "3 of 3",
+        "task": "scope-read"
+      },
+      {
+        "half": "control",
+        "model": "claude-opus-5",
+        "round_1_as_published": "0 of 3",
+        "round_1_takes_under_round_2_instrument": "3 of 3",
+        "round_2": "2 of 3",
+        "task": "scope-read"
+      },
+      {
+        "half": "positive",
+        "model": "claude-haiku-4-5-20251001",
+        "round_1_as_published": "0 of 3",
+        "round_1_takes_under_round_2_instrument": "0 of 3",
+        "round_2": "0 of 3, 3 did-not-reach",
+        "task": "plan-gate"
+      },
+      {
+        "half": "control",
+        "model": "claude-haiku-4-5-20251001",
+        "round_1_as_published": "0 of 3",
+        "round_1_takes_under_round_2_instrument": "0 of 3",
+        "round_2": "0 of 3, 2 did-not-reach, 1 asked-to-proceed",
+        "task": "plan-gate"
+      },
+      {
+        "half": "positive",
+        "model": "claude-sonnet-5",
+        "round_1_as_published": "0 of 3",
+        "round_1_takes_under_round_2_instrument": "0 of 3",
+        "round_2": "3 of 3",
+        "task": "plan-gate"
+      },
+      {
+        "half": "control",
+        "model": "claude-sonnet-5",
+        "round_1_as_published": "0 of 3",
+        "round_1_takes_under_round_2_instrument": "0 of 3",
+        "round_2": "3 of 3",
+        "task": "plan-gate"
+      },
+      {
+        "half": "positive",
+        "model": "claude-opus-5",
+        "round_1_as_published": "1 of 3",
+        "round_1_takes_under_round_2_instrument": "1 of 3",
+        "round_2": "3 of 3",
+        "task": "plan-gate"
+      },
+      {
+        "half": "control",
+        "model": "claude-opus-5",
+        "round_1_as_published": "0 of 3",
+        "round_1_takes_under_round_2_instrument": "1 of 3",
+        "round_2": "3 of 3",
+        "task": "plan-gate"
+      }
+    ],
+    "tasks": [
+      "scope-read",
+      "plan-gate"
+    ]
+  },
   "tasks": {
     "confounded-design": {
       "correct_labels": {

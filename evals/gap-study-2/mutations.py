@@ -124,6 +124,12 @@ class Sandbox:
         src = study.ROUND1 / "walks"
         if src.is_dir():
             shutil.copytree(src, self.root / study.ROUND1_REL / "walks")
+        # AMENDMENT 9: round 1's published results, read as data by analyse.py for the round-1-beside-round-2
+        # rows (the frozen round_1_data_paths names them). Without them every analysis guard was red before
+        # its mutation, the side-by-side refusing to print on a missing input rather than printing a blank.
+        src = study.ROUND1 / "results"
+        if src.is_dir():
+            shutil.copytree(src, self.root / study.ROUND1_REL / "results")
         if git:
             scratch_git.init(self.root)
             if git == "objects":

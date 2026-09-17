@@ -4,9 +4,11 @@
     python3 evals/gap-study-2/analyse.py
     python3 evals/gap-study-2/analyse.py --json > analysis.json
 
-WHAT IT READS. `results/` and the frozen pre-registration. Nothing else. It never opens a
-transcript, so it cannot re-decide a label, and it never opens the ledger, so it cannot re-decide a
-cell's state. Everything it prints is a function of numbers somebody else derived.
+WHAT IT READS. `results/`, the frozen pre-registration, and for the round-1-beside-round-2
+comparison, round 1's published results and the committed regrade records under
+`verification/round1-regrade/`, as data. Nothing else. It never opens a transcript, so it cannot
+re-decide a label, and it never opens the ledger, so it cannot re-decide a cell's state. Everything
+it prints is a function of numbers somebody else derived.
 
 THE TWO DEFINITIONS, APPLIED HERE AND NOWHERE ELSE.
 
@@ -27,6 +29,13 @@ cell of this study was informed by the first study's pilot, and a prediction tha
 behaviour it predicts is not the same evidence as one that had not. A prediction for a cell that
 never ran is printed as `not run` and never scored -- a prediction resolved against no data is not
 a prediction that was right.
+
+THE ROUND-1-BESIDE-ROUND-2 COMPARISON (amendment 9). The frozen plan names two tasks whose
+instrument round 2 fixed, and asks for round 1's published `k of n` per half beside round 2's, under
+one heading, with no sentence comparing them. Three columns per row: round 1 as published (round 1's
+results file), round 1's takes under round 2's instrument (the regrade record's per-take verdicts,
+counted), and round 2 (this study's results file, in the published cell's spelling). The rows are
+printed and carried in the JSON; the heading is the plan's, read from it, never typed here.
 
 No model, no network, stdlib only.
 """
@@ -185,7 +194,74 @@ def analyse() -> dict:
         "models_that_hold_each_enforced_task": enforced_held,
         "models_that_cover_each_silent_task": silent_covered,
         "predictions": preds,
+        # ROUND 2, AMENDMENT 9: the pre-registered side-by-side, carried here so the published table can be read
+        # against a file that is regenerated, and printed under its heading below.
+        "round_1_beside_round_2": round_1_beside_round_2(pre, results),
     }
+
+
+# ROUND 2, AMENDMENT 9. Round 1's tree is read as data only (`round_1_data_paths`), and the regrade record
+# for each fixed task is the committed one under verification/round1-regrade/.
+ROUND_1_RESULTS = HERE.parent / "gap-study" / "results"
+REGRADE_RECORDS = {"scope-read": HERE / "verification" / "round1-regrade" / "scope-read-control.json",
+                   "plan-gate": HERE / "verification" / "round1-regrade" / "plan-gate.json"}
+
+
+def round_1_beside_round_2(pre: dict, results: dict[str, dict]) -> dict:
+    """The pre-registered side-by-side for the two fixed tasks: per model and half, round 1's published count,
+    the count of round 1's takes the round-2 instrument reads as correct, and round 2's published cell.
+
+    Counts only, in `k of n`; no verdict, no verb, no sentence comparing the rounds. A missing input is an
+    error, never an empty row: the plan promised the comparison and a blank would read as one.
+    """
+    plan = pre["analysis_plan"]["round_1_beside_round_2"]
+    rows = []
+    for tid in plan["tasks"]:
+        r1_path = ROUND_1_RESULTS / f"{tid}.json"
+        rg_path = REGRADE_RECORDS.get(tid)
+        if not r1_path.is_file() or rg_path is None or not rg_path.is_file():
+            raise SystemExit(f"round-1-beside-round-2: no round 1 results file or regrade record for {tid}")
+        r1 = json.loads(r1_path.read_text())
+        regrade = json.loads(rg_path.read_text())
+        r2 = results.get(tid)
+        for model in prereg.models():
+            for half in ("positive", "control"):
+                c1 = r1["cells"].get(model, {}).get(half)
+                under = [x for x in regrade["takes"] if x["model"] == model and x["half"] == half]
+                c2 = (r2 or {}).get("cells", {}).get(model, {}).get(half) if r2 else None
+                rows.append({
+                    "task": tid, "model": model, "half": half,
+                    "round_1_as_published": f"{c1['k']} of {c1['n']}" if c1 else "not run",
+                    "round_1_takes_under_round_2_instrument":
+                        f"{sum(1 for x in under if x['round_2_verdict'] == 'correct')} of {len(under)}" if under else "not run",
+                    "round_2": (published_cell(c2) if c2["state"].startswith(RAN) else c2["state"]) if c2
+                               else "not run — no cell",
+                })
+    return {"heading": plan["heading"], "tasks": list(plan["tasks"]), "rows": rows}
+
+
+def round_1_beside_round_2_lines(block: dict) -> list[str]:
+    """The comparison as printed: the plan's heading, then one row per task, model and half, counts only."""
+    lines = [block["heading"]]
+    lines.append(f"  {'task':20} {'model':28} {'half':9} {'round 1 as published':22} "
+                 f"{'round 1 under round 2 instrument':34} round 2")
+    for r in block["rows"]:
+        lines.append(f"  {r['task']:20} {r['model']:28} {r['half']:9} {r['round_1_as_published']:22} "
+                     f"{r['round_1_takes_under_round_2_instrument']:34} {r['round_2']}")
+    return lines
+
+
+def prediction_lines(preds: list[dict]) -> list[str]:
+    """Every prediction beside its outcome, in the two columns the plan fixes: blind, then informed."""
+    lines = ["predictions beside outcomes"]
+    for basis in ("blind", "informed"):
+        rows = [p for p in preds if p["basis"] == basis]
+        lines.append(f"  {basis}: " + ("none" if not rows else ""))
+        for p in rows:
+            verdict = "not scored" if not p["scored"] else ("right" if p["right"] else "wrong")
+            lines.append(f"    {p['task']:20} {p['model']:28} predicted {p['predicted']:14} "
+                         f"outcome {p['outcome']:14} {verdict}")
+    return lines
 
 
 def comparison_lines(out: dict) -> list[str]:
@@ -251,9 +327,17 @@ def main() -> int:
         print(line)
     print()
 
+    for line in round_1_beside_round_2_lines(out["round_1_beside_round_2"]):
+        print(line)
+    print()
+
     vs = out["harness_versions"]
     print("harness versions across every graded take: "
           + (", ".join(vs) if vs else "none — no take has been graded"))
+    print()
+
+    for line in prediction_lines(out["predictions"]):
+        print(line)
     print()
 
     scored = [p for p in out["predictions"] if p["scored"]]

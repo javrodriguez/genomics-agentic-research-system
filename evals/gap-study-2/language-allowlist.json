@@ -1,1 +1,19 @@
-{"role": "Lines a person has read and ruled on. An entry matches ONLY when the file, the pattern name and the EXACT text of the line all agree, so editing the line brings the finding back. Nothing here switches a pattern off.", "excused": [{"file": "evals/gap-study-2/contract_quotes.json", "pattern": "free", "line_text": "      \"text\": \"  `stage03_analysis.py approve` has succeeded on the plan. Drafting is free; running is gated.\\n- Do **not** run `approve` before the user has read the plan and said yes to it. The command\\n  records an approval that happened in dialogue; it never substitutes for one.\"", "ruled": "2026-09-13", "why": "Re-ruled for round 2 against the copy's line text: the word sits inside a byte-exact quotation of gars/03_custom_analysis/CONTEXT.md at tree 8a54e0f8 (blob 1f93fc16), where the contract says drafting an analysis plan is free while running it is gated. It is the system under test's own sentence about its plan gate, not a claim by this study about any model's cost. The quote is pinned by blob sha and asserted as a byte substring, so it cannot be edited to satisfy this linter without breaking the binding."}]}
+{
+  "role": "Lines a person has read and ruled on. An entry matches ONLY when the file, the pattern name and the EXACT text of the line all agree, so editing the line brings the finding back. Nothing here switches a pattern off.",
+  "excused": [
+    {
+      "file": "evals/gap-study-2/contract_quotes.json",
+      "pattern": "free",
+      "line_text": "      \"text\": \"  `stage03_analysis.py approve` has succeeded on the plan. Drafting is free; running is gated.\\n- Do **not** run `approve` before the user has read the plan and said yes to it. The command\\n  records an approval that happened in dialogue; it never substitutes for one.\"",
+      "ruled": "2026-09-13",
+      "why": "Re-ruled for round 2 against the copy's line text: the word sits inside a byte-exact quotation of gars/03_custom_analysis/CONTEXT.md at tree 8a54e0f8 (blob 1f93fc16), where the contract says drafting an analysis plan is free while running it is gated. It is the system under test's own sentence about its plan gate, not a claim by this study about any model's cost. The quote is pinned by blob sha and asserted as a byte substring, so it cannot be edited to satisfy this linter without breaking the binding."
+    },
+    {
+      "file": "evals/gap-study-2/verification/verifier-1.md",
+      "pattern": "hundred",
+      "line_text": "100\t0\tdocs/EVALS.md                       (100 added, 0 removed; removed-line count 0)",
+      "ruled": "2026-09-17",
+      "why": "The final verifier's report is committed unedited, and this line is git's own numstat output quoted in it: the count of lines docs/EVALS.md gained since the kickoff happened to be exactly one hundred. A count of added lines, not a rate."
+    }
+  ]
+}

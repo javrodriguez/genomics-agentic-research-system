@@ -2733,6 +2733,30 @@ class ThePublishedAnalysisIsRegeneratedLive(unittest.TestCase):
         self.assertEqual(ANALYSIS_JSON.read_text(), out.stdout)
 
 
+class ThePublishedSideBySideIsWhatAnalyseWritesLive(unittest.TestCase):
+    """AMENDMENT 9. The round-1-beside-round-2 table under its heading in the published section is the one
+    analyse.py writes (`round_1_beside_round_2.rows` in analysis.json), row for row and cell for cell. Before
+    this the table was typed from the same files by hand and nothing re-derived it, so an edited count in
+    the published table was refused by nothing but a reader with both files open."""
+
+    def test_the_table_is_the_analysis_rows(self):
+        live_section(self)
+        rows = json.loads(ANALYSIS_JSON.read_text())["round_1_beside_round_2"]
+        lines = EVALS_MD.read_text().splitlines()
+        heading = "### " + rows["heading"]
+        self.assertIn(heading, lines, "the published section carries no heading for the side-by-side")
+        start = lines.index(heading)
+        table = []
+        for ln in lines[start + 1:]:
+            if ln.startswith("### ") or ln.startswith("# "):
+                break
+            if ln.startswith("| `"):
+                table.append([c.strip().strip("`") for c in ln.strip("|").split("|")])
+        want = [[r["task"], r["model"], r["half"], r["round_1_as_published"],
+                 r["round_1_takes_under_round_2_instrument"], r["round_2"]] for r in rows["rows"]]
+        self.assertEqual(table, want, "the published side-by-side table is not what analyse.py writes")
+
+
 class TheFrozenFileMovesOnlyByAmendment(unittest.TestCase):
     """AMENDMENT 4, checklist line 12's "a moved threshold after the freeze". The pins covered the files
     the frozen file names and not the frozen file, so a criterion edited after the freeze was refused by

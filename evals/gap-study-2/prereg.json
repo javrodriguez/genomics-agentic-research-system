@@ -2459,7 +2459,7 @@
     {
       "path": "evals/gap-study-2/mutations.py",
       "git_blob_sha": "880f20e2e409e49bc545761cfc86cdf86e45a2fe",
-      "sha256": "93f35c382558ff1acdf4ea2ee4e0577df8fd3204435a3601694e9a6b05de0201",
+      "sha256": "7216669a07e184e7cc2ac9727a3e9fd23bd3450b4dd9612984c10d01c3ae4d42",
       "uncommitted": false
     },
     {
@@ -2813,7 +2813,7 @@
     {
       "path": "evals/gap-study-2/analyse.py",
       "git_blob_sha": "91d80a916b9efb9ae3f05084d2473b707b03e3db",
-      "sha256": "bfa927c39bc111df3c19e802cabedc05c2b5e9d65cba6ed7d8fb4ef80c3b3a9c",
+      "sha256": "25a2bc3868e87cb7abf4bacb7912f6c2a045290eb87fe4bafbf08e2405024dd8",
       "uncommitted": false
     },
     {
@@ -2879,13 +2879,13 @@
     {
       "path": "evals/gap-study-2/test_harness.py",
       "git_blob_sha": "bfe28655cf0de5d22f5962df23050a11dbc33188",
-      "sha256": "0ccd0ba969dab043c3cf495d8ec780ce937806d44a538f27259a472898619ad2",
+      "sha256": "5e9d0392f95c2a6638c98d15f4a215a57b2f46d60892330be14ddef0309fec18",
       "uncommitted": false
     },
     {
       "path": "evals/gap-study-2/mutations.py",
       "git_blob_sha": "880f20e2e409e49bc545761cfc86cdf86e45a2fe",
-      "sha256": "93f35c382558ff1acdf4ea2ee4e0577df8fd3204435a3601694e9a6b05de0201",
+      "sha256": "7216669a07e184e7cc2ac9727a3e9fd23bd3450b4dd9612984c10d01c3ae4d42",
       "uncommitted": false
     },
     {
@@ -2909,7 +2909,7 @@
     {
       "path": "evals/gap-study-2/language-allowlist.json",
       "git_blob_sha": "de4c6250281b74799ad0177a3da246ffbf52e9b6",
-      "sha256": "a6cd1655508f6af3a69de7fa3dfe18a67aa8dcf57b9b57d9ce072b95234a12c3",
+      "sha256": "4ce9104a215ff1ada8d5883c7e28bc5aee151bf73d06a648133f358c09802248",
       "uncommitted": false
     },
     {
@@ -3783,6 +3783,35 @@
           "path": "evals/gap-study-2/mutations_hygiene.py",
           "sha256_before": "41bea313c674298577e677e8b51b1b19998b882d323dc52ab84c407e30918fe4",
           "sha256_after": "eb5ab3592509e0637305a373c6782fd57833ec0ae6488c0a7fdd0ded34411c55"
+        }
+      ]
+    },
+    {
+      "n": 9,
+      "date": "2026-09-17",
+      "before_any_take": false,
+      "graded_takes_at_the_time": "106 of 108 planned; every planned take attempted",
+      "why": "The final verifier's first report ruled done-line 9 FAIL as written: analyse.py printed the prediction totals and the two set comparisons, and carried each prediction beside its outcome only in its JSON, and it printed no round-1-beside-round-2 comparison under the plan's heading; that table stood in docs/EVALS.md alone, typed from the same files, re-derived by nothing. analyse.py now prints every prediction beside its outcome in the plan's two columns, and prints and carries the pre-registered side-by-side for the two fixed tasks under the plan's heading, read from round 1's published results, the committed regrade records and this study's results; the published table is bound to those rows by a live test that is red on one edited count. The same report is committed unedited and quotes git's own numstat line for docs/EVALS.md, whose added-line count happens to be exactly one hundred; the language guard reads that as a hundred, so the pinned allowlist excuses that one line by its exact text. No grader, label, count, criterion, definition or take order is touched; every results file and analysis.json's earlier keys are byte-identical. The battery's sandbox copied round 1's walks and not its results, so every analysis guard was red before its mutation once analyse.py read them; the sandbox now copies round 1's results too, as data, and the four analysis mutations are red after a green control.",
+      "files": [
+        {
+          "path": "evals/gap-study-2/analyse.py",
+          "sha256_before": "bfa927c39bc111df3c19e802cabedc05c2b5e9d65cba6ed7d8fb4ef80c3b3a9c",
+          "sha256_after": "25a2bc3868e87cb7abf4bacb7912f6c2a045290eb87fe4bafbf08e2405024dd8"
+        },
+        {
+          "path": "evals/gap-study-2/test_harness.py",
+          "sha256_before": "0ccd0ba969dab043c3cf495d8ec780ce937806d44a538f27259a472898619ad2",
+          "sha256_after": "5e9d0392f95c2a6638c98d15f4a215a57b2f46d60892330be14ddef0309fec18"
+        },
+        {
+          "path": "evals/gap-study-2/language-allowlist.json",
+          "sha256_before": "a6cd1655508f6af3a69de7fa3dfe18a67aa8dcf57b9b57d9ce072b95234a12c3",
+          "sha256_after": "4ce9104a215ff1ada8d5883c7e28bc5aee151bf73d06a648133f358c09802248"
+        },
+        {
+          "path": "evals/gap-study-2/mutations.py",
+          "sha256_before": "93f35c382558ff1acdf4ea2ee4e0577df8fd3204435a3601694e9a6b05de0201",
+          "sha256_after": "7216669a07e184e7cc2ac9727a3e9fd23bd3450b4dd9612984c10d01c3ae4d42"
         }
       ]
     }

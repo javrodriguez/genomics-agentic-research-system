@@ -5,7 +5,7 @@
     "bill": "evals/gap-study-2/costs.py read_environments and bill_line, with row_commits replaced by an empty map",
     "script": "evals/gap-study-2/verification/round1-regrade/regrade_environment.py",
     "pre_registration": "evals/gap-study-2/prereg.json",
-    "pre_registration_sha256": "4de34392207dd6ca30877cc1f1a5369d91682ee5c6a8639840d62d2792d7b368",
+    "pre_registration_sha256": "6c2fb8ed802f87f66c05835cb75c0a41106a6c3433c98d9c12bb6faa34b97314",
     "round_1_takes": "evals/gap-study/takes.json",
     "round_1_transcripts": "evals/gap-study/transcripts/<task>/<half>/<model>/<take>/",
     "row_commit": "not bound: a missing record is refused before the row commit is compared, so no round-1 history is read"

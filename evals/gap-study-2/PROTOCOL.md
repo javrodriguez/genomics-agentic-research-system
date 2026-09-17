@@ -1655,6 +1655,8 @@ Three amendments in the first two hours after the freeze, all in the study's own
 At row 50 the loop stopped on its own lint again: the costs table's first six-figure token count, written with a comma every three digits, matched the `hundred` rule through the three digits before the comma.
 `lint_language.py` is pinned, so the rule's change is amendment 4: a comma followed by three digits is inside a number; a bare hundred before a comma in prose is still refused; the guard's test gains both cases.
 No grader, label, count, criterion or take order is touched; 48 takes were graded when it landed.
+Regrades side by side: the graders did not move, so the labels before and after this amendment are the same set, and `check_results.py --regrade` re-derives every results file byte-identical; 48 takes were graded when it landed.
+
 
 ### Amendment 5 (slice 22) — 2026-09-17 — a temp root is known by its shape, whichever machine checks
 
@@ -1662,6 +1664,8 @@ CI's ledger check refused the first batch of takes at row 26, a plan-gate positi
 The temp-root rule read only the checking machine's temp folder; it now also knows a temp root by its shape (`/var/folders/<xx>/<random>/T`, with its `/private` spelling), so the Mac's routing of row 26 reads the same on Linux, and the leak tests gain that case.
 `check_take.py` and `tests_leak.py` are pinned and move by amendment 5.
 No grader, label, count, criterion or take order is touched; row 26 stays a rehearsal, as the Mac filed it, and its cell was retried as row 27.
+Regrades side by side: the checker's temp-root rule refuses the same attempts on every machine now and the Mac's routing stands, so the labels before and after are the same set; `check_results.py --regrade` re-derives every results file byte-identical.
+
 
 ### Amendment 6 (slice 23) — 2026-09-17 — a hundred in the study's own count form is a count
 
@@ -1669,6 +1673,8 @@ At the hundredth graded take the costs table's dollar line read "evidenced by 10
 The rule now leaves a hundred alone where ` of ` follows or precedes it, the study's own `k of n` form; a bare hundred elsewhere is still refused, and the guard's test gains both cases.
 `lint_language.py` and `test_harness.py` are pinned and move by amendment 6.
 No grader, label, count, criterion or take order is touched.
+Regrades side by side: the graders did not move, so the labels before and after are the same set, and `check_results.py --regrade` re-derives every results file byte-identical.
+
 
 ### Amendment 7 (slice 24) — 2026-09-17 — no committed lines in this round, read as none
 
@@ -1676,6 +1682,8 @@ Read before the first results file existed, while the last take ran: the live tw
 The test now reads an absent field as no committed line, which is what this round has; the fixture test of the same mechanism is unchanged.
 `test_harness.py` is pinned and moves by amendment 7.
 No grader, label, count, criterion or take order is touched.
+Regrades side by side: no results file existed before it and the graders did not move, so there is nothing that could differ; `check_results.py --regrade` re-derives every results file byte-identical once they exist.
+
 
 ### The takes, the results and the published section (slice 25) — 2026-09-17 — gate 1 open
 
@@ -1712,8 +1720,26 @@ The five now run in git sandboxes, and the one whose guard scans commit bodies m
 The three not-applicable entries for those live classes, whose condition was that no results file existed, are removed as their own rule says, the five mutations being theirs; the hygiene test's flips go with them.
 `mutations.py`, `tests_hygiene.py` and `mutations_hygiene.py` are pinned and move by amendment 8; each of the five is red after a green control on this tree.
 No grader, label, count, criterion or take order is touched.
+Regrades side by side: the graders did not move, so the labels before and after are the same set, and `check_results.py --regrade` re-derives every results file byte-identical.
+
 
 ### Round 2 ruling 7 — 2026-09-17 — gate 3 closed by the owner: the comparative sentence published as drafted
 
 Javier answered "1A" in the run's own window after reading the summary block and the drafted sentence, and the sentence in the gate-1 brief stands under the comparison heading, written at gate 3 by the repository owner, from the counts above and nothing else.
 In the same pass the section moved below the first study's disclaimer line, which its harness holds to line 1 of `docs/EVALS.md`, and the summary's amendment count reads eight; the added-lines rule is a two-point diff against the kickoff, so a line the section itself added may change.
+
+
+### Amendment 9 (slice 29) — 2026-09-17 — the analysis prints what the plan promised, and the verifier's report is excused one line
+
+The final verifier's first report (`verification/verifier-1.md`, committed unedited in the next commit) ruled done-line 9 FAIL as written: `analyse.py` printed the prediction totals and the two set comparisons, carried each prediction beside its outcome only in its JSON, and printed no round-1-beside-round-2 comparison under the plan's heading.
+That table stood in `docs/EVALS.md` alone, typed from the same files and re-derived by nothing.
+`analyse.py` now prints every prediction beside its outcome in the plan's two columns, blind then informed, and prints and carries under the plan's heading the pre-registered side-by-side for `scope-read` and `plan-gate`: round 1 as published (round 1's results file), round 1's takes under round 2's instrument (the committed regrade record's per-take verdicts, counted), and round 2 (this study's results file, in the published cell's spelling).
+The twelve rows it prints are the twelve the published table carried; `analysis.json` is regenerated and its earlier keys are byte-identical.
+A live test, `ThePublishedSideBySideIsWhatAnalyseWritesLive`, binds the published table to those rows and is red on one edited count (proved on a copy of the page before this write-up).
+The same report quotes git's own numstat line for `docs/EVALS.md`, whose added-line count since the kickoff happens to be exactly one hundred; the language guard reads that as a hundred, and the report is committed as written, so the pinned allowlist excuses that one line by its exact text.
+The report also ruled done-line 2 FAIL as written because the write-ups of amendments 4 to 8 carried no regrade statement; each now states its regrade side by side, in this file, which is not pinned.
+The battery's sandbox copied round 1's walks and not its results, so once `analyse.py` read them every analysis guard was red before its mutation; the sandbox now copies round 1's results too, as data, and the four analysis mutations are red after a green control.
+`analyse.py`, `test_harness.py`, `language-allowlist.json` and `mutations.py` are pinned and move by amendment 9.
+`mutations.py` has carried two pin entries since the freeze, one from the explicit list and one from the pattern; both move, and the checker re-hashes both.
+No grader, label, count, criterion, definition or take order is touched.
+Regrades side by side: the graders did not move, so the labels before and after are the same set; `check_results.py --regrade` re-derives every results file byte-identical, and `analyse.py --json` re-derives every key `analysis.json` carried before this amendment byte-identical.
