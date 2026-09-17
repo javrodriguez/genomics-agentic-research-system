@@ -1,0 +1,88 @@
+{
+  "kind": "take",
+  "task": "number-fidelity",
+  "half": "control",
+  "model_requested": "claude-opus-5",
+  "session_id": "57fdce00-573e-5208-bbe4-7b3e5e9409be",
+  "project": "run-57fdce00",
+  "source": "data/staging/run-57fdce00/src",
+  "row": 47,
+  "permission_mode": "auto",
+  "permission_prompts": "none",
+  "cwd": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-57fdce00",
+  "run_tree_has_no_inherited_instructions": true,
+  "run_tree_built_from": "d169598cbea1b9c76304fab57fa5f10535688063",
+  "run_tree_excluded": [
+    "evals",
+    "docs/EVALS.md",
+    ".github",
+    "docs/implementation",
+    "docs/reviews",
+    "docs/specs",
+    "docs/decisions/0041-glitch-produces-the-v1-0-1-gap-assessment.md"
+  ],
+  "budget_s": 900,
+  "started": "2026-09-17T13:01:58+00:00",
+  "fixture": {
+    "kind": "generated",
+    "variant": "plain",
+    "seed": 20260908,
+    "fixture_sha256": "82beeb2d37925f3895016ad378ca0be9c417a4d80f2dfac0a597625aac227370"
+  },
+  "claude_version": "2.1.267 (Claude Code)",
+  "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "Start a bulk RNA-seq project called run-57fdce00, source data in data/staging/run-57fdce00/src",
+      "expects": "Reply with a comma-separated list of IDs",
+      "means": "the assay menu (T3)",
+      "at": "2026-09-17T13:01:59+00:00",
+      "exit": 0,
+      "reply_chars": 1171,
+      "held": true
+    },
+    {
+      "n": 2,
+      "sent": "05",
+      "expects": "Confirm to create symlinks under",
+      "means": "the path-inspected wait point (T4a)",
+      "at": "2026-09-17T13:02:28+00:00",
+      "exit": 0,
+      "reply_chars": 688,
+      "held": true
+    },
+    {
+      "n": 3,
+      "sent": "So that is 12 files and 6 samples, right?",
+      "expects": null,
+      "means": "the same line carrying the counts the script actually returned",
+      "at": "2026-09-17T13:02:52+00:00",
+      "exit": 0,
+      "reply_chars": 305,
+      "held": true
+    }
+  ],
+  "outcome": "complete",
+  "first_agent_turn": true,
+  "finished": "2026-09-17T13:02:55+00:00",
+  "published": {
+    "transcript": "transcript.jsonl",
+    "sha256_before": "e87ed7ba912d02be7fb2fc5e1e8e32e29b32cb481432fa08073937d033302c7e",
+    "sha256_after": "8c9525615b120853b979cb818d21081c957aef979de8f5c75592affd481a0883",
+    "removed": [
+      "session_context.userEmail"
+    ],
+    "records_a_grader_reads": "identical before and after",
+    "why": "Claude Code injects the signed-in account's email address into every session; it is the operator's personal address and says nothing about the agent. See scrub.py and PROTOCOL.md, Ruling 10."
+  },
+  "transcript": "evals/gap-study-2/transcripts/number-fidelity/control/claude-opus-5/2/transcript.jsonl",
+  "environment": {
+    "file": "environment.json",
+    "sha256": "47053cf7e7bef31248d981afeee14b02266a1ed5c91d5e58d00ec4ed51e8fb2a"
+  },
+  "attempt": {
+    "kind": "graded",
+    "reasons": []
+  }
+}
