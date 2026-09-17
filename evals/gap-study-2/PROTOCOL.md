@@ -1669,3 +1669,10 @@ At the hundredth graded take the costs table's dollar line read "evidenced by 10
 The rule now leaves a hundred alone where ` of ` follows or precedes it, the study's own `k of n` form; a bare hundred elsewhere is still refused, and the guard's test gains both cases.
 `lint_language.py` and `test_harness.py` are pinned and move by amendment 6.
 No grader, label, count, criterion or take order is touched.
+
+### Amendment 7 (slice 24) — 2026-09-17 — no committed lines in this round, read as none
+
+Read before the first results file existed, while the last take ran: the live two-minute-read test reads the frozen file's `committed_lines`, which round 1 carried for its local tier and round 2 never had, so it would have raised on the missing key the moment results landed.
+The test now reads an absent field as no committed line, which is what this round has; the fixture test of the same mechanism is unchanged.
+`test_harness.py` is pinned and moves by amendment 7.
+No grader, label, count, criterion or take order is touched.

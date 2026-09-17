@@ -185,6 +185,10 @@ The review's report and blindness record are committed unedited.
 
 **17 September 2026, at row 105.** The `hundred` rule read "100 of 100 environment records" as a rate; it now leaves the study's own count form alone, amendment 6 (PROTOCOL.md, "Amendment 6").
 
+## Amendment 7 (slice 24)
+
+**17 September 2026, before the results.** The live two-minute-read test read a `committed_lines` key round 2 never had; it now reads an absent field as none, amendment 7 (PROTOCOL.md, "Amendment 7").
+
 ## Next
 
 **The takes**: 108 graded sessions in the frozen order, each registered with `takes.py --add`, driven by `drive.py`, checked by `check_take.py`, committed as `take:` with CI read on every push; then `analyse.py`, the publication, gate 1 and the final verifier.

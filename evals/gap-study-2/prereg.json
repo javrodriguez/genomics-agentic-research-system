@@ -2879,7 +2879,7 @@
     {
       "path": "evals/gap-study-2/test_harness.py",
       "git_blob_sha": "bfe28655cf0de5d22f5962df23050a11dbc33188",
-      "sha256": "db884f62455dbfd7327b64641ee25360bd111c28922fa9ed78d0769c2b69666c",
+      "sha256": "0ccd0ba969dab043c3cf495d8ec780ce937806d44a538f27259a472898619ad2",
       "uncommitted": false
     },
     {
@@ -3745,6 +3745,20 @@
           "path": "evals/gap-study-2/test_harness.py",
           "sha256_before": "99911bd16182c221bfaea25a8c755bd3183dde3b44327b93b0fd231487561432",
           "sha256_after": "db884f62455dbfd7327b64641ee25360bd111c28922fa9ed78d0769c2b69666c"
+        }
+      ]
+    },
+    {
+      "n": 7,
+      "date": "2026-09-17",
+      "before_any_take": false,
+      "graded_takes_at_the_time": "106 of 108 planned",
+      "why": "Read before the first results file existed: the live two-minute-read test reads the frozen file's committed_lines, which round 1 carried for its local tier and round 2 never had, so the test would have raised on the missing key the moment results landed and CI would have been red on the results commit. The test now reads an absent field as no committed line, which is what this round has; the fixture test of the same mechanism is unchanged. No grader, label, count, criterion or take order is touched.",
+      "files": [
+        {
+          "path": "evals/gap-study-2/test_harness.py",
+          "sha256_before": "db884f62455dbfd7327b64641ee25360bd111c28922fa9ed78d0769c2b69666c",
+          "sha256_after": "0ccd0ba969dab043c3cf495d8ec780ce937806d44a538f27259a472898619ad2"
         }
       ]
     }

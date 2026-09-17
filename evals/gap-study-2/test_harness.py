@@ -2593,7 +2593,10 @@ class TwoMinuteReadLive(unittest.TestCase):
 
     def test_the_committed_lines_are_byte_identical(self):
         section, _ = live_section(self)
-        committed = [REPO / rel for rel in prereg.load()["committed_lines"].values() if rel.endswith(".md")]
+        # AMENDMENT 7 (17 September 2026): round 1's committed lines belonged to its local tier, and round 2 has no local
+        # tier and no `committed_lines` key; read before the first results existed, this line raised on the missing key
+        # and the live class would have errored the moment results landed. None committed means nothing to hold.
+        committed = [REPO / rel for rel in (prereg.load().get("committed_lines") or {}).values() if rel.endswith(".md")]
         self.assertEqual(committed_line_problems(section, committed), [])
 
     def test_the_file_only_gained_lines_since_this_studys_kickoff(self):
