@@ -213,6 +213,19 @@ def frozen_commit_problems(frozen: dict, commit: str) -> list[str]:
     """
     import freeze  # this study's, first on sys.path
     out: list[str] = []
+    # AMENDMENT 1 (17 September 2026, before any take). The battery's sandbox and any other copy with a history of its
+    # own commits the working tree as one commit, and that commit is the first to carry the frozen file, so it read
+    # as the freeze commit here and its tree, which moves with every record the run writes, was held to the rehearsal
+    # and refused. The hold reads the study's own history: where the freeze commit does not sit on the parent the
+    # frozen file records, this copy does not carry that history, and the hold is printed as not checked rather than
+    # passed or failed. The pins are still checked against the files on disk by check_pins.
+    code, parent = git("rev-parse", f"{commit}^")
+    want_parent = frozen.get("frozen_at_commit_parent")
+    if code != 0 or parent != want_parent:
+        print(f"  NOT CHECKED: the freeze commit in this copy ({commit[:12]}) does not sit on the recorded parent "
+              f"({str(want_parent)[:12]}), so this copy does not carry the study's history and the freeze commit cannot be "
+              f"held to its rehearsal here")
+        return []
     want = frozen.get("rehearsed_study_tree_sha256")
     if not isinstance(want, str) or len(want) != 64:
         out.append("the frozen file names no rehearsed study tree, so the freeze commit cannot be held to a rehearsal")

@@ -2645,7 +2645,7 @@
     {
       "path": "evals/gap-study-2/tests_freeze_rehearsal.py",
       "git_blob_sha": "00ea83b29f18e0df93480a6792da5a368f333186",
-      "sha256": "f2106f3d416fc2726db8ed353efe930a49f01c4382d002c7d08288a10377a026",
+      "sha256": "0d18f1ea7a6427966cdb86d276b0b5105b0b1d392cdeb55dcf85aa35b6fa8098",
       "uncommitted": false
     },
     {
@@ -2861,7 +2861,7 @@
     {
       "path": "evals/gap-study-2/check_results.py",
       "git_blob_sha": "84f7462bd7e3a13ee89eab09d8339a92ca318360",
-      "sha256": "1fed15556ac36b6cdf926fb1c8fea7809c6fe5a0bf83701b8f115983c1942e3d",
+      "sha256": "0f5991690a214ce76b8c8c37ea2e5c473b50960c16ca85bdf997d24a797f09df",
       "uncommitted": false
     },
     {
@@ -3643,5 +3643,25 @@
         3
       ]
     ]
-  }
+  },
+  "amendments": [
+    {
+      "n": 1,
+      "date": "2026-09-17",
+      "before_any_take": true,
+      "why": "The first commit after the freeze turned the mutation battery red on the frozen tree: the battery's sandbox commits the working tree as one commit, that commit is the first to carry the frozen file, so check_results.py read it as the freeze commit and held its tree, which moves with every record the run writes, to the rehearsal. check_results.py now holds the freeze commit only where it sits on the parent the frozen file records, and prints NOT CHECKED elsewhere; the unit test gains that case. No take had run; no label, count, criterion or take order is touched, and the freeze commit's own hold and every pin re-derive as before. The tree binding's breadth, records included, is a lesson for a later round, not a change here. The round-1 regrade record, which names the pre-registration in force by its sha256, is rewritten against the amended file in the same commit, as it was at the freeze.",
+      "files": [
+        {
+          "path": "evals/gap-study-2/check_results.py",
+          "sha256_before": "1fed15556ac36b6cdf926fb1c8fea7809c6fe5a0bf83701b8f115983c1942e3d",
+          "sha256_after": "0f5991690a214ce76b8c8c37ea2e5c473b50960c16ca85bdf997d24a797f09df"
+        },
+        {
+          "path": "evals/gap-study-2/tests_freeze_rehearsal.py",
+          "sha256_before": "f2106f3d416fc2726db8ed353efe930a49f01c4382d002c7d08288a10377a026",
+          "sha256_after": "0d18f1ea7a6427966cdb86d276b0b5105b0b1d392cdeb55dcf85aa35b6fa8098"
+        }
+      ]
+    }
+  ]
 }

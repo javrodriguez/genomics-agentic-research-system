@@ -195,7 +195,9 @@ class TheFreezeNeedsARehearsal(unittest.TestCase):
                 tree = freeze.study_tree_sha("HEAD")
                 pin_rel = "evals/gap-study-2/a.py"  # a file only this scratch repository has
                 blob = subprocess.run(g + ["rev-parse", f"HEAD:{pin_rel}"], capture_output=True, text=True).stdout.strip()
-                frozen = {"rehearsed_study_tree_sha256": tree,
+                rehearsed = subprocess.run(g + ["log", "-1", "--format=%H"], capture_output=True, text=True).stdout.strip()
+                # amendment 1: the hold runs only where the freeze commit sits on the recorded parent
+                frozen = {"rehearsed_study_tree_sha256": tree, "frozen_at_commit_parent": rehearsed,
                           "pinned_files": [{"path": pin_rel, "git_blob_sha": blob,
                                             "sha256": hashlib.sha256(b"x = 1\n").hexdigest()}]}
                 (sd / "prereg.json").write_text(json.dumps(frozen))
@@ -213,6 +215,13 @@ class TheFreezeNeedsARehearsal(unittest.TestCase):
                 edited = {**frozen, "pinned_files": [{**frozen["pinned_files"][0], "sha256": hashlib.sha256(b"x = 2\n").hexdigest()}]}
                 self.assertTrue(any("uncommitted at the freeze" in p for p in cr.frozen_commit_problems(edited, commit)),
                                 "a pin whose bytes were not the committed blob's passed")
+                # a copy whose freeze commit does not sit on the recorded parent is not checked, and says so
+                import contextlib, io
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    unheld = cr.frozen_commit_problems({**moved, "frozen_at_commit_parent": "0" * 40}, commit)
+                self.assertEqual(unheld, [])
+                self.assertIn("NOT CHECKED", buf.getvalue())
             finally:
                 freeze.REPO, cr.REPO = saved
 

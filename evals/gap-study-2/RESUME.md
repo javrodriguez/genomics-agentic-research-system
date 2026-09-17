@@ -161,6 +161,10 @@ The review's report and blindness record are committed unedited.
 
 **17 September 2026.** Review 4 ruled DO FREEZE on the kit at `037b1c4`; `freeze.py --review-commit d234616 --write` froze the draft, admitted by rehearsal record 5 on the study tree it names, and the freeze commit `69b7a94` carries the frozen file and the regrade record rewritten against it. `check_results.py` reads the freeze commit held to its rehearsal and every pin to its committed blob (PROTOCOL.md, "Blind review 4, and the freeze").
 
+## Amendment 1 (slice 17)
+
+**17 September 2026, before any take.** The first commit after the freeze turned one battery control red: the freeze-commit hold read a sandbox's one-commit history as the study's. `check_results.py` now holds the freeze commit only where it sits on the recorded parent and prints NOT CHECKED elsewhere; two pinned files moved, recorded in the frozen file's `amendments` with sha256 before and after (PROTOCOL.md, "Amendment 1").
+
 ## Next
 
 **The takes**: 108 graded sessions in the frozen order, each registered with `takes.py --add`, driven by `drive.py`, checked by `check_take.py`, committed as `take:` with CI read on every push; then `analyse.py`, the publication, gate 1 and the final verifier.

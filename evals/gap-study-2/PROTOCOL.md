@@ -1607,3 +1607,21 @@ The harness at the freeze is Claude Code 2.1.267; the system under test is gars 
 **What it took.**
 Four blind reviews, each a fresh headless session outside the Brain with only the kit; eleven rehearsals, six of them stopped or red on something real and fixed at its source before the next; three fix slices.
 The lesson the round adds to the first study's: a rehearsal shows one stage's defects per run, and a review finds what the rehearsal cannot, the places where the record says more than its bytes support.
+
+### Amendment 1 (slice 17) — 2026-09-17 — before any take: the freeze commit is held to its rehearsal only where the copy carries the study's history
+
+**What went red.**
+The first commit after the freeze, the records above, turned the mutation battery red on the frozen tree in one control: "a moved threshold after the freeze" runs `check_results.py` in a sandbox, the sandbox commits the working tree as one commit, that commit is the first to carry the frozen file, and the hold added in slice 13 read it as the freeze commit and compared its study tree, which moves with every record the run writes, with the rehearsed tree.
+The real repository read clean throughout: its freeze commit is `69b7a94`, and that commit does not move.
+The rehearsal could not have found this, because its gate ran on the freeze commit itself and nothing after it; the reviews did not, because the fixed tree the reviewers judged was the tree the hold was written for.
+
+**The amendment.**
+`check_results.frozen_commit_problems` first checks that the freeze commit sits on the parent the frozen file records (`frozen_at_commit_parent`); where it does not, this copy does not carry the study's history, the hold prints NOT CHECKED and returns nothing, in the same voice as the copy that is not a repository at all.
+The unit test gains that case.
+Two pinned files change, `check_results.py` and `tests_freeze_rehearsal.py`; the frozen file's `amendments` records both with their sha256 before and after, and their pins move to the new sha256 with every other field as the freeze wrote it.
+No take had run, so there is nothing to regrade; no label, count, criterion or take order is touched.
+The round-1 regrade record names the pre-registration in force by its sha256 and is rewritten against the amended file in the same commit, as it was at the freeze; the frozen inventory of HEAD readers cannot move by amendment, so the amended test reads its scratch commit without naming HEAD.
+
+**What it teaches.**
+A binding written for the tree it is checked on must also be written for the copies that will check it: the battery's sandbox and the clean clone have histories of their own.
+The tree binding's breadth, the run's records included, stays as frozen; a later round narrows it to the code and data the gate exercises.
