@@ -6,7 +6,7 @@ Everything under `## Dollars billed beyond the standing subscription` is the scr
 
 ## Dollars billed beyond the standing subscription
 
-$0, evidenced by 104 of 104 environment records (no API-key variable set; the harness reported credential source none on every turn)
+$0, evidenced by 105 of 105 environment records (no API-key variable set; the harness reported credential source none on every turn)
 
 ## Per take
 
@@ -92,6 +92,7 @@ $0, evidenced by 104 of 104 environment records (no API-key variable set; the ha
 | `scope-read` | control | `claude-sonnet-5` | 1 | 40 | 719,164 | 51,566 | 4,802 | 1.4 min | evidenced |
 | `scope-read` | control | `claude-sonnet-5` | 2 | 46 | 839,411 | 69,787 | 6,881 | 0.9 min | evidenced |
 | `scope-read` | control | `claude-sonnet-5` | 3 | 70 | 1,538,145 | 79,886 | 20,216 | 2.6 min | evidenced |
+| `scope-read` | positive | `claude-haiku-4-5-20251001` | 1 | 152 | 420,142 | 68,363 | 7,117 | 0.5 min | evidenced |
 | `scope-read` | positive | `claude-haiku-4-5-20251001` | 2 | 102 | 264,034 | 46,917 | 3,567 | 0.3 min | evidenced |
 | `scope-read` | positive | `claude-haiku-4-5-20251001` | 3 | 102 | 263,346 | 47,042 | 4,730 | 0.4 min | evidenced |
 | `scope-read` | positive | `claude-opus-5` | 1 | 40 | 573,676 | 49,786 | 6,341 | 1 min | evidenced |
@@ -132,7 +133,7 @@ $0, evidenced by 104 of 104 environment records (no API-key variable set; the ha
 
 | model | graded takes | context tokens | output tokens | wall clock |
 |---|---|---|---|---|
-| `claude-haiku-4-5-20251001` | 35 | 23,177,270 | 253,595 | 22.4 min |
+| `claude-haiku-4-5-20251001` | 36 | 23,665,927 | 260,712 | 22.9 min |
 | `claude-opus-5` | 35 | 25,428,963 | 308,825 | 43.4 min |
 | `claude-sonnet-5` | 34 | 63,932,641 | 620,333 | 81.2 min |
 

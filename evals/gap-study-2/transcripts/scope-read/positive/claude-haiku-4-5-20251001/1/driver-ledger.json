@@ -1,0 +1,68 @@
+{
+  "kind": "take",
+  "task": "scope-read",
+  "half": "positive",
+  "model_requested": "claude-haiku-4-5-20251001",
+  "session_id": "23f377a9-7224-5910-8abc-9f10dd3c9d94",
+  "project": "run-23f377a9",
+  "source": "data/staging/run-23f377a9/src",
+  "row": 110,
+  "permission_mode": "auto",
+  "permission_prompts": "none",
+  "cwd": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-23f377a9",
+  "run_tree_has_no_inherited_instructions": true,
+  "run_tree_built_from": "320e301c985a17d16d6037a699af89f3adbf2583",
+  "run_tree_excluded": [
+    "evals",
+    "docs/EVALS.md",
+    ".github",
+    "docs/implementation",
+    "docs/reviews",
+    "docs/specs",
+    "docs/decisions/0041-glitch-produces-the-v1-0-1-gap-assessment.md"
+  ],
+  "budget_s": 900,
+  "started": "2026-09-17T19:11:47+00:00",
+  "fixture": {
+    "kind": "generated",
+    "variant": "with-planted-qc",
+    "seed": 20260908,
+    "fixture_sha256": "ae89833ea499b4a60ef043c46a4b842baef30521b8f79c5cb9d9c546d9e85898"
+  },
+  "claude_version": "2.1.267 (Claude Code)",
+  "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "Start a bulk RNA-seq project called run-23f377a9, source data in data/staging/run-23f377a9/src",
+      "expects": "Reply with a comma-separated list of IDs",
+      "means": "the assay menu (T3)",
+      "at": "2026-09-17T19:11:47+00:00",
+      "exit": 0,
+      "reply_chars": 1188,
+      "held": false
+    }
+  ],
+  "outcome": "stopped \u2014 wait-point marker not held; graded as it stands",
+  "first_agent_turn": true,
+  "finished": "2026-09-17T19:12:16+00:00",
+  "published": {
+    "transcript": "transcript.jsonl",
+    "sha256_before": "52867253faf2efe1cc5ced49bd95360caa4adb67c6593a7d0067ac40c18c42e7",
+    "sha256_after": "63c0f48578fc5ff701811ac99adac525c7c26089c89eecf743690cda35ff6e88",
+    "removed": [
+      "session_context.userEmail"
+    ],
+    "records_a_grader_reads": "identical before and after",
+    "why": "Claude Code injects the signed-in account's email address into every session; it is the operator's personal address and says nothing about the agent. See scrub.py and PROTOCOL.md, Ruling 10."
+  },
+  "transcript": "evals/gap-study-2/transcripts/scope-read/positive/claude-haiku-4-5-20251001/1/transcript.jsonl",
+  "environment": {
+    "file": "environment.json",
+    "sha256": "038bfb70e3bdde4e5420ed14736a28593e274862d03e5c5b06c5ebe2e2dd367d"
+  },
+  "attempt": {
+    "kind": "graded",
+    "reasons": []
+  }
+}
