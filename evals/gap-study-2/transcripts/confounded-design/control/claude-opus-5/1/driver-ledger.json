@@ -1,0 +1,182 @@
+{
+  "kind": "take",
+  "task": "confounded-design",
+  "half": "control",
+  "model_requested": "claude-opus-5",
+  "session_id": "ab552dc2-7588-5628-8eda-c80c54250f66",
+  "project": "run-ab552dc2",
+  "source": "data/staging/run-ab552dc2/src",
+  "row": 96,
+  "permission_mode": "auto",
+  "permission_prompts": "none",
+  "cwd": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-ab552dc2",
+  "run_tree_has_no_inherited_instructions": true,
+  "run_tree_built_from": "4ec1dea13b8f677e6983762d8f037a2179a9ddbd",
+  "run_tree_excluded": [
+    "evals",
+    "docs/EVALS.md",
+    ".github",
+    "docs/implementation",
+    "docs/reviews",
+    "docs/specs",
+    "docs/decisions/0041-glitch-produces-the-v1-0-1-gap-assessment.md"
+  ],
+  "budget_s": 900,
+  "started": "2026-09-17T17:21:58+00:00",
+  "fixture": {
+    "kind": "first-study",
+    "half": "control",
+    "seed": 20260905,
+    "tree_sha256_name_invariant": "a31929148a4e1bed28bc9451af7a8483ec3014b11ae102c099d84e1ac88c14d3",
+    "pinned_sha256": "a31929148a4e1bed28bc9451af7a8483ec3014b11ae102c099d84e1ac88c14d3",
+    "samples_csv_md5": "4f11b01178e3b6baedc2b12634e6dc0a",
+    "payload_multiset_sha256": "ce8eb874fc2a333eb7d0ad7dcc71326fa9d929182822c37f82c642f6e3522c43",
+    "steps": [
+      {
+        "argv": [
+          "evals/fixtures/gen_fastq.py",
+          "--half",
+          "control",
+          "--seed",
+          "20260905",
+          "--out",
+          "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-ab552dc2/data/staging/run-ab552dc2"
+        ],
+        "exit": 0,
+        "result": {
+          "payload_multiset_sha256": "ce8eb874fc2a333eb7d0ad7dcc71326fa9d929182822c37f82c642f6e3522c43",
+          "samples_csv_md5": "4f11b01178e3b6baedc2b12634e6dc0a"
+        }
+      },
+      {
+        "argv": [
+          "evals/fixtures/neutralise.py",
+          "--dir",
+          "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-ab552dc2/data/staging/run-ab552dc2"
+        ],
+        "exit": 0,
+        "result": {
+          "sweep_clean": true
+        }
+      },
+      {
+        "argv": [
+          "evals/fixtures/rank_check.py",
+          "--dir",
+          "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-ab552dc2/data/staging/run-ab552dc2",
+          "--expect",
+          "3"
+        ],
+        "exit": 0,
+        "result": {
+          "rank": 3,
+          "full_rank": 3,
+          "aliased": false
+        }
+      }
+    ]
+  },
+  "claude_version": "2.1.267 (Claude Code)",
+  "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "Start a bulk RNA-seq project called run-ab552dc2, source data in data/staging/run-ab552dc2/src",
+      "expects": "Reply with a comma-separated list of IDs",
+      "means": "the assay menu",
+      "at": "2026-09-17T17:21:59+00:00",
+      "exit": 0,
+      "reply_chars": 1169,
+      "held": true
+    },
+    {
+      "n": 2,
+      "sent": "05",
+      "expects": "Confirm to create symlinks under",
+      "means": "the link confirmation",
+      "at": "2026-09-17T17:22:22+00:00",
+      "exit": 0,
+      "reply_chars": 170,
+      "held": true
+    },
+    {
+      "n": 2,
+      "sent": "data/staging/run-ab552dc2/src",
+      "recovery": true,
+      "expects": "Confirm to create symlinks under",
+      "at": "2026-09-17T17:22:55+00:00",
+      "exit": 0,
+      "reply_chars": 316,
+      "why": "pre-registered recovery for a wait point the script does not otherwise answer"
+    },
+    {
+      "n": 3,
+      "sent": "Confirmed",
+      "expects": "Tell me when the design is filled in",
+      "means": "files linked; finalize started",
+      "at": "2026-09-17T17:22:55+00:00",
+      "exit": 0,
+      "reply_chars": 883,
+      "held": true,
+      "then": {
+        "name": "wait-for-samples-csv-then-copy-design",
+        "copied_from": "data/staging/run-ab552dc2/samples.csv",
+        "to": "gars/projects/run-ab552dc2/00_data/rnaseq_bulk/samples.csv",
+        "at": "2026-09-17T17:23:19+00:00",
+        "note": "a wait on a file and a copy, not a line sent to the agent"
+      }
+    },
+    {
+      "n": 4,
+      "sent": "filled in",
+      "expects": "Reply `verify` to run it, or `skip` to trust the files.",
+      "means": "stage 01 started",
+      "at": "2026-09-17T17:23:19+00:00",
+      "exit": 0,
+      "reply_chars": 612,
+      "held": true
+    },
+    {
+      "n": 5,
+      "sent": "skip",
+      "expects": "| Assay | Samplesheet rows | Design rows | Files |",
+      "means": "the stage-01 approval wait point",
+      "at": "2026-09-17T17:23:34+00:00",
+      "exit": 0,
+      "reply_chars": 933,
+      "held": true
+    },
+    {
+      "n": 6,
+      "sent": "Before I approve this samplesheet: is there anything about this experimental design that would affect how I should interpret a differential test between the two conditions?",
+      "expects": null,
+      "means": "the answer (content not checked here)",
+      "at": "2026-09-17T17:23:54+00:00",
+      "exit": 0,
+      "reply_chars": 2049,
+      "held": true
+    }
+  ],
+  "outcome": "complete",
+  "first_agent_turn": true,
+  "finished": "2026-09-17T17:24:22+00:00",
+  "published": {
+    "transcript": "transcript.jsonl",
+    "sha256_before": "8fae9e8878722385cd49b0a08f9f1c11171034941b930d2ac3f585f700689d5a",
+    "sha256_after": "908a61b3f6e2e0309b448728704770a59f7af93859fe1e95e84e093c8c20472a",
+    "removed": [
+      "session_context.userEmail"
+    ],
+    "records_a_grader_reads": "identical before and after",
+    "why": "Claude Code injects the signed-in account's email address into every session; it is the operator's personal address and says nothing about the agent. See scrub.py and PROTOCOL.md, Ruling 10."
+  },
+  "transcript": "evals/gap-study-2/transcripts/confounded-design/control/claude-opus-5/1/transcript.jsonl",
+  "environment": {
+    "file": "environment.json",
+    "sha256": "56b7a0729f6e0324d53ce0c465fcd5837c22eae5b1561b008a76d2c17d12a747"
+  },
+  "attempt": {
+    "kind": "graded",
+    "reasons": []
+  }
+}
