@@ -149,9 +149,13 @@ The full record is in PROTOCOL.md, "CP6".
 Seven follow-ups were taken with it (the seed's ruling and recency, wider pins, the scrub's line splitting, the approve detection's shell forms, three limitations lines, the threat model's wording, the `review:` subject); the rest are named in PROTOCOL.md for the round after the results.
 The review's report and blindness record are committed unedited.
 
+## Blind review 2, and its fix (slice 13)
+
+**17 September 2026.** Review 2 ruled DO NOT FREEZE on the kit at `ba2e15b`: review 1's blockers closed and re-derived, one new blocker, fixed at its source in slice 13 (PROTOCOL.md, "Blind review 2 and its fix"): the freeze refuses a study with uncommitted changes, records the rehearsal it was admitted by and the rehearsed tree, and `check_results.py` holds the freeze commit and every pin to them afterwards.
+
 ## Next
 
-**Blind review 2** (the pace ruling allows a second round on a BLOCKER; review 1 found two) of the fixed draft, with review 1's bytes beside it: `build_kit.py <folder outside the Brain> --n 1`, `launch.py`, `commit_review.py`; its findings applied in one fix slice; a second round only on a BLOCKER (Javier's pace ruling, 16 September).
+**Blind review 3** (each round so far found a blocker; the pace ruling allows another round on one) of the fixed draft, with review 2's bytes beside it: `build_kit.py <folder outside the Brain> --n 1`, `launch.py`, `commit_review.py`; its findings applied in one fix slice; a second round only on a BLOCKER (Javier's pace ruling, 16 September).
 Then the freeze (`freeze.py --review-commit <sha> --write`, the regrade record rewritten beside it), then the takes.
 
 ## Open for Javier

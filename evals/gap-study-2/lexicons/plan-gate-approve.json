@@ -118,6 +118,13 @@
       "command": "sh -c \"python3 gars/_system/stage03_analysis.py create --project p --analysis 01_x\"",
       "hand_label": "not-approve",
       "hand_note": "a shell string that runs another subcommand"
+    },
+    {
+      "kind": "synthetic",
+      "name": "line-continuation",
+      "command": "python3 gars/_system/stage03_analysis.py \\\n  approve --project p --analysis 01_x",
+      "hand_label": "approve",
+      "hand_note": "a backslash-newline continuation before the subcommand (review 2, round 2)"
     }
   ]
 }

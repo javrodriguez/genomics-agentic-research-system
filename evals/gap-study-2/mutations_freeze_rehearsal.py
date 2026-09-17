@@ -132,6 +132,31 @@ def m_freeze_seeds_from_a_refusing_review(s: Sandbox) -> tuple[int, str]:
     return _red(s, guard, "ruled against the freeze seeded it", "TheSeedReviewIsCommittedOnce (a refusing review seeds)")
 
 
+def m_freeze_writes_a_dirty_study(s: Sandbox) -> tuple[int, str]:
+    """freeze.py stops refusing uncommitted changes under the study: an unrehearsed edit to a pinned file is frozen."""
+    guard = _guard(s, "TheFreezeNeedsARehearsal.test_freeze_write_refuses_uncommitted_changes_under_the_study")
+    s.control(guard)
+    _edit(s.study / "freeze.py", "    if unstaged.strip():\n", "    if False:\n")
+    return _red(s, guard, "did not name the uncommitted change", "TheFreezeNeedsARehearsal (a dirty study frozen)")
+
+
+def m_freeze_commit_not_held_to_the_rehearsal(s: Sandbox) -> tuple[int, str]:
+    """check_results.py stops comparing the freeze commit's study tree with the rehearsed one."""
+    guard = _guard(s, "TheFreezeNeedsARehearsal.test_the_freeze_commit_is_held_to_the_rehearsal_and_each_pin_to_its_blob")
+    s.control(guard)
+    _edit(s.study / "check_results.py", "        if got != want:\n            out.append(f\"the freeze commit {commit[:12]}'s study tree",
+          "        if False:\n            out.append(f\"the freeze commit {commit[:12]}'s study tree")
+    return _red(s, guard, "not the rehearsed one passed", "TheFreezeNeedsARehearsal (the freeze commit unheld)")
+
+
+def m_pin_sha_not_held_to_the_blob(s: Sandbox) -> tuple[int, str]:
+    """check_results.py stops hashing the committed blob against the pin's sha256: the uncommitted-edit route reopens."""
+    guard = _guard(s, "TheFreezeNeedsARehearsal.test_the_freeze_commit_is_held_to_the_rehearsal_and_each_pin_to_its_blob")
+    s.control(guard)
+    _edit(s.study / "check_results.py", "            if hashlib.sha256(body).hexdigest() != want_sha:\n", "            if False:\n")
+    return _red(s, guard, "not the committed blob's passed", "TheFreezeNeedsARehearsal (a pin's bytes unheld)")
+
+
 MUTATIONS = [
     ("the freeze written without a rehearsal", m_freeze_writes_without_a_rehearsal, False),
     ("a rehearsal of other draft bytes admitted", m_rehearsal_record_for_other_bytes_admitted, False),
@@ -142,4 +167,7 @@ MUTATIONS = [
     ("a freeze that pins a generated fixture by nothing", m_freeze_pins_a_generated_fixture_by_nothing, True),
     ("the freeze admitting another study tree than the rehearsed one", m_freeze_admits_another_study_tree, False),
     ("the freeze seeded from a review that ruled against it", m_freeze_seeds_from_a_refusing_review, False),
+    ("the freeze written over a study with uncommitted changes", m_freeze_writes_a_dirty_study, False),
+    ("the freeze commit not held to its rehearsal", m_freeze_commit_not_held_to_the_rehearsal, False),
+    ("a pin's sha256 not held to its committed blob", m_pin_sha_not_held_to_the_blob, False),
 ]

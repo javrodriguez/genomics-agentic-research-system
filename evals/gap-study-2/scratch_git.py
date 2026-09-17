@@ -39,3 +39,9 @@ def init(path: Path | str) -> None:
     subprocess.run(["git", "init", "-q", str(path)], check=True, capture_output=True)
     subprocess.run(["git", "-C", str(path), "config", MAINTENANCE_KEY, MAINTENANCE_VALUE],
                    check=True, capture_output=True)
+    # ROUND 2, CP8 (rehearsal 9): bytecode caches are never committed in this repository, so a throwaway copy that
+    # committed them had a study tree the rehearsal never had, and the freeze commit's binding to it was red
+    exclude = Path(path) / ".git" / "info" / "exclude"
+    exclude.parent.mkdir(parents=True, exist_ok=True)
+    with exclude.open("a") as f:
+        f.write("__pycache__/\n")

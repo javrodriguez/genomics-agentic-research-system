@@ -143,7 +143,7 @@ def git(*args: str) -> tuple[int, str]:
 FREEZE_WRITTEN_KEYS = (
     "status", "frozen_at", "frozen_at_commit_parent", "draft_sha256_at_freeze", "pre_freeze_review_commit",
     "pre_freeze_review_file", "pre_freeze_review_sha256", "take_order_seed", "take_order", "pinned_files",
-    "nulls_at_freeze",
+    "nulls_at_freeze", "rehearsal_record", "rehearsed_study_tree_sha256",
 )
 FREEZE_FILLED_INSIDE = (
     "system_under_test.gars_tree_sha_at_freeze", "harness.claude_version_at_freeze",
@@ -154,9 +154,13 @@ REHEARSAL_GLOB = "freeze-rehearsal-*.txt"
 # prose had been rewritten away, so any code edit between the rehearsal and the freeze passed the gate. The record
 # now carries the study tree it rehearsed as data (study_tree_sha), and the freeze requires HEAD's to be the same.
 REHEARSAL_TREE_PREFIX = "study tree sha256: "
-# what the binding leaves out: the records the rehearsal and the review write between the rehearsal and the freeze
-TREE_BINDING_EXCLUDED = (re.compile(r"/verification/freeze-rehearsal-\d+\.txt$"),
-                         re.compile(r"/verification/prefreeze-\d+(-blindness)?\.(md|txt)$"))
+# what the binding leaves out, on both sides of every comparison: the records the rehearsal and the review write
+# between the rehearsal and the freeze, the frozen file itself, and the regrade record the freeze commit rewrites
+# (rehearsal 9 found the record's old bytes on one side and nothing on the other)
+TREE_BINDING_EXCLUDED = (re.compile(r"/verification/freeze-rehearsal-\d+(-clean-clone)?\.txt$"),
+                         re.compile(r"/verification/prefreeze-\d+(-blindness)?\.(md|txt)$"),
+                         re.compile(r"/prereg\.json$"),
+                         re.compile(r"/verification/round1-regrade/environment\.json$"))
 RULING_LINE = "**Ruling: DO FREEZE.**"
 REHEARSAL_LAST_LINE = "all green"
 
@@ -199,13 +203,27 @@ def commit_body_diff(draft: dict, frozen: dict) -> str:
     return "none" if not keys else "freeze-written keys: " + ", ".join(keys)
 
 
-def study_tree_sha(rev: str = "HEAD") -> str:
-    """The study's tree at a revision, as `git ls-tree -r` prints it with the excluded records dropped, hashed."""
+def study_tree_sha(rev: str = "HEAD", also_excluded: tuple[str, ...] = ()) -> str:
+    """The study's tree at a revision, as `git ls-tree -r` prints it with the excluded records dropped, hashed.
+
+    `also_excluded` names paths to drop as well, for a caller with a reason; the frozen file and the regrade record are
+    already in TREE_BINDING_EXCLUDED, so check_results.py's comparison of the freeze commit with the rehearsal needs none.
+    """
     code, out = git("ls-tree", "-r", rev, "--", study.STUDY_REL)
     if code != 0 or not out.strip():
         raise SystemExit(f"REFUSING: the study tree at {rev} cannot be listed ({out.strip()[:200]}). Nothing was written.")
-    kept = [ln for ln in out.splitlines() if not any(p.search(ln) for p in TREE_BINDING_EXCLUDED)]
+    kept = [ln for ln in out.splitlines()
+            if not any(p.search(ln) for p in TREE_BINDING_EXCLUDED) and ln.split("\t", 1)[-1] not in also_excluded]
     return hashlib.sha256("\n".join(kept).encode("utf-8")).hexdigest()
+
+
+def admitted_rehearsal(draft_sha256: str, verification: Path, study_tree: str) -> Path | None:
+    """The latest green record naming these draft bytes and this study tree, or None."""
+    files = [f for f in sorted(verification.glob(REHEARSAL_GLOB))
+             if f.read_text().splitlines()[:1] == [draft_sha256]
+             and f.read_text().rstrip().splitlines()[-1].strip() == REHEARSAL_LAST_LINE
+             and recorded_tree(f) == study_tree]
+    return files[-1] if files else None
 
 
 def recorded_tree(record: Path) -> str | None:
@@ -344,15 +362,35 @@ def main() -> int:
         print("refusing: " + " ".join(problems))
         return 2
 
+    # ROUND 2, CP8, review 2 blocker 1: the pins read the files on disk while the rehearsal gate reads HEAD, so an
+    # uncommitted edit to a pinned file was frozen unrehearsed with every later check clean. Nothing uncommitted
+    # under the study, whatever it is: what is frozen is what HEAD holds.
+    code, unstaged = git("status", "--porcelain", "--", study.STUDY_REL)
+    # bytecode caches are never pinned and never committed; a copy without a .gitignore lists them as untracked
+    unstaged = "\n".join(ln for ln in unstaged.splitlines() if "__pycache__/" not in ln)
+    if unstaged.strip():
+        print("REFUSING to freeze: the study has uncommitted changes, so the pins would describe bytes no rehearsal "
+              "exercised and the freeze commit's parent would not be what is frozen. Commit or drop them:\n" + unstaged[:800])
+        return 1
+
     d = json.loads(DRAFT.read_text())
     reviewed_sha256 = hashlib.sha256(DRAFT.read_bytes()).hexdigest()
+    tree = study_tree_sha("HEAD")
     # ROUND 2, CP8. The irreversible step runs only on a state a rehearsal exercised: checked here, before any pin is
     # computed, so the refusal names the rehearsal and nothing else.
     if args.write and not args.rehearsal:
-        problems = rehearsal_problems(reviewed_sha256, HERE / "verification", study_tree_sha("HEAD"))
+        problems = rehearsal_problems(reviewed_sha256, HERE / "verification", tree)
         if problems:
             print("REFUSING to freeze: " + " ".join(problems))
             return 1
+        record = admitted_rehearsal(reviewed_sha256, HERE / "verification", tree)
+        d["rehearsal_record"] = study.rel("verification", record.name)
+    else:
+        d["rehearsal_record"] = "none: this run is the rehearsal itself, in a throwaway clone" if args.rehearsal else \
+            "none: a preview, not a freeze"
+    # the tree the freeze commit is held to afterwards by check_results.py, with the frozen file and the regrade
+    # record it rewrites dropped from the comparison
+    d["rehearsed_study_tree_sha256"] = tree
     d["pre_freeze_review_file"] = review_file
     d["pre_freeze_review_sha256"] = hashlib.sha256((REPO / review_file).read_bytes()).hexdigest()
 

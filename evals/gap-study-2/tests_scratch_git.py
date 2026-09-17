@@ -98,5 +98,21 @@ class TheScratchRepositoriesStartNoBackgroundMaintenance(unittest.TestCase):
             self.assertTrue((HERE / name).is_file(), f"PERMITTED names {name}, which is not in this study")
 
 
+class TheScratchRepositoryIgnoresBytecodeCaches(unittest.TestCase):
+    def test_a_pycache_folder_is_not_committed(self):
+        import subprocess
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            scratch_git.init(root)
+            (root / "__pycache__").mkdir()
+            (root / "__pycache__" / "x.pyc").write_bytes(b"\x00")
+            (root / "a.py").write_text("x = 1\n")
+            g = ["git", "-C", str(root), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"]
+            subprocess.run(g + ["add", "-A"], check=True, capture_output=True)
+            subprocess.run(g + ["commit", "-qm", "base"], check=True, capture_output=True)
+            listed = subprocess.run(g + ["ls-tree", "-r", "--name-only", "HEAD"], capture_output=True, text=True).stdout.split()
+            self.assertEqual(listed, ["a.py"], "a bytecode cache was committed into the scratch repository")
+
+
 if __name__ == "__main__":
     unittest.main()

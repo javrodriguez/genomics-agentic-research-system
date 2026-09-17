@@ -1551,3 +1551,22 @@ The threat model's first sentence now says where the checks open the repository'
 A rehearsal filed by hand is checked by the ledger fields the limitations line now names, and no more; a check of each attempt folder's history (one commit, after its row's, never touched again) is written as a limitation rather than built.
 The analysis table prints only non-zero reserved counts, and a task whose verdict is `not established` leaves the comparison mappings without a line; `check_results.py --controls` and `--regrade` print an honest sentence and exit 0 where there is nothing to read; about three quarters of the battery's entries accept any red rather than a named one.
 These are recorded for the fix round after the results, not before the freeze.
+
+### Blind review 2 and its fix (slice 13) — 2026-09-17 — DO NOT FREEZE, one blocker, fixed at its source
+
+**The review.**
+A second fresh reviewer, launched the same way from a folder outside the Brain, read the kit at `ba2e15b` with review 1's bytes beside the new draft for 15 minutes and ruled DO NOT FREEZE on one blocker, with review 1's two closed and re-derived on the tree.
+Its report and blindness record are committed unedited as `verification/prefreeze-2.md` and `prefreeze-2-blindness.txt`.
+
+**The blocker: the freeze pinned the working tree while its gate read HEAD.**
+`freeze.py` compared HEAD's study tree with the rehearsal record and then pinned each file's sha256 from the file on disk, so an uncommitted edit to a pinned file passed the gate and was frozen unrehearsed, with the pin's two fields disagreeing and nothing reading the disagreement, and every later check clean; the reviewer reproduced it end to end in a copy.
+Now `freeze.py --write` refuses when `git status --porcelain` prints anything under the study (bytecode caches aside), and the frozen file records the rehearsal record it was admitted by and the rehearsed study tree.
+Afterwards `check_results.py` holds the freeze commit itself to that tree, with the frozen file and the regrade record it rewrites dropped from the comparison, and holds each pin to the blob at the freeze commit and that blob's bytes to the pin's sha256, so `git_blob_sha` is now read.
+Two tests, three mutations.
+
+**Follow-ups taken.**
+The approve detection folds a backslash-newline continuation before splitting, with a case; the pinned rule text says what the code reads.
+The rehearsal copies the clean clone's own record from the clone before it is removed (`freeze-rehearsal-<n>-clean-clone.txt`, excluded from the tree binding by name).
+Two limitations lines: the rehearsal record is a text file nothing binds to its run; the copied-tree pin is verified end to end only where its origin resolves.
+
+**Deferred**, as review 1's were: a rehearsal record forged coherently, the attempt-folder history, the reset row, the analysis table's zero counts, the honest exit-0 sentences, and the battery entries that accept any red.

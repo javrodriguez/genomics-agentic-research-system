@@ -68,8 +68,10 @@ def approve_invoked(command: str) -> bool:
 
 
 def _split(command: str | None) -> list[str]:
+    # a backslash before a newline continues the line; shlex in POSIX mode keeps the newline as a token instead
+    # (review 2, round 2), so the continuation is folded first, as a shell does
     try:
-        return shlex.split(command or "")
+        return shlex.split((command or "").replace("\\\n", " "))
     except ValueError:
         return (command or "").split()
 

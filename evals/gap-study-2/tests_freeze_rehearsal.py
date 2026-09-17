@@ -130,6 +130,75 @@ class TheFreezeNeedsARehearsal(unittest.TestCase):
             self.assertIn("has not been rehearsed", out,
                           "the freeze reached past the rehearsal gate: " + " | ".join(out.strip().splitlines()[-2:])[:300])
 
+    def test_freeze_write_refuses_uncommitted_changes_under_the_study(self):
+        """Review 2 (round 2), blocker 1: the pins read the disk and the gate reads HEAD, so an uncommitted edit to a
+        pinned file was frozen unrehearsed. The refusal comes before the rehearsal gate, so this copy needs no record."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "repo"
+            (root / "evals" / "gap-study-2").mkdir(parents=True)
+            for name in ("freeze.py", "prereg.py", "study.py", "prereg-draft.json"):
+                (root / "evals" / "gap-study-2" / name).write_bytes((HERE / name).read_bytes())
+            ver = root / "evals" / "gap-study-2" / "verification"
+            ver.mkdir()
+            sha = hashlib.sha256(DRAFT.read_bytes()).hexdigest()
+            (ver / "prefreeze-1.md").write_text(f"prereg.json sha256: {sha}\n\n**Ruling: DO FREEZE.**\n")
+            import scratch_git
+            scratch_git.init(root)
+            g = ["git", "-C", str(root), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"]
+            subprocess.run(g + ["add", "-A"], check=True, capture_output=True)
+            subprocess.run(g + ["commit", "-qm", "review"], check=True, capture_output=True)
+            head = subprocess.run(g + ["rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+            with (root / "evals" / "gap-study-2" / "prereg.py").open("a") as f:
+                f.write("# an edit nobody rehearsed\n")
+            env = {k: v for k, v in os.environ.items() if not k.startswith("GAP_STUDY_2_POISON")}
+            r = subprocess.run([sys.executable, str(root / "evals" / "gap-study-2" / "freeze.py"), "--review-commit",
+                                head, "--write"], capture_output=True, text=True, cwd=str(root), env=env)
+            self.assertNotEqual(r.returncode, 0)
+            self.assertFalse((root / "evals" / "gap-study-2" / "prereg.json").exists(), "the freeze wrote with uncommitted changes under the study")
+            self.assertIn("uncommitted changes", r.stdout + r.stderr, "the freeze did not name the uncommitted change")
+
+    def test_the_freeze_commit_is_held_to_the_rehearsal_and_each_pin_to_its_blob(self):
+        """check_results.frozen_commit_problems on a repository the test builds: clean when the freeze commit's study
+        tree is the rehearsed one and every pin is the committed blob; red for a moved tree, a foreign blob, or a pin
+        whose sha256 is not the committed bytes (the uncommitted-edit route)."""
+        import check_results as cr
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "repo"
+            sd = root / "evals" / "gap-study-2"
+            (sd / "verification" / "round1-regrade").mkdir(parents=True)
+            (sd / "a.py").write_text("x = 1\n")
+            import scratch_git
+            scratch_git.init(root)
+            g = ["git", "-C", str(root), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"]
+            subprocess.run(g + ["add", "-A"], check=True, capture_output=True)
+            subprocess.run(g + ["commit", "-qm", "rehearsed"], check=True, capture_output=True)
+            saved = (freeze.REPO, cr.REPO)
+            freeze.REPO = cr.REPO = root
+            try:
+                tree = freeze.study_tree_sha("HEAD")
+                pin_rel = "evals/gap-study-2/a.py"  # a file only this scratch repository has
+                blob = subprocess.run(g + ["rev-parse", f"HEAD:{pin_rel}"], capture_output=True, text=True).stdout.strip()
+                frozen = {"rehearsed_study_tree_sha256": tree,
+                          "pinned_files": [{"path": pin_rel, "git_blob_sha": blob,
+                                            "sha256": hashlib.sha256(b"x = 1\n").hexdigest()}]}
+                (sd / "prereg.json").write_text(json.dumps(frozen))
+                (sd / "verification" / "round1-regrade" / "environment.json").write_text("{}\n")
+                subprocess.run(g + ["add", "-A"], check=True, capture_output=True)
+                subprocess.run(g + ["commit", "-qm", "freeze"], check=True, capture_output=True)
+                commit = cr.freeze_commit()
+                self.assertTrue(commit)
+                self.assertEqual(cr.frozen_commit_problems(frozen, commit), [])
+                moved = {**frozen, "rehearsed_study_tree_sha256": "0" * 64}
+                self.assertTrue(any("not the rehearsed one" in p for p in cr.frozen_commit_problems(moved, commit)),
+                                "a freeze commit whose tree is not the rehearsed one passed")
+                foreign = {**frozen, "pinned_files": [{**frozen["pinned_files"][0], "git_blob_sha": "1" * 40}]}
+                self.assertTrue(any("not what was committed" in p for p in cr.frozen_commit_problems(foreign, commit)))
+                edited = {**frozen, "pinned_files": [{**frozen["pinned_files"][0], "sha256": hashlib.sha256(b"x = 2\n").hexdigest()}]}
+                self.assertTrue(any("uncommitted at the freeze" in p for p in cr.frozen_commit_problems(edited, commit)),
+                                "a pin whose bytes were not the committed blob's passed")
+            finally:
+                freeze.REPO, cr.REPO = saved
+
     def test_the_rehearsal_flag_is_refused_where_a_remote_exists(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td) / "repo"

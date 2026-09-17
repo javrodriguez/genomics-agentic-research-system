@@ -165,6 +165,11 @@ def main() -> int:
             ("clean_clone_battery.sh --source <clone>", ["bash", f"{S}/clean_clone_battery.sh", "--source", str(clone)]),
         ]:
             step(name, argv)
+        # the clean clone's own record, which lived inside the clone and was lost with it (review 2, round 2)
+        cc = sorted((study_dir / "verification").glob("clean-clone-*.txt"), key=lambda p: p.stat().st_mtime)
+        if cc:
+            shutil.copy2(cc[-1], VERIFICATION / f"freeze-rehearsal-{n}-clean-clone.txt")
+            lines.append(f"clean clone record: freeze-rehearsal-{n}-clean-clone.txt (the clone's {cc[-1].name})")
         # 5. the first ledger row, registered and committed against the frozen file
         first = json.loads((study_dir / "prereg.json").read_text())["take_order"]
         axis, cells = next(iter(first.items()))

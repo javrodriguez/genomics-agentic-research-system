@@ -2763,15 +2763,25 @@ class TheFrozenFileMovesOnlyByAmendment(unittest.TestCase):
         repo = ScratchRepo(self)
         study_dir = repo.root / study.STUDY_REL
         study_dir.mkdir(parents=True)
-        (study_dir / "prereg.json").write_text(json.dumps(self.base()))
+        # ROUND 2, CP8 (review 2): the freeze commit is also held to the rehearsed study tree, so this repository
+        # carries one code file, rehearsed before the frozen file names its tree
+        (study_dir / "code.py").write_text("x = 1\n")
+        repo.commit("slice 08: the code the rehearsal exercised")
+        import freeze as fz_plain  # the module check_results imports; its repository is this scratch one for the test
+        saved_repo = fz_plain.REPO
+        fz_plain.REPO = repo.root
+        self.addCleanup(setattr, fz_plain, "REPO", saved_repo)
+        base = {**self.base(), "rehearsed_study_tree_sha256": fz_plain.study_tree_sha()}
+        amended = {**self.amended(), "rehearsed_study_tree_sha256": base["rehearsed_study_tree_sha256"]}
+        (study_dir / "prereg.json").write_text(json.dumps(base))
         repo.commit("slice 09: the freeze")
-        (study_dir / "prereg.json").write_text(json.dumps(self.amended()))
+        (study_dir / "prereg.json").write_text(json.dumps(amended))
         repo.commit("an amendment")
         cr = gap_module("check_results")
         cr.REPO, cr.HERE = repo.root, study_dir
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(cr.check_frozen_content(), [])
-        moved = self.amended()
+        moved = dict(amended)
         moved["n"] = 4
         (study_dir / "prereg.json").write_text(json.dumps(moved))
         repo.commit("a moved criterion")

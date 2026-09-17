@@ -195,6 +195,49 @@ def frozen_content_problems(frozen: dict, now: dict) -> list[str]:
     return problems
 
 
+def freeze_commit() -> str | None:
+    """The first commit that introduces the frozen file, or None where there is no history to read."""
+    code, out = git("log", "--reverse", "--format=%H", "--", study.rel("prereg.json"))
+    shas = out.split()
+    return shas[0] if code == 0 and shas else None
+
+
+def frozen_commit_problems(frozen: dict, commit: str) -> list[str]:
+    """ROUND 2, CP8, review 2 blocker 1: the freeze commit is what the rehearsal exercised, and every pin is a committed blob.
+
+    freeze.py pins each file's bytes from disk and its blob from HEAD; before this, an uncommitted edit to a pinned
+    file was frozen with the two fields disagreeing and nothing reading the disagreement. Here the freeze commit's
+    study tree must hash to the rehearsed tree the frozen file names (the frozen file and the regrade record it
+    rewrites are outside the binding on both sides), and each pin's blob must be the one at the freeze commit and
+    hash to the pin's sha256.
+    """
+    import freeze  # this study's, first on sys.path
+    out: list[str] = []
+    want = frozen.get("rehearsed_study_tree_sha256")
+    if not isinstance(want, str) or len(want) != 64:
+        out.append("the frozen file names no rehearsed study tree, so the freeze commit cannot be held to a rehearsal")
+    else:
+        got = freeze.study_tree_sha(commit)
+        if got != want:
+            out.append(f"the freeze commit {commit[:12]}'s study tree ({got[:12]}) is not the rehearsed one ({want[:12]}): "
+                       f"something was frozen that no rehearsal exercised")
+    for pin in frozen.get("pinned_files") or []:
+        path, blob, want_sha = pin.get("path"), pin.get("git_blob_sha"), pin.get("sha256")
+        if not path or not blob:
+            continue
+        code, at = git("rev-parse", f"{commit}:{path}")
+        if code != 0 or at != blob:
+            out.append(f"{path}: the freeze commit carries blob {at[:12] if code == 0 else 'none'} and the pin records "
+                       f"{blob[:12]}: the pinned file is not what was committed")
+            continue
+        if want_sha:
+            body = subprocess.run(["git", "-C", str(REPO), "show", f"{commit}:{path}"], capture_output=True).stdout
+            if hashlib.sha256(body).hexdigest() != want_sha:
+                out.append(f"{path}: the pin's sha256 is not the committed blob's: the pinned bytes were uncommitted at "
+                           f"the freeze")
+    return out
+
+
 def check_frozen_content() -> list[str]:
     frozen, why = frozen_bytes()
     if frozen is None and why == "NOT A GIT REPOSITORY":
@@ -208,7 +251,10 @@ def check_frozen_content() -> list[str]:
     problems = frozen_content_problems(frozen, now)
     print(f"  the frozen file compared with its freeze: {len(now.get('amendments') or [])} amendment(s) "
           f"on record, {len(problems)} unrecorded change(s)")
-    return problems
+    commit = freeze_commit()
+    held = frozen_commit_problems(frozen, commit) if commit else ["the freeze commit could not be found"]
+    print(f"  the freeze commit held to its rehearsal and each pin to its committed blob: {len(held)} problem(s)")
+    return problems + held
 
 
 # ---------------------------------------------------------------- the ledger
