@@ -1625,3 +1625,20 @@ The round-1 regrade record names the pre-registration in force by its sha256 and
 **What it teaches.**
 A binding written for the tree it is checked on must also be written for the copies that will check it: the battery's sandbox and the clean clone have histories of their own.
 The tree binding's breadth, the run's records included, stays as frozen; a later round narrows it to the code and data the gate exercises.
+
+### The first take, and amendment 2 (slice 18) — 2026-09-17 — the battery's rendered take assumed an empty ledger
+
+**The first take.**
+Row 0 of the frozen order, plan-gate control `claude-opus-5` take 1, was registered at 05:57 EDT, driven, routed graded with outcome `complete`, scrubbed, checked, committed and pushed; the loop's own checks were green.
+CI was red on the push, in the battery: the two mutations that render a clean graded take in a sandbox had their controls refused with "environment.json records the row commit … and this take's row was introduced by …; the record belongs to another row".
+
+**Why.**
+The battery's sandbox is a copy of the study whose base commit now carried the real ledger with row 0 in it, and the rendered take's builder wrote its rows from index 0, so the checker read the base commit as the commit that introduced the fixture's row.
+Before the first real row existed the two could not collide; the first row was the first time the battery ran on a study with a record in it, a state neither the rehearsal nor the reviews could reach.
+
+**The amendment.**
+`test-fixtures/environment-ledger/build_take.py`, not pinned, writes its rows after the ledger's, and `mutations._clean_take` reads the row from the take's own ledger instead of naming row 0; the mutation "two ledger rows in one commit", which wrote two rows over the copied ledger and so introduced one, writes its two after the ledger's as well; `mutations.py` is pinned and moves by amendment 2, recorded with its sha256 before and after.
+No grader, label, count, criterion or take order is touched; the one graded take is unchanged and its check re-derives as before; the regrade record is rewritten against the amended file as at the freeze.
+
+**What it teaches.**
+The battery ran on an empty study for every one of its rehearsals; a rehearsal of the freeze that also plants one synthetic graded row would have shown this before the freeze, and the plan named that synthetic ledger and the rehearsal record says it was not done.

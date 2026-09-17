@@ -45,9 +45,24 @@ def take_folder(study_dir: Path, take: int) -> Path:
     return study_dir / "transcripts" / ROW["task"] / ROW["half"] / ROW["model"] / str(take)
 
 
-def write_rows(study_dir: Path, takes) -> None:
-    rows = [{**ROW, "take": k, "order_index": k, "fixture_sha": "x",
-             "environment_class": "claude-subscription-headless"} for k in takes]
+def existing_rows(study_dir: Path) -> list[dict]:
+    """The rows the copied ledger already holds. After the first real row was committed (17 September 2026), a
+    battery sandbox carried it in its base commit, and a test row written at index 0 was then 'introduced' by
+    that base commit rather than by the row commit this builder makes; the take's records disagreed and the
+    checker refused the unedited fixture. The test rows go after whatever is there."""
+    p = study_dir / "takes.json"
+    if not p.is_file():
+        return []
+    try:
+        rows = json.loads(p.read_text()).get("rows") or []
+    except (OSError, json.JSONDecodeError):
+        return []
+    return [r for r in rows if r.get("_test_row") is not True]
+
+
+def write_rows(study_dir: Path, base: list[dict], takes) -> None:
+    rows = base + [{**ROW, "take": k, "order_index": k, "fixture_sha": "x",
+                    "environment_class": "claude-subscription-headless", "_test_row": True} for k in takes]
     (study_dir / "takes.json").write_text(json.dumps({"role": "test", "rows": rows}, indent=2) + "\n")
 
 
@@ -121,9 +136,11 @@ def build_study(root: Path, study_dir: Path, pre: dict, commit, *, takes=(1,), l
                 api_key_source: str | None = None) -> dict[int, Path]:
     """take number -> its folder: each row committed on its own, then its take left beside it."""
     out: dict[int, Path] = {}
+    base = existing_rows(study_dir)
     for i, k in enumerate(takes):
-        write_rows(study_dir, takes[:i + 1])
-        sha = commit(f"take: row {i}")
-        out[k] = build_take(study_dir, root, pre, row=i, take=k, row_commit=sha,
+        write_rows(study_dir, base, takes[:i + 1])
+        row = len(base) + i
+        sha = commit(f"take: row {row}")
+        out[k] = build_take(study_dir, root, pre, row=row, take=k, row_commit=sha,
                             record=k not in lacking, api_key_source=api_key_source)
     return out

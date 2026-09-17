@@ -335,10 +335,14 @@ def m_tampered_namespace(s: Sandbox) -> tuple[int, str]:
 
 def m_two_rows_in_one_commit(s: Sandbox) -> tuple[int, str]:
     """Two rows sharing a commit would share a session id."""
-    rows = [{"task": "scope-read", "half": "positive", "model": "claude-opus-5", "take": k,
-             "order_index": k, "fixture_sha": "x",
-             "environment_class": "claude-subscription-headless"} for k in (1, 2)]
-    (s.study / "takes.json").write_text(json.dumps({"role": "test", "rows": rows}, indent=2))
+    # AMENDMENT 2 (17 September 2026): after the ledger's own rows, whatever it holds. Written over the copied ledger
+    # from index 0, the commit introduced one row once the real row 0 existed, and the audit stayed green.
+    ledger = s.study / "takes.json"
+    base = json.loads(ledger.read_text()).get("rows", []) if ledger.is_file() else []
+    rows = base + [{"task": "scope-read", "half": "positive", "model": "claude-opus-5", "take": k,
+                    "order_index": k, "fixture_sha": "x",
+                    "environment_class": "claude-subscription-headless"} for k in (1, 2)]
+    ledger.write_text(json.dumps({"role": "test", "rows": rows}, indent=2))
     s.commit("take: two at once")
     return s.run([str(s.study / "takes.py"), "--audit"]), "takes.py --audit"
 
@@ -438,7 +442,11 @@ def _clean_take(s: Sandbox) -> tuple[Path, list[str]]:
     spec.loader.exec_module(build)
     pre = json.loads(_prereg(s).read_text())
     d = build.build_study(s.root, s.study, pre, s.commit, takes=(1,))[1]
-    return d / "transcript.jsonl", ["--task", build.ROW["task"], "--half", build.ROW["half"], "--row", "0"]
+    # AMENDMENT 2 (17 September 2026): the row is the one the builder wrote, read from the take's own ledger. Once the
+    # first real row was committed, the sandbox's base commit carried it at index 0 and the builder's row moved after
+    # it; a hard-coded row 0 then named a row this take does not describe.
+    row = json.loads((d / "driver-ledger.json").read_text())["row"]
+    return d / "transcript.jsonl", ["--task", build.ROW["task"], "--half", build.ROW["half"], "--row", str(row)]
 
 
 def m_take_with_no_agent_turn(s: Sandbox) -> tuple[int, str]:

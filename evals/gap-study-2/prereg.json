@@ -2459,7 +2459,7 @@
     {
       "path": "evals/gap-study-2/mutations.py",
       "git_blob_sha": "880f20e2e409e49bc545761cfc86cdf86e45a2fe",
-      "sha256": "a28088348b09e94c9211b15cdd6c2c34e9ace1b377c8491d59e04c3ee041720b",
+      "sha256": "c31d095343b85e82d4aea7fa49353af4017343e50466cad80bf7989316c77756",
       "uncommitted": false
     },
     {
@@ -2885,7 +2885,7 @@
     {
       "path": "evals/gap-study-2/mutations.py",
       "git_blob_sha": "880f20e2e409e49bc545761cfc86cdf86e45a2fe",
-      "sha256": "a28088348b09e94c9211b15cdd6c2c34e9ace1b377c8491d59e04c3ee041720b",
+      "sha256": "c31d095343b85e82d4aea7fa49353af4017343e50466cad80bf7989316c77756",
       "uncommitted": false
     },
     {
@@ -3660,6 +3660,20 @@
           "path": "evals/gap-study-2/tests_freeze_rehearsal.py",
           "sha256_before": "f2106f3d416fc2726db8ed353efe930a49f01c4382d002c7d08288a10377a026",
           "sha256_after": "0d18f1ea7a6427966cdb86d276b0b5105b0b1d392cdeb55dcf85aa35b6fa8098"
+        }
+      ]
+    },
+    {
+      "n": 2,
+      "date": "2026-09-17",
+      "before_any_take": false,
+      "graded_takes_at_the_time": 1,
+      "why": "The first real take's push turned two battery controls red: the mutations that render a clean graded take in a sandbox assumed an empty ledger, and the sandbox's base commit now carried the real row 0, so the rendered take's row was introduced by the base commit rather than by the builder's row commit and the checker refused the unedited fixture. The builder (test-fixtures/environment-ledger/build_take.py, not pinned) now writes its rows after the ledger's, and mutations._clean_take reads the row from the take's own ledger instead of naming row 0. No grader, label, count, criterion or take order is touched; the one graded take, plan-gate control claude-opus-5 take 1, is unchanged and its check re-derives as before. The same assumption sat in the mutation 'two ledger rows in one commit', which wrote two rows over the copied ledger from index 0 and so introduced one once the real row 0 existed; it now writes its two rows after the ledger's. Both changes are this one amendment: the battery's fixtures assumed an empty ledger.",
+      "files": [
+        {
+          "path": "evals/gap-study-2/mutations.py",
+          "sha256_before": "a28088348b09e94c9211b15cdd6c2c34e9ace1b377c8491d59e04c3ee041720b",
+          "sha256_after": "c31d095343b85e82d4aea7fa49353af4017343e50466cad80bf7989316c77756"
         }
       ]
     }

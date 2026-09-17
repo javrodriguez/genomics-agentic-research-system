@@ -165,6 +165,10 @@ The review's report and blindness record are committed unedited.
 
 **17 September 2026, before any take.** The first commit after the freeze turned one battery control red: the freeze-commit hold read a sandbox's one-commit history as the study's. `check_results.py` now holds the freeze commit only where it sits on the recorded parent and prints NOT CHECKED elsewhere; two pinned files moved, recorded in the frozen file's `amendments` with sha256 before and after (PROTOCOL.md, "Amendment 1").
 
+## The first take, and amendment 2 (slice 18)
+
+**17 September 2026.** Row 0 (plan-gate control `claude-opus-5` take 1) graded cleanly; CI then found the battery's rendered-take fixture assuming an empty ledger. The builder now writes after the ledger's rows, `mutations._clean_take` reads its row from the take's ledger and the two-rows mutation writes after the ledger's too: amendment 2 (PROTOCOL.md, "The first take, and amendment 2").
+
 ## Next
 
 **The takes**: 108 graded sessions in the frozen order, each registered with `takes.py --add`, driven by `drive.py`, checked by `check_take.py`, committed as `take:` with CI read on every push; then `analyse.py`, the publication, gate 1 and the final verifier.
