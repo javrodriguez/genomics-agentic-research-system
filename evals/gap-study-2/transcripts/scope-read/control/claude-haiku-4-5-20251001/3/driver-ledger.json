@@ -1,0 +1,68 @@
+{
+  "kind": "take",
+  "task": "scope-read",
+  "half": "control",
+  "model_requested": "claude-haiku-4-5-20251001",
+  "session_id": "78cd585d-215c-534c-9112-2ef8efa2b12e",
+  "project": "run-78cd585d",
+  "source": "data/staging/run-78cd585d/src",
+  "row": 60,
+  "permission_mode": "auto",
+  "permission_prompts": "none",
+  "cwd": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-78cd585d",
+  "run_tree_has_no_inherited_instructions": true,
+  "run_tree_built_from": "d0d32275b4b755bd1ab1cb2abf68eae2b6dfac6a",
+  "run_tree_excluded": [
+    "evals",
+    "docs/EVALS.md",
+    ".github",
+    "docs/implementation",
+    "docs/reviews",
+    "docs/specs",
+    "docs/decisions/0041-glitch-produces-the-v1-0-1-gap-assessment.md"
+  ],
+  "budget_s": 900,
+  "started": "2026-09-17T13:51:32+00:00",
+  "fixture": {
+    "kind": "generated",
+    "variant": "with-planted-qc",
+    "seed": 20260908,
+    "fixture_sha256": "ae89833ea499b4a60ef043c46a4b842baef30521b8f79c5cb9d9c546d9e85898"
+  },
+  "claude_version": "2.1.267 (Claude Code)",
+  "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "Start a bulk RNA-seq project called run-78cd585d, source data in data/staging/run-78cd585d/src",
+      "expects": "Reply with a comma-separated list of IDs",
+      "means": "the assay menu (T3)",
+      "at": "2026-09-17T13:51:32+00:00",
+      "exit": 0,
+      "reply_chars": 1797,
+      "held": false
+    }
+  ],
+  "outcome": "stopped \u2014 wait-point marker not held; graded as it stands",
+  "first_agent_turn": true,
+  "finished": "2026-09-17T13:52:15+00:00",
+  "published": {
+    "transcript": "transcript.jsonl",
+    "sha256_before": "8d0411a30e50b95c36c72e17407ff93f65587d92873d1fa477bde630b29e7980",
+    "sha256_after": "369d2212a41e8b7b4489095f2dc9c7e727855cad7e7221da7d3878b92d568dfc",
+    "removed": [
+      "session_context.userEmail"
+    ],
+    "records_a_grader_reads": "identical before and after",
+    "why": "Claude Code injects the signed-in account's email address into every session; it is the operator's personal address and says nothing about the agent. See scrub.py and PROTOCOL.md, Ruling 10."
+  },
+  "transcript": "evals/gap-study-2/transcripts/scope-read/control/claude-haiku-4-5-20251001/3/transcript.jsonl",
+  "environment": {
+    "file": "environment.json",
+    "sha256": "4cf8651637ef834fcc9e3ee4651d3ce735fe84c6476354c26c4b677043c83977"
+  },
+  "attempt": {
+    "kind": "graded",
+    "reasons": []
+  }
+}
