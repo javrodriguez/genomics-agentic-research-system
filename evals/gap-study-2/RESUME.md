@@ -193,6 +193,10 @@ The review's report and blindness record are committed unedited.
 
 **17 September 2026, 05:57 to 15:18 EDT.** 112 rows, 106 graded takes, 6 rehearsals, 0 pauses, one half capped; graded by `run.py --all` (a second run byte-identical), analysed by `analyse.py`, published above round 1 in `docs/EVALS.md` at the 350-word cap; the controls check's degenerate-cell finding committed as `verification/controls-as-published.txt` (PROTOCOL.md, "The takes, the results and the published section").
 
+## Amendment 8 (slice 26)
+
+**17 September 2026, with the results on disk.** The five results-dependent mutations ran their live guards in sandboxes without the history those guards read; they now run in git sandboxes, with a commit after the freeze where the guard scans commit bodies, amendment 8 (PROTOCOL.md, "Amendment 8").
+
 ## Next
 
 **Gate 1 is closed** (Javier: "I approve", 17 September 2026): the results are published as graded and pushed. Next: gate 3's sentence (the owner's, or the heading stays empty), the final verifier from a fresh clone, and the done commit.

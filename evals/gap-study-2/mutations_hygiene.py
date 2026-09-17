@@ -44,10 +44,9 @@ def m_done_line_mutation_unregistered(s: Sandbox) -> tuple[int, str]:
 def m_not_applicable_predicate_stale(s: Sandbox) -> tuple[int, str]:
     """Lesson 6: a predicate forced to return its sentence whether or not its condition still holds."""
     s.control(_th(s, "EveryNotApplicableIsEvaluated"))
-    # anchored on the predicate's own def line: two predicates now open with the same two lines (CP8)
-    _edit(s.study / "mutations.py",
-          "def _na_no_results_file(s: Sandbox) -> str | None:\n    if _has_results(s):\n        return None\n",
-          "def _na_no_results_file(s: Sandbox) -> str | None:\n    if False:\n        return None\n")
+    # AMENDMENT 8 (17 September 2026): anchored on the carried-pin predicate, the results-file predicates having left
+    # the list with the first results; the planted defect is the same, a predicate that never returns None
+    _edit(s.study / "mutations.py", "    if any(pins):\n        return None\n", "    if False:\n        return None\n")
     code, out = s.run_out(_th(s, "EveryNotApplicableIsEvaluated"))
     return (Sandbox.expect(code, out, "still returns its reason with the condition gone"),
             "test_harness.py EveryNotApplicableIsEvaluated")

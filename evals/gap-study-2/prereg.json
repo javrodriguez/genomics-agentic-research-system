@@ -2459,7 +2459,7 @@
     {
       "path": "evals/gap-study-2/mutations.py",
       "git_blob_sha": "880f20e2e409e49bc545761cfc86cdf86e45a2fe",
-      "sha256": "c31d095343b85e82d4aea7fa49353af4017343e50466cad80bf7989316c77756",
+      "sha256": "93f35c382558ff1acdf4ea2ee4e0577df8fd3204435a3601694e9a6b05de0201",
       "uncommitted": false
     },
     {
@@ -2507,7 +2507,7 @@
     {
       "path": "evals/gap-study-2/mutations_hygiene.py",
       "git_blob_sha": "d52dcb97f144693026cda894aeddda92c17de999",
-      "sha256": "41bea313c674298577e677e8b51b1b19998b882d323dc52ab84c407e30918fe4",
+      "sha256": "eb5ab3592509e0637305a373c6782fd57833ec0ae6488c0a7fdd0ded34411c55",
       "uncommitted": false
     },
     {
@@ -2651,7 +2651,7 @@
     {
       "path": "evals/gap-study-2/tests_hygiene.py",
       "git_blob_sha": "befe1b0901e83efea10f9f4cc946f5f8518a59eb",
-      "sha256": "fc02f61c9ea593e2f880e77cb61a8a5a9e76504b95a715421a33d97bdf2a6b8e",
+      "sha256": "b9fc7f2535a28be4d056db9fee8f829eb54ff35f43066562fa2122b41db8156e",
       "uncommitted": false
     },
     {
@@ -2885,7 +2885,7 @@
     {
       "path": "evals/gap-study-2/mutations.py",
       "git_blob_sha": "880f20e2e409e49bc545761cfc86cdf86e45a2fe",
-      "sha256": "c31d095343b85e82d4aea7fa49353af4017343e50466cad80bf7989316c77756",
+      "sha256": "93f35c382558ff1acdf4ea2ee4e0577df8fd3204435a3601694e9a6b05de0201",
       "uncommitted": false
     },
     {
@@ -3759,6 +3759,30 @@
           "path": "evals/gap-study-2/test_harness.py",
           "sha256_before": "db884f62455dbfd7327b64641ee25360bd111c28922fa9ed78d0769c2b69666c",
           "sha256_after": "0ccd0ba969dab043c3cf495d8ec780ce937806d44a538f27259a472898619ad2"
+        }
+      ]
+    },
+    {
+      "n": 8,
+      "date": "2026-09-17",
+      "before_any_take": false,
+      "graded_takes_at_the_time": "106 of 108 planned",
+      "why": "With results on disk the battery's mutation 'a banned word in the published section' ran its guard, NoRateNoBannedWordLive, in a sandbox with one commit; the guard scans the commit bodies since the freeze, the lint refuses a scan that names no commit, and the control was red before the mutation. The mutation now runs in a git sandbox and makes one clean commit after the freeze first, as every take commit does in the study. No grader, label, count, criterion or take order is touched. Four more results-dependent mutations ran their guards in sandboxes without git, where the kickoff baseline and the regrade cannot be read; they now run in git sandboxes. The three not-applicable entries for the live classes, whose condition was that no results file existed, are removed as their own rule says, the five mutations above being theirs; the hygiene test's flips for them go with them. The stale-sentence mutation, anchored on one of the removed predicates, is re-anchored on a remaining one.",
+      "files": [
+        {
+          "path": "evals/gap-study-2/mutations.py",
+          "sha256_before": "c31d095343b85e82d4aea7fa49353af4017343e50466cad80bf7989316c77756",
+          "sha256_after": "93f35c382558ff1acdf4ea2ee4e0577df8fd3204435a3601694e9a6b05de0201"
+        },
+        {
+          "path": "evals/gap-study-2/tests_hygiene.py",
+          "sha256_before": "fc02f61c9ea593e2f880e77cb61a8a5a9e76504b95a715421a33d97bdf2a6b8e",
+          "sha256_after": "b9fc7f2535a28be4d056db9fee8f829eb54ff35f43066562fa2122b41db8156e"
+        },
+        {
+          "path": "evals/gap-study-2/mutations_hygiene.py",
+          "sha256_before": "41bea313c674298577e677e8b51b1b19998b882d323dc52ab84c407e30918fe4",
+          "sha256_after": "eb5ab3592509e0637305a373c6782fd57833ec0ae6488c0a7fdd0ded34411c55"
         }
       ]
     }

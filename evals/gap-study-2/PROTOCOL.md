@@ -1705,3 +1705,10 @@ Javier answered "I approve" in the run's own window on 17 September 2026.
 The results are published as the frozen instrument scored them, with the published section as written and the comparison heading empty; gate 3, the comparative sentence, stays the owner's.
 Also recorded in the goal file's Rulings: the standing ruling 1A of the same day for the one public sentence the push scanner reads as a key, under which six findings in round 2's transcripts were verified and recorded.
 
+### Amendment 8 (slice 26) — 2026-09-17 — the results-dependent mutations get the history their guards read
+
+With results on disk the battery's five results-dependent mutations ran their live guards for the first time, and their controls were red: the guards read the study's history (the kickoff baseline for the added-lines rule, the freeze commit for the commit-body scan, the ledger's commits for the regrade), and those sandboxes were built without git; the commit-body scan also refuses a scan that names no commit, and a sandbox whose one commit is the freeze has none after it.
+The five now run in git sandboxes, and the one whose guard scans commit bodies makes one clean commit after the freeze first, as every take commit does in the study.
+The three not-applicable entries for those live classes, whose condition was that no results file existed, are removed as their own rule says, the five mutations being theirs; the hygiene test's flips go with them.
+`mutations.py`, `tests_hygiene.py` and `mutations_hygiene.py` are pinned and move by amendment 8; each of the five is red after a green control on this tree.
+No grader, label, count, criterion or take order is touched.

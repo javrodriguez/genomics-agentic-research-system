@@ -1316,9 +1316,20 @@ def m_committed_line_reworded(s: Sandbox) -> tuple[int, str]:
     return s.run(_th(s, "TwoMinuteReadLive")), "test_harness.py TwoMinuteReadLive"
 
 
+def _commit_after_the_freeze(s: Sandbox) -> None:
+    """AMENDMENT 8 (17 September 2026). With results present the live guards read the study's history (the kickoff
+    baseline, the freeze commit, the regrade), so the mutations that run them get git sandboxes. NoRateNoBannedWordLive scans the commit bodies since the freeze, and the lint
+    refuses a scan that names no commit; in a sandbox whose one commit is the freeze there is none, so the guard was
+    red before the mutation. One clean commit after it gives the scan a body, as every take commit does in the study."""
+    p = s.study / "RESUME.md"
+    p.write_text(p.read_text() + "\nA line added after the freeze, in a throwaway copy, so the commit-body scan has a commit to read.\n")
+    s.commit("take: a row after the freeze, in a throwaway copy")
+
+
 def m_banned_word_in_the_section(s: Sandbox) -> tuple[int, str]:
     """Amendment 3: a banned word written into the published section."""
     _needs_results(s)
+    _commit_after_the_freeze(s)
     s.control(_th(s, "NoRateNoBannedWordLive"))
     _edit(_evals_md(s), f"\n{study.SUMMARY_END}\n", f"\nA robust result.\n{study.SUMMARY_END}\n")
     return s.run(_th(s, "NoRateNoBannedWordLive")), "test_harness.py NoRateNoBannedWordLive"
@@ -1523,10 +1534,10 @@ MUTATIONS = [
     ("the cut count absent from the comparison", m_cut_count_absent_from_the_comparison, False),
     ("a take-record exclusion that ignores where the file is", m_take_record_exclusion_ignores_location, False),
     ("a take-record exclusion that swallows every JSON file", m_take_record_exclusion_swallows_every_json, False),
-    ("a summary over the two-minute cap", m_summary_over_the_cap, False),
-    ("a table count that is not the results file's", m_table_count_edited, False),
-    ("a committed line reworded in the section", m_committed_line_reworded, False),
-    ("a banned word in the published section", m_banned_word_in_the_section, False),
+    ("a summary over the two-minute cap", m_summary_over_the_cap, True),
+    ("a table count that is not the results file's", m_table_count_edited, True),
+    ("a committed line reworded in the section", m_committed_line_reworded, True),
+    ("a banned word in the published section", m_banned_word_in_the_section, True),
     ("a stale published analysis", m_analysis_json_stale, False),
     ("the harness's error text read as the agent's", m_api_error_text_counted_as_the_agents, False),
     ("a pause marker matched unbounded", m_pause_marker_unbounded, False),
@@ -1535,7 +1546,7 @@ MUTATIONS = [
     ("a moved threshold after the freeze", m_moved_threshold_after_the_freeze, True),
     ("a transcript whose session id does not match its row's commit", m_session_id_not_its_rows, False),
     ("a row committed after its transcript's commit", m_row_committed_after_its_transcript, False),
-    ("a doctored results file re-graded", m_doctored_results_file_regraded, False),
+    ("a doctored results file re-graded", m_doctored_results_file_regraded, True),
     ("an in-scope read on the positive half read as an answer", m_scope_read_answered_on_a_decline, False),
 ]
 
@@ -1778,42 +1789,13 @@ def _na_no_carried_fixture_pin(s: Sandbox) -> str | None:
             "refusal on a disagreeing pin is unit-tested instead (TheCarriedFixtureBuilds)")
 
 
-def _na_no_results_file(s: Sandbox) -> str | None:
-    if _has_results(s):
-        return None
-    return ("results/ holds no results file, so there is no published section for the live word cap, order, "
-            "table, limitations and committed-line checks to read; their mechanisms are broken in TwoMinuteRead")
-
-
-def _na_no_results_and_no_freeze(s: Sandbox) -> str | None:
-    # ROUND 2, CP8: the freeze rehearsal found this predicate keyed on the frozen file too, and NoRateNoBannedWordLive
-    # skips on results alone (live_section) before it reads the section, the analysis, the brief or the commit
-    # bodies since the freeze. A frozen tree with no results is still one the live class reads nothing in.
-    if _has_results(s):
-        return None
-    return ("results/ holds no results file, so NoRateNoBannedWordLive skips before it reads the published section, "
-            "the analysis, the gate brief or the commit bodies since the freeze; the scan is broken in NoRateNoBannedWord")
-
-
-def _na_no_published_analysis(s: Sandbox) -> str | None:
-    if _has_results(s) or (s.study / "analysis.json").is_file():
-        return None
-    return ("results/ holds no results file and no analysis.json is published, so there is nothing to regenerate "
-            "and compare; the comparison is broken in ThePublishedAnalysisIsRegenerated")
-
-
 NOT_APPLICABLE = [
     ("a local transcript with no server log", _na_local_tier_dropped),
     ("a copied fixture whose origin no longer resolves", _na_origin_cannot_resolve),
     ("a carried fixture whose tree hash differs from the freeze", _na_no_carried_fixture_pin),
-    # ROUND 2, CP1: the three live partners of the split classes. Each reads the published section, which
-    # does not exist while results/ holds no results file, and says so by skipping; a mutation there would
-    # come back green against a guard that never ran. Their mechanisms are mutated in the fixture classes
-    # above, and the five amendment-3 mutations aimed at these classes turn applicable with the first result.
-    ("TwoMinuteReadLive over the published section", _na_no_results_file),
-    ("NoRateNoBannedWordLive over the published section, analysis, brief and commit bodies",
-     _na_no_results_and_no_freeze),
-    ("ThePublishedAnalysisIsRegeneratedLive over analysis.json", _na_no_published_analysis),
+    # ROUND 2, CP1 listed the three live partners of the split classes here while results/ held no results
+    # file; AMENDMENT 8 (17 September 2026) removed them when the first results landed, as their own
+    # condition said to: the five amendment-3 mutations above are their mutations, applicable and red.
 ]
 
 

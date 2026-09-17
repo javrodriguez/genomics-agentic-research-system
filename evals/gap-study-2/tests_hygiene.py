@@ -414,12 +414,6 @@ def _sandbox(test: unittest.TestCase) -> types.SimpleNamespace:
     return types.SimpleNamespace(root=root, study=dest)
 
 
-def _plant_results(s):
-    (s.study / "results").mkdir(exist_ok=True)
-    (s.study / "results" / "number-fidelity.json").write_text("{}\n")
-    return s
-
-
 def _set_carried_pin(d):
     for t in d["tasks"]:
         for h in ("positive", "control"):
@@ -437,9 +431,6 @@ FLIPS = {
         lambda s: types.SimpleNamespace(study=s.study, root=s.root / "workspaces" / "repo"),
     "a carried fixture whose tree hash differs from the freeze":
         lambda s: (_edit_json(s.study / "prereg-draft.json", _set_carried_pin), s)[1],
-    "TwoMinuteReadLive over the published section": _plant_results,
-    "NoRateNoBannedWordLive over the published section, analysis, brief and commit bodies": _plant_results,
-    "ThePublishedAnalysisIsRegeneratedLive over analysis.json": _plant_results,
 }
 
 
