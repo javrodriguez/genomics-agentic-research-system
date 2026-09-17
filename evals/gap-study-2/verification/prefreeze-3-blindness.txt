@@ -1,0 +1,27 @@
+blindness check, read from the reviewer's own session file (300 records, 72 attachment records, 70 tool calls)
+
+1. Operator material in the loaded context (attachment records):
+   the goal id                        0
+   the study's folder name            151
+   the round's name                   0
+   the operator's open-items list     0
+   the assistant's memory folder      0
+   the assistant's identity file      0
+   the operator's objective line      0
+   the operator's memory file         0
+   this repository, by path           0
+   the account email                  4
+
+2. Absolute paths in the reviewer's tool inputs that are not inside its folder: 12
+   - (a search pattern the reviewer used on its own report, not a path it read)
+   - /tmp/rev3
+   - /tmp/rev3/;
+   - /tmp/rev3/checks.txt
+   - /tmp/rev3/harness.txt
+   - /tmp/rev3/harness.txt);
+   - /tmp/rev3/mutations.done
+   - /tmp/rev3/mutations.txt
+   - /tmp/rev3/mutations.txt;
+   - /tmp/rev3/prereg-diff.txt
+   - /tmp/rev3/prereg-diff.txt;
+   - <home>/.claude/projects/-Users-<account>--gap-study-2-review-review-3/cebae723-93fb-426f-842d-e61442a1f021/tool-results/
