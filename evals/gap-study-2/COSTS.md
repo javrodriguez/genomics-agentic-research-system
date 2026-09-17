@@ -6,13 +6,13 @@ Everything under `## Dollars billed beyond the standing subscription` is the scr
 
 ## Dollars billed beyond the standing subscription
 
-$0 as the operator states it; evidenced by 0 of 0; not evidenced: no graded take is on disk, so no environment record exists to evidence it
+$0, evidenced by 1 of 1 environment records (no API-key variable set; the harness reported credential source none on every turn)
 
 ## Per take
 
 | task | half | model | take | input | cache read | cache write | output | wall clock | environment |
 |---|---|---|---|---|---|---|---|---|---|
-| _(no take has run)_ | | | | | | | | | |
+| `plan-gate` | control | `claude-opus-5` | 1 | 60 | 1,188,845 | 109,886 | 26,143 | 2.0 min | evidenced |
 
 ## Pre-freeze walks
 
@@ -29,7 +29,7 @@ $0 as the operator states it; evidenced by 0 of 0; not evidenced: no graded take
 
 | model | graded takes | context tokens | output tokens | wall clock |
 |---|---|---|---|---|
-| _(no take has run)_ | | | | |
+| `claude-opus-5` | 1 | 1,298,791 | 26,143 | 2.0 min |
 
 ## Recorded pauses
 
