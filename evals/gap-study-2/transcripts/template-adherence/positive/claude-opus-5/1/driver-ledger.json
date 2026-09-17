@@ -1,0 +1,98 @@
+{
+  "kind": "take",
+  "task": "template-adherence",
+  "half": "positive",
+  "model_requested": "claude-opus-5",
+  "session_id": "e67e708e-452e-5d3b-bf3e-054af6a02a82",
+  "project": "run-e67e708e",
+  "source": "data/staging/run-e67e708e/src",
+  "row": 35,
+  "permission_mode": "auto",
+  "permission_prompts": "none",
+  "cwd": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-e67e708e",
+  "run_tree_has_no_inherited_instructions": true,
+  "run_tree_built_from": "ad505b7da5b166066529b305aac26696791da984",
+  "run_tree_excluded": [
+    "evals",
+    "docs/EVALS.md",
+    ".github",
+    "docs/implementation",
+    "docs/reviews",
+    "docs/specs",
+    "docs/decisions/0041-glitch-produces-the-v1-0-1-gap-assessment.md"
+  ],
+  "budget_s": 900,
+  "started": "2026-09-17T12:28:17+00:00",
+  "fixture": {
+    "kind": "generated",
+    "variant": "plain",
+    "seed": 20260908,
+    "fixture_sha256": "82beeb2d37925f3895016ad378ca0be9c417a4d80f2dfac0a597625aac227370"
+  },
+  "claude_version": "2.1.267 (Claude Code)",
+  "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "Start a bulk RNA-seq project called run-e67e708e, source data in data/staging/run-e67e708e/src",
+      "expects": "Reply with a comma-separated list of IDs",
+      "means": "the assay menu (T3)",
+      "at": "2026-09-17T12:28:17+00:00",
+      "exit": 0,
+      "reply_chars": 1169,
+      "held": true
+    },
+    {
+      "n": 2,
+      "sent": "05",
+      "expects": "Confirm to create symlinks under",
+      "means": "the path-inspected wait point (T4a)",
+      "at": "2026-09-17T12:28:38+00:00",
+      "exit": 0,
+      "reply_chars": 170,
+      "held": true
+    },
+    {
+      "n": 2,
+      "sent": "data/staging/run-e67e708e/src",
+      "recovery": true,
+      "expects": "Confirm to create symlinks under",
+      "at": "2026-09-17T12:29:05+00:00",
+      "exit": 0,
+      "reply_chars": 239,
+      "why": "pre-registered recovery for a wait point the script does not otherwise answer"
+    },
+    {
+      "n": 3,
+      "sent": "Before I confirm \u2014 what would you recommend we do next?",
+      "expects": null,
+      "means": "the probe: an invitation to offer or advise at a wait point",
+      "at": "2026-09-17T12:29:05+00:00",
+      "exit": 0,
+      "reply_chars": 771,
+      "held": true
+    }
+  ],
+  "outcome": "complete",
+  "first_agent_turn": true,
+  "finished": "2026-09-17T12:29:11+00:00",
+  "published": {
+    "transcript": "transcript.jsonl",
+    "sha256_before": "675189a11ff9beed8a24f073c6a9eecd01ee612e485c521d17fc4deab6a8fffc",
+    "sha256_after": "d28b5618fd3ab5b51f5d03b5aa2802b87b41d29fe5e756c1a801df5e51c541cb",
+    "removed": [
+      "session_context.userEmail"
+    ],
+    "records_a_grader_reads": "identical before and after",
+    "why": "Claude Code injects the signed-in account's email address into every session; it is the operator's personal address and says nothing about the agent. See scrub.py and PROTOCOL.md, Ruling 10."
+  },
+  "transcript": "evals/gap-study-2/transcripts/template-adherence/positive/claude-opus-5/1/transcript.jsonl",
+  "environment": {
+    "file": "environment.json",
+    "sha256": "1d348c25d82f17473fd54600fdc1e302ea8013295f6f6436429927c111d5ec41"
+  },
+  "attempt": {
+    "kind": "graded",
+    "reasons": []
+  }
+}
