@@ -1,0 +1,43 @@
+65e98d0596e2a62766d5bcd94d5da086558341affd0ef74132e3d122c66ef17c
+freeze rehearsal 3, 2026-09-17 03:17 EDT, draft sha256 above, clone of HEAD b1067cfec309
+study tree sha256: 214a88287859cbca5a378adcc400f4c829e66c2a3af77bace43cbc628feed10d
+clean clone record: freeze-rehearsal-3-clean-clone.txt (the clone's clean-clone-6c40b9c.txt)
+
+[0] freeze.py --rehearsal --write
+     frozen: evals/gap-study-2/prereg.json | The draft is kept beside it. The freeze commit body carries the line printed above as `commit body`. | Before committing, run verification/round1-regrade/regrade_environment.py --write: that record names the pre-registration in force by sha, and the freeze commit carries it rewritten beside the frozen file.
+[0] regrade_environment.py --write (the record names the frozen file)
+     wrote environment.json: 108 graded, 108 refused [environment-record], evidenced 0 of 108
+[0] prereg.py --status
+                claude-opus-5                runs | n        : 3  -> 108 planned takes | take order: FIXED
+[0] copy_manifest.py --check
+     41 copied file(s) checked against ac8662bc6209; 34 edited after the copy | clean: every blob re-derives, every copy hash is round 1's bytes, every edit flag agrees with the bytes, and evals/gap-study/ is unchanged
+[0] test_harness.py
+     Ran 582 tests in 190.576s |  | OK (skipped=13)
+[0] contracts.py --check
+       template-adherence     4 quote(s) |  | every stored sentence is a byte substring of the blob it was pinned to
+[0] fixtures/check_fixture.py --all
+       with-planted-qc  ok  12 raw files, 6 samples, paired-end, excluded ['RUNSHEET.txt'] |  | the system under test accepts every variant, and its counts match the manifest
+[0] lint_language.py
+     clean — 96 input(s) scanned, 1 excused line(s) on record
+[0] check_results.py
+       the freeze commit held to its rehearsal and each pin to its committed blob: 0 problem(s) |  | clean
+[0] check_results.py --ledger
+       0 of 0 graded takes carry an environment record; 0 record no API-key variable set; 0 record apiKeySource "none" on every turn; rows [] |  | clean
+[0] check_results.py --controls
+       no cell has takes on both halves yet, so the degenerate-agent check has nothing to read. Recorded, not counted as a pass. |  | clean
+[0] check_results.py --regrade
+       no results file on disk: nothing to re-derive |  | clean
+[0] costs.py --check
+     COSTS.md is what the reader writes
+[0] test_harness.py --mutations
+       n/a   a doctored results file re-graded            no results file is in this tree, so the published section this guards is not committed yet; with results present the guard is required |  | every one of the 221 guards went red when broken
+[0] clean_clone_battery.sh --source <clone>
+      | clean clone of 6c40b9cf8b24a2f45203d23f9d44a1c6fa7db8be: suite OK, skips as expected, battery green | output: evals/gap-study-2/verification/clean-clone-6c40b9c.txt
+[0] takes.py --add (first row of the take order)
+     row 0 written. Commit it, then the session id is: |   python3 evals/gap-study-2/takes.py --session-id 0
+[0] check_results.py --ledger (one row)
+       0 of 0 graded takes carry an environment record; 0 record no API-key variable set; 0 record apiKeySource "none" on every turn; rows [] |  | clean
+
+not done: the synthetic full ledger of 108 takes: not done, no synthetic graded-take generator exists; the ledger was exercised with one real registered row instead
+
+all green
