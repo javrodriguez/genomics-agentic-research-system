@@ -169,6 +169,10 @@ The review's report and blindness record are committed unedited.
 
 **17 September 2026.** Row 0 (plan-gate control `claude-opus-5` take 1) graded cleanly; CI then found the battery's rendered-take fixture assuming an empty ledger. The builder now writes after the ledger's rows, `mutations._clean_take` reads its row from the take's ledger and the two-rows mutation writes after the ledger's too: amendment 2 (PROTOCOL.md, "The first take, and amendment 2").
 
+## Amendment 3 (slice 19)
+
+**17 September 2026, at row 27.** `COSTS.md` rendered a one-minute take with a decimal point and a zero after the whole minute and the language guard stopped the loop; `costs.py` prints whole minutes whole, amendment 3 (PROTOCOL.md, "Amendment 3").
+
 ## Next
 
 **The takes**: 108 graded sessions in the frozen order, each registered with `takes.py --add`, driven by `drive.py`, checked by `check_take.py`, committed as `take:` with CI read on every push; then `analyse.py`, the publication, gate 1 and the final verifier.

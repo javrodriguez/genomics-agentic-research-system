@@ -2867,7 +2867,7 @@
     {
       "path": "evals/gap-study-2/costs.py",
       "git_blob_sha": "20591d2991cb9f94be2abd72f36a2dfb6c7e0474",
-      "sha256": "9443af600fe6d7ec8cd3147a5d39eec3513b2ceb8901c664f925b19c7ed40749",
+      "sha256": "d26071d1bc94a606d1eafe181d2833006a33c38f82b7bc3ef076428b0e1f565a",
       "uncommitted": false
     },
     {
@@ -3674,6 +3674,20 @@
           "path": "evals/gap-study-2/mutations.py",
           "sha256_before": "a28088348b09e94c9211b15cdd6c2c34e9ace1b377c8491d59e04c3ee041720b",
           "sha256_after": "c31d095343b85e82d4aea7fa49353af4017343e50466cad80bf7989316c77756"
+        }
+      ]
+    },
+    {
+      "n": 3,
+      "date": "2026-09-17",
+      "before_any_take": false,
+      "graded_takes_at_the_time": 26,
+      "why": "A take that ran one minute rendered in COSTS.md with a decimal point and a zero after the whole minute, a spelling the study's own language guard reads as a proportion of one, so the take loop stopped on the costs table. costs.py now prints a whole number of minutes whole (`1 min`); the measured number is unchanged, only its spelling. No grader, label, count, criterion or take order is touched; COSTS.md is re-rendered by the script, as every version of it is.",
+      "files": [
+        {
+          "path": "evals/gap-study-2/costs.py",
+          "sha256_before": "9443af600fe6d7ec8cd3147a5d39eec3513b2ceb8901c664f925b19c7ed40749",
+          "sha256_after": "d26071d1bc94a606d1eafe181d2833006a33c38f82b7bc3ef076428b0e1f565a"
         }
       ]
     }

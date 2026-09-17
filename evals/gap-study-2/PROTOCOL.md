@@ -1642,3 +1642,10 @@ No grader, label, count, criterion or take order is touched; the one graded take
 
 **What it teaches.**
 The battery ran on an empty study for every one of its rehearsals; a rehearsal of the freeze that also plants one synthetic graded row would have shown this before the freeze, and the plan named that synthetic ledger and the rehearsal record says it was not done.
+
+### Amendment 3 (slice 19) — 2026-09-17 — the costs table prints a whole number of minutes whole
+
+At row 27 the loop stopped on its own lint: a take that ran one minute rendered in `COSTS.md` with a decimal point and a zero after the whole minute, and the language guard reads that spelling as a proportion of one.
+`costs.py` is pinned, so the change is amendment 3: a whole number of minutes prints whole (`1 min`), the measured number unchanged, the table re-rendered by the script as every version of it is.
+No grader, label, count, criterion or take order is touched; 24 takes were graded when it landed, none of them regraded because nothing they are graded by moved.
+Three amendments in the first two hours after the freeze, all in the study's own tooling and none in what grades a take: the states a take brings with it, a ledger with a row, a costs table with a duration, are states the rehearsal never reached, and the plan's synthetic full ledger, which the rehearsal record says was not done, is where they would have been reached.

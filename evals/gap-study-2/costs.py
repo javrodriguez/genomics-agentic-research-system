@@ -307,7 +307,15 @@ def _cells(r: dict) -> str:
 
 
 def _wall(r: dict) -> str:
-    return f"{r['wall_minutes']} min" if r["wall_minutes"] is not None else "unmeasured"
+    return f"{_minutes(r['wall_minutes'])} min" if r["wall_minutes"] is not None else "unmeasured"
+
+
+def _minutes(wall) -> str:
+    """One decimal, and a whole number of minutes printed whole. AMENDMENT 3 (17 September 2026): a take that ran one
+    minute rendered as `1.0 min`, which the language guard reads as a proportion of one, and the loop stopped on the
+    costs table; the number is the same, only its spelling changes."""
+    s = f"{round(wall, 1)}"
+    return s[:-2] if s.endswith(".0") else s
 
 
 def _environment(r: dict) -> str:
@@ -335,7 +343,7 @@ def tables(got: dict) -> dict[str, list[str]]:
         m["ctx"] += r["input_tokens"] + r["cache_read_input_tokens"] + r["cache_creation_input_tokens"]
         m["out"] += r["output_tokens"]
         m["wall"] += r["wall_minutes"] or 0.0
-    rows = [f"| `{m}` | {v['k']} | {_n(v['ctx'])} | {_n(v['out'])} | {round(v['wall'], 1)} min |"
+    rows = [f"| `{m}` | {v['k']} | {_n(v['ctx'])} | {_n(v['out'])} | {_minutes(v['wall'])} min |"
             for m, v in sorted(per.items())]
     out["Per model"] = (["| model | graded takes | context tokens | output tokens | wall clock |",
                          "|---|---|---|---|---|"]
