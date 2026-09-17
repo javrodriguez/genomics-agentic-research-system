@@ -161,6 +161,9 @@ def main() -> int:
             ("check_results.py --controls", [sys.executable, f"{S}/check_results.py", "--controls"]),
             ("check_results.py --regrade", [sys.executable, f"{S}/check_results.py", "--regrade"]),
             ("costs.py --check", [sys.executable, f"{S}/costs.py", "--check"]),
+            # round 1 and the first study must stay green (the checklist requires it; review 3 asked the rehearsal to show it)
+            ("evals/gap-study/check_results.py", [sys.executable, "evals/gap-study/check_results.py"]),
+            ("evals/check_results.py --controls --lexicon", [sys.executable, "evals/check_results.py", "--controls", "--lexicon"]),
             ("test_harness.py --mutations", [sys.executable, f"{S}/test_harness.py", "--mutations"]),
             ("clean_clone_battery.sh --source <clone>", ["bash", f"{S}/clean_clone_battery.sh", "--source", str(clone)]),
         ]:

@@ -59,6 +59,10 @@ class TheFreezeNeedsARehearsal(unittest.TestCase):
             (Path(td) / "freeze-rehearsal-3.txt").write_text(
                 "a" * 64 + "\nprose\n" + freeze.REHEARSAL_TREE_PREFIX + "t" * 64 + "\nsteps\nall green\n")
             self.assertEqual(freeze.rehearsal_problems("a" * 64, Path(td), "t" * 64), [])
+            # the admitted record is the latest by number, not by name (review 3, round 2)
+            (Path(td) / "freeze-rehearsal-10.txt").write_text(
+                "a" * 64 + "\nprose\n" + freeze.REHEARSAL_TREE_PREFIX + "t" * 64 + "\nsteps\nall green\n")
+            self.assertEqual(freeze.admitted_rehearsal("a" * 64, Path(td), "t" * 64).name, "freeze-rehearsal-10.txt")
 
     def test_a_record_for_another_study_tree_refuses(self):
         """Review 1, blocker 2: a code edit after the rehearsal is a state never exercised."""
@@ -99,7 +103,13 @@ class TheFreezeNeedsARehearsal(unittest.TestCase):
                 (sd / "code.py").write_text("x = 2\n")
                 subprocess.run(g + ["add", "-A"], check=True, capture_output=True)
                 subprocess.run(g + ["commit", "-qm", "code"], check=True, capture_output=True)
-                self.assertNotEqual(freeze.study_tree_sha("HEAD"), before, "a code edit left the bound tree unchanged")
+                after_code = freeze.study_tree_sha("HEAD")
+                self.assertNotEqual(after_code, before, "a code edit left the bound tree unchanged")
+                # a pinned file outside the study is bound too (review 3, round 2)
+                (root / "CLAUDE.md").write_text("# the instruction file\n")
+                subprocess.run(g + ["add", "-A"], check=True, capture_output=True)
+                subprocess.run(g + ["commit", "-qm", "outside"], check=True, capture_output=True)
+                self.assertNotEqual(freeze.study_tree_sha("HEAD"), after_code, "a pinned file outside the study is not bound")
             finally:
                 freeze.REPO = saved
 
@@ -156,6 +166,13 @@ class TheFreezeNeedsARehearsal(unittest.TestCase):
             self.assertNotEqual(r.returncode, 0)
             self.assertFalse((root / "evals" / "gap-study-2" / "prereg.json").exists(), "the freeze wrote with uncommitted changes under the study")
             self.assertIn("uncommitted changes", r.stdout + r.stderr, "the freeze did not name the uncommitted change")
+            # an uncommitted edit outside the study, to a file the freeze pins (review 3, round 2)
+            subprocess.run(g + ["checkout", "--", "evals/gap-study-2/prereg.py"], check=True, capture_output=True)
+            (root / "CLAUDE.md").write_text("# an edit nobody rehearsed\n")
+            r = subprocess.run([sys.executable, str(root / "evals" / "gap-study-2" / "freeze.py"), "--review-commit",
+                                head, "--write"], capture_output=True, text=True, cwd=str(root), env=env)
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn("uncommitted changes", r.stdout + r.stderr, "the freeze did not name the uncommitted change outside the study")
 
     def test_the_freeze_commit_is_held_to_the_rehearsal_and_each_pin_to_its_blob(self):
         """check_results.frozen_commit_problems on a repository the test builds: clean when the freeze commit's study

@@ -125,6 +125,13 @@
       "command": "python3 gars/_system/stage03_analysis.py \\\n  approve --project p --analysis 01_x",
       "hand_label": "approve",
       "hand_note": "a backslash-newline continuation before the subcommand (review 2, round 2)"
+    },
+    {
+      "kind": "synthetic",
+      "name": "eval-string",
+      "command": "eval \"python3 gars/_system/stage03_analysis.py approve --project p --analysis 01_x\"",
+      "hand_label": "approve",
+      "hand_note": "eval runs the quoted string as a command line (review 3, round 2)"
     }
   ]
 }

@@ -40,7 +40,10 @@
   "round_1_data_paths": [
     "evals/gap-study/walks/",
     "evals/gap-study/transcripts/",
-    "evals/gap-study/results/"
+    "evals/gap-study/results/",
+    "evals/gap-study/verification/prefreeze-2.md",
+    "evals/gap-study/verification/prefreeze-3.md",
+    "evals/gap-study/verification/prefreeze-4.md"
   ],
   "round_1_data_paths_note": "Round 1's tree, read as data only (walk messages, committed transcripts, published results) and never imported or written. Every other path this file names is round 2's; EveryPinnedPathIsRoundTwos refuses anything else.",
   "harness": {
@@ -1262,7 +1265,7 @@
         "expected": "silent",
         "rule": "grep -rniE 'confound|collinear|aliased' gars/ returned 0 at the pinned tree in the first study; supporting evidence only, and the reviewer rules on the verdict.",
         "evidence": {
-          "source": "the pre-freeze reviewers' rulings: prefreeze-2 Part 4, prefreeze-3 Part 3 and prefreeze-4 Part 3, each ruling silent independently",
+          "source": "the first study's pre-freeze reviewers, each ruling silent independently on round 1's tree: evals/gap-study/verification/prefreeze-2.md (Part 4), prefreeze-3.md (Part 3) and prefreeze-4.md (Part 3); round 2's three pre-freeze reviewers each ruled silent again on the pinned tree, under 'The six layer verdicts' in evals/gap-study-2/verification/prefreeze-1.md, prefreeze-2.md and prefreeze-3.md",
           "ruling": "silent",
           "why": "The recorded rule was a grep, which this protocol forbids as a verdict. A fresh-context reviewer read the stage's contracts, harness settings and helper scripts and could name no mechanism that stops the incorrect behaviour. That read is the verdict; the grep remains supporting evidence only."
         },
@@ -2128,8 +2131,8 @@
       {
         "file": "tests_freeze_rehearsal.py",
         "ref": "HEAD",
-        "count": 7,
-        "reads": "the review commit of two repositories the test builds (one with an uncommitted edit); the revision passed to freeze.py --rehearsal in another, which refuses before it reads it; three reads of a fourth one's HEAD in the study-tree test, before and after records and a code edit land; and the rehearsed tree of a fifth, in the freeze-commit test.",
+        "count": 8,
+        "reads": "the review commit of two repositories the test builds (one with an uncommitted edit); the revision passed to freeze.py --rehearsal in another, which refuses before it reads it; four reads of a fourth one's HEAD in the study-tree test, before and after records, a code edit and a pinned file outside the study land; and the rehearsed tree of a fifth, in the freeze-commit test.",
         "at": "not needed: it reads a repository the test or the battery builds, never this one"
       },
       {

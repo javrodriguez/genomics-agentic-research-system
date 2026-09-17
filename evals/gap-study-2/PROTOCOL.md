@@ -1570,3 +1570,18 @@ The rehearsal copies the clean clone's own record from the clone before it is re
 Two limitations lines: the rehearsal record is a text file nothing binds to its run; the copied-tree pin is verified end to end only where its origin resolves.
 
 **Deferred**, as review 1's were: a rehearsal record forged coherently, the attempt-folder history, the reset row, the analysis table's zero counts, the honest exit-0 sentences, and the battery entries that accept any red.
+
+### Blind review 3 and the follow-ups taken (slice 14) — 2026-09-17 — DO FREEZE
+
+**The review.**
+A third fresh reviewer read the kit at `dd8c6fd` with review 2's bytes beside the draft for 16 minutes and ruled DO FREEZE: every check green, review 2's blocker closed and re-derived, no defect that moves a take, a label or a count.
+Its report and blindness record are committed unedited as `verification/prefreeze-3.md` and `prefreeze-3-blindness.txt`.
+
+**Why one more slice before the freeze.**
+The reviewer's first follow-up is real: the freeze's two new refusals read the study folder alone while ten pinned files live outside it (`CLAUDE.md` and the first study's files the carried task rests on), so an edit to one of those after the rehearsal was refused downstream rather than at the gate.
+Its second is reader-facing in the file the freeze makes read-only: the confounded-design evidence named the first study's reports as "prefreeze-2 Part 4, prefreeze-3 Part 3 and prefreeze-4 Part 3", names that in round 2's own folder now resolve to other documents.
+Both are cheap, and a frozen ambiguity is forever, so the operator judged one more rehearsal and one more review worth the day.
+
+**Taken in slice 14.**
+The tree binding and the uncommitted-changes refusal reach every pinned file, inside the study or not (`BOUND_OUTSIDE`); the admitted rehearsal record is the latest by number; the rehearsal runs the first study's two checkers in its gate; the approve detection reads `eval`'s string, with a case; the confounded-design source names the first study's reports by path and the tree they ruled on, and names round 2's three reports beside them.
+Deferred, as before: the attempt-folder history, the reset row, the analysis table's zero counts, the honest exit-0 sentences, and the battery entries that accept any red.

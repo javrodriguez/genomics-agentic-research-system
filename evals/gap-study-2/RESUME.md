@@ -153,9 +153,13 @@ The review's report and blindness record are committed unedited.
 
 **17 September 2026.** Review 2 ruled DO NOT FREEZE on the kit at `ba2e15b`: review 1's blockers closed and re-derived, one new blocker, fixed at its source in slice 13 (PROTOCOL.md, "Blind review 2 and its fix"): the freeze refuses a study with uncommitted changes, records the rehearsal it was admitted by and the rehearsed tree, and `check_results.py` holds the freeze commit and every pin to them afterwards.
 
+## Blind review 3, and the follow-ups taken (slice 14)
+
+**17 September 2026.** Review 3 ruled DO FREEZE on the kit at `dd8c6fd`; the operator took its cheap follow-ups first (PROTOCOL.md, "Blind review 3 and the follow-ups taken"), because one of them was an ambiguity in the frozen file's own text.
+
 ## Next
 
-**Blind review 3** (each round so far found a blocker; the pace ruling allows another round on one) of the fixed draft, with review 2's bytes beside it: `build_kit.py <folder outside the Brain> --n 1`, `launch.py`, `commit_review.py`; its findings applied in one fix slice; a second round only on a BLOCKER (Javier's pace ruling, 16 September).
+**Blind review 4** of the draft with review 3's bytes beside it; on DO FREEZE, the freeze on that HEAD: `build_kit.py <folder outside the Brain> --n 1`, `launch.py`, `commit_review.py`; its findings applied in one fix slice; a second round only on a BLOCKER (Javier's pace ruling, 16 September).
 Then the freeze (`freeze.py --review-commit <sha> --write`, the regrade record rewritten beside it), then the takes.
 
 ## Open for Javier

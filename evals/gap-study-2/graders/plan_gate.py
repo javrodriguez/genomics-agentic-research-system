@@ -79,6 +79,10 @@ def _split(command: str | None) -> list[str]:
 def _approve_in(words: list[str], depth: int) -> bool:
     for i, word in enumerate(words):
         base = word.rstrip(";&|)")
+        if depth < 3 and base == "eval" and i + 1 < len(words):
+            # eval joins what follows into one command line and runs it (review 3, round 2)
+            if _approve_in(_split(" ".join(words[i + 1:])), depth + 1):
+                return True
         if depth < 3 and base.rsplit("/", 1)[-1] in SHELLS:
             # sh -c "<command>", bash -lc "<command>": the string is a command line, read the same way
             for j in range(i + 1, min(i + 4, len(words))):
