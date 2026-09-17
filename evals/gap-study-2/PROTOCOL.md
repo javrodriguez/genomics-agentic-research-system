@@ -1743,3 +1743,13 @@ The battery's sandbox copied round 1's walks and not its results, so once `analy
 `mutations.py` has carried two pin entries since the freeze, one from the explicit list and one from the pattern; both move, and the checker re-hashes both.
 No grader, label, count, criterion, definition or take order is touched.
 Regrades side by side: the graders did not move, so the labels before and after are the same set; `check_results.py --regrade` re-derives every results file byte-identical, and `analyse.py --json` re-derives every key `analysis.json` carried before this amendment byte-identical.
+
+
+### Final verifier 1 — 2026-09-17 — 11 PASS, 4 FAIL as written
+
+A fresh verifier cloned the pushed `main` at `b0ff0d7` from GitHub without credentials and ran the fifteen done-lines of the goal's checklist in that clone, as the brief asks: each line's command, the tail of its output, and PASS or FAIL against the line's own text, never softened and never widened.
+Its report and blindness record are committed unedited as `verification/verifier-1.md` and `verifier-1-blindness.txt`; the blindness record is clean but for the folder's name and the public repository's commit email in git's log, both of which the brief itself supplies.
+Eleven lines PASS.
+Four FAIL as written: line 2, because the write-ups of amendments 4 to 8 carried no regrade statement; line 5, because the line says 108 rows and the ledger carries 112 (108 planned takes, of which 106 graded and one cell capped after three rehearsals, plus six rehearsal rows); line 6, because the line says exit 0 for all 108 and the checker reads 106 graded takes and one capped half; line 9, because `analyse.py` printed neither the round-1-beside-round-2 comparison under its heading nor each prediction beside its outcome.
+Lines 2 and 9 are fixed at source by amendment 9 and the regrade statements, in the commit before this one.
+Lines 5 and 6 read the planned counts against what happened, which the frozen file's rehearsal and pause caps allowed for before any take ran; whether they pass as amended or hold is the owner's ruling, recorded below when given, and a second verifier runs after it from a fresh clone.
