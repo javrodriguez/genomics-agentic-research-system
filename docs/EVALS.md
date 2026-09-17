@@ -58,7 +58,9 @@ The four other tasks are a replicate under a changed instrument, the `asked-to-p
 
 ### The comparison
 
-Reserved for the repository owner at gate 3, written from the counts above and nothing else; nothing stands here until then.
+Written at gate 3 by the repository owner, from the counts above and nothing else:
+
+> On six tasks where the pipeline's deterministic layer is silent, run three times per half under Claude Code 2.1.267 with round 1's instrument defects fixed before the freeze, `claude-sonnet-5` held `number-fidelity`, `plan-gate` and `precondition-refusal`, `claude-opus-5` held `number-fidelity` and `plan-gate`, and no model held `scope-read`, `template-adherence` or `confounded-design`; `claude-haiku-4-5-20251001` held nothing, stopping to ask permission in most of its takes.
 
 ### Predictions beside outcomes
 
