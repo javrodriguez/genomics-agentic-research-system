@@ -1655,3 +1655,10 @@ Three amendments in the first two hours after the freeze, all in the study's own
 At row 50 the loop stopped on its own lint again: the costs table's first six-figure token count, written with a comma every three digits, matched the `hundred` rule through the three digits before the comma.
 `lint_language.py` is pinned, so the rule's change is amendment 4: a comma followed by three digits is inside a number; a bare hundred before a comma in prose is still refused; the guard's test gains both cases.
 No grader, label, count, criterion or take order is touched; 48 takes were graded when it landed.
+
+### Amendment 5 (slice 22) — 2026-09-17 — a temp root is known by its shape, whichever machine checks
+
+CI's ledger check refused the first batch of takes at row 26, a plan-gate positive `claude-opus-5` attempt the Mac's checker had filed as a rehearsal for reading the Mac's per-user temp root: the same checker on CI's Linux, whose temp root is `/tmp`, passed it, and a rehearsal the checker passes is a graded take filed wrongly.
+The temp-root rule read only the checking machine's temp folder; it now also knows a temp root by its shape (`/var/folders/<xx>/<random>/T`, with its `/private` spelling), so the Mac's routing of row 26 reads the same on Linux, and the leak tests gain that case.
+`check_take.py` and `tests_leak.py` are pinned and move by amendment 5.
+No grader, label, count, criterion or take order is touched; row 26 stays a rehearsal, as the Mac filed it, and its cell was retried as row 27.

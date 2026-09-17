@@ -2663,7 +2663,7 @@
     {
       "path": "evals/gap-study-2/tests_leak.py",
       "git_blob_sha": "ddca77f5d1be5033a4825a79aa092134d0b08140",
-      "sha256": "45fc1290a44b98879ff6e29c21de12cba6f6ed4de32ac1a7e15f46706fa0912c",
+      "sha256": "570b15f3dd661c7cadfa05a8741db8e4a791a901bccb9e8ca488469cfca0d419",
       "uncommitted": false
     },
     {
@@ -2819,7 +2819,7 @@
     {
       "path": "evals/gap-study-2/check_take.py",
       "git_blob_sha": "95841dbe748eb06ab6e716dc1b62b48574c2a09c",
-      "sha256": "8b3fb716efb6f78e37a7bf1a9fce80e40bf5aa124de1d27104a74c2dd2167149",
+      "sha256": "ac469c353d8a8b53dc3afcab75d64e1266a87be942a88f746d02824ca4ff9bf3",
       "uncommitted": false
     },
     {
@@ -3707,6 +3707,25 @@
           "path": "evals/gap-study-2/test_harness.py",
           "sha256_before": "1202c247c3accbc2f111d766ed5c71ae47fee7f56d83ef5adf7c236cd678b2d7",
           "sha256_after": "99911bd16182c221bfaea25a8c755bd3183dde3b44327b93b0fd231487561432"
+        }
+      ]
+    },
+    {
+      "n": 5,
+      "date": "2026-09-17",
+      "before_any_take": false,
+      "graded_takes_at_the_time": 67,
+      "why": "CI's ledger check refused row 26, a plan-gate positive claude-opus-5 attempt the Mac's checker filed as a rehearsal for reading the Mac's per-user temp root, because the same checker on CI's Linux, whose temp root is /tmp, passed it: the temp-root rule read only the checking machine's temp folder. The rule now also knows a temp root by its shape (/var/folders/<xx>/<random>/T, with its /private spelling), whichever machine checks, and the leak tests gain that case. The Mac's routing of row 26 stands and the take's own run tree is admitted as before. No grader, label, count, criterion or take order is touched.",
+      "files": [
+        {
+          "path": "evals/gap-study-2/check_take.py",
+          "sha256_before": "8b3fb716efb6f78e37a7bf1a9fce80e40bf5aa124de1d27104a74c2dd2167149",
+          "sha256_after": "ac469c353d8a8b53dc3afcab75d64e1266a87be942a88f746d02824ca4ff9bf3"
+        },
+        {
+          "path": "evals/gap-study-2/tests_leak.py",
+          "sha256_before": "45fc1290a44b98879ff6e29c21de12cba6f6ed4de32ac1a7e15f46706fa0912c",
+          "sha256_after": "570b15f3dd661c7cadfa05a8741db8e4a791a901bccb9e8ca488469cfca0d419"
         }
       ]
     }

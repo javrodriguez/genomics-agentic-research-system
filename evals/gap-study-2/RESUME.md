@@ -177,6 +177,10 @@ The review's report and blindness record are committed unedited.
 
 **17 September 2026, at row 50.** The `hundred` rule read the three digits before a thousands separator as a bare hundred; the rule now knows digit-group separators, amendment 4 (PROTOCOL.md, "Amendment 4").
 
+## Amendment 5 (slice 22)
+
+**17 September 2026, at row 26 on CI.** The checker's temp-root rule read only the checking machine's temp folder, so a Mac rehearsal for a temp-root read passed on Linux; the rule now knows a temp root by its shape, amendment 5 (PROTOCOL.md, "Amendment 5").
+
 ## Next
 
 **The takes**: 108 graded sessions in the frozen order, each registered with `takes.py --add`, driven by `drive.py`, checked by `check_take.py`, committed as `take:` with CI read on every push; then `analyse.py`, the publication, gate 1 and the final verifier.

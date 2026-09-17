@@ -283,6 +283,18 @@ class TheCheckoutIsTheOnlyReadableTree(unittest.TestCase):
                 got = self.temp_only(tool_records({"file_path": f"{root}/{rel}"}))
                 self.assertEqual(got, [f"<temp folder>/{rel}"], "a copy under the temp folder went unrefused")
 
+    def test_a_macos_temp_root_is_refused_whichever_machine_checks(self):
+        """AMENDMENT 5: the Mac's per-user temp root, by its shape, on a checker whose own temp root is elsewhere."""
+        for root in ("/private/var/folders/ab/c1d2e3f4g5h6i7j8k9l0/T", "/var/folders/ab/c1d2e3f4g5h6i7j8k9l0/T"):
+            with self.subTest(root=root):
+                got = self.ct.outside_temp_reads(self.transcript(tool_records({"file_path": f"{root}/_system/stage03_analysis.py"}),
+                                                                 wd=self.take_tree), Path("/tmp"))
+                self.assertEqual(got, ["<temp folder>/_system/stage03_analysis.py"],
+                                 "a read under another machine's temp root went unrefused")
+        own = self.ct.outside_temp_reads(self.transcript(tool_records({"file_path": f"{self.take_tree}/gars/x.py"}),
+                                                         wd=self.take_tree), Path("/tmp"))
+        self.assertEqual(own, [])
+
     def test_a_temp_path_in_a_result_is_refused_and_a_shell_spelling_there_is_not(self):
         got = self.temp_only(tool_records({"_tool": "Bash", "command": "find / -name '*.py'"},
                                           result=f"{self.temp.as_posix()}/gars-row1-ci-abc123/current/x.py\n"))

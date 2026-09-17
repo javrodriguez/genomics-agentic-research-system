@@ -529,6 +529,11 @@ def outside_home_reads(path: Path, home: Path | None = None, repo: Path | None =
 # agent's own scratch is under its run tree and admitted.
 
 CHECK_TEMP: Path | None = None  # None: tempfile.gettempdir() of whoever runs the check
+# AMENDMENT 5 (17 September 2026). The roots above are the CHECKING machine's, so a take driven on macOS that read
+# the Mac's per-user temp root (`/var/folders/<xx>/<random>/T`) was refused by the checker on the Mac and passed by
+# the same checker on CI's Linux, where the temp root is /tmp; the ledger check then read the Mac's rehearsal as a
+# graded take filed wrongly (row 26). A temp root is also known by its shape, whichever machine checks.
+_TEMP_ROOT_SHAPES = (re.compile(r"(?:/private)?/var/folders/[^/\s\"']+/[^/\s\"']+/T(?=/)"),)
 TMP = "/tmp"
 _TEMP_VARIABLES = ("${TMPDIR}", "$TMPDIR", "${TEMP}", "$TEMP", "${TMP}", "$TMP")
 _HARNESS_FOLDER = re.compile(r"/claude-[0-9]+(?=/|$)(?:/([^/]+))?(?:/([^/]+))?")
@@ -610,9 +615,12 @@ def outside_temp_reads(path: Path, temp_root: Path | None = None) -> list[str]:
             spell += [(v, variable_real, "<temp folder>") for v in variables]
         spell.sort(key=lambda x: len(x[0]), reverse=True)
         for s in _tool_strings(rec):
+            # amendment 5: a temp root named by its shape in this string joins the roots for this string
+            shaped = {m.group(0) for rx in _TEMP_ROOT_SHAPES for m in rx.finditer(s)} - set(roots)
+            spell_here = sorted(spell + [(f, f, "<temp folder>") for f in shaped], key=lambda x: len(x[0]), reverse=True)
             hit = None
             judged: set[int] = set()  # a path is judged by its most specific root, never again by /tmp above it
-            for form, real, label in spell:
+            for form, real, label in spell_here:
                 i = s.find(form + "/")
                 while i != -1 and hit is None:
                     before = s[i - 1] if i > 0 else ""
