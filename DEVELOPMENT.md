@@ -37,6 +37,11 @@ stdout is broken; signal handoffs and closed-pipe regressions pass. See
 The CI scratch setting waits on the owner’s authorized merge after the study. No live
 database was touched; no evidence-table row is promoted from unmeasured.
 
+**Row 3 validation, 2026-09-15:** 151 tests collected on macOS; 142 executed successfully,
+9 skipped (seven pinned-pipeline tests, one registry reference, one missing `anndata`).
+The expanded suite's cluster status is **unverified**. See the
+[round 1 change report](docs/implementation/row_3_change_report.md#review-round-1-fixes).
+
 **As of 2026-09-15** (component rows without a September date are the historical status as of 2026-08-30)
 
 | Component | State |
