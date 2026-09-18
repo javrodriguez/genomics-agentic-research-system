@@ -32,7 +32,6 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
-from test_row05_backup import Row05OfflineTests, Row05DatabaseTests
 
 # An explicitly supplied scratch directory must never silently fall back elsewhere.
 if os.environ.get("TMPDIR"):
@@ -42,9 +41,23 @@ REPO = Path(__file__).resolve().parent.parent
 GARS = REPO / "gars"
 
 sys.path.insert(0, str(GARS / "_system"))
-from test_stage01_design import DevelopmentDesignTests, SealedDesignTests
 
 import workspace  # noqa: E402 -- the single source of truth for the pipeline pins
+
+# Rows 1, 5 and 2 make their test classes reachable from this runner (their own tests assert it).
+# Row 3's pre-push gate and mutation runner execute this file inside reduced copies of the tree
+# where those modules are absent, so the imports are optional here; in the full tree, discovery
+# in load_tests loads each of these modules once and reports any import error of theirs itself.
+import importlib  # noqa: E402
+for _module, _names in (("test_row05_backup", ("Row05OfflineTests", "Row05DatabaseTests")),
+                        ("test_stage01_design", ("DevelopmentDesignTests", "SealedDesignTests")),
+                        ("test_benchmark_discriminates", ("BenchmarkTests", "BenchmarkRecordTests"))):
+    try:
+        _loaded = importlib.import_module(_module)
+    except ImportError:
+        continue
+    for _name in _names:
+        globals()[_name] = getattr(_loaded, _name)
 
 
 def needs_pipeline(assay):
@@ -3293,8 +3306,6 @@ class SpatialClusterCountTests(unittest.TestCase):
         self.assertFalse((substage / "run" / ".gars_run_complete").exists())
 
 
-# Row 2 is a separate file; this runner loads module-level TestCase classes only.
-from test_benchmark_discriminates import BenchmarkTests, BenchmarkRecordTests  # noqa: E402
 
 
 class SuiteResult(unittest.TextTestResult):
@@ -3325,7 +3336,18 @@ def load_tests(loader, standard_tests, pattern):
 
     The counting guard calls this same protocol; an empty tree is a collection error.
     Separate loaders avoid unittest's cached discovery root crossing the two trees.
+    The pre-push gate's fixture copies this function alone, so its helper lives inside it.
     """
+    def own_cases(suite):
+        # the leaf cases whose class is defined in this runner, not imported from a discovered module
+        own = unittest.TestSuite()
+        for item in suite:
+            if isinstance(item, unittest.TestSuite):
+                own.addTests(own_cases(item))
+            elif type(item).__module__ == __name__:
+                own.addTest(item)
+        return own
+
     suite = unittest.TestSuite()
     for relative in ("tests", "gars/tests"):
         tree = REPO / relative
@@ -3334,7 +3356,10 @@ def load_tests(loader, standard_tests, pattern):
         discovered = unittest.TestLoader().discover(str(tree), pattern="test_*.py")
         group = unittest.TestSuite()
         if relative == "tests":
-            group.addTests(standard_tests)
+            # Only the cases defined in this file. Rows 1, 5 and 2 import their modules above so
+            # their classes stay reachable from the runner (their tests assert it); discovery loads
+            # those same tests/test_*.py files once, so adding them again here ran each twice.
+            group.addTests(own_cases(standard_tests))
         group.addTests(discovered)
         count = group.countTestCases()
         print("collected %d tests from %s" % (count, relative), flush=True)
