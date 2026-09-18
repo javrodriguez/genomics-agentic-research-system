@@ -731,6 +731,24 @@ sys.exit(row.main())
             public.close()
             control.close()
 
+    def test_container_owned_data_dir_is_not_a_repo(self):
+        # On Linux the database container owns PG_DATA_DIR as root (mode 700), so this process
+        # cannot stat anything inside it; the repository-boundary check must answer "not a repo",
+        # not crash with PermissionError (seen on CI, 18 Sep 2026). Root ignores modes: skip there.
+        if hasattr(os, 'geteuid') and os.geteuid() == 0:
+            self.skipTest('running as root: directory modes are not enforced')
+        owned = Path(tempfile.mkdtemp(prefix='row05-owned-', dir=str(self.tmp)))
+        owned.chmod(0o000)
+        try:
+            self.assertEqual(row.external_path(str(owned)), owned.resolve())
+        finally:
+            owned.chmod(0o755)  # before tearDown removes the tree; a cleanup would run too late
+        repo_like = Path(tempfile.mkdtemp(prefix='row05-repo-', dir=str(self.tmp)))
+        (repo_like / '.git').mkdir()
+        with self.assertRaises(row.Fail) as caught:
+            row.external_path(str(repo_like / 'data'))
+        self.assertEqual(caught.exception.args[0], 'local_dir_in_repo')
+
     def test_runner_reachability_and_skip_path(self):
         sys.path.insert(0, str(REPO / 'tests'))
         import run_tests

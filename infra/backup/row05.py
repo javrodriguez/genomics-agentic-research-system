@@ -70,10 +70,20 @@ def safe_path(value):
     return p.resolve()
 
 
+def marks_repo(part):
+    # A `.git` this process cannot stat sits inside a directory it cannot read: on Linux the
+    # database container owns PG_DATA_DIR as root, mode 700. Such a directory is not a working
+    # tree this process operates in, so it does not mark a repository (CI, 18 Sep 2026).
+    try:
+        return (part / '.git').exists()
+    except PermissionError:
+        return False
+
+
 def external_path(value):
     p = safe_path(value)
     # Check ancestors, including non-existent leaf paths, without asking git to read config.
-    if any((part / '.git').exists() for part in [p] + list(p.parents)):
+    if any(marks_repo(part) for part in [p] + list(p.parents)):
         raise Fail('local_dir_in_repo')
     return p
 
