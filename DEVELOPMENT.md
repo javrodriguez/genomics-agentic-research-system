@@ -23,6 +23,20 @@ The producer has not rerun sealed fixtures in this round.
 See [Row 1 change report](docs/implementation/row_1_change_report.md) for checks and
 residual D-23/D-24/D-27 and the implemented owner ruling 2A in [0043](docs/decisions/0043-row-1-open-design-schema.md).
 
+**Row 5 repository work (2026-09-15, review round 3):** encrypted backup/copy,
+manifest-bound guarded restore, exposure probe, one-service compose and hardware/log
+templates are present. The runner measured **163 tests, 26 skipped** (17 row-5 cases:
+`docker info` exit 1; 9 existing environment skips). This count is branch-local and
+must be re-derived at merge. The real Node 1 exit, human marker pre-step and public
+seal remain **NOT met**. See [0044](docs/decisions/0044-row-5-backup-defaults-and-drill-semantics.md)
+and the [change report](docs/implementation/row_5_change_report.md). Review fixes cover slow-backup timestamps, interrupted-restore FAIL logging, import
+bytecode and Compose storage validation; see [0045](docs/decisions/0045-row-5-review-reliability-addendum.md).
+Round 3 retains the invocation state through CLI exit and records FAIL even when
+stdout is broken; signal handoffs and closed-pipe regressions pass. See
+[0047](docs/decisions/0047-row-5-command-completion-addendum.md).
+The CI scratch setting waits on the owner’s authorized merge after the study. No live
+database was touched; no evidence-table row is promoted from unmeasured.
+
 **As of 2026-09-15** (component rows without a September date are the historical status as of 2026-08-30)
 
 | Component | State |

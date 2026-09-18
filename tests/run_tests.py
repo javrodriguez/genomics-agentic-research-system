@@ -32,6 +32,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from test_row05_backup import Row05OfflineTests, Row05DatabaseTests
 
 REPO = Path(__file__).resolve().parent.parent
 GARS = REPO / "gars"

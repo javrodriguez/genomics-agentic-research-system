@@ -1,0 +1,5 @@
+# A person or INDEPENDENT session writes this BEFORE the drill, never the drill/backup.
+# CRLF accepted. Replace all values with independently captured observations.
+# md5 is checksum_table(config, endpoint, table) from row05.py, ordered by primary key.
+canary,public.example,id,1
+public.example,1,00000000000000000000000000000000

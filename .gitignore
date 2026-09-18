@@ -72,3 +72,15 @@ client_secret*.json
 STATE.md
 PLAN.md
 AGENTS.md
+
+# Row 5 operational secrets and encrypted backup artifacts
+infra/backup/backup.env
+*.dump.gpg
+*.dump.age
+*.dump.gpg.sha256
+*.dump.age.sha256
+infra/backup/manifest.tsv
+*.tar.gpg
+*.tar.age
+*.tar.gpg.sha256
+*.tar.age.sha256
