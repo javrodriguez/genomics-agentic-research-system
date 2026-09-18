@@ -26,6 +26,8 @@ jobs:
         with:
           python-version: "3.12"
       - name: Test suite
+        env:
+          GARS_ROW5_SCRATCH: ${{ runner.temp }}
         run: python3 tests/run_tests.py
       - name: Contract lint
         run: python3 tests/check_contracts.py
