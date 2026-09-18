@@ -94,3 +94,9 @@ memory (decision 0031).
 
 [decision 0019]: ../../docs/decisions/0019-config-is-seeded-not-authored.md
 [decision 0020]: ../../docs/decisions/0020-config-decisions-come-from-menus.md
+
+Stage 01 requires explicit RNA `strandedness` (including explicit `auto`), and for
+RNA/ATAC explicit `unit_of_replication` (`sample`, `subject`, `cell_pseudobulk`) and
+`reference_release`. Optional `paired` is `paired` or `unpaired`; crossing subjects
+require `paired`. Missing values are asked of the user and written to this config
+path; configure.py does not supply them. See stage 01 Definitions (0043).

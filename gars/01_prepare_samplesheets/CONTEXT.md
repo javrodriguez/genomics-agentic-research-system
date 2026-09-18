@@ -3,7 +3,7 @@
 ## Purpose
 Validate the experimental design the user completed in each assay's `samples.csv`, join it to
 that assay's `files.csv`, and emit a workflow-ready samplesheet and design table per assay.
-This stage writes no data and modifies no input; it is the gate between raw data registration
+This stage writes no raw data; user-supplied declarations may be written to config; it is the gate between raw data registration
 (stage 00) and processing (stage 02).
 
 **The computation is not yours.** `_system/stage01_samplesheet.py` performs every check and
@@ -19,7 +19,8 @@ its own, and report what it found. See
      `sample_id,condition,group,replicate`; ChIP-family assays add e.g. `control`
      (decision 0030)
   3. **`00_data/<Assay ID>/files.csv` per assay** — written by stage 00, read-only here
-  4. **`_config/<Assay ID>.yaml`** — read for `strandedness` only; absent is legal
+  4. **`_config/<Assay ID>.yaml`** — RNA `strandedness`; RNA/ATAC `unit_of_replication`,
+     `reference_release`, and optional `paired` declarations (see Definitions)
 - Reference (every run):
   - `_system/stage01_samplesheet.py` — the validator and emitter
 
@@ -90,6 +91,48 @@ and design table, and **must be confirmed by the user before anything is written
 - no `(sample_id, lane)` pair appears more than once in `files.csv`;
 - an assay is wholly paired-end or wholly single-end, never mixed.
 
+**Row 1 design checks (R-072, R-143).** RNA and ATAC designs may append `batch`
+after their base columns; it must be filled and is preserved in the emitted design table.
+If every batch belongs to exactly one condition and multiple conditions exist, refuse with
+`confounded_condition`. `sample_id` is never tested as a covariate. Other candidate
+covariates remain outside this row; this is not the complete §7.2 check.
+ATAC requires at least two distinct biological `sample_id` values per `condition`;
+violation → `insufficient_biological_replicates`. Lanes never increase this count.
+
+**Owner declarations (0043, 2026-09-13, 2A).** For RNA/ATAC, optional `subject`
+(donor / patient / model) is preserved alongside optional `batch`, in either order after
+base columns. Blank subject for any included sample → `subject_undeclared`.
+A subject crossing conditions → `subject_nesting` unless `_config/<Assay ID>.yaml`
+contains `paired: paired`. Allowed pairing values are `paired` and `unpaired`;
+absent/blank means no paired declaration, never permission to cross conditions.
+This describes experimental pairing, independently of paired-end FASTQ layout.
+`unit_of_replication` must be `sample`, `subject`, or `cell_pseudobulk`;
+missing/blank → `unit_of_replication_undeclared`. `subject` requires the subject column
+(`subject_undeclared`). No replication unit is inferred. `reference_release` must be a
+nonblank declared scalar; missing/blank → `reference_release_undeclared`.
+Unfilled `<REQUIRED>` and YAML null markers count as undeclared. Invalid enumerated values
+→ `config`. Stage 01 checks release declaration only, with no genome-registry validation.
+Stage 02 retains its reference menu (0020). Existing sample-ID replication floors remain.
+
+**Declaration provenance.** Declaration entries carry value, provenance (seeded_default,
+declared_in_config, or absent), and history_ref (last exact matching HISTORY.md line
+with its line number and text, or null). Declaration lines use `key: value` with an
+optional prefix ending in a space or tab, and end after the value (ignoring trailing
+spaces/tabs) or continue with `;` and commentary. Keys and values are matched in full;
+`not-paired: paired` does not declare `paired`, and release `synthetic-v1.1` does not
+match `synthetic-v1`. Example:
+`2026-09-15 rnaseq_bulk paired: paired; user answer: "These samples are paired."`
+This format locates a declaration; it does not authenticate the entry's author.
+The JSON report and record expose provenance_warning when paired: paired lacks a
+matching history entry; this warning does not refuse the project.
+
+**Design-check record.** `01_samplesheets/<Assay ID>_design_check.json` contains each
+executed validation check group, outcome (`pass`/`fail`) and findings, plus the declared
+`unit_of_replication`, `reference_release`, and `paired` for RNA/ATAC (empty pairing means
+undeclared). It is emitted only with the other outputs, after all write gates, and re-read
+for full content equality at the exit gate (`exit_gate`, 0010). Check-only and refusals do
+not write it. The later manifest row will consume it; this stage builds no manifest.
+
 **Samplesheet.** `01_samplesheets/<Assay ID>_samplesheet.csv`. One row per included `files.csv`
 row, with **columns determined by the assay**, because the samplesheet is the upstream pipeline's
 contract and differs per pipeline. `python3 _system/stage01_samplesheet.py --list-formats` prints
@@ -106,9 +149,9 @@ Paths are absolute **and inside the project** — they point at the symlinks in
 bypass the project's own registration of its data; this is why 02.01 warns that moving a project
 invalidates its samplesheet.
 
-A column sourced from `_config/<Assay ID>.yaml` (such as `strandedness`) falls back to that key's
-documented default when the file or key is absent; an unrecognised *value* is a `config` failure
-rather than a silent default. Multiple rows sharing a `sample` value are merged by nf-core as
+RNA `strandedness` must be explicitly declared in `_config/rnaseq_bulk.yaml`.
+Missing file, missing key, or blank value → `strandedness_undeclared`; an unrecognised value
+remains a `config` failure. Explicit `auto` remains accepted pending D-24. Multiple rows sharing a `sample` value are merged by nf-core as
 technical replicates, which is the intended handling of multi-lane samples.
 
 **Deep file-integrity verification.** Optional, **off by default**, and the reason this stage
@@ -156,7 +199,7 @@ is missing, empty, or unreadable). Both mean stage 00's output was edited or dam
 user there rather than to `samples.csv`.
 
 **Design table.** `01_samplesheets/<Assay ID>_design.csv`, header
-`sample_id,condition,group,replicate`. One row per included `sample_id`. Consumed by the
+`sample_id,condition,group,replicate` (plus optional `batch` and `subject` for RNA/ATAC). One row per included `sample_id`. Consumed by the
 differential-expression sub-stage of 02_bioinformatics.
 
 **The script's exit codes.** These, and not your reading of its output, determine the branch:
@@ -170,7 +213,18 @@ differential-expression sub-stage of 02_bioinformatics.
 
 ## Process
 1. Activated when the user asks to prepare samplesheets or to proceed past stage 00. Reply T1.
-2. Resolve the project directory from the title.
+2. Resolve the project directory from the title. Read each assay config for the declarations
+   above. For each undeclared RNA strandedness or RNA/ATAC replication unit or reference
+   release, send T9 listing only missing keys and wait for the user's values. Write exactly
+   their supplied values into the existing `_config/<Assay ID>.yaml` path (0019), adding
+   missing top-level keys and preserving other settings. Never invent values or use
+   `configure.py apply` to supply these: its stage-02 menus do not write them. If the user
+   declares experimental pairing, record `paired: paired` (or explicit `unpaired`).
+   Whenever the agent writes unit_of_replication, reference_release or paired, append
+   a HISTORY.md entry quoting the user's answer verbatim and naming each key and value
+   using the declaration-line format in Definitions, one key per line. This applies
+   to T9 and unsolicited pairing declarations.
+   Reference paths and the genome menu remain stage 02's responsibility. Then validate.
 3. Run the validator, from the workspace root:
 
    ```bash
@@ -181,7 +235,8 @@ differential-expression sub-stage of 02_bioinformatics.
    **exit code** per Definitions.
 4. Exit 3 → reply T6 using its `error` field, and stop.
 5. Exit 1 → reply T3, rendering every entry of every assay's `failures` array verbatim in the
-   table. Write nothing, and do not offer to fix any of it. Stop.
+   table. Write no outputs. For undeclared config values, return to step 2 and T9;
+   for other failures, stop and await the user’s correction. Never repair design rows.
 6. Exit 0 with `exclusions_pending: true` → reply T7 listing every assay's `exclusions`, and wait.
    Never proceed on a silent exclusion, and never infer that a missing row was an oversight.
    On `cancel`, stop.
@@ -222,6 +277,16 @@ about anything encountered on the filesystem.
 
 One standing exception, from `_references/contract_standard.md` ("the bounded voice"): if the user asks a direct question, answer it from this workspace's own files — the contracts, `_references/`, and the current project's directory — read-only, in a short paragraph, then restate the pending wait point. Never let the answer become an action, a recommendation to deviate, or a reason to skip a step.
 
+**T9 — Missing declarations**
+```
+Stage 01 needs your declarations in _config/<Assay ID>.yaml:
+<missing keys, with allowed values: strandedness auto/forward/reverse/unstranded;
+unit_of_replication sample/subject/cell_pseudobulk; reference_release nonblank release name>
+
+Provide each listed value and I will write it to the project config, append a HISTORY.md
+entry quoting your answer verbatim and naming each key and value, then validate.
+```
+
 **T1 — Start**
 ```
 Starting stage 01: Prepare Samplesheets.
@@ -246,7 +311,7 @@ Validation failed. Nothing was written; no input file was modified.
 |---|---|---|
 | <Assay ID> | <check> | <detail> |
 
-Correct 00_data/<Assay ID>/samples.csv and run stage 01 again.
+Correct the named design or config declaration; tell me when ready and I will validate again.
 ```
 
 **T4 — Stage complete**
@@ -255,7 +320,7 @@ Stage 01 complete. Samplesheets written to projects/<title>/01_samplesheets/.
 
 | Assay | Samplesheet rows | Design rows | Files |
 |---|---|---|---|
-| <Assay ID> | <samplesheet_rows> | <design_rows> | <Assay ID>_samplesheet.csv, <Assay ID>_design.csv |
+| <Assay ID> | <samplesheet_rows> | <design_rows> | <Assay ID>_samplesheet.csv, <Assay ID>_design.csv, <Assay ID>_design_check.json |
 
 Before stage 02 runs, <n> decisions remain in _config/<Assay ID>.yaml: <config_unfilled, comma
 separated>. Nothing is guessed — a wrong reference or contrast produces a confident wrong answer
@@ -328,7 +393,9 @@ Written to `projects/<project_title>/01_samplesheets/`, by the script and never 
 | Artifact | Contents |
 |---|---|
 | `<Assay ID>_samplesheet.csv` | Columns per the assay's registered format; one row per included sample-lane, absolute paths inside the project. Consumed by 02_bioinformatics. |
-| `<Assay ID>_design.csv` | `sample_id,condition,group,replicate`. One row per included sample. Consumed by the differential-expression sub-stage of 02_bioinformatics. |
+| `<Assay ID>_design.csv` | `sample_id,condition,group,replicate`, preserving optional RNA/ATAC `batch` and `subject`. One row per included sample. Consumed by the differential-expression sub-stage of 02_bioinformatics. |
+
+| `<Assay ID>_design_check.json` | Executed checks and outcomes, declared replication unit, release and pairing; re-read at the exit gate. |
 
 The `HISTORY.md` entry records the **template version this stage ran under** and
 `Deep file-integrity verification: full|none`. The version is stamped per stage, not only at
@@ -337,7 +404,7 @@ project's stages, and this stamp is what makes that visible afterwards.
 
 The agent appends the script's `history_entry` to `projects/<project_title>/HISTORY.md`.
 
-`00_data/` is never modified by this stage. Re-running on unchanged inputs reproduces both files
+`00_data/` is never modified by this stage. Re-running on unchanged inputs reproduces the output files
 byte for byte.
 
 ## Human check

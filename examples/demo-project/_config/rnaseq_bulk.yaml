@@ -23,3 +23,8 @@ compute:
 de:
   formula: "~ condition"
   contrast: "condition,treated,control"    # factor,numerator,denominator
+
+# Synthetic stage-01 declarations; no registry validation at this stage.
+unit_of_replication: sample
+reference_release: synthetic-demo-v1
+paired: unpaired

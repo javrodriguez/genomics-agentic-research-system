@@ -315,7 +315,7 @@ def write_submit_sh(substage, workspace_root, cfg, project_name, assay, body):
 
     The directives block comes from the workspace's executor descriptor (decision 0039), so
     the same generator serves Slurm, AWS Batch or anything else a site configures. With no
-    descriptor the block is Slurm's, byte for byte -- pinned by a golden-bytes test.
+    descriptor the block is Slurm's, byte for byte.
 
     The guard: this cluster has Requeue=1, so a preempted job re-runs this script.
     - completion marker present -> exit cleanly instead of re-running the pipeline;

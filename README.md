@@ -277,7 +277,12 @@ artifact each stage produces.
 ## Status
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(125 tests, green on macOS and on the cluster); live validation is per-assay. Agent behaviour is
+(<<N>> tests, <<S>> of them environment skips, on macOS at the 2026-09-17 merge of rows 1, 5, 2 and 3; no cluster run is evidenced for these rows).
+The expanded suite's cluster status is unverified; dated local runner
+results and skips are recorded in the [Row 2 report](docs/implementation/row_2_change_report.md#review-round-3-fixes).
+The [benchmark sealing interface](benchmarks/HOLDOUT.md) is maintained in place;
+Row 2 agent runs, independent nf-core references and held-out measurements remain unmeasured.
+Live validation is per-assay. Agent behaviour is
 graded separately and published in [docs/EVALS.md](docs/EVALS.md), against a pre-registration
 frozen before the first run:
 
@@ -385,3 +390,19 @@ end to end in the decision log, so a "why is it like this?" usually has a writte
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## v1.0.1 evidence (R-117)
+
+Row 1 initializes this table only. Values and dates remain unmeasured; unsealed
+development fixtures never count as design recall. Public claims require three
+external-human seals (§21 Q9). No benchmark or evidence regeneration is implemented here.
+
+| Metric | Number | Test path | Date |
+|---|---|---|---|
+| Design-defect catch rate | unmeasured | tests/test_stage01_design.py | unmeasured |
+| Reviewer catch rate (code, science) | unmeasured | none | unmeasured |
+| Manifest completeness and re-run diff | unmeasured | none | unmeasured |
+| Orphan claims | unmeasured | none | unmeasured |
+| Policy bypass rate | unmeasured | none | unmeasured |
+| Restore-drill minutes and age | unmeasured | none | unmeasured |
+| Hours per verified capability | unmeasured | none | unmeasured |

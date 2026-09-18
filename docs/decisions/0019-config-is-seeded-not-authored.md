@@ -1,6 +1,6 @@
 ---
 date: 2026-08-21
-status: standing
+status: superseded # partially by 0043-row-1-open-design-schema.md
 kind: lesson
 symptoms:
   - "'I have to write the config file? what?'"

@@ -46,15 +46,27 @@ leaves the raw data in place.
 |---|---|
 | `rnaseq_bulk_samplesheet.csv` | nf-core/rnaseq — `sample,fastq_1,fastq_2,strandedness` |
 | `rnaseq_bulk_design.csv` | the differential-expression sub-stage |
+| `rnaseq_bulk_design_check.json` | stage-01 exit gate; later manifest consumer |
 
-Both are written by `gars/_system/stage01_samplesheet.py`, never by the agent — they are pure
-functions of `files.csv`, `samples.csv` and `_config/`, so re-running on unchanged inputs
-reproduces them byte for byte. The agent's role at this stage is to run the script, hold the two
+All three are written by `gars/_system/stage01_samplesheet.py`, never by the agent.
+Inputs include `files.csv`, `samples.csv`, `_config/` and the registered raw paths.
+The design-check record also reads `HISTORY.md` for declaration references and
+`gars/_templates/config/rnaseq_bulk.yaml` to classify seed provenance. With the same
+helper/template version, project path and unchanged inputs, re-running reproduces the outputs
+byte for byte. The agent's role at this stage is to run the script, hold the two
 human gates (excluded samples, overwriting existing files), and report what it returned.
 
 The samplesheet is one row per sample-lane with absolute paths. Repeated `sample` values are
 merged by nf-core as technical replicates, which is exactly how multi-lane samples should be
 handled — verified against a real run, where 12 file rows produced 6 `CAT_FASTQ` processes.
+
+Row 1 owner ruling 2A adds synthetic `unit_of_replication: sample`,
+`reference_release: synthetic-demo-v1`, and `paired: unpaired` declarations.
+`DevelopmentDesignTests.test_demo_metadata` copies this project into a temporary directory,
+materializes the placeholder FASTQ paths with synthetic reads, verifies stage 01, and compares
+the regenerated design-check record byte for byte with the committed example.
+The repository example retains placeholder raw paths; it is not a real input dataset.
+Stage 01 also emits `<assay>_design_check.json` with the checks and declarations.
 
 ## Configuration — `_config/`
 

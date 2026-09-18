@@ -7,6 +7,10 @@
 #
 # Full rationale for every key: _references/config_schema.md
 
+# Stage 01 asks the user to complete these declarations.
+unit_of_replication: <REQUIRED: declare sample, subject, or cell_pseudobulk at stage 01>
+reference_release: <REQUIRED: declare the reference release at stage 01>
+
 # --- what to align against ---------------------------------------------------------------------
 # The genome menu at stage 02 fills fasta, gtf, mito_name, macs_gsize and derived_dir together,
 # so they can never be mismatched. Paste paths here only for a reference that is not in

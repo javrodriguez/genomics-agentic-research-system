@@ -1,6 +1,6 @@
 ---
 date: 2026-08-19
-status: standing
+status: superseded # partially by 0043-row-1-open-design-schema.md
 kind: decision
 symptoms:
   - "samplesheet emitted token by token"
