@@ -17,7 +17,7 @@ not agent evidence and never enter `evals/runs/`.
 | R-113: non-model scorers; no restored weighted system score | `evals/bench.py`; five task records | `test_model_scorer_is_red`, `test_refusal_scorers_discriminate`, `test_nfcore_artifact_contracts_accept_and_reject_content`, `test_missing_outputs_fail_not_skip` | **Yes**: a model-named scorer exits 2. Valid structured refusals and synthetic artifact exports pass; execution-started flags, wrong flags, missing registry types, negative counts and lost samples fail. No model is called. No aggregate weighted system score is published. |
 | §11.3: ratios retain numerator/denominator | `evals/bench.py`; `evals/noise_floor.py` | `test_zero_denominator`, CLI resource/noise tests | `0/0 = uncomputable`; task scores retain their full denominator even when every artifact is missing. Fractional deltas, noise floor and mean print numerator and denominator. |
 | §18 row 2: measured degraded-arm discrimination | `tests/test_benchmark_discriminates.py`; imported classes in `tests/run_tests.py` | `BenchmarkRecordTests.test_benchmark_discriminates` | **SKIP**, precisely: `missing owner run record(s): intact-1, intact-2, intact-3, degraded-1`. Red-on-agent-degradation seen: **no**; no agent runs exist. Arithmetic tests demonstrate strict inequality but do not close the exit. |
-| §21 Q2 and material omissions | `docs/decisions/0045-row-2-benchmark-tasks-and-holdout.md`; generated `docs/decisions/CONTEXT.md` | Decision read-back and `bash docs/decisions/build_index.sh` | Defaults are the five §11.1 tasks and a separate sealing session. Owner explicitly approved the range/mean/equal-weight rule and run-content-SHA naming before their implementation. Decision includes the 0043/0044 other-branch number note. |
+| §21 Q2 and material omissions | `docs/decisions/0048-row-2-benchmark-tasks-and-holdout.md`; generated `docs/decisions/CONTEXT.md` | Decision read-back and `bash docs/decisions/build_index.sh` | Defaults are the five §11.1 tasks and a separate sealing session. Owner explicitly approved the range/mean/equal-weight rule and run-content-SHA naming before their implementation. Decision includes the 0043/0044 other-branch number note. |
 | Existing count contract | `README.md`; `DEVELOPMENT.md` | `python3 tests/check_counts.py` | Initially red on three current count statements. Corrected only those counts from 125 to the runner's 142; historical counts and other prose unchanged. Final `enforced=3`, clean. |
 
 All test method names above are in `tests/test_benchmark_discriminates.py` unless
@@ -174,8 +174,8 @@ descriptors still declaring a gap. No tolerance, guard, or test threshold was
 weakened. Numerical source independence and real pipeline execution still require
 retained owner provenance; directory presence is not wrapper-equivalent validation.
 
-Decision [0046](../decisions/0046-row-2-review-verification-addendum.md) supplements
-0045 without editing it, and corrects the inherited README evidence-table claim:
+Decision [0049](../decisions/0049-row-2-review-verification-addendum.md) supplements
+0048 without editing it, and corrects the inherited README evidence-table claim:
 that earlier-row table is missing, not present with unmeasured cells. The index was
 regenerated with its existing script. Reviews and reviewed assessments were not
 edited; the earlier bytes of this report are preserved.

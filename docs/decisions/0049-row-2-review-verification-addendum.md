@@ -16,7 +16,7 @@ symptoms:
 ---
 # Row 2 review verification addendum
 
-Addendum to [0045](0045-row-2-benchmark-tasks-and-holdout.md), whose original bytes
+Addendum to [0048](0048-row-2-benchmark-tasks-and-holdout.md), whose original bytes
 remain unchanged. The independent round-1 review identified trust in supplied
 verdicts, an incomplete exit gate, sample-loss ambiguity, missing public vocabulary,
 JSON boolean/number confusion, and unsupported expanded-suite platform claims.
@@ -48,7 +48,7 @@ bundle hash, artifact archive, reference materialization, and evaluator procedur
 JSON exact equality preserves types recursively. Current collection counts are
 separate from dated execution evidence; expanded-suite cluster status is unverified.
 
-Correction to 0045's evidence-table statement: the prescribed fixed-row README
+Correction to 0048's evidence-table statement: the prescribed fixed-row README
 table is inherited **missing**, not an existing table with unmeasured cells. It
 belongs to the earlier row and is not created in this fix. The broader repository
 also retains inherited personal/machine-specific text; this row makes no claim
@@ -57,3 +57,5 @@ of repository-wide sanitization and does not alter protected trees for that purp
 Verification commands and actual results are appended to the
 [item report](../implementation/row_2_change_report.md). No agent run, seal,
 external reference retrieval, cluster execution, or merge is supplied by this round.
+
+_Renumbered at merge, 2026-09-17: this record was written as 0046 on its branch and takes 0049 on main, because rows 5, 2 and 3 numbered their decisions independently (merge order 1, 5, 2, 3); the number and link targets above are the only edits._

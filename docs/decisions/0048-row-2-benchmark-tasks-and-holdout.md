@@ -24,7 +24,7 @@ session driven by `gars/CLAUDE.md`; helpers and synthetic scorer tests are not
 substitutes for agent runs.
 
 Number note: **0043 and 0044 live on other branches and are not in this history**.
-This decision uses 0045 to avoid collisions when those branches land.
+This decision uses 0048 to avoid collisions when those branches land.
 
 ## Decision
 
@@ -127,3 +127,5 @@ unchanged; study CI controls may reject new `evals/` files until that point.
 ## Date
 
 2026-09-14
+
+_Renumbered at merge, 2026-09-17: this record was written as 0045 on its branch and takes 0048 on main, because rows 5, 2 and 3 numbered their decisions independently (merge order 1, 5, 2, 3); the number and link targets above are the only edits._
