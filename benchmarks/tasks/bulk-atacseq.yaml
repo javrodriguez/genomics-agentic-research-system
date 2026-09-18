@@ -15,7 +15,7 @@
     },
     {
       "path": "examples/demo-project/README.md",
-      "sha256": "59ddec93162cfd349b4eff23f154d72f40a79332b13cc5c570fcc702c3b69466"
+      "sha256": "2517d00f3c2cd69f7e05e464907cc512660f164338438000560f95e5ff9e2acf"
     }
   ],
   "expected_workflow": "Use the existing GARS stage 00/01 helpers and the pinned nf-core wrapper through collect. Follow existing project and OUTPUTS.tsv contracts by reference; honour approval gates. This scorer checks exported artifact shape only.",
