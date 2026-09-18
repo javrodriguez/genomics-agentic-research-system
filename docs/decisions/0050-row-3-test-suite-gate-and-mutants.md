@@ -27,7 +27,7 @@ Seven nf-core wrappers and three downstream wrappers exist. Resume lives in the 
 `wrapperlib.write_submit_sh` guard and uses `executorlib`'s existing submit/status seam.
 
 Number note: 0043, 0044 and 0045 live on other branches and are not in this history. This
-record uses 0046 to avoid collisions at merge.
+record uses 0050 to avoid collisions at merge.
 
 ## Decision
 
@@ -105,3 +105,5 @@ standing; repo-side implementation subject to independent review; Row 3 exit NOT
 ## Date
 
 2026-09-15
+
+_Renumbered at merge, 2026-09-17: this record was written as 0046 on its branch and takes 0050 on main, because rows 5, 2 and 3 numbered their decisions independently (merge order 1, 5, 2, 3); the number and link targets above are the only edits._
