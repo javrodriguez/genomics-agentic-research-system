@@ -1,0 +1,48 @@
+{
+  "question": "In a fresh Claude Code session rooted at gars/ and driven by CLAUDE.md, produce a atacseq_bulk fixture project using the nf-core test profile described by the source descriptor. Export the project directory. Resolve the named input/output provenance gap before running; do not invent pipeline results.",
+  "inputs": [
+    {
+      "path": "benchmarks/fixtures/bulk-atacseq-source.json",
+      "sha256": "bb97eb65410104369b1527f87139c95d2332851638abc29d732b4661c73ef993"
+    },
+    {
+      "path": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md",
+      "sha256": "e32ea7c7baa9ebcdf612c8052da705ff6ffaf2a11fd276743e605e75666c2a26"
+    },
+    {
+      "path": "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py",
+      "sha256": "beab610a01a430fa5eddf221322f140e9436b243d33af2ad1c102946c0e3ee06"
+    },
+    {
+      "path": "examples/demo-project/README.md",
+      "sha256": "59ddec93162cfd349b4eff23f154d72f40a79332b13cc5c570fcc702c3b69466"
+    }
+  ],
+  "expected_workflow": "Use the existing GARS stage 00/01 helpers and the pinned nf-core wrapper through collect. Follow existing project and OUTPUTS.tsv contracts by reference; honour approval gates. This scorer checks exported artifact shape only.",
+  "expected_outputs": {
+    "project/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/STATUS": {
+      "text_equals": "COMPLETE"
+    },
+    "project/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/OUTPUTS.tsv": {
+      "artifact_registry": {
+        "types": {
+          "peaks": "directory",
+          "peaks_consensus": "bed",
+          "counts_peaks": "counts",
+          "bigwig": "directory",
+          "bam_genome": "directory",
+          "qc_multiqc": "file"
+        },
+        "samplesheet": "project/01_samplesheets/atacseq_bulk_samplesheet.csv",
+        "sample_mode": "atacseq",
+        "expected_samplesheet": null,
+        "reference_counts": {}
+      }
+    }
+  },
+  "known_pitfalls": "NFCORE_ATACSEQ_EXPECTED_OUTPUT_NOT_OBTAINED: NOT met: test profile and expected numerical outputs require network retrieval and a pinned pipeline run; no output downloaded or invented here. Resolve data commit and file hashes before the owner run. Artifact contract success is not numerical reproduction. The synthetic demo and planted-effect counts are not nf-core expected outputs.",
+  "reference_answer": "A completed atacseq_bulk test-data project satisfying the existing artifact registry. Numerical reference answer NOT met: NFCORE_ATACSEQ_EXPECTED_OUTPUT_NOT_OBTAINED",
+  "reference_source": "nfcore_test_data_expected_output",
+  "scorer": "pytest",
+  "holdout": false
+}

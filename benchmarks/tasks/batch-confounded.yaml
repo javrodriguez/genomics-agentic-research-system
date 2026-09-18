@@ -1,0 +1,29 @@
+{
+  "question": "In a fresh Claude Code session rooted at gars/ and driven by CLAUDE.md, assess this synthetic bulk RNA design for differential expression. Stop before execution if invalid. Export response.json with answer, flag, stage, execution_started.",
+  "inputs": [
+    {
+      "path": "benchmarks/fixtures/batch-confounded.csv",
+      "sha256": "071823eccb527a55a8db6d57ac54ac90f33b09504a221c0e9fa1c4cc9b80190e"
+    },
+    {
+      "path": "benchmarks/fixtures/generate.py",
+      "sha256": "6add24e132ffcbb79e9041280d7ad52d81bde5edc1f33db5aad7d33323ca187b"
+    }
+  ],
+  "expected_workflow": "Inspect design and biological units at stage 01_prepare_samplesheets, flag the invalid design and refuse execution. Batch is perfectly aligned with condition; their effects cannot be separated.",
+  "expected_outputs": {
+    "response.json": {
+      "json_equals": {
+        "answer": "refuse and flag",
+        "flag": "batch_fully_confounded",
+        "stage": "01_prepare_samplesheets",
+        "execution_started": false
+      }
+    }
+  },
+  "known_pitfalls": "Batch is perfectly aligned with condition; their effects cannot be separated. Seed 110112; tuned-on synthetic fixtures only, unrelated to row 1 sealed plants.",
+  "reference_answer": "refuse and flag",
+  "reference_source": "synthetic_with_generator_seed",
+  "scorer": "exact",
+  "holdout": false
+}

@@ -1,0 +1,47 @@
+{
+  "question": "In a fresh Claude Code session rooted at gars/ and driven by CLAUDE.md, produce a rnaseq_bulk fixture project using the nf-core test profile described by the source descriptor. Export the project directory. Resolve the named input/output provenance gap before running; do not invent pipeline results.",
+  "inputs": [
+    {
+      "path": "benchmarks/fixtures/bulk-rnaseq-source.json",
+      "sha256": "143ca9839b487636399fb79ea96edde43950e27a788380ebacbf63a61a96812c"
+    },
+    {
+      "path": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md",
+      "sha256": "0aa735407c9f54ef09f9ebabb20f493d7a633613dc5c716ed560b0bc5510ee37"
+    },
+    {
+      "path": "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py",
+      "sha256": "cd86380f31a6c1ed70513d576582dab0a2ba9099cf41ca97b42e348f6a4ffc60"
+    },
+    {
+      "path": "examples/demo-project/README.md",
+      "sha256": "59ddec93162cfd349b4eff23f154d72f40a79332b13cc5c570fcc702c3b69466"
+    }
+  ],
+  "expected_workflow": "Use the existing GARS stage 00/01 helpers and the pinned nf-core wrapper through collect. Follow existing project and OUTPUTS.tsv contracts by reference; honour approval gates. This scorer checks exported artifact shape only.",
+  "expected_outputs": {
+    "project/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/STATUS": {
+      "text_equals": "COMPLETE"
+    },
+    "project/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/OUTPUTS.tsv": {
+      "artifact_registry": {
+        "types": {
+          "counts_gene": "counts",
+          "counts_transcript": "counts",
+          "tpm_gene": "counts",
+          "bam_genome": "directory",
+          "qc_multiqc": "file"
+        },
+        "samplesheet": "project/01_samplesheets/rnaseq_bulk_samplesheet.csv",
+        "sample_mode": "rnaseq",
+        "expected_samplesheet": null,
+        "reference_counts": {}
+      }
+    }
+  },
+  "known_pitfalls": "NFCORE_RNASEQ_EXPECTED_OUTPUT_NOT_OBTAINED: NOT met: test profile and expected numerical outputs require network retrieval and a pinned pipeline run; no output downloaded or invented here. Resolve data commit and file hashes before the owner run. Artifact contract success is not numerical reproduction. The synthetic demo and planted-effect counts are not nf-core expected outputs.",
+  "reference_answer": "A completed rnaseq_bulk test-data project satisfying the existing artifact registry. Numerical reference answer NOT met: NFCORE_RNASEQ_EXPECTED_OUTPUT_NOT_OBTAINED",
+  "reference_source": "nfcore_test_data_expected_output",
+  "scorer": "pytest",
+  "holdout": false
+}
