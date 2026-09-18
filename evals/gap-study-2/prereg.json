@@ -2909,7 +2909,7 @@
     {
       "path": "evals/gap-study-2/language-allowlist.json",
       "git_blob_sha": "de4c6250281b74799ad0177a3da246ffbf52e9b6",
-      "sha256": "4ce9104a215ff1ada8d5883c7e28bc5aee151bf73d06a648133f358c09802248",
+      "sha256": "c44678b456197a08ae4d130b43df04a5a5d4205ccdbf9b746dcb73c0669a00c0",
       "uncommitted": false
     },
     {
@@ -3812,6 +3812,20 @@
           "path": "evals/gap-study-2/mutations.py",
           "sha256_before": "93f35c382558ff1acdf4ea2ee4e0577df8fd3204435a3601694e9a6b05de0201",
           "sha256_after": "7216669a07e184e7cc2ac9727a3e9fd23bd3450b4dd9612984c10d01c3ae4d42"
+        }
+      ]
+    },
+    {
+      "n": 10,
+      "date": "2026-09-17",
+      "before_any_take": false,
+      "graded_takes_at_the_time": "106 of 108 planned; every planned take attempted; both final verifiers run",
+      "why": "The second final verifier's report, committed unedited in the done commit, quotes git's own numstat line for docs/EVALS.md in numstat's bare spelling, whose added-line count since the kickoff is exactly one hundred; the language guard reads that as a hundred and the allowlist binds the exact text, so verifier 1's excusal does not cover it. The pinned allowlist excuses this one line by its exact text. No code, grader, label, count, criterion, definition or take order is touched.",
+      "files": [
+        {
+          "path": "evals/gap-study-2/language-allowlist.json",
+          "sha256_before": "4ce9104a215ff1ada8d5883c7e28bc5aee151bf73d06a648133f358c09802248",
+          "sha256_after": "c44678b456197a08ae4d130b43df04a5a5d4205ccdbf9b746dcb73c0669a00c0"
         }
       ]
     }

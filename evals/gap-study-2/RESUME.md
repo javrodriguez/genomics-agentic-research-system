@@ -1,10 +1,6 @@
 # RESUME — The Gap Study, round 2
 
-**Working day 3 of 15** (cap: 30 slices or 15 working days from the kickoff commit, whichever comes first; the kickoff landed Sunday 13 September, so Monday 14 was day 1).
-**Last progress-counting commit:** the first walk, `walk: template-adherence walk 1` (16 September).
-**Slices spent:** 15 (`slice 01` to `slice 15`) of the 9 this chunk planned for CP0 to CP8; slices 05 and 06 were not in the plan, so the chunk now stands at 11 unless a later checkpoint merges. The goal's cap of 30 is unchanged.
-
-**The pre-registration is FROZEN** (`69b7a94`, 17 September 2026, seeded by blind review 4). No take, rehearsal or pause has run. Between the evening of 14 September and the afternoon of 16 September the operator's Claude Code subscription was at its usage limit, so no walk could be driven; that is not a recorded pause, because a pause is a rate-limit marker matched inside a take, and no take existed.
+**DONE, 17 September 2026 (working day 4 of 15, slice 30 of 30).** The pre-registration froze at `69b7a94` at 05:05 EDT; 108 planned takes ran between 05:57 and 15:18 as 112 ledger rows (106 graded, six rehearsals, no pause, one cell capped and published `incomplete — mechanical`); the results and the published section went out at gate 1 on the owner's "I approve", the comparative sentence at gate 3 on his "1A"; ten amendments since the freeze, none touching a grader, label, count, criterion or order; two final verifiers from fresh clones (`verification/verifier-1.md`, `verifier-2.md`), the second passing every line as written but 5 and 6, which pass under the owner's ruling 8. The done commit carries verifier 2's report; the commit after it pins CI's round-2 job to the done commit. Nothing is next for the run; what follows (merging the v1.0.1 rows, a round 3) is the owner's.
 
 ## Where it stands
 
@@ -204,7 +200,7 @@ The write-ups of amendments 4 to 8 now each state their regrade.
 
 ## Next
 
-**Gate 1 is closed** (Javier: "I approve", 17 September 2026): the results are published as graded and pushed. Gate 3 is closed too (Javier: "1A"): the drafted sentence is published under the comparison heading. The final verifier's first report is in (`verification/verifier-1.md`: 11 PASS, 4 FAIL as written). Lines 2 and 9 are fixed at source by amendment 9 and the regrade statements; lines 5 and 6 read the planned counts (108 rows, exit 0 for all 108) against what happened (112 rows: 106 graded and 6 rehearsals; one capped cell) and are the owner's to rule. Lines 5 and 6 pass as amended (Javier: "1A", 17 September 2026; PROTOCOL.md, "Round 2 ruling 8"). Next: verifier 2 from a fresh clone, its report committed unedited, and the done commit with CI's round-2 job pinned to it.
+**Gate 1 is closed** (Javier: "I approve", 17 September 2026): the results are published as graded and pushed. Gate 3 is closed too (Javier: "1A"): the drafted sentence is published under the comparison heading. The final verifier's first report is in (`verification/verifier-1.md`: 11 PASS, 4 FAIL as written). Lines 2 and 9 are fixed at source by amendment 9 and the regrade statements; lines 5 and 6 read the planned counts (108 rows, exit 0 for all 108) against what happened (112 rows: 106 graded and 6 rehearsals; one capped cell) and are the owner's to rule. Lines 5 and 6 pass as amended (Javier: "1A", 17 September 2026; PROTOCOL.md, "Round 2 ruling 8"). Verifier 2 ran from a fresh clone (13 PASS as written; 5 and 6 PASS as amended) and its report is committed unedited in the done commit; CI's round-2 job is pinned to that commit in the commit after it. Done.
 
 The old plan text below described the takes as next: in the frozen order, each registered with `takes.py --add`, driven by `drive.py`, checked by `check_take.py`, committed as `take:` with CI read on every push; then `analyse.py`, the publication, gate 1 and the final verifier.
 The old text below this line described the review that has now happened: `build_kit.py <folder outside the Brain> --n 1`, `launch.py`, `commit_review.py`; its findings applied in one fix slice; a second round only on a BLOCKER (Javier's pace ruling, 16 September).

@@ -32,7 +32,7 @@ Six task pairs, three takes per half per model, frozen at [`69b7a94`](https://gi
 - n = 3 separates a stable behaviour from a single draw only as counts.
 - Takes are scripted, no operator asymmetry; models by id only.
 - Harness Claude Code 2.1.267; re-running needs it and the pinned driver; no `RECIPE.md`.
-- Nine amendments since the freeze, none touching a grader, label, count or order; see `amendments[]`.
+- Ten amendments since the freeze, none touching a grader, label, count or order; see `amendments[]`.
 <!-- /gap-study-2:summary -->
 
 ### The instruments differ: round 1's counts are printed beside round 2's, not pooled

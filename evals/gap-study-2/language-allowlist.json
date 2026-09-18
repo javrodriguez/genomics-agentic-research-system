@@ -14,6 +14,13 @@
       "line_text": "100\t0\tdocs/EVALS.md                       (100 added, 0 removed; removed-line count 0)",
       "ruled": "2026-09-17",
       "why": "The final verifier's report is committed unedited, and this line is git's own numstat output quoted in it: the count of lines docs/EVALS.md gained since the kickoff happened to be exactly one hundred. A count of added lines, not a rate."
+    },
+    {
+      "file": "evals/gap-study-2/verification/verifier-2.md",
+      "pattern": "hundred",
+      "line_text": "100\t0\tdocs/EVALS.md",
+      "ruled": "2026-09-17",
+      "why": "The second final verifier's report is committed unedited, and this line is git's own numstat output quoted in it: the count of lines docs/EVALS.md gained since the kickoff is exactly one hundred. A count of added lines, not a rate; the same line as verifier 1's, in numstat's bare spelling."
     }
   ]
 }

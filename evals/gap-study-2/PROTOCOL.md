@@ -1648,6 +1648,7 @@ The battery ran on an empty study for every one of its rehearsals; a rehearsal o
 At row 27 the loop stopped on its own lint: a take that ran one minute rendered in `COSTS.md` with a decimal point and a zero after the whole minute, and the language guard reads that spelling as a proportion of one.
 `costs.py` is pinned, so the change is amendment 3: a whole number of minutes prints whole (`1 min`), the measured number unchanged, the table re-rendered by the script as every version of it is.
 No grader, label, count, criterion or take order is touched; 24 takes were graded when it landed, none of them regraded because nothing they are graded by moved.
+Regrades side by side (stated in full at the done commit, on the second verifier's note): the graders did not move, so the labels before and after are the same set, and `check_results.py --regrade` re-derives every results file byte-identical.
 Three amendments in the first two hours after the freeze, all in the study's own tooling and none in what grades a take: the states a take brings with it, a ledger with a row, a costs table with a duration, are states the rehearsal never reached, and the plan's synthetic full ledger, which the rehearsal record says was not done, is where they would have been reached.
 
 ### Amendment 4 (slice 20) — 2026-09-17 — the language guard reads a digit-group separator as part of a number
@@ -1762,3 +1763,22 @@ Line 5's "108 rows" reads as 108 planned takes: the ledger carries 112 rows, 106
 Line 6's "exit 0 for all 108" reads as exit 0 for every graded take: 106, plus one half published `incomplete — mechanical` under the frozen caps.
 No count, label, criterion or file moves by this ruling; it reads two checklist lines against what the frozen caps allowed.
 A second verifier runs from a fresh clone after it, told the ruling in its brief and asked to rule each line as written and then say whether the amended reading holds; its report is committed unedited and the done commit follows it.
+
+
+### Amendment 10 (slice 30) — 2026-09-17 — the second report's numstat line is excused
+
+The second final verifier's report, committed unedited in the done commit, quotes git's own numstat line for `docs/EVALS.md` in numstat's bare spelling; its added-line count since the kickoff is exactly one hundred, the language guard reads that as a hundred, and the allowlist binds the exact text, so verifier 1's excusal does not cover it.
+The pinned allowlist excuses this one line by its exact text; `language-allowlist.json` moves by amendment 10.
+No code, grader, label, count, criterion, definition or take order is touched.
+Regrades side by side: nothing graded moves, so the labels before and after are the same set, and `check_results.py --regrade` re-derives every results file byte-identical.
+
+### Final verifier 2, and the done commit (slice 30) — 2026-09-17 — DONE
+
+A second fresh verifier cloned the pushed `main` at `db91052` from GitHub without credentials and ran the fifteen done-lines in that clone for 34 minutes.
+Its report and blindness record are committed unedited as `verification/verifier-2.md` and `verifier-2-blindness.txt`.
+Thirteen lines PASS as written: 1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 13, 14 and 15, the last for what the repository showed before this commit.
+Lines 5 and 6 FAIL as written and PASS under the owner's amended reading (Round 2 ruling 8), each with the counts quoted: 112 rows, 106 graded, six rehearsals with their reasons, no pause; `check_take.py` exit 0 for 106 of 106 graded takes and one half `incomplete — mechanical`.
+The blindness record: no operator material in the loaded context but the study's folder name, the round's name and the public repository's commit email, all of which the brief or the clone supplies; the verifier wrote two scratch files of its own under the OS temp folder and listed `/home`, and read nothing of the operator's.
+Its notes, none a failure: line 1's "earliest `take:` commit" is round 2's, round 1's `take:` commits preceding the freeze; line 10's `gars/` diff was run from the kickoff to `db91052` and is empty, as it is from the kickoff to this commit, which changes no file under `gars/`; amendment 3's regrade statement, the least explicit of the nine, is stated in full above.
+This commit is round 2's done commit: line 15's last report committed with lines 1 to 14 passing, lines 5 and 6 by the owner's ruling, and gates 1 and 3 closed by the owner.
+The commit after it pins CI's round-2 job to this commit by full sha, as round 1's job is pinned to its own done commit, so `gars/` can evolve on `main` while the study's checks run on the tree its takes ran against.
