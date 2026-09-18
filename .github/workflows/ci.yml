@@ -108,14 +108,17 @@ jobs:
         run: python3 evals/gap-study/test_harness.py --mutations
 
   gap-study-2:
-    # ---- the Gap Study, round 2 (evals/gap-study-2), checked at HEAD while the study runs ----------
-    # Round 2 is a copy of round 1's harness with its own name, paths and fixtures. While it runs, its
-    # guards are checked at every pushed commit; a later change pins this job to round 2's done commit,
-    # as the job above is pinned to round 1's. Round 1's job and the suite job are left as they were.
+    # ---- the Gap Study, round 2 (evals/gap-study-2), checked at the commit its final verifier checked ----
+    # Round 2 is a copy of round 1's harness with its own name, paths and fixtures. While it ran, its
+    # guards were checked at every pushed commit. The study is done (Round 2 ruling 8, verifier 2's report
+    # committed in bf065fe), and as with round 1 its ledger check binds HEAD's gars/ to the tree its takes
+    # ran against, so this job now checks out the done commit by full sha, at full depth, and runs the
+    # study's own checks there, unchanged. Round 1's job and the suite job are left as they were.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: bf065feedccc0392f69e95a6d674288bb861a2b0
           # Full history: the kickoff baseline, the ledger and the frozen-file checks read the
           # commits that started, froze and registered the study, and refuse in a shallow clone.
           fetch-depth: 0
