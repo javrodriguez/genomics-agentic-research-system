@@ -1753,3 +1753,12 @@ Eleven lines PASS.
 Four FAIL as written: line 2, because the write-ups of amendments 4 to 8 carried no regrade statement; line 5, because the line says 108 rows and the ledger carries 112 (108 planned takes, of which 106 graded and one cell capped after three rehearsals, plus six rehearsal rows); line 6, because the line says exit 0 for all 108 and the checker reads 106 graded takes and one capped half; line 9, because `analyse.py` printed neither the round-1-beside-round-2 comparison under its heading nor each prediction beside its outcome.
 Lines 2 and 9 are fixed at source by amendment 9 and the regrade statements, in the commit before this one.
 Lines 5 and 6 read the planned counts against what happened, which the frozen file's rehearsal and pause caps allowed for before any take ran; whether they pass as amended or hold is the owner's ruling, recorded below when given, and a second verifier runs after it from a fresh clone.
+
+
+### Round 2 ruling 8 — 2026-09-17 — verifier lines 5 and 6 pass as amended
+
+Javier answered "1A" in the run's own window after the final verifier's first report.
+Line 5's "108 rows" reads as 108 planned takes: the ledger carries 112 rows, 106 graded, one cell capped after three rehearsals, and six rehearsal rows, each with its reason, which the frozen rehearsal cap allowed for before any take ran.
+Line 6's "exit 0 for all 108" reads as exit 0 for every graded take: 106, plus one half published `incomplete — mechanical` under the frozen caps.
+No count, label, criterion or file moves by this ruling; it reads two checklist lines against what the frozen caps allowed.
+A second verifier runs from a fresh clone after it, told the ruling in its brief and asked to rule each line as written and then say whether the amended reading holds; its report is committed unedited and the done commit follows it.
