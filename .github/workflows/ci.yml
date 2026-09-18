@@ -28,6 +28,7 @@ jobs:
       - name: Test suite
         env:
           GARS_ROW5_SCRATCH: ${{ runner.temp }}
+          TMPDIR: ${{ runner.temp }}
         run: python3 tests/run_tests.py
       - name: Contract lint
         run: python3 tests/check_contracts.py
