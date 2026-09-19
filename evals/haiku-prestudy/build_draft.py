@@ -121,7 +121,11 @@ def build(approved_by_owner: str | None = None, approved_at: str | None = None) 
                     "form under Bash(python3:*) alone ran eight and denied one, `echo \"exit=$?\"`; with Bash(echo:*) "
                     "added all nine ran. In one session holding all nine under Bash(python3:*) alone, the first "
                     "denial ended the run. So both entries are needed for Haiku to walk the route the other two "
-                    "models walked, and neither admits a program the stage does not already run."),
+                    "models walked. The stage 00 contract names only python3; echo is a form Opus added in round 2 "
+                    "(`echo \"exit=$?\"` in each of its three takes of this cell), so neither entry admits a "
+                    "program beyond those Sonnet and Opus ran before the probe on this cell. Bash(echo:*) also "
+                    "admits `echo ... > file`; a write it makes outside the take's own folders is caught by "
+                    "take.py's postflight."),
             "evidence": "verification/finding.md and verification/probes/ (forms/ holds the per-form sessions); finding.py --check re-derives every count",
             "denial_outside_the_allowlist": ("A denial of a command the allowlist does not admit reads as `did not "
                                               "reach`, reason `harness denial`, with the denied command quoted. It is "

@@ -161,6 +161,10 @@ def main() -> int:
                      [py, f"{REL}/check_take.py", str(take_dir / "transcript.jsonl"), "--task", "number-fidelity",
                       "--half", "positive", "--row", "0"])
             step("outcome reader on the routed attempt", [py, f"{REL}/outcome.py", str(take_dir)])
+            step("result.py writes from the frozen state", [py, f"{REL}/result.py", "--write"])
+            step("result.py re-derives it", [py, f"{REL}/result.py", "--check"])
+            step("the result lists the rehearsal", ["grep", "-n", "Attempts that are not takes\\|Row 0: a rehearsal",
+                                                    f"{REL}/RESULT.md"])
     finally:
         shutil.rmtree(box, ignore_errors=True)
 

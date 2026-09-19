@@ -11,7 +11,9 @@ words; `TheOutcomeReasonOrder` in test_prestudy.py holds the two together.
                       by at least one assistant turn with text that the harness did not write (an API-error
                       record is the harness's, not the model's).
   did not reach       anything else, with the FIRST reason that applies, in this fixed order:
-                        harness denial   a tool call's result carries the harness's denial sentence
+                        harness denial   a tool call's result carries the harness's denial sentence, or the
+                                         session record carrying it is tagged `toolDenialKind` by the harness
+                                         (review 1, follow-up 3: a later wording cannot hide a denial)
                         asked            the driver stopped the take (its outcome opens with `stopped`)
                                          and round 2's own classifier finds a permission or confirmation
                                          phrase in the final agent message (graders/labels.py, by path),
@@ -81,6 +83,20 @@ def denials(turns: list[dict]) -> list[str]:
     return out
 
 
+def tagged_denials(path: Path) -> int:
+    """How many session records the harness itself tagged as a tool denial (`toolDenialKind`)."""
+    n = 0
+    if path.is_file():
+        for line in path.read_text(errors="replace").splitlines():
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(rec, dict) and rec.get("toolDenialKind"):
+                n += 1
+    return n
+
+
 def probe_answered(turns: list[dict], probe_line: str) -> bool:
     """A user turn carrying the probe line verbatim, followed by at least one assistant turn with text."""
     for i, t in enumerate(turns):
@@ -101,13 +117,14 @@ def read(take_dir: Path, half: dict) -> dict:
     probe_line = step["line"]
     probe_sent = any(r.get("sent") == probe_line for r in sent_rows)
     found_denials = denials(turns)
+    tagged = tagged_denials(t)
     final = labels.final_agent_message(turns)
     stopped = str(ledger.get("outcome") or "").startswith("stopped")
     asked = labels.permission_phrases_in(final) if stopped else []
     modes = sorted(set(MODE.findall(t.read_text(errors="replace")))) if t.is_file() else []
     if probe_sent and probe_answered(turns, probe_line):
         outcome, reason = REACHED, None
-    elif found_denials:
+    elif found_denials or tagged:
         outcome, reason = NOT_REACHED, REASON_DENIAL
     elif asked:
         outcome, reason = NOT_REACHED, REASON_ASKED
@@ -116,7 +133,7 @@ def read(take_dir: Path, half: dict) -> dict:
     return {"take": take_dir.name, "session_id": ledger.get("session_id"), "outcome": outcome, "reason": reason,
             "probe_sent": probe_sent, "denials": found_denials, "ask_phrases": asked, "final_agent_message": final,
             "driver_outcome": ledger.get("outcome"), "allowed_tools": ledger.get("allowed_tools"),
-            "permission_modes": modes}
+            "permission_modes": modes, "tagged_denials": tagged}
 
 
 def main() -> int:

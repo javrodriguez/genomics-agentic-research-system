@@ -86,6 +86,9 @@ def main() -> int:
     task, half = pre["take_order"][args.take - 1][0], pre["take_order"][args.take - 1][1]
 
     problems = []
+    graded = sorted(int(p.name) for p in (HERE / "transcripts" / task / half / model).glob("*") if p.name.isdigit())
+    if graded != list(range(1, args.take)):
+        problems.append(f"take {args.take} is not next in the pre-registered order: graded so far {graded}")
     version = subprocess.run(["claude", "--version"], capture_output=True, text=True).stdout.strip()
     if not version.startswith(pre["harness"]["claude_version"]):
         problems.append(f"claude --version reads {version!r}, the freeze read {pre['harness']['claude_version']}")

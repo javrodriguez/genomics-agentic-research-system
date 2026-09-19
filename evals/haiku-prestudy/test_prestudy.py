@@ -275,6 +275,38 @@ class TheFreezeNeedsARehearsalOfThisCode(unittest.TestCase):
             self.assertIsNone(fz.rehearsal_record(draft_sha))
 
 
+class TheDenialTagAgreesWithTheSentence(unittest.TestCase):
+    """Review 1, follow-up 3: on every round-2 transcript, a file carries the harness's denial tag exactly when it
+    carries the denial sentence, so either reading finds the same denials at this harness version."""
+
+    def test_round_two(self):
+        import transcript as tx
+        files = sorted(ROUND2.glob("transcripts/*/*/*/*/transcript.jsonl"))
+        self.assertGreater(len(files), 100)
+        tagged_files = 0
+        for t in files:
+            tag = outcome.tagged_denials(t)
+            sentence = len(outcome.denials(tx.parse(t)))
+            self.assertEqual(tag > 0, sentence > 0, str(t.relative_to(ROUND2)))
+            tagged_files += tag > 0
+        self.assertGreater(tagged_files, 0, "no tagged denial anywhere: the guard measured nothing")
+
+
+class TheResultIsBoundToTheFreeze(unittest.TestCase):
+    """Review 1, follow-up 1: result.py refuses code the freeze did not pin, and a ledger with another allowlist."""
+
+    def test_binding(self):
+        result = load_by_path("prestudy_result_test", HERE / "result.py")
+        import hashlib
+        real = {"outcome.py": hashlib.sha256((HERE / "outcome.py").read_bytes()).hexdigest()}
+        pre = {"pinned_files": real, "driver_change": {"allowed_tools": ["Bash(python3:*)", "Bash(echo:*)"]}}
+        ok = {"row": 0, "allowed_tools": ["Bash(python3:*)", "Bash(echo:*)"]}
+        self.assertEqual(result.binding_problems(pre, [ok]), [])
+        self.assertTrue(result.binding_problems({**pre, "pinned_files": {"outcome.py": "0" * 64}}, [ok]))
+        self.assertTrue(result.binding_problems(pre, [{"row": 0, "allowed_tools": ["Bash(python3:*)"]}]))
+        self.assertTrue(result.binding_problems(pre, [{"row": 0}]))
+
+
 class TheFindingReDerives(unittest.TestCase):
     def test_finding(self):
         r = subprocess.run([sys.executable, str(HERE / "finding.py"), "--check"], capture_output=True, text=True)

@@ -41,6 +41,9 @@ STATED = {
         "claude-sonnet-5.auto.jsonl": {"modes": ["auto"], "denials": 0},
         "claude-haiku-4-5-20251001.auto.allow.jsonl": {"modes": ["default"], "denials": 0},
         "claude-haiku-4-5-20251001.auto.allow-three-forms.jsonl": {"modes": ["default"], "denials": 0},
+        # Review 1, follow-up 7: one real turn with the argv drive.one_turn builds (both entries, then --session-id)
+        # and the driver's own child environment, asked to run the form that needs Bash(echo:*).
+        "claude-haiku-4-5-20251001.driver-argv.jsonl": {"modes": ["default"], "denials": 0},
     },
     # verification/probes/forms/: the nine command forms round 2's Sonnet and Opus used before the probe, one
     # session per form, first under Bash(python3:*) alone and then with Bash(echo:*) added; and all nine in one

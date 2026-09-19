@@ -66,6 +66,34 @@ def round2_label(d: Path) -> str:
     return str(got["label"])
 
 
+def binding_problems(pre: dict, rows_ledgers: list[dict]) -> list[str]:
+    """Review 1, follow-up 1: the code a result is written by must be the code the freeze pinned, and every take
+    must have been driven with the allowlist the pre-registration names."""
+    import hashlib
+    out = []
+    for f, sha in (pre.get("pinned_files") or {}).items():
+        got = hashlib.sha256((HERE / f).read_bytes()).hexdigest() if (HERE / f).is_file() else None
+        if got != sha:
+            out.append(f"{f} is not the file the freeze pinned ({str(got)[:12]} against {sha[:12]})")
+    for led in rows_ledgers:
+        if led.get("allowed_tools") != pre["driver_change"]["allowed_tools"]:
+            out.append(f"row {led.get('row')}'s ledger records allowed_tools {led.get('allowed_tools')}, not the "
+                       f"pre-registration's {pre['driver_change']['allowed_tools']}")
+    return out
+
+
+def other_attempts(model: str) -> list[dict]:
+    """Review 1, follow-up 2: every rehearsal and pause, with its row and reason ids, so no attempt goes unpublished."""
+    out = []
+    for kind in ("rehearsals", "pauses"):
+        base = HERE / kind / TASK / HALF / model
+        for d in sorted(base.glob("row-*")) if base.is_dir() else []:
+            led = json.loads((d / "driver-ledger.json").read_text())
+            out.append({"kind": kind[:-1], "row": led.get("row"), "reasons": (led.get("attempt") or {}).get("reasons") or [],
+                        "outcome": led.get("outcome")})
+    return out
+
+
 def quote(text: str, limit: int = 300) -> str:
     one = " ".join((text or "").split())
     return one if len(one) <= limit else one[: limit - 3] + "..."
@@ -75,7 +103,14 @@ def render() -> str:
     pre = prereg.require_frozen("writing the result")
     model = pre["models"][0]
     half = prereg.task(TASK)[HALF]
-    rows = [outcome.read(d, half) | {"round2_label": round2_label(d)} for d in take_dirs(model)]
+    dirs = take_dirs(model)
+    ledgers = [json.loads((d / "driver-ledger.json").read_text()) for d in dirs]
+    others = other_attempts(model)
+    bad = binding_problems(pre, ledgers + [json.loads((HERE / (a["kind"] + "s") / TASK / HALF / model / f"row-{a['row']}"
+                                                       / "driver-ledger.json").read_text()) for a in others])
+    if bad:
+        raise SystemExit("REFUSING to write the result:\n  - " + "\n  - ".join(bad))
+    rows = [outcome.read(d, half) | {"round2_label": round2_label(d)} for d in dirs]
     reached = sum(1 for r in rows if r["outcome"] == outcome.REACHED)
     by_reason: dict[str, int] = {}
     for r in rows:
@@ -91,11 +126,12 @@ def render() -> str:
          + " ".join(f"\"{a}\"" for a in pre["driver_change"]["allowed_tools"]) + "`.",
          f"The pre-registration froze at `{pre['frozen_at']}`; n = {pre['n']}.", "",
          "## Each take", "",
-         f"| Take | Outcome | Reason | Denials | Ask phrases | {INFO_HEADING} |",
-         "|---|---|---|---|---|---|"]
+         f"| Take | Outcome | Reason | Denials | Ask phrases | Permission mode recorded | Allowlist in the ledger | {INFO_HEADING} |",
+         "|---|---|---|---|---|---|---|---|"]
     for r in rows:
-        L.append(f"| {r['take']} | {r['outcome']} | {r['reason'] or '-'} | {len(r['denials'])} | "
-                 f"{', '.join(r['ask_phrases']) or '-'} | {r['round2_label']} |")
+        L.append(f"| {r['take']} | {r['outcome']} | {r['reason'] or '-'} | {max(len(r['denials']), r['tagged_denials'])} | "
+                 f"{', '.join(r['ask_phrases']) or '-'} | {', '.join(r['permission_modes']) or '-'} | "
+                 f"{', '.join(r['allowed_tools'] or []) or '-'} | {r['round2_label']} |")
     L.append("")
     for r in rows:
         L.append(f"**Take {r['take']}** (session `{r['session_id']}`): {r['outcome']}"
@@ -103,7 +139,17 @@ def render() -> str:
         for dtext in r["denials"]:
             L.append(f"- Denial quoted: \"{quote(dtext)}\"")
         L.append(f"- Final agent message quoted: \"{quote(r['final_agent_message'])}\"")
+        L.append(f"- Driver outcome: {r['driver_outcome']}")
         L.append("")
+    L += ["## Attempts that are not takes", ""]
+    if others:
+        for a in others:
+            L.append(f"- Row {a['row']}: a {a['kind']}, reason ids {', '.join(a['reasons']) or '-'}; driver outcome: {a['outcome']}.")
+        if sum(1 for a in others if a["kind"] == "rehearsal") >= int(pre["rehearsal_cap"]) and len(rows) < pre["n"]:
+            L.append(f"- The half reached the rehearsal cap of {pre['rehearsal_cap']}: it publishes `incomplete — mechanical`, {len(rows)} of {pre['n']}.")
+    else:
+        L.append("None: every registered row was driven to a graded take.")
+    L.append("")
     L += ["## Counts", "",
           f"- Takes run: {len(rows)} of the {pre['n']} registered.",
           f"- Reached the probe: {reached} of {len(rows)}."]

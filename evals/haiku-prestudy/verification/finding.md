@@ -22,7 +22,7 @@ Each Haiku take then asked for approval, and round 2 labelled it `asked-to-proce
 ## What the probes show
 
 Each probe ran `claude -p` on Claude Code 2.1.267, round 2's version, with round 2's isolation flags and a stripped environment, from a folder outside any repository.
-The probes and their transcripts are in `verification/probes/`; `MASKING.json` there records the one string masked in them.
+The probes and their transcripts are in `verification/probes/`; `MASKING.json` there records the two strings masked in them, the scratch folder path and, where a directory listing prints a file's owner, the machine's user name.
 
 | Probe | Model | Flags beyond round 2's | Mode recorded | Denials | Output |
 |---|---|---|---|---|---|
@@ -33,6 +33,15 @@ The probes and their transcripts are in `verification/probes/`; `MASKING.json` t
 
 The first three asked the model to run `python3 -c 'print(6*7)'`.
 The fourth asked it to run the three forms Sonnet and Opus used on this half in round 2: a relative `python3` call after `cd … &&`, an absolute path, and `python3 -c`.
+
+## The command forms
+
+Before the probe turn on this half in round 2, Sonnet and Opus ran nine command forms: `python3` relative, after `cd … &&`, absolute and with `-c`; `;` chains with `2>&1`; `echo "exit=$?"` (Opus, in each of its three takes); `cat`, `grep` piped to `head`, `sed -n`, `find`, `pwd`, and `ls` piped to `wc`.
+`verification/probes/forms/` replays each in a Haiku session of its own, with a small stand-in for the stage script.
+Under `Bash(python3:*)` alone, eight ran and one was denied: `echo "exit=$?"`, whose `$?` expansion needs approval in `default` mode.
+With `Bash(echo:*)` added, all nine ran.
+In one session holding all nine under `Bash(python3:*)` alone, the first denial ended the run, as the denial's own text says it will.
+One more session ran the argv the copied driver builds for a turn, both entries followed by `--session-id`, with the driver's own child environment, and asked for `cd gars && python3 _system/reg.py assays; echo "exit=$?"`: no denial, and both commands ran (`claude-haiku-4-5-20251001.driver-argv.jsonl`).
 
 ## What changed because of it
 

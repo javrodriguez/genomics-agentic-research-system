@@ -11,6 +11,15 @@
       }
     },
     {
+      "file": "argv_smoke.py",
+      "sha256_as_captured": "197c66006cc5b1b03469f616ab02daad905169632c378386fb403044288da2af",
+      "sha256_as_committed": "197c66006cc5b1b03469f616ab02daad905169632c378386fb403044288da2af",
+      "occurrences_masked": {
+        "<probe-folder>": 0,
+        "<user>": 0
+      }
+    },
+    {
       "file": "claude-haiku-4-5-20251001.auto.allow-three-forms.jsonl",
       "sha256_as_captured": "57e1c0ecafb431c3762b3cfa79712982e7a8777236c48bf2c6cebcc1a39049d8",
       "sha256_as_committed": "3ce88f70820897a14597b96df6bfc6ec6d8a756442f6ce0c1c99c3eeeea5fda1",
@@ -32,6 +41,15 @@
       "file": "claude-haiku-4-5-20251001.auto.jsonl",
       "sha256_as_captured": "8afcb30594fc2d968a14767f83696d0befff3336e692cd634707251bea9d0ff3",
       "sha256_as_committed": "c71dbac7ccbcf5cc69177734b15a0309da94e8e0a594ad02ba7356479f278e0f",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "claude-haiku-4-5-20251001.driver-argv.jsonl",
+      "sha256_as_captured": "a09741b37db8e7af2cc4232231dbf568bea02474459cfb1104c6915dc5180c38",
+      "sha256_as_committed": "36bf06d24a6d5cc36cdec5326af315efe56527762f864340efc533e21672432a",
       "occurrences_masked": {
         "<probe-folder>": 1,
         "<user>": 0
