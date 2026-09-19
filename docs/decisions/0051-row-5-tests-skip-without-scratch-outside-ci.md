@@ -53,5 +53,5 @@ Walked on 2026-09-19 at `0799749`, each from a fresh clone, Python 3.13.2 on mac
 | as CI sets it | `CI=true`, `GARS_ROW5_SCRATCH`, `TMPDIR` | the offline and mutation-runner tests pass; this machine's Docker answered, so the 17 live-Postgres tests ran, and 4 errored with `command_failed` in `setUp` |
 
 The live-Postgres errors predate this record: the same class run alone at `e9d046c`, with the variable set, gave `Ran 17 · FAILED (errors=2)` with the same `command_failed`, and the set of failing tests moves between runs.
-With Docker not answering they skip, as they do in CI's 28, and this record does not touch them.
+They fail on this Mac's Docker only: on GitHub's runner all 17 pass (CI run 35445165152 at `7bf3c58`: `Ran 236 · OK (skipped=11)`), and with Docker not answering they skip; this record does not touch them.
 `check_counts.py` (clean, enforced=3), `check_contracts.py` (14 contracts clean) and `evals/test_harness.py` (`Ran 44 · OK`) pass at `0799749`.
