@@ -7,6 +7,10 @@
 A filesystem-native architecture for running reproducible bioinformatics workflows through an
 LLM agent, on HPC.
 
+[Demo](https://gars.javrodriguez.dev/demo/) · [Install](https://gars.javrodriguez.dev/install/) · [Evidence](https://gars.javrodriguez.dev/evidence/) · [Docs](docs/) · [Citation](CITATION.cff)
+
+MIT license · tagged versions (`git tag`)
+
 The premise: **the filesystem is the state machine, the LLM is the navigator.** Directory
 structure encodes workflow state, each stage is a written contract the agent executes literally,
 and scientific decisions stay with the human. That premise, carried through every layer of the
