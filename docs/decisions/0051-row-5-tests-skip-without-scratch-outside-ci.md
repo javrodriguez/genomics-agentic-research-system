@@ -4,13 +4,16 @@ status: standing
 kind: defect
 touches:
   - tests/test_row05_backup.py
+  - gars/tests/test_mutation_runner.py
   - .github/workflows/ci.yml
+  - infra/compose/README.md
   - README.md
 symptoms:
   - "RuntimeError: GARS_ROW5_SCRATCH is required; no system-temp fallback"
   - run_tests.py fails from a cold clone with 23 errors, all in test_row05_backup.py
+  - "ValueError: TMPDIR must name an existing scratch directory" from test_mutation_runner.py on Linux
 ---
-# Row 5 tests skip without a scratch folder, except under CI
+# Tests that need a named scratch folder skip without one, except under CI
 
 ## Context
 
@@ -20,6 +23,7 @@ A stranger does not: at public `main` `e9d046c`, `python3 tests/run_tests.py` fr
 All 23 errors were `test_row05_backup.py`: the 22 offline tests and the database class's `setUpClass`, each raising the refusal.
 The README says the suite runs green from a cold clone with no setup, so the first thing a visitor runs contradicted the first thing they read.
 Found by the demo site's clean-clone walk (gars-demo-v2 slice 9, 18 Sep), which then pinned the site to the Gap Study's done commit `e866cce`.
+The fix's review found the same class one layer down: `evals/mutate.py`'s `measure()` takes scratch only from an explicit `TMPDIR` (decision 0050), macOS always sets one and Linux does not, so with `TMPDIR` also unset two tests in `gars/tests/test_mutation_runner.py` still failed (`Ran 236 · FAILED (errors=2, skipped=50)`).
 
 ## Decision
 
@@ -27,14 +31,16 @@ Both row 5 classes carry `needs_scratch`.
 With `GARS_ROW5_SCRATCH` unset and outside CI, the class skips with the reason `environment: GARS_ROW5_SCRATCH unset; ...`, the same shape as `needs_pipeline`'s environment skips.
 Under CI (`CI` set to `1`, `true` or `yes`) the class always runs, so a job that loses the variable fails on 0044's refusal rather than passing with row 5 skipped.
 A variable that is set but names a missing folder, or a folder inside the repository, still refuses everywhere.
+The two mutation-runner tests that run a full `measure()` carry `needs_tmpdir`, the same rule keyed on `TMPDIR`; `measure()` itself is unchanged and still refuses without it.
 The README's verify block names the variable and how to set it.
 
 ## Why
 
 0044's point was never "error on a cold clone"; it was "no system-temp fallback", and a skip keeps that: no row 5 test touches any temp folder unless a scratch folder is named.
 A plain skip everywhere would let CI go green with row 5 unexercised, which is the hollow pass this repository has been bitten by before; the CI clause closes that.
-0044 stays standing for everything else it decides; this record narrows only its "missing variable is a refusal" clause to CI and to invalid values.
+0044 is marked partially superseded by this record: it stands for everything else it decides, and only its "missing variable is a refusal" clause is narrowed to CI and to invalid values.
+0050's explicit-`TMPDIR` rule is untouched; only the tests that exercise it skip on a machine that sets none.
 
 ## Evidence
 
-The walk from a clean clone is recorded in the commit that introduced this decision: unset outside CI, set as CI sets it, and unset with `CI=true`.
+To be recorded after the walks run on the committed change.

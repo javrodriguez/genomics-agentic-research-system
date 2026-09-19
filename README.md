@@ -285,7 +285,7 @@ artifact each stage produces.
 ## Status
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(236 tests, 28 of them environment skips, on macOS at the 2026-09-17 merge of rows 1, 5, 2 and 3; no cluster run is evidenced for these rows).
+(236 tests, 28 of them environment skips, on macOS at the 2026-09-17 merge of rows 1, 5, 2 and 3, with row 5's scratch folder set as CI sets it; a cold clone without it skips 50; no cluster run is evidenced for these rows).
 The expanded suite's cluster status is unverified; dated local runner
 results and skips are recorded in the [Row 2 report](docs/implementation/row_2_change_report.md#review-round-3-fixes).
 The [benchmark sealing interface](benchmarks/HOLDOUT.md) is maintained in place;

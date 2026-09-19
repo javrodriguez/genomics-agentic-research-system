@@ -89,10 +89,10 @@ Both logs in docs/ops are empty evidence templates, not proof of a run.
 
 Tests require GARS_ROW5_SCRATCH plus TMPDIR, TEMP and TMP set to that private
 scratch directory. The row module disables its own import-time bytecode writes
-and sets PYTHONDONTWRITEBYTECODE=1 for children. CI's existing jobs are unchanged;
-the owner must add `GARS_ROW5_SCRATCH: ${{ runner.temp }}` to the existing test
-step only in the authorized merge after the study finishes. Tests refuse
-without scratch. They scrub inherited database/backup/drill/exposure configuration,
+and sets PYTHONDONTWRITEBYTECODE=1 for children. CI's test step sets
+`GARS_ROW5_SCRATCH: ${{ runner.temp }}`. Without the variable the tests skip as an
+environment failure, except under CI, where they refuse (decision 0051); a value that
+is not an existing directory outside the repository always refuses. They scrub inherited database/backup/drill/exposure configuration,
 use `-p gars-row5-<pid>-<random>`, random loopback PG_PORT, COMPOSE_VOLUME_SUFFIX,
 PG_RESTART=no and a random mode-600 password file. The named volume binds a data
 folder inside scratch. `down -v` executes in a finally, even on failed readiness.

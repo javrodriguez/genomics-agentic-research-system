@@ -1,6 +1,7 @@
 """Runner mechanics use public toy faults; none is a sealed scoring mutant."""
 import difflib
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -9,6 +10,17 @@ from unittest import mock
 from support import REPO, mini_tree, module, run
 
 mutate = module(REPO / 'evals/mutate.py', 'row3_mutate')
+
+
+def needs_tmpdir(test):
+    """Skip a full measure() run when TMPDIR is unset, except under CI (decision 0051).
+
+    measure() takes its scratch only from an explicit TMPDIR (decision 0050), and Linux sets none
+    by default, so a cold clone skips these as an environment failure. Under CI the test runs and
+    measure() refuses, so a lost setting can never pass CI hollowly."""
+    if os.environ.get('TMPDIR') or os.environ.get('CI', '').lower() in ('1', 'true', 'yes'):
+        return test
+    return unittest.skip('environment: TMPDIR unset; measure() needs an explicit scratch directory')(test)
 
 
 class MutationRunnerTests(unittest.TestCase):
@@ -59,6 +71,7 @@ class MutationRunnerTests(unittest.TestCase):
         self.assertIsNone(record['test'])
         self.assertEqual(mutate.tree_hash(self.target), self.before)
 
+    @needs_tmpdir
     def test_full_run_hashes_source_and_records_run_sha(self):
         skipped = self.snapshot / 'gars/tests/test_environment.py'
         skipped.write_text('import unittest\nclass Environment(unittest.TestCase):\n'
@@ -95,6 +108,7 @@ class MutationRunnerTests(unittest.TestCase):
         self.assertEqual(changed['mutant_diff_sha256'], records[0]['mutant_diff_sha256'])
         self.assertEqual(mutate.tree_hash(self.snapshot), before)
 
+    @needs_tmpdir
     def test_ignored_discovered_test_cannot_change_committed_score(self):
         (self.snapshot / '.gitignore').write_text('test_hidden.py\nlocal-data/\n')
         for argv in (['git', 'add', '--', 'tests', 'gars', '.gitignore'],

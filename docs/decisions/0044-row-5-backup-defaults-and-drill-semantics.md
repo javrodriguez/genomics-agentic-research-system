@@ -1,6 +1,6 @@
 ---
 date: 2026-09-14
-status: standing
+status: superseded # partially by 0051-row-5-tests-skip-without-scratch-outside-ci.md
 kind: decision
 touches:
   - infra/backup/pg_backup.sh
