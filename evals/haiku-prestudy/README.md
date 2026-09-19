@@ -39,4 +39,5 @@ Two things a reader of the frozen file should know, both inside rules carried fr
 - A take the checker refuses for a reason the driver decides before a session (`outcome-binding` and its kin) is filed as a rehearsal, and the copied ledger check then refuses that rehearsal, so the result refuses to write and the slot cannot be freed: such a take publishes only by a recorded amendment. It is fail-closed by design.
 - The carried keys cite round 2's own review numbers (its reviews 15 and 19, for instance). This study's reviews are numbered 1 upward, in `verification/prefreeze-*.md`.
 
-**Status: pre-freeze. Nothing here has been run or graded.**
+**Status: RUN.** The pre-registration is frozen, the three takes are committed, `RESULT.md` is written by `result.py` from them, and two fresh verifiers ruled PASS from fresh clones (`verification/verify-1.md`, `verify-2.md`).
+Six amendments were made after the freeze, each recorded in `prereg.json` with its before and after, its reason, its evidence and its regrade; `RESULT.md` names them all.

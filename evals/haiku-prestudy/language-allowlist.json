@@ -28,6 +28,13 @@
       "line_text": "$ python3 evals/haiku-prestudy/check_take.py evals/haiku-prestudy/transcripts/number-fidelity/positive/claude-haiku-4-5-20251001/1/transcript.jsonl --task number-fidelity --half positive --row 0",
       "ruled": "2026-09-19",
       "why": "A take's folder path in the verifier's own evidence: the model id's date and the take number read across the separator as a `k / n` shape. It is a path this study's layout fixes, and the report is committed unedited."
+    },
+    {
+      "file": "evals/haiku-prestudy/verification/verify-2.md",
+      "pattern": "ratio-slash",
+      "line_text": "$ python3 evals/haiku-prestudy/check_take.py evals/haiku-prestudy/transcripts/number-fidelity/positive/claude-haiku-4-5-20251001/1/transcript.jsonl --task number-fidelity --half positive --row 0",
+      "ruled": "2026-09-19",
+      "why": "The check_take command the verifier ran on take 1, quoted in its own evidence: the model id's date and the take number read across the separator as a `k / n` shape. It is a path this study's layout fixes, and the report is committed unedited."
     }
   ]
 }
