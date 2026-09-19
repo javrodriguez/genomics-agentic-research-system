@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
+title: "GARS — Genomics Agentic Research System"
+type: software
+authors:
+  - family-names: "Rodriguez Hernaez"
+    given-names: "Javier"
+    orcid: "https://orcid.org/0000-0001-5549-0463"
+version: v0.10.0
+date-released: 2026-09-01
+repository-code: "https://github.com/javrodriguez/genomics-agentic-research-system"
+license: MIT
