@@ -288,7 +288,7 @@ def amendment_5(frozen: dict) -> dict:
     """The result names every amendment, so a reader of RESULT.md alone meets them."""
     p = HERE / "result.py"
     s = p.read_text()
-    a = '''    L += ["## Limitations", ""] + [f"- {x}" for x in pre["limitations_lines"]] + [""]'''
+    a = '''    L += ["", "## Limitations", ""] + [f"- {x}" for x in pre["limitations_lines"]] + [""]'''
     b = '''    L += ["## The pre-registration was amended", ""]
     if pre.get("amendments"):
         L.append("Each amendment is in `prereg.json` with its before and after, its reason, its evidence and its "
@@ -302,7 +302,7 @@ def amendment_5(frozen: dict) -> dict:
         L.append("")
     else:
         L += ["None.", ""]
-    L += ["## Limitations", ""] + [f"- {x}" for x in pre["limitations_lines"]] + [""]'''
+    L += ["", "## Limitations", ""] + [f"- {x}" for x in pre["limitations_lines"]] + [""]'''
     if s.count(a) != 1:
         raise SystemExit("refusing: result.py does not carry the limitations line this amendment patches")
     p.write_text(s.replace(a, b))
