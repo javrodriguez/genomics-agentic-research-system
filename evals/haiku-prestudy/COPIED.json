@@ -115,9 +115,9 @@
       "source": "evals/gap-study-2/review_kit/blindness.py",
       "source_blob": "cdf7fa93ea0cd2e82e479a6e50e857b6864e37e9",
       "source_sha256": "2e00cd5f52053037688a72d8b700a35b0e53194a83ac13badc37627acc059449",
-      "copy_sha256": "2e00cd5f52053037688a72d8b700a35b0e53194a83ac13badc37627acc059449",
-      "edited": false,
-      "why": null
+      "copy_sha256": "b96f902126ac0b93064f2acabecbd79ec2f273e04301afbeb774f9a6d2df4707",
+      "edited": true,
+      "why": "The goal-id marker names this study's goal, gars-haiku-prestudy; round 2's goal id stays as a second marker, since operator memory that names round 2 is still a leak."
     },
     {
       "path": "evals/haiku-prestudy/review_kit/commit_review.py",

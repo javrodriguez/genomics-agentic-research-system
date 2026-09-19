@@ -62,7 +62,7 @@ class TheCopyTracesToItsSource(unittest.TestCase):
     def test_only_the_named_files_are_edited(self):
         rec = copy_manifest.derive()
         edited = sorted(f["path"].rsplit("/", 1)[-1] for f in rec["files"] if f["edited"])
-        self.assertEqual(edited, ["drive.py", "prereg.py", "study.py"])
+        self.assertEqual(edited, ["blindness.py", "drive.py", "prereg.py", "study.py"])
 
 
 class TheDriverHasOneDiff(unittest.TestCase):
@@ -253,6 +253,26 @@ class TheExportCommitIsRoundTwosCheckout(unittest.TestCase):
         built = sorted(json.loads((ROUND2_NF / HAIKU / k / "driver-ledger.json").read_text())["run_tree_built_from"]
                        for k in "123")
         self.assertEqual(built, sorted(pre["round_2_take_exports"]))
+
+
+class TheFreezeNeedsARehearsalOfThisCode(unittest.TestCase):
+    """A rehearsal record admits a freeze only for the draft bytes AND the pinned code it rehearsed."""
+
+    def test_record_binding(self):
+        fz = load_by_path("prestudy_freeze_test", HERE / "freeze.py")
+        import hashlib
+        draft_sha = hashlib.sha256((HERE / "prereg-draft.json").read_bytes()).hexdigest()
+        with tempfile.TemporaryDirectory() as d:
+            fz.VERIFICATION = Path(d)
+            rec = Path(d) / "freeze-rehearsal-9.txt"
+            rec.write_text(f"{draft_sha}\ncode sha256: {fz.code_sha256()}\nall green\n")
+            self.assertEqual(fz.rehearsal_record(draft_sha), rec)
+            rec.write_text(f"{draft_sha}\ncode sha256: {'0' * 64}\nall green\n")
+            self.assertIsNone(fz.rehearsal_record(draft_sha), "a rehearsal of other code admitted a freeze")
+            rec.write_text(f"{'0' * 64}\ncode sha256: {fz.code_sha256()}\nall green\n")
+            self.assertIsNone(fz.rehearsal_record(draft_sha), "a rehearsal of other draft bytes admitted a freeze")
+            rec.write_text(f"{draft_sha}\ncode sha256: {fz.code_sha256()}\nNOT green\n")
+            self.assertIsNone(fz.rehearsal_record(draft_sha))
 
 
 class TheFindingReDerives(unittest.TestCase):

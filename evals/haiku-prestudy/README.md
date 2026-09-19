@@ -18,6 +18,9 @@ With everything else as round 2 froze it, and one pre-registered Bash allowlist 
   - `study.py`: this study's name and folder.
   - `prereg.py`: the planned-take count covers only the halves a task lists.
 - The copies' usage lines still name round 2's folder; they are left as copied rather than edited.
+- The copied loader prints `take order: not yet — seeded at the freeze` even when frozen: this study has one cell, draws no seed, and its order is `take_order` in the pre-registration.
+- The copied checker's study-path pattern names round 1's and round 2's folders, not this one; every take's checkout excludes `evals/`, so no path of this study can reach a session.
+- The review kit's `BRIEF.md` and `why.md` are written for this study, not copied.
 - `prereg-draft.json` is built by `build_draft.py`, which carries round 2's frozen rules unchanged by code and writes this study's own design beside them.
 - Takes run against a checkout exported from `844a4ce`, whose content is the checkout round 2's three Haiku takes of this half ran in, with round 2's system under test (gars tree `8a54e0f8`).
 

@@ -7,7 +7,8 @@
 The freeze refuses unless every one of these holds, and prints each that does not:
   1. the owner's approval of the allowlist is on the draft (driver_change.approved_by_owner and approved_at);
   2. a rehearsal record verification/freeze-rehearsal-<n>.txt exists whose first line is the sha256 of these draft
-     bytes and whose last line is `all green`;
+     bytes, whose `code sha256:` line equals code_sha256() of the pinned files as they stand now, and whose last line
+     is `all green`: a rehearsal of other code admits nothing;
   3. the study folder has no uncommitted change, so what is frozen is what is committed;
   4. the review commit lands exactly one verification/prefreeze-<n>.md and its blindness record, the report's line 1
      is these draft bytes' sha256 line, and its ruling line reads DO FREEZE;
@@ -52,10 +53,19 @@ def sha256(b: bytes) -> str:
     return hashlib.sha256(b).hexdigest()
 
 
+def code_sha256(root: Path = HERE) -> str:
+    """One hash over every pinned file, name and bytes, in PINNED order."""
+    h = hashlib.sha256()
+    for f in PINNED:
+        h.update(f.encode() + b"\0" + hashlib.sha256((root / f).read_bytes()).hexdigest().encode() + b"\n")
+    return h.hexdigest()
+
+
 def rehearsal_record(draft_sha: str) -> Path | None:
+    code = f"code sha256: {code_sha256()}"
     for rec in sorted(VERIFICATION.glob("freeze-rehearsal-*.txt")):
         lines = rec.read_text().splitlines()
-        if lines and lines[0].strip() == draft_sha and lines[-1].strip() == "all green":
+        if lines and lines[0].strip() == draft_sha and code in lines and lines[-1].strip() == "all green":
             return rec
     return None
 
@@ -96,7 +106,8 @@ def main() -> int:
         problems.append("the owner's approval of the allowlist is not on the draft")
     rec = rehearsal_record(draft_sha)
     if rec is None:
-        problems.append(f"no green rehearsal record for these draft bytes ({draft_sha[:12]})")
+        problems.append(f"no green rehearsal record for these draft bytes ({draft_sha[:12]}) and this code "
+                        f"({code_sha256()[:12]})")
     version = subprocess.run(["claude", "--version"], capture_output=True, text=True).stdout.strip()
     if not version.startswith(draft["harness"]["claude_version"]):
         problems.append(f"claude --version reads {version!r}, not {draft['harness']['claude_version']}")
@@ -124,6 +135,7 @@ def main() -> int:
     frozen["pre_freeze_review_commit"] = review
     frozen["rehearsal_record"] = rec.name
     frozen["draft_sha256_at_freeze"] = draft_sha
+    frozen["code_sha256_at_freeze"] = code_sha256()
     frozen["harness_at_freeze"] = version
     frozen["pinned_files"] = {f: sha256((HERE / f).read_bytes()) for f in PINNED if (HERE / f).is_file()}
     missing = [f for f in PINNED if not (HERE / f).is_file()]

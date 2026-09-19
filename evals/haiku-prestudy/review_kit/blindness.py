@@ -25,7 +25,8 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent.parent
 EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 MARKERS = [
-    ("the goal id", "gars-eval-v3"),
+    ("the goal id", "gars-haiku-prestudy"),
+    ("round 2's goal id", "gars-eval-v3"),
     ("the study's folder name", "gap-study-2"),
     ("the round's name", "round 2"),
     ("the operator's open-items list", "Waiting on Javier"),

@@ -68,6 +68,14 @@ print(json.dumps({"type": "result", "subtype": "success", "result": "Starting st
 '''
 
 
+def _freeze_module():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("prestudy_freeze_for_rehearsal", HERE / "freeze.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def run(cmd: list[str], cwd: Path, env: dict | None = None, timeout: int = 1800) -> tuple[int, str]:
     r = subprocess.run(cmd, cwd=str(cwd), env=env, capture_output=True, text=True, timeout=timeout)
     return r.returncode, (r.stdout + r.stderr)
@@ -107,8 +115,10 @@ def main() -> int:
              [py, f"{REL}/build_draft.py", "--approve", "REHEARSAL", "--approved-at", "rehearsal"])
         step("record a green rehearsal for the clone's draft",
              [py, "-c", "import hashlib,pathlib;p=pathlib.Path('" + REL + "');"
+              "import importlib.util as u;sp=u.spec_from_file_location('fz',p/'freeze.py');fz=u.module_from_spec(sp);"
+              "sp.loader.exec_module(fz);"
               "(p/'verification'/'freeze-rehearsal-0.txt').write_text(hashlib.sha256((p/'prereg-draft.json')"
-              ".read_bytes()).hexdigest()+'\\nclone-only record\\nall green\\n')"])
+              ".read_bytes()).hexdigest()+'\\ncode sha256: '+fz.code_sha256()+'\\nclone-only record\\nall green\\n')"])
         step("freeze --rehearsal --write", [py, f"{REL}/freeze.py", "--rehearsal", "--write"])
         step("suite on the frozen state", [py, "-W", "ignore", f"{REL}/test_prestudy.py"])
         step("copy manifest", [py, f"{REL}/copy_manifest.py", "--check"])
@@ -158,7 +168,8 @@ def main() -> int:
     # output and is not counted against green; every other step must exit 0.
     informational = {"take checker on the routed attempt"}
     green = all(code == 0 for name, code, _ in steps if name not in informational)
-    lines = [draft_sha, f"rehearsal {n}, clone of HEAD {subprocess.run(['git', '-C', str(REPO), 'rev-parse', 'HEAD'], capture_output=True, text=True).stdout.strip()}", ""]
+    fz = _freeze_module()
+    lines = [draft_sha, f"code sha256: {fz.code_sha256()}", f"rehearsal {n}, clone of HEAD {subprocess.run(['git', '-C', str(REPO), 'rev-parse', 'HEAD'], capture_output=True, text=True).stdout.strip()}", ""]
     for name, code, tail in steps:
         lines += [f"## {name}: exit {code}" + ("  (informational)" if name in informational else ""), tail, ""]
     lines.append("all green" if green else "NOT green")

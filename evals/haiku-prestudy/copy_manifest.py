@@ -41,6 +41,8 @@ EDITS = {
     "prereg.py": "cells() counts only the halves a task lists. Round 2 listed both halves for every task; this "
                  "study lists one, and the unedited loader would plan six takes for a design of three. The loader "
                  "is not the driver; no take-time behaviour depends on it.",
+    "review_kit/blindness.py": "The goal-id marker names this study's goal, gars-haiku-prestudy; round 2's goal id "
+                               "stays as a second marker, since operator memory that names round 2 is still a leak.",
     "drive.py": "THE ONE CHANGE (Ruling 1, 19 September 2026): every turn passes --allowedTools with the "
                 "pre-registration's driver_change.allowed_tools, the ledger records them, and a docstring "
                 "paragraph says so. Nothing else in the driver moves.",
