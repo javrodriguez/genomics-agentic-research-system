@@ -239,7 +239,52 @@ def amended_attempt_paths(pre: dict) -> list[str]:
     }
 
 
-AMENDMENTS = {1: amendment_1, 2: amendment_2, 3: amendment_3}
+def amendment_4(frozen: dict) -> dict:
+    """A test's own synthetic input, and one language excusal for a path that reads as a ratio."""
+    p = HERE / "test_prestudy.py"
+    s = p.read_text()
+    a = '        pre = {"pinned_files": real, "driver_change": {"allowed_tools": ["Bash(python3:*)", "Bash(echo:*)"]}}'
+    b = ('        # The amendments come from the file in force: binding_problems forgives exactly the attempt paths\n'
+         '        # they record (amendment 3), and a synthetic input without them reads the real move as a deletion.\n'
+         '        pre = {"pinned_files": real, "driver_change": {"allowed_tools": ["Bash(python3:*)", "Bash(echo:*)"]},\n'
+         '               "amendments": in_force().get("amendments") or []}')
+    if s.count(a) != 1:
+        raise SystemExit("refusing: test_prestudy.py does not carry the synthetic input this amendment patches")
+    p.write_text(s.replace(a, b))
+
+    allow = HERE / "language-allowlist.json"
+    rec = json.loads(allow.read_text())
+    line = '      "path": "transcripts/number-fidelity/positive/claude-haiku-4-5-20251001/1",'
+    rec["excused"].append({
+        "file": "evals/haiku-prestudy/prereg.json",
+        "pattern": "ratio-slash",
+        "line_text": line,
+        "ruled": "2026-09-19",
+        "why": ("Amendment 2 records where the attempt was filed, and the take's folder is named for its take "
+                "number, so the path ends `.../claude-haiku-4-5-20251001/1`. The guard reads the model id's date "
+                "and the take number across the separator as a `k / n` shape. It is a path this study's own layout "
+                "fixes (attempt_layout), not a rate, and the line is pinned exactly, so editing it brings the "
+                "finding back."),
+    })
+    allow.write_text(json.dumps(rec, indent=2, ensure_ascii=False) + "\n")
+    return {
+        "n": 4,
+        "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "what": "TheResultIsBoundToTheFreeze's synthetic input carries the amendments in force; one language line excused",
+        "before": "the test built a pre with no amendments, and the language guard read a take's path as a ratio",
+        "after": "the test reads the amendments from the file in force; the path line is excused with its reason",
+        "why": ("Amendment 3 made the deleted-attempt guard read the amendments, and the test's synthetic input has "
+                "none, so it read amendment 2's recorded move as a deletion and went red: the test's input was "
+                "wrong, not the guard. The language guard's ratio rule fired on the path amendment 2 records, "
+                "which is a folder named for its take number."),
+        "evidence": "the suite's failure on TheResultIsBoundToTheFreeze, and lint_language.py on prereg.json line 770",
+        "touches": ("one test's synthetic input and one excused line. No guard is weakened: the guard's own reading "
+                    "is unchanged, and the excusal is pinned to the exact line text."),
+        "regrade": "the suite passes and the language guard is clean, both recorded in the commit that carries this.",
+    }
+
+
+AMENDMENTS = {1: amendment_1, 2: amendment_2, 3: amendment_3, 4: amendment_4}
 
 
 def main() -> int:
