@@ -64,6 +64,14 @@ def patch_builder() -> None:
     if s.count(a) != 1:
         raise SystemExit("refusing: build_draft.py does not carry the line this amendment patches")
     s = s.replace(a, b)
+    # The key leaves CARRIED, or the carried loop would write round 2's value back over the amended one.
+    a1 = ('           "driver_outcome_shapes", "environment_record", "harness_delivered_user_records", '
+          '"leak_context_excusals",\n')
+    b1 = ('           "driver_outcome_shapes", "environment_record", "harness_delivered_user_records",\n')
+    if s.count(a1) != 1:
+        raise SystemExit("refusing: build_draft.py does not carry leak_context_excusals where this amendment "
+                         "expects it")
+    s = s.replace(a1, b1)
     a2 = '        "leak_words": list(r2["leak_words"]) + LEAK_WORDS_ADDED,'
     b2 = (a2 + "\n"
           '        "leak_context_excusals": [dict(e) for e in r2["leak_context_excusals"]]\n'
