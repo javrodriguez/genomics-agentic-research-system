@@ -1,0 +1,4 @@
+{
+  "role": "Lines a person has read and ruled on. An entry matches ONLY when the file, the pattern name and the EXACT text of the line all agree, so editing the line brings the finding back. Nothing here switches a pattern off. Round 2's entries are pinned to round 2's lines and are not carried.",
+  "excused": []
+}

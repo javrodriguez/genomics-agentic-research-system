@@ -161,3 +161,44 @@ jobs:
         run: python3 evals/gap-study-2/costs.py --check
       - name: Gap Study round 2 mutations
         run: python3 evals/gap-study-2/test_harness.py --mutations
+
+  haiku-prestudy:
+    # ---- the Haiku pre-study (evals/haiku-prestudy), checked at every pushed commit while it runs ----
+    # A copy of round 2's driver and checkers at bf065fe with one change, a Bash allowlist on every turn.
+    # Full history: the copy manifest, the draft builder and the suite read round 2's files at the source
+    # commit with git show, and the take ledger binds each row to the commit that introduced it.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Haiku pre-study copy
+        run: python3 evals/haiku-prestudy/copy_manifest.py --check
+      - name: Haiku pre-study suite
+        run: python3 -W ignore evals/haiku-prestudy/test_prestudy.py
+      - name: Haiku pre-study finding
+        run: python3 evals/haiku-prestudy/finding.py --check
+      - name: Haiku pre-study language guard
+        run: python3 evals/haiku-prestudy/lint_language.py evals/haiku-prestudy/
+      - name: Haiku pre-study takes
+        # Each committed take, re-checked by the copied take checker; zero takes prints zero and passes.
+        run: |
+          n=0
+          for t in evals/haiku-prestudy/transcripts/*/*/*/*/transcript.jsonl; do
+            [ -f "$t" ] || continue
+            row=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['row'])" "$(dirname "$t")/driver-ledger.json")
+            python3 evals/haiku-prestudy/check_take.py "$t" --task number-fidelity --half positive --row "$row"
+            n=$((n+1))
+          done
+          echo "takes checked: $n"
+      - name: Haiku pre-study result
+        # Once RESULT.md exists it must be exactly what result.py writes from the committed takes.
+        run: |
+          if [ -f evals/haiku-prestudy/RESULT.md ]; then
+            python3 evals/haiku-prestudy/result.py --check
+          else
+            echo "no RESULT.md yet"
+          fi

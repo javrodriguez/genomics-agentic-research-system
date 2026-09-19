@@ -1,0 +1,132 @@
+{
+  "role": "Every file this study copied from round 2, read from the source commit with git show.",
+  "source_commit": "bf065feedccc0392f69e95a6d674288bb861a2b0",
+  "files": [
+    {
+      "path": "evals/haiku-prestudy/drive.py",
+      "source": "evals/gap-study-2/drive.py",
+      "source_blob": "16b35c4beb41238784236362133c91bad56ce7ad",
+      "source_sha256": "b4417a94157425ea5359105a31fac36d63cb0df9492b2e8316e263f6cdef4f8f",
+      "copy_sha256": "6759090600187b9c11c99e7876985bb66507cab8ffc20ab051ed8f6f6a30d0a8",
+      "edited": true,
+      "why": "THE ONE CHANGE (Ruling 1, 19 September 2026): every turn passes --allowedTools with the pre-registration's driver_change.allowed_tools, the ledger records them, and a docstring paragraph says so. Nothing else in the driver moves."
+    },
+    {
+      "path": "evals/haiku-prestudy/prereg.py",
+      "source": "evals/gap-study-2/prereg.py",
+      "source_blob": "865e112d9b28e6c008422c8692291706b2c21bd1",
+      "source_sha256": "349787409358e25382f4bfb914f0ac9e584b47e6c84da864142c97b49446d420",
+      "copy_sha256": "aa6f30e88750fcf4e733de65facb445221cc4e7ff24707d5b627da9bbf6b8977",
+      "edited": true,
+      "why": "cells() counts only the halves a task lists. Round 2 listed both halves for every task; this study lists one, and the unedited loader would plan six takes for a design of three. The loader is not the driver; no take-time behaviour depends on it."
+    },
+    {
+      "path": "evals/haiku-prestudy/takes.py",
+      "source": "evals/gap-study-2/takes.py",
+      "source_blob": "90ef810c6adc14f6cb2ca3416508a643612bbf9a",
+      "source_sha256": "66ea674d3e209faaf3078d15a478d33c0cc14a0e9fa467fcb29300952beee5fa",
+      "copy_sha256": "66ea674d3e209faaf3078d15a478d33c0cc14a0e9fa467fcb29300952beee5fa",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/haiku-prestudy/scrub.py",
+      "source": "evals/gap-study-2/scrub.py",
+      "source_blob": "40ca1825fbca11d69cb5a05fae2eed5c850649f1",
+      "source_sha256": "8c8129d510ddb84723defee9f721f8d12603222b91d2ec7b1d77705361b3a51b",
+      "copy_sha256": "8c8129d510ddb84723defee9f721f8d12603222b91d2ec7b1d77705361b3a51b",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/haiku-prestudy/check_take.py",
+      "source": "evals/gap-study-2/check_take.py",
+      "source_blob": "1b3b4d9bee28bc6a397a477f6c118bfd281d836c",
+      "source_sha256": "ac469c353d8a8b53dc3afcab75d64e1266a87be942a88f746d02824ca4ff9bf3",
+      "copy_sha256": "ac469c353d8a8b53dc3afcab75d64e1266a87be942a88f746d02824ca4ff9bf3",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/haiku-prestudy/study.py",
+      "source": "evals/gap-study-2/study.py",
+      "source_blob": "482d897d526b3da67e5d7fe99c5b2197763b956d",
+      "source_sha256": "f6a257d9f0cd5ce8bfa74aeab7bb11c7021cbf8081b338236a4e217d53537969",
+      "copy_sha256": "1aeff03b25529ee0633065f9a7840b353f4c8cee577d1cde51254d5ccdafeab6",
+      "edited": true,
+      "why": "The binding: this study's name, folder, title and published-section markers. Round 2's harness builds every path and marker from this file, so no other copied file needs to name this study."
+    },
+    {
+      "path": "evals/haiku-prestudy/lint_language.py",
+      "source": "evals/gap-study-2/lint_language.py",
+      "source_blob": "bd0a01670b599c1e789b00aaaf7de823830b10f7",
+      "source_sha256": "579e91d14a0c46f627847b9634aa6791e73745cf3fb8ba3a3a2ba3da3768b3b5",
+      "copy_sha256": "579e91d14a0c46f627847b9634aa6791e73745cf3fb8ba3a3a2ba3da3768b3b5",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/haiku-prestudy/commit_msg.py",
+      "source": "evals/gap-study-2/commit_msg.py",
+      "source_blob": "7e8c6e1f2d3c78d5eb3ae974ee5e3528a34e8138",
+      "source_sha256": "2901f9b65549da9f70c587a345da62684a0304969555831ea833e9495dff21de",
+      "copy_sha256": "2901f9b65549da9f70c587a345da62684a0304969555831ea833e9495dff21de",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/haiku-prestudy/scratch_git.py",
+      "source": "evals/gap-study-2/scratch_git.py",
+      "source_blob": "2c31d162fcb9c35a0aeee472f7acd2eb52f2482a",
+      "source_sha256": "44d7752f10e498d450ef3580efcab659e65c91e9c6e821eec6cf3e480788e5f5",
+      "copy_sha256": "44d7752f10e498d450ef3580efcab659e65c91e9c6e821eec6cf3e480788e5f5",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/haiku-prestudy/check_results.py",
+      "source": "evals/gap-study-2/check_results.py",
+      "source_blob": "2a0e48727ab9ae87c6c37098de1a4f21474d3dfe",
+      "source_sha256": "0f5991690a214ce76b8c8c37ea2e5c473b50960c16ca85bdf997d24a797f09df",
+      "copy_sha256": "0f5991690a214ce76b8c8c37ea2e5c473b50960c16ca85bdf997d24a797f09df",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/haiku-prestudy/review_kit/launch.py",
+      "source": "evals/gap-study-2/review_kit/launch.py",
+      "source_blob": "da8c38b2b8ba35971995acfa60753232e3002bcd",
+      "source_sha256": "55089d6eb60472d1875aa737134c76c32f1e71dc4b2cb1a75dd410bd577e9a8b",
+      "copy_sha256": "55089d6eb60472d1875aa737134c76c32f1e71dc4b2cb1a75dd410bd577e9a8b",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/haiku-prestudy/review_kit/build_kit.py",
+      "source": "evals/gap-study-2/review_kit/build_kit.py",
+      "source_blob": "ab3988766f6ed2c1311595bd1cccf652f97ab24a",
+      "source_sha256": "2c6f6ca25744c07bb203ac8662d1a84349484efa8858bb9e6da4f004388105f6",
+      "copy_sha256": "2c6f6ca25744c07bb203ac8662d1a84349484efa8858bb9e6da4f004388105f6",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/haiku-prestudy/review_kit/blindness.py",
+      "source": "evals/gap-study-2/review_kit/blindness.py",
+      "source_blob": "cdf7fa93ea0cd2e82e479a6e50e857b6864e37e9",
+      "source_sha256": "2e00cd5f52053037688a72d8b700a35b0e53194a83ac13badc37627acc059449",
+      "copy_sha256": "2e00cd5f52053037688a72d8b700a35b0e53194a83ac13badc37627acc059449",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/haiku-prestudy/review_kit/commit_review.py",
+      "source": "evals/gap-study-2/review_kit/commit_review.py",
+      "source_blob": "c7ce56ec40db98a59b277a922a01f05706124775",
+      "source_sha256": "0afc921ce6f33bb046c528bd37ba513e5d6dd25f7288bcc049932be554e894bd",
+      "copy_sha256": "0afc921ce6f33bb046c528bd37ba513e5d6dd25f7288bcc049932be554e894bd",
+      "edited": false,
+      "why": null
+    }
+  ]
+}

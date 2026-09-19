@@ -1,0 +1,257 @@
+{
+  "role": "The probes behind verification/finding.md and the allowlist. Each file is the probe's own bytes with two strings masked and nothing deleted: the machine's scratch folder path, replaced by <probe-folder>, and the machine's user name where a directory listing prints a file's owner, replaced by <user>.",
+  "files": [
+    {
+      "file": "allowprobe.py",
+      "sha256_as_captured": "eea23918a11e25163cd9b0199a786066ad8fda46ee2a545edf8160056b4c22fc",
+      "sha256_as_committed": "eea23918a11e25163cd9b0199a786066ad8fda46ee2a545edf8160056b4c22fc",
+      "occurrences_masked": {
+        "<probe-folder>": 0,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "claude-haiku-4-5-20251001.auto.allow-three-forms.jsonl",
+      "sha256_as_captured": "57e1c0ecafb431c3762b3cfa79712982e7a8777236c48bf2c6cebcc1a39049d8",
+      "sha256_as_committed": "3ce88f70820897a14597b96df6bfc6ec6d8a756442f6ce0c1c99c3eeeea5fda1",
+      "occurrences_masked": {
+        "<probe-folder>": 9,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "claude-haiku-4-5-20251001.auto.allow.jsonl",
+      "sha256_as_captured": "357a43ba3c0a8340494e22801cc45ee0d7752fd922cf6ad7e2d47fff0548ddf3",
+      "sha256_as_committed": "0aece51a8ca9f2ca06b74bfa4d276eaeee9fba9bedbb2a95460dba2e5cfa3cbb",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "claude-haiku-4-5-20251001.auto.jsonl",
+      "sha256_as_captured": "8afcb30594fc2d968a14767f83696d0befff3336e692cd634707251bea9d0ff3",
+      "sha256_as_committed": "c71dbac7ccbcf5cc69177734b15a0309da94e8e0a594ad02ba7356479f278e0f",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "claude-sonnet-5.auto.jsonl",
+      "sha256_as_captured": "04e89407ad3f11bdbe814c50b3a172752f552ea333040b3de45d81af4d129ed6",
+      "sha256_as_committed": "4e7b916b53cc9ac9af6e5c639b062263b4265be9f25a039b8dadb1a558bc4e65",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "forms/all-nine-in-one-session.bashpython3.jsonl",
+      "sha256_as_captured": "c6c0152efe550d0a276f70be70c251742702a5f39d71b8ed28d436b719588107",
+      "sha256_as_committed": "8d812989109b79853a624787f252634ae702f646b47e28f781bf804563d0805c",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "forms/form1.bashpython3-bashecho.jsonl",
+      "sha256_as_captured": "4c118a045b526684ad8fcbc9eafbea4f342c7ddd8d7b88b285a80b84995cd8ac",
+      "sha256_as_committed": "e36bb2cc21ab137888a6aefb7b34d9167b5a376f5a40981e396e0e3c3e1b3ed5",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "forms/form1.bashpython3.jsonl",
+      "sha256_as_captured": "b60e4bb4a52eda2bae4ed9a8652b2cc48e31a2a99a0bafaaaedc9dc15ad78cb1",
+      "sha256_as_committed": "097edcb0953e388fa29831c86151c4e9996b41cfafdc7b7c608ff7ac67d5c1d1",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "forms/form2.bashpython3-bashecho.jsonl",
+      "sha256_as_captured": "0ed3a6f34e530960e7155dfc04a1a52dd92a117b9b02643f2a4ca5622fba5ea9",
+      "sha256_as_committed": "c0ccd7417e5e9fd724f0187c43de9f8c4a78b6a1b55b77dac4211702b2c07d24",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "forms/form2.bashpython3.jsonl",
+      "sha256_as_captured": "31537da635389bceccce356c4a40c32440cb5835756429b908d598a79e0715a0",
+      "sha256_as_committed": "86b62da5aa7911c0c8e3bea0f182003612e03feb5b7c59ba115fdbeec18a64bb",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "forms/form3.bashpython3-bashecho.jsonl",
+      "sha256_as_captured": "fb2a7073d3e43839867561c91d42324c41a1087c63a9726c80a7afca646b8c4a",
+      "sha256_as_committed": "83d298a9b150f86d2d524104f66e5d72ac688f01d02bd17c2bca6a2b6784f713",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "forms/form3.bashpython3.jsonl",
+      "sha256_as_captured": "0b5d4bea1408f2efeb59b209032bee5060c27ad5f8fbaa02c40fe624764ceb52",
+      "sha256_as_committed": "6bcc762ceac0572bf64cd0e9dad463205a6bf5e0d85f28c6fb39d256cef26812",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "forms/form4.bashpython3-bashecho.jsonl",
+      "sha256_as_captured": "3b4c0b41b47b18fbf22d079b96a1d842711cbe2d54ed54b1d6bd0f66b3758080",
+      "sha256_as_committed": "d92dc45f3b0ba285d1de6be736394139b704352800179d1abf7f31fd955d89ce",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "forms/form4.bashpython3.jsonl",
+      "sha256_as_captured": "59249e127af8331169a172772fab77411521decb32a87a1e14db583906edbeeb",
+      "sha256_as_committed": "92ca124573dd9450f7d01a45f49bfe0a091fbd3890ea1c214df305258ee4fa14",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "forms/form5.bashpython3-bashecho.jsonl",
+      "sha256_as_captured": "b0b507fd6199a7a9a4c3ca0fc178c3a969d0a2101af3f1e4486e856d4897584e",
+      "sha256_as_committed": "e98e6364207c41a90da3d45360401b766933b05f723eb4c53f58c25abd163a76",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "forms/form5.bashpython3.jsonl",
+      "sha256_as_captured": "0ab1d24970a8fffa9b66516f2112cebc2bcf79ea230182f5fa7539f3e470f329",
+      "sha256_as_committed": "fd3c8cb4500cc99d65d8ada30c3b9e73f761a7049e30ceb051cd7da4e0cfa914",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "forms/form6.bashpython3-bashecho.jsonl",
+      "sha256_as_captured": "0352ef87c095e75bedc6ab6901c90ad2b7b6dfcc724f5e31df4ca513e1a14ae4",
+      "sha256_as_committed": "959aef1db6204689af7417bcc6724f9b7cc2e3942de654dfd163ea10b378d566",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "forms/form6.bashpython3.jsonl",
+      "sha256_as_captured": "d2a19508cf4089fddd762e00212854bbcdfbf02dd5af9e67f7e353f59e2422c1",
+      "sha256_as_committed": "632d92e53c5b256f081660430434acdc428197ce8fe04556a839a7aa9658004d",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "forms/form7.bashpython3-bashecho.jsonl",
+      "sha256_as_captured": "55860f349ecdc4d0cf42b7ca12c8ed7bd064e84d3746a21397e23b7a2faa9907",
+      "sha256_as_committed": "7078db1b9e4db7341472b816a41c9ed9b0ea607bbfc7b5243bb918d2a586c2c8",
+      "occurrences_masked": {
+        "<probe-folder>": 5,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "forms/form7.bashpython3.jsonl",
+      "sha256_as_captured": "62c3c2d7c7e4b9862e0956b7dbfd2fad9c26346a4f06d4c92f1be2c1cbf6fa47",
+      "sha256_as_committed": "26ba71382c294009715a2fe298a88054f784f6030ecd65b68943b4b6f31c4f7c",
+      "occurrences_masked": {
+        "<probe-folder>": 5,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "forms/form8.bashpython3-bashecho.jsonl",
+      "sha256_as_captured": "c7054cfc248c45b02904d68922f38be170c237c5ad3f8c3bd0bbce5cefe7e7e0",
+      "sha256_as_committed": "5fa73ceb5cc0d6b4b78f998ff1c8da8c1e4b9a598e3811dc8b6a4f21c9b04ec5",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 8
+      }
+    },
+    {
+      "file": "forms/form8.bashpython3.jsonl",
+      "sha256_as_captured": "8ffb04c0de1782e3ec0e268be2ed8cb6e8fcb4deacae71fde59e64ca07af27e5",
+      "sha256_as_committed": "6dfe174b86b75ca8cc25d2196b3eb756a6b12d9ab15fa5339a0c84230f604096",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 8
+      }
+    },
+    {
+      "file": "forms/form9.bashpython3-bashecho.jsonl",
+      "sha256_as_captured": "0082e0c4af2bf66f53c087230baf92a217b59c2c3682e7f4ef6880fb176dbf98",
+      "sha256_as_committed": "93cf9948aadf6ff18713c4ca25a795262ca2c85712cc3287227ea138d29eba58",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "forms/form9.bashpython3.jsonl",
+      "sha256_as_captured": "428816240e740f470b370268f26031ad306adcedbdab784ff7142214d9efa7ee",
+      "sha256_as_committed": "829d979895abfd21066e0daaf6f13342a1ba66b10592a3e19433719e4060c798",
+      "occurrences_masked": {
+        "<probe-folder>": 1,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "forms/formprobe.py",
+      "sha256_as_captured": "d7ca3ebad5d579b86427b83dd6d18000fb36760bd363218f54ead62ae97cc553",
+      "sha256_as_committed": "d7ca3ebad5d579b86427b83dd6d18000fb36760bd363218f54ead62ae97cc553",
+      "occurrences_masked": {
+        "<probe-folder>": 0,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "forms/formprobe1.py",
+      "sha256_as_captured": "8307886545e726c022f1dfa170cde9b84b9eba7253dca31e3d7ef5c0153d5e37",
+      "sha256_as_committed": "8307886545e726c022f1dfa170cde9b84b9eba7253dca31e3d7ef5c0153d5e37",
+      "occurrences_masked": {
+        "<probe-folder>": 0,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "permprobe.py",
+      "sha256_as_captured": "21a7c18f1ffd7b1da8ae2dd72be330b73dc5773640675ffc431448d55fb6eb63",
+      "sha256_as_committed": "21a7c18f1ffd7b1da8ae2dd72be330b73dc5773640675ffc431448d55fb6eb63",
+      "occurrences_masked": {
+        "<probe-folder>": 0,
+        "<user>": 0
+      }
+    },
+    {
+      "file": "permprobe_allow.py",
+      "sha256_as_captured": "749f61a7ef9eed908cd14648ac9a1b9375c01ca6b37731b8c27d1d399f424afc",
+      "sha256_as_committed": "749f61a7ef9eed908cd14648ac9a1b9375c01ca6b37731b8c27d1d399f424afc",
+      "occurrences_masked": {
+        "<probe-folder>": 0,
+        "<user>": 0
+      }
+    }
+  ]
+}
