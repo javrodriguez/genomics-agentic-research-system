@@ -284,7 +284,45 @@ def amendment_4(frozen: dict) -> dict:
     }
 
 
-AMENDMENTS = {1: amendment_1, 2: amendment_2, 3: amendment_3, 4: amendment_4}
+def amendment_5(frozen: dict) -> dict:
+    """The result names every amendment, so a reader of RESULT.md alone meets them."""
+    p = HERE / "result.py"
+    s = p.read_text()
+    a = '''    L += ["## Limitations", ""] + [f"- {x}" for x in pre["limitations_lines"]] + [""]'''
+    b = '''    L += ["## The pre-registration was amended", ""]
+    if pre.get("amendments"):
+        L.append("Each amendment is in `prereg.json` with its before and after, its reason, its evidence and its "
+                 "regrade; none touches a grader, a label, a count, a criterion or the order.")
+        L.append("")
+        for a in pre["amendments"]:
+            L.append(f"- **Amendment {a['n']}** ({a['at'][:10]}): {a['what']}. {a['why'].split('. ')[0]}.")
+            if a.get("ruling"):
+                L.append(f"  - Ruled by the owner: {a['ruling'].split(': ')[-1]}")
+            L.append(f"  - Regrade: {a['regrade']}")
+        L.append("")
+    else:
+        L += ["None.", ""]
+    L += ["## Limitations", ""] + [f"- {x}" for x in pre["limitations_lines"]] + [""]'''
+    if s.count(a) != 1:
+        raise SystemExit("refusing: result.py does not carry the limitations line this amendment patches")
+    p.write_text(s.replace(a, b))
+    return {
+        "n": 5,
+        "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "what": "RESULT.md carries a section naming every amendment, with its regrade",
+        "before": "the result printed the takes, the counts, round 2's cells beside them and the limitations",
+        "after": "the same, and a section that names each amendment, what it changed, why, and its regrade",
+        "why": ("The instrument was amended while the takes ran, and one amendment decided where take 1 is filed. "
+                "A reader of RESULT.md alone would have met none of that: the amendments were in prereg.json and "
+                "in the commits. The result now names them where the counts are."),
+        "evidence": "prereg.json's amendments, and RESULT.md as written before this amendment",
+        "touches": ("what the result prints about its own history. No grader, label, count, criterion or order "
+                    "moves, and no take's reading changes."),
+        "regrade": "RESULT.md is re-written by result.py and re-derived by result.py --check in the same commit.",
+    }
+
+
+AMENDMENTS = {1: amendment_1, 2: amendment_2, 3: amendment_3, 4: amendment_4, 5: amendment_5}
 
 
 def main() -> int:
