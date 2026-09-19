@@ -1,0 +1,72 @@
+1729a87ed038387376f922941e73645c31a8bec98ec0d34b425b1eafce9ec752
+rehearsal 1, clone of HEAD 296f7bae843e74b87b59f9d254dd6a66426b81da
+
+## approve in the clone only: exit 0
+wrote prereg-draft.json; approved_by_owner: 'REHEARSAL'
+
+## record a green rehearsal for the clone's draft: exit 0
+
+
+## freeze --rehearsal --write: exit 0
+froze prereg.json: draft bbf6f486a432, rehearsal freeze-rehearsal-0.txt, review (rehearsal), 17 files pinned
+
+## suite on the frozen state: exit 0
+...s..............
+----------------------------------------------------------------------
+Ran 18 tests in 6.658s
+
+OK (skipped=1)
+
+## copy manifest: exit 0
+ok: 14 files trace to bf065feedccc, 3 edited with a reason; round 2, round 1 and the parser unchanged
+
+## finding re-derives: exit 0
+    "Bash(python3:*) Bash(echo:*)": []
+  },
+  "forms_run": 9,
+  "all_nine_in_one_session_denied": true
+}
+ok: the finding re-derives from the bytes
+
+## language guard: exit 0
+clean — 6 input(s) scanned, 0 excused line(s) on record
+
+## loader status: exit 0
+status   : FROZEN. Read-only to the run. A later change is published as `amended`, with before and after, never corrected in place.
+tasks    : 1  (number-fidelity)
+models   : 1 in the fixed list, 1 running
+           claude-haiku-4-5-20251001    runs
+n        : 3  -> 3 planned takes
+take order: not yet — seeded at the freeze
+
+## ledger plan: exit 0
+tasks   1  number-fidelity
+models  1 in the fixed list, 1 running
+        claude-haiku-4-5-20251001    runs
+n       3 graded takes per half per model, no retakes
+planned 3 takes
+registered so far: 0
+
+## commit the frozen state: exit 0
+
+
+## commit: exit 0
+
+
+## register take 1: exit 0
+row 0 written. Commit it, then the session id is:
+  python3 evals/gap-study-2/takes.py --session-id 0
+
+## commit the row alone: exit 1
+error: pathspec 'evals/haiku-prestudy/takes.json' did not match any file(s) known to git
+
+## session id for row 0: exit 2
+row 0 is not committed yet. Its session id does not exist until it is: the uuid is a function of the commit that introduces it.
+
+## drive row 0 against the stub: exit 2
+row 0 is not committed. Its session id does not exist until it is: the uuid is a function of the commit that introduces it, which is what makes 'pre-registered before it ran' checkable.
+
+## attempt routed: exit 1
+[]
+
+NOT green

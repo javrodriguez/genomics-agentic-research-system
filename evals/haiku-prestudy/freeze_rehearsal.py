@@ -10,8 +10,10 @@ the record is written; the record is written into THIS study's verification/ fol
 WHAT. In the clone: the owner's approval is filled with the literal word REHEARSAL (in the clone only), the draft
 is rebuilt and frozen with `freeze.py --rehearsal --write`, then the gate runs on the frozen state: the suite, the
 copy manifest, the finding, the language guard, the loader and the ledger plan. Then the take path, with no model:
-one `takes.py --add` for take 1, its commit, `takes.py --session-id 0`, and `drive.py --row 0 --at <export_at>` with
-a STUB `claude` first on PATH. The stub answers `--version` with the frozen harness version and, for a turn, writes
+the frozen state is committed, a local bare repository inside the box stands in for origin, and `take.py --take 1`
+runs exactly as a real take will (preflight, row, commit, drive, postflight, attempt commit) with a STUB `claude`
+first on PATH. (Rehearsal 1 committed the row by hand, never staged it, and drove nothing; that is why take.py
+itself is rehearsed.) The stub answers `--version` with the frozen harness version and, for a turn, writes
 a minimal session file for the imposed session id (one user record, one assistant reply that holds no marker) and
 exits 0. So the driver builds the run tree and the fixture, writes the environment record, sends turn 1, finds the
 marker unheld, copies the session file, runs the take checker in place and routes the attempt by rule. The stub's
@@ -114,12 +116,14 @@ def main() -> int:
         step("language guard", [py, f"{REL}/lint_language.py", f"{REL}/"])
         step("loader status", [py, f"{REL}/prereg.py", "--status"])
         step("ledger plan", [py, f"{REL}/takes.py", "--plan"])
-        step("commit the frozen state", ["git", "add", "--", REL])
-        step("commit", ["git", "commit", "-q", "-m", "rehearsal: frozen"])
-        step("register take 1", [py, f"{REL}/takes.py", "--add", "--task", "number-fidelity", "--half", "positive",
-                                 "--model", draft["models"][0], "--take", "1"])
-        step("commit the row alone", ["git", "commit", "-q", "-m", "rehearsal: row 0", "--", f"{REL}/takes.json"])
-        step("session id for row 0", [py, f"{REL}/takes.py", "--session-id", "0"])
+        step("stage the frozen state", ["git", "add", "--", REL])
+        step("commit the frozen state", ["git", "commit", "-q", "-m", "rehearsal: frozen"])
+        # A local bare repository stands in for origin, so take.py's preflight (clean, even with origin) runs as it
+        # will for a real take. It is inside the box and deleted with it; nothing leaves this machine.
+        step("a local stand-in for origin", ["git", "clone", "-q", "--bare", str(clone), str(box / "origin.git")])
+        step("point origin at it", ["git", "remote", "add", "origin", str(box / "origin.git")])
+        step("fetch it", ["git", "fetch", "-q", "origin"])
+        step("track it", ["git", "branch", "-q", "--set-upstream-to=origin/main", "main"])
         stub_dir = box / "stub-bin"
         stub_dir.mkdir()
         (stub_dir / "claude").write_text(STUB.replace("{version}", draft["harness"]["claude_version"] + " (Claude Code)")
@@ -128,8 +132,9 @@ def main() -> int:
         (stub_dir / "claude").chmod(0o755)
         env = {**os.environ, "PATH": f"{stub_dir}{os.pathsep}{os.environ['PATH']}",
                "CLAUDE_CONFIG_DIR": str(box / "claude-config")}
-        step("drive row 0 against the stub", [py, "-u", f"{REL}/drive.py", "--task", "number-fidelity", "--half",
-                                              "positive", "--row", "0", "--at", draft["export_at"]], env)
+        step("take.py --take 1 against the stub", [py, "-u", f"{REL}/take.py", "--take", "1"], env)
+        step("session id for row 0", [py, f"{REL}/takes.py", "--session-id", "0"])
+        step("the row and the attempt are two commits", ["git", "log", "--format=%s", "-3"])
         attempts = sorted(str(p.relative_to(study)) for p in study.glob("*/number-fidelity/positive/*/*/driver-ledger.json"))
         routed = [json.loads((study / a).read_text()) for a in attempts]
         steps.append(("attempt routed", 0 if len(routed) == 1 else 1, f"{attempts}"))
