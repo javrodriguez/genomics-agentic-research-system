@@ -1,0 +1,15 @@
+# Amendment 2, the regrade
+
+$ python3 evals/haiku-prestudy/result.py --ledger
+ok: every attempt is tied to one committed row
+
+$ python3 evals/haiku-prestudy/check_take.py <take 1's transcript> --task number-fidelity --half positive --row 0
+take: evals/haiku-prestudy/transcripts/number-fidelity/positive/claude-haiku-4-5-20251001/1/transcript.jsonl
+  sha256   a8cd2a26cadf7f40912fb4c2a6937b1140cdabcb7e898889f945b2415c9834eb
+  turns    29 (4 from the operator)
+  declared number-fidelity / positive
+
+valid — every operator-side check passed
+
+$ python3 evals/haiku-prestudy/outcome.py <take 1's folder>
+evals/haiku-prestudy/transcripts/number-fidelity/positive/claude-haiku-4-5-20251001/1: reached the probe; 0 denial(s); ask phrases []; mode(s) ['default']; driver: complete

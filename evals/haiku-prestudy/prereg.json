@@ -751,6 +751,44 @@
         "before": "b6cf56ae4ff23ebc39954b1e576cb1131067b6673b6116c7a5fc45f15dc682fb",
         "after": "8b490e3a4b79612f2e17f57b9bd949aeb06c439af284d2e3ce2d73edb70b5a50"
       }
+    },
+    {
+      "n": 2,
+      "at": "2026-09-19T22:17:55+00:00",
+      "what": "row 0's attempt moved from rehearsals/ to transcripts/, and its ledger's attempt record amended",
+      "before": {
+        "path": "rehearsals/number-fidelity/positive/claude-haiku-4-5-20251001/row-0",
+        "attempt": {
+          "kind": "rehearsal",
+          "reasons": [
+            "leak-in-loaded-context"
+          ]
+        },
+        "checker": "NOT VALID — [leak-in-loaded-context] the agent's loaded context contains ['allowlist']"
+      },
+      "after": {
+        "path": "transcripts/number-fidelity/positive/claude-haiku-4-5-20251001/1",
+        "attempt": {
+          "kind": "graded",
+          "reasons": [],
+          "amended": "amendment 2: routed as a rehearsal by the checker's verdict before amendment 1, graded by its verdict after it; the bytes of the transcript, the environment record and the scrub record are unchanged."
+        },
+        "checker": "valid — every operator-side check passed"
+      },
+      "why": "Amendment 1 excused the harness's own phrase, and the take checker then passed this attempt, so the copied ledger check refused the study: a take the checker passes cannot sit under rehearsals/. The attempt ran the whole frozen script -- both wait-point markers held, the probe was sent and answered, no denial, the environment record written before the first turn -- and the only reason it was filed as a rehearsal was a leak word this study itself added and then excused. It is graded where the amended checker's verdict puts it.",
+      "ruling": "The owner ruled it on 19 September 2026, in the window driving this goal, against the stated alternative of discarding the take and re-driving the slot: '1'. It was put to him because this take's outcome is the one the pre-registration predicted, so promoting it is the flattering direction.",
+      "evidence": "verification/amendment-1-regrade.txt, and the take's own transcript and driver ledger",
+      "touches": "where one attempt is filed, and its ledger's attempt record. No grader, label, count, criterion or order moves, and no byte of the transcript, the environment record or the scrub record is edited.",
+      "regrade": "The ledger check passes after the move (result.py --ledger), and the take reads as it did before it: reached the probe, 0 denials, permission mode default. Recorded in verification/amendment-2-regrade.txt.",
+      "pinned_files_changed": {},
+      "code_sha256": {
+        "before": "fabad6bdae60ea49ba3f8c817b30c9c701488bcbd0ce3d90e1b885e11874c514",
+        "after": "fabad6bdae60ea49ba3f8c817b30c9c701488bcbd0ce3d90e1b885e11874c514"
+      },
+      "draft_sha256": {
+        "before": "8b490e3a4b79612f2e17f57b9bd949aeb06c439af284d2e3ce2d73edb70b5a50",
+        "after": "8b490e3a4b79612f2e17f57b9bd949aeb06c439af284d2e3ce2d73edb70b5a50"
+      }
     }
   ]
 }
