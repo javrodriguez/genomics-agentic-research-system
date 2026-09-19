@@ -322,7 +322,35 @@ def amendment_5(frozen: dict) -> dict:
     }
 
 
-AMENDMENTS = {1: amendment_1, 2: amendment_2, 3: amendment_3, 4: amendment_4, 5: amendment_5}
+def amendment_6(frozen: dict) -> dict:
+    """The one thing amendment 2's record did not name: the rehearsal's WHY.md was deleted with the move."""
+    two = next((a for a in frozen.get("amendments") or [] if a["n"] == 2), None)
+    if two is None:
+        raise SystemExit("amendment 6: amendment 2 is not on record")
+    return {
+        "n": 6,
+        "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "what": "amendment 2's move also deleted the rehearsal's WHY.md; this entry records it",
+        "before": ("rehearsals/number-fidelity/positive/claude-haiku-4-5-20251001/row-0/WHY.md, thirteen lines "
+                   "written by the driver when it routed the attempt: the row it belongs to, the reason id "
+                   "`leak-in-loaded-context` with the pre-registered wording of that reason, and the check_take "
+                   "command that reproduces the refusal"),
+        "after": ("no WHY.md: the file states why an attempt is a rehearsal, and after amendment 2 the attempt is "
+                  "a graded take. The refusal it recorded is in amendment 2's `before`, in "
+                  "verification/amendment-1-regrade.txt and in the commit that filed the attempt"),
+        "why": ("The final verifier read every commit since the freeze and found one thing amendment 2's record "
+                "did not name: the deletion of that file. Nothing about it changes a reading -- the driver writes "
+                "WHY.md for a rehearsal and not for a graded take -- but an amendment that says what it moved "
+                "should say what it removed."),
+        "evidence": "verification/verify-1.md, 'Amendment 2, the move': the blob comparison and the WHY.md line",
+        "touches": ("the record of an amendment already made. No grader, label, count, criterion or order moves, "
+                    "no file is changed by this entry, and no take's reading changes."),
+        "regrade": ("Nothing to regrade: the take reads as it did (reached the probe, 0 denials), and RESULT.md is "
+                    "re-written so this entry appears in its amendments section."),
+    }
+
+
+AMENDMENTS = {1: amendment_1, 2: amendment_2, 3: amendment_3, 4: amendment_4, 5: amendment_5, 6: amendment_6}
 
 
 def main() -> int:
