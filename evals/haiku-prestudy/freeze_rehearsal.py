@@ -162,10 +162,12 @@ def main() -> int:
                       "--half", "positive", "--row", "0"])
             step("outcome reader on the routed attempt", [py, f"{REL}/outcome.py", str(take_dir)])
             step("the ledger check at export_at", [py, f"{REL}/result.py", "--ledger"])
-            step("result.py writes from the frozen state", [py, f"{REL}/result.py", "--write"])
-            step("result.py re-derives it", [py, f"{REL}/result.py", "--check"])
-            step("the result lists the rehearsal", ["grep", "-n", "Attempts that are not takes\\|Row 0: a rehearsal",
-                                                    f"{REL}/RESULT.md"])
+            # The stub's attempt is a rehearsal, so the cell has no graded take and is not at its cap: the result
+            # must refuse rather than publish a partial cell (review 4, follow-up 5). The refusal is the pass.
+            code, out = run([py, f"{REL}/result.py", "--write"], clone)
+            ok = code == 1 and "REFUSING to write the result: 0 of 3 takes are graded" in out
+            steps.append(("result.py refuses a cell that is neither complete nor capped", 0 if ok else 1,
+                          "\n".join(out.strip().splitlines()[-3:])))
     finally:
         shutil.rmtree(box, ignore_errors=True)
 
