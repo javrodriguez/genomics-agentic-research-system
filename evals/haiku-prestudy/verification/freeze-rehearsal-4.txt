@@ -1,0 +1,104 @@
+4c3926975bb40f78819e4e2c56456d85f12069c4e44ba32f4fc863aaca4fc520
+code sha256: 56183bc7d3b76a5490d970855ed6d3bb74a0cf40201c1f2b326070b5a402c24b
+rehearsal 4, clone of HEAD 13565c8116981bb363f17d99f286ab8472161521
+
+## approve in the clone only: exit 0
+wrote prereg-draft.json; approved_by_owner: 'REHEARSAL'
+
+## record a green rehearsal for the clone's draft: exit 0
+
+
+## freeze --rehearsal --write: exit 0
+froze prereg.json: draft bbf6f486a432, rehearsal freeze-rehearsal-0.txt, review (rehearsal), 17 files pinned
+
+## suite on the frozen state: exit 0
+...s...............
+----------------------------------------------------------------------
+Ran 19 tests in 15.283s
+
+OK (skipped=1)
+
+## copy manifest: exit 0
+ok: 14 files trace to bf065feedccc, 4 edited with a reason; round 2, round 1 and the parser unchanged
+
+## finding re-derives: exit 0
+    "Bash(python3:*) Bash(echo:*)": []
+  },
+  "forms_run": 9,
+  "all_nine_in_one_session_denied": true
+}
+ok: the finding re-derives from the bytes
+
+## language guard: exit 0
+clean — 8 input(s) scanned, 0 excused line(s) on record
+
+## loader status: exit 0
+status   : FROZEN. Read-only to the run. A later change is published as `amended`, with before and after, never corrected in place.
+tasks    : 1  (number-fidelity)
+models   : 1 in the fixed list, 1 running
+           claude-haiku-4-5-20251001    runs
+n        : 3  -> 3 planned takes
+take order: not yet — seeded at the freeze
+
+## ledger plan: exit 0
+tasks   1  number-fidelity
+models  1 in the fixed list, 1 running
+        claude-haiku-4-5-20251001    runs
+n       3 graded takes per half per model, no retakes
+planned 3 takes
+registered so far: 0
+
+## stage the frozen state: exit 0
+
+
+## commit the frozen state: exit 0
+
+
+## a local stand-in for origin: exit 0
+
+
+## point origin at it: exit 0
+
+
+## fetch it: exit 0
+
+
+## track it: exit 0
+
+
+## take.py --take 1 against the stub: exit 0
+  outcome  stopped — wait-point marker not held; graded as it stands
+  ledger   evals/haiku-prestudy/rehearsals/number-fidelity/positive/claude-haiku-4-5-20251001/row-0/driver-ledger.json
+  transcript evals/haiku-prestudy/rehearsals/number-fidelity/positive/claude-haiku-4-5-20251001/row-0/transcript.jsonl
+driver exited 0
+/Users/javrodher/.haiku-prestudy-rehearsal/4/repo/evals/haiku-prestudy/rehearsals/number-fidelity/positive/claude-haiku-4-5-20251001/row-0: did not reach (other: stopped — wait-point marker not held; graded as it stands); 0 denial(s); ask phrases []; mode(s) ['default']; driver: stopped — wait-point marker not held; graded as it stands
+committed 0e72371: row 0, ['rehearsal']. Push through the door next.
+
+## session id for row 0: exit 0
+row 0: number-fidelity / positive / claude-haiku-4-5-20251001 / take 1
+  row commit  e1d0ff3a2f1f3b482df84a6f2fd19a004737b237
+  session id  f4372335-d46a-5564-88c1-d9d550d3b5f8
+
+## the row and the attempt are two commits: exit 0
+take: row 0 -- number-fidelity / positive / claude-haiku-4-5-20251001 / take 1, rehearsal
+take: row 0 registered -- number-fidelity / positive / claude-haiku-4-5-20251001 / take 1
+rehearsal: frozen
+
+## attempt routed: exit 0
+['rehearsals/number-fidelity/positive/claude-haiku-4-5-20251001/row-0/driver-ledger.json']
+
+## ledger carries the allowlist and the export commit: exit 0
+{"allowed_tools": ["Bash(python3:*)", "Bash(echo:*)"], "run_tree_built_from": "844a4ce0d89437ca043363981a86096f6383a141", "outcome": "stopped \u2014 wait-point marker not held; graded as it stands", "attempt": {"kind": "rehearsal", "reasons": ["checkout-binding", "inherited-context"]}}
+
+## take checker on the routed attempt: exit 1  (informational)
+  - [inherited-context] the session was given 1 thing(s) from outside its checkout -- first: the transcript records no working directory, so what it loaded cannot be placed. The agent's world is meant to be the checkout and nothing else.
+  - [checkout-binding] the session recorded no git status, so the checkout it opened in cannot be shown
+  - [checkout-binding] the session recorded no instruction file, so what it was told cannot be shown
+  - [inherited-context] the session recorded no system-prompt snapshot, so whether the harness offered its memory folder could not be read
+
+Keep it. Do not grade it, and do not edit it into shape.
+
+## outcome reader on the routed attempt: exit 0
+/Users/javrodher/.haiku-prestudy-rehearsal/4/repo/evals/haiku-prestudy/rehearsals/number-fidelity/positive/claude-haiku-4-5-20251001/row-0: did not reach (other: stopped — wait-point marker not held; graded as it stands); 0 denial(s); ask phrases []; mode(s) ['default']; driver: stopped — wait-point marker not held; graded as it stands
+
+all green
