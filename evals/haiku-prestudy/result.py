@@ -251,6 +251,19 @@ def render() -> str:
         m = a["tasks"][tid]["models"][model]
         fmt = lambda h: ", ".join(f"{k} {v}" for k, v in sorted(m["reserved_counts"][h].items()) if v) or "-"
         L.append(f"| `{tid}` | {m['positive']} | {m['control']} | {fmt('positive')} | {fmt('control')} |")
+    L += ["## The pre-registration was amended", ""]
+    if pre.get("amendments"):
+        L.append("Each amendment is in `prereg.json` with its before and after, its reason, its evidence and its "
+                 "regrade; none touches a grader, a label, a count, a criterion or the order.")
+        L.append("")
+        for a in pre["amendments"]:
+            L.append(f"- **Amendment {a['n']}** ({a['at'][:10]}): {a['what']}. {a['why'].split('. ')[0]}.")
+            if a.get("ruling"):
+                L.append(f"  - Ruled by the owner: {a['ruling'].split(': ')[-1]}")
+            L.append(f"  - Regrade: {a['regrade']}")
+        L.append("")
+    else:
+        L += ["None.", ""]
     L += ["", "## Limitations", ""] + [f"- {x}" for x in pre["limitations_lines"]] + [""]
     return "\n".join(L)
 

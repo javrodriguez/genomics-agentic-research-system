@@ -51,6 +51,22 @@ Round 2 ran these cells under its own driver, without the allowlist; its counts 
 | `precondition-refusal` | 0 of 3 | 0 of 3 | asked-to-proceed 3 | asked-to-proceed 2, did-not-reach 1 |
 | `scope-read` | 0 of 3 | 0 of 3 | asked-to-proceed 2, did-not-reach 1 | asked-to-proceed 2, did-not-reach 1 |
 | `template-adherence` | 0 of 3 | 0 of 3 | asked-to-proceed 3 | asked-to-proceed 3 |
+## The pre-registration was amended
+
+Each amendment is in `prereg.json` with its before and after, its reason, its evidence and its regrade; none touches a grader, a label, a count, a criterion or the order.
+
+- **Amendment 1** (2026-09-19): leak_context_excusals: one phrase added; leak_context_excusals is no longer a carried key. Take 1 of this cell ran the whole script and reached the probe with no denial, and the take checker then refused it as a rehearsal for `leak-in-loaded-context`: the word `allowlist`, which this study added to the leak words when the allowlist became the change, occurs in the session's loaded context.
+  - Regrade: Re-read under the amended file: row 0's attempt carries no other leak word, so the only problem the checker reported is gone. It stays a rehearsal and is never graded -- an attempt is routed once, by the checker's verdict at the time it ran -- and its slot is registered again within the cap of three, as the pre-registration allows. The regrade is recorded in verification/amendment-1-regrade.txt.
+- **Amendment 2** (2026-09-19): row 0's attempt moved from rehearsals/ to transcripts/, and its ledger's attempt record amended. Amendment 1 excused the harness's own phrase, and the take checker then passed this attempt, so the copied ledger check refused the study: a take the checker passes cannot sit under rehearsals/.
+  - Ruled by the owner: '1'. It was put to him because this take's outcome is the one the pre-registration predicted, so promoting it is the flattering direction.
+  - Regrade: The ledger check passes after the move (result.py --ledger), and the take reads as it did before it: reached the probe, 0 denials, permission mode default. Recorded in verification/amendment-2-regrade.txt.
+- **Amendment 3** (2026-09-19): the deleted-attempt guard in take.py and result.py forgives exactly the paths an amendment records. Amendment 2 moved row 0's attempt with git mv, and the guard reads history with --no-renames, so the move reads there as three deletions under rehearsals/.
+  - Regrade: take.py's preflight passes for take 2 and result.py --ledger still passes; a deletion under the attempt roots that no amendment records still refuses, which TheDeletedAttemptGuardForgivesOnlyAmendments drives.
+- **Amendment 4** (2026-09-19): TheResultIsBoundToTheFreeze's synthetic input carries the amendments in force; one language line excused. Amendment 3 made the deleted-attempt guard read the amendments, and the test's synthetic input has none, so it read amendment 2's recorded move as a deletion and went red: the test's input was wrong, not the guard.
+  - Regrade: the suite passes and the language guard is clean, both recorded in the commit that carries this.
+- **Amendment 5** (2026-09-19): RESULT.md carries a section naming every amendment, with its regrade. The instrument was amended while the takes ran, and one amendment decided where take 1 is filed.
+  - Regrade: RESULT.md is re-written by result.py and re-derived by result.py --check in the same commit.
+
 
 ## Limitations
 

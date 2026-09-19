@@ -682,7 +682,7 @@
   "pre_freeze_review_commit": "5b99949f299c64a986fdde74e310847ecc899777",
   "rehearsal_record": "freeze-rehearsal-10.txt",
   "draft_sha256_at_freeze": "8b490e3a4b79612f2e17f57b9bd949aeb06c439af284d2e3ce2d73edb70b5a50",
-  "code_sha256_at_freeze": "9fecb505be8f607a6fef6a2ea06873d4b66b031e0dee5dc0683c81aa7efb7c4c",
+  "code_sha256_at_freeze": "b4e417e74370df03cbeee8896e3703a94941d33916ed80e4e8884b24ea65478a",
   "harness_at_freeze": "2.1.267 (Claude Code)",
   "pinned_files": {
     "drive.py": "6759090600187b9c11c99e7876985bb66507cab8ffc20ab051ed8f6f6a30d0a8",
@@ -692,7 +692,7 @@
     "check_take.py": "ac469c353d8a8b53dc3afcab75d64e1266a87be942a88f746d02824ca4ff9bf3",
     "study.py": "1aeff03b25529ee0633065f9a7840b353f4c8cee577d1cde51254d5ccdafeab6",
     "outcome.py": "43cecae81e1c328104e11f5b250ba4bd09855939e0aebdcc04f139925a47403d",
-    "result.py": "572aecb7cdfe68c4cbcace600d9182a9960114d3388cbeb0f063c3b5aa6b7065",
+    "result.py": "3d795c4102097b88ce172a394de5b8a29b2b7afd791410e022d128fe7ae264b7",
     "lint_language.py": "579e91d14a0c46f627847b9634aa6791e73745cf3fb8ba3a3a2ba3da3768b3b5",
     "build_draft.py": "5b27fbf0a52fffc83905a085043bc942c9c7f32397a506970f4a1fec8b5ec555",
     "copy_manifest.py": "7bad4dbe49169556ff96ed919de8e658e0a48d4acffdbc73bb409b828a58a684",
@@ -842,6 +842,31 @@
       "code_sha256": {
         "before": "140557382eee7ffb6ec1aedc2f32ba34c2f563495fdac53c340e1cf4aadc96c4",
         "after": "9fecb505be8f607a6fef6a2ea06873d4b66b031e0dee5dc0683c81aa7efb7c4c"
+      },
+      "draft_sha256": {
+        "before": "8b490e3a4b79612f2e17f57b9bd949aeb06c439af284d2e3ce2d73edb70b5a50",
+        "after": "8b490e3a4b79612f2e17f57b9bd949aeb06c439af284d2e3ce2d73edb70b5a50"
+      }
+    },
+    {
+      "n": 5,
+      "at": "2026-09-19T22:37:34+00:00",
+      "what": "RESULT.md carries a section naming every amendment, with its regrade",
+      "before": "the result printed the takes, the counts, round 2's cells beside them and the limitations",
+      "after": "the same, and a section that names each amendment, what it changed, why, and its regrade",
+      "why": "The instrument was amended while the takes ran, and one amendment decided where take 1 is filed. A reader of RESULT.md alone would have met none of that: the amendments were in prereg.json and in the commits. The result now names them where the counts are.",
+      "evidence": "prereg.json's amendments, and RESULT.md as written before this amendment",
+      "touches": "what the result prints about its own history. No grader, label, count, criterion or order moves, and no take's reading changes.",
+      "regrade": "RESULT.md is re-written by result.py and re-derived by result.py --check in the same commit.",
+      "pinned_files_changed": {
+        "result.py": {
+          "before": "572aecb7cdfe68c4cbcace600d9182a9960114d3388cbeb0f063c3b5aa6b7065",
+          "after": "3d795c4102097b88ce172a394de5b8a29b2b7afd791410e022d128fe7ae264b7"
+        }
+      },
+      "code_sha256": {
+        "before": "9fecb505be8f607a6fef6a2ea06873d4b66b031e0dee5dc0683c81aa7efb7c4c",
+        "after": "b4e417e74370df03cbeee8896e3703a94941d33916ed80e4e8884b24ea65478a"
       },
       "draft_sha256": {
         "before": "8b490e3a4b79612f2e17f57b9bd949aeb06c439af284d2e3ce2d73edb70b5a50",
