@@ -195,8 +195,8 @@
     "evidence": "verification/finding.md and verification/probes/ (forms/ holds the per-form sessions); finding.py --check re-derives every count",
     "denial_outside_the_allowlist": "A denial of a command the allowlist does not admit reads as `did not reach`, reason `harness denial`, with the denied command quoted. It is a condition of the harness, published as such, never a finding about the model.",
     "ruling": "Ruling 1, 19 September 2026: the one change is a pre-registered Bash allowlist, not a fixed chat line.",
-    "approved_by_owner": null,
-    "approved_at": null
+    "approved_by_owner": "approve both (the owner, 19 September 2026, in the session driving this goal, to the proposal that the allowlist be [\"Bash(python3:*)\", \"Bash(echo:*)\"])",
+    "approved_at": "2026-09-19T19:40:41Z"
   },
   "outcomes": {
     "values": [
