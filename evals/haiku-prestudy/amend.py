@@ -173,7 +173,73 @@ def amendment_2(frozen: dict) -> dict:
     }
 
 
-AMENDMENTS = {1: amendment_1, 2: amendment_2}
+def amendment_3(frozen: dict) -> dict:
+    """The deleted-attempt guard learns what a recorded amendment moved, and refuses everything else."""
+    helper = '''
+
+def amended_attempt_paths(pre: dict) -> list[str]:
+    """Attempt paths a recorded amendment moved, as repository-relative prefixes (amendment 3).
+
+    The deleted-attempt guard reads history with --no-renames, so a move an amendment records reads there as a
+    deletion. An amendment names where the attempt sat; only those paths are forgiven, and each is in the frozen
+    file for a reader to check. Any other deletion under the attempt roots still refuses.
+    """
+    out = []
+    for a in pre.get("amendments") or []:
+        before = a.get("before")
+        if isinstance(before, dict) and before.get("path"):
+            out.append("evals/haiku-prestudy/" + before["path"].strip("/"))
+    return out
+'''
+    p = HERE / "take.py"
+    s = p.read_text()
+    a = ('    deleted = git("log", "--no-renames", "--diff-filter=D", "--name-only", "--format=", "--", '
+         '*ATTEMPT_DIRS).split()')
+    b = (a + "\n"
+         '    amended = amended_attempt_paths(pre)\n'
+         '    deleted = [d for d in deleted if not any(d == m or d.startswith(m + "/") for m in amended)]')
+    if s.count(a) != 1:
+        raise SystemExit("refusing: take.py does not carry the deleted-attempt line this amendment patches")
+    s = s.replace(a, b)
+    anchor = "def git(*args: str, check: bool = False) -> str:"
+    if s.count(anchor) != 1:
+        raise SystemExit("refusing: take.py has no place for the helper")
+    s = s.replace(anchor, helper.strip("\n") + "\n\n\n" + anchor)
+    p.write_text(s)
+
+    p = HERE / "result.py"
+    s = p.read_text()
+    a = ('''    if deleted:
+        out.append(f"an attempt file was deleted in this repository's history ({deleted[:3]}): a graded take may "
+                   f"have been removed and its row re-driven")''')
+    b = ('''    import take as take_mod
+    deleted = [d for d in deleted if not any(d == m or d.startswith(m + "/")
+                                             for m in take_mod.amended_attempt_paths(pre))]
+''' + a)
+    if s.count(a) != 1:
+        raise SystemExit("refusing: result.py does not carry the deleted-attempt lines this amendment patches")
+    p.write_text(s.replace(a, b))
+    return {
+        "n": 3,
+        "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "what": "the deleted-attempt guard in take.py and result.py forgives exactly the paths an amendment records",
+        "before": "every path ever deleted under transcripts/, rehearsals/ or pauses/ refused the take and the result",
+        "after": ("a path a recorded amendment names as where an attempt sat is not read as a deletion; every other "
+                  "deletion under those roots still refuses"),
+        "why": ("Amendment 2 moved row 0's attempt with git mv, and the guard reads history with --no-renames, so "
+                "the move reads there as three deletions under rehearsals/. The guard then refused to start take 2. "
+                "It is the guard working on the study's own recorded move: what it lacked is the amendment record. "
+                "The forgiven paths come from the frozen file's amendments, so a reader can see each one."),
+        "evidence": "take.py refused take 2 on 19 September 2026 with the three deleted paths of amendment 2's move",
+        "touches": ("two guards' reading of history. No grader, label, count, criterion or order moves, and no "
+                    "attempt is filed differently."),
+        "regrade": ("take.py's preflight passes for take 2 and result.py --ledger still passes; a deletion under "
+                    "the attempt roots that no amendment records still refuses, which "
+                    "TheDeletedAttemptGuardForgivesOnlyAmendments drives."),
+    }
+
+
+AMENDMENTS = {1: amendment_1, 2: amendment_2, 3: amendment_3}
 
 
 def main() -> int:

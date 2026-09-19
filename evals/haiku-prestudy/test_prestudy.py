@@ -395,6 +395,26 @@ class TheFrozenFileIsTheDraftItFroze(unittest.TestCase):
         self.assertEqual(fz.code_sha256(), frozen["code_sha256_at_freeze"])
 
 
+class TheDeletedAttemptGuardForgivesOnlyAmendments(unittest.TestCase):
+    """Amendment 3: a path a recorded amendment moved is forgiven; any other deletion under the attempt roots is not."""
+
+    def test_only_recorded_paths(self):
+        take = load_by_path("prestudy_take_guard", HERE / "take.py")
+        pre = in_force()
+        amended = take.amended_attempt_paths(pre)
+        moved = [a for a in (pre.get("amendments") or [])
+                 if isinstance(a.get("before"), dict) and a["before"].get("path")]
+        self.assertEqual(len(amended), len(moved))
+        for m in amended:
+            self.assertTrue(m.startswith("evals/haiku-prestudy/"))
+        forgive = lambda d: any(d == m or d.startswith(m + "/") for m in amended)
+        if amended:
+            self.assertTrue(forgive(amended[0] + "/driver-ledger.json"))
+        self.assertFalse(forgive("evals/haiku-prestudy/transcripts/number-fidelity/positive/x/9/transcript.jsonl"))
+        self.assertFalse(forgive("evals/haiku-prestudy/pauses/number-fidelity/positive/x/row-7/driver-ledger.json"))
+        self.assertEqual(take.amended_attempt_paths({}), [])
+
+
 class TheFindingReDerives(unittest.TestCase):
     def test_finding(self):
         r = subprocess.run([sys.executable, str(HERE / "finding.py"), "--check"], capture_output=True, text=True)
