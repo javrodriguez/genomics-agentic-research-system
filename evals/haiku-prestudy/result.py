@@ -143,16 +143,24 @@ def quote(text: str, limit: int = 300) -> str:
     return one if len(one) <= limit else one[: limit - 3] + "..."
 
 
-def denial_lines(den: dict) -> list[str]:
+def without_run_tree(text: str, cwd: str | None) -> str:
+    """REVIEW 5, FOLLOW-UP 3. A command the model wrote may name the run tree by absolute path, which is a folder
+    under this machine's temporary directory. The ledger records that path as `cwd`; it is replaced by a marker."""
+    return text.replace(cwd, "<the take's checkout>") if cwd and text else text
+
+
+def denial_lines(den: dict, cwd: str | None = None) -> list[str]:
     """What a denial publishes: the command, what the harness said needed approval, and its own words.
 
     REVIEW 4, BLOCKER 1. The quote limits are here, with the lines they cut, so a test drives the published form
     rather than rebuilding it: at 2.1.267 the harness names the command about 570 characters into its refusal.
     """
-    out = [f"- Denied command: `{den['command']}`" if den.get("command") else "- Denied command: (not a command)"]
+    cmd = without_run_tree(den.get("command") or "", cwd)
+    out = [f"- Denied command: `{cmd}`" if cmd else "- Denied command: (not a command)"]
     if den.get("required_approval"):
-        out.append(f"- The harness said it required approval for: {quote(den['required_approval'], 400)}")
-    out.append(f"- Denial quoted: \"{quote(den['text'], 800)}\"")
+        out.append("- The harness said it required approval for: "
+                   + quote(without_run_tree(den["required_approval"], cwd), 400))
+    out.append(f"- Denial quoted: \"{quote(without_run_tree(den['text'], cwd), 800)}\"")
     return out
 
 
@@ -200,7 +208,7 @@ def render() -> str:
         L.append(f"**Take {r['take']}** (session `{r['session_id']}`): {r['outcome']}"
                  + (f", {r['reason']}." if r["reason"] else "."))
         for den in r["denials"]:
-            L += denial_lines(den)
+            L += denial_lines(den, r.get("cwd"))
         L.append(f"- Final agent message quoted: \"{quote(r['final_agent_message'])}\"")
         L.append(f"- Driver outcome: {r['driver_outcome']}")
         L.append("")
@@ -208,14 +216,21 @@ def render() -> str:
     if others:
         for a in others:
             L.append(f"- Row {a['row']}: a {a['kind']}, reason ids {', '.join(a['reasons']) or '-'}; driver outcome: {a['outcome']}.")
-        if sum(1 for a in others if a["kind"] == "rehearsal") >= int(pre["rehearsal_cap"]) and len(rows) < pre["n"]:
-            L.append(f"- The half reached the rehearsal cap of {pre['rehearsal_cap']}: it publishes `incomplete — mechanical`, {len(rows)} of {pre['n']}.")
+        for kind, cap in (("rehearsal", int(pre["rehearsal_cap"])), ("pause", int(pre["pause_cap"]))):
+            if sum(1 for a in others if a["kind"] == kind) >= cap and len(rows) < pre["n"]:
+                L.append(f"- The half reached the {kind} cap of {cap}: it publishes `incomplete — mechanical`, "
+                         f"{len(rows)} of {pre['n']}.")
     else:
         L.append("None: every registered row was driven to a graded take.")
     L.append("")
-    if len(rows) < pre["n"] and not (len(others) >= int(pre["rehearsal_cap"])):
+    # REVIEW 5, FOLLOW-UP 1. takes.py caps rehearsals and pauses apart, so the completeness rule counts them apart.
+    capped = any(sum(1 for a in others if a["kind"] == kind) >= int(pre[f"{kind}_cap"])
+                 for kind in ("rehearsal", "pause"))
+    if len(rows) < pre["n"] and not capped:
         raise SystemExit(f"REFUSING to write the result: {len(rows)} of {pre['n']} takes are graded and no cap is "
-                         f"reached, so the cell is neither complete nor mechanically incomplete.")
+                         f"reached, so the cell is neither complete nor mechanically incomplete "
+                         f"({sum(1 for a in others if a['kind'] == 'rehearsal')} rehearsal(s), "
+                         f"{sum(1 for a in others if a['kind'] == 'pause')} pause(s)).")
     L += ["## Counts", "",
           f"- Takes run: {len(rows)} of the {pre['n']} registered.",
           f"- Reached the probe: {reached} of {len(rows)}."]

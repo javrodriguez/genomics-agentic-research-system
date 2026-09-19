@@ -84,6 +84,11 @@ def problems(rec: dict) -> list[str]:
     for p in UNCHANGED_SINCE_SOURCE:
         if git("diff", "--quiet", SOURCE_COMMIT, "HEAD", "--", p).returncode != 0:
             out.append(f"{p} has changed since {SOURCE_COMMIT[:12]}; the source this study copied is not intact")
+        # REVIEW 5, FOLLOW-UP 2. The line above compares two commits, so an uncommitted edit to round 2's classifier
+        # or the shared parser passed it; this one compares the working tree with the source commit.
+        elif git("diff", "--quiet", SOURCE_COMMIT, "--", p).returncode != 0:
+            out.append(f"{p} differs from {SOURCE_COMMIT[:12]} in the working tree: the file this study reads by "
+                       f"path is not the one it copied from")
     return out
 
 

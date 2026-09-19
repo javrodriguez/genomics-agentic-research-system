@@ -143,7 +143,7 @@ def read(take_dir: Path, half: dict) -> dict:
     return {"take": take_dir.name, "session_id": ledger.get("session_id"), "outcome": outcome, "reason": reason,
             "probe_sent": probe_sent, "denials": found_denials, "ask_phrases": asked, "final_agent_message": final,
             "driver_outcome": ledger.get("outcome"), "allowed_tools": ledger.get("allowed_tools"),
-            "permission_modes": modes, "tagged_denials": tagged}
+            "permission_modes": modes, "tagged_denials": tagged, "cwd": ledger.get("cwd")}
 
 
 def main() -> int:

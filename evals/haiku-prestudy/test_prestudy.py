@@ -339,6 +339,29 @@ class TheDeniedCommandIsPublished(unittest.TestCase):
         self.assertIn('echo "exit=$?"', dens[0]["required_approval"] or dens[0]["command"])
 
 
+class ThePublishedDenialNamesNoMachinePath(unittest.TestCase):
+    """Review 5, follow-up 3: a model's command may name the run tree by absolute path; the published line does not."""
+
+    def test_run_tree_is_masked(self):
+        result = load_by_path("prestudy_result_masking", HERE / "result.py")
+        cwd = "/var/folders/ab/cdefgh/T/run-12345678"
+        den = {"command": f"cd {cwd}/gars && python3 _system/stage00_register.py assays",
+               "required_approval": f"python3 {cwd}/gars/_system/stage00_register.py assays",
+               "text": f"Permission for this tool use was denied. {cwd} is the checkout."}
+        published = "\n".join(result.denial_lines(den, cwd))
+        self.assertNotIn(cwd, published)
+        self.assertIn("<the take's checkout>", published)
+        self.assertIn("stage00_register.py assays", published)
+
+    def test_round_two_take_one_would_be_masked(self):
+        half = round2_half()
+        r = outcome.read(ROUND2_NF / HAIKU / "1", half)
+        self.assertTrue(r["cwd"])
+        published = "\n".join(load_by_path("prestudy_result_masking2", HERE / "result.py")
+                              .denial_lines(r["denials"][0], r["cwd"]))
+        self.assertNotIn(r["cwd"], published)
+
+
 class TheFrozenFileIsTheDraftItFroze(unittest.TestCase):
     """Review 3, follow-ups 3 and 4: once frozen, the file still re-derives from the builder and the owner's words,
     and every pinned file still hashes as the freeze recorded it. Nothing else reads those two hashes."""
