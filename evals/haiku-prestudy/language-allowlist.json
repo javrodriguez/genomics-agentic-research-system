@@ -7,6 +7,27 @@
       "line_text": "        \"path\": \"transcripts/number-fidelity/positive/claude-haiku-4-5-20251001/1\",",
       "ruled": "2026-09-19",
       "why": "Amendment 2 records where the attempt was filed, and the take's folder is named for its take number, so the path ends `.../claude-haiku-4-5-20251001/1`. The guard reads the model id's date and the take number across the separator as a `k / n` shape. It is a path this study's own layout fixes (attempt_layout), not a rate, and the line is pinned exactly, so editing it brings the finding back."
+    },
+    {
+      "file": "evals/haiku-prestudy/verification/verify-1.md",
+      "pattern": "percentage",
+      "line_text": "Take 1's transcript was first committed at 2c2a6e1 (17:53:34) under `rehearsals/…/row-0/` and moved by amendment 2 as a 100% rename; the blob is the same before and after (line 5).",
+      "ruled": "2026-09-19",
+      "why": "git's rename-similarity score in the verifier's own evidence that the take amendment 2 moved is byte-identical before and after. The report is committed unedited, and the figure is git's word about a rename, not a rate this study states."
+    },
+    {
+      "file": "evals/haiku-prestudy/verification/verify-1.md",
+      "pattern": "hundred",
+      "line_text": "Take 1's transcript was first committed at 2c2a6e1 (17:53:34) under `rehearsals/…/row-0/` and moved by amendment 2 as a 100% rename; the blob is the same before and after (line 5).",
+      "ruled": "2026-09-19",
+      "why": "The same figure in the same line, matched by the second pattern. The report is committed unedited."
+    },
+    {
+      "file": "evals/haiku-prestudy/verification/verify-1.md",
+      "pattern": "ratio-slash",
+      "line_text": "$ python3 evals/haiku-prestudy/check_take.py evals/haiku-prestudy/transcripts/number-fidelity/positive/claude-haiku-4-5-20251001/1/transcript.jsonl --task number-fidelity --half positive --row 0",
+      "ruled": "2026-09-19",
+      "why": "A take's folder path in the verifier's own evidence: the model id's date and the take number read across the separator as a `k / n` shape. It is a path this study's layout fixes, and the report is committed unedited."
     }
   ]
 }

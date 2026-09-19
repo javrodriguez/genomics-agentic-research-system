@@ -66,6 +66,8 @@ Each amendment is in `prereg.json` with its before and after, its reason, its ev
   - Regrade: the suite passes and the language guard is clean, both recorded in the commit that carries this.
 - **Amendment 5** (2026-09-19): RESULT.md carries a section naming every amendment, with its regrade. The instrument was amended while the takes ran, and one amendment decided where take 1 is filed.
   - Regrade: RESULT.md is re-written by result.py and re-derived by result.py --check in the same commit.
+- **Amendment 6** (2026-09-19): amendment 2's move also deleted the rehearsal's WHY.md; this entry records it. The final verifier read every commit since the freeze and found one thing amendment 2's record did not name: the deletion of that file.
+  - Regrade: Nothing to regrade: the take reads as it did (reached the probe, 0 denials), and RESULT.md is re-written so this entry appears in its amendments section.
 
 
 ## Limitations

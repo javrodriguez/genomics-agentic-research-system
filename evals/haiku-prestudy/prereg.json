@@ -872,6 +872,26 @@
         "before": "8b490e3a4b79612f2e17f57b9bd949aeb06c439af284d2e3ce2d73edb70b5a50",
         "after": "8b490e3a4b79612f2e17f57b9bd949aeb06c439af284d2e3ce2d73edb70b5a50"
       }
+    },
+    {
+      "n": 6,
+      "at": "2026-09-19T22:51:45+00:00",
+      "what": "amendment 2's move also deleted the rehearsal's WHY.md; this entry records it",
+      "before": "rehearsals/number-fidelity/positive/claude-haiku-4-5-20251001/row-0/WHY.md, thirteen lines written by the driver when it routed the attempt: the row it belongs to, the reason id `leak-in-loaded-context` with the pre-registered wording of that reason, and the check_take command that reproduces the refusal",
+      "after": "no WHY.md: the file states why an attempt is a rehearsal, and after amendment 2 the attempt is a graded take. The refusal it recorded is in amendment 2's `before`, in verification/amendment-1-regrade.txt and in the commit that filed the attempt",
+      "why": "The final verifier read every commit since the freeze and found one thing amendment 2's record did not name: the deletion of that file. Nothing about it changes a reading -- the driver writes WHY.md for a rehearsal and not for a graded take -- but an amendment that says what it moved should say what it removed.",
+      "evidence": "verification/verify-1.md, 'Amendment 2, the move': the blob comparison and the WHY.md line",
+      "touches": "the record of an amendment already made. No grader, label, count, criterion or order moves, no file is changed by this entry, and no take's reading changes.",
+      "regrade": "Nothing to regrade: the take reads as it did (reached the probe, 0 denials), and RESULT.md is re-written so this entry appears in its amendments section.",
+      "pinned_files_changed": {},
+      "code_sha256": {
+        "before": "b4e417e74370df03cbeee8896e3703a94941d33916ed80e4e8884b24ea65478a",
+        "after": "b4e417e74370df03cbeee8896e3703a94941d33916ed80e4e8884b24ea65478a"
+      },
+      "draft_sha256": {
+        "before": "8b490e3a4b79612f2e17f57b9bd949aeb06c439af284d2e3ce2d73edb70b5a50",
+        "after": "8b490e3a4b79612f2e17f57b9bd949aeb06c439af284d2e3ce2d73edb70b5a50"
+      }
     }
   ]
 }
