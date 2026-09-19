@@ -312,6 +312,33 @@ class TheResultIsBoundToTheFreeze(unittest.TestCase):
         self.assertTrue(result.binding_problems(pre, [{"row": 0}]))
 
 
+class TheDeniedCommandIsPublished(unittest.TestCase):
+    """Review 4, blocker 1: `harness denial` means nothing without the command that was denied, and the harness
+    names it about 570 characters into its refusal. Read on round 2's three real Haiku denials of this cell."""
+
+    def test_command_is_read_and_survives_the_quote(self):
+        result = load_by_path("prestudy_result_denials", HERE / "result.py")
+        half = round2_half()
+        for k in "123":
+            r = outcome.read(ROUND2_NF / HAIKU / k, half)
+            self.assertEqual(r["reason"], "harness denial")
+            self.assertTrue(r["denials"])
+            den = r["denials"][0]
+            self.assertIn("stage00_register.py assays", den["command"])
+            self.assertIn("stage00_register.py assays", den["required_approval"])
+            published = "\n".join(result.denial_lines(den))
+            self.assertIn("stage00_register.py assays", published,
+                          "the published lines do not say which command was denied")
+
+    def test_the_probe_that_showed_it(self):
+        """The same, on the form probe where python3 alone denied the echo form: a denial outside the allowlist."""
+        import transcript as tx
+        p = HERE / "verification" / "probes" / "forms" / "form1.bashpython3.jsonl"
+        dens = outcome.denials(tx.parse(p))
+        self.assertTrue(dens)
+        self.assertIn('echo "exit=$?"', dens[0]["required_approval"] or dens[0]["command"])
+
+
 class TheFrozenFileIsTheDraftItFroze(unittest.TestCase):
     """Review 3, follow-ups 3 and 4: once frozen, the file still re-derives from the builder and the owner's words,
     and every pinned file still hashes as the freeze recorded it. Nothing else reads those two hashes."""

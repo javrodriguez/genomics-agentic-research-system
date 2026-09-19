@@ -34,4 +34,9 @@ With everything else as round 2 froze it, and one pre-registered Bash allowlist 
 `outcome.py` reads it from the take's own files.
 Round 2's grader label is printed beside each take for information and is not a graded cell.
 
+Two things a reader of the frozen file should know, both inside rules carried from round 2 rather than written here:
+
+- A take the checker refuses for a reason the driver decides before a session (`outcome-binding` and its kin) is filed as a rehearsal, and the copied ledger check then refuses that rehearsal, so the result refuses to write and the slot cannot be freed: such a take publishes only by a recorded amendment. It is fail-closed by design.
+- The carried keys cite round 2's own review numbers (its reviews 15 and 19, for instance). This study's reviews are numbered 1 upward, in `verification/prefreeze-*.md`.
+
 **Status: pre-freeze. Nothing here has been run or graded.**

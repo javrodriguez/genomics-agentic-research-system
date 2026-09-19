@@ -72,14 +72,24 @@ def probe_step(half: dict) -> dict:
     return steps[0]
 
 
-def denials(turns: list[dict]) -> list[str]:
-    """Every tool result that carries the harness's denial sentence, in order, first line of each."""
+def denials(turns: list[dict]) -> list[dict]:
+    """Every denied tool call, in order: the command the harness refused, and the refusal's own text.
+
+    REVIEW 4, BLOCKER 1. This used to return the text alone, and the published quote was cut before the harness's
+    last clause, which is where it names the command. A `harness denial` is the one reading whose meaning depends
+    on which command was denied: `python3 ...` says the allowlist was not applied, anything else says it was
+    applied and does not reach that command. So the call's own input is carried beside the text.
+    """
     out = []
     for t in turns:
         for u in t.get("tool_uses") or []:
             text = u.get("stdout") or ""
             if DENIAL_SENTENCE in text:
-                out.append(text.strip())
+                inp = u.get("input") or {}
+                out.append({"tool": u.get("name"), "command": inp.get("command") or inp.get("file_path") or "",
+                            "required_approval": (text.split("What required approval:", 1)[1].strip()
+                                                  if "What required approval:" in text else ""),
+                            "text": text.strip()})
     return out
 
 

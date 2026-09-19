@@ -75,6 +75,13 @@ def binding_problems(pre: dict, rows_ledgers: list[dict]) -> list[str]:
         got = hashlib.sha256((HERE / f).read_bytes()).hexdigest() if (HERE / f).is_file() else None
         if got != sha:
             out.append(f"{f} is not the file the freeze pinned ({str(got)[:12]} against {sha[:12]})")
+    import subprocess
+    roots = [f"evals/haiku-prestudy/{d}/" for d in ("transcripts", "rehearsals", "pauses")]
+    deleted = subprocess.run(["git", "-C", str(REPO), "log", "--no-renames", "--diff-filter=D", "--name-only",
+                              "--format=", "--", *roots], capture_output=True, text=True).stdout.split()
+    if deleted:
+        out.append(f"an attempt file was deleted in this repository's history ({deleted[:3]}): a graded take may "
+                   f"have been removed and its row re-driven")
     for led in rows_ledgers:
         if led.get("allowed_tools") != pre["driver_change"]["allowed_tools"]:
             out.append(f"row {led.get('row')}'s ledger records allowed_tools {led.get('allowed_tools')}, not the "
@@ -91,7 +98,32 @@ def ledger_problems(pre: dict) -> list[str]:
     cr = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(cr)
     with contextlib.redirect_stdout(io.StringIO()):
-        return cr.check_ledger(at=pre["export_at"])
+        problems = cr.check_ledger(at=pre["export_at"])
+        # REVIEW 4, FOLLOW-UP 1. The copied check returns before its order and skipped-row guards when no seed
+        # exists, and prints that they run after the freeze, which never becomes true in a study whose order is a
+        # fixed list. Both are run here against that list.
+        if not pre.get("take_order_seed"):
+            problems += order_and_gap_problems(cr, pre)
+    return problems
+
+
+def order_and_gap_problems(cr, pre: dict) -> list[str]:
+    """The copied skipped-row guard, and the registration order held to the pre-registration's own list."""
+    import takes as takes_mod
+    rows = takes_mod.load_rows()
+    commits = takes_mod.row_commits()
+    by_sid = takes_mod.attempts_by_session()
+    attempted = {i: bool(takes_mod.attempt_kind(i, commits, by_sid)) for i in range(len(rows))}
+    out = list(cr.gap_problems(rows, attempted, lambda model: "claude"))
+    want = [list(x) for x in pre["take_order"]]
+    seen: list[list] = []
+    for r in rows:
+        slot = [r["task"], r["half"], r["model"], r["take"]]
+        if slot not in seen:
+            seen.append(slot)
+    if seen != want[:len(seen)]:
+        out.append(f"the slots were registered in the order {seen}, and the pre-registration fixes {want}")
+    return out
 
 
 def other_attempts(model: str) -> list[dict]:
@@ -109,6 +141,19 @@ def other_attempts(model: str) -> list[dict]:
 def quote(text: str, limit: int = 300) -> str:
     one = " ".join((text or "").split())
     return one if len(one) <= limit else one[: limit - 3] + "..."
+
+
+def denial_lines(den: dict) -> list[str]:
+    """What a denial publishes: the command, what the harness said needed approval, and its own words.
+
+    REVIEW 4, BLOCKER 1. The quote limits are here, with the lines they cut, so a test drives the published form
+    rather than rebuilding it: at 2.1.267 the harness names the command about 570 characters into its refusal.
+    """
+    out = [f"- Denied command: `{den['command']}`" if den.get("command") else "- Denied command: (not a command)"]
+    if den.get("required_approval"):
+        out.append(f"- The harness said it required approval for: {quote(den['required_approval'], 400)}")
+    out.append(f"- Denial quoted: \"{quote(den['text'], 800)}\"")
+    return out
 
 
 def render() -> str:
@@ -154,8 +199,8 @@ def render() -> str:
     for r in rows:
         L.append(f"**Take {r['take']}** (session `{r['session_id']}`): {r['outcome']}"
                  + (f", {r['reason']}." if r["reason"] else "."))
-        for dtext in r["denials"]:
-            L.append(f"- Denial quoted: \"{quote(dtext)}\"")
+        for den in r["denials"]:
+            L += denial_lines(den)
         L.append(f"- Final agent message quoted: \"{quote(r['final_agent_message'])}\"")
         L.append(f"- Driver outcome: {r['driver_outcome']}")
         L.append("")
@@ -168,6 +213,9 @@ def render() -> str:
     else:
         L.append("None: every registered row was driven to a graded take.")
     L.append("")
+    if len(rows) < pre["n"] and not (len(others) >= int(pre["rehearsal_cap"])):
+        raise SystemExit(f"REFUSING to write the result: {len(rows)} of {pre['n']} takes are graded and no cap is "
+                         f"reached, so the cell is neither complete nor mechanically incomplete.")
     L += ["## Counts", "",
           f"- Takes run: {len(rows)} of the {pre['n']} registered.",
           f"- Reached the probe: {reached} of {len(rows)}."]
