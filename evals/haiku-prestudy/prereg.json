@@ -682,7 +682,7 @@
   "pre_freeze_review_commit": "5b99949f299c64a986fdde74e310847ecc899777",
   "rehearsal_record": "freeze-rehearsal-10.txt",
   "draft_sha256_at_freeze": "8b490e3a4b79612f2e17f57b9bd949aeb06c439af284d2e3ce2d73edb70b5a50",
-  "code_sha256_at_freeze": "140557382eee7ffb6ec1aedc2f32ba34c2f563495fdac53c340e1cf4aadc96c4",
+  "code_sha256_at_freeze": "9fecb505be8f607a6fef6a2ea06873d4b66b031e0dee5dc0683c81aa7efb7c4c",
   "harness_at_freeze": "2.1.267 (Claude Code)",
   "pinned_files": {
     "drive.py": "6759090600187b9c11c99e7876985bb66507cab8ffc20ab051ed8f6f6a30d0a8",
@@ -698,7 +698,7 @@
     "copy_manifest.py": "7bad4dbe49169556ff96ed919de8e658e0a48d4acffdbc73bb409b828a58a684",
     "finding.py": "b6b2d85e0b4c5b02d471cba4f3fccb9c7cf2e59c30d3b642c6918a19c31c8b45",
     "check_results.py": "0f5991690a214ce76b8c8c37ea2e5c473b50960c16ca85bdf997d24a797f09df",
-    "test_prestudy.py": "14f4a179878debd2969f0bea640dadbce6bcdcc0284265e1ff3f0fdca929eed6",
+    "test_prestudy.py": "ce8c0584589fdca31ad035760f1fd767f3af60def64c825f983efbb264c1f7d8",
     "freeze.py": "c12cbbf3da6c08c8ff2724c382efb4a295217667b619738491d36ea76dcffc83",
     "freeze_rehearsal.py": "2080c3f30fef7e5abad8acfb413c17286bab385a6bd7a507c210a9b6a781d2c3",
     "take.py": "f78c29639234163c53a35ab5ea5ea82128bf72b68aee7df4f470b9210b43f789"
@@ -817,6 +817,31 @@
       "code_sha256": {
         "before": "fabad6bdae60ea49ba3f8c817b30c9c701488bcbd0ce3d90e1b885e11874c514",
         "after": "140557382eee7ffb6ec1aedc2f32ba34c2f563495fdac53c340e1cf4aadc96c4"
+      },
+      "draft_sha256": {
+        "before": "8b490e3a4b79612f2e17f57b9bd949aeb06c439af284d2e3ce2d73edb70b5a50",
+        "after": "8b490e3a4b79612f2e17f57b9bd949aeb06c439af284d2e3ce2d73edb70b5a50"
+      }
+    },
+    {
+      "n": 4,
+      "at": "2026-09-19T22:24:21+00:00",
+      "what": "TheResultIsBoundToTheFreeze's synthetic input carries the amendments in force; one language line excused",
+      "before": "the test built a pre with no amendments, and the language guard read a take's path as a ratio",
+      "after": "the test reads the amendments from the file in force; the path line is excused with its reason",
+      "why": "Amendment 3 made the deleted-attempt guard read the amendments, and the test's synthetic input has none, so it read amendment 2's recorded move as a deletion and went red: the test's input was wrong, not the guard. The language guard's ratio rule fired on the path amendment 2 records, which is a folder named for its take number.",
+      "evidence": "the suite's failure on TheResultIsBoundToTheFreeze, and lint_language.py on prereg.json line 770",
+      "touches": "one test's synthetic input and one excused line. No guard is weakened: the guard's own reading is unchanged, and the excusal is pinned to the exact line text.",
+      "regrade": "the suite passes and the language guard is clean, both recorded in the commit that carries this.",
+      "pinned_files_changed": {
+        "test_prestudy.py": {
+          "before": "14f4a179878debd2969f0bea640dadbce6bcdcc0284265e1ff3f0fdca929eed6",
+          "after": "ce8c0584589fdca31ad035760f1fd767f3af60def64c825f983efbb264c1f7d8"
+        }
+      },
+      "code_sha256": {
+        "before": "140557382eee7ffb6ec1aedc2f32ba34c2f563495fdac53c340e1cf4aadc96c4",
+        "after": "9fecb505be8f607a6fef6a2ea06873d4b66b031e0dee5dc0683c81aa7efb7c4c"
       },
       "draft_sha256": {
         "before": "8b490e3a4b79612f2e17f57b9bd949aeb06c439af284d2e3ce2d73edb70b5a50",

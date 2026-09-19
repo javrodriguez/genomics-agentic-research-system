@@ -1,4 +1,12 @@
 {
   "role": "Lines a person has read and ruled on. An entry matches ONLY when the file, the pattern name and the EXACT text of the line all agree, so editing the line brings the finding back. Nothing here switches a pattern off. Round 2's entries are pinned to round 2's lines and are not carried.",
-  "excused": []
+  "excused": [
+    {
+      "file": "evals/haiku-prestudy/prereg.json",
+      "pattern": "ratio-slash",
+      "line_text": "        \"path\": \"transcripts/number-fidelity/positive/claude-haiku-4-5-20251001/1\",",
+      "ruled": "2026-09-19",
+      "why": "Amendment 2 records where the attempt was filed, and the take's folder is named for its take number, so the path ends `.../claude-haiku-4-5-20251001/1`. The guard reads the model id's date and the take number across the separator as a `k / n` shape. It is a path this study's own layout fixes (attempt_layout), not a rate, and the line is pinned exactly, so editing it brings the finding back."
+    }
+  ]
 }

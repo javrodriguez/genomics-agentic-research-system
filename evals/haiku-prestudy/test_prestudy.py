@@ -304,7 +304,10 @@ class TheResultIsBoundToTheFreeze(unittest.TestCase):
         result = load_by_path("prestudy_result_test", HERE / "result.py")
         import hashlib
         real = {"outcome.py": hashlib.sha256((HERE / "outcome.py").read_bytes()).hexdigest()}
-        pre = {"pinned_files": real, "driver_change": {"allowed_tools": ["Bash(python3:*)", "Bash(echo:*)"]}}
+        # The amendments come from the file in force: binding_problems forgives exactly the attempt paths
+        # they record (amendment 3), and a synthetic input without them reads the real move as a deletion.
+        pre = {"pinned_files": real, "driver_change": {"allowed_tools": ["Bash(python3:*)", "Bash(echo:*)"]},
+               "amendments": in_force().get("amendments") or []}
         ok = {"row": 0, "allowed_tools": ["Bash(python3:*)", "Bash(echo:*)"]}
         self.assertEqual(result.binding_problems(pre, [ok]), [])
         self.assertTrue(result.binding_problems({**pre, "pinned_files": {"outcome.py": "0" * 64}}, [ok]))
