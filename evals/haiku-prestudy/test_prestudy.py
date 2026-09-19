@@ -77,14 +77,19 @@ class TheDriverHasOneDiff(unittest.TestCase):
         added = [l[1:] for l in difflib.unified_diff(src, new, lineterm="", n=0)
                  if l.startswith("+") and not l.startswith("+++")]
         self.assertEqual(removed, [], "the copy removed or rewrote a line of round 2's driver")
-        code = [l for l in added if l.strip() and not re.match(r"^[A-Za-z`(]|^$", l)]
-        self.assertEqual([l.strip() for l in code], [
-            'argv += ["--allowedTools", *prereg.load()["driver_change"]["allowed_tools"]]',
-            '"allowed_tools": list(pre["driver_change"]["allowed_tools"]),',
+        # Review 2, follow-up 2: by exact content, so no added statement can pass as prose.
+        self.assertEqual(added, [
+            "",
+            "THE ONE CHANGE FROM ROUND 2'S DRIVER (the Haiku pre-study, Ruling 1, 19 September 2026). This file is a",
+            "byte copy of evals/gap-study-2/drive.py at bf065fe with one change: every turn also passes",
+            "`--allowedTools` with the entries the pre-registration pins in `driver_change.allowed_tools`, and the",
+            "ledger records them. Round 2 passed `--permission-mode auto` to every model, and Haiku's sessions ran",
+            "in `default` mode instead, where its stage-00 commands were denied by the harness; the allowlist gives",
+            "it a working permission condition. `--permission-mode auto` is still passed, so nothing else moves.",
+            '    argv += ["--allowedTools", *prereg.load()["driver_change"]["allowed_tools"]]',
+            '              "allowed_tools": list(pre["driver_change"]["allowed_tools"]),',
         ])
-        prose = [l for l in added if l not in code]
-        self.assertTrue(all(not l.startswith((" ", "\t")) for l in prose), prose)
-        self.assertIn("THE ONE CHANGE FROM ROUND 2'S DRIVER", "\n".join(prose))
+        self.assertEqual(new.index(added[1]) < new.index('"""', 1), True, "the prose must sit inside the docstring")
 
 
 class TheDriverPassesTheAllowlist(unittest.TestCase):

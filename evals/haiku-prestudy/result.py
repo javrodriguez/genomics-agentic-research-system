@@ -82,6 +82,18 @@ def binding_problems(pre: dict, rows_ledgers: list[dict]) -> list[str]:
     return out
 
 
+def ledger_problems(pre: dict) -> list[str]:
+    """Review 2, follow-up 4: the copied ledger check (every attempt tied to exactly one committed row, in the folder
+    its kind puts it in), read at export_at, whose gars tree is the pinned one; HEAD's moved after round 2."""
+    import contextlib
+    import io
+    spec = importlib.util.spec_from_file_location("prestudy_check_results", HERE / "check_results.py")
+    cr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cr)
+    with contextlib.redirect_stdout(io.StringIO()):
+        return cr.check_ledger(at=pre["export_at"])
+
+
 def other_attempts(model: str) -> list[dict]:
     """Review 1, follow-up 2: every rehearsal and pause, with its row and reason ids, so no attempt goes unpublished."""
     out = []
@@ -108,9 +120,11 @@ def render() -> str:
     others = other_attempts(model)
     bad = binding_problems(pre, ledgers + [json.loads((HERE / (a["kind"] + "s") / TASK / HALF / model / f"row-{a['row']}"
                                                        / "driver-ledger.json").read_text()) for a in others])
+    bad += ledger_problems(pre)
     if bad:
         raise SystemExit("REFUSING to write the result:\n  - " + "\n  - ".join(bad))
-    rows = [outcome.read(d, half) | {"round2_label": round2_label(d)} for d in dirs]
+    rows = [outcome.read(d, half) | {"round2_label": round2_label(d), "claude_version": led.get("claude_version")}
+            for d, led in zip(dirs, ledgers)]
     reached = sum(1 for r in rows if r["outcome"] == outcome.REACHED)
     by_reason: dict[str, int] = {}
     for r in rows:
@@ -126,12 +140,12 @@ def render() -> str:
          + " ".join(f"\"{a}\"" for a in pre["driver_change"]["allowed_tools"]) + "`.",
          f"The pre-registration froze at `{pre['frozen_at']}`; n = {pre['n']}.", "",
          "## Each take", "",
-         f"| Take | Outcome | Reason | Denials | Ask phrases | Permission mode recorded | Allowlist in the ledger | {INFO_HEADING} |",
-         "|---|---|---|---|---|---|---|---|"]
+         f"| Take | Outcome | Reason | Denials | Ask phrases | Permission mode recorded | Allowlist in the ledger | Harness | {INFO_HEADING} |",
+         "|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
         L.append(f"| {r['take']} | {r['outcome']} | {r['reason'] or '-'} | {max(len(r['denials']), r['tagged_denials'])} | "
                  f"{', '.join(r['ask_phrases']) or '-'} | {', '.join(r['permission_modes']) or '-'} | "
-                 f"{', '.join(r['allowed_tools'] or []) or '-'} | {r['round2_label']} |")
+                 f"{', '.join(r['allowed_tools'] or []) or '-'} | {r['claude_version'] or '-'} | {r['round2_label']} |")
     L.append("")
     for r in rows:
         L.append(f"**Take {r['take']}** (session `{r['session_id']}`): {r['outcome']}"
@@ -176,7 +190,14 @@ def main() -> int:
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--write", action="store_true")
     g.add_argument("--check", action="store_true")
+    g.add_argument("--ledger", action="store_true", help="only the ledger check, at export_at")
     args = ap.parse_args()
+    if args.ledger:
+        bad = ledger_problems(prereg.load())
+        for b in bad:
+            print(f"FAIL {b}")
+        print("ok: every attempt is tied to one committed row" if not bad else f"{len(bad)} ledger problem(s)")
+        return 1 if bad else 0
     text = render()
     if args.write:
         RESULT.write_text(text)

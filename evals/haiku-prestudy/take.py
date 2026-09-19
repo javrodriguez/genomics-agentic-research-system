@@ -89,6 +89,15 @@ def main() -> int:
     graded = sorted(int(p.name) for p in (HERE / "transcripts" / task / half / model).glob("*") if p.name.isdigit())
     if graded != list(range(1, args.take)):
         problems.append(f"take {args.take} is not next in the pre-registered order: graded so far {graded}")
+    import hashlib
+    for f, sha in (pre.get("pinned_files") or {}).items():
+        got = hashlib.sha256((HERE / f).read_bytes()).hexdigest() if (HERE / f).is_file() else None
+        if got != sha:
+            problems.append(f"{f} is not the file the freeze pinned")
+    deleted = git("log", "--diff-filter=D", "--name-only", "--format=", "--", *ATTEMPT_DIRS).split()
+    if deleted:
+        problems.append(f"an attempt file was deleted in this repository's history ({deleted[:3]}): its row would "
+                        f"read as unattempted")
     version = subprocess.run(["claude", "--version"], capture_output=True, text=True).stdout.strip()
     if not version.startswith(pre["harness"]["claude_version"]):
         problems.append(f"claude --version reads {version!r}, the freeze read {pre['harness']['claude_version']}")

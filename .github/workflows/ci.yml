@@ -194,6 +194,14 @@ jobs:
             n=$((n+1))
           done
           echo "takes checked: $n"
+      - name: Haiku pre-study ledger
+        # Once frozen: every attempt tied to exactly one committed row, read at the export commit.
+        run: |
+          if [ -f evals/haiku-prestudy/prereg.json ]; then
+            python3 evals/haiku-prestudy/result.py --ledger
+          else
+            echo "not frozen yet"
+          fi
       - name: Haiku pre-study result
         # Once RESULT.md exists it must be exactly what result.py writes from the committed takes.
         run: |

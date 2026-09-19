@@ -54,8 +54,11 @@ LIMITATIONS_ADDED = [
     "under in round 2. Each take's permission mode is printed as its session file records it; the allowlist was "
     "probed only in sessions recording `default`, and round 2 has Haiku sessions recording `auto` that were denied.",
     "Bash(python3:*) lets the session under test run any Python, and no classifier reads it; round 2's Sonnet and "
-    "Opus sessions ran under auto mode's classifier. take.py records the study repository's status before and after "
-    "each take and refuses to file a take after which it changed outside the take's own folders.",
+    "Opus sessions ran under auto mode's classifier. take.py records the study repository's git status before and "
+    "after each take and refuses to file a take after which it changed outside the attempt folders; a write to a path "
+    "git ignores, or outside the repository, does not show in that status and is not read.",
+    "No session file records --allowedTools: a take's `allowed_tools` is the driver's own ledger entry, and the "
+    "evidence that the harness applied the allowlist is that the stage commands ran without a denial.",
     "Three takes of one half of one task, on one model: the result is a count of three, not a rate.",
     "The `asked` reason is read by round 2's permission classifier, which was fitted on round 1's transcripts.",
     "The takes run at a later date than round 2's, on the same harness version; the model behind the same id may "
@@ -124,8 +127,9 @@ def build(approved_by_owner: str | None = None, approved_at: str | None = None) 
                     "models walked. The stage 00 contract names only python3; echo is a form Opus added in round 2 "
                     "(`echo \"exit=$?\"` in each of its three takes of this cell), so neither entry admits a "
                     "program beyond those Sonnet and Opus ran before the probe on this cell. Bash(echo:*) also "
-                    "admits `echo ... > file`; a write it makes outside the take's own folders is caught by "
-                    "take.py's postflight."),
+                    "admits `echo ... > file`, as Bash(python3:*) admits any Python: a write that changes the study "
+                    "repository's git status outside the attempt folders is caught by take.py's postflight; a "
+                    "write to a path git ignores, or anywhere else on the machine, is not read (limitations)."),
             "evidence": "verification/finding.md and verification/probes/ (forms/ holds the per-form sessions); finding.py --check re-derives every count",
             "denial_outside_the_allowlist": ("A denial of a command the allowlist does not admit reads as `did not "
                                               "reach`, reason `harness denial`, with the denied command quoted. It is "

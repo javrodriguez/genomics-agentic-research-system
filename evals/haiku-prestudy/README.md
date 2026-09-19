@@ -13,14 +13,16 @@ With everything else as round 2 froze it, and one pre-registered Bash allowlist 
 
 - Round 2's driver, loader, ledger, scrubber, take checker and review kit are byte copies from round 2's done commit `bf065fe`, read with `git show`.
   `COPIED.json` names each file, its source blob and whether it was edited; `python3 evals/haiku-prestudy/copy_manifest.py --check` re-derives all of it.
-- Three copies differ, each with its reason in `COPIED.json`:
+- Four copies differ, each with its reason in `COPIED.json`:
   - `drive.py`: the one change. Every turn passes `--allowedTools` with the entries in `driver_change.allowed_tools`, and the ledger records them. `--permission-mode auto` is still passed.
   - `study.py`: this study's name and folder.
   - `prereg.py`: the planned-take count covers only the halves a task lists.
+  - `review_kit/blindness.py`: this study's goal id is a marker beside round 2's.
 - The copies' usage lines still name round 2's folder; they are left as copied rather than edited.
 - The copied loader prints `take order: not yet — seeded at the freeze` even when frozen: this study has one cell, draws no seed, and its order is `take_order` in the pre-registration.
 - The copied checker's study-path pattern names round 1's and round 2's folders, not this one; every take's checkout excludes `evals/`, so no path of this study can reach a session.
 - The review kit's `BRIEF.md` and `why.md` are written for this study, not copied.
+- `freeze.py` writes `pinned_files` as a name-to-sha256 map, which the copied `check_results.py` frozen-content check does not read; this study binds its pins through `freeze.py`, `take.py` and `result.py`, and uses the copied checker only for the ledger (`result.py --ledger`).
 - `prereg-draft.json` is built by `build_draft.py`, which carries round 2's frozen rules unchanged by code and writes this study's own design beside them.
 - Takes run against a checkout exported from `844a4ce`, whose content is the checkout round 2's three Haiku takes of this half ran in, with round 2's system under test (gars tree `8a54e0f8`).
 
