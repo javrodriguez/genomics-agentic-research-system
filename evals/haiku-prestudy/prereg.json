@@ -682,7 +682,7 @@
   "pre_freeze_review_commit": "5b99949f299c64a986fdde74e310847ecc899777",
   "rehearsal_record": "freeze-rehearsal-10.txt",
   "draft_sha256_at_freeze": "8b490e3a4b79612f2e17f57b9bd949aeb06c439af284d2e3ce2d73edb70b5a50",
-  "code_sha256_at_freeze": "fabad6bdae60ea49ba3f8c817b30c9c701488bcbd0ce3d90e1b885e11874c514",
+  "code_sha256_at_freeze": "140557382eee7ffb6ec1aedc2f32ba34c2f563495fdac53c340e1cf4aadc96c4",
   "harness_at_freeze": "2.1.267 (Claude Code)",
   "pinned_files": {
     "drive.py": "6759090600187b9c11c99e7876985bb66507cab8ffc20ab051ed8f6f6a30d0a8",
@@ -692,16 +692,16 @@
     "check_take.py": "ac469c353d8a8b53dc3afcab75d64e1266a87be942a88f746d02824ca4ff9bf3",
     "study.py": "1aeff03b25529ee0633065f9a7840b353f4c8cee577d1cde51254d5ccdafeab6",
     "outcome.py": "43cecae81e1c328104e11f5b250ba4bd09855939e0aebdcc04f139925a47403d",
-    "result.py": "1dd7a40ca9e7ae6730e4dcdead0027e377b3a4863e4ca383a394194a6d99039e",
+    "result.py": "572aecb7cdfe68c4cbcace600d9182a9960114d3388cbeb0f063c3b5aa6b7065",
     "lint_language.py": "579e91d14a0c46f627847b9634aa6791e73745cf3fb8ba3a3a2ba3da3768b3b5",
     "build_draft.py": "5b27fbf0a52fffc83905a085043bc942c9c7f32397a506970f4a1fec8b5ec555",
     "copy_manifest.py": "7bad4dbe49169556ff96ed919de8e658e0a48d4acffdbc73bb409b828a58a684",
     "finding.py": "b6b2d85e0b4c5b02d471cba4f3fccb9c7cf2e59c30d3b642c6918a19c31c8b45",
     "check_results.py": "0f5991690a214ce76b8c8c37ea2e5c473b50960c16ca85bdf997d24a797f09df",
-    "test_prestudy.py": "c1b6b2e5077ba142994de8c0b6238275e8bf5bd520623dcad1de9bb7b216f121",
+    "test_prestudy.py": "14f4a179878debd2969f0bea640dadbce6bcdcc0284265e1ff3f0fdca929eed6",
     "freeze.py": "c12cbbf3da6c08c8ff2724c382efb4a295217667b619738491d36ea76dcffc83",
     "freeze_rehearsal.py": "2080c3f30fef7e5abad8acfb413c17286bab385a6bd7a507c210a9b6a781d2c3",
-    "take.py": "711083b1336797454d4c500a69991356b76cd2a0e0b8b6bfd07642b68f48e1ca"
+    "take.py": "f78c29639234163c53a35ab5ea5ea82128bf72b68aee7df4f470b9210b43f789"
   },
   "leak_context_excusals_note": "Round 2's two excusals, carried verbatim, plus one this study added by amendment 1. The key is no longer in carried_from_round_2.",
   "amendments": [
@@ -784,6 +784,39 @@
       "code_sha256": {
         "before": "fabad6bdae60ea49ba3f8c817b30c9c701488bcbd0ce3d90e1b885e11874c514",
         "after": "fabad6bdae60ea49ba3f8c817b30c9c701488bcbd0ce3d90e1b885e11874c514"
+      },
+      "draft_sha256": {
+        "before": "8b490e3a4b79612f2e17f57b9bd949aeb06c439af284d2e3ce2d73edb70b5a50",
+        "after": "8b490e3a4b79612f2e17f57b9bd949aeb06c439af284d2e3ce2d73edb70b5a50"
+      }
+    },
+    {
+      "n": 3,
+      "at": "2026-09-19T22:23:07+00:00",
+      "what": "the deleted-attempt guard in take.py and result.py forgives exactly the paths an amendment records",
+      "before": "every path ever deleted under transcripts/, rehearsals/ or pauses/ refused the take and the result",
+      "after": "a path a recorded amendment names as where an attempt sat is not read as a deletion; every other deletion under those roots still refuses",
+      "why": "Amendment 2 moved row 0's attempt with git mv, and the guard reads history with --no-renames, so the move reads there as three deletions under rehearsals/. The guard then refused to start take 2. It is the guard working on the study's own recorded move: what it lacked is the amendment record. The forgiven paths come from the frozen file's amendments, so a reader can see each one.",
+      "evidence": "take.py refused take 2 on 19 September 2026 with the three deleted paths of amendment 2's move",
+      "touches": "two guards' reading of history. No grader, label, count, criterion or order moves, and no attempt is filed differently.",
+      "regrade": "take.py's preflight passes for take 2 and result.py --ledger still passes; a deletion under the attempt roots that no amendment records still refuses, which TheDeletedAttemptGuardForgivesOnlyAmendments drives.",
+      "pinned_files_changed": {
+        "result.py": {
+          "before": "1dd7a40ca9e7ae6730e4dcdead0027e377b3a4863e4ca383a394194a6d99039e",
+          "after": "572aecb7cdfe68c4cbcace600d9182a9960114d3388cbeb0f063c3b5aa6b7065"
+        },
+        "test_prestudy.py": {
+          "before": "c1b6b2e5077ba142994de8c0b6238275e8bf5bd520623dcad1de9bb7b216f121",
+          "after": "14f4a179878debd2969f0bea640dadbce6bcdcc0284265e1ff3f0fdca929eed6"
+        },
+        "take.py": {
+          "before": "711083b1336797454d4c500a69991356b76cd2a0e0b8b6bfd07642b68f48e1ca",
+          "after": "f78c29639234163c53a35ab5ea5ea82128bf72b68aee7df4f470b9210b43f789"
+        }
+      },
+      "code_sha256": {
+        "before": "fabad6bdae60ea49ba3f8c817b30c9c701488bcbd0ce3d90e1b885e11874c514",
+        "after": "140557382eee7ffb6ec1aedc2f32ba34c2f563495fdac53c340e1cf4aadc96c4"
       },
       "draft_sha256": {
         "before": "8b490e3a4b79612f2e17f57b9bd949aeb06c439af284d2e3ce2d73edb70b5a50",

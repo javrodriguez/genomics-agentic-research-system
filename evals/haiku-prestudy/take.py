@@ -45,6 +45,21 @@ sys.path.insert(0, str(HERE))
 import prereg  # noqa: E402
 
 
+def amended_attempt_paths(pre: dict) -> list[str]:
+    """Attempt paths a recorded amendment moved, as repository-relative prefixes (amendment 3).
+
+    The deleted-attempt guard reads history with --no-renames, so a move an amendment records reads there as a
+    deletion. An amendment names where the attempt sat; only those paths are forgiven, and each is in the frozen
+    file for a reader to check. Any other deletion under the attempt roots still refuses.
+    """
+    out = []
+    for a in pre.get("amendments") or []:
+        before = a.get("before")
+        if isinstance(before, dict) and before.get("path"):
+            out.append("evals/haiku-prestudy/" + before["path"].strip("/"))
+    return out
+
+
 def git(*args: str, check: bool = False) -> str:
     r = subprocess.run(["git", "-C", str(REPO), *args], capture_output=True, text=True)
     if check and r.returncode != 0:
@@ -101,6 +116,8 @@ def main() -> int:
     _cm.loader.exec_module(cm)
     problems += cm.problems(cm.derive())
     deleted = git("log", "--no-renames", "--diff-filter=D", "--name-only", "--format=", "--", *ATTEMPT_DIRS).split()
+    amended = amended_attempt_paths(pre)
+    deleted = [d for d in deleted if not any(d == m or d.startswith(m + "/") for m in amended)]
     if deleted:
         problems.append(f"an attempt file was deleted in this repository's history ({deleted[:3]}): its row would "
                         f"read as unattempted")

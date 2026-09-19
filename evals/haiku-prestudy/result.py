@@ -79,6 +79,9 @@ def binding_problems(pre: dict, rows_ledgers: list[dict]) -> list[str]:
     roots = [f"evals/haiku-prestudy/{d}/" for d in ("transcripts", "rehearsals", "pauses")]
     deleted = subprocess.run(["git", "-C", str(REPO), "log", "--no-renames", "--diff-filter=D", "--name-only",
                               "--format=", "--", *roots], capture_output=True, text=True).stdout.split()
+    import take as take_mod
+    deleted = [d for d in deleted if not any(d == m or d.startswith(m + "/")
+                                             for m in take_mod.amended_attempt_paths(pre))]
     if deleted:
         out.append(f"an attempt file was deleted in this repository's history ({deleted[:3]}): a graded take may "
                    f"have been removed and its row re-driven")
