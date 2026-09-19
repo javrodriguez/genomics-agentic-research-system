@@ -1,0 +1,125 @@
+# A stranger's clone, on every push: a clean checkout, the README's "Try it without a cluster"
+# commands exactly as printed, and nothing installed. README.md says the deterministic core runs
+# on stock Python with the standard library, so this job has no install step at all. A dependency
+# the README does not name shows up here as an error, or as a test that skips for it; a later
+# step compares the plain run's skip count with the documented cold-clone count and fails when
+# the run skips more. Each step's wall time goes to the job summary.
+name: Fresh clone
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  quickstart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The README's quickstart is a full `git clone`, so the checkout is full too.
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Summary header
+        run: |
+          date +%s > "$RUNNER_TEMP/job-start"
+          printf '| step | wall time | exit |\n|---|---|---|\n' >> "$GITHUB_STEP_SUMMARY"
+      - name: Test suite, as the README prints it
+        env:
+          # a stranger's machine sets no CI
+          CI: ""
+        run: |
+          set -o pipefail
+          start=$(date +%s)
+          set +e
+          python3 tests/run_tests.py 2>&1 | tee "$RUNNER_TEMP/plain.log"
+          code=$?
+          set -e
+          echo "| python3 tests/run_tests.py | $(( $(date +%s) - start )) s | $code |" >> "$GITHUB_STEP_SUMMARY"
+          exit "$code"
+      - name: Contract lint, as the README prints it
+        env:
+          # a stranger's machine sets no CI
+          CI: ""
+        run: |
+          start=$(date +%s)
+          set +e
+          python3 tests/check_contracts.py
+          code=$?
+          set -e
+          echo "| python3 tests/check_contracts.py | $(( $(date +%s) - start )) s | $code |" >> "$GITHUB_STEP_SUMMARY"
+          exit "$code"
+      - name: Test suite, with the README's scratch folder
+        run: |
+          start=$(date +%s)
+          set +e
+          mkdir -p ../gars-scratch
+          GARS_ROW5_SCRATCH="$PWD/../gars-scratch" TMPDIR="$PWD/../gars-scratch" python3 tests/run_tests.py
+          code=$?
+          set -e
+          echo "| GARS_ROW5_SCRATCH + TMPDIR python3 tests/run_tests.py | $(( $(date +%s) - start )) s | $code |" >> "$GITHUB_STEP_SUMMARY"
+          exit "$code"
+      - name: Skip count against the documented cold-clone count
+        # The plain run above is a Linux machine with nothing set. README.md's Status paragraph
+        # states the cold-clone skip count for macOS and for "TMPDIR also unset as on Linux"; the
+        # Linux figure is the bar, the macOS one is printed beside it. No figure found is a failure.
+        run: |
+          python3 - "$RUNNER_TEMP/plain.log" README.md <<'PY'
+          import os
+          import re
+          import sys
+
+          RAN = re.compile(r"^Ran (\d+) tests? in ", re.M)
+          RESULT = re.compile(r"^(OK|FAILED)\b(.*)$", re.M)
+          MACOS_FIGURE = re.compile(r"a macOS cold clone without it skips (\d+)")
+          LINUX_FIGURE = re.compile(r"(\d+) with `TMPDIR` also unset as on Linux")
+
+
+          def gate(log_text, readme_text):
+              """Return (exit code, lines) for one plain run's log."""
+              at = log_text.rfind("\nRan ")
+              tail = log_text[at + 1:] if at >= 0 else log_text
+              ran = RAN.search(tail)
+              result = RESULT.search(tail)
+              if not ran or not result:
+                  return 1, ["FAIL: no 'Ran N tests' line and result line in the plain run's log"]
+              skipped = re.search(r"skipped=(\d+)", result.group(2))
+              k = int(skipped.group(1)) if skipped else 0
+              linux = LINUX_FIGURE.findall(readme_text)
+              if len(linux) != 1:
+                  return 1, ["FAIL: README.md states the Linux cold-clone skip count %d times, expected once"
+                             % len(linux)]
+              bar = int(linux[0])
+              macos = MACOS_FIGURE.search(readme_text)
+              lines = [
+                  "plain run: Ran %s tests, %s, skipped %d" % (ran.group(1), result.group(1), k),
+                  "documented in README.md: %d on Linux (the bar); %s on macOS"
+                  % (bar, macos.group(1) if macos else "no figure"),
+              ]
+              if k > bar:
+                  lines.append("FAIL: %d skips, %d more than documented; a test skips for a reason "
+                               "the README does not name" % (k, k - bar))
+                  return 1, lines
+              lines.append("ok: %d skips, at most %d documented" % (k, bar))
+              return 0, lines
+
+
+          if __name__ == "__main__":
+              texts = [open(path, encoding="utf-8").read() for path in sys.argv[1:3]]
+              code, lines = gate(*texts)
+              print("\n".join(lines))
+              summary = os.environ.get("GITHUB_STEP_SUMMARY")
+              if summary:
+                  with open(summary, "a", encoding="utf-8") as out:
+                      out.write("\n" + "\n".join("- " + line for line in lines) + "\n")
+              sys.exit(code)
+          PY
+      - name: Wall time
+        if: always()
+        run: |
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "job wall time: $(( $(date +%s) - $(cat "$RUNNER_TEMP/job-start") )) s" >> "$GITHUB_STEP_SUMMARY"
