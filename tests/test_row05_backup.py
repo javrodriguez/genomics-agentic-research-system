@@ -52,6 +52,19 @@ def scratch():
     return p
 
 
+def needs_scratch(cls):
+    """Skip the class when GARS_ROW5_SCRATCH is unset, except under CI (decision 0051).
+
+    A cold clone has no designated scratch and these tests never fall back to system temp
+    (decision 0044), so they skip as an environment failure, as needs_pipeline does. Under CI a
+    missing setting is a misconfigured job, not an environment: the class runs and scratch()
+    refuses, so a skip can never pass CI hollowly. A set but invalid value always refuses."""
+    if os.environ.get('GARS_ROW5_SCRATCH') or os.environ.get('CI', '').lower() in ('1', 'true', 'yes'):
+        return cls
+    return unittest.skip('environment: GARS_ROW5_SCRATCH unset; set it to an existing directory '
+                         'outside the repository to run row 5')(cls)
+
+
 def scrubbed_env(values=None):
     env = {k: v for k, v in os.environ.items()
            if not k.startswith(('PG', 'DRILL_', 'BACKUP_', 'EXPOSURE_', 'ENC_', 'COMPOSE_'))
@@ -82,6 +95,7 @@ def repository_bytes():
             }
 
 
+@needs_scratch
 class Row05OfflineTests(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix='row05-', dir=str(scratch())))
@@ -762,6 +776,7 @@ sys.exit(row.main())
         self.assertIn('skipped=', p.stdout)
 
 
+@needs_scratch
 class Row05DatabaseTests(unittest.TestCase):
     """Only a uniquely named, scratch-volume compose stack is permitted here."""
     @classmethod

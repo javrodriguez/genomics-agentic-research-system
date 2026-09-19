@@ -271,6 +271,14 @@ python3 tests/check_contracts.py   # contract lint: sections, wait points, scrip
 ```
 
 (Tests that need a pinned nf-core checkout skip cleanly as environment failures off-cluster.)
+Row 5's backup tests also skip until you name a scratch folder outside the repository, because they
+never write to the system temp folder. To run them too, as CI does:
+
+```bash
+mkdir -p ../gars-scratch
+GARS_ROW5_SCRATCH="$PWD/../gars-scratch" TMPDIR="$PWD/../gars-scratch" python3 tests/run_tests.py
+```
+
 Then read [`examples/demo-project/`](examples/demo-project/) — a synthetic project showing every
 artifact each stage produces.
 
