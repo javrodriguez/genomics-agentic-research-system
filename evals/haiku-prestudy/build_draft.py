@@ -42,10 +42,17 @@ NAMESPACE_FROM = "https://github.com/javrodriguez/genomics-agentic-research-syst
 
 # Round 2's frozen values, carried unchanged. Each is read by a copied file or states a rule a take is held to.
 CARRIED = ("system_under_test", "harness", "budgets", "driver_constants", "run_location", "rehearsal_reasons",
-           "driver_outcome_shapes", "environment_record", "harness_delivered_user_records", "leak_context_excusals",
+           "driver_outcome_shapes", "environment_record", "harness_delivered_user_records",
            "source_by_fixture_kind", "rehearsal_cap", "pause_cap", "reserved_labels", "permission_stop_rule",
            "stopped_take_rule", "attempt_layout", "wait_point_marker_rule", "operator_line_rule",
            "transcript_publication", "no_retakes", "driver_decided_reasons", "driver_decided_reasons_note")
+
+# AMENDMENT 1: round 2 carried leak_context_excusals; this study adds one excusal to it, so the key is
+# built from round 2's value plus this list rather than carried.
+EXCUSALS_ADDED = [{
+    "phrase": "add a prioritized allowlist to project .claude/settings.json",
+    "why": "Claude Code lists the skills available in a session, and one of those descriptions names its own permission-prompt feature by the word this study added to its leak words. It is the harness describing itself, in the same skill listing round 2 excused two phrases from, and it says the same thing in a session that has nothing to do with this study. The word stays a leak word everywhere else, and a hit is forgiven only where every occurrence sits inside this phrase."
+}]
 
 LEAK_WORDS_ADDED = ["haiku-prestudy", "pre-study", "prestudy", "allowlist"]
 
@@ -170,6 +177,10 @@ def build(approved_by_owner: str | None = None, approved_at: str | None = None) 
         "take_order_seed": None,
         "take_order_note": "One cell, so the order is take 1, 2, 3; no seed is needed and none is drawn.",
         "leak_words": list(r2["leak_words"]) + LEAK_WORDS_ADDED,
+        "leak_context_excusals": [dict(e) for e in r2["leak_context_excusals"]]
+        + [dict(e) for e in EXCUSALS_ADDED],
+        "leak_context_excusals_note": ("Round 2's two excusals, carried verbatim, plus one this study "
+                                       "added by amendment 1. The key is no longer in carried_from_round_2."),
         "limitations_lines": LIMITATIONS_ADDED,
         "limitations_note": "Round 2's limitations stay round 2's; these are this study's own.",
         "publication": {

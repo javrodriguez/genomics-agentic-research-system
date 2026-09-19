@@ -122,7 +122,58 @@ def amendment_1(frozen: dict) -> dict:
     }
 
 
-AMENDMENTS = {1: amendment_1}
+def amendment_2(frozen: dict) -> dict:
+    """Row 0's attempt is where the amended checker's verdict puts it: graded."""
+    model, task, half = frozen["models"][0], "number-fidelity", "positive"
+    src = HERE / "rehearsals" / task / half / model / "row-0"
+    dest = HERE / "transcripts" / task / half / model / "1"
+    if not src.is_dir():
+        raise SystemExit(f"amendment 2: {src} is not there to move")
+    if dest.exists():
+        raise SystemExit(f"amendment 2: {dest} already holds an attempt")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    r = subprocess.run(["git", "-C", str(REPO), "mv", str(src), str(dest)], capture_output=True, text=True)
+    if r.returncode != 0:
+        raise SystemExit(f"amendment 2: git mv refused: {r.stderr.strip()}")
+    led = json.loads((dest / "driver-ledger.json").read_text())
+    before_attempt = dict(led.get("attempt") or {})
+    led["attempt"] = {"kind": "graded", "reasons": [],
+                      "amended": "amendment 2: routed as a rehearsal by the checker's verdict before amendment 1, "
+                                 "graded by its verdict after it; the bytes of the transcript, the environment "
+                                 "record and the scrub record are unchanged."}
+    led["transcript"] = f"evals/haiku-prestudy/transcripts/{task}/{half}/{model}/1/transcript.jsonl"
+    (dest / "driver-ledger.json").write_text(json.dumps(led, indent=2) + "\n")
+    (dest / "WHY.md").unlink(missing_ok=True)
+    return {
+        "n": 2,
+        "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "what": "row 0's attempt moved from rehearsals/ to transcripts/, and its ledger's attempt record amended",
+        "before": {"path": f"rehearsals/{task}/{half}/{model}/row-0", "attempt": before_attempt,
+                   "checker": "NOT VALID — [leak-in-loaded-context] the agent's loaded context contains "
+                              "['allowlist']"},
+        "after": {"path": f"transcripts/{task}/{half}/{model}/1", "attempt": led["attempt"],
+                  "checker": "valid — every operator-side check passed"},
+        "why": ("Amendment 1 excused the harness's own phrase, and the take checker then passed this attempt, so "
+                "the copied ledger check refused the study: a take the checker passes cannot sit under "
+                "rehearsals/. The attempt ran the whole frozen script -- both wait-point markers held, the probe "
+                "was sent and answered, no denial, the environment record written before the first turn -- and "
+                "the only reason it was filed as a rehearsal was a leak word this study itself added and then "
+                "excused. It is graded where the amended checker's verdict puts it."),
+        "ruling": ("The owner ruled it on 19 September 2026, in the window driving this goal, against the stated "
+                   "alternative of discarding the take and re-driving the slot: '1'. It was put to him because "
+                   "this take's outcome is the one the pre-registration predicted, so promoting it is the "
+                   "flattering direction."),
+        "evidence": "verification/amendment-1-regrade.txt, and the take's own transcript and driver ledger",
+        "touches": ("where one attempt is filed, and its ledger's attempt record. No grader, label, count, "
+                    "criterion or order moves, and no byte of the transcript, the environment record or the scrub "
+                    "record is edited."),
+        "regrade": ("The ledger check passes after the move (result.py --ledger), and the take reads as it did "
+                    "before it: reached the probe, 0 denials, permission mode default. Recorded in "
+                    "verification/amendment-2-regrade.txt."),
+    }
+
+
+AMENDMENTS = {1: amendment_1, 2: amendment_2}
 
 
 def main() -> int:

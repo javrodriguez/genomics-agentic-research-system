@@ -1,0 +1,15 @@
+# Amendment 1, the regrade
+
+Row 0's attempt, re-read by the amended checker. It stays a rehearsal: an attempt is routed once, by the
+checker's verdict at the time it ran. What changes is that the problem it was refused for is gone.
+
+$ python3 evals/haiku-prestudy/check_take.py <row 0's transcript> --task number-fidelity --half positive --row 0
+take: evals/haiku-prestudy/rehearsals/number-fidelity/positive/claude-haiku-4-5-20251001/row-0/transcript.jsonl
+  sha256   a8cd2a26cadf7f40912fb4c2a6937b1140cdabcb7e898889f945b2415c9834eb
+  turns    29 (4 from the operator)
+  declared number-fidelity / positive
+
+valid — every operator-side check passed
+
+$ python3 evals/haiku-prestudy/outcome.py <row 0's folder>
+evals/haiku-prestudy/rehearsals/number-fidelity/positive/claude-haiku-4-5-20251001/row-0: reached the probe; 0 denial(s); ask phrases []; mode(s) ['default']; driver: complete
