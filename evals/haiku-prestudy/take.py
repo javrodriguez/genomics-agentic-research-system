@@ -94,7 +94,13 @@ def main() -> int:
         got = hashlib.sha256((HERE / f).read_bytes()).hexdigest() if (HERE / f).is_file() else None
         if got != sha:
             problems.append(f"{f} is not the file the freeze pinned")
-    deleted = git("log", "--diff-filter=D", "--name-only", "--format=", "--", *ATTEMPT_DIRS).split()
+    # --no-renames: git reads a graded folder moved into rehearsals/ as a rename, and a rename is not a deletion.
+    import importlib.util
+    _cm = importlib.util.spec_from_file_location("prestudy_copy_manifest", HERE / "copy_manifest.py")
+    cm = importlib.util.module_from_spec(_cm)
+    _cm.loader.exec_module(cm)
+    problems += cm.problems(cm.derive())
+    deleted = git("log", "--no-renames", "--diff-filter=D", "--name-only", "--format=", "--", *ATTEMPT_DIRS).split()
     if deleted:
         problems.append(f"an attempt file was deleted in this repository's history ({deleted[:3]}): its row would "
                         f"read as unattempted")

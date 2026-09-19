@@ -120,6 +120,10 @@ def render() -> str:
     others = other_attempts(model)
     bad = binding_problems(pre, ledgers + [json.loads((HERE / (a["kind"] + "s") / TASK / HALF / model / f"row-{a['row']}"
                                                        / "driver-ledger.json").read_text()) for a in others])
+    spec = importlib.util.spec_from_file_location("prestudy_copy_manifest_for_result", HERE / "copy_manifest.py")
+    cm = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cm)
+    bad += cm.problems(cm.derive())
     bad += ledger_problems(pre)
     if bad:
         raise SystemExit("REFUSING to write the result:\n  - " + "\n  - ".join(bad))

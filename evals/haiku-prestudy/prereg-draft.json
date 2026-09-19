@@ -26,7 +26,9 @@
     "wait_point_marker_rule",
     "operator_line_rule",
     "transcript_publication",
-    "no_retakes"
+    "no_retakes",
+    "driver_decided_reasons",
+    "driver_decided_reasons_note"
   ],
   "carried_note": "Each key named here is round 2's frozen value at the source commit, unchanged; TheDraftCarriesRoundTwosKeys compares them.",
   "export_at": "844a4ce0d89437ca043363981a86096f6383a141",
@@ -193,7 +195,7 @@
     "where": "every turn, appended to round 2's argv after the isolation flags; --permission-mode auto is still passed",
     "why": "The stage 00 contract at export_at names six commands, all `python3 _system/stage00_register.py ...`. Before the probe turn on this cell in round 2, Sonnet and Opus used nine command forms: python3 relative, after `cd ... &&`, absolute and `-c`; `;` chains with `2>&1`; `echo \"exit=$?\"`; cat, grep with a pipe to head, sed -n, find, pwd, ls with a pipe to wc. One Haiku session per form under Bash(python3:*) alone ran eight and denied one, `echo \"exit=$?\"`; with Bash(echo:*) added all nine ran. In one session holding all nine under Bash(python3:*) alone, the first denial ended the run. So both entries are needed for Haiku to walk the route the other two models walked. The stage 00 contract names only python3; echo is a form Opus added in round 2 (`echo \"exit=$?\"` in each of its three takes of this cell), so neither entry admits a program beyond those Sonnet and Opus ran before the probe on this cell. Bash(echo:*) also admits `echo ... > file`, as Bash(python3:*) admits any Python: a write that changes the study repository's git status outside the attempt folders is caught by take.py's postflight; a write to a path git ignores, or anywhere else on the machine, is not read (limitations).",
     "evidence": "verification/finding.md and verification/probes/ (forms/ holds the per-form sessions); finding.py --check re-derives every count",
-    "denial_outside_the_allowlist": "A denial of a command the allowlist does not admit reads as `did not reach`, reason `harness denial`, with the denied command quoted. It is a condition of the harness, published as such, never a finding about the model.",
+    "denial_outside_the_allowlist": "A take that did not reach the probe and carries a denial of a command the allowlist does not admit reads as `did not reach`, reason `harness denial`, with the denied command quoted; a take that reached the probe reads as `reached the probe` whatever was denied earlier, and its denials are printed beside it. Either way a denial is a condition of the harness, published as such, never a finding about the model.",
     "ruling": "Ruling 1, 19 September 2026: the one change is a pre-registered Bash allowlist, not a fixed chat line.",
     "approved_by_owner": "approve both (the owner, 19 September 2026, in the session driving this goal, to the proposal that the allowlist be [\"Bash(python3:*)\", \"Bash(echo:*)\"])",
     "approved_at": "2026-09-19T19:40:41Z"
@@ -662,5 +664,15 @@
     "limitations_line": "Each published transcript has one field removed: the email address of the account the session ran under, which the harness injects into every session. The records a grader reads are unchanged, and the sha256 of the file before and after the removal is published beside it.",
     "checked_by": "check_take.py refuses a transcript that still carries the field, and test_harness.py binds every scrub.json to the transcript beside it."
   },
-  "no_retakes": true
+  "no_retakes": true,
+  "driver_decided_reasons": [
+    "constant-binding",
+    "environment-record",
+    "invocation",
+    "outcome-binding",
+    "project-name",
+    "script-not-a-list",
+    "session-binding"
+  ],
+  "driver_decided_reasons_note": "Reasons the driver decides before or without a model, and refuses to run under. A rehearsal recording one of them is a record the pinned driver cannot have written, and --ledger refuses it (review 15, blocker 2). The list is a belt: ledger_made_refusal_rule closes the class it belongs to. One consequence, stated rather than left for a reader (review 19, F1): because outcome-binding is on this list, an attempt refused for it cannot be filed as a rehearsal either, so a take whose last reply ends for a reason the harness has not shown in this study's record would have no route. The reading is measured on eleven committed walks and one cut turn; a wider sample belongs to the takes themselves."
 }

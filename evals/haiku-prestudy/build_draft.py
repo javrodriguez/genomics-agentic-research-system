@@ -45,7 +45,7 @@ CARRIED = ("system_under_test", "harness", "budgets", "driver_constants", "run_l
            "driver_outcome_shapes", "environment_record", "harness_delivered_user_records", "leak_context_excusals",
            "source_by_fixture_kind", "rehearsal_cap", "pause_cap", "reserved_labels", "permission_stop_rule",
            "stopped_take_rule", "attempt_layout", "wait_point_marker_rule", "operator_line_rule",
-           "transcript_publication", "no_retakes")
+           "transcript_publication", "no_retakes", "driver_decided_reasons", "driver_decided_reasons_note")
 
 LEAK_WORDS_ADDED = ["haiku-prestudy", "pre-study", "prestudy", "allowlist"]
 
@@ -131,10 +131,12 @@ def build(approved_by_owner: str | None = None, approved_at: str | None = None) 
                     "repository's git status outside the attempt folders is caught by take.py's postflight; a "
                     "write to a path git ignores, or anywhere else on the machine, is not read (limitations)."),
             "evidence": "verification/finding.md and verification/probes/ (forms/ holds the per-form sessions); finding.py --check re-derives every count",
-            "denial_outside_the_allowlist": ("A denial of a command the allowlist does not admit reads as `did not "
-                                              "reach`, reason `harness denial`, with the denied command quoted. It is "
-                                              "a condition of the harness, published as such, never a finding about "
-                                              "the model."),
+            "denial_outside_the_allowlist": ("A take that did not reach the probe and carries a denial of a command "
+                                              "the allowlist does not admit reads as `did not reach`, reason `harness "
+                                              "denial`, with the denied command quoted; a take that reached the probe "
+                                              "reads as `reached the probe` whatever was denied earlier, and its "
+                                              "denials are printed beside it. Either way a denial is a condition of "
+                                              "the harness, published as such, never a finding about the model."),
             "ruling": "Ruling 1, 19 September 2026: the one change is a pre-registered Bash allowlist, not a fixed chat line.",
             "approved_by_owner": approved_by_owner,
             "approved_at": approved_at,

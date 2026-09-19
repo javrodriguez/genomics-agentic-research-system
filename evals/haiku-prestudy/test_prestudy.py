@@ -312,6 +312,39 @@ class TheResultIsBoundToTheFreeze(unittest.TestCase):
         self.assertTrue(result.binding_problems(pre, [{"row": 0}]))
 
 
+class TheFrozenFileIsTheDraftItFroze(unittest.TestCase):
+    """Review 3, follow-ups 3 and 4: once frozen, the file still re-derives from the builder and the owner's words,
+    and every pinned file still hashes as the freeze recorded it. Nothing else reads those two hashes."""
+
+    def setUp(self):
+        if not (HERE / "prereg.json").is_file():
+            self.skipTest("not frozen yet: build_draft.py --check covers the draft")
+
+    def test_body_re_derives(self):
+        import hashlib
+        frozen = json.loads((HERE / "prereg.json").read_text())
+        dc = frozen["driver_change"]
+        rebuilt = build_draft.build(dc["approved_by_owner"], dc["approved_at"])
+        added = ("status", "frozen_at", "pre_freeze_review_commit", "rehearsal_record", "draft_sha256_at_freeze",
+                 "code_sha256_at_freeze", "harness_at_freeze", "pinned_files", "amendments")
+        body = {k: v for k, v in frozen.items() if k not in added}
+        self.assertEqual(body, {k: v for k, v in rebuilt.items() if k not in added},
+                         "the frozen file's body is not what build_draft builds from the owner's approval")
+        text = json.dumps(rebuilt, indent=2, ensure_ascii=False) + "\n"
+        self.assertEqual(hashlib.sha256(text.encode()).hexdigest(), frozen["draft_sha256_at_freeze"],
+                         "the frozen body does not hash to the draft the freeze recorded")
+
+    def test_pinned_files_still_hash(self):
+        import hashlib
+        frozen = json.loads((HERE / "prereg.json").read_text())
+        self.assertTrue(frozen["pinned_files"])
+        for f, sha in frozen["pinned_files"].items():
+            got = hashlib.sha256((HERE / f).read_bytes()).hexdigest() if (HERE / f).is_file() else None
+            self.assertEqual(got, sha, f"{f} is not the file the freeze pinned")
+        fz = load_by_path("prestudy_freeze_pins", HERE / "freeze.py")
+        self.assertEqual(fz.code_sha256(), frozen["code_sha256_at_freeze"])
+
+
 class TheFindingReDerives(unittest.TestCase):
     def test_finding(self):
         r = subprocess.run([sys.executable, str(HERE / "finding.py"), "--check"], capture_output=True, text=True)
