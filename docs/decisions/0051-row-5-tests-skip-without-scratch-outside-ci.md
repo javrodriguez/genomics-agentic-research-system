@@ -43,4 +43,15 @@ A plain skip everywhere would let CI go green with row 5 unexercised, which is t
 
 ## Evidence
 
-To be recorded after the walks run on the committed change.
+Walked on 2026-09-19 at `0799749`, each from a fresh clone, Python 3.13.2 on macOS, with `GARS_ROW5_SCRATCH`, `CI`, `TMPDIR`, `TEMP` and `TMP` removed before each walk set its own:
+
+| Walk | Set | Result |
+|---|---|---|
+| a stranger on Linux | nothing | `Ran 236 · OK (skipped=52)`, exit 0 |
+| a stranger on macOS | `TMPDIR` | `Ran 236 · OK (skipped=50)`, exit 0 |
+| CI with its settings lost | `CI=true` | `Ran 219 · FAILED (errors=25)`, exit 1: row 5's 22 offline tests and `setUpClass`, and the two mutation-runner tests, each refusing |
+| as CI sets it | `CI=true`, `GARS_ROW5_SCRATCH`, `TMPDIR` | the offline and mutation-runner tests pass; this machine's Docker answered, so the 17 live-Postgres tests ran, and 4 errored with `command_failed` in `setUp` |
+
+The live-Postgres errors predate this record: the same class run alone at `e9d046c`, with the variable set, gave `Ran 17 · FAILED (errors=2)` with the same `command_failed`, and the set of failing tests moves between runs.
+With Docker not answering they skip, as they do in CI's 28, and this record does not touch them.
+`check_counts.py` (clean, enforced=3), `check_contracts.py` (14 contracts clean) and `evals/test_harness.py` (`Ran 44 · OK`) pass at `0799749`.
