@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -51,12 +52,29 @@ TASKS = ("scope-read", "template-adherence", "confounded-design")
 HALVES = ("positive", "control")
 
 
+FROZEN_REL = f"{study.ROUND1_REL}/prereg.json"
+
+
 def frozen() -> dict:
     """Round 2's FROZEN file, never its draft. A design that could still change is not a record."""
     if not FROZEN.is_file():
         raise SystemExit(f"{FROZEN.relative_to(REPO)} does not exist: round 2's frozen file is the record "
                          f"round 3 reads, and there is no substitute for it.")
     return json.loads(FROZEN.read_text())
+
+
+def frozen_at(commit: str) -> dict:
+    """Round 2's frozen file AS OF a commit, read with `git show` rather than from the working tree.
+
+    The draft builder carries round 2's rules forward, and a rule carried from a working-tree file is a
+    rule that could have been edited between the carrying and the check. This read is bound to a commit,
+    so what it returns is what that commit holds and nothing else. The door owns it for the same reason
+    it owns every other read of round 2: one reader, or the readers drift.
+    """
+    r = subprocess.run(["git", "-C", str(REPO), "show", f"{commit}:{FROZEN_REL}"], capture_output=True)
+    if r.returncode != 0:
+        raise SystemExit(f"git show {commit[:12]}:{FROZEN_REL} failed: {r.stderr.decode().strip()}")
+    return json.loads(r.stdout)
 
 
 def probe_turns() -> dict[tuple[str, str], int]:
@@ -139,6 +157,35 @@ def pre_probe_commands() -> list[dict]:
     return rows
 
 
+MODE_RECORD = re.compile(r'"permissionMode":\s*"([A-Za-z]+)"')
+
+
+def cell_modes() -> dict[str, dict[str, dict[str, str]]]:
+    """The permission mode each of round 2's cells ACTUALLY recorded, read from its own transcripts.
+
+    `default` if any take of the cell records default, else `auto` if any records auto, else `unrecorded`.
+    The precedence is the pre-study's: a session recording `default` anywhere ran with no approval surface.
+
+    WHY THIS IS DERIVED AND NOT CITED. Round 2 passed `--permission-mode auto` to all three models and
+    recorded that constant in every ledger. Whether a cell's session actually ran in that mode is a fact
+    about the transcripts, and round 3 leans on it for two things -- which of round 2's counts may inform a
+    prediction, and which must be published as a recorded harness condition. A study that took that from
+    another study's prose would be repeating a claim; this reads the bytes it is a claim about.
+    """
+    out: dict[str, dict[str, dict[str, str]]] = {}
+    for tr in transcripts():
+        task, half, model = tr.parts[-5], tr.parts[-4], tr.parts[-3]
+        modes = set(MODE_RECORD.findall(tr.read_text(errors="replace")))
+        seen = out.setdefault(task, {}).setdefault(model, {})
+        mode = "default" if "default" in modes else "auto" if "auto" in modes else "unrecorded"
+        prior = seen.get(half)
+        # default wins across the cell's takes, then auto, then unrecorded
+        rank = {"default": 0, "auto": 1, "unrecorded": 2}
+        if prior is None or rank[mode] < rank[prior]:
+            seen[half] = mode
+    return out
+
+
 def cells() -> dict:
     """Round 2's published count per (task, half, model) for round 3's three tasks, read from its own
     committed results files and never restated by hand."""
@@ -156,12 +203,19 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--cells", action="store_true")
+    g.add_argument("--modes", action="store_true")
     g.add_argument("--commands", action="store_true")
     g.add_argument("--probe-turns", action="store_true")
     args = ap.parse_args()
     if args.probe_turns:
         for (task, half), n in sorted(probe_turns().items()):
             print(f"{task:22} {half:9} probe operator turn {n}")
+        return 0
+    if args.modes:
+        for task, models in sorted(cell_modes().items()):
+            for model, halves in sorted(models.items()):
+                for half, mode in sorted(halves.items()):
+                    print(f"{task:22} {model:30} {half:9} recorded {mode}")
         return 0
     if args.cells:
         print(json.dumps(cells(), indent=2))

@@ -284,6 +284,9 @@ class ThePoolingGuardIsMutationProved(unittest.TestCase):
                  "Round 3 improved on round 2 for this cell.",
                  "Two of three is better than none of three.",
                  "Up from 0 of 3 in the earlier round.",
+                 "Up from none of three.",
+                 "Down from round 2's count.",
+                 "up from the previous round's figure.",
                  "In total, 11 takes.",
                  "The aggregate figure is 6 of 9.",
                  "The sum of the two halves is four.",
@@ -301,7 +304,11 @@ class ThePoolingGuardIsMutationProved(unittest.TestCase):
         keep = ["The cell holds 2 of 3 takes.",
                 "Round 2's counts print beside these under a caption naming the instrument.",
                 "Slice 4 of 20 landed the fixture re-cut.",
-                "One cell is published unmeasured with its reason."]
+                "One cell is published unmeasured with its reason.",
+                # the false positive this guard raised against the carried keys, kept as a case so the
+                # narrowing cannot be undone without a red
+                "The driver proves it by walking up from the checkout to the filesystem root.",
+                "Claude Code walks up from the working directory collecting instruction files."]
         with tempfile.TemporaryDirectory() as td:
             folder = Path(td) / "scan"
             folder.mkdir()
@@ -522,6 +529,135 @@ class TheAllowlistIsDerivedNotChosen(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------------------------
+# The draft
+
+
+class TheDraftIsBuiltNotWritten(unittest.TestCase):
+    def setUp(self):
+        self.draft = json.loads((HERE / "prereg-draft.json").read_text())
+
+    def test_it_re_derives(self):
+        r = run(str(HERE / "build_draft.py"), "--check")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_it_carries_round_twos_keys_byte_for_byte(self):
+        import build_draft
+        r2 = build_draft.source_prereg()
+        self.assertGreater(len(build_draft.CARRIED), 20)
+        for k in build_draft.CARRIED:
+            with self.subTest(k):
+                self.assertIn(k, r2, f"round 2's frozen file has no {k}")
+                self.assertEqual(self.draft[k], r2[k], f"{k} is not round 2's frozen value")
+
+    def test_the_three_tasks_are_round_twos_own(self):
+        import build_draft
+        import round2
+        r2 = {t["id"]: t for t in build_draft.source_prereg()["tasks"]}
+        ids = [t["id"] for t in self.draft["tasks"]]
+        self.assertEqual(sorted(ids), sorted(round2.TASKS))
+        for t in self.draft["tasks"]:
+            with self.subTest(t["id"]):
+                self.assertEqual(t, r2[t["id"]], "a task differs from round 2's frozen copy")
+                for half in ("positive", "control"):
+                    self.assertIn(half, t, "both halves are measured")
+
+    def test_the_plan_is_eighteen_cells_and_fifty_four_takes(self):
+        self.assertEqual(self.draft["planned_cells"], 18)
+        self.assertEqual(self.draft["planned_takes"], 54)
+        self.assertEqual(self.draft["n"], 3)
+        self.assertEqual(len(self.draft["predictions"]), 18)
+
+    def test_the_export_commit_carries_round_twos_system_under_test(self):
+        """gars/ has moved on main since round 2, so the export commit is deliberately not HEAD."""
+        import build_draft
+        self.assertEqual(self.draft["export_at_gars_tree"],
+                         self.draft["system_under_test"]["gars_tree_sha"])
+        head_gars = subprocess.run(["git", "-C", str(REPO), "rev-parse", "HEAD:gars"],
+                                   capture_output=True, text=True).stdout.strip()
+        self.assertNotEqual(self.draft["export_at"], "HEAD")
+        if head_gars != self.draft["export_at_gars_tree"]:
+            self.assertNotEqual(build_draft.EXPORT_AT, head_gars,
+                                "the export commit must carry round 2's tree, not the current one")
+
+    def test_every_prediction_names_the_bytes_it_read(self):
+        for p in self.draft["predictions"]:
+            with self.subTest(f"{p['task']}/{p['half']}/{p['model']}"):
+                self.assertIn("derived_from", p)
+                self.assertIn("read_from", p["derived_from"])
+                if p["basis"] == "informed":
+                    self.assertIsInstance(p["predicted"], int)
+                    self.assertEqual(p["predicted"], p["derived_from"]["round_2_k"])
+                else:
+                    self.assertIsNone(p["predicted"], "a basis-less cell must carry no predicted count")
+                    self.assertTrue(p["basis"].startswith("no informed basis — "), p["basis"])
+
+    def test_the_uninformed_cells_are_exactly_the_ones_the_bytes_name(self):
+        """Six cells whose transcripts recorded a mode other than the one passed, plus the one cell round 2
+        published incomplete. Re-derived here from the same two sources, not from the draft."""
+        import round2
+        passed = self.draft["driver_constants"]["permission_mode"]
+        modes, counts = round2.cell_modes(), round2.cells()
+        expected = set()
+        for task in round2.TASKS:
+            for model, halves in counts[task]["cells"].items():
+                for half, cell in halves.items():
+                    recorded = modes[task][model][half]
+                    if recorded != passed or "incomplete" in str(cell.get("state", "")).lower():
+                        expected.add((task, half, model))
+        got = {(p["task"], p["half"], p["model"]) for p in self.draft["predictions"]
+               if p["predicted"] is None}
+        self.assertEqual(got, expected)
+        self.assertEqual(len(got), 7, sorted(got))
+
+    def test_both_owner_gates_start_null_and_are_named(self):
+        self.assertIsNone(self.draft["driver_change"]["approved_by_owner"])
+        keys = [r["source_key"] for r in self.draft["carried_rulings"]]
+        self.assertIn("permission_stop_rule", keys,
+                      "asked-to-proceed's broad reading is named by the goal as one that must be re-put")
+        for r in self.draft["carried_rulings"]:
+            with self.subTest(r["source_key"]):
+                self.assertIsNone(r["reaffirmed_by_owner"])
+                self.assertEqual(r["quoted_verbatim"], self.draft[r["source_key"]],
+                                 "a carried ruling must be quoted verbatim from the key it was recorded in")
+
+    def test_the_allowlist_in_the_draft_is_exactly_what_the_derivation_produces(self):
+        import allowlist
+        derived = [e["tool"] for e in allowlist.derive()["entries"]]
+        self.assertEqual(self.draft["driver_change"]["allowed_tools"], derived)
+        self.assertGreater(len(derived), 0)
+
+    def test_the_limitations_carry_the_three_the_goal_names(self):
+        text = " ".join(self.draft["limitations_lines"]).lower()
+        self.assertIn("no session file records", text)
+        self.assertIn("more permissive", text)
+        self.assertIn("later date", text)
+        self.assertGreaterEqual(len(self.draft["limitations_lines"]), 6)
+
+    def test_the_not_poolable_rule_names_what_enforces_it(self):
+        np = self.draft["not_poolable"]
+        self.assertGreaterEqual(len(np["enforced_by"]), 2)
+        self.assertTrue(any("lint_pooling" in e for e in np["enforced_by"]))
+        self.assertTrue(any("result.py" in e for e in np["enforced_by"]))
+
+    def test_the_take_order_is_not_drawn_before_the_review(self):
+        self.assertIsNone(self.draft["take_order"])
+        self.assertIsNone(self.draft["take_order_seed"])
+
+    def test_the_namespace_is_this_studys_own(self):
+        import build_draft
+        import uuid as _uuid
+        ns = self.draft["session_namespace"]
+        self.assertEqual(ns["uuid"], str(_uuid.uuid5(_uuid.NAMESPACE_URL, ns["derived_from"])))
+        r2_ns = build_draft.source_prereg()["session_namespace"]["uuid"]
+        self.assertNotEqual(ns["uuid"], r2_ns, "a shared namespace could repeat round 2's session ids")
+
+    def test_the_copied_loader_reads_it_and_plans_the_right_size(self):
+        r = run(str(HERE / "takes.py"), "--plan")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("planned 54 takes", r.stdout)
+
+
+# ---------------------------------------------------------------------------------------------
 # The reviewer's brief and the purpose page
 
 
@@ -530,7 +666,6 @@ class TheReviewKitIsPinnedAndBlind(unittest.TestCase):
     # build. Each one lives here until it exists; the set must be EMPTY before the freeze, and the test
     # below fails if the study is frozen while anything is still planned.
     PLANNED = {
-        "evals/gap-study-3/build_draft.py",
         "evals/gap-study-3/completeness.py",
         "evals/gap-study-3/fixture_walk.py",
         "evals/gap-study-3/leak_grep.py",

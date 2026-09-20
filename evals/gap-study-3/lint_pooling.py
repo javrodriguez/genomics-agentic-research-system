@@ -72,7 +72,12 @@ PATTERNS: list[tuple[str, str, str]] = [
      "an improvement is a claim across two instruments, which this study may not make"),
     ("better-than", r"\bbetter than\b|\bworse than\b",
      "a comparison between rounds or models is the owner's to write, never the run's"),
-    ("up-from", r"\bup from\b|\bdown from\b",
+    # NARROWED, on a false positive this guard raised against round 2's carried text: "the driver walks UP
+    # FROM the checkout" is a direction of travel, not a count moving. What makes the phrase pooling is what
+    # it moves from -- a number, a nothing, or the other round -- so the pattern now names those and the
+    # bare preposition passes. The carried keys are byte-identical to round 2's and are not this round's to
+    # reword, so the fix had to be here; it binds the pattern to the rule rather than approximating it.
+    ("up-from", r"\b(?:up|down) from (?:\d|none\b|zero\b|no\b|nothing\b|round\b|the (?:earlier|previous|last)\b|last round\b)",
      "a movement between two rounds' counts reads them as one series"),
 ]
 
