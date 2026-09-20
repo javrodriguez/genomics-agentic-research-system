@@ -19,11 +19,18 @@ attempt's model (`driver_constants.permission_mode_expected`). The ledger's own 
 re-derivation as well, so a driver that recorded one thing and published another is caught rather than
 trusted.
 
-WHY THE EXPECTATION IS PER MODEL (Ruling 2, 20 September 2026). The smallest model records `default`
-whatever flag is passed -- 34 of round 2's 36, and four of this round's four walks. A single expected value
-for the whole axis would make every one of its takes a rehearsal, exhaust its cap, and leave all six of its
-cells unmeasured, in a round built to measure it. So the expectation is what each model is known to record,
-which is a statement the record can contradict; the old rule was one it could not.
+WHY THE EXPECTATION IS ONE VALUE (Ruling 7, 20 September 2026, superseding Ruling 2). Round 2 passed
+`auto` and the smallest model recorded `default` anyway -- 34 of round 2's 36, and four of this round's four
+walks -- so the axis carried two permission conditions. Ruling 2 answered that by making the expectation per
+model, because one value would have routed every take of that model as a rehearsal. Ruling 7 removed the
+reason instead: `default` is passed to every model, the allowlist is the whole permission surface, and one
+value covers the axis. From there the COPIED checker carries the rule itself, because the driver writes the
+recorded mode into the ledger field its constant-binding comparison reads. This file re-derives the same
+reading from the transcript independently and routes nothing.
+
+A SESSION IS HELD TO THE DESIGN IT WAS DRIVEN UNDER. A walk driven before the design pinned an expectation
+is reported as superseded rather than graded: an anachronism is not a finding. It is named and counted, and
+its leak verdict still stands, because which paths a session reads does not depend on the permission mode.
 
 No model, no network, stdlib only. Read-only.
 """
@@ -78,6 +85,29 @@ def attempts(walks: bool = False) -> list[Path]:
     return out
 
 
+def judge(ledger: dict, derived: str, exp: dict, walks: bool) -> tuple[bool, list[str]]:
+    """The whole per-session judgement, as a pure function of the ledger and the derived mode.
+
+    Returned as (superseded, problems). It is a function rather than a branch inside the loop so the
+    mutations that prove it can be driven on synthetic input instead of on committed evidence -- and so
+    they keep biting when every committed session happens to be superseded, which is exactly the state
+    that made two of them pass over nothing.
+    """
+    model = ledger.get("model_requested") or "?"
+    if walks and ledger.get("permission_mode_expected") is None:
+        return True, []
+    want = exp.get(model)
+    problems = []
+    if want is None:
+        problems.append(f"the pre-registration pins no expected mode for {model!r}")
+    elif derived != want:
+        problems.append(f"the session recorded {derived!r}; {model} is pinned to record {want!r}")
+    recorded = ledger.get("permission_mode_recorded")
+    if recorded is not None and recorded != derived:
+        problems.append(f"the ledger publishes {recorded!r} where the transcript records {derived!r}")
+    return False, problems
+
+
 def rows(walks: bool = False) -> list[dict]:
     exp = expected()
     out = []
@@ -86,22 +116,15 @@ def rows(walks: bool = False) -> list[dict]:
         ledger = json.loads(ledger_path.read_text()) if ledger_path.is_file() else {}
         model = ledger.get("model_requested") or "?"
         derived = mode_of(t)
-        want = exp.get(model)
-        problems = []
-        if want is None:
-            problems.append(f"the pre-registration pins no expected mode for {model!r}")
-        elif derived != want:
-            problems.append(f"the session recorded {derived!r}; {model} is pinned to record {want!r}")
+        superseded, problems = judge(ledger, derived, exp, walks)
         recorded = ledger.get("permission_mode_recorded")
-        if recorded is not None and recorded != derived:
-            problems.append(f"the ledger publishes {recorded!r} where the transcript records {derived!r}")
-        passed = ledger.get("permission_mode_passed") or ledger.get("permission_mode")
         out.append({
             "attempt": str(t.parent.relative_to(HERE)),
             "task": ledger.get("task"), "half": ledger.get("half"), "model": model,
-            "passed": passed, "recorded": derived, "expected": want,
+            "passed": ledger.get("permission_mode_passed") or ledger.get("permission_mode"),
+            "recorded": derived, "expected": None if superseded else exp.get(model),
             "ledger_agrees": recorded is None or recorded == derived,
-            "problems": problems,
+            "superseded": superseded, "problems": problems,
         })
     return out
 
@@ -115,9 +138,15 @@ def main() -> int:
     what = "walk" if args.walks else "attempt"
     for r in got:
         flag = "  <-- " + "; ".join(r["problems"]) if r["problems"] else ""
+        if r.get("superseded"):
+            flag = "  <-- driven before the design pinned an expectation; superseded, not graded"
         print(f"  {r['attempt']:46} {str(r['model']):30} passed={r['passed']} "
               f"recorded={r['recorded']} expected={r['expected']}{flag}")
     bad = [r for r in got if r["problems"]]
+    sup = [r for r in got if r.get("superseded")]
+    if sup:
+        print(f"\n{len(sup)} {what}(s) superseded: driven under a condition the design has since replaced, "
+              f"named here and never silently dropped. Their leak verdicts still stand.")
     if not got:
         # An empty gate is said out loud. Nothing has been graded, and that is not a pass.
         print(f"ok, having graded 0 {what}s: none is committed yet, so nothing here is evidence about any "
@@ -126,7 +155,12 @@ def main() -> int:
     if bad and args.check:
         print(f"\nFAIL {len(bad)} of {len(got)} {what}(s) drift from the pre-registration")
         return 1
-    print(f"\nok: {len(got)} {what}(s) graded, every one recording the mode its model is pinned to")
+    graded_n = len(got) - len(sup)
+    if graded_n == 0:
+        print(f"\nok, having graded 0 {what}s: all {len(got)} are superseded, so nothing here is evidence "
+              f"about the condition now in force.")
+        return 0
+    print(f"\nok: {graded_n} {what}(s) graded, every one recording the mode its model is pinned to")
     return 0
 
 

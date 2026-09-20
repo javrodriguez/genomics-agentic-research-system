@@ -19,10 +19,15 @@ WHAT IT DOES, in order:
      sha256 and whose ruling is DO FREEZE: freeze.py requires a committed review that lands exactly one report, and
      the rehearsal must exercise that rule, not skip it. The report is synthetic and says so on its second line;
   3. runs `freeze.py --review-commit <that commit> --rehearsal --write` in the clone and commits the frozen file;
-  4. runs the entire gate on the frozen state: the suite, `check_results.py` (default, --ledger, --controls,
-     --regrade), the language guard, `costs.py --check`, `contracts.py --check`, `fixtures/check_fixture.py --all`,
-     `copy_manifest.py --check`, `prereg.py --status`, the mutation battery, and `clean_clone_battery.sh --source`
-     over the clone;
+  4. runs the entire gate on the frozen state -- THIS round's gate, which is the fourteen commands its own
+     reviewer brief names plus the two earlier rounds' checkers: the battery, `copy_manifest.py --check`,
+     `allowlist.py --check`, `build_draft.py --check`, `leak_grep.py --check`, `fixture_walk.py` in its four
+     modes, `mode_binding.py` over the walks and the takes, `review_kit/rounds.py --check`, both language
+     guards, `check_results.py` (default and --ledger), `result.py --check`, `completeness.py --check`,
+     `contracts.py --check`, `fixtures/check_fixture.py --all`, `costs.py --check` and `prereg.py --status`.
+     Round 2's gate named a suite, a mutation battery, two check_results modes, a round-1 regrade script and
+     a clean-clone battery, none of which exists in this round, so the rehearsal it was copied with could
+     never have ended `all green` (review 1, blocker 2);
   5. registers the first ledger row with `takes.py --add` and commits it, so the ledger is shown to open against the
      frozen file and its session id to derive from the row's commit; then `check_results.py --ledger` once more.
   6. writes verification/freeze-rehearsal-<n>.txt: line 1 the draft's sha256, then every step with its exit code and
@@ -140,35 +145,49 @@ def main() -> int:
         fz = step("freeze.py --rehearsal --write", [sys.executable, str(study_dir / "freeze.py"), "--review-commit",
                                                     review_sha.strip(), "--rehearsal", "--write"])
         if fz == 0:
-            # the round-1 regrade record names the pre-registration in force by its sha, so the freeze commit
-            # carries it rewritten against the frozen file (found by rehearsal 1, where the gate read a stale one)
-            step("regrade_environment.py --write (the record names the frozen file)",
-                 [sys.executable, f"{study.STUDY_REL}/verification/round1-regrade/regrade_environment.py", "--write"])
-            git(clone, "add", "--", str((study_dir / "prereg.json").relative_to(clone)),
-                f"{study.STUDY_REL}/verification/round1-regrade/environment.json")
+            # ROUND 3, REVIEW 1 BLOCKER 2. Round 2 rewrote its round-1 regrade record here, against the
+            # frozen file. This round has no such record -- it regrades nothing of an earlier round -- so
+            # the freeze commit lands the frozen file alone.
+            git(clone, "add", "--", str((study_dir / "prereg.json").relative_to(clone)))
             git(clone, "commit", "-q", "-m", "freeze: the pre-registration, rehearsed")
         # 4. the gate on the frozen state
         S = study.STUDY_REL
         for name, argv in [
             ("prereg.py --status", [sys.executable, f"{S}/prereg.py", "--status"]),
             ("copy_manifest.py --check", [sys.executable, f"{S}/copy_manifest.py", "--check"]),
-            ("test_harness.py", [sys.executable, f"{S}/test_harness.py"]),
+            # ROUND 3, REVIEW 1 BLOCKER 2. Round 2's gate named test_harness.py, mutations, the controls and
+            # regrade modes of check_results.py, the round-1 regrade script and a clean-clone battery. None
+            # of those exists in this round, so the rehearsal could never have ended `all green`. This is
+            # THIS round's gate: the fourteen commands its own reviewer brief names, plus the two earlier
+            # rounds, which must stay green.
+            ("test_round3.py", [sys.executable, "-W", "ignore", f"{S}/test_round3.py"]),
+            ("allowlist.py --check", [sys.executable, f"{S}/allowlist.py", "--check"]),
+            ("build_draft.py --check", [sys.executable, f"{S}/build_draft.py", "--check"]),
+            ("leak_grep.py --check", [sys.executable, f"{S}/leak_grep.py", "--check"]),
+            ("fixture_walk.py --static", [sys.executable, f"{S}/fixture_walk.py", "--static"]),
+            ("fixture_walk.py --finding", [sys.executable, f"{S}/fixture_walk.py", "--finding"]),
+            ("fixture_walk.py --check", [sys.executable, f"{S}/fixture_walk.py", "--check"]),
+            ("fixture_walk.py --coverage", [sys.executable, f"{S}/fixture_walk.py", "--coverage"]),
+            ("mode_binding.py --walks --check", [sys.executable, f"{S}/mode_binding.py", "--walks", "--check"]),
+            ("mode_binding.py --check", [sys.executable, f"{S}/mode_binding.py", "--check"]),
+            ("review_kit/rounds.py --check", [sys.executable, f"{S}/review_kit/rounds.py", "--check"]),
             ("contracts.py --check", [sys.executable, f"{S}/contracts.py", "--check"]),
             ("fixtures/check_fixture.py --all", [sys.executable, f"{S}/fixtures/check_fixture.py", "--all"]),
             ("lint_language.py", [sys.executable, f"{S}/lint_language.py", f"{S}/"]),
+            ("lint_pooling.py", [sys.executable, f"{S}/lint_pooling.py", f"{S}/"]),
             ("check_results.py", [sys.executable, f"{S}/check_results.py"]),
             ("check_results.py --ledger", [sys.executable, f"{S}/check_results.py", "--ledger"]),
-            ("check_results.py --controls", [sys.executable, f"{S}/check_results.py", "--controls"]),
-            ("check_results.py --regrade", [sys.executable, f"{S}/check_results.py", "--regrade"]),
+            ("result.py --check", [sys.executable, f"{S}/result.py", "--check"]),
+            ("completeness.py --check", [sys.executable, f"{S}/completeness.py", "--check"]),
             ("costs.py --check", [sys.executable, f"{S}/costs.py", "--check"]),
-            # round 1 and the first study must stay green (the checklist requires it; review 3 asked the rehearsal to show it)
+            # the two earlier rounds must stay green (the checklist requires it; round 2's review 3 asked
+            # the rehearsal to show it)
             ("evals/gap-study/check_results.py", [sys.executable, "evals/gap-study/check_results.py"]),
             ("evals/check_results.py --controls --lexicon", [sys.executable, "evals/check_results.py", "--controls", "--lexicon"]),
-            ("test_harness.py --mutations", [sys.executable, f"{S}/test_harness.py", "--mutations"]),
-            ("clean_clone_battery.sh --source <clone>", ["bash", f"{S}/clean_clone_battery.sh", "--source", str(clone)]),
         ]:
             step(name, argv)
         # the clean clone's own record, which lived inside the clone and was lost with it (review 2, round 2)
+        # ROUND 3: this round runs no clean-clone battery, so there is no such record to carry.
         cc = sorted((study_dir / "verification").glob("clean-clone-*.txt"), key=lambda p: p.stat().st_mtime)
         if cc:
             shutil.copy2(cc[-1], VERIFICATION / f"freeze-rehearsal-{n}-clean-clone.txt")

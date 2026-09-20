@@ -89,7 +89,30 @@ def attempts_by_kind(kind: str) -> dict[tuple[str, str, str], list[dict]]:
     return out
 
 
-def cell_state(key, g, rehearsals, pauses, pre) -> dict:
+def held_counts() -> dict[tuple[str, str, str], dict]:
+    """The HELD count per cell, read from the graders' own output, never from the takes on disk.
+
+    REVIEW 1, BLOCKER 1. This file used to put the number of take folders under the column headed `held`
+    and never opened results/. Every complete cell would have published `3 of 3` whatever the models did,
+    the earlier round's column beside it prints a real held count, and the study's own question -- how many
+    of three takes each cell holds -- would not have been answered by its own publication. Nothing went
+    red, because the battery checked n, reasons and captions and never what the number meant.
+
+    `k` is written by run.py from the graders' verdicts. It is read here and nowhere else in this file.
+    """
+    out: dict[tuple[str, str, str], dict] = {}
+    for f in sorted(RESULTS.glob("*.json")) if RESULTS.is_dir() else []:
+        rec = json.loads(f.read_text())
+        task = rec.get("task") or f.stem
+        for model, halves in (rec.get("cells") or {}).items():
+            for half, c in halves.items():
+                out[(task, half, model)] = {"k": c.get("k"), "n": c.get("n"),
+                                            "state": c.get("state"),
+                                            "labels": [l.get("label") for l in (c.get("labels") or [])]}
+    return out
+
+
+def cell_state(key, g, rehearsals, pauses, pre, held) -> dict:
     """Complete, or unmeasured with a reason. There is no third state and no silent one."""
     task, half, model = key
     takes = g.get(key, {}).get("takes", [])
@@ -109,7 +132,10 @@ def cell_state(key, g, rehearsals, pauses, pre) -> dict:
         state = "unmeasured"
         reason = (f"incomplete: {len(takes)} graded take(s) of {N}, {len(reh)} rehearsal(s), "
                   f"{len(pau)} pause(s)")
-    return {"task": task, "half": half, "model": model, "graded": len(takes), "n": N,
+    h = held.get(key) or {}
+    return {"task": task, "half": half, "model": model,
+            "held": h.get("k"), "labels": h.get("labels") or [],
+            "graded": len(takes), "n": N,
             "state": state, "reason": reason, "recorded_permission_mode": modes,
             "expected_permission_mode": (pre["driver_constants"].get("permission_mode_expected") or {})
                                         .get(model)}
@@ -157,8 +183,8 @@ def caption() -> str:
 
 def derive() -> dict:
     pre = prereg.load()
-    g, reh, pau = graded(), attempts_by_kind("rehearsals"), attempts_by_kind("pauses")
-    cells = [cell_state(k, g, reh, pau, pre) for k in planned_cells()]
+    g, reh, pau, held = graded(), attempts_by_kind("rehearsals"), attempts_by_kind("pauses"), held_counts()
+    cells = [cell_state(k, g, reh, pau, pre, held) for k in planned_cells()]
     return {
         "planned_cells": len(cells),
         "planned_takes": len(cells) * N,
@@ -180,6 +206,18 @@ def structural_problems(rec: dict) -> list[str]:
             out.append(f"{c['task']}/{c['half']}/{c['model']} has {c['graded']} graded takes of {c['n']}")
         if c["state"] != "complete" and not c["reason"]:
             out.append(f"{c['task']}/{c['half']}/{c['model']} is not complete and names no reason")
+        # REVIEW 1, BLOCKER 1. A complete cell must publish a HELD count read from the graders, and that
+        # count is never the number of takes that ran -- that is the denominator, not the answer.
+        if c["state"] == "complete":
+            if c["held"] is None:
+                out.append(f"{c['task']}/{c['half']}/{c['model']} is complete and publishes no held count "
+                           f"read from the graders")
+            elif not 0 <= c["held"] <= c["n"]:
+                out.append(f"{c['task']}/{c['half']}/{c['model']} publishes a held count of {c['held']} "
+                           f"outside 0..{c['n']}")
+            elif len(c["labels"]) != c["graded"]:
+                out.append(f"{c['task']}/{c['half']}/{c['model']} publishes {len(c['labels'])} grader "
+                           f"label(s) for {c['graded']} graded take(s)")
     for r in rec["round_two"]["rows"]:
         if r["n"] != N:
             out.append(f"the earlier round's {r['task']}/{r['half']}/{r['model']} publishes n = {r['n']}")
@@ -193,15 +231,17 @@ def render(rec: dict) -> str:
     L = [f"# {study.STUDY_TITLE} — result", "",
          f"{rec['graded_takes']} graded take(s) of {rec['planned_takes']} planned; "
          f"{rec['complete_cells']} complete cell(s) of {rec['planned_cells']} planned.", "",
-         "Every count below is a count of three takes. No cell is left out: a cell that was not measured "
-         "is named with the reason it was not.", "",
+         "Every count below is a count of three takes. The `held` column is what the graders read from the "
+         "transcripts; `takes graded` is how many takes the cell has, which is the denominator and never "
+         "the answer. No cell is left out: a cell that was not measured is named with the reason.", "",
          "## This round", "",
-         "| task | half | model | held | recorded mode | state |", "|---|---|---|---|---|---|"]
+         "| task | half | model | held | takes graded | recorded mode | state |",
+         "|---|---|---|---|---|---|---|"]
     for c in rec["cells"]:
-        held = f"{c['graded']} of {c['n']} graded" if c["state"] == "complete" else "—"
+        h = f"{c['held']} of {c['n']}" if c["state"] == "complete" and c["held"] is not None else "—"
         modes = ", ".join(c["recorded_permission_mode"]) or "—"
-        L.append(f"| `{c['task']}` | {c['half']} | `{c['model']}` | {held} | {modes} | "
-                 f"{c['state']}{'' if not c['reason'] else ' — ' + c['reason']} |")
+        L.append(f"| `{c['task']}` | {c['half']} | `{c['model']}` | {h} | {c['graded']} of {c['n']} | "
+                 f"{modes} | {c['state']}{'' if not c['reason'] else ' — ' + c['reason']} |")
     L += ["", "## The earlier round, beside — never joined", "", caption(), "",
           "| task | half | model | held | recorded mode |", "|---|---|---|---|---|"]
     for r in rec["round_two"]["rows"]:

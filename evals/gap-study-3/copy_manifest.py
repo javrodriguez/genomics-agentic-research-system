@@ -104,12 +104,21 @@ EDITS = {
                 "takes its path from study.py, as round 2's own design says a path must.",
     "copy_manifest.py": "Its own constants: this study's file list, its edit reasons, the commits it pins the earlier "
                         "studies at, and the byte-identical set the goal file names.",
-    "freeze.py": "Three call sites take the pre-freeze review folder from study.REVIEW_DIR instead of the literal "
-                 "`verification`: the tree-binding exclusion, the review-commit rule and its latest-review scan. "
-                 "Round 3 keeps pre-freeze reviews and final verifications in separate folders so a fresh run counts "
-                 "each from `ls` alone. No rule changes; only where each rule looks.",
-    "freeze_rehearsal.py": "The synthetic review the rehearsal commits is written to study.REVIEW_DIR, so the "
-                           "rehearsal exercises the same path the real freeze reads. Same reason as freeze.py.",
+    "freeze.py": "Two changes. (1) Three call sites take the pre-freeze review folder from study.REVIEW_DIR "
+                 "instead of the literal `verification`: the tree-binding exclusion, the review-commit rule and "
+                 "its latest-review scan, because this round keeps pre-freeze reviews and final verifications in "
+                 "separate folders. No rule changes; only where each rule looks. (2) THE PIN LIST IS DERIVED "
+                 "rather than carried (review 1, blocker 2): six of round 2's paths do not exist here and a "
+                 "missing pin exits 1, so the freeze could not have run, and its globs matched none of this "
+                 "round's own guards, so after a freeze any of them could have been edited with the result "
+                 "checker staying clean. Every code and data file this study owns is now pinned unless it is "
+                 "named in NOT_PINNED_AND_WHY with a reason, so a file added later is pinned by existing.",
+    "freeze_rehearsal.py": "Two changes. (1) The synthetic review it commits is written to study.REVIEW_DIR, "
+                           "for the same reason as freeze.py. (2) THE GATE IT RUNS IS THIS ROUND'S (review 1, "
+                           "blocker 2): round 2's named a suite, a mutation battery, two check_results modes, a "
+                           "round-1 regrade script and a clean-clone battery, none of which exists here, so the "
+                           "rehearsal could never have ended `all green`. It now runs the fourteen commands this "
+                           "round's own reviewer brief names, plus both earlier rounds' checkers.",
     "review_kit/commit_review.py": "A committed review lands in study.REVIEW_DIR beside its blindness record. Same "
                                    "reason as freeze.py; every assertion the file makes about the report is unchanged.",
     "takes.py": PATH_FIX + "The line printing the command that reads a committed row's session id named "

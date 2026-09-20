@@ -73,17 +73,20 @@ CARRIED = ("system_under_test", "harness", "budgets", "run_location", "rehearsal
 # `permission_mode` (the flag) exactly as round 2's did, and this round's own mode_binding.py reads the
 # recorded mode against the map below. A single value for the whole axis would route every take of that model
 # as a rehearsal and leave all six of its cells unmeasured.
-PERMISSION_MODE_EXPECTED = {
-    "claude-opus-5": "auto",
-    "claude-sonnet-5": "auto",
-    "claude-haiku-4-5-20251001": "default",
-}
+PERMISSION_MODE = "default"
+PERMISSION_MODE_EXPECTED = {m: PERMISSION_MODE for m in
+                            ("claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5-20251001")}
 PERMISSION_MODE_EXPECTED_WHY = (
-    "The mode each model's sessions are expected to RECORD, which is not the flag the driver passes. Every "
-    "take passes `--permission-mode auto`; the smallest model's sessions record `default` regardless, in "
-    "four of this round's four walks on it and in 34 of round 2's 36 transcripts of it. A take whose session "
-    "records something other than its model's value here is a rehearsal with reason `mode-drift`, read by "
-    "mode_binding.py. Every published cell prints the mode its sessions recorded.")
+    "The mode each model's sessions are expected to RECORD, which under this round's condition is also "
+    "the flag the driver passes. Round 2 passed `auto`; the smallest model's sessions recorded `default` "
+    "regardless, in 34 of round 2's 36 transcripts of it and in four of this round's four walks on it, so "
+    "round 2's axis carried two permission conditions and a difference between that model's counts and the "
+    "others' could still have been auto's classifier. Passing `default` across the axis makes the "
+    "pre-registered allowlist the entire permission surface, identically across the axis. A take whose "
+    "session records anything else is routed as a rehearsal with reason `constant-binding` by the copied "
+    "checker itself, which reads the ledger's `permission_mode` -- and the driver writes the RECORDED mode "
+    "there, so that byte-identical rule is an assertion about the session rather than a constant compared "
+    "with itself. mode_binding.py re-derives the same reading from the transcript independently.")
 
 # THE HARNESS DESCRIBING ITSELF. Two of this round's own leak words appear in text Claude Code puts in
 # front of EVERY session, about itself, in wording that has nothing to do with this study. Found before the
@@ -131,10 +134,11 @@ LIMITATIONS = [
     # -- carried in substance from the pre-study's six, re-scoped to round 3 --------------------------
     "The changed condition is a pre-registered list of admitted Bash commands, not the auto-mode classifier "
     "round 2's Sonnet and Opus ran under. Each take prints the permission mode its own transcript records.",
-    "Round 3 passes the allowlist AND `--permission-mode auto`, so for the two models whose round-2 sessions "
-    "recorded `auto`, round 3's condition is the MORE PERMISSIVE of the two: auto's classifier still applies "
-    "and the allowlist is added to it. Their cells are therefore not measured under round 2's condition "
-    "either, and nothing in this round is a like-for-like re-run of round 2 for any model.",
+    "Round 3 passes `--permission-mode default`, so auto's classifier does not run for any model and the "
+    "allowlist is the whole permission surface. For the two models whose round-2 sessions recorded `auto`, "
+    "this is the LESS permissive of the two conditions: a command outside the 22 entries that round 2's "
+    "classifier would have admitted for them is denied here. Nothing in this round is a like-for-like "
+    "re-run of round 2 for any model, and that is why its counts are never joined to round 2's.",
     "No session file records `--allowedTools`. A take's `allowed_tools` is the driver's own ledger entry, and "
     "the evidence that the harness applied the list is that the route's commands ran without a denial.",
     "An entry whose second token is `-c` or `-` lets the session under test run any program text the model "
@@ -263,8 +267,9 @@ def build(approved_by_owner: str | None = None, approved_at: str | None = None,
         "question": (
             "For the three tasks round 2 published as covered by no model -- "
             f"{', '.join(round2.TASKS)} -- on both halves and all three Claude models at n = {N}, how many "
-            "of three takes does each cell hold, measured under one permission condition pre-registered for "
-            "the whole model axis?"),
+            f"of three takes does each cell hold, measured with `--permission-mode {PERMISSION_MODE}` and "
+            "the same pre-registered list of admitted commands on every turn of every take, so that the "
+            "allowlist is the entire permission surface and it is identical across the model axis?"),
         "why": (
             "Round 2 passed `--permission-mode auto` to all three models. Its transcripts for these three "
             "tasks record `default` in all six of the smallest model's cells and `auto` in all twelve of the "
@@ -299,8 +304,8 @@ def build(approved_by_owner: str | None = None, approved_at: str | None = None,
         "driver_change": {
             "allowed_tools": [e["tool"] for e in derivation["entries"]],
             "flag": "--allowedTools",
-            "where": "every turn, appended to round 2's argv after the isolation flags; --permission-mode "
-                     "auto is still passed",
+            "where": f"every turn, appended to round 2's argv after the isolation flags; "
+                     f"--permission-mode {PERMISSION_MODE} is passed with it (Ruling 7)",
             "derived_by": f"{study.rel('allowlist.py')} --derive, from round 2's committed transcripts of "
                           f"these three tasks; the record is {study.rel('allowlist-derivation.json')}",
             "derivation_rules": [
@@ -319,12 +324,16 @@ def build(approved_by_owner: str | None = None, approved_at: str | None = None,
                 "the probe is read as having reached it whatever was denied earlier, and its denials are "
                 "printed beside it."),
             "permission_mode_binding": (
-                "The driver records in each take's ledger the permission mode THE SESSION RECORDED, read from "
-                "the take's own published transcript, and the mode it passed beside it as "
-                "`permission_mode_passed`. The copied checker's constant-binding rule reads the first, so a "
-                "take whose session recorded a mode other than the pre-registered one is routed as a "
-                "rehearsal with reason `constant-binding` -- round 2's reason id, which its own text already "
-                "covers, and the only id a byte-identical checker can emit."),
+                "The driver writes the mode THE SESSION RECORDED into the ledger's `permission_mode`, read "
+                "from the take's own published transcript, and keeps the flag it passed beside it as "
+                "`permission_mode_passed`. The copied checker's constant-binding rule reads "
+                "`permission_mode`, so a take whose session recorded anything other than "
+                f"`{PERMISSION_MODE}` is routed by THAT checker as a rehearsal with reason "
+                "`constant-binding` -- round 2's own reason id, whose recorded text already covers a "
+                "permission mode other than the pre-registered one, and the only id a byte-identical "
+                "checker can emit. There is one disposition and the copied checker applies it; "
+                "mode_binding.py re-derives the same reading from the transcript as a second, independent "
+                "check and never routes anything."),
             "approved_by_owner": approved_by_owner,
             "approved_at": approved_at,
             "approval_note": "Null until the owner gives it. The freeze refuses while it is null; the entries "
@@ -381,12 +390,17 @@ def build(approved_by_owner: str | None = None, approved_at: str | None = None,
     # driver_constants is round 2's, plus the one key Ruling 2 adds. It is built here rather than carried,
     # so `carried_from_round_2` stays honest about what is unchanged.
     draft["driver_constants"] = dict(r2["driver_constants"])
+    draft["driver_constants"]["permission_mode"] = PERMISSION_MODE
+    draft["driver_constants"]["permission_mode_round_2"] = r2["driver_constants"]["permission_mode"]
     draft["driver_constants"]["permission_mode_expected"] = dict(PERMISSION_MODE_EXPECTED)
     draft["driver_constants"]["permission_mode_expected_why"] = PERMISSION_MODE_EXPECTED_WHY
     draft["driver_constants_note"] = (
-        "Round 2's frozen driver_constants, carried key for key, plus permission_mode_expected and its why "
-        "(Ruling 2). permission_mode keeps round 2's meaning -- the flag the driver passes -- because the "
-        "copied checker reads it and is byte-identical.")
+        "Round 2's frozen driver_constants, carried key for key EXCEPT permission_mode, which this round "
+        f"sets to `{PERMISSION_MODE}` (Ruling 7); round 2's value is kept beside it as "
+        "permission_mode_round_2 so the change is visible rather than silent. permission_mode_expected and "
+        "its why are this round's own. The copied checker reads permission_mode and is byte-identical, and "
+        "the driver writes the mode the session RECORDED into the ledger field that rule compares, so the "
+        "rule asserts something about the session instead of comparing a constant with itself.")
     return draft
 
 

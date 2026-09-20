@@ -194,8 +194,10 @@ class TheDriverChangeIsWhatItSays(unittest.TestCase):
         """Every line round 2's driver had is still here, bar the one display string the manifest names."""
         import difflib
         removed = [l[2:].rstrip("\n") for l in difflib.ndiff(self.theirs, self.ours) if l.startswith("- ")]
-        self.assertEqual(len(removed), 1, f"removed lines: {removed}")
-        self.assertIn("check_take.py", removed[0])
+        self.assertEqual(len(removed), 2, f"removed lines: {removed}")
+        joined = " ".join(removed)
+        self.assertIn("check_take.py", joined)
+        self.assertIn('PERMISSION_MODE = "auto"', joined)
 
     def test_every_turn_passes_the_pre_registered_allowlist(self):
         text = "".join(self.ours)
@@ -610,8 +612,12 @@ class TheDraftIsBuiltNotWritten(unittest.TestCase):
                          "it gains a key, so claiming it is carried whole would be false")
         for k, v in r2["driver_constants"].items():
             with self.subTest(f"driver_constants.{k}"):
+                if k == "permission_mode":
+                    self.assertEqual(self.draft["driver_constants"][k], "default")
+                    self.assertEqual(self.draft["driver_constants"]["permission_mode_round_2"], v)
+                    continue
                 self.assertEqual(self.draft["driver_constants"][k], v,
-                                 "every key round 2 froze is still round 2's value")
+                                 "every other key round 2 froze is still round 2's value")
 
     def test_the_three_tasks_are_round_twos_own(self):
         import build_draft
@@ -659,7 +665,11 @@ class TheDraftIsBuiltNotWritten(unittest.TestCase):
         """Six cells whose transcripts recorded a mode other than the one passed, plus the one cell round 2
         published incomplete. Re-derived here from the same two sources, not from the draft."""
         import round2
-        passed = self.draft["driver_constants"]["permission_mode"]
+        # ROUND 2's constant, not this round's: the question is whether round 2's cell recorded what
+        # ROUND 2 passed. Reading this round's value here made six cells compare equal once ruling 7 set
+        # it to `default`, and the test silently stopped asking anything.
+        import build_draft
+        passed = build_draft.source_prereg()["driver_constants"]["permission_mode"]
         modes, counts = round2.cell_modes(), round2.cells()
         expected = set()
         for task in round2.TASKS:
@@ -691,7 +701,7 @@ class TheDraftIsBuiltNotWritten(unittest.TestCase):
     def test_the_limitations_carry_the_three_the_goal_names(self):
         text = " ".join(self.draft["limitations_lines"]).lower()
         self.assertIn("no session file records", text)
-        self.assertIn("more permissive", text)
+        self.assertIn("less permissive", text)
         self.assertIn("later date", text)
         self.assertGreaterEqual(len(self.draft["limitations_lines"]), 6)
 
@@ -821,11 +831,12 @@ class TheLeakVerdictIsDecidedAtPathBoundaries(unittest.TestCase):
             d = json.loads((w.parent / "driver-ledger.json").read_text())
             with self.subTest(f"{d['task']}/{d['half']}/{d['model_requested']}"):
                 self.assertIn(d.get("permission_mode"), ("auto", "default", "unrecorded"))
-                self.assertEqual(d.get("permission_mode_passed"), "auto")
                 self.assertEqual(len(d.get("allowed_tools") or []), 22)
                 seen.add((d["model_requested"], d["permission_mode"]))
-        self.assertIn(("claude-haiku-4-5-20251001", "default"), seen,
-                      "the smallest model records default where auto is passed; the walks must show it")
+        # The five walks committed so far were driven under ruling 2, with `auto` passed; review 1 raised
+        # that as a SHOULD and ruling 7 makes it load-bearing. Walks under `default` come next, so this
+        # asserts what each ledger records rather than a constant that has since moved.
+        self.assertIn(("claude-haiku-4-5-20251001", "default"), seen)
 
     def test_no_walk_met_a_denial(self):
         """What the permission condition is for. A denial here would be the condition, not the model."""
@@ -869,8 +880,9 @@ class TheModeBindingIsAnAssertionRoundTwoCouldNotMake(unittest.TestCase):
         for m in prereg.load()["models"]:
             with self.subTest(m):
                 self.assertIn(m, exp, "a model with no expected mode could not be held to anything")
-        self.assertEqual(len(set(exp.values())), 2,
-                         "the expectation is per model because the models differ; one value would not be")
+        import prereg as _pr
+        self.assertEqual(set(exp.values()), {_pr.load()["driver_constants"]["permission_mode"]},
+                         "ruling 7: one condition across the axis means one expected value")
 
     def test_the_mode_is_re_derived_here_not_read_from_the_ledger(self):
         """A checker that read the driver's own field would be checking the driver against itself."""
@@ -886,6 +898,10 @@ class TheModeBindingIsAnAssertionRoundTwoCouldNotMake(unittest.TestCase):
                 self.assertEqual(r["problems"], [])
         self.assertIn("default", {r["recorded"] for r in got})
         self.assertIn("auto", {r["recorded"] for r in got})
+        # Ruling 7 replaced the condition these five were driven under, so each is reported as superseded
+        # rather than graded, and the run says so out loud rather than counting a pass over them.
+        self.assertTrue(all(r["superseded"] for r in got),
+                        "a walk driven before the design pinned an expectation is not graded against it")
 
     def test_the_smallest_model_records_default_where_auto_is_passed(self):
         """The finding, stated as a fact about this round's own sessions rather than the pre-study's."""
@@ -897,46 +913,42 @@ class TheModeBindingIsAnAssertionRoundTwoCouldNotMake(unittest.TestCase):
                 self.assertEqual(r["recorded"], "default")
 
     def test_a_session_recording_the_wrong_mode_turns_it_red(self):
-        """Mutate a transcript's own record and watch the binding fail, through its own reader."""
-        import shutil
-        walk = self.mb.attempts(walks=True)[0]
-        backup = walk.read_bytes()
-        try:
-            walk.write_text(walk.read_text(errors="replace")
-                            .replace('"permissionMode":"default"', '"permissionMode":"auto"')
-                            .replace('"permissionMode": "default"', '"permissionMode": "auto"'))
-            after = self.mb.mode_of(walk)
-            if after == "default":
-                self.skipTest("this walk's transcript spells the record another way")
-            rows = {r["attempt"]: r for r in self.mb.rows(walks=True)}
-            hit = rows[str(walk.parent.relative_to(HERE))]
-            self.assertTrue(hit["problems"], "a drifted mode passed the binding")
-        finally:
-            walk.write_bytes(backup)
-        self.assertEqual(walk.read_bytes(), backup, "the mutation must be reverted byte for byte")
+        """Driven on synthetic input, so it keeps biting when every committed session is superseded --
+        which is the state that made this mutation pass over nothing once already."""
+        exp = self.mb.expected()
+        ledger = {"model_requested": "claude-sonnet-5", "permission_mode_expected": "default",
+                  "permission_mode_passed": "default"}
+        sup, ok = self.mb.judge(ledger, "default", exp, walks=False)
+        self.assertFalse(sup)
+        self.assertEqual(ok, [], "the honest case must pass, or the mutation proves nothing")
+        sup, bad = self.mb.judge(ledger, "auto", exp, walks=False)
+        self.assertTrue(any("is pinned to record" in p for p in bad), bad)
 
     def test_a_ledger_that_disagrees_with_its_transcript_turns_it_red(self):
-        walk = self.mb.attempts(walks=True)[0]
-        ledger = walk.parent / "driver-ledger.json"
-        backup = ledger.read_bytes()
-        try:
-            d = json.loads(backup)
-            d["permission_mode_recorded"] = "auto" if self.mb.mode_of(walk) != "auto" else "default"
-            ledger.write_text(json.dumps(d, indent=2) + "\n")
-            rows = {r["attempt"]: r for r in self.mb.rows(walks=True)}
-            hit = rows[str(walk.parent.relative_to(HERE))]
-            self.assertTrue(any("publishes" in p for p in hit["problems"]),
-                            f"a ledger contradicting its transcript passed: {hit['problems']}")
-        finally:
-            ledger.write_bytes(backup)
-        self.assertEqual(ledger.read_bytes(), backup)
+        exp = self.mb.expected()
+        ledger = {"model_requested": "claude-sonnet-5", "permission_mode_expected": "default",
+                  "permission_mode_recorded": "auto"}
+        _, bad = self.mb.judge(ledger, "default", exp, walks=False)
+        self.assertTrue(any("publishes" in p for p in bad), bad)
+
+    def test_a_take_is_never_excused_as_superseded(self):
+        """The supersession is a walk's relief, never a take's: a take with no recorded expectation is a
+        take the driver did not bind, and that must not read as 'not graded'."""
+        exp = self.mb.expected()
+        ledger = {"model_requested": "claude-sonnet-5"}
+        sup, bad = self.mb.judge(ledger, "auto", exp, walks=False)
+        self.assertFalse(sup, "a take may not be waved through as superseded")
+        self.assertTrue(bad)
+        sup, _ = self.mb.judge(ledger, "auto", exp, walks=True)
+        self.assertTrue(sup)
 
     def test_the_draft_carries_the_expectation_and_says_why(self):
         import prereg
         dc = prereg.load()["driver_constants"]
         self.assertIn("permission_mode_expected", dc)
         self.assertIn("permission_mode_expected_why", dc)
-        self.assertEqual(dc["permission_mode"], "auto", "the carried field keeps round 2's meaning")
+        self.assertEqual(dc["permission_mode"], "default", "ruling 7: one condition across the axis")
+        self.assertEqual(dc["permission_mode_round_2"], "auto", "round 2's value stays visible")
 
     def test_both_owner_gates_are_closed(self):
         import prereg
@@ -1130,6 +1142,104 @@ class TheCompletenessCheckCountsAgainstThePlan(unittest.TestCase):
             self.skipTest("the study is frozen")
         r = run(str(HERE / "completeness.py"), "--check")
         self.assertIn("not applicable — not frozen", r.stdout)
+
+
+# ---------------------------------------------------------------------------------------------
+# What review 1's four blockers were, driven so none can come back
+
+
+class ReviewOneBlockersStayFixed(unittest.TestCase):
+    def test_blocker_1_the_held_count_is_the_graders_not_the_take_count(self):
+        """A cell with three graded takes and one correct verdict must publish 1, not 3."""
+        import result
+        held = {("t", "positive", "m"): {"k": 1, "n": 3, "state": "RAN",
+                                         "labels": ["correct", "wrong", "wrong"]}}
+        g = {("t", "positive", "m"): {"takes": ["1", "2", "3"], "modes": {"default"}}}
+        import prereg
+        c = result.cell_state(("t", "positive", "m"), g, {}, {}, prereg.load(), held)
+        self.assertEqual(c["state"], "complete")
+        self.assertEqual(c["held"], 1, "the held count must come from the graders")
+        self.assertEqual(c["graded"], 3, "the take count is the denominator, not the answer")
+        page = result.render({"planned_cells": 1, "planned_takes": 3, "graded_takes": 3,
+                              "complete_cells": 1, "cells": [c],
+                              "round_two": result.round_two_table(), "amendments": []})
+        self.assertIn("| 1 of 3 |", page)
+        self.assertNotIn("| 3 of 3 | 3 of 3 |", page)
+
+    def test_blocker_1_a_complete_cell_with_no_grader_count_turns_it_red(self):
+        import result
+        import prereg
+        g = {("t", "positive", "m"): {"takes": ["1", "2", "3"], "modes": set()}}
+        c = result.cell_state(("t", "positive", "m"), g, {}, {}, prereg.load(), {})
+        bad = result.structural_problems({"cells": [c], "round_two": {"rows": []}})
+        self.assertTrue(any("publishes no held count" in p for p in bad), bad)
+
+    def test_blocker_2_every_pin_exists_and_this_rounds_own_guards_are_pinned(self):
+        fz = load_module("round3_freeze_for_pins", HERE / "freeze.py")
+        missing = [p for p in fz.PINNED if not (REPO / p).is_file()]
+        self.assertEqual(missing, [], f"a missing pin makes the freeze exit 1: {missing}")
+        own = {p.rsplit("/", 1)[-1] for p in fz.PINNED if study.STUDY_REL in p}
+        for guard in ("result.py", "mode_binding.py", "completeness.py", "lint_pooling.py",
+                      "test_round3.py", "allowlist.py", "round2.py", "fixture_walk.py", "leak_grep.py",
+                      "build_draft.py", "copy_manifest.py", "study.py", "COPIED.json",
+                      "allowlist-derivation.json"):
+            with self.subTest(guard):
+                self.assertIn(guard, own, "unpinned, it could be edited after the freeze unnoticed")
+
+    def test_blocker_2_a_new_file_is_pinned_by_existing(self):
+        """The list is derived, so the way it went stale between two rounds cannot recur."""
+        fz = load_module("round3_freeze_for_derive", HERE / "freeze.py")
+        probe = HERE / "zzz_probe_for_pin_derivation.py"
+        try:
+            probe.write_text("# a file that did not exist when the list was written\n")
+            fresh = load_module("round3_freeze_rederive", HERE / "freeze.py")
+            self.assertIn(study.rel(probe.name), fresh.PINNED)
+        finally:
+            probe.unlink(missing_ok=True)
+        self.assertNotIn(study.rel("zzz_probe_for_pin_derivation.py"), fz.PINNED)
+
+    def test_blocker_2_the_rehearsal_runs_only_commands_that_exist(self):
+        src = (HERE / "freeze_rehearsal.py").read_text()
+        import re as _re
+        named = set(_re.findall(r'f"\{S\}/([\w/]+\.(?:py|sh))"', src))
+        self.assertGreater(len(named), 10)
+        missing = sorted(n for n in named if not (HERE / n).is_file())
+        self.assertEqual(missing, [], f"the rehearsal cannot end all-green while it names these: {missing}")
+
+    def test_blocker_3_one_disposition_and_the_copied_checker_applies_it(self):
+        import prereg
+        pre = prereg.load()
+        want = pre["driver_constants"]["permission_mode"]
+        self.assertEqual(want, "default")
+        self.assertEqual(set(pre["driver_constants"]["permission_mode_expected"].values()), {want},
+                         "one condition across the axis means one expected value")
+        binding = pre["driver_change"]["permission_mode_binding"]
+        self.assertIn("constant-binding", binding)
+        self.assertNotIn("mode-drift", binding, "a reason id the carried list does not have")
+        self.assertIn("constant-binding", pre["rehearsal_reasons"])
+        for r in pre["driver_constants"]["permission_mode_expected_why"], binding:
+            self.assertNotIn("mode-drift", r)
+
+    def test_blocker_3_the_driver_writes_the_recorded_mode_where_the_checker_reads(self):
+        drive_src = (HERE / "drive.py").read_text()
+        self.assertIn('ledger["permission_mode"] = recorded', drive_src)
+        self.assertIn('ledger.get("permission_mode") != want_mode', (HERE / "check_take.py").read_text())
+
+    def test_blocker_4_the_question_claims_what_the_design_delivers(self):
+        import prereg
+        pre = prereg.load()
+        q = pre["question"]
+        self.assertIn("default", q)
+        self.assertNotIn("one permission condition pre-registered for the whole model axis", q)
+        self.assertEqual(pre["driver_constants"]["permission_mode"], "default")
+        drive_src = (HERE / "drive.py").read_text()
+        self.assertIn('PERMISSION_MODE = "default"', drive_src)
+
+    def test_blocker_4_the_limitation_now_says_less_permissive(self):
+        import prereg
+        text = " ".join(prereg.load()["limitations_lines"]).lower()
+        self.assertIn("less permissive", text)
+        self.assertNotIn("more permissive", text)
 
 
 # ---------------------------------------------------------------------------------------------

@@ -17,7 +17,7 @@
       "source": "evals/gap-study-2/drive.py",
       "source_blob": "16b35c4beb41238784236362133c91bad56ce7ad",
       "source_sha256": "b4417a94157425ea5359105a31fac36d63cb0df9492b2e8316e263f6cdef4f8f",
-      "copy_sha256": "b707fcbe95d94cbc76c8ef7ef1092fc36e33040576b165b22ee44f143004f6f2",
+      "copy_sha256": "868bc6f2ec600620e90b872a80425d0c4ce44148e8091b481cdb7c860513c558",
       "edited": true,
       "why": "Three changes, each named in the file's own docstring. (1) Every turn passes --allowedTools with the pre-registration's driver_change.allowed_tools and the ledger records them: the one permission condition across the model axis. (2) The ledger records the mode the SESSION recorded, read from the take's own published transcript, as permission_mode_recorded, beside the flag that was passed. Round 2 recorded only the flag, in the field its own constant-binding rule compared with the pre-registration's copy of the same constant -- a constant compared with itself. permission_mode keeps round 2's meaning, so the byte-identical checker keeps reading what round 2's did; the recorded mode is asserted by this round's own mode_binding.py against the per-model expectation the pre-registration pins (Ruling 2, 20 September 2026). (3) One display string that spelled round 2's folder into a rehearsal's WHY.md takes its path from study.py, as round 2's own design says a path must."
     },
@@ -107,18 +107,18 @@
       "source": "evals/gap-study-2/freeze.py",
       "source_blob": "d1dbffc2b8fb9dcc43a857e21f5d60b2ccec1bf1",
       "source_sha256": "0328d4bd71c1f68abbc95cfff85353219eec09cd5b35a4166da2896c462c85fc",
-      "copy_sha256": "ece6a0ebe0eaf21042a15bb4ed0d5a1bd018ed67fff7499cd6cb489ae13cb54e",
+      "copy_sha256": "164db88d14a3d313603c21eb3db6d275cff4936965848cf8e4c6743b4fbc6b91",
       "edited": true,
-      "why": "Three call sites take the pre-freeze review folder from study.REVIEW_DIR instead of the literal `verification`: the tree-binding exclusion, the review-commit rule and its latest-review scan. Round 3 keeps pre-freeze reviews and final verifications in separate folders so a fresh run counts each from `ls` alone. No rule changes; only where each rule looks."
+      "why": "Two changes. (1) Three call sites take the pre-freeze review folder from study.REVIEW_DIR instead of the literal `verification`: the tree-binding exclusion, the review-commit rule and its latest-review scan, because this round keeps pre-freeze reviews and final verifications in separate folders. No rule changes; only where each rule looks. (2) THE PIN LIST IS DERIVED rather than carried (review 1, blocker 2): six of round 2's paths do not exist here and a missing pin exits 1, so the freeze could not have run, and its globs matched none of this round's own guards, so after a freeze any of them could have been edited with the result checker staying clean. Every code and data file this study owns is now pinned unless it is named in NOT_PINNED_AND_WHY with a reason, so a file added later is pinned by existing."
     },
     {
       "path": "evals/gap-study-3/freeze_rehearsal.py",
       "source": "evals/gap-study-2/freeze_rehearsal.py",
       "source_blob": "6a6621a242240d074bfc841845ec6034f9f67276",
       "source_sha256": "3a8250fe3cc72a515456f6521c211e4abe57f5daac2ad39a81ec1c400abcca0d",
-      "copy_sha256": "7c1da7da327486d4b63ed9b415804599a57074ae7faba30905c5a17bdb3994c7",
+      "copy_sha256": "02f9f95954e891f9460f5fe6e970baa579dacaf4aa760c66ee0fb7061833a2d5",
       "edited": true,
-      "why": "The synthetic review the rehearsal commits is written to study.REVIEW_DIR, so the rehearsal exercises the same path the real freeze reads. Same reason as freeze.py."
+      "why": "Two changes. (1) The synthetic review it commits is written to study.REVIEW_DIR, for the same reason as freeze.py. (2) THE GATE IT RUNS IS THIS ROUND'S (review 1, blocker 2): round 2's named a suite, a mutation battery, two check_results modes, a round-1 regrade script and a clean-clone battery, none of which exists here, so the rehearsal could never have ended `all green`. It now runs the fourteen commands this round's own reviewer brief names, plus both earlier rounds' checkers."
     },
     {
       "path": "evals/gap-study-3/scratch_git.py",
@@ -188,7 +188,7 @@
       "source": "evals/gap-study-2/copy_manifest.py",
       "source_blob": "459d8dbf840ce3f3bed8df852e4855c3939aa0d0",
       "source_sha256": "b95a8be431e5acbae5ea3894850c5c6e87f9989df45a3f8af1a92ee57dd52811",
-      "copy_sha256": "0efffad29dfba35f403eafbf49a33db3f891aa61ce0e8cc63ebe35ee82de3e01",
+      "copy_sha256": "fd9a095f170d95aea0bab0772f10369bc834d346e7b504bec6f1fa08f3b6ffb5",
       "edited": true,
       "why": "Its own constants: this study's file list, its edit reasons, the commits it pins the earlier studies at, and the byte-identical set the goal file names."
     },

@@ -63,20 +63,21 @@ evals/gap-study-2/drive.py at bf065fe with three changes, and nothing else moves
      its stage-00 commands were denied by the harness. The allowlist gives every model the same
      working permission condition. `--permission-mode auto` is still passed.
 
-  2. The ledger records the mode THE SESSION RECORDED, read from the take's own published
-     transcript, as `permission_mode_recorded`, beside the flag that was passed. Round 2 recorded
-     only the flag, in a field its own constant-binding check compared with the pre-registration's
-     copy of the same constant -- a constant compared with itself, which could not see the mismatch
-     the pre-study found.
+  2. The ledger's `permission_mode` is the mode THE SESSION RECORDED, read from the take's own
+     published transcript, with the flag that was passed kept beside it as `permission_mode_passed`
+     and the same reading repeated as `permission_mode_recorded` for this round's own checker.
 
-     `permission_mode` keeps round 2's meaning (the flag passed), so the byte-identical checker
-     keeps reading what round 2's did. The recorded mode is asserted instead by this round's own
-     mode_binding.py, against a per-model expectation the pre-registration pins
-     (`driver_constants.permission_mode_expected`). RULING 2, 20 September 2026: the smallest model
-     records `default` whatever flag is passed -- four walks of four -- so a single expected value
-     for the whole axis would route every one of its takes as a rehearsal and leave all six of its
-     cells unmeasured. The assertion is kept and made per model rather than dropped; it is an
-     assertion round 2 could not make at all.
+     Round 2 wrote the flag into that field, and its own constant-binding rule compared it with the
+     pre-registration's copy of the same constant -- a constant compared with itself, which could
+     not fail and did not see the mismatch the pre-study found. Writing the RECORDED mode there
+     makes check_take.py's byte-identical rule a real assertion: a take whose session recorded
+     anything other than the pre-registered mode is routed as a rehearsal with reason
+     `constant-binding`, by the copied checker, with no help from this round.
+
+     RULING 2 (superseded) made that expectation per model, because the axis then carried two modes
+     and a single value would have routed every take of the smallest model as a rehearsal. RULING 7
+     removes the reason: `default` is passed to every model and every model is expected to record
+     it, so one value covers the axis and the copied checker can carry the rule itself.
 
   3. One display string that spelled `evals/gap-study-2/check_take.py` into a rehearsal's WHY.md
      now takes the path from study.py, as round 2's own design says a path must.
@@ -115,7 +116,12 @@ import scrub as scrub_mod  # noqa: E402
 # day gars/ moved (Ruling 38); the draft's `head_readers` lists this line.
 DEFAULT_AT = "HEAD"
 
-PERMISSION_MODE = "auto"
+# RULING 7, 20 September 2026. `default` on every turn of every take, for every model. Round 2 passed
+# `auto` and the smallest model's sessions recorded `default` anyway, so the axis carried two conditions
+# and a difference between that model's counts and the others' could still be auto's classifier. Under
+# `default` the pre-registered allowlist is the ENTIRE permission surface, identically for all three, which
+# is what makes this round's question true rather than merely softened. Review 1, blocker 4.
+PERMISSION_MODE = "default"
 # The first study's constant, carried with its then-step: how long the driver waits for stage 00's
 # finalize to write samples.csv before the design table is copied in. Pre-registered in
 # driver_constants.finalize_wait_s; the value read at run time is the frozen file's.
@@ -1377,11 +1383,14 @@ def main() -> int:
     if src is not None:
         ledger["published"] = publish_transcript(src, out_root)
         ledger["transcript"] = display_path(out_root / "transcript.jsonl")
-        # ROUND 3, change 2 (Ruling 2). What the session RECORDED, beside what was passed. The
-        # copied checker reads `permission_mode`, which keeps round 2's meaning; mode_binding.py
-        # reads this one against the pre-registration's per-model expectation.
-        ledger["permission_mode_recorded"] = mode_recorded(out_root / "transcript.jsonl")
+        # ROUND 3, change 2 (Rulings 2 and 7). What the session RECORDED, over what was passed. The
+        # copied checker reads `permission_mode`, so from here its constant-binding rule is an
+        # assertion about the session rather than about a flag.
+        recorded = mode_recorded(out_root / "transcript.jsonl")
+        ledger["permission_mode"] = recorded
+        ledger["permission_mode_recorded"] = recorded
     else:
+        ledger["permission_mode"] = "unrecorded"
         ledger["permission_mode_recorded"] = "unrecorded"
         ledger["transcript"] = None
         ledger["outcome"] = (ledger["outcome"] or "") + f" — no session file for {session_id}"

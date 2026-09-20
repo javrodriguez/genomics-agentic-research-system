@@ -55,65 +55,49 @@ FROZEN = HERE / "prereg.json"
 # Round 2, CP0 (plan amendment A4): every study path here is THIS study's, built by study.rel. This
 # list, not the draft, is what builds pinned_files; left on round 1 it would pin round 1's unchanged
 # graders while round 2 grades with its own. EveryPinnedPathIsRoundTwos refuses a round-1 path here.
-PINNED = [
-    study.rel("graders", "labels.py"),
-    study.rel("graders", "template_adherence.py"),
-    study.rel("graders", "precondition_refusal.py"),
-    study.rel("graders", "number_fidelity.py"),
-    study.rel("graders", "scope_read.py"),
-    study.rel("graders", "plan_gate.py"),
-    study.rel("fixtures", "gen_source.py"),
-    study.rel("fixtures", "gen_project.py"),
-    study.rel("fixtures", "copy_project.py"),
-    study.rel("fixtures", "check_fixture.py"),
-    study.rel("fixtures", "symbol_rulings.json"),
-    study.rel("contract_quotes.json"),
-    study.rel("controls", "results.json"),
-    # ROUND 2, CP8, review 1 follow-up: the tests, the battery, the lexicons, the case suites, the round-1 regrade
-    # scripts and records, the kit and the freeze tooling; an edit to any of them after the freeze changed what the
-    # suite or the battery reported while check_results.py stayed clean. environment.json is not here: the freeze
-    # commit rewrites it against the frozen file after the pins are read, and its own script re-derives it.
-    *sorted(study.rel(p.relative_to(HERE).as_posix())
-            for pattern in ("tests_*.py", "mutations*.py", "lexicons/*.json", "cases/round-2/*.json", "review_kit/*.py",
-                            "controls/*.py", "verification/round1-regrade/*.py", "verification/round1-regrade/*.json")
-            for p in HERE.glob(pattern) if p.name != "environment.json"),
-    study.rel("freeze.py"),
-    study.rel("freeze_rehearsal.py"),
-    study.rel("scratch_git.py"),
-    study.rel("clean_clone_battery.sh"),
-    study.rel("commit_msg.py"),
-    study.rel("scrub.py"),
-    study.rel("run.py"),
-    study.rel("analyse.py"),
-    study.rel("check_take.py"),
-    study.rel("drive.py"),
-    study.rel("lint_language.py"),
-    study.rel("graders", "confounded_design.py"),
-    # the machinery a stranger runs, and the guards that decide what it may say
-    study.rel("prereg.py"),
-    study.rel("takes.py"),
-    study.rel("contracts.py"),
-    study.rel("check_results.py"),
-    study.rel("costs.py"),
-    study.rel("build_cases.py"),
-    study.rel("test_harness.py"),
-    study.rel("mutations.py"),
-    study.rel("controls", "run_controls.py"),
-    study.rel("smoke_run_tree.py"),
-    study.rel("scrub.py"),
-    # the excusals. Unpinned, anything could be excused after the freeze and the guard would still
-    # report clean.
-    study.rel("language-allowlist.json"),
-    # what the frozen file was frozen FROM
-    study.rel("prereg-draft.json"),
-    # the instruction file every take loads at its checkout's root, bound by content (review 14)
+# ROUND 3, REVIEW 1 BLOCKER 2. Round 2's pin list was carried here byte for byte. Six of its paths do not
+# exist in this round, and a missing pin makes the freeze exit 1, so `freeze.py --write` could not have run
+# at all; worse, its globs `tests_*.py` and `mutations*.py` matched nothing here, so NONE of this round's
+# own guards was pinned and any of them could have been edited after the freeze with check_results.py
+# staying clean.
+#
+# So the list is DERIVED rather than typed. Every code and data file in this study's folder is pinned
+# unless it is named in NOT_PINNED_AND_WHY with a reason, and a file added later is pinned by existing.
+# A hand-written list is exactly the thing that went stale between two rounds; this one cannot.
+RECORD_ROOTS = ("transcripts", "rehearsals", "pauses", "results", "__pycache__")
+PINNED_SUFFIXES = (".py", ".json", ".sh")
+
+
+def _study_files() -> list[str]:
+    """Every code and data file this study owns, minus the records a take writes and the two the freeze
+    writes itself. The walks ARE pinned: the freeze rests on their leak verdicts."""
+    out = []
+    for f in sorted(HERE.rglob("*")):
+        if not f.is_file() or f.suffix not in PINNED_SUFFIXES:
+            continue
+        rel = f.relative_to(HERE).as_posix()
+        if rel.split("/")[0] in RECORD_ROOTS:
+            continue
+        out.append(study.rel(rel))
+    return out
+
+
+# What the freeze does NOT pin, and why. Anything not here is pinned.
+NOT_PINNED_AND_WHY = {
+    study.rel("freeze.py"): "it runs to produce the pins, so whatever it recorded about itself would be "
+                            "the state before it finished writing; the freeze commit's own sha fixes it",
+    study.rel("prereg.json"): "it is the file being written",
+    study.rel("review_kit/rounds.json"): "the register is append-only and gains a row per later round",
+}
+
+PINNED = [f for f in _study_files() if f not in NOT_PINNED_AND_WHY] + [
+    # the instruction file every take loads at its checkout's root, bound by content (round 2, review 14)
     "CLAUDE.md",
-    # the first study's shared readers, imported rather than copied
+    # the shared readers, imported rather than copied
     "evals/transcript.py",
     "evals/stated_count.py",
     # the first study's own files the carried task rests on: its driver (the source of the carried
-    # script), generator, neutraliser, rank check, classifier, case suite and take map. The first
-    # study pins most of these itself; pinning them here too means THIS checker goes red if they move.
+    # script), generator, neutraliser, rank check, classifier, case suite and take map.
     "evals/drive.py",
     "evals/fixtures/gen_fastq.py",
     "evals/fixtures/neutralise.py",
