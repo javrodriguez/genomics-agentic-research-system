@@ -99,6 +99,8 @@ python3 evals/gap-study-2/analyse.py                           # the pre-registe
 
 The pre-registration carries its amendments in `amendments[]`, each with every changed file's hash before and after, and each written up in [`evals/gap-study-2/PROTOCOL.md`](../evals/gap-study-2/PROTOCOL.md). Four blind reviews preceded the freeze; their reports are under [`evals/gap-study-2/verification/`](../evals/gap-study-2/verification/) as committed.
 
+A pre-study after this round asked whether the smallest model's zeros here were the harness rather than the model: with one pre-registered change, a Bash allowlist on every turn, `claude-haiku-4-5-20251001` reached the probe in two of three takes of `number-fidelity`/positive, where this round recorded none of three. Its pre-registration, takes, result and verifications are in [`evals/haiku-prestudy/`](../evals/haiku-prestudy/RESULT.md); it is a pre-study with a changed driver and its takes are never pooled with this round's.
+
 <!-- /gap-study-2 -->
 
 # The Gap Study
