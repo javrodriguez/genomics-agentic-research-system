@@ -188,7 +188,7 @@
       "source": "evals/gap-study-2/copy_manifest.py",
       "source_blob": "459d8dbf840ce3f3bed8df852e4855c3939aa0d0",
       "source_sha256": "b95a8be431e5acbae5ea3894850c5c6e87f9989df45a3f8af1a92ee57dd52811",
-      "copy_sha256": "8c935cd4f413a90375c1d61608b5ee8fd48168c6016c0bf9f8a30f7dbee3fbc7",
+      "copy_sha256": "224edd96bf8a0f872fd3f6471abacaf41f4e017079c555bf700ced01120d94bf",
       "edited": true,
       "why": "Its own constants: this study's file list, its edit reasons, the commits it pins the earlier studies at, and the byte-identical set the goal file names."
     },
@@ -368,9 +368,9 @@
       "source": "evals/gap-study-2/review_kit/blindness.py",
       "source_blob": "cdf7fa93ea0cd2e82e479a6e50e857b6864e37e9",
       "source_sha256": "2e00cd5f52053037688a72d8b700a35b0e53194a83ac13badc37627acc059449",
-      "copy_sha256": "d20dd97884967e39aa2ee108136b02166640056c23bb33d841dafc19c3f6d045",
+      "copy_sha256": "67e85c7c6008247957eaf6304d015609990f475fc482b674a2c7f9d138265102",
       "edited": true,
-      "why": "The markers name this study (`gars-eval-v4`, `gap-study-3`, `round 3`) and keep round 2's and the pre-study's, since operator memory that names either is still a leak."
+      "why": "The markers name this study (`gars-eval-v4`, `gap-study-3`, `round 3`) and keep round 2's and the pre-study's, since operator memory that names either is still a leak. The record also names the session id it read, which is what rounds.py --check holds a committed round to; it goes here because the report is committed unedited and because naming the session a blindness check read is what a blindness check is for."
     },
     {
       "path": "evals/gap-study-3/review_kit/build_kit.py",
@@ -386,9 +386,9 @@
       "source": "evals/gap-study-2/review_kit/launch.py",
       "source_blob": "da8c38b2b8ba35971995acfa60753232e3002bcd",
       "source_sha256": "55089d6eb60472d1875aa737134c76c32f1e71dc4b2cb1a75dd410bd577e9a8b",
-      "copy_sha256": "55089d6eb60472d1875aa737134c76c32f1e71dc4b2cb1a75dd410bd577e9a8b",
-      "edited": false,
-      "why": null
+      "copy_sha256": "2e191138fc76d737f436024d268ebd159764e3374f0109ed838faa3ada72f867",
+      "edited": true,
+      "why": "The session id may be given as a second argument instead of drawn fresh. Round 2 drew a uuid4 here, so a reviewer's session was tied to nothing and a run could open several and commit the ones it liked. Round 3 passes the id its round register derives as uuid5 of the row's commit; the uuid4 default stays, and what makes the binding hold is rounds.py --check rather than this file."
     },
     {
       "path": "evals/gap-study-3/review_kit/commit_review.py",

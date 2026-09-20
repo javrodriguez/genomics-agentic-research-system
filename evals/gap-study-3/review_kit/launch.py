@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Launch a blind pre-freeze reviewer, headless, from a review folder outside the Brain.
 
-    python3 evals/gap-study-2/review_kit/launch.py <review folder>
+    python3 evals/gap-study-3/review_kit/launch.py <review folder> [<session id>]
 
 The folder is built by build_kit.py: BRIEF.md, why.md, prereg.json, the previous review's bytes if any, and `study/`,
 a full-history clone of this repository with NO remote. This launcher:
@@ -78,7 +78,7 @@ def env_for(drive) -> dict:
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
+    if not 2 <= len(sys.argv) <= 3:
         print(__doc__.split("\n")[2].strip())
         return 2
     folder = Path(sys.argv[1]).resolve()
@@ -87,7 +87,14 @@ def main() -> int:
         print("refusing to launch: " + "; ".join(problems))
         return 2
     drive = load_drive()
-    sid = str(uuid.uuid4())
+    # ROUND 3. The session id may be GIVEN, and for this round it always is: rounds.py derives it as
+    # uuid5 of the commit that introduced the round's row, exactly as a take's is of its ledger row's
+    # commit. Round 2 drew a fresh uuid4 here, so a reviewer's session was tied to nothing -- a run could
+    # open four reviewers and commit the two it liked, and the record would look the same either way.
+    # The uuid4 default is kept so this file still behaves as round 2's did when no id is passed; what
+    # makes the binding hold is rounds.py --check, which refuses a committed report that does not record
+    # the id its row derives.
+    sid = sys.argv[2] if len(sys.argv) == 3 else str(uuid.uuid4())
     side = folder.parent / (folder.name + "-launch")
     side.mkdir(exist_ok=True)
     (side / "SESSION").write_text(sid + "\n")

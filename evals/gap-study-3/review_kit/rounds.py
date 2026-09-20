@@ -140,6 +140,11 @@ def report_path(row: dict) -> Path:
     return STUDY_DIR / folder / name.format(n=row["n"])
 
 
+def blindness_path(row: dict) -> Path:
+    """The blindness record committed beside the report, which names the session it read."""
+    return report_path(row).with_name(report_path(row).stem + "-blindness.txt")
+
+
 def committed(path: Path) -> bool:
     rel = str(path.relative_to(REPO))
     return subprocess.run(["git", "-C", str(REPO), "cat-file", "-e", f"HEAD:{rel}"],
@@ -206,6 +211,7 @@ def check() -> int:
     rows = load()
     problems, notes = [], []
     prompt = sha256_bytes(BRIEF.read_bytes()) if BRIEF.is_file() else None
+    commits = row_commits()
     for i, r in enumerate(rows):
         if r.get("voided_by"):
             continue
@@ -213,6 +219,25 @@ def check() -> int:
         if not committed(rep):
             problems.append(f"{r['kind']} round {r['n']} is OPEN: {rep.relative_to(REPO)} is not committed. "
                             f"An open round blocks the freeze and DONE.")
+        else:
+            # THE BINDING, ENFORCED HERE RATHER THAN AT LAUNCH. The launcher can be given any session id,
+            # or none; what makes the row mean something is that the COMMITTED report records the id this
+            # row derives. A reviewer opened under any other id did not review for this row, and a run
+            # that opened four and kept two cannot produce a report that satisfies this.
+            sha = commits.get(i)
+            if sha is None:
+                problems.append(f"{r['kind']} round {r['n']} has a committed report but its own row is not "
+                                f"committed, so no session id can be derived for it")
+            else:
+                want = session_id_for(sha)
+                blind = blindness_path(r)
+                if not blind.is_file():
+                    problems.append(f"{blind.relative_to(REPO)} is missing: the report is committed and "
+                                    f"its blindness record is not, so nothing binds it to its row")
+                elif want not in blind.read_text(errors="replace"):
+                    problems.append(
+                        f"{blind.relative_to(REPO)} does not name the session id this row derives "
+                        f"({want}). The reviewer it read was not the one this row registered.")
         if prompt and r["prompt_sha256"] != prompt:
             problems.append(f"{r['kind']} round {r['n']} was launched on a prompt whose sha256 is "
                             f"{r['prompt_sha256'][:12]}; review_kit/BRIEF.md now hashes to {prompt[:12]}. The "

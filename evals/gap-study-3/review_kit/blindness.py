@@ -75,8 +75,14 @@ def report(folder: Path, sid: str) -> str:
                 if isinstance(b, dict) and b.get("type") == "tool_use":
                     tool_inputs.append(json.dumps(b.get("input") or {}))
     ctx_text = "\n".join(ctx)
+    # ROUND 3. The record names the session it read. The round register derives each round's session id as
+    # uuid5 of the commit that introduced its row, and rounds.py --check holds the committed blindness
+    # record to that id -- so a reviewer opened under any other id cannot satisfy the row it claims to be.
+    # It goes here rather than in the report because the report is written by the reviewer and committed
+    # unedited, and because naming the session a blindness check read is what a blindness check is for.
     out = [f"blindness check, read from the reviewer's own session file ({n} records, {len(ctx)} attachment records, "
-           f"{len(tool_inputs)} tool calls)", "",
+           f"{len(tool_inputs)} tool calls)",
+           f"session id: {sid}", "",
            "1. Operator material in the loaded context (attachment records):"]
     for label, w in MARKERS:
         out.append(f"   {label:34} {ctx_text.lower().count(w.lower())}")

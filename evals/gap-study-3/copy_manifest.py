@@ -118,8 +118,16 @@ EDITS = {
     "fixtures/gen_source.py": PATH_FIX + "The `generator` field WRITTEN INTO every fixture manifest said "
                               "round 2's generator had built it. That one is data, not a display string: a "
                               "reader of the manifest would have been told the wrong study built the fixture.",
+    "review_kit/launch.py": "The session id may be given as a second argument instead of drawn fresh. "
+                            "Round 2 drew a uuid4 here, so a reviewer's session was tied to nothing and a "
+                            "run could open several and commit the ones it liked. Round 3 passes the id its "
+                            "round register derives as uuid5 of the row's commit; the uuid4 default stays, "
+                            "and what makes the binding hold is rounds.py --check rather than this file.",
     "review_kit/blindness.py": "The markers name this study (`gars-eval-v4`, `gap-study-3`, `round 3`) and keep round "
-                               "2's and the pre-study's, since operator memory that names either is still a leak.",
+                               "2's and the pre-study's, since operator memory that names either is still a leak. The record also names the "
+                               "session id it read, which is what rounds.py --check holds a committed round "
+                               "to; it goes here because the report is committed unedited and because naming "
+                               "the session a blindness check read is what a blindness check is for.",
     "language-allowlist.json": "The excusal list is this study's own. Round 2's two verifier-report entries name "
                                "files this study did not copy and are dropped; its contract-quote entry is re-ruled "
                                "against this study's copy of contract_quotes.json, whose bytes are identical.",

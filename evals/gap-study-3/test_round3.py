@@ -420,6 +420,26 @@ class TheRoundRegisterBinds(unittest.TestCase):
             (f / "study" / ".git" / "objectish").write_text("z")
             self.assertEqual(mod.folder_sha256(f), mod.folder_sha256(f))
 
+    def test_a_committed_report_is_bound_to_its_rows_session(self):
+        """The binding lives here, not at launch: the launcher can be handed any id, or none. What the
+        row means is that the COMMITTED blindness record names the id the row derives."""
+        mod = load_module("round3_rounds_for_binding", self.rounds)
+        src = (self.rounds).read_text()
+        self.assertIn("does not name the session id this row derives", src)
+        row = {"n": 1, "kind": "prefreeze"}
+        self.assertTrue(str(mod.blindness_path(row)).endswith("prefreeze-1-blindness.txt"))
+        self.assertTrue(str(mod.report_path(row)).endswith("prefreeze-1.md"))
+
+    def test_the_blindness_record_names_the_session_it_read(self):
+        mod = load_module("round3_blindness_for_sid", HERE / "review_kit" / "blindness.py")
+        src = (HERE / "review_kit" / "blindness.py").read_text()
+        self.assertIn("session id: {sid}", src)
+
+    def test_the_launcher_accepts_a_given_session_id(self):
+        src = (HERE / "review_kit" / "launch.py").read_text()
+        self.assertIn("sys.argv[2] if len(sys.argv) == 3", src)
+        self.assertIn("[<session id>]", src)
+
     def test_both_kinds_of_report_have_a_home_and_they_differ(self):
         mod = load_module("round3_rounds_for_report", self.rounds)
         self.assertEqual(set(mod.REPORT), set(mod.KINDS))
