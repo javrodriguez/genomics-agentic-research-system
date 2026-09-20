@@ -1229,8 +1229,21 @@
     {
       "phrase": "plugin eval suites",
       "why": "The second occurrence in the same sentence of the same agent-type listing. It is recorded separately because the first excusal did not cover it, and a phrase that covers only part of a boilerplate sentence leaves the take voided by the remainder."
+    },
+    {
+      "phrase": "add a prioritized allowlist to project .claude/settings.json to reduce permission prompts",
+      "why": "Claude Code lists the skills available in a session, and one description names its own permission-prompt feature by a word this round added to its leak words. It is the harness describing itself, in the same skill listing round 2 excused two phrases from, and it says the same thing in a session that has nothing to do with this study. This is the phrase that voided the pre-study's first take."
+    },
+    {
+      "phrase": "tools are executed in a user-selected permission mode",
+      "why": "Claude Code's own system prompt, in front of every session it runs, explaining how its permission system behaves. This round's condition is about permission modes, which is why the phrase is a leak word at all; the harness saying it of itself is not the design being seen."
+    },
+    {
+      "phrase": "automatically allowed by the user's permission mode or permission settings",
+      "why": "The second sentence of the same system-prompt paragraph. Both occurrences are excused rather than one, because an excusal covers a hit only where the hit lies wholly inside the phrase, and a word left uncovered in one sentence voids the take just as surely."
     }
   ],
+  "leak_context_excusals_note": "Round 2's excusals, carried verbatim, plus three this round added before the freeze after leak_grep.py grepped the whole list against five real recorded sessions and found two words that would have voided every one of them. Each added excusal is the producer's own sentence.",
   "limitations_lines": [
     "The changed condition is a pre-registered list of admitted Bash commands, not the auto-mode classifier round 2's Sonnet and Opus ran under. Each take prints the permission mode its own transcript records.",
     "Round 3 passes the allowlist AND `--permission-mode auto`, so for the two models whose round-2 sessions recorded `auto`, round 3's condition is the MORE PERMISSIVE of the two: auto's classifier still applies and the allowlist is added to it. Their cells are therefore not measured under round 2's condition either, and nothing in this round is a like-for-like re-run of round 2 for any model.",

@@ -930,17 +930,198 @@ class TheModeBindingIsAnAssertionRoundTwoCouldNotMake(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------------------------
+# The leak list, driven against real sessions before the freeze
+
+
+class TheLeakListIsDrivenBeforeItIsFrozen(unittest.TestCase):
+    def setUp(self):
+        import leak_grep
+        self.lg = leak_grep
+
+    def test_it_reads_through_the_checkers_own_readers(self):
+        """A check that re-implemented them would be testing a different rule from the one that judges."""
+        src = (HERE / "leak_grep.py").read_text()
+        self.assertIn("check_take.py", src)
+        self.assertIn("context_text", src)
+        self.assertIn("context_leaks", src)
+
+    def test_it_is_green_and_graded_something(self):
+        r = run(str(HERE / "leak_grep.py"), "--check")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        rec = self.lg.derive()
+        self.assertGreaterEqual(rec["sessions_read"], 5, "a grep over no session says nothing")
+        self.assertGreaterEqual(rec["leak_words"], 20)
+        self.assertEqual(rec["words_that_would_void_a_session"], [])
+
+    def test_the_two_harness_words_really_are_present(self):
+        """The excusals are not decorative: both words DO appear in every real session's context."""
+        rec = self.lg.derive()
+        present = set(rec["words_present_in_some_session"])
+        self.assertIn("allowlist", present)
+        self.assertIn("permission mode", present)
+        for w in rec["per_word"]:
+            with self.subTest(w["word"]):
+                self.assertEqual(w["sessions_hit"], rec["sessions_read"],
+                                 "harness furniture appears in every session, not some")
+                self.assertEqual(w["still_flagged_in"], 0)
+
+    def test_removing_an_excusal_turns_it_red(self):
+        """Driven through the checker's own reader on a real session's real context."""
+        import importlib.util
+        import prereg
+        spec = importlib.util.spec_from_file_location("ct_for_leak_test", HERE / "check_take.py")
+        ct = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ct)
+        pre = dict(prereg.load())
+        session = self.lg.sessions()[0]
+        ctx = ct.context_text(session)
+        self.assertEqual(ct.context_leaks(ctx, pre), set(), "the real list must be clean to start")
+        stripped = dict(pre)
+        stripped["leak_context_excusals"] = [e for e in pre["leak_context_excusals"]
+                                             if "allowlist" not in e["phrase"]]
+        self.assertIn("allowlist", ct.context_leaks(ctx, stripped),
+                      "dropping the excusal must bring the finding back")
+
+    def test_every_added_excusal_quotes_text_that_is_really_there(self):
+        """An excusal pinned to a phrase the producer does not say forgives nothing and hides that."""
+        import build_draft
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("ct_for_phrase_test", HERE / "check_take.py")
+        ct = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ct)
+        contexts = [ct.context_text(s) for s in self.lg.sessions()]
+        self.assertTrue(contexts)
+        for e in build_draft.EXCUSALS_ADDED:
+            with self.subTest(e["phrase"][:40]):
+                self.assertTrue(any(e["phrase"].lower() in c for c in contexts),
+                                "no recorded session carries this phrase")
+
+    def test_the_draft_carries_round_twos_excusals_and_this_rounds(self):
+        import build_draft
+        import prereg
+        r2 = build_draft.source_prereg()["leak_context_excusals"]
+        got = prereg.load()["leak_context_excusals"]
+        self.assertEqual(got[:len(r2)], r2, "round 2's excusals are carried verbatim and first")
+        self.assertEqual(len(got), len(r2) + len(build_draft.EXCUSALS_ADDED))
+
+
+# ---------------------------------------------------------------------------------------------
+# The result, and the rule that no cell goes missing
+
+
+class TheResultPublishesCountsAndNamesWhatItDidNotMeasure(unittest.TestCase):
+    def setUp(self):
+        import result
+        self.r = result
+        self.rec = result.derive()
+
+    def test_it_refuses_against_a_draft(self):
+        import prereg
+        if prereg.is_frozen():
+            self.skipTest("the study is frozen; this rule is about the draft")
+        out = run(str(HERE / "result.py"), "--check")
+        self.assertEqual(out.returncode, 0, out.stdout)
+        self.assertIn("not applicable — not frozen", out.stdout)
+        self.assertIn("graded 0 of 54", out.stdout)
+
+    def test_the_denominator_is_the_plan_not_the_disk(self):
+        """A cell cannot go missing by not being written: the plan is what is counted against."""
+        self.assertEqual(self.rec["planned_cells"], 18)
+        self.assertEqual(self.rec["planned_takes"], 54)
+        self.assertEqual(len(self.rec["cells"]), 18)
+        keys = {(c["task"], c["half"], c["model"]) for c in self.rec["cells"]}
+        self.assertEqual(len(keys), 18, "a duplicated cell would hide a missing one")
+
+    def test_every_cell_is_complete_or_unmeasured_with_a_reason(self):
+        for c in self.rec["cells"]:
+            with self.subTest(f"{c['task']}/{c['half']}/{c['model']}"):
+                self.assertIn(c["state"], ("complete", "unmeasured"))
+                if c["state"] != "complete":
+                    self.assertTrue(c["reason"], "unmeasured is only legal with a reason")
+
+    def test_every_k_of_n_has_n_equal_to_three(self):
+        for c in self.rec["cells"]:
+            self.assertEqual(c["n"], 3)
+        for r in self.rec["round_two"]["rows"]:
+            self.assertEqual(r["n"], 3)
+
+    def test_a_cell_with_the_wrong_n_turns_the_structural_check_red(self):
+        bad = json.loads(json.dumps(self.rec))
+        bad["cells"][0]["n"] = 6
+        self.assertTrue(any("n = 6" in p for p in self.r.structural_problems(bad)))
+
+    def test_an_unmeasured_cell_with_no_reason_turns_it_red(self):
+        bad = json.loads(json.dumps(self.rec))
+        bad["cells"][0]["state"] = "unmeasured"
+        bad["cells"][0]["reason"] = None
+        self.assertTrue(any("names no reason" in p for p in self.r.structural_problems(bad)))
+
+    def test_the_earlier_rounds_incomplete_cell_publishes_as_incomplete(self):
+        rows = {(r["task"], r["half"], r["model"]): r for r in self.rec["round_two"]["rows"]}
+        hit = rows[("template-adherence", "control", "claude-sonnet-5")]
+        self.assertTrue(hit["incomplete"])
+        self.assertIsNone(hit["graded"], "an incomplete cell must not publish a count")
+        self.assertEqual(sum(1 for r in self.rec["round_two"]["rows"] if r["incomplete"]), 1)
+
+    def test_an_incomplete_cell_that_published_a_count_turns_it_red(self):
+        bad = json.loads(json.dumps(self.rec))
+        for r in bad["round_two"]["rows"]:
+            if r["incomplete"]:
+                r["graded"] = 0
+        self.assertTrue(any("incomplete and publishes a count" in p
+                            for p in self.r.structural_problems(bad)))
+
+    def test_the_caption_is_written_by_code_and_names_all_three(self):
+        cap = self.r.caption()
+        for want in ("permission condition", "run date", "instrument", "recorded"):
+            with self.subTest(want):
+                self.assertIn(want, cap.lower())
+        self.assertIn("22 admitted commands", cap)
+        self.assertIn("read separately", cap)
+        self.assertIn("would describe neither", cap)
+
+    def test_the_two_tables_are_separate_in_the_rendered_page(self):
+        page = self.r.render(self.rec)
+        self.assertIn("## This round", page)
+        self.assertIn("## The earlier round, beside — never joined", page)
+        self.assertLess(page.index("## This round"), page.index("## The earlier round"))
+
+    def test_the_rendered_page_survives_both_language_guards(self):
+        import tempfile as _tf
+        with _tf.TemporaryDirectory() as td:
+            f = Path(td) / "RESULT.md"
+            f.write_text(self.r.render(self.rec))
+            for guard in ("lint_language.py", "lint_pooling.py"):
+                with self.subTest(guard):
+                    out = run(str(HERE / guard), str(f))
+                    self.assertEqual(out.returncode, 0, out.stdout)
+
+
+class TheCompletenessCheckCountsAgainstThePlan(unittest.TestCase):
+    def test_it_enumerates_every_planned_cell(self):
+        r = run(str(HERE / "completeness.py"), "--check")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("complete cells", r.stdout)
+        self.assertEqual(r.stdout.count("of 3   "), 18, "every planned cell must be printed")
+
+    def test_it_says_out_loud_that_it_claims_nothing_before_the_freeze(self):
+        import prereg
+        if prereg.is_frozen():
+            self.skipTest("the study is frozen")
+        r = run(str(HERE / "completeness.py"), "--check")
+        self.assertIn("not applicable — not frozen", r.stdout)
+
+
+# ---------------------------------------------------------------------------------------------
 # The reviewer's brief and the purpose page
 
 
 class TheReviewKitIsPinnedAndBlind(unittest.TestCase):
-    # The brief is pinned byte-identical from its first commit, so it names checks that later slices
-    # build. Each one lives here until it exists; the set must be EMPTY before the freeze, and the test
-    # below fails if the study is frozen while anything is still planned.
-    PLANNED = {
-        "evals/gap-study-3/completeness.py",
-        "evals/gap-study-3/leak_grep.py",
-    }
+    # The brief is pinned byte-identical from its first commit, so it named checks that later slices
+    # built. Each one lived here until it existed, and the set had to be EMPTY before the freeze.
+    # It is empty: every command the brief asks a reviewer to run now exists. Typed rather than
+    # inferred, because `{}` is a dict and would have made this test pass over nothing.
+    PLANNED: set[str] = set()
 
     def test_the_brief_names_every_check_it_asks_for(self):
         """A brief that names a command the study does not have grades the reviewer on a typo."""

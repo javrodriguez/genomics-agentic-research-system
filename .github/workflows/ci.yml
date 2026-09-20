@@ -269,6 +269,13 @@ jobs:
           python3 evals/gap-study-3/fixture_walk.py --static > /dev/null
           python3 evals/gap-study-3/fixture_walk.py --finding > /dev/null
           python3 evals/gap-study-3/fixture_walk.py --check
+      - name: Round 3 leak list
+        # Every pre-registered leak word, grepped against every real session this study has recorded,
+        # through the take checker's own readers. A word the HARNESS says of its own accord would void
+        # every take that ever runs, and nothing else catches it until the first take is thrown away.
+        # This runs on every commit, so if the harness's wording moves the excusal stops matching and
+        # CI goes red BEFORE a take is voided rather than after.
+        run: python3 evals/gap-study-3/leak_grep.py --check
       - name: Round 3 permission mode
         # RULING 2. Every committed session's RECORDED mode, re-derived from its own transcript, against
         # the per-model expectation the pre-registration pins. The assertion round 2's checker could not
