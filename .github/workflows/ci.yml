@@ -210,3 +210,83 @@ jobs:
           else
             echo "no RESULT.md yet"
           fi
+
+  gap-study-3:
+    # ---- the Gap Study, round 3 (evals/gap-study-3), checked at every pushed commit while it runs ----
+    # A copy of round 2's instrument at bf065fe with eleven edited files, each with its reason in
+    # COPIED.json, and ten pinned byte-identical. The three jobs above are left exactly as they were:
+    # round 1's and round 2's check out their own done commits by full sha, and the pre-study's runs at
+    # HEAD as it did while it ran. This job adds lines and changes none.
+    #
+    # THE ZERO RULE. Each step below either grades a countable number of items or says it graded none.
+    # Before the freeze there are no takes and no result, so the two steps that need them report
+    # `not applicable — not frozen` rather than a pass. AFTER the freeze, a step that grades zero items
+    # is a FAILURE: a green that measured nothing is the defect this study spent a round learning about.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: the copy manifest reads round 2's files at their source commit with git show,
+          # the round register and the take ledger bind each row to the commit that introduced it, and
+          # every one of those refuses in a shallow clone.
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Round 3 copy
+        # DONE LINE 1: every copied file traces to its blob at the source commit, every edit carries a
+        # reason, every pinned file is byte-identical, and the earlier studies are unchanged.
+        run: python3 evals/gap-study-3/copy_manifest.py --check
+      - name: Round 3 workflow diff is additive
+        # DONE LINE 1, second half: this workflow has only gained lines since the kickoff commit.
+        run: |
+          removed=$(git diff ddf12ebc130e9d18de5ffcb429f7996ebe77baeb HEAD --numstat -- .github/workflows/ \
+                    | awk '{s+=$2} END {print s+0}')
+          echo "workflow lines removed since the kickoff: $removed"
+          test "$removed" -eq 0
+      - name: Round 3 suite
+        run: python3 -W ignore evals/gap-study-3/test_round3.py
+      - name: Round 3 language guard
+        # DONE LINE 6, first half. The copied linter, byte-identical to round 2's.
+        run: python3 evals/gap-study-3/lint_language.py evals/gap-study-3/
+      - name: Round 3 pooling guard
+        # DONE LINE 6, second half. Round 3's own, no excusal path, over the folder and over every
+        # commit body since the kickoff.
+        run: |
+          python3 evals/gap-study-3/lint_pooling.py evals/gap-study-3/
+          python3 evals/gap-study-3/lint_pooling.py --commits-since ddf12ebc130e9d18de5ffcb429f7996ebe77baeb
+      - name: Round 3 review register
+        # Every registered round of review has a committed report. An open round blocks the freeze.
+        run: python3 evals/gap-study-3/review_kit/rounds.py --check
+      - name: Round 3 takes
+        # DONE LINE 4: each committed take re-checked by the copied checker, permission mode included.
+        # Zero graded takes AFTER the freeze is a failure, not a pass.
+        run: |
+          n=0
+          for t in evals/gap-study-3/transcripts/*/*/*/*/transcript.jsonl; do
+            [ -f "$t" ] || continue
+            d=$(dirname "$t")
+            task=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['task'])" "$d/driver-ledger.json")
+            half=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['half'])" "$d/driver-ledger.json")
+            row=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['row'])" "$d/driver-ledger.json")
+            python3 evals/gap-study-3/check_take.py "$t" --task "$task" --half "$half" --row "$row"
+            n=$((n+1))
+          done
+          echo "takes checked: $n"
+          if [ -f evals/gap-study-3/prereg.json ] && [ "$n" -eq 0 ]; then
+            echo "FAIL the study is frozen and this step graded 0 takes"
+            exit 1
+          fi
+          if [ ! -f evals/gap-study-3/prereg.json ]; then
+            echo "not applicable — not frozen; this step graded $n takes and claims nothing"
+          fi
+      - name: Round 3 result
+        # DONE LINE 5: the result re-derives from the committed takes, and every planned cell is either
+        # complete or published unmeasured with its reason.
+        run: |
+          if [ -f evals/gap-study-3/prereg.json ]; then
+            python3 evals/gap-study-3/result.py --check
+            python3 evals/gap-study-3/completeness.py --check
+          else
+            echo "not applicable — not frozen; nothing here has graded a cell"
+          fi

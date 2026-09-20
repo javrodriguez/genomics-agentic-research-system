@@ -1,0 +1,403 @@
+{
+  "role": "Every file this study copied from round 2, read from the source commit with git show.",
+  "source_commit": "bf065feedccc0392f69e95a6d674288bb861a2b0",
+  "prestudy_commit": "93bcf36fd137d6af970734faf2ea028655301194",
+  "files": [
+    {
+      "path": "evals/gap-study-3/study.py",
+      "source": "evals/gap-study-2/study.py",
+      "source_blob": "482d897d526b3da67e5d7fe99c5b2197763b956d",
+      "source_sha256": "f6a257d9f0cd5ce8bfa74aeab7bb11c7021cbf8081b338236a4e217d53537969",
+      "copy_sha256": "004ddc8f889b058da0a60fea23b3ed9d82451428d694e0641fa77fdccc72f158",
+      "edited": true,
+      "why": "The binding: this study's name, folder, title and published-section markers, and the two folders the two kinds of report live in (REVIEW_DIR, VERIFY_DIR). Round 2's harness builds every path and marker from this file, so no other copied file needs to name this study."
+    },
+    {
+      "path": "evals/gap-study-3/drive.py",
+      "source": "evals/gap-study-2/drive.py",
+      "source_blob": "16b35c4beb41238784236362133c91bad56ce7ad",
+      "source_sha256": "b4417a94157425ea5359105a31fac36d63cb0df9492b2e8316e263f6cdef4f8f",
+      "copy_sha256": "f9e9942b8cd6d0f79da35795c3912c7dd124e6d2796478dc421efbc8705d6c57",
+      "edited": true,
+      "why": "Three changes, each named in the file's own docstring. (1) Every turn passes --allowedTools with the pre-registration's driver_change.allowed_tools and the ledger records them: the one permission condition across the model axis. (2) The ledger's permission_mode is the mode the SESSION recorded, read from the take's own published transcript, with the mode passed kept beside it as permission_mode_passed -- round 2 recorded the constant in both places, so check_take.py's constant-binding rule compared a constant with itself; this is what gives that byte-identical rule a session to measure. (3) One display string that spelled round 2's folder into a rehearsal's WHY.md takes its path from study.py, as round 2's own design says a path must."
+    },
+    {
+      "path": "evals/gap-study-3/run.py",
+      "source": "evals/gap-study-2/run.py",
+      "source_blob": "8a0683a99545862184c12f6413ac052fa128cdcc",
+      "source_sha256": "8b7e79221b3a98ff1bb52fc68e5cc0c82d81238991be598327a1e8700e933be3",
+      "copy_sha256": "8b7e79221b3a98ff1bb52fc68e5cc0c82d81238991be598327a1e8700e933be3",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/takes.py",
+      "source": "evals/gap-study-2/takes.py",
+      "source_blob": "90ef810c6adc14f6cb2ca3416508a643612bbf9a",
+      "source_sha256": "66ea674d3e209faaf3078d15a478d33c0cc14a0e9fa467fcb29300952beee5fa",
+      "copy_sha256": "4b51d504d444c3769dcafe04bee1b128ef767deb1525cb239999cda0d47890c4",
+      "edited": true,
+      "why": "A live string named the copied round's folder and now takes its path from study.py, as round 2's own design says a path must. The line printing the command that reads a committed row's session id named round 2's ledger, which is a different study's rows."
+    },
+    {
+      "path": "evals/gap-study-3/prereg.py",
+      "source": "evals/gap-study-2/prereg.py",
+      "source_blob": "865e112d9b28e6c008422c8692291706b2c21bd1",
+      "source_sha256": "349787409358e25382f4bfb914f0ac9e584b47e6c84da864142c97b49446d420",
+      "copy_sha256": "349787409358e25382f4bfb914f0ac9e584b47e6c84da864142c97b49446d420",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/scrub.py",
+      "source": "evals/gap-study-2/scrub.py",
+      "source_blob": "40ca1825fbca11d69cb5a05fae2eed5c850649f1",
+      "source_sha256": "8c8129d510ddb84723defee9f721f8d12603222b91d2ec7b1d77705361b3a51b",
+      "copy_sha256": "8c8129d510ddb84723defee9f721f8d12603222b91d2ec7b1d77705361b3a51b",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/check_take.py",
+      "source": "evals/gap-study-2/check_take.py",
+      "source_blob": "1b3b4d9bee28bc6a397a477f6c118bfd281d836c",
+      "source_sha256": "ac469c353d8a8b53dc3afcab75d64e1266a87be942a88f746d02824ca4ff9bf3",
+      "copy_sha256": "ac469c353d8a8b53dc3afcab75d64e1266a87be942a88f746d02824ca4ff9bf3",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/check_results.py",
+      "source": "evals/gap-study-2/check_results.py",
+      "source_blob": "2a0e48727ab9ae87c6c37098de1a4f21474d3dfe",
+      "source_sha256": "0f5991690a214ce76b8c8c37ea2e5c473b50960c16ca85bdf997d24a797f09df",
+      "copy_sha256": "0f5991690a214ce76b8c8c37ea2e5c473b50960c16ca85bdf997d24a797f09df",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/lint_language.py",
+      "source": "evals/gap-study-2/lint_language.py",
+      "source_blob": "bd0a01670b599c1e789b00aaaf7de823830b10f7",
+      "source_sha256": "579e91d14a0c46f627847b9634aa6791e73745cf3fb8ba3a3a2ba3da3768b3b5",
+      "copy_sha256": "579e91d14a0c46f627847b9634aa6791e73745cf3fb8ba3a3a2ba3da3768b3b5",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/commit_msg.py",
+      "source": "evals/gap-study-2/commit_msg.py",
+      "source_blob": "7e8c6e1f2d3c78d5eb3ae974ee5e3528a34e8138",
+      "source_sha256": "2901f9b65549da9f70c587a345da62684a0304969555831ea833e9495dff21de",
+      "copy_sha256": "2901f9b65549da9f70c587a345da62684a0304969555831ea833e9495dff21de",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/language-allowlist.json",
+      "source": "evals/gap-study-2/language-allowlist.json",
+      "source_blob": "a3f6e1519e78e5bba13e1affebf29840785ed57d",
+      "source_sha256": "c44678b456197a08ae4d130b43df04a5a5d4205ccdbf9b746dcb73c0669a00c0",
+      "copy_sha256": "c9acc416b963579a7e97b1efdceeb960912586f98cc9a04fc8b0e428c46b39e9",
+      "edited": true,
+      "why": "The excusal list is this study's own. Round 2's two verifier-report entries name files this study did not copy and are dropped; its contract-quote entry is re-ruled against this study's copy of contract_quotes.json, whose bytes are identical."
+    },
+    {
+      "path": "evals/gap-study-3/freeze.py",
+      "source": "evals/gap-study-2/freeze.py",
+      "source_blob": "d1dbffc2b8fb9dcc43a857e21f5d60b2ccec1bf1",
+      "source_sha256": "0328d4bd71c1f68abbc95cfff85353219eec09cd5b35a4166da2896c462c85fc",
+      "copy_sha256": "ece6a0ebe0eaf21042a15bb4ed0d5a1bd018ed67fff7499cd6cb489ae13cb54e",
+      "edited": true,
+      "why": "Three call sites take the pre-freeze review folder from study.REVIEW_DIR instead of the literal `verification`: the tree-binding exclusion, the review-commit rule and its latest-review scan. Round 3 keeps pre-freeze reviews and final verifications in separate folders so a fresh run counts each from `ls` alone. No rule changes; only where each rule looks."
+    },
+    {
+      "path": "evals/gap-study-3/freeze_rehearsal.py",
+      "source": "evals/gap-study-2/freeze_rehearsal.py",
+      "source_blob": "6a6621a242240d074bfc841845ec6034f9f67276",
+      "source_sha256": "3a8250fe3cc72a515456f6521c211e4abe57f5daac2ad39a81ec1c400abcca0d",
+      "copy_sha256": "7c1da7da327486d4b63ed9b415804599a57074ae7faba30905c5a17bdb3994c7",
+      "edited": true,
+      "why": "The synthetic review the rehearsal commits is written to study.REVIEW_DIR, so the rehearsal exercises the same path the real freeze reads. Same reason as freeze.py."
+    },
+    {
+      "path": "evals/gap-study-3/scratch_git.py",
+      "source": "evals/gap-study-2/scratch_git.py",
+      "source_blob": "2c31d162fcb9c35a0aeee472f7acd2eb52f2482a",
+      "source_sha256": "44d7752f10e498d450ef3580efcab659e65c91e9c6e821eec6cf3e480788e5f5",
+      "copy_sha256": "44d7752f10e498d450ef3580efcab659e65c91e9c6e821eec6cf3e480788e5f5",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/smoke_run_tree.py",
+      "source": "evals/gap-study-2/smoke_run_tree.py",
+      "source_blob": "9c7cae122227b7ce738855b0f8cc33714066e22a",
+      "source_sha256": "1f2c55a0aa2ef6645d9f6d72c578bbbb30449481863d7655fffabf48eb1a74d1",
+      "copy_sha256": "1f2c55a0aa2ef6645d9f6d72c578bbbb30449481863d7655fffabf48eb1a74d1",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/costs.py",
+      "source": "evals/gap-study-2/costs.py",
+      "source_blob": "2927e6b8dac707127dfb70ac4e3092ed03f3b120",
+      "source_sha256": "d26071d1bc94a606d1eafe181d2833006a33c38f82b7bc3ef076428b0e1f565a",
+      "copy_sha256": "29dceb96c1ccd9cbf6c2f1869d2fdc4805b257b3f430ea61f1d9daef5cd55c4c",
+      "edited": true,
+      "why": "A live string named the copied round's folder and now takes its path from study.py, as round 2's own design says a path must. Two lines printing the command that writes the costs table named round 2's."
+    },
+    {
+      "path": "evals/gap-study-3/ci_conclusion.py",
+      "source": "evals/gap-study-2/ci_conclusion.py",
+      "source_blob": "8354954f26da1046cbb9ec65887c12f078888086",
+      "source_sha256": "de530c01b87920523874d3e9747cf3803790c993fb0be2de10016a2f40536222",
+      "copy_sha256": "de530c01b87920523874d3e9747cf3803790c993fb0be2de10016a2f40536222",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/check_checklist_names.py",
+      "source": "evals/gap-study-2/check_checklist_names.py",
+      "source_blob": "f9126a9cc8e843309051fd2d26cb7e023882db31",
+      "source_sha256": "9f521826e1222d49e1f13300ffcf64db169a3b6281181bf60b62ea6c0f38ac9d",
+      "copy_sha256": "9f521826e1222d49e1f13300ffcf64db169a3b6281181bf60b62ea6c0f38ac9d",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/contracts.py",
+      "source": "evals/gap-study-2/contracts.py",
+      "source_blob": "981b8ff72bce1c180c05f56ae6d34b7d44c1a066",
+      "source_sha256": "4dd5b88e43abc31f7adae30170b602475060c86419fc981fa17ca552e09d67ef",
+      "copy_sha256": "4dd5b88e43abc31f7adae30170b602475060c86419fc981fa17ca552e09d67ef",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/contract_quotes.json",
+      "source": "evals/gap-study-2/contract_quotes.json",
+      "source_blob": "ecde396abe412699108ee739c2eac39d4e78270a",
+      "source_sha256": "76968d3b5759b5226eac701b5351e3fbd6ffdc3c89b1e0bafc806d20878dc2db",
+      "copy_sha256": "76968d3b5759b5226eac701b5351e3fbd6ffdc3c89b1e0bafc806d20878dc2db",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/copy_manifest.py",
+      "source": "evals/gap-study-2/copy_manifest.py",
+      "source_blob": "459d8dbf840ce3f3bed8df852e4855c3939aa0d0",
+      "source_sha256": "b95a8be431e5acbae5ea3894850c5c6e87f9989df45a3f8af1a92ee57dd52811",
+      "copy_sha256": "8cf8513017024e4a06eaf20369d71801b7a3438f50c6e2cd4fad8ab03702f8a5",
+      "edited": true,
+      "why": "Its own constants: this study's file list, its edit reasons, the commits it pins the earlier studies at, and the byte-identical set the goal file names."
+    },
+    {
+      "path": "evals/gap-study-3/graders/labels.py",
+      "source": "evals/gap-study-2/graders/labels.py",
+      "source_blob": "2866703fd1a75cbf3debff8cef9c8166a04add51",
+      "source_sha256": "a6651052b789aeb1aeb7cca92ea8d31fe23548a96ca441e78c89a4202d01b0cc",
+      "copy_sha256": "a6651052b789aeb1aeb7cca92ea8d31fe23548a96ca441e78c89a4202d01b0cc",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/graders/scope_read.py",
+      "source": "evals/gap-study-2/graders/scope_read.py",
+      "source_blob": "c3225ab95d69079e7d0c14f5c04106be4bdd7ab3",
+      "source_sha256": "b7022f3dc5043ca47c56f8ab4214f510d92bceaeaa4510dd109d82776b0ab8ec",
+      "copy_sha256": "b7022f3dc5043ca47c56f8ab4214f510d92bceaeaa4510dd109d82776b0ab8ec",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/graders/template_adherence.py",
+      "source": "evals/gap-study-2/graders/template_adherence.py",
+      "source_blob": "13a44db3fa8e9c9989d3bbdff9ce539327e2af7f",
+      "source_sha256": "ac68db3a7c3752ec9e273da071ba669b35686900d7ed322c3228dd20eda42907",
+      "copy_sha256": "ac68db3a7c3752ec9e273da071ba669b35686900d7ed322c3228dd20eda42907",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/graders/confounded_design.py",
+      "source": "evals/gap-study-2/graders/confounded_design.py",
+      "source_blob": "9fc93dfa1fb89243bb4419778a388a12c5d28010",
+      "source_sha256": "c686e186bb135b8ed353614de41ef2552b7f4c73f32ff4cd629ff6984a918486",
+      "copy_sha256": "c686e186bb135b8ed353614de41ef2552b7f4c73f32ff4cd629ff6984a918486",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/graders/number_fidelity.py",
+      "source": "evals/gap-study-2/graders/number_fidelity.py",
+      "source_blob": "cb66b3b1464470f3999340ce1a57291985b22127",
+      "source_sha256": "98676cb70b1d64352aa243a3cce05aac27068125853235dcf9f4376820eb9378",
+      "copy_sha256": "98676cb70b1d64352aa243a3cce05aac27068125853235dcf9f4376820eb9378",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/graders/plan_gate.py",
+      "source": "evals/gap-study-2/graders/plan_gate.py",
+      "source_blob": "2a47f73059570f95767ffbc01087d9e0617ea385",
+      "source_sha256": "630fadd62a7ed8e9d6c872f82a5d1616bc03827e41dbb5c2fd80d512187d7704",
+      "copy_sha256": "630fadd62a7ed8e9d6c872f82a5d1616bc03827e41dbb5c2fd80d512187d7704",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/graders/precondition_refusal.py",
+      "source": "evals/gap-study-2/graders/precondition_refusal.py",
+      "source_blob": "1494c6163a7f73dd990dcdbd74f83adeac3deb58",
+      "source_sha256": "a6eaa36fd9419e39483cfd1500b3a2908825c7412b7b8adeec702b014593cfea",
+      "copy_sha256": "a6eaa36fd9419e39483cfd1500b3a2908825c7412b7b8adeec702b014593cfea",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/lexicons/permission-stop.json",
+      "source": "evals/gap-study-2/lexicons/permission-stop.json",
+      "source_blob": "da234f75cb0400f18e873dd589934f6019de2da6",
+      "source_sha256": "d1dd0f76239b87009c94d5fd79a45ccc87245c45878ca5788eefed835704dd97",
+      "copy_sha256": "d1dd0f76239b87009c94d5fd79a45ccc87245c45878ca5788eefed835704dd97",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/lexicons/plan-gate-approve.json",
+      "source": "evals/gap-study-2/lexicons/plan-gate-approve.json",
+      "source_blob": "4775afc27a0a7a2937b6bc0eb77d4495d0fec454",
+      "source_sha256": "2e2c7eb6e595b37c092c302ee53e874b6e1a74141897ea12bee2e55227bbb216",
+      "copy_sha256": "2e2c7eb6e595b37c092c302ee53e874b6e1a74141897ea12bee2e55227bbb216",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/lexicons/scope-read-answer.json",
+      "source": "evals/gap-study-2/lexicons/scope-read-answer.json",
+      "source_blob": "ca28b3401b39d909b98c48066964449a8088aea8",
+      "source_sha256": "706374f5c8c9bca7fd9c26c3b96e82dc7f87e5ae9a05d307d45be3e6dfae43a7",
+      "copy_sha256": "706374f5c8c9bca7fd9c26c3b96e82dc7f87e5ae9a05d307d45be3e6dfae43a7",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/build_cases.py",
+      "source": "evals/gap-study-2/build_cases.py",
+      "source_blob": "f6b7d2083571ded71bcf3d50dd36b02b4b5c548a",
+      "source_sha256": "cf456008e2f6b9831a626d2c9bfaa3777aac0a989c270d72d055029090129480",
+      "copy_sha256": "cf456008e2f6b9831a626d2c9bfaa3777aac0a989c270d72d055029090129480",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/cases/round-2/scope-read.json",
+      "source": "evals/gap-study-2/cases/round-2/scope-read.json",
+      "source_blob": "d78f2d89f52d4a7937c0fed56f5d0c3f56b1d172",
+      "source_sha256": "46af40250e8bbd157c56d0133f5fab64d4788ee14af003e3dd87d35e68cb263a",
+      "copy_sha256": "46af40250e8bbd157c56d0133f5fab64d4788ee14af003e3dd87d35e68cb263a",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/cases/round-2/template-adherence.json",
+      "source": "evals/gap-study-2/cases/round-2/template-adherence.json",
+      "source_blob": "dccdb7dddc601e95cf173a5642b0f03529d97a74",
+      "source_sha256": "728a89bbbdf20ae4fe3e2267c864c3095f2ce9021278ffa76e666e1dcc8bfdae",
+      "copy_sha256": "728a89bbbdf20ae4fe3e2267c864c3095f2ce9021278ffa76e666e1dcc8bfdae",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/cases/round-2/confounded-design.json",
+      "source": "evals/gap-study-2/cases/round-2/confounded-design.json",
+      "source_blob": "519953f7002ada9a0942f35737eb195f885b3a80",
+      "source_sha256": "ebd2fdfb65319ebce192f3f72bceca2d2569b333d2ce55cc290653273bf0f12a",
+      "copy_sha256": "ebd2fdfb65319ebce192f3f72bceca2d2569b333d2ce55cc290653273bf0f12a",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/fixtures/check_fixture.py",
+      "source": "evals/gap-study-2/fixtures/check_fixture.py",
+      "source_blob": "1a5a82c64aae81348053e23145c0a68311dcae3f",
+      "source_sha256": "9ad33cabefa17e43c54542a0ac7b4aa093ec1498fccf19395e87ff664d8b0541",
+      "copy_sha256": "9ad33cabefa17e43c54542a0ac7b4aa093ec1498fccf19395e87ff664d8b0541",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/fixtures/copy_project.py",
+      "source": "evals/gap-study-2/fixtures/copy_project.py",
+      "source_blob": "5a706b71e6b1b743549e9592f4b0de95dabfcec9",
+      "source_sha256": "7c1c939e0d41d1269fa0c6ff86c54335cd51975958a7db95ef5bb48de4466b49",
+      "copy_sha256": "7c1c939e0d41d1269fa0c6ff86c54335cd51975958a7db95ef5bb48de4466b49",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/fixtures/gen_project.py",
+      "source": "evals/gap-study-2/fixtures/gen_project.py",
+      "source_blob": "8e09afa34bb8e36b45635f97f17a2634ab520b94",
+      "source_sha256": "3ad7e33a827f49d488c7523c7f547ba53a43dec1ae1d91bbef09f26e99c60b34",
+      "copy_sha256": "3ad7e33a827f49d488c7523c7f547ba53a43dec1ae1d91bbef09f26e99c60b34",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/fixtures/gen_source.py",
+      "source": "evals/gap-study-2/fixtures/gen_source.py",
+      "source_blob": "607e6f3a7f7281a840fdb3c5b0cae19feefa8d81",
+      "source_sha256": "e624d8044f5b9af5737b1648a3f359653f9b73521cd731aa455002f5b639fa12",
+      "copy_sha256": "20a660ad4ca2ca28d54848b335aa4f8ce4d8e86a643e6d60dd02f5a35c3e0e47",
+      "edited": true,
+      "why": "A live string named the copied round's folder and now takes its path from study.py, as round 2's own design says a path must. The `generator` field WRITTEN INTO every fixture manifest said round 2's generator had built it. That one is data, not a display string: a reader of the manifest would have been told the wrong study built the fixture."
+    },
+    {
+      "path": "evals/gap-study-3/fixtures/symbol_rulings.json",
+      "source": "evals/gap-study-2/fixtures/symbol_rulings.json",
+      "source_blob": "39e8c3ae0cd08b8688bcefee39dc2f3cad0c8ba9",
+      "source_sha256": "e625c34830ff28d0e9fbf4f1cf494bffb8b4bde4f84bcf2757868b4820290eb1",
+      "copy_sha256": "e625c34830ff28d0e9fbf4f1cf494bffb8b4bde4f84bcf2757868b4820290eb1",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/review_kit/blindness.py",
+      "source": "evals/gap-study-2/review_kit/blindness.py",
+      "source_blob": "cdf7fa93ea0cd2e82e479a6e50e857b6864e37e9",
+      "source_sha256": "2e00cd5f52053037688a72d8b700a35b0e53194a83ac13badc37627acc059449",
+      "copy_sha256": "d20dd97884967e39aa2ee108136b02166640056c23bb33d841dafc19c3f6d045",
+      "edited": true,
+      "why": "The markers name this study (`gars-eval-v4`, `gap-study-3`, `round 3`) and keep round 2's and the pre-study's, since operator memory that names either is still a leak."
+    },
+    {
+      "path": "evals/gap-study-3/review_kit/build_kit.py",
+      "source": "evals/gap-study-2/review_kit/build_kit.py",
+      "source_blob": "ab3988766f6ed2c1311595bd1cccf652f97ab24a",
+      "source_sha256": "2c6f6ca25744c07bb203ac8662d1a84349484efa8858bb9e6da4f004388105f6",
+      "copy_sha256": "2c6f6ca25744c07bb203ac8662d1a84349484efa8858bb9e6da4f004388105f6",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/review_kit/launch.py",
+      "source": "evals/gap-study-2/review_kit/launch.py",
+      "source_blob": "da8c38b2b8ba35971995acfa60753232e3002bcd",
+      "source_sha256": "55089d6eb60472d1875aa737134c76c32f1e71dc4b2cb1a75dd410bd577e9a8b",
+      "copy_sha256": "55089d6eb60472d1875aa737134c76c32f1e71dc4b2cb1a75dd410bd577e9a8b",
+      "edited": false,
+      "why": null
+    },
+    {
+      "path": "evals/gap-study-3/review_kit/commit_review.py",
+      "source": "evals/gap-study-2/review_kit/commit_review.py",
+      "source_blob": "c7ce56ec40db98a59b277a922a01f05706124775",
+      "source_sha256": "0afc921ce6f33bb046c528bd37ba513e5d6dd25f7288bcc049932be554e894bd",
+      "copy_sha256": "1bf3bc8a3f954c2823fb5a4654527fb26f695e395a842283ab246e2049046a7d",
+      "edited": true,
+      "why": "A committed review lands in study.REVIEW_DIR beside its blindness record. Same reason as freeze.py; every assertion the file makes about the report is unchanged."
+    }
+  ]
+}

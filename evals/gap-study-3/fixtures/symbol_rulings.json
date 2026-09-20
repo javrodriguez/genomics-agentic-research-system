@@ -1,0 +1,21 @@
+{
+  "role": "Tokens the plan-gate symbol sweep flagged and a person has read and ruled on. The sweep stays strict and decides nothing by itself: a sweep that quietly classifies what counts as a gene symbol is not evidence of anything. An entry names the token, where it sits, and why it is not a gene symbol.",
+  "ruled": "2026-09-08",
+  "fixture": "plan-gate",
+  "tokens": {
+    "ENCODE": "the ENCODE project, named in both assay configs as the source of the blacklist regions. A consortium, not a gene.",
+    "MACS": "the peak caller (MACS2 for ATAC, MACS3 for ChIP), named in the assay config.",
+    "UCSC": "the genome browser, named as a resource source in the ATAC config.",
+    "R64": "the S. cerevisiae genome assembly name. An assembly, not a gene.",
+    "DEMO": "part of the comment 'Executor descriptor for the DEMO SUBSTRATE' in _config/executor.yaml. See demo_substrate_note below.",
+    "SUBSTRATE": "the same comment as DEMO.",
+    "PIPELINE": "an English word in a config comment.",
+    "REQUIRED": "an English word in a config comment.",
+    "PUBLIC": "an English word in a config comment.",
+    "NEVER": "an English word in a config comment.",
+    "NAME": "an English word in a config comment.",
+    "THIS": "an English word in a config comment."
+  },
+  "demo_substrate_note": "_config/executor.yaml opens with 'Executor descriptor for the DEMO SUBSTRATE (GARS decision 0039)' and points nextflow at an AWS Batch config. The agent can read it, so it is declared here rather than removed. Two reasons it stays: the copy is byte-identical apart from the one declared project-name substitution, and adding a second edit would be curating the fixture; and the comment says the project runs on the demo deployment, not that anything is being evaluated. plan-gate never executes anything, so the executor is never used - the take ends at the agent's reply, and the control half's `approve` is the last thing that runs.",
+  "gene_symbols_found": 0
+}

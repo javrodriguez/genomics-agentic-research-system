@@ -1,0 +1,241 @@
+{
+  "task": "confounded-design",
+  "role": "Every agent message from every committed walk of this task, and what the grader makes of it as post-probe text. A case is bound to the message's sha256, so it cannot drift onto a paraphrase.",
+  "not_a_claim": "A case is NOT a claim that the message should carry that label. Most are pre-probe templates and narration no take would hand a grader. Their value is that a grader returning `correct` for a message which answers nothing would award a pass to noise.",
+  "hand_verdict_values": [
+    "sound",
+    "noise-correct",
+    "review"
+  ],
+  "cases": [
+    {
+      "walk": "confounded-design/1",
+      "message_index": 1,
+      "sha256": "8eb26c02f0497dac0a5616c9bc15dec78f96f196d4cb837b7e68ece8daaca96b",
+      "first_line": "This is a \"using GARS\" task, so the entry point is `gars/CLAUDE.md`. Let me read it to follow the correct proj",
+      "chars": 130,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "narration or a template that asserts nothing about the design: not asserted"
+    },
+    {
+      "walk": "confounded-design/1",
+      "message_index": 2,
+      "sha256": "442fc6d7e4ce5db9675ae8b3b380f3eac621182d85238429e6dc4d87f82ef697",
+      "first_line": "This maps to stage 00. Let me read its contract.",
+      "chars": 48,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "narration or a template that asserts nothing about the design: not asserted"
+    },
+    {
+      "walk": "confounded-design/1",
+      "message_index": 3,
+      "sha256": "0a59ac8197ec89df4b78ef27fd01efba2d564a9ae888983cf7323f10ebc96f93",
+      "first_line": "Starting stage 00: Initialize Project.",
+      "chars": 1217,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "narration or a template that asserts nothing about the design: not asserted"
+    },
+    {
+      "walk": "confounded-design/1",
+      "message_index": 4,
+      "sha256": "9dadaea3d0eea997a7db61fb9707a66f58a39c4dcbbfe92a9f6e7abc5d0417bd",
+      "first_line": "Exit 0, resolved to `rnaseq_bulk`. Creating the project now.",
+      "chars": 60,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "narration or a template that asserts nothing about the design: not asserted"
+    },
+    {
+      "walk": "confounded-design/1",
+      "message_index": 5,
+      "sha256": "0492e315a8020febc69a361eaaaeeeaf7f9ee61f342364dfb76643a51ec52081",
+      "first_line": "Created: projects/run-b36c39e7/",
+      "chars": 170,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "narration or a template that asserts nothing about the design: not asserted"
+    },
+    {
+      "walk": "confounded-design/1",
+      "message_index": 6,
+      "sha256": "96854f5edf17ff93e157977be0b40da0364f91a30bd2e7727e9bb7ab89b25eb2",
+      "first_line": "Path: `data/staging/run-b36c39e7/src`",
+      "chars": 248,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "narration or a template that asserts nothing about the design: not asserted"
+    },
+    {
+      "walk": "confounded-design/1",
+      "message_index": 7,
+      "sha256": "5402208d3ce03bb7748fe953860c3a377ece33527ea063e265cdbe274a855bc1",
+      "first_line": "Linked 12 files into 00_data/rnaseq_bulk/raw/. Broken links: 0.",
+      "chars": 143,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "narration or a template that asserts nothing about the design: not asserted"
+    },
+    {
+      "walk": "confounded-design/1",
+      "message_index": 8,
+      "sha256": "19cdb3882fabcea5ebdb58dbba467114a7035bb9bdb4a941dfc714023824e741",
+      "first_line": "Exit 0 — finalize succeeded.",
+      "chars": 640,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "narration or a template that asserts nothing about the design: not asserted"
+    },
+    {
+      "walk": "confounded-design/1",
+      "message_index": 9,
+      "sha256": "4522396c9197a9a9ba06433133596b9379c3d060ae7a7d3a0086b832444a4057",
+      "first_line": "Starting stage 01: Prepare Samplesheets.",
+      "chars": 146,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "narration or a template that asserts nothing about the design: not asserted"
+    },
+    {
+      "walk": "confounded-design/1",
+      "message_index": 10,
+      "sha256": "688d4065cdd2b992152d7cbadd31bf008447d145cbd9431c4d4bb903715f2c19",
+      "first_line": "| Assay | Rows | Samples | Groups | Layout | Strandedness |",
+      "chars": 646,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "narration or a template that asserts nothing about the design: not asserted"
+    },
+    {
+      "walk": "confounded-design/1",
+      "message_index": 11,
+      "sha256": "59085b0f8b82394aae8e40b24e4ab90bdb9aef12489faab1c0cf179ae263e9bb",
+      "first_line": "Exit 0 — appending the history entry now.",
+      "chars": 41,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "narration or a template that asserts nothing about the design: not asserted"
+    },
+    {
+      "walk": "confounded-design/1",
+      "message_index": 12,
+      "sha256": "b5b4996ab1926da8923709ffa74e073243a0862c4dd9bffa9c7e154261fdf178",
+      "first_line": "Stage 01 complete. Samplesheets written to projects/run-b36c39e7/01_samplesheets/.",
+      "chars": 751,
+      "graded": {
+        "positive": {
+          "label": "not asserted",
+          "verdict": "incorrect"
+        },
+        "control": {
+          "label": "not asserted",
+          "verdict": "correct"
+        }
+      },
+      "hand_verdict": "sound",
+      "hand_note": "narration or a template that asserts nothing about the design: not asserted"
+    }
+  ],
+  "hand_labelling_rule": "Round 2's own walks, read by hand on 16 September 2026 under round 1's rule: `sound` when the label names what the message did; `noise-correct` when a message that answers nothing receives a correct label; `review` when unsure. Each note names what the message does."
+}
