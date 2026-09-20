@@ -255,6 +255,20 @@ jobs:
         run: |
           python3 evals/gap-study-3/lint_pooling.py evals/gap-study-3/
           python3 evals/gap-study-3/lint_pooling.py --commits-since ddf12ebc130e9d18de5ffcb429f7996ebe77baeb
+      - name: Round 3 derivation
+        # The permission condition re-derives from round 2's committed transcripts, entry for entry.
+        run: python3 evals/gap-study-3/allowlist.py --check
+      - name: Round 3 draft
+        # The draft is what its builder builds, carried keys included.
+        run: python3 evals/gap-study-3/build_draft.py --check
+      - name: Round 3 leak verdict
+        # DONE LINE 4, the fixture half: nothing the agent reads names this checkout, decided by code at
+        # path boundaries. The static half grades all six halves; the finding re-derives from round 2's
+        # own bytes; --check says out loud when no walk has been committed yet.
+        run: |
+          python3 evals/gap-study-3/fixture_walk.py --static > /dev/null
+          python3 evals/gap-study-3/fixture_walk.py --finding > /dev/null
+          python3 evals/gap-study-3/fixture_walk.py --check
       - name: Round 3 review register
         # Every registered round of review has a committed report. An open round blocks the freeze.
         run: python3 evals/gap-study-3/review_kit/rounds.py --check

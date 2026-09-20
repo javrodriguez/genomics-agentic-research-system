@@ -279,8 +279,9 @@ class ThePoolingGuardIsMutationProved(unittest.TestCase):
                  "The average across the three models is one of three.",
                  "A total of 11 takes reached the probe.",
                  "Pooled with round 2, the count is 6 of 9.",
-                 "Across halves, two of six.",
-                 "Both rounds agree on this task.",
+                 "Across halves, 2 of 6.",
+                 "Across the two halves, 4 of 6 held.",
+                 "Both rounds together, 5 of 9.",
                  "Round 3 improved on round 2 for this cell.",
                  "Two of three is better than none of three.",
                  "Up from 0 of 3 in the earlier round.",
@@ -305,10 +306,15 @@ class ThePoolingGuardIsMutationProved(unittest.TestCase):
                 "Round 2's counts print beside these under a caption naming the instrument.",
                 "Slice 4 of 20 landed the fixture re-cut.",
                 "One cell is published unmeasured with its reason.",
-                # the false positive this guard raised against the carried keys, kept as a case so the
+                # the three false positives this guard raised against honest prose, kept as cases so the
                 # narrowing cannot be undone without a red
                 "The driver proves it by walking up from the checkout to the filesystem root.",
-                "Claude Code walks up from the working directory collecting instruction files."]
+                "Claude Code walks up from the working directory collecting instruction files.",
+                "The fixture is byte-identical across the halves and names no path of this repository.",
+                "byte-identical across the two halves; pinned at the freeze",
+                "The same question is asked across rounds, with the instrument fixed.",
+                # a comparative claim is the owner's gate, not this guard's: it joins no figure
+                "Both rounds agree on this task."]
         with tempfile.TemporaryDirectory() as td:
             folder = Path(td) / "scan"
             folder.mkdir()
@@ -323,6 +329,38 @@ class ThePoolingGuardIsMutationProved(unittest.TestCase):
             r = run(str(HERE / "lint_pooling.py"), str(folder))
             self.assertEqual(r.returncode, 2, r.stdout)
             self.assertIn("Not a pass", r.stdout)
+
+    def test_a_spelled_out_count_is_a_figure(self):
+        """"The sum of the two halves is four" carries no digit and is exactly the sentence to stop."""
+        import lint_pooling as lp
+        self.assertTrue(lp.scan_text("The sum of the two halves is four.", "x.md"))
+        self.assertTrue(lp.scan_text("A total of eleven takes reached the probe.", "x.md"))
+
+    def test_the_number_inside_the_scope_phrase_is_not_the_figure(self):
+        """`across the TWO halves` counts the scopes, not the takes; counting it fires on honest prose."""
+        import lint_pooling as lp
+        self.assertEqual(lp.scan_text("byte-identical across the two halves; pinned at the freeze",
+                                      "x.md"), [])
+        self.assertTrue(lp.scan_text("Across the two halves, 4 of 6 held.", "x.md"))
+
+    def test_a_scope_phrase_needs_a_figure_to_fire(self):
+        """The split that stopped the guard describing the wrong thing, driven both ways on one phrase."""
+        import lint_pooling as lp
+        self.assertIn("across-halves", lp.NEEDS_A_FIGURE)
+        self.assertNotIn("pooled", lp.NEEDS_A_FIGURE)
+        clean = "The fixture is byte-identical across the halves."
+        dirty = "The task held in 4 of 6 across the halves."
+        self.assertEqual(lp.scan_text(clean, "x.md"), [])
+        self.assertTrue(lp.scan_text(dirty, "x.md"), "a figure joined across halves must fire")
+
+    def test_the_widened_spellings_are_covered(self):
+        """`across the two halves` escaped the old pattern entirely: too broad on prose and too narrow
+        on the shape it was written for, at the same time."""
+        import lint_pooling as lp
+        for text in ("Across the two halves, 4 of 6.", "across both rounds, 5 of 9.",
+                     "across the rounds, 7 of 12."):
+            with self.subTest(text):
+                self.assertTrue(lp.scan_text(text, "x.md"))
 
     def test_it_has_no_allowlist_at_all(self):
         text = (HERE / "lint_pooling.py").read_text()
@@ -658,6 +696,83 @@ class TheDraftIsBuiltNotWritten(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------------------------
+# The leak verdict, and the finding that corrected the premise
+
+
+class TheLeakVerdictIsDecidedAtPathBoundaries(unittest.TestCase):
+    def setUp(self):
+        import fixture_walk
+        self.fw = fixture_walk
+
+    def test_containment_is_by_parts_never_by_substring(self):
+        """`/tmp/run-1/gars` is not inside `/tmp/run-11`, and a substring test says it is."""
+        self.assertTrue(self.fw.under("/tmp/run-1/gars", "/tmp/run-1"))
+        self.assertFalse(self.fw.under("/tmp/run-11/gars", "/tmp/run-1"))
+        self.assertFalse(self.fw.under("/tmp/run-1", "/tmp/run-1/gars"))
+        self.assertTrue(self.fw.under("/tmp/run-1", "/tmp/run-1"))
+
+    def test_a_dotted_path_is_normalised_before_it_is_compared(self):
+        self.assertTrue(self.fw.under("/tmp/run-1/x/../gars", "/tmp/run-1"))
+        self.assertFalse(self.fw.under("/tmp/run-1/../run-2/gars", "/tmp/run-1"))
+
+    def test_the_study_roots_are_taken_from_this_files_location(self):
+        roots = self.fw.study_roots()
+        self.assertIn(str(REPO), roots)
+        self.assertEqual(len(roots), 3, "the checkout, the folder holding it, and the root above")
+        for r in roots:
+            with self.subTest(r):
+                self.assertTrue(Path(r).is_absolute())
+
+    def test_a_path_inside_the_checkout_is_the_only_leak(self):
+        inside = str(REPO / "evals" / "gap-study-3" / "prereg-draft.json")
+        self.assertEqual(self.fw.classify_path(inside, "/tmp/run-1"), "study")
+        self.assertEqual(self.fw.classify_path("/tmp/run-1/gars/CLAUDE.md", "/tmp/run-1"), "run-tree")
+        self.assertEqual(self.fw.classify_path("/usr/bin/python3", "/tmp/run-1"), "system")
+        self.assertEqual(self.fw.classify_path("/tmp/scratch.json", "/tmp/run-1"), "elsewhere")
+
+    def test_the_static_verdict_is_clean_and_graded_every_half(self):
+        rec = self.fw.static_verdict()
+        self.assertEqual(rec["verdict"], "clean")
+        halves = sum(len(v) for v in rec["tasks"].values())
+        self.assertEqual(halves, 6, f"three tasks, two halves each: {halves}")
+
+    def test_the_finding_re_derives_from_round_twos_bytes(self):
+        r = run(str(HERE / "fixture_walk.py"), "--finding")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("re-derives", r.stdout)
+
+    def test_none_of_the_three_refused_attempts_named_this_checkout(self):
+        """The correction itself, driven on the bytes rather than read off the page that states it."""
+        import round2
+        root = (REPO / study.ROUND1_REL / "rehearsals" / "template-adherence" / "control"
+                / "claude-sonnet-5")
+        attempts = sorted(root.glob("row-*/transcript.jsonl"))
+        self.assertEqual(len(attempts), 3, f"round 2's capped cell has three refused attempts: {attempts}")
+        for a in attempts:
+            with self.subTest(a.parent.name):
+                rec = self.fw.replay(a)
+                self.assertEqual(rec["verdict"], "clean", rec["leaking_paths"])
+                self.assertGreater(rec["distinct_absolute_paths"], 5,
+                                   "a verdict over almost no paths has graded nothing")
+
+    def test_the_finding_page_states_what_the_code_derives(self):
+        """A page whose own checker passes while the page says something else is the defect this guards."""
+        page = (HERE / "verification" / "finding.md").read_text()
+        self.assertIn("fixture_walk.py --finding", page)
+        derived = self.fw.round2_caps()
+        self.assertIn(str(derived["refused_attempts"]), page)
+        self.assertIn(str(derived["distinct_outside_paths_by_source"]
+                          ["the harness's background-task output file"]), page)
+
+    def test_check_says_out_loud_when_it_has_graded_no_walk(self):
+        r = run(str(HERE / "fixture_walk.py"), "--check")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        if not self.fw.committed_walks():
+            self.assertIn("graded 0 walks", r.stdout)
+            self.assertIn("Not a pass", r.stdout)
+
+
+# ---------------------------------------------------------------------------------------------
 # The reviewer's brief and the purpose page
 
 
@@ -667,7 +782,6 @@ class TheReviewKitIsPinnedAndBlind(unittest.TestCase):
     # below fails if the study is frozen while anything is still planned.
     PLANNED = {
         "evals/gap-study-3/completeness.py",
-        "evals/gap-study-3/fixture_walk.py",
         "evals/gap-study-3/leak_grep.py",
     }
 

@@ -25,6 +25,10 @@ which this study is required to write. That rule is therefore enforced structura
 --check, over the table's own fields, and not here. What is here is the vocabulary: the words that
 join two instruments in a sentence.
 
+A phrase that joins two SCOPES is only pooling when it joins a FIGURE, so those patterns fire only on
+a line that carries a number. See the comment above the two lists; the split was made after this guard
+raised three false positives on honest prose and no true ones.
+
 Exit 0 clean, 1 findings, 2 usage. stdlib only, no network, no model.
 """
 
@@ -44,42 +48,79 @@ import lint_language as ll  # noqa: E402  the copied linter, for its file walk a
 # The patterns hold the file that defines them out of their own scan, as the copied linter does.
 NEVER_SCANNED = {"lint_pooling.py"}
 
-# (name, regex, why it is banned). Word-bounded throughout: an unbounded `total` matches `totally`,
-# and an unbounded `average` matches nothing this study would write but costs nothing to bound.
-PATTERNS: list[tuple[str, str, str]] = [
+# TWO KINDS OF PATTERN, AND WHY THEY ARE NOT ONE LIST.
+#
+# ALWAYS name the thing itself. "Combined", "pooled", "average" are pooling whatever sentence they sit in,
+# and there is no honest use of them in this study's published files.
+#
+# WITH_A_FIGURE join two scopes -- two rounds, two halves -- and joining scopes is only pooling when a
+# FIGURE is joined. "Byte-identical across the halves" says the two halves are the same bytes, which is the
+# opposite of adding them together; "held in 4 of 6 across halves" is the sentence this guard exists to
+# stop. The difference between them is a number in the line, so that is what the second list requires.
+#
+# This split was made after the guard raised its third false positive on honest prose -- twice on round 2's
+# carried text, which is byte-identical and not this round's to reword, and once on this round's own
+# finding. Three false positives and no true one is a pattern describing the wrong thing. Widening the
+# spellings at the same time was deliberate: `across the two halves` escaped the old pattern entirely, so
+# the old rule was simultaneously too broad on prose and too narrow on the shape it was written for.
+#
+# Word-bounded throughout: an unbounded `total` matches `totally`.
+
+# A figure is a digit or a count in words. Spelled-out counts matter: "the sum of the two halves is four"
+# carries no digit and is exactly the sentence this guard exists to stop.
+FIGURE = re.compile(r"\d|\b(?:none|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b",
+                    re.I)
+
+
+def figure_outside(line: str, span: tuple[int, int]) -> bool:
+    """Is there a figure in this line OTHER than one inside the matched phrase itself?
+
+    The phrase is cut out before the line is searched, because the number in `across the TWO halves`
+    counts the scopes, not the takes -- and counting it would fire on every honest sentence that names
+    both halves. What makes a scope phrase pooling is a figure it joins, which is a figure beside it.
+    """
+    return bool(FIGURE.search(line[:span[0]] + " " + line[span[1]:]))
+
+ALWAYS: list[tuple[str, str, str]] = [
     ("combined", r"\bcombined\b",
      "two rounds measured under different conditions are never added; they print side by side"),
-    ("across-rounds", r"\bacross (?:the )?rounds\b",
-     "a figure across rounds pools two instruments into one number"),
-    ("across-halves", r"\bacross (?:the )?halves\b",
-     "the two halves are the comparison; a figure across them erases it"),
-    ("overall", r"\boverall\b",
-     "an overall figure is a pooled figure wearing a shorter word"),
     ("average", r"\baverages?\b|\baveraged\b|\baveraging\b",
      "an average over cells of three takes is a rate, and over two instruments it is also a pool"),
     ("mean-of", r"\bmean of\b",
      "the same figure as an average, spelled differently"),
     ("pooled", r"\bpool(?:ed|ing|s)?\b",
      "the word for the thing itself; the study says what it did instead of naming the shortcut"),
-    ("total-of", r"\btotal of\b",
-     "a total over cells or rounds is a pooled figure"),
-    ("in-total", r"\bin total\b", "the same figure as a total, spelled differently"),
-    ("aggregate", r"\baggregat(?:e|ed|es|ing|ion)\b", "the same figure as a total, in a longer word"),
-    ("summed", r"\bsummed\b|\bsum of\b", "two cells' counts are never added"),
-    ("both-rounds", r"\bboth rounds\b",
-     "a sentence about both rounds at once is a comparison, and a comparison is the owner's to write"),
     ("improved", r"\bimprov(?:e|ed|es|ement|ements)\b",
      "an improvement is a claim across two instruments, which this study may not make"),
     ("better-than", r"\bbetter than\b|\bworse than\b",
      "a comparison between rounds or models is the owner's to write, never the run's"),
     # NARROWED, on a false positive this guard raised against round 2's carried text: "the driver walks UP
     # FROM the checkout" is a direction of travel, not a count moving. What makes the phrase pooling is what
-    # it moves from -- a number, a nothing, or the other round -- so the pattern now names those and the
-    # bare preposition passes. The carried keys are byte-identical to round 2's and are not this round's to
-    # reword, so the fix had to be here; it binds the pattern to the rule rather than approximating it.
+    # it moves from -- a number, a nothing, or the other round -- so the pattern names those and the bare
+    # preposition passes.
     ("up-from", r"\b(?:up|down) from (?:\d|none\b|zero\b|no\b|nothing\b|round\b|the (?:earlier|previous|last)\b|last round\b)",
      "a movement between two rounds' counts reads them as one series"),
 ]
+
+WITH_A_FIGURE: list[tuple[str, str, str]] = [
+    ("across-rounds", r"\bacross (?:the |both |the two )?rounds\b",
+     "a figure across rounds pools two instruments into one number"),
+    ("across-halves", r"\bacross (?:the |both |the two )?halves\b",
+     "the two halves are the comparison; a figure across them erases it"),
+    # A bare "both rounds agree" is a COMPARATIVE claim, not a pooled figure, and it is the owner's gate 2
+    # rather than this guard's -- which is why this pattern needs a figure beside it like the others.
+    ("both-rounds", r"\bboth rounds\b",
+     "a figure about both rounds at once joins two instruments into one number"),
+    ("overall", r"\boverall\b",
+     "an overall figure is a pooled figure wearing a shorter word"),
+    ("total-of", r"\btotal of\b", "a total over cells or rounds is a pooled figure"),
+    ("in-total", r"\bin total\b", "the same figure as a total, spelled differently"),
+    ("aggregate", r"\baggregat(?:e|ed|es|ing|ion)\b", "the same figure as a total, in a longer word"),
+    ("summed", r"\bsummed\b|\bsum of\b", "two cells' counts are never added"),
+]
+
+PATTERNS: list[tuple[str, str, str]] = ALWAYS + WITH_A_FIGURE
+NEEDS_A_FIGURE = {name for name, _, _ in WITH_A_FIGURE}
 
 
 def scan_text(text: str, rel: str) -> list[dict]:
@@ -87,6 +128,8 @@ def scan_text(text: str, rel: str) -> list[dict]:
     for lineno, line in enumerate(text.splitlines(), start=1):
         for name, rx, why in PATTERNS:
             for m in re.finditer(rx, line, re.I):
+                if name in NEEDS_A_FIGURE and not figure_outside(line, m.span()):
+                    continue
                 findings.append({"file": rel, "line": lineno, "pattern": name,
                                  "match": m.group(0), "text": line.strip()[:160], "why": why})
     return findings
@@ -104,7 +147,8 @@ def main() -> int:
 
     if args.list_patterns:
         for name, rx, why in PATTERNS:
-            print(f"{name:16} {rx:46} {why}")
+            mark = "  (only with a figure in the line)" if name in NEEDS_A_FIGURE else ""
+            print(f"{name:16} {rx:46} {why}{mark}")
         return 0
     if not args.paths and not args.commits_since:
         ap.error("give at least one path, or --commits-since <sha>")
