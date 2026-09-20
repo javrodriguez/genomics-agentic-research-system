@@ -188,7 +188,7 @@
       "source": "evals/gap-study-2/copy_manifest.py",
       "source_blob": "459d8dbf840ce3f3bed8df852e4855c3939aa0d0",
       "source_sha256": "b95a8be431e5acbae5ea3894850c5c6e87f9989df45a3f8af1a92ee57dd52811",
-      "copy_sha256": "224edd96bf8a0f872fd3f6471abacaf41f4e017079c555bf700ced01120d94bf",
+      "copy_sha256": "0efffad29dfba35f403eafbf49a33db3f891aa61ce0e8cc63ebe35ee82de3e01",
       "edited": true,
       "why": "Its own constants: this study's file list, its edit reasons, the commits it pins the earlier studies at, and the byte-identical set the goal file names."
     },
@@ -368,9 +368,9 @@
       "source": "evals/gap-study-2/review_kit/blindness.py",
       "source_blob": "cdf7fa93ea0cd2e82e479a6e50e857b6864e37e9",
       "source_sha256": "2e00cd5f52053037688a72d8b700a35b0e53194a83ac13badc37627acc059449",
-      "copy_sha256": "67e85c7c6008247957eaf6304d015609990f475fc482b674a2c7f9d138265102",
+      "copy_sha256": "9e20f3521445fc50c8f1b8690c2f10c89f538a2295e6eceed3ab591a561f392e",
       "edited": true,
-      "why": "The markers name this study (`gars-eval-v4`, `gap-study-3`, `round 3`) and keep round 2's and the pre-study's, since operator memory that names either is still a leak. The record also names the session id it read, which is what rounds.py --check holds a committed round to; it goes here because the report is committed unedited and because naming the session a blindness check read is what a blindness check is for."
+      "why": "The markers name this study (`gars-eval-v4`, `gap-study-3`, `round 3`) and keep round 2's and the pre-study's, since operator memory that names either is still a leak. The record also names the session id it read, which is what rounds.py --check holds a committed round to; it goes here because the report is committed unedited and because naming the session a blindness check read is what a blindness check is for. Every marker hit is also CLASSIFIED -- the reviewer's own report, the review folder's own path, or unexplained -- and the must-be-zero rule binds the unexplained count (Ruling 6, 20 September 2026): both other causes are present before a reviewer starts and recur in every round, so a rule read on the totals could never pass."
     },
     {
       "path": "evals/gap-study-3/review_kit/build_kit.py",

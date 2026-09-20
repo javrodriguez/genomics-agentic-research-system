@@ -127,7 +127,12 @@ EDITS = {
                                "2's and the pre-study's, since operator memory that names either is still a leak. The record also names the "
                                "session id it read, which is what rounds.py --check holds a committed round "
                                "to; it goes here because the report is committed unedited and because naming "
-                               "the session a blindness check read is what a blindness check is for.",
+                               "the session a blindness check read is what a blindness check is for. Every marker hit is also "
+                               "CLASSIFIED -- the reviewer's own report, the review folder's own path, or "
+                               "unexplained -- and the must-be-zero rule binds the unexplained count "
+                               "(Ruling 6, 20 September 2026): both other causes are present before a "
+                               "reviewer starts and recur in every round, so a rule read on the totals "
+                               "could never pass.",
     "language-allowlist.json": "The excusal list is this study's own. Round 2's two verifier-report entries name "
                                "files this study did not copy and are dropped; its contract-quote entry is re-ruled "
                                "against this study's copy of contract_quotes.json, whose bytes are identical.",
