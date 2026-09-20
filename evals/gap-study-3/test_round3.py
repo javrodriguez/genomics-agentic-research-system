@@ -383,6 +383,145 @@ class TheRoundRegisterBinds(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------------------------
+# Round 2, read as data, and the permission condition derived from it
+
+
+class RoundTwoIsReadAsDataAndOnlyThroughOneDoor(unittest.TestCase):
+    def test_only_one_of_this_studys_own_files_opens_round_twos_folder(self):
+        """Three readers of one folder drift, and the one that drifts quietly decides what gets
+        published. round2.py is the door; no OTHER file this study wrote may walk past it.
+
+        Scoped to the files round 3 wrote. A copied file's docstring naming the round it came from is
+        the copy being honest about itself, and ten of those files cannot be edited at all.
+        """
+        import ast
+        copied = {f["path"].split(study.STUDY_REL + "/", 1)[1]
+                  for f in json.loads((HERE / "COPIED.json").read_text())["files"]}
+        exempt = {"round2.py", "test_round3.py"}
+        offenders = []
+        for f in sorted(HERE.rglob("*.py")):
+            rel = f.relative_to(HERE).as_posix()
+            if "__pycache__" in f.parts or rel in copied or rel in exempt:
+                continue
+            for node in ast.walk(ast.parse(f.read_text())):
+                if isinstance(node, ast.Constant) and isinstance(node.value, str) \
+                        and "gap-study-2" in node.value:
+                    offenders.append(f"{f.relative_to(REPO)}:{node.lineno}")
+        self.assertEqual(offenders, [], f"round 2's folder is named outside the door: {offenders}")
+
+    def test_the_door_is_one_of_this_studys_own_files(self):
+        """If round2.py were itself a copied file the test above would exempt it and prove nothing."""
+        copied = {f["path"].split(study.STUDY_REL + "/", 1)[1]
+                  for f in json.loads((HERE / "COPIED.json").read_text())["files"]}
+        self.assertNotIn("round2.py", copied)
+        own = [f.relative_to(HERE).as_posix() for f in sorted(HERE.rglob("*.py"))
+               if "__pycache__" not in f.parts and f.relative_to(HERE).as_posix() not in copied]
+        self.assertGreater(len(own), 2, f"the scoped test has almost nothing to grade: {own}")
+
+    def test_the_door_writes_nothing(self):
+        text = (HERE / "round2.py").read_text()
+        for writer in ("write_text(", "write_bytes(", "open(", "mkdir(", "unlink(", "rmtree("):
+            with self.subTest(writer):
+                self.assertNotIn(writer, text, f"round2.py calls {writer}; it is read-only by construction")
+
+    def test_it_reads_the_frozen_file_never_a_draft(self):
+        import round2
+        self.assertTrue(str(round2.FROZEN).endswith("prereg.json"))
+        self.assertNotIn("draft", str(round2.FROZEN))
+
+    def test_the_probe_turns_come_from_round_twos_frozen_file(self):
+        import round2
+        turns = round2.probe_turns()
+        self.assertEqual(len(turns), 6, f"three tasks, two halves: {sorted(turns)}")
+        for (task, half), n in turns.items():
+            with self.subTest(f"{task}/{half}"):
+                self.assertIn(task, round2.TASKS)
+                self.assertGreater(n, 1, "a probe on turn 1 would leave no route to derive from")
+
+    def test_commands_stop_before_the_probe(self):
+        """The route is what happens BEFORE the question. What happens after is the measurement, and
+        conditions taken from it would be chosen by the thing they condition."""
+        import round2
+        rows = round2.pre_probe_commands()
+        self.assertGreater(len(rows), 50)
+        probes = round2.probe_turns()
+        for r in rows:
+            self.assertLess(r["operator_turn_before"], probes[(r["task"], r["half"])] + 1)
+
+    def test_every_row_can_be_gone_and_looked_at(self):
+        import round2
+        rows = round2.pre_probe_commands()
+        unlocatable = [r for r in rows if r["line"] == 0]
+        self.assertEqual(unlocatable, [], "a command the derivation cannot point at in its transcript")
+
+
+class TheAllowlistIsDerivedNotChosen(unittest.TestCase):
+    def setUp(self):
+        import allowlist
+        self.al = allowlist
+        self.rec = json.loads((HERE / "allowlist-derivation.json").read_text())
+
+    def test_the_record_re_derives(self):
+        r = run(str(HERE / "allowlist.py"), "--check")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_it_graded_something(self):
+        self.assertGreater(self.rec["calls_seen"], 0)
+        self.assertGreater(len(self.rec["entries"]), 0)
+
+    def test_no_entry_is_a_bare_binary(self):
+        for e in self.rec["entries"]:
+            with self.subTest(e["entry"]):
+                self.assertIn(" ", e["entry"], "a bare binary wildcard reached the candidate list")
+
+    def test_every_entry_is_a_verbatim_prefix_of_a_real_command(self):
+        import round2
+        for e in self.rec["entries"]:
+            with self.subTest(e["entry"]):
+                self.assertTrue(e["quoted_from"]["command"].startswith(e["entry"]))
+                self.assertTrue((REPO / round2.transcript_rel(e["quoted_from"])).is_file())
+                self.assertGreater(e["quoted_from"]["line"], 0)
+
+    def test_the_record_carries_no_path_the_copied_linter_would_misread(self):
+        """The record stores the four fields and builds the path in code, because the pinned linter
+        reads `claude-opus-5/1/` as a rate. Asserted, so nobody puts the path back."""
+        text = (HERE / "allowlist-derivation.json").read_text()
+        self.assertNotIn("transcripts/", text)
+        r = run(str(HERE / "lint_language.py"), str(HERE / "allowlist-derivation.json"))
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_a_bare_binary_command_yields_no_entry(self):
+        entry, why = self.al.candidate("pwd")
+        self.assertIsNone(entry)
+        self.assertIn("bare binary", why)
+
+    def test_a_run_specific_path_yields_no_entry(self):
+        entry, why = self.al.candidate("cd /private/var/folders/x/T/run-9463df65/gars && ls")
+        self.assertIsNone(entry, "an entry naming one run would match no other run")
+        self.assertIn("one run", why)
+
+    def test_an_arbitrary_entry_is_called_what_it_is(self):
+        self.assertEqual(self.al.classify("python3 -c"), "arbitrary")
+        self.assertEqual(self.al.classify("ls -la"), "shape")
+        self.assertEqual(self.al.classify("python3 _system/stage00_register.py"), "route")
+
+    def test_refused_calls_are_printed_never_dropped(self):
+        seen = self.rec["calls_seen"]
+        self.assertEqual(seen, self.rec["calls_admitted"] + self.rec["calls_refused_by_construction"])
+        self.assertEqual(len(self.rec["refused_by_construction"]),
+                         self.rec["calls_refused_by_construction"])
+
+    def test_a_pinned_entry_the_derivation_does_not_produce_is_a_failure(self):
+        """The rule that stops the list being widened by argument, driven rather than asserted."""
+        rec = dict(self.rec)
+        bad = self.al.problems(rec)
+        self.assertEqual(bad, [], f"the real derivation is already failing: {bad}")
+        # a guessed entry, checked through the same code path the pre-registration goes through
+        legal = {e["tool"] for e in rec["entries"]}
+        self.assertNotIn("Bash(curl:*)", legal)
+
+
+# ---------------------------------------------------------------------------------------------
 # The reviewer's brief and the purpose page
 
 
@@ -391,7 +530,6 @@ class TheReviewKitIsPinnedAndBlind(unittest.TestCase):
     # build. Each one lives here until it exists; the set must be EMPTY before the freeze, and the test
     # below fails if the study is frozen while anything is still planned.
     PLANNED = {
-        "evals/gap-study-3/allowlist.py",
         "evals/gap-study-3/build_draft.py",
         "evals/gap-study-3/completeness.py",
         "evals/gap-study-3/fixture_walk.py",
