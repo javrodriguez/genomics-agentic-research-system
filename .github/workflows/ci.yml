@@ -269,6 +269,13 @@ jobs:
           python3 evals/gap-study-3/fixture_walk.py --static > /dev/null
           python3 evals/gap-study-3/fixture_walk.py --finding > /dev/null
           python3 evals/gap-study-3/fixture_walk.py --check
+      - name: Round 3 permission mode
+        # RULING 2. Every committed session's RECORDED mode, re-derived from its own transcript, against
+        # the per-model expectation the pre-registration pins. The assertion round 2's checker could not
+        # make, because it compared a constant with itself.
+        run: |
+          python3 evals/gap-study-3/mode_binding.py --walks --check
+          python3 evals/gap-study-3/mode_binding.py --check
       - name: Round 3 review register
         # Every registered round of review has a committed report. An open round blocks the freeze.
         run: python3 evals/gap-study-3/review_kit/rounds.py --check

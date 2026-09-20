@@ -17,9 +17,9 @@
       "source": "evals/gap-study-2/drive.py",
       "source_blob": "16b35c4beb41238784236362133c91bad56ce7ad",
       "source_sha256": "b4417a94157425ea5359105a31fac36d63cb0df9492b2e8316e263f6cdef4f8f",
-      "copy_sha256": "f9e9942b8cd6d0f79da35795c3912c7dd124e6d2796478dc421efbc8705d6c57",
+      "copy_sha256": "b707fcbe95d94cbc76c8ef7ef1092fc36e33040576b165b22ee44f143004f6f2",
       "edited": true,
-      "why": "Three changes, each named in the file's own docstring. (1) Every turn passes --allowedTools with the pre-registration's driver_change.allowed_tools and the ledger records them: the one permission condition across the model axis. (2) The ledger's permission_mode is the mode the SESSION recorded, read from the take's own published transcript, with the mode passed kept beside it as permission_mode_passed -- round 2 recorded the constant in both places, so check_take.py's constant-binding rule compared a constant with itself; this is what gives that byte-identical rule a session to measure. (3) One display string that spelled round 2's folder into a rehearsal's WHY.md takes its path from study.py, as round 2's own design says a path must."
+      "why": "Three changes, each named in the file's own docstring. (1) Every turn passes --allowedTools with the pre-registration's driver_change.allowed_tools and the ledger records them: the one permission condition across the model axis. (2) The ledger records the mode the SESSION recorded, read from the take's own published transcript, as permission_mode_recorded, beside the flag that was passed. Round 2 recorded only the flag, in the field its own constant-binding rule compared with the pre-registration's copy of the same constant -- a constant compared with itself. permission_mode keeps round 2's meaning, so the byte-identical checker keeps reading what round 2's did; the recorded mode is asserted by this round's own mode_binding.py against the per-model expectation the pre-registration pins (Ruling 2, 20 September 2026). (3) One display string that spelled round 2's folder into a rehearsal's WHY.md takes its path from study.py, as round 2's own design says a path must."
     },
     {
       "path": "evals/gap-study-3/run.py",
@@ -188,7 +188,7 @@
       "source": "evals/gap-study-2/copy_manifest.py",
       "source_blob": "459d8dbf840ce3f3bed8df852e4855c3939aa0d0",
       "source_sha256": "b95a8be431e5acbae5ea3894850c5c6e87f9989df45a3f8af1a92ee57dd52811",
-      "copy_sha256": "8cf8513017024e4a06eaf20369d71801b7a3438f50c6e2cd4fad8ab03702f8a5",
+      "copy_sha256": "8c935cd4f413a90375c1d61608b5ee8fd48168c6016c0bf9f8a30f7dbee3fbc7",
       "edited": true,
       "why": "Its own constants: this study's file list, its edit reasons, the commits it pins the earlier studies at, and the byte-identical set the goal file names."
     },

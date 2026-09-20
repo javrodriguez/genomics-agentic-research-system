@@ -60,12 +60,30 @@ NAMESPACE_FROM = "https://github.com/javrodriguez/genomics-agentic-research-syst
 N = 3
 
 # Round 2's frozen values, carried unchanged. Each is read by a copied file or states a rule a take is held to.
-CARRIED = ("system_under_test", "harness", "budgets", "driver_constants", "run_location", "rehearsal_reasons",
+CARRIED = ("system_under_test", "harness", "budgets", "run_location", "rehearsal_reasons",
            "driver_outcome_shapes", "environment_record", "harness_delivered_user_records",
            "source_by_fixture_kind", "rehearsal_cap", "pause_cap", "reserved_labels", "permission_stop_rule",
            "stopped_take_rule", "attempt_layout", "wait_point_marker_rule", "operator_line_rule",
            "transcript_publication", "no_retakes", "driver_decided_reasons", "driver_decided_reasons_note",
            "label_decisions", "probe_located_by", "factivity_note", "line_count_scope")
+
+# RULING 2, 20 September 2026. The mode each model's sessions are EXPECTED to record, which is not the flag
+# the driver passes: the smallest model recorded `default` in four walks of four with `auto` passed. Round 2's
+# driver_constants is carried whole and this key added to it, so the copied checker keeps reading
+# `permission_mode` (the flag) exactly as round 2's did, and this round's own mode_binding.py reads the
+# recorded mode against the map below. A single value for the whole axis would route every take of that model
+# as a rehearsal and leave all six of its cells unmeasured.
+PERMISSION_MODE_EXPECTED = {
+    "claude-opus-5": "auto",
+    "claude-sonnet-5": "auto",
+    "claude-haiku-4-5-20251001": "default",
+}
+PERMISSION_MODE_EXPECTED_WHY = (
+    "The mode each model's sessions are expected to RECORD, which is not the flag the driver passes. Every "
+    "take passes `--permission-mode auto`; the smallest model's sessions record `default` regardless, in "
+    "four of this round's four walks on it and in 34 of round 2's 36 transcripts of it. A take whose session "
+    "records something other than its model's value here is a rehearsal with reason `mode-drift`, read by "
+    "mode_binding.py. Every published cell prints the mode its sessions recorded.")
 
 LEAK_WORDS_ADDED = ["gap-study-3", "gars-eval-v4", "round 3", "allowlist", "allowedTools", "permission mode"]
 
@@ -111,6 +129,14 @@ LIMITATIONS = [
     "The permission mode a take is held to is the mode its own transcript RECORDS. That binds what the "
     "session reported, not what the harness enforced; a harness that recorded one mode and applied another "
     "would satisfy this check.",
+    "The take checker refuses an attempt that names any absolute path outside its own run tree, and it "
+    "cannot tell a path that carries information about this study from one that does not. Two that do not "
+    "are a session's own scratch file written to a hard-coded temp path, and the harness's own "
+    "background-task output file, which Claude Code names back to the agent whenever a command is run in "
+    "the background. Those two refused all three attempts of round 2's one incomplete cell, and one of this "
+    "round's own walks already carries the second. The checker is pinned byte-identical for this round "
+    "(Ruling 3, 20 September 2026), so a cell whose attempts are refused this way publishes capped with the "
+    "refused path quoted, and is not a reading of the model.",
     "`gars/` has moved on the repository's main branch since round 2. Round 3 exports every checkout from a "
     "commit carrying round 2's pinned tree, so the system under test is round 2's and not the current one; a "
     "reader comparing against today's GARS is comparing against a different tree.",
@@ -143,7 +169,7 @@ def export_gars_tree() -> str:
 def predictions() -> list[dict]:
     """One per planned cell, derived. Never a count without a basis, and never a basis without bytes."""
     counts, modes = round2.cells(), round2.cell_modes()
-    passed = source_prereg()["driver_constants"]["permission_mode"]
+    passed = source_prereg()["driver_constants"]["permission_mode"]   # what ROUND 2 passed
     out = []
     for task in round2.TASKS:
         rec = counts[task]
@@ -323,6 +349,15 @@ def build(approved_by_owner: str | None = None, approved_at: str | None = None,
         if k not in r2:
             raise SystemExit(f"round 2's frozen file has no {k!r}")
         draft[k] = r2[k]
+    # driver_constants is round 2's, plus the one key Ruling 2 adds. It is built here rather than carried,
+    # so `carried_from_round_2` stays honest about what is unchanged.
+    draft["driver_constants"] = dict(r2["driver_constants"])
+    draft["driver_constants"]["permission_mode_expected"] = dict(PERMISSION_MODE_EXPECTED)
+    draft["driver_constants"]["permission_mode_expected_why"] = PERMISSION_MODE_EXPECTED_WHY
+    draft["driver_constants_note"] = (
+        "Round 2's frozen driver_constants, carried key for key, plus permission_mode_expected and its why "
+        "(Ruling 2). permission_mode keeps round 2's meaning -- the flag the driver passes -- because the "
+        "copied checker reads it and is byte-identical.")
     return draft
 
 

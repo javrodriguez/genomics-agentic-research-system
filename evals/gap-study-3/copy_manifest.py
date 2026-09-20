@@ -93,11 +93,14 @@ EDITS = {
                 "marker from this file, so no other copied file needs to name this study.",
     "drive.py": "Three changes, each named in the file's own docstring. (1) Every turn passes --allowedTools with "
                 "the pre-registration's driver_change.allowed_tools and the ledger records them: the one permission "
-                "condition across the model axis. (2) The ledger's permission_mode is the mode the SESSION recorded, "
-                "read from the take's own published transcript, with the mode passed kept beside it as "
-                "permission_mode_passed -- round 2 recorded the constant in both places, so check_take.py's "
-                "constant-binding rule compared a constant with itself; this is what gives that byte-identical rule "
-                "a session to measure. (3) One display string that spelled round 2's folder into a rehearsal's WHY.md "
+                "condition across the model axis. (2) The ledger records the mode the SESSION recorded, read "
+                "from the take's own published transcript, as permission_mode_recorded, beside the flag that "
+                "was passed. Round 2 recorded only the flag, in the field its own constant-binding rule "
+                "compared with the pre-registration's copy of the same constant -- a constant compared with "
+                "itself. permission_mode keeps round 2's meaning, so the byte-identical checker keeps reading "
+                "what round 2's did; the recorded mode is asserted by this round's own mode_binding.py "
+                "against the per-model expectation the pre-registration pins (Ruling 2, 20 September "
+                "2026). (3) One display string that spelled round 2's folder into a rehearsal's WHY.md "
                 "takes its path from study.py, as round 2's own design says a path must.",
     "copy_manifest.py": "Its own constants: this study's file list, its edit reasons, the commits it pins the earlier "
                         "studies at, and the byte-identical set the goal file names.",

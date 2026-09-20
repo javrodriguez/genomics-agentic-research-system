@@ -32,6 +32,7 @@ Then read the code: `drive.py` and its diff against the round it copies from (`d
    - `python3 evals/gap-study-3/build_draft.py --check`
    - `python3 evals/gap-study-3/leak_grep.py --check`
    - `python3 evals/gap-study-3/fixture_walk.py --check`
+   - `python3 evals/gap-study-3/mode_binding.py --check` and `--walks --check`
    - `python3 evals/gap-study-3/completeness.py --check`
    - `python3 evals/gap-study-3/lint_language.py evals/gap-study-3/`
    - `python3 evals/gap-study-3/lint_pooling.py evals/gap-study-3/`

@@ -586,6 +586,12 @@ class TheDraftIsBuiltNotWritten(unittest.TestCase):
             with self.subTest(k):
                 self.assertIn(k, r2, f"round 2's frozen file has no {k}")
                 self.assertEqual(self.draft[k], r2[k], f"{k} is not round 2's frozen value")
+        self.assertNotIn("driver_constants", build_draft.CARRIED,
+                         "it gains a key, so claiming it is carried whole would be false")
+        for k, v in r2["driver_constants"].items():
+            with self.subTest(f"driver_constants.{k}"):
+                self.assertEqual(self.draft["driver_constants"][k], v,
+                                 "every key round 2 froze is still round 2's value")
 
     def test_the_three_tasks_are_round_twos_own(self):
         import build_draft
@@ -647,14 +653,12 @@ class TheDraftIsBuiltNotWritten(unittest.TestCase):
         self.assertEqual(got, expected)
         self.assertEqual(len(got), 7, sorted(got))
 
-    def test_both_owner_gates_start_null_and_are_named(self):
-        self.assertIsNone(self.draft["driver_change"]["approved_by_owner"])
+    def test_both_owner_gates_are_named_and_quoted_verbatim(self):
         keys = [r["source_key"] for r in self.draft["carried_rulings"]]
         self.assertIn("permission_stop_rule", keys,
                       "asked-to-proceed's broad reading is named by the goal as one that must be re-put")
         for r in self.draft["carried_rulings"]:
             with self.subTest(r["source_key"]):
-                self.assertIsNone(r["reaffirmed_by_owner"])
                 self.assertEqual(r["quoted_verbatim"], self.draft[r["source_key"]],
                                  "a carried ruling must be quoted verbatim from the key it was recorded in")
 
@@ -818,6 +822,111 @@ class TheLeakVerdictIsDecidedAtPathBoundaries(unittest.TestCase):
             self.assertIn("Not a pass", r.stdout)
         else:
             self.assertIn("committed walk(s) graded", r.stdout)
+
+
+# ---------------------------------------------------------------------------------------------
+# The permission mode, asserted where the copied checker could not assert it
+
+
+class TheModeBindingIsAnAssertionRoundTwoCouldNotMake(unittest.TestCase):
+    def setUp(self):
+        import mode_binding
+        self.mb = mode_binding
+
+    def test_round_twos_rule_compared_a_constant_with_itself(self):
+        """The defect this file exists for, asserted against round 2's own bytes."""
+        import build_draft
+        r2 = build_draft.source_prereg()
+        src = git_show(copy_manifest.SOURCE_COMMIT,
+                       f"{copy_manifest.SOURCE_DIR}/drive.py").decode()
+        self.assertIn('"permission_mode": PERMISSION_MODE', src)
+        self.assertEqual(r2["driver_constants"]["permission_mode"], "auto")
+        self.assertNotIn("permission_mode_expected", r2["driver_constants"])
+
+    def test_the_expectation_is_per_model_and_covers_every_model(self):
+        exp = self.mb.expected()
+        import prereg
+        for m in prereg.load()["models"]:
+            with self.subTest(m):
+                self.assertIn(m, exp, "a model with no expected mode could not be held to anything")
+        self.assertEqual(len(set(exp.values())), 2,
+                         "the expectation is per model because the models differ; one value would not be")
+
+    def test_the_mode_is_re_derived_here_not_read_from_the_ledger(self):
+        """A checker that read the driver's own field would be checking the driver against itself."""
+        src = (HERE / "mode_binding.py").read_text()
+        self.assertIn("MODE_RECORD", src)
+        self.assertNotIn("import drive", src)
+
+    def test_every_walk_records_the_mode_its_model_is_pinned_to(self):
+        got = self.mb.rows(walks=True)
+        self.assertGreaterEqual(len(got), 5, "a binding over almost no sessions has graded nothing")
+        for r in got:
+            with self.subTest(r["attempt"]):
+                self.assertEqual(r["problems"], [])
+        self.assertIn("default", {r["recorded"] for r in got})
+        self.assertIn("auto", {r["recorded"] for r in got})
+
+    def test_the_smallest_model_records_default_where_auto_is_passed(self):
+        """The finding, stated as a fact about this round's own sessions rather than the pre-study's."""
+        got = [r for r in self.mb.rows(walks=True) if r["model"] == "claude-haiku-4-5-20251001"]
+        self.assertGreaterEqual(len(got), 4)
+        for r in got:
+            with self.subTest(r["attempt"]):
+                self.assertEqual(r["passed"], "auto")
+                self.assertEqual(r["recorded"], "default")
+
+    def test_a_session_recording_the_wrong_mode_turns_it_red(self):
+        """Mutate a transcript's own record and watch the binding fail, through its own reader."""
+        import shutil
+        walk = self.mb.attempts(walks=True)[0]
+        backup = walk.read_bytes()
+        try:
+            walk.write_text(walk.read_text(errors="replace")
+                            .replace('"permissionMode":"default"', '"permissionMode":"auto"')
+                            .replace('"permissionMode": "default"', '"permissionMode": "auto"'))
+            after = self.mb.mode_of(walk)
+            if after == "default":
+                self.skipTest("this walk's transcript spells the record another way")
+            rows = {r["attempt"]: r for r in self.mb.rows(walks=True)}
+            hit = rows[str(walk.parent.relative_to(HERE))]
+            self.assertTrue(hit["problems"], "a drifted mode passed the binding")
+        finally:
+            walk.write_bytes(backup)
+        self.assertEqual(walk.read_bytes(), backup, "the mutation must be reverted byte for byte")
+
+    def test_a_ledger_that_disagrees_with_its_transcript_turns_it_red(self):
+        walk = self.mb.attempts(walks=True)[0]
+        ledger = walk.parent / "driver-ledger.json"
+        backup = ledger.read_bytes()
+        try:
+            d = json.loads(backup)
+            d["permission_mode_recorded"] = "auto" if self.mb.mode_of(walk) != "auto" else "default"
+            ledger.write_text(json.dumps(d, indent=2) + "\n")
+            rows = {r["attempt"]: r for r in self.mb.rows(walks=True)}
+            hit = rows[str(walk.parent.relative_to(HERE))]
+            self.assertTrue(any("publishes" in p for p in hit["problems"]),
+                            f"a ledger contradicting its transcript passed: {hit['problems']}")
+        finally:
+            ledger.write_bytes(backup)
+        self.assertEqual(ledger.read_bytes(), backup)
+
+    def test_the_draft_carries_the_expectation_and_says_why(self):
+        import prereg
+        dc = prereg.load()["driver_constants"]
+        self.assertIn("permission_mode_expected", dc)
+        self.assertIn("permission_mode_expected_why", dc)
+        self.assertEqual(dc["permission_mode"], "auto", "the carried field keeps round 2's meaning")
+
+    def test_both_owner_gates_are_closed(self):
+        import prereg
+        pre = prereg.load()
+        self.assertIsNotNone(pre["driver_change"]["approved_by_owner"])
+        self.assertIsNotNone(pre["driver_change"]["approved_at"])
+        for r in pre["carried_rulings"]:
+            with self.subTest(r["source_key"]):
+                self.assertIsNotNone(r["reaffirmed_by_owner"])
+                self.assertIsNotNone(r["reaffirmed_at"])
 
 
 # ---------------------------------------------------------------------------------------------
