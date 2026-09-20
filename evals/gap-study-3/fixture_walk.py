@@ -196,6 +196,58 @@ def static_verdict() -> dict:
     return out
 
 
+def half_equivalence() -> dict:
+    """For each task: are its two halves the SAME experiment up to the probe turn?
+
+    A walk stops before the probe, which is the only turn the two halves are designed to differ in. So
+    where the pre-probe operator script is identical AND the two halves' fixtures hash the same, a walk on
+    one half is the walk on the other, byte for byte, and one walk is evidence for both. Where the fixtures
+    differ, they are two different experiments and each half needs its own walk.
+
+    This is derived per task rather than assumed, because it is not uniform: two of this round's three
+    tasks build the same fixture bytes for both halves and one does not.
+    """
+    out = {}
+    for task in prereg.load()["tasks"]:
+        pos, ctl = task.get("positive") or {}, task.get("control") or {}
+        pre_pos = [s for s in pos.get("operator_script") or [] if s["n"] < pos.get("probe_operator_turn", 0)]
+        pre_ctl = [s for s in ctl.get("operator_script") or [] if s["n"] < ctl.get("probe_operator_turn", 0)]
+        same_script = pre_pos == pre_ctl
+        same_fixture = (pos.get("fixture") or {}).get("sha256") == (ctl.get("fixture") or {}).get("sha256")
+        out[task["id"]] = {
+            "pre_probe_script_identical": same_script,
+            "fixture_sha256_identical": same_fixture,
+            "one_walk_covers_both_halves": bool(same_script and same_fixture),
+            "walks_needed": 1 if (same_script and same_fixture) else 2,
+            "probe_operator_turn": {"positive": pos.get("probe_operator_turn"),
+                                    "control": ctl.get("probe_operator_turn")},
+        }
+    return out
+
+
+def walk_coverage() -> dict:
+    """What has been walked, against what each task needs. Says plainly where it is short."""
+    need = half_equivalence()
+    have: dict[str, list[str]] = {}
+    for w in committed_walks():
+        task = w.parts[-3]
+        ledger = w.parent / "driver-ledger.json"
+        half = (json.loads(ledger.read_text()).get("half") if ledger.is_file() else None) or "?"
+        have.setdefault(task, []).append(half)
+    out = {}
+    for task, n in need.items():
+        halves = sorted(set(have.get(task, [])))
+        out[task] = {
+            "walks_committed": len(have.get(task, [])),
+            "halves_walked": halves,
+            "walks_needed": n["walks_needed"],
+            "one_walk_covers_both_halves": n["one_walk_covers_both_halves"],
+            "covered": (len(halves) >= 1 if n["one_walk_covers_both_halves"]
+                        else sorted(halves) == ["control", "positive"]),
+        }
+    return out
+
+
 def committed_walks() -> list[Path]:
     return sorted(WALKS.glob("*/*/transcript.jsonl")) if WALKS.is_dir() else []
 
@@ -265,6 +317,8 @@ def main() -> int:
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--static", action="store_true")
     g.add_argument("--replay", type=Path, metavar="TRANSCRIPT")
+    g.add_argument("--coverage", action="store_true",
+                   help="what has been walked against what each task needs, from the halves themselves")
     g.add_argument("--finding", action="store_true",
                    help="re-derive what capped round 2's one incomplete cell, from its own bytes")
     g.add_argument("--check", action="store_true")
@@ -285,6 +339,16 @@ def main() -> int:
         rec = replay(args.replay)
         print(json.dumps(rec, indent=2))
         return 0 if rec["verdict"] == "clean" else 1
+
+    if args.coverage:
+        cov = walk_coverage()
+        print(json.dumps(cov, indent=2))
+        short = [t for t, c in cov.items() if not c["covered"]]
+        if short:
+            print(f"\nSHORT: {short} — each needs a walk on a half it has not walked", file=sys.stderr)
+        else:
+            print(f"\nok: every task's halves are covered by the walks committed", file=sys.stderr)
+        return 1 if short else 0
 
     if args.finding:
         got = round2_caps()

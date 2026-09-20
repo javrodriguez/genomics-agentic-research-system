@@ -764,12 +764,60 @@ class TheLeakVerdictIsDecidedAtPathBoundaries(unittest.TestCase):
         self.assertIn(str(derived["distinct_outside_paths_by_source"]
                           ["the harness's background-task output file"]), page)
 
+    def test_half_equivalence_is_derived_per_task_not_assumed(self):
+        """It is not uniform: two tasks build the same fixture bytes for both halves and one does not."""
+        eq = self.fw.half_equivalence()
+        self.assertEqual(len(eq), 3)
+        for task, rec in eq.items():
+            with self.subTest(task):
+                self.assertTrue(rec["pre_probe_script_identical"],
+                                "a walk stops before the probe, so the pre-probe script must be the same")
+                self.assertEqual(rec["walks_needed"], 1 if rec["fixture_sha256_identical"] else 2)
+        self.assertFalse(eq["confounded-design"]["one_walk_covers_both_halves"],
+                         "its two halves build different fixture bytes")
+        self.assertTrue(eq["template-adherence"]["one_walk_covers_both_halves"])
+
+    def test_every_half_is_covered_by_a_committed_walk(self):
+        cov = self.fw.walk_coverage()
+        short = {t: c for t, c in cov.items() if not c["covered"]}
+        self.assertEqual(short, {}, f"halves with no walk behind them: {short}")
+        self.assertGreater(sum(c["walks_committed"] for c in cov.values()), 0)
+
+    def test_every_committed_walk_is_clean(self):
+        walks = self.fw.committed_walks()
+        self.assertGreaterEqual(len(walks), 5, "a verdict over almost no walks has graded nothing")
+        for w in walks:
+            with self.subTest(w.parent.name):
+                self.assertEqual(self.fw.replay(w)["verdict"], "clean")
+
+    def test_the_walks_record_the_mode_each_session_actually_ran_in(self):
+        """The driver's change, driven on real sessions rather than on a fixture."""
+        seen = set()
+        for w in self.fw.committed_walks():
+            d = json.loads((w.parent / "driver-ledger.json").read_text())
+            with self.subTest(f"{d['task']}/{d['half']}/{d['model_requested']}"):
+                self.assertIn(d.get("permission_mode"), ("auto", "default", "unrecorded"))
+                self.assertEqual(d.get("permission_mode_passed"), "auto")
+                self.assertEqual(len(d.get("allowed_tools") or []), 22)
+                seen.add((d["model_requested"], d["permission_mode"]))
+        self.assertIn(("claude-haiku-4-5-20251001", "default"), seen,
+                      "the smallest model records default where auto is passed; the walks must show it")
+
+    def test_no_walk_met_a_denial(self):
+        """What the permission condition is for. A denial here would be the condition, not the model."""
+        for w in self.fw.committed_walks():
+            with self.subTest(w.parent.name):
+                self.assertNotIn("Permission for this tool use was denied",
+                                 w.read_text(errors="replace"))
+
     def test_check_says_out_loud_when_it_has_graded_no_walk(self):
         r = run(str(HERE / "fixture_walk.py"), "--check")
         self.assertEqual(r.returncode, 0, r.stdout)
         if not self.fw.committed_walks():
             self.assertIn("graded 0 walks", r.stdout)
             self.assertIn("Not a pass", r.stdout)
+        else:
+            self.assertIn("committed walk(s) graded", r.stdout)
 
 
 # ---------------------------------------------------------------------------------------------
