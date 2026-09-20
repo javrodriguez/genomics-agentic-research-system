@@ -59,6 +59,44 @@ def session_file(sid: str) -> Path:
     return hits[0]
 
 
+def classify_hits(ctx_lines: list[str], word: str, folder: Path) -> tuple[int, int, int, int]:
+    """Every occurrence of `word` in the loaded context, split by what put it there.
+
+    Returns (total, in the reviewer's own report, inside the folder's own path, unexplained).
+
+    ROUND 3, RULING 6. Round 2 counted totals, and on this round's first review every study-name marker
+    read nonzero for two reasons that say nothing about blindness. The review folder is named for the
+    round, and the harness echoes the working directory through its own furniture -- the environment
+    record, the token reminders, the session context -- so the round's name is in the context before the
+    reviewer has read anything. And the reviewer's own report is attached back into its context as it
+    writes, so every study name it types returns as a hit against itself.
+
+    Both recur in every round, so a rule read on the totals could never pass, and a round voided for it
+    would void its re-run too. What the rule means is: did anything put this word there that was not the
+    reviewer's own work and not the folder it was handed. That is the unexplained count.
+    """
+    own = fp = un = total = 0
+    marker = word.lower()
+    folder_name = folder.name.lower()
+    parent_name = folder.parent.name.lower()
+    for line in ctx_lines:
+        try:
+            kind = ((json.loads(line).get("attachment") or {}).get("type")) or ""
+        except json.JSONDecodeError:
+            kind = ""
+        low = line.lower()
+        for m in re.finditer(re.escape(marker), low):
+            total += 1
+            window = low[max(0, m.start() - 60):m.end() + 60]
+            if kind == "edited_text_file":
+                own += 1
+            elif parent_name in window or folder_name in window:
+                fp += 1
+            else:
+                un += 1
+    return total, own, fp, un
+
+
 def report(folder: Path, sid: str) -> str:
     path = session_file(sid)
     ctx, tool_inputs, n = [], [], 0
@@ -83,11 +121,21 @@ def report(folder: Path, sid: str) -> str:
     out = [f"blindness check, read from the reviewer's own session file ({n} records, {len(ctx)} attachment records, "
            f"{len(tool_inputs)} tool calls)",
            f"session id: {sid}", "",
-           "1. Operator material in the loaded context (attachment records):"]
+           "1. Operator material in the loaded context (attachment records).",
+           "   Every hit is classified. Two causes carry nothing about the study and recur in EVERY round:",
+           "   the review folder's own path, which the harness echoes through its own furniture, and the",
+           "   reviewer's own report, which it wrote and the harness attached back into its context. The",
+           "   count that binds is UNEXPLAINED, and it must be 0 (Ruling 6, 20 September 2026). A rule read",
+           "   on the totals could never pass, because both causes are present before the reviewer starts.",
+           "",
+           f"   {'marker':34} {'total':>6} {'own report':>11} {'folder path':>12} {'UNEXPLAINED':>12}"]
     for label, w in MARKERS:
-        out.append(f"   {label:34} {ctx_text.lower().count(w.lower())}")
-    out.append(f"   {'this repository, by path':34} {ctx_text.count(str(REPO))}")
-    out.append(f"   {'the account email':34} {len(EMAIL.findall(ctx_text))}")
+        t, own, fp, un = classify_hits(ctx, w, folder)
+        out.append(f"   {label:34} {t:>6} {own:>11} {fp:>12} {un:>12}")
+    t, own, fp, un = classify_hits(ctx, str(REPO), folder)
+    out.append(f"   {'this repository, by path':34} {t:>6} {own:>11} {fp:>12} {un:>12}")
+    out.append(f"   {'the account email':34} {len(EMAIL.findall(ctx_text)):>6} "
+               f"{'':>11} {'':>12} {'tolerated':>12}")
     outside = set()
     for t in tool_inputs:
         for m in re.finditer(r"(/(?:Users|private|var|tmp|home|etc|opt)[^\s\"'`]*)", t):
