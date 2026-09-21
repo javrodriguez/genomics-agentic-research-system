@@ -194,10 +194,20 @@ class TheDriverChangeIsWhatItSays(unittest.TestCase):
         """Every line round 2's driver had is still here, bar the one display string the manifest names."""
         import difflib
         removed = [l[2:].rstrip("\n") for l in difflib.ndiff(self.theirs, self.ours) if l.startswith("- ")]
-        self.assertEqual(len(removed), 2, f"removed lines: {removed}")
-        joined = " ".join(removed)
-        self.assertIn("check_take.py", joined)
-        self.assertIn('PERMISSION_MODE = "auto"', joined)
+        # Comments are rewritten wherever a change is explained, so they are not the question. The
+        # question is which EXECUTABLE lines of round 2's driver are gone, and each must be one the
+        # manifest names.
+        code = [l for l in removed if l.strip() and not l.strip().startswith("#")]
+        named = ("check_take.py",                 # the display string naming round 2's folder
+                 'PERMISSION_MODE = "auto"',      # ruling 7: default across the axis
+                 "len(existing) >= 2",            # ruling 8: four walks per task
+                 "the cap is two")                # ruling 8, its message
+        unaccounted = [l for l in code if not any(n in l for n in named)]
+        self.assertEqual(unaccounted, [], f"round 2's driver lost a line nothing accounts for: {unaccounted}")
+        joined = " ".join(code)
+        for n in ("check_take.py", 'PERMISSION_MODE = "auto"', "len(existing) >= 2"):
+            with self.subTest(n):
+                self.assertIn(n, joined)
 
     def test_every_turn_passes_the_pre_registered_allowlist(self):
         text = "".join(self.ours)
@@ -900,8 +910,15 @@ class TheModeBindingIsAnAssertionRoundTwoCouldNotMake(unittest.TestCase):
         self.assertIn("auto", {r["recorded"] for r in got})
         # Ruling 7 replaced the condition these five were driven under, so each is reported as superseded
         # rather than graded, and the run says so out loud rather than counting a pass over them.
-        self.assertTrue(all(r["superseded"] for r in got),
-                        "a walk driven before the design pinned an expectation is not graded against it")
+        sup = [r for r in got if r["superseded"]]
+        live = [r for r in got if not r["superseded"]]
+        self.assertEqual(len(sup), 5, "the walks driven before the design pinned an expectation")
+        self.assertGreaterEqual(len(live), 2, "ruling 7 needs a graded walk on each of the two larger models")
+        self.assertEqual({r["model"] for r in live}, {"claude-sonnet-5", "claude-opus-5"})
+        for r in live:
+            with self.subTest(r["attempt"]):
+                self.assertEqual(r["passed"], "default")
+                self.assertEqual(r["recorded"], "default")
 
     def test_the_smallest_model_records_default_where_auto_is_passed(self):
         """The finding, stated as a fact about this round's own sessions rather than the pre-study's."""
@@ -990,12 +1007,33 @@ class TheLeakListIsDrivenBeforeItIsFrozen(unittest.TestCase):
         rec = self.lg.derive()
         present = set(rec["words_present_in_some_session"])
         self.assertIn("allowlist", present)
-        self.assertIn("permission mode", present)
         for w in rec["per_word"]:
             with self.subTest(w["word"]):
                 self.assertEqual(w["sessions_hit"], rec["sessions_read"],
                                  "harness furniture appears in every session, not some")
                 self.assertEqual(w["still_flagged_in"], 0)
+
+    def test_the_un_enumerable_leak_word_is_gone_and_says_why(self):
+        """A word that can only be excused wording by wording is not a leak signal. It was found in three
+        different wordings across seven real walks, one of them for a single model, and a fourth was a
+        harness release away -- which after the freeze would void takes with no fix but an amendment."""
+        import prereg
+        pre = prereg.load()
+        self.assertNotIn("permission mode", pre["leak_words"])
+        dropped = pre["leak_word_dropped"]
+        self.assertEqual(dropped["word"], "permission mode")
+        self.assertIn("three different wordings", dropped["why"])
+        # the names that identify THIS study stay
+        for name in ("gap-study-3", "gars-eval-v4", "round 3", "allowlist"):
+            with self.subTest(name):
+                self.assertIn(name, pre["leak_words"])
+
+    def test_no_excusal_survives_for_the_dropped_word(self):
+        """Excusals for a word no longer on the list would forgive nothing and hide that they do."""
+        import prereg
+        for e in prereg.load()["leak_context_excusals"]:
+            with self.subTest(e["phrase"][:40]):
+                self.assertNotIn("user-selected permission mode", e["phrase"])
 
     def test_removing_an_excusal_turns_it_red(self):
         """Driven through the checker's own reader on a real session's real context."""
