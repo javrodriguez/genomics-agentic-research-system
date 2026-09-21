@@ -282,7 +282,15 @@ def main() -> int:
         print(f"wrote {RESULT.name}")
         return 0
     if not RESULT.is_file():
-        bad.append("no RESULT.md")
+        # FROZEN BUT NOTHING GRADED YET. Found by the third freeze rehearsal: the freeze succeeds, and
+        # this check then demanded a published result before a single take had run. There is nothing to
+        # publish from zero takes, and saying so is not the same as passing -- the counts print either
+        # way, and the moment a take is graded the file is required again.
+        if rec["graded_takes"] == 0:
+            print("no RESULT.md, and nothing to write one from: 0 graded takes. This is not a pass over "
+                  "a published result; it is the state before any take has run.")
+            return 0
+        bad.append(f"no RESULT.md, and {rec['graded_takes']} graded take(s) to write it from")
     elif RESULT.read_text() != render(rec):
         bad.append("RESULT.md is not what this file writes from the committed takes")
     for b in bad:
