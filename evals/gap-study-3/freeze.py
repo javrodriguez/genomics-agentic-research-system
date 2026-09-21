@@ -513,6 +513,15 @@ def main() -> int:
         "not_run_reason": "a model that runs has no reason not to",
         "error": "a control attempt that was not expected to error",
         "take_order_seed": "set below, from the review commit",
+        # ROUND 3, found by the second freeze rehearsal.
+        "take_order": "set below, the permutation the review commit's sha seeds; it cannot exist "
+                      "before the review that seeds it, which is the whole point of seeding it there",
+        "predicted": "a cell with no informed basis carries NO predicted count, deliberately. Seven "
+                     "of the eighteen do: six whose round-2 transcripts recorded a permission mode "
+                     "other than the one round 2 passed, so that count measured the harness rather "
+                     "than the model, and one round 2 published incomplete. Each names its basis in "
+                     "the same entry. A number invented for them would be a guess wearing a count, "
+                     "and predictions_rule states the rule that produces the null",
         "git_blob_sha": "a fixture is not a file in git; see the fixture's pinned_by",
         "sha256": "for a copied-tree or project fixture the pin is the tree hash or the verified "
                   "exit code; see the fixture's pinned_by",

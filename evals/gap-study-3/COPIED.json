@@ -107,7 +107,7 @@
       "source": "evals/gap-study-2/freeze.py",
       "source_blob": "d1dbffc2b8fb9dcc43a857e21f5d60b2ccec1bf1",
       "source_sha256": "0328d4bd71c1f68abbc95cfff85353219eec09cd5b35a4166da2896c462c85fc",
-      "copy_sha256": "1ddc3b18f67eabc2f8965eca171959b846e9af276572e8a308d76ca7b0e51929",
+      "copy_sha256": "d1ca3a4835c8f6165722b4217cf646443fd4fd86913c99698d5c1fc54a8c3a63",
       "edited": true,
       "why": "Two changes. (1) Three call sites take the pre-freeze review folder from study.REVIEW_DIR instead of the literal `verification`: the tree-binding exclusion, the review-commit rule and its latest-review scan, because this round keeps pre-freeze reviews and final verifications in separate folders. No rule changes; only where each rule looks. (2) THE PIN LIST IS DERIVED rather than carried (review 1, blocker 2): six of round 2's paths do not exist here and a missing pin exits 1, so the freeze could not have run, and its globs matched none of this round's own guards, so after a freeze any of them could have been edited with the result checker staying clean. Every code and data file this study owns is now pinned unless it is named in NOT_PINNED_AND_WHY with a reason, so a file added later is pinned by existing."
     },
