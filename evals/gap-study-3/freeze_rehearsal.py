@@ -62,7 +62,7 @@ import study  # noqa: E402
 
 DRAFT = HERE / "prereg-draft.json"
 VERIFICATION = HERE / "verification"
-CLONES = Path.home() / ".gap-study-2-rehearsal"
+CLONES = Path.home() / f".{study.STUDY}-rehearsal"
 NOT_DONE = ("the synthetic full ledger of 108 takes: not done, no synthetic graded-take generator exists; the ledger "
             "was exercised with one real registered row instead")
 

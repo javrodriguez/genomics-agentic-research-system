@@ -1001,7 +1001,17 @@ def main() -> int:
         ran_any = True
     if args.ledger:
         print("the ledger:")
-        problems += check_ledger(args.at)
+        # ROUND 3. The tree read defaults to the commit the pre-registration EXPORTS FROM, not HEAD.
+        # Round 2 exported every checkout from HEAD, so HEAD carrying the pinned system tree was the
+        # same statement as the takes having run against it. `gars/` has moved on main since, and this
+        # round exports from `export_at` by design (drive.py --at), so reading HEAD here asks whether a
+        # tree this round never used matches the pin -- and the first freeze rehearsal went red on
+        # exactly that. The rule is unchanged: the tree the takes ran against must be the pinned one.
+        # An explicit --at still wins, so a reader can point it anywhere.
+        at = args.at
+        if at == DEFAULT_AT:
+            at = (prereg.load().get("export_at") or DEFAULT_AT)
+        problems += check_ledger(at)
         ran_any = True
     if args.controls:
         print("the controls:")

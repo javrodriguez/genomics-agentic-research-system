@@ -22,7 +22,7 @@ until an independent reviewer had already read the design and committed its repo
 cannot have been picked to suit a result. Anyone can recompute it: `prereg.py --order <sha>`.
 
 THE REVIEW MUST ALREADY BE COMMITTED. This file checks that the sha it is handed is a real commit
-that touches the verification directory, and refuses otherwise. A seed that names nothing is a seed
+that touches the pre-freeze review directory, and refuses otherwise. A seed that names nothing is a seed
 the run could have invented.
 
 No model, no network, stdlib only.
@@ -341,9 +341,12 @@ def main() -> int:
               f"is seeded by the review commit precisely so the run cannot have chosen it.")
         return 2
     code, touched = git("show", "--name-only", "--format=", args.review_commit)
-    if study.rel("verification") not in touched:
+    # ROUND 3: the pre-freeze review lands in study.REVIEW_DIR, not the literal `verification`. This is the
+    # FOURTH call site of that change and the one the first rehearsal caught -- the other three were found
+    # by reading and this one only by running, which is the argument for rehearsing a freeze at all.
+    if study.rel(study.REVIEW_DIR) not in touched:
         print(f"refusing: {args.review_commit[:12]} does not touch "
-              f"{study.rel('verification')}/. The seed must name the commit that landed the "
+              f"{study.rel(study.REVIEW_DIR)}/. The seed must name the commit that landed the "
               f"pre-freeze review, not some other commit.\nIt touched:\n{touched[:400]}")
         return 2
 

@@ -136,6 +136,13 @@ EDITS = {
                             "run could open several and commit the ones it liked. Round 3 passes the id its "
                             "round register derives as uuid5 of the row's commit; the uuid4 default stays, "
                             "and what makes the binding hold is rounds.py --check rather than this file.",
+    "check_results.py": "The ledger check's tree read defaults to the pre-registration's export_at rather "
+                        "than HEAD. Round 2 exported every checkout from HEAD, so HEAD carrying the pinned "
+                        "system tree said the same thing as the takes having run against it; `gars/` has "
+                        "moved on main since, and this round exports from a commit carrying round 2's "
+                        "pinned tree by design. Reading HEAD asked whether a tree this round never used "
+                        "matched the pin, and the first freeze rehearsal went red on it. The rule is "
+                        "unchanged and an explicit --at still wins.",
     "review_kit/blindness.py": "The markers name this study (`gars-eval-v4`, `gap-study-3`, `round 3`) and keep round "
                                "2's and the pre-study's, since operator memory that names either is still a leak. The record also names the "
                                "session id it read, which is what rounds.py --check holds a committed round "
