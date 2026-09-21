@@ -17,7 +17,9 @@
       "input_sha256": "5798620b8333ad300b7aef7b06116a4bc880b9d582887ad2587d8ffa8ed1655e",
       "launch_commit": "28090e3b82499f17df0a074916bc3d02fb1d24fb",
       "added": "2026-09-21T11:41:06+00:00",
-      "voids": null
+      "voids": null,
+      "spent_without_work": "the reviewer model's rate limit was reached before the first agent turn; the session id this row derives was spent by that launch and the harness refuses to reuse it",
+      "spent_at": "2026-09-21T11:43:24+00:00"
     }
   ]
 }

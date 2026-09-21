@@ -29,6 +29,15 @@ AN OPEN ROUND BLOCKS. A registered row whose report is not committed is an OPEN 
 names it. No report may be discarded, so an open round is either a report to commit or a void to record --
 and a void is a row of its own, naming the row it voids, never an edit to that row.
 
+A SESSION SPENT WITHOUT PRODUCING WORK IS RECORDED, NOT HIDDEN. A row's session id is a pure function of
+its commit, so it can be opened exactly once: a launch that dies before the first agent turn -- a rate
+limit, an interruption -- spends the id permanently, and the harness refuses to reuse it. The round is not
+void (nothing about its blindness failed) and the goal file calls a rate limit a pause rather than a
+refusal, so it does not count against the two-void rule. It is closed with `spent_without_work` and its
+reason, and a fresh row re-runs it under a new commit and a new id. Deleting the dead session file to reuse
+the id would work and is exactly what this register exists to make impossible: a run that could quietly
+retire a session could quietly retire one that HAD produced work.
+
 A SECOND VERIFIER RUN ON THE SAME COMMIT IS A MATERIAL FINDING. `--check` prints it as one; it does not fail
 on it, because whether a re-run is warranted is the owner's call and the record's job is to show it happened.
 
@@ -161,7 +170,8 @@ def add(kind: str, folder: Path, voids: int | None) -> int:
               f"folder must be built first (review_kit/build_kit.py).")
         return 1
     rows = load()
-    open_rows = [r for r in rows if not r.get("voided_by") and not committed(report_path(r))]
+    open_rows = [r for r in rows if not r.get("voided_by") and not r.get("spent_without_work")
+                 and not committed(report_path(r))]
     if open_rows:
         names = ", ".join(f"{r['kind']} {r['n']}" for r in open_rows)
         print(f"refusing: {len(open_rows)} open round(s) with no committed report ({names}). A report is "
@@ -199,6 +209,7 @@ def audit() -> int:
         sid = session_id_for(sha) if sha else "-"
         rep = report_path(r)
         state = ("VOIDED by row " + str(r["voided_by"])) if r.get("voided_by") else \
+                ("SPENT without work — " + r["spent_without_work"]) if r.get("spent_without_work") else \
                 ("report committed" if committed(rep) else "OPEN — no committed report")
         print(f"row {i}  {r['kind']} {r['n']}  commit {(sha or '-')[:12]}  session {sid}  "
               f"prompt {r['prompt_sha256'][:12]}  input {r['input_sha256'][:12]}  {state}")
@@ -213,7 +224,7 @@ def check() -> int:
     prompt = sha256_bytes(BRIEF.read_bytes()) if BRIEF.is_file() else None
     commits = row_commits()
     for i, r in enumerate(rows):
-        if r.get("voided_by"):
+        if r.get("voided_by") or r.get("spent_without_work"):
             continue
         rep = report_path(r)
         if not committed(rep):
@@ -244,7 +255,7 @@ def check() -> int:
                             f"prompt is pinned byte-identical across rounds.")
     seen: dict[str, list[int]] = {}
     for r in rows:
-        if r["kind"] == "verify" and not r.get("voided_by"):
+        if r["kind"] == "verify" and not r.get("voided_by") and not r.get("spent_without_work"):
             seen.setdefault(r["launch_commit"], []).append(r["n"])
     for sha, ns in seen.items():
         if len(ns) > 1:
@@ -258,7 +269,11 @@ def check() -> int:
     for p in problems:
         print(f"FAIL {p}")
     if not problems:
-        live = [r for r in rows if not r.get("voided_by")]
+        live = [r for r in rows if not r.get("voided_by") and not r.get("spent_without_work")]
+        spent = [r for r in rows if r.get("spent_without_work")]
+        if spent:
+            print(f"{len(spent)} row(s) closed as spent without work (a rate limit or an interruption "
+                  f"before the first agent turn). Not voids: they do not count against the two-void rule.")
         if not live:
             # An empty gate is said out loud, never logged as a pass: nothing is registered yet, so this
             # check has graded nothing and its green means only that.
@@ -277,11 +292,37 @@ def main() -> int:
     g.add_argument("--session-id", type=int, metavar="ROW")
     g.add_argument("--audit", action="store_true")
     g.add_argument("--check", action="store_true")
+    g.add_argument("--close-spent", type=int, metavar="ROW",
+                   help="close a row whose session was spent without producing work (a rate limit or an "
+                        "interruption before the first agent turn). Not a void: it does not count against "
+                        "the two-void rule, because nothing about the round's blindness failed")
     ap.add_argument("--kind", choices=KINDS)
     ap.add_argument("--folder", type=Path)
     ap.add_argument("--voids", type=int, default=None,
                     help="the row index this round re-runs after a void; the voided row records voided_by")
+    ap.add_argument("--reason", help="with --close-spent: what spent it, in plain words")
     args = ap.parse_args()
+    if args.close_spent is not None:
+        if not args.reason:
+            print("--close-spent needs --reason: a row closed with no reason is a row quietly retired")
+            return 2
+        rows = load()
+        if not 0 <= args.close_spent < len(rows):
+            print(f"no row {args.close_spent}; the register holds {len(rows)}")
+            return 2
+        r = rows[args.close_spent]
+        if committed(report_path(r)):
+            print(f"refusing: {r['kind']} round {r['n']} has a committed report. A round that produced "
+                  f"work is never closed as spent.")
+            return 1
+        r["spent_without_work"] = args.reason
+        r["spent_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        write(rows)
+        print(json.dumps(r, indent=2))
+        print(f"\nrow {args.close_spent} closed as spent. Commit it, then register the re-run with "
+              f"--add --kind {r['kind']} --folder <a freshly built folder>.")
+        return 0
+
     if args.add:
         if not args.kind or not args.folder:
             print("--add needs --kind and --folder")
