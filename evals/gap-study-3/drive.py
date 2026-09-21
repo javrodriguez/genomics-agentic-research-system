@@ -54,8 +54,8 @@ project's own evaluation harness and lives in the GARS repository; that rule doe
 The session under test is a separate process with no context from the session running this driver
 or from the session that will grade the result. No model is called by this file itself.
 
-THE CHANGES FROM ROUND 2'S DRIVER (round 3, slice 01). This file is a byte copy of
-evals/gap-study-2/drive.py at bf065fe with three changes, and nothing else moves:
+THE CHANGES FROM ROUND 2'S DRIVER. This file is a byte copy of evals/gap-study-2/drive.py at bf065fe
+with four changes, and nothing else moves:
 
   1. Every turn also passes `--allowedTools` with the entries the pre-registration pins in
      `driver_change.allowed_tools`, and the ledger records them. Round 2 passed
@@ -81,6 +81,13 @@ evals/gap-study-2/drive.py at bf065fe with three changes, and nothing else moves
 
   3. One display string that spelled `evals/gap-study-2/check_take.py` into a rehearsal's WHY.md
      now takes the path from study.py, as round 2's own design says a path must.
+
+  4. The per-task walk cap is four rather than two (RULING 8, 20 September 2026). Round 2's cap counts
+     OPERATOR-SCRIPT REVISIONS -- its own comment says walk 1 is the evidence for why walk 2's script
+     differs -- and this round revises no script: its three tasks are carried verbatim from round 2's
+     frozen file and a test compares them byte for byte. Ruling 7 then required a walk on each of the
+     two larger models under the new permission condition, with five of round 2's six slots already
+     spent. The cap stays a cap; nothing about walk numbering, routing or recording moves.
 
 """
 
@@ -122,6 +129,8 @@ DEFAULT_AT = "HEAD"
 # `default` the pre-registered allowlist is the ENTIRE permission surface, identically for all three, which
 # is what makes this round's question true rather than merely softened. Review 1, blocker 4.
 PERMISSION_MODE = "default"
+# RULING 8: walks per task. Round 2's two counted operator-script revisions; this round revises no script.
+WALK_CAP = 4
 # The first study's constant, carried with its then-step: how long the driver waits for stage 00's
 # finalize to write samples.csv before the design table is copied in. Pre-registered in
 # driver_constants.finalize_wait_s; the value read at run time is the frozen file's.
@@ -1060,13 +1069,16 @@ def main() -> int:
         model = args.model
         session_id = str(uuid.uuid4())
         row_commit = None
-        # Walks are numbered per TASK and capped at two, per the protocol. Numbering rather than
-        # overwriting matters: walk 1 is the evidence for why walk 2's script differs, and the
-        # freeze commit has to list every line that changed and why.
+        # Walks are numbered per TASK and capped, per the protocol. Numbering rather than overwriting
+        # matters: walk 1 is the evidence for why walk 2's script differs, and the freeze commit has to
+        # list every line that changed and why. ROUND 3, RULING 8: the cap is four rather than two,
+        # because that reason counts SCRIPT REVISIONS and this round revises no script -- its tasks are
+        # carried verbatim -- while ruling 7 needed a walk per model under a condition adopted after
+        # five of the six original slots were already spent.
         base = HERE / "walks" / args.task
         existing = sorted(p for p in base.glob("*") if p.is_dir()) if base.is_dir() else []
-        if len(existing) >= 2:
-            print(f"{args.task} already has {len(existing)} walks, and the cap is two. Fix the "
+        if len(existing) >= WALK_CAP:
+            print(f"{args.task} already has {len(existing)} walks, and the cap is {WALK_CAP}. Fix the "
                   f"script from what those two showed, or freeze it as it stands.")
             return 2
         out_root = base / str(len(existing) + 1)

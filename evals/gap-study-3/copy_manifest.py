@@ -100,7 +100,11 @@ EDITS = {
                 "itself. permission_mode keeps round 2's meaning, so the byte-identical checker keeps reading "
                 "what round 2's did; the recorded mode is asserted by this round's own mode_binding.py "
                 "against the per-model expectation the pre-registration pins (Ruling 2, 20 September "
-                "2026). (3) One display string that spelled round 2's folder into a rehearsal's WHY.md "
+                "2026). (4) The per-task walk cap is four rather than two (Ruling 8, 20 September 2026): round "
+                "2's cap counts operator-script revisions -- its own comment says walk 1 is the evidence "
+                "for why walk 2's script differs -- and this round revises no script, its tasks being "
+                "carried verbatim; ruling 7 then needed a walk per model under a condition adopted after "
+                "five of the six original slots were spent. (3) One display string that spelled round 2's folder into a rehearsal's WHY.md "
                 "takes its path from study.py, as round 2's own design says a path must.",
     "copy_manifest.py": "Its own constants: this study's file list, its edit reasons, the commits it pins the earlier "
                         "studies at, and the byte-identical set the goal file names.",
