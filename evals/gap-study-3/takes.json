@@ -243,6 +243,15 @@
       "order_index": 26,
       "fixture_sha": "",
       "environment_class": "claude-subscription-headless"
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "order_index": 27,
+      "fixture_sha": "",
+      "environment_class": "claude-subscription-headless"
     }
   ]
 }
