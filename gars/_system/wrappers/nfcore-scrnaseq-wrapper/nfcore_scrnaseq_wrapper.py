@@ -264,14 +264,15 @@ def cmd_prepare(args):
     # The venue decides the container story: this cluster's descriptor says apptainer,
     # AWS Batch supplies each process's container itself and wants no -profile at all.
     profile = wl.ex.nextflow_profile(project)
-    profile_line = '    -profile %s \\\n' % profile if profile else ""
+    profile_line = '    -profile %s \\\n' % wl.shell_value(profile, "nextflow_profile") if profile else ""
     body = """nextflow run "{checkout}" \\
 {profile_line}    -c "{executor_config}" \\
     -params-file "{substage}/params.yaml" \\
     -work-dir "{work_dir}" \\
-    $RESUME""".format(checkout=paths["checkout"], profile_line=profile_line,
-                      executor_config=paths["executor_config"].resolve(),
-                      substage=substage.resolve(), work_dir=work_dir)
+    $RESUME""".format(checkout=wl.shell_value(paths["checkout"], "checkout"), profile_line=profile_line,
+                      executor_config=wl.shell_value(paths["executor_config"].resolve(), "executor_config"),
+                      substage=wl.shell_value(substage.resolve(), "substage"),
+                      work_dir=wl.shell_value(work_dir, "compute.work_dir"))
     wl.write_submit_sh(substage, WORKSPACE, cfg, project.resolve().name, ASSAY, body)
     wl.write_reproducibility(substage, ASSAY, paths["checkout"],
                              {"samplesheet": paths["samplesheet"], "config": paths["config"]},

@@ -1,0 +1,4120 @@
+{
+  "tools": [
+    {
+      "argv": [
+        "python3",
+        "_system/stage00_register.py",
+        "assays"
+      ],
+      "cli": {
+        "select": {
+          "flag": "--select",
+          "nargs": null
+        }
+      },
+      "description": "Run stage00_register assays",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "select": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "stage00_register.assays",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "allow"
+      },
+      "side_effects": [],
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/stage00_register.py",
+        "create"
+      ],
+      "cli": {
+        "assays": {
+          "flag": "--assays",
+          "nargs": "+"
+        },
+        "title": {
+          "flag": "--title",
+          "nargs": null
+        }
+      },
+      "description": "Run stage00_register create",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "assays": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "title": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "assays"
+        ],
+        "type": "object"
+      },
+      "name": "stage00_register.create",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/stage00_register.py",
+        "inspect"
+      ],
+      "cli": {
+        "assay": {
+          "flag": "--assay",
+          "nargs": null
+        },
+        "sample-id-pattern": {
+          "flag": "--sample-id-pattern",
+          "nargs": null
+        },
+        "source": {
+          "flag": "--source",
+          "nargs": null
+        }
+      },
+      "description": "Run stage00_register inspect",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "assay": {
+            "enum": [
+              "rnaseq_bulk",
+              "atacseq_bulk",
+              "chipseq_bulk",
+              "cutandrun",
+              "methylseq",
+              "scrnaseq",
+              "spatialvi"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "sample-id-pattern": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "source": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "assay",
+          "source"
+        ],
+        "type": "object"
+      },
+      "name": "stage00_register.inspect",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "allow"
+      },
+      "side_effects": [],
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/stage00_register.py",
+        "link"
+      ],
+      "cli": {
+        "assay": {
+          "flag": "--assay",
+          "nargs": null
+        },
+        "force": {
+          "flag": "--force",
+          "nargs": 0
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        },
+        "source": {
+          "flag": "--source",
+          "nargs": null
+        }
+      },
+      "description": "Run stage00_register link",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "assay": {
+            "enum": [
+              "rnaseq_bulk",
+              "atacseq_bulk",
+              "chipseq_bulk",
+              "cutandrun",
+              "methylseq",
+              "scrnaseq",
+              "spatialvi"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "force": {
+            "type": "boolean"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "source": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "assay",
+          "source"
+        ],
+        "type": "object"
+      },
+      "name": "stage00_register.link",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/stage00_register.py",
+        "finalize"
+      ],
+      "cli": {
+        "date": {
+          "flag": "--date",
+          "nargs": null
+        },
+        "integrity": {
+          "flag": "--integrity",
+          "nargs": null
+        },
+        "model": {
+          "flag": "--model",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        },
+        "sample-id-pattern": {
+          "flag": "--sample-id-pattern",
+          "nargs": null
+        }
+      },
+      "description": "Run stage00_register finalize",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "integrity": {
+            "enum": [
+              "full",
+              "quick",
+              "skip"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "sample-id-pattern": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "stage00_register.finalize",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/stage01_samplesheet.py"
+      ],
+      "cli": {
+        "check": {
+          "flag": "--check",
+          "nargs": 0
+        },
+        "confirm-exclusions": {
+          "flag": "--confirm-exclusions",
+          "nargs": 0
+        },
+        "force": {
+          "flag": "--force",
+          "nargs": 0
+        },
+        "list-formats": {
+          "flag": "--list-formats",
+          "nargs": 0
+        },
+        "model": {
+          "flag": "--model",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        },
+        "verify-integrity": {
+          "flag": "--verify-integrity",
+          "nargs": null
+        }
+      },
+      "description": "Stage 01 \u2014 validate the experimental design and emit workflow-ready samplesheets.",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "check": {
+            "type": "boolean"
+          },
+          "confirm-exclusions": {
+            "type": "boolean"
+          },
+          "force": {
+            "type": "boolean"
+          },
+          "list-formats": {
+            "type": "boolean"
+          },
+          "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "verify-integrity": {
+            "enum": [
+              "none",
+              "full"
+            ],
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "stage01_samplesheet",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/configure.py",
+        "genomes"
+      ],
+      "cli": {
+        "assay": {
+          "flag": "--assay",
+          "nargs": null
+        },
+        "select": {
+          "flag": "--select",
+          "nargs": null
+        }
+      },
+      "description": "Run configure genomes",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "assay": {
+            "enum": [
+              "rnaseq_bulk",
+              "atacseq_bulk",
+              "chipseq_bulk",
+              "cutandrun",
+              "methylseq",
+              "scrnaseq",
+              "spatialvi"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "select": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "configure.genomes",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "allow"
+      },
+      "side_effects": [],
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/configure.py",
+        "peaks"
+      ],
+      "cli": {
+        "select": {
+          "flag": "--select",
+          "nargs": null
+        }
+      },
+      "description": "Run configure peaks",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "select": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "configure.peaks",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "allow"
+      },
+      "side_effects": [],
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/configure.py",
+        "protocols"
+      ],
+      "cli": {
+        "aligner": {
+          "flag": "--aligner",
+          "nargs": null
+        },
+        "select": {
+          "flag": "--select",
+          "nargs": null
+        }
+      },
+      "description": "Run configure protocols",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "aligner": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "select": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "configure.protocols",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "allow"
+      },
+      "side_effects": [],
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/configure.py",
+        "contrasts"
+      ],
+      "cli": {
+        "assay": {
+          "flag": "--assay",
+          "nargs": null
+        },
+        "factor": {
+          "flag": "--factor",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run configure contrasts",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "assay": {
+            "enum": [
+              "rnaseq_bulk",
+              "atacseq_bulk",
+              "chipseq_bulk",
+              "cutandrun",
+              "methylseq",
+              "scrnaseq",
+              "spatialvi"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "factor": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "assay"
+        ],
+        "type": "object"
+      },
+      "name": "configure.contrasts",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "allow"
+      },
+      "side_effects": [],
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/configure.py",
+        "apply"
+      ],
+      "cli": {
+        "aligner": {
+          "flag": "--aligner",
+          "nargs": null
+        },
+        "assay": {
+          "flag": "--assay",
+          "nargs": null
+        },
+        "contrast": {
+          "flag": "--contrast",
+          "nargs": null
+        },
+        "dry-run": {
+          "flag": "--dry-run",
+          "nargs": 0
+        },
+        "factor": {
+          "flag": "--factor",
+          "nargs": null
+        },
+        "formula": {
+          "flag": "--formula",
+          "nargs": null
+        },
+        "genome": {
+          "flag": "--genome",
+          "nargs": null
+        },
+        "peaks-type": {
+          "flag": "--peaks-type",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        },
+        "protocol": {
+          "flag": "--protocol",
+          "nargs": null
+        }
+      },
+      "description": "Run configure apply",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "aligner": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "assay": {
+            "enum": [
+              "rnaseq_bulk",
+              "atacseq_bulk",
+              "chipseq_bulk",
+              "cutandrun",
+              "methylseq",
+              "scrnaseq",
+              "spatialvi"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "contrast": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "dry-run": {
+            "type": "boolean"
+          },
+          "factor": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "formula": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "genome": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "peaks-type": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "protocol": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "assay",
+          "genome"
+        ],
+        "type": "object"
+      },
+      "name": "configure.apply",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/stage03_analysis.py",
+        "create"
+      ],
+      "cli": {
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        },
+        "slug": {
+          "flag": "--slug",
+          "nargs": null
+        }
+      },
+      "description": "Run stage03_analysis create",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "slug": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "slug"
+        ],
+        "type": "object"
+      },
+      "name": "stage03_analysis.create",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/stage03_analysis.py",
+        "approve"
+      ],
+      "cli": {
+        "analysis": {
+          "flag": "--analysis",
+          "nargs": null
+        },
+        "date": {
+          "flag": "--date",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run stage03_analysis approve",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "analysis": {
+            "minLength": 1,
+            "pattern": "^[0-9]{2}_[a-z0-9-]+$",
+            "type": "string"
+          },
+          "date": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "analysis"
+        ],
+        "type": "object"
+      },
+      "name": "stage03_analysis.approve",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "refuse",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/stage03_analysis.py",
+        "verify"
+      ],
+      "cli": {
+        "analysis": {
+          "flag": "--analysis",
+          "nargs": null
+        },
+        "model": {
+          "flag": "--model",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run stage03_analysis verify",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "analysis": {
+            "minLength": 1,
+            "pattern": "^[0-9]{2}_[a-z0-9-]+$",
+            "type": "string"
+          },
+          "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "analysis"
+        ],
+        "type": "object"
+      },
+      "name": "stage03_analysis.verify",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/resolve_artifact.py"
+      ],
+      "cli": {
+        "assay": {
+          "flag": "--assay",
+          "nargs": null
+        },
+        "consumes": {
+          "flag": "--consumes",
+          "nargs": "*"
+        },
+        "list": {
+          "flag": "--list",
+          "nargs": 0
+        },
+        "prefer-adapted-from": {
+          "flag": "--prefer-adapted-from",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        },
+        "type": {
+          "flag": "--type",
+          "nargs": null
+        }
+      },
+      "description": "Resolve a sub-stage's inputs by artifact type, from the OUTPUTS.tsv of completed sub-stages.",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "assay": {
+            "enum": [
+              "rnaseq_bulk",
+              "atacseq_bulk",
+              "chipseq_bulk",
+              "cutandrun",
+              "methylseq",
+              "scrnaseq",
+              "spatialvi"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "consumes": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 0,
+            "type": "array"
+          },
+          "list": {
+            "type": "boolean"
+          },
+          "prefer-adapted-from": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "assay"
+        ],
+        "type": "object"
+      },
+      "name": "resolve_artifact",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "allow"
+      },
+      "side_effects": [],
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py",
+        "check"
+      ],
+      "assay": "atacseq_bulk",
+      "cli": {
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run nfcore_atacseq_wrapper check",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_atacseq_wrapper.check",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "preflight report"
+      ],
+      "substage": "01_nfcore-atacseq-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py",
+        "prepare"
+      ],
+      "assay": "atacseq_bulk",
+      "cli": {
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run nfcore_atacseq_wrapper prepare",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_atacseq_wrapper.prepare",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "substage": "01_nfcore-atacseq-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py",
+        "collect"
+      ],
+      "assay": "atacseq_bulk",
+      "cli": {
+        "model": {
+          "flag": "--model",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run nfcore_atacseq_wrapper collect",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_atacseq_wrapper.collect",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "substage": "01_nfcore-atacseq-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py",
+        "check"
+      ],
+      "assay": "chipseq_bulk",
+      "cli": {
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run nfcore_chipseq_wrapper check",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_chipseq_wrapper.check",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "preflight report"
+      ],
+      "substage": "01_nfcore-chipseq-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py",
+        "prepare"
+      ],
+      "assay": "chipseq_bulk",
+      "cli": {
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run nfcore_chipseq_wrapper prepare",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_chipseq_wrapper.prepare",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "substage": "01_nfcore-chipseq-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py",
+        "collect"
+      ],
+      "assay": "chipseq_bulk",
+      "cli": {
+        "model": {
+          "flag": "--model",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run nfcore_chipseq_wrapper collect",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_chipseq_wrapper.collect",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "substage": "01_nfcore-chipseq-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py",
+        "check"
+      ],
+      "assay": "cutandrun",
+      "cli": {
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        },
+        "resume-refresh": {
+          "flag": "--resume-refresh",
+          "nargs": 0
+        }
+      },
+      "description": "Run nfcore_cutandrun_wrapper check",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "resume-refresh": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_cutandrun_wrapper.check",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "preflight report"
+      ],
+      "substage": "01_nfcore-cutandrun-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py",
+        "prepare"
+      ],
+      "assay": "cutandrun",
+      "cli": {
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        },
+        "resume-refresh": {
+          "flag": "--resume-refresh",
+          "nargs": 0
+        }
+      },
+      "description": "Run nfcore_cutandrun_wrapper prepare",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "resume-refresh": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_cutandrun_wrapper.prepare",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "substage": "01_nfcore-cutandrun-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py",
+        "collect"
+      ],
+      "assay": "cutandrun",
+      "cli": {
+        "model": {
+          "flag": "--model",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run nfcore_cutandrun_wrapper collect",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_cutandrun_wrapper.collect",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "substage": "01_nfcore-cutandrun-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py",
+        "check"
+      ],
+      "assay": "methylseq",
+      "cli": {
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run nfcore_methylseq_wrapper check",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_methylseq_wrapper.check",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "preflight report"
+      ],
+      "substage": "01_nfcore-methylseq-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py",
+        "prepare"
+      ],
+      "assay": "methylseq",
+      "cli": {
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run nfcore_methylseq_wrapper prepare",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_methylseq_wrapper.prepare",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "substage": "01_nfcore-methylseq-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py",
+        "collect"
+      ],
+      "assay": "methylseq",
+      "cli": {
+        "model": {
+          "flag": "--model",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run nfcore_methylseq_wrapper collect",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_methylseq_wrapper.collect",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "substage": "01_nfcore-methylseq-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py",
+        "check"
+      ],
+      "assay": "rnaseq_bulk",
+      "cli": {
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run nfcore_rnaseq_wrapper check",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_rnaseq_wrapper.check",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "preflight report"
+      ],
+      "substage": "01_nfcore-rnaseq-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py",
+        "prepare"
+      ],
+      "assay": "rnaseq_bulk",
+      "cli": {
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run nfcore_rnaseq_wrapper prepare",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_rnaseq_wrapper.prepare",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "substage": "01_nfcore-rnaseq-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py",
+        "collect"
+      ],
+      "assay": "rnaseq_bulk",
+      "cli": {
+        "model": {
+          "flag": "--model",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run nfcore_rnaseq_wrapper collect",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_rnaseq_wrapper.collect",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "substage": "01_nfcore-rnaseq-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py",
+        "check"
+      ],
+      "assay": "scrnaseq",
+      "cli": {
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run nfcore_scrnaseq_wrapper check",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_scrnaseq_wrapper.check",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "preflight report"
+      ],
+      "substage": "01_nfcore-scrnaseq-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py",
+        "prepare"
+      ],
+      "assay": "scrnaseq",
+      "cli": {
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run nfcore_scrnaseq_wrapper prepare",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_scrnaseq_wrapper.prepare",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "substage": "01_nfcore-scrnaseq-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py",
+        "collect"
+      ],
+      "assay": "scrnaseq",
+      "cli": {
+        "model": {
+          "flag": "--model",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run nfcore_scrnaseq_wrapper collect",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_scrnaseq_wrapper.collect",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "substage": "01_nfcore-scrnaseq-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py",
+        "check"
+      ],
+      "assay": "spatialvi",
+      "cli": {
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run nfcore_spatialvi_wrapper check",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_spatialvi_wrapper.check",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "preflight report"
+      ],
+      "substage": "01_nfcore-spatialvi-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py",
+        "prepare"
+      ],
+      "assay": "spatialvi",
+      "cli": {
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run nfcore_spatialvi_wrapper prepare",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_spatialvi_wrapper.prepare",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "substage": "01_nfcore-spatialvi-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py",
+        "collect"
+      ],
+      "assay": "spatialvi",
+      "cli": {
+        "model": {
+          "flag": "--model",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run nfcore_spatialvi_wrapper collect",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "nfcore_spatialvi_wrapper.collect",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "substage": "01_nfcore-spatialvi-wrapper",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/rnaseq-de/rnaseq_de.py",
+        "check"
+      ],
+      "assay": "rnaseq_bulk",
+      "cli": {
+        "counts": {
+          "flag": "--counts",
+          "nargs": null
+        },
+        "design": {
+          "flag": "--design",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run rnaseq_de check",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "counts": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "design": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "counts",
+          "design"
+        ],
+        "type": "object"
+      },
+      "name": "rnaseq_de.check",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "preflight report"
+      ],
+      "substage": "02_rnaseq-de",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/rnaseq-de/rnaseq_de.py",
+        "prepare"
+      ],
+      "assay": "rnaseq_bulk",
+      "cli": {
+        "counts": {
+          "flag": "--counts",
+          "nargs": null
+        },
+        "design": {
+          "flag": "--design",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run rnaseq_de prepare",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "counts": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "design": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "counts",
+          "design"
+        ],
+        "type": "object"
+      },
+      "name": "rnaseq_de.prepare",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "substage": "02_rnaseq-de",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/rnaseq-de/rnaseq_de.py",
+        "collect"
+      ],
+      "assay": "rnaseq_bulk",
+      "cli": {
+        "counts-from": {
+          "flag": "--counts-from",
+          "nargs": null
+        },
+        "model": {
+          "flag": "--model",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run rnaseq_de collect",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "counts-from": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "rnaseq_de.collect",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "substage": "02_rnaseq-de",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py",
+        "check"
+      ],
+      "assay": "scrnaseq",
+      "cli": {
+        "h5ad": {
+          "flag": "--h5ad",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run scrna_qc_cluster check",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "h5ad": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "scrna_qc_cluster.check",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "preflight report"
+      ],
+      "substage": "02_scrna-qc-cluster",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py",
+        "prepare"
+      ],
+      "assay": "scrnaseq",
+      "cli": {
+        "h5ad": {
+          "flag": "--h5ad",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run scrna_qc_cluster prepare",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "h5ad": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "scrna_qc_cluster.prepare",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "substage": "02_scrna-qc-cluster",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py",
+        "collect"
+      ],
+      "assay": "scrnaseq",
+      "cli": {
+        "h5ad-from": {
+          "flag": "--h5ad-from",
+          "nargs": null
+        },
+        "model": {
+          "flag": "--model",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run scrna_qc_cluster collect",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "h5ad-from": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "scrna_qc_cluster.collect",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "substage": "02_scrna-qc-cluster",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/spatial-cluster-count/spatial_cluster_count.py",
+        "check"
+      ],
+      "assay": "spatialvi",
+      "cli": {
+        "h5ad": {
+          "flag": "--h5ad",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run spatial_cluster_count check",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "h5ad": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "spatial_cluster_count.check",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "preflight report"
+      ],
+      "substage": "02_spatial-cluster-count",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/spatial-cluster-count/spatial_cluster_count.py",
+        "prepare"
+      ],
+      "assay": "spatialvi",
+      "cli": {
+        "h5ad": {
+          "flag": "--h5ad",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run spatial_cluster_count prepare",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "h5ad": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "spatial_cluster_count.prepare",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "substage": "02_spatial-cluster-count",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/wrappers/spatial-cluster-count/spatial_cluster_count.py",
+        "collect"
+      ],
+      "assay": "spatialvi",
+      "cli": {
+        "h5ad-from": {
+          "flag": "--h5ad-from",
+          "nargs": null
+        },
+        "model": {
+          "flag": "--model",
+          "nargs": null
+        },
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "description": "Run spatial_cluster_count collect",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "h5ad-from": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "spatial_cluster_count.collect",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "project artifacts"
+      ],
+      "substage": "02_spatial-cluster-count",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/executorlib.py",
+        "submit"
+      ],
+      "cli": {
+        "script": {
+          "flag": null,
+          "nargs": null
+        },
+        "workspace": {
+          "flag": "--workspace",
+          "nargs": null
+        }
+      },
+      "description": "submit through the existing executor",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "script": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "workspace": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspace",
+          "script"
+        ],
+        "type": "object"
+      },
+      "name": "executor.submit",
+      "network_required": true,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "scheduler job"
+      ],
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/executorlib.py",
+        "status"
+      ],
+      "cli": {
+        "job-id": {
+          "flag": null,
+          "nargs": null
+        },
+        "workspace": {
+          "flag": "--workspace",
+          "nargs": null
+        }
+      },
+      "description": "status through the existing executor",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "job-id": {
+            "minLength": 1,
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          },
+          "workspace": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspace",
+          "job-id"
+        ],
+        "type": "object"
+      },
+      "name": "executor.status",
+      "network_required": true,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "allow"
+      },
+      "side_effects": [],
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/executorlib.py",
+        "cancel"
+      ],
+      "cli": {
+        "job-id": {
+          "flag": null,
+          "nargs": null
+        },
+        "workspace": {
+          "flag": "--workspace",
+          "nargs": null
+        }
+      },
+      "description": "cancel through the existing executor",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "job-id": {
+            "minLength": 1,
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          },
+          "workspace": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspace",
+          "job-id"
+        ],
+        "type": "object"
+      },
+      "name": "executor.cancel",
+      "network_required": true,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "needs-approval",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "scheduler job"
+      ],
+      "timeout_seconds": 120,
+      "unavailable": "R-092: cancel is absent at the parent; implementation belongs to Row 12, pending owner ruling (0053).",
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "ls"
+      ],
+      "cli": {},
+      "description": "Read-only filesystem list",
+      "filesystem": true,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "flags": {
+            "items": {
+              "enum": [
+                "-a",
+                "-l",
+                "-la",
+                "-al"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "paths": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "type": "object"
+      },
+      "name": "fs.list",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "allow"
+      },
+      "side_effects": [],
+      "timeout_seconds": 30,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "cat"
+      ],
+      "cli": {},
+      "description": "Read-only filesystem read",
+      "filesystem": true,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "flags": {
+            "items": {
+              "enum": [],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "paths": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "type": "object"
+      },
+      "name": "fs.read",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "allow"
+      },
+      "side_effects": [],
+      "timeout_seconds": 30,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "head"
+      ],
+      "cli": {},
+      "description": "Read-only filesystem head",
+      "filesystem": true,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "flags": {
+            "items": {
+              "enum": [],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "paths": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "type": "object"
+      },
+      "name": "fs.head",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "allow"
+      },
+      "side_effects": [],
+      "timeout_seconds": 30,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "tail"
+      ],
+      "cli": {},
+      "description": "Read-only filesystem tail",
+      "filesystem": true,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "flags": {
+            "items": {
+              "enum": [],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "paths": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "type": "object"
+      },
+      "name": "fs.tail",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "allow"
+      },
+      "side_effects": [],
+      "timeout_seconds": 30,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "stat"
+      ],
+      "cli": {},
+      "description": "Read-only filesystem metadata",
+      "filesystem": true,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "flags": {
+            "items": {
+              "enum": [],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "paths": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "type": "object"
+      },
+      "name": "fs.metadata",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "allow"
+      },
+      "side_effects": [],
+      "timeout_seconds": 30,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "shasum"
+      ],
+      "cli": {},
+      "description": "Read-only filesystem checksum",
+      "filesystem": true,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "flags": {
+            "items": {
+              "enum": [
+                "-a"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "paths": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "type": "object"
+      },
+      "name": "fs.checksum",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "allow"
+      },
+      "side_effects": [],
+      "timeout_seconds": 30,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "wc"
+      ],
+      "cli": {},
+      "description": "Read-only filesystem lines",
+      "filesystem": true,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "flags": {
+            "items": {
+              "enum": [
+                "-l"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "paths": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "type": "object"
+      },
+      "name": "fs.lines",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "allow"
+      },
+      "side_effects": [],
+      "timeout_seconds": 30,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "grep"
+      ],
+      "cli": {},
+      "description": "Read-only filesystem search",
+      "filesystem": true,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "flags": {
+            "items": {
+              "enum": [
+                "-n",
+                "-i",
+                "-r",
+                "-R"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "paths": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "pattern": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "type": "object"
+      },
+      "name": "fs.search",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "allow"
+      },
+      "side_effects": [],
+      "timeout_seconds": 30,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "rg"
+      ],
+      "cli": {},
+      "description": "Read-only filesystem inspect",
+      "filesystem": true,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "flags": {
+            "items": {
+              "enum": [
+                "-n",
+                "-i",
+                "--files"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "paths": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "pattern": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "type": "object"
+      },
+      "name": "fs.inspect",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "allow"
+      },
+      "side_effects": [],
+      "timeout_seconds": 30,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "find"
+      ],
+      "cli": {},
+      "description": "Read-only filesystem find",
+      "filesystem": true,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "flags": {
+            "items": {
+              "enum": [],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "paths": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "type": "object"
+      },
+      "name": "fs.find",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "allow"
+      },
+      "side_effects": [],
+      "timeout_seconds": 30,
+      "version": "1.0.0"
+    }
+  ],
+  "version": 1
+}

@@ -21,6 +21,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from tools.execution import shell_value, config_holds
 import executorlib as ex        # noqa: E402
 import workspace as ws          # noqa: E402
 
@@ -171,6 +172,29 @@ def check_executor_config(exec_cfg, fails):
                           "%s contains a params block; executor and process "
                           "settings are the permitted use -- pipeline parameters go through "
                           "params.yaml so the audited surface cannot be bypassed" % wanted))
+    else:
+        check_groovy(path, fails)
+
+
+def check_groovy(path, fails):
+    """Only the shipped executor grammar, with safe scalar substitutions, is admitted.
+
+    No Groovy parser is shipped. An unfamiliar construct is refused under ruling 3A,
+    including beforeScript, interpolation, includeConfig, and executable expressions.
+    """
+    def shape(text):
+        text = re.sub(r'//[^\n]*', '', text)
+        def literal(match):
+            shell_value(match.group(1), 'Groovy literal')
+            return "'VALUE'"
+        text = re.sub(r"'([^']*)'", literal, text)
+        return re.sub(r'\s+', '', text)
+    template = Path(__file__).resolve().parents[1] / '_templates/config/nextflow.slurm.config'
+    try:
+        if shape(Path(path).read_text(encoding='utf-8')) != shape(template.read_text(encoding='utf-8')):
+            raise ValueError('unregistered Groovy grammar')
+    except (OSError, ValueError) as exc:
+        fails.append(fail('executor_config', 'R-098/§9.6: %s; use the seeded executor config' % exc))
 
 
 def check_run_dir(substage, fails, resume_refresh=False):
@@ -202,6 +226,13 @@ def check_run_dir(substage, fails, resume_refresh=False):
 
 def check_config_common(cfg, required_keys, fails):
     """<REQUIRED> markers, required keys, readable reference files, sane work_dir."""
+    # The formula/contrast enter Python repr literals, never shell or Groovy (0042).
+    for key, value in cfg.items():
+        if value and key not in ('de.formula', 'de.contrast'):
+            try:
+                shell_value(value, key)
+            except ValueError as exc:
+                fails.append(fail("config", str(exc)))
     unfilled = sorted(k for k, v in cfg.items() if "<REQUIRED" in v)
     if unfilled:
         fails.append(fail("config_unfilled",
@@ -354,7 +385,8 @@ fi
 date '+%Y-%m-%dT%H:%M:%S%z' > .gars_run_complete
 echo "[wrapper] run complete"
 """.format(assay=assay, directives=directives, submit_note=ex.submit_note(descriptor),
-           substage=str(substage.resolve()), workspace=str(workspace_root), body=body,
+           substage=shell_value(substage.resolve(), "substage"),
+           workspace=shell_value(workspace_root, "workspace"), body=body,
            parser_pairing=(
                "# Decision 0034: this pipeline's config predates the strict parser; the v1\n"
                "# parser is the recorded pairing while nextflow stays pinned (gars-nxf lockfile).\n"

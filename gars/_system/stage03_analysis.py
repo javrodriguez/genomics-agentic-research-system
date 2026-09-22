@@ -217,6 +217,53 @@ def approval_holds(plan_path, record_path):
 
 # --- approve -----------------------------------------------------------------------------------
 
+def plan_gates(text, workspace, adir):
+    """Every content gate is applied both at approval and verification (R-073/M-2)."""
+    blocked = []
+    n_fill = text.count(FILL)
+    if n_fill:
+        blocked.append("the plan still carries %d skeleton marker(s) (%s ...>); "
+                                 "it is not a plan yet" % (n_fill, FILL))
+    outputs = parse_outputs_table(text)
+    if not outputs:
+        blocked.append("the Outputs table declares nothing; an analysis that "
+                                 "declares no outputs cannot be verified")
+    vocab, err = read_vocabulary(workspace)
+    if err:
+        blocked.append(err)
+        return blocked
+    for fname, ftype, _ in outputs:
+        if ftype not in vocab:
+            blocked.append("output %r has type %r, which is not in the closed "
+                                     "vocabulary (_references/artifact_types.md); closed "
+                                     "means closed -- ask for the vocabulary to be extended "
+                                     "rather than inventing a type" % (fname, ftype))
+        if os.path.isabs(fname) or ".." in Path(fname).parts or not fname:
+            blocked.append("output %r must be a relative path inside the analysis "
+                                     "directory" % fname)
+    venue = re.search(r"^Runs:\s*(.+?)\s*$", text, re.M)
+    if not venue:
+        blocked.append("the Execution section has no `Runs:` line; every plan "
+                                 "states its venue -- `Runs: batch` (the default; `sbatch` "
+                                 "is its Slurm-era spelling) or `Runs: login-node "
+                                 "(user-requested)` when the user explicitly asked "
+                                 "(decisions 0027, 0039)")
+    elif venue.group(1) not in EXECUTION_VENUES:
+        blocked.append("`Runs: %s` is not a recognised venue. `batch` -- this "
+                                 "workspace's configured scheduler, `sbatch` accepted as its "
+                                 "Slurm-era spelling -- is the default for every analysis; "
+                                 "`login-node (user-requested)` is allowed only when the user "
+                                 "explicitly asked for it -- job size is never the reason "
+                                 "(decisions 0027, 0039)"
+                                 % venue.group(1))
+    for fname, _, _ in outputs:
+        try:
+            (adir / fname).resolve().relative_to(adir.resolve())
+        except ValueError:
+            blocked.append('output resolves outside the analysis directory')
+    return blocked
+
+
 def cmd_approve(args, workspace):
     result = {"command": "approve", "ok": False, "analysis": args.analysis, "blocked": []}
     project = Path(args.project)
@@ -250,42 +297,8 @@ def cmd_approve(args, workspace):
                            "new analysis: run `create` again (decision 0042)." % APPROVAL_RECORD)
         return emit(result, EXIT_REFUSED)
 
-    n_fill = text.count(FILL)
-    if n_fill:
-        result["blocked"].append("the plan still carries %d skeleton marker(s) (%s ...>); "
-                                 "it is not a plan yet" % (n_fill, FILL))
+    result["blocked"].extend(plan_gates(text, workspace, adir))
     outputs = parse_outputs_table(text)
-    if not outputs:
-        result["blocked"].append("the Outputs table declares nothing; an analysis that "
-                                 "declares no outputs cannot be verified")
-    vocab, err = read_vocabulary(workspace)
-    if err:
-        result["error"] = err
-        return emit(result, EXIT_FAILURE)
-    for fname, ftype, _ in outputs:
-        if ftype not in vocab:
-            result["blocked"].append("output %r has type %r, which is not in the closed "
-                                     "vocabulary (_references/artifact_types.md); closed "
-                                     "means closed -- ask for the vocabulary to be extended "
-                                     "rather than inventing a type" % (fname, ftype))
-        if os.path.isabs(fname) or fname.startswith(".."):
-            result["blocked"].append("output %r must be a relative path inside the analysis "
-                                     "directory" % fname)
-    venue = re.search(r"^Runs:\s*(.+?)\s*$", text, re.M)
-    if not venue:
-        result["blocked"].append("the Execution section has no `Runs:` line; every plan "
-                                 "states its venue -- `Runs: batch` (the default; `sbatch` "
-                                 "is its Slurm-era spelling) or `Runs: login-node "
-                                 "(user-requested)` when the user explicitly asked "
-                                 "(decisions 0027, 0039)")
-    elif venue.group(1) not in EXECUTION_VENUES:
-        result["blocked"].append("`Runs: %s` is not a recognised venue. `batch` -- this "
-                                 "workspace's configured scheduler, `sbatch` accepted as its "
-                                 "Slurm-era spelling -- is the default for every analysis; "
-                                 "`login-node (user-requested)` is allowed only when the user "
-                                 "explicitly asked for it -- job size is never the reason "
-                                 "(decisions 0027, 0039)"
-                                 % venue.group(1))
     if "Status: DRAFT" not in text:
         result["blocked"].append("PLAN.md has no `Status: DRAFT` line to promote")
 
@@ -344,6 +357,10 @@ def cmd_verify(args, workspace):
                            "0042)." % why)
         return emit(result, EXIT_REFUSED)
 
+    blocked = plan_gates(text, workspace, adir)
+    if blocked:
+        result['blocked'] = blocked
+        return emit(result, EXIT_REFUSED)
     outputs = parse_outputs_table(text)
     if not outputs:
         result["error"] = "the approved plan declares no outputs; nothing to verify"

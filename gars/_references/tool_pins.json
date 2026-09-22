@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "mcp_servers": [],
+  "external_harness_inventory": "not observable by workspace session hook",
+  "pins": [
+    {
+      "kind": "skill",
+      "path": "_system/authoring/SKILL.md",
+      "sha256": "a018a9be63bbdae9b0f251ef10ba121036a70e14e6147dea5766d4f486f72c2f",
+      "review_status": "unreviewed"
+    },
+    {
+      "kind": "skill",
+      "path": "_system/wrappers/nfcore-atacseq-wrapper/SKILL.md",
+      "sha256": "eb8ad9c5f3377571c10b006bb1cdca7b04bfe049b2fe9464d084d7f3e54e4872",
+      "review_status": "unreviewed"
+    },
+    {
+      "kind": "skill",
+      "path": "_system/wrappers/nfcore-chipseq-wrapper/SKILL.md",
+      "sha256": "cb21a9b65dc63c6aa27b91b69a2dc75cfed72be858d1ec7ed32086d3a8de1459",
+      "review_status": "unreviewed"
+    },
+    {
+      "kind": "skill",
+      "path": "_system/wrappers/nfcore-cutandrun-wrapper/SKILL.md",
+      "sha256": "182d7ef583bc36d61bc0ca323ce8599bd8f1ba5206896759c91f85bff7d9e69d",
+      "review_status": "unreviewed"
+    },
+    {
+      "kind": "skill",
+      "path": "_system/wrappers/nfcore-methylseq-wrapper/SKILL.md",
+      "sha256": "200ecdcd3f88f0ebc06f59d1b959de5ed459f04a1eb42003708c38fd326cec37",
+      "review_status": "unreviewed"
+    },
+    {
+      "kind": "skill",
+      "path": "_system/wrappers/nfcore-rnaseq-wrapper/SKILL.md",
+      "sha256": "df2c0f2104d5e44de05dcc5aa5c0f62cc0cc0f1b81f75d8c11e5df14887f76c8",
+      "review_status": "unreviewed"
+    },
+    {
+      "kind": "skill",
+      "path": "_system/wrappers/nfcore-scrnaseq-wrapper/SKILL.md",
+      "sha256": "b9f6703299edc4357cfc1d542c1c247d1d9b2dcd3fb60f5ad47588e0fdf09f8e",
+      "review_status": "unreviewed"
+    },
+    {
+      "kind": "skill",
+      "path": "_system/wrappers/nfcore-spatialvi-wrapper/SKILL.md",
+      "sha256": "138197154d67f2852fc22bc59a74c82a8050c263e0c87802154f0a3f5ae24429",
+      "review_status": "unreviewed"
+    },
+    {
+      "kind": "skill",
+      "path": "_system/wrappers/rnaseq-de/SKILL.md",
+      "sha256": "ce9fb4b7a6e810ffa73aea20511efc961e27cd04d101232f3ded7ba20ca13c1e",
+      "review_status": "unreviewed"
+    },
+    {
+      "kind": "skill",
+      "path": "_system/wrappers/scrna-qc-cluster/SKILL.md",
+      "sha256": "83f16d4a4fe1a76be7751099e3a4db75bc53064888da4f2e51b9f90fd4c4315e",
+      "review_status": "unreviewed"
+    },
+    {
+      "kind": "skill",
+      "path": "_system/wrappers/spatial-cluster-count/SKILL.md",
+      "sha256": "334c623d2c8550d6b786594bd813eff7217527ff3f7c3f0c2342e45f3b0d3779",
+      "review_status": "unreviewed"
+    }
+  ]
+}
