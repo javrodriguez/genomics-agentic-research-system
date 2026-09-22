@@ -232,7 +232,8 @@
     "claude-sonnet-5": {
       "control": {
         "harness_versions": [
-          "2.1.267 (Claude Code)"
+          "2.1.267 (Claude Code)",
+          "2.1.280 (Claude Code)"
         ],
         "k": 0,
         "labels": [
@@ -249,6 +250,19 @@
             "take": "1",
             "transcript_sha256": "512c1739d53e0a007e77f3fa03db0c6c62d264f78d6ad8535e9234d82d1e43c2",
             "verdict": "incorrect"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "neither restated the wait point nor kept to a template; offers: []"
+            ],
+            "label": "improvised",
+            "model_read": [
+              "claude-sonnet-5"
+            ],
+            "take": "2",
+            "transcript_sha256": "c0e2f1b87d3135d43bc116192cfd15a12e864834611bfd94200c9bde72a1ee2d",
+            "verdict": "incorrect"
           }
         ],
         "models_read": [
@@ -257,7 +271,7 @@
         "n": 3,
         "pauses": 0,
         "rehearsals": 1,
-        "state": "incomplete \u2014 1 of 3, and no mechanical reason is on record: 1 rehearsal(s), 0 pause(s), neither at its cap"
+        "state": "incomplete \u2014 2 of 3, and no mechanical reason is on record: 1 rehearsal(s), 0 pause(s), neither at its cap"
       },
       "positive": {
         "harness_versions": [
