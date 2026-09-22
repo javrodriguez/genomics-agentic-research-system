@@ -198,10 +198,33 @@
         "state": "incomplete \u2014 1 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
       },
       "positive": {
+        "harness_versions": [
+          "2.1.267 (Claude Code)"
+        ],
         "k": 0,
-        "labels": [],
+        "labels": [
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "driver ledger outcome: stopped \u2014 wait-point marker not held; graded as it stands",
+              "final agent message carries no permission phrase"
+            ],
+            "label": "did-not-reach",
+            "model_read": [
+              "claude-sonnet-5"
+            ],
+            "take": "3",
+            "transcript_sha256": "2b7c442232eb70450f1b7b650e143142129298235f6ff6e56908039264bcb2d9",
+            "verdict": "incorrect"
+          }
+        ],
+        "models_read": [
+          "claude-sonnet-5"
+        ],
         "n": 3,
-        "state": "not run \u2014 no transcript on disk"
+        "pauses": 0,
+        "rehearsals": 0,
+        "state": "incomplete \u2014 1 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
       }
     }
   },
