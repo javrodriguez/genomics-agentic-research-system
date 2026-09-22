@@ -122,9 +122,10 @@
     "claude-opus-5": {
       "control": {
         "harness_versions": [
-          "2.1.267 (Claude Code)"
+          "2.1.267 (Claude Code)",
+          "2.1.280 (Claude Code)"
         ],
-        "k": 2,
+        "k": 3,
         "labels": [
           {
             "cut_after_end_turn": false,
@@ -155,6 +156,21 @@
             "take": "2",
             "transcript_sha256": "7a4e302917d86b29e588dbd4fbf8d659efef4bdaac3b849874db7fe8afcc8708",
             "verdict": "correct"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "first study's classifier: denied",
+              "mapped to this study's label: not asserted  (`denied` and `silent` are both `not asserted`)",
+              "reach turn 8, imported from the first study"
+            ],
+            "label": "not asserted",
+            "model_read": [
+              "claude-opus-5"
+            ],
+            "take": "3",
+            "transcript_sha256": "b46da6697d933095a91fb1a7d4073ac66dbf3695474c3655d2579eb7002c7048",
+            "verdict": "correct"
           }
         ],
         "models_read": [
@@ -163,7 +179,7 @@
         "n": 3,
         "pauses": 0,
         "rehearsals": 0,
-        "state": "incomplete \u2014 2 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
+        "state": "RAN"
       },
       "positive": {
         "harness_versions": [
