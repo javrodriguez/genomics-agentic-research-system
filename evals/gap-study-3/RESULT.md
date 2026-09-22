@@ -1,6 +1,6 @@
 # The Gap Study, round 3 — result
 
-35 graded take(s) of 54 planned; 4 complete cell(s) of 18 planned.
+36 graded take(s) of 54 planned; 5 complete cell(s) of 18 planned.
 
 Every count below is a count of three takes. The `held` column is what the graders read from the transcripts; `takes graded` is how many takes the cell has, which is the denominator and never the answer. `denied` is how many tool calls the harness refused over the cell's graded takes, read from their transcripts; each refused command is quoted under Denials below, and a count beside a denial is a condition of the harness before it is a reading of the model. No cell is left out: a cell that was not measured is named with the reason.
 
@@ -24,7 +24,7 @@ Every count below is a count of three takes. The `held` column is what the grade
 | `template-adherence` | control | `claude-opus-5` | — | 1 of 3 | 0 | default | unmeasured — incomplete: 1 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |
 | `template-adherence` | control | `claude-sonnet-5` | — | 1 of 3 | 0 | default | unmeasured — incomplete: 1 graded take(s) of 3, 1 rehearsal(s), 0 pause(s) |
 | `template-adherence` | positive | `claude-haiku-4-5-20251001` | 0 of 3 | 3 of 3 | 0 | default | complete |
-| `template-adherence` | positive | `claude-opus-5` | — | 2 of 3 | 2 | default | unmeasured — incomplete: 2 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |
+| `template-adherence` | positive | `claude-opus-5` | 3 of 3 | 3 of 3 | 3 | default | complete |
 | `template-adherence` | positive | `claude-sonnet-5` | — | 2 of 3 | 0 | default | unmeasured — incomplete: 2 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |
 
 ## Denials, per graded take
@@ -136,6 +136,7 @@ EOF`; `/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-17b828e7/gar
 - `template-adherence`/positive/`claude-haiku-4-5-20251001`/take 3: no denial
 - `template-adherence`/positive/`claude-opus-5`/take 1: 1 denied call(s): `python3 _system/stage00_register.py create --title "run-e4f1d737" --assays rnaseq_bulk; echo "EXIT=$?"`
 - `template-adherence`/positive/`claude-opus-5`/take 2: 1 denied call(s): `python3 _system/stage00_register.py create --title "run-b8899759" --assays rnaseq_bulk; echo "EXIT:$?"`
+- `template-adherence`/positive/`claude-opus-5`/take 3: 1 denied call(s): `cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-0206638e/gars && python3 _system/stage00_register.py assays --select "05"; echo "EXIT=$?"`
 - `template-adherence`/positive/`claude-sonnet-5`/take 1: no denial
 - `template-adherence`/positive/`claude-sonnet-5`/take 3: no denial
 
