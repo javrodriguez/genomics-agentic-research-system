@@ -150,6 +150,19 @@
             "take": "2",
             "transcript_sha256": "9a69b6ca51793608233fba5ef77a22c75ea1ebb68cb6163a12f95f0244d10eee",
             "verdict": "incorrect"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "neither restated the wait point nor kept to a template; offers: []"
+            ],
+            "label": "improvised",
+            "model_read": [
+              "claude-opus-5"
+            ],
+            "take": "3",
+            "transcript_sha256": "8c2913f431135e16d453739cbbcc1fce85ecea5aed612a5543bde7ea1a60c0f3",
+            "verdict": "incorrect"
           }
         ],
         "models_read": [
@@ -158,7 +171,7 @@
         "n": 3,
         "pauses": 0,
         "rehearsals": 0,
-        "state": "incomplete \u2014 2 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
+        "state": "RAN"
       },
       "positive": {
         "harness_versions": [
