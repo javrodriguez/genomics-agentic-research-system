@@ -64,6 +64,37 @@ class LifecycleFaultTests(unittest.TestCase):
              'NoFalseCompletionTests.test_killed_worker_and_unreachable_executor',
              "'COMPLETE'"),
         ]
+        faults.extend([
+            ('P9 terminal without record reaches backend', '_system/executorlib.py',
+             "if terminal and not (prior and previous == recorded_state(prior) and",
+             "if False and not (prior and previous == recorded_state(prior) and",
+             'test_lifecycle_executor.py', 'LifecycleExecutorTests.test_terminal_without_record_refuses_before_backend',
+             'AssertionError'),
+            ('old terminal reason ignored', '_system/wrapperlib.py',
+             "and old['state'] == previous", "and True",
+             'test_lifecycle_executor.py', 'LifecycleExecutorTests.test_terminal_writer_requires_corrective_record_evidence',
+             'StatusRefusal not raised'),
+            ('new record without job accepted', '_system/wrapperlib.py',
+             "record['state'] == 'SUBMITTED' and bool(record.get('job_id')) and", "True and",
+             'test_lifecycle_executor.py', 'LifecycleExecutorTests.test_terminal_writer_requires_corrective_record_evidence',
+             'StatusRefusal not raised'),
+            ('empty poll overwrites terminal record', '_system/executorlib.py',
+             'if not _scheduler_terminal(recorded_state(record)):', 'if True:',
+             'test_lifecycle_executor.py', 'LifecycleExecutorTests.test_superseded_terminal_retained_after_empty_poll',
+             "'STALE' != 'FAILED:TIMEOUT'"),
+            ('retry exceeds maxRetries', '_system/executorlib.py',
+             "retries >= int(values[0])", "False",
+             'test_failure_classification.py', 'FailureClassificationTests.test_only_transient_retries_at_existing_max_retries',
+             'retry exceeded maxRetries'),
+            ('old job cancelled without approval', '_system/executorlib.py',
+             "if not isinstance(since, (int, float)) or not 0 <= time.time() - since <= 3600:", "if False:",
+             'test_lifecycle_cancel.py', 'LifecycleCancelTests.test_old_job_needs_bound_unexpired_human_record',
+             'Expected'),
+            ('success skips VALIDATING', '_system/executorlib.py',
+             "'VALIDATING' if state == 'COMPLETED'", "'RUNNING' if state == 'COMPLETED'",
+             'test_failure_classification.py', 'FailureClassificationTests.test_scheduler_success_then_collect_failure',
+             "'RUNNING' != 'VALIDATING'"),
+        ])
         for label, expression in [
                 ('computed STATUS path', 'open(str(substage) + "/STATUS", "w")'),
                 ('copied STATUS path', 'shutil.copyfile(source, str(substage / "STATUS"))'),
@@ -77,7 +108,7 @@ class LifecycleFaultTests(unittest.TestCase):
             with self.subTest(fault=label), tempfile.TemporaryDirectory(prefix='row12-fault-') as tmp:
                 root = Path(tmp) / 'gars'
                 root.mkdir()
-                for directory in ('_system', 'tests', '.claude'):
+                for directory in ('_system', 'tests', '.claude', '_templates'):
                     shutil.copytree(str(GARS / directory), str(root / directory),
                                     ignore=shutil.ignore_patterns('__pycache__'))
                 target = root / relative

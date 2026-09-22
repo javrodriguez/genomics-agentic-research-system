@@ -60,6 +60,29 @@ for _module, _names in (("test_row05_backup", ("Row05OfflineTests", "Row05Databa
         globals()[_name] = getattr(_loaded, _name)
 
 
+def completed_fixture_submission(project, stage):
+    """Synthetic completed job for content gates; production submit/writer stay active."""
+    from unittest.mock import patch
+    import executorlib as ex
+    import wrapperlib as wl
+    manifest_path = stage / 'reproducibility/manifest.json'
+    manifest = json.loads(manifest_path.read_text())
+    params = dict(manifest.get('params', {}))
+    params['fixture_attempt'] = params.get('fixture_attempt', 0) + 1
+    inputs = {k: Path(v) for k, v in manifest['inputs'].items()}
+    wl.write_reproducibility(stage, manifest['wrapper'], project, inputs, list(params.items()))
+    (project / '_config/executor.yaml').write_text('name: local\n')
+    job = str(1000 + params['fixture_attempt'])
+    with patch.object(ex, '_submit_once', return_value=(job, None)):
+        accepted, why = ex.submit(project, stage / 'submit.sh')
+    if accepted != job:
+        raise AssertionError('fixture submission refused: ' + str(why))
+    jobs = ex._local_jobs_dir(project); jobs.mkdir(exist_ok=True)
+    exit_file = stage / ('fixture-' + job + '.exit'); exit_file.write_text('0\n')
+    (jobs / (job + '.json')).write_text(json.dumps({'script': str(stage / 'submit.sh'),
+                                                 'exit_file': str(exit_file)}))
+
+
 def needs_pipeline(assay):
     """Skip when the assay's pinned nf-core checkout is absent from this machine.
 
@@ -404,6 +427,8 @@ Login node; seconds; kilobytes.
         self.assertEqual(sorted(res["missing"]), ["results/pca.csv", "results/pca.png"])
 
         # "execute", then verify completes and registers
+        (adir / "run").mkdir(exist_ok=True)
+        (adir / "run/.gars_run_complete").write_text("synthetic successful execution\n")
         (adir / "results" / "pca.csv").write_text("sample,PC1,PC2\nTUMOR1,1,2\n")
         (adir / "results" / "pca.png").write_bytes(b"\x89PNG fake")
         code, res, raw = run(s3, ["verify", "--project", "projects/tall-test",
@@ -990,12 +1015,14 @@ class RnaseqGarsWrapperTests(unittest.TestCase):
         (self.de_substage / "adapted" / "counts_gene.tsv").write_text("gene\tS1\ng\t1\n")
         (self.de_substage / "adapted" / "gene_id_to_name.tsv").write_text(
             "gene_id\tgene_name\ng\tG\n")
+        completed_fixture_submission(self.project, self.de_substage)
         code, res, raw = run(self.de, ["collect", "--project", "projects/rna-test"], self.ws)
         self.assertEqual(code, 1, raw)
         self.assertTrue(any("anonymous" in f["detail"] for f in res["failures"]),
                         "an empty gene identifier must be caught (0010)")
         (run_dir / "tables" / "de_results.csv").write_text(
             "gene,baseMean,log2FoldChange,pvalue,padj\ng1,1,2,0.1,0.2\n")
+        completed_fixture_submission(self.project, self.de_substage)
         code, res, raw = run(self.de, ["collect", "--project", "projects/rna-test",
                                        "--model", "claude-test-1",
                                        "--counts-from", "01_nfcore-rnaseq-wrapper"], self.ws)
@@ -1474,7 +1501,7 @@ class ExecutorSeamTests(unittest.TestCase):
         a project that keeps the seeded file and one that deletes it get the same scheduler."""
         text = (GARS / "_templates" / "config" / "executor.yaml").read_text(encoding="utf-8")
         project = self._project("shipped-descriptor", text)
-        parsed = self.ex.load(project)  # R-077 upgrades only the exact legacy built-in values.
+        parsed = self.ex.parse_descriptor(text)  # Raw template equality: no legacy normalization.
         for key, value in self.ex.SLURM.items():
             if key == "submit_note":
                 continue        # prose, carried by the built-in only

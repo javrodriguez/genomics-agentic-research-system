@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
-from support import GARS, run
+from support import GARS, run, module
 import wrapperlib as wl
 
 
@@ -120,6 +120,25 @@ class StatusWriterTests(unittest.TestCase):
             self.assertIn('wl.write_status(substage, "COMPLETE")', p.read_text())
         self.assertFalse(inline_status_writes(GARS / '_system/executorlib.py'))
         print('every wrapper uses the writer')
+
+    def test_stage03_and_generated_wrapper_use_writer(self):
+        stage03 = GARS / '_system/stage03_analysis.py'
+        self.assertFalse(inline_status_writes(stage03))
+        self.assertIn('wl.write_status(adir, "COMPLETE")', stage03.read_text())
+        author = module(GARS / '_system/authoring/create_bioinformatics_skill.py', 'row12_author')
+        spec = {'assay_id': 'demo_assay', 'assay_label': 'Demo assay',
+                'wrapper_name': 'demo-wrapper', 'substage': '01_demo-wrapper',
+                'pipeline': 'nf-core/demo', 'pipeline_version': '1.0.0',
+                'samplesheet_header': ['sample', 'fastq_1', 'fastq_2'],
+                'required_config_keys': ['reference.fasta'],
+                'artifacts': [{'type': 'counts_gene', 'path': 'run/counts.tsv', 'content_gate': True}]}
+        with tempfile.TemporaryDirectory() as tmp:
+            generated = Path(tmp) / 'wrapper.py'
+            generated.write_text(author.module_source(spec))
+            self.assertFalse(inline_status_writes(generated))
+            self.assertFalse(unowned_status_mentions(generated))
+            self.assertIn('wl.write_status(substage, "COMPLETE")', generated.read_text())
+            self.assertIn('wl.collect_failure(substage, result, EXIT_FAILURE)', generated.read_text())
 
     def test_sweep_detects_alias_and_direct_write(self):
         with tempfile.TemporaryDirectory() as tmp:

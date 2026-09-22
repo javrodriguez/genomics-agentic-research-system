@@ -60,7 +60,7 @@ def write_status(project_dir_or_substage, state, reason=None, submission_key=Non
     of legacy STATUS files is performed. Success belongs to a successful collect caller;
     the marker and published output index are mandatory even at this lowest-level door.
     submission_key is internal executor evidence, not a reset flag: leaving failure or
-    cancellation requires a different prepared key and its recorded supersedes_key.
+    cancellation requires a corrective key; transient retry requires recorded attempts.
     """
     stage = Path(project_dir_or_substage)
     with open(str(stage / '.STATUS.lock'), 'a') as lock:
@@ -92,13 +92,17 @@ def _write_status_locked(stage, state, reason, submission_key):
             try:
                 root = ex.config_root_for(stage)
                 record = ex.stage_record(root, stage)
-                old_key = record.get('supersedes_key')
+                old_key = submission_key if record.get('attempts') else record.get('supersedes_key')
                 if not isinstance(old_key, str) or not re.fullmatch(r'[0-9a-f]{64}', old_key):
                     raise ValueError('missing superseded key')
                 old_path = ex._records(root) / (old_key + '.json')
                 old = json.loads(old_path.read_text(encoding='utf-8'))
+                if old_key == submission_key:
+                    old = record['attempts'][-1]
+                    if ex.retry_refusal(root, stage, old, len(record['attempts']) - 1):
+                        raise ValueError('retry not authorized')
                 old_stage = ex._validate_record(root, old_path, old)
-                corrective = (record['idempotency_key'] == submission_key != old_key and
+                corrective = (record['idempotency_key'] == submission_key and
                               record['state'] == 'SUBMITTED' and bool(record.get('job_id')) and
                               old_stage == stage.resolve() and old['state'] == previous)
             except (OSError, ValueError, KeyError, TypeError, AttributeError):
@@ -177,12 +181,34 @@ def require_collect_config(project, assay, substage):
     try:
         record = ex.stage_record(project, stage)
         if record:
+            if record['state'].startswith('FAILED') and record.get('scheduler_state') == 'COMPLETED':
+                raise ValueError('collect gate already failed; prepare corrected inputs for a new attempt')
             state, detail = ex.status(project, record['job_id']) if record['job_id'] else (None, 'submission unresolved')
             if state != 'COMPLETED':
-                raise ValueError('executor has not completed: %s' % (detail or state))
+                raise ValueError('executor has not finished successfully: %s' % (detail or state))
     except (OSError, ValueError, KeyError, TypeError) as exc:
         raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,
                                'error': 'R-135: %s' % exc}, EXIT_REFUSED))
+
+
+def collect_failure(stage, result, code=EXIT_FAILURE):
+    """A failed artifact gate owns its failure; scheduler evidence remains separate."""
+    state = 'FAILED:EXIT_' + str(code)
+    root = ex.config_root_for(stage)
+    directory = ex._records(root)
+    directory.mkdir(exist_ok=True)
+    with open(str(directory / '.lock'), 'a') as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        record = ex.stage_record(root, stage)
+        if record:
+            record['scheduler_state'] = record['state']
+            record['state'] = state
+            ex.record_failure(stage, record, state, json.dumps(result, sort_keys=True))
+            ex._save_record(directory / (record['idempotency_key'] + '.json'), record)
+        else:
+            ex.record_failure(stage, {}, state, json.dumps(result, sort_keys=True))
+        write_status(stage, state)
+    return emit(result, code)
 
 
 def read_config(path):
@@ -553,6 +579,30 @@ def write_params_yaml(substage, assay, params):
             fh.write("%s: %s\n" % (key, json.dumps(value) if " " in str(value) else value))
 
 
+def input_key(stage, manifest):
+    """0057 provisional formula: fixed-order bytes, independently framed downstream."""
+    inputs = manifest['inputs']
+    digest = hashlib.sha256()
+    if manifest['key_formula'] == 'stage01-v1':
+        sources = [stage / 'params.yaml', Path(inputs['samplesheet']), Path(inputs['config'])]
+        for source in sources:
+            with source.open('rb') as fh:
+                for chunk in iter(lambda: fh.read(1 << 20), b''):
+                    digest.update(chunk)
+    elif manifest['key_formula'] == 'downstream-v1':
+        digest.update(b'GARS downstream v1\0')
+        for label in sorted(inputs):
+            source = Path(inputs[label])
+            digest.update(label.encode('utf-8') + b'\0')
+            digest.update(str(source.stat().st_size).encode('ascii') + b'\0')
+            digest.update(bytes.fromhex(sha256(source)))
+        digest.update(json.dumps(manifest['params'], sort_keys=True,
+                                 separators=(',', ':'), ensure_ascii=True).encode('ascii'))
+    else:
+        raise ValueError('unknown key formula')
+    return digest.hexdigest()
+
+
 def write_reproducibility(substage, assay, checkout, inputs, params):
     """manifest.json (checksums, pipeline commit) + commands.sh. Deterministic bytes."""
     repro = substage / "reproducibility"
@@ -568,23 +618,16 @@ def write_reproducibility(substage, assay, checkout, inputs, params):
                 "template_version": ws.template_version(Path(__file__).resolve().parents[1])}
     for label, path in inputs.items():
         manifest["%s_sha256" % label] = sha256(path)
-    # R-076: exact byte concatenation, in the specification's order. Downstream
-    # wrappers without params/samplesheet await the owner's ruling in decision 0057.
-    param_file = substage / 'params.yaml'
-    if param_file.is_file() and 'samplesheet' in inputs and 'config' in inputs:
-        digest = hashlib.sha256()
-        for path in (param_file, inputs['samplesheet'], inputs['config']):
-            with open(str(path), 'rb') as fh:
-                for chunk in iter(lambda: fh.read(1 << 20), b''):
-                    digest.update(chunk)
-        manifest['idempotency_key'] = digest.hexdigest()
-        script_path = substage / 'submit.sh'
-        script = script_path.read_text(encoding='utf-8')
-        script = re.sub(r'^# idempotency_key=[0-9a-f]+\n', '', script, flags=re.M)
-        # Append the metadata after the header; decision 0039's header stays identical.
-        with ws.atomic_open(script_path) as fh:
-            fh.write(script + '# idempotency_key=' + manifest['idempotency_key'] + '\n')
-        os.chmod(str(script_path), 0o755)
+    manifest['inputs'] = {label: str(Path(path).resolve()) for label, path in inputs.items()}
+    manifest['key_formula'] = ('stage01-v1' if (substage / 'params.yaml').is_file()
+                               and 'samplesheet' in inputs and 'config' in inputs else 'downstream-v1')
+    manifest['idempotency_key'] = input_key(substage, manifest)
+    script_path = substage / 'submit.sh'
+    script = script_path.read_text(encoding='utf-8')
+    script = re.sub(r'^# idempotency_key=[0-9a-f]+\n', '', script, flags=re.M)
+    with ws.atomic_open(script_path) as fh:
+        fh.write(script + '# idempotency_key=' + manifest['idempotency_key'] + '\n')
+    os.chmod(str(script_path), 0o755)
     with ws.atomic_open(repro / "manifest.json") as fh:
         json.dump(manifest, fh, indent=2, sort_keys=True)
     submit_sh = substage.resolve() / "submit.sh"

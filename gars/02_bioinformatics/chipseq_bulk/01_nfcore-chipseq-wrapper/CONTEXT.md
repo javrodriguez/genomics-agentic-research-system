@@ -91,13 +91,16 @@ not.
    <sub-stage dir>/submit.sh`. It prints one JSON object; `job_id` is the field. Capture it.
 6. Submit has written `SUBMITTED`; no status call is needed yet. Reply T2 and stop. Do not wait, poll,
    or sleep.
-7. **On a later invocation** where STATUS is `SUBMITTED` or `RUNNING`: ask `python3 <workspace>/_system/executorlib.py
+7. **On a later invocation** where STATUS is `SUBMITTED`, `RUNNING` or `VALIDATING`: ask `python3 <workspace>/_system/executorlib.py
    status --workspace <project dir> <job_id>` — it answers `PENDING`, `RUNNING`,
-   `COMPLETED`, `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`. If not yet terminal, reply T3, stop; the status call has already refreshed STATUS.
-8. If the job has finished, run `collect` with `--model "<the exact model id you are running
-   as>"` (decision 0024). Exit 2 → the run did not actually complete: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with the wrapper's error and the scheduler log path, stop.
-   Exit 1 → the exit gate failed: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with its `failures` verbatim,
-   stop.
+   `COMPLETED`, `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`. If `PENDING` or `RUNNING`, reply T3, stop; the status call has already refreshed STATUS.
+8. If status reports `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`, reply T4
+   with that reason and the scheduler log path, stop. If the scheduler reports
+   `COMPLETED`, STATUS is `VALIDATING`; run `collect` with
+   `--model "<the exact model id you are running as>"` (decision 0024).
+   Exit 2 → collection is refused: reply T4 with the wrapper's error and scheduler log path, stop.
+   Exit 1 → the exit gate failed and collect wrote `FAILED:EXIT_1`: reply T4 with its
+   `failures` verbatim, stop. Preserve the failure; do not poll to replace it.
 9. Exit 0 → `collect` has written `OUTPUTS.tsv` and `STATUS COMPLETE`. Append its
    `history_entry` to the project's `HISTORY.md` **verbatim**, replacing `<ISO-8601 date>`
    with today's date, and reply T6.

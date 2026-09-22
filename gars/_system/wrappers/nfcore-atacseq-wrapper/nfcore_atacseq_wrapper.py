@@ -285,7 +285,7 @@ def cmd_collect(args):
 
     if fails:
         result["failures"] = fails
-        return emit(result, EXIT_FAILURE)
+        return wl.collect_failure(substage, result, EXIT_FAILURE)
 
     rel = lambda p: str(p.relative_to(substage))  # noqa: E731
     outputs = [("peaks", rel(peaks_dir)), ("peaks_consensus", rel(consensus_bed[0])),

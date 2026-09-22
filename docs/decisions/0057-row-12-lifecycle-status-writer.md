@@ -144,3 +144,72 @@ the owner's rule 5. Row 12 exit NOT met. Not approved or merged.
 ## Date
 
 2026-09-22
+
+## Addendum — the owner's round-4 rulings, 2026-09-22
+
+The following eleven rulings are attributed to **the owner**, verbatim. This dated
+addendum preserves every preceding byte and does not claim the separate owner approval
+commit required at merge.
+
+> 1. DOWNSTREAM KEY FORMULA: compute an idempotency key for EVERY wrapper from its declared manifest inputs in a fixed order and record the formula in 0057 as the provisional default; there is no exemption for a wrapper that declares no key. Use a SEPARATE downstream formula, not the stage-01 samplesheet serialization, so a stage-01 re-run does not change downstream keys that did not change. Add a submit test per downstream wrapper (rnaseq-de, scrna-qc-cluster, spatial-cluster-count).
+> 2. INTERMEDIATE SUCCESS AND COLLECT FAILURE: write VALIDATING (the spec's own state) on scheduler success before collect, and have collect write FAILED:EXIT_<n> through the writer when its gate fails. Rewrite step 8 of the seven stage-01 contracts in this same authorized pass.
+> 3. FAILURE TAXONOMY: confirmed as proposed -- transient 104 and 130-145; TIMEOUT, OUT_OF_MEMORY and NODE_FAIL infrastructure; 126 and 127 tool; 65 data_quality; every other nonzero exit workflow; agent_reasoning and scientific_validation left unassigned. Only transient retries, at the existing maxRetries; a destructive retry requires an approval record. Add classify(state, exit_code) with its one-line class artifact beside the log and test_failure_classification.py over six injected failures, and let the retry gate consume it.
+> 4. CANCEL AND TIMING: implement the cancel verb through the descriptor (`scancel {job_id}` for slurm, SIGTERM of the recorded PID for local), writing CANCELLED through the writer, and refuse a job older than one hour unless an approval record in the R-073 shape names the job id and backend. The timing field is AUTHORIZED: gate on the scheduler's start time where the backend reports it, falling back to a recorded submitted_at, and record both in the submission record. Add flag and environment override tests.
+> 5. STAGE-03 WRITER AND GENERATOR SWEEP: the narrow changes and the generated-output sweep coverage are authorized. Row 4's lane has ended, so this no longer collides with it; keep the change minimal and name every file touched in the report.
+> 6. INHERITED RAW-SBATCH CONTRACT LINES: typed executor.submit lines are authorized in the four inherited paths.
+> 7. PROTECTED EXECUTOR TEMPLATE: refresh the template map/argv under its 9.3 approval, remove the normalization in that same change and restore raw equality.
+> 8. PROTECTED-PATH APPROVAL AT MERGE: unchanged. The owner's approval record is still required for the row-12 guard, settings.json and registry changes, as a separate owner commit at merge in the shape of row 4's 0056. Never claim it.
+> 9. AMBIGUOUS SUBMISSION RECOVERY: not taken in this row. Keep the current behaviour -- stop, retain the evidence and the work -- and record it as its own open item; it needs scheduler evidence this row does not have.
+> 10. PUBLISHED BENCHMARK PINS: deferred by construction to after the separate study's done commit; change no benchmark or study file.
+> 11. ROW 15 SCOPE: accepted as written; row 15's files stay out of scope.
+
+### Provisional downstream formula and implementation binding
+
+The provisional default is `sha256(prefix + framed_inputs + canonical_params)`.
+`prefix` is the UTF-8 bytes `GARS downstream v1` followed by NUL. In lexicographic
+input-label order, each frame is UTF-8 label, NUL, ASCII byte length, NUL, and the
+32 raw bytes of SHA-256 of that input's exact contents. `canonical_params` is the
+manifest's parameter object serialized by `json.dumps(sort_keys=True,
+separators=(',', ':'), ensure_ascii=True)`, encoded as ASCII. The manifest records
+absolute input paths for rehashing and `key_formula: downstream-v1`. Every declared
+input participates, including spatial's declared samplesheet; unrelated stage-01
+files and serialization never enter this formula. The seven stage-01 wrappers keep
+`sha256(params.yaml bytes + samplesheet bytes + config bytes)` and record
+`key_formula: stage01-v1`. Submit rehashes; a claimed digest alone is insufficient.
+
+Scheduler success with the completion marker writes VALIDATING. Collect's failed
+artifact gate writes FAILED:EXIT_1, records its error and workflow class, and retains
+COMPLETED separately as `scheduler_state`. Later polls cannot clear that failure.
+Failure artifacts are `logs/failure-<job_id>.log` and `.class` (one class plus newline);
+unrecorded legacy collection uses `failure-collect`. Retry consumes the class artifact
+and checks it against the recorded reason. It reads the existing maxRetries literal
+from `_config/nextflow.slurm.config`, refuses absent/ambiguous bounds, preserves work,
+and retains earlier attempts inside the key's reservation. New submissions remain
+serialized, including retries; definite refusals restore the failed attempt, ambiguity
+retains the new reservation and stops. Non-Nextflow downstream reruns are treated
+conservatively as destructive and need a bound retry approval.
+
+Submission records carry UTC epoch seconds `submitted_at` and nullable `started_at`.
+Status/cancel read scheduler Start in UTC; cancellation uses reported start when
+available, otherwise submitted_at. Missing timing requires approval. Local cancellation
+signals only the PID bound by both the submission and local-job records. The human-only
+`executorlib.py approve-action --workspace <project> cancel|retry <job_id>` command
+issues an R-073 record through the existing protected sibling approval store. Its plan
+binds action, job id, backend, project, script and key; its record also names action,
+job id and backend. Actor is the launch identity, expiry is the existing 24-hour limit,
+and the agent registry exposes neither issuance nor an approval/force override.
+This reuses row 4's guarded-session trust boundary, not separate-user enforcement.
+
+Additional constrained paths for this addendum: `gars/_system/stage03_analysis.py`,
+`gars/03_custom_analysis/CONTEXT.md`,
+`gars/_system/authoring/create_bioinformatics_skill.py`, and
+`gars/_templates/config/executor.yaml`. Stage-03 verify uses the shared writer and
+requires an execution-created completion marker. It never creates that evidence itself.
+The executor template now equals the built-in map/argv without normalization; existing
+legacy descriptor files are not migrated and must be refreshed explicitly to validate.
+
+Ambiguous submission reconciliation remains its own open item: stop, retain evidence
+and work, and obtain scheduler evidence before any future recovery design. Published
+benchmark pins wait for the separate study's done commit. Protected-path merge approval
+remains a separate owner commit; this producer addendum does not provide it. Row 15 and
+Stage-3 unattended reconciliation remain outside this implementation.

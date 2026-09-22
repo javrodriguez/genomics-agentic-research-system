@@ -371,7 +371,7 @@ def cmd_collect(args):
 
     if fails:
         result["failures"] = fails
-        return emit(result, EXIT_FAILURE)
+        return wl.collect_failure(substage, result, EXIT_FAILURE)
 
     outputs = [("de_results", "native", "run/tables/de_results.csv"),
                ("counts_gene", "adapted", "adapted/counts_gene.tsv"),

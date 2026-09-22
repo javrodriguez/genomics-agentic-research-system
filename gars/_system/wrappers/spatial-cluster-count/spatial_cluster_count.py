@@ -551,7 +551,7 @@ def cmd_collect(args):
 
     if fails:
         result["failures"] = fails
-        return emit(result, EXIT_FAILURE)
+        return wl.collect_failure(substage, result, EXIT_FAILURE)
 
     # Never an h5ad row: this sub-stage produces no object, and a row here would shadow
     # 02.01's for every later consumer (the resolver takes the newest native match).

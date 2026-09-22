@@ -481,7 +481,7 @@ def cmd_collect(args):
 
     if fails:
         result["failures"] = fails
-        return emit(result, EXIT_FAILURE)
+        return wl.collect_failure(substage, result, EXIT_FAILURE)
 
     outputs = [("h5ad", "native", "run/data/processed.h5ad"),
                ("table", "native", "run/tables/cluster_markers.csv"),

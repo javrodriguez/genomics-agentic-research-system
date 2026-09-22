@@ -146,7 +146,7 @@ class LifecycleExecutorTests(unittest.TestCase):
                     old_key = ex.prepared_key(root, stage)
                     with patch.object(ex, '_scheduler_status', return_value=(terminal, None)):
                         self.assertEqual(ex.status(root, '42'), (terminal, None))
-                    self.assertIn('retry_policy_unresolved', ex.submit(root, stage / 'submit.sh')[1])
+                    self.assertIn('retry_refused', ex.submit(root, stage / 'submit.sh')[1])
                     cfg.write_text('aligner: hisat2\n')
                     wl.write_submit_sh(stage, root, {}, 'fixture', 'rnaseq_bulk', 'true')
                     wl.write_reproducibility(stage, 'rnaseq_bulk', root,
@@ -237,7 +237,7 @@ class LifecycleExecutorTests(unittest.TestCase):
                         backend.assert_not_called()
 
     def test_terminal_writer_requires_corrective_record_evidence(self):
-        for fault in ('missing_key', 'same_key', 'different_key', 'missing_supersedes', 'wrong_stage'):
+        for fault in ('missing_key', 'same_key', 'different_key', 'missing_supersedes', 'wrong_stage', 'old_reason', 'no_job', 'new_state'):
             with self.subTest(fault=fault), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp); stage, sheet, cfg = prepared(root)
                 with patch.object(ex, '_submit_once', return_value=('42', None)):
@@ -263,16 +263,68 @@ class LifecycleExecutorTests(unittest.TestCase):
                     supplied = 'f' * 64
                 elif fault == 'missing_supersedes':
                     del record['supersedes_key']
+                elif fault == 'no_job':
+                    record['job_id'] = None
+                elif fault == 'new_state':
+                    record['state'] = 'RUNNING'
                 else:
                     old_path = ex._records(root) / (old_key + '.json')
                     old = json.loads(old_path.read_text())
-                    old['script'] = str(root / '02_bioinformatics/rnaseq_bulk/02_other/submit.sh')
+                    if fault == 'old_reason':
+                        old['state'] = 'FAILED:EXIT_1'
+                    else:
+                        old['script'] = str(root / '02_bioinformatics/rnaseq_bulk/02_other/submit.sh')
                     old_path.write_text(json.dumps(old))
                 ex._save_record(ex._records(root) / (new_key + '.json'), record)
                 with self.assertRaises(wl.StatusRefusal):
                     wl.write_status(stage, 'SUBMITTED', submission_key=supplied)
                 self.assertEqual((stage / 'STATUS').read_bytes(), before)
 
+
+    def test_terminal_without_record_refuses_before_backend(self):
+        for terminal in ('FAILED:EXIT_1', 'CANCELLED', 'COMPLETE'):
+            with self.subTest(terminal=terminal), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp); stage, sheet, cfg = prepared(root)
+                (stage / 'STATUS').write_text(terminal + '\n')
+                with patch.object(ex, '_submit_once', return_value=('42', None)) as backend:
+                    job, why = ex.submit(root, stage / 'submit.sh')
+                    self.assertIsNone(job)
+                    self.assertIn('no matching', why)
+                    backend.assert_not_called()
+
+    def test_superseded_terminal_retained_after_empty_poll(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); stage, sheet, cfg = prepared(root)
+            with patch.object(ex, '_submit_once', return_value=('42', None)):
+                ex.submit(root, stage / 'submit.sh')
+            old_key = ex.prepared_key(root, stage)
+            with patch.object(ex, '_scheduler_status', return_value=('FAILED:TIMEOUT', None)):
+                ex.status(root, '42')
+            cfg.write_text('aligner: hisat2\n')
+            wl.write_reproducibility(stage, 'rnaseq_bulk', root,
+                                     {'samplesheet': sheet, 'config': cfg}, [])
+            with patch.object(ex, '_submit_once', return_value=('43', None)):
+                self.assertEqual(ex.submit(root, stage / 'submit.sh'), ('43', None))
+            before = (stage / 'STATUS').read_bytes()
+            with patch.object(ex, '_scheduler_status', return_value=(None, 'empty poll')):
+                ex.status(root, '42')
+            old = json.loads((ex._records(root) / (old_key + '.json')).read_text())
+            self.assertEqual(old['state'], 'FAILED:TIMEOUT')
+            self.assertEqual((stage / 'STATUS').read_bytes(), before)
+
+    def test_writer_refusal_retains_launched_job_and_reports_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); stage, _, _ = prepared(root)
+            with patch.object(ex, '_submit_once', return_value=('42', None)), \
+                    patch.object(wl, 'write_status', side_effect=wl.StatusRefusal('injected divergence')):
+                job, why = ex.submit(root, stage / 'submit.sh')
+            self.assertEqual(job, '42')
+            self.assertIn('writer refused', why)
+            path, record = ex._job_record(root, job)
+            self.assertEqual(record['status_error'], 'injected divergence')
+            with patch.object(ex, '_submit_once') as backend:
+                self.assertIsNone(ex.submit(root, stage / 'submit.sh')[0])
+                backend.assert_not_called()
 
     def test_scheduler_reasons_survive(self):
         with tempfile.TemporaryDirectory() as tmp:

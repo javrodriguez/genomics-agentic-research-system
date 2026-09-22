@@ -39,6 +39,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import wrapperlib as wl
 import workspace as ws          # noqa: E402
 
 EXIT_OK, EXIT_FAILURE, EXIT_REFUSED, EXIT_USAGE = 0, 1, 2, 3
@@ -418,14 +419,17 @@ def cmd_verify(args, workspace):
     if result["missing"] or result["empty"]:
         return emit(result, EXIT_FAILURE)
 
+    if not (adir / 'run/.gars_run_complete').is_file():
+        result['error'] = 'run/.gars_run_complete is absent: execution success is unproven'
+        return emit(result, EXIT_REFUSED)
+
     with ws.atomic_open(adir / "OUTPUTS.tsv") as fh:
         fh.write("# type\trole\tpath\n")
         for fname, ftype, _ in outputs:
             fh.write("%s\tnative\t%s\n" % (ftype, fname))
 
     now = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-    with ws.atomic_open(adir / "STATUS") as fh:
-        fh.write("COMPLETE %s\n" % now)
+    wl.write_status(adir, "COMPLETE")
 
     version = ws.template_version(workspace)
     model = args.model or "unknown"

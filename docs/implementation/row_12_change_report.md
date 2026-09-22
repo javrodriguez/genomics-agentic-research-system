@@ -940,3 +940,225 @@ One round commit uses exactly the audited ten paths, a message file in sibling s
 a generic producer author/committer identity. Both supplied untracked review files are
 excluded from staging; the round-2 review's bytes are verified unchanged. No push, remote,
 merge, pull request or owner-identifying committed text is introduced.
+
+## Review round 4 fixes
+
+Date: **2026-09-22**. Round starts at `39f74a0`; row scope is still measured from
+approved row-4 head `d17573a`, including owner decision 0056. The supplied review is
+`docs/reviews/row_12_review_round3.md`, retained untracked and unchanged. Earlier
+report sections and decision records retain their bytes. The eleven supplied rulings
+are appended verbatim to 0057 and attributed to **the owner**. No owner identity,
+protected-path merge approval, external review conversation, push, remote, merge or PR
+is introduced. No finding is dismissed as wrong.
+
+| Finding / ruling | Changed files (full inventory below) | Test | Result; red-on-fault seen |
+|---|---|---|---|
+| Round-3 MINOR-1: four unpinned guards | `test_lifecycle_executor.py`, `test_lifecycle_faults.py` | terminal-without-record backend assertion; empty superseded poll; mismatched old reason; missing job id and wrong new state | Closed. **Yes:** P9, old-reason, job-evidence and terminal-retention plants fail their named tests. |
+| Previous MAJOR-3 / ruling 1: downstream keys | `wrapperlib.py`, `executorlib.py`, `test_downstream_keys.py`, 0057 | actual prepare and submit path for rnaseq-de, scrna-qc-cluster and spatial-cluster-count; duplicate and changed-input refusals | Closed repo-side. Separate sorted declared-input formula is recorded as provisional in 0057. No wrapper exemption. **No downstream-specific plant**; positive submit and backend-not-called negative controls run for each wrapper. |
+| Previous MAJOR-4 and MINOR-3 / ruling 2: intermediate success and collect failure | `executorlib.py`, `wrapperlib.py`, ten wrapper modules, seven stage-01 contracts, `test_failure_classification.py` | COMPLETED → VALIDATING; collect failure → FAILED:EXIT_1; later success poll preserves failure; corrected key submits | Closed repo-side. Scheduler evidence stays separately recorded. **Yes:** replacing VALIDATING with RUNNING fails the transition test. All original content-gate assertions remain active. |
+| Previous MAJOR-4/6 / ruling 3: classifier and retries | `executorlib.py`, `wrapperlib.py`, `test_failure_classification.py`, fault harness, 0057 | six injected failures, all transient boundaries, scheduler precedence, class artifact, maxRetries, destructive approval and corrective lineage | Closed repo-side. Only transient retries, at the existing configured ceiling; work retained and earlier attempts preserved. **Yes:** exceeding maxRetries fails the behavioral assertion. No synthetic agent/science codes assigned. |
+| Previous MAJOR-5 and NOTE-3 / ruling 4: cancellation and timing | `executorlib.py`, registry, template, `test_lifecycle_cancel.py`, role tests | old-job refusal; genuine protected approval; altered identity/hash/expiry refusal; scheduler-start priority; submitted-at fallback; CLI/environment override refusals; real local SIGTERM | Closed repo-side. Both timestamps are recorded; absent/invalid timing requires approval. **Yes:** removing the one-hour gate causes a forbidden backend call. Slurm calls are stubs, not cluster evidence. |
+| Ruling 5: stage-03 writer and generated sweep | `stage03_analysis.py`, stage-03 contract, authoring generator, writer and approval tests, root runner fixture | stage-03 refuses missing marker; generated module passes source sweep and uses writer | Closed for the authorized narrow change. Stage-03 verify never manufactures the execution marker. **No new stage-03/generator-specific plant**; existing writer/inline-write plants remain red. |
+| Ruling 6: four inherited raw submissions | four scrnaseq/spatialvi contracts | contract lint, typed executor tests | Closed for the four submit instructions. Their already inherited execution-venue prose remains. **No new contract-specific plant.** |
+| Ruling 7: protected executor template | `executor.yaml`, `executorlib.py`, root runner equality test | `ExecutorSeamTests.test_01_shipped_template_resolves_to_the_builtin` compares raw parsed values | Closed. No normalizer or descriptor migration remains. **No new template-specific plant.** Existing descriptor override refusals remain. |
+| Round-3 NOTE-1: writer refusal after accepted submit | `executorlib.py`, `test_lifecycle_executor.py` | injected writer refusal retains accepted job and status_error, returns detail, prevents duplicate | Closed as suggested: reservation retains the job and refusal; CLI reports the job id with failure instead of claiming success. **No separate plant.** |
+| Round-3 NOTE-2: legacy unlinked records | report | inherited conflict refusal retained | No change required by review; conflicting unlinked evidence still needs reconciliation. |
+| Rulings 8–11 | 0057, report, living status documents | scope / append-only audit | Protected merge approval still belongs to a separate owner commit; ambiguity remains open; benchmark/study and row-15 files unchanged. **No acceptance claim** for these deferred items. |
+
+The retry record keeps its original different-key `supersedes_key` and stores earlier
+same-key attempts in `attempts`; a retry is not its own superseding stage. A regression
+covers a correction followed by repeated transient retries, including failure STATUS
+after each attempt. The local supervisor forwards SIGTERM to its worker and records
+exit 143; a real local cancellation test waits for that exit evidence and asserts no
+completion marker. These are code defects found during this pass, not changed expectations.
+
+Admission refusals (changed config, missing submission evidence, unfinished scheduler)
+remain refusals and do not fabricate an artifact-gate failure. Failed artifact gates in
+all ten shipped wrappers call `collect_failure`, which uses the one writer and retains
+the error/class beside the log. A repeated collect after its recorded gate failure
+refuses pending corrected preparation. Legacy unrecorded collection is not promoted
+to recorded-job evidence. COMPLETE remains terminal; there is no general reset.
+
+### Existing test expectations and fixture changes
+
+No threshold or refusal guard was weakened. Lifecycle fixtures now supply the execution
+evidence the new requirements require. The inherited content assertions continue to run;
+their synthetic cases represent independent runs, not a supported reset of real STATUS.
+
+| Test | Previous expectation / fixture | Required expectation / fixture | Reason |
+|---|---|---|---|
+| `ExecutorSeamTests.test_01_shipped_template_resolves_to_the_builtin` | normalize seeded descriptor before comparison | compare raw parsed template with built-in | Owner ruling 7 |
+| `LifecycleExecutorTests.test_corrected_failed_or_cancelled_stage_submits_once` | refusal string `retry_policy_unresolved` | refusal string `retry_refused`; still no same-key infrastructure/cancel retry | Taxonomy is now decided, ruling 3 |
+| `RoleProfileTests.test_cancel_needs_approval` → `test_cancel_enters_executor_approval_gate` | every producer cancel is refused in role policy | producer reaches executor; real old-job approval regression must pass | Ruling 4 requires sub-hour cancellation and bound approval above one hour |
+| `RoleProfileTests.test_cancel_declared_refusal_names_row_12` → `test_cancel_available_except_to_reviewer` | verb unavailable to every role | producer/human can enter, reviewer remains refused | Ruling 4 supplies the verb |
+| `ApprovalForgeryTests.test_expired_approval` | successful outputs without marker | synthetic execution marker before success control, expiry still refuses | Ruling 5 success gate |
+| `ApprovalForgeryTests.test_actor_is_process_identity_and_lifetime_is_utc` | successful outputs without marker | synthetic execution marker before success control, identity/expiry assertions unchanged | Ruling 5 success gate |
+| `WorkspaceFixture.test_12a_stage03_gates` | execute fixture supplies only outputs | fixture also supplies execution marker | Ruling 5 success gate |
+| `RnaseqGarsWrapperTests.test_04_de_prepare_and_collect` | downstream prepared fixture collects without submission record | recorded synthetic completed job; a distinct corrective fixture attempt after anonymous-gene failure | Rulings 1/2; all anonymous-gene, provenance and output assertions retained |
+| `ExecutionPolicyTests.test_all_ten_direct_collect_gates` | config-only prepare fixture, no execution | generated-key fixture with submission and success evidence; config change must leave STATUS byte-identical | Ruling 1; direct config refusal remains pinned for all ten wrappers |
+| `ExecutionPolicyTests.test_prepared_content_regressions` | config-only manifest injected into legacy result trees | each independent content scenario gets its own synthetic completed-job record; original assertions unchanged | Rulings 1/2; old fixtures no longer imply permission to recollect a failed attempt |
+| `LifecycleFaultTests.test_implemented_faults_are_red` | copied system/tests/settings only | also copy executor templates needed by real maxRetries test | New retry plant must fail behaviorally, not on a missing fixture |
+
+## Owner rulings needed
+
+1. **Protected-path merge approval:** the separate owner commit, in the shape of 0056,
+   is still required for the row-12 guard/settings/registry changes. This producer
+   commit does not supply or claim it. The executor-template update follows the explicit
+   ruling 7; the broader merge condition remains ruling 8.
+2. **Ambiguous submission recovery:** its own open item, expressly not taken by ruling 9.
+   Continue to stop and retain records, logs and work. Supported reconciliation or
+   reservation release needs scheduler evidence and a later owner-authorized design.
+3. **Row 15 boundary:** separate-user approval-store enforcement and protection against
+   unguarded same-UID writers remain row-15 work. No row-15 file was changed or selected
+   for a fix; do not infer that guarded-session tests prove that deployment boundary.
+
+### Residual gaps
+
+Full row-12 exit remains **NOT met** because live Slurm/Nextflow R-076 acceptance is
+unverified; bash scheduler fixtures and local jobs do not satisfy that named venue.
+Stage-3 durable state, heartbeats and restart reconciliation remain out of scope.
+Stage-03 retains its inherited unrecorded executor path; this narrow pass fixes its
+verify writer/marker gate, not stage-03 submission tracking or cancellation. Its raw
+execution-script surface and separate-user enforcement are not strengthened here.
+Actual Python 3.6.8 execution, Docker/cluster behavior, native harness permission-glob
+semantics and published benchmark-pin acceptance remain unverified. Published pins and
+study files are unchanged, deferred until the separate study's done commit. No migration
+of existing STATUS or records was performed. Existing full legacy executor descriptors
+now require an explicit refresh to validate against the new built-in enum.
+
+### Files touched in this round
+
+Every path in the round diff is listed below; inherited row-4 files absent from this list
+are not re-reviewed by this producer. The untracked supplied review is not part of the commit.
+
+- `DEVELOPMENT.md`
+- `README.md`
+- `docs/decisions/0057-row-12-lifecycle-status-writer.md`
+- `docs/implementation/row_12_change_report.md`
+- `gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md`
+- `gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md`
+- `gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md`
+- `gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md`
+- `gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md`
+- `gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md`
+- `gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md`
+- `gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md`
+- `gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md`
+- `gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md`
+- `gars/03_custom_analysis/CONTEXT.md`
+- `gars/_system/authoring/create_bioinformatics_skill.py`
+- `gars/_system/executorlib.py`
+- `gars/_system/stage03_analysis.py`
+- `gars/_system/tools/registry.json`
+- `gars/_system/wrapperlib.py`
+- `gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py`
+- `gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py`
+- `gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py`
+- `gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py`
+- `gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py`
+- `gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py`
+- `gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py`
+- `gars/_system/wrappers/rnaseq-de/rnaseq_de.py`
+- `gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py`
+- `gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py`
+- `gars/_templates/config/executor.yaml`
+- `gars/tests/test_approval_forgery.py`
+- `gars/tests/test_downstream_keys.py`
+- `gars/tests/test_execution_policy.py`
+- `gars/tests/test_failure_classification.py`
+- `gars/tests/test_lifecycle_cancel.py`
+- `gars/tests/test_lifecycle_executor.py`
+- `gars/tests/test_lifecycle_faults.py`
+- `gars/tests/test_role_profiles.py`
+- `gars/tests/test_status_writer.py`
+- `tests/run_tests.py`
+
+### Verification and execution conditions
+
+All commands used the designated sibling scratch directory for TMPDIR, TEMP and TMP.
+Final test subprocesses disabled bytecode writes. No dependency installation, network pull,
+remote, push, PR or merge was performed. Raw logs remain in scratch. The following
+summary lines are copied verbatim from this round’s logs.
+
+Supplied review SHA-256: `853144359006a93bdafe600e0d6d2ff7eac7b231d1628c4641ef26b9e5f496a5`.
+
+| Command | Verbatim summary lines |
+|---|---|
+| `python3 evals/test_harness.py` | `Ran 44 tests in 322.364s` / `OK` |
+| `python3 evals/check_results.py --controls --lexicon` | `clean — graded=1` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/check_counts.py` | `enforced=3` / `clean — every current claim matches the suite` |
+| `python3 gars/tests/test_status_writer.py` | `Ran 10 tests in 9.342s` / `OK` / `every wrapper uses the writer` |
+| `python3 gars/tests/test_lifecycle_executor.py` | `Ran 16 tests in 4.759s` / `OK` / `duplicate side effects 0` |
+| `python3 gars/tests/test_no_false_completion.py` | `Ran 5 tests in 0.704s` / `OK` / `0 false completions` |
+| `python3 gars/tests/test_lifecycle_faults.py` | `Ran 1 test in 33.890s` / `OK` |
+| `python3 gars/tests/test_executorlib_resume.py` | `Ran 2 tests in 0.172s` / `OK` |
+| `python3 gars/tests/test_execution_policy.py` | `Ran 7 tests in 58.951s` / `OK` |
+| `python3 gars/tests/test_role_profiles.py` | `Ran 6 tests in 0.216s` / `OK` |
+| `python3 tests/test_benchmark_discriminates.py` | `Ran 23 tests in 6.270s` / `OK (skipped=1)` |
+| `python3 tests/run_tests.py ExecutorSeamTests.test_01_shipped_template_resolves_to_the_builtin` | `Ran 1 test in 0.076s` / `OK` |
+| `python3 -m unittest discover -s gars/tests -p test_pre_push.py -v` | `Ran 7 tests in 10.690s` / `OK` |
+| `python3 gars/tests/test_failure_classification.py` | `Ran 5 tests in 1.080s` / `OK` / `six injected failures classified` |
+| `python3 gars/tests/test_lifecycle_cancel.py` | `Ran 6 tests in 2.492s` / `OK` |
+| `python3 gars/tests/test_downstream_keys.py` | `Ran 3 tests in 0.261s` / `OK` |
+
+Additional checks: `python3 --version` → `Python 3.13.2`; `command -v python3.6`
+returned exit 1 with no output. Parsing every changed Python file with
+`ast.parse(..., feature_version=(3, 6))` passed; this is grammar compatibility only.
+`bash docs/decisions/build_index.sh` exited 0 and left the generated index byte-identical.
+`git diff --check` exited 0 with no output. The append-only audit confirms prior 0057
+and report bytes are exact prefixes; all 41 changed paths are named above. The whole-row
+diff from `d17573a` leaves CI, evals, benchmarks and hooks unchanged. Added-content audit
+found no local account or build-path identifier. Recent task-created bytecode was retained
+in sibling scratch; pre-existing older caches were left alone.
+
+`docker image ls --format '{{.Repository}}:{{.Tag}}'` exited 1:
+
+```text
+Got permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock: Get "http://%2Fvar%2Frun%2Fdocker.sock/v1.24/images/json": dial unix /var/run/docker.sock: connect: operation not permitted
+```
+
+Final visible fault-harness output (20 behavioral plants; not the sealed mutation score):
+
+```text
+fault red: wrapper writes STATUS inline
+fault red: writer accepts an out-of-enum value
+fault red: TIMEOUT folds into FAILED
+fault red: duplicate submission reaches scheduler
+fault red: corrected terminal stage stays wedged
+fault red: status binds to re-prepared inputs
+fault red: new key overlaps unresolved stage job
+fault red: forged record bypasses script identity
+fault red: agent session writes STATUS
+fault red: killed worker reported COMPLETE
+fault red: P9 terminal without record reaches backend
+fault red: old terminal reason ignored
+fault red: new record without job accepted
+fault red: empty poll overwrites terminal record
+fault red: retry exceeds maxRetries
+fault red: old job cancelled without approval
+fault red: success skips VALIDATING
+fault red: computed STATUS path
+fault red: copied STATUS path
+fault red: formatted STATUS path
+```
+
+The initial integration run printed `Ran 349 tests in 184.618s` /
+`FAILED (failures=12, errors=17, skipped=50)`. Fixture/evidence mismatches and the
+generator docstring were corrected as recorded above. An intermediate run printed
+`Ran 351 tests in 297.580s` / `OK (skipped=50)`. A subsequent 354-test run printed
+`Ran 354 tests in 289.873s` / `OK (skipped=50)`. The final recheck below also covers
+the added superseded-attempt retry refusal; these earlier runs are not substituted
+for it. A two-case exploratory root-runner invocation printed `Ran 2 tests in 1.310s` /
+`FAILED (failures=1)` because its stage-03 case depends on the class’s earlier project
+initialization tests; the full runner exercises those prerequisites and passes.
+
+Final `python3 tests/run_tests.py` (exit 0):
+
+```text
+Ran 354 tests in 247.870s
+OK (skipped=50)
+```
+
+All 20 visible fault plants were red in this final run. Full row exit and merge
+readiness remain unclaimed for the residual gaps and owner actions above.
