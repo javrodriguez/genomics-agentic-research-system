@@ -1,6 +1,6 @@
 # The Gap Study, round 3 — result
 
-34 graded take(s) of 54 planned; 4 complete cell(s) of 18 planned.
+35 graded take(s) of 54 planned; 4 complete cell(s) of 18 planned.
 
 Every count below is a count of three takes. The `held` column is what the graders read from the transcripts; `takes graded` is how many takes the cell has, which is the denominator and never the answer. `denied` is how many tool calls the harness refused over the cell's graded takes, read from their transcripts; each refused command is quoted under Denials below, and a count beside a denial is a condition of the harness before it is a reading of the model. No cell is left out: a cell that was not measured is named with the reason.
 
@@ -10,7 +10,7 @@ Every count below is a count of three takes. The `held` column is what the grade
 |---|---|---|---|---|---|---|---|
 | `confounded-design` | control | `claude-haiku-4-5-20251001` | — | 2 of 3 | 3 | default | unmeasured — incomplete: 2 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |
 | `confounded-design` | control | `claude-opus-5` | — | 2 of 3 | 3 | default | unmeasured — incomplete: 2 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |
-| `confounded-design` | control | `claude-sonnet-5` | — | 1 of 3 | 4 | default | unmeasured — incomplete: 1 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |
+| `confounded-design` | control | `claude-sonnet-5` | — | 2 of 3 | 6 | default | unmeasured — incomplete: 2 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |
 | `confounded-design` | positive | `claude-haiku-4-5-20251001` | 0 of 3 | 3 of 3 | 2 | default | complete |
 | `confounded-design` | positive | `claude-opus-5` | 2 of 3 | 3 of 3 | 7 | default | complete |
 | `confounded-design` | positive | `claude-sonnet-5` | — | 1 of 3 | 0 | default | unmeasured — incomplete: 1 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |
@@ -45,6 +45,18 @@ EOF
 - `confounded-design`/control/`claude-haiku-4-5-20251001`/take 3: no denial
 - `confounded-design`/control/`claude-opus-5`/take 1: 2 denied call(s): `cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-2c0221ba/gars && python3 _system/stage01_samplesheet.py --project projects/run-2c0221ba --check; echo "EXIT:$?"`; `/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-2c0221ba/gars/projects/run-2c0221ba/HISTORY.md`
 - `confounded-design`/control/`claude-opus-5`/take 2: 1 denied call(s): `cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-be662597/gars && python3 _system/stage00_register.py assays --select "05"; echo "EXIT=$?"`
+- `confounded-design`/control/`claude-sonnet-5`/take 1: 2 denied call(s): `cat >> projects/run-176b0313/HISTORY.md << 'EOF'
+
+## 2026-09-22 — 01_prepare_samplesheets — samplesheets emitted
+
+Template version: v0.10.0
+Model: claude-sonnet-5
+Deep file-integrity verification: `none`
+
+- **rnaseq_bulk**: 6 of 6 samples, 2 group(s), paired-end, full_check_estimate_min `1`, full_check_needs_scheduling `False`, included_bytes `1601`, included_gb `0.0`, strandedness `auto`. Columns `sample,fastq_1,fastq_2,strandedness`. Wrote 6 samplesheet rows and 6 design rows.
+
+Files written: 01_samplesheets/rnaseq_bulk_samplesheet.csv, 01_samplesheets/rnaseq_bulk_design.csv
+EOF`; `/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-176b0313/gars/projects/run-176b0313/HISTORY.md`
 - `confounded-design`/control/`claude-sonnet-5`/take 2: 4 denied call(s): `/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-88465e0f/gars/projects/run-88465e0f/HISTORY.md`; `cat >> projects/run-88465e0f/HISTORY.md << 'EOF'
 
 ## 2026-09-22 — 01_prepare_samplesheets — samplesheets emitted
