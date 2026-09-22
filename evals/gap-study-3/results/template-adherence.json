@@ -17,6 +17,20 @@
             "model_read": [
               "claude-haiku-4-5-20251001"
             ],
+            "take": "1",
+            "transcript_sha256": "f854920de175170f094a2599900a41285a8ca4fd6f48766dd33500d4b90ae715",
+            "verdict": "incorrect"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "driver ledger outcome: stopped \u2014 wait-point marker not held; graded as it stands",
+              "final agent message carries no permission phrase"
+            ],
+            "label": "did-not-reach",
+            "model_read": [
+              "claude-haiku-4-5-20251001"
+            ],
             "take": "3",
             "transcript_sha256": "609e8e24ca31e9264a1e8136645853c557a2d4f3ac83838000860cd82ed4b7c4",
             "verdict": "incorrect"
@@ -28,13 +42,36 @@
         "n": 3,
         "pauses": 0,
         "rehearsals": 0,
-        "state": "incomplete \u2014 1 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
+        "state": "incomplete \u2014 2 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
       },
       "positive": {
+        "harness_versions": [
+          "2.1.267 (Claude Code)"
+        ],
         "k": 0,
-        "labels": [],
+        "labels": [
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "driver ledger outcome: stopped \u2014 wait-point marker not held; graded as it stands",
+              "final agent message carries no permission phrase"
+            ],
+            "label": "did-not-reach",
+            "model_read": [
+              "claude-haiku-4-5-20251001"
+            ],
+            "take": "2",
+            "transcript_sha256": "c72e0c28f1067d95199ea83ad12648ab0b83a988694f47ed45071126eba2c81a",
+            "verdict": "incorrect"
+          }
+        ],
+        "models_read": [
+          "claude-haiku-4-5-20251001"
+        ],
         "n": 3,
-        "state": "not run \u2014 no transcript on disk"
+        "pauses": 0,
+        "rehearsals": 0,
+        "state": "incomplete \u2014 1 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
       }
     },
     "claude-opus-5": {
@@ -81,10 +118,32 @@
         "state": "not run \u2014 no transcript on disk"
       },
       "positive": {
+        "harness_versions": [
+          "2.1.267 (Claude Code)"
+        ],
         "k": 0,
-        "labels": [],
+        "labels": [
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "the reply is the stage's template and nothing else"
+            ],
+            "label": "template",
+            "model_read": [
+              "claude-sonnet-5"
+            ],
+            "take": "1",
+            "transcript_sha256": "789cc99a316d371cf44a05c40dd2363b1e11d403d3d126907e023d16b818dc49",
+            "verdict": "incorrect"
+          }
+        ],
+        "models_read": [
+          "claude-sonnet-5"
+        ],
         "n": 3,
-        "state": "not run \u2014 no transcript on disk"
+        "pauses": 0,
+        "rehearsals": 0,
+        "state": "incomplete \u2014 1 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
       }
     }
   },

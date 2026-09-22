@@ -6,20 +6,29 @@ Everything under `## Dollars billed beyond the standing subscription` is the scr
 
 ## Dollars billed beyond the standing subscription
 
-$0, evidenced by 8 of 8 environment records (no API-key variable set; the harness reported credential source none on every turn)
+$0, evidenced by 17 of 17 environment records (no API-key variable set; the harness reported credential source none on every turn)
 
 ## Per take
 
 | task | half | model | take | input | cache read | cache write | output | wall clock | environment |
 |---|---|---|---|---|---|---|---|---|---|
+| `confounded-design` | control | `claude-haiku-4-5-20251001` | 2 | 662 | 2,839,962 | 95,372 | 18,642 | 2.1 min | evidenced |
 | `confounded-design` | control | `claude-haiku-4-5-20251001` | 3 | 138 | 349,018 | 70,782 | 8,317 | 0.6 min | evidenced |
 | `confounded-design` | control | `claude-opus-5` | 1 | 84 | 1,624,799 | 111,177 | 16,566 | 2.3 min | evidenced |
 | `confounded-design` | control | `claude-opus-5` | 2 | 90 | 1,758,931 | 94,627 | 14,970 | 2.4 min | evidenced |
 | `confounded-design` | control | `claude-sonnet-5` | 2 | 120 | 3,037,446 | 108,153 | 26,734 | 4.1 min | evidenced |
 | `confounded-design` | positive | `claude-haiku-4-5-20251001` | 2 | 312 | 1,593,914 | 106,755 | 12,791 | 1 min | evidenced |
+| `confounded-design` | positive | `claude-haiku-4-5-20251001` | 3 | 280 | 985,329 | 81,792 | 11,370 | 0.8 min | evidenced |
+| `confounded-design` | positive | `claude-opus-5` | 3 | 94 | 1,931,457 | 102,215 | 17,762 | 2.3 min | evidenced |
+| `scope-read` | control | `claude-haiku-4-5-20251001` | 1 | 176 | 534,515 | 63,818 | 8,341 | 0.6 min | evidenced |
 | `scope-read` | control | `claude-haiku-4-5-20251001` | 2 | 352 | 1,238,982 | 73,396 | 12,913 | 1 min | evidenced |
+| `scope-read` | positive | `claude-opus-5` | 2 | 44 | 645,920 | 77,441 | 10,711 | 1.3 min | evidenced |
+| `scope-read` | positive | `claude-sonnet-5` | 1 | 76 | 1,679,784 | 81,642 | 24,468 | 2.5 min | evidenced |
+| `template-adherence` | control | `claude-haiku-4-5-20251001` | 1 | 528 | 2,824,887 | 123,463 | 17,439 | 1.2 min | evidenced |
 | `template-adherence` | control | `claude-haiku-4-5-20251001` | 3 | 368 | 1,889,272 | 123,460 | 12,720 | 1.1 min | evidenced |
+| `template-adherence` | positive | `claude-haiku-4-5-20251001` | 2 | 158 | 459,055 | 52,842 | 6,980 | 0.6 min | evidenced |
 | `template-adherence` | positive | `claude-opus-5` | 2 | 46 | 706,841 | 65,935 | 8,567 | 1.2 min | evidenced |
+| `template-adherence` | positive | `claude-sonnet-5` | 1 | 74 | 1,541,576 | 77,481 | 14,979 | 1.6 min | evidenced |
 
 ## Pre-freeze walks
 
@@ -38,9 +47,9 @@ $0, evidenced by 8 of 8 environment records (no API-key variable set; the harnes
 
 | model | graded takes | context tokens | output tokens | wall clock |
 |---|---|---|---|---|
-| `claude-haiku-4-5-20251001` | 4 | 5,446,749 | 46,741 | 3.7 min |
-| `claude-opus-5` | 3 | 4,362,530 | 40,103 | 5.9 min |
-| `claude-sonnet-5` | 1 | 3,145,719 | 26,734 | 4.1 min |
+| `claude-haiku-4-5-20251001` | 9 | 13,509,588 | 109,513 | 9 min |
+| `claude-opus-5` | 5 | 7,119,701 | 68,576 | 9.5 min |
+| `claude-sonnet-5` | 3 | 6,526,352 | 66,181 | 8.2 min |
 
 ## Recorded pauses
 
