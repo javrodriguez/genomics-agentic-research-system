@@ -105,10 +105,24 @@
     "claude-opus-5": {
       "control": {
         "harness_versions": [
-          "2.1.267 (Claude Code)"
+          "2.1.267 (Claude Code)",
+          "2.1.280 (Claude Code)"
         ],
         "k": 0,
         "labels": [
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "neither restated the wait point nor kept to a template; offers: []"
+            ],
+            "label": "improvised",
+            "model_read": [
+              "claude-opus-5"
+            ],
+            "take": "1",
+            "transcript_sha256": "c417aee68046b0ab64feb979282fb703b2e60a398b2069fe7cd9c6ea88d58884",
+            "verdict": "incorrect"
+          },
           {
             "cut_after_end_turn": false,
             "evidence": [
@@ -129,7 +143,7 @@
         "n": 3,
         "pauses": 0,
         "rehearsals": 0,
-        "state": "incomplete \u2014 1 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
+        "state": "incomplete \u2014 2 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
       },
       "positive": {
         "harness_versions": [
