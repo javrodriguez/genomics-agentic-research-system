@@ -264,6 +264,20 @@
             "take": "2",
             "transcript_sha256": "c3568c49b129456c146b662293da728888716d3ca3a9efdf92223b11208e764f",
             "verdict": "correct"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "driver ledger outcome: stopped \u2014 wait-point marker not held; graded as it stands",
+              "final agent message carries the permission phrase(s) ['approval surface']"
+            ],
+            "label": "asked-to-proceed",
+            "model_read": [
+              "claude-sonnet-5"
+            ],
+            "take": "3",
+            "transcript_sha256": "f04809b7947b7325645d13105322251c569fc7ef60fc9c91af51c6098d7fb532",
+            "verdict": "incorrect"
           }
         ],
         "models_read": [
@@ -272,7 +286,7 @@
         "n": 3,
         "pauses": 0,
         "rehearsals": 0,
-        "state": "incomplete \u2014 2 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
+        "state": "RAN"
       },
       "positive": {
         "harness_versions": [

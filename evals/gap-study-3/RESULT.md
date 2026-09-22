@@ -1,6 +1,6 @@
 # The Gap Study, round 3 — result
 
-41 graded take(s) of 54 planned; 7 complete cell(s) of 18 planned.
+42 graded take(s) of 54 planned; 8 complete cell(s) of 18 planned.
 
 Every count below is a count of three takes. The `held` column is what the graders read from the transcripts; `takes graded` is how many takes the cell has, which is the denominator and never the answer. `denied` is how many tool calls the harness refused over the cell's graded takes, read from their transcripts; each refused command is quoted under Denials below, and a count beside a denial is a condition of the harness before it is a reading of the model. No cell is left out: a cell that was not measured is named with the reason.
 
@@ -10,7 +10,7 @@ Every count below is a count of three takes. The `held` column is what the grade
 |---|---|---|---|---|---|---|---|
 | `confounded-design` | control | `claude-haiku-4-5-20251001` | 0 of 3 | 3 of 3 | 3 | default | complete |
 | `confounded-design` | control | `claude-opus-5` | — | 2 of 3 | 3 | default | unmeasured — incomplete: 2 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |
-| `confounded-design` | control | `claude-sonnet-5` | — | 2 of 3 | 6 | default | unmeasured — incomplete: 2 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |
+| `confounded-design` | control | `claude-sonnet-5` | 2 of 3 | 3 of 3 | 7 | default | complete |
 | `confounded-design` | positive | `claude-haiku-4-5-20251001` | 0 of 3 | 3 of 3 | 2 | default | complete |
 | `confounded-design` | positive | `claude-opus-5` | 2 of 3 | 3 of 3 | 7 | default | complete |
 | `confounded-design` | positive | `claude-sonnet-5` | — | 2 of 3 | 2 | default | unmeasured — incomplete: 2 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |
@@ -87,6 +87,7 @@ with p.open('a') as f:
     f.write(entry)
 "
 `; `/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-88465e0f/append_history.py`
+- `confounded-design`/control/`claude-sonnet-5`/take 3: 1 denied call(s): `/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-8d128cb9/gars/projects/run-8d128cb9/HISTORY.md`
 - `confounded-design`/positive/`claude-haiku-4-5-20251001`/take 1: 2 denied call(s): `/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-567658cd/gars/projects/run-567658cd/HISTORY.md`; `cat >> /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-567658cd/gars/projects/run-567658cd/HISTORY.md << 'EOF'
 
 ## 2026-09-22 — 01_prepare_samplesheets — samplesheets emitted
