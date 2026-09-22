@@ -155,7 +155,7 @@
           "2.1.267 (Claude Code)",
           "2.1.280 (Claude Code)"
         ],
-        "k": 1,
+        "k": 2,
         "labels": [
           {
             "cut_after_end_turn": false,
@@ -183,6 +183,21 @@
             "model_read": [
               "claude-opus-5"
             ],
+            "take": "2",
+            "transcript_sha256": "a41836958d033424bba2e932b7ddf7717763898012878569e8d07b525c97de0d",
+            "verdict": "correct"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "first study's classifier: asserted",
+              "mapped to this study's label: asserted",
+              "reach turn 8, imported from the first study"
+            ],
+            "label": "asserted",
+            "model_read": [
+              "claude-opus-5"
+            ],
             "take": "3",
             "transcript_sha256": "6c35c5b396215d8b544fdc78a44e2fe0987c78f8d64e2e08a14dd2d757998d0a",
             "verdict": "correct"
@@ -194,7 +209,7 @@
         "n": 3,
         "pauses": 0,
         "rehearsals": 0,
-        "state": "incomplete \u2014 2 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
+        "state": "RAN"
       }
     },
     "claude-sonnet-5": {
