@@ -1543,6 +1543,41 @@ class ReviewTwoBlockersStayFixed(unittest.TestCase):
             self.assertEqual(round2.modes_recorded(t), {"default"})
 
 
+class AnInterruptedReviewerIsResumedNotReplaced(unittest.TestCase):
+    """Round 3's reviewer was cut off by a session limit after 39 turns. The launcher resumes the same
+    session under the same id; it never opens a second reviewer on the same bytes."""
+
+    def setUp(self):
+        self.launch = load_module("round3_launch_for_resume", HERE / "review_kit" / "launch.py")
+        self.drive = self.launch.load_drive()
+
+    def test_the_resume_argv_continues_the_same_id_with_the_harnesss_own_flag(self):
+        sid = "86fe36ac-156b-59c3-b59b-5b2d23952438"
+        argv = self.launch.resume_argv_for(sid, self.drive)
+        self.assertIn("--resume", argv)
+        self.assertEqual(argv[argv.index("--resume") + 1], sid)
+        self.assertNotIn("--session-id", argv, "a resume never opens a new session")
+        fresh = self.launch.argv_for(sid, self.drive)
+        self.assertEqual(argv[argv.index("--model") + 1], fresh[fresh.index("--model") + 1], "the same reviewer model")
+        for flag in self.drive.ISOLATION_FLAGS:
+            self.assertIn(flag, argv, "the same isolation as the first launch")
+        self.assertIn("--permission-prompts", argv)
+
+    def test_a_resume_refuses_any_id_but_the_one_the_folder_was_launched_under(self):
+        with tempfile.TemporaryDirectory() as td:
+            folder = Path(td) / "round-x"
+            side = Path(td) / "round-x-launch"
+            folder.mkdir(); side.mkdir()
+            (side / "SESSION").write_text("11111111-1111-5111-8111-111111111111\n")
+            code = self.launch.resume(folder, "22222222-2222-5222-8222-222222222222", self.drive)
+            self.assertEqual(code, 2)
+            self.assertEqual(list(side.glob("stream-resume-*")), [], "nothing was opened")
+
+    def test_the_register_names_the_case(self):
+        src = (HERE / "review_kit" / "rounds.py").read_text()
+        self.assertIn("IS A PAUSE, AND IS RESUMED", src)
+
+
 # ---------------------------------------------------------------------------------------------
 # The reviewer's brief and the purpose page
 

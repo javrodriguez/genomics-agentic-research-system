@@ -38,6 +38,14 @@ reason, and a fresh row re-runs it under a new commit and a new id. Deleting the
 the id would work and is exactly what this register exists to make impossible: a run that could quietly
 retire a session could quietly retire one that HAD produced work.
 
+A SESSION CUT OFF AFTER ITS FIRST AGENT TURN AND BEFORE ITS REPORT IS A PAUSE, AND IS RESUMED. Round 3's
+reviewer was ended by the subscription's session limit at its 39th turn with no report written. That is
+neither spent-without-work (it had worked) nor void (nothing about its blindness failed), and no report
+exists to commit or discard. The row stays OPEN and the same session is continued under the same id with
+`launch.py <folder> <id> --resume`, which the harness supports; a fresh id would be a second reviewer on
+the same bytes, and this register exists to make that visible. The report the resumed session writes
+records the id its row derives, as any report must, and --check binds it exactly as before.
+
 A SECOND VERIFIER RUN ON THE SAME COMMIT IS A MATERIAL FINDING. `--check` prints it as one; it does not fail
 on it, because whether a re-run is warranted is the owner's call and the record's job is to show it happened.
 

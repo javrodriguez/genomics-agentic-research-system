@@ -2,6 +2,7 @@
 """Launch a blind pre-freeze reviewer, headless, from a review folder outside the Brain.
 
     python3 evals/gap-study-3/review_kit/launch.py <review folder> [<session id>]
+    python3 evals/gap-study-3/review_kit/launch.py <review folder> <session id> --resume
 
 The folder is built by build_kit.py: BRIEF.md, why.md, prereg.json, the previous review's bytes if any, and `study/`,
 a full-history clone of this repository with NO remote. This launcher:
@@ -15,6 +16,16 @@ a full-history clone of this repository with NO remote. This launcher:
     a take is given (TheReviewKitMatchesTheDriver). Never an Agent sub-agent: those boot with the operator's memory.
   - records the session id it opened, the folder's listing at launch, the stream, stderr and the exit code beside
     the folder, so blindness.py can read the reviewer's own session file afterwards.
+
+A SESSION CUT OFF AFTER ITS FIRST AGENT TURN AND BEFORE ITS REPORT IS RESUMED, NOT RE-LAUNCHED. The
+subscription's session limit ended round 3's reviewer at its 39th turn with no report written. Its id is
+a pure function of its row's commit and was already opened, so a fresh launch under it is refused by the
+harness, and a fresh id would be a second reviewer on the same bytes -- which is exactly what the register
+exists to make visible. `--resume` continues THE SAME session under the same id with the harness's own
+`--resume`, the reviewer's context intact, and records the continuation beside the first launch
+(stream-resume-<n>.jsonl, stderr-resume-<n>.txt, launch-resume-<n>.log); SESSION is unchanged. The goal
+file names a rate limit a pause, and a pause is resumed. Nothing about the round's blindness changes:
+blindness.py reads the session's own file, which the continuation appends to.
 
 No model is called by this file itself; it starts the reviewer's session. stdlib only.
 """
@@ -36,6 +47,8 @@ REPO = STUDY_DIR.parent.parent
 
 MODEL = "claude-fable-5-1"
 PROMPT = "Read BRIEF.md in this folder and follow it exactly."
+RESUME_PROMPT = ("Your session was interrupted by a rate limit and has been resumed. Continue exactly where you "
+                 "were: follow BRIEF.md in this folder to completion, and write the report it asks for.")
 REVIEWER_ENV = {"ENABLE_CLAUDEAI_MCP_SERVERS": "false", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}
 
 
@@ -73,20 +86,53 @@ def argv_for(session_id: str, drive) -> list[str]:
             *drive.ISOLATION_FLAGS, "--output-format", "stream-json", "--verbose", "--session-id", session_id]
 
 
+def resume_argv_for(session_id: str, drive) -> list[str]:
+    """The same flags, the same model, the same id -- continued with the harness's --resume, never re-opened."""
+    return ["claude", "-p", RESUME_PROMPT, "--model", MODEL, "--permission-mode", "auto", "--permission-prompts",
+            "none", *drive.ISOLATION_FLAGS, "--output-format", "stream-json", "--verbose", "--resume", session_id]
+
+
 def env_for(drive) -> dict:
     return {**drive.child_env(), **REVIEWER_ENV}
 
 
-def main() -> int:
-    if not 2 <= len(sys.argv) <= 3:
-        print(__doc__.split("\n")[2].strip())
+def resume(folder: Path, sid: str, drive) -> int:
+    side = folder.parent / (folder.name + "-launch")
+    recorded = (side / "SESSION").read_text().strip() if (side / "SESSION").is_file() else None
+    if recorded != sid:
+        print(f"refusing to resume: {side.name}/SESSION records {recorded!r}, not {sid!r}. A resume continues the "
+              f"session this folder was launched under and no other.")
         return 2
+    n = 1 + len(list(side.glob("stream-resume-*.jsonl")))
+    env = env_for(drive)
+    argv = resume_argv_for(sid, drive)
+    t0 = time.time()
+    with open(side / f"stream-resume-{n}.jsonl", "w") as out, open(side / f"stderr-resume-{n}.txt", "w") as err:
+        code = subprocess.run(argv, cwd=str(folder), env=env, stdout=out, stderr=err).returncode
+    reports = sorted(folder.glob("prefreeze-*.md"))
+    (side / f"launch-resume-{n}.log").write_text(json.dumps({
+        "resumed": sid, "exit": code, "minutes": round((time.time() - t0) / 60, 1),
+        "report_written": [r.name for r in reports]}) + "\n")
+    print((side / f"launch-resume-{n}.log").read_text())
+    return 0 if code == 0 else 1
+
+
+def main() -> int:
+    args = [a for a in sys.argv[1:] if a != "--resume"]
+    resuming = "--resume" in sys.argv[1:]
+    if not 1 <= len(args) <= 2 or (resuming and len(args) != 2):
+        print(__doc__.split("\n")[2].strip())
+        print(__doc__.split("\n")[3].strip())
+        return 2
+    sys.argv = [sys.argv[0], *args]
     folder = Path(sys.argv[1]).resolve()
     problems = folder_problems(folder)
     if problems:
         print("refusing to launch: " + "; ".join(problems))
         return 2
     drive = load_drive()
+    if resuming:
+        return resume(folder, sys.argv[2], drive)
     # ROUND 3. The session id may be GIVEN, and for this round it always is: rounds.py derives it as
     # uuid5 of the commit that introduced the round's row, exactly as a take's is of its ledger row's
     # commit. Round 2 drew a fresh uuid4 here, so a reviewer's session was tied to nothing -- a run could

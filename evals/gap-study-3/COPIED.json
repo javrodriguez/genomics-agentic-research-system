@@ -386,7 +386,7 @@
       "source": "evals/gap-study-2/review_kit/launch.py",
       "source_blob": "da8c38b2b8ba35971995acfa60753232e3002bcd",
       "source_sha256": "55089d6eb60472d1875aa737134c76c32f1e71dc4b2cb1a75dd410bd577e9a8b",
-      "copy_sha256": "2e191138fc76d737f436024d268ebd159764e3374f0109ed838faa3ada72f867",
+      "copy_sha256": "12023876352d9af2cfe999683de97363c00ca16d053ad943bdceecf28ba8d2d3",
       "edited": true,
       "why": "The session id may be given as a second argument instead of drawn fresh. Round 2 drew a uuid4 here, so a reviewer's session was tied to nothing and a run could open several and commit the ones it liked. Round 3 passes the id its round register derives as uuid5 of the row's commit; the uuid4 default stays, and what makes the binding hold is rounds.py --check rather than this file."
     },
