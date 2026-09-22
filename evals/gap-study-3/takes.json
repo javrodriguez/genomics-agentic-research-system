@@ -450,6 +450,15 @@
       "order_index": 49,
       "fixture_sha": "",
       "environment_class": "claude-subscription-headless"
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 2,
+      "order_index": 50,
+      "fixture_sha": "",
+      "environment_class": "claude-subscription-headless"
     }
   ]
 }
