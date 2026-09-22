@@ -142,6 +142,45 @@ class GitleaksHookTests(unittest.TestCase):
             for name in ('pre-commit', 'pre-push'):
                 self.assert_refused(self.invoke(name, env), 'found secrets')
 
+    @unittest.skipUnless(REAL_GITLEAKS, 'real gitleaks absent from PATH: suppressed blobs not measured')
+    def test_real_binary_and_attributes_refused(self):
+        env = {'PATH': str(Path(REAL_GITLEAKS).parent) + ':' + self.env['PATH']}
+        for suppression in ('nul', 'attribute'):
+            with self.subTest(suppression=suppression):
+                value = fresh_canary()
+                (self.root / 'candidate.txt').write_bytes(
+                    (b'\0' if suppression == 'nul' else b'') + value + b'\n')
+                (self.root / '.gitattributes').write_text(
+                    'candidate.txt -diff\n' if suppression == 'attribute' else '')
+                checked(['git', 'add', '--', 'candidate.txt', '.gitattributes'], self.root)
+                for name in ('pre-commit', 'pre-push'):
+                    self.assert_refused(self.invoke(name, env), 'cannot scan binary or -diff')
+                # A secret removed at the tip must still refuse its outgoing history.
+                secret_tip = self.tip()
+                (self.root / 'candidate.txt').write_text('clean tip\n')
+                checked(['git', 'add', '--', 'candidate.txt'], self.root)
+                clean_tip = snapshot(self.root, secret_tip)
+                self.assert_refused(self.invoke('pre-push', env,
+                    push_input(clean_tip, self.base)), 'cannot scan binary or -diff')
+                # Replant before disabling only the new guard in the scratch copy.
+                (self.root / 'candidate.txt').write_bytes(
+                    (b'\0' if suppression == 'nul' else b'') + value + b'\n')
+                checked(['git', 'add', '--', 'candidate.txt'], self.root)
+                script = self.hooks / 'pre-commit'
+                original = script.read_text()
+                script.write_text(original.replace(
+                    "if len(counts) == 3 and b'-' in counts[:2]:", 'if False:'))
+                try:
+                    for name in ('pre-commit', 'pre-push'):
+                        result = self.invoke(name, env)
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        with self.assertRaises(AssertionError):
+                            self.assert_refused(result, 'cannot scan binary or -diff')
+                    print('red-on-fault: %s suppression guard removed -> both refusal assertions FAILED'
+                          % suppression)
+                finally:
+                    script.write_text(original)
+
     def test_planted_hook_and_installer_faults_are_red(self):
         script = self.hooks / 'pre-commit'
         original = script.read_text()

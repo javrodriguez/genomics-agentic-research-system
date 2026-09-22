@@ -32,6 +32,9 @@ system, follows the Interpretable Context Methodology (ICM) — Van Clief &amp; 
   [ClawBio#365](https://github.com/ClawBio/ClawBio/issues/365).
 - `python3 tests/run_tests.py` and `python3 tests/check_contracts.py` run green from a cold clone
   with no setup, and in CI on every push.
+  Row 15 branch exception (2026-09-21): the full suite currently fails three row 3
+  pre-push fixture assertions; the owner must authorize that fixture repair.
+  The inherited cold-clone claim above is not the current row 15 result.
 - [PeerPanel](https://github.com/javrodriguez/peerpanel) — a separate demonstration system that
   evaluates its own multi-agent review pipeline against single-agent baselines and publishes the
   result the record shows: on planted defects, no arm asserted one.
@@ -285,7 +288,10 @@ artifact each stage produces.
 ## Status
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(250 tests, 28 of them environment skips, on macOS at the 2026-09-17 merge of rows 1, 5, 2 and 3, with row 5's scratch folder set as CI sets it; a cold clone without it skips 50; no cluster run is evidenced for these rows).
+(236 tests, 28 of them environment skips, on macOS at the 2026-09-17 merge of rows 1, 5, 2 and 3, with row 5's scratch folder set as CI sets it; a cold clone without it skips 50; no cluster run is evidenced for these rows). <!-- not-the-suite-total -->
+Row 15 review round 2 (2026-09-21), macOS / Python 3.13.2: 252 tests,
+`FAILED (failures=3, skipped=50)`; no tests from row 15 skipped. See the
+[Row 15 report](docs/implementation/row_15_change_report.md#review-round-2-fixes).
 The expanded suite's cluster status is unverified; dated local runner
 results and skips are recorded in the [Row 2 report](docs/implementation/row_2_change_report.md#review-round-3-fixes).
 The [benchmark sealing interface](benchmarks/HOLDOUT.md) is maintained in place;

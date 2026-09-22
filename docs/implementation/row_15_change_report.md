@@ -196,3 +196,126 @@ The final staged content was also scanned directly with `gitleaks git .
 
 Producer time: approximately 0.75 hours elapsed effort (estimate, not a session-registry
 measurement); no cluster queue time. No ledger or acceptance threshold was changed.
+
+## Review round 2 fixes
+
+Date: 2026-09-21. Producer: Codex. Review input: `docs/reviews/row_15_review.md`,
+left untracked and unchanged. The owner's September 15 and September 21 rulings
+apply: content inherited at `c934f6d` is out of scope and is not removed; living
+implementation documents are edited in place; existing records remain append-only.
+Decision [0054](../decisions/0054-row-15-review-scan-completeness.md) adds the
+mechanism and evidence corrections beside the unchanged 0052 record.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| R15-01 BLOCKER: Git binary/attribute suppression | `gars/_system/hooks/pre-commit` (shared by pre-push), `gars/tests/test_hooks_gitleaks.py`, 0054, generated decision index | `GitleaksHookTests.test_real_binary_and_attributes_refused` with real gitleaks 8.30.0; both hooks, NUL and staged `-diff`, plus a clean pushed tip after an earlier contaminated commit | CLOSED by refusing omitted content. **Yes:** removing the completeness guard in the scratch hook lets both variants pass both hooks; each refusal assertion then fails. Existing scanner and prior-hook tests still pass. |
+| R15-02 BLOCKER: encoded assignment logs | `gars/tests/secret_support.py`, `gars/tests/test_secret_containment.py`, 0054 | `SecretContainmentTests.test_encoded_assignment_logs_refuse_zero_sinks`, `test_repo_side_nine_sinks`, `test_decoder_nested_and_red_on_fault` | CLOSED. **Yes:** actual base64/hex assignment log plants make the zero-sink assertion fail. Restoring the old decoder in a scratch helper and running the new named test returns `FAILED (failures=1)`. All nine sinks also detect the unquoted forms. |
+| R15-03 BLOCKER: incompatible row 3 fixtures | This report and current status documentation only; `gars/tests/test_pre_push.py` unchanged | `python3 tests/run_tests.py` | OPEN, scope decision required below. **Yes:** the full runner still fails the three original clean-pass fixture assertions; no test, enforcement or threshold is relaxed. |
+| R15-04 MAJOR: historical count substituted | `README.md`, `DEVELOPMENT.md`, this appended report section, 0054 | `git show c934f6d:README.md`; `python3 tests/check_counts.py`; full suite | CLOSED. September 17 remains **236 tests, 28 skips**; the current run is separately dated with its actual result. **No new fault plant:** historical provenance is checked against parent bytes; the unchanged count guard checks current collection claims. |
+
+Correction to the earlier report's count-only-change claim: the substitutions of
+250 into the two dated September 17 measurements were wrong. That claim is not
+supporting evidence for 250 tests passing on September 17. The parent command
+`git show c934f6d:README.md` shows `236 tests, 28 of them environment skips, on
+macOS at the 2026-09-17 merge`. Both living documents restore that measurement and
+mark it historical using the count guard's existing marker. Their current count
+claims remain enforced. The inherited README cold-clone sentence is preserved,
+with an adjacent explicit exception for this branch's failing suite. No inherited
+content is removed to close a finding, and no finding is silently dismissed.
+
+The conservative R15-01 fix refuses clean binary changes too, including binary
+history on new refs, rather than pretending Git's omitted content was scanned.
+The numstat query has a timeout and fails closed; it includes root/merge diffs
+and disables rename collapsing. Scanner failures, prior-hook vetoes and the
+whole-suite gate still compose as before. Tests invoke production hooks directly
+in disposable repositories; this round performs no actual Git push, remote
+operation, source-clone hook installation, or agent exfiltration run.
+
+### Validation environment and commands
+
+All command invocations exported `TMPDIR`, `TEMP` and `TMP` to the designated
+sibling scratch directory, represented here as `$SCRATCH`. Logs and fault copies
+are kept there as `round2-*.log`; no reviewer scripts or outside repository files
+were read. The review is the sole outside-sourced input. Python 3.13.2 on macOS
+and gitleaks 8.30.0 were used. `GARS_ROW5_SCRATCH` and `CI` remain unset; the
+50 suite skips are not passing executions. No tests from row 15 skipped.
+
+| Command | Verbatim runner summary / result | Exit |
+|---|---|---:|
+| `python3 tests/run_tests.py` | `Ran 252 tests in 130.113s`; `FAILED (failures=3, skipped=50)`; `canary: 0/9` | 1 |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` | 0 |
+| `python3 tests/check_counts.py` | `suite: 252 tests, from unittest's loader`; `enforced=3`; `clean — every current claim matches the suite` | 0 |
+| `python3 evals/test_harness.py` | `Ran 44 tests in 149.894s`; `OK` | 0 |
+| `python3 evals/check_results.py --controls --lexicon` | `clean — graded=1` | 0 |
+| `python3 gars/tests/test_hooks_gitleaks.py` | `Ran 12 tests in 30.692s`; `OK` | 0 |
+| `python3 gars/tests/test_secret_containment.py` | `Ran 4 tests in 9.657s`; `OK`; `canary: 0/9`; `committed-tree gitleaks: 0 findings` | 0 |
+| `python3 gars/tests/secret_support.py` | No output; helper import/CLI smoke, not a test runner | 0 |
+| Scratch old-decoder mutation, named assignment-log test | `Ran 1 test in 0.003s`; `FAILED (failures=1)` (expected fault) | 1 |
+| `bash docs/decisions/build_index.sh` | Decision index regenerated | 0 |
+| Python `ast.parse(..., feature_version=(3, 6))` | `Python 3.6 syntax: 6 files parsed (runtime not verified)` | 0 |
+| `git diff --check` | No output | 0 |
+| `python3 gars/_system/hooks/pre-commit` on the round's staged paths | `gitleaks: passed`; `pre-commit: passed` | 0 |
+
+The first documentation count check caught the phrase “row 15 test” as a claimed
+suite size of 15. Rephrasing it to “tests from row 15” fixed that documentation
+ambiguity; the guard is unchanged. The final count check above is green.
+The committed-tree containment test scans pre-round `HEAD`; the staged hook scan
+covers this round's new content. Neither is a full agent-containment measurement.
+
+The full-suite failures are the default/custom-directory subtests of
+`PrePushTests.test_installer_preserves_both_gates_stdin_and_veto`, and
+`PrePushTests.test_whole_suite_passes_directly`. The latter's diagnostic remains
+`gitleaks: REFUSED (gitleaks config is unreadable)`. `git diff c934f6d --
+gars/tests/test_pre_push.py` produces no output: no fixture edit is hidden here.
+The observed failures are the introduced integration gap, not a dismissed
+inherited-content finding.
+
+Protected-path evidence command:
+
+```text
+git diff --stat c934f6d -- evals/ .github/ gars/_system/guard_hook.py gars/.claude/settings.json gars/_system/executorlib.py gars/_system/wrapperlib.py gars/_system/stage03_analysis.py gars/_system/wrappers/ tests/fixtures/ gars/tests/test_pre_push.py
+```
+
+Output: empty; exit 0. Existing decision 0052 and the row 3 fixture are byte-identical
+to pre-round HEAD. Earlier report sections are a byte-identical prefix of this
+report. The review's Git blob hash remains
+`c75c7ca81ba89a1375d9acab1a8f54725fad09bb`; it remains untracked. Added file
+content contains no owner name, login or machine path. No review, assessment,
+protected tree, sibling-row file or `.gitignore` was edited. Read-only preparation
+used repository-local `rg`, `cat`, `sed`, Git status/diff/show/config/hash queries,
+and local CLI help/version probes. No outside review conversation was accessed.
+
+## Owner rulings needed
+
+1. **R15-03 — scope authorization, still required.** The review requests repair
+   of only the affected `gars/tests/test_pre_push.py` disposable fixture setup:
+   add required configuration, valid scratch Git objects and a deterministic
+   scanner, preserving all prior assertions and veto behavior, then rerun the
+   whole suite to green. If this narrower edit boundary requires a scope
+   exception, the owner must resolve it before approval. The recorded choices
+   are to authorize that narrow repair, or retain the new-module boundary and
+   carry the three failures. The latter leaves R15-03 open and is **not** an
+   alternative interpretation of the required green gate. This part is stopped;
+   no sibling implementation or fixture is changed to close it.
+2. **D-17 — unchanged.** Confirm generated job script, reproducibility manifest
+   and Git index as sinks 7–9, or name replacement sinks. These remain the owner's
+   supplied defaults; this round does not decide the specification silence.
+
+## Residual gaps after round 2
+
+- Whole-suite green is **NOT met** pending R15-03's scope authorization and repair.
+- Full R-096/row 15 exit is **NOT met**: no exfiltration-instructed agent task,
+  live memory/prompt/history service, real credential isolation or job-runtime
+  environment containment is verified. `canary: 0/9` covers the stated synthetic
+  repository preparation only, not an agent-trial rate or sealed performance.
+- D-17's three provisional sinks still require the owner's confirmation.
+- Binary changes and binary outgoing history are conservatively refused, even
+  when clean. Arbitrary encodings/archives and universal scanner completeness
+  remain unproven. The new cases invoke the real production hooks and scanner;
+  actual commit/push execution through installed hooks was not performed.
+- Row 4's export allowlist, agent bypass-switch denies and protected-path agent
+  enforcement remain outside this row; no sibling files were touched.
+- Python 3.6.8 runtime, cluster/hardware execution, sealed owner evidence, this
+  round's independent review, approval and merge remain unverified. The owner's
+  restriction on merging only after the separate study's done commit stands;
+  that commit was not established here. No push, remote or pull request occurred.

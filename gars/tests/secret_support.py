@@ -31,7 +31,7 @@ def contains(data, canary):
             if block in seen:
                 continue
             seen.add(block)
-            for token in re.findall(rb'[A-Za-z0-9+/=_-]{16,}', block):
+            for token in re.findall(rb'[A-Za-z0-9+/_-]{16,}={0,2}', block):
                 for decoder in (lambda s: base64.b64decode(s, altchars=b'-_', validate=True),
                                 binascii.unhexlify):
                     try:

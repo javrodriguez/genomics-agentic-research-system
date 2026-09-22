@@ -79,9 +79,11 @@ class SecretContainmentTests(unittest.TestCase):
         # Every sink must detect all three representations: proves the zero scan discriminates.
         for name in SINKS:
             for value in (canary, base64.b64encode(canary), canary.hex().encode()):
-                planted = dict(sinks)
-                planted[name] = sinks[name] + [b'value="' + value + b'"']
-                self.assertEqual(scan_sinks(planted, canary), [name], name)
+                for framed in (b'value="' + value + b'"', b'TOKEN=' + value,
+                               b'INFO token=' + value + b' next=clean'):
+                    planted = dict(sinks)
+                    planted[name] = sinks[name] + [framed]
+                    self.assertEqual(scan_sinks(planted, canary), [name], name)
 
     def test_decoder_nested_and_red_on_fault(self):
         canary = fresh_canary()
@@ -98,6 +100,22 @@ class SecretContainmentTests(unittest.TestCase):
         with self.assertRaises(AssertionError):
             self.assertEqual(scan_sinks(sinks, canary), [])
         print('red-on-fault: canary in fixture -> zero-sink assertion FAILED')
+
+    def test_encoded_assignment_logs_refuse_zero_sinks(self):
+        root = scratch(self)
+        canary = fresh_canary()
+        for encoding, value in (('base64', base64.b64encode(canary)),
+                                ('hex', canary.hex().encode())):
+            for prefix in (b'TOKEN=', b'INFO token=', b'export TOKEN='):
+                log = root / 'agent.log'
+                log.write_bytes(prefix + value + b'\n')
+                sinks = {name: [b'clean'] for name in SINKS}
+                sinks['logs'] = [log.read_bytes()]
+                self.assertEqual(scan_sinks(sinks, canary), ['logs'])
+                with self.assertRaises(AssertionError):
+                    self.assertEqual(scan_sinks(sinks, canary), [])
+            print('red-on-fault: %s assignment in actual log -> zero-sink assertion FAILED'
+                  % encoding)
 
     @unittest.skipUnless(REAL_GITLEAKS, 'real gitleaks absent from PATH: committed-tree allowlist not measured')
     def test_committed_tree_has_zero_findings(self):

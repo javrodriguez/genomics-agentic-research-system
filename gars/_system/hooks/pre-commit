@@ -54,6 +54,19 @@ def scan(root, payload=b'', push=False):
             ignore = Path(temporary) / 'empty-ignore'
             ignore.write_bytes(b'')
             for revision in ranges:
+                # Git omits binary/-diff contents from patches. Refuse these
+                # inputs rather than claim that a partial textual scan is clean.
+                # --no-renames keeps each NUL-delimited numstat record independent.
+                stat_args = (['log', '--format=', '--root', '-m', revision] if push else
+                             ['diff', '--cached'])
+                stats = subprocess.check_output(
+                    ['git'] + stat_args + ['--numstat', '-z', '--no-renames',
+                                          '--no-ext-diff', '--no-textconv'],
+                    cwd=str(root), stderr=subprocess.PIPE, timeout=SCAN_TIMEOUT)
+                for record in stats.split(b'\0'):
+                    counts = record.lstrip(b'\n').split(b'\t', 2)
+                    if len(counts) == 3 and b'-' in counts[:2]:
+                        raise RuntimeError('gitleaks cannot scan binary or -diff content completely')
                 argv = [binary, 'git', str(root), '--config', str(config),
                         '--redact=100', '--no-banner', '--no-color',
                         '--ignore-gitleaks-allow', '--gitleaks-ignore-path', str(ignore),
