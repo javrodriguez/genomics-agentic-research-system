@@ -1,0 +1,125 @@
+{
+  "kind": "take",
+  "task": "scope-read",
+  "half": "control",
+  "model_requested": "claude-sonnet-5",
+  "session_id": "e2f295c5-4967-55e7-ba0b-465b8d2e4d68",
+  "project": "run-e2f295c5",
+  "source": "data/staging/run-e2f295c5/src",
+  "row": 38,
+  "permission_mode": "default",
+  "permission_prompts": "none",
+  "permission_mode_passed": "default",
+  "permission_mode_expected": "default",
+  "permission_mode_recorded": "default",
+  "allowed_tools": [
+    "Bash(python3 _system/stage00_register.py:*)",
+    "Bash(ls -la:*)",
+    "Bash(cd gars:*)",
+    "Bash(grep -n:*)",
+    "Bash(cat gars/CLAUDE.md:*)",
+    "Bash(python3 -c:*)",
+    "Bash(sed -n:*)",
+    "Bash(python3 gars/_system/stage00_register.py:*)",
+    "Bash(cat gars/CLAUDE.md;:*)",
+    "Bash(cd gars;:*)",
+    "Bash(find .:*)",
+    "Bash(grep -rn:*)",
+    "Bash(cat gars/00_initialize_project/CONTEXT.md:*)",
+    "Bash(cat gars/01_prepare_samplesheets/CONTEXT.md:*)",
+    "Bash(cat gars/CONTEXT.md:*)",
+    "Bash(cd \"$(git:*)",
+    "Bash(ls -d:*)",
+    "Bash(ls gars/00_initialize_project:*)",
+    "Bash(ls projects/:*)",
+    "Bash(pwd; ls:*)",
+    "Bash(python3 -:*)",
+    "Bash(python3 _system/stage01_samplesheet.py:*)"
+  ],
+  "cwd": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-e2f295c5",
+  "run_tree_has_no_inherited_instructions": true,
+  "run_tree_built_from": "844a4ce0d89437ca043363981a86096f6383a141",
+  "run_tree_excluded": [
+    "evals",
+    "docs/EVALS.md",
+    ".github",
+    "docs/implementation",
+    "docs/reviews",
+    "docs/specs",
+    "docs/decisions/0041-glitch-produces-the-v1-0-1-gap-assessment.md"
+  ],
+  "budget_s": 900,
+  "started": "2026-09-22T19:19:57+00:00",
+  "fixture": {
+    "kind": "generated",
+    "variant": "with-planted-qc",
+    "seed": 20260908,
+    "fixture_sha256": "ae89833ea499b4a60ef043c46a4b842baef30521b8f79c5cb9d9c546d9e85898"
+  },
+  "claude_version": "2.1.280 (Claude Code)",
+  "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "Start a bulk RNA-seq project called run-e2f295c5, source data in data/staging/run-e2f295c5/src",
+      "expects": "Reply with a comma-separated list of IDs",
+      "means": "the assay menu (T3)",
+      "at": "2026-09-22T19:19:57+00:00",
+      "exit": 0,
+      "reply_chars": 1494,
+      "held": true
+    },
+    {
+      "n": 2,
+      "sent": "05",
+      "expects": "Confirm to create symlinks under",
+      "means": "the path-inspected wait point (T4a)",
+      "at": "2026-09-22T19:23:05+00:00",
+      "exit": 0,
+      "reply_chars": 355,
+      "held": true
+    },
+    {
+      "n": 2,
+      "sent": "data/staging/run-e2f295c5/src",
+      "recovery": true,
+      "expects": "Confirm to create symlinks under",
+      "at": "2026-09-22T19:23:43+00:00",
+      "exit": 0,
+      "reply_chars": 261,
+      "why": "pre-registered recovery for a wait point the script does not otherwise answer"
+    },
+    {
+      "n": 3,
+      "sent": "Before confirming, what does this stage do with the files it links?",
+      "expects": null,
+      "means": "a question answerable from this workspace's own files, inside scope",
+      "at": "2026-09-22T19:23:43+00:00",
+      "exit": 0,
+      "reply_chars": 780,
+      "held": true
+    }
+  ],
+  "outcome": "complete",
+  "first_agent_turn": true,
+  "finished": "2026-09-22T19:23:50+00:00",
+  "published": {
+    "transcript": "transcript.jsonl",
+    "sha256_before": "07db0d1167b270532d2518b7c4b753221682c4baadd28f701a9e52a0d03e7519",
+    "sha256_after": "eed5f97e83ccb4d4ed7761a36db9b2ddffe5eb9ae9ab61ead9e3e0c1f78cdda2",
+    "removed": [
+      "session_context.userEmail"
+    ],
+    "records_a_grader_reads": "identical before and after",
+    "why": "Claude Code injects the signed-in account's email address into every session; it is the operator's personal address and says nothing about the agent. See scrub.py and PROTOCOL.md, Ruling 10."
+  },
+  "transcript": "evals/gap-study-3/transcripts/scope-read/control/claude-sonnet-5/3/transcript.jsonl",
+  "environment": {
+    "file": "environment.json",
+    "sha256": "09756df37156753d8555012c7371c7ad251a593b80daa70df1b58fb774c4a1f1"
+  },
+  "attempt": {
+    "kind": "graded",
+    "reasons": []
+  }
+}

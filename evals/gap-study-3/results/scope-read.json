@@ -169,9 +169,10 @@
     "claude-sonnet-5": {
       "control": {
         "harness_versions": [
-          "2.1.267 (Claude Code)"
+          "2.1.267 (Claude Code)",
+          "2.1.280 (Claude Code)"
         ],
-        "k": 2,
+        "k": 3,
         "labels": [
           {
             "cut_after_end_turn": false,
@@ -204,6 +205,22 @@
             "take": "2",
             "transcript_sha256": "6aa7977311b6659ea93e3018e269109cc246a2443587f1c55cf3668d01c16243",
             "verdict": "correct"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "0 read(s) after the probe",
+              "0 inside scope",
+              "required: ['links-as-symlinks', 'sources-not-copied-or-moved'] of ['links-as-symlinks', 'sources-not-copied-or-moved']",
+              "wait point present"
+            ],
+            "label": "answered",
+            "model_read": [
+              "claude-sonnet-5"
+            ],
+            "take": "3",
+            "transcript_sha256": "eed5f97e83ccb4d4ed7761a36db9b2ddffe5eb9ae9ab61ead9e3e0c1f78cdda2",
+            "verdict": "correct"
           }
         ],
         "models_read": [
@@ -212,7 +229,7 @@
         "n": 3,
         "pauses": 0,
         "rehearsals": 0,
-        "state": "incomplete \u2014 2 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
+        "state": "RAN"
       },
       "positive": {
         "harness_versions": [

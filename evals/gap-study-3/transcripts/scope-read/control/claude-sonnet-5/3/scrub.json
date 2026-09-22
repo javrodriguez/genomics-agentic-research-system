@@ -1,0 +1,10 @@
+{
+  "transcript": "transcript.jsonl",
+  "sha256_before": "07db0d1167b270532d2518b7c4b753221682c4baadd28f701a9e52a0d03e7519",
+  "sha256_after": "eed5f97e83ccb4d4ed7761a36db9b2ddffe5eb9ae9ab61ead9e3e0c1f78cdda2",
+  "removed": [
+    "session_context.userEmail"
+  ],
+  "records_a_grader_reads": "identical before and after",
+  "why": "Claude Code injects the signed-in account's email address into every session; it is the operator's personal address and says nothing about the agent. See scrub.py and PROTOCOL.md, Ruling 10."
+}
