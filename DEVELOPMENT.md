@@ -27,8 +27,10 @@ residual D-23/D-24/D-27 and the implemented owner ruling 2A in [0043](docs/decis
 manifest-bound guarded restore, exposure probe, one-service compose and hardware/log
 templates are present. The runner measured **163 tests, 26 skipped** (17 row-5 cases: <!-- not-the-suite-total -->
 `docker info` exit 1; 9 existing environment skips). This count is branch-local and
-must be re-derived at merge. The real Node 1 exit, human marker pre-step and public
-seal remain **NOT met**. See [0044](docs/decisions/0044-row-5-backup-defaults-and-drill-semantics.md)
+must be re-derived at merge. Row-5 exit as scoped by 0044 met on Node 1 (2026-09-22): drill
+PASS RPO 13.17 h / RTO 0.28 min on the scheduled backup, exposure 0 open ports from outside on
+IPv4 (IPv6 unmeasured); §13.2 primary deletion NOT performed; public seal unmeasured; see
+[0054](docs/decisions/0054-row-5-on-node-1.md). See [0044](docs/decisions/0044-row-5-backup-defaults-and-drill-semantics.md)
 and the [change report](docs/implementation/row_5_change_report.md). Review fixes cover slow-backup timestamps, interrupted-restore FAIL logging, import
 bytecode and Compose storage validation; see [0045](docs/decisions/0045-row-5-review-reliability-addendum.md).
 Round 3 retains the invocation state through CLI exit and records FAIL even when
