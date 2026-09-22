@@ -110,7 +110,10 @@ class Row05OfflineTests(unittest.TestCase):
         self.assertEqual(repository_bytes(), self.before, 'a test changed repository bytes')
         for p, before in zip(LOGS, self.logs):
             self.assertEqual(p.read_bytes(), before)
-            self.assertNotRegex(p.read_text(), r'(?m)^\| .*PASS')
+            # A PASS row is evidence from a real drill or probe (decision 0054), never from a
+            # test: the rows a test run leaves are exactly the committed ones.
+            self.assertEqual(re.findall(r'(?m)^\| .*PASS.*$', p.read_text()),
+                             re.findall(r'(?m)^\| .*PASS.*$', before.decode('utf-8')))
         shutil.rmtree(str(self.tmp))
 
     def fixture(self):
