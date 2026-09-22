@@ -212,11 +212,13 @@ jobs:
           fi
 
   gap-study-3:
-    # ---- the Gap Study, round 3 (evals/gap-study-3), checked at every pushed commit while it runs ----
+    # ---- the Gap Study, round 3 (evals/gap-study-3), checked at the commit its final verifiers checked ----
     # A copy of round 2's instrument at bf065fe with eleven edited files, each with its reason in
-    # COPIED.json, and ten pinned byte-identical. The three jobs above are left exactly as they were:
-    # round 1's and round 2's check out their own done commits by full sha, and the pre-study's runs at
-    # HEAD as it did while it ran. This job adds lines and changes none.
+    # COPIED.json, and ten pinned byte-identical. While it ran, its guards were checked at every pushed
+    # commit. The study is done (final verifiers 2 and 3 PASS against e2979b3, their reports committed in
+    # ae30b25 and 96921e1), and as with rounds 1 and 2 its ledger check binds HEAD's gars/ to the tree its
+    # takes ran against, so this job now checks out the done commit by full sha, at full depth, and runs
+    # the study's own checks there, unchanged. The three jobs above are left exactly as they were.
     #
     # THE ZERO RULE. Each step below either grades a countable number of items or says it graded none.
     # Before the freeze there are no takes and no result, so the two steps that need them report
@@ -226,6 +228,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: e2979b3143081824aadea73523ec41af30c1ddb1
           # Full history: the copy manifest reads round 2's files at their source commit with git show,
           # the round register and the take ledger bind each row to the commit that introduced it, and
           # every one of those refuses in a shallow clone.
