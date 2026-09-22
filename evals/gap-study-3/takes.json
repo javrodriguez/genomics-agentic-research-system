@@ -315,6 +315,15 @@
       "order_index": 34,
       "fixture_sha": "",
       "environment_class": "claude-subscription-headless"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 1,
+      "order_index": 35,
+      "fixture_sha": "",
+      "environment_class": "claude-subscription-headless"
     }
   ]
 }
