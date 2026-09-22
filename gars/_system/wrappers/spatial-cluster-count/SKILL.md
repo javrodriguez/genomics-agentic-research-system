@@ -32,11 +32,10 @@ The sub-stage contract at `02_bioinformatics/spatialvi/02_spatial-cluster-count/
 orchestrates it; nothing here is invoked directly by a user.
 
 ```
-python3 spatial_cluster_count.py check   --project projects/<title> --h5ad <path>
-python3 spatial_cluster_count.py prepare --project projects/<title> --h5ad <path>
-sbatch <substage>/submit.sh                       # written by prepare
-python3 spatial_cluster_count.py collect --project projects/<title> --model "<model id>" \
-    --h5ad-from 01_nfcore-spatialvi-wrapper
+python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py check   --project projects/<title> --h5ad <path>
+python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py prepare --project projects/<title> --h5ad <path>
+python3 _system/executorlib.py submit --workspace projects/<title> <substage>/submit.sh
+python3 _system/wrappers/spatial-cluster-count/spatial_cluster_count.py collect --project projects/<title> --model "<model id>" --h5ad-from 01_nfcore-spatialvi-wrapper
 ```
 
 `--h5ad` is the path stage 02's router resolved **by artifact type** from 02.01's

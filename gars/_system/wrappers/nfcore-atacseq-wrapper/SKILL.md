@@ -27,10 +27,10 @@ The sub-stage contract at `02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrap
 orchestrates it; nothing here is invoked directly by a user.
 
 ```
-python3 nfcore_atacseq_wrapper.py check   --project projects/<title>
-python3 nfcore_atacseq_wrapper.py prepare --project projects/<title>
-sbatch <substage>/submit.sh                       # written by prepare
-python3 nfcore_atacseq_wrapper.py collect --project projects/<title> --model "<model id>"
+python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py check   --project projects/<title>
+python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py prepare --project projects/<title>
+python3 _system/executorlib.py submit --workspace projects/<title> <substage>/submit.sh
+python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py collect --project projects/<title> --model "<model id>"
 ```
 
 - `check` — preflight: config complete and sane, samplesheet header and FASTQ paths, pinned

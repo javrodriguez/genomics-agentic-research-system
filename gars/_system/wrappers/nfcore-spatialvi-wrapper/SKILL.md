@@ -26,10 +26,10 @@ One stdlib Python file, JSON on stdout, exit codes `0 ok / 1 failure / 2 refused
 nothing here is invoked directly by a user.
 
 ```
-python3 nfcore_spatialvi_wrapper.py check   --project projects/<title>
-python3 nfcore_spatialvi_wrapper.py prepare --project projects/<title>
-sbatch <substage>/submit.sh                       # written by prepare
-python3 nfcore_spatialvi_wrapper.py collect --project projects/<title> --model "<model id>"
+python3 _system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py check   --project projects/<title>
+python3 _system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py prepare --project projects/<title>
+python3 _system/executorlib.py submit --workspace projects/<title> <substage>/submit.sh
+python3 _system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py collect --project projects/<title> --model "<model id>"
 ```
 
 - `check` — preflight: config complete and sane, samplesheet header and paths,

@@ -23,9 +23,10 @@ metadata:
       $GARS_PY. They are now PINNED in _references/gars-bio.lock.txt (scanpy 1.11.5,
       leidenalg 0.12.0 and their tree -- 12 packages, resolved against every existing pin and
       changing none of them), but a lockfile is a declaration, not an installation: the
-      cluster environment must still be rebuilt with
-      `conda run -n gars-bio pip install -r _references/gars-bio.lock.txt`. Never a run-time
-      pip install. `check` refuses by name until the packages are actually importable.
+      owner rebuilds the cluster environment once, by hand and outside any agent session, with
+      `conda run -n gars-bio pip install -r _references/gars-bio.lock.txt`. An agent never
+      installs anything: no run-time pip install, and the guard refuses one. `check` refuses by
+      name until the packages are actually importable.
 ---
 
 # scrna-qc-cluster
@@ -35,11 +36,10 @@ The sub-stage contract at `02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEX
 orchestrates it; nothing here is invoked directly by a user.
 
 ```
-python3 scrna_qc_cluster.py check   --project projects/<title> --h5ad <path>
-python3 scrna_qc_cluster.py prepare --project projects/<title> --h5ad <path>
-sbatch <substage>/submit.sh                       # written by prepare
-python3 scrna_qc_cluster.py collect --project projects/<title> --model "<model id>" \
-    --h5ad-from 01_nfcore-scrnaseq-wrapper
+python3 _system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py check   --project projects/<title> --h5ad <path>
+python3 _system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py prepare --project projects/<title> --h5ad <path>
+python3 _system/executorlib.py submit --workspace projects/<title> <substage>/submit.sh
+python3 _system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py collect --project projects/<title> --model "<model id>" --h5ad-from 01_nfcore-scrnaseq-wrapper
 ```
 
 `--h5ad` is the path stage 02's router resolved **by artifact type** from 02.01's

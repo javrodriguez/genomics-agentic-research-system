@@ -1,6 +1,7 @@
 """R-099 pin refusal, including positive reviewed control in disposable fixtures."""
 import hashlib
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -30,9 +31,25 @@ class PolicyPinsTests(unittest.TestCase):
         self.assertEqual(manifest['mcp_servers'],[])
 
     def test_session_start_refuses_unreviewed(self):
-        result=run(['bash',GARS/'_system/session_state.sh'])
-        self.assertEqual(result.returncode,2)
-        self.assertIn(b'R-099',result.stderr)
+        # The shipped pins are reviewed since decision 0056, so the refusal is proved on a
+        # disposable workspace running the shipped session_state.sh and pins.py unchanged.
+        with tempfile.TemporaryDirectory(prefix='policy-pins-start-') as tmp:
+            root=Path(tmp); (root/'_references').mkdir(); (root/'_system').mkdir()
+            shutil.copy2(str(GARS/'_system/session_state.sh'),str(root/'_system/session_state.sh'))
+            shutil.copytree(str(GARS/'_system/tools'),str(root/'_system/tools'),
+                            ignore=shutil.ignore_patterns('__pycache__'))
+            skill=root/'SKILL.md'; skill.write_text('synthetic skill\n')
+            entry={'path':'SKILL.md','sha256':hashlib.sha256(skill.read_bytes()).hexdigest(),'review_status':'unreviewed'}
+            pins_file=root/'_references/tool_pins.json'
+            pins_file.write_text(json.dumps({'pins':[entry]}))
+            result=run(['bash',str(root/'_system/session_state.sh')])
+            self.assertEqual(result.returncode,2)
+            self.assertIn(b'R-099',result.stderr)
+            entry['review_status']='reviewed'; pins_file.write_text(json.dumps({'pins':[entry]}))
+            self.assertEqual(run(['bash',str(root/'_system/session_state.sh')]).returncode,0)
+
+    def test_shipped_pins_are_reviewed_and_intact(self):
+        self.assertEqual(pins.check(GARS),[])
 
 
 if __name__ == '__main__':

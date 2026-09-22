@@ -285,7 +285,7 @@ artifact each stage produces.
 ## Status
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(305 tests collected for row 4 round 2 on 2026-09-22; current runner evidence is in the
+(306 tests collected with the owner's approval commit of 2026-09-22 (decision 0056); current runner evidence is in the
 [Row 4 report](docs/implementation/row_4_change_report.md#round-2-provisional-owner-rulings);
 no cluster run is evidenced for these rows).
 The expanded suite's cluster status is unverified; dated local runner

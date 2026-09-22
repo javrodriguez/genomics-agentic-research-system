@@ -27,10 +27,12 @@ repository for why.
 The failure this stage is built around: an ungoverned agent, asked for "a quick look at the
 data", improvising an analysis nobody reviewed and nobody can reproduce.
 
-- Do **not** execute anything — no script, notebook, one-liner, or skill — before
-  `stage03_analysis.py approve` has succeeded on the plan. Drafting is free; running is gated.
-- Do **not** run `approve` before the user has read the plan and said yes to it. The command
-  records an approval that happened in dialogue; it never substitutes for one.
+- Do **not** execute anything — no script, notebook, one-liner, or skill — before the user's
+  own `stage03_analysis.py approve` has succeeded on the plan. Drafting is free; running is gated.
+- Do **not** run `approve` yourself, ever. It is the user's command, run in their own terminal
+  outside this session; the guard refuses it for an agent session, and its actor is whoever
+  launched the process (R-073, R-093; decision 0054). Your part is to hand the user the exact
+  command in T2 and wait.
 - Do **not** resolve an input any way other than `resolve_artifact.py`. No globbing around
   `02_bioinformatics/`, no paths recalled from earlier turns.
 - Do **not** write outside this analysis's own directory
@@ -55,13 +57,16 @@ words and the resolvable artifacts; it is the record of intent, and after approv
 frozen. The skeleton's `<FILL: ...>` markers name what each section must contain — `approve`
 refuses while any marker survives, so an empty plan cannot slip through on charm.
 
-**Approved.** `PLAN.md` carries `Status: APPROVED <date>` **and** `PLAN.md.approved` sits beside
-it, both written by `approve` after its gates pass: no skeleton markers, a non-empty Outputs
-table, every output type in the closed vocabulary, every output path relative. The record binds
-the approval to the plan's sha256 as stamped, so `verify` refuses a plan that was edited after
-approval, and refuses a `Status: APPROVED` line that `approve` did not write (decision 0042).
-Approval is durable — it lives in the files, not in the conversation. `PLAN.md.approved` is
-machine-owned: never write, edit, copy or move it.
+**Approved.** The user runs `approve` in their own terminal, and it passes its gates: no
+skeleton markers, a non-empty Outputs table, every output type in the closed vocabulary, every
+output path relative. It stamps `Status: APPROVED <date>` into `PLAN.md` and writes the approval
+record `{actor, timestamp, plan_sha256, expiry, plan_path}` into the approval store, the
+`.gars-approvals/` folder beside the workspace, outside it and out of your reach (decision
+0054). The record lasts 24 hours from approval. `verify` and `submit` read only that record, so
+a `Status: APPROVED` line, a `PLAN.md.approved` file in the workspace, a plan edited after
+approval, or an expired record are never evidence of approval. Approval is durable for its
+lifetime — it lives in the store, not in the conversation. Never read, write, copy or move
+anything in the approval store.
 
 **Execution venue.** The plan's Execution section opens with a `Runs:` line, and `approve`
 refuses any value outside this vocabulary: `Runs: batch` — the workspace's configured
@@ -96,15 +101,17 @@ scripts' exit codes claimed.
 5. If the user asks for changes, apply them to `PLAN.md` (it is still DRAFT), then reply T2
    again with what changed. If they decline the analysis, stop; the DRAFT directory remains as
    the record that it was considered.
-6. On the user's approval, run
-   `python3 _system/stage03_analysis.py approve --project projects/<title> --analysis <NN_slug>`.
-   Exit 2 → the plan is not actually complete: reply T3 with the `blocked` reasons, fix the
-   plan (that is a draft edit, allowed), and return to step 4. Never argue past the gate.
+6. The user approves by running the command T2 gave them, in their own terminal. If they
+   report that it refused (exit 2), ask for its `blocked` reasons, reply T3 with them verbatim,
+   fix the plan (that is a draft edit, allowed), and return to step 4. Never argue past the
+   gate, and never run `approve` yourself.
 7. Execute the approved plan literally: write the scripts it describes under `scripts/` and
    submit them through the executor door —
    `python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <script>` —
    in the environment the plan names; a login-shell run happens only when the plan's `Runs:`
-   line reads `login-node (user-requested)`. On submission reply
+   line reads `login-node (user-requested)`. `submit` checks the approval record: if it
+   refuses for approval (none, changed plan, or expired), reply T3 with its reason verbatim and
+   stop; a new approval is the user's. On submission reply
    T4 and monitor the job. Steps not in the plan do not happen.
 8. If execution fails, write `STATUS` as `FAILED <iso8601>`, reply T5 with the actual error,
    and stop. Do not patch around the failure and re-run: diagnosis goes to the user, and a
@@ -113,8 +120,8 @@ scripts' exit codes claimed.
    `python3 _system/stage03_analysis.py verify --project projects/<title> --analysis <NN_slug> --model "<model id>"`.
    `--model` is the exact model id you are running as (decision 0024); omit only if you cannot
    name it. Exit 1 → declared outputs are missing or empty: write `STATUS` as `FAILED`, reply
-   T5, stop. Exit 2 → the plan was never approved; treat as step 8's failure — something ran
-   that should not have.
+   T5, stop. Exit 2 → the plan has no valid approval record (never approved, edited since, or
+   expired); treat as step 8's failure — something ran that should not have.
 10. Exit 0 → append the returned `history_entry` to the project's `HISTORY.md` **verbatim**,
     replacing `<ISO-8601 date>` with today's date, and reply T6.
 
@@ -148,7 +155,12 @@ Outputs: <n> declared — <types, comma-separated>
 Execution: <login node | batch>, per the plan.
 
 Read the plan file — Goal, Method, Outputs. Edit anything directly, or tell me the changes.
-Nothing runs until you approve it. Approve as written?
+Nothing runs until you approve it. To approve it as written, run this in your own terminal,
+outside this session, from the workspace root:
+
+    python3 _system/stage03_analysis.py approve --project projects/<project_title> --analysis <NN_slug>
+
+Then tell me it is done. The approval lasts 24 hours.
 ```
 
 **T3 — Approval blocked**
@@ -200,6 +212,7 @@ Recorded in OUTPUTS.tsv and HISTORY.md. The plan that produced this is frozen at
 | `HISTORY.md` entry | template version, model, plan reference, goal, outputs |
 
 ## Human check
-Open `PLAN.md` before approving and read Goal, Method and Outputs. Approve only if it is the
+Open `PLAN.md` before approving and read Goal, Method and Outputs. Approve it yourself, with the
+command T2 gives you, and only if it is the
 analysis you asked for, computed the way you would defend in a lab meeting — approval is the
 moment your intent freezes, and everything after it is mechanical.

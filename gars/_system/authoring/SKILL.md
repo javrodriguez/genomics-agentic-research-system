@@ -12,6 +12,11 @@ metadata:
       python: ">=3.6 (stdlib only)"
 ---
 
+> **Scope: a human procedure, never an agent step.** Everything this skill writes lands under
+> `_system/`, a protected path (R-094): only the owner's own commit changes it. In a governed agent
+> session the guard refuses every write and every command below that is not on the typed surface
+> (R-092, decision 0053); an agent that reads this skill may explain the method, and runs none of it.
+
 # create-bioinformatics-skill
 
 You have a bioinformatics pipeline. You want an agent to run it for you — reliably, on other
