@@ -15,13 +15,20 @@ it constrains — template, menu, preflight, or decision — never parked here (
 
 ## Current Status
 
-**Row 15 review round 3, 2026-09-22:** macOS / Python 3.8.2 collected 252 tests;
-all three complete runs ended `FAILED (failures=3, skipped=50)`. No tests from
-row 15 skipped. The supplied review closes R15-01, R15-02 and R15-04; R15-03
-remains blocked on the owner's scope authorization for the row 3 fixture repair.
+**Row 15 review round 4, 2026-09-22:** macOS / Python 3.8.2 collected 252 tests;
+all three complete runs ended `OK (skipped=50)`. No tests from row 15 skipped.
+R15-03's narrow disposable fixture repair is complete with existing assertions,
+stdin checks and veto behaviour preserved. R15-01, R15-02 and R15-04 remain closed.
+The owner authorised R15-03 option A: **provisional ruling, to be confirmed by the owner**.
+The owner confirmed D-17 option A: sinks 7–9 are the generated job script
+(`submit.sh` / `commands.sh`), reproducibility manifest and Git index;
+**provisional ruling, to be confirmed by the owner**. See
+[0055](docs/decisions/0055-row-15-provisional-owner-rulings.md).
 The hooks refuse binary or `-diff` content omitted by Git; encoded assignment
-logs are covered. Full R-096 agent containment remains unmeasured. See the
-[Row 15 report](docs/implementation/row_15_change_report.md#review-round-3-fixes).
+logs are covered. Full R-096 agent containment remains unmeasured. The owner must
+confirm or reverse both provisional rulings later; the separate study merge hold
+remains. See the
+[Row 15 report](docs/implementation/row_15_change_report.md#review-round-4-fixes).
 
 Row 1 implementation, 2026-09-13: partial R-072, ATAC condition floor, sealed-fixture
 runner, constitution and empty evidence table added. Review round 2 fixes, 15 Sep: exact HISTORY declaration matching and demo-record

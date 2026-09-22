@@ -5,10 +5,11 @@ import tempfile
 import unittest
 from pathlib import Path
 from support import REPO, mini_tree, run
+from secret_support import CONFIG, checked, snapshot, standin
 
 HOOK = REPO / 'gars/_system/hooks/pre-push'
 INSTALLER = REPO / 'gars/_system/hooks/install.py'
-PUSH_INPUT = 'refs/heads/test ' + '1' * 40 + ' refs/heads/test ' + '0' * 40 + '\n'
+PUSH_INPUT = 'refs/heads/test %s refs/heads/test ' + '0' * 40 + '\n'
 
 
 class PrePushTests(unittest.TestCase):
@@ -17,9 +18,15 @@ class PrePushTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
         mini_tree(self.root)
+        shutil.copyfile(str(CONFIG), str(self.root / 'gars/.gitleaks.toml'))
+        checked(['git', 'add', '--', 'tests', 'gars'], self.root)
+        self.push_input = PUSH_INPUT % snapshot(self.root)
+        self.scanner_env = standin(self.root)
+        (Path(self.scanner_env['PATH']) / 'cat').symlink_to(shutil.which('cat'))
 
     def invoke(self, hook=HOOK):
-        return run([hook, 'fixture-remote', 'fixture-target'], self.root, PUSH_INPUT)
+        return run([hook, 'fixture-remote', 'fixture-target'], self.root,
+                   self.push_input, self.scanner_env)
 
     def test_whole_suite_passes_directly(self):
         result = self.invoke()
@@ -68,7 +75,7 @@ class PrePushTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual((hooks / 'pre-push.gars-previous').read_text(), original)
                 self.assertEqual(self.invoke(existing).returncode, 0)
-                self.assertEqual((self.root / 'previous-input').read_text(), PUSH_INPUT)
+                self.assertEqual((self.root / 'previous-input').read_text(), self.push_input)
                 self.assertEqual((self.root / 'previous-args').read_text(),
                                  'fixture-remote\nfixture-target\n')
                 (self.root / 'refuse-previous').touch()
@@ -81,7 +88,7 @@ class PrePushTests(unittest.TestCase):
                 sample.write_text(good.replace('assertTrue(True)', 'assertTrue(False)'))
                 (self.root / 'previous-input').unlink()
                 self.assertNotEqual(self.invoke(existing).returncode, 0)
-                self.assertEqual((self.root / 'previous-input').read_text(), PUSH_INPUT)
+                self.assertEqual((self.root / 'previous-input').read_text(), self.push_input)
                 sample.write_text(good)
 
     def test_marker_bearing_unrelated_hook_keeps_veto(self):

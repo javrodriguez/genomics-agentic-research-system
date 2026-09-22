@@ -451,3 +451,172 @@ queries; logs and audit scripts remain in `$SCRATCH`.
   commit was not established. No push, remote operation, merge or pull request was
   performed, and no source-clone hook was installed. Independent review of this
   round and approval remain outstanding.
+
+## Review round 4 fixes
+
+Date: 2026-09-22. Producer: Codex. Starting commit: `4725962`.
+Review input: `docs/reviews/row_15_review_round3.md`, unchanged and untracked;
+Git blob hash: `79e20994b2aef18701dd3de3c8fde6c01191403d`.
+This supplied review was the only outside-sourced file read; no reviewer
+conversation or other build/review folder was read. The earlier report remains
+an exact byte prefix; existing decisions, formal reviews and assessments remain
+unchanged. README and DEVELOPMENT are living documents updated in place.
+
+The owner supplied two provisional option-A rulings on 22 September 2026:
+R15-03's narrow fixture repair is authorised, and D-17's generated job script,
+reproducibility manifest and Git index are confirmed provisionally as sinks 7–9.
+Each is recorded in new decision
+[0055](../decisions/0055-row-15-provisional-owner-rulings.md), attributed to the
+owner and marked **provisional ruling, to be confirmed by the owner**.
+Earlier records' pending-ruling wording describes their historical state; this
+addendum and the living documents record the current authority to proceed.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| R15-03 BLOCKER — incompatible pre-push fixtures | `gars/tests/test_pre_push.py`; 0055; generated decision index; README; DEVELOPMENT; this report | All seven existing `PrePushTests`, including `test_whole_suite_passes_directly` and both default/custom hook-directory subtests of `test_installer_preserves_both_gates_stdin_and_veto`; three consecutive whole-suite runs | CLOSED in producer validation under the provisional scope ruling. **Yes:** before repair the module reproduces three failures; in scratch copies, separately removing config, restoring the fake object ID and removing the scanner each makes the unchanged clean-pass assertion fail. The intact control passes. All original suite-failure, empty-tree, stdin, argument and previous-hook veto checks pass. |
+| D-17 — identities of sinks 7–9 | 0055; generated decision index; README; DEVELOPMENT; this report | `SecretContainmentTests.test_repo_side_nine_sinks`; standalone containment module | Provisionally confirmed by the owner, pending later confirmation or reversal. Repository-side `canary: 0/9`. **Yes:** existing per-sink plain/base64/hex positive controls and planted contamination checks run; this is not an agent-containment exit claim. |
+| R15-01 — previously closed binary/attribute suppression | None in its implementation or tests | `GitleaksHookTests.test_real_binary_and_attributes_refused`; standalone hook module | Remains closed. **Yes:** scratch guard removal allows both plants through both hooks and their refusal assertions fail. Real gitleaks executes. |
+| R15-02 — previously closed encoded assignments | None in its implementation or tests | `SecretContainmentTests.test_encoded_assignment_logs_refuse_zero_sinks`, `test_decoder_nested_and_red_on_fault`, `test_repo_side_nine_sinks` | Remains closed. **Yes:** base64/hex assignment plants fail zero-sink assertions; raw-only decoding fails detection. |
+| R15-04 — previously closed historical count substitution | README and DEVELOPMENT current status only | `tests/check_counts.py`; comparison with `c934f6d` | Remains closed. **No new fault plant:** both September 17 lines retain parent bytes apart from the pre-existing historical-count marker; the unchanged count guard passes all three current claims. |
+
+### Every changed fixture line and its reason
+
+Only fixture setup, invocation environment and the expected fixture value change.
+The production hooks, scanner policy, shared test helpers and all other test
+modules are unchanged. Below, old line numbers refer to pre-round `4725962`;
+new numbers refer to the repaired `gars/tests/test_pre_push.py`. Every added or
+replaced line is listed individually, including each half of the wrapped call.
+
+| Old line → new line | New line | Reason |
+|---|---|---|
+| added → 8 | `from secret_support import CONFIG, checked, snapshot, standin` | Reuse the existing row-15 fixture helpers and explicit scanner policy; no helper implementation change. |
+| 11 → 12 | `PUSH_INPUT = 'refs/heads/test %s refs/heads/test ' + '0' * 40 + '\n'` | Replace the nonexistent fixed object ID with a slot for a real scratch commit; preserve both ref names, zero remote ID and terminating newline. |
+| added → 21 | `shutil.copyfile(str(CONFIG), str(self.root / 'gars/.gitleaks.toml'))` | Supply the repository-local configuration required by the fail-closed scanner. |
+| added → 22 | `checked(['git', 'add', '--', 'tests', 'gars'], self.root)` | Stage only the disposable miniature tree and config for creation of valid scratch Git objects. |
+| added → 23 | `self.push_input = PUSH_INPUT % snapshot(self.root)` | Generate a real tree/commit with `write-tree`/`commit-tree`, without invoking commit hooks, and substitute its ID into stdin. |
+| added → 24 | `self.scanner_env = standin(self.root)` | Provide the existing deterministic scanning stand-in on an isolated Git/Python PATH; use its scanning mode, not its unconditional-clean mode. |
+| added → 25 | `(Path(self.scanner_env['PATH']) / 'cat').symlink_to(shutil.which('cat'))` | Keep the unchanged previous-hook script's `cat > previous-input` functional on the isolated PATH. |
+| 22 → 28 | `return run([hook, 'fixture-remote', 'fixture-target'], self.root,` | Wrap the same hook call and preserve its arguments and working directory. |
+| 22 → 29 | `self.push_input, self.scanner_env)` | Pass the valid stdin fixture and deterministic scanner environment to direct and installed hook invocations. |
+| 71 → 78 | `self.assertEqual((self.root / 'previous-input').read_text(), self.push_input)` | Preserve the exact-byte stdin assertion, comparing with the actual valid fixture sent to the hook. |
+| 84 → 91 | `self.assertEqual((self.root / 'previous-input').read_text(), self.push_input)` | Preserve the same exact-byte stdin assertion while the whole-suite gate vetoes. |
+
+An AST comparison of all seven existing test method bodies against pre-round
+HEAD, normalizing only `self.push_input` to the old `PUSH_INPUT` reference,
+reports: `Existing test bodies: all 7 preserved after normalizing the valid stdin fixture reference.`
+No assertion is removed, added or weakened; no stdin check or veto is dropped.
+The fake-object fault still uses the actual repaired setup otherwise, proving
+that the scanner continues to refuse an unavailable object. Fault copies and
+all their logs stay in `$SCRATCH`; these are producer-visible controls, not
+sealed mutation evidence.
+
+### Round 4 validation
+
+Every shell call exported `TMPDIR`, `TEMP` and `TMP` to the designated sibling
+scratch folder before running commands. `$SCRATCH` denotes that directory;
+no machine path or identifier is committed. Test runs also set
+`PYTHONDONTWRITEBYTECODE=1`. Platform: Darwin; `python3` 3.8.2;
+`python3.13` 3.13.2; gitleaks 8.30.0. `CI` and `GARS_ROW5_SCRATCH` were unset.
+The three Python 3.8 complete runs ran consecutively, followed by the Python 3.13
+complete run. Standalone checks ran independently alongside that sequence.
+The 50 skips represent existing unavailable pipeline/reference/library or
+owner-evidence inputs and the unset row-5 scratch variable; they are not passing
+executions. No tests from row 15 skipped.
+
+Logs use `$SCRATCH/round4-<name>.log`, with names given below. Read-only preparation
+used repository-local `rg`, `cat`, `sed`, `nl` and Git queries; versions were
+queried locally. No network, remote operation or source-hook installation occurred.
+
+| Command (log name) | Verbatim runner summary | Exit |
+|---|---|---:|
+| `python3 gars/tests/test_pre_push.py` (pre-push-before) | `Ran 7 tests in 4.210s`; `FAILED (failures=3)` | 1 |
+| `python3 gars/tests/test_pre_push.py` (pre-push) | `Ran 7 tests in 8.342s`; `OK` | 0 |
+| `python3 tests/run_tests.py` (full-suite-1) | `canary: 0/9`; `Ran 252 tests in 144.562s`; `OK (skipped=50)` | 0 |
+| `python3 tests/run_tests.py` (full-suite-2) | `canary: 0/9`; `Ran 252 tests in 135.904s`; `OK (skipped=50)` | 0 |
+| `python3 tests/run_tests.py` (full-suite-3) | `canary: 0/9`; `Ran 252 tests in 136.085s`; `OK (skipped=50)` | 0 |
+| `python3.13 tests/run_tests.py` (suite-py313) | `canary: 0/9`; `Ran 252 tests in 143.837s`; `OK (skipped=50)` | 0 |
+| `python3 tests/check_contracts.py` (contracts) | `14 contracts clean: sections, wait points, vocabulary.` | 0 |
+| `python3 tests/check_counts.py` (counts) | `suite: 252 tests, from unittest's loader`; `enforced=3`; `clean — every current claim matches the suite` | 0 |
+| `python3 evals/check_results.py --controls --lexicon` (results) | `clean — graded=1` | 0 |
+| `python3 gars/tests/test_hooks_gitleaks.py` (hooks) | `Ran 12 tests in 28.190s`; `OK` | 0 |
+| `python3 gars/tests/test_secret_containment.py` (containment) | `canary: 0/9`; `Ran 4 tests in 11.557s`; `OK` | 0 |
+| `python3 gars/tests/secret_support.py` (helper) | No output; helper smoke only | 0 |
+| `python3 evals/test_harness.py` (harness) | `Ran 44 tests in 167.038s`; `FAILED (errors=13)` | 1 |
+| `python3.13 evals/test_harness.py` (harness-py313) | `Ran 44 tests in 155.900s`; `OK` | 0 |
+| `python3 tests/check_counts.py` (counts-final) | `suite: 252 tests, from unittest's loader`; `enforced=3`; `clean — every current claim matches the suite` | 0 |
+| Scratch fixture faults (`round4-faults.py`) | `intact: exit 0; OK`; each of missing-config, fake-object and missing-scanner: `FAILED (failures=1)` | 0 for driver; each fault 1 as expected |
+| `bash docs/decisions/build_index.sh` | Index regenerated; one new 0055 row | 0 |
+| Python 3.6 syntax parse and scope audit (`round4-audit.py`) | `Python 3.6 syntax: 7 files parsed (runtime not verified).`; prior records/report and review preserved; protected diff empty | 0 |
+| `git diff --check`; `git diff --cached --check` | No output | 0 |
+| `python3 gars/_system/hooks/pre-commit` (staged-scan) | `gitleaks: passed`; `pre-commit: passed` | 0 |
+
+The inherited Python 3.8 eval-harness errors use `ast.unparse` and
+`str.removesuffix`/`str.removeprefix` in unchanged protected eval code. They are
+reported as failures; the separate Python 3.13 pass does not convert that command
+into a pass. No protected eval file or CI setting is edited. The whole-suite
+runner is separately green in this run; these commands test different scopes.
+Study checks do not establish the separate study's done commit or BLOCKED status.
+
+The containment module's committed-tree scan covers pre-round HEAD; its exact
+message is `committed-tree gitleaks: 0 findings`. The direct staged pre-commit
+invocation covers the six final paths in this round. Neither scan establishes
+full agent containment or releases the merge hold. The source clone remains
+unarmed; tests invoke hooks directly in disposable repositories without a push.
+
+### Scope and provenance checks
+
+`bash docs/decisions/build_index.sh` regenerates the index with the single new
+0055 row; earlier decision records retain their exact bytes, including 0052/0054.
+The final audit confirms the pre-round change report is an exact byte prefix,
+the supplied review hash is unchanged and the review remains untracked.
+Historical measurements retain both parent lines, and seven Python files parse
+with `feature_version=(3, 6)`; this is syntax evidence, not runtime verification.
+
+The protected-path command is:
+
+```text
+git diff --stat c934f6d -- evals/ .github/ gars/_system/guard_hook.py gars/.claude/settings.json gars/_system/executorlib.py gars/_system/wrapperlib.py gars/_system/stage03_analysis.py gars/_system/wrappers/ tests/fixtures/
+```
+
+Output: empty; exit 0. `test_pre_push.py` is the sole newly changed `gars/` path
+this round and is explicitly authorised by 0055; its entire diff is accounted
+for line by line above. The other five changed paths are this report, README,
+DEVELOPMENT, the generated index and the new decision addendum. No guard,
+threshold, test runner, count checker, unrelated inherited content, prior formal
+record, assessment, review, protected tree or sibling-row implementation is
+changed to close a finding. Added content attributes both rulings only to the
+owner and contains no personal name, login or machine identifier.
+`git diff --check` returns no output, exit 0. Staging is limited to these six
+paths; the single round commit uses a message file in `$SCRATCH` and a generic
+producer identity. All supplied review files remain untracked.
+
+## Owner rulings needed
+
+No unresolved implementation choice blocks this round. The owner must later
+confirm or reverse **both** option-A provisional rulings recorded in 0055:
+R15-03's narrow fixture scope exception and D-17's sink identities. Each is a
+**provisional ruling, to be confirmed by the owner**; no final confirmation is
+claimed. The previously recorded alternatives remain historical: retain the
+new-module boundary and carry the three failures for R15-03, or name replacement
+sinks for D-17. The owner has provisionally selected option A for each, so the
+authorised repair and documentation updates proceed now.
+
+## Residual gaps after round 4
+
+- R15-03's integration blocker is closed in producer validation; R15-01, R15-02
+  and R15-04 remain closed. Independent review of this round remains outstanding.
+- Full R-096/row 15 exit is **NOT met**. The exfiltration-instructed agent task,
+  live memory/prompt/history services, real credential isolation and generated-job
+  runtime containment remain unverified. `canary: 0/9` measures representative
+  repository preparation and scanning, not an agent-trial rate or sealed evidence.
+- Both owner rulings await later confirmation or reversal. Sealed owner evidence,
+  Python 3.6.8 runtime, Linux/cluster execution and the 50 skipped cases remain
+  unverified. The required Python 3.8 eval-harness command retains 13 inherited
+  errors; Python 3.13's separate pass is recorded with that limitation.
+- Clean binary changes and outgoing binary history remain conservatively refused.
+  Universal secret detection and arbitrary archive/encoding coverage are unproven.
+- Row 4's export allowlist, bypass-switch denies and protected-path agent
+  enforcement remain out of scope and unchanged.
+- The owner's merge hold pending the separate study's done commit remains; that
+  commit or BLOCKED status was not established. No push, remote, merge or pull
+  request was performed. Final approval is not claimed.
