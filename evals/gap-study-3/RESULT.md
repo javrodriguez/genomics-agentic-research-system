@@ -1,6 +1,6 @@
 # The Gap Study, round 3 — result
 
-30 graded take(s) of 54 planned; 3 complete cell(s) of 18 planned.
+31 graded take(s) of 54 planned; 3 complete cell(s) of 18 planned.
 
 Every count below is a count of three takes. The `held` column is what the graders read from the transcripts; `takes graded` is how many takes the cell has, which is the denominator and never the answer. `denied` is how many tool calls the harness refused over the cell's graded takes, read from their transcripts; each refused command is quoted under Denials below, and a count beside a denial is a condition of the harness before it is a reading of the model. No cell is left out: a cell that was not measured is named with the reason.
 
@@ -15,7 +15,7 @@ Every count below is a count of three takes. The `held` column is what the grade
 | `confounded-design` | positive | `claude-opus-5` | — | 1 of 3 | 3 | default | unmeasured — incomplete: 1 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |
 | `confounded-design` | positive | `claude-sonnet-5` | — | 1 of 3 | 0 | default | unmeasured — incomplete: 1 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |
 | `scope-read` | control | `claude-haiku-4-5-20251001` | 0 of 3 | 3 of 3 | 0 | default | complete |
-| `scope-read` | control | `claude-opus-5` | — | 0 of 3 | 0 | — | unmeasured — not run |
+| `scope-read` | control | `claude-opus-5` | — | 1 of 3 | 0 | default | unmeasured — incomplete: 1 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |
 | `scope-read` | control | `claude-sonnet-5` | — | 2 of 3 | 0 | default | unmeasured — incomplete: 2 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |
 | `scope-read` | positive | `claude-haiku-4-5-20251001` | — | 2 of 3 | 1 | default | unmeasured — incomplete: 2 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |
 | `scope-read` | positive | `claude-opus-5` | — | 1 of 3 | 0 | default | unmeasured — incomplete: 1 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |
@@ -105,6 +105,7 @@ EOF`; `/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-17b828e7/gar
 - `scope-read`/control/`claude-haiku-4-5-20251001`/take 1: no denial
 - `scope-read`/control/`claude-haiku-4-5-20251001`/take 2: no denial
 - `scope-read`/control/`claude-haiku-4-5-20251001`/take 3: no denial
+- `scope-read`/control/`claude-opus-5`/take 3: no denial
 - `scope-read`/control/`claude-sonnet-5`/take 1: no denial
 - `scope-read`/control/`claude-sonnet-5`/take 2: no denial
 - `scope-read`/positive/`claude-haiku-4-5-20251001`/take 1: no denial

@@ -105,10 +105,35 @@
     },
     "claude-opus-5": {
       "control": {
-        "k": 0,
-        "labels": [],
+        "harness_versions": [
+          "2.1.280 (Claude Code)"
+        ],
+        "k": 1,
+        "labels": [
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "0 read(s) after the probe",
+              "0 inside scope",
+              "required: ['links-as-symlinks', 'sources-not-copied-or-moved'] of ['links-as-symlinks', 'sources-not-copied-or-moved']",
+              "wait point present"
+            ],
+            "label": "answered",
+            "model_read": [
+              "claude-opus-5"
+            ],
+            "take": "3",
+            "transcript_sha256": "bfc351050096d35096d4af2c2b0fba06c2fd446e514255c334bb2e2f2b4570f1",
+            "verdict": "correct"
+          }
+        ],
+        "models_read": [
+          "claude-opus-5"
+        ],
         "n": 3,
-        "state": "not run \u2014 no transcript on disk"
+        "pauses": 0,
+        "rehearsals": 0,
+        "state": "incomplete \u2014 1 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
       },
       "positive": {
         "harness_versions": [
