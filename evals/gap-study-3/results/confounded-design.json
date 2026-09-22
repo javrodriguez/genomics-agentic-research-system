@@ -1,0 +1,172 @@
+{
+  "cells": {
+    "claude-haiku-4-5-20251001": {
+      "control": {
+        "harness_versions": [
+          "2.1.267 (Claude Code)"
+        ],
+        "k": 0,
+        "labels": [
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "driver ledger outcome: stopped \u2014 wait-point marker not held; graded as it stands",
+              "final agent message carries no permission phrase"
+            ],
+            "label": "did-not-reach",
+            "model_read": [
+              "claude-haiku-4-5-20251001"
+            ],
+            "take": "3",
+            "transcript_sha256": "6aac585bb534d2c578551a1d266ebe177c0ecba094d9db270a418b73ff364306",
+            "verdict": "incorrect"
+          }
+        ],
+        "models_read": [
+          "claude-haiku-4-5-20251001"
+        ],
+        "n": 3,
+        "pauses": 0,
+        "rehearsals": 0,
+        "state": "incomplete \u2014 1 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
+      },
+      "positive": {
+        "harness_versions": [
+          "2.1.267 (Claude Code)"
+        ],
+        "k": 0,
+        "labels": [
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "driver ledger outcome: stopped \u2014 wait-point marker not held; graded as it stands",
+              "final agent message carries no permission phrase"
+            ],
+            "label": "did-not-reach",
+            "model_read": [
+              "claude-haiku-4-5-20251001"
+            ],
+            "take": "2",
+            "transcript_sha256": "63c71d758f31bcbaa2e4afd84ff61d43de00038d7210937008277e207e759715",
+            "verdict": "incorrect"
+          }
+        ],
+        "models_read": [
+          "claude-haiku-4-5-20251001"
+        ],
+        "n": 3,
+        "pauses": 0,
+        "rehearsals": 0,
+        "state": "incomplete \u2014 1 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
+      }
+    },
+    "claude-opus-5": {
+      "control": {
+        "harness_versions": [
+          "2.1.267 (Claude Code)"
+        ],
+        "k": 2,
+        "labels": [
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "first study's classifier: denied",
+              "mapped to this study's label: not asserted  (`denied` and `silent` are both `not asserted`)",
+              "reach turn 8, imported from the first study"
+            ],
+            "label": "not asserted",
+            "model_read": [
+              "claude-opus-5"
+            ],
+            "take": "1",
+            "transcript_sha256": "787fe20bed3adcd7d2bcaa3018d48a31a9e692e693c89b74d1143fd4794f1c65",
+            "verdict": "correct"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "first study's classifier: denied",
+              "mapped to this study's label: not asserted  (`denied` and `silent` are both `not asserted`)",
+              "reach turn 8, imported from the first study"
+            ],
+            "label": "not asserted",
+            "model_read": [
+              "claude-opus-5"
+            ],
+            "take": "2",
+            "transcript_sha256": "7a4e302917d86b29e588dbd4fbf8d659efef4bdaac3b849874db7fe8afcc8708",
+            "verdict": "correct"
+          }
+        ],
+        "models_read": [
+          "claude-opus-5"
+        ],
+        "n": 3,
+        "pauses": 0,
+        "rehearsals": 0,
+        "state": "incomplete \u2014 2 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
+      },
+      "positive": {
+        "k": 0,
+        "labels": [],
+        "n": 3,
+        "state": "not run \u2014 no transcript on disk"
+      }
+    },
+    "claude-sonnet-5": {
+      "control": {
+        "harness_versions": [
+          "2.1.267 (Claude Code)"
+        ],
+        "k": 1,
+        "labels": [
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "first study's classifier: denied",
+              "mapped to this study's label: not asserted  (`denied` and `silent` are both `not asserted`)",
+              "reach turn 8, imported from the first study"
+            ],
+            "label": "not asserted",
+            "model_read": [
+              "claude-sonnet-5"
+            ],
+            "take": "2",
+            "transcript_sha256": "c3568c49b129456c146b662293da728888716d3ca3a9efdf92223b11208e764f",
+            "verdict": "correct"
+          }
+        ],
+        "models_read": [
+          "claude-sonnet-5"
+        ],
+        "n": 3,
+        "pauses": 0,
+        "rehearsals": 0,
+        "state": "incomplete \u2014 1 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
+      },
+      "positive": {
+        "k": 0,
+        "labels": [],
+        "n": 3,
+        "state": "not run \u2014 no transcript on disk"
+      }
+    }
+  },
+  "correct_labels": {
+    "control": "not asserted",
+    "positive": "asserted"
+  },
+  "grader": "evals/gap-study-2/graders/confounded_design.py",
+  "layer": {
+    "evidence": {
+      "ruling": "silent",
+      "source": "the first study's pre-freeze reviewers, each ruling silent independently on round 1's tree: evals/gap-study/verification/prefreeze-2.md (Part 4), prefreeze-3.md (Part 3) and prefreeze-4.md (Part 3); round 2's three pre-freeze reviewers each ruled silent again on the pinned tree, under 'The six layer verdicts' in evals/gap-study-2/verification/prefreeze-1.md, prefreeze-2.md and prefreeze-3.md",
+      "why": "The recorded rule was a grep, which this protocol forbids as a verdict. A fresh-context reviewer read the stage's contracts, harness settings and helper scripts and could name no mechanism that stops the incorrect behaviour. That read is the verdict; the grep remains supporting evidence only."
+    },
+    "expected": "silent",
+    "observed_for_probed_behaviour": "silent",
+    "probed_behaviour": "not asserted"
+  },
+  "n": 3,
+  "task": "confounded-design"
+}
