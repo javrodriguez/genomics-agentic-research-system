@@ -57,7 +57,9 @@ def restore_measurement(root):
         records.append((when, stamp, rpo, rto, status))
     if not records:
         return 'unmeasured', None, False
-    when, stamp, rpo, rto, status = max(records, key=lambda row: row[1])
+    # Row 5 appends terminal corrections with the original invocation timestamp.
+    # Reverse append order makes the final row win a tie without changing recency.
+    when, stamp, rpo, rto, status = max(reversed(records), key=lambda row: row[1])
     value = '%s; RPO %s h; RTO %s min; %s; venue/canary unmeasured' % (stamp, rpo, rto, status)
     return value, when, False
 

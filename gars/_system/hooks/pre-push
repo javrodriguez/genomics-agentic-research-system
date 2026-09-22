@@ -15,7 +15,8 @@ ACTIVATION_RECORD = 'docs/decisions/0058-row-11-records-links-trailers-release-c
 
 
 def git_bytes(root, *args, **kwargs):
-    return subprocess.check_output(['git'] + list(args), cwd=str(root),
+    # Object identities must resolve to stored bytes, never local replacements.
+    return subprocess.check_output(['git', '--no-replace-objects'] + list(args), cwd=str(root),
                                    stderr=subprocess.PIPE, timeout=60, **kwargs)
 
 
@@ -85,7 +86,8 @@ def pushed_commits(root, payload):
         raise ValueError('shallow history cannot establish trailer activation')
     # Search every local ref as well as detached outgoing tips: removing the
     # activation record at a later tip cannot reset the adoption boundary.
-    activations = set(git_bytes(root, 'log', '--all', '--full-history', '--format=%H',
+    # Replacement refs are substitution metadata, not adoption history.
+    activations = set(git_bytes(root, 'log', '--exclude=refs/replace/*', '--all', '--full-history', '--format=%H',
                                '--diff-filter=A', '--no-renames', *tips,
                                '--', ACTIVATION_RECORD).decode('ascii').split())
     if not activations:

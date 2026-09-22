@@ -3,6 +3,8 @@ import datetime
 import importlib.util
 from pathlib import Path
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -79,6 +81,36 @@ class ReleaseCheckTests(unittest.TestCase):
             path.write_text('2026-09-22T12:00:00Z, NaN, 1, PASS\n')
             with self.assertRaises(ValueError):
                 release.restore_measurement(root)
+
+    def test_terminal_restore_correction_same_timestamp(self):
+        with tempfile.TemporaryDirectory(prefix='row11-terminal-') as temp:
+            root = Path(temp)
+            for name in (release.SPEC, 'scripts/release_check.py'):
+                (root / name).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(str(REPO / name), str(root / name))
+            path = root / release.RESTORE
+            path.parent.mkdir(parents=True)
+            path.write_text('2026-09-22T12:00:00Z, 2.000000, 3.000000, PASS\n'
+                            '2026-09-22T12:00:00Z, 2.000000, 3.100000, FAIL\n'
+                            '2026-09-21T12:00:00Z, 1.000000, 2.000000, PASS\n')
+            command = [sys.executable, str(root / 'scripts/release_check.py')]
+            result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            output = (root / release.OUTPUT).read_text()
+            self.assertIn('RPO 2.000000 h; RTO 3.100000 min; FAIL; venue/canary unmeasured', output)
+            self.assertNotIn('3.000000 min; PASS', output)
+            value, when, meets = release.restore_measurement(root)
+            self.assertEqual(when, datetime.date(2026, 9, 22))
+            self.assertFalse(meets)
+            result = subprocess.run(command + ['--check'], stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            result = subprocess.run(command + ['--tag'], stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn(b'restore drill: unmeasured', result.stdout)
+            self.assertIn(b'restore drill: threshold not established', result.stdout)
+            print('red-on-fault: same-timestamp terminal FAIL retained by release CLI')
 
     def test_repository_table_regenerated(self):
         rows = release.clauses(REPO)

@@ -52,6 +52,24 @@ class RecordHookTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(b'citations: 0/0 resolve', result.stdout)
 
+    def test_production_staged_blob_replacement_refused(self):
+        code = self.root / 'candidate.py'
+        code.write_text('# decision ' + '9999\n')
+        checked(['git', 'add', '--', 'candidate.py'], self.root)
+        original = checked(['git', 'rev-parse', ':candidate.py'], self.root)
+        substitute = checked(['git', 'hash-object', '-w', '--stdin'], self.root,
+                             '# harmless substitute\n')
+        checked(['git', 'replace', original, substitute], self.root)
+        self.assertEqual(checked(['git', 'cat-file', 'blob', original], self.root),
+                         '# harmless substitute')
+        self.assertIn('9999', checked(['git', '--no-replace-objects', 'cat-file',
+                                      'blob', original], self.root))
+        result = run([sys.executable, self.hooks / 'pre-commit'], self.root, env=self.env)
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn(b'citations: 0/1 resolve', result.stdout)
+        self.assertIn(b'gitleaks: passed', result.stdout)
+        print('red-on-fault: replaced dangling index blob -> pre-commit REFUSED')
+
     def test_precommit_unreadable_decisions_folder(self):
         folder = self.root / 'docs/decisions'
         folder.chmod(0)
@@ -185,6 +203,61 @@ class RecordHookTests(unittest.TestCase):
             self.assertIn(b'gitleaks: passed', result.stdout)
             self.assertIn(b'collected 1 tests from gars/tests', result.stdout)
         print('red-on-fault: equal committed session and wrong committed Bench hash -> pre-push REFUSED')
+
+    def test_production_review_blob_replacement_refused(self):
+        commit = self.activate()
+        tip = self.evidence(commit, session='producer')
+        original = checked(['git', 'rev-parse', tip + ':review.md'], self.root)
+        substitute = checked(['git', 'hash-object', '-w', '--stdin'], self.root,
+                             'session: uncommitted-substitute\n')
+        checked(['git', 'replace', original, substitute], self.root)
+        self.assertEqual(checked(['git', 'show', tip + ':review.md'], self.root),
+                         'session: uncommitted-substitute')
+        self.assertEqual(checked(['git', '--no-replace-objects', 'show',
+                                  tip + ':review.md'], self.root), 'session: producer')
+        result = self.invoke_push(tip)
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn(b'review session equals committing Session', result.stderr)
+        self.assertIn(b'gitleaks: passed', result.stdout)
+        self.assertIn(b'collected 1 tests from gars/tests', result.stdout)
+        checked(['git', 'replace', '-d', original], self.root)
+        valid = self.evidence(commit)
+        self.assertEqual(self.invoke_push(valid).returncode, 0)
+        print('red-on-fault: replaced same-session review blob -> pre-push REFUSED')
+
+    def test_production_history_replacements_preserve_checks(self):
+        self.activate()  # Stage the activation record and system tree.
+        commit = self.commit('system change without trailers\n')
+        tip = self.evidence(commit)
+        original = checked(['git', 'cat-file', 'commit', commit], self.root)
+        tip_text = checked(['git', 'cat-file', 'commit', tip], self.root)
+        base_tree = checked(['git', 'rev-parse', self.base + '^{tree}'], self.root)
+        checked(['git', 'rm', '--cached', '-r', '--', 'gars/_system'], self.root)
+        no_system_tree = checked(['git', 'write-tree'], self.root)
+        header, message = original.split('\n\n', 1)
+        valid_message = ('system change\n\nReview: review.md\n'
+                         'Bench: evals/runs/run.json\nSession: producer\n')
+        for case, target, content in (
+                ('activation', commit, 'tree ' + base_tree + '\n' + original.split('\n', 1)[1]),
+                ('paths', commit, 'tree ' + no_system_tree + '\n' + original.split('\n', 1)[1]),
+                ('trailers', commit, header + '\n\n' + valid_message),
+                ('range', tip, tip_text.replace('parent ' + commit, 'parent ' + self.base))):
+            with self.subTest(case=case):
+                substitute = checked(['git', 'hash-object', '-t', 'commit', '-w', '--stdin'],
+                                     self.root, content + '\n')
+                checked(['git', 'replace', target, substitute], self.root)
+                try:
+                    self.assertNotEqual(checked(['git', 'cat-file', 'commit', target], self.root),
+                                        checked(['git', '--no-replace-objects', 'cat-file',
+                                                 'commit', target], self.root))
+                    result = self.invoke_push(tip)
+                    self.assertNotEqual(result.returncode, 0, result.stdout)
+                    self.assertIn(b'missing Review, Bench or Session trailer', result.stderr)
+                    self.assertIn(b'gitleaks: passed', result.stdout)
+                    self.assertIn(b'collected 1 tests from gars/tests', result.stdout)
+                finally:
+                    checked(['git', 'replace', '-d', target], self.root)
+        print('red-on-fault: replacement activation/paths/trailers/range -> pre-push REFUSED')
 
     def test_production_missing_evidence_and_missing_trailers(self):
         commit = self.activate()

@@ -371,3 +371,154 @@ committed snapshot supplies both records, this row commit is not pushable.
 
 No further owner ruling is needed for this row. Independent review and the
 separate-study merge hold still apply; this producer does not approve or merge.
+
+## Review round 2 fixes
+
+2026-09-22. Parent producer commit: `d2c0dd9`; whole-row base remains `af4159a`.
+The copied independent review reports R11-01 (BLOCKER) and R11-02 (MAJOR), with
+no MINOR or NOTE findings. Both are fixed under existing owner rulings. The
+review file remains unchanged and untracked. Record 0059 is the corrective
+addendum; record 0058 and every earlier report section remain unchanged.
+
+The earlier unconditional R-165 PASS, reconstructible committed-snapshot and
+repository-side-complete claims were too broad: Git replacement objects could
+substitute uncommitted bytes and history. They are corrected here, not silently
+rewritten. Earlier restore-format acceptance also missed terminal corrections.
+This round's passing controls establish the corrected repository behavior only;
+they do not establish authenticated reviewer identity or full release eligibility.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| R11-01 — local replacements bypass citations and committed evidence | `gars/_system/hooks/pre-commit`, `gars/_system/hooks/pre-push`, `gars/tests/test_hooks_records.py`; README, DEVELOPMENT, record 0059, generated decision index, this report | `test_production_staged_blob_replacement_refused`, `test_production_review_blob_replacement_refused`, `test_production_history_replacements_preserve_checks`; complete hook module | PASS. Yes: before the fix both actual hooks accepted replacement blobs; their refusal assertions failed. Four history-substitution subtests also failed original-enforcement assertions (different refusal reasons, not four claimed bypasses). With the fix, raw staged citations and same-session reviews refuse, and activation/path/trailer/range replacements cannot alter the original missing-trailer refusal. All 14 hook tests pass. |
+| R11-02 — earlier restore PASS masks terminal FAIL | `scripts/release_check.py`, `tests/test_release_check.py`; README, DEVELOPMENT, record 0059, generated decision index, this report | `test_terminal_restore_correction_same_timestamp`; complete release module | PASS. Yes: the new actual-CLI test failed before the fix because generated output retained PASS and RTO 3.000000. It now retains FAIL and final RTO 3.100000, even with an older invocation appended later; `--check` passes and `--tag` refuses missing venue/canary and threshold evidence. All 5 release tests pass. |
+
+Every Git query used by the citation/trailer readers now passes the trusted
+`--no-replace-objects` option. Adoption discovery also excludes replacement refs
+from `--all`, so substitution metadata cannot introduce a false adoption event.
+Normal refs and detached outgoing tips remain covered. No gate, threshold or
+existing test expectation changed; no test-expectation replacement table is
+needed. Three hook tests and one release test were added. All prior test method
+bodies and the inherited row 15 assertion sets are preserved.
+
+The measured citation count remains `citations: 288/288 resolve`. Record 0059
+carries this measurement; no frozen-specification number is edited. D-7 7A and
+D-8 8A remain unchanged. The new record has Context / Decision / Test / Status /
+Date, and legacy records are byte-identical.
+
+## Owner rulings needed
+
+None for these findings. R11-01 implements the already ruled committed-evidence
+policy; R11-02 consumes the terminal-result semantics already recorded in 0046
+and 0047. No CI, schema, threshold, scientific or protected-tree decision is made.
+
+### Residual gaps
+
+- Corrected code awaits independent review and owner approval. Genuine Bench
+  records binding each examined producer SHA and a later committed evidence
+  snapshot remain outstanding; this producer supplies neither fabricated evidence
+  nor approval. The separate-study done-commit merge hold remains.
+- Full §17 release eligibility remains NOT met. All thirteen repository table
+  cells remain `unmeasured`; no real restore run, venue/off-machine/independent
+  canary proof, sealed science or agent evidence was produced.
+- R-117 README evidence regeneration and `make demo`, `gars doctor`, session
+  registry/hour cross-check, raw Git-tag interception and evidence authentication
+  remain unimplemented here. No cluster or Python 3.6.8 runtime acceptance is claimed.
+- Replacement regressions invoke production hooks with the existing deterministic
+  scanner and miniature suite in disposable repositories. Inherited real-gitleaks
+  tests and the full source suite are reported separately below; fixture success
+  is not a claim of real secret detection or a genuine Bench run.
+
+### Round 2 command environment and evidence
+
+All shell commands set `TMPDIR`, `TEMP` and `TMP` to the designated sibling scratch
+folder before executing. Logs and disposable repositories stayed there. Commands
+used a non-login shell. Source tests used Python 3.8.2; the inherited eval harness
+used Python 3.13.2 with its executable directory first on PATH. `GARS_ROW5_SCRATCH`
+was unset. No remote, push, merge, PR or source hook installation was performed.
+
+Before implementation changes, the three new hook tests ran with six failed
+assertions (the history test has four subtests), and the new release test failed:
+
+```text
+Ran 3 tests in 6.060s
+FAILED (failures=6)
+Ran 1 test in 0.102s
+FAILED (failures=1)
+```
+
+These are intentional pre-fix regressions, retained in `round2-red-hooks.log` and
+`round2-red-release.log` under scratch. They were fixed in code; no old expectation
+was weakened or updated. The full regression command names are the three hook
+test names and the release test name in the finding table, invoked through their
+respective Python test modules.
+
+Final command summaries, verbatim (logs in sibling scratch):
+
+| Command | Summary | Exit | Log |
+|---|---|---|---|
+| `python3 tests/run_tests.py` | `collected 218 tests from tests`; `collected 56 tests from gars/tests`; `citations: 288/288 resolve`; `DoD cells regenerated: 13/13`; `DoD cells verified: 13/13 byte-stable`; `DoD cells verified: 1/1 byte-stable`; `Ran 274 tests in 331.955s`; `OK (skipped=50)` | 0 | `round2-suite.log` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` | 0 | `round2-contracts.log` |
+| `python3 tests/check_counts.py` | `collected 218 tests from tests`; `collected 56 tests from gars/tests`; `suite: 274 tests, from unittest's loader`; `enforced=3`; `clean — every current claim matches the suite` | 0 | `round2-counts.log` |
+| `python3 tests/test_decision_links_resolve.py` | `Ran 3 tests in 2.045s`; `OK`; `citations: 288/288 resolve` | 0 | `round2-links.log` |
+| `python3 tests/test_release_check.py` | `Ran 5 tests in 0.643s`; `OK`; `DoD cells regenerated: 13/13`; `DoD cells verified: 13/13 byte-stable`; `DoD cells verified: 1/1 byte-stable` | 0 | `round2-release.log` |
+| `python3 gars/tests/test_hooks_records.py` | `Ran 14 tests in 30.610s`; `OK` | 0 | `round2-hooks.log` |
+| `python3 gars/tests/test_hooks_gitleaks.py` | `Ran 12 tests in 84.517s`; `OK` | 0 | `round2-gitleaks.log` |
+| `python3 gars/tests/test_secret_containment.py` | `Ran 4 tests in 28.533s`; `OK` | 0 | `round2-containment.log` |
+| `python3 gars/tests/test_pre_push.py` | `Ran 7 tests in 29.755s`; `OK` | 0 | `round2-prepush.log` |
+| `python3 evals/test_harness.py (Python 3.13.2)` | `Ran 44 tests in 333.848s`; `OK` | 0 | `round2-harness.log` |
+| `python3 evals/check_results.py --controls --lexicon` | `clean — graded=1` | 0 | `round2-results.log` |
+| `python3 scripts/release_check.py` | `DoD cells regenerated: 13/13` | 0 | `round2-generate.log` |
+| `python3 scripts/release_check.py --check` | `DoD cells verified: 13/13 byte-stable` | 0 | `round2-check.log` |
+| `python3 scripts/release_check.py --tag` | `DoD cells verified: 13/13 byte-stable`; `release tag: REFUSED (restore drill: unmeasured)`; `release tag: REFUSED (restore drill: threshold not established)` | 1 (expected refusal) | `round2-tag.log` |
+
+The full suite collected 218 tests from `tests` and 56 from `gars/tests`, totaling
+274. The same 50 environment skips remain: 39 row 5 scratch-dependent cases,
+seven unavailable pinned pipelines, one unavailable analysis dependency, one
+missing registry reference, one missing owner cohort and one absent sealed set.
+No row 11 test skipped. Real gitleaks 8.30.0 ran in the inherited scanner tests;
+all three inherited direct modules ended OK without skips. The separate eval
+harness count is not added to the GARS suite count. Results checking still reports
+only one graded task; it is not evidence of three agent executions.
+
+`--tag` verified byte stability and refused all thirteen clauses for missing
+qualifying evidence; the table above quotes its restore-specific refusal lines.
+The table's thirteen cells remained unchanged and unmeasured. This is expected
+release refusal, not a successful release acceptance.
+
+The preservation audit (`round2-audit.py`, retained in scratch) reported:
+
+```text
+audit: protected and historical records unchanged; report prefix preserved; review unchanged and untracked; existing tests/assertions preserved
+```
+
+`git diff --stat af4159a -- evals/ .github/ gars/_system/guard_hook.py
+gars/_system/executorlib.py gars/_system/wrapperlib.py gars/_system/wrappers
+gars/_system/tools gars/_references docs/specs benchmarks` produced no output.
+`git diff --check` produced no output. The generated decision index was rebuilt
+with `bash docs/decisions/build_index.sh`; its only change is the new 0059 row.
+Changed Python parsed with 3.6 grammar; this does not prove 3.6.8 runtime behavior.
+The added-text check found no current login or machine hostname. The commit uses
+a generic producer identity, and no owner personal identifier is introduced.
+
+The round commit message is read from `round2-commit-message.txt` in scratch and
+references `Review: docs/reviews/row_11_round_2_review.md`,
+`Bench: evals/runs/row_11_round_2.json`, and
+`Session: producer-row11-20260922-round2`. These name future independent evidence,
+not existing results; the supplied review covers the preceding producer commit.
+The round-2 Bench path is distinct from the preceding commit's Bench path so
+both commits can eventually have correctly bound evidence in one later snapshot.
+No future evidence is authored here. This code commit is not yet pushable.
+
+After explicitly staging the ten changed paths, the production pre-commit
+`decision_links(Path.cwd(), staged=True)` and `scan(Path.cwd())` helpers both
+returned true (`round2-staged-gates.log`, exit 0):
+
+```text
+citations: 288/288 resolve
+gitleaks: passed
+```
+
+Final staging retains only those ten paths. The supplied review is excluded.
+`git diff --cached --check` is clean. The final preservation check confirms the
+report's original bytes are an unchanged prefix and the supplied review retains
+SHA-256 `656ba8c5521ab7b850fecede6a1939a020925a1e83ab5e80b235c906543d7a64`.

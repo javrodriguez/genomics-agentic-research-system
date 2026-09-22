@@ -287,12 +287,16 @@ artifact each stage produces.
 
 ## Status
 
-Row 11 current collection: **270 tests**. Decision-link and generated DoD checks
+Row 11 current collection: **274 tests**. Decision-link and generated DoD checks
 are described in the [row report](docs/implementation/row_11_change_report.md).
 The [generated §17 table](docs/implementation/dod_current.md) preserves missing
 evidence as `unmeasured`; `python3 scripts/release_check.py --check` detects cell drift
 and `--tag` refuses incomplete or stale release evidence. Pre-push reads Review
 and Bench from a later committed snapshot: code commit, evidence commit, then push.
+Review round 2 corrected local Git replacement bypasses: citation and trailer
+readers now ignore replacement objects. Restore rows retain terminal corrections
+with equal timestamps; venue/canary evidence remains unmeasured. See the
+[corrective record](docs/decisions/0059-row-11-raw-git-and-terminal-restore-addendum.md).
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
 (236 tests, 28 of them environment skips, on macOS at the 2026-09-17 merge of rows 1, 5, 2 and 3, with row 5's scratch folder set as CI sets it; a cold clone without it skips 50; no cluster run is evidenced for these rows). <!-- not-the-suite-total -->

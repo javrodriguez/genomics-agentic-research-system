@@ -96,7 +96,8 @@ CITATION = re.compile(r'\bdecisions?\s+(\d{4})\b', re.I)
 
 
 def git_bytes(root, *args):
-    return subprocess.check_output(['git'] + list(args), cwd=str(root),
+    # Object identities must resolve to stored bytes, never local replacements.
+    return subprocess.check_output(['git', '--no-replace-objects'] + list(args), cwd=str(root),
                                    stderr=subprocess.PIPE, timeout=60)
 
 
