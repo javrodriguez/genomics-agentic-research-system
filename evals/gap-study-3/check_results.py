@@ -50,6 +50,7 @@ REPO = HERE.parent.parent
 sys.path.insert(0, str(REPO / "evals"))
 sys.path.insert(0, str(HERE))
 
+import mode_binding  # noqa: E402
 import prereg  # noqa: E402
 import study  # noqa: E402
 import takes as takes_mod  # noqa: E402
@@ -501,6 +502,14 @@ def _has_agent_text(t: Path) -> bool:
     return t.is_file() and _check_take().agent_turn_count(t) > 0
 
 
+def recorded_permission_mode(t: Path, led: dict) -> str:
+    """The mode the session recorded, as the pinned driver writes it: from the transcript, or `unrecorded`
+    when the driver found no session file (the ledger then says so, and the transcript is absent)."""
+    if t.is_file():
+        return mode_binding.mode_of(t)
+    return "unrecorded" if led.get("transcript") is None else str(led.get("permission_mode"))
+
+
 def _normalised_ledger(led: dict, row: dict, t: Path) -> dict:
     """This attempt's ledger with every field the PINNED DRIVER decides put back to what it writes.
 
@@ -539,7 +548,14 @@ def _normalised_ledger(led: dict, row: dict, t: Path) -> dict:
     if led.get("source") is not None and project:
         out["source"] = source
     out["budget_s"] = int(pre["budgets"]["turn_timeout_s"])
-    out["permission_mode"] = pre["driver_constants"]["permission_mode"]
+    # ROUND 3, REVIEW 2, BLOCKER 1. Round 2's driver wrote the pre-registered constant into
+    # `permission_mode`, so putting the constant back here was reading the field as the driver writes
+    # it. This round's driver writes the mode THE SESSION RECORDED there (Ruling 7), so the field is
+    # read as this driver writes it: from the transcript. An honest drift (the transcript itself records
+    # another mode) survives the re-run and its rehearsal stands; an edit to the field alone disappears
+    # under the re-run and is refused as ledger-made. The reader is this round's own, spelled apart from
+    # the driver's, so the re-run is not the driver checking itself.
+    out["permission_mode"] = recorded_permission_mode(t, led)
     out["gars_tree_sha"] = pre["system_under_test"]["gars_tree_sha"]
 
     # REVIEW 17, BLOCKER 1, ROUTE A. The fixture block is read by the checker and was left alone here,

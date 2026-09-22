@@ -104,14 +104,30 @@ def paths_in(text: str) -> list[str]:
     return [m.group(1).rstrip(".,;:") for m in ABS_PATH.finditer(text or "")]
 
 
+# The harness's own background-task output file. Claude Code names this path back to the agent when a
+# command is run with run_in_background, so merely backgrounding a command puts an absolute path outside
+# the run tree into the transcript. It is the harness describing itself, exactly as the pre-study's voided
+# leak word was. Matched on the path's own leading segments, never by substring.
+HARNESS_TASK_OUTPUT = re.compile(r"^/private/tmp/claude-\d+/[^/]+/[^/]+/tasks/")
+
+
 def classify_path(p: str, run_tree: str | None) -> str:
-    """One of: study, run-tree, system, elsewhere. The only one that is a leak is `study`."""
+    """One of: study, run-tree, system, harness, elsewhere.
+
+    `study` is the leak. `elsewhere` is a path this verdict cannot place, and REVIEW 2 (SHOULD) is why it
+    is no longer waved through: the study roots are taken from this file's own location, so a walk naming
+    the operator's real checkout classified as `elsewhere` -- and passed -- whenever the check ran from a
+    clone, in CI or in a review copy. A path that is neither the run tree, the machine's, nor the harness's
+    own task-output file is now a failure of the verdict wherever it runs, with the path quoted.
+    """
     if any_under(p, study_roots()):
         return "study"
     if run_tree and under(p, run_tree):
         return "run-tree"
     if any_under(p, SYSTEM_ROOTS):
         return "system"
+    if HARNESS_TASK_OUTPUT.match(p):
+        return "harness"
     return "elsewhere"
 
 
@@ -124,7 +140,11 @@ def run_tree_of(transcript: Path) -> str | None:
 
 
 def replay(transcript: Path) -> dict:
-    """Every absolute path this session named, classified. The verdict is `leaks` only on a `study` hit."""
+    """Every absolute path this session named, classified.
+
+    The verdict is `leaks` on a `study` hit, `unplaced` on an `elsewhere` hit (a path the verdict cannot
+    place is not evidence of a clean walk), and `clean` otherwise.
+    """
     run_tree = run_tree_of(transcript)
     seen: dict[str, dict] = {}
     for turn in tx.parse(transcript):
@@ -137,6 +157,7 @@ def replay(transcript: Path) -> dict:
                 row = seen.setdefault(p, {"path": p, "kind": classify_path(p, run_tree), "times": 0})
                 row["times"] += 1
     leaks = [r for r in seen.values() if r["kind"] == "study"]
+    unplaced = [r for r in seen.values() if r["kind"] == "elsewhere"]
     by_kind: dict[str, int] = {}
     for r in seen.values():
         by_kind[r["kind"]] = by_kind.get(r["kind"], 0) + 1
@@ -146,10 +167,11 @@ def replay(transcript: Path) -> dict:
         "run_tree_recorded": run_tree is not None,
         "distinct_absolute_paths": len(seen),
         "by_kind": by_kind,
-        "verdict": "leaks" if leaks else "clean",
+        "verdict": "leaks" if leaks else "unplaced" if unplaced else "clean",
         "leaking_paths": sorted(r["path"] for r in leaks),
+        "unplaced_paths": sorted(r["path"] for r in unplaced),
         "outside_the_run_tree_but_not_the_study": sorted(
-            r["path"] for r in seen.values() if r["kind"] == "elsewhere"),
+            r["path"] for r in seen.values() if r["kind"] in ("harness", "elsewhere")),
     }
 
 
@@ -255,12 +277,6 @@ def committed_walks() -> list[Path]:
 # ---------------------------------------------------------------------------------------------
 # The finding: what actually capped round 2's one incomplete cell.
 
-# The harness's own background-task output file. Claude Code names this path back to the agent when a
-# command is run with run_in_background, so merely backgrounding a command puts an absolute path outside
-# the run tree into the transcript. It is the harness describing itself, exactly as the pre-study's voided
-# leak word was.
-HARNESS_TASK_OUTPUT = re.compile(r"^/private/tmp/claude-\d+/[^/]+/[^/]+/tasks/")
-
 # What verification/finding.md states. --finding --check fails if round 2's bytes say otherwise.
 STATED = {
     "round_2_capped_cell": {"task": "template-adherence", "half": "control", "model": "claude-sonnet-5"},
@@ -282,7 +298,7 @@ def round2_caps() -> dict:
     reasons: set[str] = set()
     for a in attempts:
         rec = replay(a)
-        if rec["verdict"] != "clean":
+        if rec["verdict"] == "leaks":
             naming_checkout += 1
         for p in rec["outside_the_run_tree_but_not_the_study"]:
             if HARNESS_TASK_OUTPUT.match(p):
@@ -378,12 +394,16 @@ def main() -> int:
         rec = replay(w)
         print(f"{rec['transcript']}: {rec['verdict']} — {rec['distinct_absolute_paths']} absolute path(s), "
               f"{rec['by_kind']}")
-        if rec["verdict"] != "clean":
-            bad.append((rec["transcript"], rec["leaking_paths"]))
-    for t, paths in bad:
-        print(f"FAIL {t} names this checkout: {paths}")
+        if rec["verdict"] == "leaks":
+            bad.append((rec["transcript"], "names this checkout", rec["leaking_paths"]))
+        elif rec["verdict"] != "clean":
+            bad.append((rec["transcript"], "names a path this verdict cannot place, which is not a clean "
+                        "walk wherever the check runs", rec["unplaced_paths"]))
+    for t, what, paths in bad:
+        print(f"FAIL {t} {what}: {paths}")
     if not bad:
-        print(f"ok: {len(walks)} committed walk(s) graded, none names this checkout")
+        print(f"ok: {len(walks)} committed walk(s) graded, none names this checkout and every path each "
+              f"named is placed")
     return 1 if bad else 0
 
 

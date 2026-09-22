@@ -17,9 +17,9 @@
       "source": "evals/gap-study-2/drive.py",
       "source_blob": "16b35c4beb41238784236362133c91bad56ce7ad",
       "source_sha256": "b4417a94157425ea5359105a31fac36d63cb0df9492b2e8316e263f6cdef4f8f",
-      "copy_sha256": "ea386a386519ca442d9561b71f8eadde7225de9948919c3ecf2d93a8182dda05",
+      "copy_sha256": "06f14c4cb285e759bb834ed03aaa6294a5b11b5ba3d3af112b228a888cc51e2f",
       "edited": true,
-      "why": "Three changes, each named in the file's own docstring. (1) Every turn passes --allowedTools with the pre-registration's driver_change.allowed_tools and the ledger records them: the one permission condition across the model axis. (2) The ledger records the mode the SESSION recorded, read from the take's own published transcript, as permission_mode_recorded, beside the flag that was passed. Round 2 recorded only the flag, in the field its own constant-binding rule compared with the pre-registration's copy of the same constant -- a constant compared with itself. permission_mode keeps round 2's meaning, so the byte-identical checker keeps reading what round 2's did; the recorded mode is asserted by this round's own mode_binding.py against the per-model expectation the pre-registration pins (Ruling 2, 20 September 2026). (4) The per-task walk cap is four rather than two (Ruling 8, 20 September 2026): round 2's cap counts operator-script revisions -- its own comment says walk 1 is the evidence for why walk 2's script differs -- and this round revises no script, its tasks being carried verbatim; ruling 7 then needed a walk per model under a condition adopted after five of the six original slots were spent. (3) One display string that spelled round 2's folder into a rehearsal's WHY.md takes its path from study.py, as round 2's own design says a path must."
+      "why": "Five changes, each named in the file's own docstring, in this order. (1) Every turn passes --allowedTools with the pre-registration's driver_change.allowed_tools and the ledger records them: the one permission condition across the model axis. (2) PERMISSION_MODE is `default` in place of round 2's `auto`, so every turn passes --permission-mode default (Ruling 7, 20 September 2026): no classifier admits a command the list does not, and the list is the entire permission surface for all three models. (3) The ledger's permission_mode is the mode the SESSION recorded, read from the take's own published transcript, with the flag that was passed kept beside it as permission_mode_passed and the same reading repeated as permission_mode_recorded. Round 2 wrote the flag into that field, and its own constant-binding rule compared it with the pre-registration's copy of the same constant -- a constant compared with itself. The byte-identical checker now reads a session reading there, and a take whose session recorded another mode is routed by that checker as a rehearsal with reason constant-binding; this round's own mode_binding.py re-derives the same reading as a second check and routes nothing. (4) One display string that spelled round 2's folder into a rehearsal's WHY.md takes its path from study.py, as round 2's own design says a path must. (5) The per-task walk cap is four rather than two (Ruling 8, 20 September 2026): round 2's cap counts operator-script revisions -- its own comment says walk 1 is the evidence for why walk 2's script differs -- and this round revises no script, its tasks being carried verbatim; ruling 7 then needed a walk per model under a condition adopted after five of the six original slots were spent."
     },
     {
       "path": "evals/gap-study-3/run.py",
@@ -71,9 +71,9 @@
       "source": "evals/gap-study-2/check_results.py",
       "source_blob": "2a0e48727ab9ae87c6c37098de1a4f21474d3dfe",
       "source_sha256": "0f5991690a214ce76b8c8c37ea2e5c473b50960c16ca85bdf997d24a797f09df",
-      "copy_sha256": "8663bd23e64c3eaf8363e28e56c5fac6874cd96373b5b3398e8fcaff54b7d580",
+      "copy_sha256": "1d11503c9d2007231e0ad55635dbfdbf51e9c9b5a3e2887a93fad1d17b8f8e6d",
       "edited": true,
-      "why": "The ledger check's tree read defaults to the pre-registration's export_at rather than HEAD. Round 2 exported every checkout from HEAD, so HEAD carrying the pinned system tree said the same thing as the takes having run against it; `gars/` has moved on main since, and this round exports from a commit carrying round 2's pinned tree by design. Reading HEAD asked whether a tree this round never used matched the pin, and the first freeze rehearsal went red on it. The rule is unchanged and an explicit --at still wins."
+      "why": "The ledger check's tree read defaults to the pre-registration's export_at rather than HEAD. Round 2 exported every checkout from HEAD, so HEAD carrying the pinned system tree said the same thing as the takes having run against it; `gars/` has moved on main since, and this round exports from a commit carrying round 2's pinned tree by design. Reading HEAD asked whether a tree this round never used matched the pin, and the first freeze rehearsal went red on it. The rule is unchanged and an explicit --at still wins. Review 2, blocker 1: the normalised ledger the ledger-made rule re-runs the checker on takes permission_mode from the transcript, as this round's driver writes it, instead of putting the pre-registered constant back: an honest drift survives the re-run and an edit to the field alone still disappears under it."
     },
     {
       "path": "evals/gap-study-3/lint_language.py",
@@ -188,7 +188,7 @@
       "source": "evals/gap-study-2/copy_manifest.py",
       "source_blob": "459d8dbf840ce3f3bed8df852e4855c3939aa0d0",
       "source_sha256": "b95a8be431e5acbae5ea3894850c5c6e87f9989df45a3f8af1a92ee57dd52811",
-      "copy_sha256": "bcb20bdc85e2eb88e03c5e79dfacd074d5595077a85b4668da3e039745576a9d",
+      "copy_sha256": "6d06ed92a8117ba351f0d8243154f955c94b9f035866758424fcfa95427e0329",
       "edited": true,
       "why": "Its own constants: this study's file list, its edit reasons, the commits it pins the earlier studies at, and the byte-identical set the goal file names."
     },

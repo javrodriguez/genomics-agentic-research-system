@@ -179,7 +179,7 @@ class TheDriverChangeIsWhatItSays(unittest.TestCase):
                 wanted.append(node)
         assert len(wanted) == len(names), f"lifted {len(wanted)} of {len(names)}: {names}"
         ns = types.SimpleNamespace()
-        env: dict = {"re": re, "Path": Path, "OSError": OSError}
+        env: dict = {"re": re, "json": json, "Path": Path, "OSError": OSError}
         exec(compile(ast.Module(body=wanted, type_ignores=[]), "drive.py", "exec"), env)
         for n in names:
             setattr(ns, n, env[n])
@@ -220,7 +220,7 @@ class TheDriverChangeIsWhatItSays(unittest.TestCase):
         # drive.py reads the pre-registration at import time and refuses without one, which is the
         # behaviour that keeps a take from running against no design. So the function under test is
         # lifted out of the real bytes with ast and run on its own, rather than the module booted.
-        drive = self._lift("mode_recorded", "PERMISSION_MODE_RECORD")
+        drive = self._lift("mode_recorded", "modes_recorded")
         with tempfile.TemporaryDirectory() as td:
             t = Path(td) / "transcript.jsonl"
             t.write_text('{"permissionMode": "auto"}\n{"permissionMode": "default"}\n')
@@ -795,7 +795,10 @@ class TheLeakVerdictIsDecidedAtPathBoundaries(unittest.TestCase):
         for a in attempts:
             with self.subTest(a.parent.name):
                 rec = self.fw.replay(a)
-                self.assertEqual(rec["verdict"], "clean", rec["leaking_paths"])
+                # Not `clean`: each named its own scratch redirect, a path the verdict cannot place, which
+                # is what the checker refused it for. The claim here is only that none named THIS checkout.
+                self.assertNotEqual(rec["verdict"], "leaks", rec["leaking_paths"])
+                self.assertEqual(rec["leaking_paths"], [])
                 self.assertGreater(rec["distinct_absolute_paths"], 5,
                                    "a verdict over almost no paths has graded nothing")
 
@@ -897,7 +900,7 @@ class TheModeBindingIsAnAssertionRoundTwoCouldNotMake(unittest.TestCase):
     def test_the_mode_is_re_derived_here_not_read_from_the_ledger(self):
         """A checker that read the driver's own field would be checking the driver against itself."""
         src = (HERE / "mode_binding.py").read_text()
-        self.assertIn("MODE_RECORD", src)
+        self.assertIn("def modes_recorded", src)
         self.assertNotIn("import drive", src)
 
     def test_every_walk_records_the_mode_its_model_is_pinned_to(self):
@@ -1278,6 +1281,254 @@ class ReviewOneBlockersStayFixed(unittest.TestCase):
         text = " ".join(prereg.load()["limitations_lines"]).lower()
         self.assertIn("less permissive", text)
         self.assertNotIn("more permissive", text)
+
+
+class ReviewTwoBlockersStayFixed(unittest.TestCase):
+    """Review 2's three blockers and four follow-ups, each driven on synthetic input so it keeps biting."""
+
+    @staticmethod
+    def _cr():
+        return load_module("round3_check_results_for_review_2", HERE / "check_results.py")
+
+    @staticmethod
+    def _write_transcript(folder: Path, records: list[dict]) -> Path:
+        t = folder / "transcript.jsonl"
+        t.write_text("".join(json.dumps(r) + "\n" for r in records))
+        return t
+
+    # -- blocker 1: a mode-drifting take has a route, and an edited field still has none ---------------
+
+    def test_blocker_1_constant_binding_is_off_this_rounds_driver_decided_list(self):
+        import build_draft
+        import prereg
+        pre = prereg.load()
+        self.assertNotIn("constant-binding", pre["driver_decided_reasons"])
+        self.assertIn("constant-binding", pre["driver_decided_reasons_round_2"], "round 2's list is kept beside")
+        self.assertIn("constant-binding", build_draft.source_prereg()["driver_decided_reasons"])
+        self.assertIn("constant-binding", pre["rehearsal_reasons"], "the reason id itself is carried")
+        self.assertIn("driver_decided_reasons_round_2", pre["driver_decided_reasons_note"])
+        self.assertNotIn("driver_decided_reasons", build_draft.CARRIED,
+                         "it is edited, so claiming it is carried whole would be false")
+        self.assertIn("ADMISSIBLE", pre["driver_change"]["permission_mode_binding"])
+
+    def test_blocker_1_the_normalised_ledger_reads_the_mode_from_the_transcript(self):
+        cr = self._cr()
+        with tempfile.TemporaryDirectory() as td:
+            t = self._write_transcript(Path(td), [{"type": "user", "permissionMode": "auto"}])
+            self.assertEqual(cr.recorded_permission_mode(t, {"permission_mode": "auto"}), "auto",
+                             "an honest drift is read as the session recorded it")
+            t = self._write_transcript(Path(td), [{"type": "user", "permissionMode": "default"}])
+            self.assertEqual(cr.recorded_permission_mode(t, {"permission_mode": "auto"}), "default",
+                             "an edited field is put back to what the transcript says")
+            gone = Path(td) / "missing.jsonl"
+            self.assertEqual(cr.recorded_permission_mode(gone, {"permission_mode": "unrecorded",
+                                                                "transcript": None}), "unrecorded")
+
+    def test_blocker_1_an_honest_drift_survives_the_re_run_and_an_edited_field_does_not(self):
+        """The ledger-made rule asks which refusals survive the normalised ledger. Both cases, end to end
+        through the pinned checker's own constant rule."""
+        import prereg
+        cr = self._cr()
+        ct = load_module("round3_check_take_for_review_2", HERE / "check_take.py")
+        pre = prereg.load()
+        base = {"budget_s": int(pre["budgets"]["turn_timeout_s"]),
+                "gars_tree_sha": pre["system_under_test"]["gars_tree_sha"]}
+        with tempfile.TemporaryDirectory() as td:
+            # honest: the session recorded auto, the driver wrote auto, the checker refuses -- and the
+            # refusal is still there once the ledger is read as the driver writes it
+            t = self._write_transcript(Path(td), [{"type": "user", "permissionMode": "auto"}])
+            led = {**base, "permission_mode": "auto"}
+            before = ct.constant_problems(led, pre)
+            self.assertTrue(any("constant-binding" in p for p in before), before)
+            after = ct.constant_problems({**led, "permission_mode": cr.recorded_permission_mode(t, led)}, pre)
+            self.assertTrue(any("constant-binding" in p for p in after),
+                            "the honest drift's refusal must survive the re-run, or it has no route")
+            # edited: the session recorded default, the field was edited to auto; the refusal disappears
+            t = self._write_transcript(Path(td), [{"type": "user", "permissionMode": "default"}])
+            after = ct.constant_problems({**led, "permission_mode": cr.recorded_permission_mode(t, led)}, pre)
+            self.assertEqual([p for p in after if "permission mode" in p], [],
+                             "an edit to the field alone must disappear under the re-run, and be refused as ledger-made")
+
+    # -- blocker 2: denials are read by code and printed beside each take -------------------------------
+
+    @staticmethod
+    def _denial_records(command: str, denied: bool) -> list[dict]:
+        text = ("Permission for this tool use was denied. What required approval: " + command) if denied \
+            else "ok\n"
+        return [
+            {"type": "assistant", "message": {"content": [
+                {"type": "tool_use", "id": "t1", "name": "Bash", "input": {"command": command}}]}},
+            {"type": "user", "permissionMode": "default", "message": {"content": [
+                {"type": "tool_result", "tool_use_id": "t1", "is_error": denied, "content": text}]}},
+        ]
+
+    def test_blocker_2_a_denial_is_read_out_of_the_tool_result_with_its_command(self):
+        import denials
+        with tempfile.TemporaryDirectory() as td:
+            t = self._write_transcript(Path(td), self._denial_records("cd /somewhere && ls", True))
+            got = denials.denials_in(t)
+            self.assertEqual(len(got), 1)
+            self.assertEqual(got[0]["command"], "cd /somewhere && ls")
+            self.assertEqual(got[0]["tool"], "Bash")
+            t = self._write_transcript(Path(td), self._denial_records("ls", False))
+            self.assertEqual(denials.denials_in(t), [], "a call that ran is not a denial")
+            # the sentence in agent prose or a user line is not a denial: only a tool result is read
+            t = self._write_transcript(Path(td), [
+                {"type": "assistant", "message": {"content": [
+                    {"type": "text", "text": "Permission for this tool use was denied, it said."}]}}])
+            self.assertEqual(denials.denials_in(t), [])
+
+    def test_blocker_2_the_result_prints_the_count_beside_the_cell_and_quotes_the_commands(self):
+        import prereg
+        import result
+        held = {("t", "positive", "m"): {"k": 0, "n": 3, "state": "RAN", "labels": ["wrong"] * 3}}
+        g = {("t", "positive", "m"): {"takes": ["1", "2", "3"], "modes": {"default"}}}
+        den = {("t", "positive", "m"): {"denied": 2, "commands": ["cd /x", "cd /y"]}}
+        c = result.cell_state(("t", "positive", "m"), g, {}, {}, prereg.load(), held, den)
+        self.assertEqual(c["denied"], 2)
+        rec = {"planned_cells": 1, "planned_takes": 3, "graded_takes": 3, "complete_cells": 1, "cells": [c],
+               "denials": [{"task": "t", "half": "positive", "model": "m", "take": "1", "denied": 2,
+                            "commands": ["cd /x", "cd /y"]},
+                           {"task": "t", "half": "positive", "model": "m", "take": "2", "denied": 0,
+                            "commands": []}],
+               "round_two": result.round_two_table(), "amendments": []}
+        page = result.render(rec)
+        self.assertIn("| 0 of 3 | 3 of 3 | 2 | default |", page)
+        self.assertIn("## Denials, per graded take", page)
+        self.assertIn("2 denied call(s): `cd /x`; `cd /y`", page)
+        self.assertIn("take 2: no denial", page)
+        self.assertEqual(result.structural_problems(rec), [])
+        bad = json.loads(json.dumps(rec))
+        bad["cells"][0]["denied_commands"] = ["cd /x"]
+        self.assertTrue(any("quotes 1 command" in p for p in result.structural_problems(bad)))
+        bad["cells"][0].pop("denied")
+        self.assertTrue(any("no denial count" in p for p in result.structural_problems(bad)))
+
+    def test_blocker_2_the_reader_says_out_loud_when_it_has_read_no_take(self):
+        r = run(str(HERE / "denials.py"), "--check")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        if not (HERE / "transcripts").is_dir():
+            self.assertIn("having read 0 graded takes", r.stdout)
+            self.assertIn("Not a pass", r.stdout)
+
+    # -- blocker 3: the record of the driver change says what the code does -----------------------------
+
+    def test_blocker_3_the_docstring_the_manifest_and_the_readme_agree_on_five_changes(self):
+        import copy_manifest
+        doc = (HERE / "drive.py").read_text().split('"""', 3)[1]
+        self.assertIn("with five changes", doc)
+        self.assertNotIn("is still passed", doc, "the docstring said auto was still passed; it is not")
+        self.assertIn("--permission-mode default", doc)
+        self.assertTrue(copy_manifest.EDITS["drive.py"].startswith("Five changes"))
+        self.assertIn("--permission-mode default", copy_manifest.EDITS["drive.py"])
+        self.assertNotIn("per-model expectation", copy_manifest.EDITS["drive.py"],
+                         "the superseded ruling 2 semantics may not describe the driver")
+        self.assertNotIn("keeps round 2's meaning", copy_manifest.EDITS["drive.py"])
+        why = next(f["why"] for f in json.loads((HERE / "COPIED.json").read_text())["files"]
+                   if f["path"].endswith("/drive.py"))
+        self.assertEqual(why, copy_manifest.EDITS["drive.py"])
+        readme = (HERE / "README.md").read_text()
+        self.assertIn("carries five changes", readme)
+        self.assertIn("**The mode passed is `default`, not `auto`**", readme)
+
+    def test_blocker_3_the_readme_edited_count_is_the_manifests(self):
+        words = {8: "eight", 9: "nine", 10: "ten", 11: "eleven", 12: "twelve", 13: "thirteen", 14: "fourteen",
+                 15: "fifteen", 16: "sixteen"}
+        edited = sum(1 for f in json.loads((HERE / "COPIED.json").read_text())["files"] if f.get("edited"))
+        self.assertIn(f"with {words[edited]} files edited", (HERE / "README.md").read_text())
+
+    # -- the follow-ups ------------------------------------------------------------------------------
+
+    def test_should_1_the_run_date_is_the_takes_own_not_the_writing_day(self):
+        import result
+        src = (HERE / "result.py").read_text()
+        self.assertNotIn("date.today", src)
+        self.assertNotIn("from datetime import", src)
+        self.assertIn("no graded take yet", result.run_dates()) if not (HERE / "transcripts").is_dir() else None
+        with tempfile.TemporaryDirectory() as td:
+            here = result.HERE
+            try:
+                result.HERE = Path(td)
+                for take, s, e in (("1", "2026-09-25T10:00:00+00:00", "2026-09-25T10:03:00+00:00"),
+                                   ("2", "2026-09-27T10:00:00+00:00", "2026-09-27T10:03:00+00:00")):
+                    d = Path(td) / "transcripts" / "t" / "positive" / "m" / take
+                    d.mkdir(parents=True)
+                    (d / "driver-ledger.json").write_text(json.dumps({"started": s, "finished": e}))
+                self.assertEqual(result.run_dates(), "2026-09-25 to 2026-09-27")
+            finally:
+                result.HERE = here
+
+    def test_should_2_a_path_the_verdict_cannot_place_fails_it_wherever_the_check_runs(self):
+        import fixture_walk as fw
+        harness = "/private/tmp/claude-501/-private-var-folders-x/0beb75d1-ea09-4ea6-a471-a221cd99a87f/tasks/b3rn.output"
+        self.assertEqual(fw.classify_path(harness, None), "harness")
+        self.assertEqual(fw.classify_path("/Users/somebody/checkouts/a-study/evals/x.py", None), "elsewhere")
+        self.assertEqual(fw.classify_path("/usr/bin/python3", None), "system")
+        with tempfile.TemporaryDirectory() as td:
+            t = self._write_transcript(Path(td), [
+                {"type": "assistant", "message": {"content": [
+                    {"type": "text", "text": "reading /Users/somebody/checkouts/a-study/evals/x.py now"}]}}])
+            rec = fw.replay(t)
+            self.assertEqual(rec["verdict"], "unplaced")
+            self.assertEqual(rec["unplaced_paths"], ["/Users/somebody/checkouts/a-study/evals/x.py"])
+            # the reviewer's scenario: the study root is somewhere else (a clone, CI, a review copy) and the
+            # walk names THIS checkout. It used to read clean; it must not.
+            real = str(REPO / "evals" / "gap-study-3" / "prereg-draft.json")
+            t = self._write_transcript(Path(td), [
+                {"type": "assistant", "message": {"content": [{"type": "text", "text": f"cat {real}"}]}}])
+            roots = fw.study_roots
+            try:
+                fw.study_roots = lambda: ["/somewhere/else/entirely"]
+                self.assertNotEqual(fw.replay(t)["verdict"], "clean")
+            finally:
+                fw.study_roots = roots
+            self.assertEqual(fw.replay(t)["verdict"], "leaks")
+            t = self._write_transcript(Path(td), [
+                {"type": "assistant", "message": {"content": [{"type": "text", "text": f"tail {harness}"}]}}])
+            self.assertEqual(fw.replay(t)["verdict"], "clean", "the harness's own file is placed, not a leak")
+
+    def test_should_3_the_enforcement_claim_names_the_scan_ci_runs(self):
+        import prereg
+        text = " ".join(prereg.load()["not_poolable"]["enforced_by"])
+        self.assertIn("since the FREEZE", text)
+        self.assertIn("verification/commit-body-note.md", text)
+        self.assertNotIn("since the kickoff)", text)
+        ci = (REPO / ".github" / "workflows" / "ci.yml").read_text()
+        self.assertIn('lint_pooling.py --commits-since "$freeze"', ci)
+
+    def test_should_4_the_mode_binding_reads_the_field_the_copied_checker_reads(self):
+        import mode_binding as mb
+        exp = mb.expected()
+        ledger = {"model_requested": "claude-sonnet-5", "permission_mode_expected": "default",
+                  "permission_mode_recorded": "default", "permission_mode": "auto"}
+        _, bad = mb.judge(ledger, "default", exp, walks=False)
+        self.assertTrue(any("the field the copied checker reads" in p for p in bad), bad)
+        ledger["permission_mode"] = "default"
+        _, ok = mb.judge(ledger, "default", exp, walks=False)
+        self.assertEqual(ok, [])
+
+    def test_nit_1_the_limitation_names_the_semicolon_and_find_forms(self):
+        import prereg
+        text = " ".join(prereg.load()["limitations_lines"])
+        self.assertIn("semicolon", text)
+        self.assertIn("-exec", text)
+
+    def test_nit_2_the_mode_is_read_from_the_record_not_from_echoed_text(self):
+        import mode_binding as mb
+        import round2
+        drive = TheDriverChangeIsWhatItSays._lift("mode_recorded", "modes_recorded")
+        echo = {"type": "user", "message": {"content": [
+            {"type": "tool_result", "tool_use_id": "t1", "content": '{"permissionMode": "auto"}'}]}}
+        with tempfile.TemporaryDirectory() as td:
+            t = self._write_transcript(Path(td), [echo])
+            for name, fn in (("mode_binding", mb.mode_of), ("drive", drive.mode_recorded)):
+                with self.subTest(name):
+                    self.assertEqual(fn(t), "unrecorded", "an echo inside a tool result is not the field")
+            self.assertEqual(round2.modes_recorded(t), set())
+            t = self._write_transcript(Path(td), [echo, {"type": "user", "permissionMode": "default"}])
+            self.assertEqual(mb.mode_of(t), "default")
+            self.assertEqual(drive.mode_recorded(t), "default")
+            self.assertEqual(round2.modes_recorded(t), {"default"})
 
 
 # ---------------------------------------------------------------------------------------------

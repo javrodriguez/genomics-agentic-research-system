@@ -55,15 +55,21 @@ The session under test is a separate process with no context from the session ru
 or from the session that will grade the result. No model is called by this file itself.
 
 THE CHANGES FROM ROUND 2'S DRIVER. This file is a byte copy of evals/gap-study-2/drive.py at bf065fe
-with four changes, and nothing else moves:
+with five changes, and nothing else moves:
 
   1. Every turn also passes `--allowedTools` with the entries the pre-registration pins in
      `driver_change.allowed_tools`, and the ledger records them. Round 2 passed
      `--permission-mode auto` to every model and Haiku's sessions ran in `default` instead, where
      its stage-00 commands were denied by the harness. The allowlist gives every model the same
-     working permission condition. `--permission-mode auto` is still passed.
+     working permission condition.
 
-  2. The ledger's `permission_mode` is the mode THE SESSION RECORDED, read from the take's own
+  2. Every turn passes `--permission-mode default` instead of round 2's `auto`: PERMISSION_MODE is
+     `"default"` (RULING 7, 20 September 2026). Under `default` no classifier admits a command the
+     list does not, so the allowlist of change 1 is the ENTIRE permission surface, identically for
+     all three models. This is the one executable constant the round changes, and it is named here
+     so the diff against round 2's file is exactly what this list says.
+
+  3. The ledger's `permission_mode` is the mode THE SESSION RECORDED, read from the take's own
      published transcript, with the flag that was passed kept beside it as `permission_mode_passed`
      and the same reading repeated as `permission_mode_recorded` for this round's own checker.
 
@@ -77,12 +83,15 @@ with four changes, and nothing else moves:
      RULING 2 (superseded) made that expectation per model, because the axis then carried two modes
      and a single value would have routed every take of the smallest model as a rehearsal. RULING 7
      removes the reason: `default` is passed to every model and every model is expected to record
-     it, so one value covers the axis and the copied checker can carry the rule itself.
+     it, so one value covers the axis and the copied checker can carry the rule itself. The rehearsal
+     that rule founds is admissible: `constant-binding` is not among this round's
+     driver_decided_reasons, and check_results.py re-derives the field from the transcript when it
+     re-runs the checker (review 2, blocker 1).
 
-  3. One display string that spelled `evals/gap-study-2/check_take.py` into a rehearsal's WHY.md
+  4. One display string that spelled `evals/gap-study-2/check_take.py` into a rehearsal's WHY.md
      now takes the path from study.py, as round 2's own design says a path must.
 
-  4. The per-task walk cap is four rather than two (RULING 8, 20 September 2026). Round 2's cap counts
+  5. The per-task walk cap is four rather than two (RULING 8, 20 September 2026). Round 2's cap counts
      OPERATOR-SCRIPT REVISIONS -- its own comment says walk 1 is the evidence for why walk 2's script
      differs -- and this round revises no script: its three tasks are carried verbatim from round 2's
      frozen file and a test compares them byte for byte. Ruling 7 then required a walk on each of the
@@ -520,7 +529,26 @@ def stream_init_source(stdout: str) -> str | None:
     return None
 
 
-PERMISSION_MODE_RECORD = re.compile(r'"permissionMode":\s*"([A-Za-z]+)"')
+def modes_recorded(transcript: Path) -> set[str]:
+    """Every value of the record-level `permissionMode` field, one JSON record at a time.
+
+    REVIEW 2, NIT. This was a pattern over the file's text, which would also have read the same JSON
+    echoed inside a tool result. The field sits at the top of the harness's own user-type records, so
+    it is read from there and nowhere else.
+    """
+    out: set[str] = set()
+    try:
+        lines = transcript.read_text(errors="replace").splitlines()
+    except OSError:
+        return out
+    for line in lines:
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(rec, dict) and isinstance(rec.get("permissionMode"), str):
+            out.add(rec["permissionMode"])
+    return out
 
 
 def mode_recorded(transcript: Path) -> str:
@@ -536,11 +564,7 @@ def mode_recorded(transcript: Path) -> str:
     `default` where `auto` was passed. Reading the transcript here is what gives that rule something
     to measure; the checker is byte-identical to round 2's.
     """
-    try:
-        text = transcript.read_text(errors="replace")
-    except OSError:
-        return "unrecorded"
-    modes = set(PERMISSION_MODE_RECORD.findall(text))
+    modes = modes_recorded(transcript)
     return "default" if "default" in modes else "auto" if "auto" in modes else "unrecorded"
 
 
@@ -1395,7 +1419,7 @@ def main() -> int:
     if src is not None:
         ledger["published"] = publish_transcript(src, out_root)
         ledger["transcript"] = display_path(out_root / "transcript.jsonl")
-        # ROUND 3, change 2 (Rulings 2 and 7). What the session RECORDED, over what was passed. The
+        # ROUND 3, change 3 (Rulings 2 and 7). What the session RECORDED, over what was passed. The
         # copied checker reads `permission_mode`, so from here its constant-binding rule is an
         # assertion about the session rather than about a flag.
         recorded = mode_recorded(out_root / "transcript.jsonl")

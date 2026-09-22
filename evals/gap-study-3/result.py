@@ -31,7 +31,6 @@ import argparse
 import json
 import subprocess
 import sys
-from datetime import date
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -41,6 +40,7 @@ RESULTS = HERE / "results"
 sys.path.insert(0, str(HERE))
 
 import mode_binding  # noqa: E402
+import denials  # noqa: E402
 import prereg  # noqa: E402
 import round2  # noqa: E402
 import study  # noqa: E402
@@ -112,8 +112,13 @@ def held_counts() -> dict[tuple[str, str, str], dict]:
     return out
 
 
-def cell_state(key, g, rehearsals, pauses, pre, held) -> dict:
-    """Complete, or unmeasured with a reason. There is no third state and no silent one."""
+def cell_state(key, g, rehearsals, pauses, pre, held, denied=None) -> dict:
+    """Complete, or unmeasured with a reason. There is no third state and no silent one.
+
+    REVIEW 2, BLOCKER 2. `denied` is denials.per_cell(): the count of calls the harness refused over the
+    cell's graded takes, with the commands. It prints beside the count, so a `did-not-reach` that followed
+    a denial is never read as the model's alone.
+    """
     task, half, model = key
     takes = g.get(key, {}).get("takes", [])
     reh = rehearsals.get(key, [])
@@ -133,9 +138,11 @@ def cell_state(key, g, rehearsals, pauses, pre, held) -> dict:
         reason = (f"incomplete: {len(takes)} graded take(s) of {N}, {len(reh)} rehearsal(s), "
                   f"{len(pau)} pause(s)")
     h = held.get(key) or {}
+    den = (denied or {}).get(key) or {"denied": 0, "commands": []}
     return {"task": task, "half": half, "model": model,
             "held": h.get("k"), "labels": h.get("labels") or [],
             "graded": len(takes), "n": N,
+            "denied": int(den["denied"]), "denied_commands": list(den["commands"]),
             "state": state, "reason": reason, "recorded_permission_mode": modes,
             "expected_permission_mode": (pre["driver_constants"].get("permission_mode_expected") or {})
                                         .get(model)}
@@ -161,6 +168,30 @@ def round_two_table() -> dict:
     return {"rows": rows, "n": N}
 
 
+def run_dates() -> str:
+    """The span of the graded takes, from their own ledgers: the earliest `started` to the latest `finished`.
+
+    REVIEW 2, SHOULD. This used to print the day the page was written, so `--check` went red the next day
+    and the only way back to green was to rewrite the page with a later date. The takes' ledgers are the
+    record of when the round ran, and they do not move.
+    """
+    starts, ends = [], []
+    base = HERE / "transcripts"
+    for led in sorted(base.glob("*/*/*/*/driver-ledger.json")) if base.is_dir() else []:
+        try:
+            d = json.loads(led.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(d.get("started"), str):
+            starts.append(d["started"][:10])
+        if isinstance(d.get("finished"), str):
+            ends.append(d["finished"][:10])
+    if not starts:
+        return "no graded take yet"
+    first, last = min(starts), max(ends or starts)
+    return first if first == last else f"{first} to {last}"
+
+
 def caption() -> str:
     """Written here, not typed: per column, the condition, the run date and the instrument."""
     pre = prereg.load()
@@ -173,7 +204,8 @@ def caption() -> str:
         f"`--permission-mode {r2['driver_constants']['permission_mode']}` alone |\n"
         f"| mode the sessions recorded | per model, as each cell prints it | "
         f"per model, as the earlier round's own transcripts record it |\n"
-        f"| run date | {date.today().isoformat()} | {r2.get('frozen_at', 'as its frozen file records')} |\n"
+        f"| run date | {run_dates()}, from the graded takes' own ledgers | "
+        f"{r2.get('frozen_at', 'as its frozen file records')} |\n"
         f"| instrument | copied byte for byte from the earlier round's done commit "
         f"{round2.frozen().get('study', 'that round')}; the take checker, every grader and the label "
         f"reader are byte-identical | its own |\n\n"
@@ -184,13 +216,15 @@ def caption() -> str:
 def derive() -> dict:
     pre = prereg.load()
     g, reh, pau, held = graded(), attempts_by_kind("rehearsals"), attempts_by_kind("pauses"), held_counts()
-    cells = [cell_state(k, g, reh, pau, pre, held) for k in planned_cells()]
+    den = denials.per_cell()
+    cells = [cell_state(k, g, reh, pau, pre, held, den) for k in planned_cells()]
     return {
         "planned_cells": len(cells),
         "planned_takes": len(cells) * N,
         "graded_takes": sum(c["graded"] for c in cells),
         "complete_cells": sum(1 for c in cells if c["state"] == "complete"),
         "cells": cells,
+        "denials": denials.per_take(),
         "round_two": round_two_table(),
         "amendments": pre.get("amendments") or [],
     }
@@ -218,6 +252,13 @@ def structural_problems(rec: dict) -> list[str]:
             elif len(c["labels"]) != c["graded"]:
                 out.append(f"{c['task']}/{c['half']}/{c['model']} publishes {len(c['labels'])} grader "
                            f"label(s) for {c['graded']} graded take(s)")
+        # REVIEW 2, BLOCKER 2. Every cell prints its denial count beside its count, and the commands it
+        # quotes are exactly as many as the calls it counts.
+        if not isinstance(c.get("denied"), int) or c["denied"] < 0:
+            out.append(f"{c['task']}/{c['half']}/{c['model']} publishes no denial count")
+        elif len(c.get("denied_commands") or []) != c["denied"]:
+            out.append(f"{c['task']}/{c['half']}/{c['model']} counts {c['denied']} denied call(s) and quotes "
+                       f"{len(c.get('denied_commands') or [])} command(s)")
     for r in rec["round_two"]["rows"]:
         if r["n"] != N:
             out.append(f"the earlier round's {r['task']}/{r['half']}/{r['model']} publishes n = {r['n']}")
@@ -233,15 +274,28 @@ def render(rec: dict) -> str:
          f"{rec['complete_cells']} complete cell(s) of {rec['planned_cells']} planned.", "",
          "Every count below is a count of three takes. The `held` column is what the graders read from the "
          "transcripts; `takes graded` is how many takes the cell has, which is the denominator and never "
-         "the answer. No cell is left out: a cell that was not measured is named with the reason.", "",
+         "the answer. `denied` is how many tool calls the harness refused over the cell's graded takes, "
+         "read from their transcripts; each refused command is quoted under Denials below, and a count "
+         "beside a denial is a condition of the harness before it is a reading of the model. No cell is "
+         "left out: a cell that was not measured is named with the reason.", "",
          "## This round", "",
-         "| task | half | model | held | takes graded | recorded mode | state |",
-         "|---|---|---|---|---|---|---|"]
+         "| task | half | model | held | takes graded | denied | recorded mode | state |",
+         "|---|---|---|---|---|---|---|---|"]
     for c in rec["cells"]:
         h = f"{c['held']} of {c['n']}" if c["state"] == "complete" and c["held"] is not None else "—"
         modes = ", ".join(c["recorded_permission_mode"]) or "—"
         L.append(f"| `{c['task']}` | {c['half']} | `{c['model']}` | {h} | {c['graded']} of {c['n']} | "
-                 f"{modes} | {c['state']}{'' if not c['reason'] else ' — ' + c['reason']} |")
+                 f"{c.get('denied', 0)} | {modes} | {c['state']}"
+                 f"{'' if not c['reason'] else ' — ' + c['reason']} |")
+    L += ["", "## Denials, per graded take", ""]
+    if not rec.get("denials"):
+        L.append("No graded take yet, so no denial has been read.")
+    for r in rec.get("denials") or []:
+        where = f"`{r['task']}`/{r['half']}/`{r['model']}`/take {r['take']}"
+        if r["denied"]:
+            L.append(f"- {where}: {r['denied']} denied call(s): " + "; ".join(f"`{c}`" for c in r["commands"]))
+        else:
+            L.append(f"- {where}: no denial")
     L += ["", "## The earlier round, beside — never joined", "", caption(), "",
           "| task | half | model | held | recorded mode |", "|---|---|---|---|---|"]
     for r in rec["round_two"]["rows"]:

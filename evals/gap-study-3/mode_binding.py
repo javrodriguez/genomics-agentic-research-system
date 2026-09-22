@@ -39,7 +39,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -50,10 +49,28 @@ sys.path.insert(0, str(HERE))
 import prereg  # noqa: E402
 import study  # noqa: E402
 
-# The same shape drive.py reads, spelled here independently: a re-derivation that imported the driver's
+# The same reading drive.py makes, spelled here independently: a re-derivation that imported the driver's
 # reader would be checking the driver against itself.
-MODE_RECORD = re.compile(r'"permissionMode":\s*"([A-Za-z]+)"')
 ROOTS = ("transcripts", "rehearsals", "pauses")
+
+
+def modes_recorded(transcript: Path) -> set[str]:
+    """Every value of the record-level `permissionMode` field, read from each JSON record and not by a
+    pattern over the file's text (review 2, NIT). The field sits at the top of the harness's own user-type
+    records; a tool result that echoed the same JSON would sit inside a record's content and is not read."""
+    out: set[str] = set()
+    try:
+        lines = transcript.read_text(errors="replace").splitlines()
+    except OSError:
+        return out
+    for line in lines:
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(rec, dict) and isinstance(rec.get("permissionMode"), str):
+            out.add(rec["permissionMode"])
+    return out
 
 
 def mode_of(transcript: Path) -> str:
@@ -62,7 +79,7 @@ def mode_of(transcript: Path) -> str:
     The precedence is the pre-study's: a session that records `default` anywhere ran with no approval
     surface, whatever a later record says.
     """
-    modes = set(MODE_RECORD.findall(transcript.read_text(errors="replace")))
+    modes = modes_recorded(transcript)
     return "default" if "default" in modes else "auto" if "auto" in modes else "unrecorded"
 
 
@@ -105,6 +122,12 @@ def judge(ledger: dict, derived: str, exp: dict, walks: bool) -> tuple[bool, lis
     recorded = ledger.get("permission_mode_recorded")
     if recorded is not None and recorded != derived:
         problems.append(f"the ledger publishes {recorded!r} where the transcript records {derived!r}")
+    # REVIEW 2, SHOULD. `permission_mode` is the field the copied checker reads, and this round's driver
+    # writes the recorded mode into it too; an edit to that field alone left this check green.
+    compared = ledger.get("permission_mode")
+    if compared is not None and compared != derived:
+        problems.append(f"the ledger's permission_mode, the field the copied checker reads, is "
+                        f"{compared!r} where the transcript records {derived!r}")
     return False, problems
 
 

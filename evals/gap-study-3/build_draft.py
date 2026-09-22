@@ -64,8 +64,29 @@ CARRIED = ("system_under_test", "harness", "budgets", "run_location", "rehearsal
            "driver_outcome_shapes", "environment_record", "harness_delivered_user_records",
            "source_by_fixture_kind", "rehearsal_cap", "pause_cap", "reserved_labels", "permission_stop_rule",
            "stopped_take_rule", "attempt_layout", "wait_point_marker_rule", "operator_line_rule",
-           "transcript_publication", "no_retakes", "driver_decided_reasons", "driver_decided_reasons_note",
+           "transcript_publication", "no_retakes",
            "label_decisions", "probe_located_by", "factivity_note", "line_count_scope")
+
+# REVIEW 2, BLOCKER 1. Round 2's `driver_decided_reasons` names `constant-binding` as a reason the driver
+# decides before a model runs, and the ledger check refuses any rehearsal that records one as a record the
+# driver cannot have written. Under round 2's meaning that was true: `permission_mode` was a constant the
+# driver wrote, so a rehearsal carrying that reason could only come from an edited ledger. This round
+# writes the mode THE SESSION RECORDED into that field (Ruling 7), so the same reason is now the one honest
+# disposition for a session that recorded another mode -- and the carried refusal turned that disposition
+# into a red check with no route out. The reason is taken off the list for this round, with round 2's list
+# kept beside it, and the class the list belonged to stays closed: check_results.py re-derives
+# `permission_mode` from the transcript when it re-runs the checker, so an edit to that field alone still
+# disappears under the re-run and is refused as ledger-made, while an honest drift survives it.
+DRIVER_DECIDED_REASONS_DROPPED = "constant-binding"
+DRIVER_DECIDED_REASONS_NOTE_ADDED = (
+    " ROUND 3 (review 2, blocker 1): `constant-binding` is not on this list here, and round 2's list is kept "
+    "beside it as driver_decided_reasons_round_2. Round 2's driver wrote a constant into the ledger's "
+    "permission_mode, so a rehearsal recording that reason could only be an edited record; this round's "
+    "driver writes the mode the session RECORDED there, so the same reason is the one disposition for a "
+    "session that recorded another mode, and a list that refused it left that session no route. The class "
+    "stays closed the other way: --ledger re-derives permission_mode from the transcript when it re-runs the "
+    "checker, so a refusal that exists only because the ledger's field was edited disappears under the "
+    "re-run and is refused as ledger-made, and one the transcript itself carries survives it.")
 
 # RULING 2, 20 September 2026. The mode each model's sessions are EXPECTED to record, which is not the flag
 # the driver passes: the smallest model recorded `default` in four walks of four with `auto` passed. Round 2's
@@ -158,7 +179,11 @@ LIMITATIONS = [
     "the evidence that the harness applied the list is that the route's commands ran without a denial.",
     "An entry whose second token is `-c` or `-` lets the session under test run any program text the model "
     "writes, and no classifier reads it. Such entries are marked `arbitrary` in the derivation and are as "
-    "wide in practice as the bare binary the derivation's first rule forbids.",
+    "wide in practice as the bare binary the derivation's first rule forbids. Three more entries are "
+    "narrower than that but wider than they look: two end in a semicolon, so they admit whatever follows "
+    "it, and `find .` admits its own `-exec`. Each is a verbatim prefix of a command a round-2 route ran, "
+    "so the derivation's rule holds lexically, and none admits a program the two `arbitrary` entries do "
+    "not already admit.",
     "n = 3 per cell. Every figure this round publishes is a count of three, never a rate.",
     "The `asked-to-proceed` reason is read by round 2's permission classifier, which was fitted on round 1's "
     "transcripts and is carried here byte-identical.",
@@ -192,8 +217,10 @@ NOT_POOLABLE = {
     "why": "The two rounds measured the same tasks under different permission conditions. A figure spanning "
            "them would describe neither, and it is the single most attractive wrong sentence anyone could "
            "write about this round.",
-    "enforced_by": ["evals/gap-study-3/lint_pooling.py (no excusal path, over the folder and every commit "
-                    "body since the kickoff)",
+    "enforced_by": ["evals/gap-study-3/lint_pooling.py (no excusal path, over the folder; and over every "
+                    "commit body since the FREEZE, which is the scan CI runs -- done line 6 scopes it there. A "
+                    "scan since the kickoff flags two pre-freeze commit bodies that describe the guard by "
+                    "quoting what it forbids; they are named in verification/commit-body-note.md)",
                     "evals/gap-study-3/result.py --check (every k of n in the result has n = 3 and traces to "
                     "exactly one round's table)"],
 }
@@ -348,7 +375,13 @@ def build(approved_by_owner: str | None = None, approved_at: str | None = None,
                 "permission mode other than the pre-registered one, and the only id a byte-identical "
                 "checker can emit. There is one disposition and the copied checker applies it; "
                 "mode_binding.py re-derives the same reading from the transcript as a second, independent "
-                "check and never routes anything."),
+                "check and never routes anything. That rehearsal is ADMISSIBLE: `constant-binding` is not "
+                "among this round's driver_decided_reasons (review 2, blocker 1), and check_results.py "
+                "--ledger re-derives `permission_mode` from the transcript when it re-runs the checker, so "
+                "the refusal survives when the session itself recorded the other mode and disappears -- "
+                "and is refused as ledger-made -- when only the ledger says so. A cell that reaches its "
+                "rehearsal cap this way publishes unmeasured with that reason, which is the honest reading "
+                "of a harness that ran a session under a mode other than the one passed."),
             "approved_by_owner": approved_by_owner,
             "approved_at": approved_at,
             "approval_note": "Null until the owner gives it. The freeze refuses while it is null; the entries "
@@ -403,6 +436,13 @@ def build(approved_by_owner: str | None = None, approved_at: str | None = None,
         if k not in r2:
             raise SystemExit(f"round 2's frozen file has no {k!r}")
         draft[k] = r2[k]
+    r2_reasons = list(r2["driver_decided_reasons"])
+    if DRIVER_DECIDED_REASONS_DROPPED not in r2_reasons:
+        raise SystemExit(f"round 2's driver_decided_reasons does not carry {DRIVER_DECIDED_REASONS_DROPPED!r}; "
+                         f"the edit this round records would record nothing")
+    draft["driver_decided_reasons"] = [r for r in r2_reasons if r != DRIVER_DECIDED_REASONS_DROPPED]
+    draft["driver_decided_reasons_round_2"] = r2_reasons
+    draft["driver_decided_reasons_note"] = r2["driver_decided_reasons_note"] + DRIVER_DECIDED_REASONS_NOTE_ADDED
     # driver_constants is round 2's, plus the one key Ruling 2 adds. It is built here rather than carried,
     # so `carried_from_round_2` stays honest about what is unchanged.
     draft["driver_constants"] = dict(r2["driver_constants"])

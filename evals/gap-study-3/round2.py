@@ -157,7 +157,19 @@ def pre_probe_commands() -> list[dict]:
     return rows
 
 
-MODE_RECORD = re.compile(r'"permissionMode":\s*"([A-Za-z]+)"')
+def modes_recorded(transcript: Path) -> set[str]:
+    """Every value of the record-level `permissionMode` field, read from each JSON record rather than by a
+    pattern over the text (review 2, NIT): a tool result echoing the same JSON sits inside a record's
+    content and is not read."""
+    out: set[str] = set()
+    for line in transcript.read_text(errors="replace").splitlines():
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(rec, dict) and isinstance(rec.get("permissionMode"), str):
+            out.add(rec["permissionMode"])
+    return out
 
 
 def cell_modes() -> dict[str, dict[str, dict[str, str]]]:
@@ -175,7 +187,7 @@ def cell_modes() -> dict[str, dict[str, dict[str, str]]]:
     out: dict[str, dict[str, dict[str, str]]] = {}
     for tr in transcripts():
         task, half, model = tr.parts[-5], tr.parts[-4], tr.parts[-3]
-        modes = set(MODE_RECORD.findall(tr.read_text(errors="replace")))
+        modes = modes_recorded(tr)
         seen = out.setdefault(task, {}).setdefault(model, {})
         mode = "default" if "default" in modes else "auto" if "auto" in modes else "unrecorded"
         prior = seen.get(half)
