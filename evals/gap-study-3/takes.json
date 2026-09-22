@@ -252,6 +252,15 @@
       "order_index": 27,
       "fixture_sha": "",
       "environment_class": "claude-subscription-headless"
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 2,
+      "order_index": 28,
+      "fixture_sha": "",
+      "environment_class": "claude-subscription-headless"
     }
   ]
 }
