@@ -1,0 +1,28 @@
+title = "GARS repository secrets policy (decision 0052)"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "gars-containment-canary"
+description = "Fresh runtime canary: fixed prefix and 32 random lowercase hex digits"
+regex = '''GARS_CANARY_[0-9a-f]{32}'''
+keywords = ["GARS_CANARY_"]
+
+# Exact documentation false positives; canary detection remains active.
+[[allowlists]]
+description = "Package pin misclassified as a generic API key; decision 0052"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+regexes = ['''Key pinned versions: `clawbio==0\.6\.1`''']
+paths = [
+    '''(^|/)evals/gap\-study\-2/transcripts/plan\-gate/control/claude\-sonnet\-5/1/transcript\.jsonl$''',
+    '''(^|/)evals/gap\-study\-2/transcripts/plan\-gate/control/claude\-sonnet\-5/2/transcript\.jsonl$''',
+    '''(^|/)evals/gap\-study\-2/transcripts/plan\-gate/control/claude\-sonnet\-5/3/transcript\.jsonl$''',
+    '''(^|/)evals/gap\-study\-2/transcripts/plan\-gate/positive/claude\-sonnet\-5/1/transcript\.jsonl$''',
+    '''(^|/)evals/gap\-study\-2/transcripts/plan\-gate/positive/claude\-sonnet\-5/2/transcript\.jsonl$''',
+    '''(^|/)evals/gap\-study\-2/walks/plan\-gate/1/transcript\.jsonl$''',
+    '''(^|/)evals/gap\-study/walks/plan\-gate/2/transcript\.jsonl$''',
+    '''(^|/)gars/_references/environment\.md$''',
+]

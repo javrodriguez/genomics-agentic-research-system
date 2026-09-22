@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+"""R-096 staged secrets gate and shared scanner; previous hooks retain their veto."""
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+MARKER = 'GARS_ROW15_PRE_COMMIT_V1'
+SCAN_TIMEOUT = 60
+CONFIG = 'gars/.gitleaks.toml'
+
+
+def scan(root, payload=b'', push=False):
+    """No bypass setting. Explicit repo config, bounded scan, classified exit codes."""
+    try:
+        root = Path(root).resolve()
+        config = (root / CONFIG).resolve()
+        try:
+            config.relative_to(root)
+        except ValueError:
+            raise RuntimeError('gitleaks config resolves outside repository')
+        try:
+            config.read_bytes()
+        except OSError:
+            raise RuntimeError('gitleaks config is unreadable')
+        binary = shutil.which('gitleaks')
+        if binary is None:
+            raise RuntimeError('gitleaks absent from PATH')
+        ranges = [None]
+        if push:
+            ranges = []
+            for line in payload.decode('ascii').splitlines():
+                fields = line.split()
+                if len(fields) != 4:
+                    raise RuntimeError('invalid pre-push stdin')
+                local_ref, local, remote_ref, remote = fields
+                if not all(re.fullmatch(r'[0-9a-f]{40}|[0-9a-f]{64}', s)
+                           for s in (local, remote)):
+                    raise RuntimeError('invalid pre-push object ID')
+                if set(local) == {'0'}:  # deletion sends no objects
+                    continue
+                for oid in (local, remote):
+                    if set(oid) != {'0'}:
+                        subprocess.check_output(['git', 'rev-parse', '--verify',
+                                                 oid + '^{commit}'], cwd=str(root),
+                                                stderr=subprocess.PIPE)
+                # A new remote ref is scanned through all its reachable history.
+                ranges.append(local if set(remote) == {'0'} else remote + '..' + local)
+        env = {k: v for k, v in os.environ.items() if not k.startswith('GITLEAKS_')}
+        with tempfile.TemporaryDirectory(prefix='gars-gitleaks-') as temporary:
+            ignore = Path(temporary) / 'empty-ignore'
+            ignore.write_bytes(b'')
+            for revision in ranges:
+                argv = [binary, 'git', str(root), '--config', str(config),
+                        '--redact=100', '--no-banner', '--no-color',
+                        '--ignore-gitleaks-allow', '--gitleaks-ignore-path', str(ignore),
+                        '--max-decode-depth=5', '--exit-code=42']
+                argv += (['--log-opts=' + revision] if push else
+                         ['--pre-commit', '--staged'])
+                result = subprocess.run(argv, cwd=str(root), env=env,
+                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                        timeout=SCAN_TIMEOUT)
+                if result.returncode == 42:
+                    raise RuntimeError('gitleaks found secrets')
+                if result.returncode != 0:
+                    raise RuntimeError('gitleaks unclassified exit %s' % result.returncode)
+        print('gitleaks: passed')
+        return True
+    except subprocess.TimeoutExpired:
+        reason = 'gitleaks timeout'
+    except (OSError, RuntimeError, UnicodeError, subprocess.CalledProcessError) as exc:
+        reason = str(exc) if isinstance(exc, RuntimeError) else 'gitleaks could not complete scan'
+    print('gitleaks: REFUSED (%s)' % reason, file=sys.stderr)
+    return False
+
+
+def main():
+    payload = sys.stdin.buffer.read()
+    root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel']).decode().strip()
+    previous = Path(__file__).absolute().with_name('pre-commit.gars-previous')
+    failed = False
+    if previous.exists() or previous.is_symlink():
+        try:
+            code = subprocess.run([str(previous)] + sys.argv[1:], cwd=root,
+                                  input=payload).returncode
+            failed = code != 0
+        except OSError as exc:
+            print('pre-commit: previous hook could not run: %s' % exc, file=sys.stderr)
+            failed = True
+    clean = scan(root, payload)
+    failed = failed or not clean
+    print('pre-commit: REFUSED' if failed else 'pre-commit: passed')
+    return 1 if failed else 0
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main())
+    except (OSError, subprocess.CalledProcessError) as exc:
+        print('pre-commit: REFUSED (%s)' % exc, file=sys.stderr)
+        sys.exit(1)
