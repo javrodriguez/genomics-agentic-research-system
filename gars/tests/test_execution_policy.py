@@ -1,5 +1,10 @@
 """R-073/R-075/R-096: config binding and execution rendering boundaries."""
 import hashlib
+import importlib.util
+import argparse
+import contextlib
+import io
+import time
 import json
 import tempfile
 import unittest
@@ -28,6 +33,82 @@ class ExecutionPolicyTests(unittest.TestCase):
                 job,why=ex.submit(project,stage/'submit.sh',descriptor=ex.LOCAL)
                 self.assertIsNone(job); self.assertIn('config_sha256',why)
                 submit.assert_not_called()
+
+    def test_all_ten_direct_collect_gates(self):
+        wrappers=list((GARS/'_system/wrappers').glob('*/*.py'))
+        checked=0
+        for source in wrappers:
+            if 'def cmd_collect(args):' not in source.read_text(): continue
+            spec=importlib.util.spec_from_file_location(source.stem, str(source))
+            module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+            with self.subTest(wrapper=source.stem), tempfile.TemporaryDirectory(prefix='direct-collect-') as tmp:
+                project=Path(tmp); (project/'_config').mkdir()
+                cfg=project/'_config'/(module.ASSAY+'.yaml'); cfg.write_text('value: original\n')
+                substage=project/'02_bioinformatics'/module.ASSAY/module.SUBSTAGE
+                substage.mkdir(parents=True)
+                wl.write_reproducibility(substage,module.ASSAY,project,{'config':cfg},[])
+                wl.require_collect_config(project,module.ASSAY,module.SUBSTAGE)
+                cfg.write_text('value: edited\n')
+                output=io.StringIO()
+                with contextlib.redirect_stdout(output), self.assertRaises(SystemExit) as exit:
+                    module.cmd_collect(argparse.Namespace(project=str(project),model='fixture'))
+                self.assertEqual(exit.exception.code,2)
+                self.assertIn('config_sha256 changed after prepare',output.getvalue())
+                self.assertFalse((substage/'STATUS').exists())
+                self.assertFalse((substage/'OUTPUTS.tsv').exists())
+                checked+=1
+        self.assertEqual(checked,10)
+
+    def test_prepared_local_resume_and_completed_reentry(self):
+        with tempfile.TemporaryDirectory(prefix='prepared-resume-') as tmp:
+            root=Path(tmp); (root/'_system').mkdir(); (root/'_system/gars-env.sh').write_text(':\n')
+            (root/'_config').mkdir(); (root/'_config/executor.yaml').write_text('name: local\n')
+            cfg=root/'_config/rnaseq_bulk.yaml'; cfg.write_text('aligner: star\n')
+            stage=root/'02_bioinformatics/rnaseq_bulk/01_fixture'; stage.mkdir(parents=True)
+            body='if [ "$RESUME" != "-resume" ]; then mkdir -p .nextflow; echo first >> effects; exit 17; fi\necho second >> effects'
+            wl.write_submit_sh(stage,root,{},'fixture','rnaseq_bulk',body)
+            wl.write_reproducibility(stage,'rnaseq_bulk',root,{'config':cfg},[])
+            for expected in ('FAILED','COMPLETED','COMPLETED'):
+                job,error=ex.submit(root,stage/'submit.sh'); self.assertIsNone(error); self.assertTrue(job)
+                deadline=time.monotonic()+10
+                while time.monotonic()<deadline:
+                    state,detail=ex.status(root,job)
+                    if state in ('COMPLETED','FAILED'): break
+                    time.sleep(0.02)
+                self.assertEqual(state,expected,detail)
+            self.assertEqual((stage/'run/effects').read_text(),'first\nsecond\n')
+            self.assertTrue((stage/'run/.gars_run_complete').is_file())
+
+    def test_prepared_content_regressions(self):
+        # Reuse the original content assertions with a fixture manifest produced by the
+        # real helper. Existing test fixtures stay unchanged; production gates are not mocked.
+        source=GARS.parent/'tests/run_tests.py'
+        spec=importlib.util.spec_from_file_location('row4_content_fixtures',str(source))
+        legacy=importlib.util.module_from_spec(spec); spec.loader.exec_module(legacy)
+        from tools import policy
+        collect_tools={Path(t['argv'][1]).stem:t for t in policy.registry() if t['name'].endswith('.collect')}
+        real_run=legacy.run
+        def prepared_run(script,args,cwd,**kwargs):
+            if args and args[0]=='collect' and Path(script).stem in collect_tools:
+                tool=collect_tools[Path(script).stem]
+                project=Path(cwd)/args[args.index('--project')+1]
+                substage=project/'02_bioinformatics'/tool['assay']/tool['substage']
+                manifest=substage/'reproducibility/manifest.json'
+                if not manifest.exists():
+                    substage.mkdir(parents=True,exist_ok=True)
+                    cfg=project/'_config'/(tool['assay']+'.yaml')
+                    wl.write_reproducibility(substage,tool['assay'],project,{'config':cfg},[])
+            return real_run(script,args,cwd,**kwargs)
+        cases = {'AtacseqWrapperTests': ['test_04_collect_gates'], 'RnaseqGarsWrapperTests': ['test_02_collect_gates_on_content'], 'ScrnaseqWrapperTests': ['test_05_collect_gates_on_every_sample', 'test_06_the_raw_matrix_is_never_substituted_for_the_filtered_one', 'test_07_empty_combined_matrix_is_refused'], 'SpatialviTests': ['test_04_collect_gates_per_sample_and_never_takes_the_raw_h5ad', 'test_05_a_missing_report_is_refused'], 'ScrnaQcClusterTests': ['test_02_collect_accepts_a_well_formed_run', 'test_03_an_anonymous_gene_is_refused', 'test_04_a_renamed_identifier_column_is_refused', 'test_05_a_sample_with_no_cells_is_refused_and_named', 'test_06_the_nfcore_sample_suffix_is_matched_not_reported_lost', 'test_07_a_label_matching_no_sample_is_refused', 'test_08_zero_cells_or_zero_clusters_are_refused', 'test_09_collect_refuses_before_the_run_finished'], 'SpatialClusterCountTests': ['test_05_collect_refuses_before_the_run_finished', 'test_06_collect_refuses_a_sample_set_that_differs_from_the_samplesheet', 'test_07_collect_refuses_a_table_that_disagrees_with_the_summary', 'test_08_collect_accepts_a_good_run_and_registers_only_table_and_report']}
+        # ATAC's class fixture is populated by its earlier stage-00/01 and config tests.
+        cases['AtacseqWrapperTests'] = sorted(n for n in dir(legacy.AtacseqWrapperTests)
+            if n.startswith('test_00') or n.startswith('test_02_')) + cases['AtacseqWrapperTests']
+        suite=unittest.TestSuite(getattr(legacy,cls)(name) for cls,names in cases.items() for name in names)
+        output=io.StringIO()
+        with patch.object(legacy,'run',side_effect=prepared_run), contextlib.redirect_stdout(output):
+            result=unittest.TextTestRunner(stream=output).run(suite)
+        self.assertTrue(result.wasSuccessful(),output.getvalue())
+        self.assertFalse(result.skipped,output.getvalue())
 
     def test_header_refuses_unquoted_value(self):
         cfg={'compute.partition':'cpu','compute.time':'01:00:00','compute.cpus':'1','compute.mem':'1G'}

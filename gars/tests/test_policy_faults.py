@@ -81,6 +81,17 @@ class PolicyFaultTests(unittest.TestCase):
             self.observed_red(test_approval_forgery.ApprovalForgeryTests('test_plan_edited_after_approval'),
                               'plan edited after approval is accepted')
 
+    def test_expiry_fault(self):
+        # A bypass of approval checking must make the actual expired-record witness red.
+        with patch.object(stage,'approval_holds',return_value=(True,None)):
+            self.observed_red(test_approval_forgery.ApprovalForgeryTests('test_expired_approval'),
+                              'expired approval is accepted')
+
+    def test_collect_gate_fault(self):
+        with patch.object(test_execution_policy.wl,'require_collect_config',return_value=None):
+            self.observed_red(test_execution_policy.ExecutionPolicyTests('test_all_ten_direct_collect_gates'),
+                              'direct collect config gate is omitted')
+
     def test_unreviewed_pin_fault(self):
         real=pins.check
         def faulty(root=pins.WORKSPACE):

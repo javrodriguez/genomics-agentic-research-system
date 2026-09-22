@@ -3466,7 +3466,7 @@
         "scheduler job"
       ],
       "timeout_seconds": 120,
-      "unavailable": "R-092: cancel is absent at the parent; implementation belongs to Row 12, pending owner ruling (0053).",
+      "unavailable": "R-092: cancel is unavailable until row 12 supplies the verb (provisional owner ruling 0054).",
       "version": "1.0.0"
     },
     {

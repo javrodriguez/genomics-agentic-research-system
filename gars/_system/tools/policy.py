@@ -55,8 +55,8 @@ def validate(value, schema, field='args'):
 def launch_role():
     """Default producer. No CLI flag, payload member or environment role override.
 
-    Elevated/reviewer launch binding is deliberately unavailable until the owner's
-    trust-anchor ruling (0053). Pure decide() profiles remain independently testable.
+    Agent entry points stay producer-only. The human approval CLI captures its OS
+    identity separately (0054); reviewer OS-user deployment remains NOT met.
     """
     return 'producer'
 
@@ -88,6 +88,8 @@ def validate_args(tool, args, root=WORKSPACE, cwd=None):
             raise Refusal('args.' + key, 'an operand cannot be an option')
     if tool.get('filesystem'):
         for p in args['paths']:
+            if not within(cwd / p, root):
+                raise Refusal('args.paths', 'R-073: filesystem reads stay inside the workspace; human approval store is protected', 'R-094')
             if p.startswith('-') or p in ('-',) or '\n' in p:
                 raise Refusal('args.paths', 'paths cannot be options or stdin')
         if tool['name'] == 'fs.find' and len(args['paths']) != 1:
@@ -96,11 +98,11 @@ def validate_args(tool, args, root=WORKSPACE, cwd=None):
 
 def authorize(tool, args, role, root=WORKSPACE, cwd=None):
     validate_args(tool, args, root, cwd)
+    if tool.get('unavailable'):
+        raise Refusal('tool', tool['unavailable'])
     decision = decide(tool, role)
     if decision != 'allow':
         raise Refusal('role', decision + ': ' + role + ' cannot invoke ' + tool['name'], 'R-093')
-    if tool.get('unavailable'):
-        raise Refusal('tool', tool['unavailable'])
     if tool.get('substage') and tool['name'].endswith('.collect'):
         from tools.execution import config_holds
         project = Path(cwd or root) / args['project']

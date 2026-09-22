@@ -38,6 +38,17 @@ def fail(check, detail):
     return {"check": check, "detail": detail}
 
 
+def require_collect_config(project, assay, substage):
+    """Direct collect entry gate, before outputs or lifecycle writes (R-073)."""
+    if not Path(project).is_dir():
+        raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,
+                               'error': 'no such project: %s' % project}, EXIT_USAGE))
+    problem = config_holds(project, Path(project) / '02_bioinformatics' / assay / substage, assay)
+    if problem:
+        raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,
+                               'error': problem}, EXIT_REFUSED))
+
+
 def read_config(path):
     """The seeded two-level config, as a flat dict ('reference.fasta', 'aligner', ...).
 

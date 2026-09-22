@@ -54,6 +54,18 @@ class ToolSchemaRefusalTests(unittest.TestCase):
             with self.subTest(path=path), self.assertRaises(policy.Refusal):
                 policy.validate_args(policy.named('stage03_analysis.create'), {'project':path,'slug':'x'})
 
+    def test_contract_wrapper_commands_are_literal_registered_paths(self):
+        paths={t['argv'][1] for t in policy.registry() if t.get('substage')}
+        seen=set()
+        for contract in GARS.rglob('CONTEXT.md'):
+            for line in contract.read_text().splitlines():
+                if 'python3 ' not in line or 'wrappers' not in line.lower(): continue
+                self.assertNotIn('$GARS_WRAPPERS',line)
+                self.assertNotIn('${GARS_WRAPPERS',line)
+                for path in paths:
+                    if path in line: seen.add(path)
+        self.assertEqual(seen,paths)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

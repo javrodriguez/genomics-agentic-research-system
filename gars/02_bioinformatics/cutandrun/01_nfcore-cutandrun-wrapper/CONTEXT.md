@@ -45,7 +45,7 @@ needed for the wrapper itself (the pipeline's runtime arrives via `gars-env.sh` 
 `submit.sh`):
 
 ```bash
-python3 "${GARS_WRAPPERS:-_system/wrappers}"/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py <subcommand> \
+python3 _system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py <subcommand> \
     --project projects/<title>
 ```
 

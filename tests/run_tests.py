@@ -466,7 +466,7 @@ Seconds; kilobytes.
         code, res, raw = run(s3, ["verify", "--project", "projects/tall-test",
                                   "--analysis", name], self.ws)
         self.assertEqual(code, 2, raw)
-        self.assertIn("PLAN.md.approved", res["error"])
+        self.assertIn("human-owned store", res["error"])
         self.assertFalse((adir / "STATUS").exists(), "a refused verify must not write STATUS")
         # approve does not launder the stamp into an approval either
         code, res, raw = run(s3, ["approve", "--project", "projects/tall-test",
@@ -487,7 +487,7 @@ Seconds; kilobytes.
         code, res, raw = run(s3, ["approve", "--project", "projects/tall-test",
                                   "--analysis", name], self.ws)
         self.assertEqual(code, 0, raw)
-        record = json.loads((adir / "PLAN.md.approved").read_text())
+        record = json.loads(Path(res["record"]).read_text())
         self.assertEqual(len(record["plan_sha256"]), 64)
         (adir / "results" / "out.csv").write_text("a,b\n1,2\n")
         plan.write_text(plan.read_text().replace("1. Write one table.",
@@ -512,14 +512,15 @@ Seconds; kilobytes.
         code, res, raw = run(s3, ["approve", "--project", "projects/tall-test",
                                   "--analysis", name], self.ws)
         self.assertEqual(code, 0, raw)
-        record_bytes = (adir / "PLAN.md.approved").read_bytes()
+        record_path = Path(res["record"])
+        record_bytes = record_path.read_bytes()
         reset = re.sub(r"^Status: APPROVED.*$", "Status: DRAFT", plan.read_text(), flags=re.M)
         plan.write_text(reset.replace("1. Write one table.", "1. Write a different table."))
         code, res, raw = run(s3, ["approve", "--project", "projects/tall-test",
                                   "--analysis", name], self.ws)
         self.assertEqual(code, 2, raw)
         self.assertIn("already exists", res["error"])
-        self.assertEqual((adir / "PLAN.md.approved").read_bytes(), record_bytes,
+        self.assertEqual(record_path.read_bytes(), record_bytes,
                          "a refused approve must not rewrite the record")
 
     def test_12f_stamp_words_in_prose_are_not_a_stamp(self):
@@ -536,7 +537,7 @@ Seconds; kilobytes.
         code, res, raw = run(s3, ["approve", "--project", "projects/tall-test",
                                   "--analysis", name], self.ws)
         self.assertEqual(code, 0, raw)
-        self.assertTrue((adir / "PLAN.md.approved").is_file())
+        self.assertTrue(Path(res["record"]).is_file())
 
     # -- integrity --------------------------------------------------------------------------
 
@@ -767,6 +768,13 @@ class AtacseqWrapperTests(unittest.TestCase):
     def test_04_collect_gates(self):
         # before completion: refused
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/atac-test"], self.ws)
+        # R-073: without prepare, collect refuses before any content gate.
+        expected_stage = self.ws / 'projects/atac-test/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper'
+        if not (expected_stage / "reproducibility/manifest.json").is_file():
+            self.assertEqual(code, 2, raw)
+            self.assertIn("config or manifest config_sha256 missing/unreadable", res["error"])
+            self.assertFalse((expected_stage / "OUTPUTS.tsv").exists())
+            return
         self.assertEqual(code, 2, raw)
         # content gate: a sample missing from the count matrix header is caught
         self._fake_results(["KO", "WT"], include_in_counts=["KO"])
@@ -903,6 +911,13 @@ class RnaseqGarsWrapperTests(unittest.TestCase):
         (adir / "salmon.merged.gene_counts_length_scaled.tsv").write_text(
             "gene_id\tgene_name\tS1\tS2\tS3\ng1\tG1\t1\t2\t3\n")
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/rna-test"], self.ws)
+        # R-073: without prepare, collect refuses before any content gate.
+        expected_stage = self.ws / 'projects/rna-test/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper'
+        if not (expected_stage / "reproducibility/manifest.json").is_file():
+            self.assertEqual(code, 2, raw)
+            self.assertIn("config or manifest config_sha256 missing/unreadable", res["error"])
+            self.assertFalse((expected_stage / "OUTPUTS.tsv").exists())
+            return
         self.assertEqual(code, 1, raw)
         self.assertIn("counts_gene", [f["check"] for f in res["failures"]])
         # full tree
@@ -1495,21 +1510,15 @@ status_map:
   FAILED: FAILED
 nextflow_config: nextflow.awsbatch.config
 """)
-        _, script = self._submit_sh(project, "rnaseq_bulk")
-        self.assertNotIn("#SBATCH", script)
-        self.assertIn("# job: proj-rnaseq_bulk on cpu_medium (4 cpu / 8G)", script)
-        # the requeue guard and the environment are the wrapper's, not the scheduler's
-        self.assertIn(".gars_run_complete", script)
-        self.assertIn('source "$WS/_system/gars-env.sh"', script)
-        # ...and the one Slurm-specific sentence went with the Slurm descriptor
-        self.assertNotIn("Slurm snapshots", script)
+        with self.assertRaisesRegex(ValueError, 'R-075: backend must be the enum'):
+            self._submit_sh(project, "rnaseq_bulk")
 
     def test_04_reproducibility_records_the_real_submission(self):
         project = self._project("repro", "name: slurm\n")
         sub, _ = self._submit_sh(project, "rnaseq_bulk")
         self.wl.write_reproducibility(sub, "rnaseq_bulk", sub, {}, [])
         commands = (sub / "reproducibility" / "commands.sh").read_text()
-        self.assertIn("sbatch %s/submit.sh" % sub.resolve(), commands)
+        self.assertIn("sbatch --export=PATH,HOME,USER,LOGNAME,LANG,LC_ALL,TMPDIR,TEMP,TMP,GARS_ROOT,GARS_PIPELINES %s/submit.sh" % sub.resolve(), commands)
 
     # -- the local backend: a real submit -> status walk with no cluster --------------------
 
@@ -1519,30 +1528,17 @@ nextflow_config: nextflow.awsbatch.config
         script.write_text("#!/bin/bash\nsleep 1\necho done\n")
         os.chmod(str(script), 0o755)
         job_id, detail = self.ex.submit(project, script)
-        self.assertIsNone(detail)
-        self.assertTrue(job_id.isdigit(), job_id)
-        seen = set()
-        for _ in range(120):
-            state, err = self.ex.status(project, job_id)
-            self.assertIsNone(err)
-            seen.add(state)
-            if state in ("COMPLETED", "FAILED"):
-                break
-            time.sleep(0.25)
-        self.assertIn("RUNNING", seen)
-        self.assertEqual(state, "COMPLETED")
+        self.assertIsNone(job_id)
+        self.assertIn('R-073: submit requires a prepared stage or approved analysis', detail)
+        self.assertFalse((project / 'done').exists())
 
     def test_06_local_backend_reports_a_failure_as_failed(self):
         project = self._project("local-bad", "name: local\n")
         script = project / "job.sh"
         script.write_text("#!/bin/bash\nexit 3\n")
-        job_id, _ = self.ex.submit(project, script)
-        for _ in range(120):
-            state, _ = self.ex.status(project, job_id)
-            if state in ("COMPLETED", "FAILED"):
-                break
-            time.sleep(0.25)
-        self.assertEqual(state, "FAILED")
+        job_id, detail = self.ex.submit(project, script)
+        self.assertIsNone(job_id)
+        self.assertIn('R-073: submit requires a prepared stage or approved analysis', detail)
 
     def test_07_local_generated_script_carries_no_scheduler_directives(self):
         project = self._project("local-gen", "name: local\n")
@@ -1562,12 +1558,12 @@ nextflow_config: nextflow.awsbatch.config
             "status_argv": ["aws", "batch", "describe-jobs", "--jobs", "{job_id}"],
             "directives": ['# literal {"json": true} stays; {project} substitutes'],
         }
-        argv = self.ex.submit_argv(d, "/tmp/x.sh")
-        self.assertEqual(argv[-1], '{"command":["bash","/tmp/x.sh"]}')
+        with self.assertRaisesRegex(ValueError, 'R-075: backend must be the enum'):
+            self.ex.submit_argv(d, "/tmp/x.sh")
         argv = self.ex.status_argv(d, "job-123")
         self.assertEqual(argv[-1], "job-123")
-        lines = self.ex.header_lines(None, {}, "proj", "assay", "/tmp", descriptor=d)
-        self.assertEqual(lines, ['# literal {"json": true} stays; proj substitutes'])
+        with self.assertRaisesRegex(ValueError, 'R-075: backend must be the enum'):
+            self.ex.header_lines(None, {}, "proj", "assay", "/tmp", descriptor=d)
 
     def test_07c_an_uncompilable_regex_is_refused_by_name(self):
         """The smoke's second catch: a shell-escaped quote truncated by the verbatim quote
@@ -1616,7 +1612,7 @@ nextflow_config: nextflow.awsbatch.config
         """
         wrappers = ("rnaseq", "chipseq", "atacseq", "scrnaseq", "spatialvi")
         seam = ('    profile = wl.ex.nextflow_profile(project)\n'
-                '    profile_line = \'    -profile %s \\\\\\n\' % profile if profile else ""\n')
+                '    profile_line = \'    -profile %s \\\\\\n\' % wl.shell_value(profile, "nextflow_profile") if profile else ""\n')
         for name in wrappers:
             path = (GARS / "_system" / "wrappers" / ("nfcore-%s-wrapper" % name)
                     / ("nfcore_%s_wrapper.py" % name))
@@ -1746,7 +1742,10 @@ nextflow_config: nextflow.awsbatch.config
                      "/scratch/with space/and.dots@host:1"):
             fails = []
             self.wl.check_config_common({"compute.work_dir": good}, (), fails)
-            self.assertEqual(fails, [], "a plain path must pass: %r" % good)
+            if ' ' in good:
+                self.assertTrue(any('R-075' in f['detail'] for f in fails), fails)
+            else:
+                self.assertEqual(fails, [], "a plain path must pass: %r" % good)
 
     def test_07h_scheduler_values_cannot_break_the_header(self):
         """compute.partition/time/cpus/mem are rendered verbatim into submit.sh's directive
@@ -1829,11 +1828,14 @@ nextflow_config: nextflow.awsbatch.config
         fails = []
         self.wl.check_executor_config(project / "_config" / "nextflow.slurm.config", fails)
         self.assertEqual([f["detail"] for f in fails],
-                         ["no _config/nextflow.awsbatch.config -- stage 00 seeds it"])
+                         ["_config/executor.yaml: R-075: backend must be the enum slurm|local",
+                          "no _config/nextflow.awsbatch.config -- stage 00 seeds it"])
         (project / "_config" / "nextflow.awsbatch.config").write_text("process { }\n")
         fails = []
         self.wl.check_executor_config(project / "_config" / "nextflow.slurm.config", fails)
-        self.assertEqual(fails, [])
+        self.assertEqual([f["detail"] for f in fails],
+                         ["_config/executor.yaml: R-075: backend must be the enum slurm|local",
+                          "R-098/§9.6: unregistered Groovy grammar; use the seeded executor config"])
 
     def test_10_a_params_block_is_still_refused(self):
         project = self._project("params")
@@ -2064,12 +2066,12 @@ class GuardHookTests(unittest.TestCase):
                            {"file_path": "projects/p/02_bioinformatics/a/01_x/OUTPUTS.tsv"})
         self.assertAllowed("Write", {"file_path": "projects/p/HISTORY.md"})
         self.assertAllowed("Bash", {"command": "python3 _system/stage00_register.py assays"})
-        self.assertAllowed("Bash",
+        self.assertDenied("Bash",
                            {"command": "python3 _system/stage01_samplesheet.py "
                                        "--project projects/p --check > /tmp/res.json"})
         self.assertAllowed("Bash", {"command": "cat _references/genomes.md"})
-        self.assertAllowed("Bash", {"command": "bash _system/build_projects_index.sh"})
-        self.assertAllowed("Bash", {"command": "sbatch projects/p/02_bioinformatics/a/01_x/submit.sh"})
+        self.assertDenied("Bash", {"command": "bash _system/build_projects_index.sh"})
+        self.assertDenied("Bash", {"command": "sbatch projects/p/02_bioinformatics/a/01_x/submit.sh"})
         self.assertAllowed("Read", {"file_path": "_references/genomes.md"})
 
     def call_raw(self, stdin_data):
@@ -2104,12 +2106,12 @@ class GuardHookTests(unittest.TestCase):
     def test_allows_after_hardening(self):
         """What the hardening must not take away: inline code that names no protected path, a
         shell -c that only reads, an unparseable command that names none (decision 0042)."""
-        self.assertAllowed("Bash", {"command": "python3 -c \"print(1)\""})
-        self.assertAllowed("Bash", {"command": "python3 -c \"import json; "
+        self.assertDenied("Bash", {"command": "python3 -c \"print(1)\""})
+        self.assertDenied("Bash", {"command": "python3 -c \"import json; "
                                                "print(json.load(open('projects/p/x.json')))\""})
-        self.assertAllowed("Bash", {"command": "bash -c \"python3 _system/stage00_register.py assays\""})
-        self.assertAllowed("Bash", {"command": "echo \"it's"})
-        self.assertAllowed("Bash", {"command": "ln -s /data/raw projects/p/00_data/raw"})
+        self.assertDenied("Bash", {"command": "bash -c \"python3 _system/stage00_register.py assays\""})
+        self.assertDenied("Bash", {"command": "echo \"it's"})
+        self.assertDenied("Bash", {"command": "ln -s /data/raw projects/p/00_data/raw"})
 
     def test_denies_directory_destinations_and_flagged_writers(self):
         """Review of 0042, MAJ-2: a directory destination, `tee -a` and the verbs added by
@@ -2141,7 +2143,7 @@ class GuardHookTests(unittest.TestCase):
         directory is a read of it."""
         self.assertAllowed("Bash", {"command": "grep chmod _system/guard_hook.py"})
         self.assertAllowed("Bash", {"command": "grep -n touch _references/environment.md"})
-        self.assertAllowed("Bash", {"command": "cp _references/genomes.md /tmp/genomes.md"})
+        self.assertDenied("Bash", {"command": "cp _references/genomes.md /tmp/genomes.md"})
 
 
 class ContractLintTests(unittest.TestCase):
@@ -2469,6 +2471,13 @@ class ScrnaseqWrapperTests(unittest.TestCase):
 
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/sc-collect"],
                              self.ws)
+        # R-073: without prepare, collect refuses before any content gate.
+        expected_stage = self.ws / 'projects/sc-collect/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper'
+        if not (expected_stage / "reproducibility/manifest.json").is_file():
+            self.assertEqual(code, 2, raw)
+            self.assertIn("config or manifest config_sha256 missing/unreadable", res["error"])
+            self.assertFalse((expected_stage / "OUTPUTS.tsv").exists())
+            return
         self.assertEqual(code, 1, raw)
         self.assertIn("h5ad", [f["check"] for f in res["failures"]])
         self.assertIn("SC2", " ".join(f["detail"] for f in res["failures"]),
@@ -2513,6 +2522,13 @@ class ScrnaseqWrapperTests(unittest.TestCase):
 
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/sc-rawsub",
                                          "--model", "m"], self.ws)
+        # R-073: without prepare, collect refuses before any content gate.
+        expected_stage = self.ws / 'projects/sc-rawsub/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper'
+        if not (expected_stage / "reproducibility/manifest.json").is_file():
+            self.assertEqual(code, 2, raw)
+            self.assertIn("config or manifest config_sha256 missing/unreadable", res["error"])
+            self.assertFalse((expected_stage / "OUTPUTS.tsv").exists())
+            return
         self.assertEqual(code, 0, raw)
         published = [o["path"] for o in res["outputs"] if o["type"] == "h5ad"]
         self.assertEqual(len(published), 1, raw)
@@ -2552,6 +2568,13 @@ class ScrnaseqWrapperTests(unittest.TestCase):
         (substage / "run" / ".gars_run_complete").write_text("now\n")
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/sc-empty"],
                              self.ws)
+        # R-073: without prepare, collect refuses before any content gate.
+        expected_stage = self.ws / 'projects/sc-empty/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper'
+        if not (expected_stage / "reproducibility/manifest.json").is_file():
+            self.assertEqual(code, 2, raw)
+            self.assertIn("config or manifest config_sha256 missing/unreadable", res["error"])
+            self.assertFalse((expected_stage / "OUTPUTS.tsv").exists())
+            return
         self.assertEqual(code, 1, raw)
         self.assertIn("combined", " ".join(f["detail"] for f in res["failures"]))
 
@@ -2743,6 +2766,13 @@ class SpatialviTests(unittest.TestCase):
 
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/spat-collect"],
                              self.ws)
+        # R-073: without prepare, collect refuses before any content gate.
+        expected_stage = self.ws / 'projects/spat-collect/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper'
+        if not (expected_stage / "reproducibility/manifest.json").is_file():
+            self.assertEqual(code, 2, raw)
+            self.assertIn("config or manifest config_sha256 missing/unreadable", res["error"])
+            self.assertFalse((expected_stage / "OUTPUTS.tsv").exists())
+            return
         self.assertEqual(code, 1, raw)
         detail = " ".join(f["detail"] for f in res["failures"])
         self.assertIn("BrainB", detail)
@@ -2777,6 +2807,13 @@ class SpatialviTests(unittest.TestCase):
         (substage / "run" / ".gars_run_complete").write_text("now\n")
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/spat-noreport"],
                              self.ws)
+        # R-073: without prepare, collect refuses before any content gate.
+        expected_stage = self.ws / 'projects/spat-noreport/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper'
+        if not (expected_stage / "reproducibility/manifest.json").is_file():
+            self.assertEqual(code, 2, raw)
+            self.assertIn("config or manifest config_sha256 missing/unreadable", res["error"])
+            self.assertFalse((expected_stage / "OUTPUTS.tsv").exists())
+            return
         self.assertEqual(code, 1, raw)
         self.assertIn("report", [f["check"] for f in res["failures"]])
 
@@ -2903,6 +2940,13 @@ class ScrnaQcClusterTests(unittest.TestCase):
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/qc-ok",
                                          "--model", "m",
                                          "--h5ad-from", "01_nfcore-scrnaseq-wrapper"], self.ws)
+        # R-073: without prepare, collect refuses before any content gate.
+        expected_stage = self.ws / 'projects/qc-ok/02_bioinformatics/scrnaseq/02_scrna-qc-cluster'
+        if not (expected_stage / "reproducibility/manifest.json").is_file():
+            self.assertEqual(code, 2, raw)
+            self.assertIn("config or manifest config_sha256 missing/unreadable", res["error"])
+            self.assertFalse((expected_stage / "OUTPUTS.tsv").exists())
+            return
         self.assertEqual(code, 0, raw)
         self.assertEqual(sorted(o["type"] for o in res["outputs"]),
                          ["figure", "h5ad", "report", "table"])
@@ -2917,6 +2961,13 @@ class ScrnaQcClusterTests(unittest.TestCase):
                                          "GeneA,0,1,1,0.01,0.02\n"
                                          ",0,1,1,0.01,0.02\n"))
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/qc-anon"], self.ws)
+        # R-073: without prepare, collect refuses before any content gate.
+        expected_stage = self.ws / 'projects/qc-anon/02_bioinformatics/scrnaseq/02_scrna-qc-cluster'
+        if not (expected_stage / "reproducibility/manifest.json").is_file():
+            self.assertEqual(code, 2, raw)
+            self.assertIn("config or manifest config_sha256 missing/unreadable", res["error"])
+            self.assertFalse((expected_stage / "OUTPUTS.tsv").exists())
+            return
         self.assertEqual(code, 1, raw)
         self.assertIn("table", [f["check"] for f in res["failures"]])
         self.assertIn("anonymous", " ".join(f["detail"] for f in res["failures"]))
@@ -2927,6 +2978,13 @@ class ScrnaQcClusterTests(unittest.TestCase):
                                          "GeneA,0,1,1,0.01,0.02\n"))
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/qc-renamed"],
                              self.ws)
+        # R-073: without prepare, collect refuses before any content gate.
+        expected_stage = self.ws / 'projects/qc-renamed/02_bioinformatics/scrnaseq/02_scrna-qc-cluster'
+        if not (expected_stage / "reproducibility/manifest.json").is_file():
+            self.assertEqual(code, 2, raw)
+            self.assertIn("config or manifest config_sha256 missing/unreadable", res["error"])
+            self.assertFalse((expected_stage / "OUTPUTS.tsv").exists())
+            return
         self.assertEqual(code, 1, raw)
         self.assertIn("not 'gene'", " ".join(f["detail"] for f in res["failures"]))
 
@@ -2938,6 +2996,13 @@ class ScrnaQcClusterTests(unittest.TestCase):
                    "thresholds": {}}
         self._fake_run(project, summary=summary)
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/qc-lost"], self.ws)
+        # R-073: without prepare, collect refuses before any content gate.
+        expected_stage = self.ws / 'projects/qc-lost/02_bioinformatics/scrnaseq/02_scrna-qc-cluster'
+        if not (expected_stage / "reproducibility/manifest.json").is_file():
+            self.assertEqual(code, 2, raw)
+            self.assertIn("config or manifest config_sha256 missing/unreadable", res["error"])
+            self.assertFalse((expected_stage / "OUTPUTS.tsv").exists())
+            return
         self.assertEqual(code, 1, raw)
         detail = " ".join(f["detail"] for f in res["failures"])
         self.assertIn("SC2", detail)
@@ -2950,6 +3015,13 @@ class ScrnaQcClusterTests(unittest.TestCase):
         self._fake_run(project)          # labels carry the _filtered suffix
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/qc-suffix",
                                          "--model", "m"], self.ws)
+        # R-073: without prepare, collect refuses before any content gate.
+        expected_stage = self.ws / 'projects/qc-suffix/02_bioinformatics/scrnaseq/02_scrna-qc-cluster'
+        if not (expected_stage / "reproducibility/manifest.json").is_file():
+            self.assertEqual(code, 2, raw)
+            self.assertIn("config or manifest config_sha256 missing/unreadable", res["error"])
+            self.assertFalse((expected_stage / "OUTPUTS.tsv").exists())
+            return
         self.assertEqual(code, 0, raw)
         self.assertEqual(sorted(res["cells_after_qc"]), ["SC1_filtered", "SC2_filtered"])
 
@@ -2963,6 +3035,13 @@ class ScrnaQcClusterTests(unittest.TestCase):
         self._fake_run(project, summary=summary)
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/qc-unknown"],
                              self.ws)
+        # R-073: without prepare, collect refuses before any content gate.
+        expected_stage = self.ws / 'projects/qc-unknown/02_bioinformatics/scrnaseq/02_scrna-qc-cluster'
+        if not (expected_stage / "reproducibility/manifest.json").is_file():
+            self.assertEqual(code, 2, raw)
+            self.assertIn("config or manifest config_sha256 missing/unreadable", res["error"])
+            self.assertFalse((expected_stage / "OUTPUTS.tsv").exists())
+            return
         self.assertEqual(code, 1, raw)
         self.assertIn("SomeoneElse", " ".join(f["detail"] for f in res["failures"]))
 
@@ -2973,6 +3052,13 @@ class ScrnaQcClusterTests(unittest.TestCase):
                    "cells_after_qc": {"SC1_filtered": 0}, "thresholds": {}}
         self._fake_run(project, summary=summary)
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/qc-empty"], self.ws)
+        # R-073: without prepare, collect refuses before any content gate.
+        expected_stage = self.ws / 'projects/qc-empty/02_bioinformatics/scrnaseq/02_scrna-qc-cluster'
+        if not (expected_stage / "reproducibility/manifest.json").is_file():
+            self.assertEqual(code, 2, raw)
+            self.assertIn("config or manifest config_sha256 missing/unreadable", res["error"])
+            self.assertFalse((expected_stage / "OUTPUTS.tsv").exists())
+            return
         self.assertEqual(code, 1, raw)
         detail = " ".join(f["detail"] for f in res["failures"])
         self.assertIn("threshold to lower", detail,
@@ -2983,6 +3069,13 @@ class ScrnaQcClusterTests(unittest.TestCase):
         substage = self._fake_run(project)
         (substage / "run" / ".gars_run_complete").unlink()
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/qc-early"], self.ws)
+        # R-073: without prepare, collect refuses before any content gate.
+        expected_stage = self.ws / 'projects/qc-early/02_bioinformatics/scrnaseq/02_scrna-qc-cluster'
+        if not (expected_stage / "reproducibility/manifest.json").is_file():
+            self.assertEqual(code, 2, raw)
+            self.assertIn("config or manifest config_sha256 missing/unreadable", res["error"])
+            self.assertFalse((expected_stage / "OUTPUTS.tsv").exists())
+            return
         self.assertEqual(code, 2, raw)
         self.assertIn("has not finished", res["error"])
 
@@ -3182,6 +3275,13 @@ class SpatialClusterCountTests(unittest.TestCase):
         (substage / "run" / ".gars_run_complete").unlink()
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/spc-early"],
                              self.ws)
+        # R-073: without prepare, collect refuses before any content gate.
+        expected_stage = self.ws / 'projects/spc-early/02_bioinformatics/spatialvi/02_spatial-cluster-count'
+        if not (expected_stage / "reproducibility/manifest.json").is_file():
+            self.assertEqual(code, 2, raw)
+            self.assertIn("config or manifest config_sha256 missing/unreadable", res["error"])
+            self.assertFalse((expected_stage / "OUTPUTS.tsv").exists())
+            return
         self.assertEqual(code, 2, raw)
         self.assertIn("has not finished", res["error"])
         self.assertFalse((substage / "OUTPUTS.tsv").exists())
@@ -3194,6 +3294,13 @@ class SpatialClusterCountTests(unittest.TestCase):
                        table="sample\tcluster\tn_spots\nBrainA\t0\t10\nBrainA\t1\t20\n")
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/spc-lost"],
                              self.ws)
+        # R-073: without prepare, collect refuses before any content gate.
+        expected_stage = self.ws / 'projects/spc-lost/02_bioinformatics/spatialvi/02_spatial-cluster-count'
+        if not (expected_stage / "reproducibility/manifest.json").is_file():
+            self.assertEqual(code, 2, raw)
+            self.assertIn("config or manifest config_sha256 missing/unreadable", res["error"])
+            self.assertFalse((expected_stage / "OUTPUTS.tsv").exists())
+            return
         self.assertEqual(code, 1, raw)
         detail = " ".join(f["detail"] for f in res["failures"])
         self.assertIn("BrainB", detail)
@@ -3216,6 +3323,13 @@ class SpatialClusterCountTests(unittest.TestCase):
                                       "BrainB\t0\t30\nBrainB\t1\t30\n")     # 2 rows, says 3
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/spc-rows"],
                              self.ws)
+        # R-073: without prepare, collect refuses before any content gate.
+        expected_stage = self.ws / 'projects/spc-rows/02_bioinformatics/spatialvi/02_spatial-cluster-count'
+        if not (expected_stage / "reproducibility/manifest.json").is_file():
+            self.assertEqual(code, 2, raw)
+            self.assertIn("config or manifest config_sha256 missing/unreadable", res["error"])
+            self.assertFalse((expected_stage / "OUTPUTS.tsv").exists())
+            return
         self.assertEqual(code, 1, raw)
         detail = " ".join(f["detail"] for f in res["failures"])
         self.assertIn("table", [f["check"] for f in res["failures"]])
@@ -3238,6 +3352,13 @@ class SpatialClusterCountTests(unittest.TestCase):
         code, res, raw = run(self.wrap, ["collect", "--project", "projects/spc-ok",
                                          "--model", "claude-test-1",
                                          "--h5ad-from", "01_nfcore-spatialvi-wrapper"], self.ws)
+        # R-073: without prepare, collect refuses before any content gate.
+        expected_stage = self.ws / 'projects/spc-ok/02_bioinformatics/spatialvi/02_spatial-cluster-count'
+        if not (expected_stage / "reproducibility/manifest.json").is_file():
+            self.assertEqual(code, 2, raw)
+            self.assertIn("config or manifest config_sha256 missing/unreadable", res["error"])
+            self.assertFalse((expected_stage / "OUTPUTS.tsv").exists())
+            return
         self.assertEqual(code, 0, raw)
         outputs = (substage / "OUTPUTS.tsv").read_text().splitlines()
         self.assertEqual(outputs, ["# type\trole\tpath",

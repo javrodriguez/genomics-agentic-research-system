@@ -93,7 +93,7 @@ embeds a Python version that changes whenever the environment is rebuilt.
 
 ```bash
 source "$WS/_system/gars-env.sh"
-python3 "$GARS_WRAPPERS/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py" ...   # wrappers run from anywhere
+python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py ...   # wrappers run from anywhere
 ```
 
 ## Process

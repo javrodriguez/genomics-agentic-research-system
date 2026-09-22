@@ -385,3 +385,255 @@ Output is empty. No gitleaks hooks/configuration, secret-containment test, trail
 new lifecycle writer, or extra manifest groups were added. No existing acceptance threshold,
 formal review or gap assessment was edited. The decision index was rebuilt with
 `bash docs/decisions/build_index.sh`. `git diff --check` is clean.
+
+
+## Round 2: provisional owner rulings
+
+Date: **2026-09-22**. This section supersedes the round-1 work-in-progress status above;
+all earlier report bytes remain an exact prefix. Producer work only: no review has run,
+no approval by an independent reviewer is asserted, and no merge/push/remote operation occurred.
+All five option-A instructions are applied as **provisional rulings, to be confirmed by
+the owner**, attributed to the owner in [0054](../decisions/0054-row-4-provisional-rulings.md).
+Decision 0053 remains byte-identical. All commands set TMPDIR, TEMP and TMP to the designated
+sibling scratch folder; logs, scripts and disposable fixtures stay there. Python checks use
+PYTHONDONTWRITEBYTECODE=1 and the scratch absent-pipelines path. No other build/review tree,
+reviewer conversation, or sealed held-out slice was accessed.
+
+### Ruling → changed files → test → result
+
+| Ruling | Changed files | Test and result | Red-on-fault seen: yes/no, how |
+|---|---|---|---|
+| 1: human-owned approval store, UTC expiry, process actor | `stage03_analysis.py`, `executorlib.py`, `guard_hook.py`, `.claude/settings.json`, `tools/policy.py`; `test_approval_forgery.py`, `test_protected_paths.py`, `test_policy_faults.py` | `test_approval_forgery.py` passes: `forgeable approvals: 0/1`; forged status, workspace record after hook bypass, changed plan, expired genuine record and copied identical-plan record all refuse. Valid record succeeds. Store permissions, symlinks, malformed expiry, CLI actor/store overrides, env actor spoof, and submit expiry tested. Protected store read/write and resolved symlink access refuse. | yes: round-1 behavior reproduced the handwritten/expired-record failures; expiry and plan-check bypass mutants produce assertion failures in the current fault runner. |
+| 2: changed-requirement expectations and derived benchmark pins | `tests/run_tests.py`, `gars/tests/test_guard_hook.py`, `gars/tests/test_executorlib_resume.py`, `benchmarks/tasks/{bulk-atacseq,bulk-rnaseq}.yaml`; README/DEVELOPMENT count claims; row-4 companion `test_execution_policy.py` | Full-suite result below. Each expectation update appears in the table below. Benchmark loader verifies all public input pins. Prepared content companion reruns all 19 affected collect cases with real helper-written fixture manifests; no production gate is mocked. Prepared local submit/failure/resume/completed re-entry succeeds. | yes: pre-fix characterization runs failed on these changed behaviors and stale pins; interim run had 19 missing-manifest failures. No unrelated failure was waived. |
+| 3: direct collect gate in all ten wrappers | `wrapperlib.py`, exactly one added call per wrapper; `test_execution_policy.py`, `test_policy_faults.py` | Every direct collect checks the current hash before output access/writes; post-baseline edits refuse with the config_sha256 reason, unchanged configs pass the helper. Missing project retains exit 3. | yes: replacing the shared entry gate with a no-op makes the all-ten-wrapper witness fail an assertion. |
+| 4: literal registered wrapper command paths | Eleven `gars/02_bioinformatics/**/CONTEXT.md` files, command spellings only; `test_tool_schema_refusal.py` | `14 contracts clean: sections, wait points, vocabulary.` All ten literal wrapper paths occur in contracts and match registry paths; variable forms absent from the command lines. | no mutation test; exact before/after command-only diff plus literal-path coverage and contract lint passed. |
+| 5: cancel stays unavailable until row 12 | `tools/registry.json`, `tools/policy.py`; `test_role_profiles.py` | Producer, reviewer and human all receive the declared refusal naming row 12. Registry role metadata remains unchanged. | no mutation test; actual authorization calls for all three roles checked the row-12 reason. |
+
+Runtime paths above are under `gars/_system/` unless explicitly qualified. The store is
+`<workspace parent>/.gars-approvals/`, mode 0700; records are mode 0600 and bind both the
+resolved plan identity and current SHA-256. Actor uses the OS UID/password database at launch.
+UTC lifetime is 24 hours, to bound approval to a working-day execution window plus queue delay;
+there is no implicit renewal. The addendum describes the long-job tradeoff and same-user limit.
+The main CLI refuses a --workspace override that would move the store. Read/Glob/Grep are now
+hooked, and registered filesystem reads are workspace-contained, including symlink resolution.
+
+Three code corrections preserve behavior rather than changing tests: the shared collect helper
+keeps nonexistent-project usage exit 3, and executor submit now uses the protected store instead
+of its old sidecar path. A final positive control caught workspace-root Read/Glob/Grep
+being misclassified as outside the workspace (Glob/Grep both exited 2 before the fix);
+the guard now accepts the root itself, and the protected-path positive controls cover it.
+No content-gate, golden submit-script fixture, benchmark acceptance
+threshold, evaluation grader or frozen study assertion was weakened. The local executor fixtures
+that lack prepare now expect refusal; the separate prepared positive test retains actual local
+execution coverage. The 19 legacy collect tests retain their original downstream assertions;
+the new missing-manifest expectation returns only for an unprepared fixture, while the prepared
+companion runs those same assertions through the real wrapper CLIs. Those nested cases are
+assertion coverage, not extra tests added to the loader's reported total.
+
+### Updated expectations
+
+Line numbers refer to the round-2 tree. Each row identifies one changed existing test;
+multiple related assertions in that test share the row. Original fixture setup is unchanged.
+
+| Test name | File and line | Old expectation | New expectation | Requirement that changed it |
+|---|---|---|---|---|
+| `WorkspaceFixture.test_12c_hand_written_approval_is_refused` | `tests/run_tests.py:469` | Error names PLAN.md.approved | Error names the human-owned store | R-073; ruling 1 |
+| `WorkspaceFixture.test_12d_plan_edited_after_approval_is_refused` | `tests/run_tests.py:490` | Read record beside PLAN.md | Read returned protected store record; hash/edit assertions unchanged | R-073; ruling 1 |
+| `WorkspaceFixture.test_12e_reapproval_after_reset_is_refused` | `tests/run_tests.py:515` | Snapshot and compare workspace sidecar bytes | Snapshot and compare the returned store record bytes | R-073; ruling 1 |
+| `WorkspaceFixture.test_12f_stamp_words_in_prose_are_not_a_stamp` | `tests/run_tests.py:540` | Workspace sidecar exists after approve | Returned store record exists after approve | R-073; ruling 1 |
+| `AtacseqWrapperTests.test_04_collect_gates` | `tests/run_tests.py:771` | Content success/failure or run-completion reason without a prepared manifest | When manifest absent: exit 2, config_sha256 missing reason, no OUTPUTS.tsv; prepared content expectations retained and rerun | R-073; ruling 3 (collect checks first) |
+| `RnaseqGarsWrapperTests.test_02_collect_gates_on_content` | `tests/run_tests.py:914` | Content success/failure or run-completion reason without a prepared manifest | When manifest absent: exit 2, config_sha256 missing reason, no OUTPUTS.tsv; prepared content expectations retained and rerun | R-073; ruling 3 (collect checks first) |
+| `ExecutorSeamTests.test_03_descriptor_replaces_the_directives_block` | `tests/run_tests.py:1513` | Custom AWS descriptor emits its directives | R-075 backend-enum ValueError | R-075/R-098 |
+| `ExecutorSeamTests.test_04_reproducibility_records_the_real_submission` | `tests/run_tests.py:1521` | sbatch SCRIPT | sbatch --export=PATH,HOME,USER,LOGNAME,LANG,LC_ALL,TMPDIR,TEMP,TMP,GARS_ROOT,GARS_PIPELINES SCRIPT | R-096 explicit export allowlist |
+| `ExecutorSeamTests.test_05_local_backend_walks_submit_to_completed` | `tests/run_tests.py:1531` | Unprepared script gets PID, RUNNING and COMPLETED | No job, named R-073 refusal and no effect | R-073 submit precondition |
+| `ExecutorSeamTests.test_06_local_backend_reports_a_failure_as_failed` | `tests/run_tests.py:1539` | Unprepared script runs and reports FAILED | No job and named R-073 refusal | R-073 submit precondition |
+| `ExecutorSeamTests.test_07b_literal_braces_in_a_descriptor_survive` | `tests/run_tests.py:1561` | Custom submit/header JSON braces render | Custom submit/header refuse by backend enum; read-only status substitution unchanged | R-075/R-098 |
+| `ExecutorSeamTests.test_07d2_every_nfcore_wrapper_takes_its_profile_from_the_venue` | `tests/run_tests.py:1615` | Source seam formats profile directly | Source seam formats wl.shell_value(profile, "nextflow_profile"); safe rendered bytes unchanged | R-075 charset and quoting |
+| `ExecutorSeamTests.test_07g_work_dir_cannot_carry_shell_expansion` | `tests/run_tests.py:1745` | Plain work_dir containing a space passes | Space-containing value refuses R-075; safe paths still pass | R-075 charset |
+| `ExecutorSeamTests.test_09_the_descriptor_names_which_nextflow_config_is_demanded` | `tests/run_tests.py:1831` | Only absent config fails; arbitrary process block then passes | Unsupported backend also fails; arbitrary Groovy grammar refuses after file exists | R-075/R-098 |
+| `GuardHookTests.test_allows` | `tests/run_tests.py:2069` | Shell redirection, bash index-builder and raw sbatch allowed | Those three spellings denied; registered/read-only positive controls unchanged | R-092/R-098 |
+| `GuardHookTests.test_allows_after_hardening` | `tests/run_tests.py:2109` | Inline Python, shell -c, malformed echo and ln allowed | All five unregistered/shell spellings denied | R-092/R-098 |
+| `GuardHookTests.test_allows_reads_that_mention_a_writer_verb` | `tests/run_tests.py:2146` | cp from protected file to /tmp allowed | cp denied; both grep reads remain allowed (payload only, no /tmp write) | R-092/R-098 |
+| `ScrnaseqWrapperTests.test_05_collect_gates_on_every_sample` | `tests/run_tests.py:2474` | Content success/failure or run-completion reason without a prepared manifest | When manifest absent: exit 2, config_sha256 missing reason, no OUTPUTS.tsv; prepared content expectations retained and rerun | R-073; ruling 3 (collect checks first) |
+| `ScrnaseqWrapperTests.test_06_the_raw_matrix_is_never_substituted_for_the_filtered_one` | `tests/run_tests.py:2525` | Content success/failure or run-completion reason without a prepared manifest | When manifest absent: exit 2, config_sha256 missing reason, no OUTPUTS.tsv; prepared content expectations retained and rerun | R-073; ruling 3 (collect checks first) |
+| `ScrnaseqWrapperTests.test_07_empty_combined_matrix_is_refused` | `tests/run_tests.py:2571` | Content success/failure or run-completion reason without a prepared manifest | When manifest absent: exit 2, config_sha256 missing reason, no OUTPUTS.tsv; prepared content expectations retained and rerun | R-073; ruling 3 (collect checks first) |
+| `SpatialviTests.test_04_collect_gates_per_sample_and_never_takes_the_raw_h5ad` | `tests/run_tests.py:2769` | Content success/failure or run-completion reason without a prepared manifest | When manifest absent: exit 2, config_sha256 missing reason, no OUTPUTS.tsv; prepared content expectations retained and rerun | R-073; ruling 3 (collect checks first) |
+| `SpatialviTests.test_05_a_missing_report_is_refused` | `tests/run_tests.py:2810` | Content success/failure or run-completion reason without a prepared manifest | When manifest absent: exit 2, config_sha256 missing reason, no OUTPUTS.tsv; prepared content expectations retained and rerun | R-073; ruling 3 (collect checks first) |
+| `ScrnaQcClusterTests.test_02_collect_accepts_a_well_formed_run` | `tests/run_tests.py:2943` | Content success/failure or run-completion reason without a prepared manifest | When manifest absent: exit 2, config_sha256 missing reason, no OUTPUTS.tsv; prepared content expectations retained and rerun | R-073; ruling 3 (collect checks first) |
+| `ScrnaQcClusterTests.test_03_an_anonymous_gene_is_refused` | `tests/run_tests.py:2964` | Content success/failure or run-completion reason without a prepared manifest | When manifest absent: exit 2, config_sha256 missing reason, no OUTPUTS.tsv; prepared content expectations retained and rerun | R-073; ruling 3 (collect checks first) |
+| `ScrnaQcClusterTests.test_04_a_renamed_identifier_column_is_refused` | `tests/run_tests.py:2981` | Content success/failure or run-completion reason without a prepared manifest | When manifest absent: exit 2, config_sha256 missing reason, no OUTPUTS.tsv; prepared content expectations retained and rerun | R-073; ruling 3 (collect checks first) |
+| `ScrnaQcClusterTests.test_05_a_sample_with_no_cells_is_refused_and_named` | `tests/run_tests.py:2999` | Content success/failure or run-completion reason without a prepared manifest | When manifest absent: exit 2, config_sha256 missing reason, no OUTPUTS.tsv; prepared content expectations retained and rerun | R-073; ruling 3 (collect checks first) |
+| `ScrnaQcClusterTests.test_06_the_nfcore_sample_suffix_is_matched_not_reported_lost` | `tests/run_tests.py:3018` | Content success/failure or run-completion reason without a prepared manifest | When manifest absent: exit 2, config_sha256 missing reason, no OUTPUTS.tsv; prepared content expectations retained and rerun | R-073; ruling 3 (collect checks first) |
+| `ScrnaQcClusterTests.test_07_a_label_matching_no_sample_is_refused` | `tests/run_tests.py:3038` | Content success/failure or run-completion reason without a prepared manifest | When manifest absent: exit 2, config_sha256 missing reason, no OUTPUTS.tsv; prepared content expectations retained and rerun | R-073; ruling 3 (collect checks first) |
+| `ScrnaQcClusterTests.test_08_zero_cells_or_zero_clusters_are_refused` | `tests/run_tests.py:3055` | Content success/failure or run-completion reason without a prepared manifest | When manifest absent: exit 2, config_sha256 missing reason, no OUTPUTS.tsv; prepared content expectations retained and rerun | R-073; ruling 3 (collect checks first) |
+| `ScrnaQcClusterTests.test_09_collect_refuses_before_the_run_finished` | `tests/run_tests.py:3072` | Content success/failure or run-completion reason without a prepared manifest | When manifest absent: exit 2, config_sha256 missing reason, no OUTPUTS.tsv; prepared content expectations retained and rerun | R-073; ruling 3 (collect checks first) |
+| `SpatialClusterCountTests.test_05_collect_refuses_before_the_run_finished` | `tests/run_tests.py:3278` | Content success/failure or run-completion reason without a prepared manifest | When manifest absent: exit 2, config_sha256 missing reason, no OUTPUTS.tsv; prepared content expectations retained and rerun | R-073; ruling 3 (collect checks first) |
+| `SpatialClusterCountTests.test_06_collect_refuses_a_sample_set_that_differs_from_the_samplesheet` | `tests/run_tests.py:3297` | Content success/failure or run-completion reason without a prepared manifest | When manifest absent: exit 2, config_sha256 missing reason, no OUTPUTS.tsv; prepared content expectations retained and rerun | R-073; ruling 3 (collect checks first) |
+| `SpatialClusterCountTests.test_07_collect_refuses_a_table_that_disagrees_with_the_summary` | `tests/run_tests.py:3326` | Content success/failure or run-completion reason without a prepared manifest | When manifest absent: exit 2, config_sha256 missing reason, no OUTPUTS.tsv; prepared content expectations retained and rerun | R-073; ruling 3 (collect checks first) |
+| `SpatialClusterCountTests.test_08_collect_accepts_a_good_run_and_registers_only_table_and_report` | `tests/run_tests.py:3355` | Content success/failure or run-completion reason without a prepared manifest | When manifest absent: exit 2, config_sha256 missing reason, no OUTPUTS.tsv; prepared content expectations retained and rerun | R-073; ruling 3 (collect checks first) |
+| `GuardHookTests.test_allowed_shapes` | `gars/tests/test_guard_hook.py:40` | git status allowed | git status denied; other read/edit/registered-call controls unchanged | R-092 registered surface |
+| `GuardHookTests.test_bypass_switch_as_shipped` | `gars/tests/test_guard_hook.py:55` | Three git/bypass forms exit 0 | All three exit 2 | R-092/R-096 |
+| `ExecutorlibResumeTests.test_interrupted_resume_and_completed_reentry` | `gars/tests/test_executorlib_resume.py:31` | Unprepared stage submits and changes effects across resume | No job, named R-073 refusal, no effect/marker; prepared resume covered separately | R-073 submit precondition |
+
+The seven benchmark errors were seven callers of the same public task loader, not seven
+distinct stale values: `test_coherent_forgery_and_missing_artifacts_are_red`,
+`test_strict_reference_readiness_rejects_placeholders`,
+`test_json_boolean_numeric_substitutions_are_red`, `test_missing_outputs_fail_not_skip`,
+`test_nfcore_artifact_contracts_accept_and_reject_content`, `test_refusal_scorers_discriminate`,
+and `test_task_schema_and_input_hashes` in `tests/test_benchmark_discriminates.py` (unchanged).
+Two wrapper-source pins and two additionally affected contract pins are the complete changed
+set in the public task inputs. There are no seven distinct wrapper values to list in this tree.
+Re-derivation imported `evals/bench.py` and called `bench.file_sha(Path(input["path"]))`;
+only a differing input's sha256 text was replaced. No other task-file line changed.
+
+| Test/input pin | File and line | Old expectation | New expectation | Requirement that changed it |
+|---|---|---|---|---|
+| Public benchmark loader: `gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md` | `benchmarks/tasks/bulk-atacseq.yaml:10` | `e32ea7c7baa9ebcdf612c8052da705ff6ffaf2a11fd276743e605e75666c2a26` | `7c1871bfc681b1e4e65d721f16c03a8c2a95b1aafd99803d4c0d1fefd63b683b` | R-092; ruling 4 literal contract commands |
+| Public benchmark loader: `gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py` | `benchmarks/tasks/bulk-atacseq.yaml:14` | `beab610a01a430fa5eddf221322f140e9436b243d33af2ad1c102946c0e3ee06` | `62844f2bb1ef583611fbdd7f3a440d20d9cec77d316c2afe07b3e4539dab6fe9` | R-073/R-075; wrapper source changed |
+| Public benchmark loader: `gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md` | `benchmarks/tasks/bulk-rnaseq.yaml:10` | `0aa735407c9f54ef09f9ebabb20f493d7a633613dc5c716ed560b0bc5510ee37` | `f62937e2b8f72b775583a53c71b44b2222105967f4b4c067221bdc1628b01780` | R-092; ruling 4 literal contract commands |
+| Public benchmark loader: `gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py` | `benchmarks/tasks/bulk-rnaseq.yaml:14` | `cd86380f31a6c1ed70513d576582dab0a2ba9099cf41ca97b42e348f6a4ffc60` | `b21b10fe1f097b149eacb6fcaa9337360348d34d38029216be006a7d1bd75558` | R-073/R-075; wrapper source changed |
+
+README and DEVELOPMENT current count claims are updated from the loader to 305, with the
+current collection date and report link so the new total is not attributed to the old merge.
+No historical record is rewritten.
+
+### Runner results (this run)
+
+`python3 tests/run_tests.py`
+
+```text
+collected 210 tests from tests
+collected 95 tests from gars/tests
+forgeable approvals: 0/1
+bypasses: 0/5
+Ran 305 tests in 139.899s
+OK (skipped=50)
+```
+
+`python3 tests/check_contracts.py`
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`
+
+```text
+collected 210 tests from tests
+collected 95 tests from gars/tests
+suite: 305 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`
+
+```text
+Ran 44 tests in 163.579s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`
+
+```text
+clean — graded=1
+```
+
+`python3 gars/tests/test_policy_attacks.py`
+
+```text
+bypasses: 0/5
+Ran 19 tests in 3.996s
+OK
+```
+
+`python3 gars/tests/test_approval_forgery.py`
+
+```text
+forgeable approvals: 0/1
+Ran 11 tests in 0.284s
+OK
+```
+
+`python3 gars/tests/test_protected_paths.py`
+
+```text
+Ran 5 tests in 24.896s
+OK
+```
+
+`python3 gars/tests/test_tool_schema_refusal.py`
+
+```text
+Ran 8 tests in 0.424s
+OK
+```
+
+`python3 gars/tests/test_role_profiles.py`
+
+```text
+Ran 6 tests in 0.017s
+OK
+```
+
+`python3 gars/tests/test_policy_pins.py`
+
+```text
+Ran 3 tests in 0.165s
+OK
+```
+
+`python3 gars/tests/test_execution_policy.py`
+
+```text
+Ran 7 tests in 23.717s
+OK
+```
+
+`python3 gars/tests/test_policy_faults.py`
+
+```text
+Ran 10 tests in 1.101s
+OK
+```
+
+### Boundary and preservation audit
+
+`git diff --stat c934f6d -- evals/gap-study evals/gap-study-2 evals/gap-study-3 evals/haiku-prestudy evals/transcript.py .github/ gars/_system/hooks` is empty.
+The entire `evals/` tree, gitleaks configuration and secret-containment test are unchanged.
+All ten round-2 wrapper diffs are one added shared-helper call. Contract diffs are only
+literal command-path substitutions. Task diffs contain four sha256 replacements and nothing
+else. Decision 0053 matches HEAD bytes; the report's previous bytes are an exact prefix.
+Decision index regenerated using `bash docs/decisions/build_index.sh`. `git diff --check`
+passes. One round-2 commit stages only the enumerated changed paths, with its message file
+in scratch. No push, remote or merge.
+
+## Owner rulings needed
+
+None for further implementation in this round. The owner still confirms or reverses all
+five **provisional** option-A rulings recorded in 0054. This is not independent review approval.
+
+## Residual gaps still open (round 2)
+
+- **NOT met:** injection resistance 20/20 with its positive control; no agent-scoring run.
+  `bypasses: 0/5` measures the separate deterministic attack list only.
+- **NOT met:** R-093 separate OS user/read-only reviewer credential. The same OS user can
+  bypass the harness, alter its own approval store or invoke approve directly; the process
+  UID does not distinguish an agent from a human. See 0054, “What this does not close”.
+- **NOT met:** external-harness R-099 load enforcement/global inventory/pre-hook loading;
+  shipped pins remain unreviewed pending independent review.
+- Contract-prose follow-up: `gars/03_custom_analysis/CONTEXT.md:58` still describes the
+  workspace sidecar and its process still directs dialogue-triggered agent approval. Only
+  wrapper command substitutions are authorized in contracts this round, so those lines stay
+  untouched. The new protected-store/human-CLI behavior is documented in 0054; contract lint
+  does not establish semantic agreement for this legacy prose.
+- Actual Python 3.6.8 execution and Slurm/Nextflow/cluster validation remain unmeasured.
+  The local resume test is not the spec's Slurm acceptance. Existing named environment,
+  row-5 scratch, sealed-data and owner-evidence skips are not promoted to passes.
+- New explicit limitation: the 24-hour approval expires even if queue/runtime delays defer
+  verification; no renewal or deployment isolation is invented. A new analysis requires a
+  new approval. The owner may revise the provisional lifetime.
+- `cancel` is deliberately unavailable until row 12. No row-15 hook/gitleaks/secret-containment
+  exit claim, lifecycle writer, additional manifest group or independent review is supplied.
+- The standing merge-after-study condition remains. The tested deterministic exits pass;
+  the broader row acceptance still has the unmeasured gaps above.

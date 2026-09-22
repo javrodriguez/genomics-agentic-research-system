@@ -2,7 +2,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|Read|Glob|Grep",
         "hooks": [
           {
             "type": "command",
@@ -50,6 +50,8 @@
       "Write(0*/CONTEXT.md)",
       "Edit(0*/**/CONTEXT.md)",
       "Write(0*/**/CONTEXT.md)",
+      "Edit(../.gars-approvals/*)",
+      "Write(../.gars-approvals/*)",
       "Edit(../.githooks/*)",
       "Write(../.githooks/*)",
       "Edit(../.github/*)",

@@ -310,6 +310,7 @@ python3 "$WS/_system/adapt_counts.py" \\
 
 
 def cmd_collect(args):
+    wl.require_collect_config(args.project, ASSAY, SUBSTAGE)
     project = Path(args.project)
     result = {"command": "collect", "ok": False, "assay": ASSAY, "failures": []}
     if not project.is_dir():

@@ -430,8 +430,10 @@ def submit(config_root, script, descriptor=None):
         if problem:
             return None, problem
     elif parts and parts[0] == '03_custom_analysis':
-        from stage03_analysis import approval_holds
-        holds, why = approval_holds(stage / 'PLAN.md', stage / 'PLAN.md.approved')
+        from stage03_analysis import approval_holds, approval_record_path, ws
+        workspace = ws.workspace_root(__file__)
+        holds, why = approval_holds(stage / 'PLAN.md',
+                                    approval_record_path(stage / 'PLAN.md', workspace), workspace)
         if not holds:
             return None, 'R-073: ' + why
     else:

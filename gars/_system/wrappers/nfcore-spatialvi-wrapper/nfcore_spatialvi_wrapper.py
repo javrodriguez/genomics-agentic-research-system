@@ -253,6 +253,7 @@ def cmd_prepare(args):
 
 
 def cmd_collect(args):
+    wl.require_collect_config(args.project, ASSAY, SUBSTAGE)
     project = Path(args.project)
     result = {"command": "collect", "ok": False, "assay": ASSAY, "failures": []}
     if not project.is_dir():

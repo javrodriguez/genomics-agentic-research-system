@@ -23,6 +23,12 @@ class RoleProfileTests(unittest.TestCase):
     def test_cancel_needs_approval(self):
         self.assertEqual(policy.decide(policy.named('executor.cancel'),'producer'),'needs-approval')
 
+    def test_cancel_declared_refusal_names_row_12(self):
+        for role in ('producer','reviewer','human'):
+            with self.subTest(role=role), self.assertRaisesRegex(policy.Refusal,'row 12'):
+                policy.authorize(policy.named('executor.cancel'),
+                                 {'workspace':'projects/p','job-id':'123'},role)
+
     def test_role_not_environment_or_argument(self):
         with patch.dict(os.environ, {'GARS_ROLE':'human','GARS_ACTOR':'human'}):
             self.assertEqual(policy.launch_role(),'producer')

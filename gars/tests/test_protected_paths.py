@@ -7,7 +7,7 @@ from pathlib import Path
 from support import GARS, run
 import guard_hook
 
-PATHS = ('_system/guard_hook.py','.claude/settings.json','_references/ceilings.yaml',
+PATHS = ('../.gars-approvals/record.json','_system/guard_hook.py','.claude/settings.json','_references/ceilings.yaml',
          '_references/prompts/reviewer.md','_templates/project/CONTEXT.md',
          '../.githooks/pre-commit','../.github/workflows/ci.yml',
          '../docs/decisions/0042-a-call-the-guard-cannot-judge-is-refused.md',
@@ -51,8 +51,22 @@ class ProtectedPathsTests(unittest.TestCase):
         expected={tool+'('+p.replace('repo:','../')+')' for p in guard_hook.READ_ONLY for tool in ('Edit','Write')}
         self.assertEqual(actual,expected)
 
+    def test_approval_store_read_and_symlink_refuse(self):
+        with tempfile.TemporaryDirectory(prefix='store-guard-') as tmp:
+            root=Path(tmp)/'workspace'; root.mkdir()
+            store=Path(tmp)/'.gars-approvals'; store.mkdir(mode=0o700)
+            (store/'record.json').write_text('{}')
+            (root/'link').symlink_to(store,target_is_directory=True)
+            for path in ('../.gars-approvals/record.json','link/record.json'):
+                for tool,data in (('Read',{'file_path':path}),('Write',{'file_path':path}),
+                                  ('Bash',{'command':'cat '+path})):
+                    with self.subTest(path=path,tool=tool):
+                        self.assertEqual(self.call(tool,data,root).returncode,2)
+
     def test_normal_project_edit_positive_control(self):
         self.assertEqual(self.call('Edit',{'file_path':'projects/p/PLAN.md'}).returncode,0)
+        for tool in ('Read','Glob','Grep'):
+            self.assertEqual(self.call(tool,{'path':'.','pattern':'PLAN'}).returncode,0)
 
 
 if __name__ == '__main__':

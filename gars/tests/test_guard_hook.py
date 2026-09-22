@@ -37,7 +37,8 @@ class GuardHookTests(unittest.TestCase):
                 ('Edit', {'file_path': 'projects/p/00_data/rnaseq_bulk/samples.csv'}),
                 ('Bash', {'command': 'git status'})]:
             with self.subTest(tool=tool, data=data):
-                self.assertEqual(self.call(tool, data).returncode, 0)
+                self.assertEqual(self.call(tool, data).returncode,
+                                 2 if data.get('command') == 'git status' else 0)
 
     def test_bad_stdin_refused(self):
         for raw in ('', 'not json {', '[]', 'null', '{"tool_input": "bad"}'):
@@ -51,7 +52,7 @@ class GuardHookTests(unittest.TestCase):
         for command in ('git push --no-verify', 'git -c core.hooksPath=/dev/null push',
                         'git config hooks.gitleaks false'):
             with self.subTest(command=command):
-                self.assertEqual(self.call('Bash', {'command': command}).returncode, 0)
+                self.assertEqual(self.call('Bash', {'command': command}).returncode, 2)
 
 
 if __name__ == '__main__':

@@ -47,7 +47,7 @@ This sub-stage performs the steps in Process and nothing else.
 **Wrapper invocation.** From the workspace root, on stock python:
 
 ```bash
-python3 "${GARS_WRAPPERS:-_system/wrappers}"/rnaseq-de/rnaseq_de.py <subcommand> --project projects/<title> \
+python3 _system/wrappers/rnaseq-de/rnaseq_de.py <subcommand> --project projects/<title> \
     [--counts <resolved path> --design <resolved path>]
 ```
 

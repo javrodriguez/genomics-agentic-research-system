@@ -13,10 +13,11 @@ Subcommands, in the order a run uses them:
   approve  the human gate, made durable. Refuses while the plan still carries skeleton
            markers, has no Outputs rows, or names an artifact type outside the closed
            vocabulary; otherwise stamps `Status: APPROVED <date>` into PLAN.md and writes
-           PLAN.md.approved, the record binding that approval to the stamped plan's sha256.
+           a record in the protected sibling .gars-approvals store, bound to the plan and
+           expiring after 24 hours. Actor identity comes from the process UID at launch.
            Run it only after the user has said yes to the plan file -- the flag records the
            approval, it never substitutes for it.
-  verify   the exit gate. Refuses unless PLAN.md.approved exists and its sha256 still matches
+  verify   the exit gate. Refuses unless the protected, unexpired store record exists and its sha256 matches
            PLAN.md -- a `Status: APPROVED` line alone is not an approval, and a plan edited
            after approval is not the plan that was approved (decision 0042); checks every
            output the plan declared exists and is non-empty; writes OUTPUTS.tsv (all rows
@@ -28,7 +29,8 @@ Runs on stock python 3.6.8, stdlib only.
 
 import argparse
 import datetime
-import getpass
+import pwd
+import stat
 import hashlib
 import json
 import os
@@ -188,29 +190,65 @@ def cmd_create(args, workspace):
 
 # --- approval record ---------------------------------------------------------------------------
 
-#: Written beside PLAN.md by `approve` and nothing else; binds the approval to the plan's bytes.
-APPROVAL_RECORD = "PLAN.md.approved"
+# The location is derived from the installed workspace, never a CLI/environment override.
+# Human launch creates this sibling store with mode 0700; guarded agents cannot access it.
+APPROVAL_RECORD = "PLAN.md.approved"  # legacy filename: never evidence
+LAUNCH_UID = os.getuid()
+LAUNCH_ACTOR = pwd.getpwuid(LAUNCH_UID).pw_name
+APPROVAL_LIFETIME = datetime.timedelta(hours=24)
 
 
-def approval_holds(plan_path, record_path):
-    """(True, None) when the record exists and its sha256 matches PLAN.md as it is now.
+def approval_store(workspace):
+    return Path(workspace).resolve().parent / '.gars-approvals'
 
-    The `Status: APPROVED` line is readable and writable by anyone who can edit the plan, so it
-    cannot be the approval on its own (decision 0042). The record can be forged too, by a writer
-    the guard hook does not see -- it raises the cost of a forgery and makes any edit after
-    approval visible; it is not a substitute for an approval command the agent cannot reach."""
-    if not record_path.is_file():
-        return False, "there is no %s beside it" % APPROVAL_RECORD
+
+def approval_record_path(plan_path, workspace):
+    identity = str(Path(plan_path).resolve())
+    return approval_store(workspace) / (hashlib.sha256(identity.encode('utf-8')).hexdigest() + '.json')
+
+
+def check_store(workspace, create=False):
+    store = approval_store(workspace)
+    if create:
+        store.mkdir(mode=0o700, exist_ok=True)
+    info = store.lstat()
+    if not stat.S_ISDIR(info.st_mode) or info.st_uid != LAUNCH_UID or info.st_mode & 0o077:
+        raise ValueError('R-073: approval store must be a human-owned directory with mode 0700')
+    if store.resolve() == Path(workspace).resolve() or Path(workspace).resolve() in store.resolve().parents:
+        raise ValueError('R-073: approval store must be outside the workspace')
+    return store
+
+
+def utc_instant(value):
+    # Explicit UTC ISO-8601 only; no local-time interpretation, stdlib Python 3.6.
+    return datetime.datetime.strptime(value, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=datetime.timezone.utc)
+
+
+def approval_holds(plan_path, record_path, workspace=None):
+    workspace = workspace or ws.workspace_root(__file__)
+    expected_path = approval_record_path(plan_path, workspace)
+    if Path(record_path) != expected_path:
+        return False, 'R-073: approval record is outside the human-owned store'
     try:
-        expected = json.loads(record_path.read_text(encoding="utf-8"))["plan_sha256"]
-    except (OSError, ValueError, KeyError, TypeError):
-        return False, "%s is unreadable" % APPROVAL_RECORD
-    try:
+        check_store(workspace)
+        info = expected_path.lstat()
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != LAUNCH_UID or info.st_mode & 0o077:
+            raise ValueError('record must be human-owned, regular and mode 0600')
+        record = json.loads(expected_path.read_text(encoding='utf-8'))
+        if record['actor'] != LAUNCH_ACTOR or record['plan_path'] != str(Path(plan_path).resolve()):
+            raise ValueError('approval actor or plan identity differs')
+        timestamp, expiry = utc_instant(record['timestamp']), utc_instant(record['expiry'])
+        now = datetime.datetime.now(datetime.timezone.utc)
+        if timestamp > now or expiry <= timestamp or expiry - timestamp > APPROVAL_LIFETIME:
+            raise ValueError('invalid approval lifetime')
+        if now >= expiry:
+            return False, 'R-073: approval record expired'
+        expected = record['plan_sha256']
         actual = hashlib.sha256(plan_path.read_bytes()).hexdigest()
-    except OSError:
-        return False, "PLAN.md is unreadable"
+    except (OSError, ValueError, KeyError, TypeError):
+        return False, 'R-073: no valid approval record in the human-owned store'
     if actual != expected:
-        return False, ("PLAN.md changed after approval (sha256 now %s, approved %s)"
+        return False, ('PLAN.md changed after approval (sha256 now %s, approved %s)'
                        % (actual[:12], str(expected)[:12]))
     return True, None
 
@@ -276,10 +314,10 @@ def cmd_approve(args, workspace):
         result["error"] = "PLAN.md is missing"
         return emit(result, EXIT_USAGE)
     text = plan_path.read_text(encoding="utf-8")
-    record_path = adir / APPROVAL_RECORD
+    record_path = approval_record_path(plan_path, workspace)
 
     if re.search(r"^Status: APPROVED", text, re.M):
-        holds, why = approval_holds(plan_path, record_path)
+        holds, why = approval_holds(plan_path, record_path, workspace)
         if holds:
             result["ok"] = True
             result["already_approved"] = True
@@ -305,28 +343,33 @@ def cmd_approve(args, workspace):
     if result["blocked"]:
         return emit(result, EXIT_REFUSED)
 
-    stamp = "Status: APPROVED %s" % (args.date or datetime.date.today().isoformat())
+    try:
+        check_store(workspace, create=True)
+    except (OSError, ValueError) as exc:
+        result['error'] = str(exc)
+        return emit(result, EXIT_REFUSED)
+    now = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0)
+    stamp = "Status: APPROVED %s" % (args.date or now.date().isoformat())
     with ws.atomic_open(plan_path, newline=None) as fh:
         fh.write(text.replace("Status: DRAFT", stamp, 1))
-    # Hash the bytes as they landed on disk (newline translation is the platform's), then
-    # bind the approval to them. Stamp first, record second: a crash between leaves a stamp
-    # with no record, which verify and approve both refuse -- the safe direction.
-    try:
-        actor = getpass.getuser()
-    except Exception:
-        actor = "unknown"
     record = {
-        "plan_sha256": hashlib.sha256(plan_path.read_bytes()).hexdigest(),
-        "approved_at": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-        "actor": actor,
-        "tool": "stage03_analysis.py approve",
-        "template_version": ws.template_version(workspace),
+        'actor': LAUNCH_ACTOR,
+        'timestamp': now.strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'expiry': (now + APPROVAL_LIFETIME).strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'plan_sha256': hashlib.sha256(plan_path.read_bytes()).hexdigest(),
+        'plan_path': str(plan_path.resolve()),
     }
-    with ws.atomic_open(record_path) as fh:
-        json.dump(record, fh, indent=2, sort_keys=True)
-        fh.write("\n")
+    # Exclusive creation refuses overwrites; a crash leaves an invalid record, never approval.
+    try:
+        fd = os.open(str(record_path), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, 'w') as fh:
+            json.dump(record, fh, indent=2, sort_keys=True)
+            fh.write("\n")
+    except OSError as exc:
+        result['error'] = 'R-073: cannot create approval record: %s' % exc
+        return emit(result, EXIT_REFUSED)
     result.update({"ok": True, "outputs_declared": len(outputs), "status": stamp,
-                   "record": APPROVAL_RECORD, "plan_sha256": record["plan_sha256"]})
+                   "record": str(record_path), "plan_sha256": record["plan_sha256"]})
     return emit(result, EXIT_OK)
 
 
@@ -348,7 +391,7 @@ def cmd_verify(args, workspace):
                            "did, that is the failure to report -- do not approve after the "
                            "fact.")
         return emit(result, EXIT_REFUSED)
-    holds, why = approval_holds(adir / "PLAN.md", adir / APPROVAL_RECORD)
+    holds, why = approval_holds(adir / "PLAN.md", approval_record_path(adir / "PLAN.md", workspace), workspace)
     if not holds:
         result["error"] = ("PLAN.md is not approved: %s. A `Status: APPROVED` line is an approval "
                            "only when `approve` wrote it together with its record, and a plan "
@@ -431,7 +474,10 @@ def main(argv=None):
     if not args.cmd:
         ap.print_help(sys.stderr)
         return EXIT_USAGE
-    workspace = args.workspace or ws.workspace_root(__file__)
+    workspace = ws.workspace_root(__file__)
+    if args.workspace is not None and args.workspace.resolve() != Path(workspace).resolve():
+        return emit({'command': args.cmd, 'ok': False,
+                     'error': 'R-073: --workspace cannot relocate the human approval store'}, EXIT_REFUSED)
     return {"create": cmd_create, "approve": cmd_approve,
             "verify": cmd_verify}[args.cmd](args, workspace)
 

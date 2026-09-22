@@ -46,6 +46,7 @@ READ_ONLY = [
     "0*/CONTEXT.md",                      # stage contracts
     "0*/**/CONTEXT.md",                   # sub-stage contracts
     # Machine-owned project files: written by _system/ scripts, regenerated, never hand-edited.
+    "repo:.gars-approvals/*",
     "repo:.githooks/*",
     "repo:.github/*",
     "repo:.gitlab-ci.yml",
@@ -311,6 +312,11 @@ def main():
         tool_input = payload.get("tool_input") or {}
         cwd = payload.get("cwd") or ""
         root = workspace_root()
+        if tool in ('Read', 'Glob', 'Grep'):
+            target = tool_input.get('file_path') or tool_input.get('path') or cwd or root
+            read_path = os.path.realpath(os.path.join(cwd or root, target))
+            if read_path != os.path.realpath(root) and rel_to_root(target, root, cwd) is None:
+                deny('Blocked: R-073 human approval store is outside workspace read access.')
         if tool in WRITE_TOOLS:
             check_write_tool(tool_input, root, cwd)
         elif tool == "Bash":
