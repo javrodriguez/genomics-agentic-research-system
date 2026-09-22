@@ -5,6 +5,7 @@ import sys
 import unittest
 from pathlib import Path
 from support import run
+from test_hooks_records import decisions_fixture
 from secret_support import (CONFIG, REAL_GITLEAKS, checked, fixture, fresh_canary,
                             push_input, snapshot, standin)
 
@@ -12,6 +13,7 @@ from secret_support import (CONFIG, REAL_GITLEAKS, checked, fixture, fresh_canar
 class GitleaksHookTests(unittest.TestCase):
     def setUp(self):
         self.root, self.hooks, self.base = fixture(self)
+        decisions_fixture(self.root)
         self.env = standin(self.root)
 
     def invoke(self, name, env=None, payload=None):

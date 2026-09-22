@@ -15,7 +15,15 @@ it constrains — template, menu, preflight, or decision — never parked here (
 
 ## Current Status
 
-**Row 15 review round 4, 2026-09-22:** macOS / Python 3.8.2 collected 252 tests;
+Row 11 repository work, 2026-09-22: decision template and staged link checker;
+generated §17 current values and release eligibility gate; production trailer checks
+read a later committed evidence snapshot under the owner's ruling. Validation
+prints `Ran 270 tests in 320.071s` and `OK (skipped=50)` on Python 3.8.2. See the [change report](docs/implementation/row_11_change_report.md)
+and [record 0058](docs/decisions/0058-row-11-records-links-trailers-release-check.md).
+Rebuild with `python3 scripts/release_check.py`; verify with `--check`; evaluate
+release eligibility with `--tag` (currently refused because evidence is unmeasured).
+
+**Row 15 review round 4, 2026-09-22:** macOS / Python 3.8.2 collected 252 tests; <!-- not-the-suite-total -->
 all three complete runs ended `OK (skipped=50)`. No tests from row 15 skipped.
 R15-03's narrow disposable fixture repair is complete with existing assertions,
 stdin checks and veto behaviour preserved. R15-01, R15-02 and R15-04 remain closed.
@@ -80,7 +88,7 @@ The expanded suite's cluster status is **unverified**. See the
 | Scope enforcement | `gars/.claude/settings.json` + `_system/guard_hook.py` — forbidden writes fail at the tool call ([0022](docs/decisions/0022-scope-boundaries-are-enforced-by-the-harness.md)) |
 | Row 2 benchmark | Review round 3 applies owner rulings 1A/2A; F7/F8 are withdrawn and [HOLDOUT.md](benchmarks/HOLDOUT.md) is the single living sealing interface. Owner agent runs, independent nf-core inputs/references and held-out sealing remain unmeasured. See [change report](docs/implementation/row_2_change_report.md). |
 | Local suite execution | 2026-09-15, macOS / Python 3.8.2: `OK (skipped=10)` — nine environment skips and one missing-owner-cohort skip. Full runner summary in the [Row 2 report](docs/implementation/row_2_change_report.md); expanded-suite cluster execution unverified. |
-| Tests | `tests/run_tests.py` (252) + `tests/check_contracts.py` — run both before committing under `gars/` |
+| Tests | `tests/run_tests.py` (270) + `tests/check_contracts.py` — run both before committing under `gars/` |
 | Model provenance | Every `HISTORY.md` entry names the model beside the template version ([0024](docs/decisions/0024-the-model-is-part-of-provenance.md)) |
 | Environments (`gars-bio`, `gars-nxf`) | Installed, verified, locked |
 | Ensembl GRCh38 r116 reference | Downloaded, integrity-verified |

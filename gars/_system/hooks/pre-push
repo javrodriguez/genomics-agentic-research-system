@@ -1,12 +1,156 @@
 #!/usr/bin/env python3
 """R-164 whole-suite gate; any pre-existing hook keeps its stdin and veto."""
 import os
+import json
+import re
 import runpy
 import subprocess
 import sys
 from pathlib import Path
 
 MARKER = 'GARS_ROW3_PRE_PUSH_V1'
+
+
+ACTIVATION_RECORD = 'docs/decisions/0058-row-11-records-links-trailers-release-check.md'
+
+
+def git_bytes(root, *args, **kwargs):
+    return subprocess.check_output(['git'] + list(args), cwd=str(root),
+                                   stderr=subprocess.PIPE, timeout=60, **kwargs)
+
+
+def required_trailers(root, commit):
+    """Only Git's final trailer block counts; duplicate required keys refuse."""
+    message = git_bytes(root, 'show', '-s', '--format=%B', commit)
+    parsed = git_bytes(root, 'interpret-trailers', '--parse', input=message).decode('utf-8')
+    trailers = {}
+    for line in parsed.splitlines():
+        key, value = line.split(':', 1)
+        if key.lower() in ('review', 'bench', 'session'):
+            key = key.lower()
+            if key in trailers or not value.strip():
+                raise ValueError('duplicate or empty ' + key + ' trailer')
+            trailers[key] = value.strip()
+    if set(trailers) != {'review', 'bench', 'session'}:
+        raise ValueError('missing Review, Bench or Session trailer')
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.:-]*', trailers['session']):
+        raise ValueError('invalid Session id')
+    return trailers
+
+
+def review_session(content, committing_session):
+    sessions = re.findall(r'^session:[ \t]*([^\r\n]+)', content, re.M | re.I)
+    if len(sessions) != 1:
+        raise ValueError('review requires exactly one session: line')
+    session = sessions[0].strip()
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.:-]*', session):
+        raise ValueError('invalid review session id')
+    if session == committing_session:
+        raise ValueError('review session equals committing Session')
+    return session
+
+
+def validate_evidence(root, commit, read_record):
+    """The reader supplies repository-contained records; never execute evidence."""
+    trailers = required_trailers(root, commit)
+    review_session(read_record(trailers['review']), trailers['session'])
+    if not trailers['bench'].startswith('evals/runs/'):
+        raise ValueError('Bench must name an evals/runs/ file; n/a forbidden for _system changes')
+    bench = json.loads(read_record(trailers['bench']))
+    if not isinstance(bench, dict) or bench.get('git_sha') != commit:
+        raise ValueError('Bench git_sha does not match commit')
+
+
+def pushed_commits(root, payload):
+    commits = set()
+    tips = []
+    for line in payload.decode('ascii').splitlines():
+        fields = line.split()
+        if len(fields) != 4:
+            raise ValueError('invalid pre-push stdin')
+        unused_local_ref, local, unused_remote_ref, remote = fields
+        if not all(re.fullmatch(r'[0-9a-f]{40}|[0-9a-f]{64}', oid) for oid in (local, remote)):
+            raise ValueError('invalid push object ID')
+        if set(local) == {'0'}:
+            continue
+        for oid in (local, remote):
+            if set(oid) != {'0'}:
+                git_bytes(root, 'rev-parse', '--verify', oid + '^{commit}')
+        tips.append(local)
+        revision = local if set(remote) == {'0'} else remote + '..' + local
+        commits.update(git_bytes(root, 'rev-list', revision).decode('ascii').split())
+    if not commits:
+        return []
+    if git_bytes(root, 'rev-parse', '--is-shallow-repository').strip() != b'false':
+        raise ValueError('shallow history cannot establish trailer activation')
+    # Search every local ref as well as detached outgoing tips: removing the
+    # activation record at a later tip cannot reset the adoption boundary.
+    activations = set(git_bytes(root, 'log', '--all', '--full-history', '--format=%H',
+                               '--diff-filter=A', '--no-renames', *tips,
+                               '--', ACTIVATION_RECORD).decode('ascii').split())
+    if not activations:
+        return []  # History predates adoption of this record/hook.
+    if len(activations) != 1:
+        raise ValueError('ambiguous trailer activation history')
+    activation = next(iter(activations))
+    parents = git_bytes(root, 'show', '-s', '--format=%P', activation).decode('ascii').split()
+    exempt = set()
+    if parents:
+        exempt.update(git_bytes(root, 'rev-list', *parents).decode('ascii').split())
+    return sorted(commits - exempt)
+
+
+def committed_reader(root, commit, snapshot):
+    """Read regular blobs from a strictly later outgoing committed snapshot."""
+    snapshot = git_bytes(root, 'rev-parse', '--verify', snapshot + '^{commit}').decode('ascii').strip()
+    if snapshot == commit:
+        raise ValueError('later committed evidence snapshot required; self-reference refused')
+    git_bytes(root, 'merge-base', '--is-ancestor', commit, snapshot)
+
+    def read_record(name):
+        # Reject revision syntax, traversal, pathspec magic and nonregular blobs.
+        if (not name or name.startswith('/') or '\\' in name or ':' in name or
+                any(part in ('', '.', '..') for part in name.split('/')) or
+                any(ord(char) < 32 for char in name)):
+            raise ValueError('evidence requires a repository-relative file path')
+        entries = git_bytes(root, 'ls-tree', '-z', snapshot, '--', ':(literal)' + name).split(b'\0')
+        entries = [entry for entry in entries if entry]
+        if len(entries) != 1:
+            raise ValueError('evidence file absent from committed snapshot')
+        metadata, path = entries[0].split(b'\t', 1)
+        mode, kind, oid = metadata.decode('ascii').split()
+        if path.decode('utf-8') != name or mode not in ('100644', '100755') or kind != 'blob':
+            raise ValueError('evidence must be a regular committed file')
+        return git_bytes(root, 'cat-file', 'blob', oid).decode('utf-8')
+
+    return read_record
+
+
+def trailer_gate(root, payload, read_record=None):
+    try:
+        checked = 0
+        # Each outgoing ref supplies its own immutable snapshot, including when
+        # HEAD is detached or another branch is checked out. Never read worktree evidence.
+        groups = [payload] if read_record is not None else payload.splitlines()
+        for group in groups:
+            commits = pushed_commits(root, group)
+            for commit in commits:
+                paths = git_bytes(root, 'diff-tree', '--root', '-m', '-r', '--no-commit-id',
+                                  '--name-only', '--no-renames', '-z', commit).decode('utf-8').split('\0')
+                if not any('_system' in Path(path).parts[:-1] for path in paths if path):
+                    continue
+                reader = read_record
+                if reader is None:
+                    snapshot = group.decode('ascii').split()[1]
+                    reader = committed_reader(root, commit, snapshot)
+                validate_evidence(root, commit, reader)
+                checked += 1
+        print('trailers: %d _system commits checked' % checked)
+        return True
+    except (OSError, ValueError, UnicodeError, subprocess.SubprocessError) as exc:
+        reason = str(exc) if isinstance(exc, ValueError) else 'cannot read trailer evidence/history'
+        print('trailers: REFUSED (%s)' % reason, file=sys.stderr)
+        return False
 
 
 def main():
@@ -29,6 +173,12 @@ def main():
         failed = failed or not clean
     except Exception as exc:
         print('pre-push: gitleaks gate could not run: %s' % exc, file=sys.stderr)
+        failed = True
+    try:
+        trailers = trailer_gate(root, payload)
+        failed = failed or not trailers
+    except Exception:
+        print('pre-push: trailer gate could not run', file=sys.stderr)
         failed = True
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
     try:
