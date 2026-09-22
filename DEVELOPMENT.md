@@ -15,6 +15,14 @@ it constrains — template, menu, preflight, or decision — never parked here (
 
 ## Current Status
 
+**Row 4 review round 3, 2026-09-22:** the supplied independent review is
+APPROVE WITH CHANGES. The 22 September provisional rulings in 0054 stand. Two MINOR
+findings await owner action: the protected stage-03 contract still describes the old
+approval sidecar, and session-wide refusal for unreviewed pins needs a scope ruling.
+The three NOTEs are answered in the [round-3 change report](docs/implementation/row_4_change_report.md#review-round-3-fixes),
+with current verification results and remaining deployment measurements. No pin status
+is promoted by this producer response.
+
 Row 1 implementation, 2026-09-13: partial R-072, ATAC condition floor, sealed-fixture
 runner, constitution and empty evidence table added. Review round 2 fixes, 15 Sep: exact HISTORY declaration matching and demo-record
 regeneration are covered by regressions. The supplied round-2 review confirms independent
