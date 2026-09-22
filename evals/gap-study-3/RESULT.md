@@ -15,7 +15,7 @@ Every count below is a count of three takes. The `held` column is what the grade
 | `confounded-design` | positive | `claude-opus-5` | 2 of 3 | 3 of 3 | 7 | default | complete |
 | `confounded-design` | positive | `claude-sonnet-5` | — | 1 of 3 | 0 | default | unmeasured — incomplete: 1 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |
 | `scope-read` | control | `claude-haiku-4-5-20251001` | 0 of 3 | 3 of 3 | 0 | default | complete |
-| `scope-read` | control | `claude-opus-5` | — | 1 of 3 | 0 | default | unmeasured — incomplete: 1 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |
+| `scope-read` | control | `claude-opus-5` | — | 1 of 3 | 0 | default | unmeasured — incomplete: 1 graded take(s) of 3, 1 rehearsal(s), 0 pause(s) |
 | `scope-read` | control | `claude-sonnet-5` | 3 of 3 | 3 of 3 | 0 | default | complete |
 | `scope-read` | positive | `claude-haiku-4-5-20251001` | — | 2 of 3 | 1 | default | unmeasured — incomplete: 2 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |
 | `scope-read` | positive | `claude-opus-5` | — | 2 of 3 | 1 | default | unmeasured — incomplete: 2 graded take(s) of 3, 0 rehearsal(s), 0 pause(s) |

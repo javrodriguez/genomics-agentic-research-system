@@ -132,8 +132,8 @@
         ],
         "n": 3,
         "pauses": 0,
-        "rehearsals": 0,
-        "state": "incomplete \u2014 1 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
+        "rehearsals": 1,
+        "state": "incomplete \u2014 1 of 3, and no mechanical reason is on record: 1 rehearsal(s), 0 pause(s), neither at its cap"
       },
       "positive": {
         "harness_versions": [
