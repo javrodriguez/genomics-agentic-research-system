@@ -98,7 +98,7 @@
       "source": "evals/gap-study-2/language-allowlist.json",
       "source_blob": "a3f6e1519e78e5bba13e1affebf29840785ed57d",
       "source_sha256": "c44678b456197a08ae4d130b43df04a5a5d4205ccdbf9b746dcb73c0669a00c0",
-      "copy_sha256": "c9acc416b963579a7e97b1efdceeb960912586f98cc9a04fc8b0e428c46b39e9",
+      "copy_sha256": "460b48574dbe44daf7b3088fce651b16c33d4a0fc9d67b4141e56cc4d96751b6",
       "edited": true,
       "why": "The excusal list is this study's own. Round 2's two verifier-report entries name files this study did not copy and are dropped; its contract-quote entry is re-ruled against this study's copy of contract_quotes.json, whose bytes are identical."
     },

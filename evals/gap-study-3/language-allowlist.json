@@ -7,6 +7,13 @@
       "line_text": "      \"text\": \"  `stage03_analysis.py approve` has succeeded on the plan. Drafting is free; running is gated.\\n- Do **not** run `approve` before the user has read the plan and said yes to it. The command\\n  records an approval that happened in dialogue; it never substitutes for one.\"",
       "ruled": "2026-09-19",
       "why": "Re-ruled for round 3 against this study's copy, whose bytes are identical to round 2's at bf065fe: the word sits inside a byte-exact quotation of gars/03_custom_analysis/CONTEXT.md at tree 8a54e0f8 (blob 1f93fc16), where the contract says drafting an analysis plan is free while running it is gated. It is the system under test's own sentence about its plan gate, not a claim by this study about any model's cost. The quote is pinned by blob sha and asserted as a byte substring, so it cannot be edited to satisfy this linter without breaking the binding."
+    },
+    {
+      "file": "evals/gap-study-3/COSTS.md",
+      "pattern": "hundred",
+      "line_text": "| `confounded-design` | positive | `claude-opus-5` | 1 | 100 | 2,006,990 | 102,010 | 20,625 | 2.8 min | evidenced |",
+      "ruled": "2026-09-22",
+      "why": "Ruling 13, 22 September 2026, by amendment 1. The hit is a token count, not a rate: this row of the per-take cost table reports that one graded take (confounded-design, positive half, claude-opus-5, take 1) sent exactly one hundred input tokens, in the column headed `input`, beside its cache and output token counts. The line carries no percentage and no rate. COSTS.md is written by costs.py from the take's own transcript and re-derived by `costs.py --check`, and costs.py is pinned, so the number is the transcript's true count and cannot be respelled without fabricating it. The linter is one of the files pinned byte-identical, so it cannot be narrowed as round 2 narrowed its own; this excusal matches this exact line only, and a real percentage anywhere else, or any edit to this line, still fires."
     }
   ]
 }
