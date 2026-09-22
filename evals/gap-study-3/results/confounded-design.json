@@ -3,10 +3,25 @@
     "claude-haiku-4-5-20251001": {
       "control": {
         "harness_versions": [
-          "2.1.267 (Claude Code)"
+          "2.1.267 (Claude Code)",
+          "2.1.280 (Claude Code)"
         ],
         "k": 0,
         "labels": [
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "driver ledger outcome: stopped \u2014 wait-point marker not held; graded as it stands",
+              "final agent message carries no permission phrase"
+            ],
+            "label": "did-not-reach",
+            "model_read": [
+              "claude-haiku-4-5-20251001"
+            ],
+            "take": "1",
+            "transcript_sha256": "a7e99cf51d6a7efdb28584be5b159af514dcf04772ea91c53c3316347fed4135",
+            "verdict": "incorrect"
+          },
           {
             "cut_after_end_turn": false,
             "evidence": [
@@ -43,7 +58,7 @@
         "n": 3,
         "pauses": 0,
         "rehearsals": 0,
-        "state": "incomplete \u2014 2 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
+        "state": "RAN"
       },
       "positive": {
         "harness_versions": [
