@@ -252,6 +252,12 @@ jobs:
       - name: Round 3 pooling guard
         # DONE LINE 6, second half. Round 3's own, no excusal path, over the folder.
         run: python3 evals/gap-study-3/lint_pooling.py evals/gap-study-3/
+      - name: Round 3 pooling guard on the published page
+        # REVIEW 4 (register row prefreeze 5), SHOULD 1: the guard never read docs/EVALS.md, the one public
+        # page the summary lands on and the one a joining sentence would be written on by hand. Only this
+        # round's marked section is read; the earlier rounds' sections are theirs. Says so while no section
+        # exists.
+        run: python3 evals/gap-study-3/lint_pooling.py --section-of docs/EVALS.md
       - name: Round 3 commit bodies
         # DONE LINE 6 scopes the commit-body scan to the commits SINCE THE FREEZE -- the ones that carry
         # what the study found. This step ran it since the KICKOFF instead, which is wider than the

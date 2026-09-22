@@ -188,7 +188,7 @@
       "source": "evals/gap-study-2/copy_manifest.py",
       "source_blob": "459d8dbf840ce3f3bed8df852e4855c3939aa0d0",
       "source_sha256": "b95a8be431e5acbae5ea3894850c5c6e87f9989df45a3f8af1a92ee57dd52811",
-      "copy_sha256": "76a538518fbab11712880c9344e4938ad516f1bb1da239e652b9d00b03e05e68",
+      "copy_sha256": "ac5f926792576f12818c9cef32588166b6e7325552a1b4aaf395cb4235895bdf",
       "edited": true,
       "why": "Its own constants: this study's file list, its edit reasons, the commits it pins the earlier studies at, and the byte-identical set the goal file names."
     },
@@ -352,7 +352,7 @@
       "source_sha256": "e624d8044f5b9af5737b1648a3f359653f9b73521cd731aa455002f5b639fa12",
       "copy_sha256": "20a660ad4ca2ca28d54848b335aa4f8ce4d8e86a643e6d60dd02f5a35c3e0e47",
       "edited": true,
-      "why": "A live string named the copied round's folder and now takes its path from study.py, as round 2's own design says a path must. The `generator` field WRITTEN INTO every fixture manifest said round 2's generator had built it. That one is data, not a display string: a reader of the manifest would have been told the wrong study built the fixture."
+      "why": "A live string named the copied round's folder and now takes its path from study.py, as round 2's own design says a path must. The `generator` field WRITTEN INTO every fixture manifest said round 2's generator had built it. That one is data, not a display string: a reader of the manifest would have been told the wrong study built the fixture. WHAT THIS EDIT REACHES (review 4, NIT 4): no take runs this copy. The carried task specs name round 2's generator by path, the driver runs that path, and the freeze pins the fixture hash through it; both files are pinned and hash-bound. This copy is the one a reader building from this folder would run, and its manifest is honest for that reader."
     },
     {
       "path": "evals/gap-study-3/fixtures/symbol_rulings.json",

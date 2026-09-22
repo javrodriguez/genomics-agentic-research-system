@@ -104,6 +104,19 @@ def paths_in(text: str) -> list[str]:
     return [m.group(1).rstrip(".,;:") for m in ABS_PATH.finditer(text or "")]
 
 
+def root_pattern_problems() -> list[str]:
+    """REVIEW 4, NIT 5. ABS_PATH lists its roots by hand, and a checkout under a root it does not list would
+    produce a verdict that classifies no path as the study and reads clean. So the verdict checks itself:
+    every study root this file derives must be a path the pattern would see."""
+    out = []
+    for r in study_roots():
+        hits = paths_in(f" {r} ")
+        if not hits or not under(hits[0], r):
+            out.append(f"the study root {r} is not matched by the absolute-path pattern, so a session naming it "
+                       f"would not be seen; this verdict cannot grade anything from here")
+    return out
+
+
 # The harness's own background-task output file. Claude Code names this path back to the agent when a
 # command is run with run_in_background, so merely backgrounding a command puts an absolute path outside
 # the run tree into the transcript. It is the harness describing itself, exactly as the pre-study's voided
@@ -383,6 +396,11 @@ def main() -> int:
         print("ok: the finding re-derives from round 2's own bytes")
         return 0
 
+    unseen = root_pattern_problems()
+    if unseen:
+        for u in unseen:
+            print(f"FAIL {u}")
+        return 1
     walks = committed_walks()
     if not walks:
         # An empty gate is said out loud. No walk has been committed, so this check has graded nothing.

@@ -143,7 +143,40 @@ def main() -> int:
                     help="with --commits-since: scan up to this commit (default: HEAD)")
     ap.add_argument("--include-code", action="store_true", help="also scan .py sources")
     ap.add_argument("--list-patterns", action="store_true")
+    ap.add_argument("--section-of", type=Path, metavar="FILE",
+                    help="scan only this round's marked section of FILE (study.SUMMARY_START..SUMMARY_END), "
+                         "the one public page the summary lands on; says so when the section does not exist yet")
     args = ap.parse_args()
+
+    if args.section_of is not None:
+        # REVIEW 4 (register row prefreeze 5), SHOULD 1. The guard scanned the study folder and the post-freeze
+        # commit bodies and never docs/EVALS.md, the page the summary is published on and the one a joining
+        # sentence would be written on by hand. The page also carries the earlier rounds' sections, which are
+        # theirs and name the shortcut by its word, so only THIS round's section is read.
+        import study
+        text = args.section_of.read_text(errors="replace") if args.section_of.is_file() else ""
+        if study.SUMMARY_START not in text or study.SUMMARY_END not in text:
+            print(f"no section yet: {args.section_of} carries no {study.SUMMARY_START} block, so this scan has read "
+                  f"nothing and claims nothing. Not a pass.")
+            return 0
+        start = text.index(study.SUMMARY_START)
+        end = text.index(study.SUMMARY_END, start)
+        before = text[:start].count("\n")
+        section = text[start:end]
+        found = scan_text(section, str(args.section_of))
+        for f in found:
+            f["line"] += before
+        if not found:
+            print(f"clean — this round's section of {args.section_of} scanned ({section.count(chr(10))} line(s)), "
+                  f"no excusal path")
+            return 0
+        print(f"{len(found)} finding(s) in this round's section of {args.section_of}:\n")
+        for f in found:
+            print(f"  {f['file']}:{f['line']}  [{f['pattern']}] {f['match']!r}")
+            print(f"      {f['text']}")
+            print(f"      why banned: {f['why']}")
+        print("\nThere is no allowlist for these. Write the sentence a different way.")
+        return 1
 
     if args.list_patterns:
         for name, rx, why in PATTERNS:
@@ -151,7 +184,7 @@ def main() -> int:
             print(f"{name:16} {rx:46} {why}{mark}")
         return 0
     if not args.paths and not args.commits_since:
-        ap.error("give at least one path, or --commits-since <sha>")
+        ap.error("give at least one path, --commits-since <sha>, or --section-of <file>")
 
     findings: list[dict] = []
     scanned = 0

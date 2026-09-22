@@ -138,7 +138,12 @@ EDITS = {
     "costs.py": PATH_FIX + "Two lines printing the command that writes the costs table named round 2's.",
     "fixtures/gen_source.py": PATH_FIX + "The `generator` field WRITTEN INTO every fixture manifest said "
                               "round 2's generator had built it. That one is data, not a display string: a "
-                              "reader of the manifest would have been told the wrong study built the fixture.",
+                              "reader of the manifest would have been told the wrong study built the fixture. "
+                              "WHAT THIS EDIT REACHES (review 4, NIT 4): no take runs this copy. The carried "
+                              "task specs name round 2's generator by path, the driver runs that path, and the "
+                              "freeze pins the fixture hash through it; both files are pinned and hash-bound. "
+                              "This copy is the one a reader building from this folder would run, and its "
+                              "manifest is honest for that reader.",
     "review_kit/launch.py": "The session id may be given as a second argument instead of drawn fresh. "
                             "Round 2 drew a uuid4 here, so a reviewer's session was tied to nothing and a "
                             "run could open several and commit the ones it liked. Round 3 passes the id its "

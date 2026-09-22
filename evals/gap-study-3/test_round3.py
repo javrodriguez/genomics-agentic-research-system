@@ -1660,6 +1660,66 @@ class ReviewThreeFollowUpsStayFixed(unittest.TestCase):
         self.assertFalse(any(p.search("/evals/gap-study-3/result.py") for p in fz.TREE_BINDING_EXCLUDED))
 
 
+class ReviewFourFollowUpsStayFixed(unittest.TestCase):
+    """Review 4 (register row prefreeze 5) ruled DO FREEZE with two SHOULDs and three NITs. Ruling 12 froze
+    on the bytes it read: everything that does not move the draft is fixed here, and the one sentence only the
+    draft could carry is published in the README instead."""
+
+    def test_the_draft_is_the_bytes_review_5_read(self):
+        want = (HERE / "review_kit" / "prefreeze-5.md").read_text().splitlines()[0].split(": ", 1)[1]
+        self.assertEqual(hashlib.sha256((HERE / "prereg-draft.json").read_bytes()).hexdigest(), want,
+                         "ruling 12: the freeze seeds from review 5, so the draft may not move after it")
+
+    def test_should_1_the_pooling_guard_reads_this_rounds_section_of_the_published_page(self):
+        ci = (REPO / ".github" / "workflows" / "ci.yml").read_text()
+        self.assertIn("lint_pooling.py --section-of docs/EVALS.md", ci)
+        with tempfile.TemporaryDirectory() as td:
+            page = Path(td) / "EVALS.md"
+            page.write_text("# evals\n\nround 2 said pooled here, which is its own section\n")
+            r = run(str(HERE / "lint_pooling.py"), "--section-of", str(page))
+            self.assertEqual(r.returncode, 0, r.stdout)
+            self.assertIn("no section yet", r.stdout)
+            self.assertIn("Not a pass", r.stdout)
+            page.write_text("round 2 said pooled here\n" + study.SUMMARY_START + "\nRound 3 counts print beside "
+                            "round 2's.\n" + study.SUMMARY_END + "\n")
+            r = run(str(HERE / "lint_pooling.py"), "--section-of", str(page))
+            self.assertEqual(r.returncode, 0, r.stdout)
+            self.assertIn("clean", r.stdout)
+            page.write_text("x\n" + study.SUMMARY_START + "\nThe pooled count is 4 of 6.\n" + study.SUMMARY_END + "\n")
+            r = run(str(HERE / "lint_pooling.py"), "--section-of", str(page))
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("[pooled]", r.stdout)
+            self.assertIn(":3 ", r.stdout, "the line number is the page's, not the section's")
+
+    def test_should_2_the_missing_limitation_is_published_where_the_frozen_file_cannot_carry_it(self):
+        readme = (HERE / "README.md").read_text()
+        self.assertIn("## A limitation the frozen file does not carry", readme)
+        self.assertIn("harness's own session file", readme)
+        self.assertIn("Ruling 12", readme)
+
+    def test_nit_3_the_caption_prints_the_earlier_rounds_own_dates_and_commit(self):
+        import result
+        cap = result.caption()
+        self.assertIn("bf065feedccc", cap)
+        self.assertNotIn("The Gap Study, round 2;", cap)
+        self.assertNotIn("2026-09-17T", cap, "a timestamp is the freeze's, not a run date")
+        self.assertIn("2026-09-17, from the earlier round's own ledgers", cap)
+
+    def test_nit_4_the_generator_sentence_says_what_the_edit_reaches(self):
+        import copy_manifest
+        self.assertIn("no take runs this copy", copy_manifest.EDITS["fixtures/gen_source.py"])
+
+    def test_nit_5_the_walk_verdict_checks_its_own_roots_against_its_pattern(self):
+        import fixture_walk as fw
+        self.assertEqual(fw.root_pattern_problems(), [])
+        roots = fw.study_roots
+        try:
+            fw.study_roots = lambda: ["/Volumes/elsewhere/a-checkout"]
+            self.assertTrue(fw.root_pattern_problems(), "a root the pattern does not list must be reported")
+        finally:
+            fw.study_roots = roots
+
+
 # ---------------------------------------------------------------------------------------------
 # The reviewer's brief and the purpose page
 

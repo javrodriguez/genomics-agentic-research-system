@@ -69,6 +69,21 @@ Round 2's language linter carries no pattern for this, because round 2 had no se
 to. `lint_pooling.py` is round 3's own, run beside the copied one rather than folded into it, so the copied one
 stays exactly as it was.
 
+## A limitation the frozen file does not carry
+
+Review 4 (register row prefreeze 5) named one honest sentence the pre-registration's limitations omit, and
+Ruling 12 (22 September 2026) froze on the bytes that review read rather than spend a fifth round, so the
+sentence lives here, in the closing report and in the owner's `docs/EVALS.md` section, and not in `prereg.json`,
+which no amendment path could add it to afterwards:
+
+> A take's session id is a pure function of its row's commit, and the harness refuses to open a second session
+> under an id it already holds a file for. That is what "a run cannot pick a take after seeing it" rests on.
+> A take re-driven after the harness's own session file for the first session was deleted would leave a coherent
+> record -- a fresh transcript, ledger and environment record, all written by the pinned driver, all bound to
+> the same row -- that nothing in this repository distinguishes from the first. The claim the record supports is
+> therefore "bound to a row committed before its session opened", not "cannot be re-driven"; the stronger
+> reading needs the operator's own files, which this repository does not carry.
+
 ## The record
 
 `transcripts/`, `rehearsals/`, `pauses/`, `verification/`, `review_kit/` reports, `takes.json`, `prereg.json`,

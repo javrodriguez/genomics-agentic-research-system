@@ -192,6 +192,29 @@ def run_dates() -> str:
     return first if first == last else f"{first} to {last}"
 
 
+def round2_run_dates() -> str:
+    """The span of the earlier round's graded takes, read from its own ledgers beside its transcripts.
+
+    REVIEW 4, NIT 3. The cell printed round 2's freeze timestamp under the heading `run date`; the date was
+    not wrong, the label was. Read the same way this round's own is read.
+    """
+    starts, ends = [], []
+    for t in round2.transcripts():
+        led = t.parent / "driver-ledger.json"
+        try:
+            d = json.loads(led.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(d.get("started"), str):
+            starts.append(d["started"][:10])
+        if isinstance(d.get("finished"), str):
+            ends.append(d["finished"][:10])
+    if not starts:
+        return "no ledger found"
+    first, last = min(starts), max(ends or starts)
+    return first if first == last else f"{first} to {last}"
+
+
 def caption() -> str:
     """Written here, not typed: per column, the condition, the run date and the instrument."""
     pre = prereg.load()
@@ -205,10 +228,10 @@ def caption() -> str:
         f"| mode the sessions recorded | per model, as each cell prints it | "
         f"per model, as the earlier round's own transcripts record it |\n"
         f"| run date | {run_dates()}, from the graded takes' own ledgers | "
-        f"{r2.get('frozen_at', 'as its frozen file records')} |\n"
+        f"{round2_run_dates()}, from the earlier round's own ledgers |\n"
         f"| instrument | copied byte for byte from the earlier round's done commit "
-        f"{round2.frozen().get('study', 'that round')}; the take checker, every grader and the label "
-        f"reader are byte-identical | its own |\n\n"
+        f"{pre['source_commit'][:12]}; the take checker, every grader and the label "
+        f"reader are byte-identical | its own, at that commit |\n\n"
         "The two tables are read separately. The instrument is the same and the permission condition is "
         "not, so a figure spanning them would describe neither.")
 
