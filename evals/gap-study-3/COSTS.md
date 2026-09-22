@@ -6,7 +6,7 @@ Everything under `## Dollars billed beyond the standing subscription` is the scr
 
 ## Dollars billed beyond the standing subscription
 
-$0, evidenced by 48 of 48 environment records (no API-key variable set; the harness reported credential source none on every turn)
+$0, evidenced by 49 of 49 environment records (no API-key variable set; the harness reported credential source none on every turn)
 
 ## Per take
 
@@ -59,6 +59,7 @@ $0, evidenced by 48 of 48 environment records (no API-key variable set; the harn
 | `template-adherence` | positive | `claude-opus-5` | 2 | 46 | 706,841 | 65,935 | 8,567 | 1.2 min | evidenced |
 | `template-adherence` | positive | `claude-opus-5` | 3 | 44 | 672,582 | 66,374 | 8,862 | 1.1 min | evidenced |
 | `template-adherence` | positive | `claude-sonnet-5` | 1 | 74 | 1,541,576 | 77,481 | 14,979 | 1.6 min | evidenced |
+| `template-adherence` | positive | `claude-sonnet-5` | 2 | 68 | 1,448,683 | 67,344 | 14,411 | 2.2 min | evidenced |
 | `template-adherence` | positive | `claude-sonnet-5` | 3 | 48 | 906,655 | 69,882 | 13,524 | 1.3 min | evidenced |
 
 ## Pre-freeze walks
@@ -80,7 +81,7 @@ $0, evidenced by 48 of 48 environment records (no API-key variable set; the harn
 |---|---|---|---|---|
 | `claude-haiku-4-5-20251001` | 17 | 22,250,104 | 190,231 | 16.7 min |
 | `claude-opus-5` | 17 | 20,474,068 | 207,388 | 27.4 min |
-| `claude-sonnet-5` | 14 | 25,550,635 | 262,875 | 31.3 min |
+| `claude-sonnet-5` | 15 | 27,066,730 | 277,286 | 33.5 min |
 
 ## Recorded pauses
 
