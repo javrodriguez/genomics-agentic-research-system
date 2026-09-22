@@ -20,6 +20,15 @@
       "voids": null,
       "spent_without_work": "the reviewer model's rate limit was reached before the first agent turn; the session id this row derives was spent by that launch and the harness refuses to reuse it",
       "spent_at": "2026-09-21T11:43:24+00:00"
+    },
+    {
+      "n": 3,
+      "kind": "prefreeze",
+      "prompt_sha256": "0910589c8290963e804bf69cbe5d050f07c20e65f7f804505275b885fc984e1a",
+      "input_sha256": "80ff9554d9c385436ae79836388a6c3e13d72b0a823dc32ebb35fde7d23c8d71",
+      "launch_commit": "16b60bfdd26393e51ea9d17b9b542d23427f49a0",
+      "added": "2026-09-22T13:21:47+00:00",
+      "voids": null
     }
   ]
 }
