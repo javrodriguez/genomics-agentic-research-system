@@ -295,7 +295,7 @@ is authorised by the owner under a **provisional ruling, to be confirmed by the 
 D-17 sinks 7–9 are the generated job script (`submit.sh` / `commands.sh`),
 reproducibility manifest and Git index, confirmed by the owner under a
 **provisional ruling, to be confirmed by the owner**. See the
-[decision addendum](docs/decisions/0055-row-15-provisional-owner-rulings.md) and
+[decision addendum](docs/decisions/0057-row-15-provisional-owner-rulings.md) and
 [Row 15 report](docs/implementation/row_15_change_report.md#review-round-4-fixes).
 The repository-side canary scan is not full R-096 agent containment; live
 exfiltration-task and job-runtime containment remain unverified.

@@ -16,7 +16,7 @@ symptoms:
   - encoded assignment logs report zero contaminated sinks
   - current collection count substituted into historical platform evidence
 ---
-# Row 15 review round 2 addendum to 0052
+# Row 15 review round 2 addendum to 0055
 
 The owner requires inherited content at `c934f6d` to remain untouched as inherited,
 out-of-scope content; its presence is not a defect. Implementation documents are living;
@@ -25,7 +25,7 @@ Number 0053 remains reserved for the sibling row; no sibling file is changed.
 
 ## Scan completeness
 
-Decision 0052's textual scan missed blobs that Git suppresses as binary, including
+Decision 0055's textual scan missed blobs that Git suppresses as binary, including
 an ordinary text file assigned `-diff`. Both hooks now inspect Git's NUL-delimited
 numstat before invoking the scanner and refuse any binary entry. The refusal
 covers **clean binary files too**: these hooks cannot certify omitted content.
@@ -69,3 +69,5 @@ configuration, real Git objects and a deterministic scanner in row 3's disposabl
 fixture setup, preserving all assertions. The owner has not authorized that edit.
 The full-suite failures remain failures, not an accepted alternative to green.
 The change report records the requested scope ruling and all residual gaps.
+
+_Renumbered at merge, 2026-09-22: this record was written as 0054 on its branch and takes 0056 on main, because the row-5 fix and rows 15, 4, 11 and 12 numbered their decisions independently (merge order: row-5 fix, 15, 4, 11, 12). Its number, link targets and the numbers of other rows' records it cites are the only edits; branch-time number notes are left as written._

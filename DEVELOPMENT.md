@@ -23,7 +23,7 @@ The owner authorised R15-03 option A: **provisional ruling, to be confirmed by t
 The owner confirmed D-17 option A: sinks 7–9 are the generated job script
 (`submit.sh` / `commands.sh`), reproducibility manifest and Git index;
 **provisional ruling, to be confirmed by the owner**. See
-[0055](docs/decisions/0055-row-15-provisional-owner-rulings.md).
+[0057](docs/decisions/0057-row-15-provisional-owner-rulings.md).
 The hooks refuse binary or `-diff` content omitted by Git; encoded assignment
 logs are covered. Full R-096 agent containment remains unmeasured. The owner must
 confirm or reverse both provisional rulings later; the separate study merge hold

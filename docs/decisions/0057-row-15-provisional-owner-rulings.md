@@ -12,7 +12,7 @@ symptoms:
   - pre-push clean-pass fixtures omit scanner configuration and valid Git objects
   - D-17 sink identities remain recorded as defaults pending an owner ruling
 ---
-# Row 15 provisional owner rulings: addendum to 0052 and 0054
+# Row 15 provisional owner rulings: addendum to 0055 and 0056
 
 ## Context
 
@@ -34,7 +34,7 @@ valid scratch Git objects in place of the fake object ID, and a deterministic
 stand-in scanner on PATH. Preserve every existing assertion, stdin check and veto
 behaviour in meaning. List each changed line and its reason in the round 4 change
 report. The whole suite must end OK in this run. This ruling resolves the stopped
-scope question recorded in 0052/0054 for this repair; it does not authorise other
+scope question recorded in 0055/0056 for this repair; it does not authorise other
 row 3 changes or any row 4 change.
 
 ### D-17, option A
@@ -45,7 +45,7 @@ The three extra sinks are confirmed provisionally as:
 
 7. Generated job script: `submit.sh` / `reproducibility/commands.sh`.
 8. Reproducibility manifest.
-9. Git index: staged blob bytes, as defined in 0052.
+9. Git index: staged blob bytes, as defined in 0055.
 
 The living documents use these identities now. Earlier records retain their
 historical wording. This confirms the sink identities provisionally; it does not
@@ -71,3 +71,5 @@ The separate study merge hold and all unmeasured full-containment limits stand.
 ## Date
 
 2026-09-22
+
+_Renumbered at merge, 2026-09-22: this record was written as 0055 on its branch and takes 0057 on main, because the row-5 fix and rows 15, 4, 11 and 12 numbered their decisions independently (merge order: row-5 fix, 15, 4, 11, 12). Its number, link targets and the numbers of other rows' records it cites are the only edits; branch-time number notes are left as written._

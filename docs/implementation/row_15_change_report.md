@@ -1,7 +1,7 @@
 # Row 15 repository-side change report
 
 Producer: Codex. Branch: `build/gars-row-15-secrets`. Parent: `c934f6d`.
-Decision: [0052](../decisions/0052-row-15-secrets-canary-and-gitleaks-hooks.md).
+Decision: [0055](../decisions/0055-row-15-secrets-canary-and-gitleaks-hooks.md).
 No approval, merge, remote addition or push was performed.
 
 The repository-side containment runner printed:
@@ -21,8 +21,8 @@ fixture setup is incompatible with the required fail-closed scanner; see below.
 | R-096: repository configuration and containment | `gars/.gitleaks.toml`, `gars/tests/test_secret_containment.py`, `gars/tests/secret_support.py` | Committed-tree real gitleaks scan; nine sinks and three representations per sink; existing artifact writers with an ambient canary | PASS for the stated repo-side scope, `canary: 0/9`; committed tree has zero findings. **Yes:** raw-only decoding missed a base64 log, failing detection; a fixture plant failed the zero-sink assertion. No complete canary is printed or committed. |
 | R-096, R-161: preserve existing hooks | `gars/_system/hooks/install.py`, `test_hooks_gitleaks.py` | Both hooks installed in disposable `.githooks`, repeat installation, prior content retained, differing markers refused unchanged | PASS. **Yes:** removing marker checks overwrote differing content and the preservation assertion failed. No source-clone hooks were armed. |
 | R-096: configuration containment | `pre-commit`, `test_hooks_gitleaks.py` | Config symlink resolves outside scratch repository | PASS. **Yes:** disabling the containment refusal made the same acceptance assertion fail. |
-| R-094, `.githooks/*` only | Installer preserves Git's selected hook location; 0052 records protected-path scope | Configured `.githooks` integration and marker-content preservation | Repository installation behavior PASS; agent write enforcement **NOT met here**, carried by row 4. No guard or settings change. |
-| R-096/R-161 record and test discovery | 0052, generated `docs/decisions/CONTEXT.md`, this report; count-only changes to `README.md` and `DEVELOPMENT.md` | Existing unittest discovery, decision-index rebuild and `check_counts.py` | Discovery needed no runner edit. Three current count claims updated to the runner's 250, with no other edits to those documents. |
+| R-094, `.githooks/*` only | Installer preserves Git's selected hook location; 0055 records protected-path scope | Configured `.githooks` integration and marker-content preservation | Repository installation behavior PASS; agent write enforcement **NOT met here**, carried by row 4. No guard or settings change. |
+| R-096/R-161 record and test discovery | 0055, generated `docs/decisions/CONTEXT.md`, this report; count-only changes to `README.md` and `DEVELOPMENT.md` | Existing unittest discovery, decision-index rebuild and `check_counts.py` | Discovery needed no runner edit. Three current count claims updated to the runner's 250, with no other edits to those documents. |
 
 Every changed path under `gars/` is in the authorized hook/config/new-test list:
 `_system/hooks/install.py`, `_system/hooks/pre-commit`, `_system/hooks/pre-push`
@@ -30,7 +30,7 @@ Every changed path under `gars/` is in the authorized hook/config/new-test list:
 `.gitleaks.toml`, `tests/secret_support.py`, `tests/test_hooks_gitleaks.py`,
 `tests/test_secret_containment.py` (R-096/R-161). No other `gars/` file changes.
 The allowlist's eight exact paths and package-pin justification are listed in
-0052; only the generic API-key rule and the specific false-positive text are
+0055; only the generic API-key rule and the specific false-positive text are
 exempted. A real-binary refusal also places the canary in an allowlisted
 reference-document path to prove the canary rule stays active there.
 
@@ -203,15 +203,15 @@ Date: 2026-09-21. Producer: Codex. Review input: `docs/reviews/row_15_review.md`
 left untracked and unchanged. The owner's September 15 and September 21 rulings
 apply: content inherited at `c934f6d` is out of scope and is not removed; living
 implementation documents are edited in place; existing records remain append-only.
-Decision [0054](../decisions/0054-row-15-review-scan-completeness.md) adds the
-mechanism and evidence corrections beside the unchanged 0052 record.
+Decision [0056](../decisions/0056-row-15-review-scan-completeness.md) adds the
+mechanism and evidence corrections beside the unchanged 0055 record.
 
 | Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
 |---|---|---|---|
-| R15-01 BLOCKER: Git binary/attribute suppression | `gars/_system/hooks/pre-commit` (shared by pre-push), `gars/tests/test_hooks_gitleaks.py`, 0054, generated decision index | `GitleaksHookTests.test_real_binary_and_attributes_refused` with real gitleaks 8.30.0; both hooks, NUL and staged `-diff`, plus a clean pushed tip after an earlier contaminated commit | CLOSED by refusing omitted content. **Yes:** removing the completeness guard in the scratch hook lets both variants pass both hooks; each refusal assertion then fails. Existing scanner and prior-hook tests still pass. |
-| R15-02 BLOCKER: encoded assignment logs | `gars/tests/secret_support.py`, `gars/tests/test_secret_containment.py`, 0054 | `SecretContainmentTests.test_encoded_assignment_logs_refuse_zero_sinks`, `test_repo_side_nine_sinks`, `test_decoder_nested_and_red_on_fault` | CLOSED. **Yes:** actual base64/hex assignment log plants make the zero-sink assertion fail. Restoring the old decoder in a scratch helper and running the new named test returns `FAILED (failures=1)`. All nine sinks also detect the unquoted forms. |
+| R15-01 BLOCKER: Git binary/attribute suppression | `gars/_system/hooks/pre-commit` (shared by pre-push), `gars/tests/test_hooks_gitleaks.py`, 0056, generated decision index | `GitleaksHookTests.test_real_binary_and_attributes_refused` with real gitleaks 8.30.0; both hooks, NUL and staged `-diff`, plus a clean pushed tip after an earlier contaminated commit | CLOSED by refusing omitted content. **Yes:** removing the completeness guard in the scratch hook lets both variants pass both hooks; each refusal assertion then fails. Existing scanner and prior-hook tests still pass. |
+| R15-02 BLOCKER: encoded assignment logs | `gars/tests/secret_support.py`, `gars/tests/test_secret_containment.py`, 0056 | `SecretContainmentTests.test_encoded_assignment_logs_refuse_zero_sinks`, `test_repo_side_nine_sinks`, `test_decoder_nested_and_red_on_fault` | CLOSED. **Yes:** actual base64/hex assignment log plants make the zero-sink assertion fail. Restoring the old decoder in a scratch helper and running the new named test returns `FAILED (failures=1)`. All nine sinks also detect the unquoted forms. |
 | R15-03 BLOCKER: incompatible row 3 fixtures | This report and current status documentation only; `gars/tests/test_pre_push.py` unchanged | `python3 tests/run_tests.py` | OPEN, scope decision required below. **Yes:** the full runner still fails the three original clean-pass fixture assertions; no test, enforcement or threshold is relaxed. |
-| R15-04 MAJOR: historical count substituted | `README.md`, `DEVELOPMENT.md`, this appended report section, 0054 | `git show c934f6d:README.md`; `python3 tests/check_counts.py`; full suite | CLOSED. September 17 remains **236 tests, 28 skips**; the current run is separately dated with its actual result. **No new fault plant:** historical provenance is checked against parent bytes; the unchanged count guard checks current collection claims. |
+| R15-04 MAJOR: historical count substituted | `README.md`, `DEVELOPMENT.md`, this appended report section, 0056 | `git show c934f6d:README.md`; `python3 tests/check_counts.py`; full suite | CLOSED. September 17 remains **236 tests, 28 skips**; the current run is separately dated with its actual result. **No new fault plant:** historical provenance is checked against parent bytes; the unchanged count guard checks current collection claims. |
 
 Correction to the earlier report's count-only-change claim: the substitutions of
 250 into the two dated September 17 measurements were wrong. That claim is not
@@ -276,7 +276,7 @@ Protected-path evidence command:
 git diff --stat c934f6d -- evals/ .github/ gars/_system/guard_hook.py gars/.claude/settings.json gars/_system/executorlib.py gars/_system/wrapperlib.py gars/_system/stage03_analysis.py gars/_system/wrappers/ tests/fixtures/ gars/tests/test_pre_push.py
 ```
 
-Output: empty; exit 0. Existing decision 0052 and the row 3 fixture are byte-identical
+Output: empty; exit 0. Existing decision 0055 and the row 3 fixture are byte-identical
 to pre-round HEAD. Earlier report sections are a byte-identical prefix of this
 report. The review's Git blob hash remains
 `c75c7ca81ba89a1375d9acab1a8f54725fad09bb`; it remains untracked. Added file
@@ -331,8 +331,8 @@ conversation or other build/review folder was inspected.
 
 The review reports no new defect and confirms R15-01, R15-02 and R15-04 closed.
 R15-03 remains an introduced integration failure, not a disputed finding or an
-inherited-content defect dismissed under the owner's ruling. Decisions 0052 and
-0054 expressly stop its fixture repair pending an owner scope exception; no such
+inherited-content defect dismissed under the owner's ruling. Decisions 0055 and
+0056 expressly stop its fixture repair pending an owner scope exception; no such
 exception was supplied for this round. The owner's September 15 and September 21
 rulings and this round's scope restriction stand. No hook, fixture, assertion,
 guard, threshold, protected tree or sibling-row file is changed. DEVELOPMENT's
@@ -466,15 +466,15 @@ The owner supplied two provisional option-A rulings on 22 September 2026:
 R15-03's narrow fixture repair is authorised, and D-17's generated job script,
 reproducibility manifest and Git index are confirmed provisionally as sinks 7–9.
 Each is recorded in new decision
-[0055](../decisions/0055-row-15-provisional-owner-rulings.md), attributed to the
+[0057](../decisions/0057-row-15-provisional-owner-rulings.md), attributed to the
 owner and marked **provisional ruling, to be confirmed by the owner**.
 Earlier records' pending-ruling wording describes their historical state; this
 addendum and the living documents record the current authority to proceed.
 
 | Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
 |---|---|---|---|
-| R15-03 BLOCKER — incompatible pre-push fixtures | `gars/tests/test_pre_push.py`; 0055; generated decision index; README; DEVELOPMENT; this report | All seven existing `PrePushTests`, including `test_whole_suite_passes_directly` and both default/custom hook-directory subtests of `test_installer_preserves_both_gates_stdin_and_veto`; three consecutive whole-suite runs | CLOSED in producer validation under the provisional scope ruling. **Yes:** before repair the module reproduces three failures; in scratch copies, separately removing config, restoring the fake object ID and removing the scanner each makes the unchanged clean-pass assertion fail. The intact control passes. All original suite-failure, empty-tree, stdin, argument and previous-hook veto checks pass. |
-| D-17 — identities of sinks 7–9 | 0055; generated decision index; README; DEVELOPMENT; this report | `SecretContainmentTests.test_repo_side_nine_sinks`; standalone containment module | Provisionally confirmed by the owner, pending later confirmation or reversal. Repository-side `canary: 0/9`. **Yes:** existing per-sink plain/base64/hex positive controls and planted contamination checks run; this is not an agent-containment exit claim. |
+| R15-03 BLOCKER — incompatible pre-push fixtures | `gars/tests/test_pre_push.py`; 0057; generated decision index; README; DEVELOPMENT; this report | All seven existing `PrePushTests`, including `test_whole_suite_passes_directly` and both default/custom hook-directory subtests of `test_installer_preserves_both_gates_stdin_and_veto`; three consecutive whole-suite runs | CLOSED in producer validation under the provisional scope ruling. **Yes:** before repair the module reproduces three failures; in scratch copies, separately removing config, restoring the fake object ID and removing the scanner each makes the unchanged clean-pass assertion fail. The intact control passes. All original suite-failure, empty-tree, stdin, argument and previous-hook veto checks pass. |
+| D-17 — identities of sinks 7–9 | 0057; generated decision index; README; DEVELOPMENT; this report | `SecretContainmentTests.test_repo_side_nine_sinks`; standalone containment module | Provisionally confirmed by the owner, pending later confirmation or reversal. Repository-side `canary: 0/9`. **Yes:** existing per-sink plain/base64/hex positive controls and planted contamination checks run; this is not an agent-containment exit claim. |
 | R15-01 — previously closed binary/attribute suppression | None in its implementation or tests | `GitleaksHookTests.test_real_binary_and_attributes_refused`; standalone hook module | Remains closed. **Yes:** scratch guard removal allows both plants through both hooks and their refusal assertions fail. Real gitleaks executes. |
 | R15-02 — previously closed encoded assignments | None in its implementation or tests | `SecretContainmentTests.test_encoded_assignment_logs_refuse_zero_sinks`, `test_decoder_nested_and_red_on_fault`, `test_repo_side_nine_sinks` | Remains closed. **Yes:** base64/hex assignment plants fail zero-sink assertions; raw-only decoding fails detection. |
 | R15-04 — previously closed historical count substitution | README and DEVELOPMENT current status only | `tests/check_counts.py`; comparison with `c934f6d` | Remains closed. **No new fault plant:** both September 17 lines retain parent bytes apart from the pre-existing historical-count marker; the unchanged count guard passes all three current claims. |
@@ -545,7 +545,7 @@ queried locally. No network, remote operation or source-hook installation occurr
 | `python3.13 evals/test_harness.py` (harness-py313) | `Ran 44 tests in 155.900s`; `OK` | 0 |
 | `python3 tests/check_counts.py` (counts-final) | `suite: 252 tests, from unittest's loader`; `enforced=3`; `clean — every current claim matches the suite` | 0 |
 | Scratch fixture faults (`round4-faults.py`) | `intact: exit 0; OK`; each of missing-config, fake-object and missing-scanner: `FAILED (failures=1)` | 0 for driver; each fault 1 as expected |
-| `bash docs/decisions/build_index.sh` | Index regenerated; one new 0055 row | 0 |
+| `bash docs/decisions/build_index.sh` | Index regenerated; one new 0057 row | 0 |
 | Python 3.6 syntax parse and scope audit (`round4-audit.py`) | `Python 3.6 syntax: 7 files parsed (runtime not verified).`; prior records/report and review preserved; protected diff empty | 0 |
 | `git diff --check`; `git diff --cached --check` | No output | 0 |
 | `python3 gars/_system/hooks/pre-commit` (staged-scan) | `gitleaks: passed`; `pre-commit: passed` | 0 |
@@ -566,7 +566,7 @@ unarmed; tests invoke hooks directly in disposable repositories without a push.
 ### Scope and provenance checks
 
 `bash docs/decisions/build_index.sh` regenerates the index with the single new
-0055 row; earlier decision records retain their exact bytes, including 0052/0054.
+0057 row; earlier decision records retain their exact bytes, including 0055/0056.
 The final audit confirms the pre-round change report is an exact byte prefix,
 the supplied review hash is unchanged and the review remains untracked.
 Historical measurements retain both parent lines, and seven Python files parse
@@ -579,7 +579,7 @@ git diff --stat c934f6d -- evals/ .github/ gars/_system/guard_hook.py gars/.clau
 ```
 
 Output: empty; exit 0. `test_pre_push.py` is the sole newly changed `gars/` path
-this round and is explicitly authorised by 0055; its entire diff is accounted
+this round and is explicitly authorised by 0057; its entire diff is accounted
 for line by line above. The other five changed paths are this report, README,
 DEVELOPMENT, the generated index and the new decision addendum. No guard,
 threshold, test runner, count checker, unrelated inherited content, prior formal
@@ -593,7 +593,7 @@ producer identity. All supplied review files remain untracked.
 ## Owner rulings needed
 
 No unresolved implementation choice blocks this round. The owner must later
-confirm or reverse **both** option-A provisional rulings recorded in 0055:
+confirm or reverse **both** option-A provisional rulings recorded in 0057:
 R15-03's narrow fixture scope exception and D-17's sink identities. Each is a
 **provisional ruling, to be confirmed by the owner**; no final confirmation is
 claimed. The previously recorded alternatives remain historical: retain the

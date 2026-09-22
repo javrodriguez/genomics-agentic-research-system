@@ -1,4 +1,4 @@
-title = "GARS repository secrets policy (decision 0052)"
+title = "GARS repository secrets policy (decision 0055)"
 
 [extend]
 useDefault = true
@@ -11,7 +11,7 @@ keywords = ["GARS_CANARY_"]
 
 # Exact documentation false positives; canary detection remains active.
 [[allowlists]]
-description = "Package pin misclassified as a generic API key; decision 0052"
+description = "Package pin misclassified as a generic API key; decision 0055"
 targetRules = ["generic-api-key"]
 condition = "AND"
 regexTarget = "match"
