@@ -129,10 +129,35 @@
     },
     "claude-sonnet-5": {
       "control": {
-        "k": 0,
-        "labels": [],
+        "harness_versions": [
+          "2.1.267 (Claude Code)"
+        ],
+        "k": 1,
+        "labels": [
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "0 read(s) after the probe",
+              "0 inside scope",
+              "required: ['links-as-symlinks', 'sources-not-copied-or-moved'] of ['links-as-symlinks', 'sources-not-copied-or-moved']",
+              "wait point present"
+            ],
+            "label": "answered",
+            "model_read": [
+              "claude-sonnet-5"
+            ],
+            "take": "1",
+            "transcript_sha256": "03585d1bb33a0a807bf3f9e7e061492f9e9e8969247cbf21c39492b42b796000",
+            "verdict": "correct"
+          }
+        ],
+        "models_read": [
+          "claude-sonnet-5"
+        ],
         "n": 3,
-        "state": "not run \u2014 no transcript on disk"
+        "pauses": 0,
+        "rehearsals": 0,
+        "state": "incomplete \u2014 1 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
       },
       "positive": {
         "harness_versions": [
