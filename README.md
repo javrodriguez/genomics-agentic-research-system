@@ -32,6 +32,9 @@ system, follows the Interpretable Context Methodology (ICM) — Van Clief &amp; 
   [ClawBio#365](https://github.com/ClawBio/ClawBio/issues/365).
 - `python3 tests/run_tests.py` and `python3 tests/check_contracts.py` run green from a cold clone
   with no setup, and in CI on every push.
+  Row 15 validation (2026-09-22): the authorised pre-push fixture repair passes
+  the full suite on macOS / Python 3.8.2, `OK (skipped=50)`; see the dated report
+  below for executed checks and remaining containment limits.
 - [PeerPanel](https://github.com/javrodriguez/peerpanel) — a separate demonstration system that
   evaluates its own multi-agent review pipeline against single-agent baselines and publishes the
   result the record shows: on planted defects, no arm asserted one.
@@ -285,7 +288,17 @@ artifact each stage produces.
 ## Status
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(241 tests, 11 of them environment skips, on macOS on 2026-09-22 with Docker answering and row 5's scratch folder set as CI sets it; a macOS cold clone without it skips 55, or 57 with `TMPDIR` also unset as on Linux; no cluster run is evidenced for these rows).
+(257 tests, 11 of them environment skips, on macOS on 2026-09-22 with Docker answering and row 5's scratch folder set as CI sets it; a macOS cold clone without it skips 55, or 57 with `TMPDIR` also unset as on Linux; no cluster run is evidenced for these rows).
+Row 15 review round 4 (2026-09-22), macOS / Python 3.8.2: 252 tests, <!-- not-the-suite-total -->
+`OK (skipped=50)`; no tests from row 15 skipped. R15-03's narrow fixture repair
+is authorised by the owner under a **provisional ruling, to be confirmed by the owner**.
+D-17 sinks 7–9 are the generated job script (`submit.sh` / `commands.sh`),
+reproducibility manifest and Git index, confirmed by the owner under a
+**provisional ruling, to be confirmed by the owner**. See the
+[decision addendum](docs/decisions/0055-row-15-provisional-owner-rulings.md) and
+[Row 15 report](docs/implementation/row_15_change_report.md#review-round-4-fixes).
+The repository-side canary scan is not full R-096 agent containment; live
+exfiltration-task and job-runtime containment remain unverified.
 The expanded suite's cluster status is unverified; dated local runner
 results and skips are recorded in the [Row 2 report](docs/implementation/row_2_change_report.md#review-round-3-fixes).
 The [benchmark sealing interface](benchmarks/HOLDOUT.md) is maintained in place;

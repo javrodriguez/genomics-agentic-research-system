@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """R-164 whole-suite gate; any pre-existing hook keeps its stdin and veto."""
 import os
+import runpy
 import subprocess
 import sys
 from pathlib import Path
@@ -22,6 +23,13 @@ def main():
         except OSError as exc:
             print('pre-push: previous hook could not run: %s' % exc, file=sys.stderr)
             failed = True
+    try:
+        scanner = runpy.run_path(str(Path(__file__).with_name('pre-commit')))['scan']
+        clean = scanner(root, payload, push=True)
+        failed = failed or not clean
+    except Exception as exc:
+        print('pre-push: gitleaks gate could not run: %s' % exc, file=sys.stderr)
+        failed = True
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
     try:
         code = subprocess.run([sys.executable, 'tests/run_tests.py'], cwd=root,
