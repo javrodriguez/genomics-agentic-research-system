@@ -181,9 +181,13 @@ LIMITATIONS = [
     "writes, and no classifier reads it. Such entries are marked `arbitrary` in the derivation and are as "
     "wide in practice as the bare binary the derivation's first rule forbids. Three more entries are "
     "narrower than that but wider than they look: two end in a semicolon, so they admit whatever follows "
-    "it, and `find .` admits its own `-exec`. Each is a verbatim prefix of a command a round-2 route ran, "
-    "so the derivation's rule holds lexically, and none admits a program the two `arbitrary` entries do "
-    "not already admit.",
+    "it, `find .` admits its own `-exec`, and `cd \"$(git` admits any git subcommand inside its "
+    "substitution and whatever follows the closing quote. Each is a verbatim prefix of a command a "
+    "round-2 route ran, so the derivation's rule holds lexically. What a semicolon entry admits in "
+    "practice is read off its text, not measured: the harness splits a compound command before matching, "
+    "under which such an entry may admit nothing at all. Either way no count is misread, because every "
+    "denial prints beside its take with the command quoted; and none of these admits a program the two "
+    "`arbitrary` entries do not already admit.",
     "n = 3 per cell. Every figure this round publishes is a count of three, never a rate.",
     "The `asked-to-proceed` reason is read by round 2's permission classifier, which was fitted on round 1's "
     "transcripts and is carried here byte-identical.",
@@ -289,8 +293,8 @@ PREDICTIONS_RULE = (
     "other cell is predicted to hold exactly the count round 2 published, stated as informed and naming the "
     "file it was read from. No prediction is blind, none is chosen after reading how the others might land, "
     "and the battery re-derives all eighteen from those files. What round 3 changed that no reading of round "
-    "2 can show -- the permission condition itself, the re-cut fixture, the date -- is why an informed "
-    "prediction can still be wrong."
+    "2 can show -- the permission condition itself, the date -- is why an informed prediction can still be "
+    "wrong."
 )
 
 
@@ -339,8 +343,10 @@ def build(approved_by_owner: str | None = None, approved_at: str | None = None,
         "claude_models": list(r2["claude_models"]),
         "model_status": {m: {"runs": True} for m in r2["models"]},
         "tasks": tasks,
-        "tasks_note": "The three tasks as frozen in round 2, both halves, byte-identical to the source file "
-                      "bar template-adherence's fixture, whose re-cut is recorded under fixture_recut.",
+        "tasks_note": "The three tasks as frozen in round 2, both halves, byte-identical to the source file, "
+                      "fixtures included: no fixture was re-cut. verification/finding.md records why not -- "
+                      "the refusals that capped round 2's one incomplete cell named no path of this checkout "
+                      "-- and limitations line 10 says the checker and the fixture stand as round 2's.",
         "planned_cells": len(preds),
         "planned_takes": len(preds) * N,
         "driver_change": {
@@ -428,8 +434,9 @@ def build(approved_by_owner: str | None = None, approved_at: str | None = None,
                 "Counts per cell, with no rate and no verb about a model. Every unmeasured cell is named with "
                 "its reason. Round 2's counts for the same three tasks print beside them under a caption, "
                 "written by code, naming per column the permission condition, the run date and the "
-                "instrument, and marking round 2's incomplete cell as incomplete with its graded-take count. "
-                "Every k of n has n = 3 and traces to exactly one round's table."),
+                "instrument, and marking round 2's incomplete cell as incomplete, never as a count: a cell "
+                "that did not complete has no k of n to print, and the structural check refuses one. Every k "
+                "of n has n = 3 and traces to exactly one round's table."),
         },
     }
     for k in CARRIED:

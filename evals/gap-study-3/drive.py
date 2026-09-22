@@ -554,9 +554,8 @@ def modes_recorded(transcript: Path) -> set[str]:
 def mode_recorded(transcript: Path) -> str:
     """The permission mode THIS session recorded, read from its own published transcript.
 
-    `default` if any record says default, else `auto` if any says auto, else `unrecorded`. The
-    precedence is the pre-study's (finding.py): a session that records `default` anywhere ran with
-    no approval surface, whatever a later record says, and that is the reading published there.
+    `default` when every record that carries the field says default; any other recorded value wins
+    over it (mode_precedence, review 3 NIT 6); `unrecorded` when no record carries the field.
 
     ROUND 3. Round 2's ledger recorded the flag the driver passed, and check_take.py's
     constant-binding rule compared it with the pre-registration's copy of the same constant, so the
@@ -565,7 +564,23 @@ def mode_recorded(transcript: Path) -> str:
     to measure; the checker is byte-identical to round 2's.
     """
     modes = modes_recorded(transcript)
-    return "default" if "default" in modes else "auto" if "auto" in modes else "unrecorded"
+    return mode_precedence(modes)
+
+
+def mode_precedence(modes: set[str]) -> str:
+    """One reading from the set of values a session recorded.
+
+    REVIEW 3, NIT 6. The pre-study's precedence let `default` win whatever other records said, because
+    under round 2's `auto` a `default` record was the anomaly. Under this round `default` is the
+    expectation, so the anomaly is any OTHER value: a session that recorded `default` in one record and
+    something else in another ran, for some of its turns, under a condition this round did not
+    pre-register, and is read as that other value so the copied checker's constant rule sees it. No
+    transcript on record carries two values; this is the reading if one ever does.
+    """
+    others = sorted(m for m in modes if m != "default")
+    if others:
+        return "auto" if "auto" in others else others[0]
+    return "default" if "default" in modes else "unrecorded"
 
 
 def run_tree_temp_env(tree: Path | None) -> dict:

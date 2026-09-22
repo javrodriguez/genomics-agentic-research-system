@@ -62,6 +62,7 @@ that no string this study *executes or prints* names round 2's folder, and that 
 | `python3 evals/gap-study-3/lint_language.py evals/gap-study-3/` | round 2's word and number-shape guard, copied byte-identical |
 | `python3 evals/gap-study-3/lint_pooling.py evals/gap-study-3/` | round 3's own guard against a sentence that adds two instruments together; **no excusal path** |
 | `python3 evals/gap-study-3/review_kit/rounds.py --check` | every registered round of review has a committed report; an open round blocks the freeze |
+| `python3 evals/gap-study-3/check_results.py`, `--ledger`, `--regrade` | after the freeze: every pinned file re-hashes; every attempt is bound to its committed row and its transcript's bytes, and a rehearsal founded on an edited ledger field is refused; the results files re-derive from the graders byte for byte. CI runs all three after every take |
 | `python3 evals/gap-study-3/denials.py --check` | every call the harness refused in a graded take, with the command quoted; `result.py` prints the count beside each cell |
 
 Round 2's language linter carries no pattern for this, because round 2 had no second instrument to add itself

@@ -220,11 +220,12 @@ class TheDriverChangeIsWhatItSays(unittest.TestCase):
         # drive.py reads the pre-registration at import time and refuses without one, which is the
         # behaviour that keeps a take from running against no design. So the function under test is
         # lifted out of the real bytes with ast and run on its own, rather than the module booted.
-        drive = self._lift("mode_recorded", "modes_recorded")
+        drive = self._lift("mode_recorded", "modes_recorded", "mode_precedence")
         with tempfile.TemporaryDirectory() as td:
             t = Path(td) / "transcript.jsonl"
             t.write_text('{"permissionMode": "auto"}\n{"permissionMode": "default"}\n')
-            self.assertEqual(drive.mode_recorded(t), "default", "default must win over auto")
+            self.assertEqual(drive.mode_recorded(t), "auto",
+                             "review 3, NIT 6: under this round the deviation from default wins")
             t.write_text('{"permissionMode": "auto"}\n')
             self.assertEqual(drive.mode_recorded(t), "auto")
             t.write_text('{"nothing": 1}\n')
@@ -1541,7 +1542,7 @@ class ReviewTwoBlockersStayFixed(unittest.TestCase):
     def test_nit_2_the_mode_is_read_from_the_record_not_from_echoed_text(self):
         import mode_binding as mb
         import round2
-        drive = TheDriverChangeIsWhatItSays._lift("mode_recorded", "modes_recorded")
+        drive = TheDriverChangeIsWhatItSays._lift("mode_recorded", "modes_recorded", "mode_precedence")
         echo = {"type": "user", "message": {"content": [
             {"type": "tool_result", "tool_use_id": "t1", "content": '{"permissionMode": "auto"}'}]}}
         with tempfile.TemporaryDirectory() as td:
@@ -1589,6 +1590,74 @@ class AnInterruptedReviewerIsResumedNotReplaced(unittest.TestCase):
     def test_the_register_names_the_case(self):
         src = (HERE / "review_kit" / "rounds.py").read_text()
         self.assertIn("IS A PAUSE, AND IS RESUMED", src)
+
+
+class ReviewThreeFollowUpsStayFixed(unittest.TestCase):
+    """Review 3 (register row prefreeze 4) ruled DO FREEZE with three SHOULDs and four NITs; Ruling 11
+    fixed them all before a fourth round rather than freezing over them."""
+
+    def test_should_1_ci_runs_the_pins_the_ledger_and_the_regrade_after_the_freeze(self):
+        ci = (REPO / ".github" / "workflows" / "ci.yml").read_text()
+        block = ci.split("Round 3 pins, ledger and regrade", 1)[1].split("- name:", 1)[0]
+        for cmd in ("python3 evals/gap-study-3/check_results.py\n",
+                    "python3 evals/gap-study-3/check_results.py --ledger",
+                    "python3 evals/gap-study-3/check_results.py --regrade"):
+            with self.subTest(cmd.strip()):
+                self.assertIn(cmd, block)
+        self.assertIn("if [ -f evals/gap-study-3/prereg.json ]", block, "gated on the freeze, and says so otherwise")
+        self.assertIn("`--ledger`, `--regrade`", (HERE / "README.md").read_text())
+
+    def test_should_2_the_frozen_text_claims_no_re_cut(self):
+        import prereg
+        pre = prereg.load()
+        blob = json.dumps(pre)
+        self.assertNotIn("fixture_recut", blob)
+        self.assertNotIn("re-cut fixture", blob)
+        self.assertIn("no fixture was re-cut", pre["tasks_note"])
+        r2 = {t["id"]: t for t in __import__("build_draft").source_prereg()["tasks"]}
+        for t in pre["tasks"]:
+            self.assertEqual(t, r2[t["id"]], "the sentence is true: the tasks are round 2's, fixtures included")
+
+    def test_should_3_the_walk_transcripts_are_pinned(self):
+        fz = load_module("round3_freeze_for_walk_pins", HERE / "freeze.py")
+        walks = sorted(p for p in fz.PINNED if "/walks/" in p and p.endswith("transcript.jsonl"))
+        on_disk = sorted(study.rel(p.relative_to(HERE).as_posix()) for p in (HERE / "walks").glob("*/*/transcript.jsonl"))
+        self.assertEqual(walks, on_disk)
+        self.assertGreaterEqual(len(walks), 8)
+        self.assertEqual([p for p in fz.PINNED if "/transcripts/" in p], [], "graded transcripts are records, not pins")
+
+    def test_nit_4_one_definition_of_the_not_pinned_set(self):
+        src = (HERE / "freeze.py").read_text()
+        self.assertEqual(src.count("\nNOT_PINNED_AND_WHY = {"), 1)
+        fz = load_module("round3_freeze_for_not_pinned", HERE / "freeze.py")
+        self.assertEqual(len(fz.NOT_PINNED_AND_WHY), 3)
+
+    def test_nit_5_the_publication_rule_promises_what_the_page_prints(self):
+        import prereg
+        rule = prereg.load()["publication"]["rule"]
+        self.assertIn("never as a count", rule)
+        self.assertNotIn("with its graded-take count", rule)
+
+    def test_nit_6_a_deviation_from_default_wins_the_reading(self):
+        import mode_binding as mb
+        for modes, want in (({"default"}, "default"), ({"default", "auto"}, "auto"), ({"auto"}, "auto"),
+                            ({"default", "plan"}, "plan"), (set(), "unrecorded")):
+            with self.subTest(str(sorted(modes))):
+                self.assertEqual(mb.mode_precedence(modes), want)
+        drive = TheDriverChangeIsWhatItSays._lift("mode_precedence")
+        for modes in ({"default"}, {"default", "auto"}, {"auto"}, set()):
+            self.assertEqual(drive.mode_precedence(modes), mb.mode_precedence(modes), "the two readers agree")
+
+    def test_nit_7_the_limitation_names_the_git_entry_and_the_splitting(self):
+        import prereg
+        text = " ".join(prereg.load()["limitations_lines"])
+        self.assertIn('cd "$(git', text)
+        self.assertIn("splits a compound command", text)
+
+    def test_the_progress_file_does_not_bind_the_rehearsed_tree(self):
+        fz = load_module("round3_freeze_for_tree_binding", HERE / "freeze.py")
+        self.assertTrue(any(p.search("/evals/gap-study-3/PROGRESS.md") for p in fz.TREE_BINDING_EXCLUDED))
+        self.assertFalse(any(p.search("/evals/gap-study-3/result.py") for p in fz.TREE_BINDING_EXCLUDED))
 
 
 # ---------------------------------------------------------------------------------------------

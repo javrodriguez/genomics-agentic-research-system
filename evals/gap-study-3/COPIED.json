@@ -17,7 +17,7 @@
       "source": "evals/gap-study-2/drive.py",
       "source_blob": "16b35c4beb41238784236362133c91bad56ce7ad",
       "source_sha256": "b4417a94157425ea5359105a31fac36d63cb0df9492b2e8316e263f6cdef4f8f",
-      "copy_sha256": "06f14c4cb285e759bb834ed03aaa6294a5b11b5ba3d3af112b228a888cc51e2f",
+      "copy_sha256": "ee2a24f5c5f7c62a088e77965097156d926260b4ad628b0e0a7a58c6885641cb",
       "edited": true,
       "why": "Five changes, each named in the file's own docstring, in this order. (1) Every turn passes --allowedTools with the pre-registration's driver_change.allowed_tools and the ledger records them: the one permission condition across the model axis. (2) PERMISSION_MODE is `default` in place of round 2's `auto`, so every turn passes --permission-mode default (Ruling 7, 20 September 2026): no classifier admits a command the list does not, and the list is the entire permission surface for all three models. (3) The ledger's permission_mode is the mode the SESSION recorded, read from the take's own published transcript, with the flag that was passed kept beside it as permission_mode_passed and the same reading repeated as permission_mode_recorded. Round 2 wrote the flag into that field, and its own constant-binding rule compared it with the pre-registration's copy of the same constant -- a constant compared with itself. The byte-identical checker now reads a session reading there, and a take whose session recorded another mode is routed by that checker as a rehearsal with reason constant-binding; this round's own mode_binding.py re-derives the same reading as a second check and routes nothing. (4) One display string that spelled round 2's folder into a rehearsal's WHY.md takes its path from study.py, as round 2's own design says a path must. (5) The per-task walk cap is four rather than two (Ruling 8, 20 September 2026): round 2's cap counts operator-script revisions -- its own comment says walk 1 is the evidence for why walk 2's script differs -- and this round revises no script, its tasks being carried verbatim; ruling 7 then needed a walk per model under a condition adopted after five of the six original slots were spent."
     },
@@ -107,9 +107,9 @@
       "source": "evals/gap-study-2/freeze.py",
       "source_blob": "d1dbffc2b8fb9dcc43a857e21f5d60b2ccec1bf1",
       "source_sha256": "0328d4bd71c1f68abbc95cfff85353219eec09cd5b35a4166da2896c462c85fc",
-      "copy_sha256": "d1ca3a4835c8f6165722b4217cf646443fd4fd86913c99698d5c1fc54a8c3a63",
+      "copy_sha256": "75d3eed4df78cb98e2387956f8bd681c16cd347520afa75b54e2506fee94d774",
       "edited": true,
-      "why": "Two changes. (1) Three call sites take the pre-freeze review folder from study.REVIEW_DIR instead of the literal `verification`: the tree-binding exclusion, the review-commit rule and its latest-review scan, because this round keeps pre-freeze reviews and final verifications in separate folders. No rule changes; only where each rule looks. (2) THE PIN LIST IS DERIVED rather than carried (review 1, blocker 2): six of round 2's paths do not exist here and a missing pin exits 1, so the freeze could not have run, and its globs matched none of this round's own guards, so after a freeze any of them could have been edited with the result checker staying clean. Every code and data file this study owns is now pinned unless it is named in NOT_PINNED_AND_WHY with a reason, so a file added later is pinned by existing."
+      "why": "Two changes. (1) Three call sites take the pre-freeze review folder from study.REVIEW_DIR instead of the literal `verification`: the tree-binding exclusion, the review-commit rule and its latest-review scan, because this round keeps pre-freeze reviews and final verifications in separate folders. No rule changes; only where each rule looks. (2) THE PIN LIST IS DERIVED rather than carried (review 1, blocker 2): six of round 2's paths do not exist here and a missing pin exits 1, so the freeze could not have run, and its globs matched none of this round's own guards, so after a freeze any of them could have been edited with the result checker staying clean. Every code and data file this study owns is now pinned unless it is named in NOT_PINNED_AND_WHY with a reason, so a file added later is pinned by existing. (3) Review 3, register row prefreeze 4: the pinned suffixes gain .jsonl so the walk transcripts are pinned as the docstring said; the second, dead definition of NOT_PINNED_AND_WHY is gone; and PROGRESS.md, append-only prose no take or check reads, is excluded from the rehearsed-tree binding so a slice line recorded after a green rehearsal does not void it."
     },
     {
       "path": "evals/gap-study-3/freeze_rehearsal.py",
@@ -188,7 +188,7 @@
       "source": "evals/gap-study-2/copy_manifest.py",
       "source_blob": "459d8dbf840ce3f3bed8df852e4855c3939aa0d0",
       "source_sha256": "b95a8be431e5acbae5ea3894850c5c6e87f9989df45a3f8af1a92ee57dd52811",
-      "copy_sha256": "6d06ed92a8117ba351f0d8243154f955c94b9f035866758424fcfa95427e0329",
+      "copy_sha256": "76a538518fbab11712880c9344e4938ad516f1bb1da239e652b9d00b03e05e68",
       "edited": true,
       "why": "Its own constants: this study's file list, its edit reasons, the commits it pins the earlier studies at, and the byte-identical set the goal file names."
     },

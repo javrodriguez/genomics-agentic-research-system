@@ -65,12 +65,16 @@ FROZEN = HERE / "prereg.json"
 # unless it is named in NOT_PINNED_AND_WHY with a reason, and a file added later is pinned by existing.
 # A hand-written list is exactly the thing that went stale between two rounds; this one cannot.
 RECORD_ROOTS = ("transcripts", "rehearsals", "pauses", "results", "__pycache__")
-PINNED_SUFFIXES = (".py", ".json", ".sh")
+# REVIEW 3 (register row prefreeze 4), SHOULD 3. This tuple lacked `.jsonl`, so the eight walk transcripts
+# -- the bytes fixture_walk.py --check and mode_binding.py --walks --check actually read -- were not pinned
+# while the docstring below said they were; only their sidecars were. Graded transcripts sit under
+# RECORD_ROOTS and are excluded first, so the suffix pins the walks and nothing else.
+PINNED_SUFFIXES = (".py", ".json", ".jsonl", ".sh")
 
 
 def _study_files() -> list[str]:
     """Every code and data file this study owns, minus the records a take writes and the two the freeze
-    writes itself. The walks ARE pinned: the freeze rests on their leak verdicts."""
+    writes itself. The walks ARE pinned, transcripts and sidecars: the freeze rests on their leak verdicts."""
     out = []
     for f in sorted(HERE.rglob("*")):
         if not f.is_file() or f.suffix not in PINNED_SUFFIXES:
@@ -110,10 +114,9 @@ PINNED = [f for f in _study_files() if f not in NOT_PINNED_AND_WHY] + [
 # freeze.py is deliberately NOT in that list. It runs to produce the pins, so it cannot pin the
 # bytes of the run that is producing them: whatever it recorded about itself would be the state
 # before it finished writing. The freeze commit's own sha is what fixes it, and check_results.py
-# reads that.
-NOT_PINNED_AND_WHY = {
-    study.rel("freeze.py"): "it runs to produce the pins; the freeze commit's sha fixes it",
-}
+# reads that. (REVIEW 3, NIT 4: a second definition of NOT_PINNED_AND_WHY used to sit here, with this
+# one entry, and overwrote the three-entry one above after PINNED had already been built from it; the
+# reasons lived in dead code. One definition now.)
 
 
 def git(*args: str) -> tuple[int, str]:
@@ -141,9 +144,13 @@ REHEARSAL_TREE_PREFIX = "study tree sha256: "
 # what the binding leaves out, on both sides of every comparison: the records the rehearsal and the review write
 # between the rehearsal and the freeze, the frozen file itself, and the regrade record the freeze commit rewrites
 # (rehearsal 9 found the record's old bytes on one side and nothing on the other)
+# and (REVIEW 3, the fact for the owner) PROGRESS.md: the slice line that records a green rehearsal is
+# appended AFTER it and would invalidate it every time. It is append-only prose, never read by a take, a
+# check or the result, so a line added to it is not a code edit the rehearsal failed to exercise.
 TREE_BINDING_EXCLUDED = (re.compile(rf"/{study.VERIFY_DIR}/freeze-rehearsal-\d+(-clean-clone)?\.txt$"),
                          re.compile(rf"/{study.REVIEW_DIR}/prefreeze-\d+(-blindness)?\.(md|txt)$"),
                          re.compile(r"/prereg\.json$"),
+                         re.compile(r"/PROGRESS\.md$"),
                          re.compile(r"/verification/round1-regrade/environment\.json$"))
 RULING_LINE = "**Ruling: DO FREEZE.**"
 REHEARSAL_LAST_LINE = "all green"

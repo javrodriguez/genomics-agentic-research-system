@@ -323,6 +323,22 @@ jobs:
           if [ ! -f evals/gap-study-3/prereg.json ]; then
             echo "not applicable — not frozen; this step graded $n takes and claims nothing"
           fi
+      - name: Round 3 pins, ledger and regrade
+        # REVIEW 3 (register row prefreeze 4), SHOULD 1. Round 2's job ran the ledger check after every take
+        # and this round's ran none of these, so an edited results file or a misfiled last attempt could
+        # have moved a published count with every automatic check green. The pin check re-hashes every
+        # pinned file against the freeze; --ledger binds every attempt to its committed row, its
+        # transcript's bytes to its ledger, and refuses a rehearsal founded on an edited field; --regrade
+        # re-runs the graders into a temporary directory and compares results/ byte for byte. Before the
+        # freeze there is nothing for them to bind, and each says so rather than passing.
+        run: |
+          if [ -f evals/gap-study-3/prereg.json ]; then
+            python3 evals/gap-study-3/check_results.py
+            python3 evals/gap-study-3/check_results.py --ledger
+            python3 evals/gap-study-3/check_results.py --regrade
+          else
+            echo "not applicable — not frozen; no pin, row or result exists for these to bind"
+          fi
       - name: Round 3 result
         # DONE LINE 5: the result re-derives from the committed takes, and every planned cell is either
         # complete or published unmeasured with its reason.

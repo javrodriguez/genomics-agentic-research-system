@@ -73,14 +73,19 @@ def modes_recorded(transcript: Path) -> set[str]:
     return out
 
 
-def mode_of(transcript: Path) -> str:
-    """`default` if any record says default, else `auto` if any says auto, else `unrecorded`.
+def mode_precedence(modes: set[str]) -> str:
+    """`default` when every record that carries the field says so; any other value wins over it;
+    `unrecorded` when none carries it. REVIEW 3, NIT 6: under this round `default` is the expectation,
+    so the anomaly is any other value, and a session that recorded one anywhere is read as it. Spelled
+    here independently of the driver's reader, as the rest of this file is."""
+    others = sorted(m for m in modes if m != "default")
+    if others:
+        return "auto" if "auto" in others else others[0]
+    return "default" if "default" in modes else "unrecorded"
 
-    The precedence is the pre-study's: a session that records `default` anywhere ran with no approval
-    surface, whatever a later record says.
-    """
-    modes = modes_recorded(transcript)
-    return "default" if "default" in modes else "auto" if "auto" in modes else "unrecorded"
+
+def mode_of(transcript: Path) -> str:
+    return mode_precedence(modes_recorded(transcript))
 
 
 def expected() -> dict[str, str]:

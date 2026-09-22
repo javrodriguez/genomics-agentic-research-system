@@ -121,7 +121,10 @@ EDITS = {
                  "missing pin exits 1, so the freeze could not have run, and its globs matched none of this "
                  "round's own guards, so after a freeze any of them could have been edited with the result "
                  "checker staying clean. Every code and data file this study owns is now pinned unless it is "
-                 "named in NOT_PINNED_AND_WHY with a reason, so a file added later is pinned by existing.",
+                 "named in NOT_PINNED_AND_WHY with a reason, so a file added later is pinned by existing. (3) Review 3, register row prefreeze 4: the pinned suffixes gain .jsonl so the walk "
+                 "transcripts are pinned as the docstring said; the second, dead definition of NOT_PINNED_AND_WHY "
+                 "is gone; and PROGRESS.md, append-only prose no take or check reads, is excluded from the "
+                 "rehearsed-tree binding so a slice line recorded after a green rehearsal does not void it.",
     "freeze_rehearsal.py": "Two changes. (1) The synthetic review it commits is written to study.REVIEW_DIR, "
                            "for the same reason as freeze.py. (2) THE GATE IT RUNS IS THIS ROUND'S (review 1, "
                            "blocker 2): round 2's named a suite, a mutation battery, two check_results modes, a "
