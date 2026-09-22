@@ -82,9 +82,15 @@ write access must be trusted; these timestamps are not authenticated scheduling.
 
 Run exposure from a host outside the tailnet, with a known reachable control on a
 third host. Supply the public and tailnet endpoints and all relevant service ports;
-the control must resolve to different addresses from both. Retain source IP,
-control result and open ports. A configured-port probe is not an all-ports scan:
-audit listening services and firewall configuration as part of real provisioning.
+the control must resolve to different addresses from both. Leave SOURCE_IP_CMD
+unset: the check then measures the probe's public address per family (curl -4 and
+curl -6 to ifconfig.me) and refuses with source_inside_target_network when the
+probe is behind the target's NAT, on its IPv6 /64, or the target is link-local; a
+source that cannot be measured where a route exists, or an explicit SOURCE_IP_CMD in
+the other family makes the run INCONCLUSIVE (decision 0053). Prefer address
+literals for the public host. Retain source IP, control result and open ports.
+A configured-port probe is not an all-ports scan: audit listening services and
+firewall configuration as part of real provisioning.
 Both logs in docs/ops are empty evidence templates, not proof of a run.
 
 Tests require GARS_ROW5_SCRATCH plus TMPDIR, TEMP and TMP set to that private

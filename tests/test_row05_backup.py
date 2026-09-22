@@ -34,7 +34,7 @@ row = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(row)
 # The result grammar belongs to the tests, not imported from the implementation.
 RESULT = re.compile(r'^(?:\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ, \d+\.\d{6}, \d+\.\d{6}, (?:PASS|FAIL)|'
-                    r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ, [0-9a-fA-F:.]+, (?:open|closed|unknown), [0-9|]+, (?:PASS|FAIL|INCONCLUSIVE)|'
+                    r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ, [0-9a-fA-F:.]+(?:\|[0-9a-fA-F:.]+)?, (?:open|closed|unknown), [0-9|]+, (?:PASS|FAIL|INCONCLUSIVE)|'
                     r'pg_backup: date=\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ file=[A-Za-z0-9_.-]+ sha256=[0-9a-f]{64} '
                     r'archive_readable=ok offmachine_verified=ok second_verified=(?:ok|not-configured) enc=(?:gpg|age) result=PASS|'
                     r'result=(?:FAIL|IGNORED) reason=[A-Za-z0-9_]+|'
@@ -778,6 +778,170 @@ sys.exit(row.main())
         finally:
             public.close()
             control.close()
+
+    def test_exposure_refuses_a_probe_inside_the_network_under_test(self):
+        # A probe standing inside the network it is testing measures nothing, but every signal
+        # the function had before this guard (ports closed, control reachable, tailscale down)
+        # looks exactly like a clean outside run, so it printed PASS. Seen for real on 22 Sep
+        # 2026: a Mac still on the home Wi-Fi reported "0, PASS" for a host on its own /64.
+        control = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        control.bind(('::1', 0))
+        control.listen(20)
+        closed = socket.socket()
+        closed.bind(('127.0.0.1', 0))
+        closed_port = closed.getsockname()[1]
+        closed.close()
+        self.stub('tailscale', 'import sys\nsys.exit(1)\n')
+        log = self.tmp / 'exposure.log'
+        base = dict(self.env, EXPOSURE_TAILNET_HOST='127.0.0.3', EXPOSURE_CONTROL_HOST='::1',
+                    EXPOSURE_CONTROL_PORT=str(control.getsockname()[1]),
+                    EXPOSURE_PORTS=str(closed_port), EXPOSURE_LOG=str(log))
+
+        def explicit(source, target):
+            self.stub('source-ip', 'print(%r)\n' % source)
+            return execute('test_exposure.sh', dict(base, SOURCE_IP_CMD='source-ip',
+                                                     EXPOSURE_PUBLIC_HOST=target))
+
+        def measured(v4, v6, target):
+            # SOURCE_IP_CMD unset: the check asks curl for each family itself.
+            self.stub('curl', 'import sys\nf = "-4" if "-4" in sys.argv else "-6"\n'
+                              'assert "-q" == sys.argv[1] and "--noproxy" in sys.argv\n'
+                              'v = {"-4": %r, "-6": %r}[f]\n'
+                              'sys.exit(7) if v is None else print(v)\n' % (v4, v6))
+            env = dict(base, EXPOSURE_PUBLIC_HOST=target)
+            env.pop('SOURCE_IP_CMD', None)
+            return execute('test_exposure.sh', env)
+
+        try:
+            # Behind NAT, the address the internet reports IS the address under test.
+            self.refused(explicit('127.0.0.1', '127.0.0.1'), 'source_inside_target_network')
+            # IPv4-mapped IPv6 is the same IPv4 address, not another family.
+            self.refused(explicit('::ffff:127.0.0.1', '127.0.0.1'), 'source_inside_target_network')
+            # IPv6 has no NAT here: a probe on the target's own /64 is on its link.
+            self.refused(explicit('2001:db8::2', '2001:db8::1'), 'source_inside_target_network')
+            # A link-local target is on this host's own link, whatever the source.
+            self.refused(explicit('192.0.2.1', 'fe80::1'), 'source_inside_target_network')
+            # The 17:13 shape: a dual-stack host inside the NAT. Its IPv6 address says nothing
+            # about the IPv4 target, but measured per family its IPv4 source is the target.
+            self.refused(measured('127.0.0.1', '2001:db8::9', '127.0.0.1'),
+                         'source_inside_target_network')
+            # curl -4 answering in IPv4-mapped form is still the IPv4 source, not a lost family.
+            self.refused(measured('::ffff:127.0.0.1', None, '127.0.0.1'),
+                         'source_inside_target_network')
+            self.assertFalse(log.exists(), 'a refused run must write no row')
+
+            # IPv6, a different /64: outside, so the guard lets it through (the port itself is
+            # unreachable on this machine, which is the port check's business, not this one's).
+            p = explicit('2001:db8:0:1::2', '2001:db8::1')
+            self.assertNotIn('source_inside_target_network', p.stdout)
+            self.assertNotIn('different address family', p.stdout)
+
+            # An explicit SOURCE_IP_CMD in the other family cannot show outsideness, and the
+            # note names the remedy.
+            p = explicit('2001:db8::2', '127.0.0.1')
+            self.assertIn('unset SOURCE_IP_CMD', p.stdout)
+            self.assertTrue(p.stdout.strip().endswith('INCONCLUSIVE'), p.stdout)
+
+            # A dual-stack host genuinely outside gets a verdict, and the row names both sources.
+            p = measured('192.0.2.1', '2001:db8::9', '127.0.0.1')
+            self.assertEqual(p.returncode, 0, p.stdout)
+            line = p.stdout.strip().splitlines()[-1]
+            self.assertRegex(line, RESULT)
+            self.assertIn(', 192.0.2.1|2001:db8::9, open, 0, PASS', line)
+
+            # The 18:27:52 shape: an IPv6 target, and no IPv6 source measured. Whether this
+            # machine has an IPv6 route decides which note prints (the in-process test pins
+            # both); either way nothing vouches for the target, so it is never PASS.
+            p = measured('192.0.2.1', None, '2001:db8::1')
+            self.assertRegex(p.stdout, 'no route to any address|could not be measured')
+            self.assertTrue(p.stdout.strip().endswith('INCONCLUSIVE'), p.stdout)
+
+            # No family at all measured: the source is missing, as before.
+            self.refused(measured(None, None, '127.0.0.1'), 'source_ip_missing')
+
+            # The regression guard: a single-family explicit outside probe passes, unchanged.
+            p = explicit('192.0.2.1', '127.0.0.1')
+            self.assertEqual(p.returncode, 0, p.stdout)
+            self.assertTrue(p.stdout.strip().endswith('PASS'), p.stdout)
+        finally:
+            control.close()
+
+    def test_exposure_dual_stack_hostname_compares_every_reachable_address(self):
+        # A name resolving to both families is judged address by address, each against the
+        # probe's source in the same family. An address is left out only when this host has
+        # no route to it; a failed measurement where a route exists is never a verdict.
+        # In-process, with resolution, routes, measurements and probes stubbed.
+        v4, v6 = '198.51.100.7', '2001:db8::7'
+        names = {'home.example': [v4, v6], '203.0.113.5': ['203.0.113.5'],
+                 '100.64.0.1': ['100.64.0.1']}
+
+        def resolve(h, *_):
+            return [(0, 0, 0, '', (a, 0)) for a in names[h]]
+
+        def run_stub(sources):
+            def run(argv, timeout=60):
+                if argv[0] == 'curl':
+                    self.assertEqual(argv[1], '-q')  # ~/.curlrc ignored
+                    self.assertIn('--noproxy', argv)
+                    v = sources.get('-4' if '-4' in argv else '-6')
+                    if v is None:
+                        raise row.Fail('command_failed')
+                    return (v + '\n').encode()
+                raise row.Fail('command_failed')  # tailscale: not on the tailnet
+            return run
+
+        env = dict(self.env, EXPOSURE_PUBLIC_HOST='home.example', EXPOSURE_CONTROL_HOST='203.0.113.5',
+                   EXPOSURE_TAILNET_HOST='100.64.0.1', EXPOSURE_CONTROL_PORT='443',
+                   EXPOSURE_PORTS='22', EXPOSURE_LOG=str(self.tmp / 'exposure-dual.log'))
+        env.pop('SOURCE_IP_CMD', None)
+        both = {4: True, 6: True}
+        cases = [
+            # (curl answers, routes, expected, addresses the port probe may touch)
+            ({'-4': '192.0.2.1', '-6': '2001:db8:1::9'}, both, 'PASS', {v4, v6}),
+            ({'-4': '192.0.2.1'}, {4: True, 6: False}, 'PASS', {v4}),  # v4-only vantage
+            ({'-4': '192.0.2.1', '-6': '2001:db8::9'}, both, 'inside', set()),  # on the /64
+            ({'-4': v4}, {4: True, 6: False}, 'inside', set()),  # behind the target's NAT
+            # curl -4 failed although IPv4 is routed: unmeasured, never a verdict
+            ({'-6': '2001:db8:1::9'}, both, 'INCONCLUSIVE', {v4, v6}),
+            # the route check itself erred (not a no-route errno): unknown is not absent
+            ({'-6': '2001:db8:1::9'}, {4: None, 6: True}, 'INCONCLUSIVE', {v4, v6}),
+        ]
+        for sources, routes, expected, may_probe in cases:
+            probe = mock.Mock(side_effect=lambda h, p: 'open' if h == '203.0.113.5' else 'closed')
+            with self.subTest(sources=sources, routes=routes), \
+                 mock.patch.dict(os.environ, env, clear=True), \
+                 mock.patch.object(row.socket, 'getaddrinfo', side_effect=resolve), \
+                 mock.patch.object(row, 'run', side_effect=run_stub(sources)), \
+                 mock.patch.object(row, 'has_route', side_effect=lambda t: routes[t.version]), \
+                 mock.patch.object(row, 'connect', probe), \
+                 contextlib.redirect_stdout(io.StringIO()) as out:
+                if expected == 'inside':
+                    with self.assertRaises(row.Fail) as caught:
+                        row.exposure()
+                    self.assertEqual(caught.exception.args[0], 'source_inside_target_network')
+                    self.assertEqual(probe.call_count, 0, 'refused before any probe')
+                    continue
+                code = row.exposure()
+                self.assertTrue(out.getvalue().strip().endswith(expected), out.getvalue())
+                self.assertEqual(code, 0 if expected == 'PASS' else 1)
+                touched = {c.args[0] for c in probe.call_args_list} - {'203.0.113.5'}
+                self.assertEqual(touched, may_probe)
+                if expected == 'INCONCLUSIVE':
+                    self.assertIn('could not be measured', out.getvalue())
+                # a verdict that covers only some addresses says so
+                if may_probe == {v4}:
+                    self.assertIn('left out, no route from here: %s' % v6, out.getvalue())
+                else:
+                    self.assertNotIn('left out', out.getvalue())
+
+    def test_has_route_asks_the_kernel_without_sending(self):
+        self.assertTrue(row.has_route(row.ipaddress.ip_address('127.0.0.1')))
+        target = row.ipaddress.ip_address('2001:db8::1')
+        for err, expected in [(row.errno.ENETUNREACH, False), (row.errno.EHOSTUNREACH, False),
+                              (row.errno.EMFILE, None), (row.errno.EACCES, None)]:
+            with self.subTest(errno=err), mock.patch.object(row.socket, 'socket') as sock:
+                sock.return_value.__enter__.return_value.connect.side_effect = OSError(err, 'x')
+                self.assertIs(row.has_route(target), expected)
 
     def test_container_owned_data_dir_is_not_a_repo(self):
         # On Linux the database container owns PG_DATA_DIR as root (mode 700), so this process

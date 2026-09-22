@@ -2,6 +2,7 @@
 """Row 5 engine. Python >=3.6, stdlib only; configuration and rationale in 0044."""
 import csv
 import datetime as dt
+import errno
 import hashlib
 import io
 import ipaddress
@@ -690,6 +691,84 @@ def connect(hostname, number):
         return 'unknown'
 
 
+def outside(source, target):
+    """Is `source` demonstrably outside the network `target` sits in?
+
+    True when it is, False when the probe is provably inside (so the run measures nothing),
+    and None when the two cannot be compared at all, which is not the same as being outside.
+
+    Behind a NAT, the source address the internet reports is the very address under test.
+    A probe holding an address on the target's own IPv6 /64 is on its link. Addresses of
+    different families carry no relation to each other, hence None. Callers unwrap IPv4-mapped
+    IPv6 forms first, so each address is keyed by the family it really is.
+    """
+    if source.version != target.version:
+        return None
+    if source == target:
+        return False
+    if source.version == 6:
+        return source not in ipaddress.ip_network('%s/64' % target, strict=False)
+    return True
+
+
+def unmapped(ip):
+    return getattr(ip, 'ipv4_mapped', None) or ip
+
+
+NO_ROUTE = {errno.ENETUNREACH, errno.EHOSTUNREACH, errno.EADDRNOTAVAIL, errno.EAFNOSUPPORT}
+
+
+def has_route(target):
+    """Does this host have any route to `target`? A UDP connect sends nothing: it only asks
+    the kernel to pick a route and a source address, and fails at once when there is none.
+
+    True when routed, False only for the errors that mean "no route", and None for any other
+    error: an error is not evidence of absence, so the caller must not guess."""
+    family = socket.AF_INET6 if target.version == 6 else socket.AF_INET
+    try:
+        with socket.socket(family, socket.SOCK_DGRAM) as s:
+            s.connect((str(target), 9))
+        return True
+    except OSError as exc:
+        return False if exc.errno in NO_ROUTE else None
+
+
+def source_addresses(e):
+    """The probe's own public address, per family, as {4: ip, 6: ip}, and whether each
+    family was asked for on its own.
+
+    With SOURCE_IP_CMD unset, each family is asked for separately (curl -4, curl -6), so an
+    IPv4 target is compared with the IPv4 source whatever the host prefers. A family whose
+    request fails, for any reason, is simply absent here; whether that means "no path" is
+    decided per target by has_route(), never inferred from the request failing. An explicit
+    SOURCE_IP_CMD is one measurement in whatever family it happens to report.
+    """
+    if 'SOURCE_IP_CMD' not in e:
+        found = {}
+        for family in (4, 6):
+            try:
+                # -q ignores ~/.curlrc and --noproxy ignores proxy variables: the address
+                # measured must be the one the port probes leave from.
+                out = run(['curl', '-q', '-%d' % family, '-fsS', '--noproxy', '*',
+                           '--max-time', '10', 'https://ifconfig.me'], timeout=15).decode().strip()
+                ip = unmapped(ipaddress.ip_address(out))
+            except (ValueError, UnicodeError, Fail):
+                continue
+            if ip.version == family:
+                found[family] = ip
+        if not found:
+            raise Fail('source_ip_missing')
+        return found, True
+    try:
+        argv = shlex.split(e['SOURCE_IP_CMD'])
+        if not argv:
+            raise Fail('source_ip_missing')
+        ip = unmapped(ipaddress.ip_address(run(argv, timeout=10).decode().strip()))
+    except (ValueError, UnicodeError, Fail):
+        raise Fail('source_ip_missing')
+    return {ip.version: ip}, False
+
+
 def exposure():
     require(EXPOSURE)
     e = os.environ
@@ -706,16 +785,33 @@ def exposure():
         raise Fail('host_unresolved')
     if ips[1] & (ips[0] | ips[2]):
         raise Fail('control_not_third_host')
-    try:
-        argv = shlex.split(e.get('SOURCE_IP_CMD', 'curl -s https://ifconfig.me'))
-        if not argv:
-            raise Fail('source_ip_missing')
-        source = run(argv, timeout=10).decode().strip()
-        ipaddress.ip_address(source)
-    except (ValueError, UnicodeError, Fail):
-        raise Fail('source_ip_missing')
+    sources, per_family = source_addresses(e)
+    targets = sorted({unmapped(ipaddress.ip_address(a.split('%')[0])) for a in ips[0]},
+                     key=lambda t: (t.version, t))
+    vantage, unmeasured, probed, left_out = [], False, [], []
+    if any(t.is_link_local for t in targets):
+        raise Fail('source_inside_target_network')  # on this host's own link by definition
+    for t in targets:
+        if t.version in sources:
+            vantage.append(outside(sources[t.version], t))
+        elif per_family and has_route(t) is False:
+            left_out.append(t)  # no route from here: the port probe cannot reach it either
+            continue
+        else:
+            vantage.append(None)
+            unmeasured = per_family
+        probed.append(t)
+    if False in vantage:
+        raise Fail('source_inside_target_network')
+    comparable = bool(vantage) and None not in vantage
     control_state = connect(control, cp)
-    observations = [(p, connect(public, p)) for p in ports]
+    # Each compared address is probed as a literal, so the probe hits exactly what was
+    # judged, not whatever a second resolution of the name returns.
+    observations = []
+    for p in ports:
+        states = [connect(str(t), p) for t in (probed or targets)]
+        observations.append((p, 'open' if 'open' in states else
+                             'unknown' if 'unknown' in states else 'closed'))
     opened = [str(p) for p, state in observations if state == 'open']
     on_tailnet = False
     if shutil.which('tailscale'):
@@ -727,8 +823,25 @@ def exposure():
     result = 'FAIL' if opened else 'PASS'
     if on_tailnet:
         print('note: this host is ON the tailnet; the outside claim needs a host that is not')
-    if on_tailnet or control_state != 'open' or any(s == 'unknown' for _, s in observations):
+    if not vantage:
+        print('note: this host has no route to any address of the host under test, '
+              'so nothing was measured')
+    elif unmeasured:
+        print("note: this host's own public address could not be measured in the family of "
+              'a routed address under test, so this run cannot show the probe was outside; '
+              "use an address literal in a family this host can measure, or fix that family's "
+              'connectivity')
+    if vantage and left_out:
+        print('note: left out, no route from here: %s; this verdict covers only %s'
+              % (', '.join(map(str, left_out)), ', '.join(map(str, probed))))
+    elif not comparable:
+        print('note: SOURCE_IP_CMD reported a different address family from the host under '
+              'test, so this run cannot show the probe was outside; unset SOURCE_IP_CMD to '
+              'let the check measure each family itself')
+    if (on_tailnet or not comparable or control_state != 'open'
+            or any(s == 'unknown' for _, s in observations)):
         result = 'INCONCLUSIVE'
+    source = '|'.join(str(sources[f]) for f in sorted(sources))
     line = '%s, %s, %s, %s, %s' % (utc().strftime(STAMP), source, control_state,
                                      '|'.join(opened) or '0', result)
     with log.open('a') as f:
