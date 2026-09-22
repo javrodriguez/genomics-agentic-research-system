@@ -53,20 +53,22 @@ def read_status(stage):
     return words[0] if words else None
 
 
-def write_status(project_dir_or_substage, state, reason=None):
+def write_status(project_dir_or_substage, state, reason=None, submission_key=None):
     """The only wrapper/executor STATUS writer (the owner's ruling 13A).
 
     Failure and cancellation are reachable from every non-terminal state. No migration
     of legacy STATUS files is performed. Success belongs to a successful collect caller;
     the marker and published output index are mandatory even at this lowest-level door.
+    submission_key is internal executor evidence, not a reset flag: leaving failure or
+    cancellation requires a different prepared key and its recorded supersedes_key.
     """
     stage = Path(project_dir_or_substage)
     with open(str(stage / '.STATUS.lock'), 'a') as lock:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
-        return _write_status_locked(stage, state, reason)
+        return _write_status_locked(stage, state, reason, submission_key)
 
 
-def _write_status_locked(stage, state, reason):
+def _write_status_locked(stage, state, reason, submission_key):
     """Validate the transition and atomically replace while holding the stage lock."""
     if not isinstance(state, str):
         raise StatusRefusal('invalid_state: expected a closed-enum string')
@@ -85,7 +87,24 @@ def _write_status_locked(stage, state, reason):
     if previous and previous.split(':', 1)[0] in TERMINAL_STATES:
         if previous == value:
             return value
-        raise StatusRefusal('terminal_state: cannot change %s to %s' % (previous, value))
+        corrective = False
+        if state == 'SUBMITTED' and submission_key and (previous.startswith('FAILED') or previous == 'CANCELLED'):
+            try:
+                root = ex.config_root_for(stage)
+                record = ex.stage_record(root, stage)
+                old_key = record.get('supersedes_key')
+                if not isinstance(old_key, str) or not re.fullmatch(r'[0-9a-f]{64}', old_key):
+                    raise ValueError('missing superseded key')
+                old_path = ex._records(root) / (old_key + '.json')
+                old = json.loads(old_path.read_text(encoding='utf-8'))
+                old_stage = ex._validate_record(root, old_path, old)
+                corrective = (record['idempotency_key'] == submission_key != old_key and
+                              record['state'] == 'SUBMITTED' and bool(record.get('job_id')) and
+                              old_stage == stage.resolve() and old['state'] == previous)
+            except (OSError, ValueError, KeyError, TypeError, AttributeError):
+                corrective = False
+        if not corrective:
+            raise StatusRefusal('terminal_state: cannot change %s to %s' % (previous, value))
     if state == 'COMPLETE' and not ((stage / 'run/.gars_run_complete').is_file()
                                     and (stage / 'OUTPUTS.tsv').is_file()):
         raise StatusRefusal('completion_gate: successful collect and .gars_run_complete required')
@@ -105,11 +124,15 @@ def _write_status_locked(stage, state, reason):
         # Preserve the contracts' job-id suffix when submit has recorded one. The
         # writer API does not accept agent-supplied execution metadata.
         try:
-            manifest = json.loads((stage / 'reproducibility/manifest.json').read_text(encoding='utf-8'))
-            key = manifest.get('idempotency_key', '')
+            key = submission_key
+            if key is None:
+                manifest = json.loads((stage / 'reproducibility/manifest.json').read_text(encoding='utf-8'))
+                key = manifest.get('idempotency_key', '')
             if re.fullmatch(r'[0-9a-f]{64}', key):
                 record_path = ex._records(ex.config_root_for(stage)) / (key + '.json')
                 record = json.loads(record_path.read_text(encoding='utf-8'))
+                if ex._validate_record(ex.config_root_for(stage), record_path, record) != stage.resolve():
+                    raise ValueError('record belongs to another stage')
                 job = record.get('job_id')
                 if isinstance(job, str) and job.isdigit():
                     metadata = job + ' '

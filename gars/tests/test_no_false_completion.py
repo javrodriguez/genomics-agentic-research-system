@@ -71,12 +71,12 @@ class NoFalseCompletionTests(unittest.TestCase):
             path.write_text(json.dumps(record))
             (stage / 'run').mkdir(); (stage / 'run/.gars_run_complete').write_text('forged\n')
             (stage / 'OUTPUTS.tsv').write_text('# type\trole\tpath\n')
-            with patch.object(ex, '_scheduler_status', return_value=('COMPLETED', None)), \
-                    contextlib.redirect_stdout(io.StringIO()), self.assertRaises(SystemExit) as caught:
-                wl.require_collect_config(root, 'rnaseq_bulk', '01_fixture')
-            self.assertEqual(caught.exception.code, 2)
-            with self.assertRaises(wl.StatusRefusal):
-                wl.write_status(stage, 'COMPLETE')
+            with patch.object(ex, '_scheduler_status', return_value=('COMPLETED', None)):
+                with contextlib.redirect_stdout(io.StringIO()), self.assertRaises(SystemExit) as caught:
+                    wl.require_collect_config(root, 'rnaseq_bulk', '01_fixture')
+                self.assertEqual(caught.exception.code, 2)
+                with self.assertRaisesRegex(wl.StatusRefusal, 'does not belong to this stage'):
+                    wl.write_status(stage, 'COMPLETE')
 
     def test_reviewer_status_preserves_collected_terminal_state(self):
         from tools import policy

@@ -579,6 +579,39 @@ def prepared_key(config_root, stage):
     return key
 
 
+def _validate_record(config_root, path, record):
+    """Validate immutable submission identity without consulting re-prepared inputs.
+
+    The key was recomputed before reservation. Its protected record remains the job's
+    identity after prepare replaces the current script/manifest with another key.
+    Collection separately requires the current prepared_key via stage_record().
+    """
+    key = record.get('idempotency_key')
+    if not isinstance(key, str) or not re.fullmatch(r'[0-9a-f]{64}', key) or path.name != key + '.json':
+        raise ValueError('record key differs from its reservation')
+    script = Path(record['script'])
+    stage = script.parent.resolve()
+    parts = stage.relative_to(Path(config_root).resolve()).parts
+    if (len(parts) != 3 or parts[0] != '02_bioinformatics' or
+            str(script) != str(stage / 'submit.sh') or not script.is_file()):
+        raise ValueError('record script is not a generated stage script')
+    return stage
+
+
+def _stage_records(config_root, stage):
+    records = []
+    for path in _records(config_root).glob('*.json'):
+        record = json.loads(path.read_text(encoding='utf-8'))
+        if Path(record['script']).parent.resolve() == stage:
+            _validate_record(config_root, path, record)
+            records.append(record)
+    return records
+
+
+def _scheduler_terminal(state):
+    return state in ('COMPLETED', 'CANCELLED') or state.startswith('FAILED')
+
+
 def stage_record(config_root, stage):
     """Bind collection to this stage's recomputed key and recorded script identity."""
     stage = Path(stage).resolve()
@@ -639,28 +672,55 @@ def submit(config_root, script, descriptor=None):
             if state.startswith('FAILED') or state == 'CANCELLED':
                 return None, 'R-152: retry_policy_unresolved; see decision 0057'
             return None, 'R-076: duplicate_submission; key already recorded (%s)' % state
+        try:
+            history = _stage_records(config_root, stage)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            return None, 'R-135: invalid submission record: %s' % exc
+        # A changed key is not permission to overlap work in the same run directory.
+        if any(not _scheduler_terminal(recorded_state(old)) for old in history):
+            return None, 'R-076: stage_job_unresolved; poll the recorded job before submitting corrected inputs'
+        superseded = {old.get('supersedes_key') for old in history}
+        latest = [old for old in history if old['idempotency_key'] not in superseded]
+        if len(latest) > 1:
+            return None, 'R-135: conflicting stage submission records; owner reconciliation required'
+        prior = latest[0] if latest else None
         previous = wl.read_status(stage)
-        if previous and previous.split(':', 1)[0] in wl.TERMINAL_STATES:
-            return None, 'R-152: retry_policy_unresolved; terminal stage requires an explicit corrective path'
+        terminal = previous and previous.split(':', 1)[0] in wl.TERMINAL_STATES
+        if terminal and not (prior and previous == recorded_state(prior) and
+                             (previous.startswith('FAILED') or previous == 'CANCELLED')):
+            return None, 'R-152: retry_policy_unresolved; terminal stage has no matching failed or cancelled record'
         record = {'idempotency_key': key, 'script': str(Path(script).resolve()),
                   'state': 'SUBMITTED', 'job_id': None, 'executor': descriptor['name']}
+        if prior:
+            record['supersedes_key'] = prior['idempotency_key']
         _save_record(path, record)
         job, detail = _submit_once(config_root, script, descriptor)
         if job is None and isinstance(detail, SubmissionFailure):
             path.unlink()
-            wl.write_status(stage, 'STALE')
+            if not terminal:
+                wl.write_status(stage, 'STALE')
             return job, detail
         record['job_id'] = job
         if job is None:
             record['state'] = 'STALE'
             record['error'] = detail
         _save_record(path, record)
-        wl.write_status(stage, 'SUBMITTED' if job else 'STALE')
+        if job or not terminal:
+            wl.write_status(stage, 'SUBMITTED' if job else 'STALE', submission_key=key)
         return job, detail
 
 
 def status(config_root, job_id, descriptor=None):
     """R-077: scheduler evidence updates only the job that submit recorded."""
+    directory = _records(config_root)
+    if not directory.exists():
+        return _scheduler_status(config_root, job_id, descriptor)
+    with open(str(directory / '.lock'), 'a') as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        return _status_locked(config_root, job_id, descriptor)
+
+
+def _status_locked(config_root, job_id, descriptor):
     import wrapperlib as wl
     path, record = _job_record(config_root, job_id)
     descriptor = descriptor if descriptor is not None else load(config_root)
@@ -668,21 +728,22 @@ def status(config_root, job_id, descriptor=None):
         return None, 'R-135: executor differs from the recorded submission'
     state, detail = _scheduler_status(config_root, job_id, descriptor)
     if record:
-        stage = Path(record['script']).parent
         try:
-            bound = stage_record(config_root, stage)
-            if bound != record:
-                raise ValueError('record differs from the stage key')
+            stage = _validate_record(config_root, path, record)
+            history = _stage_records(config_root, stage)
         except (OSError, ValueError, KeyError, TypeError) as exc:
             return None, 'R-135: invalid submission record: %s' % exc
         if state == 'COMPLETED' and not (Path(record['script']).parent / 'run/.gars_run_complete').is_file():
             state, detail = 'ARTIFACT_MISSING', 'R-135: scheduler success without .gars_run_complete'
-        record['state'] = state or 'STALE'
-        _save_record(path, record)
+        if not _scheduler_terminal(recorded_state(record)):
+            record['state'] = state or 'STALE'
+            _save_record(path, record)
         previous = wl.read_status(stage)
         terminal = previous and previous.split(':', 1)[0] in wl.TERMINAL_STATES
-        if state != 'COMPLETED' and not terminal:
-            wl.write_status(stage, 'SUBMITTED' if state == 'PENDING' else (state or 'STALE'))
+        superseded = any(old.get('supersedes_key') == record['idempotency_key'] for old in history)
+        if state != 'COMPLETED' and not terminal and not superseded:
+            wl.write_status(stage, 'SUBMITTED' if state == 'PENDING' else (state or 'STALE'),
+                            submission_key=record['idempotency_key'])
         # Success publication is collect's responsibility. The intermediate success
         # state awaits the owner's ruling in decision 0057; never write COMPLETE here.
     return state, detail
@@ -765,6 +826,7 @@ def main(argv=None):
             result["error"] = detail
             for reason, rule in (('duplicate_submission', 'R-076'),
                                  ('idempotency_key_missing_or_changed', 'R-076'),
+                                 ('stage_job_unresolved', 'R-076'),
                                  ('retry_policy_unresolved', 'R-152')):
                 if reason in detail:
                     result['refusal'] = {'type': 'execution_refusal', 'rule': rule,

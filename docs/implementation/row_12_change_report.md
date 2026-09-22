@@ -633,3 +633,310 @@ Other checks in this run:
 One round commit uses an explicit path list and a message file in scratch. The review is
 excluded from staging. Commit identity is a generic producer identity; no personal name,
 login or machine name is added. No remote, push, merge or pull request is used.
+
+
+## Review round 3 fixes
+
+Date: **2026-09-22**. Supplied review: `docs/reviews/row_12_review_round2.md`,
+SHA-256 `c2d661701ee7b73c5f1b4039b54c8432d77be1abaede52c3ae6bc8a97c0b669b`.
+Round starts at `d3325a5`; row-12 scope remains the diff from approved row-4 head
+`d17573a`, including decision 0056. The supplied review remains untracked and unchanged.
+No external conversation or other build folder was read. Earlier report sections and
+0057/0058 retain their original bytes; [0059](../decisions/0059-row-12-corrected-inputs-addendum.md)
+is the dated correction beside them. No finding is dismissed as wrong.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| MAJOR-1: terminal stage wedges corrected inputs | `executorlib.py`, `wrapperlib.py`, `test_lifecycle_executor.py`, `test_lifecycle_faults.py`, 0059, `DEVELOPMENT.md` | `test_corrected_failed_or_cancelled_stage_submits_once`; corrective-record and refusal/ambiguity tests | Fixed for recorded FAILED/CANCELLED with a different prepared key. **Yes:** both baseline subcases refused corrected submit; the terminal-wedge plant fails. Stub scheduler sees exactly one original and one corrective submission. Same-key retry still refuses. |
+| MINOR-1: status rebinds to current preparation; overlapping jobs | `executorlib.py`, `wrapperlib.py`, `test_lifecycle_executor.py`, `test_lifecycle_faults.py`, 0059 | `test_reprepare_keeps_tracking_and_blocks_overlapping_job`; record-identity corruption; late superseded-job poll | Fixed. **Yes:** baseline starts an overlapping job; restored current-key binding and removed overlap check each fail their named test. RUNNING retains the original job id, unreachable status refuses, later TIMEOUT persists, and only then can corrected submit proceed. |
+| MINOR-2: forged-record assertion depends on missing sacct | `test_no_false_completion.py`, `test_lifecycle_faults.py` | `test_forged_record_cannot_collect_another_stages_job` with scheduler COMPLETED throughout both doors | Fixed. **Yes:** removing the stage/script identity check makes the direct COMPLETE assertion fail with `StatusRefusal not raised`. The test also requires the binding-specific refusal reason. |
+| MINOR-3: step 8 still calls status after collect failure | report, 0059 | no collect-failure acceptance claimed | Remains with owner ruling 2, as the review explicitly requires. **No:** no transition or contract wording is invented before that ruling. |
+| Previous MAJOR-3: downstream wrappers cannot submit | report | no downstream acceptance claimed | Still owner ruling 1; all three downstream wrappers remain blocked by missing keys. **No.** |
+| Previous MAJOR-4: retry/collect-failure transitions | report, 0059 | same-key refusal retained; corrected-input regression above | Corrected-input regression is fixed; same-key retry and collect-failure behavior still require rulings 2/3. **No** bounded-retry or collect-failure plant claimed. |
+| Previous MAJOR-5 / NOTE-3: cancel and timing | report, 0059 | no cancel acceptance claimed | Owner ruling 4 remains; NOTE-3's suggested `submitted_at` field is a timing/schema option, not owner authorization to select one. **No** cancellation or compute-duration evidence claimed. |
+| Previous MAJOR-6: classifier absent | report | `python3 gars/tests/test_failure_classification.py` | Still owner ruling 3; named test absent, never counted as a pass. **No.** |
+| NOTE-1: comment-only config edits change the key | report | byte-key and corrected-input tests | Retained as specified: deduplication covers identical input bytes, not semantic equivalence; a changed config comment changes the key. **No new semantic-deduplication claim.** |
+| NOTE-2: STATUS in module docstrings trips the sweep | report | existing sweep and all three path-evasion plants | Retained: conservative token sweep avoids a prose exemption and its maintenance; descriptive docstrings already use lifecycle-state wording. **No new plant.** |
+
+The corrective reservation adds only the review-requested `supersedes_key` linkage.
+Existing records remain readable with no rewrite or STATUS migration. The writer's
+internal `submission_key` argument is validated against the current prepared record,
+its different superseded key and the matching previous terminal reason; it is not a
+reset switch or typed-agent input. The reservation lock now serializes submit and status.
+Ordinary terminal writes remain sticky, including COMPLETE and REJECTED.
+
+Status checks the original record's key against its filename and its canonical generated
+script path, deriving the stage from that path. It cannot recompute the old digest from
+input files that prepare has already replaced. The protected record is the original
+submission evidence; current-input rehashing remains mandatory for submit and collect.
+This does not extend the threat model to unguarded same-UID record forgery.
+
+Definite refusal of a corrective submit releases only its new reservation; ambiguity
+retains it. Both preserve the previous terminal STATUS. For ambiguity, conflicting
+records, COMPLETE/REJECTED re-entry, or terminals without a matching recorded attempt,
+stop, preserve records/logs/work and request owner reconciliation. Human deletion of
+STATUS was the old implementation's physical workaround, **not** a supported recovery;
+the new typed correction needs no deletion. Same-key retries remain unavailable.
+
+### Existing test expectations and fault-fixture changes
+
+No threshold, guard assertion or ordinary success/failure expectation was weakened.
+New lifecycle tests account for five additional collected tests.
+
+| Test | Previous expectation or fixture | Requirement-correct expectation or fixture | Reason |
+|---|---|---|---|
+| `test_forged_record_cannot_collect_another_stages_job` | direct COMPLETE could fail because sacct was absent | scheduler is COMPLETED for collect and direct write; direct refusal must name the stage binding | R-135 / MINOR-2: isolate the actual guard under test |
+| `test_implemented_faults_are_red`, duplicate-submission plant | remove the key-exists branch; expect a second job | plant a backend call on an already-recorded key; retain the same second-job assertion witness | R-076 / MINOR-1 adds an independent overlap refusal, so removing only the first guard no longer creates the intended duplicate side effect |
+
+Pre-fix lifecycle regression command and runner summary, with the three initial new tests:
+
+```text
+python3 gars/tests/test_lifecycle_executor.py
+Ran 11 tests in 1.735s
+FAILED (failures=3)
+duplicate side effects 0
+```
+
+The three failures are the two corrected-terminal subcases and overlapping submission.
+The first fault-harness run also exposed the obsolete duplicate fault fixture: it
+reported `Ran 1 test in 16.091s` / `FAILED (failures=1)` because the new overlap check
+refused that plant before a second scheduler effect. The revised plant actually injects
+a second submission; its behavioral witness is unchanged. All thirteen visible plants
+must be red in the final harness. They do not measure the sealed row-3 mutation score.
+
+## Owner rulings needed
+
+The round-2 numbered questions remain in force with the following round-3 disposition.
+Only 12A and 13A are supplied owner rulings for row 12. No owner approval is fabricated.
+
+1. **Downstream key formula (previous MAJOR-3).** Choose the review's fixed-order hash
+   over declared manifest input bytes, or its explicit exemption for wrappers without a
+   key; 0057 also offers serializing downstream params with the stage-01 samplesheet
+   versus a separate downstream formula. No exemption or schema is selected here.
+2. **Intermediate success and collect failure (previous MAJOR-4; current MINOR-3).**
+   Choose VALIDATING while scheduler JSON remains COMPLETED, or another non-success
+   state; choose the review's collect failure FAILED:EXIT_<n> or another mapping and its
+   corrective path. Rewrite step 8 in the same authorized pass. New-key correction after
+   recorded FAILED/CANCELLED is fixed now; this question no longer covers that regression.
+3. **Failure taxonomy, artifact and same-key retries (previous MAJOR-4/6).** Confirm the
+   existing proposed transient set 104 and 130–145 unless a specific scheduler reason
+   overrides; TIMEOUT/OUT_OF_MEMORY/NODE_FAIL as infrastructure; 126/127 as tool; 65 as
+   data_quality; other nonzero exits as workflow, with agent_reasoning and scientific_validation
+   unassigned; or supply alternatives. Confirm producer codes and the review's one-line
+   class/error artifact schema. Only transient may retry at existing maxRetries; destructive
+   retry requires approval. No mapping or approval binding is invented.
+4. **Cancel and timing (previous MAJOR-5; current NOTE-3).** Choose a job-specific
+   cancellation plan in the existing protected store with issuance route, or an action-record
+   extension. It must bind job id/backend for a job past one hour. The review proposes
+   recording `submitted_at` now; confirm that wall-clock field/source or scheduler start/
+   consumed-compute evidence, and how it gates the fixed one-hour rule. The user explicitly
+   requires stopping on owner-owned schemas, so this field is deferred with the existing
+   timing ruling. The missing timestamp is a fixable gap, not a justification for omitting
+   cancel permanently. No sub-hour or long-job cancellation acceptance is claimed.
+5. **Stage-03 writer and generator scope.** Authorize narrow changes and generated-output
+   sweep coverage, or leave both NOT met. Neither out-of-bound file changes here.
+6. **Inherited raw-sbatch contract lines.** Authorize typed executor.submit lines in the
+   four inherited paths, or retain their declared refusal pending a separate change.
+   Their row-4 ancestry is not relitigated; collect-failure wording waits on ruling 2.
+7. **Protected executor template.** Refresh the template map/argv with its §9.3 approval,
+   remove normalization in that same change and restore raw equality; otherwise retain
+   template and normalizer together as now. No template bytes change.
+8. **Protected-path approval at merge.** Owner approval for row-12 guard/settings/registry
+   changes remains required; 12A/13A and producer addenda do not substitute for that record.
+9. **Ambiguous submission recovery.** Select supported scheduler reconciliation/record
+   binding or reservation release with its evidence/authorization, and authorize recovery
+   contract text beyond the STATUS-only lines. Until then, stop and retain evidence/work.
+10. **Published benchmark pins.** After the separate study's done commit, refresh changed
+    published pins and acceptance evidence through owner integration. Scratch-only pin
+    refresh is not published-pin acceptance; no benchmark/study file changes.
+11. **Row 15.** Any protection of unguarded builders or same-UID processes, hook/deployment
+    changes, or separate-user enforcement belongs to row 15. Its files remain out of scope
+    and were not inspected for a fix.
+
+### Residual gaps
+
+Full row-12 exit remains **NOT met**. The corrected-input and re-prepare regressions are
+fixed within the guarded-session, recorded-job boundary. Three downstream wrappers still
+cannot submit; same-key failed retries, cancel, classification and six-failure acceptance,
+bounded retries, intermediate success and collect-failure transitions remain open.
+Scheduler success alone still cannot publish COMPLETE. No generic terminal reset exists.
+
+Live Slurm/Nextflow R-076 acceptance, Docker/cluster behavior, actual Python 3.6.8 execution,
+Stage-3 durable state/heartbeats/restart reconciliation, native harness permission-glob
+semantics and separate-OS-user isolation remain unverified. Local scheduler stubs, a killed
+local worker and visible fault plants do not establish those results. The new field is
+backward-compatible for reading existing reservations; no live deployment migration ran.
+
+### Final command summaries
+
+All commands run from this repository with TMPDIR, TEMP and TMP set to its designated
+sibling scratch folder before execution. Logs, temporary source copies and commit message
+stay there. Python bytecode writing is disabled for test runs. Python is 3.13.2; no dependency
+installation, network pull, remote, push, PR or merge is performed. The following runner
+summary lines are copied verbatim from this round's logs.
+
+`python3 tests/run_tests.py` (exit 0):
+
+```text
+fault red: wrapper writes STATUS inline
+fault red: writer accepts an out-of-enum value
+fault red: TIMEOUT folds into FAILED
+fault red: duplicate submission reaches scheduler
+fault red: corrected terminal stage stays wedged
+fault red: status binds to re-prepared inputs
+fault red: new key overlaps unresolved stage job
+fault red: forged record bypasses script identity
+fault red: agent session writes STATUS
+fault red: killed worker reported COMPLETE
+fault red: computed STATUS path
+fault red: copied STATUS path
+fault red: formatted STATUS path
+Ran 335 tests in 280.074s
+OK (skipped=50)
+```
+
+`python3 evals/test_harness.py` (exit 0):
+
+```text
+Ran 44 tests in 305.701s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon` (exit 0):
+
+```text
+clean — graded=1
+```
+
+`python3 tests/check_contracts.py` (exit 0):
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py` (exit 0):
+
+```text
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 gars/tests/test_status_writer.py` (exit 0):
+
+```text
+Ran 9 tests in 4.125s
+OK
+every wrapper uses the writer
+```
+
+`python3 gars/tests/test_lifecycle_executor.py` (exit 0):
+
+```text
+Ran 13 tests in 3.002s
+OK
+duplicate side effects 0
+```
+
+`python3 gars/tests/test_no_false_completion.py` (exit 0):
+
+```text
+Ran 5 tests in 0.290s
+OK
+0 false completions
+```
+
+`python3 gars/tests/test_lifecycle_faults.py` (exit 0):
+
+```text
+Ran 1 test in 18.207s
+OK
+fault red: wrapper writes STATUS inline
+fault red: writer accepts an out-of-enum value
+fault red: TIMEOUT folds into FAILED
+fault red: duplicate submission reaches scheduler
+fault red: corrected terminal stage stays wedged
+fault red: status binds to re-prepared inputs
+fault red: new key overlaps unresolved stage job
+fault red: forged record bypasses script identity
+fault red: agent session writes STATUS
+fault red: killed worker reported COMPLETE
+fault red: computed STATUS path
+fault red: copied STATUS path
+fault red: formatted STATUS path
+```
+
+`python3 gars/tests/test_executorlib_resume.py` (exit 0):
+
+```text
+Ran 2 tests in 0.129s
+OK
+```
+
+`python3 gars/tests/test_execution_policy.py` (exit 0):
+
+```text
+Ran 7 tests in 35.091s
+OK
+```
+
+`python3 gars/tests/test_role_profiles.py` (exit 0):
+
+```text
+Ran 6 tests in 0.027s
+OK
+```
+
+`python3 tests/test_benchmark_discriminates.py` (exit 0):
+
+```text
+Ran 23 tests in 8.802s
+OK (skipped=1)
+```
+
+`python3 tests/run_tests.py ExecutorSeamTests.test_01_shipped_template_resolves_to_the_builtin` (exit 0):
+
+```text
+Ran 1 test in 0.052s
+OK
+```
+
+`python3 -m unittest discover -s gars/tests -p test_pre_push.py -v` (exit 0):
+
+```text
+Ran 7 tests in 14.847s
+OK
+```
+
+`python3 gars/tests/test_failure_classification.py` (exit 2):
+
+File absent; no runner summary exists. **NOT met.** The path-bearing error stays in scratch.
+
+`docker image ls --format {{.Repository}}:{{.Tag}}` (exit 1):
+
+```text
+Got permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock: Get "http://%2Fvar%2Frun%2Fdocker.sock/v1.24/images/json": dial unix /var/run/docker.sock: connect: operation not permitted
+```
+
+Other completed checks:
+
+| Command / audit | Summary |
+|---|---|
+| `python3 --version` | `Python 3.13.2` |
+| Python grammar audit of `executorlib.py` and `wrapperlib.py` | `Python 3.6 syntax audit: 2 changed production modules parsed` (syntax only) |
+| `bash docs/decisions/build_index.sh` | exit 0; generated index gains only 0059 |
+| `git diff --check` | exit 0, no output |
+| Historical-prefix, old-decision byte and supplied-review hash audit | `Historical record and supplied-review audit: PASS` |
+| Boundary diff from `d17573a` over `.github/`, `evals/`, `benchmarks/`, references, templates, hooks, authoring and stage03_analysis.py | `Protected-tree boundary audit against d17573a: empty` |
+| Added-text local identity scan | `Added-text local-identity audit: PASS` |
+| Round scope audit | `Round-3 changed-path audit: 9 tracked paths and 1 new decision addendum` |
+| Append-only scope audit | `Append-only scope audit: PASS` |
+
+The full suite's 50 inherited environment/evidence skips remain explicit. All thirteen
+visible fault plants are red and the named lifecycle metrics pass in this run; the full
+row exit remains NOT met for the residuals above. README and DEVELOPMENT state the actual
+335-test collection. No dependency was installed, no image pulled and no live scheduler used.
+
+One round commit uses exactly the audited ten paths, a message file in sibling scratch and
+a generic producer author/committer identity. Both supplied untracked review files are
+excluded from staging; the round-2 review's bytes are verified unchanged. No push, remote,
+merge, pull request or owner-identifying committed text is introduced.
