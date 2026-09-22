@@ -22,7 +22,7 @@ symptoms:
 ---
 # Row 4 provisional owner rulings
 
-Addendum to [0053](0053-row-4-typed-surface-and-attack-list.md), which remains byte-identical.
+Addendum to [0058](0058-row-4-typed-surface-and-attack-list.md), which remains byte-identical.
 No review has run. These are the owner's provisional instructions of 22 September 2026,
 applied while the owner is away; the owner confirms or reverses each afterwards.
 Number 0054 follows 0053; 0052 remains reserved to row 15 as 0053 records.
@@ -116,3 +116,5 @@ Number 0054 follows 0053; 0052 remains reserved to row 15 as 0053 records.
 
 No unanswered implementation choice remains for this round. The owner still must confirm
 or reverse each of the five provisional rulings above; no independent review is asserted.
+
+_Renumbered at merge, 2026-09-22: this record was written as 0054 on its branch and takes 0059 on main, because the row-5 fix and rows 15, 4, 11 and 12 numbered their decisions independently (merge order: row-5 fix, 15, 4, 11, 12). Its number, link targets and the numbers of other rows' records it cites are the only edits; branch-time number notes are left as written._

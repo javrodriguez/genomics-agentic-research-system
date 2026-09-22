@@ -1,4 +1,4 @@
-"""Fail-closed typed argument and role policy (R-092/R-093; decision 0053)."""
+"""Fail-closed typed argument and role policy (R-092/R-093; decision 0058)."""
 import json
 import os
 import re
@@ -16,7 +16,7 @@ class Refusal(ValueError):
 
     def record(self):
         return {'type': 'tool_refusal', 'field': self.field, 'rule': self.rule,
-                'message': str(self), 'source': 'spec §9.1–§9.6; decision 0053',
+                'message': str(self), 'source': 'spec §9.1–§9.6; decision 0058',
                 'alternative': 'python3 _system/tool_call.py fs.read '
                                '\'{"paths":["CONTEXT.md"]}\''}
 
@@ -56,7 +56,7 @@ def launch_role():
     """Default producer. No CLI flag, payload member or environment role override.
 
     Agent entry points stay producer-only. The human approval CLI captures its OS
-    identity separately (0054); reviewer OS-user deployment remains NOT met.
+    identity separately (0059); reviewer OS-user deployment remains NOT met.
     """
     return 'producer'
 

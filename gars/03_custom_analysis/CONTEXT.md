@@ -31,7 +31,7 @@ data", improvising an analysis nobody reviewed and nobody can reproduce.
   own `stage03_analysis.py approve` has succeeded on the plan. Drafting is free; running is gated.
 - Do **not** run `approve` yourself, ever. It is the user's command, run in their own terminal
   outside this session; the guard refuses it for an agent session, and its actor is whoever
-  launched the process (R-073, R-093; decision 0054). Your part is to hand the user the exact
+  launched the process (R-073, R-093; decision 0059). Your part is to hand the user the exact
   command in T2 and wait.
 - Do **not** resolve an input any way other than `resolve_artifact.py`. No globbing around
   `02_bioinformatics/`, no paths recalled from earlier turns.
@@ -62,7 +62,7 @@ skeleton markers, a non-empty Outputs table, every output type in the closed voc
 output path relative. It stamps `Status: APPROVED <date>` into `PLAN.md` and writes the approval
 record `{actor, timestamp, plan_sha256, expiry, plan_path}` into the approval store, the
 `.gars-approvals/` folder beside the workspace, outside it and out of your reach (decision
-0054). The record lasts 24 hours from approval. `verify` and `submit` read only that record, so
+0059). The record lasts 24 hours from approval. `verify` and `submit` read only that record, so
 a `Status: APPROVED` line, a `PLAN.md.approved` file in the workspace, a plan edited after
 approval, or an expired record are never evidence of approval. Approval is durable for its
 lifetime — it lives in the store, not in the conversation. Never read, write, copy or move

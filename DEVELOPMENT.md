@@ -16,7 +16,7 @@ it constrains — template, menu, preflight, or decision — never parked here (
 ## Current Status
 
 **Row 4 review round 4, 2026-09-22:** the supplied independent round-2 review is
-APPROVE WITH CHANGES. The 22 September provisional rulings in 0054 stand. Both MINORs
+APPROVE WITH CHANGES. The 22 September provisional rulings in 0059 stand. Both MINORs
 remain with the owner: the protected stage-03 contract correction with its approval
 record, and the scope of refusal for unreviewed pins. The supplied review's SHA-256,
 NOTE responses, current verification and residual gaps are recorded in the

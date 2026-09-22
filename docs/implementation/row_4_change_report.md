@@ -3,7 +3,7 @@
 Parent `c934f6d`; branch `build/gars-row-04-policy`. Producer implementation only;
 not reviewed, approved, merged or pushed. **Row exit NOT met.** Implementation is stopped
 on the material choices and file-boundary exceptions in decision
-[0053](../decisions/0053-row-4-typed-surface-and-attack-list.md#owner-rulings-needed),
+[0058](../decisions/0058-row-4-typed-surface-and-attack-list.md#owner-rulings-needed),
 following the owner's explicit rule 5. No choice is inferred from an unanswered question.
 The requested single row commit records this partial implementation and its live red
 tests. It does not claim completed Row 4 acceptance; the pending rulings must be resolved
@@ -393,8 +393,8 @@ Date: **2026-09-22**. This section supersedes the round-1 work-in-progress statu
 all earlier report bytes remain an exact prefix. Producer work only: no review has run,
 no approval by an independent reviewer is asserted, and no merge/push/remote operation occurred.
 All five option-A instructions are applied as **provisional rulings, to be confirmed by
-the owner**, attributed to the owner in [0054](../decisions/0054-row-4-provisional-rulings.md).
-Decision 0053 remains byte-identical. All commands set TMPDIR, TEMP and TMP to the designated
+the owner**, attributed to the owner in [0059](../decisions/0059-row-4-provisional-rulings.md).
+Decision 0058 remains byte-identical. All commands set TMPDIR, TEMP and TMP to the designated
 sibling scratch folder; logs, scripts and disposable fixtures stay there. Python checks use
 PYTHONDONTWRITEBYTECODE=1 and the scratch absent-pipelines path. No other build/review tree,
 reviewer conversation, or sealed held-out slice was accessed.
@@ -603,7 +603,7 @@ OK
 The entire `evals/` tree, gitleaks configuration and secret-containment test are unchanged.
 All ten round-2 wrapper diffs are one added shared-helper call. Contract diffs are only
 literal command-path substitutions. Task diffs contain four sha256 replacements and nothing
-else. Decision 0053 matches HEAD bytes; the report's previous bytes are an exact prefix.
+else. Decision 0058 matches HEAD bytes; the report's previous bytes are an exact prefix.
 Decision index regenerated using `bash docs/decisions/build_index.sh`. `git diff --check`
 passes. One round-2 commit stages only the enumerated changed paths, with its message file
 in scratch. No push, remote or merge.
@@ -611,7 +611,7 @@ in scratch. No push, remote or merge.
 ## Owner rulings needed
 
 None for further implementation in this round. The owner still confirms or reverses all
-five **provisional** option-A rulings recorded in 0054. This is not independent review approval.
+five **provisional** option-A rulings recorded in 0059. This is not independent review approval.
 
 ## Residual gaps still open (round 2)
 
@@ -619,13 +619,13 @@ five **provisional** option-A rulings recorded in 0054. This is not independent 
   `bypasses: 0/5` measures the separate deterministic attack list only.
 - **NOT met:** R-093 separate OS user/read-only reviewer credential. The same OS user can
   bypass the harness, alter its own approval store or invoke approve directly; the process
-  UID does not distinguish an agent from a human. See 0054, “What this does not close”.
+  UID does not distinguish an agent from a human. See 0059, “What this does not close”.
 - **NOT met:** external-harness R-099 load enforcement/global inventory/pre-hook loading;
   shipped pins remain unreviewed pending independent review.
 - Contract-prose follow-up: `gars/03_custom_analysis/CONTEXT.md:58` still describes the
   workspace sidecar and its process still directs dialogue-triggered agent approval. Only
   wrapper command substitutions are authorized in contracts this round, so those lines stay
-  untouched. The new protected-store/human-CLI behavior is documented in 0054; contract lint
+  untouched. The new protected-store/human-CLI behavior is documented in 0059; contract lint
   does not establish semantic agreement for this legacy prose.
 - Actual Python 3.6.8 execution and Slurm/Nextflow/cluster validation remain unmeasured.
   The local resume test is not the spec's Slurm acceptance. Existing named environment,
@@ -644,7 +644,7 @@ Date: **2026-09-22**. Reviewed baseline: `a78f8b19a8b460f29678884432763b65bc57fe
 The sole supplied review, `docs/reviews/row_4_review.md`, gives **APPROVE WITH CHANGES**;
 its heading says repository-side round 1, while this producer response is round 3 as
 instructed. The review remains untracked and byte-identical. The owner's 22 September
-provisional rulings recorded in 0054 **stand** under this round's explicit instruction;
+provisional rulings recorded in 0059 **stand** under this round's explicit instruction;
 the historical requests to reconfirm them are not reopened. Earlier report sections and
 all decision/review/assessment records remain unchanged.
 
@@ -658,7 +658,7 @@ only a new current-status paragraph pointing here; inherited claims remain out o
 | M1 — MINOR documentation, R-073: legacy stage-03 sidecar/agent-approval prose | This report; `DEVELOPMENT.md` status only | Read `gars/03_custom_analysis/CONTEXT.md:58-64,99-102`; rerun `test_approval_forgery.py` and contract lint | **Open: owner edit plus approval record required by review.** Protected contract unchanged; lint does not prove semantic agreement. Red-on-fault seen: **no** for prose; the implementation's plan/expiry witnesses are separately reported below. |
 | M2 — MINOR policy, R-099: all unreviewed pins refuse session initialization | This report; `DEVELOPMENT.md` status only | `test_policy_pins.py`, including `test_session_start_refuses_unreviewed`; `test_policy_faults.py` | **Open: owner scope ruling required.** All eleven pins remain unreviewed and startup remains fail-closed. Red-on-fault seen: **yes**, the existing unreviewed-pin mutant makes its refusal assertion fail; that does not settle the session-scope choice. |
 | N1 — NOTE provenance, R-170: inherited cluster claims | This report | Compare the cited phrases in `git show c934f6d:DEVELOPMENT.md` / `git show c934f6d:README.md` with the working files | Answered: claims stay because they are inherited and expressly out of scope; no cluster evidence is asserted by this round. Red-on-fault seen: **no**, provenance comparison only. |
-| N2 — NOTE security, R-093: same-UID store forgery | This report | `test_approval_forgery.py`, `test_role_profiles.py`; review and 0054 limitation | Answered: separate-OS-user deployment remains **NOT met**, so guarded forgery results do not close the same-UID gap. Red-on-fault seen: **no** for deployment isolation; no isolation was installed or tested. |
+| N2 — NOTE security, R-093: same-UID store forgery | This report | `test_approval_forgery.py`, `test_role_profiles.py`; review and 0059 limitation | Answered: separate-OS-user deployment remains **NOT met**, so guarded forgery results do not close the same-UID gap. Red-on-fault seen: **no** for deployment isolation; no isolation was installed or tested. |
 | N3 — NOTE test gap, R-092: actual Python 3.6.8 / cluster execution | This report | Current runners use Python 3.13.2; `command -v python3.6` found no executable | Answered: actual 3.6.8 and live Slurm/Nextflow execution remain **NOT met** because the required environment was not exercised. Red-on-fault seen: **no**, these runtime measurements were not performed. |
 
 ### Verification conditions and results
@@ -821,7 +821,7 @@ single round commit; the commit message is read from a file in sibling scratch.
    an approval record**. This includes the Approved definition and the process step that
    currently directs the agent to run `approve`. The review provides no alternative model;
    the question is authorization/delivery of that protected-contract edit and its approval
-   record. The 0054 approval-store ruling already stands; this does not ask to reconsider
+   record. The 0059 approval-store ruling already stands; this does not ask to reconsider
    its schema, actor binding or expiry. No contract edit or approval record is fabricated.
 2. **M2 — R-099 session-refusal scope.** The review's options are: confirm that refusing
    every session until independent review is the intended fail-closed stance; **or** scope
@@ -857,7 +857,7 @@ stand; this response neither reverses them nor makes a new policy choice.
 Date: **2026-09-22**. Baseline: `363be0c09a8f8631a8b3e742e14c198896724650`.
 The supplied independent review, `docs/reviews/row_4_review_round2.md`, concludes
 **APPROVE WITH CHANGES**. Its round number identifies the review; this response is
-producer round 4. The five provisional owner rulings recorded beside 0053 in 0054
+producer round 4. The five provisional owner rulings recorded beside 0058 in 0059
 stand. No finding is disputed. Both MINORs explicitly require owner action, so their
 implementation remains stopped; neither is claimed closed.
 
@@ -1045,7 +1045,7 @@ files, decision records and formal reviews have no round-4 diff.
 1. **M1 — R-073 protected stage-03 contract.** The review requires the owner's own edit
    of the Approved definition and step 6 to the protected-store, human-CLI model,
    together with its approval record. This is explicitly not a producer action. The
-   existing 0054 rulings stand; no reconfirmation of approval schema, expiry or actor
+   existing 0059 rulings stand; no reconfirmation of approval schema, expiry or actor
    binding is requested here. The required delivery is the owner's contract edit plus
    approval record; no alternative policy model was offered in the review.
 2. **M2 — R-099 refusal scope.** Confirm session-wide refusal as intended, **or** narrow

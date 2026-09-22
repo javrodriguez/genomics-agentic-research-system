@@ -19,12 +19,12 @@ symptoms:
 ---
 # Row 4: the owner's approval of three protected changes
 
-Addendum to [0053](0053-row-4-typed-surface-and-attack-list.md) and [0054](0054-row-4-provisional-rulings.md), which stay byte-identical.
+Addendum to [0058](0058-row-4-typed-surface-and-attack-list.md) and [0059](0059-row-4-provisional-rulings.md), which stay byte-identical.
 Every file this record touches is a protected path (R-094, spec §9.3), so each change is the owner's own commit with this record as its approval record.
 
 ## Context
 
-The owner confirmed on 22 September 2026 all eight rulings that were applied provisionally overnight: rows 15 and 4's rulings 1A to 8A, including 0054's five for this row.
+The owner confirmed on 22 September 2026 all eight rulings that were applied provisionally overnight: rows 15 and 4's rulings 1A to 8A, including 0059's five for this row.
 Row 4's third review (Claude Code, APPROVE WITH CHANGES) left two MINOR findings that only the owner could close.
 The first was that `gars/03_custom_analysis/CONTEXT.md` still defined approval as a `Status: APPROVED` line plus a workspace `PLAN.md.approved`, and told the agent to run `approve`, which the guard now refuses for an agent session.
 The second was that `session_state.sh` refuses every governed session while any pinned skill is not `reviewed`, and all eleven were `unreviewed`.
@@ -38,7 +38,7 @@ The owner ruled 2A and 3A, then 4A, on 22 September 2026.
    Steps 6, 7 and 9 name the refusals the store produces (no record, a changed plan, an expired record).
    Nothing else in the contract changed.
 2. **The session-wide refusal stays, and the pins are reviewed (3A).** R-099's check keeps refusing the whole session on any unreviewed, rejected or altered pin.
-   The eleven skills were reviewed in three fresh contexts with no access to the producer, the build folder or the owner's memory, each reading only a kit of the skill copies, `registry.json` and 0053.
+   The eleven skills were reviewed in three fresh contexts with no access to the producer, the build folder or the owner's memory, each reading only a kit of the skill copies, `registry.json` and 0058.
    Round 1 reviewed five and rejected six.
    Round 2 reviewed all eleven after the fixes below, and listed seven command lines whose spelling the guard would refuse.
    Round 3 reviewed all eleven on their final bytes, with zero command lines refused once placeholders are filled.
@@ -52,7 +52,7 @@ The owner ruled 2A and 3A, then 4A, on 22 September 2026.
 
 - The two reviewed skills whose `prepare` step writes `submit.sh` (`scrna-qc-cluster`, `spatial-cluster-count`) no longer say so beside the submit call; round 3 recommends adding it and judged it not blocking; adding it changes their digests and needs a fresh review.
 - Whether `<substage>/submit.sh` resolves relative to `--workspace` is not shown by the skills themselves; the contracts carry the resolved path.
-- The injection fixture's 20/20 and the reviewer as a separate OS user (R-093) remain NOT met, as 0053 and 0054 state.
+- The injection fixture's 20/20 and the reviewer as a separate OS user (R-093) remain NOT met, as 0058 and 0059 state.
 - A review in a fresh context on the same machine and OS user is `independent_context`, not `external_human_seal`.
 
 ## Test
@@ -72,3 +72,5 @@ standing
 ## Date
 
 2026-09-22
+
+_Renumbered at merge, 2026-09-22: this record was written as 0056 on its branch and takes 0060 on main, because the row-5 fix and rows 15, 4, 11 and 12 numbered their decisions independently (merge order: row-5 fix, 15, 4, 11, 12). Its number, link targets and the numbers of other rows' records it cites are the only edits; branch-time number notes are left as written._

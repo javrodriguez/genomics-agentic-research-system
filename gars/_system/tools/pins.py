@@ -40,6 +40,6 @@ def check(root=WORKSPACE):
 if __name__ == '__main__':
     problems = check()
     if problems:
-        print('R-099 / spec §9.6 / decision 0053: session refused: ' + '; '.join(problems), file=sys.stderr)
+        print('R-099 / spec §9.6 / decision 0058: session refused: ' + '; '.join(problems), file=sys.stderr)
         sys.exit(2)
     print('R-099: workspace pins reviewed and intact')

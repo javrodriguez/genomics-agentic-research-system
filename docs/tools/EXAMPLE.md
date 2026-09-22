@@ -74,4 +74,4 @@ python3 _system/tool_call.py stage00_register.assays '{}'
 A refusal is JSON with `type=tool_refusal`, `field`, `rule`, `message`, `source`, and
 `alternative`. The guard uses the same registry and validator for the legacy helper argv.
 Roles are launch-time authority, never a JSON field or shell environment choice. Human
-and reviewer launch binding awaits the owner ruling recorded in decision 0053.
+and reviewer launch binding awaits the owner ruling recorded in decision 0058.

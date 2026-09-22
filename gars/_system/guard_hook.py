@@ -16,7 +16,7 @@ is attempted, not be noticed two stages later. Prose remains for what genuinely 
 checked here (e.g. "do not read a colleague's directory").
 
 The owner ruled 3A: when the guard cannot judge a call it refuses. Every refusal names
-its rule, where it is written, and the typed call to use instead (R-098; decision 0053).
+its rule, where it is written, and the typed call to use instead (R-098; decision 0058).
 The Bash transport accepts only registered typed calls or read-only filesystem commands;
 it is not a general shell. Non-agent builders require Row 15's git-level hooks.
 
@@ -104,7 +104,7 @@ def rel_to_root(path, root, cwd):
 
 def deny(message):
     sys.stderr.write(message + " Rule R-092/R-094/R-098, spec §9.1/§9.3/§9.6; "
-                     "decision 0053. Use typed call: python3 _system/tool_call.py fs.read "
+                     "decision 0058. Use typed call: python3 _system/tool_call.py fs.read "
                      "\'{\"paths\":[\"CONTEXT.md\"]}\'.\n")
     sys.exit(2)
 

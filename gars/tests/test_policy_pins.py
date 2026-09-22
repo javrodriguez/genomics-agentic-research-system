@@ -31,7 +31,7 @@ class PolicyPinsTests(unittest.TestCase):
         self.assertEqual(manifest['mcp_servers'],[])
 
     def test_session_start_refuses_unreviewed(self):
-        # The shipped pins are reviewed since decision 0056, so the refusal is proved on a
+        # The shipped pins are reviewed since decision 0060, so the refusal is proved on a
         # disposable workspace running the shipped session_state.sh and pins.py unchanged.
         with tempfile.TemporaryDirectory(prefix='policy-pins-start-') as tmp:
             root=Path(tmp); (root/'_references').mkdir(); (root/'_system').mkdir()

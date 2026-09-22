@@ -3466,7 +3466,7 @@
         "scheduler job"
       ],
       "timeout_seconds": 120,
-      "unavailable": "R-092: cancel is unavailable until row 12 supplies the verb (provisional owner ruling 0054).",
+      "unavailable": "R-092: cancel is unavailable until row 12 supplies the verb (provisional owner ruling 0059).",
       "version": "1.0.0"
     },
     {

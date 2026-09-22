@@ -156,3 +156,5 @@ proposed; producer implementation in progress, not independently reviewed or app
 ## Date
 
 2026-09-21
+
+_Renumbered at merge, 2026-09-22: this record was written as 0053 on its branch and takes 0058 on main, because the row-5 fix and rows 15, 4, 11 and 12 numbered their decisions independently (merge order: row-5 fix, 15, 4, 11, 12). Its number, link targets and the numbers of other rows' records it cites are the only edits; branch-time number notes are left as written._
