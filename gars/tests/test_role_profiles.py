@@ -38,7 +38,7 @@ class RoleProfileTests(unittest.TestCase):
 
     def test_reviewer_only_read_and_status(self):
         for tool in policy.registry():
-            if tool['side_effects']:
+            if tool['side_effects'] and tool['name'] != 'executor.status':
                 self.assertEqual(policy.decide(tool,'reviewer'),'refuse',tool['name'])
         self.assertEqual(policy.decide(policy.named('executor.status'),'reviewer'),'allow')
 

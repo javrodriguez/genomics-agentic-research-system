@@ -10,6 +10,7 @@ Runs on stock python 3.6.8, stdlib only, like every `_system/` helper.
 """
 
 import hashlib
+import datetime
 import json
 import pathlib
 import os
@@ -26,6 +27,75 @@ import executorlib as ex        # noqa: E402
 import workspace as ws          # noqa: E402
 
 EXIT_OK, EXIT_FAILURE, EXIT_REFUSED, EXIT_USAGE = 0, 1, 2, 3
+
+# R-150/R-151; the owner's ruling 12A: COMPLETED is stored as COMPLETE.
+STATUS_ALIASES = {"COMPLETED": "COMPLETE"}
+STATUS_STATES = ("CREATED", "PLANNED", "AWAITING_APPROVAL", "APPROVED",
+                 "EXECUTING", "VALIDATING", "REVIEWING", "COMPLETE", "REJECTED",
+                 "FAILED", "DIAGNOSING", "RETRYING", "CANCELLED", "PAUSED",
+                 "NEEDS_INPUT", "PARTIAL", "STALE", "ARTIFACT_MISSING",
+                 "SUBMITTED", "RUNNING")
+TERMINAL_STATES = ("COMPLETE", "REJECTED", "FAILED", "CANCELLED")
+FAILURE_REASONS = ("TIMEOUT", "OUT_OF_MEMORY", "CANCELLED", "NODE_FAIL")
+
+
+class StatusRefusal(ValueError):
+    def record(self):
+        return {"type": "status_refusal", "rule": "R-151", "reason": str(self)}
+
+
+def write_status(project_dir_or_substage, state, reason=None):
+    """The only wrapper/executor STATUS writer (the owner's ruling 13A).
+
+    Failure and cancellation are reachable from every non-terminal state. No migration
+    of legacy STATUS files is performed. Success belongs to a successful collect caller;
+    the marker and published output index are mandatory even at this lowest-level door.
+    """
+    stage = Path(project_dir_or_substage)
+    if not isinstance(state, str):
+        raise StatusRefusal('invalid_state: expected a closed-enum string')
+    if ':' in state:
+        if reason is not None:
+            raise StatusRefusal('invalid_reason: reason supplied twice')
+        state, reason = state.split(':', 1)
+    state = STATUS_ALIASES.get(state, state)
+    if state not in STATUS_STATES:
+        raise StatusRefusal('invalid_state: outside the closed STATUS enum')
+    if reason is not None and (state != 'FAILED' or not isinstance(reason, str) or
+            not (reason in FAILURE_REASONS or re.fullmatch(r'EXIT_[0-9]+', reason))):
+        raise StatusRefusal('invalid_reason: expected a scheduler reason or EXIT_<n>')
+    if state == 'COMPLETE' and not ((stage / 'run/.gars_run_complete').is_file()
+                                    and (stage / 'OUTPUTS.tsv').is_file()):
+        raise StatusRefusal('completion_gate: successful collect and .gars_run_complete required')
+    value = state + (':' + reason if reason else '')
+    metadata = ''
+    if state in ('SUBMITTED', 'RUNNING'):
+        # Preserve the contracts' job-id suffix when submit has recorded one. The
+        # writer API does not accept agent-supplied execution metadata.
+        try:
+            manifest = json.loads((stage / 'reproducibility/manifest.json').read_text(encoding='utf-8'))
+            key = manifest.get('idempotency_key', '')
+            if re.fullmatch(r'[0-9a-f]{64}', key):
+                record_path = ex._records(ex.config_root_for(stage)) / (key + '.json')
+                record = json.loads(record_path.read_text(encoding='utf-8'))
+                job = record.get('job_id')
+                if isinstance(job, str) and job.isdigit():
+                    metadata = job + ' '
+        except (OSError, ValueError, TypeError):
+            pass  # A pre-submission state has no scheduler identity yet.
+    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    # Unique siblings prevent concurrent writers from sharing a partially written temp.
+    fd, temporary = tempfile.mkstemp(prefix='.STATUS-', dir=str(stage))
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as fh:
+            fh.write('%s %s%s\n' % (value, metadata, timestamp))
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(temporary, str(stage / 'STATUS'))
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+    return value
 
 
 def emit(result, code):
@@ -47,6 +117,19 @@ def require_collect_config(project, assay, substage):
     if problem:
         raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,
                                'error': problem}, EXIT_REFUSED))
+    stage = Path(project) / '02_bioinformatics' / assay / substage
+    # R-135: a marker is necessary, but cannot overrule a failed/unreachable executor.
+    manifest = json.loads((stage / 'reproducibility/manifest.json').read_text(encoding='utf-8'))
+    key = manifest.get('idempotency_key')
+    if isinstance(key, str) and re.fullmatch(r'[0-9a-f]{64}', key):
+        path = ex._records(project) / (key + '.json')
+        if path.is_file():
+            record = json.loads(path.read_text(encoding='utf-8'))
+            state, detail = ex.status(project, record['job_id']) if record['job_id'] else (None, 'submission unresolved')
+            if state != 'COMPLETED':
+                raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,
+                                       'error': 'R-135: executor has not completed: %s' % (detail or state)},
+                                      EXIT_REFUSED))
 
 
 def read_config(path):
@@ -432,6 +515,23 @@ def write_reproducibility(substage, assay, checkout, inputs, params):
                 "template_version": ws.template_version(Path(__file__).resolve().parents[1])}
     for label, path in inputs.items():
         manifest["%s_sha256" % label] = sha256(path)
+    # R-076: exact byte concatenation, in the specification's order. Downstream
+    # wrappers without params/samplesheet await the owner's ruling in decision 0057.
+    param_file = substage / 'params.yaml'
+    if param_file.is_file() and 'samplesheet' in inputs and 'config' in inputs:
+        digest = hashlib.sha256()
+        for path in (param_file, inputs['samplesheet'], inputs['config']):
+            with open(str(path), 'rb') as fh:
+                for chunk in iter(lambda: fh.read(1 << 20), b''):
+                    digest.update(chunk)
+        manifest['idempotency_key'] = digest.hexdigest()
+        script_path = substage / 'submit.sh'
+        script = script_path.read_text(encoding='utf-8')
+        script = re.sub(r'^# idempotency_key=[0-9a-f]+\n', '', script, flags=re.M)
+        # Append the metadata after the header; decision 0039's header stays identical.
+        with ws.atomic_open(script_path) as fh:
+            fh.write(script + '# idempotency_key=' + manifest['idempotency_key'] + '\n')
+        os.chmod(str(script_path), 0o755)
     with ws.atomic_open(repro / "manifest.json") as fh:
         json.dump(manifest, fh, indent=2, sort_keys=True)
     submit_sh = substage.resolve() / "submit.sh"

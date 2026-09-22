@@ -59,25 +59,31 @@ class ExecutionPolicyTests(unittest.TestCase):
                 checked+=1
         self.assertEqual(checked,10)
 
-    def test_prepared_local_resume_and_completed_reentry(self):
+    def test_prepared_local_failure_refuses_unclassified_retry(self):
+        # R-076/R-077/R-152: a recorded failure cannot be blindly resubmitted.
+        from test_lifecycle_executor import prepared
         with tempfile.TemporaryDirectory(prefix='prepared-resume-') as tmp:
-            root=Path(tmp); (root/'_system').mkdir(); (root/'_system/gars-env.sh').write_text(':\n')
-            (root/'_config').mkdir(); (root/'_config/executor.yaml').write_text('name: local\n')
-            cfg=root/'_config/rnaseq_bulk.yaml'; cfg.write_text('aligner: star\n')
-            stage=root/'02_bioinformatics/rnaseq_bulk/01_fixture'; stage.mkdir(parents=True)
-            body='if [ "$RESUME" != "-resume" ]; then mkdir -p .nextflow; echo first >> effects; exit 17; fi\necho second >> effects'
-            wl.write_submit_sh(stage,root,{},'fixture','rnaseq_bulk',body)
-            wl.write_reproducibility(stage,'rnaseq_bulk',root,{'config':cfg},[])
-            for expected in ('FAILED','COMPLETED','COMPLETED'):
-                job,error=ex.submit(root,stage/'submit.sh'); self.assertIsNone(error); self.assertTrue(job)
-                deadline=time.monotonic()+10
-                while time.monotonic()<deadline:
-                    state,detail=ex.status(root,job)
-                    if state in ('COMPLETED','FAILED'): break
-                    time.sleep(0.02)
-                self.assertEqual(state,expected,detail)
-            self.assertEqual((stage/'run/effects').read_text(),'first\nsecond\n')
-            self.assertTrue((stage/'run/.gars_run_complete').is_file())
+            root = Path(tmp)
+            stage, sheet, cfg = prepared(root)
+            (root / '_config/executor.yaml').write_text('name: local\n')
+            body = 'mkdir -p .nextflow; echo first >> effects; exit 17'
+            wl.write_submit_sh(stage, root, {}, 'fixture', 'rnaseq_bulk', body)
+            wl.write_reproducibility(stage, 'rnaseq_bulk', root,
+                                     {'config': cfg, 'samplesheet': sheet}, [])
+            job, error = ex.submit(root, stage / 'submit.sh')
+            self.assertIsNone(error)
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline:
+                state, detail = ex.status(root, job)
+                if state.startswith('FAILED'):
+                    break
+                time.sleep(0.02)
+            self.assertEqual(state, 'FAILED:EXIT_17', detail)
+            again, why = ex.submit(root, stage / 'submit.sh')
+            self.assertIsNone(again)
+            self.assertIn('R-152', why)
+            self.assertEqual((stage / 'run/effects').read_text(), 'first\n')
+            self.assertFalse((stage / 'run/.gars_run_complete').exists())
 
     def test_prepared_content_regressions(self):
         # Reuse the original content assertions with a fixture manifest produced by the

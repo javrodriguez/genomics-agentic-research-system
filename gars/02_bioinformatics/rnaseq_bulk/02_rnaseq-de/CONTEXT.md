@@ -34,7 +34,7 @@ This sub-stage performs the steps in Process and nothing else.
 - Never edit the wrapper's code or the generated `run_de.py`. A change of method is a config
   or template change to report, not an edit to make.
 - Never run the analysis in the foreground: a pure-Python DE step was SIGKILLed on a login
-  node once (decision 0005). Submit, write STATUS, and return.
+  node once (decision 0005). Submit, call the typed `status` tool, and return.
 - Never modify the native count matrix, anything under 02.01's directory, `00_data/`, or
   `01_samplesheets/`.
 - Never resubmit a job whose STATUS is `SUBMITTED` or `RUNNING`.
@@ -95,16 +95,14 @@ Projects produced by either path read the same downstream.
 5. Run `prepare` with the same paths. Exit 1 → reply T5. Exit 0 → it wrote
    `scripts/run_de.py`, `submit.sh` and the reproducibility bundle.
 6. Submit with `python3 <workspace>/_system/executorlib.py submit --workspace <project dir>
-   <sub-stage dir>/submit.sh`; capture `job_id` from the JSON. Write `STATUS` as
-   `SUBMITTED <job_id> <iso8601>`. Reply T2 and stop.
+   <sub-stage dir>/submit.sh`; capture `job_id` from the JSON. Call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>` (submit has written `SUBMITTED`). Reply T2 and stop.
 7. **On a later invocation** where STATUS is `SUBMITTED` or `RUNNING`: ask `python3 <workspace>/_system/executorlib.py
    status --workspace <project dir> <job_id>` — it answers `PENDING`, `RUNNING`,
-   `COMPLETED` or `FAILED`. Not yet terminal → update STATUS to `RUNNING <job_id>
-   <iso8601>`, reply T3, stop.
+   `COMPLETED`, `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`. Not yet terminal → call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T3, stop.
 8. If the job has finished, run `collect` with `--model "<the exact model id you are running
    as>"` (decision 0024) and `--counts-from <the sub-stage the resolver named>`. Exit 2 → the
-   run did not complete: write `STATUS` as `FAILED <iso8601>`, reply T4 with the scheduler log
-   path, stop. Exit 1 → the exit gate failed: write `FAILED`, reply T4 with its `failures`
+   run did not complete: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with the scheduler log
+   path, stop. Exit 1 → the exit gate failed: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with its `failures`
    verbatim, stop.
 9. Exit 0 → `collect` has written `OUTPUTS.tsv` (`de_results` native, `counts_gene`
    **adapted**, `gene_id_map` native — the role marking is what stops a later consumer

@@ -3395,9 +3395,11 @@
         "producer": "allow",
         "reviewer": "allow"
       },
-      "side_effects": [],
+      "side_effects": [
+        "scheduler-derived STATUS refresh (R-151)"
+      ],
       "timeout_seconds": 120,
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     {
       "argv": [

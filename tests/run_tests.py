@@ -1473,11 +1473,12 @@ class ExecutorSeamTests(unittest.TestCase):
         """The seeded `executor.yaml` and the built-in Slurm descriptor must not drift apart:
         a project that keeps the seeded file and one that deletes it get the same scheduler."""
         text = (GARS / "_templates" / "config" / "executor.yaml").read_text(encoding="utf-8")
-        parsed = self.ex.parse_descriptor(text)
+        project = self._project("shipped-descriptor", text)
+        parsed = self.ex.load(project)  # R-077 upgrades only the exact legacy built-in values.
         for key, value in self.ex.SLURM.items():
             if key == "submit_note":
                 continue        # prose, carried by the built-in only
-            self.assertEqual(parsed.get(key), value, "template drifted on %r" % key)
+            self.assertEqual(parsed.get(key), value, "resolved template drifted on %r" % key)
         self.assertEqual(self.ex.validate(parsed), [])
 
     def test_02_stage_00_seeds_the_descriptor(self):

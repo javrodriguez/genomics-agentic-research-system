@@ -31,8 +31,7 @@ This sub-stage performs the steps in Process and nothing else.
   STAR/Salmon by hand and do not "approximate" the result. Report and stop.
 - Never modify the samplesheet, the design table, `00_data/`, or anything under
   `01_samplesheets/`.
-- Never run the pipeline in the foreground, and never poll for it in a loop. Submit, write
-  STATUS, and return.
+- Never run the pipeline in the foreground, and never poll for it in a loop. Submit, call the typed `status` tool, and return.
 - Never resubmit a job whose STATUS is `SUBMITTED` or `RUNNING`.
 - Never delete or move a populated `run/` directory; `check` refuses it for a reason. Surface
   the refusal.
@@ -94,16 +93,14 @@ were written (decision 0005, failure 5).
    `submit.sh` and the reproducibility bundle; report nothing yet.
 5. Submit with `python3 <workspace>/_system/executorlib.py submit --workspace <project dir>
    <sub-stage dir>/submit.sh`. It prints one JSON object; `job_id` is the field. Capture it.
-6. Write `STATUS` as `SUBMITTED <job_id> <iso8601>`. Reply T2 and stop. Do not wait, poll,
+6. Call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>` (submit has written `SUBMITTED`). Reply T2 and stop. Do not wait, poll,
    or sleep.
 7. **On a later invocation** where STATUS is `SUBMITTED` or `RUNNING`: ask `python3 <workspace>/_system/executorlib.py
    status --workspace <project dir> <job_id>` — it answers `PENDING`, `RUNNING`,
-   `COMPLETED` or `FAILED`. If not yet terminal, update STATUS to `RUNNING <job_id>
-   <iso8601>`, reply T3, stop.
+   `COMPLETED`, `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`. If not yet terminal, call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T3, stop.
 8. If the job has finished, run `collect` with `--model "<the exact model id you are running
-   as>"` (decision 0024). Exit 2 → the run did not actually complete: write `STATUS` as
-   `FAILED <iso8601>`, reply T4 with the wrapper's error and the scheduler log path, stop.
-   Exit 1 → the exit gate failed: write `FAILED`, reply T4 with its `failures` verbatim, stop.
+   as>"` (decision 0024). Exit 2 → the run did not actually complete: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with the wrapper's error and the scheduler log path, stop.
+   Exit 1 → the exit gate failed: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with its `failures` verbatim, stop.
 9. Exit 0 → `collect` has written `OUTPUTS.tsv` and `STATUS COMPLETE`. Append its
    `history_entry` to the project's `HISTORY.md` **verbatim**, replacing `<ISO-8601 date>`
    with today's date, and reply T6.

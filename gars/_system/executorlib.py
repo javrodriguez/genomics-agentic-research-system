@@ -26,6 +26,7 @@ Runs on stock python 3.6.8, stdlib only, like every `_system/` helper.
 """
 
 import argparse
+import fcntl
 import json
 import os
 import re
@@ -38,7 +39,8 @@ EXIT_OK, EXIT_FAILURE, EXIT_REFUSED, EXIT_USAGE = 0, 1, 2, 3
 
 #: The closed state vocabulary every backend maps onto. A caller polls until it sees a
 #: terminal state; nothing else is a legal answer.
-STATES = ("PENDING", "RUNNING", "COMPLETED", "FAILED")
+STATES = ("PENDING", "RUNNING", "COMPLETED", "FAILED", "CANCELLED",
+          "FAILED:TIMEOUT", "FAILED:OUT_OF_MEMORY", "FAILED:NODE_FAIL")
 
 #: The placeholders a `directives` line may name. Anything else is a descriptor error, said
 #: by name rather than raised as a KeyError from inside a format string.
@@ -62,14 +64,14 @@ SLURM = {
     ],
     "submit_argv": ["sbatch", "{script}"],
     "job_id_regex": r"Submitted batch job (\d+)",
-    "status_argv": ["sacct", "-j", "{job_id}", "--format=State", "--noheader"],
+    "status_argv": ["sacct", "-j", "{job_id}", "--format=State,ExitCode", "--noheader", "--parsable2"],
     "status_map": {
         "PENDING": "PENDING", "CONFIGURING": "PENDING", "REQUEUED": "PENDING",
         "SUSPENDED": "PENDING", "PREEMPTED": "PENDING",
         "RUNNING": "RUNNING", "COMPLETING": "RUNNING", "RESIZING": "RUNNING",
         "COMPLETED": "COMPLETED",
-        "FAILED": "FAILED", "CANCELLED": "FAILED", "TIMEOUT": "FAILED",
-        "NODE_FAIL": "FAILED", "OUT_OF_MEMORY": "FAILED", "BOOT_FAIL": "FAILED",
+        "FAILED": "FAILED", "CANCELLED": "CANCELLED", "TIMEOUT": "FAILED:TIMEOUT",
+        "NODE_FAIL": "FAILED:NODE_FAIL", "OUT_OF_MEMORY": "FAILED:OUT_OF_MEMORY", "BOOT_FAIL": "FAILED",
         "DEADLINE": "FAILED", "REVOKED": "FAILED",
     },
     "nextflow_config": "nextflow.slurm.config",
@@ -174,6 +176,16 @@ def load(config_root):
     for key, value in parsed.items():
         if value is not None:
             base[key] = value
+    # R-077: the shipped optional descriptor spells the pre-row-12 built-in map.
+    # Recognize exactly that historical value in memory; arbitrary overrides still
+    # fail validation. Neither existing descriptors nor the protected template migrate.
+    if name == 'slurm':
+        legacy_map = {key: ('FAILED' if value == 'CANCELLED' or value.startswith('FAILED:')
+                            else value) for key, value in SLURM['status_map'].items()}
+        if base.get('status_map') == legacy_map:
+            base['status_map'] = SLURM['status_map']
+        if base.get('status_argv') == ['sacct', '-j', '{job_id}', '--format=State', '--noheader']:
+            base['status_argv'] = SLURM['status_argv']
     base.setdefault("name", name)
     return base
 
@@ -404,7 +416,8 @@ def _local_status(config_root, job_id):
         return "FAILED"             # nothing here started that job; say so, never guess
     exit_file = Path(json.loads(record.read_text(encoding="utf-8"))["exit_file"])
     if exit_file.is_file():
-        return "COMPLETED" if exit_file.read_text(encoding="utf-8").strip() == "0" else "FAILED"
+        code = exit_file.read_text(encoding="utf-8").strip()
+        return "COMPLETED" if code == "0" else ('FAILED:EXIT_' + code if code.isdigit() else 'FAILED')
     try:
         os.kill(int(job_id), 0)
         return "RUNNING"
@@ -413,7 +426,7 @@ def _local_status(config_root, job_id):
     return "FAILED"
 
 
-def submit(config_root, script, descriptor=None):
+def _submit_once(config_root, script, descriptor=None):
     """Hand the generated script to the scheduler. Returns (job_id, detail-or-None)."""
     descriptor = descriptor if descriptor is not None else load(config_root)
     problems = validate(descriptor)
@@ -462,7 +475,7 @@ def submit(config_root, script, descriptor=None):
     return m.group(1), None
 
 
-def status(config_root, job_id, descriptor=None):
+def _scheduler_status(config_root, job_id, descriptor=None):
     """Ask after a job. Returns (state, detail-or-None); state is one of STATES."""
     descriptor = descriptor if descriptor is not None else load(config_root)
     if descriptor.get("name") == "local":
@@ -484,11 +497,114 @@ def status(config_root, job_id, descriptor=None):
             raw = line.strip()
             break
     # `CANCELLED by 1234` and `COMPLETED+` are the shapes sacct actually prints.
-    token = raw.split()[0].rstrip("+").upper() if raw else ""
+    fields = raw.split('|')
+    token = fields[0].split()[0].rstrip("+").upper() if fields[0] else ""
     mapped = (descriptor.get("status_map") or {}).get(token)
     if not mapped:
         return None, "unmapped backend state %r -- add it to status_map" % (token or raw)
+    if mapped == 'FAILED' and len(fields) > 1:
+        exit_code = fields[1].split(':')[0]
+        if exit_code.isdigit() and int(exit_code) > 0:
+            mapped = 'FAILED:EXIT_' + str(int(exit_code))
     return mapped, None
+
+
+def recorded_state(record):
+    """Recorded scheduler state, never an agent-authored STATUS value."""
+    return record['state']
+
+
+def _records(config_root):
+    return Path(config_root) / '.gars_submissions'
+
+
+def _save_record(path, record):
+    import wrapperlib as wl
+    with wl.ws.atomic_open(path) as fh:
+        json.dump(record, fh, indent=2, sort_keys=True)
+        fh.write('\n')
+
+
+def _job_record(config_root, job_id):
+    for path in _records(config_root).glob('*.json'):
+        record = json.loads(path.read_text(encoding='utf-8'))
+        if record.get('job_id') == str(job_id):
+            return path, record
+    return None, None
+
+
+def submit(config_root, script, descriptor=None):
+    """R-076: reserve the prepared key before any scheduler side effect.
+
+    A process crash or ambiguous scheduler response leaves the reservation in place,
+    refusing a duplicate rather than guessing the first submission did not happen.
+    The file lock serializes competing callers; this is not the Stage-3 durable table.
+    """
+    import wrapperlib as wl
+    stage = Path(script).resolve().parent
+    descriptor = descriptor if descriptor is not None else load(config_root)
+    try:
+        parts = stage.relative_to(Path(config_root).resolve()).parts
+    except ValueError:
+        return None, 'R-073: script is outside its project'
+    # Keep row 4's preflight refusal and stage-03 approval behavior intact.
+    if len(parts) < 3 or parts[0] != '02_bioinformatics':
+        return _submit_once(config_root, script, descriptor)
+    problem = config_holds(config_root, stage, parts[1])
+    if problem:
+        return None, problem
+    try:
+        manifest = json.loads((stage / 'reproducibility/manifest.json').read_text(encoding='utf-8'))
+        key = manifest['idempotency_key']
+        if not isinstance(key, str) or not re.fullmatch(r'[0-9a-f]{64}', key):
+            raise ValueError('invalid key')
+        if '# idempotency_key=' + key not in Path(script).read_text(encoding='utf-8').splitlines():
+            raise ValueError('script key differs')
+    except (OSError, ValueError, KeyError, TypeError):
+        return None, 'R-076: idempotency_key_missing_or_changed; run prepare'
+    problems = validate(descriptor)
+    if problems:
+        return None, '; '.join(problems)
+    directory = _records(config_root)
+    directory.mkdir(exist_ok=True)
+    with open(str(directory / '.lock'), 'a') as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        path = directory / (key + '.json')
+        if path.exists():
+            record = json.loads(path.read_text(encoding='utf-8'))
+            state = recorded_state(record)
+            if state.startswith('FAILED') or state == 'CANCELLED':
+                return None, 'R-152: retry_policy_unresolved; see decision 0057'
+            return None, 'R-076: duplicate_submission; key already recorded (%s)' % state
+        record = {'idempotency_key': key, 'script': str(Path(script).resolve()),
+                  'state': 'SUBMITTED', 'job_id': None, 'executor': descriptor['name']}
+        _save_record(path, record)
+        job, detail = _submit_once(config_root, script, descriptor)
+        record['job_id'] = job
+        if job is None:
+            record['state'] = 'STALE'
+            record['error'] = detail
+        _save_record(path, record)
+        wl.write_status(stage, 'SUBMITTED' if job else 'STALE')
+        return job, detail
+
+
+def status(config_root, job_id, descriptor=None):
+    """R-077: scheduler evidence updates only the job that submit recorded."""
+    import wrapperlib as wl
+    state, detail = _scheduler_status(config_root, job_id, descriptor)
+    path, record = _job_record(config_root, job_id)
+    if record:
+        if state == 'COMPLETED' and not (Path(record['script']).parent / 'run/.gars_run_complete').is_file():
+            state, detail = 'ARTIFACT_MISSING', 'R-135: scheduler success without .gars_run_complete'
+        record['state'] = state or 'STALE'
+        _save_record(path, record)
+        stage = Path(record['script']).parent
+        if state != 'COMPLETED':
+            wl.write_status(stage, 'SUBMITTED' if state == 'PENDING' else (state or 'STALE'))
+        # Success publication is collect's responsibility. The intermediate success
+        # state awaits the owner's ruling in decision 0057; never write COMPLETE here.
+    return state, detail
 
 
 # --- CLI ---------------------------------------------------------------------------------------
@@ -566,6 +682,13 @@ def main(argv=None):
         job_id, detail = submit(root, args.script, descriptor=descriptor)
         if job_id is None:
             result["error"] = detail
+            for reason, rule in (('duplicate_submission', 'R-076'),
+                                 ('idempotency_key_missing_or_changed', 'R-076'),
+                                 ('retry_policy_unresolved', 'R-152')):
+                if reason in detail:
+                    result['refusal'] = {'type': 'execution_refusal', 'rule': rule,
+                                         'reason': reason}
+                    return emit(result, EXIT_REFUSED)
             return emit(result, EXIT_FAILURE)
         result["job_id"] = job_id
         result["ok"] = True
@@ -578,7 +701,7 @@ def main(argv=None):
             return emit(result, EXIT_FAILURE)
         result["job_id"] = args.job_id
         result["state"] = state
-        result["terminal"] = state in ("COMPLETED", "FAILED")
+        result["terminal"] = state in ("COMPLETED", "CANCELLED") or state.startswith("FAILED")
         return emit(result, EXIT_OK)
 
     return EXIT_USAGE

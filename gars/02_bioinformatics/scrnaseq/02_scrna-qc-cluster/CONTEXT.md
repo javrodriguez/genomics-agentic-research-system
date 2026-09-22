@@ -87,13 +87,13 @@ means.
 4. Run `prepare`. Exit 1 → reply T5 (same rule). Exit 0 → it wrote the script, `submit.sh` and
    the reproducibility bundle; report nothing yet.
 5. Submit with `sbatch <sub-stage dir>/submit.sh`. Capture the job ID.
-6. Write `STATUS` as `SUBMITTED <job_id> <iso8601>`. Reply T2 and stop. Do not wait or poll.
-7. **On a later invocation** where STATUS is `SUBMITTED` or `RUNNING`: query `sacct`/`squeue`.
-   If still active, update STATUS to `RUNNING <job_id> <iso8601>`, reply T3, stop.
+6. Call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>` (submit has written `SUBMITTED`). Reply T2 and stop. Do not wait or poll.
+7. **On a later invocation** where STATUS is `SUBMITTED` or `RUNNING`: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`.
+   If still active, call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T3, stop.
 8. If the job has finished, run `collect` with `--model "<the exact model id you are running
    as>"` and `--h5ad-from <the sub-stage that supplied the matrix>` (decision 0024). Exit 2 →
-   the run did not complete: write `STATUS` as `FAILED <iso8601>`, reply T4, stop. Exit 1 →
-   the exit gate failed: write `FAILED`, reply T4 with its `failures` verbatim, stop.
+   the run did not complete: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4, stop. Exit 1 →
+   the exit gate failed: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with its `failures` verbatim, stop.
 9. Exit 0 → append its `history_entry` to the project's `HISTORY.md` **verbatim**, replacing
    `<ISO-8601 date>` with today's date, and reply T6.
 

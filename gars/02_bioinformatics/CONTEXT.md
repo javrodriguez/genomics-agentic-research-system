@@ -51,7 +51,10 @@ Created by the sub-stage, owned by it, and never written to by any other sub-sta
 
 **STATUS file.** `<sub-stage output directory>/STATUS`, a single line, one of:
 `SUBMITTED <job_id> <iso8601>`, `RUNNING <job_id> <iso8601>`, `COMPLETE <iso8601>`,
-`FAILED <iso8601> <error_code>`. It is the only authority on a sub-stage's state — never infer
+`FAILED:<reason> <iso8601>` or `CANCELLED <iso8601>` (the closed enum is in
+`wrapperlib.write_status()`, spec §15). Only code writes this file; use the typed
+`python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`
+call to refresh scheduler state. It is the only authority on a sub-stage's state — never infer
 state from the presence of output files.
 
 **Artifact.** A file a sub-stage produced, declared by type in its `OUTPUTS.tsv`. The closed

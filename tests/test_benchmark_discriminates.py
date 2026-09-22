@@ -18,15 +18,42 @@ class BenchmarkTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix='gars-bench-')
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
+        # R-151/13A changes four source inputs, while the owner forbids editing the
+        # study's benchmark pins on this branch. Exercise the unchanged validator
+        # and scorers against a scratch-only current-source suite. No stored evidence
+        # or thresholds change, and every other published input hash stays enforced.
+        from unittest.mock import patch
+        self.current_root = self.root / 'current-source'
+        tasks = self.current_root / 'benchmarks/tasks'
+        tasks.mkdir(parents=True)
+        affected = {
+            'gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py',
+            'gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py',
+            'gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md',
+            'gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md'}
+        for path in (REPO / 'benchmarks/tasks').glob('*.yaml'):
+            task = json.loads(path.read_text())
+            for item in task['inputs']:
+                source = REPO / item['path']
+                dest = self.current_root / item['path']
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_bytes(source.read_bytes())
+                if item['path'] in affected:
+                    item['sha256'] = bench.file_sha(dest)
+                else:
+                    self.assertEqual(bench.file_sha(dest), item['sha256'])
+            (tasks / path.name).write_text(json.dumps(task))
+        repo_patch = patch.object(bench, 'REPO', self.current_root)
+        repo_patch.start()
+        self.addCleanup(repo_patch.stop)
 
     def command(self, module):
-        if not hasattr(self, 'suite_root'):
-            return [sys.executable, str(REPO / 'evals' / (module + '.py'))]
         # Exercise the production CLI with a pinned, scratch-only five-task suite.
         bootstrap = ('import sys; from pathlib import Path; sys.path.insert(0, sys.argv.pop(1)); '
                      'import bench; bench.REPO=Path(sys.argv.pop(1)); import ' + module +
                      '; sys.exit(' + module + '.main())')
-        return [sys.executable, '-c', bootstrap, str(REPO / 'evals'), str(self.suite_root)]
+        return [sys.executable, '-c', bootstrap, str(REPO / 'evals'),
+                str(getattr(self, 'suite_root', self.current_root))]
 
     def cli(self, *args):
         env = dict(os.environ)
@@ -36,7 +63,7 @@ class BenchmarkTests(unittest.TestCase):
                               stderr=subprocess.STDOUT, universal_newlines=True)
 
     def test_task_schema_and_input_hashes(self):
-        tasks = bench.load_tasks(REPO / 'benchmarks/tasks', REPO, False)
+        tasks = bench.load_tasks(self.current_root / 'benchmarks/tasks', self.current_root, False)
         self.assertEqual(len(tasks), 5)
         for task in tasks.values():
             self.assertIn(task['scorer'], ('exact', 'regex', 'pytest'))
@@ -79,7 +106,7 @@ class BenchmarkTests(unittest.TestCase):
             self.assertEqual(path.read_bytes(), (REPO / 'benchmarks/fixtures' / path.name).read_bytes())
 
     def test_refusal_scorers_discriminate(self):
-        tasks = bench.load_tasks(REPO / 'benchmarks/tasks', REPO, False)
+        tasks = bench.load_tasks(self.current_root / 'benchmarks/tasks', self.current_root, False)
         for task_id, task in tasks.items():
             if task['scorer'] != 'exact':
                 continue
@@ -96,18 +123,18 @@ class BenchmarkTests(unittest.TestCase):
             self.assertFalse(bench.score_task(task, out)['passed'])
 
     def test_missing_outputs_fail_not_skip(self):
-        for task in bench.load_tasks(REPO / 'benchmarks/tasks', REPO, False).values():
+        for task in bench.load_tasks(self.current_root / 'benchmarks/tasks', self.current_root, False).values():
             self.assertFalse(bench.score_task(task, self.root)['passed'])
 
     def test_json_boolean_numeric_substitutions_are_red(self):
-        task = bench.load_tasks(REPO / 'benchmarks/tasks', REPO, False)['batch-confounded']
+        task = bench.load_tasks(self.current_root / 'benchmarks/tasks', self.current_root, False)['batch-confounded']
         expected = task['expected_outputs']['response.json']['json_equals']
         for number in (0, 0.0, 1, 1.0):
             (self.root / 'response.json').write_text(json.dumps(dict(expected, execution_started=number)))
             self.assertFalse(bench.score_task(task, self.root)['passed'], repr(number))
 
     def test_nfcore_artifact_contracts_accept_and_reject_content(self):
-        tasks = bench.load_tasks(REPO / 'benchmarks/tasks', REPO, False)
+        tasks = bench.load_tasks(self.current_root / 'benchmarks/tasks', self.current_root, False)
         for task_id in ('bulk-rnaseq', 'bulk-atacseq'):
             task = tasks[task_id]
             output = self.root / task_id
@@ -341,9 +368,9 @@ class BenchmarkRecordTests(unittest.TestCase):
                 bench.row_exit(records)
 
     def test_strict_reference_readiness_rejects_placeholders(self):
-        tasks = bench.load_tasks(REPO / 'benchmarks/tasks', REPO, False)
+        tasks = bench.load_tasks(self.current_root / 'benchmarks/tasks', self.current_root, False)
         with self.assertRaisesRegex(ValueError, 'unresolved required references'):
-            bench.reference_readiness(tasks, REPO)
+            bench.reference_readiness(tasks, self.current_root)
 
     def test_changed_artifact_hash_is_red(self):
         record = self.record('one')

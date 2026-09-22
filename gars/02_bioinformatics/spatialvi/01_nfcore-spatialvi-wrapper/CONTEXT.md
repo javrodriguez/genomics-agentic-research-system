@@ -99,13 +99,12 @@ defect — a glob that silently published a raw matrix when the processed one wa
    the Space Ranger tree, which is stage 00's business to re-link.
 4. Run `prepare`. Exit 1 → reply T5 (same rule). Exit 0 → report nothing yet.
 5. Submit with `sbatch <sub-stage dir>/submit.sh`. Capture the job ID.
-6. Write `STATUS` as `SUBMITTED <job_id> <iso8601>`. Reply T2 and stop. Do not wait or poll.
-7. **On a later invocation** where STATUS is `SUBMITTED` or `RUNNING`: query `sacct`/`squeue`.
-   If still active, update STATUS to `RUNNING <job_id> <iso8601>`, reply T3, stop.
+6. Call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>` (submit has written `SUBMITTED`). Reply T2 and stop. Do not wait or poll.
+7. **On a later invocation** where STATUS is `SUBMITTED` or `RUNNING`: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`.
+   If still active, call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T3, stop.
 8. If the job has finished, run `collect` with `--model "<the exact model id you are running
-   as>"` (decision 0024). Exit 2 → the run did not actually complete: write `STATUS` as
-   `FAILED <iso8601>`, reply T4 with the wrapper's error and the Slurm log path, stop.
-   Exit 1 → the exit gate failed: write `FAILED`, reply T4 with its `failures` verbatim, stop.
+   as>"` (decision 0024). Exit 2 → the run did not actually complete: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with the wrapper's error and the Slurm log path, stop.
+   Exit 1 → the exit gate failed: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with its `failures` verbatim, stop.
 9. Exit 0 → `collect` has written `OUTPUTS.tsv` and `STATUS COMPLETE`. Append its
    `history_entry` to the project's `HISTORY.md` **verbatim**, replacing `<ISO-8601 date>`
    with today's date, and reply T6.

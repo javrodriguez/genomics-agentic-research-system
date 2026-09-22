@@ -79,7 +79,9 @@
       "Edit(projects/*/03_custom_analysis/*/PLAN.md.approved)",
       "Write(projects/*/03_custom_analysis/*/PLAN.md.approved)",
       "WebSearch",
-      "WebFetch"
+      "WebFetch",
+      "Edit(projects/*/STATUS)",
+      "Write(projects/*/STATUS)"
     ]
   }
 }
