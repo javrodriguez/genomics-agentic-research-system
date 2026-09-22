@@ -916,20 +916,26 @@ class TheModeBindingIsAnAssertionRoundTwoCouldNotMake(unittest.TestCase):
         sup = [r for r in got if r["superseded"]]
         live = [r for r in got if not r["superseded"]]
         self.assertEqual(len(sup), 5, "the walks driven before the design pinned an expectation")
-        self.assertGreaterEqual(len(live), 2, "ruling 7 needs a graded walk on each of the two larger models")
-        self.assertEqual({r["model"] for r in live}, {"claude-sonnet-5", "claude-opus-5"})
+        self.assertGreaterEqual(len(live), 3, "ruling 7 needs a graded walk on each of the two larger models, "
+                                              "and review 2's third NIT one on the smallest")
+        self.assertEqual({r["model"] for r in live},
+                         {"claude-sonnet-5", "claude-opus-5", "claude-haiku-4-5-20251001"})
         for r in live:
             with self.subTest(r["attempt"]):
                 self.assertEqual(r["passed"], "default")
                 self.assertEqual(r["recorded"], "default")
 
     def test_the_smallest_model_records_default_where_auto_is_passed(self):
-        """The finding, stated as a fact about this round's own sessions rather than the pre-study's."""
+        """The finding, stated as a fact about this round's own sessions rather than the pre-study's: the
+        four walks that passed `auto` recorded `default`. The one driven after ruling 7 passed `default`
+        and recorded it, which is the other half of the same fact."""
         got = [r for r in self.mb.rows(walks=True) if r["model"] == "claude-haiku-4-5-20251001"]
-        self.assertGreaterEqual(len(got), 4)
+        under_auto = [r for r in got if r["passed"] == "auto"]
+        under_default = [r for r in got if r["passed"] == "default"]
+        self.assertGreaterEqual(len(under_auto), 4)
+        self.assertGreaterEqual(len(under_default), 1, "review 2's third NIT: one walk with default passed")
         for r in got:
             with self.subTest(r["attempt"]):
-                self.assertEqual(r["passed"], "auto")
                 self.assertEqual(r["recorded"], "default")
 
     def test_a_session_recording_the_wrong_mode_turns_it_red(self):
@@ -1462,15 +1468,21 @@ class ReviewTwoBlockersStayFixed(unittest.TestCase):
         import fixture_walk as fw
         harness = "/private/tmp/claude-501/-private-var-folders-x/0beb75d1-ea09-4ea6-a471-a221cd99a87f/tasks/b3rn.output"
         self.assertEqual(fw.classify_path(harness, None), "harness")
-        self.assertEqual(fw.classify_path("/Users/somebody/checkouts/a-study/evals/x.py", None), "elsewhere")
         self.assertEqual(fw.classify_path("/usr/bin/python3", None), "system")
+        # A path under none of the roots the verdict knows. Which root that is depends on where this
+        # checkout lives (the study roots reach two levels above it, which is /Users on a Mac and /home
+        # in CI), so the path is chosen from candidates rather than typed.
+        elsewhere = next(p for p in ("/Users/nobody-here/checkouts/a-study/evals/x.py",
+                                     "/home/nobody-here/checkouts/a-study/evals/x.py",
+                                     "/opt/nobody-here/checkouts/a-study/evals/x.py")
+                         if fw.classify_path(p, None) == "elsewhere")
         with tempfile.TemporaryDirectory() as td:
             t = self._write_transcript(Path(td), [
                 {"type": "assistant", "message": {"content": [
-                    {"type": "text", "text": "reading /Users/somebody/checkouts/a-study/evals/x.py now"}]}}])
+                    {"type": "text", "text": f"reading {elsewhere} now"}]}}])
             rec = fw.replay(t)
             self.assertEqual(rec["verdict"], "unplaced")
-            self.assertEqual(rec["unplaced_paths"], ["/Users/somebody/checkouts/a-study/evals/x.py"])
+            self.assertEqual(rec["unplaced_paths"], [elsewhere])
             # the reviewer's scenario: the study root is somewhere else (a clone, CI, a review copy) and the
             # walk names THIS checkout. It used to read clean; it must not.
             real = str(REPO / "evals" / "gap-study-3" / "prereg-draft.json")
