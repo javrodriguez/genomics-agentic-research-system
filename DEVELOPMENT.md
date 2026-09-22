@@ -15,12 +15,13 @@ it constrains — template, menu, preflight, or decision — never parked here (
 
 ## Current Status
 
-**Row 15 review round 2, 2026-09-21:** macOS / Python 3.13.2 collected 252 tests;
-`FAILED (failures=3, skipped=50)`. No tests from row 15 skipped. The hooks refuse
-binary or `-diff` content omitted by Git; encoded assignment logs are covered.
-The unchanged row 3 pre-push fixtures still need the owner's scope authorization.
-Full R-096 agent containment remains unmeasured. See the
-[Row 15 report](docs/implementation/row_15_change_report.md#review-round-2-fixes).
+**Row 15 review round 3, 2026-09-22:** macOS / Python 3.8.2 collected 252 tests;
+all three complete runs ended `FAILED (failures=3, skipped=50)`. No tests from
+row 15 skipped. The supplied review closes R15-01, R15-02 and R15-04; R15-03
+remains blocked on the owner's scope authorization for the row 3 fixture repair.
+The hooks refuse binary or `-diff` content omitted by Git; encoded assignment
+logs are covered. Full R-096 agent containment remains unmeasured. See the
+[Row 15 report](docs/implementation/row_15_change_report.md#review-round-3-fixes).
 
 Row 1 implementation, 2026-09-13: partial R-072, ATAC condition floor, sealed-fixture
 runner, constitution and empty evidence table added. Review round 2 fixes, 15 Sep: exact HISTORY declaration matching and demo-record
