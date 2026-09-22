@@ -1,0 +1,62 @@
+9930913c5ac8ca4f5cb7c830b11631bb7243dc017e90ea0be43bcad6a7b67433
+freeze rehearsal 6, 2026-09-22 12:31 EDT, draft sha256 above, clone of HEAD 67f569203fdc
+study tree sha256: 05bc791e9cdd193b8eef507a2814fcb0a98f936c1bf5c0813cc5ad7e2075b08b
+
+[0] freeze.py --rehearsal --write
+     frozen: evals/gap-study-3/prereg.json | The draft is kept beside it. The freeze commit body carries the line printed above as `commit body`. | Before committing, run verification/round1-regrade/regrade_environment.py --write: that record names the pre-registration in force by sha, and the freeze commit carries it rewritten beside the frozen file.
+[0] prereg.py --status
+                claude-opus-5                runs | n        : 3  -> 54 planned takes | take order: FIXED
+[0] copy_manifest.py --check
+     ok: 44 files trace to bf065feedccc, 13 edited with a reason, 10 pinned byte-identical; round 2, round 1, the pre-study and the parser unchanged
+[0] test_round3.py
+     Ran 156 tests in 42.653s |  | OK (skipped=2)
+[0] allowlist.py --check
+     ok: 22 candidate entries re-derive from 364 pre-probe call(s) in 52 transcript(s); the pre-registration pins 22, every one of them derived
+[0] build_draft.py --check
+     ok: the draft is what build_draft.py builds
+[0] leak_grep.py --check
+           …h and mcp tool calls, then add a prioritized allowlist to project .claude/settings.json to reduce p… |  | ok: 23 leak word(s) grepped against 8 real session(s); none would void one
+[0] fixture_walk.py --static
+     } |  | static verdict: clean — 0 operator line(s) name this checkout, 0 generator path(s) do
+[0] fixture_walk.py --finding
+       "unclassified_outside_paths": [] | } | ok: the finding re-derives from round 2's own bytes
+[0] fixture_walk.py --check
+     evals/gap-study-3/walks/template-adherence/3/transcript.jsonl: clean — 6 absolute path(s), {'run-tree': 6} | evals/gap-study-3/walks/template-adherence/4/transcript.jsonl: clean — 6 absolute path(s), {'run-tree': 6} | ok: 8 committed walk(s) graded, none names this checkout and every path each named is placed
+[0] fixture_walk.py --coverage
+     } |  | ok: every task's halves are covered by the walks committed
+[0] mode_binding.py --walks --check
+     5 walk(s) superseded: driven under a condition the design has since replaced, named here and never silently dropped. Their leak verdicts still stand. |  | ok: 3 walk(s) graded, every one recording the mode its model is pinned to
+[0] mode_binding.py --check
+     ok, having graded 0 attempts: none is committed yet, so nothing here is evidence about any session's permission mode.
+[0] review_kit/rounds.py --check
+     1 row(s) closed as spent without work (a rate limit or an interruption before the first agent turn). Not voids: they do not count against the two-void rule. | ok: 4 registered round(s) graded, every report committed, 0 voided; prompt pinned at 0910589c8290
+[0] contracts.py --check
+       template-adherence     4 quote(s) |  | every stored sentence is a byte substring of the blob it was pinned to
+[0] fixtures/check_fixture.py --all
+       with-planted-qc  ok  12 raw files, 6 samples, paired-end, excluded ['RUNSHEET.txt'] |  | the system under test accepts every variant, and its counts match the manifest
+[0] lint_language.py
+     clean — 50 input(s) scanned, 1 excused line(s) on record
+[0] lint_pooling.py
+     clean — 47 file(s) and 0 commit(s) scanned, no excusal path
+[0] check_results.py
+       the freeze commit held to its rehearsal and each pin to its committed blob: 0 problem(s) |  | clean
+[0] check_results.py --ledger
+       0 of 0 graded takes carry an environment record; 0 record no API-key variable set; 0 record apiKeySource "none" on every turn; rows [] |  | clean
+[0] result.py --check
+     graded 0 of 54 | complete cells 0 of 18 | no RESULT.md, and nothing to write one from: 0 graded takes. This is not a pass over a published result; it is the state before any take has run.
+[0] completeness.py --check
+       template-adherence   positive  claude-sonnet-5                0 of 3   unmeasured — not run |  | complete cells 0 of 18; 18 unmeasured, every one of them named with a reason
+[0] costs.py --check
+     COSTS.md is what the reader writes
+[0] evals/gap-study/check_results.py
+       the frozen file compared with its freeze: 4 amendment(s) on record, 0 unrecorded change(s) |  | clean
+[0] evals/check_results.py --controls --lexicon
+       ok            lexicon_cases_task3.json     69 of 69 |  | clean — graded=1
+[0] takes.py --add (first row of the take order)
+     row 0 written. Commit it, then the session id is: |   python3 evals/gap-study-3/takes.py --session-id 0
+[0] check_results.py --ledger (one row)
+       0 of 0 graded takes carry an environment record; 0 record no API-key variable set; 0 record apiKeySource "none" on every turn; rows [] |  | clean
+
+not done: the synthetic full ledger of 108 takes: not done, no synthetic graded-take generator exists; the ledger was exercised with one real registered row instead
+
+all green
