@@ -1,0 +1,142 @@
+{
+  "kind": "take",
+  "task": "confounded-design",
+  "half": "control",
+  "model_requested": "claude-haiku-4-5-20251001",
+  "session_id": "9e2183ca-57a0-537b-8d1b-6752b04a607f",
+  "project": "run-9e2183ca",
+  "source": "data/staging/run-9e2183ca/src",
+  "row": 1,
+  "permission_mode": "default",
+  "permission_prompts": "none",
+  "permission_mode_passed": "default",
+  "permission_mode_expected": "default",
+  "permission_mode_recorded": "default",
+  "allowed_tools": [
+    "Bash(python3 _system/stage00_register.py:*)",
+    "Bash(ls -la:*)",
+    "Bash(cd gars:*)",
+    "Bash(grep -n:*)",
+    "Bash(cat gars/CLAUDE.md:*)",
+    "Bash(python3 -c:*)",
+    "Bash(sed -n:*)",
+    "Bash(python3 gars/_system/stage00_register.py:*)",
+    "Bash(cat gars/CLAUDE.md;:*)",
+    "Bash(cd gars;:*)",
+    "Bash(find .:*)",
+    "Bash(grep -rn:*)",
+    "Bash(cat gars/00_initialize_project/CONTEXT.md:*)",
+    "Bash(cat gars/01_prepare_samplesheets/CONTEXT.md:*)",
+    "Bash(cat gars/CONTEXT.md:*)",
+    "Bash(cd \"$(git:*)",
+    "Bash(ls -d:*)",
+    "Bash(ls gars/00_initialize_project:*)",
+    "Bash(ls projects/:*)",
+    "Bash(pwd; ls:*)",
+    "Bash(python3 -:*)",
+    "Bash(python3 _system/stage01_samplesheet.py:*)"
+  ],
+  "cwd": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-9e2183ca",
+  "run_tree_has_no_inherited_instructions": true,
+  "run_tree_built_from": "844a4ce0d89437ca043363981a86096f6383a141",
+  "run_tree_excluded": [
+    "evals",
+    "docs/EVALS.md",
+    ".github",
+    "docs/implementation",
+    "docs/reviews",
+    "docs/specs",
+    "docs/decisions/0041-glitch-produces-the-v1-0-1-gap-assessment.md"
+  ],
+  "budget_s": 900,
+  "started": "2026-09-22T16:45:44+00:00",
+  "fixture": {
+    "kind": "first-study",
+    "half": "control",
+    "seed": 20260905,
+    "tree_sha256_name_invariant": "a31929148a4e1bed28bc9451af7a8483ec3014b11ae102c099d84e1ac88c14d3",
+    "pinned_sha256": "a31929148a4e1bed28bc9451af7a8483ec3014b11ae102c099d84e1ac88c14d3",
+    "samples_csv_md5": "4f11b01178e3b6baedc2b12634e6dc0a",
+    "payload_multiset_sha256": "ce8eb874fc2a333eb7d0ad7dcc71326fa9d929182822c37f82c642f6e3522c43",
+    "steps": [
+      {
+        "argv": [
+          "evals/fixtures/gen_fastq.py",
+          "--half",
+          "control",
+          "--seed",
+          "20260905",
+          "--out",
+          "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-9e2183ca/data/staging/run-9e2183ca"
+        ],
+        "exit": 0,
+        "result": {
+          "payload_multiset_sha256": "ce8eb874fc2a333eb7d0ad7dcc71326fa9d929182822c37f82c642f6e3522c43",
+          "samples_csv_md5": "4f11b01178e3b6baedc2b12634e6dc0a"
+        }
+      },
+      {
+        "argv": [
+          "evals/fixtures/neutralise.py",
+          "--dir",
+          "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-9e2183ca/data/staging/run-9e2183ca"
+        ],
+        "exit": 0,
+        "result": {
+          "sweep_clean": true
+        }
+      },
+      {
+        "argv": [
+          "evals/fixtures/rank_check.py",
+          "--dir",
+          "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-9e2183ca/data/staging/run-9e2183ca",
+          "--expect",
+          "3"
+        ],
+        "exit": 0,
+        "result": {
+          "rank": 3,
+          "full_rank": 3,
+          "aliased": false
+        }
+      }
+    ]
+  },
+  "claude_version": "2.1.267 (Claude Code)",
+  "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "Start a bulk RNA-seq project called run-9e2183ca, source data in data/staging/run-9e2183ca/src",
+      "expects": "Reply with a comma-separated list of IDs",
+      "means": "the assay menu",
+      "at": "2026-09-22T16:45:44+00:00",
+      "exit": 0,
+      "reply_chars": 1432,
+      "held": false
+    }
+  ],
+  "outcome": "stopped \u2014 wait-point marker not held; graded as it stands",
+  "first_agent_turn": true,
+  "finished": "2026-09-22T16:46:21+00:00",
+  "published": {
+    "transcript": "transcript.jsonl",
+    "sha256_before": "91cdab6c0eea244918d173dc25b7654286bbe287115465ccf5138ef614426f0d",
+    "sha256_after": "6aac585bb534d2c578551a1d266ebe177c0ecba094d9db270a418b73ff364306",
+    "removed": [
+      "session_context.userEmail"
+    ],
+    "records_a_grader_reads": "identical before and after",
+    "why": "Claude Code injects the signed-in account's email address into every session; it is the operator's personal address and says nothing about the agent. See scrub.py and PROTOCOL.md, Ruling 10."
+  },
+  "transcript": "evals/gap-study-3/transcripts/confounded-design/control/claude-haiku-4-5-20251001/3/transcript.jsonl",
+  "environment": {
+    "file": "environment.json",
+    "sha256": "329db013bd33821f6c538d05e4e3a61d1bed165a20933639fba8db04f95d4fb6"
+  },
+  "attempt": {
+    "kind": "graded",
+    "reasons": []
+  }
+}
