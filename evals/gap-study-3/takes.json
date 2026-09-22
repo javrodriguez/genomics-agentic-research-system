@@ -36,6 +36,15 @@
       "order_index": 3,
       "fixture_sha": "",
       "environment_class": "claude-subscription-headless"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 1,
+      "order_index": 4,
+      "fixture_sha": "",
+      "environment_class": "claude-subscription-headless"
     }
   ]
 }
