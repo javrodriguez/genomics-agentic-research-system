@@ -432,6 +432,15 @@
       "order_index": 47,
       "fixture_sha": "",
       "environment_class": "claude-subscription-headless"
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 3,
+      "order_index": 48,
+      "fixture_sha": "",
+      "environment_class": "claude-subscription-headless"
     }
   ]
 }
