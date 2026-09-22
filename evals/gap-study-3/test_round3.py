@@ -405,10 +405,23 @@ class TheRoundRegisterBinds(unittest.TestCase):
         self.rounds = HERE / "review_kit" / "rounds.py"
 
     def test_check_is_green_and_says_it_graded_nothing_when_it_did(self):
+        """Green when every registered round has its report; and while a round is OPEN -- its row committed
+        alone, before its reviewer opens, which is the register's whole design -- the check refuses and
+        names the round. That refusal is the register working, so it is asserted here rather than read as
+        a red battery: this test used to fail CI at every row commit, from the row's landing until its
+        report's."""
         r = run(str(self.rounds), "--check")
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         rows = json.loads((HERE / "review_kit" / "rounds.json").read_text())["rows"] \
             if (HERE / "review_kit" / "rounds.json").is_file() else []
+        mod = load_module("round3_rounds_for_open_rows", self.rounds)
+        open_rows = [x for x in rows if not x.get("voided_by") and not x.get("spent_without_work")
+                     and not mod.committed(mod.report_path(x))]
+        if open_rows:
+            self.assertEqual(r.returncode, 1, "an open round must block, and this one did not")
+            for x in open_rows:
+                self.assertIn(f"{x['kind']} round {x['n']} is OPEN", r.stdout)
+            return
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         if not rows:
             self.assertIn("graded 0 rounds", r.stdout,
                           "an empty register reported a pass without saying it graded nothing")
