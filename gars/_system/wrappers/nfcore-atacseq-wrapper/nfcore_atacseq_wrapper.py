@@ -16,7 +16,7 @@ Subcommands, in run order (the sub-stage contract orchestrates; this computes):
            Deterministic: same inputs, same bytes.
   collect  the exit gate after the Slurm job finishes: every sample must appear in the
            consensus count-matrix header (content, not existence — decision 0010). Writes
-           OUTPUTS.tsv and STATUS, harvests the aligner index into the derived cache, returns
+           OUTPUTS.tsv and the lifecycle state file, harvests the aligner index into the derived cache, returns
            the history entry (template version + model, decision 0024) to append verbatim.
 
 Runs on stock python 3.6.8, stdlib only. Nextflow/java are needed only inside submit.sh.

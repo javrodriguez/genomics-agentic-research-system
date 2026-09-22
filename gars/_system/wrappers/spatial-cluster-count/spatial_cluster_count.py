@@ -25,7 +25,7 @@ python; the analysis itself is a GENERATED script (`scripts/count_clusters.py`) 
            reproducibility bundle. Deterministic bytes.
   collect  the exit gate: summary.json's sample set equals the samplesheet's (independent),
            clusters.tsv agrees with summary.json (internal consistency), the report is real.
-           Writes OUTPUTS.tsv (table, report -- never an h5ad row) and STATUS.
+           Writes OUTPUTS.tsv (table, report -- never an h5ad row) and the lifecycle state file.
 
 Input `--h5ad` is the PATH the router resolved by artifact type (resolve_artifact.py):
 either the results DIRECTORY 02.01 registered (per-sample file at

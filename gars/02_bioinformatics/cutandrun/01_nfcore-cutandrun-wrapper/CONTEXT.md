@@ -111,11 +111,11 @@ live run establishes whether a cache layout is worth adding.
    `submit.sh` and the reproducibility bundle; report nothing yet.
 5. Submit with `python3 <workspace>/_system/executorlib.py submit --workspace <project dir>
    <sub-stage dir>/submit.sh`. It prints one JSON object; `job_id` is the field. Capture it.
-6. Call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>` (submit has written `SUBMITTED`). Reply T2 and stop. Do not wait, poll,
+6. Submit has written `SUBMITTED`; no status call is needed yet. Reply T2 and stop. Do not wait, poll,
    or sleep.
 7. **On a later invocation** where STATUS is `SUBMITTED` or `RUNNING`: ask `python3 <workspace>/_system/executorlib.py
    status --workspace <project dir> <job_id>` — it answers `PENDING`, `RUNNING`,
-   `COMPLETED`, `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`. If not yet terminal, call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T3, stop.
+   `COMPLETED`, `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`. If not yet terminal, reply T3, stop; the status call has already refreshed STATUS.
 8. If the job has finished, run `collect` with `--model "<the exact model id you are running
    as>"` (decision 0024). Exit 2 → the run did not actually complete: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with the wrapper's error and the scheduler log path, stop.
    Exit 1 → the exit gate failed: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with its `failures` verbatim,

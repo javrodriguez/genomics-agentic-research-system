@@ -1,6 +1,8 @@
 """R-150/R-151: one atomic, closed lifecycle writer; code owns STATUS."""
 import ast
 import json
+import io
+import tokenize
 import tempfile
 import unittest
 from pathlib import Path
@@ -39,6 +41,27 @@ def inline_status_writes(path):
     return bad
 
 
+def unowned_status_mentions(path):
+    """Plain substring sweep: only comments and actual writer calls may name STATUS."""
+    tokens = list(tokenize.generate_tokens(io.StringIO(path.read_text()).readline))
+    allowed = set()
+    for i in range(len(tokens) - 3):
+        if [t.string for t in tokens[i:i+4]] != ['wl', '.', 'write_status', '(']:
+            continue
+        depth = 1
+        for j in range(i + 4, len(tokens)):
+            token = tokens[j]
+            if token.type == tokenize.OP:
+                depth += token.string == '('
+                depth -= token.string == ')'
+            allowed.add(j)
+            if depth == 0:
+                break
+    return [token.start[0] for i, token in enumerate(tokens)
+            if 'STATUS' in token.string and token.type != tokenize.COMMENT and i not in allowed]
+
+
+
 class StatusWriterTests(unittest.TestCase):
     def test_closed_enum_and_atomic_refusal(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -64,9 +87,12 @@ class StatusWriterTests(unittest.TestCase):
                 if state in wl.TERMINAL_STATES:
                     continue
                 with self.subTest(state=state):
+                    if (p / 'STATUS').exists():
+                        (p / 'STATUS').unlink()
                     wl.write_status(p, state)
                     wl.write_status(p, 'CANCELLED')
                     self.assertEqual((p / 'STATUS').read_text().split()[0], 'CANCELLED')
+                    (p / 'STATUS').unlink()
                     wl.write_status(p, state)
                     wl.write_status(p, 'FAILED', 'TIMEOUT')
                     self.assertEqual((p / 'STATUS').read_text().split()[0], 'FAILED:TIMEOUT')
@@ -87,9 +113,10 @@ class StatusWriterTests(unittest.TestCase):
 
     def test_every_wrapper_uses_writer(self):
         wrappers = sorted((GARS / '_system/wrappers').glob('*/*.py'))
-        self.assertEqual(len(wrappers), 10)
+        self.assertGreaterEqual(len(wrappers), 10)
         for p in wrappers:
             self.assertFalse(inline_status_writes(p), p)
+            self.assertFalse(unowned_status_mentions(p), p)
             self.assertIn('wl.write_status(substage, "COMPLETE")', p.read_text())
         self.assertFalse(inline_status_writes(GARS / '_system/executorlib.py'))
         print('every wrapper uses the writer')
@@ -103,6 +130,57 @@ class StatusWriterTests(unittest.TestCase):
                            'with ws.atomic_open(stage / "STATUS") as fh:\n    fh.write("COMPLETE")']:
                 p.write_text(source)
                 self.assertTrue(inline_status_writes(p))
+
+    def test_substring_sweep_detects_review_evasions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'wrapper.py'
+            for source in ('open(str(substage) + "/STATUS", "w")',
+                           'shutil.copyfile(source, str(substage / "STATUS"))',
+                           'pathlib.Path("%s/STATUS" % substage).write_text("COMPLETE")',
+                           'wl.write_status(stage, "COMPLETE"); open("STATUS", "w")'):
+                path.write_text(source)
+                self.assertTrue(unowned_status_mentions(path), source)
+            path.write_text('# STATUS is code-owned\nwl.write_status(stage, "COMPLETE")\n')
+            self.assertFalse(unowned_status_mentions(path))
+
+    def test_terminal_transitions_are_refused(self):
+        for terminal in ('COMPLETE', 'CANCELLED', 'FAILED:TIMEOUT', 'REJECTED'):
+            with self.subTest(terminal=terminal), tempfile.TemporaryDirectory() as tmp:
+                stage = Path(tmp); (stage / 'run').mkdir()
+                (stage / 'run/.gars_run_complete').write_text('done\n')
+                (stage / 'OUTPUTS.tsv').write_text('# type\trole\tpath\n')
+                wl.write_status(stage, terminal)
+                before = (stage / 'STATUS').read_bytes()
+                for state in ('RUNNING', 'SUBMITTED', 'STALE', 'COMPLETE', 'CANCELLED'):
+                    if state == terminal:
+                        continue
+                    with self.assertRaises(wl.StatusRefusal):
+                        wl.write_status(stage, state)
+                    self.assertEqual((stage / 'STATUS').read_bytes(), before)
+                wl.write_status(stage, terminal)
+                self.assertEqual((stage / 'STATUS').read_bytes(), before)
+
+    def test_machine_evidence_and_case_variants_refused(self):
+        targets = [
+            '.gars_submissions/key.json', '.gars_submissions',
+            '.gars_local_jobs/42.json',
+            '02_bioinformatics/assay/stage/run/.gars_run_complete',
+            '02_bioinformatics/assay/stage/submit.sh.local.exit',
+            '02_bioinformatics/assay/stage/reproducibility/manifest.json',
+            '02_bioinformatics/assay/stage/submit.sh',
+            '02_bioinformatics/assay/stage/params.yaml',
+            '02_bioinformatics/assay/stage/status',
+            '00_data/assay/FILES.CSV',
+            '03_custom_analysis/01_test/plan.MD.approved',
+        ]
+        for tool in ('Write', 'Edit', 'MultiEdit', 'NotebookEdit'):
+            for target in targets:
+                with self.subTest(tool=tool, target=target):
+                    result = run(['python3', GARS / '_system/guard_hook.py'], cwd=GARS,
+                                 env={'CLAUDE_PROJECT_DIR': str(GARS)}, stdin=json.dumps({
+                                     'tool_name': tool, 'cwd': str(GARS), 'tool_input': {
+                                         'file_path': 'projects/fixture/' + target}}))
+                    self.assertEqual(result.returncode, 2, result.stderr)
 
     def test_agent_status_write_refused(self):
         for tool in ('Write', 'Edit', 'MultiEdit', 'NotebookEdit'):

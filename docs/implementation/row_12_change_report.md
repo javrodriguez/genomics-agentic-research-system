@@ -324,3 +324,312 @@ touch time was not measured here (R-153 is row 13). No cluster compute hours wer
 - **NOT met:** §13.7 Stage 3 durable state table, ownership/heartbeats and restart reconciliation.
 - **NOT met:** full row-12 exit. The three repo-side printed metrics do not close the gaps.
 - No other row, protected study tree, pinned skill or pin inventory is changed.
+
+
+## Review round 2 fixes
+
+Date: **2026-09-22**. Supplied review: `docs/reviews/row_12_review.md`, SHA-256
+`de4bc7e8a8416e8c9d57cd7553a072a690f42f6ce60ad8ab97cfeb1e2ef564f4`.
+The review remains untracked and unchanged. This round starts at `e33f34e`; row 12 is
+judged against `d17573a`, including the owner's row-4 approval decision 0056. No external
+reviewer conversation or other build tree was read. Earlier report sections and decision
+0057 retain their original bytes; [0058](../decisions/0058-row-12-review-addendum.md) is
+an addendum. No owner approval, merge or full row exit is claimed.
+
+The current instruction to stop for owner-owned schemas, thresholds and scope choices takes
+precedence over the review's recommendation to select provisional defaults. Only 12A and
+13A were supplied as owner rulings for this row. The unfinished implementation is still
+unfit for promotion: in particular the downstream submission and retry limitations remain.
+No finding is dismissed as wrong. Inherited row-4 material is not reassessed or repaired.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| BLOCKER-1: editable key and execution evidence | `executorlib.py`, `wrapperlib.py`, `guard_hook.py`, `.claude/settings.json`, `test_lifecycle_executor.py`, `test_no_false_completion.py`, `test_status_writer.py` | edited-key attack; rehash changed inputs; forged sibling-record collection; changed-backend success; four write tools against machine evidence | Fixed for guarded, recorded jobs. **Yes:** baseline edited-key test resubmitted; forged-record and terminal/reviewer tests failed; guard accepted all newly protected targets. Current tests pass. No same-UID unguarded-process guarantee. |
+| MAJOR-1: definite refusal burns key | `executorlib.py`, `test_lifecycle_executor.py`, 0058 | failed stub sbatch followed by successful sbatch; missing local/Slurm backend; ambiguous output/signal/error with job id | Definite refusal fixed; recovery procedure's contract/authorization scope remains with owner. **Yes:** baseline second submit returned `duplicate_submission; key already recorded (STALE)`; current stub submits exactly once. Ambiguous reservations remain protected. |
+| MAJOR-2: terminal regression | `wrapperlib.py`, `executorlib.py`, `test_status_writer.py`, `test_no_false_completion.py` | every terminal refuses exit; same-state no-op; reviewer-authorized status after empty accounting, RUNNING or failure response | Fixed. **Yes:** baseline accepted terminal exits and rewrote COMPLETE after the reviewer status call. Stage lock now serializes validation and replacement; final tests preserve terminal bytes. No general corrective bypass added. |
+| MAJOR-3: downstream missing keys | report, 0058 | downstream submit acceptance not claimed | Owner ruling required on key inputs or the review's proposed exemption; no key schema chosen and no guard relaxed. **No:** no green downstream submission test is claimed. |
+| MAJOR-4: retry and collect-failure dead ends | report, 0058 | executor-level permitted retry and collect-failure transition not claimed | Owner state/mapping/corrective-path ruling remains needed; recorded failed keys still refuse. **No:** generated guard unit tests are not represented as executor retry acceptance. |
+| MAJOR-5: missing cancel | report, 0058 | inherited declared-refusal/role tests only | Owner timing/record binding required; missing verb remains open, including sub-hour acceptance. **No:** no live cancellation or approval-record acceptance is claimed. |
+| MAJOR-6: absent classifier | report, 0058 | `python3 gars/tests/test_failure_classification.py` | Named test absent, exit 2; not a test pass. Owner mapping/artifact ruling required. **No.** |
+| MINOR-1: case variants bypass protection | `guard_hook.py`, `test_status_writer.py` | Write/Edit/MultiEdit/NotebookEdit on `status`, `FILES.CSV`, `plan.MD.approved` | Fixed through case-insensitive path comparison. **Yes:** baseline allowed all twelve case-variant tool/path combinations; current tests refuse. |
+| MINOR-2: sweep evasions | `test_status_writer.py`, `test_lifecycle_faults.py`; four wrapper module docstrings | real sweep with computed, copied and formatted STATUS paths planted in disposable source copies | Fixed. **Yes:** all three plants make the real sweep fail. STATUS substrings are allowed only in comments or the actual writer-call token span; a second write on the same line also fails. |
+| MINOR-3: stale executor template | report, 0058 | existing resolved-template seam test | Owner action recorded below. **No:** normalization remains until an approved template refresh and its removal can land together. |
+| MINOR-4: repeated status calls | ten stage-02 `CONTEXT.md` Process sections | `tests/check_contracts.py`; inspected diff of status lines | Partially fixed: typed-submit paths no longer immediately poll; every later active branch uses its single existing query. Collect-failure wording and the four inherited raw-sbatch paths await rulings. **No:** documentation correction, not a behavioral fault plant. |
+| MINOR-5: fixed wrapper count and generator | `test_status_writer.py`, report | sweep asserts at least ten shipped wrappers | Count corrected; generator output remains owner-gated and unverified. **No:** the minimum stays ten; no behavior assertion is removed. |
+| NOTE-1: generic Bash refusal | report | existing generic typed-surface/guard tests | Retained: inherited row-4 R-092 refusal already blocks the shell spellings; a STATUS-specific diagnostic is optional and unnecessary for enforcement. **No new plant.** |
+| NOTE-2: protected-path owner approval | report | boundary audit | Owner approval record for guard/settings/registry remains required at merge; 13A is not represented as that record. **No.** |
+| NOTE-3: incomplete timing | report | none | The earlier 0.404 h remains a lower bound, not usable ledger sizing. This round does not invent total or human-touch hours. **No.** |
+| NOTE-4: published source pins | report | benchmark tests with existing scratch-only pin refresh | Owner integration action after the study's done commit remains; benchmark files unchanged. **No new plant.** |
+
+Only the machine-evidence fixes above extend the new row-12 protection. New reservations
+still use the existing fields and return shapes; no on-disk schema is introduced. The
+COMPLETE writer now also verifies recorded scheduler success, and status refuses a backend
+switch for a recorded job. The raw `.gars_local_jobs` record and `.local.exit` are protected
+because otherwise an editable local scheduler answer would bypass the same completion gate.
+Protected JSON/scripts cannot be replaced by an agent session to remove or forge the key.
+
+### Existing test expectations changed this round
+
+One row per changed expectation; every other red was corrected in code or in the new test's
+fixture before counting it as a fault witness. No threshold is reduced.
+
+| Test | Previous expectation | Requirement-correct expectation | Reason |
+|---|---|---|---|
+| `StatusWriterTests.test_all_nonterminal_states_have_cancel_and_failure_edges` | reuse one stage by leaving CANCELLED/FAILED for the next nonterminal fixture | each tested edge starts from a fresh STATUS fixture; every original cancel/failure edge remains asserted | R-150 and MAJOR-2 prohibit the fixture's terminal-to-nonterminal reset through the production writer |
+| `NoFalseCompletionTests.test_killed_worker_and_unreachable_executor` | later unreachable scheduler overwrites FAILED:EXIT_137 with STALE | retains FAILED:EXIT_137 byte/state authority; injected unreachable query still refuses collect | R-135/R-150 terminal stickiness; the mock now injects scheduler unreachability directly instead of changing the recorded job's backend |
+| `StatusWriterTests.test_every_wrapper_uses_writer` | exactly ten wrapper source files | at least ten; every discovered wrapper must still call the writer and pass both sweeps | R-151 and MINOR-5 require future wrappers to be checked, not rejected merely for existing |
+
+The baseline red runs used Python 3.8.2 and these newly added tests, before production fixes:
+
+```text
+python3 gars/tests/test_lifecycle_executor.py
+Ran 7 tests in 1.458s
+FAILED (failures=4)
+python3 gars/tests/test_no_false_completion.py
+Ran 4 tests in 0.308s
+FAILED (failures=2)
+python3 -m unittest discover -s gars/tests -p test_status_writer.py
+Ran 8 tests in 7.766s
+FAILED (failures=48)
+```
+
+These are assertion failures on the defects, not missing-API errors. Initial fixture errors
+were corrected and the baseline was rerun before those figures were retained. The sweep's
+three additional visible mutants run in copied source trees; the working source is not
+mutated. The earlier six plants remain and still fail their named tests when injected.
+
+## Owner rulings needed
+
+1. **MAJOR-3 — downstream idempotency formula.** The review offers (a) a key over every
+   wrapper's declared manifest input bytes in a fixed order, recorded as a provisional
+   formula, or (b) gating the key refusal to wrappers that declare one. Decision 0057 also
+   records serializing downstream params and using the stage-01 samplesheet versus a separate
+   downstream formula. The spec's exact three-file tuple does not define those downstream
+   inputs. Select the formula/schema, or explicitly authorize the exemption; the producer
+   does neither and does not relax the guard. All three downstream submits remain NOT met.
+2. **MAJOR-4 — scheduler success and corrective transitions.** Options recorded in 0057:
+   persist `VALIDATING` while returning scheduler `COMPLETED` until collect, or another
+   owner-selected non-success state. The review recommends `VALIDATING` and collect failure
+   `FAILED:EXIT_<n>` (or an owner-chosen state). Confirm their relationship to 13A and the
+   explicit corrective/retry path out of a terminal failure. Until then, no misleading
+   FAILED or success transition is guessed; the existing RUNNING/collect failure gap remains.
+3. **MAJOR-4/MAJOR-6 — failure taxonomy/artifact and retry approval.** The recorded options
+   are the existing transient set 104 and 130–145 unless a specific scheduler reason overrides;
+   scheduler TIMEOUT/OUT_OF_MEMORY/NODE_FAIL as infrastructure; 126/127 as tool; 65 as data_quality;
+   other nonzero exits as workflow, leaving agent_reasoning/scientific_validation unassigned;
+   or owner-supplied alternatives. The review recommends that mapping and a one-line class/error
+   artifact beside the log. Confirm the producer codes and artifact schema. Only transient may
+   retry, at the existing `maxRetries`; destructive retry needs approval. No classification,
+   artifact schema, retry exception or missing producer codes are invented in this round.
+4. **MAJOR-5 — cancellation timing and approval binding.** Options in 0057: a job-specific
+   cancellation plan using the existing protected store and an issuance path, or an action
+   record extension. The review requires R-073-shaped approval naming job id/backend for a job
+   past one hour. The current submission schema records key/script/state/job_id/executor,
+   but no start or consumed-compute time. Confirm the recorded-start/timing field and its
+   source, as well as the job/backend binding and human issuance route. This is why sub-hour
+   cancellation is not claimed either: it cannot be safely selected from the current record.
+   No environment, payload or force flag is an approval substitute. The one-hour threshold
+   itself is fixed by the spec and is not a question.
+5. **MINOR-5 and R-151/R-135 scope.** Authorize narrow changes to stage03_analysis.py and
+   the authoring generator, with generated-output sweep coverage, or leave both explicitly
+   NOT met, as the review and 0057 state. Neither file is changed in this round. Stage-03
+   completion and the next scaffolded wrapper remain uncovered.
+6. **MINOR-4 and inherited contract boundary.** The four raw-sbatch submit lines were
+   inherited from the approved row-4 head. Options: authorize typed executor.submit lines,
+   or retain their declared refusal until a separate contract change. The remaining
+   collect-failure status instructions depend on ruling 2 above; these are not closed by
+   the mechanical duplicate-call cleanup.
+7. **MINOR-3 — protected template refresh.** Owner action: refresh
+   `gars/_templates/config/executor.yaml` to the reason-preserving map/status argv and issue
+   its §9.3 approval record; remove legacy recognition in the same change and restore the
+   raw-template equality assertion. The template and normalizer are left together as-is now.
+8. **NOTE-2 — protected-path approval at merge.** The owner must record approval for
+   row 12's `guard_hook.py`, `.claude/settings.json` and `tools/registry.json` changes.
+   This producer's proposed 0057/0058 and the substantive 13A ruling do not fabricate that
+   approval record. Registry bytes are unchanged in this round but changed in row 12.
+9. **MAJOR-1 — ambiguous submission recovery.** Definite refusals are fixed. For ambiguous
+   outcomes, select the supported scheduler reconciliation/record-binding or reservation-
+   release operation and its evidence/authorization; authorize the contract recovery paragraph
+   beyond the STATUS-only lines. Until then the safe recovery instruction is stop, preserve
+   record/logs/work, and request owner reconciliation; never delete the reservation to retry.
+10. **NOTE-4 — published benchmark pins.** Owner integration action, after the separate
+    study's done commit: refresh the affected published source pins and their acceptance
+    evidence. Scratch rehashing is not published-pin acceptance. No benchmark/study file changed.
+11. **Row 15 / unguarded processes.** Any extension of these protections to non-agent
+    builders or a same-UID process bypassing the workspace guard needs the separate row-15
+    hooks/deployment scope. Row 15 is not inspected or modified here. The workspace guard
+    and settings are not a filesystem sandbox or proof of separate-OS-user isolation.
+
+### Residual gaps
+
+- Full row-12 exit is **NOT met**. MAJOR-3 through MAJOR-6 remain open pending the above
+  rulings; MAJOR-1's ambiguous recovery procedure and MINOR-3/4/5 have named remaining parts.
+- The three downstream wrappers still lack accepted keys and refuse typed submission.
+  Failed-key retry remains unavailable. Collect validation failure can still leave RUNNING;
+  scheduler success before collect has no new intermediate state. These are operational
+  defects, not successes hidden by documentation.
+- No cancel verb, approved long-job cancellation, failure classification artifact, six-failure
+  classification acceptance, or bounded executor-level retry is claimed.
+- Live Slurm/Nextflow R-076 acceptance, Docker/cluster behavior, actual Python 3.6.8 execution,
+  native harness permission-glob depth/case behavior, separate-OS-user isolation and Stage-3
+  durable state/heartbeats/restart reconciliation remain unverified.
+- The named missing classification test exits 2 because its file does not exist. Docker image
+  inspection exits 1 because daemon socket access is denied; no image is pulled or installed.
+- No formal historical record, assessment or supplied review is rewritten. No row-15,
+  protected study, CI, pinned skill, pin inventory or benchmark file changes. No remote,
+  push, merge, pull request or owner-identifying committed text is introduced.
+
+### Final command summaries
+All final verification below used Python **3.13.2**, with that interpreter first on PATH
+for child runners. TMPDIR, TEMP and TMP were exported to the designated sibling scratch
+folder before every shell invocation. Scratch logs and copied mutation trees stay there;
+none is staged. The initial full run, before the final two tests were added, was
+`Ran 328 tests in 248.913s` / `OK (skipped=50)`; the final run below tests the final code.
+README and DEVELOPMENT now reflect the loader's final 330. Summary lines below are copied
+verbatim from each runner, including durations and inherited environment/evidence skips.
+
+`python3 tests/run_tests.py`:
+
+```text
+fault red: wrapper writes STATUS inline
+fault red: writer accepts an out-of-enum value
+fault red: TIMEOUT folds into FAILED
+fault red: duplicate submission reaches scheduler
+fault red: agent session writes STATUS
+fault red: killed worker reported COMPLETE
+fault red: computed STATUS path
+fault red: copied STATUS path
+fault red: formatted STATUS path
+Ran 330 tests in 186.612s
+OK (skipped=50)
+```
+
+`python3 tests/check_contracts.py`:
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`:
+
+```text
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`:
+
+```text
+Ran 44 tests in 217.272s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`:
+
+```text
+clean — graded=1
+```
+
+`python3 gars/tests/test_status_writer.py`:
+
+```text
+Ran 9 tests in 5.737s
+OK
+every wrapper uses the writer
+```
+
+`python3 gars/tests/test_lifecycle_executor.py`:
+
+```text
+Ran 8 tests in 1.493s
+OK
+duplicate side effects 0
+```
+
+`python3 gars/tests/test_no_false_completion.py`:
+
+```text
+Ran 5 tests in 0.339s
+OK
+0 false completions
+```
+
+`python3 gars/tests/test_lifecycle_faults.py`:
+
+```text
+Ran 1 test in 15.193s
+OK
+fault red: wrapper writes STATUS inline
+fault red: writer accepts an out-of-enum value
+fault red: TIMEOUT folds into FAILED
+fault red: duplicate submission reaches scheduler
+fault red: agent session writes STATUS
+fault red: killed worker reported COMPLETE
+fault red: computed STATUS path
+fault red: copied STATUS path
+fault red: formatted STATUS path
+```
+
+`python3 gars/tests/test_executorlib_resume.py`:
+
+```text
+Ran 2 tests in 0.124s
+OK
+```
+
+`python3 gars/tests/test_execution_policy.py`:
+
+```text
+Ran 7 tests in 22.625s
+OK
+```
+
+`python3 gars/tests/test_role_profiles.py`:
+
+```text
+Ran 6 tests in 0.018s
+OK
+```
+
+`python3 tests/test_benchmark_discriminates.py`:
+
+```text
+Ran 23 tests in 5.647s
+OK (skipped=1)
+```
+
+`python3 tests/run_tests.py ExecutorSeamTests.test_01_shipped_template_resolves_to_the_builtin`:
+
+```text
+Ran 1 test in 0.009s
+OK
+```
+
+`python3 -m unittest discover -s gars/tests -p test_pre_push.py -v`:
+
+```text
+Ran 7 tests in 10.296s
+OK
+```
+
+Other checks in this run:
+
+- `python3 --version`: `Python 3.13.2` for final checks; early red/focused runs used 3.8.2.
+- Python grammar audit: `Python 3.6 syntax audit: 7 changed production modules parsed`.
+  This is syntax evidence only, not execution under Python 3.6.8.
+- `bash docs/decisions/build_index.sh`: exit 0; regenerated `docs/decisions/CONTEXT.md`.
+  Its path-bearing output remains in scratch, not this report.
+- `git diff --check`: exit 0, no output.
+- Boundary diff against `d17573a` for `.github/`, `evals/`, `benchmarks/`,
+  `gars/_references/`, `gars/_templates/`, `gars/_system/hooks/`,
+  `gars/_system/authoring/` and `gars/_system/stage03_analysis.py`: empty.
+- Historical record audit: 0057 unchanged; this report retains its complete previous
+  contents as an exact prefix; the supplied review hash remains the one recorded above.
+- `python3 gars/tests/test_failure_classification.py`: exit 2, file absent; **NOT met**.
+- `docker image ls --format '{{.Repository}}:{{.Tag}}'`: exit 1, daemon socket permission
+  denied; **NOT met**. No Slurm-in-container fixture, live scheduler, network pull or
+  dependency installation ran.
+
+One round commit uses an explicit path list and a message file in scratch. The review is
+excluded from staging. Commit identity is a generic producer identity; no personal name,
+login or machine name is added. No remote, push, merge or pull request is used.

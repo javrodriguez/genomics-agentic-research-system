@@ -398,9 +398,12 @@ def _local_submit(config_root, script):
     exit_file = script.parent / (script.name + ".local.exit")
     if exit_file.is_file():
         exit_file.unlink()          # a re-submit must never read the previous run's verdict
-    proc = subprocess.run(
-        ["bash", "-c", LOCAL_RUNNER, "gars-local", str(script), str(log), str(exit_file)],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=execution_env())
+    try:
+        proc = subprocess.run(
+            ["bash", "-c", LOCAL_RUNNER, "gars-local", str(script), str(log), str(exit_file)],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=execution_env())
+    except OSError as exc:
+        raise BackendUnavailable(str(exc))
     job_id = (proc.stdout or b"").decode("utf-8", "replace").strip()
     if not job_id.isdigit():
         return None
@@ -426,50 +429,67 @@ def _local_status(config_root, job_id):
     return "FAILED"
 
 
+class SubmissionFailure(str):
+    """A definite rejection before a backend accepted a job; still a JSON string."""
+
+
+class BackendUnavailable(OSError):
+    """The local process could not be launched at all."""
+
+
 def _submit_once(config_root, script, descriptor=None):
     """Hand the generated script to the scheduler. Returns (job_id, detail-or-None)."""
     descriptor = descriptor if descriptor is not None else load(config_root)
     problems = validate(descriptor)
     if problems:
-        return None, '; '.join(problems)
+        return None, SubmissionFailure('; '.join(problems))
     stage = Path(script).resolve().parent
     # Stage-02 locations identify the assay independently of the writable manifest.
     try:
         parts = stage.relative_to(Path(config_root).resolve()).parts
     except ValueError:
-        return None, 'R-073: script is outside its project'
+        return None, SubmissionFailure('R-073: script is outside its project')
     if len(parts) >= 3 and parts[0] == '02_bioinformatics':
         problem = config_holds(config_root, stage, parts[1])
         if problem:
-            return None, problem
+            return None, SubmissionFailure(problem)
     elif parts and parts[0] == '03_custom_analysis':
         from stage03_analysis import approval_holds, approval_record_path, ws
         workspace = ws.workspace_root(__file__)
         holds, why = approval_holds(stage / 'PLAN.md',
                                     approval_record_path(stage / 'PLAN.md', workspace), workspace)
         if not holds:
-            return None, 'R-073: ' + why
+            return None, SubmissionFailure('R-073: ' + why)
     else:
-        return None, 'R-073: submit requires a prepared stage or approved analysis'
+        return None, SubmissionFailure('R-073: submit requires a prepared stage or approved analysis')
     if descriptor.get("name") == "local":
-        job_id = _local_submit(config_root, script)
+        try:
+            job_id = _local_submit(config_root, script)
+        except BackendUnavailable as exc:
+            return None, SubmissionFailure('cannot run local backend: %s' % exc)
+        except OSError as exc:
+            # Local record creation can fail after launching; preserve the reservation.
+            return None, 'local submission unresolved: %s' % exc
         return (job_id, None) if job_id else (None, "the local backend printed no PID")
     argv = submit_argv(descriptor, script)
     if not argv:
-        return None, "the descriptor names no submit_argv"
+        return None, SubmissionFailure("the descriptor names no submit_argv")
     try:
         proc = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                               env=execution_env())
     except OSError as exc:
-        return None, "cannot run %s: %s" % (argv[0], exc)
+        return None, SubmissionFailure("cannot run %s: %s" % (argv[0], exc))
     out = (proc.stdout or b"").decode("utf-8", "replace")
     err = (proc.stderr or b"").decode("utf-8", "replace")
-    if proc.returncode != 0:
-        return None, "%s exited %d: %s" % (argv[0], proc.returncode, (err or out).strip())
     try:
         m = re.search(descriptor.get("job_id_regex") or r"(\d+)", out)
     except re.error as exc:
         return None, "job_id_regex does not compile: %s" % exc
+    if proc.returncode != 0:
+        detail = "%s exited %d: %s" % (argv[0], proc.returncode, (err or out).strip())
+        # A signal or any printed job identity makes acceptance ambiguous.
+        has_identity = m or re.search(descriptor.get('job_id_regex') or r'(\d+)', err)
+        return None, SubmissionFailure(detail) if proc.returncode > 0 and not has_identity else detail
     if not m:
         return None, "no job id in the submit output: %r" % out.strip()
     return m.group(1), None
@@ -533,6 +553,52 @@ def _job_record(config_root, job_id):
     return None, None
 
 
+def prepared_key(config_root, stage):
+    """Recompute R-076 from current bytes, not the manifest's claimed digest."""
+    import hashlib
+    import wrapperlib as wl
+    stage = Path(stage).resolve()
+    parts = stage.relative_to(Path(config_root).resolve()).parts
+    if len(parts) != 3 or parts[0] != '02_bioinformatics':
+        raise ValueError('key requires a stage-02 directory')
+    params = stage / 'params.yaml'
+    sheet = Path(wl.read_config(params)['input'])
+    if not sheet.is_absolute():
+        raise ValueError('prepared samplesheet must be absolute')
+    digest = hashlib.sha256()
+    for source in (params, sheet, Path(config_root) / '_config' / (parts[1] + '.yaml')):
+        with source.open('rb') as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b''):
+                digest.update(chunk)
+    key = digest.hexdigest()
+    manifest = json.loads((stage / 'reproducibility/manifest.json').read_text(encoding='utf-8'))
+    comments = [line for line in (stage / 'submit.sh').read_text(encoding='utf-8').splitlines()
+                if line.startswith('# idempotency_key=')]
+    if manifest.get('idempotency_key') != key or comments != ['# idempotency_key=' + key]:
+        raise ValueError('prepared key differs from input bytes')
+    return key
+
+
+def stage_record(config_root, stage):
+    """Bind collection to this stage's recomputed key and recorded script identity."""
+    stage = Path(stage).resolve()
+    manifest_path = stage / 'reproducibility/manifest.json'
+    if not manifest_path.exists():
+        return None  # Legacy unrecorded collect remains outside row 12's boundary.
+    manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+    if 'idempotency_key' not in manifest:
+        return None  # Downstream key formula still requires the owner's ruling.
+    key = prepared_key(config_root, stage)
+    path = _records(config_root) / (key + '.json')
+    if not path.is_file():
+        raise ValueError('prepared key has no submission record')
+    record = json.loads(path.read_text(encoding='utf-8'))
+    if (record.get('idempotency_key') != key or
+            record.get('script') != str(stage / 'submit.sh')):
+        raise ValueError('submission record does not belong to this stage')
+    return record
+
+
 def submit(config_root, script, descriptor=None):
     """R-076: reserve the prepared key before any scheduler side effect.
 
@@ -554,12 +620,9 @@ def submit(config_root, script, descriptor=None):
     if problem:
         return None, problem
     try:
-        manifest = json.loads((stage / 'reproducibility/manifest.json').read_text(encoding='utf-8'))
-        key = manifest['idempotency_key']
-        if not isinstance(key, str) or not re.fullmatch(r'[0-9a-f]{64}', key):
-            raise ValueError('invalid key')
-        if '# idempotency_key=' + key not in Path(script).read_text(encoding='utf-8').splitlines():
-            raise ValueError('script key differs')
+        if Path(script).resolve() != stage / 'submit.sh':
+            raise ValueError('expected generated submit.sh')
+        key = prepared_key(config_root, stage)
     except (OSError, ValueError, KeyError, TypeError):
         return None, 'R-076: idempotency_key_missing_or_changed; run prepare'
     problems = validate(descriptor)
@@ -576,10 +639,17 @@ def submit(config_root, script, descriptor=None):
             if state.startswith('FAILED') or state == 'CANCELLED':
                 return None, 'R-152: retry_policy_unresolved; see decision 0057'
             return None, 'R-076: duplicate_submission; key already recorded (%s)' % state
+        previous = wl.read_status(stage)
+        if previous and previous.split(':', 1)[0] in wl.TERMINAL_STATES:
+            return None, 'R-152: retry_policy_unresolved; terminal stage requires an explicit corrective path'
         record = {'idempotency_key': key, 'script': str(Path(script).resolve()),
                   'state': 'SUBMITTED', 'job_id': None, 'executor': descriptor['name']}
         _save_record(path, record)
         job, detail = _submit_once(config_root, script, descriptor)
+        if job is None and isinstance(detail, SubmissionFailure):
+            path.unlink()
+            wl.write_status(stage, 'STALE')
+            return job, detail
         record['job_id'] = job
         if job is None:
             record['state'] = 'STALE'
@@ -592,15 +662,26 @@ def submit(config_root, script, descriptor=None):
 def status(config_root, job_id, descriptor=None):
     """R-077: scheduler evidence updates only the job that submit recorded."""
     import wrapperlib as wl
-    state, detail = _scheduler_status(config_root, job_id, descriptor)
     path, record = _job_record(config_root, job_id)
+    descriptor = descriptor if descriptor is not None else load(config_root)
+    if record and descriptor.get('name') != record.get('executor'):
+        return None, 'R-135: executor differs from the recorded submission'
+    state, detail = _scheduler_status(config_root, job_id, descriptor)
     if record:
+        stage = Path(record['script']).parent
+        try:
+            bound = stage_record(config_root, stage)
+            if bound != record:
+                raise ValueError('record differs from the stage key')
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            return None, 'R-135: invalid submission record: %s' % exc
         if state == 'COMPLETED' and not (Path(record['script']).parent / 'run/.gars_run_complete').is_file():
             state, detail = 'ARTIFACT_MISSING', 'R-135: scheduler success without .gars_run_complete'
         record['state'] = state or 'STALE'
         _save_record(path, record)
-        stage = Path(record['script']).parent
-        if state != 'COMPLETED':
+        previous = wl.read_status(stage)
+        terminal = previous and previous.split(':', 1)[0] in wl.TERMINAL_STATES
+        if state != 'COMPLETED' and not terminal:
             wl.write_status(stage, 'SUBMITTED' if state == 'PENDING' else (state or 'STALE'))
         # Success publication is collect's responsibility. The intermediate success
         # state awaits the owner's ruling in decision 0057; never write COMPLETE here.

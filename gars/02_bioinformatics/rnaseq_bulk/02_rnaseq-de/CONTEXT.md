@@ -95,10 +95,10 @@ Projects produced by either path read the same downstream.
 5. Run `prepare` with the same paths. Exit 1 → reply T5. Exit 0 → it wrote
    `scripts/run_de.py`, `submit.sh` and the reproducibility bundle.
 6. Submit with `python3 <workspace>/_system/executorlib.py submit --workspace <project dir>
-   <sub-stage dir>/submit.sh`; capture `job_id` from the JSON. Call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>` (submit has written `SUBMITTED`). Reply T2 and stop.
+   <sub-stage dir>/submit.sh`; capture `job_id` from the JSON. Submit has written `SUBMITTED`; no status call is needed yet. Reply T2 and stop.
 7. **On a later invocation** where STATUS is `SUBMITTED` or `RUNNING`: ask `python3 <workspace>/_system/executorlib.py
    status --workspace <project dir> <job_id>` — it answers `PENDING`, `RUNNING`,
-   `COMPLETED`, `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`. Not yet terminal → call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T3, stop.
+   `COMPLETED`, `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`. Not yet terminal → reply T3, stop; the status call has already refreshed STATUS.
 8. If the job has finished, run `collect` with `--model "<the exact model id you are running
    as>"` (decision 0024) and `--counts-from <the sub-stage the resolver named>`. Exit 2 → the
    run did not complete: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with the scheduler log

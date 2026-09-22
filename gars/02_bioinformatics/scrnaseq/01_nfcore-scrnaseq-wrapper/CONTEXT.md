@@ -120,7 +120,7 @@ attempted here; they belong to a downstream analysis sub-stage that runs under `
 5. Submit with `sbatch <sub-stage dir>/submit.sh`. Capture the job ID.
 6. Call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>` (submit has written `SUBMITTED`). Reply T2 and stop. Do not wait, poll, or
    sleep.
-7. **On a later invocation** where STATUS is `SUBMITTED` or `RUNNING`: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`. If still active, call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T3, stop.
+7. **On a later invocation** where STATUS is `SUBMITTED` or `RUNNING`: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`. If still active, reply T3, stop; the status call has already refreshed STATUS.
 8. If the job has finished, run `collect` with `--model "<the exact model id you are running
    as>"` (decision 0024). Exit 2 → the run did not actually complete: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with the wrapper's error and the Slurm log path, stop.
    Exit 1 → the exit gate failed: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4 with its `failures` verbatim, stop.

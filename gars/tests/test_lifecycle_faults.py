@@ -7,7 +7,7 @@ from support import GARS, run
 
 
 class LifecycleFaultTests(unittest.TestCase):
-    def test_six_implemented_faults_are_red(self):
+    def test_implemented_faults_are_red(self):
         faults = [
             ('wrapper writes STATUS inline',
              '_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py',
@@ -40,6 +40,15 @@ class LifecycleFaultTests(unittest.TestCase):
              'NoFalseCompletionTests.test_killed_worker_and_unreachable_executor',
              "'COMPLETE'"),
         ]
+        for label, expression in [
+                ('computed STATUS path', 'open(str(substage) + "/STATUS", "w")'),
+                ('copied STATUS path', 'shutil.copyfile(source, str(substage / "STATUS"))'),
+                ('formatted STATUS path', 'pathlib.Path("%s/STATUS" % substage).write_text("COMPLETE")')]:
+            faults.append((label,
+                           '_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py',
+                           'wl.write_status(substage, "COMPLETE")', expression,
+                           'test_status_writer.py', 'StatusWriterTests.test_every_wrapper_uses_writer',
+                           'AssertionError'))
         for label, relative, old, new, test, case, witness in faults:
             with self.subTest(fault=label), tempfile.TemporaryDirectory(prefix='row12-fault-') as tmp:
                 root = Path(tmp) / 'gars'

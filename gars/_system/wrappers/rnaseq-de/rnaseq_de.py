@@ -23,7 +23,7 @@ Subcommands:
   collect  the exit gate: de_results.csv exists, its FIRST column is `gene` with no empty
            identifiers (the 0010 defect class), padj present, every sample in the normalized
            matrix, all three figures and the report real. Writes OUTPUTS.tsv (de_results
-           native, counts_gene adapted, gene_id_map native), STATUS, and returns the history
+           native, counts_gene adapted, gene_id_map native), the lifecycle state file, and returns the history
            entry (template version + model + which sub-stage supplied the counts).
 
 Inputs `--counts` and `--design` are the PATHS the router resolved by artifact type

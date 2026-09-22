@@ -89,7 +89,7 @@ means.
 5. Submit with `sbatch <sub-stage dir>/submit.sh`. Capture the job ID.
 6. Call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>` (submit has written `SUBMITTED`). Reply T2 and stop. Do not wait or poll.
 7. **On a later invocation** where STATUS is `SUBMITTED` or `RUNNING`: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`.
-   If still active, call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T3, stop.
+   If still active, reply T3, stop; the status call has already refreshed STATUS.
 8. If the job has finished, run `collect` with `--model "<the exact model id you are running
    as>"` and `--h5ad-from <the sub-stage that supplied the matrix>` (decision 0024). Exit 2 →
    the run did not complete: call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T4, stop. Exit 1 →

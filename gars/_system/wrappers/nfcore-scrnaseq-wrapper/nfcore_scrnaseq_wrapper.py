@@ -26,7 +26,7 @@ Subcommands, in run order (the sub-stage contract orchestrates; this computes):
            executor config, output directory. Writes preflight/check_result.json.
   prepare  re-validates, then writes params.yaml, submit.sh and the reproducibility bundle.
   collect  the exit gate: every sample must have its own converted matrix, and the combined
-           matrix and MultiQC report must be real. Writes OUTPUTS.tsv and STATUS.
+           matrix and MultiQC report must be real. Writes OUTPUTS.tsv and the lifecycle state file.
 
 Runs on stock python 3.6.8, stdlib only. Nextflow/java are needed only inside submit.sh.
 """

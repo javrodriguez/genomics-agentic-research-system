@@ -11,6 +11,7 @@ Runs on stock python 3.6.8, stdlib only, like every `_system/` helper.
 
 import hashlib
 import datetime
+import fcntl
 import json
 import pathlib
 import os
@@ -44,6 +45,14 @@ class StatusRefusal(ValueError):
         return {"type": "status_refusal", "rule": "R-151", "reason": str(self)}
 
 
+def read_status(stage):
+    path = Path(stage) / 'STATUS'
+    if not path.exists():
+        return None
+    words = path.read_text(encoding='utf-8').split()
+    return words[0] if words else None
+
+
 def write_status(project_dir_or_substage, state, reason=None):
     """The only wrapper/executor STATUS writer (the owner's ruling 13A).
 
@@ -52,6 +61,13 @@ def write_status(project_dir_or_substage, state, reason=None):
     the marker and published output index are mandatory even at this lowest-level door.
     """
     stage = Path(project_dir_or_substage)
+    with open(str(stage / '.STATUS.lock'), 'a') as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        return _write_status_locked(stage, state, reason)
+
+
+def _write_status_locked(stage, state, reason):
+    """Validate the transition and atomically replace while holding the stage lock."""
     if not isinstance(state, str):
         raise StatusRefusal('invalid_state: expected a closed-enum string')
     if ':' in state:
@@ -64,10 +80,26 @@ def write_status(project_dir_or_substage, state, reason=None):
     if reason is not None and (state != 'FAILED' or not isinstance(reason, str) or
             not (reason in FAILURE_REASONS or re.fullmatch(r'EXIT_[0-9]+', reason))):
         raise StatusRefusal('invalid_reason: expected a scheduler reason or EXIT_<n>')
+    value = state + (':' + reason if reason else '')
+    previous = read_status(stage)
+    if previous and previous.split(':', 1)[0] in TERMINAL_STATES:
+        if previous == value:
+            return value
+        raise StatusRefusal('terminal_state: cannot change %s to %s' % (previous, value))
     if state == 'COMPLETE' and not ((stage / 'run/.gars_run_complete').is_file()
                                     and (stage / 'OUTPUTS.tsv').is_file()):
         raise StatusRefusal('completion_gate: successful collect and .gars_run_complete required')
-    value = state + (':' + reason if reason else '')
+    if state == 'COMPLETE':
+        try:
+            record = ex.stage_record(ex.config_root_for(stage), stage)
+            if record:
+                if record.get('executor') != ex.load(ex.config_root_for(stage)).get('name'):
+                    raise ValueError('executor differs from the recorded submission')
+                observed, detail = ex._scheduler_status(ex.config_root_for(stage), record['job_id'])
+                if observed != 'COMPLETED':
+                    raise ValueError(detail or observed or 'executor unavailable')
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            raise StatusRefusal('completion_gate: %s' % exc)
     metadata = ''
     if state in ('SUBMITTED', 'RUNNING'):
         # Preserve the contracts' job-id suffix when submit has recorded one. The
@@ -119,17 +151,15 @@ def require_collect_config(project, assay, substage):
                                'error': problem}, EXIT_REFUSED))
     stage = Path(project) / '02_bioinformatics' / assay / substage
     # R-135: a marker is necessary, but cannot overrule a failed/unreachable executor.
-    manifest = json.loads((stage / 'reproducibility/manifest.json').read_text(encoding='utf-8'))
-    key = manifest.get('idempotency_key')
-    if isinstance(key, str) and re.fullmatch(r'[0-9a-f]{64}', key):
-        path = ex._records(project) / (key + '.json')
-        if path.is_file():
-            record = json.loads(path.read_text(encoding='utf-8'))
+    try:
+        record = ex.stage_record(project, stage)
+        if record:
             state, detail = ex.status(project, record['job_id']) if record['job_id'] else (None, 'submission unresolved')
             if state != 'COMPLETED':
-                raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,
-                                       'error': 'R-135: executor has not completed: %s' % (detail or state)},
-                                      EXIT_REFUSED))
+                raise ValueError('executor has not completed: %s' % (detail or state))
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,
+                               'error': 'R-135: %s' % exc}, EXIT_REFUSED))
 
 
 def read_config(path):
