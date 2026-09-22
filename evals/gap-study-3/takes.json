@@ -135,6 +135,15 @@
       "order_index": 14,
       "fixture_sha": "",
       "environment_class": "claude-subscription-headless"
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 2,
+      "order_index": 15,
+      "fixture_sha": "",
+      "environment_class": "claude-subscription-headless"
     }
   ]
 }
