@@ -29,6 +29,15 @@
       "launch_commit": "16b60bfdd26393e51ea9d17b9b542d23427f49a0",
       "added": "2026-09-22T13:21:47+00:00",
       "voids": null
+    },
+    {
+      "n": 4,
+      "kind": "prefreeze",
+      "prompt_sha256": "0910589c8290963e804bf69cbe5d050f07c20e65f7f804505275b885fc984e1a",
+      "input_sha256": "0bc3eac00c2f6277da9fc80d35ee80dcf4973bb8ff91fb2c9d997b86650c0e23",
+      "launch_commit": "2653f862a785a9fe836a0b5065671b9a1e855eb3",
+      "added": "2026-09-22T14:05:16+00:00",
+      "voids": null
     }
   ]
 }
