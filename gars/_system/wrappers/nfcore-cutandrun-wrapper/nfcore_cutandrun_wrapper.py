@@ -196,9 +196,10 @@ def cmd_prepare(args):
     -c "{executor_config}" \\
     -params-file "{substage}/params.yaml" \\
     -work-dir "{work_dir}" \\
-    $RESUME""".format(checkout=paths["checkout"],
-                      executor_config=paths["executor_config"].resolve(),
-                      substage=substage.resolve(), work_dir=work_dir)
+    $RESUME""".format(checkout=wl.shell_value(paths["checkout"], "checkout"),
+                      executor_config=wl.shell_value(paths["executor_config"].resolve(), "executor_config"),
+                      substage=wl.shell_value(substage.resolve(), "substage"),
+                      work_dir=wl.shell_value(work_dir, "compute.work_dir"))
     wl.write_submit_sh(substage, WORKSPACE, cfg, project.resolve().name, ASSAY, body)
     wl.write_reproducibility(substage, ASSAY, paths["checkout"],
                              {"samplesheet": paths["samplesheet"], "config": paths["config"]},
@@ -214,6 +215,7 @@ def cmd_prepare(args):
 
 
 def cmd_collect(args):
+    wl.require_collect_config(args.project, ASSAY, SUBSTAGE)
     project = Path(args.project)
     result = {"command": "collect", "ok": False, "assay": ASSAY, "failures": []}
     if not project.is_dir():

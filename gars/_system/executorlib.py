@@ -31,6 +31,7 @@ import os
 import re
 import subprocess
 import sys
+from tools.execution import shell_value, config_holds
 from pathlib import Path
 
 EXIT_OK, EXIT_FAILURE, EXIT_REFUSED, EXIT_USAGE = 0, 1, 2, 3
@@ -181,6 +182,22 @@ def validate(descriptor):
     """Problems with a descriptor, in member words. Empty list means usable."""
     problems = []
     name = descriptor.get("name")
+    if name not in BUILTINS:
+        problems.append('R-075: backend must be the enum slurm|local')
+    else:
+        for key in ('submit_argv', 'status_argv', 'job_id_regex', 'status_map', 'submit_note'):
+            if key in descriptor and descriptor[key] != BUILTINS[name].get(key):
+                problems.append('R-075: %s is fixed by the backend enum' % key)
+    for key in ('nextflow_config', 'nextflow_profile'):
+        value = descriptor.get(key)
+        if value:
+            try:
+                shell_value(value, key)
+            except ValueError as exc:
+                problems.append(str(exc))
+    # Free-form directive templates would be a second executable language.
+    if name in BUILTINS and descriptor.get('directives') != BUILTINS[name]['directives']:
+        problems.append('R-075: directives must match the registered backend')
     if not name:
         problems.append("the descriptor has no `name:` line; name the backend "
                         "(slurm, local, or your own)")
@@ -258,6 +275,12 @@ def header_lines(config_root, cfg, project, assay, substage, descriptor=None):
         "cpus": cfg.get("compute.cpus", "{cpus}"),
         "mem": cfg.get("compute.mem", "{mem}"),
     }
+    problems = validate(descriptor)
+    if problems:
+        raise ValueError('; '.join(problems))
+    fields = {key: (value if key in ('partition', 'time', 'cpus', 'mem')
+                          and 'compute.' + key not in cfg
+                          else shell_value(value, key)) for key, value in fields.items()}
     return [_fill(line, fields) for line in descriptor.get("directives") or []]
 
 
@@ -283,8 +306,24 @@ def config_root_for(path):
     return here
 
 
+# Explicit exported names; no arbitrary inherited credentials (R-096, executor half).
+EXPORT_NAMES = ('PATH', 'HOME', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'TMPDIR', 'TEMP',
+                'TMP', 'GARS_ROOT', 'GARS_PIPELINES')
+
+
+def execution_env():
+    return {key: value for key, value in os.environ.items() if key in EXPORT_NAMES}
+
+
 def submit_argv(descriptor, script):
-    return [_fill(a, {"script": script}) for a in descriptor.get("submit_argv") or []]
+    problems = validate(descriptor)
+    if problems:
+        raise ValueError('; '.join(problems))
+    shell_value(script, 'script')
+    argv = [_fill(a, {"script": script}) for a in BUILTINS[descriptor['name']]['submit_argv']]
+    if descriptor['name'] == 'slurm':
+        argv.insert(1, '--export=' + ','.join(EXPORT_NAMES))
+    return argv
 
 
 def status_argv(descriptor, job_id):
@@ -349,7 +388,7 @@ def _local_submit(config_root, script):
         exit_file.unlink()          # a re-submit must never read the previous run's verdict
     proc = subprocess.run(
         ["bash", "-c", LOCAL_RUNNER, "gars-local", str(script), str(log), str(exit_file)],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=execution_env())
     job_id = (proc.stdout or b"").decode("utf-8", "replace").strip()
     if not job_id.isdigit():
         return None
@@ -377,6 +416,28 @@ def _local_status(config_root, job_id):
 def submit(config_root, script, descriptor=None):
     """Hand the generated script to the scheduler. Returns (job_id, detail-or-None)."""
     descriptor = descriptor if descriptor is not None else load(config_root)
+    problems = validate(descriptor)
+    if problems:
+        return None, '; '.join(problems)
+    stage = Path(script).resolve().parent
+    # Stage-02 locations identify the assay independently of the writable manifest.
+    try:
+        parts = stage.relative_to(Path(config_root).resolve()).parts
+    except ValueError:
+        return None, 'R-073: script is outside its project'
+    if len(parts) >= 3 and parts[0] == '02_bioinformatics':
+        problem = config_holds(config_root, stage, parts[1])
+        if problem:
+            return None, problem
+    elif parts and parts[0] == '03_custom_analysis':
+        from stage03_analysis import approval_holds, approval_record_path, ws
+        workspace = ws.workspace_root(__file__)
+        holds, why = approval_holds(stage / 'PLAN.md',
+                                    approval_record_path(stage / 'PLAN.md', workspace), workspace)
+        if not holds:
+            return None, 'R-073: ' + why
+    else:
+        return None, 'R-073: submit requires a prepared stage or approved analysis'
     if descriptor.get("name") == "local":
         job_id = _local_submit(config_root, script)
         return (job_id, None) if job_id else (None, "the local backend printed no PID")
@@ -384,7 +445,8 @@ def submit(config_root, script, descriptor=None):
     if not argv:
         return None, "the descriptor names no submit_argv"
     try:
-        proc = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              env=execution_env())
     except OSError as exc:
         return None, "cannot run %s: %s" % (argv[0], exc)
     out = (proc.stdout or b"").decode("utf-8", "replace")
@@ -409,7 +471,8 @@ def status(config_root, job_id, descriptor=None):
     if not argv:
         return None, "the descriptor names no status_argv"
     try:
-        proc = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              env=execution_env())
     except OSError as exc:
         return None, "cannot run %s: %s" % (argv[0], exc)
     out = (proc.stdout or b"").decode("utf-8", "replace")

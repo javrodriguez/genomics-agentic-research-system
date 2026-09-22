@@ -7,11 +7,11 @@
     },
     {
       "path": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md",
-      "sha256": "0aa735407c9f54ef09f9ebabb20f493d7a633613dc5c716ed560b0bc5510ee37"
+      "sha256": "f62937e2b8f72b775583a53c71b44b2222105967f4b4c067221bdc1628b01780"
     },
     {
       "path": "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py",
-      "sha256": "cd86380f31a6c1ed70513d576582dab0a2ba9099cf41ca97b42e348f6a4ffc60"
+      "sha256": "b21b10fe1f097b149eacb6fcaa9337360348d34d38029216be006a7d1bd75558"
     },
     {
       "path": "examples/demo-project/README.md",

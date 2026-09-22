@@ -7,11 +7,11 @@
     },
     {
       "path": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md",
-      "sha256": "e32ea7c7baa9ebcdf612c8052da705ff6ffaf2a11fd276743e605e75666c2a26"
+      "sha256": "7c1871bfc681b1e4e65d721f16c03a8c2a95b1aafd99803d4c0d1fefd63b683b"
     },
     {
       "path": "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py",
-      "sha256": "beab610a01a430fa5eddf221322f140e9436b243d33af2ad1c102946c0e3ee06"
+      "sha256": "62844f2bb1ef583611fbdd7f3a440d20d9cec77d316c2afe07b3e4539dab6fe9"
     },
     {
       "path": "examples/demo-project/README.md",
