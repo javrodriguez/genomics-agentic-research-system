@@ -643,6 +643,40 @@ sys.exit(row.main())
                 parent.terminate()
                 parent.communicate(timeout=15)
 
+    # Real pg_restore -l reads the header and TOC, prints the listing and exits 0 without reading
+    # the rest of stdin. A dump far past any pipe buffer then cut gpg --decrypt off with a broken
+    # pipe on a Debian 13 node (25.6 MB dump, 21 Sep 2026); the draining stub above never did.
+    LARGE_DUMP = "import os,sys\nsys.stdout.buffer.write(os.urandom(4 * 1024 * 1024))\n"
+    TOC_ONLY = "import sys\nsys.stdin.buffer.read(4096)\nprint(';     Archive created at fixture')\n"
+
+    def test_backup_listing_reads_only_the_toc(self):
+        self.stub('pg_dump', self.LARGE_DUMP)
+        self.stub('pg_restore', self.TOC_ONLY)
+        proc = execute('pg_backup.sh', self.env)
+        self.assertEqual(proc.returncode, 0, proc.stdout)
+        self.assertIn('archive_readable=ok offmachine_verified=ok second_verified=ok enc=gpg', proc.stdout)
+        self.assertRegex(proc.stdout, r'result=PASS\n?$')
+        archive = next(Path(self.env['BACKUP_LOCAL_DIR']).glob('*.dump.gpg'))
+        self.assertGreater(archive.stat().st_size, 4 * 1024 * 1024)
+
+    def test_drill_listing_reads_only_the_toc(self):
+        # The dry run's listing is the same pipe from the off-machine copy. Its target guards
+        # are answered by a psql stub; not database evidence.
+        self.stub('pg_dump', self.LARGE_DUMP)
+        self.stub('pg_restore', "import sys\nsys.stdin.buffer.read()\n")
+        proc = execute('pg_backup.sh', self.env)
+        self.assertEqual(proc.returncode, 0, proc.stdout)
+        self.stub('pg_restore', self.TOC_ONLY)
+        self.stub('psql', "import sys\na = sys.argv\nd, q = a[a.index('-d') + 1], a[a.index('-c') + 1]\n"
+                          "if 'inet_server_addr' in q:\n    print('127.0.0.1|5432|' + d)\n"
+                          "elif 'system_identifier' in q:\n    print('7000000000000000001')\n"
+                          "elif 'gars_drill_target' in q:\n    print('t')\n"
+                          "else:\n    sys.exit(3)\n")
+        proc = execute('restore_drill.sh', self.env)
+        self.assertEqual(proc.returncode, 0, proc.stdout)
+        self.assertIn('result=DRY_RUN action=drop_create_restore_verify', proc.stdout)
+        self.assertFalse(Path(self.env['RESTORE_LOG']).exists())
+
     def test_stdout_log_equality_and_rto_threshold(self):
         with mock.patch.dict(os.environ, scrubbed_env(self.env), clear=True):
             cfg = row.Config(True)
@@ -834,7 +868,13 @@ class Row05DatabaseTests(unittest.TestCase):
                     p = subprocess.run([cls.engine, 'inspect', '--format', '{{.State.Health.Status}}', cid],
                                        env=scrubbed_env(cls.env), stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE, universal_newlines=True)
-                    if p.returncode == 0 and p.stdout.strip() == 'healthy':
+                    # The healthcheck (pg_isready on the socket) also answers initdb's socket-only
+                    # server; the engine connects over 127.0.0.1, so wait for loopback too. Without
+                    # this the first cases' setUp failed with command_failed (21 Sep 2026).
+                    if p.returncode == 0 and p.stdout.strip() == 'healthy' and cls.compose(
+                            ['exec', '-T', 'db', 'psql', '-h', '127.0.0.1', '-U', cls.env['PGUSER'],
+                             '-d', 'postgres', '-X', '-A', '-t', '-c', 'SELECT 1'],
+                            timeout=max(1, end - time.monotonic())).returncode == 0:
                         healthy = True
                         break
                 time.sleep(1)

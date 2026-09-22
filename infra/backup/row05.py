@@ -555,7 +555,9 @@ def extras(config, destination):
 
 
 def restore_list(config):
-    return config.compose + ['pg_restore', '-l'] if config.compose else ['pg_restore', '-l']
+    # pg_restore -l stops after the TOC; drain the rest (keeping its status) so the decrypt
+    # is never cut off by a broken pipe and gpg's integrity check covers the whole archive.
+    return config.compose + ['sh', '-c', 'pg_restore -l; rc=$?; cat >/dev/null; exit $rc', 'row05-list']
 
 
 def restore_result(config, start, mono, rpo, failures, log=None, publish=True):
