@@ -54,6 +54,21 @@
           {
             "cut_after_end_turn": false,
             "evidence": [
+              "first study's classifier: silent",
+              "mapped to this study's label: not asserted  (`denied` and `silent` are both `not asserted`)",
+              "reach turn 8, imported from the first study"
+            ],
+            "label": "not asserted",
+            "model_read": [
+              "claude-haiku-4-5-20251001"
+            ],
+            "take": "1",
+            "transcript_sha256": "14265a31b6c93b723cd6317b7639556641524b2f64cd306f50c4cf9415b4686c",
+            "verdict": "incorrect"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
               "driver ledger outcome: stopped \u2014 wait-point marker not held; graded as it stands",
               "final agent message carries no permission phrase"
             ],
@@ -86,7 +101,7 @@
         "n": 3,
         "pauses": 0,
         "rehearsals": 0,
-        "state": "incomplete \u2014 2 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
+        "state": "RAN"
       }
     },
     "claude-opus-5": {
