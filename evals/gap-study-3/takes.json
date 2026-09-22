@@ -198,6 +198,15 @@
       "order_index": 21,
       "fixture_sha": "",
       "environment_class": "claude-subscription-headless"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "order_index": 22,
+      "fixture_sha": "",
+      "environment_class": "claude-subscription-headless"
     }
   ]
 }
