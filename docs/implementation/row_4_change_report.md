@@ -851,3 +851,224 @@ stand; this response neither reverses them nor makes a new policy choice.
 - The standing merge-after-study condition remains. No merge, push, remote operation or
   pull request occurred. Passing named deterministic exits do not establish broader
   deployment or release acceptance.
+
+## Review round 4 fixes
+
+Date: **2026-09-22**. Baseline: `363be0c09a8f8631a8b3e742e14c198896724650`.
+The supplied independent review, `docs/reviews/row_4_review_round2.md`, concludes
+**APPROVE WITH CHANGES**. Its round number identifies the review; this response is
+producer round 4. The five provisional owner rulings recorded beside 0053 in 0054
+stand. No finding is disputed. Both MINORs explicitly require owner action, so their
+implementation remains stopped; neither is claimed closed.
+
+Only this report's new section and the current row-4 status in `DEVELOPMENT.md` change.
+Earlier report bytes remain an exact prefix. Decisions, reviews, assessments, inherited
+content at `c934f6d`, runtime code, tests, thresholds and guards remain unchanged.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| M1 — MINOR documentation, R-073: legacy approval sidecar and agent `approve` instruction | This report; `DEVELOPMENT.md` status | Contract lines 58–64 and 100; producer guard probe; `test_approval_forgery.py`; contract lint | **Open: owner's contract edit plus approval record.** Probe exits 2 with R-093, `refuse: producer cannot invoke stage03_analysis.approve`. Red-on-fault seen: **no** for prose; expiry/plan faults separately turn their implementation witnesses red. Lint cannot close semantic drift. |
+| M2 — MINOR policy, R-099: session-wide refusal for unreviewed pins | This report; `DEVELOPMENT.md` status | `test_policy_pins.py`, including `test_session_start_refuses_unreviewed`; `test_policy_faults.py`; pin inventory | **Open: owner scope ruling.** Eleven of eleven pins remain unreviewed; named session test verifies exit 2. Red-on-fault seen: **yes**, suppressing unreviewed-pin refusal produces an assertion failure in the fault runner. This does not decide refusal scope. |
+| N1 — NOTE provenance, R-170: historical untracked-review hash not checkable from commit | This report; `DEVELOPMENT.md` status link | SHA-256 of the sole authorized supplied review before and after this round; untracked-status check | **Answered within scope:** exact current-review hash recorded below. Red-on-fault seen: **no**, preservation/hash check only. Historical round-1 review hash is not retroactively verified; that other supplied file is outside this round's read authorization. |
+| N2 — NOTE test gap, R-092: Python 3.6.8 and live cluster | This report | `python3 --version`; PATH lookup for `python3.6`; required runners below | **Answered:** Python 3.13.2 exercised; no Python 3.6 executable on PATH. Actual 3.6.8 and live Slurm/Nextflow remain NOT met because those environments were not exercised. Red-on-fault seen: **no** for these missing deployment measurements. |
+
+### Review provenance
+
+`shasum -a 256 docs/reviews/row_4_review_round2.md`:
+
+```text
+09209c261c0ff72f13138d23111d7063af639879789b987e52b5ccbdd8e865ed  docs/reviews/row_4_review_round2.md
+```
+
+This pins the supplied review's bytes for comparison by a later holder of that file;
+it does not make the untracked text retrievable from this commit. The review remains
+untracked and unchanged. Its NOTE about the earlier untracked review is retained as a
+historical verification limit: the earlier review was not read or hashed this round,
+and no historical hash is invented. The review requests no mandatory fix; any decision
+to commit reviewed text belongs to the owner in the owner's own commit.
+
+### Verification conditions and results
+
+All shell commands set TMPDIR, TEMP and TMP to the designated sibling scratch folder
+before execution. Verification logs and scripts are in `$SCRATCH/round-4/`; disposable
+test fixtures also use sibling scratch. Runners use Python **3.13.2**, selected through
+PATH in a non-login shell, with `PYTHONDONTWRITEBYTECODE=1` and
+`GARS_PIPELINES=$SCRATCH/absent-pipelines`. CI and GARS_ROW5_SCRATCH are unset, retaining
+the existing named-scratch skip behavior. A non-login default-version probe returned
+Python 3.8.2, but no verification runner used that interpreter this round.
+`python3.6` lookup returned `None`. Skips are unverified, not passes.
+
+Verbatim summary lines follow. All fifteen commands exited 0. The fault runner's red
+witnesses are required assertion failures under planted faults, not failures of the
+unmodified implementation. No test, threshold or guard was changed.
+
+`python3 tests/run_tests.py` (exit 0)
+
+```text
+collected 210 tests from tests
+collected 95 tests from gars/tests
+forgeable approvals: 0/1
+red-on-fault: missing wrapper contract section -> test_wrapper_contract.WrapperContractTests.test_all_wrapper_contracts (wrapper='nfcore-methylseq-wrapper')
+bypasses: 0/5
+Ran 305 tests in 109.784s
+OK (skipped=50)
+```
+
+`python3 tests/check_contracts.py` (exit 0)
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py` (exit 0)
+
+```text
+collected 210 tests from tests
+collected 95 tests from gars/tests
+suite: 305 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/check_results.py --controls --lexicon` (exit 0)
+
+```text
+clean — graded=1
+```
+
+`python3 gars/tests/test_policy_attacks.py` (exit 0)
+
+```text
+bypasses: 0/5
+Ran 19 tests in 2.114s
+OK
+```
+
+`python3 gars/tests/test_approval_forgery.py` (exit 0)
+
+```text
+forgeable approvals: 0/1
+Ran 11 tests in 0.164s
+OK
+```
+
+`python3 gars/tests/test_protected_paths.py` (exit 0)
+
+```text
+Ran 5 tests in 15.636s
+OK
+```
+
+`python3 gars/tests/test_tool_schema_refusal.py` (exit 0)
+
+```text
+Ran 8 tests in 0.228s
+OK
+```
+
+`python3 gars/tests/test_role_profiles.py` (exit 0)
+
+```text
+Ran 6 tests in 0.010s
+OK
+```
+
+`python3 gars/tests/test_policy_pins.py` (exit 0)
+
+```text
+Ran 3 tests in 0.093s
+OK
+```
+
+`python3 gars/tests/test_execution_policy.py` (exit 0)
+
+```text
+Ran 7 tests in 13.368s
+OK
+```
+
+`python3 gars/tests/test_policy_faults.py` (exit 0)
+
+```text
+Ran 10 tests in 0.609s
+OK
+```
+
+`python3 gars/tests/test_guard_hook.py` (exit 0)
+
+```text
+Ran 4 tests in 1.592s
+OK
+```
+
+`python3 gars/tests/test_executorlib_resume.py` (exit 0)
+
+```text
+Ran 1 test in 0.004s
+OK
+```
+
+`python3 evals/test_harness.py` (exit 0)
+
+```text
+Ran 44 tests in 123.778s
+OK
+```
+
+Fault witness messages from `python3 gars/tests/test_policy_faults.py`:
+
+```text
+red-on-fault: direct collect config gate is omitted
+red-on-fault: config edit after prepare is accepted
+red-on-fault: expired approval is accepted
+red-on-fault: unquoted value reaches header_lines
+red-on-fault: guard allows --no-verify equals
+red-on-fault: plan edited after approval is accepted
+red-on-fault: schema accepts out-of-vocabulary field
+red-on-fault: guard allows separator
+red-on-fault: guard allows unregistered helper
+red-on-fault: unreviewed pin is accepted
+```
+
+### Preservation checks
+
+`git diff --check` is clean. The baseline report is a byte-exact prefix, and the
+supplied review hash matches the pre-edit snapshot. The round's changed and staged
+paths are limited to `DEVELOPMENT.md` and `docs/implementation/row_4_change_report.md`.
+The staged addition scan excludes personal attribution and machine paths; author and
+committer use the generic producer identity. The commit message comes from a file in
+sibling scratch. The supplied review remains untracked. Protected trees, other row
+files, decision records and formal reviews have no round-4 diff.
+
+## Owner rulings needed
+
+1. **M1 — R-073 protected stage-03 contract.** The review requires the owner's own edit
+   of the Approved definition and step 6 to the protected-store, human-CLI model,
+   together with its approval record. This is explicitly not a producer action. The
+   existing 0054 rulings stand; no reconfirmation of approval schema, expiry or actor
+   binding is requested here. The required delivery is the owner's contract edit plus
+   approval record; no alternative policy model was offered in the review.
+2. **M2 — R-099 refusal scope.** Confirm session-wide refusal as intended, **or** narrow
+   refusal to loading the unreviewed resource. These are the review's stated options;
+   no code or pin-status change is made until the owner rules. Any resulting fix that
+   requires row-15 files belongs on that other branch and requires owner routing;
+   none of those files is touched in this round.
+
+## Residual gaps still open (round 4)
+
+- Both MINORs remain open for the owner actions above. The two NOTEs are answered;
+  the historical untracked-review hash is still not verified from this commit.
+- Injection resistance **20/20 with its positive control remains NOT met**: no
+  agent-scored injection run. `bypasses: 0/5` is the separate deterministic measurement.
+- R-093 separate OS user/read-only reviewer credentials remain **NOT met**; same-UID
+  unguarded processes can access the store or invoke the human approval CLI.
+- R-099 external-harness loading enforcement, global-resource inventory and pre-hook
+  loading remain **NOT met**. The supplied review does not promote individual pins.
+- Actual Python 3.6.8, live Slurm/Nextflow/cluster execution and all skipped environment
+  or owner-evidence cases remain unverified. Inherited cluster claims are out of scope.
+- The ruled 24-hour approval expiry and lack of implicit renewal remain; `cancel`
+  remains unavailable until row 12. No row-15 hook, gitleaks or secret-containment
+  exit is claimed. No external deployment or release acceptance is established.
+- The standing merge-after-study condition remains. No reviewer conversation, other
+  build folder or external service was read; no network, push, remote, merge or pull
+  request operation occurred.
