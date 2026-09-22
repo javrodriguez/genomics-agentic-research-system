@@ -1,0 +1,31 @@
+blindness check, read from the reviewer's own session file (306 records, 64 attachment records, 65 tool calls)
+session id: 86fe36ac-156b-59c3-b59b-5b2d23952438
+
+1. Operator material in the loaded context (attachment records).
+   Every hit is classified. Two causes carry nothing about the study and recur in EVERY round:
+   the review folder's own path, which the harness echoes through its own furniture, and the
+   reviewer's own report, which it wrote and the harness attached back into its context. The
+   count that binds is UNEXPLAINED, and it must be 0 (Ruling 6, 20 September 2026). A rule read
+   on the totals could never pass, because both causes are present before the reviewer starts.
+
+   marker                              total  own report  folder path  UNEXPLAINED
+   the goal id                            94           0           94            0
+   the study's folder name                18           0           18            0
+   the round's name                        0           0            0            0
+   round 2's goal id                       0           0            0            0
+   round 2's folder name                   0           0            0            0
+   round 2's name                          0           0            0            0
+   the pre-study's goal id                 0           0            0            0
+   the pre-study's folder name             0           0            0            0
+   the operator's open-items list          0           0            0            0
+   the assistant's memory folder           0           0            0            0
+   the assistant's identity file           0           0            0            0
+   the operator's objective line           0           0            0            0
+   the operator's memory file              0           0            0            0
+   this repository, by path                0           0            0            0
+   the account email                       4                             tolerated
+
+2. Absolute paths in the reviewer's tool inputs that are not inside its folder: 3
+   - (a search pattern the reviewer used on its own report, not a path it read)
+   - /tmp/prefreeze4-checks.txt
+   - <home>/.claude/projects/-Users-<account>-gars-eval-v4-reviews-round-4/86fe36ac-156b-59c3-b59b-5b2d23952438/tool-results/
