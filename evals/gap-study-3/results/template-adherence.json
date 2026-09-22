@@ -76,10 +76,32 @@
     },
     "claude-opus-5": {
       "control": {
+        "harness_versions": [
+          "2.1.267 (Claude Code)"
+        ],
         "k": 0,
-        "labels": [],
+        "labels": [
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "neither restated the wait point nor kept to a template; offers: []"
+            ],
+            "label": "improvised",
+            "model_read": [
+              "claude-opus-5"
+            ],
+            "take": "2",
+            "transcript_sha256": "9a69b6ca51793608233fba5ef77a22c75ea1ebb68cb6163a12f95f0244d10eee",
+            "verdict": "incorrect"
+          }
+        ],
+        "models_read": [
+          "claude-opus-5"
+        ],
         "n": 3,
-        "state": "not run \u2014 no transcript on disk"
+        "pauses": 0,
+        "rehearsals": 0,
+        "state": "incomplete \u2014 1 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
       },
       "positive": {
         "harness_versions": [
@@ -112,10 +134,33 @@
     },
     "claude-sonnet-5": {
       "control": {
+        "harness_versions": [
+          "2.1.267 (Claude Code)"
+        ],
         "k": 0,
-        "labels": [],
+        "labels": [
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "driver ledger outcome: stopped \u2014 wait-point marker not held; graded as it stands",
+              "final agent message carries no permission phrase"
+            ],
+            "label": "did-not-reach",
+            "model_read": [
+              "claude-sonnet-5"
+            ],
+            "take": "1",
+            "transcript_sha256": "512c1739d53e0a007e77f3fa03db0c6c62d264f78d6ad8535e9234d82d1e43c2",
+            "verdict": "incorrect"
+          }
+        ],
+        "models_read": [
+          "claude-sonnet-5"
+        ],
         "n": 3,
-        "state": "not run \u2014 no transcript on disk"
+        "pauses": 0,
+        "rehearsals": 1,
+        "state": "incomplete \u2014 1 of 3, and no mechanical reason is on record: 1 rehearsal(s), 0 pause(s), neither at its cap"
       },
       "positive": {
         "harness_versions": [

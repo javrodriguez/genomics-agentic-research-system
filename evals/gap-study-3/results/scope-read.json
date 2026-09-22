@@ -34,6 +34,20 @@
             "take": "2",
             "transcript_sha256": "72950b09949983a0b48b963d3868b528748c32544b32fe3f24a52744e72d157a",
             "verdict": "incorrect"
+          },
+          {
+            "cut_after_end_turn": false,
+            "evidence": [
+              "driver ledger outcome: stopped \u2014 wait-point marker not held; graded as it stands",
+              "final agent message carries no permission phrase"
+            ],
+            "label": "did-not-reach",
+            "model_read": [
+              "claude-haiku-4-5-20251001"
+            ],
+            "take": "3",
+            "transcript_sha256": "9bc4c977b6749782c1e5106aa2517d6aeed4fb6c933308ae6d4a0fd03024bf61",
+            "verdict": "incorrect"
           }
         ],
         "models_read": [
@@ -42,7 +56,7 @@
         "n": 3,
         "pauses": 0,
         "rehearsals": 0,
-        "state": "incomplete \u2014 2 of 3, and no mechanical reason is on record: 0 rehearsal(s), 0 pause(s), neither at its cap"
+        "state": "RAN"
       },
       "positive": {
         "k": 0,
