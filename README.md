@@ -303,7 +303,7 @@ with equal timestamps; venue/canary evidence remains unmeasured. See the
 [corrective record](docs/decisions/0062-row-11-raw-git-and-terminal-restore-addendum.md).
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(397 tests, 11 of them environment skips, on macOS at the 2026-09-22 merge of the row-5 fix and rows 15, 4, 11 and 12, with Docker answering and row 5's scratch folder set as CI sets it; a macOS cold clone without it skips 55, or 86 with `TMPDIR` also unset as on Linux; no cluster run is evidenced for these rows).
+(426 tests collected; the preceding 397-case suite had 11 environment skips on macOS at the 2026-09-22 merge of the row-5 fix and rows 15, 4, 11 and 12, with Docker answering and row 5's scratch folder set as CI sets it; a macOS cold clone without it skips 55, or 86 with `TMPDIR` also unset as on Linux; no cluster run is evidenced for these rows).
 Row 15 review round 4 (2026-09-22), macOS / Python 3.8.2: 252 tests, <!-- not-the-suite-total -->
 `OK (skipped=50)`; no tests from row 15 skipped. R15-03's narrow fixture repair
 is authorised by the owner, **confirmed on 22 September 2026** ([0067](docs/decisions/0067-owner-confirms-rows-15-and-4-provisional-rulings.md)).
@@ -440,7 +440,7 @@ external-human seals (§21 Q9). No benchmark or evidence regeneration is impleme
 | Design-defect catch rate | unmeasured | tests/test_stage01_design.py | unmeasured |
 | Reviewer catch rate (code, science) | unmeasured | none | unmeasured |
 | Manifest completeness and re-run diff | unmeasured | none | unmeasured |
-| Orphan claims | unmeasured | none | unmeasured |
+| Orphan claims | unmeasured | `gars/tests/test_claim_constraints.py` | unmeasured |
 | Policy bypass rate | unmeasured | none | unmeasured |
 | Restore-drill minutes and age | unmeasured | none | unmeasured |
 | Hours per verified capability | unmeasured | none | unmeasured |

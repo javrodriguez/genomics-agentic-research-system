@@ -1,0 +1,10 @@
+{
+  "checkout": "fixtures/workflow",
+  "inputs": {
+    "counts": "fixtures/counts.tsv"
+  },
+  "params": {
+    "contrast": "treated,control"
+  },
+  "pipeline_commit": "synthetic-workflow-v1"
+}
