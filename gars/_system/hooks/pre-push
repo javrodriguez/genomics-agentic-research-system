@@ -11,7 +11,7 @@ from pathlib import Path
 MARKER = 'GARS_ROW3_PRE_PUSH_V1'
 
 
-ACTIVATION_RECORD = 'docs/decisions/0058-row-11-records-links-trailers-release-check.md'
+ACTIVATION_RECORD = 'docs/decisions/0061-row-11-records-links-trailers-release-check.md'
 
 
 def git_bytes(root, *args, **kwargs):

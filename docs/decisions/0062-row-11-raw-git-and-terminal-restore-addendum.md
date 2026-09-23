@@ -16,12 +16,12 @@ symptoms:
   - local Git replacement makes a same-session committed review pass
   - terminal restore FAIL correction displays an earlier PASS
 ---
-# Row 11 raw Git and terminal restore addendum to 0058
+# Row 11 raw Git and terminal restore addendum to 0061
 
 ## Context
 
 Independent review R11-01 and R11-02 rejected the producer's initial enforcement
-claims. Record 0058 and the earlier report remain historical bytes: their
+claims. Record 0061 and the earlier report remain historical bytes: their
 unqualified reconstructible-snapshot and R-165 PASS claims did not hold when local
 Git replacement objects supplied substitute contents. The restore adapter also
 ignored row 5's final FAIL correction when its timestamp equaled the earlier PASS.
@@ -74,3 +74,5 @@ evidence, full release eligibility and the separate-study merge hold remain open
 ## Date
 
 2026-09-22
+
+_Renumbered at merge, 2026-09-22: this record was written as 0059 on its branch and takes 0062 on main, because the row-5 fix and rows 15, 4, 11 and 12 numbered their decisions independently (merge order: row-5 fix, 15, 4, 11, 12). Its number, link targets and the numbers of other rows' records it cites are the only edits; branch-time number notes are left as written._

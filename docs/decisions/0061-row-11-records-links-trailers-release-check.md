@@ -54,7 +54,7 @@ and fixture-source text. Bare years do not count.
 not just cited ones. Records dated before 2026-09-22 pass on their valid frontmatter
 Date and Status. New records need nonempty Context, Decision, Test, Status and Date
 sections. The specification's `Test-that-proves-it` spelling is accepted as Test;
-this also preserves the inherited same-day 0055 record without an edit.
+this also preserves the inherited same-day 0057 record without an edit.
 
 The pre-commit checker reads index object IDs and blobs, including staged additions
 and deletions, rather than falling back to unstaged files. The standalone acceptance
@@ -156,3 +156,5 @@ this run's results; residual requirements remain explicitly NOT met.
 ## Date
 
 2026-09-22
+
+_Renumbered at merge, 2026-09-22: this record was written as 0058 on its branch and takes 0061 on main, because the row-5 fix and rows 15, 4, 11 and 12 numbered their decisions independently (merge order: row-5 fix, 15, 4, 11, 12). Its number, link targets and the numbers of other rows' records it cites are the only edits; branch-time number notes are left as written._

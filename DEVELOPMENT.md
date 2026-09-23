@@ -20,7 +20,7 @@ citation and committed-evidence readers, and preserved terminal restore FAIL
 corrections at equal timestamps. The earlier unconditional R-165 PASS claim was
 invalid under replacement objects. Current collection is 274 tests; this round's <!-- not-the-suite-total -->
 validation is recorded in the [change report](docs/implementation/row_11_change_report.md#review-round-2-fixes)
-and the [corrective record](docs/decisions/0059-row-11-raw-git-and-terminal-restore-addendum.md).
+and the [corrective record](docs/decisions/0062-row-11-raw-git-and-terminal-restore-addendum.md).
 Independent review and owner approval remain outstanding. Rebuild the §17 table
 with `python3 scripts/release_check.py`; verify with `--check`; evaluate release
 eligibility with `--tag` (currently refused because evidence is unmeasured).

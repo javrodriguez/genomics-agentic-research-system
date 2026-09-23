@@ -13,7 +13,7 @@ unmerged head). The separate study's done-commit merge hold remains.
 
 | Requirement | Changed files | Acceptance | Result; red-on-fault seen |
 |---|---|---|---|
-| R-001; owner ruling 8A | `tests/test_decision_links_resolve.py`, `docs/decisions/TEMPLATE.md`, `docs/decisions/0058-row-11-records-links-trailers-release-check.md` | Direct link module: tracked citations and all numbered record fields | PASS, `citations: 288/288 resolve`; yes, singular/plural dangling references and missing Test refuse; incorrectly rejecting legacy records and counting a bare year break their positive assertions |
+| R-001; owner ruling 8A | `tests/test_decision_links_resolve.py`, `docs/decisions/TEMPLATE.md`, `docs/decisions/0061-row-11-records-links-trailers-release-check.md` | Direct link module: tracked citations and all numbered record fields | PASS, `citations: 288/288 resolve`; yes, singular/plural dangling references and missing Test refuse; incorrectly rejecting legacy records and counting a bare year break their positive assertions |
 | R-163; owner ruling 7A | `gars/_system/hooks/pre-commit`, `gars/tests/test_hooks_records.py` | Same checker over index blob IDs; actual hook calls in scratch | PASS; yes, an unstaged repair cannot hide either dangling form; unreadable decisions refuse while gitleaks still runs |
 | R-165 | `gars/_system/hooks/pre-push`, `gars/tests/test_hooks_records.py` | Trailer parser, per-commit range selection, activation, committed snapshot reads, session inequality and Bench commit binding | PASS, including actual production-hook calls: later committed snapshot required, same-session reviews and wrong Bench hashes refuse; staged/working repairs have no effect; every outgoing ref and all inherited vetoes are checked |
 | R-116; R-170 | `scripts/release_check.py`, `tests/test_release_check.py`, `docs/implementation/dod_current.md` | Regenerate all thirteen §17 cells; `--check`; `--tag`; direct module | PASS for repository regeneration/refusal mechanics; yes, hand-edited cells and stale rows refuse; release eligibility itself **NOT met** |
@@ -24,7 +24,7 @@ The original rule 4 already authorised extending hook tests with every assertion
 preserved. The producer's extra permission question about this fixture repair was
 unnecessary; no additional owner ruling is claimed for that fixture repair. The
 owner has now settled snapshot ruling 1: require later committed evidence.
-Record 0058 attributes this ruling and its accepted cost to the owner.
+Record 0061 attributes this ruling and its accepted cost to the owner.
 
 ## Citation measurements and command
 
@@ -33,7 +33,7 @@ Prepared-tree count before this resume: `citations: 288/288 resolve`.
 After the resumed change: `citations: 288/288 resolve`.
 The extra occurrence is the uppercase plural reference in the new acceptance
 fixture's source. Neither number is the frozen specification's "210". The owner
-ruled 7A and 8A; their exact rulings are quoted in 0058, attributed to the owner.
+ruled 7A and 8A; their exact rulings are quoted in 0061, attributed to the owner.
 No existing record or frozen specification was edited.
 
 Both measurements used this Python command from the repository root, first inline
@@ -377,8 +377,8 @@ separate-study merge hold still apply; this producer does not approve or merge.
 2026-09-22. Parent producer commit: `d2c0dd9`; whole-row base remains `af4159a`.
 The copied independent review reports R11-01 (BLOCKER) and R11-02 (MAJOR), with
 no MINOR or NOTE findings. Both are fixed under existing owner rulings. The
-review file remains unchanged and untracked. Record 0059 is the corrective
-addendum; record 0058 and every earlier report section remain unchanged.
+review file remains unchanged and untracked. Record 0062 is the corrective
+addendum; record 0061 and every earlier report section remain unchanged.
 
 The earlier unconditional R-165 PASS, reconstructible committed-snapshot and
 repository-side-complete claims were too broad: Git replacement objects could
@@ -389,8 +389,8 @@ they do not establish authenticated reviewer identity or full release eligibilit
 
 | Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
 |---|---|---|---|
-| R11-01 — local replacements bypass citations and committed evidence | `gars/_system/hooks/pre-commit`, `gars/_system/hooks/pre-push`, `gars/tests/test_hooks_records.py`; README, DEVELOPMENT, record 0059, generated decision index, this report | `test_production_staged_blob_replacement_refused`, `test_production_review_blob_replacement_refused`, `test_production_history_replacements_preserve_checks`; complete hook module | PASS. Yes: before the fix both actual hooks accepted replacement blobs; their refusal assertions failed. Four history-substitution subtests also failed original-enforcement assertions (different refusal reasons, not four claimed bypasses). With the fix, raw staged citations and same-session reviews refuse, and activation/path/trailer/range replacements cannot alter the original missing-trailer refusal. All 14 hook tests pass. |
-| R11-02 — earlier restore PASS masks terminal FAIL | `scripts/release_check.py`, `tests/test_release_check.py`; README, DEVELOPMENT, record 0059, generated decision index, this report | `test_terminal_restore_correction_same_timestamp`; complete release module | PASS. Yes: the new actual-CLI test failed before the fix because generated output retained PASS and RTO 3.000000. It now retains FAIL and final RTO 3.100000, even with an older invocation appended later; `--check` passes and `--tag` refuses missing venue/canary and threshold evidence. All 5 release tests pass. |
+| R11-01 — local replacements bypass citations and committed evidence | `gars/_system/hooks/pre-commit`, `gars/_system/hooks/pre-push`, `gars/tests/test_hooks_records.py`; README, DEVELOPMENT, record 0062, generated decision index, this report | `test_production_staged_blob_replacement_refused`, `test_production_review_blob_replacement_refused`, `test_production_history_replacements_preserve_checks`; complete hook module | PASS. Yes: before the fix both actual hooks accepted replacement blobs; their refusal assertions failed. Four history-substitution subtests also failed original-enforcement assertions (different refusal reasons, not four claimed bypasses). With the fix, raw staged citations and same-session reviews refuse, and activation/path/trailer/range replacements cannot alter the original missing-trailer refusal. All 14 hook tests pass. |
+| R11-02 — earlier restore PASS masks terminal FAIL | `scripts/release_check.py`, `tests/test_release_check.py`; README, DEVELOPMENT, record 0062, generated decision index, this report | `test_terminal_restore_correction_same_timestamp`; complete release module | PASS. Yes: the new actual-CLI test failed before the fix because generated output retained PASS and RTO 3.000000. It now retains FAIL and final RTO 3.100000, even with an older invocation appended later; `--check` passes and `--tag` refuses missing venue/canary and threshold evidence. All 5 release tests pass. |
 
 Every Git query used by the citation/trailer readers now passes the trusted
 `--no-replace-objects` option. Adoption discovery also excludes replacement refs
@@ -400,7 +400,7 @@ existing test expectation changed; no test-expectation replacement table is
 needed. Three hook tests and one release test were added. All prior test method
 bodies and the inherited row 15 assertion sets are preserved.
 
-The measured citation count remains `citations: 288/288 resolve`. Record 0059
+The measured citation count remains `citations: 288/288 resolve`. Record 0062
 carries this measurement; no frozen-specification number is edited. D-7 7A and
 D-8 8A remain unchanged. The new record has Context / Decision / Test / Status /
 Date, and legacy records are byte-identical.
@@ -495,7 +495,7 @@ audit: protected and historical records unchanged; report prefix preserved; revi
 gars/_system/executorlib.py gars/_system/wrapperlib.py gars/_system/wrappers
 gars/_system/tools gars/_references docs/specs benchmarks` produced no output.
 `git diff --check` produced no output. The generated decision index was rebuilt
-with `bash docs/decisions/build_index.sh`; its only change is the new 0059 row.
+with `bash docs/decisions/build_index.sh`; its only change is the new 0062 row.
 Changed Python parsed with 3.6 grammar; this does not prove 3.6.8 runtime behavior.
 The added-text check found no current login or machine hostname. The commit uses
 a generic producer identity, and no owner personal identifier is introduced.

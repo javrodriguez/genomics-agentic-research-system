@@ -296,7 +296,7 @@ and Bench from a later committed snapshot: code commit, evidence commit, then pu
 Review round 2 corrected local Git replacement bypasses: citation and trailer
 readers now ignore replacement objects. Restore rows retain terminal corrections
 with equal timestamps; venue/canary evidence remains unmeasured. See the
-[corrective record](docs/decisions/0059-row-11-raw-git-and-terminal-restore-addendum.md).
+[corrective record](docs/decisions/0062-row-11-raw-git-and-terminal-restore-addendum.md).
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
 (349 tests, 11 of them environment skips, on macOS on 2026-09-22 with Docker answering and row 5's scratch folder set as CI sets it; a macOS cold clone without it skips 55, or 57 with `TMPDIR` also unset as on Linux; no cluster run is evidenced for these rows).
