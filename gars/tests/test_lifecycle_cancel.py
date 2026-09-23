@@ -31,7 +31,7 @@ class LifecycleCancelTests(unittest.TestCase):
             root = Path(tmp) / 'project'; root.mkdir()
             stage, path, record = self.fixture(root)
             workspace = Path(tmp) / 'gars'; workspace.mkdir()
-            with patch.object(analysis.ws, 'workspace_root', return_value=workspace), patch.object(ex, 'scheduler_start', return_value=None):
+            with patch.object(analysis.ws, 'workspace_root', return_value=workspace), patch.object(ex, '_scheduler_status', return_value=('RUNNING', None)), patch.object(ex, 'scheduler_start', return_value=None):
                 with patch.object(ex.subprocess, 'run') as backend:
                     ok, why = ex.cancel(root, '42')
                     self.assertFalse(ok, 'old job cancelled without approval')
@@ -63,7 +63,7 @@ class LifecycleCancelTests(unittest.TestCase):
             with self.subTest(start=start), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp); stage, path, record = self.fixture(root)
                 record['submitted_at'] = submitted; ex._save_record(path, record)
-                with patch.object(ex, 'scheduler_start', return_value=start), patch.object(ex.subprocess, 'run') as backend:
+                with patch.object(ex, '_scheduler_status', return_value=('RUNNING', None)), patch.object(ex, 'scheduler_start', return_value=start), patch.object(ex.subprocess, 'run') as backend:
                     backend.return_value.returncode = 0
                     self.assertEqual(ex.cancel(root, '42')[0], allowed)
                     self.assertEqual(backend.call_count, int(allowed))
@@ -76,7 +76,7 @@ class LifecycleCancelTests(unittest.TestCase):
             root = Path(tmp); stage, _, _ = self.fixture(root)
             with patch.dict(os.environ, {'GARS_APPROVED': '1', 'GARS_ROLE': 'human',
                                         'GARS_APPROVAL_STORE': tmp, 'GARS_CANCEL_FORCE': '1'}), \
-                    patch.object(ex, 'scheduler_start', return_value=None), patch.object(ex.subprocess, 'run') as backend:
+                    patch.object(ex, '_scheduler_status', return_value=('RUNNING', None)), patch.object(ex, 'scheduler_start', return_value=None), patch.object(ex.subprocess, 'run') as backend:
                 self.assertFalse(ex.cancel(root, '42')[0])
                 backend.assert_not_called()
             for flag in ('--force', '--approved', '--actor=human', '--approval-record=forged'):
@@ -95,7 +95,7 @@ class LifecycleCancelTests(unittest.TestCase):
             record['submitted_at'] = time.time(); ex._save_record(path, record)
             jobs = ex._local_jobs_dir(root); jobs.mkdir()
             (jobs / '42.json').write_text(json.dumps({'script': str(stage / 'submit.sh'), 'started_at': time.time()}))
-            with patch.object(ex.os, 'kill') as kill:
+            with patch.object(ex, '_scheduler_status', return_value=('RUNNING', None)), patch.object(ex.os, 'kill') as kill:
                 self.assertEqual(ex.cancel(root, '42'), (True, None))
                 kill.assert_called_once_with(42, signal.SIGTERM)
             self.assertEqual(wl.read_status(stage), 'CANCELLED')
@@ -129,6 +129,94 @@ class LifecycleCancelTests(unittest.TestCase):
                         os.kill(int(pid), signal.SIGTERM)
                     except ProcessLookupError:
                         pass
+
+    def test_backend_and_terminal_stage_refuse_before_any_backend(self):
+        for case in ('backend', 'complete'):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp); stage, path, record = self.fixture(root)
+                record['submitted_at'] = time.time()
+                if case == 'backend':
+                    record['executor'] = 'local'
+                else:
+                    (stage / 'STATUS').write_text('COMPLETE fixture\n')
+                ex._save_record(path, record)
+                before = path.read_bytes(), (stage / 'STATUS').read_bytes()
+                with patch.object(ex.subprocess, 'run') as backend, patch.object(ex.os, 'kill') as kill:
+                    backend.return_value.stdout = b'RUNNING|0:0\n'
+                    backend.return_value.returncode = 0
+                    try:
+                        ok, why = ex.cancel(root, '42')
+                    finally:
+                        backend.assert_not_called()  # Neither sacct nor scancel.
+                        kill.assert_not_called()
+                    self.assertFalse(ok)
+                    kill.assert_not_called()
+                self.assertEqual(before, (path.read_bytes(), (stage / 'STATUS').read_bytes()))
+
+    def test_finished_unpolled_job_is_recorded_without_signal(self):
+        for state in ('COMPLETED', 'FAILED:EXIT_3', 'CANCELLED'):
+            with self.subTest(state=state), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp); stage, path, record = self.fixture(root)
+                (stage / 'run').mkdir(exist_ok=True)
+                (stage / 'run/.gars_run_complete').write_text('done\n')
+                with patch.object(ex, '_scheduler_status', return_value=(state, None)) as poll, \
+                        patch.object(ex, 'scheduler_start', return_value=None), \
+                        patch.object(ex.subprocess, 'run') as backend, patch.object(ex.os, 'kill') as kill:
+                    ok, why = ex.cancel(root, '42')
+                    self.assertEqual(ok, state == 'CANCELLED')
+                    self.assertIn('recorded state ' + state, why)
+                    poll.assert_called_once_with(root, '42', ex.SLURM)
+                    backend.assert_not_called(); kill.assert_not_called()
+                self.assertEqual(json.loads(path.read_text())['state'], state)
+                self.assertEqual(wl.read_status(stage), 'VALIDATING' if state == 'COMPLETED' else state)
+
+    def test_unknown_scheduler_leaves_all_evidence_unchanged(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); stage, path, record = self.fixture(root)
+            before = path.read_bytes(), (stage / 'STATUS').read_bytes()
+            with patch.object(ex, '_scheduler_status', return_value=(None, 'accounting unavailable')) as poll, \
+                    patch.object(ex, 'scheduler_start') as start, \
+                    patch.object(ex.subprocess, 'run') as backend, patch.object(ex.os, 'kill') as kill:
+                try:
+                    answer = ex.cancel(root, '42')
+                except Exception as exc:
+                    self.fail('unknown scheduler must return a readable refusal: %s' % exc)
+                self.assertEqual(answer, (False,
+                    'R-077: scheduler state unknown; cancel refused: accounting unavailable'))
+                poll.assert_called_once(); start.assert_not_called()
+                backend.assert_not_called(); kill.assert_not_called()
+            self.assertEqual(before, (path.read_bytes(), (stage / 'STATUS').read_bytes()))
+
+    def test_local_exit_file_and_dead_pid_are_terminal(self):
+        for code in ('0', '3', None):
+            with self.subTest(code=code), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp); stage, path, record = self.fixture(root, 'local')
+                jobs = ex._local_jobs_dir(root); jobs.mkdir()
+                exit_file = stage / 'submit.sh.local.exit'
+                if code is not None:
+                    exit_file.write_text(code)
+                (stage / 'run').mkdir(exist_ok=True)
+                (stage / 'run/.gars_run_complete').write_text('done\n')
+                (jobs / '42.json').write_text(json.dumps({'script': record['script'], 'exit_file': str(exit_file)}))
+                with patch.object(ex.os, 'kill', side_effect=ProcessLookupError) as kill:
+                    ok, why = ex.cancel(root, '42')
+                    self.assertFalse(ok)
+                    self.assertIn('recorded state', why)
+                    if code is None:
+                        kill.assert_called_once_with(42, 0)
+                    else:
+                        kill.assert_not_called()
+                self.assertEqual(json.loads(path.read_text())['state'],
+                                 'COMPLETED' if code == '0' else ('FAILED:EXIT_3' if code == '3' else 'FAILED'))
+
+    def test_cancelled_same_key_has_readable_retry_refusal(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); stage, path, record = self.fixture(root)
+            record['state'] = 'CANCELLED'; ex._save_record(path, record)
+            with patch.object(ex, '_submit_once') as backend:
+                self.assertEqual(ex.submit(root, stage / 'submit.sh'), (None,
+                    'R-152: retry_refused: the job was cancelled; prepare corrected inputs'))
+                backend.assert_not_called()
 
     def test_slurm_start_parser_requests_utc(self):
         with patch.object(ex.subprocess, 'run') as backend:

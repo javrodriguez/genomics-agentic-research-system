@@ -35,6 +35,7 @@ data", improvising an analysis nobody reviewed and nobody can reproduce.
   command in T2 and wait.
 - Do **not** resolve an input any way other than `resolve_artifact.py`. No globbing around
   `02_bioinformatics/`, no paths recalled from earlier turns.
+- Never write `run/` or `.gars_submissions.jsonl`, directly or from your scripts; the executor owns them.
 - Do **not** write outside this analysis's own directory
   (`03_custom_analysis/<NN_slug>/`). Inputs are read-only; upstream artifacts are never
   modified, moved, or "fixed".
@@ -79,10 +80,11 @@ already written on the cluster still approves. Whether a job is
 kills whatever is running when memory runs short, not whatever is at fault, and a wrong size
 estimate is exactly the mistake a default cannot make (decision 0027).
 
-**Complete.** `verify` exit 0: execution has written `run/.gars_run_complete` after success,
-every declared output exists and is non-empty, `OUTPUTS.tsv`
-and `STATUS` are written. An analysis whose outputs are missing is FAILED, whatever the
-scripts' exit codes claimed.
+**Complete.** `verify` exit 0: the executor launcher has written `run/.gars_run_complete`
+after exit 0, and every script's latest submission record binds unchanged script and launcher
+SHA-256 values to a scheduler COMPLETED job. Every declared output exists and is non-empty;
+`verify` writes `OUTPUTS.tsv` and `STATUS`. Outputs without executor evidence never pass.
+An analysis with missing outputs fails verification, whatever its scripts' exit codes claimed.
 
 ## Process
 1. Activated when the user asks for a custom or downstream analysis of an existing project.
@@ -106,15 +108,19 @@ scripts' exit codes claimed.
    report that it refused (exit 2), ask for its `blocked` reasons, reply T3 with them verbatim,
    fix the plan (that is a draft edit, allowed), and return to step 4. Never argue past the
    gate, and never run `approve` yourself.
-7. Execute the approved plan literally: write the scripts it describes under `scripts/` and
-   submit them through the executor door —
-   `python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <script>` —
-   in the environment the plan names; a login-shell run happens only when the plan's `Runs:`
-   line reads `login-node (user-requested)`. `submit` checks the approval record: if it
-   refuses for approval (none, changed plan, or expired), reply T3 with its reason verbatim and
-   stop; a new approval is the user's. On submission reply
-   T4 and monitor the job. The execution script writes `run/.gars_run_complete` only after
-   all its commands succeed. Steps not in the plan do not happen.
+7. Execute the approved plan literally: write its scripts under `scripts/`. Each script must
+   exit non-zero when any command fails; use `set -euo pipefail`. Submit **every script** through
+   `python3 <workspace>/_system/executorlib.py submit --workspace <project dir> <script>`
+   in the environment the plan names.
+   Submit checks `PLAN.md` in the analysis directory even for scripts in subfolders, generates
+   a launcher under `run/`, and records script and launcher hashes with the job id. The executor
+   launcher clears the old marker, runs the script, and writes `run/.gars_run_complete` only
+   on exit 0; it removes the marker on failure. Never write `run/` yourself or from a script.
+   `Runs: login-node (user-requested)` uses the local backend through the same submit call;
+   the executor still owns the marker. A run through no executor is refused by verify.
+   If approval is absent, changed or expired, reply T3 with the refusal and stop; a new
+   approval is the user's. On submission reply T4 and monitor the job. Steps outside the
+   approved plan do not happen.
 8. If execution fails, call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T5 with the actual error,
    and stop. Do not patch around the failure and re-run: diagnosis goes to the user, and a
    changed method is a new plan.
@@ -122,8 +128,8 @@ scripts' exit codes claimed.
    `python3 _system/stage03_analysis.py verify --project projects/<title> --analysis <NN_slug> --model "<model id>"`.
    `--model` is the exact model id you are running as (decision 0024); omit only if you cannot
    name it. Exit 1 → declared outputs are missing or empty: reply
-   T5, stop. Exit 2 → the plan has no valid approval record (never approved, edited since, or
-   expired); treat as step 8's failure — something ran that should not have.
+   T5, stop. Exit 2 → approval or execution evidence is missing or invalid; report the
+   refusal verbatim and stop as in step 8.
 10. Exit 0 → append the returned `history_entry` to the project's `HISTORY.md` **verbatim**,
     replacing `<ISO-8601 date>` with today's date, and reply T6.
 
@@ -177,7 +183,7 @@ I will fix the plan and show it to you again.
 **T4 — Scheduled**
 ```
 Analysis <NN_slug> submitted: job <jobid>, per the plan's Execution section.
-I will report when it completes; STATUS in the analysis directory is the authority meanwhile.
+I will report its scheduler state through executorlib.py status; verify alone writes STATUS.
 ```
 
 **T5 — Failed**
@@ -186,7 +192,8 @@ Analysis <NN_slug> FAILED at <step>:
 
 <the actual error, verbatim>
 
-STATUS records the failure. The plan is unchanged; say how you want to proceed — a revised
+The scheduler log and `executorlib.py status` record the failure; verify alone writes STATUS.
+The plan is unchanged; say how you want to proceed — a revised
 method is a new plan for your review, not a silent retry.
 ```
 
@@ -210,7 +217,9 @@ Recorded in OUTPUTS.tsv and HISTORY.md. The plan that produced this is frozen at
 | `03_custom_analysis/<NN_slug>/scripts/` | every script the analysis ran, exactly as run |
 | `03_custom_analysis/<NN_slug>/results/` | the outputs the plan declared |
 | `03_custom_analysis/<NN_slug>/OUTPUTS.tsv` | declared artifacts by type, written by `verify` |
-| `03_custom_analysis/<NN_slug>/STATUS` | `COMPLETE <iso8601>` or `FAILED <iso8601>` — the only authority |
+| `03_custom_analysis/<NN_slug>/STATUS` | `COMPLETE <iso8601>`, written only by `verify`; failures are in the scheduler log and `executorlib.py status` |
+| `03_custom_analysis/<NN_slug>/run/` | executor-owned launchers, marker and local exit/log evidence; never agent-written |
+| `03_custom_analysis/<NN_slug>/.gars_submissions.jsonl` | executor-owned append-only submission entries |
 | `HISTORY.md` entry | template version, model, plan reference, goal, outputs |
 
 ## Human check

@@ -50,8 +50,9 @@ This stage performs the steps in Process and nothing else.
 Created by the sub-stage, owned by it, and never written to by any other sub-stage.
 
 **STATUS file.** `<sub-stage output directory>/STATUS`, a single line, one of:
-`SUBMITTED <job_id> <iso8601>`, `RUNNING <job_id> <iso8601>`, `COMPLETE <iso8601>`,
-`FAILED:<reason> <iso8601>` or `CANCELLED <iso8601>` (the closed enum is in
+`SUBMITTED <job_id> <iso8601>`, `RUNNING <job_id> <iso8601>`,
+`VALIDATING <iso8601>`, `ARTIFACT_MISSING <iso8601>`, `STALE <iso8601>`,
+`COMPLETE <iso8601>`, `FAILED:<reason> <iso8601>` or `CANCELLED <iso8601>` (the closed enum is in
 `wrapperlib.write_status()`, spec §15). Only code writes this file; use the typed
 `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`
 call to refresh scheduler state. It is the only authority on a sub-stage's state — never infer
@@ -135,15 +136,18 @@ python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py ...   
    a question to re-ask.
 4. Read the Sub-stages column for this assay from `_references/assay_stage_skill_map.md`.
 5. Read each sub-stage's STATUS file, treating a missing file as `NOT_STARTED`. Reply T2 with
-   the full sub-stage status table.
+   the full sub-stage status table, including VALIDATING, ARTIFACT_MISSING and STALE.
 6. Identify the first sub-stage that is not `COMPLETE`. If every sub-stage is `COMPLETE`, reply
-   T4 and stop.
+   T4 and stop. VALIDATING, ARTIFACT_MISSING and STALE continue to step 10,
+   where the sub-stage contract runs its collect step and reports its gate result.
 7. If that sub-stage is `SUBMITTED` or `RUNNING`, reply T3 with how to check on it, and stop.
-   Do not resubmit.
-8. If that sub-stage is `FAILED`, reply T6 with its recorded error and stop. Resolving a failure
-   is the user's decision, not an automatic retry.
+   Do not resubmit. After polling, VALIDATING, ARTIFACT_MISSING and STALE go to step 10.
+8. If that sub-stage is `FAILED:<reason>` or `CANCELLED`, reply T6 with its recorded error and stop. Resolving a failure
+   or cancellation is the user's decision, not an automatic retry. VALIDATING,
+   ARTIFACT_MISSING and STALE instead go to step 10.
 9. If that sub-stage is `NOT_STARTED`, read its `Consumes` column from the assay map and resolve
-   every listed type:
+   every listed type; VALIDATING, ARTIFACT_MISSING and STALE bypass this initial-input
+   routing and go to step 10's collect hand-off:
 
    ```bash
    python3 _system/resolve_artifact.py --project projects/<title> --assay <Assay ID> \
@@ -161,7 +165,7 @@ python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py ...   
 ## Response Format
 Every message you send in this stage is one of the templates below, with placeholders filled.
 Add nothing else: no observations, no suggestions, no offers, no commentary about the data.
-Once control passes to a sub-stage at step 9, that sub-stage's templates apply instead.
+Once control passes to a sub-stage at step 10, that sub-stage's templates apply instead.
 
 One standing exception, from `_references/contract_standard.md` ("the bounded voice"): if the user asks a direct question, answer it from this workspace's own files — the contracts, `_references/`, and the current project's directory — read-only, in a short paragraph, then restate the pending wait point. Never let the answer become an action, a recommendation to deviate, or a reason to skip a step.
 
@@ -176,9 +180,9 @@ Assay: <Assay ID>
 ```
 | # | Sub-stage | Skill | Status |
 |---|---|---|---|
-| <n> | <NN_name> | <skill> | NOT_STARTED / SUBMITTED / RUNNING / COMPLETE / FAILED |
+| <n> | <NN_name> | <skill> | NOT_STARTED / SUBMITTED / RUNNING / VALIDATING / ARTIFACT_MISSING / STALE / COMPLETE / FAILED:<reason> / CANCELLED |
 
-Next: <NN_name>
+Next: <NN_name>; VALIDATING / ARTIFACT_MISSING / STALE → step 10 and its collect step.
 ```
 
 **T3 — Already running**
@@ -186,7 +190,8 @@ Next: <NN_name>
 <NN_name> is <SUBMITTED|RUNNING> as job <job_id> since <timestamp>. Nothing was resubmitted.
 
 Check progress: squeue -j <job_id>
-Re-run stage 02 when it finishes to continue.
+After polling, VALIDATING / ARTIFACT_MISSING / STALE → step 10 and the sub-stage's collect step.
+FAILED:<reason> / CANCELLED → the user's decision (T6).
 ```
 
 **T4 — All sub-stages complete**
@@ -254,14 +259,14 @@ Cannot start stage 02.
 Run 01_prepare_samplesheets first.
 ```
 
-**T6 — Sub-stage failed**
+**T6 — Sub-stage failed or cancelled**
 ```
-<NN_name> failed at <timestamp> with <error_code>.
+<NN_name> is <FAILED:<reason>|CANCELLED> at <timestamp> with <error_code>.
 
 <verbatim error from the sub-stage log>
 
-Nothing was retried and nothing was deleted. Resolve the cause, clear the sub-stage output
-directory, and run stage 02 again.
+Nothing was retried or deleted. Decide how to resolve the cause; corrected inputs need
+prepare again before another submission.
 ```
 
 **T7 — Required artifacts missing**

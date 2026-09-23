@@ -19,8 +19,8 @@ identical to what this system generated before the seam existed. A cluster that 
 The built-in `local` backend runs the generated script under `nohup`-style detachment and
 reports the PID as the job id. It exists so the deterministic core can exercise a real
 submit -> status -> completion walk with no cluster at all; it is POSIX-only, like every
-other assumption this system already makes, and it is NOT a venue for analyses -- stage 03's
-venue gate is unchanged.
+other assumption this system already makes. Stage 03 also uses it for an explicitly approved
+`Runs: login-node (user-requested)` plan (decision 0069).
 
 Runs on stock python 3.6.8, stdlib only, like every `_system/` helper.
 """
@@ -29,6 +29,8 @@ import argparse
 import datetime
 import hashlib
 import signal
+import shlex
+import uuid
 import time
 import fcntl
 import json
@@ -453,7 +455,8 @@ def _submit_once(config_root, script, descriptor=None):
         problem = config_holds(config_root, stage, parts[1])
         if problem:
             return None, SubmissionFailure(problem)
-    elif parts and parts[0] == '03_custom_analysis':
+    elif len(parts) >= 2 and parts[0] == '03_custom_analysis':
+        stage = Path(config_root).resolve().joinpath(*parts[:2])
         from stage03_analysis import approval_holds, approval_record_path, ws
         workspace = ws.workspace_root(__file__)
         holds, why = approval_holds(stage / 'PLAN.md',
@@ -670,6 +673,8 @@ def record_failure(stage, record, state, detail):
 
 def retry_refusal(root, stage, record, retries):
     """Consume recorded class evidence and the existing configured retry ceiling."""
+    if record['state'] == 'CANCELLED':
+        return 'R-152: retry_refused: the job was cancelled; prepare corrected inputs'
     try:
         category = Path(record['failure_artifact']).read_text().strip()
         if category != record['failure_class'] or category != classify(record['state'], None):
@@ -781,6 +786,13 @@ def cancel(root, job_id, descriptor=None):
         previous = wl.read_status(stage)
         if previous and previous.split(':', 1)[0] in wl.TERMINAL_STATES:
             return False, 'R-074: stage is already terminal; reconcile recorded job'
+        observed = _scheduler_status(root, job_id, descriptor)
+        if observed[0] is None:
+            return False, 'R-077: scheduler state unknown; cancel refused: %s' % observed[1]
+        if _scheduler_terminal(observed[0]):
+            _status_locked(root, job_id, descriptor, observed=observed)
+            saved = _job_record(root, job_id)[1]['state']
+            return saved == 'CANCELLED', 'cancel refused: recorded state %s' % saved
         started = scheduler_start(root, record, descriptor)
         if started is not None:
             record['started_at'] = started
@@ -810,6 +822,144 @@ def cancel(root, job_id, descriptor=None):
         return True, None
 
 
+ANALYSIS_SUBMISSIONS = '.gars_submissions.jsonl'
+
+
+def analysis_directory(root, script):
+    """The first two project-relative parts own even scripts in nested folders."""
+    root = Path(root).resolve()
+    parts = Path(script).resolve().relative_to(root).parts
+    if len(parts) < 3 or parts[0] != '03_custom_analysis':
+        raise ValueError('script must be inside a stage-03 analysis')
+    return root.joinpath(*parts[:2])
+
+
+def _analysis_entries(adir):
+    path = Path(adir) / ANALYSIS_SUBMISSIONS
+    if not path.is_file():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding='utf-8').splitlines()]
+
+
+def _analysis_latest(entries):
+    latest = {}
+    for entry in entries:
+        latest[entry['script']] = entry
+    return latest
+
+
+def _sha256(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def _analysis_approval(adir):
+    from stage03_analysis import approval_holds, approval_record_path, ws
+    workspace = ws.workspace_root(__file__)
+    plan = adir / 'PLAN.md'
+    return approval_holds(plan, approval_record_path(plan, workspace), workspace)
+
+
+def _analysis_descriptor(adir, descriptor):
+    text = (adir / 'PLAN.md').read_text(encoding='utf-8')
+    if re.search(r'^Runs: login-node \(user-requested\)\s*$', text, re.M):
+        return LOCAL
+    return descriptor
+
+
+def _analysis_launcher(adir, script, descriptor):
+    """Keep leading Slurm directives byte-for-byte; only this launcher owns success."""
+    source = Path(script).read_bytes()
+    directives = []
+    for line in source.splitlines(keepends=True):
+        if line.strip() and not line.lstrip().startswith(b'#'):
+            break
+        if line.startswith(b'#SBATCH'):
+            directives.append(line)
+    launcher = adir / 'run' / ('launch-' + uuid.uuid4().hex + '.sh')
+    marker = shlex.quote(str(adir / 'run/.gars_run_complete'))
+    body = ('cd %s || exit 1\n'
+            'rm -f -- %s || exit 1\n'
+            'bash %s\n'
+            'code=$?\n'
+            'if [ "$code" -eq 0 ]; then\n'
+            '    : > %s\n'
+            'else\n'
+            '    rm -f -- %s\n'
+            'fi\n'
+            'exit "$code"\n') % (shlex.quote(str(adir)), marker,
+                                      shlex.quote(str(script)), marker, marker)
+    header = b'#!/bin/bash\n' + (b''.join(directives) if descriptor['name'] == 'slurm' else b'')
+    if not header.endswith(b'\n'):
+        header += b'\n'
+    launcher.write_bytes(header + body.encode('utf-8'))
+    return launcher
+
+
+def _submit_analysis(root, script, descriptor):
+    script = Path(script).resolve()
+    adir = analysis_directory(root, script)
+    holds, why = _analysis_approval(adir)
+    if not holds:
+        return None, 'R-073: ' + why
+    descriptor = _analysis_descriptor(adir, descriptor)
+    problems = validate(descriptor)
+    if problems:
+        return None, '; '.join(problems)
+    run = adir / 'run'
+    run.mkdir(exist_ok=True)
+    with (run / '.submission.lock').open('a') as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        try:
+            previous = _analysis_latest(_analysis_entries(adir)).get(str(script))
+            if previous:
+                if not previous.get('job_id'):
+                    return None, 'R-077: scheduler state unknown; prior submission unresolved'
+                state, detail = _scheduler_status(root, previous['job_id'], BUILTINS[previous['executor']])
+                if state is None:
+                    return None, 'R-077: scheduler state unknown; resubmit refused: %s' % detail
+                if not _scheduler_terminal(state):
+                    return None, 'R-076: duplicate_submission; recorded job is %s' % state
+            script_hash = _sha256(script)
+            launcher = _analysis_launcher(adir, script, descriptor)
+            entry = {'script': str(script), 'script_sha256': script_hash,
+                     'launcher': str(launcher), 'launcher_sha256': _sha256(launcher),
+                     'executor': descriptor['name'], 'submitted_at': time.time()}
+            job, detail = _submit_once(root, launcher, descriptor)
+            entry['job_id'] = job
+            if detail:
+                entry['error'] = str(detail)
+            with (adir / ANALYSIS_SUBMISSIONS).open('a') as record:
+                record.write(json.dumps(entry, sort_keys=True) + '\n')
+                record.flush()
+                os.fsync(record.fileno())
+            return job, detail
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            return None, 'R-135: stage-03 submission refused: %s' % exc
+
+
+def analysis_execution_evidence(root, adir):
+    """A marker alone proves nothing: bind every script's latest job and exact bytes."""
+    adir = Path(adir).resolve()
+    try:
+        entries = _analysis_entries(adir)
+        if not entries:
+            raise ValueError('submission record missing or empty; analyses submitted before this fix must submit through the executor again')
+        for entry in _analysis_latest(entries).values():
+            for kind in ('script', 'launcher'):
+                path = Path(entry[kind]).resolve()
+                path.relative_to(adir)
+                if _sha256(path) != entry[kind + '_sha256']:
+                    raise ValueError(kind + ' SHA-256 changed since submit')
+            if not entry.get('job_id'):
+                raise ValueError('submission has no job id')
+            state, detail = _scheduler_status(root, entry['job_id'], BUILTINS[entry['executor']])
+            if state != 'COMPLETED':
+                raise ValueError('recorded job %s is %s: %s' % (entry['job_id'], state, detail))
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        return 'R-135: marker is not execution evidence: %s' % exc
+    return None
+
+
 def submit(config_root, script, descriptor=None):
     """R-076: reserve the prepared key before any scheduler side effect.
 
@@ -824,7 +974,9 @@ def submit(config_root, script, descriptor=None):
         parts = stage.relative_to(Path(config_root).resolve()).parts
     except ValueError:
         return None, 'R-073: script is outside its project'
-    # Keep row 4's preflight refusal and stage-03 approval behavior intact.
+    if len(parts) >= 2 and parts[0] == '03_custom_analysis':
+        return _submit_analysis(config_root, script, descriptor)
+    # Keep row 4's preflight refusal intact.
     if len(parts) < 3 or parts[0] != '02_bioinformatics':
         return _submit_once(config_root, script, descriptor)
     problem = config_holds(config_root, stage, parts[1])
@@ -912,8 +1064,19 @@ def submit(config_root, script, descriptor=None):
         return job, detail
 
 
+def _analysis_job_descriptor(config_root, job_id):
+    for path in (Path(config_root) / '03_custom_analysis').glob('*/' + ANALYSIS_SUBMISSIONS):
+        for entry in _analysis_entries(path.parent):
+            if entry.get('job_id') == str(job_id):
+                return BUILTINS[entry['executor']]
+    return None
+
+
 def status(config_root, job_id, descriptor=None):
     """R-077: scheduler evidence updates only the job that submit recorded."""
+    recorded = _analysis_job_descriptor(config_root, job_id)
+    if recorded:
+        return _scheduler_status(config_root, job_id, recorded)
     directory = _records(config_root)
     if not directory.exists():
         return _scheduler_status(config_root, job_id, descriptor)
@@ -922,13 +1085,13 @@ def status(config_root, job_id, descriptor=None):
         return _status_locked(config_root, job_id, descriptor)
 
 
-def _status_locked(config_root, job_id, descriptor):
+def _status_locked(config_root, job_id, descriptor, observed=None):
     import wrapperlib as wl
     path, record = _job_record(config_root, job_id)
     descriptor = descriptor if descriptor is not None else load(config_root)
     if record and descriptor.get('name') != record.get('executor'):
         return None, 'R-135: executor differs from the recorded submission'
-    state, detail = _scheduler_status(config_root, job_id, descriptor)
+    state, detail = observed if observed is not None else _scheduler_status(config_root, job_id, descriptor)
     if record:
         try:
             stage = _validate_record(config_root, path, record)
@@ -1048,6 +1211,9 @@ def main(argv=None):
                                          'reason': reason}
                     return emit(result, EXIT_REFUSED)
             return emit(result, EXIT_FAILURE)
+        recorded = _analysis_job_descriptor(root, job_id)
+        if recorded:
+            result["executor"] = recorded["name"]
         result["job_id"] = job_id
         result["ok"] = detail is None
         if detail:
@@ -1070,6 +1236,9 @@ def main(argv=None):
         if state is None:
             result["error"] = detail
             return emit(result, EXIT_FAILURE)
+        recorded = _analysis_job_descriptor(root, args.job_id)
+        if recorded:
+            result["executor"] = recorded["name"]
         result["job_id"] = args.job_id
         result["state"] = state
         result["terminal"] = state in ("COMPLETED", "CANCELLED") or state.startswith("FAILED")

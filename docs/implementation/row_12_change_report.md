@@ -1162,3 +1162,204 @@ OK (skipped=50)
 
 All 20 visible fault plants were red in this final run. Full row exit and merge
 readiness remain unclaimed for the residual gaps and owner actions above.
+
+## Review round 5 fixes (post-merge, on e59dfc0)
+
+Date: **2026-09-23**. Branch `build/gars-row-12-fix` starts from public main
+`e59dfc0`, with row 12 merged and its prior protected changes approved in 0066.
+Scope is 0066's MINOR-1–4 plus round-4 NOTE-2–4. The supplied review remains
+untracked and unchanged; SHA-256
+`91acbbf2f3480502c5d21e3ffd3d213c963d335d3591a2a035d90d26401c9938`.
+Earlier report bytes and decisions 0063–0067 are preserved. New producer record
+[0069](../decisions/0069-row-12-fix-round-minors.md) quotes the owner's exact reply
+and option texts, labels the lane's specification separately, and corrects 0063's
+stage-03 “execution-created” claim in its own text. The index is regenerated.
+No finding is dismissed as wrong and no owner approval is supplied by this round.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| MINOR-1 | `gars/tests/test_lifecycle_cancel.py`, `test_downstream_keys.py`, `test_lifecycle_faults.py` | `test_backend_and_terminal_stage_refuse_before_any_backend`; all three downstream prepare/submit tests | Closed repo-side. **Yes:** M8 removes backend identity; M9 removes terminal STATUS refusal; M11 accepts another assay's coherently keyed config. Named tests fail; COMPLETE asserts no sacct, scancel or os.kill. |
+| MINOR-2 / 2A | `gars/_system/executorlib.py`, cancel tests, fault harness | `test_finished_unpolled_job_is_recorded_without_signal`, `test_unknown_scheduler_leaves_all_evidence_unchanged`, `test_local_exit_file_and_dead_pid_are_terminal` | Closed repo-side. **Yes:** poll removed, unknown refusal removed, double poll and wrong CANCELLED reply plants fail. Exit-file success/failure and dead PID are terminal; unknown leaves record and STATUS byte-identical. |
+| MINOR-3 | `gars/02_bioinformatics/CONTEXT.md`, `gars/03_custom_analysis/CONTEXT.md`, `test_lifecycle_contracts.py`, fault harness | `test_parent_status_paragraph_covers_derived_writer_states`, `test_contract_routes_and_executor_ownership` | Closed. **Yes:** removing VALIDATING from the STATUS paragraph, removing an intermediate collect route, or restoring false stage-03 FAILED prose fails. Derived states include wrappers, authoring templates, _status_locked and both descriptor sources; nonempty/eight-state floors prevent a vacuous pass. |
+| MINOR-4 / 1B | `executorlib.py`, `stage03_analysis.py`, `guard_hook.py`, `gars/.claude/settings.json`, stage-03 contract, `test_stage03_execution.py`, `test_approval_forgery.py`, `tests/run_tests.py`, fault harness, 0069 | stage-03 nested-script, local launcher, Slurm directive, concurrent submit, resubmit, forged marker, path/hash/all-script/scheduler and guarded-tool tests | Closed within the specified guarded-session threat model. **Yes:** launcher writes on failure/keeps stale marker; binding/record/path/hash/scheduler/job-id checks removed; run/record guards or each settings twin removed; lock removed; history overwritten; resubmit refusals removed; approval rooted beside script; login-node route removed. Each fails its named test. Actual local jobs and stub Slurm directives are exercised. |
+| NOTE-2 / 3A | `DEVELOPMENT.md`, this appended report | operational migration statements below | Closed. **No:** documentation only, no new executable gate. Existing missing-key refusals remain. |
+| NOTE-3 / 3A | `executorlib.py`, cancel tests, fault harness | `test_cancelled_same_key_has_readable_retry_refusal` | Closed. **Yes:** deleting the CANCELLED early return loses the exact readable R-152 reason. `classify` is unchanged. |
+| NOTE-4 / 3A | `tests/run_tests.py` | `ExecutorSeamTests.test_01_shipped_template_resolves_to_the_builtin` | Closed. **No:** removal of an unused fixture line; raw template equality is unchanged. |
+| NOTE-1 | 0069, this report | existing durable-state behavior retained | Open by the owner's ruling. **No:** no state-table change authorized. |
+
+The analysis directory is `<project>/03_custom_analysis/<NN_slug>`, not the script's
+immediate parent. Approval, launcher, marker, local exit/log and submission evidence
+all use it; `scripts/x.sh` is a positive local execution case. Each submission appends
+script/launcher paths and SHA-256 values, executor, job id and submitted_at. Every
+script's latest job must report COMPLETED with unchanged bytes for verify to pass.
+A script-created marker alone, or one from a failed script, cannot supply that evidence.
+Slurm receives the launcher with the original leading #SBATCH directive bytes;
+`Runs: login-node (user-requested)` selects local execution through the same submit
+call. The agent never writes run/ and every script must fail on failed commands.
+
+A stage prepared before the idempotency-key fix must run `prepare` again before submit or collect.
+A stage-03 analysis submitted before this fix has no submission record, so verify refuses it until it is submitted through the executor again.
+
+The existing approval success fixtures now include bound synthetic local execution
+records, preserving their forgery/expiry/plan-identity assertions. The root stage-03
+fixture runs an actual approved local executor job instead of planting a marker.
+Existing cancel timing/approval cases explicitly hold the new scheduler precondition
+at RUNNING. No threshold, guard, classifier or prior content assertion is weakened.
+Initial focused runs exposed fixture issues (missing run/ directory and selecting
+sbatch's export argument instead of its script); these were corrected. Four initial
+fault witnesses were errors rather than assertions; tests now explicitly fail on a
+bad refusal or backend side effect, and the plants are rerun behaviorally.
+
+## Owner rulings needed
+
+No new implementation choice waits on the owner. **Protected-path merge approval
+still does:** R-094/spec §9.3 requires a separate owner commit, record **0070**, in the
+shape of 0066, approving guard_hook.py, settings.json and the two changed CONTEXT.md
+contracts. This producer does not write 0070, merge, push, open a PR, or claim approval.
+
+Ambiguous submission recovery (ruling 9), published benchmark pins (ruling 10), live
+scheduler acceptance and NOTE-1 remain open and are restated, not implemented here.
+
+### Residual gaps
+
+The threat model is a Write/Edit/Bash agent session under guard_hook.py and settings.json,
+using their existing guarded command boundary. It does not establish separate OS users.
+An approved script that does no real work and exits 0 remains possible; the declared-output
+gate still applies. The cancel poll-to-signal window and PID reuse while a local job still
+reads RUNNING remain. Real Slurm/sacct/scancel output shapes, Python 3.6.8 execution,
+separate-user approval/reviewer isolation and native harness settings-glob semantics are
+unverified. Local jobs and scheduler stubs do not satisfy live R-076 acceptance.
+
+Accounting loss after COMPLETED can still leave VALIDATING → STALE (NOTE-1); changing
+that needs the owner's durable-state-table ruling. Ambiguous submissions still stop
+for scheduler evidence and owner reconciliation; no recovery/release operation is added.
+Published benchmark pins remain unchanged and deferred. Full row-12 exit remains
+**NOT met**, and no external human seal, cluster, Docker or scientific acceptance is claimed.
+
+### Files changed in round 5
+
+- `DEVELOPMENT.md`
+- `README.md`
+- `docs/decisions/0069-row-12-fix-round-minors.md`
+- `docs/decisions/CONTEXT.md` (regenerated)
+- `docs/implementation/row_12_change_report.md` (append only)
+- `gars/.claude/settings.json`
+- `gars/02_bioinformatics/CONTEXT.md`
+- `gars/03_custom_analysis/CONTEXT.md`
+- `gars/_system/executorlib.py`
+- `gars/_system/guard_hook.py`
+- `gars/_system/stage03_analysis.py`
+- `gars/tests/test_approval_forgery.py`
+- `gars/tests/test_downstream_keys.py`
+- `gars/tests/test_lifecycle_cancel.py`
+- `gars/tests/test_lifecycle_contracts.py`
+- `gars/tests/test_lifecycle_faults.py`
+- `gars/tests/test_stage03_execution.py`
+- `tests/run_tests.py`
+
+### Verification and execution conditions
+
+All scratch files, subprocess temporary directories and raw logs use the designated
+sibling scratch folder via TMPDIR, TEMP and TMP. Test runs disable bytecode writes.
+No dependency is installed and no network, remote, push, merge or PR operation is used.
+The supplied review is excluded from staging. Commands and verbatim summaries follow.
+
+Two preliminary whole-suite runs each found the new record untracked at citation-check time:
+`Ran 414 tests in 294.753s` / `FAILED (failures=1, skipped=55)` and
+`Ran 414 tests in 292.294s` / `FAILED (failures=1, skipped=55)`.
+The record was staged by its named path, given the required Context/Decision/Test/Status/Date
+sections, and its metadata set to the repository's valid `standing` value; this denotes a
+standing implementation record, not owner protected-path approval. The citation check then
+printed `citations: 293/293 resolve`. A subsequent full run printed
+`Ran 414 tests in 310.715s` / `OK (skipped=55)`. Final review also corrected the login-node
+CLI's executor label to match its recorded local backend, with both submit and status
+asserted in the route test; the final complete run below includes that correction.
+
+| Required command | Final verbatim summary lines |
+|---|---|
+| `python3 tests/run_tests.py` | `Ran 414 tests in 296.684s` / `OK (skipped=55)` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/check_counts.py` | `enforced=3` / `clean — every current claim matches the suite` |
+| `python3 evals/test_harness.py` | `Ran 44 tests in 186.669s` / `OK` |
+| `python3 evals/check_results.py --controls --lexicon` | `clean — graded=1` |
+| `python3 gars/tests/test_lifecycle_faults.py` | `Ran 1 test in 44.746s` / `OK` |
+
+All six required commands exited 0. The full suite collected 414 tests; its 55 skips
+remain explicit environment/evidence gaps. All 60 visible lifecycle plants were red
+in the final standalone harness and the final full suite; these are behavioral
+witnesses, not the sealed mutation score. The unused-fixture seam test also passed:
+`Ran 1 test in 0.037s` / `OK`.
+
+Final audits: prior report bytes are an exact prefix; all earlier decisions are
+byte-identical; 0070 is absent; the supplied review hash is unchanged and the file is
+untracked. Every changed path appears in the inventory above. The excluded-tree diff
+is empty, the generated index reproduces byte-for-byte, owner option quotes compare
+exactly, added content contains no local identity, and `git diff --check` is clean.
+Changed Python files parse under Python 3.6 grammar; actual Python 3.6.8 execution is
+not verified. One commit is staged by named paths with its message file in sibling
+scratch and a generic producer author/committer identity.
+
+Final visible fault witnesses:
+
+```text
+fault red: wrapper writes STATUS inline
+fault red: writer accepts an out-of-enum value
+fault red: TIMEOUT folds into FAILED
+fault red: duplicate submission reaches scheduler
+fault red: corrected terminal stage stays wedged
+fault red: status binds to re-prepared inputs
+fault red: new key overlaps unresolved stage job
+fault red: forged record bypasses script identity
+fault red: agent session writes STATUS
+fault red: killed worker reported COMPLETE
+fault red: P9 terminal without record reaches backend
+fault red: old terminal reason ignored
+fault red: new record without job accepted
+fault red: empty poll overwrites terminal record
+fault red: retry exceeds maxRetries
+fault red: old job cancelled without approval
+fault red: success skips VALIDATING
+fault red: M8 cancel ignores recorded backend
+fault red: M9 cancel ignores terminal STATUS
+fault red: M11 downstream accepts another assay config
+fault red: cancel poll removed
+fault red: unknown scheduler cancel refusal removed
+fault red: cancel polls twice
+fault red: scheduler CANCELLED loses terminal success reply
+fault red: CANCELLED retry loses readable refusal
+fault red: launcher writes marker on any exit
+fault red: launcher keeps stale marker before script
+fault red: launcher loses Slurm resource directives
+fault red: stage03 checks approval beside nested script
+fault red: stage03 creates launcher before approval refusal
+fault red: stage03 running resubmit refusal removed
+fault red: stage03 unknown resubmit refusal removed
+fault red: stage03 submission history overwritten
+fault red: login-node bypasses local route
+fault red: verify record and scheduler binding removed
+fault red: verify accepts absent submission record
+fault red: verify accepts paths outside analysis
+fault red: verify ignores changed hashes
+fault red: verify ignores failed or unknown scheduler
+fault red: verify checks only the last script
+fault red: stage03 guard removed: projects/*/03_custom_analysis/*/run/*
+fault red: stage03 guard removed: projects/*/03_custom_analysis/*/.gars_submissions.jsonl
+fault red: stage03 settings deny removed: Edit projects/*/03_custom_analysis/*/run/*
+fault red: stage03 settings deny removed: Write projects/*/03_custom_analysis/*/run/*
+fault red: stage03 settings deny removed: Edit projects/*/03_custom_analysis/*/run/**/*
+fault red: stage03 settings deny removed: Write projects/*/03_custom_analysis/*/run/**/*
+fault red: stage03 settings deny removed: Edit projects/*/03_custom_analysis/*/.gars_submissions.jsonl
+fault red: stage03 settings deny removed: Write projects/*/03_custom_analysis/*/.gars_submissions.jsonl
+fault red: parent contract loses a writer state
+fault red: parent contract loses collect route
+fault red: stage03 contract loses failure discipline
+fault red: stage03 contract falsely records FAILED
+fault red: stage03 nested run guard removed
+fault red: stage03 submission lock removed
+fault red: stage03 unresolved submission allowed
+fault red: verify accepts missing job identity
+fault red: login-node CLI reports wrong executor
+fault red: computed STATUS path
+fault red: copied STATUS path
+fault red: formatted STATUS path
+```

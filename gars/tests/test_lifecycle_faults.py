@@ -95,6 +95,77 @@ class LifecycleFaultTests(unittest.TestCase):
              'test_failure_classification.py', 'FailureClassificationTests.test_scheduler_success_then_collect_failure',
              "'RUNNING' != 'VALIDATING'"),
         ])
+        faults.extend([
+            ('M8 cancel ignores recorded backend', '_system/executorlib.py', "if not record or record.get('executor') != descriptor['name']:", 'if not record:', 'test_lifecycle_cancel.py', 'LifecycleCancelTests.test_backend_and_terminal_stage_refuse_before_any_backend', 'AssertionError'),
+            ('M9 cancel ignores terminal STATUS', '_system/executorlib.py', "if previous and previous.split(':', 1)[0] in wl.TERMINAL_STATES:", 'if False:', 'test_lifecycle_cancel.py', 'LifecycleCancelTests.test_backend_and_terminal_stage_refuse_before_any_backend', 'AssertionError'),
+            ('M11 downstream accepts another assay config', '_system/executorlib.py', "raise ValueError('config input differs from stage assay')", 'pass', 'test_downstream_keys.py', 'DownstreamKeyTests.test_rnaseq_de_submit', 'AssertionError'),
+            ('cancel poll removed', '_system/executorlib.py', 'observed = _scheduler_status(root, job_id, descriptor)', "observed = ('RUNNING', None)", 'test_lifecycle_cancel.py', 'LifecycleCancelTests.test_finished_unpolled_job_is_recorded_without_signal', 'AssertionError'),
+            ('unknown scheduler cancel refusal removed', '_system/executorlib.py', 'if observed[0] is None:', 'if False:', 'test_lifecycle_cancel.py', 'LifecycleCancelTests.test_unknown_scheduler_leaves_all_evidence_unchanged', 'AssertionError'),
+            ('cancel polls twice', '_system/executorlib.py', 'descriptor, observed=observed)', 'descriptor)', 'test_lifecycle_cancel.py', 'LifecycleCancelTests.test_finished_unpolled_job_is_recorded_without_signal', 'AssertionError'),
+            ('scheduler CANCELLED loses terminal success reply', '_system/executorlib.py', "return saved == 'CANCELLED',", 'return False,', 'test_lifecycle_cancel.py', 'LifecycleCancelTests.test_finished_unpolled_job_is_recorded_without_signal', 'AssertionError'),
+            ('CANCELLED retry loses readable refusal', '_system/executorlib.py', "if record['state'] == 'CANCELLED':", 'if False:', 'test_lifecycle_cancel.py', 'LifecycleCancelTests.test_cancelled_same_key_has_readable_retry_refusal', 'AssertionError'),
+            ('launcher writes marker on any exit', '_system/executorlib.py', 'if [ "$code" -eq 0 ]; then', 'if true; then', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_launcher_clears_marker_and_removes_script_forgery_on_failure', 'AssertionError'),
+            ('launcher keeps stale marker before script', '_system/executorlib.py', "'rm -f -- %s || exit 1\\n'", "': %s\\n'", 'test_stage03_execution.py', 'Stage03ExecutionTests.test_launcher_clears_marker_and_removes_script_forgery_on_failure', 'AssertionError'),
+            ('launcher loses Slurm resource directives', '_system/executorlib.py', "b''.join(directives) if descriptor['name'] == 'slurm' else b''", "b''", 'test_stage03_execution.py', 'Stage03ExecutionTests.test_slurm_directives_and_launcher_are_handed_to_backend', 'AssertionError'),
+            ('stage03 checks approval beside nested script', '_system/executorlib.py', 'stage = Path(config_root).resolve().joinpath(*parts[:2])', 'stage = Path(script).resolve().parent', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_nested_script_approval_and_launcher_local_evidence', 'AssertionError'),
+            ('stage03 creates launcher before approval refusal', '_system/executorlib.py', 'holds, why = _analysis_approval(adir)', 'holds, why = True, None', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_approval_precedes_launcher_and_backend', 'AssertionError'),
+            ('stage03 running resubmit refusal removed', '_system/executorlib.py', 'if not _scheduler_terminal(state):', 'if False:', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_resubmit_polls_latest_job_under_lock_and_keeps_history', 'AssertionError'),
+            ('stage03 unknown resubmit refusal removed', '_system/executorlib.py', "if state is None:\n                    return None, 'R-077:", "if False:\n                    return None, 'R-077:", 'test_stage03_execution.py', 'Stage03ExecutionTests.test_resubmit_polls_latest_job_under_lock_and_keeps_history', 'AssertionError'),
+            ('stage03 submission history overwritten', '_system/executorlib.py', "(adir / ANALYSIS_SUBMISSIONS).open('a')", "(adir / ANALYSIS_SUBMISSIONS).open('w')", 'test_stage03_execution.py', 'Stage03ExecutionTests.test_resubmit_polls_latest_job_under_lock_and_keeps_history', 'AssertionError'),
+            ('login-node bypasses local route', '_system/executorlib.py', 'return LOCAL\n    return descriptor', 'return descriptor\n    return descriptor', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_login_node_uses_local_executor_and_status', 'AssertionError'),
+            ('verify record and scheduler binding removed', '_system/stage03_analysis.py', 'problem = ex.analysis_execution_evidence(project, adir)', 'problem = None', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_marker_without_record_is_not_execution_evidence', 'AssertionError'),
+            ('verify accepts absent submission record', '_system/executorlib.py', 'if not entries:\n            raise ValueError', 'if False:\n            raise ValueError', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_marker_without_record_is_not_execution_evidence', 'AssertionError'),
+            ('verify accepts paths outside analysis', '_system/executorlib.py', '                path.relative_to(adir)', '                pass', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_verify_binds_paths_hashes_and_scheduler_for_every_latest_script', 'AssertionError'),
+            ('verify ignores changed hashes', '_system/executorlib.py', "if _sha256(path) != entry[kind + '_sha256']:", 'if False:', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_verify_binds_paths_hashes_and_scheduler_for_every_latest_script', 'AssertionError'),
+            ('verify ignores failed or unknown scheduler', '_system/executorlib.py', "if state != 'COMPLETED':", 'if False:', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_verify_binds_paths_hashes_and_scheduler_for_every_latest_script', 'AssertionError'),
+            ('verify checks only the last script', '_system/executorlib.py', 'for entry in _analysis_latest(entries).values():', 'for entry in list(_analysis_latest(entries).values())[-1:]:', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_verify_binds_paths_hashes_and_scheduler_for_every_latest_script', 'AssertionError'),
+            ('stage03 guard removed: projects/*/03_custom_analysis/*/run/*', '_system/guard_hook.py', '    "projects/*/03_custom_analysis/*/run/*",', '', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_run_and_submission_record_are_guarded', 'AssertionError'),
+            ('stage03 guard removed: projects/*/03_custom_analysis/*/.gars_submissions.jsonl', '_system/guard_hook.py', '    "projects/*/03_custom_analysis/*/.gars_submissions.jsonl",', '', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_run_and_submission_record_are_guarded', 'AssertionError'),
+            ('stage03 settings deny removed: Edit projects/*/03_custom_analysis/*/run/*', '.claude/settings.json', 'Edit(projects/*/03_custom_analysis/*/run/*)', 'Edit(unused)', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_run_and_submission_record_are_guarded', 'AssertionError'),
+            ('stage03 settings deny removed: Write projects/*/03_custom_analysis/*/run/*', '.claude/settings.json', 'Write(projects/*/03_custom_analysis/*/run/*)', 'Write(unused)', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_run_and_submission_record_are_guarded', 'AssertionError'),
+            ('stage03 settings deny removed: Edit projects/*/03_custom_analysis/*/run/**/*', '.claude/settings.json', 'Edit(projects/*/03_custom_analysis/*/run/**/*)', 'Edit(unused)', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_run_and_submission_record_are_guarded', 'AssertionError'),
+            ('stage03 settings deny removed: Write projects/*/03_custom_analysis/*/run/**/*', '.claude/settings.json', 'Write(projects/*/03_custom_analysis/*/run/**/*)', 'Write(unused)', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_run_and_submission_record_are_guarded', 'AssertionError'),
+            ('stage03 settings deny removed: Edit projects/*/03_custom_analysis/*/.gars_submissions.jsonl', '.claude/settings.json', 'Edit(projects/*/03_custom_analysis/*/.gars_submissions.jsonl)', 'Edit(unused)', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_run_and_submission_record_are_guarded', 'AssertionError'),
+            ('stage03 settings deny removed: Write projects/*/03_custom_analysis/*/.gars_submissions.jsonl', '.claude/settings.json', 'Write(projects/*/03_custom_analysis/*/.gars_submissions.jsonl)', 'Write(unused)', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_run_and_submission_record_are_guarded', 'AssertionError'),
+            ('parent contract loses a writer state', '02_bioinformatics/CONTEXT.md', '`VALIDATING <iso8601>`, ', '', 'test_lifecycle_contracts.py', 'LifecycleContractTests.test_parent_status_paragraph_covers_derived_writer_states', 'AssertionError'),
+            ('parent contract loses collect route', '02_bioinformatics/CONTEXT.md', 'VALIDATING, ARTIFACT_MISSING and STALE continue', 'VALIDATING and STALE continue', 'test_lifecycle_contracts.py', 'LifecycleContractTests.test_contract_routes_and_executor_ownership', 'AssertionError'),
+            ('stage03 contract loses failure discipline', '03_custom_analysis/CONTEXT.md', 'set -euo pipefail', 'set -x', 'test_lifecycle_contracts.py', 'LifecycleContractTests.test_contract_routes_and_executor_ownership', 'AssertionError'),
+            ('stage03 contract falsely records FAILED', '03_custom_analysis/CONTEXT.md', 'The scheduler log and `executorlib.py status` record the failure; verify alone writes STATUS.', 'STATUS records the failure.', 'test_lifecycle_contracts.py', 'LifecycleContractTests.test_contract_routes_and_executor_ownership', 'AssertionError'),
+        ])
+        faults.extend([
+            ('stage03 nested run guard removed',
+             '_system/guard_hook.py',
+             '    "projects/*/03_custom_analysis/*/run/**/*",',
+             '',
+             'test_stage03_execution.py',
+             'Stage03ExecutionTests.test_run_and_submission_record_are_guarded',
+             'AssertionError'),
+            ('stage03 submission lock removed',
+             '_system/executorlib.py',
+             "with (run / '.submission.lock').open('a') as lock:\n"
+             '        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)',
+             "with (run / '.submission.lock').open('a') as lock:\n        pass",
+             'test_stage03_execution.py',
+             'Stage03ExecutionTests.test_concurrent_same_script_is_serialized',
+             'AssertionError'),
+        ])
+        faults.extend([
+            ('stage03 unresolved submission allowed',
+             '_system/executorlib.py',
+             "if not previous.get('job_id'):",
+             'if False:',
+             'test_stage03_execution.py',
+             'Stage03ExecutionTests.test_resubmit_polls_latest_job_under_lock_and_keeps_history',
+             'AssertionError'),
+            ('verify accepts missing job identity',
+             '_system/executorlib.py',
+             "if not entry.get('job_id'):",
+             'if False:',
+             'test_stage03_execution.py',
+             'Stage03ExecutionTests.test_verify_binds_paths_hashes_and_scheduler_for_every_latest_script',
+             'AssertionError'),
+        ])
+        faults.append(('login-node CLI reports wrong executor', '_system/executorlib.py', 'result["executor"] = recorded["name"]', 'result["executor"] = descriptor["name"]', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_login_node_uses_local_executor_and_status', 'AssertionError'))
         for label, expression in [
                 ('computed STATUS path', 'open(str(substage) + "/STATUS", "w")'),
                 ('copied STATUS path', 'shutil.copyfile(source, str(substage / "STATUS"))'),
@@ -108,9 +179,12 @@ class LifecycleFaultTests(unittest.TestCase):
             with self.subTest(fault=label), tempfile.TemporaryDirectory(prefix='row12-fault-') as tmp:
                 root = Path(tmp) / 'gars'
                 root.mkdir()
-                for directory in ('_system', 'tests', '.claude', '_templates'):
+                for directory in ('_system', 'tests', '.claude', '_templates', '_references'):
                     shutil.copytree(str(GARS / directory), str(root / directory),
                                     ignore=shutil.ignore_patterns('__pycache__'))
+                for contract in ('02_bioinformatics/CONTEXT.md', '03_custom_analysis/CONTEXT.md'):
+                    (root / contract).parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(str(GARS / contract), str(root / contract))
                 target = root / relative
                 original = target.read_text()
                 self.assertIn(old, original)

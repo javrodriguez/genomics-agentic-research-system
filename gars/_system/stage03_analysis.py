@@ -423,6 +423,12 @@ def cmd_verify(args, workspace):
         result['error'] = 'run/.gars_run_complete is absent: execution success is unproven'
         return emit(result, EXIT_REFUSED)
 
+    import executorlib as ex
+    problem = ex.analysis_execution_evidence(project, adir)
+    if problem:
+        result['error'] = problem
+        return emit(result, EXIT_REFUSED)
+
     with ws.atomic_open(adir / "OUTPUTS.tsv") as fh:
         fh.write("# type\trole\tpath\n")
         for fname, ftype, _ in outputs:

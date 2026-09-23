@@ -1,0 +1,248 @@
+"""Stage-03 execution evidence: launcher ownership, all jobs, and guarded writes."""
+import argparse
+import contextlib
+import io
+import json
+import tempfile
+import time
+import unittest
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from unittest.mock import patch
+from support import GARS, run
+import guard_hook
+from test_approval_forgery import PLAN
+import executorlib as ex
+import stage03_analysis as analysis
+
+
+class Stage03ExecutionTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix='stage03-execution-')
+        self.addCleanup(self.tmp.cleanup)
+        self.workspace = Path(self.tmp.name) / 'gars'; self.workspace.mkdir()
+        (self.workspace / '_references').symlink_to(GARS / '_references', target_is_directory=True)
+        self.root = self.workspace / 'projects/p'
+        self.adir = self.root / '03_custom_analysis/01_fixture'
+        (self.adir / 'scripts').mkdir(parents=True)
+        (self.adir / 'results').mkdir()
+        (self.adir / 'results/table.tsv').write_text('fixture\n')
+        (self.adir / 'PLAN.md').write_text(PLAN.replace('Status: APPROVED 2026-09-21', 'Status: DRAFT'))
+        self.args = argparse.Namespace(project=str(self.root), analysis='01_fixture', model='fixture', date=None)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(analysis.cmd_approve(self.args, self.workspace), 0)
+        self.script = self.adir / 'scripts/x.sh'; self.script.write_text('set -euo pipefail\nexit 0\n')
+        self.marker = self.adir / 'run/.gars_run_complete'
+        self.record = self.adir / ex.ANALYSIS_SUBMISSIONS
+        self.addCleanup(patch.stopall)
+        patch.object(analysis.ws, 'workspace_root', return_value=self.workspace).start()
+
+    def submit(self, script=None, descriptor=None):
+        return ex.submit(self.root, script or self.script, descriptor or ex.LOCAL)
+
+    def finish(self, script=None):
+        job, why = self.submit(script)
+        self.assertIsNotNone(job, why)
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            state = ex._scheduler_status(self.root, job, ex.LOCAL)[0]
+            if ex._scheduler_terminal(state):
+                return job, state
+            time.sleep(.02)
+        self.fail('local fixture did not finish')
+
+    def verify(self):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            code = analysis.cmd_verify(self.args, self.workspace)
+        return code, json.loads(output.getvalue())
+
+    def test_nested_script_approval_and_launcher_local_evidence(self):
+        job, state = self.finish()
+        self.assertEqual(state, 'COMPLETED')
+        entries = ex._analysis_entries(self.adir); self.assertEqual(len(entries), 1)
+        entry = entries[0]
+        self.assertEqual(entry['script'], str(self.script))
+        self.assertEqual(entry['script_sha256'], ex._sha256(self.script))
+        launcher = Path(entry['launcher'])
+        self.assertEqual(launcher.parent, self.adir / 'run')
+        self.assertEqual(entry['launcher_sha256'], ex._sha256(launcher))
+        self.assertEqual(entry['job_id'], job)
+        self.assertEqual(entry['executor'], 'local')
+        self.assertIsInstance(entry['submitted_at'], (int, float))
+        self.assertTrue(launcher.with_name(launcher.name + '.local.exit').is_file())
+        self.assertTrue(self.marker.is_file())
+        self.assertEqual(self.verify()[0], 0)
+
+    def test_approval_precedes_launcher_and_backend(self):
+        (self.adir / 'PLAN.md').write_text(PLAN + '\nchanged\n')
+        with patch.object(ex, '_local_submit') as backend:
+            job, why = self.submit()
+            self.assertIsNone(job); self.assertIn('R-073', why); backend.assert_not_called()
+        self.assertFalse((self.adir / 'run').exists())
+        self.assertFalse(self.record.exists())
+
+    def test_launcher_clears_marker_and_removes_script_forgery_on_failure(self):
+        (self.adir / 'run').mkdir()
+        self.marker.write_text('stale\n')
+        self.script.write_text('set -euo pipefail\n[ ! -e run/.gars_run_complete ]\n'
+                               'echo forged > run/.gars_run_complete\nexit 7\n')
+        self.assertEqual(self.finish()[1], 'FAILED:EXIT_7')
+        self.assertFalse(self.marker.exists(), 'launcher retained a failed script marker')
+        self.assertEqual(self.verify()[0], 2)
+
+    def test_slurm_directives_and_launcher_are_handed_to_backend(self):
+        directives = b'#SBATCH --cpus-per-task=3\r\n#SBATCH --mem=2G\n'
+        self.script.write_bytes(b'#!/bin/bash\n' + directives + b'set -euo pipefail\nexit 0\n')
+        with patch.object(ex.subprocess, 'run') as backend:
+            backend.return_value.returncode = 0
+            backend.return_value.stdout = b'Submitted batch job 42\n'
+            backend.return_value.stderr = b''
+            self.assertEqual(self.submit(descriptor=ex.SLURM), ('42', None))
+            launcher = Path(backend.call_args[0][0][-1])
+            self.assertNotEqual(launcher, self.script)
+            self.assertEqual(launcher.parent, self.adir / 'run')
+            self.assertTrue(launcher.read_bytes().startswith(b'#!/bin/bash\n' + directives))
+
+    def test_resubmit_polls_latest_job_under_lock_and_keeps_history(self):
+        self.finish()
+        original = self.record.read_bytes()
+        for state, rule in [('RUNNING', 'R-076'), ('PENDING', 'R-076'), (None, 'R-077')]:
+            with self.subTest(state=state), patch.object(ex, '_scheduler_status', return_value=(state, 'fixture')) as poll, \
+                    patch.object(ex, '_submit_once') as backend:
+                try:
+                    job, why = self.submit(descriptor=ex.SLURM)
+                except Exception as exc:
+                    self.fail('resubmit must return a readable refusal: %s' % exc)
+                self.assertIsNone(job); self.assertIn(rule, why)
+                backend.assert_not_called()
+                self.assertEqual(poll.call_args[0][2], ex.LOCAL)
+                self.assertEqual(self.record.read_bytes(), original)
+        for state in ('COMPLETED', 'FAILED:EXIT_7', 'CANCELLED'):
+            before = self.record.read_bytes()
+            with patch.object(ex, '_scheduler_status', return_value=(state, None)), \
+                    patch.object(ex, '_submit_once', return_value=('99', None)):
+                self.assertEqual(self.submit(), ('99', None))
+            self.assertTrue(self.record.read_bytes().startswith(before))
+        self.assertEqual(len(ex._analysis_entries(self.adir)), 4)
+        unresolved = ex._analysis_entries(self.adir)[-1]; unresolved['job_id'] = None
+        with self.record.open('a') as record:
+            record.write(json.dumps(unresolved) + '\n')
+        with patch.object(ex, '_scheduler_status', return_value=('COMPLETED', None)) as poll, \
+                patch.object(ex, '_submit_once', return_value=('100', None)) as backend:
+            job, why = self.submit()
+            self.assertIsNone(job); self.assertIn('R-077', why)
+            poll.assert_not_called(); backend.assert_not_called()
+
+    def test_concurrent_same_script_is_serialized(self):
+        barrier = threading.Barrier(2)
+        def approved(adir):
+            barrier.wait(timeout=5)
+            return True, None
+        def launch(*args):
+            time.sleep(.1)
+            return '42', None
+        with patch.object(ex, '_analysis_approval', side_effect=approved), \
+                patch.object(ex, '_submit_once', side_effect=launch) as backend, \
+                patch.object(ex, '_scheduler_status', return_value=('RUNNING', None)), \
+                ThreadPoolExecutor(max_workers=2) as pool:
+            jobs = [pool.submit(self.submit) for _ in range(2)]
+            answers = [job.result(timeout=10) for job in jobs]
+        self.assertEqual(sum(job is not None for job, _ in answers), 1)
+        self.assertEqual(backend.call_count, 1)
+        self.assertEqual(len(ex._analysis_entries(self.adir)), 1)
+
+    def test_marker_without_record_is_not_execution_evidence(self):
+        self.marker.parent.mkdir(); self.marker.write_text('forged\n')
+        code, result = self.verify()
+        self.assertEqual(code, 2)
+        self.assertIn('marker is not execution evidence', result['error'])
+        self.assertIn('submitted before this fix', result['error'])
+        self.assertFalse((self.adir / 'STATUS').exists())
+
+    def test_verify_binds_paths_hashes_and_scheduler_for_every_latest_script(self):
+        job, _ = self.finish()
+        second = self.adir / 'scripts/y.sh'; second.write_text('exit 0\n')
+        second_job, _ = self.finish(second)
+        original = self.record.read_bytes()
+        entries = ex._analysis_entries(self.adir)
+        outside = self.root / 'outside.sh'; outside.write_bytes(self.script.read_bytes())
+        for kind in ('script', 'launcher'):
+            for fault in ('path', 'hash'):
+                with self.subTest(kind=kind, fault=fault):
+                    altered = [dict(e) for e in entries]
+                    altered[0][kind if fault == 'path' else kind + '_sha256'] = str(outside) if fault == 'path' else '0'*64
+                    self.record.write_text(''.join(json.dumps(e) + '\n' for e in altered))
+                    code, result = self.verify()
+                    self.assertEqual(code, 2)
+                    self.assertIn('marker is not execution evidence', result['error'])
+        altered = [dict(e) for e in entries]; altered[0]['job_id'] = None
+        self.record.write_text(''.join(json.dumps(e) + '\n' for e in altered))
+        with patch.object(ex, '_scheduler_status', return_value=('COMPLETED', None)):
+            self.assertEqual(self.verify()[0], 2)
+        self.record.write_bytes(original)
+        for state in ('RUNNING', 'FAILED:EXIT_7', 'CANCELLED', None):
+            with self.subTest(state=state), patch.object(ex, '_scheduler_status',
+                    side_effect=lambda root, jid, descriptor: (state if jid == job else 'COMPLETED', None)):
+                self.assertEqual(self.verify()[0], 2)
+        # A superseded failure does not defeat the latest completed entry of that script.
+        old = dict(entries[0]); old['job_id'] = 'old-failed'
+        self.record.write_text(json.dumps(old) + '\n' + original.decode())
+        with patch.object(ex, '_scheduler_status', return_value=('COMPLETED', None)) as poll:
+            self.assertEqual(self.verify()[0], 0)
+            self.assertEqual({c[0][1] for c in poll.call_args_list}, {job, second_job})
+            self.assertTrue(all(c[0][2] == ex.LOCAL for c in poll.call_args_list))
+
+    def test_login_node_uses_local_executor_and_status(self):
+        # Recreate the approved fixture plan with its explicitly requested venue.
+        plan = self.adir / 'PLAN.md'
+        approval = analysis.approval_record_path(plan, self.workspace); approval.unlink()
+        plan.write_text(PLAN.replace('Status: APPROVED 2026-09-21', 'Status: DRAFT').replace('Runs: batch', 'Runs: login-node (user-requested)'))
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(analysis.cmd_approve(self.args, self.workspace), 0)
+        with patch.object(ex, '_local_submit', return_value='123') as backend:
+            self.assertEqual(self.submit(descriptor=ex.SLURM), ('123', None))
+            backend.assert_called_once()
+        # The public CLI also reports the backend the approved plan actually selected.
+        other = self.adir / 'scripts/cli.sh'; other.write_text('exit 0\n')
+        output = io.StringIO()
+        with patch.object(ex, '_local_submit', return_value='124'), contextlib.redirect_stdout(output):
+            self.assertEqual(ex.main(['submit', '--workspace', str(self.root), str(other)]), 0)
+        self.assertEqual(json.loads(output.getvalue())['executor'], 'local')
+        with patch.object(ex, '_scheduler_status', return_value=('COMPLETED', None)) as poll:
+            self.assertEqual(ex.status(self.root, '123', ex.SLURM)[0], 'COMPLETED')
+            self.assertEqual(poll.call_args[0][2], ex.LOCAL)
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(ex.main(['status', '--workspace', str(self.root), '123']), 0)
+            self.assertEqual(json.loads(output.getvalue())['executor'], 'local')
+
+    def test_run_and_submission_record_are_guarded(self):
+        targets = ['run/.gars_run_complete', 'run/launch.sh', 'run/launch.sh.local.exit',
+                   'run/launch.sh.local.log', 'run/nested/arbitrary', ex.ANALYSIS_SUBMISSIONS]
+        settings = json.loads((GARS / '.claude/settings.json').read_text())['permissions']['deny']
+        for glob in ('projects/*/03_custom_analysis/*/run/*',
+                     'projects/*/03_custom_analysis/*/run/**/*',
+                     'projects/*/03_custom_analysis/*/' + ex.ANALYSIS_SUBMISSIONS):
+            self.assertIn(glob, guard_hook.READ_ONLY)
+            for tool in ('Write', 'Edit'):
+                self.assertIn(tool + '(' + glob + ')', settings)
+        for target in targets:
+            path = 'projects/p/03_custom_analysis/01_fixture/' + target
+            for tool in ('Write', 'Edit'):
+                result = run(['python3', GARS / '_system/guard_hook.py'], cwd=GARS,
+                             env={'CLAUDE_PROJECT_DIR': str(GARS)}, stdin=json.dumps({
+                                 'tool_name': tool, 'cwd': str(GARS), 'tool_input': {'file_path': path}}))
+                self.assertEqual(result.returncode, 2, path)
+            for command in ('echo forged > ' + path, 'cp source ' + path, 'tee ' + path,
+                            'python3 -c "open(\'%s\', \'w\')"' % path,
+                            'bash projects/p/03_custom_analysis/01_fixture/scripts/x.sh'):
+                result = run(['python3', GARS / '_system/guard_hook.py'], cwd=GARS,
+                             env={'CLAUDE_PROJECT_DIR': str(GARS)}, stdin=json.dumps({
+                                 'tool_name': 'Bash', 'cwd': str(GARS), 'tool_input': {'command': command}}))
+                self.assertEqual(result.returncode, 2, command)
+
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)

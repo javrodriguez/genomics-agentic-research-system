@@ -41,12 +41,24 @@ class DownstreamKeyTests(unittest.TestCase):
             self.assertEqual(wl.input_key(stage, reversed_manifest), key)
             (root / 'other_stage01.csv').write_text('changed stage01 serialization\n')
             self.assertEqual(ex.prepared_key(root, stage), key)
+            # A coherent key for another assay's config must still refuse before submit.
+            other = root / '_config/other_assay.yaml'; other.write_bytes(cfg_path.read_bytes())
+            wrong = dict(manifest); wrong['inputs'] = dict(manifest['inputs'], config=str(other))
+            wrong['idempotency_key'] = wl.input_key(stage, wrong)
+            manifest_path = stage / 'reproducibility/manifest.json'
+            script = stage / 'submit.sh'; original_script = script.read_text()
+            manifest_path.write_text(json.dumps(wrong))
+            script.write_text(original_script.replace(key, wrong['idempotency_key']))
+            with patch.object(ex, '_submit_once', return_value=('99', None)) as backend:
+                self.assertIsNone(ex.submit(root, script)[0])
+                backend.assert_not_called()
+            manifest_path.write_text(json.dumps(manifest)); script.write_text(original_script)
             with patch.object(ex, '_submit_once', return_value=('42', None)) as backend:
                 self.assertEqual(ex.submit(root, stage / 'submit.sh'), ('42', None))
                 self.assertIsNone(ex.submit(root, stage / 'submit.sh')[0])
                 self.assertEqual(backend.call_count, 1)
             data.write_text('changed declared input\n')
-            with patch.object(ex, '_submit_once') as backend:
+            with patch.object(ex, '_submit_once', return_value=('99', None)) as backend:
                 self.assertIsNone(ex.submit(root, stage / 'submit.sh')[0])
                 backend.assert_not_called()
 

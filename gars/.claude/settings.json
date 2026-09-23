@@ -101,7 +101,13 @@
       "Edit(projects/*/03_custom_analysis/*/PLAN.md.approved)",
       "Write(projects/*/03_custom_analysis/*/PLAN.md.approved)",
       "WebSearch",
-      "WebFetch"
+      "WebFetch",
+      "Edit(projects/*/03_custom_analysis/*/run/*)",
+      "Write(projects/*/03_custom_analysis/*/run/*)",
+      "Edit(projects/*/03_custom_analysis/*/run/**/*)",
+      "Write(projects/*/03_custom_analysis/*/run/**/*)",
+      "Edit(projects/*/03_custom_analysis/*/.gars_submissions.jsonl)",
+      "Write(projects/*/03_custom_analysis/*/.gars_submissions.jsonl)"
     ]
   }
 }

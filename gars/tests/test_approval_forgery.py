@@ -12,6 +12,7 @@ import unittest
 from pathlib import Path
 from support import GARS
 import stage03_analysis as stage
+import executorlib as ex
 from test_policy_attacks import guard
 
 PLAN = '''# Analysis plan
@@ -43,6 +44,15 @@ class ApprovalForgeryTests(unittest.TestCase):
         (self.adir/'run').mkdir()
         (self.adir/'run/.gars_run_complete').write_text('synthetic successful execution\n')
         self.args=argparse.Namespace(project=str(self.project),analysis='01_policy',model='fixture',date=None)
+        script = self.adir / 'script.sh'; script.write_text('exit 0\n')
+        launcher = self.adir / 'run/launcher.sh'; launcher.write_text('exit 0\n')
+        (self.adir / ex.ANALYSIS_SUBMISSIONS).write_text(json.dumps({
+            'script': str(script), 'script_sha256': ex._sha256(script),
+            'launcher': str(launcher), 'launcher_sha256': ex._sha256(launcher),
+            'job_id': 'fixture', 'executor': 'local', 'submitted_at': 1}) + '\n')
+        jobs = ex._local_jobs_dir(self.project); jobs.mkdir()
+        exit_file = self.adir / 'run/launcher.sh.local.exit'; exit_file.write_text('0')
+        (jobs / 'fixture.json').write_text(json.dumps({'exit_file': str(exit_file)}))
 
     def tearDown(self): self.tmp.cleanup()
 

@@ -426,9 +426,19 @@ Login node; seconds; kilobytes.
         self.assertEqual(code, 1, raw)
         self.assertEqual(sorted(res["missing"]), ["results/pca.csv", "results/pca.png"])
 
-        # "execute", then verify completes and registers
-        (adir / "run").mkdir(exist_ok=True)
-        (adir / "run/.gars_run_complete").write_text("synthetic successful execution\n")
+        # Submit an actual local job through the approved login-node route.
+        script = adir / "scripts/x.sh"
+        script.write_text("set -euo pipefail\nexit 0\n")
+        code, submitted, raw = run(self.ws / "_system/executorlib.py",
+            ["submit", "--workspace", "projects/tall-test", str(script)], self.ws)
+        self.assertEqual(code, 0, raw)
+        for _ in range(100):
+            code, polled, raw = run(self.ws / "_system/executorlib.py",
+                ["status", "--workspace", "projects/tall-test", submitted["job_id"]], self.ws)
+            if polled.get("state") == "COMPLETED":
+                break
+            time.sleep(.02)
+        self.assertEqual(polled.get("state"), "COMPLETED", raw)
         (adir / "results" / "pca.csv").write_text("sample,PC1,PC2\nTUMOR1,1,2\n")
         (adir / "results" / "pca.png").write_bytes(b"\x89PNG fake")
         code, res, raw = run(s3, ["verify", "--project", "projects/tall-test",
@@ -1500,7 +1510,6 @@ class ExecutorSeamTests(unittest.TestCase):
         """The seeded `executor.yaml` and the built-in Slurm descriptor must not drift apart:
         a project that keeps the seeded file and one that deletes it get the same scheduler."""
         text = (GARS / "_templates" / "config" / "executor.yaml").read_text(encoding="utf-8")
-        project = self._project("shipped-descriptor", text)
         parsed = self.ex.parse_descriptor(text)  # Raw template equality: no legacy normalization.
         for key, value in self.ex.SLURM.items():
             if key == "submit_note":
