@@ -35,6 +35,8 @@ Six task pairs, three takes per half per model, frozen at [`69b7a94`](https://gi
 - Ten amendments since the freeze, none touching a grader, label, count or order; see `amendments[]`.
 <!-- /gap-study-2:summary -->
 
+**Correction, 23 September 2026.** The incomplete cell named in the summary above is `claude-sonnet-5`'s `template-adherence` control half: the table prints it as `0 of 3`, and its results file ([`evals/gap-study-2/results/template-adherence.json`](../evals/gap-study-2/results/template-adherence.json)) records one take graded, not correct, and the state `incomplete — mechanical, 1 of 3`; the other two produced no gradable transcript. The table above is the study's generated output as frozen and stays as published ([decision 0068](decisions/0068-evals-round-2-incomplete-cell-correction.md)).
+
 ### The instruments differ: round 1's counts are printed beside round 2's, not pooled
 
 Round 1's scope-read control half was scored by a pattern that read a correct answer given from context as declined, and its plan-gate approve detection missed a quoted script path; round 2's instrument fixes both and is applied here to round 1's committed takes as well, so the two rounds are printed side by side and never pooled. No sentence compares them.
