@@ -1082,7 +1082,12 @@ def submit(config_root, script, descriptor=None):
         return job, detail
 
 
-def _analysis_job_descriptor(config_root, job_id):
+def _analysis_job_descriptor(config_root, job_id, descriptor=None):
+    descriptor = descriptor if descriptor is not None else load(config_root)
+    _, record = _job_record(config_root, job_id)
+    # Job numbers are backend-local; the caller's stage-02 job takes precedence.
+    if record and record.get('executor') == descriptor.get('name'):
+        return None
     for path in (Path(config_root) / '03_custom_analysis').glob('*/' + ANALYSIS_SUBMISSIONS):
         for entry in _analysis_entries(path.parent):
             if (entry.get('job_id') == str(job_id) and
@@ -1093,15 +1098,19 @@ def _analysis_job_descriptor(config_root, job_id):
 
 def status(config_root, job_id, descriptor=None):
     """R-077: scheduler evidence updates only the job that submit recorded."""
-    recorded = _analysis_job_descriptor(config_root, job_id)
-    if recorded:
-        return _scheduler_status(config_root, job_id, recorded)
     directory = _records(config_root)
     if not directory.exists():
-        return _scheduler_status(config_root, job_id, descriptor)
+        return _status_dispatch(config_root, job_id, descriptor)
     with open(str(directory / '.lock'), 'a') as lock:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
-        return _status_locked(config_root, job_id, descriptor)
+        return _status_dispatch(config_root, job_id, descriptor)
+
+
+def _status_dispatch(config_root, job_id, descriptor):
+    recorded = _analysis_job_descriptor(config_root, job_id, descriptor)
+    if recorded:
+        return _scheduler_status(config_root, job_id, recorded)
+    return _status_locked(config_root, job_id, descriptor)
 
 
 def _status_locked(config_root, job_id, descriptor, observed=None):
@@ -1230,9 +1239,12 @@ def main(argv=None):
                                          'reason': reason}
                     return emit(result, EXIT_REFUSED)
             return emit(result, EXIT_FAILURE)
-        recorded = _analysis_job_descriptor(root, job_id)
-        if recorded:
-            result["executor"] = recorded["name"]
+        script = Path(args.script).resolve()
+        parts = script.relative_to(root.resolve()).parts
+        if len(parts) >= 3 and parts[0] == '03_custom_analysis':
+            # Submit knows the script; a colliding job number must not relabel it.
+            entry = _analysis_latest(_analysis_entries(root.joinpath(*parts[:2])))[str(script)]
+            result["executor"] = entry["executor"]
         result["job_id"] = job_id
         result["ok"] = detail is None
         if detail:
@@ -1255,7 +1267,7 @@ def main(argv=None):
         if state is None:
             result["error"] = detail
             return emit(result, EXIT_FAILURE)
-        recorded = _analysis_job_descriptor(root, args.job_id)
+        recorded = _analysis_job_descriptor(root, args.job_id, descriptor)
         if recorded:
             result["executor"] = recorded["name"]
         result["job_id"] = args.job_id

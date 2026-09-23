@@ -189,6 +189,18 @@ class LifecycleFaultTests(unittest.TestCase):
              '_analysis_local_binding(config_root, entry)):', 'True):',
              'test_stage03_execution.py', 'Stage03ExecutionTests.test_reused_pid_status_updates_stage02_failure',
              'AssertionError'),
+            ('stage03 local id captures stage02 Slurm status', '_system/executorlib.py',
+             "if record and record.get('executor') == descriptor.get('name'):", 'if False:',
+             'test_stage03_execution.py', 'Stage03ExecutionTests.test_stage02_slurm_status_wins_over_analysis_local_id',
+             'AssertionError'),
+            ('stage03 Slurm id captures stage02 local status', '_system/executorlib.py',
+             "if record and record.get('executor') == descriptor.get('name'):", 'if False:',
+             'test_stage03_execution.py', 'Stage03ExecutionTests.test_stage02_local_status_wins_over_analysis_slurm_id',
+             'AssertionError'),
+            ('login-node submit is relabelled by colliding stage02 job', '_system/executorlib.py',
+             'result["executor"] = entry["executor"]', 'result["executor"] = descriptor["name"]',
+             'test_stage03_execution.py', 'Stage03ExecutionTests.test_login_node_uses_local_executor_and_status',
+             'AssertionError'),
         ])
         for label, expression in [
                 ('computed STATUS path', 'open(str(substage) + "/STATUS", "w")'),

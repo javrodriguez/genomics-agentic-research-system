@@ -4,6 +4,7 @@ import contextlib
 import io
 import json
 import os
+import shlex
 import tempfile
 import time
 import unittest
@@ -224,6 +225,8 @@ class Stage03ExecutionTests(unittest.TestCase):
             self.assertEqual(ex.submit(self.root, stage / 'submit.sh', ex.LOCAL), (job, None))
         (stage / 'run').mkdir(exist_ok=True)
         (stage / 'run/.gars_run_complete').write_text('fixture\n')
+        # With no matching stage-02 backend, stale analysis metadata must still refuse.
+        self.assertIsNone(ex._analysis_job_descriptor(self.root, job, ex.SLURM))
         self.assertEqual(ex.status(self.root, job, ex.LOCAL)[0], expected)
         self.assertEqual(wl.read_status(stage), written)
         self.assertEqual(ex._job_record(self.root, job)[1]['state'], expected)
@@ -236,6 +239,89 @@ class Stage03ExecutionTests(unittest.TestCase):
 
     def test_reused_pid_status_updates_stage02_failure(self):
         self.reused_pid_status(7, 'FAILED:EXIT_7', 'FAILED:EXIT_7')
+
+    def scheduler_stubs(self, job):
+        commands = self.root / 'bin'; commands.mkdir()
+        calls = self.root / 'scheduler-calls'
+        answer = self.root / 'scheduler-answer'; answer.write_text('RUNNING|0:0\n')
+        for name, body in (
+                ('sbatch', 'echo "Submitted batch job %s"\n' % job),
+                ('sacct', 'echo "$*" >> %s\ncase "$*" in\n'
+                 '  *State,ExitCode*) cat %s ;;\n'
+                 '  *) echo 2026-09-23T00:00:00 ;;\nesac\n' %
+                 (shlex.quote(str(calls)), shlex.quote(str(answer))))):
+            command = commands / name
+            command.write_text('#!/bin/bash\n' + body); command.chmod(0o755)
+        patch.dict(os.environ, {'PATH': str(commands) + os.pathsep + os.environ['PATH']}).start()
+        return calls, answer
+
+    def test_stage02_slurm_status_wins_over_analysis_local_id(self):
+        from test_lifecycle_executor import prepared
+        import wrapperlib as wl
+        job, _ = self.finish()
+        stage, _, _ = prepared(self.root)
+        calls, answer = self.scheduler_stubs(job)
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(ex.main(['submit', '--workspace', str(self.root),
+                                      str(stage / 'submit.sh')]), 0)
+        submitted = json.loads(output.getvalue())
+        # A local caller can still address the analysis without updating stage 02.
+        self.assertEqual(ex.status(self.root, job, ex.LOCAL), ('COMPLETED', None))
+        self.assertEqual(wl.read_status(stage), 'SUBMITTED')
+        self.assertFalse(calls.exists())
+        for descriptor in (ex.SLURM, None):
+            self.assertEqual(ex.status(self.root, job, descriptor), ('RUNNING', None))
+            self.assertEqual(wl.read_status(stage), 'RUNNING')
+            self.assertEqual(ex._job_record(self.root, job)[1]['state'], 'RUNNING')
+        (stage / 'run').mkdir(exist_ok=True)
+        (stage / 'run/.gars_run_complete').write_text('fixture\n')
+        answer.write_text('COMPLETED|0:0\n')
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(ex.main(['status', '--workspace', str(self.root), job]), 0)
+        result = json.loads(output.getvalue())
+        self.assertEqual(result['state'], 'COMPLETED')
+        self.assertEqual(result['executor'], 'slurm')
+        self.assertEqual(submitted['executor'], 'slurm')
+        self.assertEqual(wl.read_status(stage), 'VALIDATING')
+        self.assertEqual(ex._job_record(self.root, job)[1]['state'], 'COMPLETED')
+        self.assertEqual(sum('State,ExitCode' in call for call in calls.read_text().splitlines()), 3)
+        self.assertEqual(self.verify()[0], 0)
+
+    def test_stage02_local_status_wins_over_analysis_slurm_id(self):
+        from test_lifecycle_executor import prepared
+        import wrapperlib as wl
+        job = '4242'
+        calls, _ = self.scheduler_stubs(job)
+        self.assertEqual(self.submit(descriptor=ex.SLURM), (job, None))
+        stage, _, _ = prepared(self.root)
+        (self.root / '_config/executor.yaml').write_text('name: local\n')
+        def local_record(root, script):
+            jobs = ex._local_jobs_dir(root); jobs.mkdir(exist_ok=True)
+            exit_file = stage / 'submit.sh.local.exit'; exit_file.write_text('7\n')
+            (jobs / (job + '.json')).write_text(json.dumps({
+                'script': str(script), 'exit_file': str(exit_file), 'started_at': time.time()}))
+            return job
+        output = io.StringIO()
+        with patch.object(ex, '_local_submit', side_effect=local_record), contextlib.redirect_stdout(output):
+            self.assertEqual(ex.main(['submit', '--workspace', str(self.root),
+                                      str(stage / 'submit.sh')]), 0)
+        submitted = json.loads(output.getvalue())
+        self.assertEqual(ex.status(self.root, job, ex.SLURM), ('RUNNING', None))
+        self.assertEqual(wl.read_status(stage), 'SUBMITTED')
+        before = calls.read_bytes()
+        self.assertEqual(ex.status(self.root, job, ex.LOCAL), ('FAILED:EXIT_7', None))
+        self.assertEqual(wl.read_status(stage), 'FAILED:EXIT_7')
+        self.assertEqual(ex._job_record(self.root, job)[1]['state'], 'FAILED:EXIT_7')
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(ex.main(['status', '--workspace', str(self.root), job]), 0)
+        result = json.loads(output.getvalue())
+        self.assertEqual(result['state'], 'FAILED:EXIT_7')
+        self.assertEqual(result['executor'], 'local')
+        self.assertEqual(submitted['executor'], 'local')
+        self.assertEqual(calls.read_bytes(), before, 'local status queried Slurm')
 
     def test_concurrent_same_script_is_serialized(self):
         barrier = threading.Barrier(2)
@@ -314,6 +400,11 @@ class Stage03ExecutionTests(unittest.TestCase):
             self.assertEqual(self.submit(descriptor=ex.SLURM), ('123', None))
             backend.assert_called_once()
         # The public CLI also reports the backend the approved plan actually selected.
+        # An existing Slurm stage-02 record must not relabel this known local script.
+        from test_lifecycle_executor import prepared
+        stage, _, _ = prepared(self.root)
+        with patch.object(ex, '_submit_once', return_value=('124', None)):
+            self.assertEqual(ex.submit(self.root, stage / 'submit.sh', ex.SLURM), ('124', None))
         other = self.adir / 'scripts/cli.sh'; other.write_text('exit 0\n')
         output = io.StringIO()
         with patch.object(ex, '_local_submit',

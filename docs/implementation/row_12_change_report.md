@@ -1487,3 +1487,117 @@ local identity or build path. Changed Python parses with Python 3.6 grammar
 (this is not runtime validation); `git diff --check` is clean. One commit uses
 named-path staging, a message file in sibling scratch, and a generic producer
 author/committer identity.
+
+## Review round 7 fixes (post-merge, on e59dfc0)
+
+Date: **2026-09-23**. One producer fix round on `build/gars-row-12-fix`, continuing
+`41f1c20` on public main `e59dfc0`. The supplied round-6 review remains untracked and
+unchanged; SHA-256 `091e3bfabc6befba6ee6ebd68678e1a42f83bba3a3fac8d60fc9d9d49599b714`.
+Earlier report and 0069 bytes remain exact prefixes. The only decision change is a
+dated addendum to 0069; rebuilding the index reproduces its existing bytes.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| Round-6 MINOR-1: cross-executor status collision | `executorlib.py`, `test_stage03_execution.py`, `test_lifecycle_faults.py`, 0069, DEVELOPMENT, this report | `test_stage02_slurm_status_wins_over_analysis_local_id`; `test_stage02_local_status_wins_over_analysis_slurm_id` | Closed. The stage-02 record matching the caller's backend takes precedence, inside the existing records lock. Tests assert real stub sacct calls, RUNNING then COMPLETED/VALIDATING for Slurm, FAILED:EXIT_7 for local, updated records and STATUS, and correct CLI labels. **Yes:** removing the precedence check makes each named test red. |
+| Round-6 MINOR-1: submit label under the same collision | `executorlib.py`, `test_stage03_execution.py`, `test_lifecycle_faults.py`, 0069 | Extended `test_login_node_uses_local_executor_and_status` | Submit reports the executor recorded for its known script. A prior stage-02 Slurm job with the same number cannot relabel a login-node submission. **Yes:** substituting the configured backend for the script's recorded backend makes this test red. |
+| Existing round-5 MINOR-2 binding coverage | `test_stage03_execution.py` | `test_reused_pid_status_updates_stage02_success`; `test_reused_pid_status_updates_stage02_failure` | Existing assertions retained; added a binding check under a caller descriptor that does not match stage 02, so the new precedence cannot mask removal of the local launcher binding. **Yes:** both existing binding plants remain red. |
+| Round-6 NOTE-1 | 0069, this report | Existing resubmit behavior retained | No required fix. R-076 may temporarily refuse while an unrelated live process has reused the old PID; a broken launcher binding is not newly treated as scheduler terminal evidence. Red-on-fault: **no**, no new gate; the live-PID residual stays open. |
+| Round-6 NOTE-2 | 0069, this report | Existing definite-rejection/verify regressions retained | No required fix. The harmless unrecorded launcher is retained for diagnosis; verify reads only recorded launchers. Red-on-fault: **no**, no behavior change. |
+| Current test count | README, DEVELOPMENT | `tests/check_counts.py` | Two new tests bring collection to 421; the three current count claims agree with the loader. Red-on-fault: **no**, documentation only. |
+| Round-4 NOTE-1 | 0069, this report | No durable-state change | Remains open by the owner's ruling. |
+
+A stage prepared before the idempotency-key fix must run `prepare` again before submit or collect.
+A stage-03 analysis submitted before the fix has no submission record, so verify refuses it until it is submitted through the executor again.
+
+## Owner rulings needed
+
+No new implementation ruling. The owner's separate protected-path merge approval,
+record **0070**, remains required under R-094/spec §9.3 for the earlier guard, settings
+and both contract changes. Round 7 changes no protected path. The producer has not
+written 0070 or claimed approval. No push, remote, merge or PR is made.
+
+Ambiguous submission recovery (ruling 9), published benchmark pins (ruling 10), live
+scheduler acceptance and round-4 NOTE-1 remain open and untouched. No recovery,
+reservation release, durable state table, threshold or approval schema is invented.
+
+### Residual gaps
+
+The covered threat model remains Write/Edit/Bash under guard_hook.py and settings.json:
+forbidden direct tool/shell writes to execution evidence, markers created outside an
+executor-launched run, cancellation of finished jobs, and guessing when the scheduler
+cannot answer. Executed scripts share the agent's OS user and can alter executor-owned
+evidence, including another script's submission history. Approval binds PLAN.md, not
+script bodies; separate-user execution with evidence inaccessible to scripts remains
+needed. Approved no-work scripts may exit 0; the declared-output gate still applies.
+The cancel poll-to-signal window and PID reuse while local status reads RUNNING remain.
+Round-6 NOTE-1's temporary resubmit refusal is part of that live-PID residual.
+
+Real Slurm/sacct/scancel output shapes, actual Python 3.6.8 execution, separate OS
+users, native harness settings-glob semantics and live PID reuse were not verified.
+The new Slurm regressions use executable stubs; the local-to-Slurm collision starts
+with a real completed local analysis, and the reverse collision uses deterministic
+local metadata. These are not live scheduler acceptance or an external human seal.
+Full row-12 exit remains **NOT met**. Conservative fnmatch breadth and the existing
+nested-glob plant's static inventory meaning are unchanged.
+
+### Files changed in round 7
+
+- `DEVELOPMENT.md`
+- `README.md`
+- `docs/decisions/0069-row-12-fix-round-minors.md` (appended only)
+- `docs/implementation/row_12_change_report.md` (appended only)
+- `gars/_system/executorlib.py`
+- `gars/tests/test_lifecycle_faults.py`
+- `gars/tests/test_stage03_execution.py`
+
+The regenerated decision index is byte-identical. All three supplied review files
+remain untracked. Scratch files, temporary directories, commit message and logs use
+the designated sibling scratch directory through TMPDIR, TEMP and TMP. Test runs
+disable bytecode writes. No dependency installation or network operation is used.
+
+### Verification and corrections during this round
+
+The initial focused attempt found a missing closing parenthesis in the new stub
+fixture; after correction, the focused run reported `Ran 17 tests in 5.913s` /
+`FAILED (errors=1)` because the fixture had not created stage 02's run/ directory.
+That setup was corrected without weakening an assertion. The next run reported
+`Ran 17 tests in 5.872s` / `OK`. The first fault run reported
+`Ran 1 test in 52.643s` / `OK`, with 67 red witnesses.
+
+Review of the CLI response then found the known-script submission-label edge case.
+The implementation and existing login-node test were extended, with a third new
+fault plant. The focused final source run reported `Ran 17 tests in 10.809s` / `OK`.
+The first full-suite run was already in flight during that change and reported
+`Ran 421 tests in 397.158s` / `OK (skipped=55)`; the full suite was rerun on the
+final source, as was the standalone fault harness. No preliminary
+run is used to claim final-source verification.
+
+### Required command summaries
+
+| Command | Final verbatim summary lines |
+|---|---|
+| `python3 tests/run_tests.py` | `Ran 421 tests in 384.310s` / `OK (skipped=55)` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/check_counts.py` | `enforced=3` / `clean — every current claim matches the suite` |
+| `python3 evals/test_harness.py` | `Ran 44 tests in 217.917s` / `OK` |
+| `python3 evals/check_results.py --controls --lexicon` | `clean — graded=1` |
+| `python3 gars/tests/test_lifecycle_faults.py` | `Ran 1 test in 60.235s` / `OK` |
+
+All six required commands exited 0. The final full suite collected 421 tests with
+55 explicit environment/evidence skips. Both the final full suite and standalone
+fault harness reproduced all 68 visible witnesses. These are behavioral fault
+witnesses, not a sealed mutation score. The three new witnesses are:
+
+```text
+fault red: stage03 local id captures stage02 Slurm status
+fault red: stage03 Slurm id captures stage02 local status
+fault red: login-node submit is relabelled by colliding stage02 job
+```
+
+Final audits: earlier report and 0069 bytes are exact prefixes; decisions 0063–0067
+are byte-identical to e59dfc0; 0070 is absent. The regenerated index and round-6
+review hash are unchanged. The excluded-tree diff is empty, and every changed path
+is in the inventory above. Changed Python parses under Python 3.6 grammar; this
+is not runtime validation. `git diff --check` is clean. The single round commit
+uses named-path staging, a scratch message file, and a generic producer identity;
+review files are excluded. No owner approval or full row exit is claimed.

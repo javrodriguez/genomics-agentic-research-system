@@ -268,3 +268,66 @@ No new implementation ruling is needed. Protected-path approval still requires t
 owner's separate commit and record 0070 under R-094/spec §9.3, including the amended
 stage-03 contract and the round-5 protected changes. This producer neither writes
 0070 nor claims owner approval.
+
+## Addendum — 2026-09-23, review round 7
+
+This is the lane's specification and producer response to the round-6 review, not
+additional words or approval from the owner. All preceding bytes, including the
+owner's exact reply and chosen option texts, remain unchanged.
+
+### Cross-executor job numbers
+
+Round-6 MINOR-1: status now gives a stage-02 submission record on the caller's
+backend precedence over a stage-03 job with the same number. Dispatch occurs inside
+the existing records lock when stage-02 records exist. Otherwise a stage-03 entry
+still requires its existing executor binding, including the local PID record's
+launcher identity. The approved login-node route still selects its recorded local
+backend when there is no matching stage-02 job on the caller's backend. Submit and
+status CLI executor labels use the same precedence rule.
+
+Two regressions cover a completed local analysis colliding with a stage-02 Slurm
+job (RUNNING, then COMPLETED/VALIDATING), and a stage-03 Slurm job colliding with a
+failed stage-02 local job. Slurm commands are real executable stubs, with calls
+counted; the reverse local collision uses deterministic local metadata, not live
+PID reuse. Each test has a plant removing the precedence check. Existing reused-PID
+tests additionally check that stale analysis metadata is rejected when the caller's
+backend does not match the stage-02 record, so their binding plants remain visible.
+
+Round-6 NOTE-1 remains conservative: resubmit may refuse R-076 while an unrelated
+live process occupies the old PID. A failed launcher binding is not newly treated
+as scheduler terminal evidence; PID reuse while local status reads RUNNING remains
+open. Round-6 NOTE-2 leaves the harmless launcher from a definite rejection in run/;
+retaining it preserves the generated attempt for diagnosis, while verify continues
+to consider only recorded launchers. Neither note requires a new gate or schema.
+
+### Threat model and what this does not close
+
+The covered session still holds Write, Edit and Bash under guard_hook.py and
+settings.json: it cannot create stage-03 execution evidence through tool or shell
+spellings already refused for stage 02, pass verify with a marker written outside
+an executor-launched run, cancel a finished job, or guess a cancel without a
+scheduler answer. The prior guarded-session boundary and all residuals stand:
+executed scripts sharing the agent's OS user can alter executor-owned evidence;
+approved no-work scripts can exit 0 (declared-output gates still apply); the cancel
+poll-to-signal window and PID reuse while local status reads RUNNING remain.
+Real Slurm/sacct/scancel output shapes, Python 3.6.8 execution, separate OS users,
+and native settings-glob semantics remain unverified. Ambiguous submission recovery
+(ruling 9), published benchmark pins (ruling 10), live scheduler acceptance and
+round-4 NOTE-1's durable-state question remain open and untouched. Full row-12 exit
+remains NOT met.
+
+### Tests and owner action
+
+The round-7 change report records measured command summaries and the two new fault
+witnesses. No new implementation ruling is needed. No protected path changes in
+round 7; earlier guard, settings and contract changes still require the owner's
+separate approval commit and record 0070 under R-094/spec §9.3. The producer neither
+writes 0070 nor claims that approval. The index is regenerated after this addendum.
+
+Round-7 CLI clarification: the precedence rule above applies to status queries,
+which know only a job number and caller backend. Submit knows the exact script and
+reports its recorded executor directly; this preserves the local label when a
+login-node analysis is submitted after a colliding stage-02 Slurm job. The existing
+login-node regression now includes that collision, with a third new plant that
+replaces the recorded executor label with the configured backend. This narrows the
+preceding shared-label description; it adds no new dispatch or approval policy.
