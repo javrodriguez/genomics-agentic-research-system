@@ -23,7 +23,7 @@ Subcommands:
   collect  the exit gate: de_results.csv exists, its FIRST column is `gene` with no empty
            identifiers (the 0010 defect class), padj present, every sample in the normalized
            matrix, all three figures and the report real. Writes OUTPUTS.tsv (de_results
-           native, counts_gene adapted, gene_id_map native), STATUS, and returns the history
+           native, counts_gene adapted, gene_id_map native), the lifecycle state file, and returns the history
            entry (template version + model + which sub-stage supplied the counts).
 
 Inputs `--counts` and `--design` are the PATHS the router resolved by artifact type
@@ -371,7 +371,7 @@ def cmd_collect(args):
 
     if fails:
         result["failures"] = fails
-        return emit(result, EXIT_FAILURE)
+        return wl.collect_failure(substage, result, EXIT_FAILURE)
 
     outputs = [("de_results", "native", "run/tables/de_results.csv"),
                ("counts_gene", "adapted", "adapted/counts_gene.tsv"),
@@ -382,8 +382,7 @@ def cmd_collect(args):
             fh.write("%s\t%s\t%s\n" % (typ, role, path))
 
     now = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-    with ws.atomic_open(substage / "STATUS") as fh:
-        fh.write("COMPLETE %s\n" % now)
+    wl.write_status(substage, "COMPLETE")  # STATUS follows the successful collect gate.
 
     version = ws.template_version(WORKSPACE)
     model = args.model or "unknown"

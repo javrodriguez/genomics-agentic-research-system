@@ -10,6 +10,8 @@ Runs on stock python 3.6.8, stdlib only, like every `_system/` helper.
 """
 
 import hashlib
+import datetime
+import fcntl
 import json
 import pathlib
 import os
@@ -26,6 +28,133 @@ import executorlib as ex        # noqa: E402
 import workspace as ws          # noqa: E402
 
 EXIT_OK, EXIT_FAILURE, EXIT_REFUSED, EXIT_USAGE = 0, 1, 2, 3
+
+# R-150/R-151; the owner's ruling 12A: COMPLETED is stored as COMPLETE.
+STATUS_ALIASES = {"COMPLETED": "COMPLETE"}
+STATUS_STATES = ("CREATED", "PLANNED", "AWAITING_APPROVAL", "APPROVED",
+                 "EXECUTING", "VALIDATING", "REVIEWING", "COMPLETE", "REJECTED",
+                 "FAILED", "DIAGNOSING", "RETRYING", "CANCELLED", "PAUSED",
+                 "NEEDS_INPUT", "PARTIAL", "STALE", "ARTIFACT_MISSING",
+                 "SUBMITTED", "RUNNING")
+TERMINAL_STATES = ("COMPLETE", "REJECTED", "FAILED", "CANCELLED")
+FAILURE_REASONS = ("TIMEOUT", "OUT_OF_MEMORY", "CANCELLED", "NODE_FAIL")
+
+
+class StatusRefusal(ValueError):
+    def record(self):
+        return {"type": "status_refusal", "rule": "R-151", "reason": str(self)}
+
+
+def read_status(stage):
+    path = Path(stage) / 'STATUS'
+    if not path.exists():
+        return None
+    words = path.read_text(encoding='utf-8').split()
+    return words[0] if words else None
+
+
+def write_status(project_dir_or_substage, state, reason=None, submission_key=None):
+    """The only wrapper/executor STATUS writer (the owner's ruling 13A).
+
+    Failure and cancellation are reachable from every non-terminal state. No migration
+    of legacy STATUS files is performed. Success belongs to a successful collect caller;
+    the marker and published output index are mandatory even at this lowest-level door.
+    submission_key is internal executor evidence, not a reset flag: leaving failure or
+    cancellation requires a corrective key; transient retry requires recorded attempts.
+    """
+    stage = Path(project_dir_or_substage)
+    with open(str(stage / '.STATUS.lock'), 'a') as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        return _write_status_locked(stage, state, reason, submission_key)
+
+
+def _write_status_locked(stage, state, reason, submission_key):
+    """Validate the transition and atomically replace while holding the stage lock."""
+    if not isinstance(state, str):
+        raise StatusRefusal('invalid_state: expected a closed-enum string')
+    if ':' in state:
+        if reason is not None:
+            raise StatusRefusal('invalid_reason: reason supplied twice')
+        state, reason = state.split(':', 1)
+    state = STATUS_ALIASES.get(state, state)
+    if state not in STATUS_STATES:
+        raise StatusRefusal('invalid_state: outside the closed STATUS enum')
+    if reason is not None and (state != 'FAILED' or not isinstance(reason, str) or
+            not (reason in FAILURE_REASONS or re.fullmatch(r'EXIT_[0-9]+', reason))):
+        raise StatusRefusal('invalid_reason: expected a scheduler reason or EXIT_<n>')
+    value = state + (':' + reason if reason else '')
+    previous = read_status(stage)
+    if previous and previous.split(':', 1)[0] in TERMINAL_STATES:
+        if previous == value:
+            return value
+        corrective = False
+        if state == 'SUBMITTED' and submission_key and (previous.startswith('FAILED') or previous == 'CANCELLED'):
+            try:
+                root = ex.config_root_for(stage)
+                record = ex.stage_record(root, stage)
+                old_key = submission_key if record.get('attempts') else record.get('supersedes_key')
+                if not isinstance(old_key, str) or not re.fullmatch(r'[0-9a-f]{64}', old_key):
+                    raise ValueError('missing superseded key')
+                old_path = ex._records(root) / (old_key + '.json')
+                old = json.loads(old_path.read_text(encoding='utf-8'))
+                if old_key == submission_key:
+                    old = record['attempts'][-1]
+                    if ex.retry_refusal(root, stage, old, len(record['attempts']) - 1):
+                        raise ValueError('retry not authorized')
+                old_stage = ex._validate_record(root, old_path, old)
+                corrective = (record['idempotency_key'] == submission_key and
+                              record['state'] == 'SUBMITTED' and bool(record.get('job_id')) and
+                              old_stage == stage.resolve() and old['state'] == previous)
+            except (OSError, ValueError, KeyError, TypeError, AttributeError):
+                corrective = False
+        if not corrective:
+            raise StatusRefusal('terminal_state: cannot change %s to %s' % (previous, value))
+    if state == 'COMPLETE' and not ((stage / 'run/.gars_run_complete').is_file()
+                                    and (stage / 'OUTPUTS.tsv').is_file()):
+        raise StatusRefusal('completion_gate: successful collect and .gars_run_complete required')
+    if state == 'COMPLETE':
+        try:
+            record = ex.stage_record(ex.config_root_for(stage), stage)
+            if record:
+                if record.get('executor') != ex.load(ex.config_root_for(stage)).get('name'):
+                    raise ValueError('executor differs from the recorded submission')
+                observed, detail = ex._scheduler_status(ex.config_root_for(stage), record['job_id'])
+                if observed != 'COMPLETED':
+                    raise ValueError(detail or observed or 'executor unavailable')
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            raise StatusRefusal('completion_gate: %s' % exc)
+    metadata = ''
+    if state in ('SUBMITTED', 'RUNNING'):
+        # Preserve the contracts' job-id suffix when submit has recorded one. The
+        # writer API does not accept agent-supplied execution metadata.
+        try:
+            key = submission_key
+            if key is None:
+                manifest = json.loads((stage / 'reproducibility/manifest.json').read_text(encoding='utf-8'))
+                key = manifest.get('idempotency_key', '')
+            if re.fullmatch(r'[0-9a-f]{64}', key):
+                record_path = ex._records(ex.config_root_for(stage)) / (key + '.json')
+                record = json.loads(record_path.read_text(encoding='utf-8'))
+                if ex._validate_record(ex.config_root_for(stage), record_path, record) != stage.resolve():
+                    raise ValueError('record belongs to another stage')
+                job = record.get('job_id')
+                if isinstance(job, str) and job.isdigit():
+                    metadata = job + ' '
+        except (OSError, ValueError, TypeError):
+            pass  # A pre-submission state has no scheduler identity yet.
+    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    # Unique siblings prevent concurrent writers from sharing a partially written temp.
+    fd, temporary = tempfile.mkstemp(prefix='.STATUS-', dir=str(stage))
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as fh:
+            fh.write('%s %s%s\n' % (value, metadata, timestamp))
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(temporary, str(stage / 'STATUS'))
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+    return value
 
 
 def emit(result, code):
@@ -47,6 +176,39 @@ def require_collect_config(project, assay, substage):
     if problem:
         raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,
                                'error': problem}, EXIT_REFUSED))
+    stage = Path(project) / '02_bioinformatics' / assay / substage
+    # R-135: a marker is necessary, but cannot overrule a failed/unreachable executor.
+    try:
+        record = ex.stage_record(project, stage)
+        if record:
+            if record['state'].startswith('FAILED') and record.get('scheduler_state') == 'COMPLETED':
+                raise ValueError('collect gate already failed; prepare corrected inputs for a new attempt')
+            state, detail = ex.status(project, record['job_id']) if record['job_id'] else (None, 'submission unresolved')
+            if state != 'COMPLETED':
+                raise ValueError('executor has not finished successfully: %s' % (detail or state))
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise SystemExit(emit({'command': 'collect', 'ok': False, 'assay': assay,
+                               'error': 'R-135: %s' % exc}, EXIT_REFUSED))
+
+
+def collect_failure(stage, result, code=EXIT_FAILURE):
+    """A failed artifact gate owns its failure; scheduler evidence remains separate."""
+    state = 'FAILED:EXIT_' + str(code)
+    root = ex.config_root_for(stage)
+    directory = ex._records(root)
+    directory.mkdir(exist_ok=True)
+    with open(str(directory / '.lock'), 'a') as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        record = ex.stage_record(root, stage)
+        if record:
+            record['scheduler_state'] = record['state']
+            record['state'] = state
+            ex.record_failure(stage, record, state, json.dumps(result, sort_keys=True))
+            ex._save_record(directory / (record['idempotency_key'] + '.json'), record)
+        else:
+            ex.record_failure(stage, {}, state, json.dumps(result, sort_keys=True))
+        write_status(stage, state)
+    return emit(result, code)
 
 
 def read_config(path):
@@ -417,6 +579,30 @@ def write_params_yaml(substage, assay, params):
             fh.write("%s: %s\n" % (key, json.dumps(value) if " " in str(value) else value))
 
 
+def input_key(stage, manifest):
+    """0057 provisional formula: fixed-order bytes, independently framed downstream."""
+    inputs = manifest['inputs']
+    digest = hashlib.sha256()
+    if manifest['key_formula'] == 'stage01-v1':
+        sources = [stage / 'params.yaml', Path(inputs['samplesheet']), Path(inputs['config'])]
+        for source in sources:
+            with source.open('rb') as fh:
+                for chunk in iter(lambda: fh.read(1 << 20), b''):
+                    digest.update(chunk)
+    elif manifest['key_formula'] == 'downstream-v1':
+        digest.update(b'GARS downstream v1\0')
+        for label in sorted(inputs):
+            source = Path(inputs[label])
+            digest.update(label.encode('utf-8') + b'\0')
+            digest.update(str(source.stat().st_size).encode('ascii') + b'\0')
+            digest.update(bytes.fromhex(sha256(source)))
+        digest.update(json.dumps(manifest['params'], sort_keys=True,
+                                 separators=(',', ':'), ensure_ascii=True).encode('ascii'))
+    else:
+        raise ValueError('unknown key formula')
+    return digest.hexdigest()
+
+
 def write_reproducibility(substage, assay, checkout, inputs, params):
     """manifest.json (checksums, pipeline commit) + commands.sh. Deterministic bytes."""
     repro = substage / "reproducibility"
@@ -432,6 +618,16 @@ def write_reproducibility(substage, assay, checkout, inputs, params):
                 "template_version": ws.template_version(Path(__file__).resolve().parents[1])}
     for label, path in inputs.items():
         manifest["%s_sha256" % label] = sha256(path)
+    manifest['inputs'] = {label: str(Path(path).resolve()) for label, path in inputs.items()}
+    manifest['key_formula'] = ('stage01-v1' if (substage / 'params.yaml').is_file()
+                               and 'samplesheet' in inputs and 'config' in inputs else 'downstream-v1')
+    manifest['idempotency_key'] = input_key(substage, manifest)
+    script_path = substage / 'submit.sh'
+    script = script_path.read_text(encoding='utf-8')
+    script = re.sub(r'^# idempotency_key=[0-9a-f]+\n', '', script, flags=re.M)
+    with ws.atomic_open(script_path) as fh:
+        fh.write(script + '# idempotency_key=' + manifest['idempotency_key'] + '\n')
+    os.chmod(str(script_path), 0o755)
     with ws.atomic_open(repro / "manifest.json") as fh:
         json.dump(manifest, fh, indent=2, sort_keys=True)
     submit_sh = substage.resolve() / "submit.sh"

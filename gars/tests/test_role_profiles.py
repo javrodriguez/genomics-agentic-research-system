@@ -20,14 +20,20 @@ class RoleProfileTests(unittest.TestCase):
         for role in ('producer','reviewer','invented'):
             self.assertEqual(policy.decide(tool,role),'refuse')
 
-    def test_cancel_needs_approval(self):
-        self.assertEqual(policy.decide(policy.named('executor.cancel'),'producer'),'needs-approval')
+    def test_cancel_enters_executor_approval_gate(self):
+        self.assertEqual(policy.decide(policy.named('executor.cancel'),'producer'),'allow')
+        from test_lifecycle_cancel import LifecycleCancelTests
+        case = LifecycleCancelTests('test_old_job_needs_bound_unexpired_human_record')
+        result = unittest.TestResult(); case.run(result)
+        self.assertTrue(result.wasSuccessful(), str(result.failures) + str(result.errors))
 
-    def test_cancel_declared_refusal_names_row_12(self):
-        for role in ('producer','reviewer','human'):
-            with self.subTest(role=role), self.assertRaisesRegex(policy.Refusal,'row 12'):
-                policy.authorize(policy.named('executor.cancel'),
-                                 {'workspace':'projects/p','job-id':'123'},role)
+    def test_cancel_available_except_to_reviewer(self):
+        for role in ('producer', 'human'):
+            self.assertEqual(policy.authorize(policy.named('executor.cancel'),
+                             {'workspace':'projects/p','job-id':'123'},role), 'allow')
+        with self.assertRaisesRegex(policy.Refusal, 'reviewer'):
+            policy.authorize(policy.named('executor.cancel'),
+                             {'workspace':'projects/p','job-id':'123'},'reviewer')
 
     def test_role_not_environment_or_argument(self):
         with patch.dict(os.environ, {'GARS_ROLE':'human','GARS_ACTOR':'human'}):
@@ -38,7 +44,7 @@ class RoleProfileTests(unittest.TestCase):
 
     def test_reviewer_only_read_and_status(self):
         for tool in policy.registry():
-            if tool['side_effects']:
+            if tool['side_effects'] and tool['name'] != 'executor.status':
                 self.assertEqual(policy.decide(tool,'reviewer'),'refuse',tool['name'])
         self.assertEqual(policy.decide(policy.named('executor.status'),'reviewer'),'allow')
 

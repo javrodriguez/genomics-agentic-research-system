@@ -16,7 +16,7 @@ Subcommands, in run order (the sub-stage contract orchestrates; this computes):
            Deterministic: same inputs, same bytes.
   collect  the exit gate after the Slurm job finishes: every sample must appear in the
            consensus count-matrix header (content, not existence — decision 0010). Writes
-           OUTPUTS.tsv and STATUS, harvests the aligner index into the derived cache, returns
+           OUTPUTS.tsv and the lifecycle state file, harvests the aligner index into the derived cache, returns
            the history entry (template version + model, decision 0024) to append verbatim.
 
 Runs on stock python 3.6.8, stdlib only. Nextflow/java are needed only inside submit.sh.
@@ -285,7 +285,7 @@ def cmd_collect(args):
 
     if fails:
         result["failures"] = fails
-        return emit(result, EXIT_FAILURE)
+        return wl.collect_failure(substage, result, EXIT_FAILURE)
 
     rel = lambda p: str(p.relative_to(substage))  # noqa: E731
     outputs = [("peaks", rel(peaks_dir)), ("peaks_consensus", rel(consensus_bed[0])),
@@ -306,8 +306,7 @@ def cmd_collect(args):
                                "action": action}
 
     now = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-    with ws.atomic_open(substage / "STATUS") as fh:
-        fh.write("COMPLETE %s\n" % now)
+    wl.write_status(substage, "COMPLETE")  # STATUS follows the successful collect gate.
 
     version = ws.template_version(WORKSPACE)
     model = args.model or "unknown"

@@ -26,7 +26,7 @@ Subcommands, in run order (the sub-stage contract orchestrates; this computes):
            executor config, output directory. Writes preflight/check_result.json.
   prepare  re-validates, then writes params.yaml, submit.sh and the reproducibility bundle.
   collect  the exit gate: every sample must have its own converted matrix, and the combined
-           matrix and MultiQC report must be real. Writes OUTPUTS.tsv and STATUS.
+           matrix and MultiQC report must be real. Writes OUTPUTS.tsv and the lifecycle state file.
 
 Runs on stock python 3.6.8, stdlib only. Nextflow/java are needed only inside submit.sh.
 """
@@ -355,7 +355,7 @@ def cmd_collect(args):
 
     if fails:
         result["failures"] = fails
-        return emit(result, EXIT_FAILURE)
+        return wl.collect_failure(substage, result, EXIT_FAILURE)
 
     rel = lambda p: str(p.relative_to(substage))  # noqa: E731
     outputs = [("h5ad", rel(combined_file)), ("qc_multiqc", rel(multiqc))]
@@ -374,8 +374,7 @@ def cmd_collect(args):
                                "action": action}
 
     now = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-    with ws.atomic_open(substage / "STATUS") as fh:
-        fh.write("COMPLETE %s\n" % now)
+    wl.write_status(substage, "COMPLETE")  # STATUS follows the successful collect gate.
 
     version = ws.template_version(WORKSPACE)
     model = args.model or "unknown"

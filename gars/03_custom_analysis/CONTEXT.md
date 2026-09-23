@@ -79,7 +79,8 @@ already written on the cluster still approves. Whether a job is
 kills whatever is running when memory runs short, not whatever is at fault, and a wrong size
 estimate is exactly the mistake a default cannot make (decision 0027).
 
-**Complete.** `verify` exit 0: every declared output exists and is non-empty, `OUTPUTS.tsv`
+**Complete.** `verify` exit 0: execution has written `run/.gars_run_complete` after success,
+every declared output exists and is non-empty, `OUTPUTS.tsv`
 and `STATUS` are written. An analysis whose outputs are missing is FAILED, whatever the
 scripts' exit codes claimed.
 
@@ -112,14 +113,15 @@ scripts' exit codes claimed.
    line reads `login-node (user-requested)`. `submit` checks the approval record: if it
    refuses for approval (none, changed plan, or expired), reply T3 with its reason verbatim and
    stop; a new approval is the user's. On submission reply
-   T4 and monitor the job. Steps not in the plan do not happen.
-8. If execution fails, write `STATUS` as `FAILED <iso8601>`, reply T5 with the actual error,
+   T4 and monitor the job. The execution script writes `run/.gars_run_complete` only after
+   all its commands succeed. Steps not in the plan do not happen.
+8. If execution fails, call `python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>`, reply T5 with the actual error,
    and stop. Do not patch around the failure and re-run: diagnosis goes to the user, and a
    changed method is a new plan.
 9. On execution success, run
    `python3 _system/stage03_analysis.py verify --project projects/<title> --analysis <NN_slug> --model "<model id>"`.
    `--model` is the exact model id you are running as (decision 0024); omit only if you cannot
-   name it. Exit 1 → declared outputs are missing or empty: write `STATUS` as `FAILED`, reply
+   name it. Exit 1 → declared outputs are missing or empty: reply
    T5, stop. Exit 2 → the plan has no valid approval record (never approved, edited since, or
    expired); treat as step 8's failure — something ran that should not have.
 10. Exit 0 → append the returned `history_entry` to the project's `HISTORY.md` **verbatim**,

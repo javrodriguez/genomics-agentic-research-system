@@ -50,8 +50,21 @@ status_argv:
   - sacct
   - -j
   - "{job_id}"
-  - --format=State
+  - --format=State,ExitCode
   - --noheader
+  - --parsable2
+
+# Cancellation and timing are fixed by the backend enum.
+cancel_argv:
+  - scancel
+  - "{job_id}"
+start_argv:
+  - sacct
+  - -j
+  - "{job_id}"
+  - --format=Start
+  - --noheader
+  - --parsable2
 
 # This backend's states, mapped onto the closed vocabulary. Closed means closed: a state that
 # is not listed here is refused by name rather than guessed at, so an unfamiliar scheduler
@@ -67,10 +80,10 @@ status_map:
   RESIZING: RUNNING
   COMPLETED: COMPLETED
   FAILED: FAILED
-  CANCELLED: FAILED
-  TIMEOUT: FAILED
-  NODE_FAIL: FAILED
-  OUT_OF_MEMORY: FAILED
+  CANCELLED: CANCELLED
+  TIMEOUT: FAILED:TIMEOUT
+  NODE_FAIL: FAILED:NODE_FAIL
+  OUT_OF_MEMORY: FAILED:OUT_OF_MEMORY
   BOOT_FAIL: FAILED
   DEADLINE: FAILED
   REVOKED: FAILED

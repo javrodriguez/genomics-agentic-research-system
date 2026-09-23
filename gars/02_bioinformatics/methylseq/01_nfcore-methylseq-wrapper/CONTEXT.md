@@ -30,8 +30,7 @@ This sub-stage performs the steps in Process and nothing else.
 - Never substitute a hand-written pipeline. If the wrapper cannot run, report and stop.
 - Never modify the samplesheet, the design table, `00_data/`, or anything under
   `01_samplesheets/`.
-- Never run the pipeline in the foreground, and never poll for it in a loop. Submit, write
-  STATUS, and return.
+- Never run the pipeline in the foreground, and never poll for it in a loop. Submit, call the typed `status` tool, and return.
 - Never resubmit a job whose STATUS is `SUBMITTED` or `RUNNING`.
 - Never delete or move a populated `run/` directory; `check` refuses it for a reason.
   Surface the refusal.
@@ -85,17 +84,18 @@ first live run establishes the published index layout worth harvesting.
    `submit.sh` and the reproducibility bundle; report nothing yet.
 5. Submit with `python3 <workspace>/_system/executorlib.py submit --workspace <project dir>
    <sub-stage dir>/submit.sh`. It prints one JSON object; `job_id` is the field. Capture it.
-6. Write `STATUS` as `SUBMITTED <job_id> <iso8601>`. Reply T2 and stop. Do not wait, poll,
+6. Submit has written `SUBMITTED`; no status call is needed yet. Reply T2 and stop. Do not wait, poll,
    or sleep.
-7. **On a later invocation** where STATUS is `SUBMITTED` or `RUNNING`: ask `python3 <workspace>/_system/executorlib.py
+7. **On a later invocation** where STATUS is `SUBMITTED`, `RUNNING` or `VALIDATING`: ask `python3 <workspace>/_system/executorlib.py
    status --workspace <project dir> <job_id>` — it answers `PENDING`, `RUNNING`,
-   `COMPLETED` or `FAILED`. If not yet terminal, update STATUS to `RUNNING <job_id>
-   <iso8601>`, reply T3, stop.
-8. If the job has finished, run `collect` with `--model "<the exact model id you are running
-   as>"` (decision 0024). Exit 2 → the run did not actually complete: write `STATUS` as
-   `FAILED <iso8601>`, reply T4 with the wrapper's error and the scheduler log path, stop.
-   Exit 1 → the exit gate failed: write `FAILED`, reply T4 with its `failures` verbatim,
-   stop.
+   `COMPLETED`, `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`. If `PENDING` or `RUNNING`, reply T3, stop; the status call has already refreshed STATUS.
+8. If status reports `FAILED:<reason>`, `CANCELLED` or `ARTIFACT_MISSING`, reply T4
+   with that reason and the scheduler log path, stop. If the scheduler reports
+   `COMPLETED`, STATUS is `VALIDATING`; run `collect` with
+   `--model "<the exact model id you are running as>"` (decision 0024).
+   Exit 2 → collection is refused: reply T4 with the wrapper's error and scheduler log path, stop.
+   Exit 1 → the exit gate failed and collect wrote `FAILED:EXIT_1`: reply T4 with its
+   `failures` verbatim, stop. Preserve the failure; do not poll to replace it.
 9. Exit 0 → `collect` has written `OUTPUTS.tsv` and `STATUS COMPLETE`. Append its
    `history_entry` to the project's `HISTORY.md` **verbatim**, replacing `<ISO-8601 date>`
    with today's date, and reply T6.

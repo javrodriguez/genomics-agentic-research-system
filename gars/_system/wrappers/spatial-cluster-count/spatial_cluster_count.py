@@ -25,7 +25,7 @@ python; the analysis itself is a GENERATED script (`scripts/count_clusters.py`) 
            reproducibility bundle. Deterministic bytes.
   collect  the exit gate: summary.json's sample set equals the samplesheet's (independent),
            clusters.tsv agrees with summary.json (internal consistency), the report is real.
-           Writes OUTPUTS.tsv (table, report -- never an h5ad row) and STATUS.
+           Writes OUTPUTS.tsv (table, report -- never an h5ad row) and the lifecycle state file.
 
 Input `--h5ad` is the PATH the router resolved by artifact type (resolve_artifact.py):
 either the results DIRECTORY 02.01 registered (per-sample file at
@@ -551,7 +551,7 @@ def cmd_collect(args):
 
     if fails:
         result["failures"] = fails
-        return emit(result, EXIT_FAILURE)
+        return wl.collect_failure(substage, result, EXIT_FAILURE)
 
     # Never an h5ad row: this sub-stage produces no object, and a row here would shadow
     # 02.01's for every later consumer (the resolver takes the newest native match).
@@ -563,8 +563,7 @@ def cmd_collect(args):
             fh.write("%s\t%s\t%s\n" % (typ, role, path))
 
     now = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-    with ws.atomic_open(substage / "STATUS") as fh:
-        fh.write("COMPLETE %s\n" % now)
+    wl.write_status(substage, "COMPLETE")  # STATUS follows the successful collect gate.
 
     version = ws.template_version(WORKSPACE)
     model = args.model or "unknown"

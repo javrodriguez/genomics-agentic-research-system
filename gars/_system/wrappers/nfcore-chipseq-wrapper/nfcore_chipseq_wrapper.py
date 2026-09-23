@@ -286,7 +286,7 @@ def cmd_collect(args):
 
     if fails:
         result["failures"] = fails
-        return emit(result, EXIT_FAILURE)
+        return wl.collect_failure(substage, result, EXIT_FAILURE)
 
     rel = lambda p: str(p.relative_to(substage))  # noqa: E731
     outputs = [("peaks", rel(peaks_dir)), ("peaks_consensus", rel(consensus_root)),
@@ -307,8 +307,7 @@ def cmd_collect(args):
                                "action": action}
 
     now = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-    with ws.atomic_open(substage / "STATUS") as fh:
-        fh.write("COMPLETE %s\n" % now)
+    wl.write_status(substage, "COMPLETE")  # STATUS follows the successful collect gate.
 
     version = ws.template_version(WORKSPACE)
     model = args.model or "unknown"

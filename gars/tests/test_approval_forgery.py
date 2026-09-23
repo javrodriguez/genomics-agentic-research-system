@@ -40,6 +40,8 @@ class ApprovalForgeryTests(unittest.TestCase):
         (self.adir/'results').mkdir(parents=True)
         (self.adir/'results/table.tsv').write_text('a\tb\n1\t2\n')
         (self.adir/'PLAN.md').write_text(PLAN)
+        (self.adir/'run').mkdir()
+        (self.adir/'run/.gars_run_complete').write_text('synthetic successful execution\n')
         self.args=argparse.Namespace(project=str(self.project),analysis='01_policy',model='fixture',date=None)
 
     def tearDown(self): self.tmp.cleanup()
@@ -69,6 +71,15 @@ class ApprovalForgeryTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(stage.cmd_approve(self.args,self.workspace),0)
         return stage.approval_record_path(self.adir/'PLAN.md',self.workspace)
+
+    def test_verify_requires_execution_marker(self):
+        self.approve()
+        (self.adir/'run/.gars_run_complete').unlink()
+        self.assertEqual(self.verify(), 2)
+        self.assertFalse((self.adir/'STATUS').exists())
+        (self.adir/'run/.gars_run_complete').write_text('synthetic successful execution\n')
+        self.assertEqual(self.verify(), 0)
+        self.assertEqual((self.adir/'STATUS').read_text().split()[0], 'COMPLETE')
 
     def test_expired_approval(self):
         path=self.approve()

@@ -3395,9 +3395,11 @@
         "producer": "allow",
         "reviewer": "allow"
       },
-      "side_effects": [],
+      "side_effects": [
+        "scheduler-derived STATUS refresh (R-151)"
+      ],
       "timeout_seconds": 120,
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     {
       "argv": [
@@ -3415,7 +3417,7 @@
           "nargs": null
         }
       },
-      "description": "cancel through the existing executor",
+      "description": "cancel a recorded job; executor checks job/backend approval after one hour",
       "input_schema": {
         "additionalProperties": false,
         "properties": {
@@ -3459,15 +3461,15 @@
       },
       "roles": {
         "human": "allow",
-        "producer": "needs-approval",
+        "producer": "allow",
         "reviewer": "refuse"
       },
       "side_effects": [
-        "scheduler job"
+        "scheduler job",
+        "code-owned STATUS refresh"
       ],
       "timeout_seconds": 120,
-      "unavailable": "R-092: cancel is unavailable until row 12 supplies the verb (provisional owner ruling 0059).",
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     {
       "argv": [
