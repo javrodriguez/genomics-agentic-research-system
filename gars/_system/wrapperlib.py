@@ -580,7 +580,7 @@ def write_params_yaml(substage, assay, params):
 
 
 def input_key(stage, manifest):
-    """0057 provisional formula: fixed-order bytes, independently framed downstream."""
+    """0063 provisional formula: fixed-order bytes, independently framed downstream."""
     inputs = manifest['inputs']
     digest = hashlib.sha256()
     if manifest['key_formula'] == 'stage01-v1':

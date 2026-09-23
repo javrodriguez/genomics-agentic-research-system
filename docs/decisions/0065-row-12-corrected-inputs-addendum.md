@@ -16,14 +16,14 @@ symptoms:
 ---
 # Row 12 corrected-inputs addendum
 
-Addendum to [0058](0058-row-12-review-addendum.md) and
-[0057](0057-row-12-lifecycle-status-writer.md). Both retain their original bytes.
+Addendum to [0064](0064-row-12-review-addendum.md) and
+[0063](0063-row-12-lifecycle-status-writer.md). Both retain their original bytes.
 This is a producer correction in response to the supplied round-2 review, not an
 owner approval. The approved row-4 base remains `d17573a`; 12A and 13A still apply.
 
 ## Correction to the recorded behavior
 
-0058's blanket terminal refusal wedged **all** FAILED/CANCELLED stages, even after
+0064's blanket terminal refusal wedged **all** FAILED/CANCELLED stages, even after
 corrected inputs and prepare produced a different key. It did not merely refuse a
 same-key retry. Its only physical workaround was an unguarded human deleting STATUS;
 that was not a supported or documented recovery procedure. Do not use that workaround:
@@ -82,3 +82,5 @@ in NOTE-3 is deferred with the existing cancellation timing/schema ruling: submi
 wall time is not a measurement of consumed compute. No cancellation, classifier, bounded
 retry, downstream key, collect-failure mapping, contract expansion, row-15 work, protected
 study edit, owner approval, full row exit or live scheduler acceptance is claimed.
+
+_Renumbered at merge, 2026-09-22: this record was written as 0059 on its branch and takes 0065 on main, because the row-5 fix and rows 15, 4, 11 and 12 numbered their decisions independently (merge order: row-5 fix, 15, 4, 11, 12). Its number, link targets and the numbers of other rows' records it cites are the only edits; branch-time number notes are left as written._

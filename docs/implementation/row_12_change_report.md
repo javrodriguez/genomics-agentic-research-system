@@ -1,7 +1,7 @@
 # Row 12 change report — partial repo-side implementation
 
 Row exit **NOT met**. The owner supplied rulings 12A and 13A; both are quoted in
-[0057](../decisions/0057-row-12-lifecycle-status-writer.md). Additional material choices
+[0063](../decisions/0063-row-12-lifecycle-status-writer.md). Additional material choices
 are stopped under the owner's rule 5 and recorded there with numbered options.
 The producer has not approved or merged this work. Merge remains conditional on the
 separate study's done commit and the owner's review.
@@ -9,7 +9,7 @@ separate study's done commit and the owner's review.
 Starting branch: `build/gars-row-12-lifecycle`.
 Starting commit (`HEAD@{start}`): `d17573af63ab5d21d0eadabf806c3da31541f5b6`.
 `git status --short` was empty. The starting log includes row 4's implementation,
-provisional rulings and the owner's protected-change approval commit 0056.
+provisional rulings and the owner's protected-change approval commit 0060.
 
 ## Requirement, implementation and acceptance
 
@@ -24,7 +24,7 @@ provisional rulings and the owner's protected-change approval commit 0056.
 | R-151 / status side effect | `tools/registry.json`, `test_role_profiles.py` | reviewer retains explicitly permitted status; all other side-effect tools remain refused | PASS; no role/identity override introduced |
 | R-074 cancel | no implementation beyond inherited declared refusal | required long-running cancel and genuine approval-record acceptance | **NOT met**; approval-to-job binding/issuance awaits the owner; red-on-fault **no** |
 | R-152 | conservative refusal of recorded failed-key re-submission in `executorlib.py`; `test_execution_policy.py` | required `test_failure_classification.py` on six injected failures, bounded transient retries | **NOT met**; no failure taxonomy/artifact, destructive retry approval, or bounded retry implementation claimed; red-on-fault **no** |
-| R-151/R-135 beyond the boundary | unchanged `stage03_analysis.py` and authoring generator | repository-wide writer/success gate | **NOT met**; scope conflict recorded in 0057 |
+| R-151/R-135 beyond the boundary | unchanged `stage03_analysis.py` and authoring generator | repository-wide writer/success gate | **NOT met**; scope conflict recorded in 0063 |
 
 The stub runner and no-false-completion runner print these lines verbatim. They are
 repo-side results, not a claim that the row's full exit is met:
@@ -331,9 +331,9 @@ touch time was not measured here (R-153 is row 13). No cluster compute hours wer
 Date: **2026-09-22**. Supplied review: `docs/reviews/row_12_review.md`, SHA-256
 `de4bc7e8a8416e8c9d57cd7553a072a690f42f6ce60ad8ab97cfeb1e2ef564f4`.
 The review remains untracked and unchanged. This round starts at `e33f34e`; row 12 is
-judged against `d17573a`, including the owner's row-4 approval decision 0056. No external
+judged against `d17573a`, including the owner's row-4 approval decision 0060. No external
 reviewer conversation or other build tree was read. Earlier report sections and decision
-0057 retain their original bytes; [0058](../decisions/0058-row-12-review-addendum.md) is
+0063 retain their original bytes; [0064](../decisions/0064-row-12-review-addendum.md) is
 an addendum. No owner approval, merge or full row exit is claimed.
 
 The current instruction to stop for owner-owned schemas, thresholds and scope choices takes
@@ -345,15 +345,15 @@ No finding is dismissed as wrong. Inherited row-4 material is not reassessed or 
 | Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
 |---|---|---|---|
 | BLOCKER-1: editable key and execution evidence | `executorlib.py`, `wrapperlib.py`, `guard_hook.py`, `.claude/settings.json`, `test_lifecycle_executor.py`, `test_no_false_completion.py`, `test_status_writer.py` | edited-key attack; rehash changed inputs; forged sibling-record collection; changed-backend success; four write tools against machine evidence | Fixed for guarded, recorded jobs. **Yes:** baseline edited-key test resubmitted; forged-record and terminal/reviewer tests failed; guard accepted all newly protected targets. Current tests pass. No same-UID unguarded-process guarantee. |
-| MAJOR-1: definite refusal burns key | `executorlib.py`, `test_lifecycle_executor.py`, 0058 | failed stub sbatch followed by successful sbatch; missing local/Slurm backend; ambiguous output/signal/error with job id | Definite refusal fixed; recovery procedure's contract/authorization scope remains with owner. **Yes:** baseline second submit returned `duplicate_submission; key already recorded (STALE)`; current stub submits exactly once. Ambiguous reservations remain protected. |
+| MAJOR-1: definite refusal burns key | `executorlib.py`, `test_lifecycle_executor.py`, 0064 | failed stub sbatch followed by successful sbatch; missing local/Slurm backend; ambiguous output/signal/error with job id | Definite refusal fixed; recovery procedure's contract/authorization scope remains with owner. **Yes:** baseline second submit returned `duplicate_submission; key already recorded (STALE)`; current stub submits exactly once. Ambiguous reservations remain protected. |
 | MAJOR-2: terminal regression | `wrapperlib.py`, `executorlib.py`, `test_status_writer.py`, `test_no_false_completion.py` | every terminal refuses exit; same-state no-op; reviewer-authorized status after empty accounting, RUNNING or failure response | Fixed. **Yes:** baseline accepted terminal exits and rewrote COMPLETE after the reviewer status call. Stage lock now serializes validation and replacement; final tests preserve terminal bytes. No general corrective bypass added. |
-| MAJOR-3: downstream missing keys | report, 0058 | downstream submit acceptance not claimed | Owner ruling required on key inputs or the review's proposed exemption; no key schema chosen and no guard relaxed. **No:** no green downstream submission test is claimed. |
-| MAJOR-4: retry and collect-failure dead ends | report, 0058 | executor-level permitted retry and collect-failure transition not claimed | Owner state/mapping/corrective-path ruling remains needed; recorded failed keys still refuse. **No:** generated guard unit tests are not represented as executor retry acceptance. |
-| MAJOR-5: missing cancel | report, 0058 | inherited declared-refusal/role tests only | Owner timing/record binding required; missing verb remains open, including sub-hour acceptance. **No:** no live cancellation or approval-record acceptance is claimed. |
-| MAJOR-6: absent classifier | report, 0058 | `python3 gars/tests/test_failure_classification.py` | Named test absent, exit 2; not a test pass. Owner mapping/artifact ruling required. **No.** |
+| MAJOR-3: downstream missing keys | report, 0064 | downstream submit acceptance not claimed | Owner ruling required on key inputs or the review's proposed exemption; no key schema chosen and no guard relaxed. **No:** no green downstream submission test is claimed. |
+| MAJOR-4: retry and collect-failure dead ends | report, 0064 | executor-level permitted retry and collect-failure transition not claimed | Owner state/mapping/corrective-path ruling remains needed; recorded failed keys still refuse. **No:** generated guard unit tests are not represented as executor retry acceptance. |
+| MAJOR-5: missing cancel | report, 0064 | inherited declared-refusal/role tests only | Owner timing/record binding required; missing verb remains open, including sub-hour acceptance. **No:** no live cancellation or approval-record acceptance is claimed. |
+| MAJOR-6: absent classifier | report, 0064 | `python3 gars/tests/test_failure_classification.py` | Named test absent, exit 2; not a test pass. Owner mapping/artifact ruling required. **No.** |
 | MINOR-1: case variants bypass protection | `guard_hook.py`, `test_status_writer.py` | Write/Edit/MultiEdit/NotebookEdit on `status`, `FILES.CSV`, `plan.MD.approved` | Fixed through case-insensitive path comparison. **Yes:** baseline allowed all twelve case-variant tool/path combinations; current tests refuse. |
 | MINOR-2: sweep evasions | `test_status_writer.py`, `test_lifecycle_faults.py`; four wrapper module docstrings | real sweep with computed, copied and formatted STATUS paths planted in disposable source copies | Fixed. **Yes:** all three plants make the real sweep fail. STATUS substrings are allowed only in comments or the actual writer-call token span; a second write on the same line also fails. |
-| MINOR-3: stale executor template | report, 0058 | existing resolved-template seam test | Owner action recorded below. **No:** normalization remains until an approved template refresh and its removal can land together. |
+| MINOR-3: stale executor template | report, 0064 | existing resolved-template seam test | Owner action recorded below. **No:** normalization remains until an approved template refresh and its removal can land together. |
 | MINOR-4: repeated status calls | ten stage-02 `CONTEXT.md` Process sections | `tests/check_contracts.py`; inspected diff of status lines | Partially fixed: typed-submit paths no longer immediately poll; every later active branch uses its single existing query. Collect-failure wording and the four inherited raw-sbatch paths await rulings. **No:** documentation correction, not a behavioral fault plant. |
 | MINOR-5: fixed wrapper count and generator | `test_status_writer.py`, report | sweep asserts at least ten shipped wrappers | Count corrected; generator output remains owner-gated and unverified. **No:** the minimum stays ten; no behavior assertion is removed. |
 | NOTE-1: generic Bash refusal | report | existing generic typed-surface/guard tests | Retained: inherited row-4 R-092 refusal already blocks the shell spellings; a STATUS-specific diagnostic is optional and unnecessary for enforcement. **No new plant.** |
@@ -402,12 +402,12 @@ mutated. The earlier six plants remain and still fail their named tests when inj
 
 1. **MAJOR-3 — downstream idempotency formula.** The review offers (a) a key over every
    wrapper's declared manifest input bytes in a fixed order, recorded as a provisional
-   formula, or (b) gating the key refusal to wrappers that declare one. Decision 0057 also
+   formula, or (b) gating the key refusal to wrappers that declare one. Decision 0063 also
    records serializing downstream params and using the stage-01 samplesheet versus a separate
    downstream formula. The spec's exact three-file tuple does not define those downstream
    inputs. Select the formula/schema, or explicitly authorize the exemption; the producer
    does neither and does not relax the guard. All three downstream submits remain NOT met.
-2. **MAJOR-4 — scheduler success and corrective transitions.** Options recorded in 0057:
+2. **MAJOR-4 — scheduler success and corrective transitions.** Options recorded in 0063:
    persist `VALIDATING` while returning scheduler `COMPLETED` until collect, or another
    owner-selected non-success state. The review recommends `VALIDATING` and collect failure
    `FAILED:EXIT_<n>` (or an owner-chosen state). Confirm their relationship to 13A and the
@@ -421,7 +421,7 @@ mutated. The earlier six plants remain and still fail their named tests when inj
    artifact beside the log. Confirm the producer codes and artifact schema. Only transient may
    retry, at the existing `maxRetries`; destructive retry needs approval. No classification,
    artifact schema, retry exception or missing producer codes are invented in this round.
-4. **MAJOR-5 — cancellation timing and approval binding.** Options in 0057: a job-specific
+4. **MAJOR-5 — cancellation timing and approval binding.** Options in 0063: a job-specific
    cancellation plan using the existing protected store and an issuance path, or an action
    record extension. The review requires R-073-shaped approval naming job id/backend for a job
    past one hour. The current submission schema records key/script/state/job_id/executor,
@@ -432,7 +432,7 @@ mutated. The earlier six plants remain and still fail their named tests when inj
    itself is fixed by the spec and is not a question.
 5. **MINOR-5 and R-151/R-135 scope.** Authorize narrow changes to stage03_analysis.py and
    the authoring generator, with generated-output sweep coverage, or leave both explicitly
-   NOT met, as the review and 0057 state. Neither file is changed in this round. Stage-03
+   NOT met, as the review and 0063 state. Neither file is changed in this round. Stage-03
    completion and the next scaffolded wrapper remain uncovered.
 6. **MINOR-4 and inherited contract boundary.** The four raw-sbatch submit lines were
    inherited from the approved row-4 head. Options: authorize typed executor.submit lines,
@@ -445,7 +445,7 @@ mutated. The earlier six plants remain and still fail their named tests when inj
    raw-template equality assertion. The template and normalizer are left together as-is now.
 8. **NOTE-2 — protected-path approval at merge.** The owner must record approval for
    row 12's `guard_hook.py`, `.claude/settings.json` and `tools/registry.json` changes.
-   This producer's proposed 0057/0058 and the substantive 13A ruling do not fabricate that
+   This producer's proposed 0063/0064 and the substantive 13A ruling do not fabricate that
    approval record. Registry bytes are unchanged in this round but changed in row 12.
 9. **MAJOR-1 — ambiguous submission recovery.** Definite refusals are fixed. For ambiguous
    outcomes, select the supported scheduler reconciliation/record-binding or reservation-
@@ -623,7 +623,7 @@ Other checks in this run:
 - Boundary diff against `d17573a` for `.github/`, `evals/`, `benchmarks/`,
   `gars/_references/`, `gars/_templates/`, `gars/_system/hooks/`,
   `gars/_system/authoring/` and `gars/_system/stage03_analysis.py`: empty.
-- Historical record audit: 0057 unchanged; this report retains its complete previous
+- Historical record audit: 0063 unchanged; this report retains its complete previous
   contents as an exact prefix; the supplied review hash remains the one recorded above.
 - `python3 gars/tests/test_failure_classification.py`: exit 2, file absent; **NOT met**.
 - `docker image ls --format '{{.Repository}}:{{.Tag}}'`: exit 1, daemon socket permission
@@ -640,20 +640,20 @@ login or machine name is added. No remote, push, merge or pull request is used.
 Date: **2026-09-22**. Supplied review: `docs/reviews/row_12_review_round2.md`,
 SHA-256 `c2d661701ee7b73c5f1b4039b54c8432d77be1abaede52c3ae6bc8a97c0b669b`.
 Round starts at `d3325a5`; row-12 scope remains the diff from approved row-4 head
-`d17573a`, including decision 0056. The supplied review remains untracked and unchanged.
+`d17573a`, including decision 0060. The supplied review remains untracked and unchanged.
 No external conversation or other build folder was read. Earlier report sections and
-0057/0058 retain their original bytes; [0059](../decisions/0059-row-12-corrected-inputs-addendum.md)
+0063/0064 retain their original bytes; [0065](../decisions/0065-row-12-corrected-inputs-addendum.md)
 is the dated correction beside them. No finding is dismissed as wrong.
 
 | Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
 |---|---|---|---|
-| MAJOR-1: terminal stage wedges corrected inputs | `executorlib.py`, `wrapperlib.py`, `test_lifecycle_executor.py`, `test_lifecycle_faults.py`, 0059, `DEVELOPMENT.md` | `test_corrected_failed_or_cancelled_stage_submits_once`; corrective-record and refusal/ambiguity tests | Fixed for recorded FAILED/CANCELLED with a different prepared key. **Yes:** both baseline subcases refused corrected submit; the terminal-wedge plant fails. Stub scheduler sees exactly one original and one corrective submission. Same-key retry still refuses. |
-| MINOR-1: status rebinds to current preparation; overlapping jobs | `executorlib.py`, `wrapperlib.py`, `test_lifecycle_executor.py`, `test_lifecycle_faults.py`, 0059 | `test_reprepare_keeps_tracking_and_blocks_overlapping_job`; record-identity corruption; late superseded-job poll | Fixed. **Yes:** baseline starts an overlapping job; restored current-key binding and removed overlap check each fail their named test. RUNNING retains the original job id, unreachable status refuses, later TIMEOUT persists, and only then can corrected submit proceed. |
+| MAJOR-1: terminal stage wedges corrected inputs | `executorlib.py`, `wrapperlib.py`, `test_lifecycle_executor.py`, `test_lifecycle_faults.py`, 0065, `DEVELOPMENT.md` | `test_corrected_failed_or_cancelled_stage_submits_once`; corrective-record and refusal/ambiguity tests | Fixed for recorded FAILED/CANCELLED with a different prepared key. **Yes:** both baseline subcases refused corrected submit; the terminal-wedge plant fails. Stub scheduler sees exactly one original and one corrective submission. Same-key retry still refuses. |
+| MINOR-1: status rebinds to current preparation; overlapping jobs | `executorlib.py`, `wrapperlib.py`, `test_lifecycle_executor.py`, `test_lifecycle_faults.py`, 0065 | `test_reprepare_keeps_tracking_and_blocks_overlapping_job`; record-identity corruption; late superseded-job poll | Fixed. **Yes:** baseline starts an overlapping job; restored current-key binding and removed overlap check each fail their named test. RUNNING retains the original job id, unreachable status refuses, later TIMEOUT persists, and only then can corrected submit proceed. |
 | MINOR-2: forged-record assertion depends on missing sacct | `test_no_false_completion.py`, `test_lifecycle_faults.py` | `test_forged_record_cannot_collect_another_stages_job` with scheduler COMPLETED throughout both doors | Fixed. **Yes:** removing the stage/script identity check makes the direct COMPLETE assertion fail with `StatusRefusal not raised`. The test also requires the binding-specific refusal reason. |
-| MINOR-3: step 8 still calls status after collect failure | report, 0059 | no collect-failure acceptance claimed | Remains with owner ruling 2, as the review explicitly requires. **No:** no transition or contract wording is invented before that ruling. |
+| MINOR-3: step 8 still calls status after collect failure | report, 0065 | no collect-failure acceptance claimed | Remains with owner ruling 2, as the review explicitly requires. **No:** no transition or contract wording is invented before that ruling. |
 | Previous MAJOR-3: downstream wrappers cannot submit | report | no downstream acceptance claimed | Still owner ruling 1; all three downstream wrappers remain blocked by missing keys. **No.** |
-| Previous MAJOR-4: retry/collect-failure transitions | report, 0059 | same-key refusal retained; corrected-input regression above | Corrected-input regression is fixed; same-key retry and collect-failure behavior still require rulings 2/3. **No** bounded-retry or collect-failure plant claimed. |
-| Previous MAJOR-5 / NOTE-3: cancel and timing | report, 0059 | no cancel acceptance claimed | Owner ruling 4 remains; NOTE-3's suggested `submitted_at` field is a timing/schema option, not owner authorization to select one. **No** cancellation or compute-duration evidence claimed. |
+| Previous MAJOR-4: retry/collect-failure transitions | report, 0065 | same-key refusal retained; corrected-input regression above | Corrected-input regression is fixed; same-key retry and collect-failure behavior still require rulings 2/3. **No** bounded-retry or collect-failure plant claimed. |
+| Previous MAJOR-5 / NOTE-3: cancel and timing | report, 0065 | no cancel acceptance claimed | Owner ruling 4 remains; NOTE-3's suggested `submitted_at` field is a timing/schema option, not owner authorization to select one. **No** cancellation or compute-duration evidence claimed. |
 | Previous MAJOR-6: classifier absent | report | `python3 gars/tests/test_failure_classification.py` | Still owner ruling 3; named test absent, never counted as a pass. **No.** |
 | NOTE-1: comment-only config edits change the key | report | byte-key and corrected-input tests | Retained as specified: deduplication covers identical input bytes, not semantic equivalence; a changed config comment changes the key. **No new semantic-deduplication claim.** |
 | NOTE-2: STATUS in module docstrings trips the sweep | report | existing sweep and all three path-evasion plants | Retained: conservative token sweep avoids a prose exemption and its maintenance; descriptive docstrings already use lifecycle-state wording. **No new plant.** |
@@ -711,7 +711,7 @@ Only 12A and 13A are supplied owner rulings for row 12. No owner approval is fab
 
 1. **Downstream key formula (previous MAJOR-3).** Choose the review's fixed-order hash
    over declared manifest input bytes, or its explicit exemption for wrappers without a
-   key; 0057 also offers serializing downstream params with the stage-01 samplesheet
+   key; 0063 also offers serializing downstream params with the stage-01 samplesheet
    versus a separate downstream formula. No exemption or schema is selected here.
 2. **Intermediate success and collect failure (previous MAJOR-4; current MINOR-3).**
    Choose VALIDATING while scheduler JSON remains COMPLETED, or another non-success
@@ -923,7 +923,7 @@ Other completed checks:
 |---|---|
 | `python3 --version` | `Python 3.13.2` |
 | Python grammar audit of `executorlib.py` and `wrapperlib.py` | `Python 3.6 syntax audit: 2 changed production modules parsed` (syntax only) |
-| `bash docs/decisions/build_index.sh` | exit 0; generated index gains only 0059 |
+| `bash docs/decisions/build_index.sh` | exit 0; generated index gains only 0065 |
 | `git diff --check` | exit 0, no output |
 | Historical-prefix, old-decision byte and supplied-review hash audit | `Historical record and supplied-review audit: PASS` |
 | Boundary diff from `d17573a` over `.github/`, `evals/`, `benchmarks/`, references, templates, hooks, authoring and stage03_analysis.py | `Protected-tree boundary audit against d17573a: empty` |
@@ -944,26 +944,26 @@ merge, pull request or owner-identifying committed text is introduced.
 ## Review round 4 fixes
 
 Date: **2026-09-22**. Round starts at `39f74a0`; row scope is still measured from
-approved row-4 head `d17573a`, including owner decision 0056. The supplied review is
+approved row-4 head `d17573a`, including owner decision 0060. The supplied review is
 `docs/reviews/row_12_review_round3.md`, retained untracked and unchanged. Earlier
 report sections and decision records retain their bytes. The eleven supplied rulings
-are appended verbatim to 0057 and attributed to **the owner**. No owner identity,
+are appended verbatim to 0063 and attributed to **the owner**. No owner identity,
 protected-path merge approval, external review conversation, push, remote, merge or PR
 is introduced. No finding is dismissed as wrong.
 
 | Finding / ruling | Changed files (full inventory below) | Test | Result; red-on-fault seen |
 |---|---|---|---|
 | Round-3 MINOR-1: four unpinned guards | `test_lifecycle_executor.py`, `test_lifecycle_faults.py` | terminal-without-record backend assertion; empty superseded poll; mismatched old reason; missing job id and wrong new state | Closed. **Yes:** P9, old-reason, job-evidence and terminal-retention plants fail their named tests. |
-| Previous MAJOR-3 / ruling 1: downstream keys | `wrapperlib.py`, `executorlib.py`, `test_downstream_keys.py`, 0057 | actual prepare and submit path for rnaseq-de, scrna-qc-cluster and spatial-cluster-count; duplicate and changed-input refusals | Closed repo-side. Separate sorted declared-input formula is recorded as provisional in 0057. No wrapper exemption. **No downstream-specific plant**; positive submit and backend-not-called negative controls run for each wrapper. |
+| Previous MAJOR-3 / ruling 1: downstream keys | `wrapperlib.py`, `executorlib.py`, `test_downstream_keys.py`, 0063 | actual prepare and submit path for rnaseq-de, scrna-qc-cluster and spatial-cluster-count; duplicate and changed-input refusals | Closed repo-side. Separate sorted declared-input formula is recorded as provisional in 0063. No wrapper exemption. **No downstream-specific plant**; positive submit and backend-not-called negative controls run for each wrapper. |
 | Previous MAJOR-4 and MINOR-3 / ruling 2: intermediate success and collect failure | `executorlib.py`, `wrapperlib.py`, ten wrapper modules, seven stage-01 contracts, `test_failure_classification.py` | COMPLETED → VALIDATING; collect failure → FAILED:EXIT_1; later success poll preserves failure; corrected key submits | Closed repo-side. Scheduler evidence stays separately recorded. **Yes:** replacing VALIDATING with RUNNING fails the transition test. All original content-gate assertions remain active. |
-| Previous MAJOR-4/6 / ruling 3: classifier and retries | `executorlib.py`, `wrapperlib.py`, `test_failure_classification.py`, fault harness, 0057 | six injected failures, all transient boundaries, scheduler precedence, class artifact, maxRetries, destructive approval and corrective lineage | Closed repo-side. Only transient retries, at the existing configured ceiling; work retained and earlier attempts preserved. **Yes:** exceeding maxRetries fails the behavioral assertion. No synthetic agent/science codes assigned. |
+| Previous MAJOR-4/6 / ruling 3: classifier and retries | `executorlib.py`, `wrapperlib.py`, `test_failure_classification.py`, fault harness, 0063 | six injected failures, all transient boundaries, scheduler precedence, class artifact, maxRetries, destructive approval and corrective lineage | Closed repo-side. Only transient retries, at the existing configured ceiling; work retained and earlier attempts preserved. **Yes:** exceeding maxRetries fails the behavioral assertion. No synthetic agent/science codes assigned. |
 | Previous MAJOR-5 and NOTE-3 / ruling 4: cancellation and timing | `executorlib.py`, registry, template, `test_lifecycle_cancel.py`, role tests | old-job refusal; genuine protected approval; altered identity/hash/expiry refusal; scheduler-start priority; submitted-at fallback; CLI/environment override refusals; real local SIGTERM | Closed repo-side. Both timestamps are recorded; absent/invalid timing requires approval. **Yes:** removing the one-hour gate causes a forbidden backend call. Slurm calls are stubs, not cluster evidence. |
 | Ruling 5: stage-03 writer and generated sweep | `stage03_analysis.py`, stage-03 contract, authoring generator, writer and approval tests, root runner fixture | stage-03 refuses missing marker; generated module passes source sweep and uses writer | Closed for the authorized narrow change. Stage-03 verify never manufactures the execution marker. **No new stage-03/generator-specific plant**; existing writer/inline-write plants remain red. |
 | Ruling 6: four inherited raw submissions | four scrnaseq/spatialvi contracts | contract lint, typed executor tests | Closed for the four submit instructions. Their already inherited execution-venue prose remains. **No new contract-specific plant.** |
 | Ruling 7: protected executor template | `executor.yaml`, `executorlib.py`, root runner equality test | `ExecutorSeamTests.test_01_shipped_template_resolves_to_the_builtin` compares raw parsed values | Closed. No normalizer or descriptor migration remains. **No new template-specific plant.** Existing descriptor override refusals remain. |
 | Round-3 NOTE-1: writer refusal after accepted submit | `executorlib.py`, `test_lifecycle_executor.py` | injected writer refusal retains accepted job and status_error, returns detail, prevents duplicate | Closed as suggested: reservation retains the job and refusal; CLI reports the job id with failure instead of claiming success. **No separate plant.** |
 | Round-3 NOTE-2: legacy unlinked records | report | inherited conflict refusal retained | No change required by review; conflicting unlinked evidence still needs reconciliation. |
-| Rulings 8–11 | 0057, report, living status documents | scope / append-only audit | Protected merge approval still belongs to a separate owner commit; ambiguity remains open; benchmark/study and row-15 files unchanged. **No acceptance claim** for these deferred items. |
+| Rulings 8–11 | 0063, report, living status documents | scope / append-only audit | Protected merge approval still belongs to a separate owner commit; ambiguity remains open; benchmark/study and row-15 files unchanged. **No acceptance claim** for these deferred items. |
 
 The retry record keeps its original different-key `supersedes_key` and stores earlier
 same-key attempts in `attempts`; a retry is not its own superseding stage. A regression
@@ -1001,7 +1001,7 @@ their synthetic cases represent independent runs, not a supported reset of real 
 
 ## Owner rulings needed
 
-1. **Protected-path merge approval:** the separate owner commit, in the shape of 0056,
+1. **Protected-path merge approval:** the separate owner commit, in the shape of 0060,
    is still required for the row-12 guard/settings/registry changes. This producer
    commit does not supply or claim it. The executor-template update follows the explicit
    ruling 7; the broader merge condition remains ruling 8.
@@ -1033,7 +1033,7 @@ are not re-reviewed by this producer. The untracked supplied review is not part 
 
 - `DEVELOPMENT.md`
 - `README.md`
-- `docs/decisions/0057-row-12-lifecycle-status-writer.md`
+- `docs/decisions/0063-row-12-lifecycle-status-writer.md`
 - `docs/implementation/row_12_change_report.md`
 - `gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md`
 - `gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md`
@@ -1106,7 +1106,7 @@ Additional checks: `python3 --version` → `Python 3.13.2`; `command -v python3.
 returned exit 1 with no output. Parsing every changed Python file with
 `ast.parse(..., feature_version=(3, 6))` passed; this is grammar compatibility only.
 `bash docs/decisions/build_index.sh` exited 0 and left the generated index byte-identical.
-`git diff --check` exited 0 with no output. The append-only audit confirms prior 0057
+`git diff --check` exited 0 with no output. The append-only audit confirms prior 0063
 and report bytes are exact prefixes; all 41 changed paths are named above. The whole-row
 diff from `d17573a` leaves CI, evals, benchmarks and hooks unchanged. Added-content audit
 found no local account or build-path identifier. Recent task-created bytecode was retained

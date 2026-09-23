@@ -19,7 +19,7 @@ symptoms:
 ---
 # Row 12 review addendum
 
-Addendum to [0057](0057-row-12-lifecycle-status-writer.md), whose original bytes remain
+Addendum to [0063](0063-row-12-lifecycle-status-writer.md), whose original bytes remain
 unchanged. This records producer fixes responding to the supplied independent review;
 it is not an owner approval. Base for row 12 remains the approved row-4 head `d17573a`.
 The owner's 12A and 13A rulings continue to apply. No state files are migrated.
@@ -87,3 +87,5 @@ Full row-12 exit, real Slurm/Nextflow acceptance, Python 3.6.8 execution, Stage-
 and the outstanding owner-gated behavior are not claimed. Row 15, the pinned study trees,
 CI, skills and pin inventory are unchanged. Merge still requires the owner's approval and
 the separate study's done commit.
+
+_Renumbered at merge, 2026-09-22: this record was written as 0058 on its branch and takes 0064 on main, because the row-5 fix and rows 15, 4, 11 and 12 numbered their decisions independently (merge order: row-5 fix, 15, 4, 11, 12). Its number, link targets and the numbers of other rows' records it cites are the only edits; branch-time number notes are left as written._

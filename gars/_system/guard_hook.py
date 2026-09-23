@@ -132,7 +132,7 @@ def check_write_tool(tool_input, root, cwd):
         if fnmatch.fnmatch(rel.casefold(), pat.casefold()) or (pat.startswith("repo:") and
                 fnmatch.fnmatch(("gars/" + rel).casefold(), pat[5:].casefold())):
             if rel.startswith("projects/") and rel.casefold().endswith("/status"):
-                deny("Blocked: R-151, spec §15; decision 0057 (the owner's ruling 13A): "
+                deny("Blocked: R-151, spec §15; decision 0063 (the owner's ruling 13A): "
                      "STATUS is code-owned. Use typed call: python3 _system/executorlib.py "
                      "status --workspace <project> <job_id>.")
             if rel.startswith("projects/") and rel.casefold().endswith("files.csv"):

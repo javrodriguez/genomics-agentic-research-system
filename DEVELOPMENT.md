@@ -28,7 +28,7 @@ Ambiguous submissions stop and retain evidence/work. Live Slurm acceptance, Stag
 reconciliation, separate-user enforcement and published benchmark pins remain unverified or
 deferred. Merge requires the separate study's done commit and a separate owner approval commit
 for the protected row-12 changes. See the appended owner rulings in
-[0057](docs/decisions/0057-row-12-lifecycle-status-writer.md#addendum--the-owners-round-4-rulings-2026-09-22)
+[0063](docs/decisions/0063-row-12-lifecycle-status-writer.md#addendum--the-owners-round-4-rulings-2026-09-22)
 and the [round-4 report](docs/implementation/row_12_change_report.md#review-round-4-fixes).
 
 Row 11 review round 2, 2026-09-22: corrected local Git replacement bypasses in
