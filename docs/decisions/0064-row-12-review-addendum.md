@@ -1,6 +1,6 @@
 ---
 date: 2026-09-22
-status: proposed
+status: standing
 kind: defect
 touches:
   - gars/_system/executorlib.py

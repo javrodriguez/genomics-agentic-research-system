@@ -1,6 +1,6 @@
 ---
 date: 2026-09-22
-status: proposed
+status: standing
 kind: decision
 touches:
   - gars/_system/wrapperlib.py
