@@ -201,3 +201,70 @@ Standing implementation record for the producer fix; independent review and prot
 ## Date
 
 2026-09-23
+
+## Addendum — 2026-09-23, review round 6
+
+This is the lane's specification and producer response to the round-5 review, not
+additional words or approval from the owner. All preceding bytes, including the owner's
+verbatim reply and option texts, remain unchanged.
+
+### Definite rejection and local job identity
+
+MAJOR-1: stage-03 submit now returns a definite `SubmissionFailure` without appending
+an entry. Existing submission history stays byte-identical and a later attempt can
+submit and verify. This follows stage 02's existing distinction: a backend rejection
+before acceptance is different from an ambiguous response. An ambiguous attempt with
+no job id still appends evidence and refuses another submission with R-077; verify
+still refuses it, including after a different script succeeds. No ambiguous recovery
+or release command is added. Old null-job entries cannot be reclassified from their
+error text and remain subject to the open ruling-9 reconciliation question.
+
+MINOR-2: for a local submission, verify now requires the PID's local job record to
+name the exact recorded launcher. Missing, unreadable, malformed or mismatched
+records refuse with “marker is not execution evidence: local PID record differs
+from submission launcher.” Status selects a stage-03 record only while that binding
+holds. A later stage-02 job reusing the PID therefore reaches its existing status
+writer, including VALIDATING on success and FAILED on failure. Tests model the
+record overwrite deterministically; no live PID-reuse experiment is claimed.
+
+### What this does not close — evidence tampering inside a run
+
+MINOR-1 corrects the scope of the earlier sentence “The agent never writes run/,
+either directly or from its scripts”: that is a contract prohibition, not an
+enforced property of executed script bodies. Executed scripts share the agent's OS
+user and can alter executor-owned evidence, including the submission record and
+other scripts' evidence under run/. For example, a later successful script can
+remove an earlier failed script's record, defeating the every-script completion
+gate. Approval binds PLAN.md, not script bodies. This is distinct from a script that
+does no work and exits 0. Separate-user execution with evidence inaccessible to
+script processes is what closes this residual; this round does not implement it.
+The contract and living development status now state this boundary explicitly.
+
+The covered threat model remains an agent session with Write, Edit and Bash under
+guard_hook.py and settings.json: forbidden direct tool/shell writes; a marker made
+outside an executor-launched run; cancel of a finished job; and cancellation guessed
+without scheduler evidence. It does not cover evidence alteration inside a submitted
+script. The existing direct-tool guard is unchanged.
+
+All prior residuals remain: approved no-work scripts (declared-output gates still
+apply), the cancel poll-to-signal window, PID reuse while a local job still reads
+RUNNING, real Slurm/sacct/scancel output shapes, Python 3.6.8 execution, separate OS
+users, native harness settings-glob semantics, ambiguous submission recovery
+(ruling 9), published benchmark pins (ruling 10), live scheduler acceptance, and
+round-4 NOTE-1's durable-state question. Full row-12 exit remains NOT met.
+
+Round-5 NOTE-1's broad fnmatch run/ matching remains conservative and unchanged;
+the nested-glob plant is a static inventory witness, not independent behavioral
+coverage. Round-5 NOTE-2 requires no correction beyond the current test count.
+
+### Tests and owner action
+
+Five new regressions cover definite rejection with successful resubmit/verify,
+retained ambiguity, missing or changed local launcher identity, and stage-02 success
+and failure after simulated PID reuse. Each has a named plant in the existing
+disposable-copy fault harness. The round-6 change report records measured results.
+
+No new implementation ruling is needed. Protected-path approval still requires the
+owner's separate commit and record 0070 under R-094/spec §9.3, including the amended
+stage-03 contract and the round-5 protected changes. This producer neither writes
+0070 nor claims owner approval.

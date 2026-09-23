@@ -86,6 +86,13 @@ SHA-256 values to a scheduler COMPLETED job. Every declared output exists and is
 `verify` writes `OUTPUTS.tsv` and `STATUS`. Outputs without executor evidence never pass.
 An analysis with missing outputs fails verification, whatever its scripts' exit codes claimed.
 
+**Execution evidence boundary.** The guard protects executor-owned files from agent tool
+calls. Executed scripts share the agent's OS user and can alter the submission record or
+files in `run/`, including evidence for other scripts; plan approval binds PLAN.md, not
+script bodies. The prohibition on those writes is a contract instruction, not isolation.
+Separate-user execution with evidence inaccessible to script processes is needed to close
+this residual; the current verify gates do not establish it.
+
 ## Process
 1. Activated when the user asks for a custom or downstream analysis of an existing project.
    Identify the project; run

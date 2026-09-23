@@ -52,7 +52,7 @@ class ApprovalForgeryTests(unittest.TestCase):
             'job_id': 'fixture', 'executor': 'local', 'submitted_at': 1}) + '\n')
         jobs = ex._local_jobs_dir(self.project); jobs.mkdir()
         exit_file = self.adir / 'run/launcher.sh.local.exit'; exit_file.write_text('0')
-        (jobs / 'fixture.json').write_text(json.dumps({'exit_file': str(exit_file)}))
+        (jobs / 'fixture.json').write_text(json.dumps({'script': str(launcher), 'exit_file': str(exit_file)}))
 
     def tearDown(self): self.tmp.cleanup()
 

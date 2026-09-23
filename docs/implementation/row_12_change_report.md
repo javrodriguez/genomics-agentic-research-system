@@ -1363,3 +1363,127 @@ fault red: computed STATUS path
 fault red: copied STATUS path
 fault red: formatted STATUS path
 ```
+
+## Review round 6 fixes (post-merge, on e59dfc0)
+
+Date: **2026-09-23**. One producer fix round on `build/gars-row-12-fix`, continuing
+round-5 commit `9374d4a` on public main `e59dfc0`. The supplied round-5 review stays
+untracked and unchanged; SHA-256
+`0e583c3835521b69eee43a6e9403be4f052e0d70200cf7421a4f02f705486d2c`.
+The earlier report and 0069 bytes are exact prefixes; 0063–0067 remain unchanged.
+0069 gains only a dated addendum, and the decision index is regenerated.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| Round-5 MAJOR-1 | `executorlib.py`, `test_stage03_execution.py`, `test_lifecycle_faults.py`, 0069, DEVELOPMENT | `test_definite_rejection_allows_resubmit_and_verify`; `test_ambiguous_rejection_still_blocks_resubmit_and_verify` | Definite rejection appends nothing and preserves prior history. A real stub sbatch rejection is followed by local completion and passing verify, both with and without prior history. Ambiguity still blocks. **Yes:** removing the definite-rejection return or applying it to ambiguous responses makes the respective named test fail. |
+| Round-5 MINOR-1 | `03_custom_analysis/CONTEXT.md`, 0069 addendum, DEVELOPMENT, this report | Documentation correction; no new executable gate | Addressed by naming the residual, not by claiming containment. Red-on-fault: **no**, prose only. Executed scripts share the agent's OS user and can alter executor-owned evidence; separate-user execution with evidence inaccessible to scripts is needed. |
+| Round-5 MINOR-2 | `executorlib.py`, `test_stage03_execution.py`, `test_approval_forgery.py`, `test_lifecycle_faults.py`, 0069, DEVELOPMENT | `test_verify_refuses_reused_missing_or_invalid_local_pid_record`; `test_reused_pid_status_updates_stage02_success`; `test_reused_pid_status_updates_stage02_failure` | Local PID metadata must name the submitted launcher. Missing/malformed/mismatched metadata refuses before scheduler polling; a reused stage-02 PID reaches its writer. **Yes:** removing the verification binding or the status-dispatch binding makes the respective named tests fail (both success and failure status plants). |
+| Round-5 NOTE-1 | 0069, this report | Existing guard and inventory tests retained | Conservative fnmatch matching remains: it also protects nested output paths containing run/. No guard change is required by the review; segment-aware matching is deferred to a later authorized guard pass. The nested-glob plant is a static inventory witness. |
+| Round-5 NOTE-2 | README, DEVELOPMENT | `tests/check_counts.py` | Current count updated to 419; environment skips stay explicit in run summaries. No new executable gate or fault plant. |
+| Round-4 NOTE-1 | 0069, this report | No durable-state change | Still open by the owner's ruling. |
+
+The positive approval-forgery fixture now supplies the local record's launcher identity.
+The login-node route test's mock writes matching local job metadata before status/CLI
+dispatch; its original backend and reported-executor assertions remain. No test,
+threshold or guard is weakened. PID reuse is modeled by overwriting its local metadata
+with the later stage-02 submission; no actual live PID collision is asserted.
+
+A stage prepared before the idempotency-key fix must run `prepare` again before submit or collect.
+A stage-03 analysis submitted before the fix has no submission record, so verify refuses it until it is submitted through the executor again.
+
+## Owner rulings needed
+
+No new implementation ruling is needed. The owner's separate protected-path merge
+approval, record **0070**, remains required under R-094/spec §9.3 for the round-5 guard,
+settings and contracts, including this round's stage-03 contract clarification. The
+producer has not written 0070 or claimed approval. No push, remote, merge or PR is made.
+
+Ambiguous submission recovery (ruling 9), published benchmark pins (ruling 10), live
+scheduler acceptance and round-4 NOTE-1 remain open and untouched. Old null-job
+submission entries cannot safely be reclassified from error text; no recovery or
+release operation is added.
+
+### Residual gaps
+
+Executed scripts run as the agent's OS user and can alter executor-owned evidence,
+including removing another script's failed entry from the submission record. The
+instruction never to write run/ from scripts does not isolate those processes.
+Approval binds PLAN.md, not script bodies. Separate-user execution with evidence
+inaccessible to scripts is needed to close this residual; it is distinct from the
+already documented approved script that does no real work and exits 0.
+
+The covered threat model remains Write/Edit/Bash under guard_hook.py and settings.json:
+direct forbidden writes, markers created outside an executor-launched run, cancellation
+of finished jobs, and guesses when scheduler evidence is unknown. The declared-output
+gate remains. The cancel poll-to-signal window and PID reuse while a local job reads
+RUNNING remain. Real Slurm/sacct/scancel shapes, Python 3.6.8 execution, separate OS
+users, and native harness settings-glob semantics remain unverified. Local jobs and
+scheduler stubs do not satisfy live scheduler acceptance. Full row-12 exit remains
+**NOT met**; no external human seal or scientific acceptance is claimed.
+
+### Files changed in round 6
+
+- `DEVELOPMENT.md`
+- `README.md`
+- `docs/decisions/0069-row-12-fix-round-minors.md` (appended only)
+- `docs/implementation/row_12_change_report.md` (appended only)
+- `gars/03_custom_analysis/CONTEXT.md`
+- `gars/_system/executorlib.py`
+- `gars/tests/test_approval_forgery.py`
+- `gars/tests/test_lifecycle_faults.py`
+- `gars/tests/test_stage03_execution.py`
+
+The regenerated `docs/decisions/CONTEXT.md` is byte-identical: frontmatter and title did
+not change. Neither review is staged. All scratch files, temporary directories and
+logs use the designated sibling scratch folder through TMPDIR, TEMP and TMP; test
+processes disable bytecode writes.
+
+### Verification and corrections during this round
+
+The first focused execution run passed (`Ran 15 tests in 4.663s` / `OK`).
+An initial count check found one remaining DEVELOPMENT reference to 414; it was
+updated to 419, and the count checker then passed.
+
+The initial standalone fault run printed `Ran 1 test in 45.005s` /
+`FAILED (failures=1)`: the old “verify accepts missing job identity” plant was
+masked by the new local-record binding. The original exit-2 assertion is retained
+and strengthened to require the specific “submission has no job id” reason.
+The focused execution rerun printed `Ran 15 tests in 4.881s` / `OK`.
+The final standalone fault harness printed `Ran 1 test in 67.716s` / `OK`;
+all 65 plants were red, including the five new witnesses:
+
+```text
+fault red: stage03 definite rejection consumes submission history
+fault red: stage03 ambiguity loses reservation
+fault red: verify ignores local launcher identity
+fault red: stage03 status captures reused stage02 PID
+fault red: stage03 status hides reused stage02 failure
+```
+
+These are visible behavioral witnesses, not a sealed mutation score. The existing
+nested-glob inventory assertion has the narrower static meaning noted above.
+
+### Required command summaries
+
+| Command | Final verbatim summary lines |
+|---|---|
+| `python3 tests/run_tests.py` | `Ran 419 tests in 469.305s` / `OK (skipped=55)` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/check_counts.py` | `enforced=3` / `clean — every current claim matches the suite` |
+| `python3 evals/test_harness.py` | `Ran 44 tests in 342.908s` / `OK` |
+| `python3 evals/check_results.py --controls --lexicon` | `clean — graded=1` |
+| `python3 gars/tests/test_lifecycle_faults.py` | `Ran 1 test in 67.716s` / `OK` |
+
+All six required commands exited 0. The full suite collected 419 tests with 55
+explicit environment/evidence skips and reproduced all 65 fault witnesses.
+Real Slurm, actual Python 3.6.8 execution, live PID reuse, separate-user execution
+and native settings-glob semantics were not verified.
+
+Final audits: all earlier report/0069 bytes are exact prefixes; decisions 0063–0067
+are byte-identical; 0070 is absent. The regenerated index is byte-identical.
+The review hash is unchanged and both reviews remain untracked. The excluded-tree
+diff is empty, every changed path is listed above, and added content contains no
+local identity or build path. Changed Python parses with Python 3.6 grammar
+(this is not runtime validation); `git diff --check` is clean. One commit uses
+named-path staging, a message file in sibling scratch, and a generic producer
+author/committer identity.

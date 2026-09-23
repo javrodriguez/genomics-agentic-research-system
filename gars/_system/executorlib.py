@@ -925,6 +925,9 @@ def _submit_analysis(root, script, descriptor):
                      'launcher': str(launcher), 'launcher_sha256': _sha256(launcher),
                      'executor': descriptor['name'], 'submitted_at': time.time()}
             job, detail = _submit_once(root, launcher, descriptor)
+            if job is None and isinstance(detail, SubmissionFailure):
+                # No backend accepted this attempt; retain prior history unchanged.
+                return job, detail
             entry['job_id'] = job
             if detail:
                 entry['error'] = str(detail)
@@ -935,6 +938,19 @@ def _submit_analysis(root, script, descriptor):
             return job, detail
         except (OSError, ValueError, KeyError, TypeError) as exc:
             return None, 'R-135: stage-03 submission refused: %s' % exc
+
+
+
+def _analysis_local_binding(root, entry):
+    """A PID can be reused: its current local record must still name this launcher."""
+    if entry.get('executor') != 'local':
+        return True
+    try:
+        path = _local_jobs_dir(root) / (str(entry['job_id']) + '.json')
+        local = json.loads(path.read_text(encoding='utf-8'))
+        return isinstance(local, dict) and local.get('script') == entry['launcher']
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
 
 
 def analysis_execution_evidence(root, adir):
@@ -952,6 +968,8 @@ def analysis_execution_evidence(root, adir):
                     raise ValueError(kind + ' SHA-256 changed since submit')
             if not entry.get('job_id'):
                 raise ValueError('submission has no job id')
+            if not _analysis_local_binding(root, entry):
+                raise ValueError('local PID record differs from submission launcher')
             state, detail = _scheduler_status(root, entry['job_id'], BUILTINS[entry['executor']])
             if state != 'COMPLETED':
                 raise ValueError('recorded job %s is %s: %s' % (entry['job_id'], state, detail))
@@ -1067,7 +1085,8 @@ def submit(config_root, script, descriptor=None):
 def _analysis_job_descriptor(config_root, job_id):
     for path in (Path(config_root) / '03_custom_analysis').glob('*/' + ANALYSIS_SUBMISSIONS):
         for entry in _analysis_entries(path.parent):
-            if entry.get('job_id') == str(job_id):
+            if (entry.get('job_id') == str(job_id) and
+                    _analysis_local_binding(config_root, entry)):
                 return BUILTINS[entry['executor']]
     return None
 

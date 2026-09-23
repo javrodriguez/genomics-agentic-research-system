@@ -166,6 +166,30 @@ class LifecycleFaultTests(unittest.TestCase):
              'AssertionError'),
         ])
         faults.append(('login-node CLI reports wrong executor', '_system/executorlib.py', 'result["executor"] = recorded["name"]', 'result["executor"] = descriptor["name"]', 'test_stage03_execution.py', 'Stage03ExecutionTests.test_login_node_uses_local_executor_and_status', 'AssertionError'))
+        faults.extend([
+            ('stage03 definite rejection consumes submission history', '_system/executorlib.py',
+             "if job is None and isinstance(detail, SubmissionFailure):\n                # No backend accepted",
+             "if False:\n                # No backend accepted",
+             'test_stage03_execution.py', 'Stage03ExecutionTests.test_definite_rejection_allows_resubmit_and_verify',
+             'AssertionError'),
+            ('stage03 ambiguity loses reservation', '_system/executorlib.py',
+             "if job is None and isinstance(detail, SubmissionFailure):\n                # No backend accepted",
+             "if job is None:\n                # No backend accepted",
+             'test_stage03_execution.py', 'Stage03ExecutionTests.test_ambiguous_rejection_still_blocks_resubmit_and_verify',
+             'AssertionError'),
+            ('verify ignores local launcher identity', '_system/executorlib.py',
+             'if not _analysis_local_binding(root, entry):', 'if False:',
+             'test_stage03_execution.py', 'Stage03ExecutionTests.test_verify_refuses_reused_missing_or_invalid_local_pid_record',
+             'AssertionError'),
+            ('stage03 status captures reused stage02 PID', '_system/executorlib.py',
+             '_analysis_local_binding(config_root, entry)):', 'True):',
+             'test_stage03_execution.py', 'Stage03ExecutionTests.test_reused_pid_status_updates_stage02_success',
+             'AssertionError'),
+            ('stage03 status hides reused stage02 failure', '_system/executorlib.py',
+             '_analysis_local_binding(config_root, entry)):', 'True):',
+             'test_stage03_execution.py', 'Stage03ExecutionTests.test_reused_pid_status_updates_stage02_failure',
+             'AssertionError'),
+        ])
         for label, expression in [
                 ('computed STATUS path', 'open(str(substage) + "/STATUS", "w")'),
                 ('copied STATUS path', 'shutil.copyfile(source, str(substage / "STATUS"))'),

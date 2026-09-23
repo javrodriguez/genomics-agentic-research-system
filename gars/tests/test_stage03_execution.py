@@ -3,6 +3,7 @@ import argparse
 import contextlib
 import io
 import json
+import os
 import tempfile
 import time
 import unittest
@@ -135,6 +136,107 @@ class Stage03ExecutionTests(unittest.TestCase):
             self.assertIsNone(job); self.assertIn('R-077', why)
             poll.assert_not_called(); backend.assert_not_called()
 
+    def test_definite_rejection_allows_resubmit_and_verify(self):
+        commands = self.root / 'bin'; commands.mkdir()
+        sbatch = commands / 'sbatch'
+        sbatch.write_text('#!/bin/bash\necho "temporary scheduler rejection" >&2\nexit 1\n')
+        sbatch.chmod(0o755)
+        # Exercise the real SubmissionFailure classification, before and after history exists.
+        for attempt in range(2):
+            before = self.record.read_bytes() if self.record.exists() else b''
+            with patch.dict(os.environ, {'PATH': str(commands) + os.pathsep + os.environ['PATH']}):
+                job, why = self.submit(descriptor=ex.SLURM)
+            self.assertIsNone(job)
+            self.assertIsInstance(why, ex.SubmissionFailure)
+            self.assertIn('exited 1', why)
+            after = self.record.read_bytes() if self.record.exists() else b''
+            self.assertEqual(after, before, 'definite rejection changed submission history')
+            self.assertEqual(self.finish()[1], 'COMPLETED')
+            self.assertEqual(self.verify()[0], 0)
+        self.assertEqual(len(ex._analysis_entries(self.adir)), 2)
+
+    def test_ambiguous_rejection_still_blocks_resubmit_and_verify(self):
+        with patch.object(ex.subprocess, 'run') as backend:
+            backend.return_value.returncode = 0
+            backend.return_value.stdout = b'connection lost after acceptance\n'
+            backend.return_value.stderr = b''
+            job, why = self.submit(descriptor=ex.SLURM)
+        self.assertIsNone(job)
+        self.assertNotIsInstance(why, ex.SubmissionFailure)
+        entries = ex._analysis_entries(self.adir)
+        self.assertEqual(len(entries), 1)
+        self.assertIsNone(entries[0]['job_id'])
+        original = self.record.read_bytes()
+        with patch.object(ex, '_submit_once', return_value=('99', None)) as backend:
+            job, why = self.submit()
+            self.assertIsNone(job); self.assertIn('R-077', why)
+            backend.assert_not_called()
+        self.assertEqual(self.record.read_bytes(), original)
+        second = self.adir / 'scripts/y.sh'; second.write_text('exit 0\n')
+        self.assertEqual(self.finish(second)[1], 'COMPLETED')
+        code, result = self.verify()
+        self.assertEqual(code, 2)
+        self.assertIn('submission has no job id', result['error'])
+
+    def test_verify_refuses_reused_missing_or_invalid_local_pid_record(self):
+        job, _ = self.finish()
+        path = ex._local_jobs_dir(self.root) / (job + '.json')
+        original = path.read_bytes()
+        local = json.loads(original)
+        other = self.root / 'other.sh'; other.write_text('exit 0\n')
+        for fault in ('reused', 'missing', 'invalid', 'non-object', 'no-script'):
+            with self.subTest(fault=fault):
+                altered = dict(local)
+                if fault == 'reused':
+                    altered['script'] = str(other)
+                elif fault == 'no-script':
+                    del altered['script']
+                path.write_text(json.dumps(altered))
+                if fault == 'missing':
+                    path.unlink()
+                elif fault == 'invalid':
+                    path.write_text('{')
+                elif fault == 'non-object':
+                    path.write_text('[]')
+                with patch.object(ex, '_scheduler_status', return_value=('COMPLETED', None)) as poll:
+                    code, result = self.verify()
+                    self.assertEqual(code, 2)
+                    self.assertIn('marker is not execution evidence', result['error'])
+                    self.assertIn('local PID record differs from submission launcher', result['error'])
+                    poll.assert_not_called()
+                self.assertFalse((self.adir / 'STATUS').exists())
+                path.write_bytes(original)
+        self.assertEqual(self.verify()[0], 0)
+
+    def reused_pid_status(self, exit_code, expected, written):
+        from test_lifecycle_executor import prepared
+        import wrapperlib as wl
+        job, _ = self.finish()
+        stage, _, _ = prepared(self.root)
+        # Deterministically model the later local submit overwriting the PID's record.
+        def reused(root, script):
+            exit_file = stage / 'submit.sh.local.exit'
+            exit_file.write_text(str(exit_code))
+            (ex._local_jobs_dir(root) / (job + '.json')).write_text(json.dumps({
+                'script': str(script), 'exit_file': str(exit_file), 'started_at': time.time()}))
+            return job
+        with patch.object(ex, '_local_submit', side_effect=reused):
+            self.assertEqual(ex.submit(self.root, stage / 'submit.sh', ex.LOCAL), (job, None))
+        (stage / 'run').mkdir(exist_ok=True)
+        (stage / 'run/.gars_run_complete').write_text('fixture\n')
+        self.assertEqual(ex.status(self.root, job, ex.LOCAL)[0], expected)
+        self.assertEqual(wl.read_status(stage), written)
+        self.assertEqual(ex._job_record(self.root, job)[1]['state'], expected)
+        code, result = self.verify()
+        self.assertEqual(code, 2)
+        self.assertIn('local PID record differs from submission launcher', result['error'])
+
+    def test_reused_pid_status_updates_stage02_success(self):
+        self.reused_pid_status(0, 'COMPLETED', 'VALIDATING')
+
+    def test_reused_pid_status_updates_stage02_failure(self):
+        self.reused_pid_status(7, 'FAILED:EXIT_7', 'FAILED:EXIT_7')
+
     def test_concurrent_same_script_is_serialized(self):
         barrier = threading.Barrier(2)
         def approved(adir):
@@ -180,7 +282,9 @@ class Stage03ExecutionTests(unittest.TestCase):
         altered = [dict(e) for e in entries]; altered[0]['job_id'] = None
         self.record.write_text(''.join(json.dumps(e) + '\n' for e in altered))
         with patch.object(ex, '_scheduler_status', return_value=('COMPLETED', None)):
-            self.assertEqual(self.verify()[0], 2)
+            code, result = self.verify()
+            self.assertEqual(code, 2)
+            self.assertIn('submission has no job id', result['error'])
         self.record.write_bytes(original)
         for state in ('RUNNING', 'FAILED:EXIT_7', 'CANCELLED', None):
             with self.subTest(state=state), patch.object(ex, '_scheduler_status',
@@ -201,13 +305,19 @@ class Stage03ExecutionTests(unittest.TestCase):
         plan.write_text(PLAN.replace('Status: APPROVED 2026-09-21', 'Status: DRAFT').replace('Runs: batch', 'Runs: login-node (user-requested)'))
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(analysis.cmd_approve(self.args, self.workspace), 0)
-        with patch.object(ex, '_local_submit', return_value='123') as backend:
+        def local_record(root, launcher, job):
+            jobs = ex._local_jobs_dir(root); jobs.mkdir(exist_ok=True)
+            (jobs / (job + '.json')).write_text(json.dumps({'script': str(launcher)}))
+            return job
+        with patch.object(ex, '_local_submit',
+                          side_effect=lambda root, launcher: local_record(root, launcher, '123')) as backend:
             self.assertEqual(self.submit(descriptor=ex.SLURM), ('123', None))
             backend.assert_called_once()
         # The public CLI also reports the backend the approved plan actually selected.
         other = self.adir / 'scripts/cli.sh'; other.write_text('exit 0\n')
         output = io.StringIO()
-        with patch.object(ex, '_local_submit', return_value='124'), contextlib.redirect_stdout(output):
+        with patch.object(ex, '_local_submit',
+                          side_effect=lambda root, launcher: local_record(root, launcher, '124')), contextlib.redirect_stdout(output):
             self.assertEqual(ex.main(['submit', '--workspace', str(self.root), str(other)]), 0)
         self.assertEqual(json.loads(output.getvalue())['executor'], 'local')
         with patch.object(ex, '_scheduler_status', return_value=('COMPLETED', None)) as poll:
