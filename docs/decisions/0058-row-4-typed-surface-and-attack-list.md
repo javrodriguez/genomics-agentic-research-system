@@ -1,6 +1,6 @@
 ---
 date: 2026-09-21
-status: proposed
+status: standing
 kind: decision
 touches:
   - gars/_system/guard_hook.py
