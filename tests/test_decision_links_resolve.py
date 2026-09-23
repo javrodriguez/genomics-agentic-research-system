@@ -33,7 +33,8 @@ class DecisionLinksTests(unittest.TestCase):
             git('add', '--', 'docs', 'sample.py')
             self.assertTrue(CHECK['decision_links'](root, staged=True))
             print('positive control: legacy frontmatter and bare (2024) accepted; count=1')
-            with mock.patch.dict(CHECK['decision_links'].__globals__, RECORD_DATE='2000-01-01'):
+            with mock.patch.dict(CHECK['decision_links'].__globals__, RECORD_DATE='2000-01-01',
+                                 LEGACY_THROUGH='0000'):
                 with self.assertRaises(AssertionError):
                     self.assertTrue(CHECK['decision_links'](root, staged=True))
             print('red-on-fault: legacy treated as new -> legacy acceptance assertion FAILED')
@@ -54,7 +55,7 @@ class DecisionLinksTests(unittest.TestCase):
                 with self.assertRaises(AssertionError):
                     self.assertTrue(CHECK['decision_links'](root, staged=True))
             print('red-on-fault: bare year counted -> citation acceptance assertion FAILED')
-            new = folder / '0058-new.md'
+            new = folder / '0066-new.md'
             body = '---\ndate: 2026-09-22\nstatus: standing\n---\n'
             body += ''.join('## %s\nRequired content.\n' % s for s in
                             ('Context', 'Decision', 'Status', 'Date'))

@@ -92,6 +92,9 @@ def scan(root, payload=b'', push=False):
 
 # Owner rulings 7A/8A: singular/plural words, legacy frontmatter, append-only log.
 RECORD_DATE = '2026-09-22'
+# Records numbered at or below this were written before this rule reached main (the 22 Sep merge's
+# last record); 8A's legacy acceptance covers them whatever their date (owner ruling, merge 3A).
+LEGACY_THROUGH = '0065'
 CITATION = re.compile(r'\bdecisions?\s+(\d{4})\b', re.I)
 
 
@@ -108,7 +111,7 @@ def citation_path(name):
              p.name == '.gitignore' or (name.startswith('gars/') and p.suffix == '.md')))
 
 
-def record_fields(text):
+def record_fields(text, number=None):
     """Read the house scalar frontmatter without introducing a YAML dependency."""
     import datetime
     match = re.match(r'\A---\r?\n(.*?)\r?\n---(?:\r?\n|$)', text, re.S)
@@ -123,7 +126,7 @@ def record_fields(text):
     datetime.datetime.strptime(fields['date'], '%Y-%m-%d')
     if fields['status'] not in ('standing', 'superseded'):
         raise ValueError('record status invalid')
-    if fields['date'] >= RECORD_DATE:
+    if fields['date'] >= RECORD_DATE and not (number is not None and number <= LEGACY_THROUGH):
         sections = dict((m.group(1), m.group(2).strip()) for m in re.finditer(
             r'^## ([^\n]+)\n(.*?)(?=^## |\Z)', text, re.M | re.S))
         # The spec and the existing house record also spell Test this way.
@@ -178,7 +181,7 @@ def decision_links(root, staged=False):
                     raise ValueError('duplicate decision number: ' + number)
                 records[number] = name
                 try:
-                    record_fields(read(name))
+                    record_fields(read(name), number)
                 except ValueError as exc:
                     errors.append(name + ': ' + str(exc))
         if not records:
