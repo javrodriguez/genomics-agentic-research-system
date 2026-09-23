@@ -11,8 +11,8 @@
   "class": "swallowed-exception",
   "match": {
     "file": "gars/_system/integrity.py",
-    "line_start": 57,
-    "line_end": 57,
+    "line_start": 73,
+    "line_end": 73,
     "mode": "file_lines"
   },
   "min_severity": "MINOR"

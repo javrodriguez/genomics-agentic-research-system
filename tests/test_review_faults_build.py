@@ -1,5 +1,8 @@
 """Case construction, fixture applicability and history isolation without a reviewer."""
 import io
+import hashlib
+import itertools
+import re
 import json
 import shutil
 import subprocess
@@ -32,8 +35,20 @@ class BuildTests(unittest.TestCase):
         key,manifest=build_cases.build(first,[answers],salt)
         build_cases.build(second,[answers],salt)
         def snapshot(path):
-            return {str(p.relative_to(path)):p.read_bytes() for p in path.rglob('*') if p.is_file()}
-        self.assertEqual(snapshot(first),snapshot(second))
+            for p in sorted(path.rglob('*')):
+                if p.is_file():
+                    digest=hashlib.sha256()
+                    with p.open('rb') as stream:
+                        for chunk in iter(lambda: stream.read(65536), b''):
+                            digest.update(chunk)
+                    yield str(p.relative_to(path)),digest.hexdigest()
+        for left,right in itertools.zip_longest(snapshot(first),snapshot(second)):
+            self.assertEqual(left,right,'determinism digest mismatch: %r != %r' % (left,right))
+        for neutral in manifest['cases']:
+            left=common.git(first/'cases'/neutral/'repo','rev-list','--objects','HEAD').decode().splitlines()
+            right=common.git(second/'cases'/neutral/'repo','rev-list','--objects','HEAD').decode().splitlines()
+            for one,two in itertools.zip_longest(left,right):
+                self.assertEqual(one,two,'determinism git object ids differ: %r != %r' % (one,two))
         self.assertEqual(set(key),{'run_salt','cases'})
         self.assertNotIn(salt,(first/'manifest.json').read_text())
         self.assertEqual(set(manifest),{'cases','base_sha','prompt_path','prompt_sha256','harness_commit'})
@@ -79,6 +94,25 @@ class BuildTests(unittest.TestCase):
             shutil.rmtree(str(tree))
         print('fixtures: git apply --check passed for 12/12 against base archive')
 
+    def test_plant_match_intervals_cover_changed_lines(self):
+        root=temporary(self)
+        output=root/'out'
+        key,manifest=build_cases.build(output,run_salt='a'*32)
+        cases=common.load_cases([common.HERE/'fixtures'])
+        for neutral,entry in key['cases'].items():
+            expected=cases[entry['id']]['expected']
+            if expected['kind'] != 'plant' or expected['match']['mode'] != 'file_lines':
+                continue
+            target=expected['match']
+            patch=common.git(output/'cases'/neutral/'repo','diff','--no-ext-diff',
+                             '--no-textconv','-U0','HEAD~1','HEAD','--',target['file']).decode()
+            intervals=[(int(start),int(count or '1')) for start,count in
+                       re.findall(r'^@@ -[0-9]+(?:,[0-9]+)? \+([0-9]+)(?:,([0-9]+))? @@',patch,re.M)]
+            self.assertTrue(any(count and target['line_start'] <= start+count-1 and
+                                target['line_end'] >= start for start,count in intervals),
+                            'answer match misses changed lines: '+entry['id'])
+        print('plant match intervals: every file_lines answer overlaps changed lines')
+
     def test_build_refusals(self):
         root=temporary(self)
         answers=self.subset(root)
@@ -95,6 +129,21 @@ class BuildTests(unittest.TestCase):
         (answers/'C03/plant.diff').write_text('not a patch\n')
         with self.assertRaisesRegex(ValueError,'plant does not apply'):
             build_cases.build(root/'bad',[answers])
+
+    def test_external_case_leak_refused(self):
+        root=temporary(self)
+        answers=self.subset(root)
+        # Model the sealer input layout without authoring a sealed plant.
+        external=root/'external'
+        external.mkdir()
+        shutil.copytree(str(common.HERE/'fixtures/plants/P01'),str(external/'P08'))
+        path=external/'P08/expected.json'
+        expected=json.loads(path.read_text())
+        expected['id']='P08'
+        expected['commit_message']='Clarify P08 handling'
+        path.write_text(json.dumps(expected))
+        with self.assertRaisesRegex(ValueError,'case leaks forbidden token: P08'):
+            build_cases.build(root/'out',[answers,external],run_salt='a'*32)
 
     def test_answer_key_base_refused(self):
         root=temporary(self)

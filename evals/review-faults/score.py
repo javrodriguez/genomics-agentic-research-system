@@ -17,6 +17,8 @@ def masked_copy(value, salt, neutral_ids, literals):
 
     Match kit paths through a manifest neutral id; home paths through their user
     component. Literal masking precedes path masking, longest literals first.
+    Word-bounded uid numbers in prose are also HMAC-masked, even coincident
+    line numbers or counts; scoring uses the private original.
     The salt is private and never returned. This function is fixed before runs.
     """
     def digest(item):

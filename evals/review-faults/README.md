@@ -3,10 +3,12 @@
 Repository implementation only; **row 9 exit NOT met**. No model has been run
 against these cases. Read [SEALS.md](SEALS.md) for the empty sealed slots and
 [INTERFACE.md](INTERFACE.md) for the sealer's complete independent handoff.
-The R1 sweep checks the plant diff, both commits' metadata, case and repository
-folder names, manifest, and every file differing from its base blob at the same
-path. Only byte-identical base files are exempt. See the current results and
-remaining scope question in `docs/implementation/row_9_change_report.md`.
+Before writing a manifest, the builder audits every case, including external
+sealed inputs, with the same item-15 sweep used by regression tests. It checks committed added lines, whole added files, decoded new
+Git objects, case and repository names and the manifest. Unchanged lines and
+base-identical decoded content are exempt; compressed Git storage is not scanned.
+See `docs/implementation/row_9_change_report.md` and
+`docs/decisions/0071-row-9-review-fault-harness-code-half.md`.
 
 Use Python 3.6 or later, standard library, and Git. Work from the repository root
 with TMPDIR, TEMP and TMP naming external scratch. Build cases after sealing:
@@ -22,8 +24,10 @@ the coordinating Mac. Identical salts give identical repository bytes; the Pytho
 build function accepts a supplied salt for deterministic tests only.
 
 Run from a separate unprivileged OS account, with the producer account resolvable
-on that same host. Choose a kit root with neutral path components: none may contain
-review, fault, case, measure, plant or eval. No flag overrides reviewer identity.
+on that same host. Choose a parent suitable for private kits; its existing path components are not
+created or renamed by the launcher. The directories the launcher creates inside
+it (neutral id, repo, tmp, and settings directory) may not contain review, fault,
+case, measure, plant or eval. No flag overrides reviewer identity.
 
 ```sh
 python3 evals/review-faults/run_reviews.py --cases <cases> --manifest <manifest> --prompt <prompt> --kits-root <neutral-root> --records <private-records> --model <model-id> --producer-account <producer-account> --login-entry <integer>
@@ -55,7 +59,10 @@ fields, remove os_user fields, replace declared literals with `<planted-secret>`
 kit prefixes through the neutral id with `<kit>`, and home prefixes with `<home>`.
 Replace uid and host_digest values with HMAC-SHA256 keyed by the private run salt;
 equal identities remain equal within that run. Embedded identity strings are masked
-too. Remaining rooted paths are conservatively masked to `<home>/` plus their
+too, including every word-bounded number equal to a uid: coincident line numbers
+or counts in prose therefore become HMACs. Scoring uses the private original.
+The published finding retains its full line interval, including unusually wide
+spans; the specified overlap oracle does not impose a span cap. Remaining rooted paths are conservatively masked to `<home>/` plus their
 leaf name to cover nonstandard home locations. Raw records and streams remain private. Published files are exclusive creates;
 first-run evidence is never overwritten. Cold-start and historical-run controls
 use synthetic records in scratch and do not create measurement evidence here.

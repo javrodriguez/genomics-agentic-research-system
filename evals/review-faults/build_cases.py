@@ -8,7 +8,7 @@ import subprocess
 import sys
 import tarfile
 from pathlib import Path
-from common import BASE_SHA, HERE, PROMPT_PATH, REPO, git, load_cases, sha256, write_json
+from common import CLASSES, BASE_SHA, HERE, PROMPT_PATH, REPO, git, load_cases, sha256, write_json
 
 
 def neutral_id(salt, case_id):
@@ -114,6 +114,21 @@ def build(output, roots=None, run_salt=None, source=REPO, base_sha=BASE_SHA):
     manifest = {'cases': order, 'base_sha': base_sha, 'prompt_path': PROMPT_PATH,
                 'prompt_sha256': sha256((REPO / PROMPT_PATH).read_bytes()),
                 'harness_commit': git(REPO, 'rev-parse', 'HEAD').decode().strip()}
+    # Audit all cases, including external sealed inputs, before releasing a manifest.
+    from case_sweep import base_blobs, case_leaks
+    import json
+    baseline = base_blobs(source, base_sha)
+    forbidden = list(CLASSES) + list(cases)
+    for answer in cases.values():
+        try:
+            forbidden.append(str(answer['path'].relative_to(source)))
+        except ValueError:
+            forbidden.append(str(Path('plants') / answer['expected']['id']))
+    manifest_bytes = json.dumps(manifest, sort_keys=True).encode('utf-8')
+    for neutral in order:
+        leaks = case_leaks(output / 'cases' / neutral, manifest_bytes, b'', baseline, forbidden)
+        if leaks:
+            raise ValueError('case leaks forbidden token: ' + leaks[0][1])
     write_json(output / 'key.json', key)
     (output / 'key.json').chmod(0o600)
     write_json(output / 'manifest.json', manifest)

@@ -55,7 +55,7 @@ class LaunchTests(unittest.TestCase):
         for path in (kit/'repo/.git/logs').rglob('*'):
             if path.is_file():
                 self.assertNotIn(str(Path(args.cases)).encode(),path.read_bytes())
-        self.assertFalse(any(word in part.lower() for part in kit.parts for word in run_reviews.FORBIDDEN))
+        self.assertFalse(any(word in part.lower() for part in kit.relative_to(Path(args.kits_root)).parts for word in run_reviews.FORBIDDEN))
 
     def test_identity_refusals(self):
         uid=os.getuid()
@@ -111,12 +111,20 @@ class LaunchTests(unittest.TestCase):
         home='$'+'HOME'
         bad=[os.path.join(os.sep,'outside','file'), chr(126)+os.sep+'file',
              home+os.sep+'file',os.path.join(parent,parent,'file')]
+        outside_path=os.path.join(os.sep,'outside','file')
+        bad += ["bash -c 'cat " + outside_path + "'",
+                'python3 -c "print(open(' + repr(outside_path) + ').read())"',
+                ('$'+'{HOME}')+os.sep+'file',
+                os.path.join('$'+'PWD',parent,'file'), '-C'+outside_path,
+                chr(92)+os.path.join(parent,'file')]
         good=['2>/dev/null','/usr/bin/env',str(kit/'file'),'repo/module.py']
         for token in bad+good:
             events=[{'type':'assistant','message':{'content':[{'type':'tool_use','input':{'command':'cat '+token}}]}}]
             result=run_reviews.blindness(events,kit)
             self.assertEqual(result['calls'],1)
             self.assertEqual(result['hits'],1 if token in bad else 0,token)
+        for command in ('cd && cat secret', '  cd', "bash -c 'cd && cat secret'", "cat 'unterminated"):
+            self.assertEqual(run_reviews.blindness([{'type':'tool_use','input':{'command':command}}],kit)['hits'],1,command)
         outside=root/'outside'
         outside.mkdir()
         (kit/'link').symlink_to(outside,target_is_directory=True)
@@ -199,6 +207,10 @@ class LaunchTests(unittest.TestCase):
         stub(root)
         args.kits_root=str(root/'review-folder')
         with launch_context(root):
+            self.assertEqual(run_reviews.run(args),0)
+        args.kits_root=str(root/'review-folder2')
+        args.records=str(root/'r2')
+        with launch_context(root), mock.patch.object(run_reviews,'FORBIDDEN',('repo',)):
             with self.assertRaisesRegex(ValueError,'neutral path'):
                 run_reviews.run(args)
         with mock.patch.dict(os.environ,{'CLAUDE_CODE_OAUTH_TOKEN':'PLACEHOLDER_ONLY',

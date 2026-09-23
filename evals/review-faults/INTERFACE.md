@@ -64,7 +64,9 @@ sealed/
 ```
 
 The directory id and expected id must agree; ids are unique P followed by two
-digits. `plant.diff` is a UTF-8 unified diff against the base, with repository
+digits. The sealed plants MUST use P08, P09 and P10, one each; these ids are
+reserved for the sealer and avoid collisions before hashes are frozen.
+`plant.diff` is a UTF-8 unified diff against the base, with repository
 relative paths and enough context for `git apply --check` to pass on the archive.
 File additions and deletions use ordinary Git unified-diff syntax. A wholly added
 file or a deleted test can use file-only matching. Do not alter the base archive
@@ -136,3 +138,6 @@ execution metadata. The same prompt hash's first score is retained beside later
 scores, regardless of model. Failed or blind-contaminated records are INVALID,
 never clean or caught. Sealer hashes enable checking the three private outcomes;
 only twelve of fifteen outcomes can be recomputed from public repository inputs.
+
+Record numbering: code-half account 0071, protected-change approval 0072, seal
+record 0073, first measured run 0074. The latter three are later independent records.

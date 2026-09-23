@@ -186,13 +186,15 @@ class ScoreTests(unittest.TestCase):
         home=os.path.join(os.sep,'Users','synthetic-person')
         raw=record(neutral,manifest['prompt_sha256'])
         custom=os.path.join(os.sep,'custom','private','file')
-        raw['review']['findings']=[finding(evidence=os.path.join(kit,'repo','x')+' '+os.path.join(home,'x')+' '+custom+' PLACEHOLDER_ONLY_LITERAL')]
+        raw['review']['findings']=[finding(line_start=1,line_end=100000,evidence=os.path.join(kit,'repo','x')+' '+os.path.join(home,'x')+' '+custom+' PLACEHOLDER_ONLY_LITERAL')]
         raw['review']['findings'][0]['summary']+=' '+str(raw['envelope']['reviewer']['uid'])+' '+raw['envelope']['reviewer']['os_user']
         masked=score.masked_copy(raw,key['run_salt'],manifest['cases'],['PLACEHOLDER_ONLY_LITERAL'])
         encoded=json.dumps(masked)
         for value in ('os_user',str(raw['envelope']['reviewer']['uid']),str(raw['envelope']['producer']['uid']),
                       raw['envelope']['host_digest'],home,kit,custom,raw['envelope']['reviewer']['os_user'],'PLACEHOLDER_ONLY_LITERAL'):
             self.assertNotIn(value,encoded)
+        self.assertEqual(masked['review']['findings'][0]['line_start'],1)
+        self.assertEqual(masked['review']['findings'][0]['line_end'],100000)
         self.assertIn('<kit>/repo/x',encoded)
         self.assertIn('<home>/x',encoded)
         self.assertIn('<planted-secret>',encoded)

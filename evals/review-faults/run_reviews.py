@@ -75,25 +75,35 @@ def blindness(events, kit):
         for data in tool_inputs(event):
             calls += 1
             for text in strings(data):
-                # Preserve path punctuation and also scan the original JSON string.
-                lexer = shlex.shlex(text, posix=True, punctuation_chars=';&|<>()')
-                lexer.whitespace_split = True
-                lexer.commenters = ''
                 try:
-                    tokens = list(lexer)
+                    decoded = shlex.split(text)
                 except ValueError:
                     hits += 1
                     continue
+                # Inspect strings inside quoted shell/interpreter arguments too.
+                # Split syntax delimiters, retaining complete relative path tokens.
+                tokens = re.findall(r"[^\s\"'`;|<>()\[\],=]+", text)
+                tokens = list(dict.fromkeys(decoded + tokens))
+                parent = chr(46) * 2
+                home = '$' + 'HOME'
+                brace_home = '$' + '{HOME}'
+                bare_cd = re.search(r"(?:^|[;|&\"'])\s*cd\s*(?=$|[;|&\"'])", text)
+                if bare_cd:
+                    hits += 1
                 for token in tokens:
-                    token = token.split('=', 1)[-1]
-                    parent = chr(46) * 2
-                    home = '$' + 'HOME'
-                    candidate = (os.path.isabs(token) or token.startswith((chr(126), home)) or
+                    if token.startswith('-') and os.sep in token:
+                        token = token[token.index(os.sep):]
+                    candidate = (os.path.isabs(token) or token.startswith((chr(126), home, brace_home)) or
                                  parent in token.split('/'))
                     if not candidate:
                         continue
-                    if token.startswith(home):
-                        token = pwd.getpwuid(os.getuid()).pw_dir + token[len(home):]
+                    # Unknown variable expansion cannot establish kit containment.
+                    if '$' in token and parent in token.split('/'):
+                        hits += 1
+                        continue
+                    if token.startswith((home, brace_home)):
+                        prefix = brace_home if token.startswith(brace_home) else home
+                        token = pwd.getpwuid(os.getuid()).pw_dir + token[len(prefix):]
                     elif token.startswith(chr(126)):
                         user, separator, suffix = token[1:].partition(os.sep)
                         try:
@@ -211,8 +221,6 @@ def run(args):
         raise ValueError('only names an unknown case')
     selected = [n for n in ids if n in only]
     kits = Path(args.kits_root).resolve()
-    if any(word in component.lower() for component in kits.parts for word in FORBIDDEN):
-        raise ValueError('kits-root must have neutral path components')
     records = Path(args.records).resolve()
     if within(records, kits) or within(args.cases, kits):
         raise ValueError('private inputs and records must stay outside kits-root')
@@ -226,6 +234,9 @@ def run(args):
         kit = kits / neutral
         if kit.exists():
             raise ValueError('kit exists; resume with a fresh neutral kits-root')
+        neutral_components = (neutral, 'repo', 'tmp', '.claude')
+        if any(word in component.lower() for component in neutral_components for word in FORBIDDEN):
+            raise ValueError('created kit directories must have neutral path components')
         kit.mkdir()
         (kit / 'tmp').mkdir()
         git(kit, 'clone', '--no-local', '--quiet', str(Path(args.cases).resolve() / neutral / 'repo'), 'repo')

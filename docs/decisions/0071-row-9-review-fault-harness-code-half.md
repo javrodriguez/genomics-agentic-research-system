@@ -310,3 +310,45 @@ protected-path approval, sealed slots, the first measured run, public external
 human seals, science, trailer JSON consumption and merge-result CI remain open.
 Diff-style inference, shared model family, thin per-class samples and hash-only
 public checking of three sealed outcomes remain limitations.
+
+## Addendum — T1 review fixes and renumbering, 2026-09-23
+
+THE LANE, UNDER THE OWNER'S DELEGATION.
+
+This record moves from 0070 to 0071 because public main has since assigned 0070
+to row 12's owner approval. Every preceding byte is preserved. Earlier mentions
+of 0070 as this record mean 0071; earlier reservations of 0071–0074 mean
+0072–0074. References to this row's protected approval mean 0072, its seal record
+0073, and its first measured run 0074. The producer writes none of those three
+reserved records and does not touch public main's 0070.
+
+S1 findings F1–F6 are addressed: P07's post-change match is line 73; a test checks
+all file-lines answers against changed-line intervals. The blindness audit also
+recognizes paths inside quoted interpreter arguments, brace-form home variables,
+variable-prefixed parent steps, attached options and bare directory changes.
+The neutral-name rule covers created kit directories, not existing ancestors.
+Fault controls must first pass unfaulted in the same disposable source copy with
+scratch outside its work tree, then fail on the expected assertion. Determinism
+compares streamed per-file SHA-256 digests and Git object ids with bounded
+mismatch messages, never whole-tree byte dictionaries. The README restores
+measured skip counts; the sealer is assigned P08, P09 and P10 before sealing.
+
+F7 requires no identity/configuration edit. For F8, publication mask v1 also
+replaces word-bounded prose numbers equal to raw uids; this conservative masking
+can obscure a coincident count or line number. Private originals govern scoring.
+For F9, every finding's full line interval is already retained in the published
+run, so wide spans are visible; the specified overlap rule remains unchanged.
+
+No new words are attributed to the owner here. The prompt is unchanged and no
+model runs against any case. All residual limits in the earlier record still
+apply except the resolved acceptance and implementation defects documented by
+this addendum and the T1 change report. Row exit remains NOT met; R-093's code
+half, external deployment evidence, three seals, measured run, protected approval,
+real fixture secret scanning and public credibility remain open.
+
+T1 additional implementation, THE LANE, UNDER THE OWNER'S DELEGATION: F10 is
+closed by moving the existing item-15 sweep into `case_sweep.py`, shared by the
+builder and its controls. Every case, including externally supplied sealed inputs,
+is checked before the key and manifest are written. No sealed plant is authored
+or inspected by the producer. A disposable renamed copy of a public producer
+fixture exercises the external-input path; it is never evidence or a seal.
