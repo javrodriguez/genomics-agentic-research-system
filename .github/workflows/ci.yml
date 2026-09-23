@@ -56,6 +56,19 @@ jobs:
     # sentence, the rulings that followed) are documents, and main's own job does not check them
     # as the study.
     runs-on: ubuntu-latest
+    # No automatic git maintenance in this job. From git 2.55, every commit starts a detached
+    # repack of any repo holding more than ~256 loose objects, and each mutation sandbox commits a
+    # few thousand files. When a guard then deletes the sandbox's .git (m_shallow_history), the
+    # repack can remove a file mid-delete: rmtree raises FileNotFoundError, the harness scores the
+    # raise as exit 0, and the guard reads "did NOT go red" without its check ever running (run
+    # 35906997012, attempt 1). Round 2 fixed the same race inside its own harness (scratch_git.py);
+    # this study is frozen at b735229, so the fix lives here, in the job, and no study byte changes.
+    env:
+      GIT_CONFIG_COUNT: "2"
+      GIT_CONFIG_KEY_0: maintenance.auto
+      GIT_CONFIG_VALUE_0: "false"
+      GIT_CONFIG_KEY_1: gc.auto
+      GIT_CONFIG_VALUE_1: "0"
     steps:
       - uses: actions/checkout@v4
         with:
