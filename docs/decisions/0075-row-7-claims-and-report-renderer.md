@@ -190,3 +190,47 @@ not claimed. Records 0076–0078 remain unused; reserved 0079 belongs to the own
 ## Date
 
 2026-09-23
+
+## Addendum — owner ruling 1, 2026-09-23
+
+The question put to the owner was the lane's wording. It is reproduced below
+with only the deployment machine name redacted to obey this round's explicit
+prohibition on committing personal names, logins or machine names:
+
+  Who may register a run that can carry claims?
+  1. The owner only (recommended). The writer can register runs, but they're always exploratory, so they can never carry claims.
+     Matches R-087 as written: nothing the agent does can make its own run claim-eligible. No new table. Cost: each real run needs one owner-side registration step (on [deployment host redacted], at deployment).
+  2. The writer, but only against a list the owner approved in advance.
+     More automatic, but adds an approved-runs table and a new surface for the reviewer to attack.
+  With either answer, the positive control becomes: the owner registers a claim-eligible run, then the writer adds a claim to it and that commits.
+
+The owner's answer, verbatim: **"1"**.
+
+Everything below is **the lane's implementation specification of option 1,
+not the owner's words**. This addendum resolves the registration stop recorded
+above without changing any preceding byte of 0075.
+
+- `claims.run_register(bigint,text,text,text)` is SECURITY DEFINER with
+  `SET search_path = claims, pg_temp`. The writer may execute it. It inserts
+  `exploratory = true` and accepts no eligibility parameter.
+- `claims.run_register_eligible(bigint,text,text,text)` is the owner-only
+  registration function, with the same fixed search path. It inserts
+  `exploratory = false`. PUBLIC execution is revoked and the writer receives
+  no execution grant. The schema owner owns both functions.
+- The writer still has neither INSERT nor UPDATE on `claims.run`; neither
+  registration function changes an existing run. The threat-model sentence
+  above about registration now means the writer cannot register a claim-eligible
+  run, or change eligibility, through any writer-accessible path.
+- The corrected positive control is owner registration followed by a committed
+  writer `claim_insert` with evidence. A writer-registered run refuses claims
+  with the exploratory message. The owner-only call, direct INSERT and flag
+  UPDATE each refuse the writer with SQLSTATE 42501. Tests assert the actual
+  writer identity and non-superuser status before writer statements.
+- The required disposable fault grants the writer EXECUTE on the eligible-run
+  function; `test_writer_cannot_register_eligible` must then fail because the
+  forbidden call commits. The change report records this run's measured results.
+
+D-10's local-only scope is unchanged: only throwaway PostgreSQL is used; R-131
+still governs authoritative deployment. Methods/reproduction remain with row 6.
+Reserved 0079 belongs to the owner and is not written here. This ruling resolves
+the registration authority question; it does not approve a push or merge.

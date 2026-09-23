@@ -136,7 +136,22 @@ BEGIN
     RETURN cid;
 END $$;
 
--- run_register authority is stopped pending the owner ruling recorded in the change report.
+-- The writer can register only exploratory runs. Eligibility belongs to the owner.
+CREATE FUNCTION claims.run_register(rid bigint, question text, manifest_path text,
+    manifest_sha256 text)
+RETURNS bigint LANGUAGE plpgsql SECURITY DEFINER SET search_path = claims, pg_temp AS $$
+BEGIN
+    INSERT INTO claims.run VALUES (rid, question, manifest_path, manifest_sha256, true);
+    RETURN rid;
+END $$;
+
+CREATE FUNCTION claims.run_register_eligible(rid bigint, question text, manifest_path text,
+    manifest_sha256 text)
+RETURNS bigint LANGUAGE plpgsql SECURITY DEFINER SET search_path = claims, pg_temp AS $$
+BEGIN
+    INSERT INTO claims.run VALUES (rid, question, manifest_path, manifest_sha256, false);
+    RETURN rid;
+END $$;
 
 CREATE FUNCTION claims.claims_export(rid bigint) RETURNS jsonb
 LANGUAGE sql STABLE SET search_path = claims, pg_temp AS $$
@@ -159,5 +174,5 @@ GRANT SELECT ON ALL TABLES IN SCHEMA claims TO gars_claims_writer;
 GRANT INSERT ON claims.artifact, claims.source, claims.evidence TO gars_claims_writer;
 GRANT DELETE, UPDATE ON claims.claim_evidence TO gars_claims_writer;
 GRANT EXECUTE ON FUNCTION claims.claim_insert(bigint,bigint,text,text,jsonb,jsonb,text,text,bigint[]),
-    claims.claims_export(bigint) TO gars_claims_writer;
+    claims.claims_export(bigint), claims.run_register(bigint,text,text,text) TO gars_claims_writer;
 RESET ROLE;

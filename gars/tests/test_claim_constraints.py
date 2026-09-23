@@ -189,6 +189,43 @@ class ClaimConstraintTests(unittest.TestCase):
         self.ok(insert(bio="'{\"replication\":{\"count\":2}}'"), writer=True)
         self.orphan_count()
 
+    def test_owner_registration_writer_claim_positive_control(self):
+        functions = self.ok("SELECT p.proname, r.rolname, p.prosecdef, "
+                            "array_to_string(p.proconfig, ';') FROM pg_proc p "
+                            "JOIN pg_roles r ON r.oid=p.proowner "
+                            "WHERE p.pronamespace='claims'::regnamespace "
+                            "AND p.proname IN ('run_register','run_register_eligible') "
+                            "ORDER BY p.proname;")
+        self.assertEqual(functions.strip().splitlines(), [
+            'run_register|gars_claims_owner|t|search_path=claims, pg_temp',
+            'run_register_eligible|gars_claims_owner|t|search_path=claims, pg_temp'])
+        registered = self.ok("SET ROLE gars_claims_owner; "
+                             "SELECT claims.run_register_eligible(2,'q','p','h');")
+        self.assertEqual(registered.strip().splitlines()[-1], '2')
+        self.assertEqual(self.ok('SELECT exploratory FROM claims.run WHERE id=2;').strip(), 'f')
+        self.assertEqual(self.ok(insert(rid=2), writer=True).strip().splitlines()[-1], '99')
+        self.assertEqual(self.ok('SELECT run_id FROM claims.claim WHERE id=99;').strip(), '2')
+        self.assertEqual(self.ok('SELECT evidence_id FROM claims.claim_evidence '
+                                 'WHERE claim_id=99;').strip(), '1')
+        self.orphan_count()
+
+    def test_writer_registration_is_exploratory(self):
+        registered = self.ok("SELECT claims.run_register(2,'q','p','h');", writer=True)
+        self.assertEqual(registered.strip().splitlines()[-1], '2')
+        self.assertEqual(self.ok('SELECT exploratory FROM claims.run WHERE id=2;',
+                                 writer=True).strip().splitlines()[-1], 't')
+        self.attack(insert(rid=2), 'exploratory run cannot produce a claim')
+        self.attack('UPDATE claims.run SET exploratory=false WHERE id=2;', '42501')
+        # Reusing an eligible ID must not replace or downgrade its owner binding.
+        self.attack("SELECT claims.run_register(1,'q','p','h');", '23505')
+        self.assertEqual(self.ok('SELECT exploratory FROM claims.run WHERE id=1;').strip(), 'f')
+        self.attack("SELECT claims.run_register(3,'q','p','h',false);", '42883')
+
+    def test_writer_cannot_register_eligible(self):
+        self.attack("SELECT claims.run_register_eligible(2,'q','p','h');", '42501')
+        self.attack("INSERT INTO claims.run VALUES (2,'q','p','h',false);", '42501')
+        self.attack('UPDATE claims.run SET exploratory=false WHERE id=1;', '42501')
+
     def test_exploratory_refused(self):
         self.ok("INSERT INTO claims.run VALUES (2,'q','p','h',true);")
         self.attack(insert(rid=2), 'exploratory run cannot produce a claim')
