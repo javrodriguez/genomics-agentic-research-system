@@ -67,32 +67,45 @@ FAULTS = [
 ]
 
 
-# R1 controls inject only in disposable copies of the named acceptance test.
+# S1 carries R1's leak controls forward on item 15's committed surfaces.
 for token in ('off-by-one', 'P01'):
+    amend = "; build_cases.commit(folder/'repo', 'Clarify introduction', common.git(folder/'repo','rev-parse','HEAD~1').decode().strip())"
     for location, statement in [
             ('commit message', "build_cases.commit(folder/'repo', %r, common.git(folder/'repo','rev-parse','HEAD~1').decode().strip())" % token),
             ('root commit message', "parent=build_cases.commit(folder/'repo', %r); build_cases.commit(folder/'repo', 'Adjust comment', parent)" % token),
-            ('changed file', "(folder/'repo'/'README.md').write_bytes((folder/'repo'/'README.md').read_bytes()+%r)" % token.encode('ascii')),
+            ('changed file', "(folder/'repo'/'README.md').write_bytes((folder/'repo'/'README.md').read_bytes()+%r)" % token.encode('ascii') + amend),
             ('folder name', "renamed=folder.with_name(%r); folder.rename(renamed); folder=renamed" % token),
             ('manifest', "manifest_bytes+=%r" % token.encode('ascii')),
-            ('plant diff', "patch+=%r" % token.encode('ascii'))]:
+            ('plant diff added file', "(folder/'repo'/'addition.md').write_bytes(%r)" % token.encode('ascii') + amend),
+            ('decoded tree name', "(folder/'repo'/%r).write_bytes(b'Harmless content\\n')" % token + amend)]:
         FAULTS.append(('added-byte leak in '+location+': '+token,
                        'tests/test_review_faults_build.py',
                        '        # Disposable-copy mutations inject each leak immediately before this check.',
                        '        '+statement, 'build', 'BuildTests.test_added_byte_leak_control'))
 FAULTS.extend([
     ('changed base file wrongly exempt','testing.py',
-     'if baseline.get(relative) != data:', 'if relative not in baseline:',
+     "    yield 'added lines', b''.join(added_lines(diff))",
+     "    yield 'added lines', b''",
      'build','BuildTests.test_base_exemption_is_byte_identity_at_same_path'),
     ('renamed base blob wrongly exempt','testing.py',
-     'if baseline.get(relative) != data:', 'if data not in baseline.values():',
+     'if relative not in baseline:', 'if relative not in baseline and data not in baseline.values():',
      'build','BuildTests.test_base_exemption_is_byte_identity_at_same_path'),
+    ('unchanged lines wrongly swept','testing.py',
+     "yield label, b''.join(blobs[oid])", 'yield label, data',
+     'build','BuildTests.test_added_byte_leak_control'),
 ])
+GREEN_CONTROLS = [
+    ('unchanged line of changed file: '+token, 'tests/test_review_faults_build.py',
+     '        # Disposable green controls add a token before the base commit.',
+     "        inherited += %r" % (token+'\n').encode('ascii'),
+     'build', 'BuildTests.test_added_byte_leak_control')
+    for token in ('off-by-one', 'P01')
+]
 
 
 class FaultTests(unittest.TestCase):
     def test_every_guard_fault_is_red(self):
-        for label,relative,old,new,module,case in FAULTS:
+        for label,relative,old,new,module,case in FAULTS + GREEN_CONTROLS:
             with self.subTest(fault=label),tempfile.TemporaryDirectory(prefix='t-') as temp:
                 root=Path(temp).resolve()
                 target=root/'evals/review-faults'
@@ -120,11 +133,16 @@ class FaultTests(unittest.TestCase):
                                     cwd=str(REPO),env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
                                     timeout=120)
                 output=(proc.stdout+proc.stderr).decode('utf-8','replace')
-                self.assertNotEqual(proc.returncode,0,output)
                 self.assertIn(case.split('.')[1],output)
-                self.assertIn('FAILED (',output)
                 self.assertNotIn('ModuleNotFoundError',output)
-                print('fault red: '+label)
+                if (label,relative,old,new,module,case) in GREEN_CONTROLS:
+                    self.assertEqual(proc.returncode,0,output)
+                    self.assertIn('OK',output)
+                    print('exemption green: '+label)
+                else:
+                    self.assertNotEqual(proc.returncode,0,output)
+                    self.assertIn('FAILED (',output)
+                    print('fault red: '+label)
 
 
 if __name__=='__main__':

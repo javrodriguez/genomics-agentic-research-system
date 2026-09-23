@@ -20,8 +20,9 @@ Row 9 code tools are in `evals/review-faults/`: construct anonymous cases with
 account with `run_reviews.py`, then hash-check and publish masked records with
 `score.py` (full arguments in that folder's README). Seal before the first model
 run. No model was run in this round; sealed slots, public credibility and the
-row exit remain NOT met. R1 implements the ruled byte-identity sweep; literal
-acceptance still awaits the further scope rulings recorded in
+row exit remain NOT met. S1 implements Q3 A and Q4 A: added lines and decoded
+new Git content pass the twelve-case sweep, with unchanged-line exemptions
+proved in both directions. Required checks and remaining verification are in
 `docs/implementation/row_9_change_report.md`.
 
 **Row 12 review round 4, 2026-09-22: repo-side implementation; merge still gated.**

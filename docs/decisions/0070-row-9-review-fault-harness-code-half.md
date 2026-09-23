@@ -251,3 +251,62 @@ Git objects should be compared to decoded base objects, with metadata still
 scanned, or literal storage bytes must be free of these strings. Small synthetic
 repositories isolate the leak controls from these pre-existing full-tree matches;
 the separate all-twelve acceptance test retains its failure on the real cases.
+
+## Addendum — S1 rulings, 2026-09-23
+
+Starting commit: `6af7e2a15308008e366e1f7f61aabb49e17a1b9a`.
+Earlier bytes are preserved. No review was supplied, read or requested.
+
+The owner, 23 September 2026, answering the two questions round R1 raised:
+
+> Q3 A, Q4 A
+
+The questions and options as put to the owner, reproduced exactly:
+
+> Q3 (Three planted changes edit files that already contain words like "race" (and "traceback" contains it). The whole-file scan can never pass on those.): A: scan only the lines the change adds, not the untouched rest of the file. That's what "only the bytes the case adds" meant.
+
+> Q4 (Git's compressed storage files happen to contain short strings like "P04" by chance, in every case, even clean ones.): A: read git's contents decoded; skip anything identical to the original repo; always scan the new commit and its message.
+
+In the same message, the owner delegated the rest of the row:
+
+> I delegate to you all the decisions necssary to finish row9, use your best judgement. Only ask me for critical choices
+
+### THE LANE'S SPECIFICATION — item 15
+
+This is the lane's specification, not additional words attributed to the owner.
+Item 15 supersedes item 14(a)'s wording where the two differ. Item 14(b)'s unmet
+fixture secret scan and item 14(c)'s path spellings stand. This round exercises
+no further delegated choice; no threshold, schema or CI change is introduced.
+
+The sweep covers exactly (i) the committed diff's added lines and the full bytes
+of added files, (ii) decoded reachable Git content introduced over the base tree,
+including the second commit's entire object and message, (iii) case and repo
+folder names, and (iv) the manifest. The case's history-free parent has the exact
+base tree; its tree, rather than the original history, supplies the comparison.
+All class ids, case ids and fixture paths remain forbidden tokens.
+
+Q3's explicit unchanged-line exemption applies when reading a modified blob in
+part (ii) as well as the diff in part (i). Decoding that blob does not reintroduce
+its unchanged lines. New files are read in full even when they copy an inherited
+blob; new tree entries and commit objects are decoded and scanned. Inherited
+objects and decoded contents identical to base objects are exempt from part (ii).
+Raw Git storage is never swept. No filename allowlist substitutes for comparison.
+The existing root-commit metadata control also remains covered: that commit is
+new, reachable content even though its tree is the base tree.
+
+Disposable copies inject class and case ids into each covered surface; each
+named acceptance test must turn red. Separate unchanged-line injections must
+stay green. Widening modified-blob scanning back to whole content turns its
+named acceptance test red. An inherited blob copied into an added file remains
+a red witness. Unreachable objects are outside the sweep; repacking reachable
+objects leaves its answer unchanged. Twelve shipped cases pass without fixture,
+answer-key, manifest-format or reviewer-prompt changes.
+
+The report records observed controls and required command summaries. No model
+was run. No seal, measured rate, first-run claim or row-exit claim is made.
+All earlier residuals remain except the now-resolved byte-sweep scope questions:
+fixture gitleaks verification, separate-user deployment, R-093's code half,
+protected-path approval, sealed slots, the first measured run, public external
+human seals, science, trailer JSON consumption and merge-result CI remain open.
+Diff-style inference, shared model family, thin per-class samples and hash-only
+public checking of three sealed outcomes remain limitations.

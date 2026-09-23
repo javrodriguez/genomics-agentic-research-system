@@ -140,7 +140,7 @@ class BuildTests(unittest.TestCase):
                 output/'cases'/neutral,manifest_bytes,
                 (cases[cid]['path']/'plant.diff').read_bytes(),baseline,self.forbidden_tokens()))
         self.assertEqual(leaks,[])
-        print('added case-byte sweep: 12/12 clear; only identical base blobs exempt')
+        print('added case-byte sweep: 12/12 clear; item 15 added lines and decoded objects')
 
     def sweep_fixture(self):
         root=temporary(self)
@@ -152,11 +152,13 @@ class BuildTests(unittest.TestCase):
         spec='docs/specs/source.md'
         (repo/spec).parent.mkdir(parents=True)
         inherited=b'off-by-one race\n'
+        # Disposable green controls add a token before the base commit.
         (repo/spec).write_bytes(inherited)
         (repo/'README.md').write_bytes(b'Before\n')
         baseline={spec:inherited,'README.md':b'Before\n'}
         parent=build_cases.commit(repo,'Initial source snapshot')
         (repo/'README.md').write_bytes(b'After\n')
+        (repo/spec).write_bytes(inherited+b'Clarified introduction.\n')
         build_cases.commit(repo,'Clarify introduction',parent)
         patch=common.git(repo,'diff','HEAD~1','HEAD')
         return folder,b'{}',patch,baseline,spec
@@ -164,20 +166,33 @@ class BuildTests(unittest.TestCase):
     def test_base_exemption_is_byte_identity_at_same_path(self):
         folder,manifest_bytes,patch,baseline,spec=self.sweep_fixture()
         repo=folder/'repo'
-        inherited=(repo/spec).read_bytes()
+        inherited=baseline[spec]
         self.assertIn(b'off-by-one',inherited)
-        self.assertEqual(inherited,baseline[spec])
+        self.assertNotEqual((repo/spec).read_bytes(),inherited)
+        # An unchanged line of a changed file stays exempt under Q3 A.
         self.assert_case_clear(folder,manifest_bytes,patch,baseline)
-        # The same filename is not exempt after even a harmless byte changes.
-        (repo/spec).write_bytes(inherited+b'\n')
-        self.assertIn(('file '+spec,'off-by-one'),
+        parent=common.git(repo,'rev-parse','HEAD~1').decode().strip()
+        clean=(repo/spec).read_bytes()
+        # The same path is not exempt when the added line itself carries a leak.
+        (repo/spec).write_bytes(clean+b'off-by-one\n')
+        build_cases.commit(repo,'Clarify introduction',parent)
+        self.assertIn(('added lines','off-by-one'),
                       case_leaks(folder,manifest_bytes,patch,baseline,self.forbidden_tokens()))
-        (repo/spec).write_bytes(inherited)
-        # Identical contents under a new name have no base blob at that path.
+        (repo/spec).write_bytes(clean)
+        # A whole added file is swept even when its decoded blob is inherited.
         (repo/'copy.md').write_bytes(inherited)
-        self.assertIn(('file copy.md','off-by-one'),
+        build_cases.commit(repo,'Clarify introduction',parent)
+        self.assertIn(('added file copy.md','off-by-one'),
                       case_leaks(folder,manifest_bytes,patch,baseline,self.forbidden_tokens()))
         (repo/'copy.md').unlink()
+        build_cases.commit(repo,'Clarify introduction',parent)
+        self.assert_case_clear(folder,manifest_bytes,patch,baseline)
+        # Reachability, not physical presence in the object store, sets Q4's scope.
+        orphan=common.git(repo,'hash-object','-w','--stdin',input=b'P01 off-by-one\n').strip()
+        self.assertEqual(common.git(repo,'cat-file','blob',orphan.decode()),b'P01 off-by-one\n')
+        self.assert_case_clear(folder,manifest_bytes,patch,baseline)
+        # Packing the same reachable objects cannot change the sweep's answer.
+        common.git(repo,'repack','-ad')
         self.assert_case_clear(folder,manifest_bytes,patch,baseline)
 
     def test_added_byte_leak_control(self):
