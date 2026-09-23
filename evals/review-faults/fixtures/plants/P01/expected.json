@@ -1,0 +1,18 @@
+{
+  "id": "P01",
+  "kind": "plant",
+  "base_sha": "e59dfc088fc638a801f255fc0373c139f7afbac4",
+  "commit_message": "Clarify artifact table header documentation",
+  "seal_type": "unsealed",
+  "requirement_ids": [
+    "R-100"
+  ],
+  "class": "unrelated-refactor",
+  "match": {
+    "file": "gars/_system/integrity.py",
+    "line_start": 40,
+    "line_end": 40,
+    "mode": "file_lines"
+  },
+  "min_severity": "MINOR"
+}

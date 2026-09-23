@@ -1,0 +1,11 @@
+{
+  "id": "C03",
+  "kind": "clean",
+  "base_sha": "e59dfc088fc638a801f255fc0373c139f7afbac4",
+  "commit_message": "Correct the artifact header example",
+  "seal_type": "unsealed",
+  "requirement_ids": [
+    "R-100"
+  ],
+  "class": null
+}

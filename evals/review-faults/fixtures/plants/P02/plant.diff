@@ -1,0 +1,11 @@
+--- a/gars/_system/executorlib.py
++++ b/gars/_system/executorlib.py
+@@ -355,7 +355,7 @@
+     """The -profile the generated submit body passes, '' meaning none."""
+     descriptor = descriptor if descriptor is not None else load(config_root)
+     value = descriptor.get("nextflow_profile")
+-    return SLURM["nextflow_profile"] if value is None else value
++    return SLURM["nextflow_profile"]
+ 
+ 
+ def submit_command(config_root, script, descriptor=None):

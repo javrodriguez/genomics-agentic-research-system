@@ -1,0 +1,39 @@
+--- a/gars/_system/adapt_counts.py
++++ b/gars/_system/adapt_counts.py
+@@ -73,6 +73,9 @@
+                                "shape this adaptation expects"
+                                % (args.id_column, ", ".join(header[:5])))
+             return emit(result, EXIT_BAD_INPUT)
++        if len(header) != len(set(header)):
++            result["error"] = "duplicate matrix column names"
++            return emit(result, EXIT_BAD_INPUT)
+         gi = header.index(args.id_column)
+         gn = header.index(args.name_column) if args.name_column in header else None
+         sample_cols = [i for i in range(len(header)) if i != gi and i != gn]
+--- /dev/null
++++ b/tests/test_adapt_headers.py
+@@ -0,0 +1,24 @@
++"""Duplicate count-matrix headers are ambiguous inputs."""
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++from unittest.mock import patch
++sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'gars/_system'))
++import adapt_counts
++
++
++class HeaderTests(unittest.TestCase):
++    def test_duplicate_header_refused_before_output(self):
++        with tempfile.TemporaryDirectory() as temp:
++            root = Path(temp)
++            source = root / 'counts.tsv'
++            source.write_text('gene_id\tS1\tS1\ng1\t1\t2\n')
++            with patch.object(adapt_counts, 'emit', side_effect=lambda value, code: code):
++                result = adapt_counts.main(['--counts', str(source), '--out', str(root / 'out')])
++            self.assertEqual(result, adapt_counts.EXIT_BAD_INPUT)
++            self.assertFalse((root / 'out').exists())
++
++
++if __name__ == '__main__':
++    unittest.main()

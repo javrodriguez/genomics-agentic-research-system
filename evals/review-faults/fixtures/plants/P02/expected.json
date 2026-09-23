@@ -1,0 +1,19 @@
+{
+  "id": "P02",
+  "kind": "plant",
+  "base_sha": "e59dfc088fc638a801f255fc0373c139f7afbac4",
+  "commit_message": "Standardize generated execution profiles",
+  "seal_type": "unsealed",
+  "requirement_ids": [
+    "R-065",
+    "R-100"
+  ],
+  "class": "provider-coupling",
+  "match": {
+    "file": "gars/_system/executorlib.py",
+    "line_start": 358,
+    "line_end": 358,
+    "mode": "file_lines"
+  },
+  "min_severity": "MINOR"
+}

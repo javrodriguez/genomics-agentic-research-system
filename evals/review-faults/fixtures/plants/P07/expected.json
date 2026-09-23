@@ -1,0 +1,19 @@
+{
+  "id": "P07",
+  "kind": "plant",
+  "base_sha": "e59dfc088fc638a801f255fc0373c139f7afbac4",
+  "commit_message": "Handle compressed input read failures consistently",
+  "seal_type": "unsealed",
+  "requirement_ids": [
+    "R-069",
+    "R-100"
+  ],
+  "class": "swallowed-exception",
+  "match": {
+    "file": "gars/_system/integrity.py",
+    "line_start": 57,
+    "line_end": 57,
+    "mode": "file_lines"
+  },
+  "min_severity": "MINOR"
+}

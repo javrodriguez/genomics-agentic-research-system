@@ -1,0 +1,11 @@
+--- a/gars/_system/adapt_counts.py
++++ b/gars/_system/adapt_counts.py
+@@ -75,7 +75,7 @@
+             return emit(result, EXIT_BAD_INPUT)
+         gi = header.index(args.id_column)
+         gn = header.index(args.name_column) if args.name_column in header else None
+-        sample_cols = [i for i in range(len(header)) if i != gi and i != gn]
++        sample_cols = [i for i in range(len(header) - 1) if i != gi and i != gn]
+ 
+         out = Path(args.out)
+         out.mkdir(parents=True, exist_ok=True)
