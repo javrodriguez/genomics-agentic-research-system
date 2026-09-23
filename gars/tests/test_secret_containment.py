@@ -36,6 +36,8 @@ def index_bytes(root):
 class SecretContainmentTests(unittest.TestCase):
     def test_repo_side_nine_sinks(self):
         root, hooks, unused = fixture(self)
+        from test_hooks_records import decisions_fixture
+        decisions_fixture(root)
         canary = fresh_canary()
         # The only planted credential file is outside the disposable repository.
         (root.parent / 'credential').write_bytes(canary)
