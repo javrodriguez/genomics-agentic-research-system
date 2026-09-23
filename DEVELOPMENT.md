@@ -42,7 +42,7 @@ with `python3 scripts/release_check.py`; verify with `--check`; evaluate release
 eligibility with `--tag` (currently refused because evidence is unmeasured).
 
 **Row 4 review round 4, 2026-09-22:** the supplied independent round-2 review is
-APPROVE WITH CHANGES. The 22 September provisional rulings in 0059 stand. Both MINORs
+APPROVE WITH CHANGES. The 22 September provisional rulings in 0059 stand, confirmed by the owner ([0067](docs/decisions/0067-owner-confirms-rows-15-and-4-provisional-rulings.md)). Both MINORs
 remain with the owner: the protected stage-03 contract correction with its approval
 record, and the scope of refusal for unreviewed pins. The supplied review's SHA-256,
 NOTE responses, current verification and residual gaps are recorded in the
@@ -53,14 +53,14 @@ No pin status is promoted by this producer response.
 all three complete runs ended `OK (skipped=50)`. No tests from row 15 skipped.
 R15-03's narrow disposable fixture repair is complete with existing assertions,
 stdin checks and veto behaviour preserved. R15-01, R15-02 and R15-04 remain closed.
-The owner authorised R15-03 option A: **provisional ruling, to be confirmed by the owner**.
+The owner authorised R15-03 option A and **confirmed it on 22 September 2026** ([0067](docs/decisions/0067-owner-confirms-rows-15-and-4-provisional-rulings.md)).
 The owner confirmed D-17 option A: sinks 7–9 are the generated job script
 (`submit.sh` / `commands.sh`), reproducibility manifest and Git index;
-**provisional ruling, to be confirmed by the owner**. See
+**confirmed by the owner on 22 September 2026**. See
 [0057](docs/decisions/0057-row-15-provisional-owner-rulings.md).
 The hooks refuse binary or `-diff` content omitted by Git; encoded assignment
-logs are covered. Full R-096 agent containment remains unmeasured. The owner must
-confirm or reverse both provisional rulings later; the separate study merge hold
+logs are covered. Full R-096 agent containment remains unmeasured. The owner
+confirmed both rulings on 22 September 2026 ([0067](docs/decisions/0067-owner-confirms-rows-15-and-4-provisional-rulings.md)); the separate study merge hold
 remains. See the
 [Row 15 report](docs/implementation/row_15_change_report.md#review-round-4-fixes).
 

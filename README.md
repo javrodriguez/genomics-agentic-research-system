@@ -302,10 +302,10 @@ with equal timestamps; venue/canary evidence remains unmeasured. See the
 (397 tests, 11 of them environment skips, on macOS on 2026-09-22 with Docker answering and row 5's scratch folder set as CI sets it; a macOS cold clone without it skips 55, or 57 with `TMPDIR` also unset as on Linux; no cluster run is evidenced for these rows).
 Row 15 review round 4 (2026-09-22), macOS / Python 3.8.2: 252 tests, <!-- not-the-suite-total -->
 `OK (skipped=50)`; no tests from row 15 skipped. R15-03's narrow fixture repair
-is authorised by the owner under a **provisional ruling, to be confirmed by the owner**.
+is authorised by the owner, **confirmed on 22 September 2026** ([0067](docs/decisions/0067-owner-confirms-rows-15-and-4-provisional-rulings.md)).
 D-17 sinks 7–9 are the generated job script (`submit.sh` / `commands.sh`),
-reproducibility manifest and Git index, confirmed by the owner under a
-**provisional ruling, to be confirmed by the owner**. See the
+reproducibility manifest and Git index, confirmed by the owner on
+22 September 2026 ([0067](docs/decisions/0067-owner-confirms-rows-15-and-4-provisional-rulings.md)). See the
 [decision addendum](docs/decisions/0057-row-15-provisional-owner-rulings.md) and
 [Row 15 report](docs/implementation/row_15_change_report.md#review-round-4-fixes).
 The repository-side canary scan is not full R-096 agent containment; live
