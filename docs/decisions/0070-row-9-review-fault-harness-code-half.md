@@ -196,3 +196,58 @@ run, ledger row, approval, merge, push or pull request is supplied by this commi
 ## Date
 
 2026-09-23
+## Addendum — R1 rulings, 2026-09-23
+
+Starting commit: `767a986d6477ba1fae50e0d5a9dd214811549b39`.
+This addendum preserves every preceding byte. R1 answers the round-1 ruling
+requests; no review was supplied or consulted.
+
+The owner, 23 September 2026, answering the two round-1 questions:
+
+> Q1 A, Q2 A
+
+The questions and chosen options, attributed to the owner as supplied with that
+answer (the bracketed substitutions below are edits of the quote):
+
+> Q1 (Each test case ships the full GARS repo, and the repo's own spec already names every fault type. So "no fault name anywhere in a case" can never pass. Which rule wins?): A: check only the bytes the case ADDS (the planted change, the commit, folder names, manifest). The spec text is identical in all 15 cases, so it can't reveal which fault is in one.
+
+> Q2 (gitleaks isn't installed on [the build host], so the fixture secret scan can't run there.): A: leave it NOT met on [the build host]; [the lane's independent verification] runs both gitleaks rulesets over the fixtures.
+
+Edits of the Q2 quote: both host references are replaced by `[the build host]`;
+the first-person verification reference is replaced by
+`[the lane's independent verification]`. No other wording is changed.
+
+### The lane's specification of the R1 rulings
+
+This section describes implementation, not additional words of the owner.
+Item 14(a) replaces the stopped literal whole-tree absence test with a sweep of
+the plant diff, decoded metadata of both commits, case and repository folder
+names, manifest, and every file whose bytes differ from the base blob at the
+same path. Only byte identity at that path grants an exemption. Controls change
+the inherited spec in place and copy its identical contents to a new path;
+both must be scanned. Disposable-copy controls inject class and case ids into
+commit messages, a changed file, folder names, manifest and plant diff.
+
+Item 14(b) leaves the real fixture pre-commit secret scan NOT met on this host;
+no installation or substitute scanner is used. The later independent verification
+must run both rulesets. Item 14(c) changes the README reference to repository-relative
+text and builds the masking test's suffix with `os.path.join`. The inherited
+spelling in this record is unchanged.
+
+The exact full-file sweep also sees inherited vocabulary in files changed by
+P02, P04 and P06. Whether to replace these plants or exempt unchanged portions
+requires a further scope ruling; the change report records the failing witness
+and options. The exemption has not been broadened to make this pass.
+
+All prior residuals remain except that Q1 and Q2 now have explicit answers.
+Row 9 exit, sealing, the first measured run, deployment evidence, R-093's code
+half, external-human public evidence and protected-path approval remain open.
+
+Further R1 witness, 2026-09-23 (the lane's specification): the literal file sweep
+also scans Git storage; those files have no identical base blob at the same path.
+Compressed inherited objects contain incidental short case-id byte strings.
+No storage-path exemption was introduced. The report therefore also asks whether
+Git objects should be compared to decoded base objects, with metadata still
+scanned, or literal storage bytes must be free of these strings. Small synthetic
+repositories isolate the leak controls from these pre-existing full-tree matches;
+the separate all-twelve acceptance test retains its failure on the real cases.

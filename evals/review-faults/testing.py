@@ -130,3 +130,47 @@ def score_fixture(test):
             item['review']['findings'] = [finding()]
         write_json(records / (neutral + '.record.json'), item)
     return root, key, manifest, answers, records
+
+
+def base_blobs(source=REPO, revision=BASE_SHA):
+    """Read exact base bytes at each path, without a filename allowlist."""
+    import tarfile
+    result = {}
+    with tarfile.open(fileobj=io.BytesIO(build_cases.base_archive(source, revision))) as archive:
+        for member in archive.getmembers():
+            if member.isfile():
+                result[member.name] = archive.extractfile(member).read()
+            elif member.issym():
+                result[member.name] = member.linkname.encode('utf-8')
+    return result
+
+
+def added_case_surfaces(folder, manifest_bytes, patch, baseline):
+    """Item 14(a): only whole files identical at the same base path are exempt.
+
+    Git commits and the applied diff are also read as decoded Git objects;
+    compressed storage is not a substitute for inspecting readable metadata.
+    """
+    repo = folder / 'repo'
+    yield 'folder names', (folder.name + '/' + repo.name).encode('utf-8')
+    yield 'manifest', manifest_bytes
+    yield 'plant diff', patch
+    yield 'applied diff', git(repo, 'diff', 'HEAD~1', 'HEAD')
+    for revision in ('HEAD~1', 'HEAD'):
+        yield 'commit ' + revision, git(repo, 'cat-file', 'commit', revision)
+    for path in sorted(repo.rglob('*')):
+        relative = str(path.relative_to(repo))
+        if path.is_symlink():
+            data = os.readlink(str(path)).encode('utf-8')
+        elif path.is_file():
+            data = path.read_bytes()
+        else:
+            continue
+        if baseline.get(relative) != data:
+            yield 'file ' + relative, relative.encode('utf-8') + b'\0' + data
+
+
+def case_leaks(folder, manifest_bytes, patch, baseline, forbidden):
+    return [(label, token) for label, data in
+            added_case_surfaces(folder, manifest_bytes, patch, baseline)
+            for token in forbidden if token.encode('utf-8') in data]

@@ -3,9 +3,10 @@
 Repository implementation only; **row 9 exit NOT met**. No model has been run
 against these cases. Read [SEALS.md](SEALS.md) for the empty sealed slots and
 [INTERFACE.md](INTERFACE.md) for the sealer's complete independent handoff.
-The literal every-byte class-name sweep is stopped: the required full base tree
-already contains class vocabulary. See the numbered ruling request in
-[the change report](../../docs/implementation/row_9_change_report.md).
+The R1 sweep checks the plant diff, both commits' metadata, case and repository
+folder names, manifest, and every file differing from its base blob at the same
+path. Only byte-identical base files are exempt. See the current results and
+remaining scope question in `docs/implementation/row_9_change_report.md`.
 
 Use Python 3.6 or later, standard library, and Git. Work from the repository root
 with TMPDIR, TEMP and TMP naming external scratch. Build cases after sealing:

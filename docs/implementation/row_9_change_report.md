@@ -348,3 +348,277 @@ push, pull request, merge, seal or measured reviewer session was performed.
   a stranger recomputes twelve of fifteen outcomes from repository inputs.
 - Protected-path approval in the separate later record 0071, independent review,
   merge-result CI, native Python 3.6 runtime and Docker mode A.
+
+## Rulings round R1
+
+2026-09-23. Starting hash, recorded before edits:
+`767a986d6477ba1fae50e0d5a9dd214811549b39`.
+No review was supplied, read or requested. Earlier report and decision bytes are
+preserved. This is a rulings round, not a response to a review.
+
+| Ruling or item | Changed files | Test | Result; red-on-fault seen |
+|---|---|---|---|
+| Q1 A / item 14(a) | `evals/review-faults/testing.py`; `tests/test_review_faults_build.py`; `tests/test_review_faults_faults.py`; append-only 0070 addendum | `BuildTests.test_added_case_bytes_sweep`; `test_base_exemption_is_byte_identity_at_same_path`; `test_added_byte_leak_control`; `FaultTests.test_every_guard_fault_is_red` | Sweep implemented literally; full-case acceptance NOT met and stopped for the scope rulings below. Yes: twelve injected leaks and two incorrect exemptions turn their named test red in disposable copies. All 53 earlier faults remain red as required. |
+| Q2 A / item 14(b) | append-only 0070 addendum and this report | Unchanged repository pre-commit hook, with all 24 fixture files staged in a disposable base-tree repository | NOT met, as ruled: gitleaks absent; hook REFUSED. Red-on-fault: no scanner mutation or replacement; actual refusal observed. Nothing installed. |
+| Item 14(c) | `evals/review-faults/README.md`; `tests/test_review_faults_core.py` | Direct core tests and prefix comparison of 0070 against starting commit | PASS: repository-relative Markdown text and `os.path.join` suffixes; every original 0070 byte preserved. Red-on-fault: no separate spelling mutation; existing masking mutations still turn the named test red. |
+| Collection count required by the added tests | `README.md`; `DEVELOPMENT.md` | `tests/check_counts.py` | PASS: three claims now match 426 collected tests. No existing assertion or threshold weakened; red-on-fault: no count mutation. DEVELOPMENT's row-9 paragraph names the remaining scope stop. |
+
+The sweep reads the submitted diff, applied Git diff, decoded raw commit objects
+for both commits (including authors, dates and messages), case and repo folder
+names, manifest bytes, and all file bytes under each repo. It scans every class
+id, every fixture case id, and every repository-relative fixture directory path.
+A file is exempt only if its bytes equal the base blob at that exact path.
+There is no filename, directory or Git-storage exemption. Git metadata is read
+both in storage and decoded form so compression cannot conceal a commit message.
+
+The byte-identity control uses a small synthetic two-commit repo with inherited
+class vocabulary. Its intact baseline passes; adding one newline at the same
+path must expose the vocabulary; copying identical bytes to a new path must also
+expose it. The full twelve-case acceptance separately uses the actual base archive.
+Synthetic controls are not substituted for acceptance over the shipped fixtures.
+
+Named new red witnesses (each line was printed by the disposable-copy fault run):
+
+```text
+fault red: added-byte leak in commit message: off-by-one
+fault red: added-byte leak in root commit message: off-by-one
+fault red: added-byte leak in changed file: off-by-one
+fault red: added-byte leak in folder name: off-by-one
+fault red: added-byte leak in manifest: off-by-one
+fault red: added-byte leak in plant diff: off-by-one
+fault red: added-byte leak in commit message: P01
+fault red: added-byte leak in root commit message: P01
+fault red: added-byte leak in changed file: P01
+fault red: added-byte leak in folder name: P01
+fault red: added-byte leak in manifest: P01
+fault red: added-byte leak in plant diff: P01
+fault red: changed base file wrongly exempt
+fault red: renamed base blob wrongly exempt
+```
+
+The two exemption faults mutate the comparison into a path-only exemption or a
+content-anywhere exemption. Each causes the byte-identity test to fail. The twelve
+leak faults add either `off-by-one` or `P01` to each of: second commit message,
+root commit message, changed file, case folder name, manifest, and plant diff.
+The unmutated controls pass. The full real-case acceptance fails independently.
+
+### Required command summaries
+
+All operator commands ran from the repository root. TMPDIR, TEMP and TMP pointed
+to the approved scratch twin; child-process paths were resolved at runtime.
+Mode C unsets TMPDIR while retaining TEMP and TMP there. Logs, disposable repos,
+mutation copies and the fixture-hook copy stay in scratch. No model or network
+was used. Initial exploratory failures are retained in scratch; the final summaries
+below are from the final implementation. Native Python 3.6 execution is not claimed.
+The Python 3.6 parser check is separate.
+
+The fixture-hook driver archives the base into a disposable repository, commits
+that tree with the fixed synthetic producer identity, copies only the existing
+fixtures, and stages their 24 files with path-limited `git add`. It asserts the
+actual cached diff lists exactly those paths before invoking the unchanged hook.
+The source checkout's index and hooks are not changed by that check. An earlier
+alternate-index setup was discarded because comparing its index to the source
+HEAD would not present the fixtures as additions; it is not the reported scan.
+
+`python3 tests/run_tests.py (mode B)`:
+
+```text
+collected 252 tests from tests
+collected 174 tests from gars/tests
+first failing test: test_review_faults_build.BuildTests.test_added_case_bytes_sweep
+citations: 1/1 resolve
+citations: 1/1 resolve
+citations: 0/1 resolve
+citations: 0/1 resolve
+citations: 0/1 resolve
+citations: 0/0 resolve
+citations: 0/0 resolve
+citations: 0/1 resolve
+citations: 292/292 resolve
+DoD cells regenerated: 13/13
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 1/1 byte-stable
+fixtures: git apply --check passed for 12/12 against base archive
+Ran 426 tests in 98.333s
+FAILED (failures=1, skipped=59)
+```
+
+`python3 tests/run_tests.py (mode C)`:
+
+```text
+collected 252 tests from tests
+collected 174 tests from gars/tests
+first failing test: test_review_faults_build.BuildTests.test_added_case_bytes_sweep
+citations: 1/1 resolve
+citations: 1/1 resolve
+citations: 0/1 resolve
+citations: 0/1 resolve
+citations: 0/1 resolve
+citations: 0/0 resolve
+citations: 0/0 resolve
+citations: 0/1 resolve
+citations: 292/292 resolve
+DoD cells regenerated: 13/13
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 1/1 byte-stable
+fixtures: git apply --check passed for 12/12 against base archive
+Ran 426 tests in 91.798s
+FAILED (failures=1, skipped=86)
+```
+
+`python3 tests/check_contracts.py`:
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`:
+
+```text
+collected 252 tests from tests
+collected 174 tests from gars/tests
+suite: 426 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`:
+
+```text
+Ran 44 tests in 37.890s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`:
+
+```text
+clean — graded=1
+```
+
+`python3 tests/test_review_faults_core.py`:
+
+```text
+Ran 8 tests in 0.019s
+OK
+```
+
+`python3 tests/test_review_faults_launch.py`:
+
+```text
+Ran 11 tests in 0.795s
+OK
+```
+
+`python3 tests/test_review_faults_build.py`:
+
+```text
+Ran 9 tests in 31.379s
+FAILED (failures=1)
+fixtures: git apply --check passed for 12/12 against base archive
+```
+
+`python3 tests/test_review_faults_faults.py`:
+
+```text
+Ran 1 test in 5.382s
+OK
+```
+
+`feature_version=(3, 6) parse`:
+
+```text
+Python feature_version=(3, 6): 11/11 new Python files parsed
+```
+
+`python3 gars/_system/hooks/pre-commit (24 fixture files staged in disposable base repository)`:
+
+```text
+fixture hook index: 24 fixture files staged against base
+gitleaks: REFUSED (gitleaks absent from PATH)
+citations: 292/292 resolve
+pre-commit: REFUSED
+```
+
+`python3 scripts/release_check.py`:
+
+```text
+DoD cells regenerated: 13/13
+```
+
+The regenerated reviewer row remains:
+
+```text
+| reviewer catch rate (code; science) | `evals/review-faults/`, `evals/bio-faults/` runners | ≥ 8/10 per set, ≤ 1/5 false alarms; first-run-at-sha reported (§21 Q3) | unmeasured |
+```
+
+`bash docs/decisions/build_index.sh` was rerun after the addenda; its generated
+index is byte-identical because the indexed frontmatter is unchanged. Its output
+names that index with a machine-specific prefix, which is not published here.
+The release render is likewise unchanged. The README evidence row is untouched.
+
+Mode A: NOT verified; Docker is not reachable by this account. Modes B and C
+have one failure, `BuildTests.test_added_case_bytes_sweep`, and retained skips.
+The failure is neither skipped nor marked expected. No existing guard was relaxed.
+
+### Boundary verification
+
+`git diff --check` is clean. Comparison against the public base yields no changes
+to the protected boundary sets: `.github/`, `gars/_system/`, `benchmarks/`,
+`docs/ledger.csv`, evals outside this row, references outside the one prompt,
+or decision files other than 0070 and the index. This round changes neither
+fixtures nor prompt. Starting-commit prefix checks preserve all earlier bytes of
+0070 and this report. Reserved records 0071–0074 are untouched. No remote, push,
+merge or pull request was used.
+
+## Owner rulings needed
+
+1. **Inherited vocabulary in a changed file.** Item 14(a) requires the whole file
+   to be scanned once any byte differs. P02 changes `gars/_system/executorlib.py`,
+   which already contains the word `race` at base line 108. P04 changes
+   `gars/_system/wrapperlib.py`, with `race` at base lines 645 and 668. P06 changes
+   `tests/run_tests.py`, whose base text contains those bytes inside `braces` and
+   `traceback`. These remain in the post-change files. Options: A, retain the
+   whole-file/literal sweep and authorize replacing the affected plants while
+   preserving their assigned classes; B, exempt unchanged portions of changed
+   files, which changes the stated whole-file scope. No choice is made here.
+2. **Literal Git storage versus decoded base identity.** The original every-byte
+   sweep, narrowed only by item 14(a)'s identical-base-blob exemption, also visits
+   Git files, which have no blob at the same base path. All twelve cases contain
+   incidental case-id byte strings in compressed objects inherited from the base.
+   A concrete witness is `P04` inside the object file named
+   `.git/objects/01/6f0f998d1eaf95b518541239bf89a36ab7df70`; it appears even in C03.
+   Options: A, inspect decoded Git objects, exempting only base-identical content
+   while always scanning commit metadata and newly introduced objects; B, retain
+   literal storage-byte absence and authorize a different encoding or case-id
+   vocabulary that can meet it. No Git-path exemption, encoding change or case-id
+   vocabulary change is made here. This part stops pending the ruling.
+
+## Residual gaps after R1
+
+- Q1's exact literal acceptance remains NOT met pending the two scope rulings;
+  its implementation and synthetic leak controls do not constitute a pass.
+- Fixture pre-commit secret check remains NOT met on this host: both real gitleaks
+  rulesets still wait on the lane's independent verification, per Q2 A.
+- Full row 9 exit: three sealed slots, later seal/ledger records, deployment
+  evidence and the first measured run remain the owner's later work. No model
+  was run; no first-run claim is made.
+- R-093's code half remains open: `launch_role()` still returns producer. Two-user
+  read-only-credential deployment evidence lives outside this repository.
+- Diff-style inference, model-family independence, the thin per-class sample,
+  and hash-only public checking of three private sealed outcomes remain limits.
+- Independent-context evidence is development only; public evidence still needs
+  external-human seals. Science and trailer-gate JSON consumption remain later rows.
+- Protected-path approval in reserved 0071, independent review, merge-result CI,
+  Docker mode A and a native Python 3.6 run remain unverified.
+
+Q2 A and item 14(c) are carried out; Q1 A is implemented but its literal acceptance
+is stopped for the numbered scope rulings. The fixture secret scan, seals,
+measured run and row exit wait on the owner and independent verification.

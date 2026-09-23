@@ -13,7 +13,7 @@ REPO=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(REPO/'evals/review-faults'))
 import build_cases
 import common
-from testing import temporary
+from testing import temporary, base_blobs, case_leaks
 
 
 class BuildTests(unittest.TestCase):
@@ -117,14 +117,73 @@ class BuildTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'inside a git work tree'):
             build_cases.refuse_worktree(root/'out')
 
-    def test_base_vocabulary_conflict_is_reproducible(self):
-        # The literal every-byte sweep is stopped pending the documented ruling.
-        # This witness never turns inherited vocabulary into an absence claim.
-        text=common.git(REPO,'show',common.BASE_SHA+':'+
-                        'docs/specs/GARS_Unified_Master_Guideline_v1.0.1_FINAL.md')
-        self.assertIn(b'off-by-one',text)
-        self.assertIn(b'race',text)
-        print('literal case-byte class sweep: NOT met; base tree already contains class vocabulary')
+    def forbidden_tokens(self):
+        cases=common.load_cases([common.HERE/'fixtures'])
+        return list(common.CLASSES)+list(cases)+[
+            str(case['path'].relative_to(REPO)) for case in cases.values()]
+
+    def assert_case_clear(self, folder, manifest, patch, baseline):
+        self.assertEqual(case_leaks(folder,manifest,patch,baseline,
+                                    self.forbidden_tokens()),[])
+
+    def test_added_case_bytes_sweep(self):
+        root=temporary(self)
+        output=root/'out'
+        key,manifest=build_cases.build(output,run_salt='a'*32)
+        baseline=base_blobs()
+        cases=common.load_cases([common.HERE/'fixtures'])
+        manifest_bytes=(output/'manifest.json').read_bytes()
+        leaks=[]
+        for neutral in manifest['cases']:
+            cid=key['cases'][neutral]['id']
+            leaks.extend((cid,label,token) for label,token in case_leaks(
+                output/'cases'/neutral,manifest_bytes,
+                (cases[cid]['path']/'plant.diff').read_bytes(),baseline,self.forbidden_tokens()))
+        self.assertEqual(leaks,[])
+        print('added case-byte sweep: 12/12 clear; only identical base blobs exempt')
+
+    def sweep_fixture(self):
+        root=temporary(self)
+        folder=root/('a'*12)
+        repo=folder/'repo'
+        repo.mkdir(parents=True)
+        common.git(repo,'init','--quiet','--template=')
+        common.git(repo,'symbolic-ref','HEAD','refs/heads/main')
+        spec='docs/specs/source.md'
+        (repo/spec).parent.mkdir(parents=True)
+        inherited=b'off-by-one race\n'
+        (repo/spec).write_bytes(inherited)
+        (repo/'README.md').write_bytes(b'Before\n')
+        baseline={spec:inherited,'README.md':b'Before\n'}
+        parent=build_cases.commit(repo,'Initial source snapshot')
+        (repo/'README.md').write_bytes(b'After\n')
+        build_cases.commit(repo,'Clarify introduction',parent)
+        patch=common.git(repo,'diff','HEAD~1','HEAD')
+        return folder,b'{}',patch,baseline,spec
+
+    def test_base_exemption_is_byte_identity_at_same_path(self):
+        folder,manifest_bytes,patch,baseline,spec=self.sweep_fixture()
+        repo=folder/'repo'
+        inherited=(repo/spec).read_bytes()
+        self.assertIn(b'off-by-one',inherited)
+        self.assertEqual(inherited,baseline[spec])
+        self.assert_case_clear(folder,manifest_bytes,patch,baseline)
+        # The same filename is not exempt after even a harmless byte changes.
+        (repo/spec).write_bytes(inherited+b'\n')
+        self.assertIn(('file '+spec,'off-by-one'),
+                      case_leaks(folder,manifest_bytes,patch,baseline,self.forbidden_tokens()))
+        (repo/spec).write_bytes(inherited)
+        # Identical contents under a new name have no base blob at that path.
+        (repo/'copy.md').write_bytes(inherited)
+        self.assertIn(('file copy.md','off-by-one'),
+                      case_leaks(folder,manifest_bytes,patch,baseline,self.forbidden_tokens()))
+        (repo/'copy.md').unlink()
+        self.assert_case_clear(folder,manifest_bytes,patch,baseline)
+
+    def test_added_byte_leak_control(self):
+        folder,manifest_bytes,patch,baseline,spec=self.sweep_fixture()
+        # Disposable-copy mutations inject each leak immediately before this check.
+        self.assert_case_clear(folder,manifest_bytes,patch,baseline)
 
 
 if __name__=='__main__':

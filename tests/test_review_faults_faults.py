@@ -67,6 +67,29 @@ FAULTS = [
 ]
 
 
+# R1 controls inject only in disposable copies of the named acceptance test.
+for token in ('off-by-one', 'P01'):
+    for location, statement in [
+            ('commit message', "build_cases.commit(folder/'repo', %r, common.git(folder/'repo','rev-parse','HEAD~1').decode().strip())" % token),
+            ('root commit message', "parent=build_cases.commit(folder/'repo', %r); build_cases.commit(folder/'repo', 'Adjust comment', parent)" % token),
+            ('changed file', "(folder/'repo'/'README.md').write_bytes((folder/'repo'/'README.md').read_bytes()+%r)" % token.encode('ascii')),
+            ('folder name', "renamed=folder.with_name(%r); folder.rename(renamed); folder=renamed" % token),
+            ('manifest', "manifest_bytes+=%r" % token.encode('ascii')),
+            ('plant diff', "patch+=%r" % token.encode('ascii'))]:
+        FAULTS.append(('added-byte leak in '+location+': '+token,
+                       'tests/test_review_faults_build.py',
+                       '        # Disposable-copy mutations inject each leak immediately before this check.',
+                       '        '+statement, 'build', 'BuildTests.test_added_byte_leak_control'))
+FAULTS.extend([
+    ('changed base file wrongly exempt','testing.py',
+     'if baseline.get(relative) != data:', 'if relative not in baseline:',
+     'build','BuildTests.test_base_exemption_is_byte_identity_at_same_path'),
+    ('renamed base blob wrongly exempt','testing.py',
+     'if baseline.get(relative) != data:', 'if data not in baseline.values():',
+     'build','BuildTests.test_base_exemption_is_byte_identity_at_same_path'),
+])
+
+
 class FaultTests(unittest.TestCase):
     def test_every_guard_fault_is_red(self):
         for label,relative,old,new,module,case in FAULTS:
@@ -85,7 +108,7 @@ class FaultTests(unittest.TestCase):
                 shutil.copyfile(str(REPO/'scripts/release_check.py'),str(root/'scripts/release_check.py'))
                 name='test_review_faults_'+module+'.py'
                 shutil.copyfile(str(REPO/'tests'/name),str(root/'tests'/name))
-                path=target/relative
+                path=root/relative if relative.startswith('tests/') else target/relative
                 original=path.read_text()
                 self.assertIn(old,original,label)
                 path.write_text(original.replace(old,new,1))

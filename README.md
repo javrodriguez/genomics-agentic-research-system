@@ -299,7 +299,7 @@ with equal timestamps; venue/canary evidence remains unmeasured. See the
 [corrective record](docs/decisions/0062-row-11-raw-git-and-terminal-restore-addendum.md).
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(424 tests in current collection; row 9 execution results and environment skips are recorded in [the change report](docs/implementation/row_9_change_report.md). No expanded-suite cluster run is claimed).
+(426 tests in current collection; row 9 execution results and environment skips are recorded in [the change report](docs/implementation/row_9_change_report.md). No expanded-suite cluster run is claimed).
 Row 15 review round 4 (2026-09-22), macOS / Python 3.8.2: 252 tests, <!-- not-the-suite-total -->
 `OK (skipped=50)`; no tests from row 15 skipped. R15-03's narrow fixture repair
 is authorised by the owner, **confirmed on 22 September 2026** ([0067](docs/decisions/0067-owner-confirms-rows-15-and-4-provisional-rulings.md)).

@@ -186,7 +186,7 @@ class ScoreTests(unittest.TestCase):
         home=os.path.join(os.sep,'Users','synthetic-person')
         raw=record(neutral,manifest['prompt_sha256'])
         custom=os.path.join(os.sep,'custom','private','file')
-        raw['review']['findings']=[finding(evidence=kit+'/repo/x '+home+'/x '+custom+' PLACEHOLDER_ONLY_LITERAL')]
+        raw['review']['findings']=[finding(evidence=os.path.join(kit,'repo','x')+' '+os.path.join(home,'x')+' '+custom+' PLACEHOLDER_ONLY_LITERAL')]
         raw['review']['findings'][0]['summary']+=' '+str(raw['envelope']['reviewer']['uid'])+' '+raw['envelope']['reviewer']['os_user']
         masked=score.masked_copy(raw,key['run_salt'],manifest['cases'],['PLACEHOLDER_ONLY_LITERAL'])
         encoded=json.dumps(masked)
