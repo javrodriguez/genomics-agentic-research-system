@@ -1,0 +1,12 @@
+--- a/gars/_system/wrapperlib.py
++++ b/gars/_system/wrapperlib.py
+@@ -614,8 +614,7 @@
+     except OSError:
+         commit = "unknown"
+     manifest = {"wrapper": assay, "pipeline_commit": commit, "checkout": str(checkout),
+-                "params": dict(params),
+-                "template_version": ws.template_version(Path(__file__).resolve().parents[1])}
++                "params": dict(params)}
+     for label, path in inputs.items():
+         manifest["%s_sha256" % label] = sha256(path)
+     manifest['inputs'] = {label: str(Path(path).resolve()) for label, path in inputs.items()}

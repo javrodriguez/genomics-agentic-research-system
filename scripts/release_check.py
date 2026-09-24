@@ -6,6 +6,7 @@ operator-supplied current-value or PASS override is accepted. Python 3.6 stdlib.
 """
 import argparse
 import datetime
+import json
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 import re
@@ -64,9 +65,34 @@ def restore_measurement(root):
     return value, when, False
 
 
+
+def reviewer_measurement(root):
+    """Row 9 code evidence cannot establish the science half or public sealing."""
+    paths = list((root / 'evals/review-faults/runs').glob('*.json'))
+    if not paths:
+        return 'unmeasured', None, False
+    records = [(json.loads(p.read_text(encoding='utf-8')), p) for p in paths]
+    record, path = max(records, key=lambda pair: (pair[0]['created_at'], pair[1].name))
+    when = datetime.datetime.strptime(record['created_at'], '%Y%m%dT%H%M%SZ').date()
+    overall = record['overall']
+    slots = record['sealed_slots']
+    types = sorted({v for values in slots.values() for v in values})
+    external = (set(slots) == {'race', 'hardcoded-secret', 'weakened-criterion'} and
+                all(values == ['external_human_seal'] for values in slots.values()))
+    public = ('unmeasured (public: needs external_human_seal); ' if not external else
+              'public code seals external_human_seal; ')
+    value = (public + 'development, code: %s/10 catch, %s/5 false alarms, seals %s, '
+             'first-run-at-sha %s (%s); science: unmeasured') % (
+                 overall['caught']['n'], overall['false_alarms']['n'], ','.join(types) or 'unsealed',
+                 str(record['first_run_at_sha']).lower(), path.relative_to(root).as_posix())
+    # This clause includes science; even external code seals cannot complete it.
+    return value, when, False
+
+
 def measurements(root, rows):
     values = {row[0]: ('unmeasured', None, False) for row in rows}
     values['restore drill'] = restore_measurement(root)
+    values['reviewer catch rate (code; science)'] = reviewer_measurement(root)
     # Existing benchmark runs measure tasks, not §17's sealed design catalogue,
     # reviewer sets, manifests, pilots or semantic mutants. Historical report
     # prose and producer-visible controls cannot fill those acceptance cells.

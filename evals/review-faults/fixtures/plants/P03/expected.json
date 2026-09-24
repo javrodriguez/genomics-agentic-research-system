@@ -1,0 +1,18 @@
+{
+  "id": "P03",
+  "kind": "plant",
+  "base_sha": "e59dfc088fc638a801f255fc0373c139f7afbac4",
+  "commit_message": "Streamline count column selection",
+  "seal_type": "unsealed",
+  "requirement_ids": [
+    "R-100"
+  ],
+  "class": "off-by-one",
+  "match": {
+    "file": "gars/_system/adapt_counts.py",
+    "line_start": 78,
+    "line_end": 78,
+    "mode": "file_lines"
+  },
+  "min_severity": "MINOR"
+}

@@ -1,0 +1,23 @@
+--- a/gars/_system/project_state.py
++++ b/gars/_system/project_state.py
+@@ -57,7 +57,7 @@
+     types = []
+     for line in p.read_text(encoding="utf-8").splitlines():
+         if line.lstrip().startswith("#"):
+-            continue          # the "# type\tpath\t..." header is a comment, not an artifact
++            continue          # the "# type\trole\tpath" header is a comment, not an artifact
+         cells = line.split("\t")
+         if len(cells) >= 3 and cells[0] and cells[0] != "type":
+             types.append(cells[0])
+--- a/gars/_system/integrity.py
++++ b/gars/_system/integrity.py
+@@ -37,7 +37,8 @@
+ 
+ 
+ def needs_scheduling(total_bytes):
+-    return total_bytes > LOGIN_NODE_BYTES
++    scheduled = total_bytes > LOGIN_NODE_BYTES
++    return scheduled
+ 
+ 
+ def check_one(path, mode="full"):

@@ -1,0 +1,18 @@
+{
+  "id": "P04",
+  "kind": "plant",
+  "base_sha": "e59dfc088fc638a801f255fc0373c139f7afbac4",
+  "commit_message": "Simplify manifest assembly",
+  "seal_type": "unsealed",
+  "requirement_ids": [
+    "R-100"
+  ],
+  "class": "dropped-provenance-field",
+  "match": {
+    "file": "gars/_system/wrapperlib.py",
+    "line_start": 617,
+    "line_end": 617,
+    "mode": "file_lines"
+  },
+  "min_severity": "MINOR"
+}

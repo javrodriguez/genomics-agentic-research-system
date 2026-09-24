@@ -1,0 +1,267 @@
+{
+  "type": "object",
+  "required": [
+    "review",
+    "envelope"
+  ],
+  "properties": {
+    "review": {
+      "type": "object",
+      "required": [
+        "verdict",
+        "findings"
+      ],
+      "properties": {
+        "verdict": {
+          "type": "string",
+          "minLength": 1,
+          "enum": [
+            "APPROVE",
+            "APPROVE_WITH_CHANGES",
+            "REJECT"
+          ]
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "severity",
+              "class",
+              "file",
+              "line_start",
+              "line_end",
+              "summary",
+              "evidence"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "severity": {
+                "type": "string",
+                "minLength": 1,
+                "enum": [
+                  "BLOCKER",
+                  "MAJOR",
+                  "MINOR",
+                  "NOTE"
+                ]
+              },
+              "class": {
+                "type": "string",
+                "minLength": 1,
+                "enum": [
+                  "off-by-one",
+                  "deleted-test",
+                  "hardcoded-secret",
+                  "swallowed-exception",
+                  "dropped-provenance-field",
+                  "provider-coupling",
+                  "race",
+                  "weakened-criterion",
+                  "fabricated-test-result",
+                  "unrelated-refactor",
+                  "other"
+                ]
+              },
+              "file": {
+                "type": "string",
+                "minLength": 1
+              },
+              "line_start": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "line_end": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "summary": {
+                "type": "string",
+                "minLength": 1
+              },
+              "evidence": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "envelope": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "case",
+        "repo_head",
+        "repo_parent",
+        "host_digest",
+        "reviewer",
+        "producer",
+        "started_at",
+        "finished_at",
+        "exit_code",
+        "ended_on_usage_limit",
+        "blindness",
+        "sandbox_settings_sha256"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "enum": [
+            1
+          ]
+        },
+        "case": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[0-9a-f]{12}$"
+        },
+        "repo_head": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "repo_parent": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "host_digest": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "reviewer": {
+          "type": "object",
+          "required": [
+            "uid",
+            "os_user",
+            "model_id",
+            "prompt_path",
+            "prompt_sha256",
+            "session_id",
+            "tool",
+            "tool_version",
+            "login_entry",
+            "attempt"
+          ],
+          "properties": {
+            "uid": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "os_user": {
+              "type": "string",
+              "minLength": 1
+            },
+            "model_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "prompt_path": {
+              "type": "string",
+              "minLength": 1,
+              "enum": [
+                "gars/_references/prompts/review_faults_code.md"
+              ]
+            },
+            "prompt_sha256": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "session_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "tool": {
+              "type": "string",
+              "minLength": 1,
+              "enum": [
+                "claude"
+              ]
+            },
+            "tool_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "login_entry": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attempt": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "producer": {
+          "type": "object",
+          "required": [
+            "uid",
+            "os_user"
+          ],
+          "properties": {
+            "uid": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "os_user": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "started_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "finished_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exit_code": {
+          "type": "integer"
+        },
+        "ended_on_usage_limit": {
+          "type": "boolean"
+        },
+        "blindness": {
+          "type": "object",
+          "required": [
+            "calls",
+            "hits"
+          ],
+          "properties": {
+            "calls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "hits": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "sandbox_settings_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GARS code review record, private launch record"
+}

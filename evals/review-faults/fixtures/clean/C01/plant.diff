@@ -1,0 +1,13 @@
+--- a/gars/_system/integrity.py
++++ b/gars/_system/integrity.py
+@@ -37,7 +37,9 @@
+ 
+ 
+ def needs_scheduling(total_bytes):
+-    return total_bytes > LOGIN_NODE_BYTES
++    """Schedule only inputs strictly above the interactive byte limit."""
++    exceeds_limit = total_bytes > LOGIN_NODE_BYTES
++    return exceeds_limit
+ 
+ 
+ def check_one(path, mode="full"):

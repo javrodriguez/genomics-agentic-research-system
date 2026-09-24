@@ -1,0 +1,19 @@
+{
+  "id": "P05",
+  "kind": "plant",
+  "base_sha": "e59dfc088fc638a801f255fc0373c139f7afbac4",
+  "commit_message": "Consolidate policy coverage",
+  "seal_type": "unsealed",
+  "requirement_ids": [
+    "R-093",
+    "R-100"
+  ],
+  "class": "deleted-test",
+  "match": {
+    "file": "gars/tests/test_role_profiles.py",
+    "line_start": 1,
+    "line_end": 1,
+    "mode": "file"
+  },
+  "min_severity": "MINOR"
+}

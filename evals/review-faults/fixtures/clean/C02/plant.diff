@@ -1,0 +1,18 @@
+--- /dev/null
++++ b/tests/test_integrity_estimate.py
+@@ -0,0 +1,15 @@
++"""Integrity estimates retain a one-minute floor."""
++import sys
++import unittest
++from pathlib import Path
++sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'gars/_system'))
++import integrity
++
++
++class EstimateTests(unittest.TestCase):
++    def test_zero_has_minimum_estimate(self):
++        self.assertEqual(integrity.estimate_minutes(0), 1)
++
++
++if __name__ == '__main__':
++    unittest.main()

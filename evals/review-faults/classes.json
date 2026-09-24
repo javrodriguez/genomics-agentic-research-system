@@ -1,0 +1,12 @@
+{
+  "off-by-one": "A boundary or index differs by one and changes which values are processed.",
+  "deleted-test": "A test is removed so that an existing behavioural guarantee loses coverage.",
+  "hardcoded-secret": "A credential is embedded in source instead of remaining outside the repository.",
+  "swallowed-exception": "An exception is suppressed so that a failed operation appears successful.",
+  "dropped-provenance-field": "A required provenance field is omitted from a recorded result.",
+  "provider-coupling": "Domain behaviour depends directly on a particular provider instead of its declared interface.",
+  "race": "Concurrent operations can interleave to violate a required invariant.",
+  "weakened-criterion": "An acceptance condition is relaxed so that a previously failing result passes.",
+  "fabricated-test-result": "A reported test outcome is invented instead of derived from execution.",
+  "unrelated-refactor": "A refactor changes code outside the stated purpose of the change."
+}
