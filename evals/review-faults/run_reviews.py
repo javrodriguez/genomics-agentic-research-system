@@ -82,6 +82,14 @@ def input_fields(value, field=None):
                 yield pair
 
 
+def removal_line_is_unambiguous(text, index):
+    """Item 23: substitution or arithmetic anywhere on this line forbids removal."""
+    start = text.rfind('\n', 0, index) + 1
+    end = text.find('\n', index)
+    line = text[start:] if end < 0 else text[start:end]
+    return not any(cue in line for cue in ('$(', '`', '(('))
+
+
 def shell_syntax(text, state=(None, True)):
     """Keep source quoting for comments and real heredoc operators.
 
@@ -105,7 +113,7 @@ def shell_syntax(text, state=(None, True)):
         elif char in ("'", '"'):
             quote = char
             word_start = False
-        elif char == '#' and word_start:
+        elif char == '#' and word_start and removal_line_is_unambiguous(text, index):
             end = text.find('\n', index)
             end = len(text) if end < 0 else end
             cleaned[index:end] = ' ' * (end - index)
@@ -115,7 +123,7 @@ def shell_syntax(text, state=(None, True)):
             end = index + 1
             while end < len(text) and text[end] in '<>':
                 end += 1
-            if text[index:end] == '<<':
+            if text[index:end] == '<<' and removal_line_is_unambiguous(text, index):
                 heredocs.append(index)
             index = end
             word_start = True
@@ -168,34 +176,48 @@ def bare_directory_change(text):
 
 
 def without_heredocs(text):
-    """Item 22(c): remove bodies, retaining command headers and later commands."""
+    """Items 22(c), 23: remove only unambiguous bodies with confirmed closers."""
     result = []
-    pending = []
     state = (None, True)
-    for line in text.splitlines(True):
-        if pending:
-            delimiter, tabs = pending[0]
-            candidate = line.rstrip('\r\n')
-            if tabs:
-                candidate = candidate.lstrip('\t')
-            if candidate == delimiter:
-                pending.pop(0)
-            continue
+    lines = text.splitlines(True)
+    cursor = 0
+    while cursor < len(lines):
+        line = lines[cursor]
+        cursor += 1
         cleaned, operators, state = shell_syntax(line, state)
         result.append(cleaned)
+        pending = []
         # Headers can contain quotes continued on later lines. The full shell
         # parser below, rather than this header inspection, diagnoses errors.
         for index in operators:
-            tail = cleaned[index + 2:]
+            tail = cleaned[index + 2:].rstrip('\r\n')
             tabs = tail.startswith('-')
             if tabs:
                 tail = tail[1:]
             try:
                 words = shell_words(tail)
             except ValueError:
-                continue
-            if words:
-                pending.append((words[0], tabs))
+                pending = []
+                break
+            # A control or redirect operator cannot stand in for a delimiter.
+            if not words or (words[0] and all(c in ';&|<>()\n' for c in words[0])):
+                pending = []
+                break
+            pending.append((words[0], tabs))
+        end = cursor
+        for delimiter, tabs in pending:
+            while end < len(lines):
+                candidate = lines[end].rstrip('\r\n')
+                if tabs:
+                    candidate = candidate.lstrip('\t')
+                end += 1
+                if candidate == delimiter:
+                    break
+            else:
+                # No removal at all unless every queued body has its closer.
+                end = cursor
+                break
+        cursor = end
     return ''.join(result)
 
 

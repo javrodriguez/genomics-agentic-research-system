@@ -3021,3 +3021,242 @@ request was used.
 Closed: AA1 F1, F2, F3 and F4. Z1 findings and item 22 remain addressed;
 no finding waits on the owner. Sealing, measurement, protected approval, real
 fixture secret verification and the row exit remain open.
+
+
+## Review round AB1 fixes
+
+Date: 2026-09-24. Starting head: `6908b9fcbe55aea9f9d506dec42de32dec2d7d5d`.
+Review: `docs/reviews/row_9_review_AA2.md`, untracked and unchanged.
+**THE LANE, UNDER THE OWNER'S DELEGATION — THE LANE'S SPECIFICATION.**
+Item 23 governs AA2 F1 and F2; this implements its general removal rule rather
+than tracking substitution or arithmetic evaluation. Earlier report sections
+and every earlier byte of record 0072 remain unchanged. No new owner words
+are attributed. Reserved records 0073 and 0074 remain unwritten.
+
+| Finding | Changed files | Test | Result and red-on-fault evidence |
+|---|---|---|---|
+| AA2 F1: substitution ending lets a hash hide commands | evals/review-faults/run_reviews.py; tests/test_review_faults_launch.py; tests/test_review_faults_faults.py; harness README; 0072 addendum | LaunchTests.test_ambiguous_removal_cues_scan_instead; retained test_hash_comment_boundaries | Closed under item 23(a); red-on-fault seen: yes, removing the physical-line ambiguity guard makes substitution-hash probes fail; retained mid-word hash mutation remains red. |
+| AA2 F2: arithmetic shift hides subsequent commands | same files | LaunchTests.test_ambiguous_removal_cues_scan_instead; test_heredoc_removal_requires_delimiter; retained test_quoted_heredoc_operators | Closed under item 23(b); red-on-fault seen: yes, dropping the line guard hides arithmetic-shift probes; dropping the found-closer requirement hides later commands; quote-loss mutation remains red. |
+| Item 23(a-e): fail-closed removal and named residual | same files; DEVELOPMENT.md | Both new launcher tests; CorpusTests.test_honest_call_corpus; disposable fault witnesses | Implemented. Ambiguity scans instead of deleting. All 278 calls graded, 277 honest clear, one contract hit; no honest corpus call needs an exception or lane judgement. New unparsed shell constructs are NOTE residuals, enforced by the sandbox. |
+| Item 22 and retained AA1 F1-F4 | existing corpus files unchanged; audit and tests above | Corpus test; earlier bad lists and all earlier fault entries | Retained. Quoted-operator bad probes now include possible closing lines, preserving their quote-loss witness independently of the new missing-closer guard. Comment mutation anchors follow the stronger condition. |
+| Items 20 and 21 as amended by items 22 and 23 | harness README; record addendum | Existing settings, program-data, operand and mutation tests | Two walls and context exemptions retained; no sandbox enforcement or broadened shell-interpretation claim. |
+| Collection counts | README.md; DEVELOPMENT.md | tests/check_counts.py | Two new methods increase collection from 437 to 439; all three living count claims updated. |
+
+Before changing the audit, the two new tests printed:
+
+```text
+Ran 2 tests in 0.013s
+FAILED (failures=47)
+```
+
+After the fix, the targeted fault pass printed `Ran 1 test in 1.546s` and `OK`.
+It re-planted the two new faults, all four retained AA1 faults, and the item-22
+heredoc and comment corpus faults. Every one first passed its unchanged control
+and then failed by assertion. No import failure is counted as red evidence.
+
+## Owner rulings needed
+
+None.
+
+## AB1 residual gaps
+
+Row 9 exit remains NOT met. The protected approval (0073), three sealed slots,
+first measured run and combined record 0074, and later ledger entries remain
+external work. No model has been run against a case and the prompt is unchanged.
+Independent-context seals are development evidence only; public credibility
+remains unmeasured pending external-human seals. Science, trailer-gate JSON,
+launch_role() and R-093's code half remain open. Separate-user and read-only-token
+deployment evidence remains external. The uid check proves exactly: on the host
+where the review ran, the reviewing OS account is not the producing OS account.
+It does not prove which machine built the cases, and it does not bind GARS's
+own role decision.
+
+The deployment sandbox must enforce filesystem and network denial. Settings
+hashing binds which file was used without proving efficacy; the unsalted hash
+can confirm guessed settings. Static indirection, unparsed substitutions,
+arithmetic, eval, aliases, functions, nested quoting, interpreter behavior and
+file access inside exempt awk and sed programs remain sandbox responsibilities.
+Item 23(e) grades further spellings resting on those constructs as NOTE requests
+to name the residual. Conservative false positives, long encoded session-store
+names, diff-style inference and shared model family remain residuals. One case
+per class is thin evidence; twelve of fifteen outcomes are publicly recomputable
+and three are hash-only. Real fixture secret scanning remains NOT met when
+gitleaks is absent under Q2 A. Docker mode A is unavailable to this account;
+native Python 3.6, cluster execution and merge-result CI remain unverified.
+Existing skips remain skips.
+
+Closed: AA2 F1 and F2 under item 23; AA1 findings and items 20-22 remain addressed.
+No finding waits on a new owner ruling.
+
+
+### AB1 final verification
+
+`python3 tests/run_tests.py (mode B; all temp variables set to scratch)`:
+
+```text
+collected 265 tests from tests
+collected 174 tests from gars/tests
+citations: 292/292 resolve
+DoD cells regenerated: 13/13
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 1/1 byte-stable
+added case-byte sweep: 12/12 clear; item 15 added lines and decoded objects
+fixtures: git apply --check passed for 12/12 against base archive
+plant match intervals: every file_lines answer overlaps changed lines
+honest-call corpus graded-against-seen: 278/278
+Ran 439 tests in 346.902s
+OK (skipped=59)
+```
+
+`python3 tests/run_tests.py (mode C; TMPDIR unset, TEMP and TMP set to scratch)`:
+
+```text
+collected 265 tests from tests
+collected 174 tests from gars/tests
+citations: 292/292 resolve
+DoD cells regenerated: 13/13
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 1/1 byte-stable
+added case-byte sweep: 12/12 clear; item 15 added lines and decoded objects
+fixtures: git apply --check passed for 12/12 against base archive
+plant match intervals: every file_lines answer overlaps changed lines
+honest-call corpus graded-against-seen: 278/278
+Ran 439 tests in 336.212s
+OK (skipped=86)
+```
+
+`python3 tests/check_contracts.py`:
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`:
+
+```text
+collected 265 tests from tests
+collected 174 tests from gars/tests
+suite: 439 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`:
+
+```text
+Ran 44 tests in 37.769s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`:
+
+```text
+clean — graded=1
+```
+
+`python3 scripts/release_check.py`:
+
+```text
+DoD cells regenerated: 13/13
+```
+
+`python3 tests/test_review_faults_build.py`:
+
+```text
+Ran 11 tests in 91.198s
+OK
+added case-byte sweep: 12/12 clear; item 15 added lines and decoded objects
+fixtures: git apply --check passed for 12/12 against base archive
+plant match intervals: every file_lines answer overlaps changed lines
+```
+
+`python3 tests/test_review_faults_core.py`:
+
+```text
+Ran 9 tests in 0.022s
+OK
+```
+
+`python3 tests/test_review_faults_launch.py`:
+
+```text
+Ran 20 tests in 1.836s
+OK
+```
+
+`python3 tests/test_review_faults_corpus.py`:
+
+```text
+Ran 1 test in 0.134s
+OK
+honest-call corpus graded-against-seen: 278/278
+```
+
+`python3 tests/test_review_faults_faults.py`:
+
+```text
+Ran 1 test in 189.253s
+OK
+```
+
+`feature_version=(3, 6) parse of every row Python file`:
+
+```text
+Python feature_version=(3, 6): 13/13 new Python files parsed
+```
+
+`repository pre-commit hook over fixtures staged in a disposable base tree`:
+
+```text
+fixture hook index: 24 fixture files staged against base
+gitleaks: REFUSED (gitleaks absent from PATH)
+citations: 292/292 resolve
+pre-commit: REFUSED
+```
+
+`disposable determinism test with resource.getrusage`:
+
+```text
+Ran 1 test in 6.011s
+OK
+determinism peak memory: 650492 KiB
+```
+
+The regenerated reviewer row, verbatim:
+
+```text
+| reviewer catch rate (code; science) | `evals/review-faults/`, `evals/bio-faults/` runners | ≥ 8/10 per set, ≤ 1/5 false alarms; first-run-at-sha reported (§21 Q3) | unmeasured |
+```
+
+Direct mutation evidence: **144 red fault witnesses** and **2 green unchanged-line exemption witnesses**. Every mutation passed its unchanged control first; corpus mutations identify failing calls. All retained bad lists passed, and the 278-call corpus remains green without exceptions.
+
+Before T1, the review host observed about 14 GiB for the whole-tree determinism comparison; that unsafe implementation was not rerun. The streamed-digest implementation remains in place; its fresh disposable measurement is above. Maximum child peak across verification was **668344 KiB**, below 1 GiB.
+
+The fixture pre-commit hook ran and refused because gitleaks is absent.
+Under Q2 A the real two-ruleset fixture scan remains NOT met; no substitute or
+bypass was used. Docker mode A was not run because this account cannot reach
+Docker. Python 3.6 syntax was parsed, but a native Python 3.6 run was not done.
+Deployment sandbox efficacy, long encoded store names, cluster execution and
+merge-result CI remain unverified. No model has been run against any case.
+
+Both full-suite modes and every direct module ran on the final Python source.
+All three living count claims match collection. Earlier record and report
+prefixes, the untracked AA2 review and the supplied corpus bytes are preserved.
+The corpus and README were re-copied with cp and remain byte-identical.
+Only allowed paths changed; protected fixtures and prompt, pinned trees,
+ledger, earlier decisions and reserved records remain untouched. The index
+and DoD were regenerated and remain byte-stable. Whitespace checks pass.
+One commit uses explicit staging paths and a message file in scratch; no remote,
+push, merge or pull request is used.
+
+Closed: AA2 F1 and F2 under item 23. AA1 findings and items 20-22 remain
+addressed. No finding waits on the owner; sealing, measurement, protected
+approval, real fixture secret verification and the row exit remain open.

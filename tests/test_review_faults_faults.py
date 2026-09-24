@@ -252,7 +252,7 @@ FAULTS.extend([
      'words = shell_words(without_heredocs(text))', 'words = shell_words(text)',
      'corpus','CorpusTests.test_honest_call_corpus'),
     ('item 22d comments scanned again','run_reviews.py',
-     "elif char == '#' and word_start:", "elif False:",
+     "elif char == '#' and word_start and removal_line_is_unambiguous(text, index):", "elif False:",
      'corpus','CorpusTests.test_honest_call_corpus'),
     ('item 22d glued semicolon retained','run_reviews.py',
      "punctuation_chars=';&|<>()\\n'", "punctuation_chars='&|<>()\\n'",
@@ -272,7 +272,7 @@ FAULTS.extend([
 
 FAULTS.extend([
     ('AA1 midword hash starts comment','run_reviews.py',
-     "elif char == '#' and word_start:", "elif char == '#':",
+     "elif char == '#' and word_start and removal_line_is_unambiguous(text, index):", "elif char == '#':",
      'launch','LaunchTests.test_hash_comment_boundaries'),
     ('AA1 quoted heredoc hides following commands','run_reviews.py',
      'cleaned, operators, state = shell_syntax(line, state)',
@@ -286,6 +286,12 @@ FAULTS.extend([
     ('AA1 key value operand untested','run_reviews.py',
      "(field == 'command' and re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*=', token))", 'False',
      'launch','LaunchTests.test_key_value_operands'),
+    ('item 23 ambiguous line permits removal','run_reviews.py',
+     "return not any(cue in line for cue in ('$(', '`', '(('))", 'return True',
+     'launch','LaunchTests.test_ambiguous_removal_cues_scan_instead'),
+    ('item 23 missing heredoc closer hides commands','run_reviews.py',
+     '                end = cursor\n                break', '                break',
+     'launch','LaunchTests.test_heredoc_removal_requires_delimiter'),
 ])
 
 # S1 carries R1's leak controls forward on item 15's committed surfaces.

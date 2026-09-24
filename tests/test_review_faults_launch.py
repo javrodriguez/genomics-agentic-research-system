@@ -366,13 +366,63 @@ class LaunchTests(unittest.TestCase):
         outside = os.path.join(os.sep, 'outside', 'file')
         for quoted in ("'<<'", '"<<"', '\\<\\<', "'<'<", "<'<'"):
             for tail in ('cat '+outside, 'ls '+os.sep, 'cd'):
-                command = 'grep -c '+quoted+' repo/file\n'+tail
+                command = 'grep -c '+quoted+' repo/file\n'+tail+'\nrepo/file\n'
                 with self.subTest(command=command):
                     event = {'type':'tool_use','name':'Bash','input':{'command':command}}
                     self.assertEqual(run_reviews.blindness([event],kit)['hits'],1)
         for delimiter in ('END', "'END'", '"END"', '-END'):
             command = 'cat <<'+delimiter+'\n'+outside+'\nEND\ncat repo/file'
             event = {'type':'tool_use','name':'Bash','input':{'command':command}}
+            self.assertEqual(run_reviews.blindness([event],kit)['hits'],0)
+
+    def test_ambiguous_removal_cues_scan_instead(self):
+        kit = temporary(self)
+        outside = os.path.join(os.sep, 'outside', 'file')
+        tails = ('cat '+outside, 'ls '+os.sep, 'cd')
+        hashes = ('ls $(true)#x', 'ls $((1))#x', 'ls `true` #x',
+                  'ls issue#1', 'echo $#', "ls 'issue'#1",
+                  'ls # $(true)', 'ls # `true`', 'ls # ((1))')
+        shifts = ('echo $((1<<2))', '((1<<2))',
+                  'cat <<END $(true)', 'cat <<END `true`',
+                  'cat <<END; ((1))')
+        for prefix in hashes:
+            for tail in tails:
+                # The semicolon makes even cd visible as a separate command.
+                command = prefix+'; '+tail
+                with self.subTest(command=command):
+                    event = {'type':'tool_use','input':{'command':command}}
+                    self.assertGreaterEqual(run_reviews.blindness([event],kit)['hits'],1)
+        for prefix in shifts:
+            for tail in tails:
+                # Include candidate closers so only the ambiguity guard saves it.
+                closer = '2' if '<<2' in prefix else 'END'
+                command = prefix+'\n'+tail+'\n'+closer+'\n'
+                with self.subTest(command=command):
+                    event = {'type':'tool_use','input':{'command':command}}
+                    self.assertGreaterEqual(run_reviews.blindness([event],kit)['hits'],1)
+        for prefix in ('ls $(true)#x ', 'ls $((1))#x '):
+            for operand in (outside, os.sep):
+                event = {'type':'tool_use','input':{'command':prefix+operand}}
+                self.assertGreaterEqual(run_reviews.blindness([event],kit)['hits'],1)
+
+    def test_heredoc_removal_requires_delimiter(self):
+        kit = temporary(self)
+        outside = os.path.join(os.sep, 'outside', 'file')
+        for header in ('cat <<END', "cat <<'END'", 'cat <<"END"',
+                       'cat <<-END', 'cat <<', 'cat <<; echo END',
+                       'cat <<A <<B'):
+            for tail in ('cat '+outside, 'ls '+os.sep, 'cd'):
+                command = header+'\n'+tail+'\n'
+                with self.subTest(command=command):
+                    event = {'type':'tool_use','input':{'command':command}}
+                    self.assertGreaterEqual(run_reviews.blindness([event],kit)['hits'],1)
+        # A later unresolved delimiter must not hide earlier commands either.
+        command = 'cat <<A <<B\ncat '+outside+'\nA\ncd\n'
+        event = {'type':'tool_use','input':{'command':command}}
+        self.assertGreaterEqual(run_reviews.blindness([event],kit)['hits'],1)
+        for delimiter in ('END', "'END'", '"END"', '-END'):
+            command = 'cat <<'+delimiter+'\ncat '+outside+'\nEND\ncat repo/file'
+            event = {'type':'tool_use','input':{'command':command}}
             self.assertEqual(run_reviews.blindness([event],kit)['hits'],0)
 
     def test_glob_patterns_and_grep_prose(self):

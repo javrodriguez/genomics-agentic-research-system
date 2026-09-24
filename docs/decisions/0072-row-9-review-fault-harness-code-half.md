@@ -809,3 +809,88 @@ Independent-context seals remain development evidence; public credibility
 requires external-human seals. Real fixture gitleaks verification remains
 NOT met under Q2 A. No model is run, no prompt is tuned, and no seal, measured
 run or ledger entry is supplied. Row 9 exit remains NOT met.
+
+
+## Addendum — AB1 fail-closed text removal, 2026-09-24
+
+**THE LANE, UNDER THE OWNER'S DELEGATION — THE LANE'S SPECIFICATION.**
+This addendum implements head item 23 and answers review AA2 F1 and F2.
+It amends item 22(c) and (d) wherever they differ. It attributes no new
+words or choices to the owner. Earlier bytes, including previous numbering,
+remain unchanged. This record is 0072; protected approval is reserved 0073;
+the seal and first measured run share reserved 0074. Neither is written here.
+
+### Removal only with unambiguous evidence
+
+The audit removes text in exactly two contexts: shell comments and heredoc
+bodies. Otherwise it scans. A comment hash must start a shell word at quote
+depth zero. A heredoc operator must be unquoted and unescaped at quote depth
+zero, followed directly by its delimiter word (optionally quoted, with optional
+intervening whitespace), and its closing delimiter line must be found.
+Unquoted, single-quoted, double-quoted and tab-stripping delimiter forms remain
+supported. For multiple bodies on one header, every closing delimiter must be
+found before any body is removed; otherwise all following lines are scanned
+as commands. Headers and commands following confirmed closers stay scanned.
+
+For BOTH contexts, removal is forbidden when the physical line holding the cue
+contains a dollar immediately followed by an opening parenthesis, a backquote,
+or two opening parentheses. This test covers the whole physical line, including
+text before and after the cue, without trying to evaluate shell constructs.
+Thus substitution endings cannot turn their following hash into a removal cue,
+and arithmetic shifts cannot authorize heredoc removal. A missing delimiter
+also cannot hide later commands. Ambiguity always means scan it: the permitted
+failure direction is an honest record becoming INVALID, never hiding a read.
+
+LaunchTests.test_ambiguous_removal_cues_scan_instead covers AA2's substitution
+hashes and arithmetic shifts, backquotes, and AA1's mid-word hashes and argument
+count expansion, with outside reads, root listings and bare directory changes.
+Existing quoted-operator tests retain their bad lists and now include plausible
+closer lines, so their fault witness depends on retaining quote information
+rather than only on the new missing-delimiter guard.
+LaunchTests.test_heredoc_removal_requires_delimiter covers absent and incomplete
+closers, missing delimiter words, and multiple queued bodies, with valid heredoc
+controls. Disposable mutations remove the line guard and the closer requirement;
+each must turn its named test red after an unchanged green control. All previous
+bad lists and mutation witnesses remain required.
+
+The sanitized 278-call corpus from real deployment review sessions remains the
+item-22 compatibility test. Its labels are the lane's reading of the contract;
+no account, host or owner identity is included. This change produces no new
+honest-call hits: 277 honest calls remain clear and the one contract hit remains
+detected. No corpus body or label was changed.
+
+### Two walls and not covered
+
+Item 20 still supersedes the original threat-model claim about detecting every
+possible spelling. Enforcement is the deployment sandbox, whose required
+settings bytes are bound by sandbox_settings_sha256; the harness never judges
+the file's content or proves filesystem and network denial. Detection is only
+the bounded audit, with kit, exact own-session output store and system allowlist
+unchanged. The published settings hash may confirm a guessed configuration.
+
+Under item 23(e), a new spelling whose escape depends on unparsed substitutions,
+arithmetic, eval, aliases, functions or nested quoting is a named residual:
+grade it a NOTE asking that it be named. Do not extend this audit into a shell
+evaluator. The sandbox must refuse such reads; the audit may miss them if it
+does not. The existing residuals include variables and assignments, command
+substitution, evaluated strings, unparsed nested shells, interpreter text,
+brace and parameter-default expansion, URL-embedded paths, and file access
+inside exempt awk and sed programs. Conservative false positives remain.
+No model is run against a case and no prompt is tuned in this round.
+
+The uid check proves exactly: on the host where the review ran, the reviewing
+OS account is not the producing OS account. It does not prove which machine
+built the cases, and it does not bind GARS's own role decision. Separate-user
+and read-only-credential deployment evidence remains external; launch_role()
+still returns producer and R-093's code half stays NOT met. Diff-style inference,
+a sealer and producer sharing a model family, science, the trailer gate's JSON
+integration, thin per-class samples and hash-only checks of the three sealed
+outcomes remain residuals. Public recomputation covers twelve of fifteen cases.
+Independent-context seals provide development evidence only; public credibility
+needs external-human seals. Row 9 exit remains NOT met pending sealing and the
+first measured run. Protected approval and ledger updates remain later work.
+Real fixture secret scanning remains NOT met on this build host when gitleaks
+is absent, under Q2 A. Docker mode A is unavailable; native Python 3.6, deployment
+sandbox efficacy, long encoded store names, cluster execution and merge-result
+CI remain unverified. Verification for AB1 is appended to
+`docs/implementation/row_9_change_report.md`.

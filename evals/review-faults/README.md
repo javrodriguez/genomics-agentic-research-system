@@ -120,13 +120,22 @@ spellings below and claims nothing beyond them:
   after option words, including separated options, the end-of-options marker,
   and option clusters ending in c. Their program text is audited as a command.
 
-Item 22(c-d) removes heredoc bodies before auditing, preserving headers and
-commands after each closing delimiter. Unquoted, single-quoted, double-quoted
-and tab-stripping delimiters are supported. The heredoc operator itself must
-be unquoted and unescaped; quoted operator text cannot hide later commands.
-Shell comments start only at a word boundary; hashes inside words or parameter
-expansions preserve the rest of the command. Comments are ignored;
-operators terminate adjacent words; adjacent quoted pieces form one word.
+Item 23 amends item 22(c-d): text is removed only when unambiguous; otherwise
+it is scanned. A comment hash must start a shell word at quote depth zero.
+Neither a comment nor a heredoc body is removed when the physical line holding
+its cue contains a dollar followed by an opening parenthesis, a backquote, or
+two opening parentheses, anywhere on that line. This conservative line guard
+does not try to evaluate substitutions or arithmetic.
+Heredoc removal additionally requires an unquoted, unescaped operator at quote
+depth zero, followed directly by its delimiter word (with optional whitespace
+and quoting), and a found closing delimiter line. Unquoted, single-quoted,
+double-quoted and tab-stripping delimiters are supported. All queued delimiters
+must be found before any of that header's bodies are removed. Headers and
+commands after closing delimiters stay scanned; absent or ambiguous delimiters
+leave following lines scanned as commands. Ambiguity may invalidate an honest
+record, but cannot justify hiding a read. Hashes inside words, quoted operators
+and arithmetic shifts cannot authorize removal.
+Operators terminate adjacent words; adjacent quoted pieces form one word.
 A separator embedded in a longer word, such as a tr character set, is not a
 separator-only word. The earlier regex tokenizer remains only inside the
 interpreter program text it already inspected.
@@ -154,6 +163,10 @@ where c is not last), brace expansion,
 parameter-default expansion, URL-embedded paths (including file-scheme URLs), or
 interpreter program text. Under item 22(a), file reads within awk program text
 (such as getline) or sed program text (r or w commands) are also residuals.
+Under item 23(e), further escapes depending on unparsed substitutions,
+arithmetic, eval, aliases, functions or nested quoting are named residuals,
+graded as NOTE requests to document them, rather than extending this detector
+into a shell evaluator.
 Those reads are the sandbox's to refuse; if the sandbox
 allowed one, the scan may not see it. Detection of some visible tokens inside such text does not
 establish coverage of the enclosing program. No model is run to test these rules.
