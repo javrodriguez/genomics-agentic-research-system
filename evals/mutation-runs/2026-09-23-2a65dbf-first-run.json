@@ -1,0 +1,220 @@
+{
+  "schema_version": 1,
+  "seal_type": "independent_context",
+  "sealer_identity": "independent Codex assistant context; model identified by the session instructions as GPT-6. No more specific backend model identifier was supplied.",
+  "seal_date": "2026-09-15",
+  "seal_fingerprint": "b7685d96ad05e65d6904d0ff0a6a747da1a04566337e951528bb46760191227e",
+  "source_sha_derived": "f76492b4fda1eb22294472e536fba96bb55de7d2",
+  "source_sha_method": "derived, not supplied: hash match 55/55 of the seal's supplied-input inventory against f76492b's blobs (decision 0085); the seal names no commit",
+  "run_sha": "2a65dbf0c6383cc71b97bf19f0838482d542f1be",
+  "run_started_utc": "2026-09-24T01:41:44Z",
+  "run_finished_utc": "2026-09-24T01:56:20Z",
+  "rows": [
+    {
+      "baseline_log": "<scratch>/gars-mutation-logs-igqies5b/baseline.json",
+      "expected_sha256": "b55ecdca1bb779fd2a706fc8977b39a2f66dfb38141322dd1e150eb776e4562b",
+      "id": "M01",
+      "mutant_diff_sha256": "17325dcfef82571c1fb9874f1a7baf2bea8341b39be88c52856f6887bc203b9b",
+      "requirement": "R-164",
+      "run_sha": "2a65dbf0c6383cc71b97bf19f0838482d542f1be",
+      "snapshot_hash": "6f13a2d335b21b2d2fffc5f5f86b5f8e501c82e5cc624af3b819235574dce686",
+      "status": "killed",
+      "suite_log": "<scratch>/gars-mutation-logs-igqies5b/mutant-M01.json",
+      "test": "__main__.GuardHookTests.test_denies"
+    },
+    {
+      "baseline_log": "<scratch>/gars-mutation-logs-igqies5b/baseline.json",
+      "expected_sha256": "39afaef6f4ee457ec53e337b86db694a8b50096b978b40a310f2920ae70ceb20",
+      "id": "M02",
+      "mutant_diff_sha256": "7bf1994d4aeccb545d5af1adfbe795afab922303b060b6187d75b63159cf466f",
+      "requirement": "R-164",
+      "run_sha": "2a65dbf0c6383cc71b97bf19f0838482d542f1be",
+      "snapshot_hash": "6f13a2d335b21b2d2fffc5f5f86b5f8e501c82e5cc624af3b819235574dce686",
+      "status": "killed",
+      "suite_log": "<scratch>/gars-mutation-logs-igqies5b/mutant-M02.json",
+      "test": "test_pre_push.PrePushTests.test_each_empty_tree_refuses (tree='tests/test_gate_sample.py')"
+    },
+    {
+      "baseline_log": "<scratch>/gars-mutation-logs-igqies5b/baseline.json",
+      "expected_sha256": "1f8a37a5bc7858c8817ae81aa87c4c830a60d505b8b42e7520c28d40b60c64c3",
+      "id": "M03",
+      "mutant_diff_sha256": "1f4675470272cb4f46cb6aa18810ad909341b089c59314ef42211436bdcfc889",
+      "requirement": "R-164",
+      "run_sha": "2a65dbf0c6383cc71b97bf19f0838482d542f1be",
+      "snapshot_hash": "6f13a2d335b21b2d2fffc5f5f86b5f8e501c82e5cc624af3b819235574dce686",
+      "status": "survived",
+      "suite_log": "<scratch>/gars-mutation-logs-igqies5b/mutant-M03.json",
+      "test": null
+    },
+    {
+      "baseline_log": "<scratch>/gars-mutation-logs-igqies5b/baseline.json",
+      "expected_sha256": "c39f1256e5caac206e15d468964c9791f6267ddc3f975e3e5881999b087c16d2",
+      "id": "M04",
+      "mutant_diff_sha256": "c5d5cf8433be29530d8e7a10eb210565ea8112fcb9a5e0637cbad5adc97ff67b",
+      "requirement": "R-164",
+      "run_sha": "2a65dbf0c6383cc71b97bf19f0838482d542f1be",
+      "snapshot_hash": "6f13a2d335b21b2d2fffc5f5f86b5f8e501c82e5cc624af3b819235574dce686",
+      "status": "killed",
+      "suite_log": "<scratch>/gars-mutation-logs-igqies5b/mutant-M04.json",
+      "test": "__main__.ExecutorSeamTests.test_00_slurm_default_is_byte_identical"
+    },
+    {
+      "baseline_log": "<scratch>/gars-mutation-logs-igqies5b/baseline.json",
+      "expected_sha256": "0d2abe29b71072017196df688ca35ef985706a161731449e803172435cc7f84e",
+      "id": "M05",
+      "mutant_diff_sha256": "e6f541e45a57c8cbde3062ec6ace6a253116c1be1d86c90ba6bf7d593b23cdec",
+      "requirement": "R-164",
+      "run_sha": "2a65dbf0c6383cc71b97bf19f0838482d542f1be",
+      "snapshot_hash": "6f13a2d335b21b2d2fffc5f5f86b5f8e501c82e5cc624af3b819235574dce686",
+      "status": "survived",
+      "suite_log": "<scratch>/gars-mutation-logs-igqies5b/mutant-M05.json",
+      "test": null
+    },
+    {
+      "baseline_log": "<scratch>/gars-mutation-logs-igqies5b/baseline.json",
+      "expected_sha256": "a30bd0e3d9438ee6d724b2f3e3cc0738f20e3c1f848816c24a81ff6012278b00",
+      "id": "M06",
+      "mutant_diff_sha256": "daa73de4e7033830e48f0598c9dbe473a9eeb7440f7783b2c84b18e7dfdcba42",
+      "requirement": "R-164",
+      "run_sha": "2a65dbf0c6383cc71b97bf19f0838482d542f1be",
+      "snapshot_hash": "6f13a2d335b21b2d2fffc5f5f86b5f8e501c82e5cc624af3b819235574dce686",
+      "status": "killed",
+      "suite_log": "<scratch>/gars-mutation-logs-igqies5b/mutant-M06.json",
+      "test": "__main__.ExecutorSeamTests.test_05_local_backend_walks_submit_to_completed"
+    },
+    {
+      "baseline_log": "<scratch>/gars-mutation-logs-igqies5b/baseline.json",
+      "expected_sha256": "3c449e97a4970edda11741ef339562a6632c87912c74c5b0e4d9b7985a3c88d7",
+      "id": "M07",
+      "mutant_diff_sha256": "e6dfb4b240241ac62afc705f2d18ed7119366f7b558b86adf2f3b8da106a9975",
+      "requirement": "R-164",
+      "run_sha": "2a65dbf0c6383cc71b97bf19f0838482d542f1be",
+      "snapshot_hash": "6f13a2d335b21b2d2fffc5f5f86b5f8e501c82e5cc624af3b819235574dce686",
+      "status": "survived",
+      "suite_log": "<scratch>/gars-mutation-logs-igqies5b/mutant-M07.json",
+      "test": null
+    },
+    {
+      "baseline_log": "<scratch>/gars-mutation-logs-igqies5b/baseline.json",
+      "expected_sha256": "dca53b5b860dc2a914b2d5ca868d581f487a80684d4a5cd8e253d837d6a62f5b",
+      "id": "M08",
+      "mutant_diff_sha256": "94f772992e6775c554fb8e7c56e9cceb59a6a62bfd00ec47da29ba653d7a5554",
+      "requirement": "R-164",
+      "run_sha": "2a65dbf0c6383cc71b97bf19f0838482d542f1be",
+      "snapshot_hash": "6f13a2d335b21b2d2fffc5f5f86b5f8e501c82e5cc624af3b819235574dce686",
+      "status": "survived",
+      "suite_log": "<scratch>/gars-mutation-logs-igqies5b/mutant-M08.json",
+      "test": null
+    },
+    {
+      "baseline_log": "<scratch>/gars-mutation-logs-igqies5b/baseline.json",
+      "expected_sha256": "5d8897275008d0523ddf1eddadea1ff3a719b8aad7d47d9d79ec5deee6fb97da",
+      "id": "M09",
+      "mutant_diff_sha256": "5013964c52e6af5fc641ce2b334fbda902a66d5e580b6bb018cf65b50d932a85",
+      "requirement": "R-164",
+      "run_sha": "2a65dbf0c6383cc71b97bf19f0838482d542f1be",
+      "snapshot_hash": "6f13a2d335b21b2d2fffc5f5f86b5f8e501c82e5cc624af3b819235574dce686",
+      "status": "killed",
+      "suite_log": "<scratch>/gars-mutation-logs-igqies5b/mutant-M09.json",
+      "test": "__main__.SpatialviTests.test_04_collect_gates_per_sample_and_never_takes_the_raw_h5ad"
+    },
+    {
+      "baseline_log": "<scratch>/gars-mutation-logs-igqies5b/baseline.json",
+      "expected_sha256": "f3fd98c00b53f69d61d28571a16a888ff195d4e60a1d5e267204a131d42ad70b",
+      "id": "M10",
+      "mutant_diff_sha256": "1869343fab81d9c1ebb288608d31a838cc8f897565cab58567b8f9b43d795c3a",
+      "requirement": "R-164",
+      "run_sha": "2a65dbf0c6383cc71b97bf19f0838482d542f1be",
+      "snapshot_hash": "6f13a2d335b21b2d2fffc5f5f86b5f8e501c82e5cc624af3b819235574dce686",
+      "status": "survived",
+      "suite_log": "<scratch>/gars-mutation-logs-igqies5b/mutant-M10.json",
+      "test": null
+    }
+  ],
+  "killed": 5,
+  "total": 10,
+  "ineffective": 0,
+  "survived": 5,
+  "summary_line": "5/10 killed/total",
+  "exit_code": 1,
+  "exit_code_source": "derived from runner output: REFUSED on stderr → 2; else --require rule (ten records, none ineffective, killed ≥ 8 → 0, else 1); not captured from the process",
+  "interpreter": {
+    "argv_python": "/usr/local/bin/python3",
+    "sys_executable": "/usr/local/opt/python@3.13/bin/python3.13",
+    "version": "3.13.2",
+    "source": "timing-2a65dbf.json (same run_env.sh prefix; the runner does not print its interpreter)"
+  },
+  "skips": {
+    "count": 9,
+    "tests": [
+      "test_03_prepare_is_deterministic (__main__.AtacseqWrapperTests.test_03_prepare_is_deterministic): environment: no pinned checkout at <home>/install/nf-core-pipelines/atacseq-2.1.2",
+      "test_01_chipseq_wrapper (__main__.ChipFamilyAndMethylTests.test_01_chipseq_wrapper): environment: no pinned checkout at <home>/install/nf-core-pipelines/chipseq-2.1.0",
+      "test_02_cutandrun_chain (__main__.ChipFamilyAndMethylTests.test_02_cutandrun_chain): environment: no pinned checkout at <home>/install/nf-core-pipelines/cutandrun-3.2.2",
+      "test_03_methylseq_chain (__main__.ChipFamilyAndMethylTests.test_03_methylseq_chain): environment: no pinned checkout at <home>/install/nf-core-pipelines/methylseq-4.2.0",
+      "test_00_check_and_prepare (__main__.RnaseqGarsWrapperTests.test_00_check_and_prepare): environment: no pinned checkout at <home>/install/nf-core-pipelines/rnaseq-3.26.0",
+      "test_01_half_built_cache_is_refused (__main__.RnaseqGarsWrapperTests.test_01_half_built_cache_is_refused): environment: no pinned checkout at <home>/install/nf-core-pipelines/rnaseq-3.26.0",
+      "test_03_check_refuses_an_unsupported_protocol (__main__.ScrnaseqWrapperTests.test_03_check_refuses_an_unsupported_protocol): environment: no pinned scrnaseq checkout; protocol matrix is read from it",
+      "test_09_the_generated_script_counts_a_synthetic_object_and_refuses_without_the_column (__main__.SpatialClusterCountTests.test_09_the_generated_script_counts_a_synthetic_object_and_refuses_without_the_column): environment: anndata is not importable in /usr/local/opt/python@3.13/bin/python3.13, so the generated script is not run here; the wrapper path above is what this interpreter can prove",
+      "test_10_configure_apply_dry_run (__main__.WorkspaceFixture.test_10_configure_apply_dry_run): environment: registry reference GRCh38 not on this machine"
+    ],
+    "source": "baseline.json (the runner's own baseline suite at run_sha)"
+  },
+  "wrapper_contracts": "wrapper contracts: 7/7 found/expected nf-core; 10 total wrappers",
+  "census": {
+    "2a65dbf0c6383cc71b97bf19f0838482d542f1be": {
+      "format_valid": 10,
+      "probe_before_match": 10,
+      "applies": 10,
+      "eligible": true
+    },
+    "dc6a72a627cdcbb8be3ad394711a1efee366e0ad": {
+      "format_valid": 10,
+      "probe_before_match": 6,
+      "applies": 9,
+      "eligible": false
+    },
+    "f76492b4fda1eb22294472e536fba96bb55de7d2": {
+      "format_valid": 10,
+      "probe_before_match": 10,
+      "applies": 10,
+      "eligible": true
+    }
+  },
+  "timing": {
+    "max_wall_s": 97.55,
+    "walls": [
+      97.55,
+      76.41,
+      71.44,
+      81.1,
+      73.29
+    ],
+    "gate_pass": true
+  },
+  "current_main": "unmeasurable with the as-built runner: census probe_before_match 6/10, applies 9/10",
+  "evidence_manifest_sha256": "db75f27bc9a4c958a6e01c2cada28b7266d7ae0d820e5c2e03fe36d76e24b837",
+  "binding": {
+    "binding": "2a65dbf per-row hashes vs seal per-file list (0085 rule 8)",
+    "hash_matches": "20/20",
+    "run_sha_all_rows": [
+      "2a65dbf0c6383cc71b97bf19f0838482d542f1be"
+    ],
+    "run_commit": "2a65dbf0c6383cc71b97bf19f0838482d542f1be",
+    "run_sha_matches": true,
+    "seal_fingerprint": "b7685d96ad05e65d6904d0ff0a6a747da1a04566337e951528bb46760191227e",
+    "baseline_wrapper_line": "wrapper contracts: 7/7 found/expected nf-core; 10 total wrappers",
+    "baseline_skipped": 9,
+    "baseline_keys": [
+      "returncode",
+      "run_sha",
+      "snapshot_hash",
+      "stage",
+      "stderr",
+      "stdout",
+      "tested_tree_hash"
+    ]
+  },
+  "binding_rows_vs_seal_perfile": "20/20",
+  "run_stdout_sha256": "cd93a0d89aa90a8c2c0fd660e47eb01d73ebf9f92a8f4f0e7248851c65b080ae",
+  "path_placeholders": "absolute paths rewritten to decision 0085 rule 5 placeholders; the raw bytes are run.stdout (run_stdout_sha256)"
+}

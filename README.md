@@ -326,9 +326,8 @@ The expanded suite's cluster status is unverified; dated local runner
 results and skips are recorded in the [Row 2 report](docs/implementation/row_2_change_report.md#review-round-3-fixes).
 The [benchmark sealing interface](benchmarks/HOLDOUT.md) is maintained in place;
 Row 2 agent runs, independent nf-core references and held-out measurements remain unmeasured.
+Row 3: development evidence (independent_context seal): [evals/mutation-runs/2026-09-23-2a65dbf-first-run.json](evals/mutation-runs/2026-09-23-2a65dbf-first-run.json) — 5/10 mutants killed at `2a65dbf` at the first run, exit not met; public claim unmeasured.
 Live validation is per-assay. Agent behaviour is
-graded separately and published in [docs/EVALS.md](docs/EVALS.md), against a pre-registration
-frozen before the first run:
 graded separately and published in [docs/EVALS.md](docs/EVALS.md), against a pre-registration
 frozen before the first run:
 
