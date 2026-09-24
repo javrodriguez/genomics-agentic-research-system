@@ -415,3 +415,38 @@ gars/tests/test_rerun_check.py and gars/tests/test_manifest_groups.py, plus
 README.md, DEVELOPMENT.md and the appended change report. R12's guard/settings
 changes are recorded in 0095. Tolerances, pins and comparison thresholds do not
 change; the prior real-run, scheduler and scientific-metric residuals remain.
+
+
+## Addendum — review round 3, 2026-09-24
+
+This producer correction addresses N1 and N3 of the independent round-2 review;
+it is not an owner ruling. Earlier record bytes remain intact. Affected paths:
+`gars/tests/test_manifest_groups.py`, `gars/tests/test_rerun_check.py`,
+`scripts/rerun_check.py`, README.md, DEVELOPMENT.md and the appended change report.
+
+N1: the manifest fixture now writes the repository's `__pycache__/` ignore rule
+before staging its synthetic GARS checkout. Replay's real finalize subprocess
+can generate bytecode without making that fixture's executable source dirty.
+The production cleanliness gate and the existing execution-config-drift assertion
+are unchanged by this fix. Direct replay-module verification starts from both a
+fresh local clone and a history-free archive, without bytecode in either input
+tree and without PYTHONDONTWRITEBYTECODE in the parent environment. The report
+records the pristine parent failure and corrected-tree results.
+
+N3: replay also checks `gars/_references` for tracked or untracked changes, using
+the same cleanliness gate as `gars/_system` and `scripts`. Reference schema and
+genome registry edits now refuse before replay output or submission; the same
+validation runs before each attempt. Initial tolerance validation and committed
+identity checks run first to retain their existing specific refusal messages;
+all checks still precede output creation or submission. Tests keep edited JSON
+parseable and require the named cleanliness refusal and no output directory
+for both tracked files and an untracked reference file. Removing only the added reference path makes
+these assertions fail. Tolerance-file identity checks remain unchanged.
+
+N2 remains the documented patched-CUT&RUN limitation: the instrument refuses that
+uncommitted patch. Use a non-CUT&RUN original for the owner's 0098 measurement;
+accepting exactly a recorded patch needs later policy and verification work.
+N4 needs no guard change: the R12 Write/Edit cases discriminate its two patterns;
+the Bash cases exercise existing R-09/R-092 refusals and do not establish R12
+fault sensitivity. These dispositions do not reopen the lane's D-16 answer or
+replace the owner's separate 0098 measurement and 0099 approval/confirmation.

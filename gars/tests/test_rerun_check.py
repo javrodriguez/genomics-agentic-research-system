@@ -203,20 +203,25 @@ class RerunCheckTests(unittest.TestCase):
 
     def test_dirty_code_and_real_wrapper_override_refused(self):
         for path in (self.wrapper, self.ws / '_system/wrapperlib.py',
-                     self.repo / 'scripts/rerun_check.py'):
+                     self.repo / 'scripts/rerun_check.py',
+                     self.ws / '_references/manifest_schema.json',
+                     self.ws / '_references/genomes.md'):
             with self.subTest(path=path.name):
                 original = path.read_bytes()
-                path.write_bytes(original + b'\n# uncommitted\n')
+                # Keep JSON parseable so the refusal must come from code cleanliness.
+                path.write_bytes(original + (b'\n' if path.suffix == '.json' else b'\n# uncommitted\n'))
                 try:
                     self.refusal('GARS code has uncommitted changes')
                 finally:
                     path.write_bytes(original)
-        untracked = self.ws / '_system/untracked.py'
-        untracked.write_text('# untracked\n')
-        try:
-            self.refusal('GARS code has uncommitted changes')
-        finally:
-            untracked.unlink()
+        for relative in ('_system/untracked.py', '_references/untracked.md'):
+            with self.subTest(untracked=relative):
+                untracked = self.ws / relative
+                untracked.write_text('# untracked\n')
+                try:
+                    self.refusal('GARS code has uncommitted changes')
+                finally:
+                    untracked.unlink()
         for name in mc.load_schema()['wrappers']:
             with self.subTest(wrapper=name):
                 with self.assertRaisesRegex(ValueError, 'override is only allowed for rerun-fixture'):

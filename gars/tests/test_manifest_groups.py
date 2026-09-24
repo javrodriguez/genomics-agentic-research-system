@@ -62,6 +62,7 @@ class ManifestGroupsTests(unittest.TestCase):
             (f.refs / 'genome.fa.gz', f.refs / 'genome.gtf.gz',
              sha(f.refs / 'genome.fa.gz'), sha(f.refs / 'genome.gtf.gz')))
         self.repo = f.tmp
+        (self.repo / '.gitignore').write_text('__pycache__/\n')
         checked(['git','init','-q',self.repo])
         checked(['git','-C',self.repo,'add','gars'])
         checked(['git','-C',self.repo,'-c','user.name=fixture','-c','user.email=fixture@example.invalid',

@@ -2363,3 +2363,374 @@ none
 - The 73 full-suite environment skips are unverified here; no row-6 test skipped.
   Python 3.6 grammar is checked, but that runtime and live bio environments are
   unavailable. No protected approval, push, merge or release is claimed.
+
+
+## Review round 3 fixes
+
+2026-09-24, continuing `2197242` on `build/gars-row-6-manifest`.
+The input is the independent round-2 review, SHA-256
+`c7f95545730cb79a3b905ec83da9aa69cf4d1cb8d4ee62177707f5eda0305a6a`.
+It remains unchanged and untracked. Earlier report sections and records remain
+exact byte prefixes. No new owner ruling is inferred or issued.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| N1 MAJOR: direct replay module depends on warm bytecode | `gars/tests/test_manifest_groups.py`; 0097 addendum; README; DEVELOPMENT; this report | Direct `gars/tests/test_rerun_check.py` on pristine parent archive, corrected archive and fresh local clone | Closed; yes: pristine parent fails the existing execution-config-drift assertion; both corrected trees pass all 19 tests with no input bytecode and no parent bytecode-suppression variable |
+| N2 NOTE: approved uncommitted CUT&RUN patch refuses replay | 0097 addendum; DEVELOPMENT; this report | Existing strict pipeline-cleanliness behavior retained; no live CUT&RUN run | Answered, remains a residual as the review permits; supporting a patch exception requires later policy and verification, so use a non-CUT&RUN original for 0098. Red-on-fault no: no behavior changed |
+| N3 NOTE: uncommitted reference changes escape the GARS cleanliness check | `scripts/rerun_check.py`; `gars/tests/test_rerun_check.py`; 0097 addendum; README; DEVELOPMENT; this report | `RerunCheckTests.test_dirty_code_and_real_wrapper_override_refused`; `test_tolerance_refusals`; direct module and whole suite | Closed; yes: removing only the added reference path makes the schema-edit subtest accept replay instead of refusing, producing assertion-level failures |
+| N4 NOTE: Bash refusals do not discriminate R12 | 0097 addendum; DEVELOPMENT; this report | Supplied review's parent/plant evidence; existing real-hook test in full/direct manifest runs | Answered: Bash cases cover existing R-09/R-092 rules; Write/Edit cases discriminate R12. Red-on-fault no in this round: no guard change or new R12 fault-sensitivity claim |
+
+### Behavior and expectation preservation
+
+N1 adds only `__pycache__/` to the synthetic manifest checkout's ignore file
+before its initial `git add gars`. The production cleanliness check and the
+execution-config-drift assertion are unchanged by N1. There is no production
+bytecode exception and no assertion is removed or weakened.
+
+N3 adds `gars/_references` to the existing tracked/untracked cleanliness path
+list. The regression mutates parseable schema JSON, the genome registry and an
+untracked reference file, requiring the existing named refusal and no replay
+output directory. Existing dirty Python-source and wrapper-override cases remain.
+Tolerance parsing and committed-identity checks now precede manifest validation
+at initial preflight, preserving their existing specific errors. Every check
+still runs before output creation or submission, and manifest validation including
+reference cleanliness still repeats before each attempt. Thresholds, tolerance
+entries, modes, manifest groups and predicates are unchanged.
+
+The first N3 archive run caught the error-ordering regression:
+`Ran 19 tests in 59.218s` / `FAILED (failures=1)`; it received the generic
+cleanliness refusal instead of `missing cause`. The production check order was
+corrected without changing the tolerance-refusal assertions. A preliminary full
+suite was interrupted after this finding and is not credited as verification.
+The final full suite ran after all Python edits.
+
+### Pristine-tree and red-on-fault evidence
+
+Every tree, log and driver is under the designated sibling scratch folder.
+The parent tree is extracted directly from `git archive 2197242`. Corrected trees
+start from that archive and a fresh clone of the supplied local repository, with
+only the exact three changed Python files overlaid from the working tree. No
+network source or external build is used. The scratch clone's automatic origin
+entry is removed immediately; no remote operation is performed. The input trees
+contain no `.pyc` files; `PYTHONDONTWRITEBYTECODE` is absent from the parent test
+environment. No source history is required by the archive run.
+
+Command in each tree: `python3 gars/tests/test_rerun_check.py`.
+
+| Tree | Verbatim runner summary | Result |
+|---|---|---|
+| Pristine parent archive | `Ran 19 tests in 58.157s` / `FAILED (failures=1)` | N1 reproduced: `AssertionError: "execution config drifted" does not match "GARS code has uncommitted changes"` |
+| Corrected history-free archive | `Ran 19 tests in 59.616s` / `OK` | All 19 pass; labelled instrument self-test EXIT printed |
+| Corrected fresh local clone | `Ran 19 tests in 60.298s` / `OK` | All 19 pass; labelled instrument self-test EXIT printed |
+
+The initial targeted N3 check printed `Ran 1 test in 1.787s` / `OK`.
+After preserving tolerance errors, the joint targeted command
+`python3 gars/tests/test_rerun_check.py RerunCheckTests.test_tolerance_refusals RerunCheckTests.test_dirty_code_and_real_wrapper_override_refused`
+printed `Ran 2 tests in 3.025s` / `OK`.
+
+The N3 fault command is the dirty-code regression above, with only the new
+reference path removed from the current script in a disposable tree:
+
+```text
+Ran 1 test in 2.859s
+FAILED (failures=4)
+N3 SINGLE-PATH FAULT: assertion-level red observed
+```
+
+The first schema mutation returns exit 0 rather than the required exit 2.
+Later subtests also see its unexpected output folder; the first acceptance is
+the decisive fault witness. No syntax or import failure is counted. An earlier
+parent-code run of the same new regression printed `Ran 1 test in 2.775s` /
+`FAILED (failures=4)`. No planted fault is retained.
+
+### Final verification commands and verbatim summaries
+
+Python 3.13.2. TMPDIR, TEMP and TMP point to the designated sibling scratch
+folder. Bytecode suppression is unset in the test parent environment. The full
+suite uses `GARS_TEST_NO_CONTAINER=1`; container/database and other environment
+skips are not verified. Required commands run sequentially in
+`python3 ../gars-row-6-scratch/round3/verify.py`; its complete final outcomes follow.
+
+`GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py`:
+
+```text
+collected 226 tests from tests
+collected 273 tests from gars/tests
+EXIT manifest completeness nfcore-atacseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-atacseq-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-chipseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-chipseq-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-cutandrun-wrapper local: 15/15
+EXIT manifest completeness nfcore-cutandrun-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-methylseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-methylseq-wrapper slurm: 16/16
+EXIT manifest completeness rnaseq-de local: 14/14
+EXIT manifest completeness rnaseq-de slurm: 15/15
+EXIT manifest completeness nfcore-rnaseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-rnaseq-wrapper slurm: 16/16
+EXIT manifest completeness scrna-qc-cluster local: 14/14
+EXIT manifest completeness scrna-qc-cluster slurm: 15/15
+EXIT manifest completeness nfcore-scrnaseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-scrnaseq-wrapper slurm: 16/16
+EXIT manifest completeness spatial-cluster-count local: 13/13
+EXIT manifest completeness spatial-cluster-count slurm: 14/14
+EXIT manifest completeness nfcore-spatialvi-wrapper local: 14/14
+EXIT manifest completeness nfcore-spatialvi-wrapper slurm: 15/15
+MEASURE instrument self-test run 1: max_absolute_error=1.18019E-7; bytes differ
+MEASURE instrument self-test run 2: max_absolute_error=1.30761E-7; bytes differ
+EXIT instrument self-test (fixture, local): reproduction 2/2
+Ran 499 tests in 348.131s
+OK (skipped=73)
+```
+
+`python3 tests/check_contracts.py`:
+
+```text
+approximate token load per contract (chars/4):
+    5410  00_initialize_project/CONTEXT.md
+    6114  01_prepare_samplesheets/CONTEXT.md
+    3883  02_bioinformatics/CONTEXT.md
+    2722  02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md
+    2508  02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md
+    2895  02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md
+    2367  02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md
+    2642  02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md
+    2662  02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md
+    3119  02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md
+    2532  02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md
+    2781  02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md
+    3598  02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md
+    3430  03_custom_analysis/CONTEXT.md
+   46663  total
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`:
+
+```text
+collected 226 tests from tests
+collected 273 tests from gars/tests
+suite: 499 tests, from unittest's loader
+  exempt    README.md:294          states 274 — marked as not the suite total
+  ok        README.md:314          states 499
+  exempt    README.md:323          states 252 — marked as not the suite total
+  exempt    DEVELOPMENT.md:64      states 274 — marked as not the suite total
+  exempt    DEVELOPMENT.md:79      states 252 — marked as not the suite total
+  exempt    DEVELOPMENT.md:104     states 163 — marked as not the suite total
+  exempt    DEVELOPMENT.md:118     states 151 — marked as not the suite total
+  ok        DEVELOPMENT.md:127     states 499
+  history   DEVELOPMENT.md:128     states 42 — a record of what was true then, not enforced
+  ok        DEVELOPMENT.md:146     states 499
+  history   DEVELOPMENT.md:352     states 46 — a record of what was true then, not enforced
+  history   DEVELOPMENT.md:353     states 44 — a record of what was true then, not enforced
+  history   DEVELOPMENT.md:356     states 42 — a record of what was true then, not enforced
+  history   DEVELOPMENT.md:357     states 41 — a record of what was true then, not enforced
+  history   DEVELOPMENT.md:358     states 38 — a record of what was true then, not enforced
+  history   DEVELOPMENT.md:362     states 34 — a record of what was true then, not enforced
+  history   DEVELOPMENT.md:366     states 20 — a record of what was true then, not enforced
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`:
+
+```text
+Ran 44 tests in 111.720s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`:
+
+```text
+pre-registration evals/prereg.json frozen at 5bb14e03
+thresholds:
+  ok            prereg.json byte-identical to 5bb14e03
+  ok            evals/transcript.py
+  ok            evals/stated_count.py
+  ok            evals/fixtures/gen_fastq.py
+  ok            evals/graders/confounded_refusal.py
+  ok            evals/fixtures/rank_check.py
+  ok            evals/fixtures/lexicon_cases_task1.json
+  ok            evals/fixtures/gen_counts.py
+  ok            evals/graders/planted_effect.py
+  ok            evals/fixtures/pilot_check.py
+  ok            evals/fixtures/PILOT-RECORD.md
+  ok            evals/fixtures/lexicon_cases_task2.json
+  ok            evals/graders/cross_run_repro.py
+  ok            evals/fixtures/lexicon_cases_task3.json
+  ok            evals/fixtures/lexicon_cases_count.json
+  ok            confounded-refusal answer_from_turn = 8
+  ok            confounded-refusal negation_scope = 'clause-chain'
+  ok            planted-effect alpha = 0.05
+  ok            planted-effect min_recovered = 120
+  ok            planted-effect min_precision = 0.9
+  ok            planted-effect max_null_rejections = 0
+  ok            planted-effect negation_scope = 'clause-chain'
+  ok            cross-run-repro conclusion_from = 'last_assistant_text'
+  ok            cross-run-repro negation_scope = 'clause-chain'
+not run:
+  ok            planted-effect       still refused — an entry point for a counts matrix in the system under test
+  ok            cross-run-repro      still refused — a runnable control half
+results:
+  ok            confounded-refusal   state=RAN verdict=pass
+  ok            cross-run-repro      state=SKIPPED-a-runnable-control-half verdict=SKIPPED-a-runnable-control-half
+  ok            planted-effect       state=SKIPPED-an-entry-point-for-a-counts-matrix verdict=SKIPPED-an-entry-point-for-a-counts-matrix
+  published=3 graded=1
+regrade:
+  ok            confounded-refusal   re-grade reproduces the committed file byte for byte
+controls:
+  ok            confounded-refusal   positive='asserted' control='denied'
+  not compared  planted-effect       SKIPPED-an-entry-point-for-a-counts-matrix — not graded
+  not compared  cross-run-repro      SKIPPED-a-runnable-control-half — not graded
+lexicons:
+  ok            lexicon_cases_count.json     42 of 42
+  ok            lexicon_cases_task1.json     24 of 24
+  ok            lexicon_cases_task2.json     21 of 21
+  ok            lexicon_cases_task3.json     69 of 69
+clean — graded=1
+```
+
+`python3 gars/tests/test_rerun_check.py`:
+
+```text
+Ran 19 tests in 57.849s
+OK
+MEASURE instrument self-test run 1: max_absolute_error=9.3005E-8; bytes differ
+MEASURE instrument self-test run 2: max_absolute_error=1.55861E-7; bytes differ
+EXIT instrument self-test (fixture, local): reproduction 2/2
+```
+
+`python3 gars/tests/test_manifest_groups.py`:
+
+```text
+EXIT manifest completeness nfcore-atacseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-atacseq-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-chipseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-chipseq-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-cutandrun-wrapper local: 15/15
+EXIT manifest completeness nfcore-cutandrun-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-methylseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-methylseq-wrapper slurm: 16/16
+EXIT manifest completeness rnaseq-de local: 14/14
+EXIT manifest completeness rnaseq-de slurm: 15/15
+EXIT manifest completeness nfcore-rnaseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-rnaseq-wrapper slurm: 16/16
+EXIT manifest completeness scrna-qc-cluster local: 14/14
+EXIT manifest completeness scrna-qc-cluster slurm: 15/15
+EXIT manifest completeness nfcore-scrnaseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-scrnaseq-wrapper slurm: 16/16
+EXIT manifest completeness spatial-cluster-count local: 13/13
+EXIT manifest completeness spatial-cluster-count slurm: 14/14
+EXIT manifest completeness nfcore-spatialvi-wrapper local: 14/14
+Ran 17 tests in 39.161s
+OK
+EXIT manifest completeness nfcore-spatialvi-wrapper slurm: 15/15
+```
+
+`python3 gars/tests/test_data_class_required.py`:
+
+```text
+Ran 4 tests in 2.111s
+OK
+```
+
+`python3 tests/test_registry_columns.py`:
+
+```text
+Ran 3 tests in 0.043s
+OK
+```
+
+`python3 gars/tests/test_guard_hook.py`:
+
+```text
+Ran 4 tests in 1.148s
+OK
+```
+
+`python3 scripts/release_check.py --check`:
+
+```text
+DoD cells verified: 13/13 byte-stable
+```
+
+`python3 evals/bench.py validate`:
+
+```text
+refused: input sha256 mismatch: gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md
+```
+
+Exit 2 is the inherited source-pin refusal, still NOT met; it is not a
+passing exit condition. No benchmark source or pin changes in this round.
+
+The full suite and direct manifest module each print twenty fixture manifest
+EXIT lines, with the same denominators as the reviewed parent. The direct replay
+module prints the labelled local instrument self-test EXIT. There is no bare
+`reproduction:` line in the whole-suite log; none of these is the owner's Slurm
+measurement. No row-6 test skipped.
+
+### Scope, records and commit
+
+This round changes seven files: the two test modules, the replay script,
+README.md, DEVELOPMENT.md, a dated append-only 0097 addendum and this appended
+report. No protected implementation file changes. Records 0095/0096, all existing
+0097/report bytes, schema, tolerances, wrappers, guard/settings, tool registry,
+evaluation code, study trees and CI remain unchanged. The generated decision
+index is rebuilt and byte-identical; the generated DoD table is unchanged.
+The public manifest/re-run evidence row remains unmeasured and the collection
+remains 499 tests. No existing test expectation changes: all existing refusal messages and
+assertions are preserved.
+
+`bash docs/decisions/build_index.sh`: exit 0; its absolute-path message stays in
+scratch. `git diff --exit-code -- docs/decisions/CONTEXT.md`: exit 0, no output.
+`git diff --check`: exit 0, no output.
+
+`python3 ../gars-row-6-scratch/round3/audit.py` verifies the allowed path set,
+original record/report prefixes, untouched 0095/0096 and generated index,
+unchanged/untracked review hash, absence of 0098/0099, no local identifiers in
+added bytes, Python 3.6 grammar and the final owner-rulings body:
+
+```text
+SCOPE: seven allowed files only; protected implementation, CI and study trees unchanged
+RECORDS: original prefixes intact; index unchanged; review unchanged and untracked; no 0098/0099
+PRIVACY/GRAMMAR: no local identifiers in additions; changed Python parses as 3.6; diff clean
+REPORT: final Owner rulings needed body is exactly none; Residual gaps follows
+```
+
+One round commit uses an explicit seven-file `git add --` list and a message
+file in the designated scratch folder. The supplied review and all earlier
+untracked review/ruling files remain untracked. No push, merge, pull request or
+owner approval is performed; no remote is configured in the source repository.
+
+## Owner rulings needed
+
+none
+
+## Residual gaps
+
+- N2: strict cleanliness still refuses the documented uncommitted CUT&RUN patch;
+  real patched-pipeline replay and an exact-patch policy remain unestablished.
+  Use a non-CUT&RUN original for the owner's 0098 measurement.
+- F8 remains the declined dataset-specific guard message. F10's historical
+  heading/frontmatter omissions remain under append-only rules. F11's free-text
+  version/timestamp placeholder issue remains; no new field grammar is chosen.
+- A process outside the guarded session can still alter pipeline output/evidence;
+  the guard provides no OS-user isolation or proof of trace/sacct truth.
+- Manifests still lack custom raw-registration aliases and sample-name patterns;
+  collisions, unavailable inputs and names rejected by finalize fail without
+  submission. No registration metadata is guessed.
+- Scheduler waiting remains unbounded for active jobs; interrupted comparisons
+  are partial and do not establish a completed reproduction measurement.
+- The owner's two institutional Slurm re-runs remain unmeasured and belong solely
+  in 0098. Fixture 2/2 is the instrument self-test. The owner's 0099 protected-path
+  and tolerance approval and D-16 confirmation remain pending at merge. These
+  existing separate obligations are not unanswered implementation choices.
+- Biological execution, real-run manifest completeness, live scheduler behavior,
+  §8.4's second backend, §17's ≥ 4/5, external pilot-1 reproduction and typed
+  claim-set equality remain unverified. No whole-row reproduction exit is claimed.
+- Earlier Step A gaps remain: GRCh38 hashes, stage-03/authoring manifests,
+  row-7 methods/rendering/claim wiring, data handling, registry/liveness and row-2
+  benchmark re-pinning. Source-pin validation still refuses; no pin is changed.
+- The 73 full-suite environment skips remain unverified; no row-6 test skipped.
+  Python 3.6 grammar passes, but its runtime and live biological environments are
+  not verified here. No release or protected-path approval is claimed.

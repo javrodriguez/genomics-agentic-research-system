@@ -130,7 +130,7 @@ def validate_manifest(manifest, stage):
     require(wl.git_value(Path(manifest['checkout']), 'rev-parse', 'HEAD') == manifest['pipeline_commit'],
             'pipeline_commit differs from HEAD')
     require(wl.git_value(REPO, 'rev-parse', 'HEAD') == manifest['gars_commit'], 'gars_commit differs from HEAD')
-    require_clean_code(REPO, ['gars/_system', 'scripts'], 'GARS')
+    require_clean_code(REPO, ['gars/_system', 'scripts', 'gars/_references'], 'GARS')
     if manifest['predicate_facts']['wrapper_kind'] == 'nextflow':
         require_clean_code(Path(manifest['checkout']), ['.'], 'pipeline')
     if manifest['predicate_facts']['design_record']:
@@ -262,10 +262,10 @@ def reproduce(manifest_path, runs, out, wrappers_root=WRAPPERS):
     manifest_path = Path(manifest_path).resolve()
     original_stage = manifest_path.parent.parent
     manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
-    validate_manifest(manifest, original_stage)
     entries = load_tolerances()
     committed = wl.git_value(REPO, 'show', 'HEAD:gars/_references/tolerances.yaml')
     require(committed == TOLERANCES.read_text(encoding='utf-8').strip(), 'tolerances are not pre-committed')
+    validate_manifest(manifest, original_stage)
     tolerances_sha256 = wl.sha256(TOLERANCES)
     info, wrapper = wrapper_info(manifest, Path(wrappers_root).resolve())
     rows = manifest['outputs']

@@ -316,6 +316,9 @@ Row 6 ruling-rd2 protects collect evidence throughout the bioinformatics run tre
 and routes replay dataset registration through finalize, retaining the recorded
 agreement reference. Older manifests without it refuse replay; see the
 [change report](docs/implementation/row_6_change_report.md#ruling-answered-fix-round-2).
+Round 3 removes the replay tests' dependence on cached bytecode and refuses
+uncommitted reference-file changes during replay; see the
+[round-3 verification](docs/implementation/row_6_change_report.md#review-round-3-fixes).
 
 Row 15 review round 4 (2026-09-22), macOS / Python 3.8.2: 252 tests, <!-- not-the-suite-total -->
 `OK (skipped=50)`; no tests from row 15 skipped. R15-03's narrow fixture repair
