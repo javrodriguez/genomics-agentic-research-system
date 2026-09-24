@@ -1418,3 +1418,299 @@ the owner's standing delegation, not additional words attributed to the owner.
   data-handling/registry/liveness requirements and row-2 benchmark re-pinning.
 - Python 3.6 grammar passes; Python 3.6 runtime is not available for verification.
   No producer approval, merge, push or release is claimed.
+
+
+## Ruling answered (step B's ruling round b2 (the reproduction build))
+
+2026-09-24, round **ruling-b3**, parent `6039276`. **R11 — the lane, under
+the owner's standing delegation of 23 September 2026** — authorizes option B
+of B-3. This supplied file is a ruling, not an independent review or additional
+words attributed to the owner. No finding severity is invented. This section and
+the 0097 addendum follow their records' previous last bytes. Records 0095/0096
+remain unchanged; the producer never writes 0098/0099.
+
+## Review round ruling-b3 fixes
+
+2026-09-24.
+
+| Finding / requirement | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| B-3 / R11: prepare and collect must share design identity | rnaseq_de.py; its contract; test_rerun_check.py | RealWrapperReplayTests.test_rnaseq_design_prepare_identity | Closed; yes, plant 11 bypasses the refusal and fails the expected exit-2 assertion |
+| Alternate design refused without writes | test_rerun_check.py | Same test, identical-byte alternate file, populated and absent stage | Closed; yes, plant 11; file bytes/mtimes, symlinks and directory inventory are unchanged on refusal |
+| Canonical, relative and symlink designs retain prior behavior | test_rerun_check.py | Same test runs actual parent and current prepare at identical paths | Closed; full manifest, key, submit.sh, analysis script and commands.sh equal per spelling; red-on-fault no, positive compatibility comparison |
+| Legacy COMPLETE alternate-design run must never replay | rerun_check.py; test_rerun_check.py; 0097 addendum | RealWrapperReplayTests.test_rnaseq_design_replay_and_legacy_refusal | Closed; legacy manifest made with real parent prepare; named refusal before output creation/submission; yes, extra replay-refusal plant 12 |
+| Canonical case replays through the instrument | test_rerun_check.py | Same test, separate canonical original and two fresh replay projects | Closed; real prepare/submit/status/collect/comparison with synthetic worker; no biological-execution claim; red-on-fault no for this positive case |
+| R10 other-nine-wrapper re-survey disposition | Appended report and 0097; DEVELOPMENT | Preserved R10 wrapper-by-wrapper source survey and current all-wrapper preparation test | COMPLETE; B-3 was its only finding; no other finding or owner question; red-on-fault no, survey disposition |
+| Existing downstream submission fixture | test_downstream_keys.py | DownstreamKeyTests.test_rnaseq_de_submit | Fixed canonical path only; all existing assertions retained; red-on-fault yes, the initial suite failed with the old alternate-path fixture |
+| Migration, append-only record and current counts | 0097 addendum; appended report; README; DEVELOPMENT; regenerated index | Required commands and scope audit below | Closed; counts verified; original record prefixes retained; index byte-identical; red-on-fault no, documentation reflects measured results |
+
+### Expectation change and initial suite result
+
+The first full suite printed `Ran 491 tests in 333.562s` and
+`FAILED (failures=1, skipped=73)`. The sole failure was
+`DownstreamKeyTests.test_rnaseq_de_submit`: its mocked-preflight fixture supplied
+`root/design`, which R11 now correctly refuses. The fixture in
+`gars/tests/test_downstream_keys.py` now supplies the canonical project path for
+rnaseq-de. All original key, ordering, unrelated-input, wrong-config,
+duplicate-submission and input-drift assertions remain unchanged. No production
+behavior was relaxed. The final whole-suite run below supersedes this initial run.
+
+### Behavior, migration and boundaries
+
+Collect derives `project / "01_samplesheets" / ("%s_design.csv" % ASSAY)` with
+ASSAY `rnaseq_bulk`; prepare now derives that same path and compares resolved
+real paths before run_checks or any write. A different file returns exit 2 with
+`design_not_canonical` and `design is not the canonical project design`.
+Identical content at an alternate real path does not establish design identity.
+The contract change is only the new failure code and refusal semantics.
+
+An existing prepared-but-unsubmitted stage naming an alternate design must be
+re-prepared against the canonical project design before submission. No new
+submit-time legacy detector is authorized or claimed. Do not hand-edit a manifest
+or key; no running or terminal stage reset is authorized. An existing COMPLETE
+alternate-design original is refused by the instrument with the named reason,
+without a replay directory or submission. Prepare and complete a new canonical
+original for reproduction evidence. Collect and the key formula are unchanged.
+
+The R10 re-survey of the other nine wrappers is **COMPLETE**. **B-3 was its only
+finding**; the preserved preceding round's table and diagnostic command are the
+evidence. R11 answers B-3. The current all-wrapper test again exercises all ten
+wrappers on both fixture backends. No additional finding was identified here.
+
+Protected implementation changes are limited to rnaseq_de.py and its contract.
+No other `_system`, `_references`, `_templates`, guard, settings, evaluator,
+benchmark, CI, study, registry or pin changes. 0095/0096 remain byte-identical;
+0097 is appended only. The supplied ruling and both pre-existing untracked ruling
+files remain untracked and unchanged. The owner's separate protected approval
+remains in 0099 at merge. No threshold, test assertion or guard is weakened.
+
+The first targeted invocation exposed a missing fixture setup call (`spatial_pin`
+absent): `Ran 2 tests in 1.002s`, `FAILED (errors=2)`. Both new tests now initialize the existing pipeline fixture helper; no
+production change or weakened assertion was used to resolve that test error.
+The successful initial targeted run follows; the later full suite also covers the added prepared-stage migration assertion. All required suites then ran sequentially.
+
+### Required verification commands and verbatim summaries
+
+The existing submission module after the fixture adjustment:
+`python3 gars/tests/test_downstream_keys.py`
+
+```text
+Ran 3 tests in 0.156s
+OK
+```
+
+Python 3.13.2. TMPDIR, TEMP and TMP point to the designated sibling scratch
+folder; PYTHONDONTWRITEBYTECODE=1. No row-6 test skipped. The whole-suite skips
+are inherited environment skips. Logs are retained under `r11-final-` in scratch.
+
+`python3 gars/tests/test_rerun_check.py RealWrapperReplayTests.test_rnaseq_design_prepare_identity RealWrapperReplayTests.test_rnaseq_design_replay_and_legacy_refusal`
+
+```text
+Ran 2 tests in 6.220s
+OK
+RNASEQ design replay fixture: 2/2; real prepare/submit/status/collect, synthetic worker
+```
+
+`GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py`
+
+```text
+collected 226 tests from tests
+collected 265 tests from gars/tests
+EXIT manifest completeness nfcore-atacseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-atacseq-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-chipseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-chipseq-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-cutandrun-wrapper local: 15/15
+EXIT manifest completeness nfcore-cutandrun-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-methylseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-methylseq-wrapper slurm: 16/16
+EXIT manifest completeness rnaseq-de local: 14/14
+EXIT manifest completeness rnaseq-de slurm: 15/15
+EXIT manifest completeness nfcore-rnaseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-rnaseq-wrapper slurm: 16/16
+EXIT manifest completeness scrna-qc-cluster local: 14/14
+EXIT manifest completeness scrna-qc-cluster slurm: 15/15
+EXIT manifest completeness nfcore-scrnaseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-scrnaseq-wrapper slurm: 16/16
+EXIT manifest completeness spatial-cluster-count local: 13/13
+EXIT manifest completeness spatial-cluster-count slurm: 14/14
+EXIT manifest completeness nfcore-spatialvi-wrapper local: 14/14
+EXIT manifest completeness nfcore-spatialvi-wrapper slurm: 15/15
+RNASEQ design replay fixture: 2/2; real prepare/submit/status/collect, synthetic worker
+SCRNA replay fixture: 2/2; real prepare/submit/status/collect, synthetic worker
+MEASURE instrument self-test run 1: max_absolute_error=1.13799E-7; bytes differ
+MEASURE instrument self-test run 2: max_absolute_error=7.3737E-8; bytes differ
+reproduction: 2/2
+EXIT instrument self-test (fixture, local): reproduction 2/2
+Ran 491 tests in 333.491s
+OK (skipped=73)
+```
+
+`python3 tests/check_contracts.py`
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`
+
+```text
+collected 226 tests from tests
+collected 265 tests from gars/tests
+suite: 491 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`
+
+```text
+Ran 44 tests in 114.273s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`
+
+```text
+clean — graded=1
+```
+
+`python3 gars/tests/test_rerun_check.py`
+
+```text
+Ran 14 tests in 47.055s
+OK
+RNASEQ design replay fixture: 2/2; real prepare/submit/status/collect, synthetic worker
+SCRNA replay fixture: 2/2; real prepare/submit/status/collect, synthetic worker
+MEASURE instrument self-test run 1: max_absolute_error=1.85259E-7; bytes differ
+MEASURE instrument self-test run 2: max_absolute_error=1.85249E-7; bytes differ
+reproduction: 2/2
+EXIT instrument self-test (fixture, local): reproduction 2/2
+```
+
+`python3 gars/tests/test_manifest_groups.py`
+
+```text
+EXIT manifest completeness nfcore-atacseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-atacseq-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-chipseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-chipseq-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-cutandrun-wrapper local: 15/15
+EXIT manifest completeness nfcore-cutandrun-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-methylseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-methylseq-wrapper slurm: 16/16
+EXIT manifest completeness rnaseq-de local: 14/14
+EXIT manifest completeness rnaseq-de slurm: 15/15
+EXIT manifest completeness nfcore-rnaseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-rnaseq-wrapper slurm: 16/16
+EXIT manifest completeness scrna-qc-cluster local: 14/14
+EXIT manifest completeness scrna-qc-cluster slurm: 15/15
+EXIT manifest completeness nfcore-scrnaseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-scrnaseq-wrapper slurm: 16/16
+EXIT manifest completeness spatial-cluster-count local: 13/13
+EXIT manifest completeness spatial-cluster-count slurm: 14/14
+EXIT manifest completeness nfcore-spatialvi-wrapper local: 14/14
+Ran 14 tests in 36.222s
+OK
+EXIT manifest completeness nfcore-spatialvi-wrapper slurm: 15/15
+```
+
+`python3 gars/tests/test_data_class_required.py`
+
+```text
+Ran 4 tests in 2.135s
+OK
+```
+
+`python3 ../gars-row-6-scratch/r11-verify.py`
+
+```text
+REQUIRED VERIFICATION: 8/8 commands passed
+```
+
+`bash docs/decisions/build_index.sh` exited 0. The regenerated index is byte-identical
+(`git diff --exit-code -- docs/decisions/CONTEXT.md`: exit 0, no output).
+The builder's absolute-path output stays only in its scratch log.
+
+### Red-on-fault evidence
+
+`python3 ../gars-row-6-scratch/r11-faults.py` copies the relevant tracked source
+and local Git objects to disposable scratch repositories, plants one mutation per
+copy, and runs the named test. Each witness requires exit 1 and an assertion-level
+`FAILED (failures=...)`; import and syntax errors do not count. No mutation is
+retained in production. Plants 1–10 repeat the preceding step B list; R11 adds
+plant 11. An extra plant independently tests the legacy replay refusal: bypassing it reaches
+the submission mock and fails the assertion for the required refusal reason.
+
+| # | Planted fault | Named test in test_rerun_check.py | Result |
+|---|---|---|---|
+| 1 | numeric tolerance compared by SHA-256 | RerunCheckTests.test_numeric_threshold_and_canonicalization | red-on-fault yes; FAILED (failures=1) |
+| 2 | byte stable canonicalized | RerunCheckTests.test_byte_change_one_of_two | red-on-fault yes; FAILED (failures=1) |
+| 3 | unlisted output defaults to numeric | RerunCheckTests.test_unlisted_defaults_to_exact_bytes | red-on-fault yes; FAILED (failures=1) |
+| 4 | cause/evidence check removed | RerunCheckTests.test_tolerance_refusals | red-on-fault yes; FAILED (failures=1) |
+| 5 | incomplete manifest accepted | RerunCheckTests.test_all_refusals_and_contract_agreement | red-on-fault yes; FAILED (failures=1) |
+| 6 | output silently skipped | RerunCheckTests.test_instrument_self_test | red-on-fault yes; FAILED (failures=1) |
+| 7 | two requested runs execute once | RerunCheckTests.test_instrument_self_test | red-on-fault yes; FAILED (failures=1) |
+| 8 | execution config drift ignored | RerunCheckTests.test_execution_config_immutable_and_drift_refused | red-on-fault yes; FAILED (failures=1) |
+| 9 | execution config omitted at prepare | RerunCheckTests.test_execution_config_immutable_and_drift_refused | red-on-fault yes; FAILED (failures=1) |
+| 10 | samplesheet dropped from scrna inputs | RealWrapperReplayTests.test_scrna_samplesheet_replay_and_drift | red-on-fault yes; FAILED (failures=1) |
+| 11 | rnaseq-de prepare accepts a non-canonical design | RealWrapperReplayTests.test_rnaseq_design_prepare_identity | red-on-fault yes; FAILED (failures=1) |
+| 12 | legacy alternate-design manifest replay accepted | RealWrapperReplayTests.test_rnaseq_design_replay_and_legacy_refusal | red-on-fault yes; FAILED (failures=1) |
+
+```text
+RED-ON-FAULT: 12/12 observed (11 step B plants plus legacy replay refusal)
+```
+
+### Scope audit and commit procedure
+
+`python3 ../gars-row-6-scratch/r11-audit.py` checks the allowed path set, original
+report/0097 byte prefixes, frozen files, untouched collect, unchanged/untracked
+supplied ruling, no 0098/0099, privacy of additions, Python 3.6 grammar and
+`git diff --check`.
+
+```text
+SCOPE AUDIT: allowed paths only; append-only prefixes intact; frozen files and ruling unchanged
+WRAPPER DIFF: prepare refusal only; collect unchanged
+PRIVACY/GRAMMAR: no session identifiers in additions; changed Python parses as 3.6
+```
+
+One commit on `6039276`, staged with an explicit nine-file `git add --` list;
+the message is read from `../gars-row-6-scratch/r11-commit-message.txt`. The
+regenerated index has no diff. No push, remote, merge, pull request, installation,
+download, or owner approval occurs.
+
+### Hours
+
+Measured wall time from the first R11 edit through report assembly: **0.33 hours**.
+Earlier reading is not timed; this is not human labor time.
+
+## Owner rulings needed
+
+none
+
+### B-3 answered (R11)
+
+R11 authorizes option B: prepare requires the supplied design's resolved real
+path to match the canonical project design that collect already reads. The
+refusal, accepted path spellings, unchanged accepted key/manifest behavior,
+legacy COMPLETE refusal and canonical synthetic-worker replay pass the named
+tests above. The migration is recorded in the dated 0097 addendum. This is the
+lane's ruling under the owner's standing delegation, not additional owner words.
+
+## Residual gaps
+
+- The owner's two institutional Slurm re-runs remain unmeasured and belong solely
+  in 0098. `EXIT instrument self-test (fixture, local): reproduction 2/2` is the
+  instrument self-test; no whole-row reproduction exit is claimed.
+- Biological execution, actual scheduler behavior, §8.4 second-backend behavior,
+  §17's ≥ 4/5 on test data, external pilot-1 reproduction and model-mediated typed
+  claim-set equality remain unverified. The real-wrapper replay workers are synthetic.
+- The owner's 0099 approval of protected changes/tolerances and confirmation of
+  the lane's D-16 classification remain pending at merge. The public manifest and
+  re-run evidence row stays unmeasured. These are existing residual obligations,
+  not unanswered implementation choices in this round.
+- Earlier Step A residuals remain: real trace/sacct and GRCh38 hashes, real-run
+  completeness, stage-03/authoring manifests, row-7 methods/rendering/claim wiring,
+  data-handling/registry/liveness requirements and row-2 benchmark re-pinning.
+- Python 3.6 grammar passes; Python 3.6 runtime is not available for verification.
+  No producer approval, merge, push or release is claimed.

@@ -268,6 +268,12 @@ def cmd_prepare(args):
     if not project.is_dir():
         result["error"] = "no such project: %s" % project
         return emit(result, EXIT_USAGE)
+    design_path = project / "01_samplesheets" / ("%s_design.csv" % ASSAY)
+    if Path(args.design).resolve() != design_path.resolve():
+        result["failures"] = [fail("design_not_canonical",
+                                   "design is not the canonical project design")]
+        result["error"] = "prepare refused; nothing written. Use the canonical project design."
+        return emit(result, EXIT_REFUSED)
     fails, cfg, paths = run_checks(project, args.counts, args.design)
     if fails:
         result["failures"] = fails

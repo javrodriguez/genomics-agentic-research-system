@@ -272,3 +272,52 @@ migration and behavior tests), or the canonical collect input must be recorded
 separately with its key/migration consequence. B-2 is answered; full Step B closure
 is not claimed. The owner's real Slurm result and protected-path approval remain
 unmeasured/pending, separate from this implementation ruling.
+
+
+## Addendum — step B's ruling round b2 (the reproduction build), 2026-09-24
+
+**R11 — the lane, under the owner's standing delegation of 23 September 2026.**
+Round **ruling-b3**, parent `6039276`, applies option B of B-3. This is the lane's
+ruling, never additional words attributed to the owner. The existing bytes of
+0095, 0096 and this record are preserved; 0098/0099 belong solely to the owner.
+
+### Canonical design identity (R-042)
+
+The canonical design is the file collect already derives as the project directory
+plus `01_samplesheets/rnaseq_bulk_design.csv`. Prepare compares resolved real paths
+before any writes. A different file, even with identical content, returns exit 2
+with `fail("design_not_canonical", "design is not the canonical project design")`.
+Relative spellings and symlinks resolving to the canonical file remain accepted.
+Collect is unchanged. The accepted inputs, manifest, generated scripts and key
+are unchanged from the parent for each accepted spelling; the key formula is not
+changed. The contract adds only this new failure code and refusal semantics.
+
+**Migration:** an existing prepared-but-unsubmitted rnaseq-de stage naming an
+alternate design must be re-prepared against the canonical project design before
+submission. There is no new submit-time legacy detector in this scope; do not
+hand-edit the manifest or generated key. This ruling does not authorize resetting
+running or terminal stages. An existing COMPLETE run whose manifest records a
+non-canonical design is refused by `rerun_check` with the named reason
+`design is not the canonical project design`, before creating replay output or
+submitting a job. It is never replayed; prepare and complete a new canonical
+original for reproduction evidence.
+
+### Verification and survey disposition
+
+`RealWrapperReplayTests.test_rnaseq_design_prepare_identity` checks refusal with
+no project writes for both empty and already prepared stages, and compares the
+canonical, symlink and relative accepted cases with the real parent source.
+`test_rnaseq_design_replay_and_legacy_refusal` produces a legacy COMPLETE manifest
+with the parent wrapper and verifies the named pre-submission refusal, then uses
+a separate canonical original for two fresh replays through real prepare,
+submit/status, collect and comparison with a synthetic worker. This is not
+biological execution or the owner's two Slurm re-runs.
+
+Step B adds plant 11: **rnaseq-de prepare accepts a non-canonical design**; removal
+of the refusal must fail the prepare-identity test. The report records observed
+fault results and all required runner summaries.
+
+The R10 re-survey of the other nine wrappers is **COMPLETE**; **B-3 was its only
+finding**, as recorded in the preceding report's wrapper-by-wrapper survey.
+R11 answers it. No new owner ruling is needed for this implementation round.
+The existing real-execution gaps and the owner's separate 0098/0099 remain.

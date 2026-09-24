@@ -24,7 +24,10 @@ class DownstreamKeyTests(unittest.TestCase):
             stage = root / '02_bioinformatics' / module.ASSAY / module.SUBSTAGE
             sheet = root / 'sheet.csv'; sheet.write_text('sample\ns1\n')
             data = root / 'data'; data.write_text('declared input\n')
-            design = root / 'design'; design.write_text('sample,condition\ns1,A\n')
+            design = (root / '01_samplesheets/rnaseq_bulk_design.csv'
+                      if name == 'rnaseq-de' else root / 'design')
+            design.parent.mkdir(exist_ok=True)
+            design.write_text('sample,condition\ns1,A\n')
             paths = {'substage': stage, 'config': cfg_path, 'samplesheet': sheet, 'inputs': [('s1', data)]}
             cfg = {'de.formula': '~condition', 'de.contrast': 'condition,A,B',
                    'qc.min_genes': '1', 'qc.min_cells': '1', 'qc.max_mito_pct': '20',

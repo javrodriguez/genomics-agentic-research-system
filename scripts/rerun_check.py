@@ -122,6 +122,11 @@ def validate_manifest(manifest, stage):
     require(wl.git_value(Path(manifest['checkout']), 'rev-parse', 'HEAD') == manifest['pipeline_commit'],
             'pipeline_commit differs from HEAD')
     require(wl.git_value(REPO, 'rev-parse', 'HEAD') == manifest['gars_commit'], 'gars_commit differs from HEAD')
+    if manifest['wrapper'] == 'rnaseq-de':
+        design_path = stage.parents[2] / '01_samplesheets' / 'rnaseq_bulk_design.csv'
+        require('design' in manifest['inputs'] and
+                Path(manifest['inputs']['design']).resolve() == design_path.resolve(),
+                'design is not the canonical project design')
     for label, path in manifest['inputs'].items():
         require(Path(path).is_file() and wl.sha256(Path(path)) == manifest[label + '_sha256'],
                 'input hash changed: ' + label)

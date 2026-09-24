@@ -248,6 +248,172 @@ class RerunCheckTests(unittest.TestCase):
 
 
 class RealWrapperReplayTests(unittest.TestCase):
+    def test_rnaseq_design_prepare_identity(self):
+        import test_manifest_groups as fixtures
+        case = fixtures.ManifestGroupsTests('test_all_ten_wrappers_both_backends')
+        self.addCleanup(case.doCleanups)
+        with contextlib.redirect_stdout(io.StringIO()):
+            case.setUp(); case.pipeline_fixtures()
+            case.configure_wrapper('rnaseq-de', 'local', case.project)
+        canonical = case.project / '01_samplesheets/rnaseq_bulk_design.csv'
+        alternate = case.project / 'alternate-design.csv'
+        alternate.write_bytes(canonical.read_bytes())
+        alias = case.project / 'design-link.csv'
+        alias.symlink_to(canonical)
+        original_source = case.wrapper.read_bytes()
+        relative = case.wrapper.relative_to(case.repo).as_posix()
+        baseline_source = run(['git', 'show', '6039276:' + relative]).stdout
+        self.assertTrue(baseline_source)
+
+        def prepare(design):
+            return run(case.wrapper_argv('prepare', ['--counts', case.fixture.counts_native,
+                       '--design', design]), cwd=case.ws, env=case.env)
+
+        def snapshot():
+            return {str(path.relative_to(case.project)):
+                    ('link', os.readlink(str(path))) if path.is_symlink() else
+                    ('file', path.read_bytes(), path.stat().st_mtime_ns) if path.is_file() else
+                    ('dir',) for path in case.project.rglob('*')}
+
+        # Refusal cannot overwrite a prior preparation or create a new one.
+        for populated in (True, False):
+            if not populated:
+                shutil.rmtree(str(case.stage))
+            before = snapshot()
+            result = prepare(alternate)
+            self.assertEqual(result.returncode, 2, result.stdout.decode())
+            answer = json.loads(result.stdout.decode())
+            self.assertFalse(answer['ok'])
+            self.assertEqual(answer['failures'], [dict(check='design_not_canonical',
+                             detail='design is not the canonical project design')])
+            self.assertEqual(snapshot(), before, 'refused prepare wrote project files')
+
+        # Migration of an actual legacy, prepared-but-unsubmitted alternate design.
+        try:
+            case.wrapper.write_bytes(baseline_source)
+            result = prepare(alternate)
+            self.assertEqual(result.returncode, 0, result.stdout.decode())
+            legacy = json.loads(case.manifest_path.read_text())
+            self.assertEqual(legacy['inputs']['design'], str(alternate.resolve()))
+        finally:
+            case.wrapper.write_bytes(original_source)
+        result = prepare(canonical)
+        self.assertEqual(result.returncode, 0, result.stdout.decode())
+        migrated = json.loads(case.manifest_path.read_text())
+        self.assertEqual(migrated['inputs']['design'], str(canonical.resolve()))
+        self.assertEqual(ex.prepared_key(case.project, case.stage), migrated['idempotency_key'])
+
+        # Compare each spelling to the real parent implementation at identical paths.
+        for design in (canonical, alias, Path(os.path.relpath(str(canonical), str(case.ws)))):
+            with self.subTest(design=str(design)):
+                try:
+                    case.wrapper.write_bytes(baseline_source)
+                    result = prepare(design)
+                    self.assertEqual(result.returncode, 0, result.stdout.decode())
+                    before = json.loads(case.manifest_path.read_text())
+                    scripts = {name: (case.stage / name).read_bytes() for name in
+                               ('submit.sh', 'scripts/run_de.py', 'reproducibility/commands.sh')}
+                finally:
+                    case.wrapper.write_bytes(original_source)
+                result = prepare(design)
+                self.assertEqual(result.returncode, 0, result.stdout.decode())
+                after = json.loads(case.manifest_path.read_text())
+                self.assertEqual(after, before)
+                self.assertEqual(after['inputs']['design'], str(canonical.resolve()))
+                self.assertEqual(ex.prepared_key(case.project, case.stage), before['idempotency_key'])
+                for name, content in scripts.items():
+                    self.assertEqual((case.stage / name).read_bytes(), content)
+
+    def test_rnaseq_design_replay_and_legacy_refusal(self):
+        import test_manifest_groups as fixtures
+        case = fixtures.ManifestGroupsTests('test_all_ten_wrappers_both_backends')
+        self.addCleanup(case.doCleanups)
+        with contextlib.redirect_stdout(io.StringIO()):
+            case.setUp(); case.pipeline_fixtures()
+            case.configure_wrapper('rnaseq-de', 'local', case.project)
+        original_stage = case.stage
+        canonical = case.project / '01_samplesheets/rnaseq_bulk_design.csv'
+        alternate = case.project / 'alternate-design.csv'
+        alternate.write_bytes(canonical.read_bytes())
+        # Produce a legacy COMPLETE manifest with the actual pre-R11 wrapper.
+        source = case.wrapper.read_bytes()
+        relative = case.wrapper.relative_to(case.repo).as_posix()
+        baseline = run(['git', 'show', '6039276:' + relative]).stdout
+        self.assertTrue(baseline)
+        try:
+            case.wrapper.write_bytes(baseline)
+            checked(case.wrapper_argv('prepare', ['--counts', case.fixture.counts_native,
+                    '--design', alternate]), cwd=case.ws, env=case.env)
+        finally:
+            case.wrapper.write_bytes(source)
+        case.fake_wrapper_run(); case.submit()
+        checked(case.wrapper_argv('collect', ['--model', 'none']), cwd=case.ws, env=case.env)
+        legacy = json.loads(case.manifest_path.read_text())
+        self.assertTrue(mc.grade(legacy)['ok'])
+        self.assertEqual(wl.read_status(case.stage), 'COMPLETE')
+        self.assertEqual(legacy['inputs']['design'], str(alternate.resolve()))
+        out = case.repo / 'rnaseq-replay'
+        with patch.object(rc, 'REPO', case.repo), patch.dict(os.environ, case.env):
+            with patch.object(rc.ex, 'submit') as submit:
+                with self.assertRaisesRegex(ValueError, 'design is not the canonical project design'):
+                    rc.reproduce(case.manifest_path, 2, out, case.ws / '_system/wrappers')
+                submit.assert_not_called()
+            self.assertFalse(out.exists())
+
+        # A separate canonical original uses the new code; no terminal stage reset.
+        case = fixtures.ManifestGroupsTests('test_all_ten_wrappers_both_backends')
+        self.addCleanup(case.doCleanups)
+        with contextlib.redirect_stdout(io.StringIO()):
+            case.setUp(); case.pipeline_fixtures()
+            case.configure_wrapper('rnaseq-de', 'local', case.project)
+        out = case.repo / 'rnaseq-replay'
+        original_stage = case.stage
+        canonical = case.project / '01_samplesheets/rnaseq_bulk_design.csv'
+        case.fake_wrapper_run(); case.submit()
+        checked(case.wrapper_argv('collect', ['--model', 'none']), cwd=case.ws, env=case.env)
+        original = json.loads(case.manifest_path.read_text())
+        submissions = []
+
+        def synthetic_execution(config_root, script, descriptor=None):
+            stage = Path(script).parent
+            project = stage.parents[2]
+            case.stage = stage
+            try:
+                case.fake_wrapper_run()
+            finally:
+                case.stage = original_stage
+            job = str(6000 + len(submissions))
+            submissions.append(job)
+            jobs = ex._local_jobs_dir(project); jobs.mkdir(exist_ok=True)
+            exit_file = stage / 'fixture.exit'; exit_file.write_text('0\n')
+            (jobs / (job + '.json')).write_text(json.dumps(dict(
+                script=str(script), exit_file=str(exit_file), started_at=time.time()-1)))
+            return job, None
+
+        with patch.object(rc, 'REPO', case.repo), patch.dict(os.environ, case.env):
+            with patch.object(rc.ex, '_submit_once', side_effect=synthetic_execution):
+                output = io.StringIO()
+                with contextlib.redirect_stdout(output):
+                    result = rc.reproduce(case.manifest_path, 2, out, case.ws / '_system/wrappers')
+            self.assertEqual(result, 0, output.getvalue())
+            self.assertEqual(len(submissions), 2)
+            comparisons = json.loads((out / 'comparison.json').read_text())
+            self.assertEqual(len(comparisons['runs']), 2)
+            self.assertIn('reproduction: 2/2', output.getvalue())
+            for number in (1, 2):
+                project = out / ('run-%d' % number)
+                design = project / '01_samplesheets/rnaseq_bulk_design.csv'
+                self.assertTrue(design.is_symlink())
+                self.assertEqual(design.resolve(), canonical.resolve())
+                stage = project / '02_bioinformatics' / case.assay / case.info['substage']
+                replay = json.loads((stage / 'reproducibility/manifest.json').read_text())
+                self.assertEqual(replay['idempotency_key'], original['idempotency_key'])
+                self.assertEqual(replay['design_sha256'], original['design_sha256'])
+                self.assertTrue(mc.grade(replay)['ok'])
+                rc.validate_manifest(replay, stage)
+                self.assertTrue(all(row['match'] for row in comparisons['runs'][number-1]['artifacts']))
+        print('RNASEQ design replay fixture: 2/2; real prepare/submit/status/collect, synthetic worker')
+
     def test_scrna_samplesheet_replay_and_drift(self):
         import test_manifest_groups as fixtures
         case = fixtures.ManifestGroupsTests('test_all_ten_wrappers_both_backends')
