@@ -299,7 +299,7 @@ with equal timestamps; venue/canary evidence remains unmeasured. See the
 [corrective record](docs/decisions/0062-row-11-raw-git-and-terminal-restore-addendum.md).
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(431 tests; this Linux / Python 3.13.5 build host, without Docker or row-5 scratch, skips 59, or 86 with `TMPDIR` also unset and `TEMP`/`TMP` still set to scratch. No expanded-suite cluster run is claimed; see [the change report](docs/implementation/row_9_change_report.md) and [0072](docs/decisions/0072-row-9-review-fault-harness-code-half.md)).
+(433 tests; this Linux / Python 3.13.5 build host, without Docker or row-5 scratch, skips 59, or 86 with `TMPDIR` also unset and `TEMP`/`TMP` still set to scratch. No expanded-suite cluster run is claimed; see [the change report](docs/implementation/row_9_change_report.md) and [0072](docs/decisions/0072-row-9-review-fault-harness-code-half.md)).
 Row 15 review round 4 (2026-09-22), macOS / Python 3.8.2: 252 tests, <!-- not-the-suite-total -->
 `OK (skipped=50)`; no tests from row 15 skipped. R15-03's narrow fixture repair
 is authorised by the owner, **confirmed on 22 September 2026** ([0067](docs/decisions/0067-owner-confirms-rows-15-and-4-provisional-rulings.md)).

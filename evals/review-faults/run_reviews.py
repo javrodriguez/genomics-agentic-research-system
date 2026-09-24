@@ -2,6 +2,7 @@
 import argparse
 import datetime
 import hashlib
+import io
 import json
 import os
 import pwd
@@ -69,7 +70,7 @@ def session_output_store(kit, session_id):
 
 
 def input_fields(value, field=None):
-    """Keep field context for separator-only text; other paths are always scanned."""
+    """Retain field names so content and prose can be excluded before parsing."""
     if isinstance(value, str):
         yield field, value
     elif isinstance(value, dict):
@@ -83,10 +84,19 @@ def input_fields(value, field=None):
 
 
 def shell_words(text):
-    lexer = shlex.shlex(text, posix=True, punctuation_chars=';&|<>()\n')
+    class CommentStream(io.StringIO):
+        def readline(self, size=-1):
+            line = super().readline(size)
+            # shlex consumes comments with readline. Preserve their newline as
+            # a shell command boundary, including after an exempt text command.
+            if line.endswith('\n'):
+                self.seek(self.tell() - 1)
+                return line[:-1]
+            return line
+    lexer = shlex.shlex(CommentStream(text), posix=True, punctuation_chars=';&|<>()\n')
     lexer.whitespace = ' \t\r'
     lexer.whitespace_split = True
-    lexer.commenters = ''
+    lexer.commenters = '#'
     return list(lexer)
 
 
@@ -97,7 +107,7 @@ def path_field(field):
 
 def bare_directory_change(text):
     """Item 20(b)(iv): inspect shell words, including prefix options and escapes."""
-    words = shell_words(text)
+    words = [word for word, scan_root in audit_words(text)]
     for index, word in enumerate(words):
         if word == 'cd':
             arguments = []
@@ -119,114 +129,194 @@ def bare_directory_change(text):
                 cursor += 1
             if all(argument.startswith('-') for argument in arguments):
                 return True
-        if index and ((words[index - 1] == 'eval' and len(shell_words(word)) > 1) or
-                      (re.fullmatch(r'-[a-zA-Z]*c', words[index - 1]) and index > 1 and
-                       os.path.basename(words[index - 2]) in ('sh', 'bash', 'dash', 'zsh', 'ksh'))):
-            if bare_directory_change(word):
-                return True
     return False
 
 
-def root_word_hits(text, field):
-    """Item 20(b)(ii-iii): separator words default to hits, with named exemptions.
+def without_heredocs(text):
+    """Item 22(c): remove bodies, retaining command headers and later commands."""
+    result = []
+    pending = []
+    for line in text.splitlines(True):
+        if pending:
+            delimiter, tabs = pending[0]
+            candidate = line.rstrip('\r\n')
+            if tabs:
+                candidate = candidate.lstrip('\t')
+            if candidate == delimiter:
+                pending.pop(0)
+            continue
+        result.append(line)
+        # Headers can contain quotes continued on later lines. The full shell
+        # parser below, rather than this header inspection, diagnoses errors.
+        try:
+            words = shell_words(line)
+        except ValueError:
+            continue
+        for index, word in enumerate(words):
+            if word == '<<' and index + 1 < len(words):
+                delimiter = words[index + 1]
+                tabs = delimiter.startswith('-')
+                pending.append((delimiter[1:] if tabs else delimiter, tabs))
+    return ''.join(result)
 
-    Prose gets ordinary path detection only. Interpreter program text is a named
-    residual; this classifier does not enforce filesystem or network permissions.
+
+def audit_words(text):
+    """Yield visible shell words and whether the separator rule applies.
+
+    Item 22 separates program data from file operands before either path rule.
+    Shell programs recurse; interpreter text retains the earlier token audit.
+    This is a bounded syntax audit, never an evaluator or sandbox.
     """
-    if field != 'command' and not path_field(field):
-        return 0
-    words = shell_words(text)
+    words = shell_words(without_heredocs(text))
     command = None
     argument = None
-    hits = 0
-    prefixed = False
+    prefix = None
     program_pending = False
+    option_end = False
     text_commands = ('awk', 'gawk', 'mawk', 'sed', 'grep', 'egrep', 'fgrep', 'rg')
-    prefixes = ('command', 'builtin', 'exec', 'time', 'eval', 'env', 'timeout', 'nice', 'nohup', 'stdbuf')
+    shells = ('sh', 'bash', 'dash', 'zsh', 'ksh')
+    prefix_options = {
+        'env': ('-u', '--unset', '-C', '--chdir', '-S', '--split-string'),
+        'exec': ('-a',), 'time': ('-o', '--output', '-f', '--format'),
+        'timeout': ('-s', '--signal', '-k', '--kill-after'),
+        'nice': ('-n', '--adjustment'), 'stdbuf': ('-i', '-o', '-e'),
+        'command': (), 'builtin': (), 'eval': (), 'nohup': ()}
     for word in words:
         option_value = False
         command_word = False
         if argument:
-            if argument == 'shell':
-                hits += root_word_hits(word, 'command')
             previous_argument = argument
             argument = None
+            if previous_argument == 'shell':
+                yield ';', True
+                for pair in audit_words(word):
+                    yield pair
+                yield ';', True
+                continue
+            if previous_argument == 'interpreter':
+                for token in re.findall(r"[^\s\"'`;|<>()\[\],=]+", word):
+                    yield token, False
+                continue
+            if previous_argument == 'delimiter':
+                yield word, False
+                continue
             if previous_argument != 'path':
                 continue
             option_value = True
         if word and all(c in ';&|<>()\n' for c in word):
-            command = None
-            prefixed = False
-            program_pending = False
+            # Redirection targets are operands, even after echo or printf.
+            if '<' in word or '>' in word:
+                argument = 'path'
+            else:
+                command = prefix = None
+                program_pending = option_end = False
+            yield word, True
             continue
-        if command is None and field == 'command':
+        if command is None and not option_value:
             name = os.path.basename(word)
-            if word in ('if', 'then', 'do', 'else', '{') or name in prefixes:
-                prefixed = True
+            if prefix and word in prefix_options[prefix]:
+                argument = 'path'
+                yield word, True
                 continue
-            if not (prefixed and (word.startswith('-') or '=' in word or
-                                  re.fullmatch(r'[0-9]+(?:[.][0-9]+)?[smhd]?', word))):
-                command = name
-                command_word = True
-                program_pending = command in text_commands
-        elif not option_value:
+            if prefix and (word.startswith('-') or '=' in word or
+                           re.fullmatch(r'[0-9]+(?:[.][0-9]+)?[smhd]?', word)):
+                yield word, True
+                continue
+            if word in ('if', 'then', 'do', 'else', '{'):
+                yield word, True
+                continue
+            if name in prefix_options:
+                prefix = name
+                yield word, True
+                continue
+            command = name
+            command_word = True
+            program_pending = command in text_commands
+        if not command_word and not option_value:
+            if command in shells and re.fullmatch(r'-[a-zA-Z]*c', word):
+                argument = 'shell'
+                continue
+            if word in ('-c', '-e') and command and re.fullmatch(r'(?:python[0-9.]*|perl|ruby|node)', command):
+                argument = 'interpreter'
+                continue
             delimiters = (('-F', '--field-separator') if command in ('awk', 'gawk', 'mawk') else
                           ('-d', '--delimiter') if command == 'cut' else ())
             if word in delimiters:
                 argument = 'delimiter'
                 continue
-            if any(word.startswith(option + '=') if option.startswith('--') else
-                   word.startswith(option) and len(word) > len(option)
-                   for option in delimiters):
+            attached = next((word[len(option) + 1:] if option.startswith('--') else word[len(option):]
+                             for option in delimiters if
+                             (word.startswith(option + '=') if option.startswith('--') else
+                              word.startswith(option) and len(word) > len(option))), None)
+            if attached is not None:
+                yield attached, False
                 continue
-            if word == '-c' and command in ('sh', 'bash', 'dash', 'zsh', 'ksh'):
-                argument = 'shell'
-                continue
-            if word in ('-c', '-e') and command and re.fullmatch(r'(?:python[0-9.]*|perl|ruby|node)', command):
-                argument = 'code'
-                continue
-            if command in text_commands:
-                if word in ('-e', '--expression'):
-                    program_pending = False
-                    argument = 'code'
-                    continue
-                if word in ('-f', '--file'):
-                    program_pending = False
-                    argument = 'path'
-                    continue
-                if word.startswith(('--file=', '--source=')) or word.startswith('-f'):
-                    program_pending = False
-        # Item 21 exempts program and format words only from the separator rule.
-        # The independent path-token pass still scans every original field.
-        if field == 'command' and not command_word and not option_value:
+        # Item 22(a): neither path rule applies to these data contexts.
+        if not command_word and not option_value:
             if command in ('printf', 'echo'):
                 continue
             if command == 'git' and word.startswith(('--format=', '--pretty=format:', '--pretty=tformat:')):
                 continue
             if command in text_commands:
-                if word in ('-e', '--expression', '--regexp'):
+                if not option_end and word == '--':
+                    option_end = True
+                    continue
+                if not option_end and word in ('--files', '--type-list') and command == 'rg':
+                    program_pending = False
+                    continue
+                if not option_end and word in ('-e', '--expression', '--regexp', '--source'):
                     program_pending = False
                     argument = 'code'
                     continue
-                if word.startswith(('--expression=', '--regexp=')) or word.startswith('-e') and len(word) > 2:
+                if not option_end and word in ('-f', '--file'):
                     program_pending = False
-                    continue
-                if word in ('-v', '--assign', '-A', '-B', '-C', '-m', '--max-count', '--context',
-                            '--after-context', '--before-context', '-g', '--glob', '-t', '--type'):
                     argument = 'path'
                     continue
-                if program_pending and not word.startswith('-'):
+                if not option_end and word.startswith(('--expression=', '--regexp=', '--source=')):
                     program_pending = False
                     continue
+                if not option_end and word.startswith('--file='):
+                    program_pending = False
+                # Short option clusters: e/f consume the rest, or the next word.
+                cluster = (re.search('[ef]', word[1:]) if not option_end and
+                           word.startswith('-') and not word.startswith('--') else None)
+                if cluster:
+                    program_pending = False
+                    offset = cluster.start() + 2
+                    kind = 'code' if cluster.group() == 'e' else 'path'
+                    if len(word) == offset:
+                        argument = kind
+                    elif kind == 'path':
+                        yield word[offset:], True
+                    continue
+                if not option_end and word in (('-v', '--assign') if command in ('awk', 'gawk', 'mawk') else ()):
+                    argument = 'path'
+                    continue
+                if not option_end and word in ('-A', '-B', '-C', '-m', '--max-count', '--context',
+                                              '--after-context', '--before-context', '-g', '--glob', '-t', '--type'):
+                    argument = 'path'
+                    continue
+                if program_pending and (option_end or not word.startswith('-')):
+                    program_pending = False
+                    continue
+        yield word, True
+
+
+def root_word_hits(text, field):
+    """Separator-only operands are hits; data contexts are removed upstream."""
+    if field != 'command' and not path_field(field):
+        return 0
+    words = audit_words(text) if field == 'command' else [(text, True)]
+    hits = 0
+    for word, scan_root in words:
+        if not scan_root:
+            continue
         candidate = word
-        if word.startswith('-') and '=' in word:
+        if '=' in word:
             candidate = word.partition('=')[2]
         elif re.match(r'^-[a-zA-Z]+' + re.escape(os.sep), word):
             candidate = re.sub(r'^-[a-zA-Z]+', '', word)
-        # Count visible separator-only tokens by default, including in quoted
-        # arguments and assignment values. No shell expansion is evaluated.
-        pieces = re.findall(r"[^\s\"'`;|<>()\[\],=]+", candidate)
-        # shlex retains a dollar before ANSI-C and locale quoted separators (Y1 F2).
+        pieces = [candidate]
         pieces = [piece[1:] if piece.startswith('$') else piece for piece in pieces]
         hits += sum(1 for piece in pieces if piece and not piece.strip(os.sep))
     return hits
@@ -236,7 +326,7 @@ def blindness(events, kit, session_id=None):
     """Lane specification item 20: bounded audit, separate from sandbox enforcement.
 
     Resolve symlinks as well as lexical parent steps. Shell syntax is tokenized,
-    never executed. Strings nested in tool inputs are all scanned.
+    never executed. Only command and path-valued fields are scanned (item 22).
     """
     kit = Path(kit).resolve()
     saved_output = session_output_store(kit, session_id) if session_id else None
@@ -247,16 +337,15 @@ def blindness(events, kit, session_id=None):
         for data in tool_inputs(event):
             calls += 1
             for field, text in input_fields(data):
+                if field != 'command' and not path_field(field):
+                    continue
                 try:
-                    decoded = shlex.split(text)
+                    decoded = [word for word, scan_root in audit_words(text)] if field == 'command' else [text]
                     hits += root_word_hits(text, field)
                 except ValueError:
                     hits += 1
                     continue
-                # Inspect strings inside quoted shell/interpreter arguments too.
-                # Split syntax delimiters, retaining complete relative path tokens.
-                tokens = re.findall(r"[^\s\"'`;|<>()\[\],=]+", text)
-                tokens = list(dict.fromkeys(decoded + tokens))
+                tokens = list(dict.fromkeys(decoded))
                 parent = chr(46) * 2
                 home = '$' + 'HOME'
                 brace_home = '$' + '{HOME}'

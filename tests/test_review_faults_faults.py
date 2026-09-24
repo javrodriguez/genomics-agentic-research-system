@@ -108,7 +108,7 @@ FAULTS.extend([
      "('-d', '--delimiter')",
      'launch','LaunchTests.test_blindness_every_spelling'),
     ('root scan omits nested shell','run_reviews.py',
-     "hits += root_word_hits(word, 'command')", 'hits += 0',
+     'for pair in audit_words(word):', 'for pair in []:',
      'launch','LaunchTests.test_blindness_every_spelling'),
     ('root scan mistakes script path for program text','run_reviews.py',
      "if previous_argument != 'path':", 'if True:',
@@ -180,13 +180,14 @@ FAULTS.extend([
      "if key == 'sandbox_settings_sha256':", 'if False:',
      'core','ScoreTests.test_published_copy_masks_and_keeps_fields'),
     ('prose separator treated as command','run_reviews.py',
-     "if field != 'command' and not path_field(field):", 'if False:',
+     '            for field, text in input_fields(data):',
+     "            for field, text in input_fields(data):\n                field = 'command'",
      'launch','LaunchTests.test_blindness_every_spelling'),
     ('separator default skips embedded words','run_reviews.py',
-     'pieces = re.findall', 'pieces = [candidate] if True else re.findall',
+     "if '=' in word:", "if word.startswith('-') and '=' in word:",
      'launch','LaunchTests.test_blindness_every_spelling'),
     ('interpreter program exception removed','run_reviews.py',
-     "argument = 'code'", "argument = 'path'",
+     'yield token, False', 'yield token, True',
      'launch','LaunchTests.test_blindness_every_spelling'),
     ('settings hash optional in schema','schema/review_record.schema.json',
      '"blindness",\n        "sandbox_settings_sha256"', '"blindness"',
@@ -213,10 +214,10 @@ FAULTS.extend([
      "pieces = [piece[1:] if piece.startswith('$') else piece for piece in pieces]",
      'pieces = pieces', 'launch','LaunchTests.test_blindness_every_spelling'),
     ('bare cd ignores shell option cluster','run_reviews.py',
-     "re.fullmatch(r'-[a-zA-Z]*c', words[index - 1])", "words[index - 1] == '-c'",
+     "re.fullmatch(r'-[a-zA-Z]*c', word)", "word == '-c'",
      'launch','LaunchTests.test_blindness_every_spelling'),
     ('bare cd ignores full path shell','run_reviews.py',
-     'os.path.basename(words[index - 2]) in', 'words[index - 2] in',
+     'name = os.path.basename(word)', 'name = word',
      'launch','LaunchTests.test_blindness_every_spelling'),
 ])
 
@@ -226,10 +227,48 @@ FAULTS.extend([
      "descriptor = argument.isdigit() or re.fullmatch(r'\\{[A-Za-z_][A-Za-z0-9_]*\\}', argument)",
      'descriptor = argument.isdigit()', 'launch','LaunchTests.test_blindness_every_spelling'),
     ('item 21 program contexts removed','run_reviews.py',
-     "if field == 'command' and not command_word and not option_value:",
-     'if False:', 'launch','LaunchTests.test_blindness_every_spelling'),
+     '# Item 22(a): neither path rule applies to these data contexts.\n        if not command_word and not option_value:',
+     '# Item 22(a): fault removes the data contexts.\n        if False:',
+     'launch','LaunchTests.test_blindness_every_spelling'),
 ])
 
+FAULTS.extend([
+    ('Z1 prefix option value becomes command','run_reviews.py',
+     'if prefix and word in prefix_options[prefix]:', 'if False:',
+     'launch','LaunchTests.test_blindness_every_spelling'),
+    ('Z1 attached pattern cluster ignored','run_reviews.py',
+     'if cluster:', 'if False:', 'launch','LaunchTests.test_blindness_every_spelling'),
+    ('patternless rg takes a pattern','run_reviews.py',
+     "if not option_end and word in ('--files', '--type-list') and command == 'rg':", 'if False:',
+     'launch','LaunchTests.test_blindness_every_spelling'),
+    ('item 22a pattern data scanned again','run_reviews.py',
+     'if program_pending and (option_end or not word.startswith(\'-\')):',
+     'if False:', 'corpus','CorpusTests.test_honest_call_corpus'),
+    ('item 22b content scanned again','run_reviews.py',
+     '            for field, text in input_fields(data):',
+     "            for field, text in input_fields(data):\n                if field == 'content': field = 'command'",
+     'corpus','CorpusTests.test_honest_call_corpus'),
+    ('item 22c heredoc bodies scanned again','run_reviews.py',
+     'words = shell_words(without_heredocs(text))', 'words = shell_words(text)',
+     'corpus','CorpusTests.test_honest_call_corpus'),
+    ('item 22d comments scanned again','run_reviews.py',
+     "lexer.commenters = '#'", "lexer.commenters = ''",
+     'corpus','CorpusTests.test_honest_call_corpus'),
+    ('item 22d glued semicolon retained','run_reviews.py',
+     "punctuation_chars=';&|<>()\\n'", "punctuation_chars='&|<>()\\n'",
+     'corpus','CorpusTests.test_honest_call_corpus'),
+    ('item 22d regex token splitting restored','run_reviews.py',
+     'tokens = list(dict.fromkeys(decoded))',
+     'tokens = list(dict.fromkeys(decoded + re.findall(r"[^\\s\\\"\'`;|<>()\\[\\],=]+", text)))',
+     'corpus','CorpusTests.test_honest_call_corpus'),
+    ('item 22d word pieces become root tokens','run_reviews.py',
+     'pieces = [candidate]', 'pieces = candidate.split()',
+     'corpus','CorpusTests.test_honest_call_corpus'),
+    ('item 22e separated shell options ignored','run_reviews.py',
+     "if command in shells and re.fullmatch(r'-[a-zA-Z]*c', word):",
+     "if command in shells and re.fullmatch(r'-[a-zA-Z]*c', word) and words[words.index(word) - 1] == command:",
+     'corpus','CorpusTests.test_honest_call_corpus'),
+])
 
 # S1 carries R1's leak controls forward on item 15's committed surfaces.
 for token in ('off-by-one', 'P01'):
@@ -285,6 +324,8 @@ class FaultTests(unittest.TestCase):
                 prompt.parent.mkdir(parents=True)
                 shutil.copyfile(str(REPO/'gars/_references/prompts/review_faults_code.md'),str(prompt))
                 (root/'tests').mkdir()
+                if module == 'corpus':
+                    shutil.copytree(str(REPO/'tests/data'), str(root/'tests/data'))
                 (root/'scripts').mkdir()
                 shutil.copyfile(str(REPO/'scripts/release_check.py'),str(root/'scripts/release_check.py'))
                 name='test_review_faults_'+module+'.py'
@@ -320,6 +361,10 @@ class FaultTests(unittest.TestCase):
                     expected=EXPECTED_FAILURES.get(label, 'AssertionError')
                     self.assertIn(expected,output, 'wrong failure for '+label+'\n'+output)
                     print('fault red: '+label)
+                    if module == 'corpus':
+                        for line in output.splitlines():
+                            if line.startswith('FAIL:'):
+                                print('corpus witness: '+line)
 
 
 if __name__=='__main__':

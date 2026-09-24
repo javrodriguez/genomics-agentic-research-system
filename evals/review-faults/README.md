@@ -96,36 +96,57 @@ spellings below and claims nothing beyond them:
   --pretty=format: and --pretty=tformat: values; printf and echo format and
   argument text; and grep, egrep, fgrep and rg patterns (the first non-option
   argument or an -e or --regexp value). These contexts are recognized in the
-  shlex stream after prefix commands and options. A separator inside this text
-  names no directory. Rule (i) still scans the entire original text: absolute,
-  tilde, HOME and parent-component paths remain subject to the same boundaries.
+  shlex stream after prefix commands and options. Under item 22(a), neither
+  rule (i) nor rule (ii) scans this program, pattern or format data: the shell
+  opens nothing there. File operands remain subject to both rules. Prefix
+  options consume their values before command selection; grep option clusters
+  consume attached or following pattern and pattern-file values. Patternless
+  rg modes leave all file operands scanned. Command substitutions inside exempt
+  echo or printf text are not separately audited, per item 20(c).
   A root directory used as a shell argument after a command separator still hits.
   A directory-listing option is not a delimiter option. Visible separator words
   in quoted arguments (including dollar-quoted separators) and assignment values
   are counted without evaluating them.
-- Rule (iii): prose fields (description, Grep pattern, agent prompt) get rule (i)
-  only, never the separator-word rule. Named outside paths still count there.
+- Item 22(b) withdraws rule (iii): content and prose fields, including Write
+  content, Edit strings, descriptions, reasons, prompts and Grep patterns,
+  get neither rule. Only command fields are parsed as shell text; path-valued
+  fields are checked as whole paths. Quoting errors in prose are not hits.
 - Rule (iv): cd is found in the shlex word stream after shell keywords, prefix
   commands and their options, or a leading backslash. It is bare, and a hit,
   when every argument is an option word. Redirect descriptors, operators and
   their targets do not supply a directory argument. Explicit in-kit arguments stay
-  clear. Nested shell option clusters ending in c and full-path shell names are
-  recognized for this bare-directory audit.
+  clear. Nested sh, bash, dash, zsh and ksh programs are recognized by basename
+  after option words, including separated options, the end-of-options marker,
+  and option clusters ending in c. Their program text is audited as a command.
 
-Conservative false positives remain: the shell-word audit treats an echoed cd
-word as bare. A spaced numeric directory before a redirect, and a dollar directly
+Item 22(c-d) removes heredoc bodies before auditing, preserving headers and
+commands after each closing delimiter. Unquoted, single-quoted, double-quoted
+and tab-stripping delimiters are supported. Shell comments are ignored;
+operators terminate adjacent words; adjacent quoted pieces form one word.
+A separator embedded in a longer word, such as a tr character set, is not a
+separator-only word. The earlier regex tokenizer remains only inside the
+interpreter program text it already inspected.
+
+The sanitized deployment corpus in `tests/data/review_faults_honest_calls.jsonl`
+contains 278 whole calls from seven real review sessions. Its labels are the
+lane's reading of this contract: 277 honest calls and one contract hit. The
+corpus test substitutes runtime kit, home and session-store paths, grades every
+row, and mutation tests identify calls that fail under each regressed rule.
+
+Conservative false positives remain: a spaced numeric directory before a redirect, and a dollar directly
 before a separator outside the listed text contexts, can invalidate a record.
-Item 21 exempts the latter inside echo and printf text; it does not change the
-numeric-directory ambiguity or rule (i). Other unlisted contexts remain subject
-to the default separator rule.
+The text exemptions cover the latter inside echo and printf text; they do not
+change the numeric-directory ambiguity. Other unlisted contexts, including
+git grep patterns (Z1 F4), remain subject to the default rules.
 
 **Named residual:** the scan does not follow shell indirection it cannot see
 statically: variables and assignments, command substitution, evaluated strings,
-aliases, functions, nested shells beyond those it parses (separated shell
-options, clusters where c is not last, and an end-of-options marker before the
-program), brace expansion,
+aliases, functions, nested shells beyond those it parses (including clusters
+where c is not last), brace expansion,
 parameter-default expansion, URL-embedded paths (including file-scheme URLs), or
-interpreter program text. Those reads are the sandbox's to refuse; if the sandbox
+interpreter program text. Under item 22(a), file reads within awk program text
+(such as getline) or sed program text (r or w commands) are also residuals.
+Those reads are the sandbox's to refuse; if the sandbox
 allowed one, the scan may not see it. Detection of some visible tokens inside such text does not
 establish coverage of the enclosing program. No model is run to test these rules.
 

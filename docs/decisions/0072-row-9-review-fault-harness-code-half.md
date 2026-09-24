@@ -663,3 +663,93 @@ needs external-human seals. One sample per class remains thin; twelve of fifteen
 outcomes can be publicly recomputed and three sealed outcomes checked by hash.
 Real fixture gitleaks verification remains NOT met here under Q2 A. No seal,
 measured run or ledger entry is supplied. Row 9 exit remains NOT met.
+
+
+## 2026-09-24 addendum — review round AA1
+
+**THE LANE, UNDER THE OWNER'S DELEGATION — THE LANE'S SPECIFICATION.**
+No new words are attributed to the owner. Item 22 amends items 20 and 21 where
+these differ. Earlier bytes remain unchanged; 0072 remains this row's record,
+0073 is reserved for protected approval, and 0074 for the seal and first run.
+
+### Item 22: honest calls and shell syntax
+
+The corpus comes from seven real review sessions of this row on the deployment,
+sanitized before delivery. Each label is the lane's reading of the contract;
+no account, host or owner identity is in it. Both supplied files were copied
+byte-for-byte into tests/data. The 278 whole calls comprise 277 honest calls and
+one contract hit. Before the change the corpus test graded 278/278 and failed
+36 labels, reproducing 35 honest calls with hits and the missed contract hit.
+Tests substitute paths recursively in string values only, using the supplied
+README's order and neutral stand-ins. The original byte count represented by
+NUM-A is unavailable in the supplied files; a neutral five-digit value is used
+in this exempt content field. No identity is reconstructed or requested.
+
+(a) Program, format and pattern data in the item 21 contexts is exempt from
+both path rules: awk, gawk, mawk and sed programs; git format and pretty values;
+printf and echo text; grep, egrep, fgrep and rg patterns. This supersedes item
+21's statement that rule (i) continues inside those contexts. File operands
+remain scanned. Z1 F1 is fixed by consuming prefix-option values before choosing
+the command and consuming attached or following e/f option-cluster arguments.
+Z1 F2 is fixed: patternless rg modes leave all file operands scanned.
+
+(b) Content and prose fields get neither rule. This withdraws item 20(b)(iii).
+Only command and path-valued fields are scanned. Only command fields receive
+shell parsing; an unmatched quote in a content or prose field is never a hit.
+
+(c) Heredoc bodies are content, removed before all audit rules. Headers and
+commands after the delimiter remain audited. Unquoted, single-quoted,
+double-quoted and tab-stripping delimiters are covered, including multiple
+bodies attached to one header.
+
+(d) Shell comments are not scanned. Operators separate glued words; adjacent
+quoted pieces join before path tests. Separator pieces of a longer word are
+not separator-only operands. Shell words replace regex fragments; the earlier
+regex remains only inside the interpreter text it already inspected.
+
+(e) Nested shell programs are found by basename for sh, bash, dash, zsh and ksh,
+after any run of option words, including separated options, an end-of-options
+marker, and clusters ending in c. Their program text is audited as a command.
+The corpus's one contract hit is now detected. The separate-option forms named
+as residual in the Z1 addendum are covered to this stated extent.
+
+The corpus test prints graded-against-seen and asserts every row was scored.
+Each part (a)-(e) has an isolated mutation that makes that test red, identifying
+the failed calls. Earlier bad lists remain hits except the expressly superseded
+expectations for program data and prose; those probes remain as zero-hit tests
+with matching operand controls. Existing mutation guards remain exercised at
+their refactored locations. No model, prompt tuning or measured case run is used.
+
+### Enforcement and detection; not covered
+
+Item 20 continues to supersede the original threat-model claim about every
+possible path spelling. Enforcement belongs to the deployment sandbox. Required
+settings bytes are copied and bound by sandbox_settings_sha256; missing or mixed
+hashes are refused. The harness does not judge the settings or prove their
+filesystem and network restrictions. The published unsalted hash may confirm a
+guessed configuration; it is provenance, not privacy of the settings contents.
+Detection is only the bounded audit above, with the exact own-session saved
+output store and the existing system allowlist unchanged.
+
+File access within awk program text (including getline) and sed program text
+(including r or w) joins interpreter text among item 20(c)'s named residuals.
+Command substitutions inside exempt echo and printf text are not separately
+audited (Z1 F3). Variables and assignments, command substitution, evaluated
+strings, aliases, functions, unparsed nested shells, brace and parameter-default
+expansions and URL-embedded paths remain sandbox responsibilities. If the
+sandbox allows such a read, the static audit may not see it. Conservative
+false positives remain for unlisted contexts such as git grep patterns (Z1 F4),
+and for the earlier numeric-directory redirect ambiguity. Long encoded project
+folder names remain unverified against the deployed tool.
+
+The uid check proves exactly: on the host where the review ran, the reviewing OS
+account is not the producing OS account. It does not prove which machine built
+the cases, and it does not bind GARS's own role decision. Separate-user and
+read-only-credential deployment evidence is external; launch_role() remains
+producer and R-093's code half stays NOT met. Diff-style inference, shared model
+family, science, trailer-gate JSON, thin samples and three hash-only sealed
+outcomes remain residuals. Public recomputation covers twelve of fifteen cases.
+Independent-context seals are development evidence only; public claims need
+external-human seals. Real fixture secret verification remains NOT met under
+Q2 A. No sealed slots, measured run or ledger entries are supplied. Row 9 exit
+remains NOT met.

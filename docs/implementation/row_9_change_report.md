@@ -2512,3 +2512,274 @@ push, merge or pull request is used.
 Closed or answered: Y2 F1-F3 and head items 20 and 21. No finding waits on a
 new owner ruling. Sealing, measurement, protected approval, deployment validation,
 real fixture secret verification and row 9 exit remain outstanding.
+
+
+## Review round AA1 fixes
+
+Date: 2026-09-24. Review: `docs/reviews/row_9_review_Z1.md`, retained untracked
+and unchanged. Starting head: `c9379a66bd8d5f6993d097159dfccc45cd671afe`.
+**THE LANE, UNDER THE OWNER'S DELEGATION — THE LANE'S SPECIFICATION.**
+Item 22 governs this round where it amends items 20 and 21. No new words are
+attributed to the owner. Earlier report and 0072 bytes remain unchanged.
+
+| Finding | Changed files | Test | Result; red-on-fault seen |
+|---|---|---|---|
+| Z1 F1: prefix-option values and grep clusters swallow operands | `evals/review-faults/run_reviews.py`, `tests/test_review_faults_launch.py`, `tests/test_review_faults_faults.py` | `LaunchTests.test_blindness_every_spelling`; prefix-value and attached-cluster mutations | PASS; yes: both mutations make the named bad-list test red; all five reported spellings and additional option-value controls remain hits |
+| Z1 F2: patternless rg consumes a path as pattern | Same launcher and test files | Patternless rg bad list and mutation | PASS; yes: restoring the pending pattern slot makes the named test red |
+| Z1 F3: command substitution inside exempt echo/printf text | `evals/review-faults/README.md`, decision 0072 addendum | Documentation and retained zero-hit residual probe | Answered under items 20(c) and 22(a); red-on-fault no, disclosure only. Such substitutions are not separately audited and remain sandbox responsibilities |
+| Z1 F4: git grep pattern false positives | Harness README, decision 0072 addendum | Documentation against the listed item 22 contexts | Answered; red-on-fault no, disclosure only. git grep remains an unlisted context and can conservatively hit |
+| Head item 20: enforcement and detection | Harness README, 0072 addendum; existing settings schema, validator, scorer and launch boundary retained | Settings-required, hash-binding, schema-drift, publication and audit controls | PASS in direct modules and mutation controls; yes: existing guards remain red. Settings bind bytes, without claiming sandbox efficacy |
+| Head item 21 as amended by item 22(a) | Launcher, launch tests, fault tests, harness README, decision addendum | Program-data matrix and matching file-operand controls | PASS; yes: removing text contexts makes honest commands red. Both rules now exempt program data; the earlier expectation of a hit inside such data is expressly superseded, and all operand bad lists remain hits |
+| Head item 22(a): program data versus file operands | Launcher, launch tests, corpus test, fault tests | `CorpusTests.test_honest_call_corpus`; program-data mutation | PASS; yes: scanning program data again makes corpus calls including S1-20 and S1-41 red |
+| Head item 22(b): content and prose | Same files | Corpus and unbalanced-quote/content/path-field controls | PASS; yes: scanning Write content as shell makes S1-68 red |
+| Head item 22(c): heredoc bodies | Same files | Corpus; quoted, unquoted, tab-stripping and multiple-heredoc boundary controls | PASS; yes: scanning bodies again makes calls including S1-15 red; command headers and commands after delimiters still hit when they name outside paths |
+| Head item 22(d): shell syntax | Same files | Corpus; comment-newline, glued-operator, quote-concatenation and tr-set controls | PASS; yes: comment, glued-semicolon, regex-tokenizer and word-piece mutations make Y2-26, S1-3 and Y1-18 among others red |
+| Head item 22(e): nested-shell options | Same files | Corpus and nested-shell option matrix | PASS; yes: restricting program recognition to an adjacent shell word makes contract-hit Y2-15 red |
+| Head item 22 corpus provenance and counts | `tests/data/review_faults_honest_calls.jsonl`, `tests/data/review_faults_honest_calls_README.md`, `tests/test_review_faults_corpus.py`, README count line, DEVELOPMENT count/status lines | Byte equality to supplied files, whole-call grading, count guard | Both corpus files copied with cp, unchanged. All 278 rows graded; 277 honest calls clear and one contract hit detected. Collection is 433 tests; red-on-fault yes as above |
+
+The corpus is sanitized evidence from seven real review sessions of this row on
+the deployment; labels are the lane's contract reading. It contains no account,
+host or owner identity. The test substitutes placeholders recursively in string
+values only, never keys or raw JSON, in the supplied README's order. Kit, home,
+store and account-number stand-ins are constructed at run time. NUM-A's original
+five-digit byte count is not supplied, so a neutral five-digit value substitutes
+for that exempt content value; its original identity-bearing digits are neither
+reconstructed nor requested. Both supplied files themselves remain byte-identical.
+
+The pre-fix corpus test reproduced the deployment's report:
+
+```text
+Ran 1 test in 0.139s
+FAILED (failures=36)
+honest-call corpus graded-against-seen: 278/278
+```
+
+Those failures were the 35 honest calls previously hit and the one missed
+contract hit. Item 22 changes the contract expressly; it does not widen the kit,
+store or system allowlists. Existing bad lists remain checked except the exact
+program-data and prose expectations item 22 withdraws, now retained as zero-hit
+controls with matching file-operand probes. Mutation anchors follow the refactor;
+the earlier guards are not removed. A new content mutation initially failed to
+exercise command parsing; it was corrected to restore that fault and observed
+red at S1-68 before final verification. No model has run against any case.
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps after AA1
+
+- Row 9 exit remains NOT met: the three sealed slots, first real measured run,
+  ledger entries and combined reserved record 0074 remain later work. Protected
+  approval remains reserved record 0073; neither reserved record is written.
+- Deployment must enforce filesystem and network denial. Binding settings bytes
+  does not prove their content or efficacy. The published unsalted settings hash
+  may confirm guessed configuration contents. Separate-user and read-only-token
+  deployment evidence remains external. The uid check proves account inequality
+  on the review host only, not the case-building machine or GARS role policy;
+  launch_role() remains producer and R-093's code half stays NOT met.
+- Static indirection remains a sandbox responsibility: variables and assignments,
+  command substitution, evaluated strings, aliases, functions, unparsed nested
+  shells, interpreter text, brace/parameter-default expansion and URL-embedded
+  paths. Item 22 adds file access inside awk and sed program data to this named
+  residual. Substituted commands inside echo/printf text are not separately
+  audited. Conservative false positives remain in unlisted contexts such as
+  git grep and the numeric-directory redirect ambiguity.
+- Public claims remain unmeasured pending external-human seals. Independent
+  context seals are development evidence only. Diff-style inference, shared
+  model family, science, trailer-gate JSON, thin per-class samples and three
+  sealed outcomes checkable only by hash remain open; twelve of fifteen outcomes
+  are publicly recomputable.
+- Fixture verification with both real gitleaks rulesets remains NOT met under
+  Q2 A. Docker mode A is unreachable by this account. Native Python 3.6, live
+  sandbox efficacy, long encoded tool-store names, cluster execution and merge
+  result CI remain unverified. Existing skips remain skips.
+
+Closed: Z1 F1 and F2. Answered by documented residuals: Z1 F3 and F4. Items 20
+and 21 remain implemented as amended by item 22; item 22 is implemented with
+whole-call and mutation evidence. No finding waits on a new owner ruling.
+
+### Verification in this round
+
+`python3 tests/run_tests.py (mode B; TMPDIR, TEMP and TMP set to scratch)`:
+
+```text
+collected 259 tests from tests
+collected 174 tests from gars/tests
+citations: 292/292 resolve
+DoD cells regenerated: 13/13
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 1/1 byte-stable
+added case-byte sweep: 12/12 clear; item 15 added lines and decoded objects
+fixtures: git apply --check passed for 12/12 against base archive
+plant match intervals: every file_lines answer overlaps changed lines
+honest-call corpus graded-against-seen: 278/278
+Ran 433 tests in 348.443s
+OK (skipped=59)
+```
+
+`python3 tests/run_tests.py (mode C; TMPDIR unset, TEMP and TMP set to scratch)`:
+
+```text
+collected 259 tests from tests
+collected 174 tests from gars/tests
+citations: 292/292 resolve
+DoD cells regenerated: 13/13
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 1/1 byte-stable
+added case-byte sweep: 12/12 clear; item 15 added lines and decoded objects
+fixtures: git apply --check passed for 12/12 against base archive
+plant match intervals: every file_lines answer overlaps changed lines
+honest-call corpus graded-against-seen: 278/278
+Ran 433 tests in 340.455s
+OK (skipped=86)
+```
+
+`python3 tests/check_contracts.py`:
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`:
+
+```text
+collected 259 tests from tests
+collected 174 tests from gars/tests
+suite: 433 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`:
+
+```text
+Ran 44 tests in 37.753s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`:
+
+```text
+clean — graded=1
+```
+
+`python3 scripts/release_check.py`:
+
+```text
+DoD cells regenerated: 13/13
+```
+
+`python3 tests/test_review_faults_build.py`:
+
+```text
+Ran 11 tests in 91.115s
+OK
+added case-byte sweep: 12/12 clear; item 15 added lines and decoded objects
+fixtures: git apply --check passed for 12/12 against base archive
+plant match intervals: every file_lines answer overlaps changed lines
+```
+
+`python3 tests/test_review_faults_core.py`:
+
+```text
+Ran 9 tests in 0.022s
+OK
+```
+
+`python3 tests/test_review_faults_launch.py`:
+
+```text
+Ran 14 tests in 1.907s
+OK
+```
+
+`python3 tests/test_review_faults_corpus.py`:
+
+```text
+Ran 1 test in 0.144s
+OK
+honest-call corpus graded-against-seen: 278/278
+```
+
+`python3 tests/test_review_faults_faults.py`:
+
+```text
+Ran 1 test in 193.616s
+OK
+```
+
+`feature_version=(3, 6) parse of every row Python file`:
+
+```text
+Python feature_version=(3, 6): 13/13 new Python files parsed
+```
+
+`python3 gars/_system/hooks/pre-commit (fixtures staged in a disposable base tree)`:
+
+```text
+fixture hook index: 24 fixture files staged against base
+gitleaks: REFUSED (gitleaks absent from PATH)
+citations: 292/292 resolve
+pre-commit: REFUSED
+```
+
+The regenerated reviewer row is, verbatim:
+
+```text
+| reviewer catch rate (code; science) | `evals/review-faults/`, `evals/bio-faults/` runners | ≥ 8/10 per set, ≤ 1/5 false alarms; first-run-at-sha reported (§21 Q3) | unmeasured |
+```
+
+Direct mutation evidence: **138 red fault witnesses** and **2 green unchanged-line exemption witnesses**.
+Every mutation first passed its unchanged control; import errors do not
+count as red evidence. Eight new corpus mutations name the failing calls;
+three further mutations cover Z1 prefix values, grep clusters and
+patternless rg. All earlier guard entries remain exercised.
+
+Both full suite modes and every direct module ran on the final Python
+source. The suite now contains 433 tests, with 59 skips in mode B and
+86 in mode C. All three living count claims were updated; the public
+README evidence row is unchanged. Docker mode A is unavailable to this
+account, and native Python 3.6 was not run.
+
+The fixture hook ran and refused because gitleaks is absent. Under Q2 A
+the real check remains NOT met; both rulesets await independent
+verification. No substitute scanner or bypass was used.
+
+### Memory and final boundaries
+
+Before T1, the review host observed about 14 GiB for the whole-tree
+determinism comparison. That unsafe version was not rerun. The unchanged
+streamed-digest implementation was measured in a fresh disposable process
+using resource.getrusage:
+
+```text
+Ran 1 test in 6.008s
+OK
+determinism peak memory: 650688 KiB
+```
+
+Maximum child peak across verification: **668852 KiB**, below 1 GiB.
+
+Starting-head prefix checks preserve every earlier decision and report
+byte. The Z1 review remains untracked and unchanged. Both corpus files
+match the supplied bytes exactly. Only allowed paths changed; the prompt,
+plant fixtures, pinned trees, prior decisions and ledger remain unchanged
+in this round. Reserved 0073 and 0074 remain absent. The decision index
+and DoD were regenerated and remain byte-stable. Final Python digests
+match the tested copies and whitespace checks pass. One commit uses
+explicit staging paths and the message file in scratch; no remote, push,
+merge or pull request is used.
+
+Closed: Z1 F1 and F2. Documented residuals: Z1 F3 and F4. Item 22 and
+the amended items 20 and 21 are verified. No finding waits on a new
+owner ruling; sealing, measurement, protected approval, deployment
+validation, real fixture secret verification and row exit remain open.

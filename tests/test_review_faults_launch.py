@@ -200,6 +200,12 @@ class LaunchTests(unittest.TestCase):
             root_commands += [tool+' -f '+os.sep+' '+os.path.join('repo','input.txt'),
                               tool+' --file='+os.path.join('repo','patterns')+' '+os.sep,
                               tool+' -e pattern '+os.sep]
+        # Z1 F1: prefix option values and attached cluster arguments are operands.
+        root_commands += [command+os.sep for command in (
+            'env -u echo ls ', 'env -u printf find ', 'exec -a echo ls ',
+            'time -o echo ls ', 'timeout -s echo -k 1 5 ls ', 'env -C echo ls ',
+            'grep -rex ', 'grep -rfprog ', 'grep -re x ', 'grep -r -e x ',
+            'rg --files ', 'rg --type-list ')]
         for command in root_commands:
             with self.subTest(command=command):
                 event={'type':'tool_use','input':{'command':command}}
@@ -231,7 +237,7 @@ class LaunchTests(unittest.TestCase):
                         'python3 -c "'+os.sep+'"']:
             event={'type':'tool_use','input':{'command':command}}
             self.assertEqual(run_reviews.blindness([event],kit)['hits'],0,command)
-        # Item 21: the same format contexts retain rule (i) path detection.
+        # Item 22(a) supersedes item 21: program and format text is data.
         input_file = os.path.join("repo", "input.txt")
         programs = []
         for tool in ('awk', 'gawk', 'mawk'):
@@ -256,7 +262,7 @@ class LaunchTests(unittest.TestCase):
                 honest = prefix+program
                 # Add one rooted token inside the existing quoted program or format.
                 rooted = honest.replace(os.sep, ' '+outside_path+' ', 1)
-                for command,expected in [(honest,0),(rooted,1)]:
+                for command,expected in [(honest,0),(rooted,0)]:
                     with self.subTest(item21=command):
                         event={'type':'tool_use','input':{'command':command}}
                         self.assertEqual(run_reviews.blindness([event],kit)['hits'],expected,command)
@@ -269,10 +275,10 @@ class LaunchTests(unittest.TestCase):
                         'echo "$('+'ls '+os.sep+')"']:
             event={'type':'tool_use','input':{'command':command}}
             self.assertEqual(run_reviews.blindness([event],kit)['hits'],0,command)
-        # Item 20(b)(iii): prose is not a command; named paths still get rule (i).
+        # Item 22(b) withdraws both scan rules from prose and content fields.
         for field,text in [('description','Compare old '+os.sep+' new files'),
                            ('pattern',os.sep),('prompt','Split on '+os.sep+' please')]:
-            for value,expected in [(text,0),(outside_path,1),('repo/module.py',0)]:
+            for value,expected in [(text,0),(outside_path,0),('repo/module.py',0)]:
                 event={'type':'tool_use','input':{field:value}}
                 self.assertEqual(run_reviews.blindness([event],kit)['hits'],expected,field)
         # Item 20(c): interpreter program text is a sandbox responsibility.
@@ -300,6 +306,46 @@ class LaunchTests(unittest.TestCase):
         (kit/'link').symlink_to(outside,target_is_directory=True)
         token=str(kit/'link'/'file')
         self.assertEqual(run_reviews.blindness([{'type':'tool_use','input':{'path':token}}],kit)['hits'],1)
+
+    def test_item22_shell_and_data_boundaries(self):
+        root = temporary(self)
+        kit = root / 'k'
+        kit.mkdir()
+        outside = os.path.join(os.sep, 'outside', 'file')
+        def hits(command):
+            return run_reviews.blindness([{'type':'tool_use','input':{'command':command}}], kit)['hits']
+        for delimiter in ('END', "'END'", '"END"', '-END'):
+            body = 'cat <<'+delimiter+' >tmp/output\n'+outside+'\ncd\nEND\n'
+            self.assertEqual(hits(body), 0)
+            self.assertEqual(hits(body+'cat '+outside), 1)
+            self.assertEqual(hits(body.replace('>tmp/output', '>'+outside)), 1)
+        self.assertEqual(hits('cat <<-END\n\t'+outside+'\n\tEND\nls '+os.sep), 1)
+        self.assertEqual(hits('cat <<A <<B\n'+outside+'\nA\ncd\nB\nls '+os.sep), 1)
+        self.assertEqual(hits('cat repo/file # '+outside), 0)
+        self.assertEqual(hits('cat repo/file # comment\nls '+os.sep), 1)
+        self.assertEqual(hits('echo x # comment\nls '+os.sep), 1)
+        self.assertEqual(hits('cut -d '+repr(outside)+' repo/file'), 1)
+        self.assertEqual(hits('awk -F'+repr(outside)+" '{print $1}' repo/file"), 1)
+        self.assertEqual(hits('cd '+str(kit)+';cat repo/file'), 0)
+        self.assertEqual(hits("tr ' "+os.sep+"' x"), 0)
+        self.assertEqual(hits("'a='\"$PWD\"'"+os.sep+"tmp'"), 0)
+        for operator in (';', '&', '|', '&&'):
+            self.assertEqual(hits('echo x'+operator+'ls '+os.sep), 1)
+        for shell in ('sh', 'bash', 'dash', 'zsh', 'ksh'):
+            for options in ('--norc --noprofile -c', '-l -e -x -c', '-- -lc'):
+                self.assertEqual(hits(shell+' '+options+" 'cd {fd}>tmp/x'"), 1)
+                self.assertEqual(hits(shell+' '+options+" 'cat "+outside+"'"), 1)
+                self.assertEqual(hits(shell+' '+options+" 'cd repo'"), 0)
+        for tool in ('awk', 'gawk', 'mawk', 'sed', 'grep', 'egrep', 'fgrep', 'rg'):
+            self.assertEqual(hits(tool+' '+repr(outside)+' repo/file'), 0)
+            self.assertEqual(hits(tool+" 'pattern' "+outside), 1)
+        for field in ('content', 'old_string', 'new_string', 'description', 'reason', 'prompt', 'pattern'):
+            for value in (outside, "'unclosed", 'cd'):
+                event = {'type':'tool_use','input':{field:value}}
+                self.assertEqual(run_reviews.blindness([event],kit)['hits'],0)
+        for field in ('path', 'file_path', 'notebook_path'):
+            event = {'type':'tool_use','input':{field:outside+"'unclosed"}}
+            self.assertEqual(run_reviews.blindness([event],kit)['hits'],1)
 
     def test_session_output_store_boundary(self):
         root=temporary(self)
