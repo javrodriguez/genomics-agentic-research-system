@@ -137,10 +137,59 @@ class CdPlacementTests(unittest.TestCase):
         self.bad([('semicolon', 'false && cd repo; %s' % self.read),
                   ('newline', 'false && cd repo\n%s' % self.read),
                   ('later-chain', 'false && cd repo; true && %s' % self.read),
-                  ('later-cd', 'cd repo; false && cd deeper; %s' % self.read)])
+                  ('later-cd', 'cd repo; false && cd deeper; %s' % self.read),
+                  ('merged-subshell-end', 'false && cd repo && (true); %s' % self.read),
+                  ('merged-substitution-end', 'false && cd repo && echo $(true); %s' % self.read),
+                  ('merged-newline-end', 'false && cd repo && (true)\n%s' % self.read)])
         self.assertEqual(self.hits('cd repo && %s' % self.read), 0)
         self.assertEqual(self.hits('true && cd repo && %s' % self.read), 0)
         self.assertEqual(self.hits('true && cd repo && %s; cd repo; %s' % (self.read, self.read)), 0)
+
+    def test_other_directory_changers(self):
+        self.bad([
+            ('pushd', 'cd repo; pushd %s; %s' % (self.parent, self.read)),
+            ('popd', 'pushd .; cd repo; popd; %s' % self.read),
+            ('quoted-pushd', 'cd repo; "pushd" %s; %s' % (self.parent, self.read)),
+        ])
+
+    def test_backquote_on_cd_word(self):
+        self.bad([('backquote-cd', '`cd repo;`; %s' % self.read),
+                  ('backquote-after-cd', 'cd repo; `cd deeper;`; %s' % self.read)])
+
+    def test_prefixed_compound_commands(self):
+        constructs = [
+            ('negated-if', '! if true; then :; else\ncd repo\nfi;'),
+            ('negated-while', '! while false; do :; cd repo; done;'),
+            ('timed-group', 'time { :; cd repo; } | cat;'),
+            ('timed-option-group', 'time -p { :; cd repo; } | cat;'),
+            ('coproc-group', 'coproc { :; cd repo; };'),
+            ('named-coproc-group', 'coproc worker { :; cd repo; };'),
+        ]
+        self.bad([(label, '%s %s' % (construct, self.read))
+                  for label, construct in constructs])
+
+    def test_physical_directory_option(self):
+        folder = self.kit / 'repo/sub'
+        folder.mkdir()
+        (folder / 'lnk').symlink_to(self.kit / 'tmp', target_is_directory=True)
+        target = os.path.join('repo', 'sub', 'lnk', self.parent)
+        read = os.path.join(self.parent, self.parent, 'secret')
+        self.bad([(option, '%s; cd %s; cat %s' % (option, target, read))
+                  for option in ('set -P', 'set -o physical', 'set -eP')])
+
+    def test_pwd_reassignment(self):
+        for variable in ('PWD', 'OLDPWD'):
+            for prefix in ('', 'export ', 'declare ', 'readonly ', 'typeset '):
+                read = os.path.join('$' + 'PWD', self.parent, 'secret')
+                command = 'cd repo; %s%s=%s; cat %s' % (prefix, variable, self.parent, read)
+                with self.subTest(variable=variable, prefix=prefix):
+                    self.assertGreaterEqual(self.hits(command), 1)
+            self.bad([(prefix, 'cd repo; %s %s; %s' % (prefix, variable, self.read))
+                      for prefix in ('read', 'export', 'declare')])
+
+    def test_indirect_shell_state(self):
+        self.bad([(prefix, '%s; cd repo; %s' % (prefix, self.read))
+                  for prefix in ("eval 'cd(){ :;}'", 'source startup', '. startup')])
 
     def test_nested_program_not_flattened(self):
         commands = []

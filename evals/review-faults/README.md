@@ -125,9 +125,11 @@ only a top-level, unprefixed `cd` with one plain, statically resolvable argument
 and both lexical and symlink-resolved containment may move later relative and
 PWD tokens. Nested constructs inherit their entry placement; rejected changes
 reset to the root. A change preceded by `&&` lasts only through that chain.
-Whole-call shell-state hazards disable movement; token deduplication includes
-the placement folder. Other tools' path fields and all existing scan contexts
-are unchanged. The launcher removes CDPATH, BASH_ENV and ENV. **Residual:** an
+Whole-call shell-state hazards disable movement, including pushd/popd, set,
+PWD/OLDPWD mutation, eval/source/dot commands and uncertain prefixed compounds.
+Backquotes on the cd word forbid movement; merged closing operators still end
+a conditional chain. Token deduplication includes the placement folder. Other
+tools' path fields and all existing scan contexts are unchanged. The launcher removes CDPATH, BASH_ENV and ENV. **Residual:** an
 accepted `cd` is assumed to succeed; if it fails, a later semicolon-joined read
 may be misplaced. Symlinks are judged at audit time, so changed links can alter
 the result. These text-audit limits remain the sandbox's responsibility.

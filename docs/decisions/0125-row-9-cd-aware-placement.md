@@ -186,3 +186,59 @@ measures nothing and does not close row 9's measured exit.
 ## Date
 
 2026-09-24
+
+## 2026-09-24 addendum — review round 2
+
+These are lane decisions under the delegation above, closing review findings
+F1–F7 and F10–F11 without changing 0072's other scan rules or enforcement wall.
+A deeper placement is refused for the whole call when words name pushd/popd,
+set (including physical-directory options), PWD/OLDPWD assignments or variable
+operands, eval or source, or a dot command. A dot used as a file operand remains
+ordinary data. These operations can change the working directory, directory
+semantics, PWD expansion or the meaning of cd itself; the original specification
+left those cases implicit. Conservative refusal keeps the kit root as the
+fail-closed placement. This also closes the reviewed eval-defined cd function
+spelling; general shell indirection remains a residual.
+
+A compound opener outside a counted command start now blocks movement for the
+whole call, covering negation, time (with options) and named or unnamed coproc
+prefixes. A backquote on the cd source word prevents accepting it as top-level.
+Conditional-chain ends are evaluated character by character at their resulting
+operator depth, so a merged closing parenthesis and separator restores the root.
+Such a merged operator still cannot qualify as a boundary for accepting cd.
+
+Six added acceptance tests and expanded conditional-chain subtests cover every
+review probe, plus nearby spellings. Seven additional disposable mutations,
+including the merged-chain defect separately from dropping the entire limit,
+each turn their named test red. All eleven previous placement mutations and
+all previous row-9 faults remain required. The full command results for this
+round are appended to the change report after verification. The README restores
+the exact cold-clone phrases parsed by CI; only the suite total changes, while
+the existing macOS 73 and Linux 104 figures remain intact. This host's measured
+mode-B figure belongs in the report and is not a macOS measurement.
+
+The failed-cd and audit-time symlink residuals above remain NOT met; so do all
+other named 0072 residuals and the deployment, native-runtime and measured-run
+evidence gaps. This addendum measures no model performance or catch rate.
+
+Round-2 verification completed with the following commands and results:
+
+- `python3 tests/run_tests.py (mode B)`: `Ran 525 tests in 399.478s`; `OK (skipped=77)`.
+- `python3 tests/run_tests.py (mode C)`: `Ran 525 tests in 393.563s`; `OK (skipped=104)`.
+- `python3 tests/check_contracts.py`: `14 contracts clean: sections, wait points, vocabulary.`.
+- `python3 tests/check_counts.py`: `clean — every current claim matches the suite`.
+- `python3 evals/test_harness.py`: `Ran 44 tests in 42.608s`; `OK`.
+- `python3 evals/check_results.py --controls --lexicon`: `clean — graded=1`.
+- `python3 tests/test_review_faults_build.py`: `Ran 11 tests in 101.596s`; `OK`.
+- `python3 tests/test_review_faults_cd.py`: `Ran 26 tests in 0.144s`; `OK`.
+- `python3 tests/test_review_faults_cd_faults.py`: `Ran 1 test in 2.519s`; `OK`.
+- `python3 tests/test_review_faults_core.py`: `Ran 9 tests in 0.023s`; `OK`.
+- `python3 tests/test_review_faults_corpus.py`: `Ran 1 test in 0.215s`; `OK`.
+- `python3 tests/test_review_faults_faults.py`: `Ran 1 test in 211.414s`; `OK`.
+- `python3 tests/test_review_faults_launch.py`: `Ran 20 tests in 2.099s`; `OK`.
+
+Both corpora graded all seen calls (11/11 and 278/278); 18 placement faults
+and 144 original faults were observed red, with two original exemptions green.
+The changed/new Python grammar check parsed 4/4 files with feature_version=(3, 6).
+Both protected diffs against 5ba82c6 printed nothing. Full verbatim summaries,
+initial diagnostic failures and remaining NOT met gaps are in the report.

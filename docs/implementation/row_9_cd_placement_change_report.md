@@ -489,3 +489,263 @@ OK
 ## Owner rulings needed
 
 None.
+
+
+## Review round 2 fixes
+
+2026-09-24. The supplied independent review is REJECT; this is the producer's
+response, not approval. All code decisions below are lane decisions under the
+existing delegation. The earlier report and decision bytes remain intact.
+
+In this table, runner means `evals/review-faults/run_reviews.py`, cd tests means
+`tests/test_review_faults_cd.py`, and cd faults means
+`tests/test_review_faults_cd_faults.py`.
+
+| Finding | Changed files | Test | Result; red-on-fault seen and how |
+|---|---|---|---|
+| F1: pushd/popd retain deeper placement | runner, cd tests, cd faults | `test_other_directory_changers` | PASS; yes: removing the directory-changer guard makes pushd, popd and quoted-pushd subtests red |
+| F2: backquote opens on cd word | runner, cd tests, cd faults | `test_backquote_on_cd_word` | PASS; yes: removing the source-backquote check makes both initial and later backquote-cd witnesses red |
+| F3: prefixed compound nesting | runner, cd tests, cd faults | `test_prefixed_compound_commands` | PASS; yes: removing uncertain-compound refusal makes negated if/while, timed group with and without options, and named/unnamed coproc red |
+| F4: merged operator misses chain end | runner, cd tests, cd faults | `test_conditional_chain_limit` | PASS; yes: both dropping the whole limit and restoring the old depth-before-token check make merged subshell, substitution and newline endings red |
+| F5: physical-directory options | runner, cd tests, cd faults | `test_physical_directory_option` | PASS; yes: removing set from the whole-call hazards makes short, long and clustered physical-option cases red against an in-kit symlink |
+| F6: PWD/OLDPWD mutation | runner, cd tests, cd faults | `test_pwd_reassignment` | PASS; yes: removing the variable hazard makes assignment, export, declare, readonly, typeset and read witnesses red |
+| F7: eval-defined cd function | runner, cd tests, cd faults | `test_indirect_shell_state` | PASS; yes: removing indirect-state hazards makes eval, source and dot-command witnesses red |
+| F8: fresh-clone parser and platform skip figures | README count line; DEVELOPMENT count lines | unchanged workflow gate function applied locally to the actual mode-C log; `tests/check_counts.py` | PASS; prior README observed red with its missing Linux phrase; corrected README green; no workflow edit |
+| F9: inherited commit identity | this report; current commit metadata | neutral author/committer assertion on the new commit | Current-round prevention implemented with command-scoped identity; no mutation test. Historical metadata correction is NOT met: rewriting the earlier round would exceed this round's one new commit, so that existing commit is retained |
+| F10: unnamed lane decisions | appended 0125 addendum, harness README, this report | F1, F5 and F6 acceptance tests plus append-only byte-prefix check | PASS; yes, the corresponding code faults are red; no owner ruling inferred |
+| F11: missing spelling classes | cd tests, cd faults | six new tests and expanded chain subtests | PASS; yes, all seven new faults are observed red, with every reviewed attack represented |
+
+The pre-fix acceptance run, after adding regressions but before changing the
+runner, printed `Ran 26 tests in 0.133s` and `FAILED (failures=36)`; the supplied
+data still graded 11/11. The first implementation trial conservatively treated
+all dot words as source commands and rejected P1-34's ordinary find operand.
+That trial printed `Ran 26 tests in 0.142s` and `FAILED (failures=1)`; its old-
+placement mutation's green control also failed. Restricting the dot hazard to
+command positions restored that call without weakening any assertion. The
+final results below supersede those diagnostic failures.
+
+The added whole-call guards deliberately refuse placement for set, directory
+stack commands, directory-variable operands and assignments, eval/source and
+dot commands. Unknown prefixed compound openers also refuse placement. These
+are conservative text checks, not shell execution. A file operand consisting
+of a dot stays data. Merged closing operators end a conditional chain but still
+cannot qualify as a boundary that accepts cd. Existing classification order,
+program/data exemptions, other-tool placement, allowlists and environment
+cleanup remain unchanged.
+
+All commands ran from the repository root without changing directory, with
+TMPDIR, TEMP and TMP set to the relative scratch twin before any work. Mode C
+then unset TMPDIR while retaining TEMP and TMP there. Logs, editing helpers,
+disposable copies and the commit-message file stayed in that twin. The existing
+real child scratch directory supports disposable tests that change their own
+working directory. Both full modes and independent direct checks ran with
+stable Python source; they used no network or model. Standard-library unittest
+collected six additional tests, from 519 to 525; no new test skips. The Python
+3.6 check is a grammar check, not native-runtime evidence.
+
+The README restores exactly the two phrases consumed by the unchanged fresh-
+clone workflow. Its macOS 73 is restored from the base rather than replaced by
+this host's 77. Mode B's 77 and mode C's 104 remain unchanged from round 1;
+mode B includes four unavailable real-gitleaks integrations that are not part
+of the documented macOS environment. No macOS or Docker mode A run is claimed.
+Mode C's actual runner figure remains the README's Linux 104. The total count
+lines in README and DEVELOPMENT now say 525.
+
+### Verification commands and verbatim summaries
+
+`python3 tests/run_tests.py (mode B)` (exit 0):
+
+```text
+collected 292 tests from tests
+collected 233 tests from gars/tests
+cd-call corpus graded-against-seen: 11/11
+honest-call corpus graded-against-seen: 278/278
+Ran 525 tests in 399.478s
+OK (skipped=77)
+```
+
+`python3 tests/run_tests.py (mode C)` (exit 0):
+
+```text
+collected 292 tests from tests
+collected 233 tests from gars/tests
+cd-call corpus graded-against-seen: 11/11
+honest-call corpus graded-against-seen: 278/278
+Ran 525 tests in 393.563s
+OK (skipped=104)
+```
+
+`python3 tests/check_contracts.py` (exit 0):
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py` (exit 0):
+
+```text
+collected 292 tests from tests
+collected 233 tests from gars/tests
+suite: 525 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py` (exit 0):
+
+```text
+Ran 44 tests in 42.608s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon` (exit 0):
+
+```text
+clean — graded=1
+```
+
+`python3 tests/test_review_faults_build.py` (exit 0):
+
+```text
+Ran 11 tests in 101.596s
+OK
+```
+
+`python3 tests/test_review_faults_cd.py` (exit 0):
+
+```text
+Ran 26 tests in 0.144s
+OK
+cd-call corpus graded-against-seen: 11/11
+```
+
+`python3 tests/test_review_faults_cd_faults.py` (exit 0):
+
+```text
+Ran 1 test in 2.519s
+OK
+```
+
+`python3 tests/test_review_faults_core.py` (exit 0):
+
+```text
+Ran 9 tests in 0.023s
+OK
+```
+
+`python3 tests/test_review_faults_corpus.py` (exit 0):
+
+```text
+Ran 1 test in 0.215s
+OK
+honest-call corpus graded-against-seen: 278/278
+```
+
+`python3 tests/test_review_faults_faults.py` (exit 0):
+
+```text
+Ran 1 test in 211.414s
+OK
+```
+
+`python3 tests/test_review_faults_launch.py` (exit 0):
+
+```text
+Ran 20 tests in 2.099s
+OK
+```
+
+The changed/new Python grammar check and unchanged workflow gate printed:
+
+```text
+Python feature_version=(3, 6): 4/4 changed or new Python files parse
+Prior README gate: FAIL: README.md states the Linux cold-clone skip count 0 times, expected once
+plain run: Ran 525 tests, OK, skipped 104
+documented in README.md: 104 on Linux (the bar); 73 on macOS
+ok: 104 skips, at most 104 documented
+```
+
+The workflow gate was extracted from its existing YAML into a scratch-only
+stdlib script and called with the actual mode-C log and each README version.
+No workflow bytes changed. This checks its documented-count logic locally;
+it does not claim a fresh-clone CI run.
+
+Both required protected diffs printed nothing (exit 0):
+
+- `git diff --stat 5ba82c6 -- .github gars benchmarks docs/ledger.csv evals ':(exclude)evals/review-faults'`
+- `git diff --stat 5ba82c6 -- evals/review-faults/fixtures gars/_references`
+
+`git diff --check` printed nothing. `bash docs/decisions/build_index.sh` was
+rerun after each addendum; the generated index is unchanged from round 1.
+An inline byte-prefix check printed `Append-only prefixes: 2/2 intact` for
+0125 and this report. The review remains untracked and unchanged. Supplied
+committed data hashes remain exactly:
+
+```text
+8019297d9b0cd64e8260e2678c2991613446b6524ce4ddf1bccb9dd6188cdeb4 review_faults_cd_calls.jsonl
+d380fdae2afa83f318a3437bf8c6c745b24b1553f8831b74f3295bbdf24172e6 review_faults_cd_calls_README.md
+```
+
+### Faults observed in this round
+
+Every placement fault below was planted in a disposable copy after the named
+unfaulted test passed; the runner required assertion failure, not import errors.
+Its emitted red witnesses include every reviewed spelling, and the old-behavior
+fault still names exactly P1-34, P1-40, P1-47, P1-52 and P1-63.
+
+| Planted fault | Named test made red | Observed |
+|---|---|---|
+| placement never moves | `test_honest_cd_data` | yes |
+| top-level condition dropped | `test_top_level_required` | yes |
+| resolvability condition dropped | `test_variable_target_reset` | yes |
+| symlink containment dropped | `test_symlink_target_reset` | yes |
+| all containment dropped | `test_outside_targets_reset` | yes |
+| placement carried between calls | `test_calls_start_at_root` | yes |
+| conditional-chain limit dropped | `test_conditional_chain_limit` | yes |
+| whole-call conditions dropped | `test_whole_call_conditions` | yes |
+| placement from flattened audit stream | `test_nested_program_not_flattened` | yes |
+| deduplication by token alone | `test_deduplicate_by_token_and_folder` | yes |
+| CDPATH retained | `test_environment_startup_variables_removed` | yes |
+| other directory changers ignored | `test_other_directory_changers` | yes |
+| backquote on cd word ignored | `test_backquote_on_cd_word` | yes |
+| prefixed compound uncertainty ignored | `test_prefixed_compound_commands` | yes |
+| merged chain ends ignored | `test_conditional_chain_limit` | yes |
+| physical option ignored | `test_physical_directory_option` | yes |
+| PWD mutation ignored | `test_pwd_reassignment` | yes |
+| indirect shell state ignored | `test_indirect_shell_state` | yes |
+
+All **144/144** original faults named in the earlier table above were observed
+red again in the direct run; both named unchanged-line exemption controls
+remained green. The labels were compared against that existing table, not
+inferred from a green module alone. All **18/18** placement faults above were
+observed red. Both full-suite modes reran these fault lists as well. No prior
+expected result, threshold or guard was weakened.
+
+## Owner rulings needed
+
+None.
+
+### Residual gaps still open — each NOT met
+
+- Failed-cd runtime detection and historical symlink reconstruction: **NOT met**.
+  The audit assumes accepted cd succeeded and resolves links at audit time.
+- Complete shell interpretation and all other 0072 item 20–23 residuals: **NOT
+  met**. General indirection, interpreter text and unparsed constructs still
+  depend on the sandbox. Closing the reviewed eval spelling does not prove a
+  general evaluator. Conservative false positives remain possible.
+- Historical commit-identity repair for F9: **NOT met**. The new commit uses a
+  neutral command-scoped author and committer, verified without printing the
+  inherited identity; the earlier round's commit is retained, not rewritten.
+- Sandbox deployment, account separation, R-093's role code half, public human
+  seals, broad class evidence, complete public recomputation, science and
+  trailer JSON integration: **NOT met**; all prior named gaps remain open.
+- Row 9 seal, first measured run and catch-rate evidence: **NOT met**. This
+  follow-up measures nothing; the reserved record and ledger are untouched.
+- Docker mode A: **NOT met**, because this account cannot reach Docker. Native
+  Python 3.6 execution, macOS rerun, cluster execution and fresh-clone or merge-
+  result CI: **NOT met**; local grammar/gate checks are not those executions.
+- Real fixture gitleaks verification and independent approval of these fixes:
+  **NOT met**. No fixture bytes changed and the producer does not approve itself.
+
+F1–F8 and F10–F11 closed; F9 prevents recurrence in this round but historical
+metadata remains open as stated above; no finding waits on an owner ruling.

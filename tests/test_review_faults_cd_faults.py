@@ -29,7 +29,7 @@ FAULTS = [
      "        state = {'kit': kit, 'folder': kit, 'conditional': False}\n"
      "    placed_command.saved = state", ['test_calls_start_at_root']),
     ('conditional-chain limit dropped',
-     "if state['conditional'] and depth == 0 and word.operator", 'if False and word.operator',
+     "if state['conditional'] and self.chain_ends[index]:", 'if False:',
      ['test_conditional_chain_limit']),
     ('whole-call conditions dropped',
      "self.blocked = bool(forbidden or broken or parens != 0 or backquote or self.state.get('blocked'))", 'self.blocked = False',
@@ -47,6 +47,24 @@ FAULTS = [
     ('CDPATH retained',
      "k in ('CDPATH', 'BASH_ENV', 'ENV')", "k in ('BASH_ENV', 'ENV')",
      ['test_environment_startup_variables_removed']),
+    ('other directory changers ignored',
+     "{'pushd', 'popd'}", 'set()', ['test_other_directory_changers']),
+    ('backquote on cd word ignored',
+     "depth == 0 and '`' not in word.source and", 'depth == 0 and',
+     ['test_backquote_on_cd_word']),
+    ('prefixed compound uncertainty ignored',
+     "if not command_start and word in ('if', 'while', 'until', 'for', 'select', '{'):",
+     'if False:', ['test_prefixed_compound_commands']),
+    ('merged chain ends ignored',
+     "if state['conditional'] and self.chain_ends[index]:",
+     "if state['conditional'] and self.chain_ends[index] and depth == 0:",
+     ['test_conditional_chain_limit']),
+    ('physical option ignored',
+     "{'set'}", 'set()', ['test_physical_directory_option']),
+    ('PWD mutation ignored',
+     "{'PWD', 'OLDPWD'}", 'set()', ['test_pwd_reassignment']),
+    ('indirect shell state ignored',
+     "{'eval', 'source', '.'}", 'set()', ['test_indirect_shell_state']),
 ]
 
 

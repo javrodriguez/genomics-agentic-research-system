@@ -181,12 +181,19 @@ class CommandPlacement:
         self.words = words
         self.pending = None
         self.depths = []
+        self.chain_ends = []
         parens = groups = keywords = 0
         backquote = False
         broken = False
         command_start = True
+        dot_command = False
         for index, word in enumerate(words):
+            if word == '.' and (command_start or (index and (
+                    words[index - 1] in ('builtin', 'command', '!', 'time') or
+                    '=' in words[index - 1]))):
+                dot_command = True
             self.depths.append(parens + groups + keywords + int(backquote) + self.nested)
+            chain_end = False
             if word.operator:
                 for char in word:
                     if char == '(':
@@ -196,8 +203,17 @@ class CommandPlacement:
                         broken = broken or parens < 0
                     elif char == '\n' and backquote:
                         broken = True
+                    # A merged close-paren/separator ends the chain only after
+                    # its own parentheses close. It is still not a cd boundary.
+                    if (char in ';&|\n' and word != '&&' and
+                            parens + groups + keywords + int(backquote) + self.nested == 0):
+                        chain_end = True
                 command_start = True
             elif word.source == word:
+                # Prefixes can precede compound commands. If their syntax is
+                # outside this counter's proof, decline placement for the call.
+                if not command_start and word in ('if', 'while', 'until', 'for', 'select', '{'):
+                    broken = True
                 if command_start and word in ('if', 'while', 'until', 'for', 'select'):
                     keywords += 1
                 elif command_start and word in ('fi', 'done'):
@@ -209,6 +225,7 @@ class CommandPlacement:
                 command_start = word in ('if', 'then', 'elif', 'else', 'while', 'until', 'do', '{')
             else:
                 command_start = False
+            self.chain_ends.append(chain_end)
             # Backquotes are not quotes to shlex. Track them across physical
             # newlines, ignoring single quotes and escaped backquotes.
             quote = None
@@ -234,6 +251,18 @@ class CommandPlacement:
                     broken = True
         forbidden = re.search(r'\b(?:case|alias|unalias|enable|shopt|unset|function|CDPATH|BASH_ENV)\b|\bENV=',
                               text + ' ' + ' '.join(str(word) for word in words))
+        # These commands can move the shell, change cd semantics, or redefine
+        # cd indirectly. PWD mutation also invalidates substitution by folder.
+        hazards = (
+            {'pushd', 'popd'},
+            {'set'},
+            {'eval', 'source', '.'},
+            {'PWD', 'OLDPWD'},
+        )
+        values = set(str(word).split('=', 1)[0] for word in words
+                     if word != '.' or dot_command)
+        shell_state = any(values.intersection(group) for group in hazards)
+        forbidden = forbidden or shell_state
         self.blocked = bool(forbidden or broken or parens != 0 or backquote or self.state.get('blocked'))
         if self.blocked:
             self.state['folder'] = self.state['kit']
@@ -264,14 +293,14 @@ class CommandPlacement:
             self.pending = None
         word = self.words[index]
         depth = self.depths[index]
-        if state['conditional'] and depth == 0 and word.operator and word != '&&' and any(
-                char in ';&|\n' for char in word):
+        if state['conditional'] and self.chain_ends[index]:
             state['folder'], state['conditional'] = state['kit'], False
         placed = ShellWord(word, word.source, state, self.nested + 1, state['folder'])
         if word.strip('`') == 'cd':
             previous = self.words[index - 1] if index else None
             following = self.words[index + 2] if index + 2 < len(self.words) else None
-            top_level = (depth == 0 and (previous is None or placement_separator(previous)) and
+            top_level = (depth == 0 and '`' not in word.source and
+                         (previous is None or placement_separator(previous)) and
                          (following is None or placement_separator(following)))
             argument = self.words[index + 1] if index + 1 < len(self.words) else None
             plain = argument is not None and not argument.operator and not argument.startswith('-')
