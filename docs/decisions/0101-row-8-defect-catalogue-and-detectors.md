@@ -478,3 +478,49 @@ sealed/public catalogue measurement, PMID/literature-role wiring, broader
 artifact liveness, class 10, stage-03/pilot emission wiring, pilot measurement,
 step B and protected-change approval. Class 9's replay result is not a live
 measurement, and this addendum does not claim row 8's exit or self-approval.
+
+
+## Addendum — round F1, review E1 corrections, 2026-09-24
+
+Item 8 was decided under the owner's standing delegation (23 Sep 2026).
+This addendum implements only review E1 F1, F2 and F3 at parent
+`12b26f7843a1cb6d48495279656b3c985f6a2e75`. All preceding bytes remain unchanged.
+
+F1: the numeric marker requires no letter or digit immediately before `10.`
+or `10/`. Years such as `2010.` and `2010/2011` do not trigger the rule.
+The recognized DOI marker is removed before the numeric boundary check so
+`DOI10/abcfake` retains the required refusal alongside `doi_10/abcfake`
+and `doi=10/abcfake`.
+
+F2: remove every parsed identifier from the reference and apply the marker
+rule to the remaining text. A real DOI cannot conceal a second unparseable
+identifier. Parsed identifiers still undergo the unchanged registration lookup.
+Their own remaining `doi:` prefixes alone do not cause a refusal. A reference
+with no parsed identifiers retains the existing explicit-marker check.
+This supersedes the preceding addendum's title/page positive controls: a
+remaining Doi marker plus a separate page token `10.` now refuses even when
+another, registered DOI is present. This is the required lexical rule; no
+inference about bibliographic intent is added.
+
+F3: the DOI marker's leading boundary excludes letters and digits, admitting
+underscore separators symmetrically. `x_doi` and `ref_doi` now receive the
+same checks as the existing trailing-underscore forms.
+
+### R-042 — F1 changes and acceptance
+
+| Existing behavior changed | Acceptance red at parent, green after repair |
+|---|---|
+| Year endings interpreted as numeric DOI tokens | EmitReportTests.test_doi_reference_forms: author/title Doi controls with period/slash year endings emit without lookup |
+| A parsed DOI suppresses malformed-marker refusal elsewhere in the reference | Same test: valid DOI plus malformed identifier in either order refuses and preserves absent/existing report output |
+| Underscore-prefixed markers evade refusal | Same test: x_doi and ref_doi forms refuse before rendering |
+
+The existing separator sweep, valid DOI emission and ten clean projects remain
+covered. The development clean result is zero false flags. Replay records remain
+**synthetic protocol fixtures**, proving protocol logic only. No production
+transport switch, parser option or import is added. Test summaries and the two
+expectation changes are in `docs/implementation/row_8_change_report.md`.
+
+All prior residuals remain **NOT met**, including live DOI capture, live sealed
+class-9 measurement, sealed/public catalogue measurement, PMID/literature wiring,
+broader artifact liveness, class 10, stage-03/pilot emission wiring, pilot
+measurement, step B and protected-change approval. No row exit is claimed.

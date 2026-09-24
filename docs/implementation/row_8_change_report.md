@@ -1901,3 +1901,191 @@ Hours and metered dollars: unknown, not zero.
 ## Owner rulings needed
 
 None.
+
+
+## Step A round F1 (review E1 corrections)
+
+Starting commit, recorded before edits:
+`12b26f7843a1cb6d48495279656b3c985f6a2e75`.
+Item 8 was decided under the owner's standing delegation (23 Sep 2026).
+This round applies only E1 F1, F2 and F3. No preceding report or decision bytes
+are rewritten. No catalogue, fixture hash, acceptance threshold or test count
+changes. The decision index was regenerated and remains byte-identical.
+
+| Requirement / finding | Changed files | Acceptance | Result / red-on-fault |
+|---|---|---|---|
+| R-125 DOI half, E1 F1 | gars/_system/resolve_citation.py; gars/tests/test_emit_report.py | EmitReportTests.test_doi_reference_forms: author/title Doi plus period/slash year endings; existing adjacent DOI token sweep | Green; numeric boundary removal red, 3 failures |
+| R-125 DOI half, E1 F2 | gars/_system/resolve_citation.py; gars/_system/claims/evidence_check.py; gars/tests/test_emit_report.py | Same test: remove parsed identifiers and check remaining markers; mixed valid/malformed references in both orders; absent/existing output preserved | Green; residual check bypass red, 4 failures |
+| R-125 DOI half, E1 F3 | gars/_system/resolve_citation.py; gars/tests/test_emit_report.py | Same test: x_doi and ref_doi with equals, colon and underscore separators | Green; original leading word boundary restored red, 3 failures |
+| R-042 | docs/decisions/0101-row-8-defect-catalogue-and-detectors.md; this report | Dated append-only addendum and expectation table | Recorded; old bytes preserved |
+
+Protected files touched, one per line:
+
+- `gars/_system/resolve_citation.py`
+- `gars/_system/claims/evidence_check.py`
+
+The numeric boundary excludes a preceding letter or digit. Removing the recognized
+DOI marker before that check retains the explicitly required `DOI10/abcfake`
+refusal. The marker's leading boundary now admits underscores. After parsed
+identifiers are removed, remaining marker/numeric pairs refuse emission;
+registration lookup still checks every parsed identifier. Clean author/title
+controls include APA-style `(2010).`, direct `2010.` and `2010/2011` endings.
+
+### Expectation changes
+
+| File / test | Prior expectation | Required expectation and reason |
+|---|---|---|
+| gars/tests/test_emit_report.py / test_doi_reference_forms: Title mentions DOI; pages 10. plus registered DOI | Emit and perform one lookup | Refuse citation_unverifiable: the remaining title marker and page token still trigger item 8 F2; the real DOI is still looked up for both absent/existing output trials |
+| gars/tests/test_emit_report.py / test_doi_reference_forms: Journal of Doi Studies, p. 10. plus registered DOI | Emit and perform one lookup | Same required residual-text refusal and lookup assertions |
+
+These two lexical controls do not change the ten pinned clean projects, which
+still produce zero false flags. No scientific relevance judgment is inferred.
+
+### Commands and measured summaries
+
+Every command ran from the repository root, without changing directory.
+`TMPDIR`, `TEMP` and `TMP` were set to the scratch twin using `${PWD}-scratch`.
+Python: `Python 3.13.5` (including the evaluation harness, satisfying >=3.9).
+Only one full suite ran. No network or actual sealed fixtures were used.
+`rg` was unavailable; repository reads used grep and direct file reads instead.
+
+`GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py`
+
+```text
+Ran 491 tests in 81.865s
+OK (skipped=79)
+```
+
+`python3 tests/check_contracts.py`
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`
+
+```text
+suite: 491 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`
+
+```text
+Ran 44 tests in 37.607s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`
+
+```text
+clean — graded=1
+```
+
+`python3 tests/test_planted_defects.py`
+
+```text
+Ran 18 tests in 4.468s
+OK (skipped=1)
+```
+
+`python3 gars/tests/test_citation_resolution.py`
+
+```text
+Ran 5 tests in 0.007s
+OK (skipped=1)
+```
+
+`python3 gars/tests/test_emit_report.py`
+
+```text
+Ran 10 tests in 1.084s
+OK
+```
+
+Development EXIT lines only:
+
+```text
+planted-defects development (producer-authored, unsealed): 9/10 classes (placeholder 10 counted planted, not caught)
+false flags (producer-authored clean projects): 0/10
+graded 19 of 19 development projects seen
+class 6: measured with --verify-integrity full; stage 01 default is none
+```
+
+The focused command is
+`python3 gars/tests/test_emit_report.py EmitReportTests.test_doi_reference_forms`.
+A scratch-only driver, `python3 "${TMPDIR}/f1_e1_regressions.py"`, copied the
+named emission modules, generator, test support and synthetic response fixture
+into a disposable tree. It loaded the two production modules from the parent
+with `git show`, ran the current regression, restored byte backups, then
+independently reversed each fix and restored bytes again. No source checkout
+was mutated, no Git checkout/reset was used, and no live transport was selected.
+Its exact summaries follow:
+
+```text
+parent with current regressions: RED
+Ran 1 test in 0.850s
+FAILED (failures=11)
+F1 numeric boundary removed: RED
+Ran 1 test in 0.674s
+FAILED (failures=3)
+F2 residual check bypassed: RED
+Ran 1 test in 0.827s
+FAILED (failures=4)
+F3 leading boundary restored: RED
+Ran 1 test in 0.817s
+FAILED (failures=3)
+restored current code: GREEN
+Ran 1 test in 0.733s
+OK
+E1 regression faults: 3/3 RED; parent RED; restored GREEN
+```
+
+The first in-place test-only probe reported `FAILED (failures=9)` on the parent.
+The first implementation probe reported `FAILED (failures=2)` because the
+updated refusal control had not removed its preceding trial's output; that test
+setup was corrected. The final disposable parent probe above uses all final
+controls and reports eleven behavioral failures; the restored code is green.
+
+Additional verification: `git diff --check` clean; all changed Python files
+parse as Python 3.6 syntax with `ast.parse(feature_version=(3, 6))`; added
+lines contain no literal home-marker character (checked with `chr(126)`).
+The decision and report preserve their parent bytes as exact prefixes. The
+row-7 invariant command returns no diff:
+
+```bash
+git diff dc6b803 -- gars/_system/claims/render_report.py gars/_system/claims/claims.sql gars/_system/claims/report_template.md
+```
+
+Commit `a8b54e5` used another identity; it is not rewritten and stays as it is
+(append-only). This commit uses exactly the repository-configured identity,
+read with `git config user.name` and `git config user.email`, without overrides.
+Only the five named changed files are staged; the commit message is read from
+a scratch-twin file. No push, remote, self-approval or merge.
+Hours and metered dollars: unknown, not zero.
+
+### Residual gaps
+
+- **NOT met:** live DOI capture/resolution or live sealed class-9 measurement.
+  Replay records remain **synthetic protocol fixtures**, proving protocol logic
+  only; class 9's replay result is never a live measurement.
+- **NOT met:** actual sealed catalogue measurement, sealed >=9/10,
+  external_human_seal and public catch-rate evidence. Row 8 exit is not claimed.
+- **NOT met:** database verification for rows 5 and 7. Row05DatabaseTests and
+  ClaimConstraintTests were skipped with containers disabled. Live pipelines,
+  HPC and actual Python 3.6 execution remain unverified.
+- **NOT met:** rerun of the earlier 43-fault campaign. This round ran only the
+  three E1 reversal faults. The unchanged campaign helper's malformed-marker
+  mutation still names the pre-F2 conditional; it needs an anchor update before
+  that campaign can run again, outside this round's item-8-only changes.
+- **NOT met:** PMID/E-utilities, literature-role wiring, R-069 beyond claim
+  evidence, class 10, stage-03/pilot emission wiring, pilot measurement and
+  step B. Direct renderer calls remain unguarded.
+- **NOT met:** system/catalogue edit containment, scientific DE-model validity,
+  real-DOI relevance, swaps without library_index, fresh independent review,
+  protected-change approval, deployment path-scan acceptance and merge.
+
+## Owner rulings needed
+
+None.

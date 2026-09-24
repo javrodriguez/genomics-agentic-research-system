@@ -90,7 +90,7 @@ def main(argv=None, transport=None):
                         problems.add('evidence_missing')
                         continue
                     identifiers = resolve_citation.dois(reference)
-                    if not identifiers and resolve_citation.mentions_doi(reference):
+                    if resolve_citation.mentions_doi(reference):
                         problems.add('citation_unverifiable')
                     for identifier in identifiers:
                         problem = resolve_citation.resolve(identifier, transport=transport)

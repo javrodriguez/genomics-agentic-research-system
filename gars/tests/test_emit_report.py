@@ -101,7 +101,9 @@ class EmitReportTests(unittest.TestCase):
         # Neither adjacency nor order is required by the general rule.
         references.extend(('Title mentions DOI; pages 10. No identifier supplied',
                            'Pages 10. Journal of Doi Studies',
-                           '10/abcfake precedes the DOI token'))
+                           '10/abcfake precedes the DOI token',
+                           'x_doi=10/abcfake', 'ref_doi=10/abcfake',
+                           'x_doi:10/abcfake', 'ref_doi_10/abcfake'))
         for reference in references:
             with self.subTest(reference=reference):
                 self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
@@ -116,7 +118,8 @@ class EmitReportTests(unittest.TestCase):
         # Ordinary title/journal prose plus a page number and no identifier is
         # intentionally unverifiable under ruling 7, even if bibliographically
         # legitimate: the general rule requires a parseable DOI. Adding the
-        # valid recorded DOI must emit and actually resolve that identifier.
+        # valid recorded DOI still resolves, but cannot hide the remaining
+        # marker and page token under item 8's residual-text rule.
         for prose in ('Title mentions DOI; pages 10.', 'Journal of Doi Studies, p. 10.'):
             self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = prose
             self.save()
@@ -130,9 +133,35 @@ class EmitReportTests(unittest.TestCase):
             def recorded(url):
                 requests.append(url)
                 return replay(url)
-            self.assertEqual(self.emit(recorded), (0, ''))
-            self.assertEqual(requests, [
-                'https://api.crossref.org/works/' + quote(generator.REAL_DOI, safe='')])
+            with self.subTest(residual_prose=prose):
+                self.out.unlink()
+                self.refuse('citation_unverifiable', transport=recorded)
+                self.assertEqual(requests, [
+                    'https://api.crossref.org/works/' + quote(generator.REAL_DOI, safe='')] * 2)
+
+        # E1 F2: a real DOI cannot conceal a second, unparseable identifier.
+        for reference in ('doi:' + generator.REAL_DOI + '; doi = {10/abcfake}',
+                          'DOI-10/abcfake; registered DOI: ' + generator.REAL_DOI):
+            with self.subTest(mixed_reference=reference):
+                self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
+                self.save()
+                if self.out.exists():
+                    self.out.unlink()
+                self.refuse('citation_unverifiable')
+
+        # E1 F1: a year ending in 10 is not a numeric DOI token, even when
+        # an author or title supplies the marker word. No lookup is needed.
+        for reference in ('Doi, T. (2010). Synthetic biology methods.',
+                          'Smith, J. (2010). Doi in synthetic biology.',
+                          'Doi, T. 2010. Synthetic biology methods.',
+                          'Smith, J. 2010. Doi in synthetic biology.',
+                          'Doi T. 2010/2011. Synthetic methods.'):
+            with self.subTest(year_reference=reference):
+                self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
+                self.save()
+                with patch.object(emitter.evidence_check.resolve_citation, 'resolve') as lookup:
+                    self.assertEqual(self.emit(), (0, ''))
+                    lookup.assert_not_called()
 
         reference = '10.1000.10/gars-fabricated-subdivided'
         requests = []

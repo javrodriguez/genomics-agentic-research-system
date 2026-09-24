@@ -40,13 +40,22 @@ def doi(reference):
 
 
 def mentions_doi(reference):
-    # Keep explicit resolver markers, including malformed identifiers.
-    explicit = re.search(r'\bdoi(?::|\.org\b)', reference, re.I)
-    # DOI and a numeric token may occur anywhere, in either order. Treat an
-    # underscore or an immediately attached numeric DOI token as a boundary,
-    # so removing separator whitespace cannot evade the same lexical rule.
-    marker = re.search(r'\bdoi(?=\b|_|10[./])', reference, re.I)
-    numeric = re.search(r'10[./]', reference)
+    # Check what remains after every parsed identifier is removed: one valid
+    # DOI cannot conceal another, unparseable DOI in the same reference.
+    identifiers = dois(reference)
+    for identifier in identifiers:
+        reference = reference.replace(identifier, ' ')
+    # A resolved DOI may leave its own explicit marker behind. Preserve the
+    # original malformed-marker refusal when no identifier could be parsed.
+    explicit = not identifiers and re.search(
+        r'(?<![0-9A-Za-z])doi(?::|\.org\b)', reference, re.I)
+    # Both sides admit underscore separators; attached numeric tokens retain
+    # the empty-separator spelling. Remove markers before checking numeric
+    # boundaries so DOI10/x is checked while the year 2010. is not.
+    pattern = r'(?<![0-9A-Za-z])doi(?=\b|_|10[./])'
+    marker = re.search(pattern, reference, re.I)
+    numeric = re.search(r'(?<![0-9A-Za-z])10[./]',
+                        re.sub(pattern, ' ', reference, flags=re.I))
     return bool(explicit or (marker and numeric))
 
 
