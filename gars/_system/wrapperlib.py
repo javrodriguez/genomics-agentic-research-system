@@ -17,6 +17,7 @@ import pathlib
 import os
 import re
 import shutil
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -527,6 +528,30 @@ def samplesheet_samples(sheet_path, column=0):
     return sorted({l.split(",")[column] for l in lines[1:] if l.strip()})
 
 
+# One preparation process; values come from the generator that consumed them, R9.
+_PREPARE_EXECUTION = {}
+
+
+def execution_evidence(substage, descriptor, body):
+    root = ex.config_root_for(substage)
+    repo = Path(__file__).resolve().parents[2]
+    paths = [('executor_descriptor', ex.descriptor_path(root))]
+    resolved = {'backend': descriptor.get('name')}
+    # Read the already-resolved argv supplied by the wrapper, never guess a sibling.
+    # This also preserves the two wrappers with a literal apptainer profile and the
+    # local descriptor's wrapper-selected fallback config.
+    tokens = shlex.split(body.replace('\\\n', ' '))
+    if 'nextflow' in tokens and 'run' in tokens:
+        config = Path(tokens[tokens.index('-c') + 1])
+        paths.append(('nextflow_config', config))
+        resolved.update(nextflow_config=config.name,
+                        nextflow_profile=tokens[tokens.index('-profile') + 1]
+                        if '-profile' in tokens else '')
+    entries = [dict(role=role, path=os.path.relpath(str(path.resolve()), str(repo)),
+                    sha256=sha256(path)) for role, path in paths if path.is_file()]
+    return {'execution_config': entries, 'execution_config_resolved': resolved}
+
+
 def write_submit_sh(substage, workspace_root, cfg, project_name, assay, body):
     """The batch script: directives from compute.*, the environment, the requeue guard,
     then the wrapper-specific body. Generated, never agent-written (decision 0011).
@@ -542,6 +567,7 @@ def write_submit_sh(substage, workspace_root, cfg, project_name, assay, body):
       resume could not do this; plain Nextflow can — decision 0028.)
     """
     descriptor = ex.load(ex.config_root_for(substage))
+    _PREPARE_EXECUTION[str(Path(substage).resolve())] = execution_evidence(substage, descriptor, body)
     directives = "".join(
         line + "\n" for line in
         ex.header_lines(None, cfg, project_name, assay, substage, descriptor=descriptor))
@@ -637,6 +663,9 @@ def write_reproducibility(substage, assay, checkout, inputs, params):
                                and 'samplesheet' in inputs and 'config' in inputs else 'downstream-v1')
     manifest['idempotency_key'] = input_key(substage, manifest)
     manifest.update(prepare_manifest_facts(substage, assay, inputs))
+    evidence = _PREPARE_EXECUTION.pop(str(Path(substage).resolve()), None)
+    if evidence is not None:
+        manifest.update(evidence)
     script_path = substage / 'submit.sh'
     script = script_path.read_text(encoding='utf-8')
     script = re.sub(r'^# idempotency_key=[0-9a-f]+\n', '', script, flags=re.M)

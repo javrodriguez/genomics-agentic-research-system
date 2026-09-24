@@ -399,6 +399,10 @@ exit_file=stage/'fixture.exit';exit_file.write_text('0\\n')
         all_groups.update(containers=[{'process':'FIXTURE','image':'fixture@sha256:'+'a'*64,'digest':'sha256:'+'a'*64}],
             resources={'Elapsed':'00:01:00','MaxRSS':'2048K','AllocCPUS':'4'},approvals=[{'id':'fixture-approval','sha256':'a'*64}],
             design_check={'path':'design.json','sha256':'b'*64},failure_class='workflow',backend='slurm',venue='slurm')
+        # R9: this synthetic all-groups case changes local -> Nextflow, so its
+        # positive control must also supply Nextflow's required execution file.
+        all_groups['execution_config'].append({'role':'nextflow_config',
+            'path':'fixture/nextflow.config', 'sha256':'c'*64})
         for complete in (manifest,all_groups):
             self.assertEqual(self.check_manifest(complete)[0],0)
             for group in mc.grade(complete)['groups']:

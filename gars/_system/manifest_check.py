@@ -71,7 +71,18 @@ def group_present(number, m, schema):
     if number == 2:
         return all(text_present(m.get(k)) for k in ('wrapper','pipeline_commit','workflow_name','workflow_version','gars_commit'))
     if number == 3:
-        return isinstance(m.get('params'), dict) and parameter_present(m['params']) and digest(m.get('config_sha256'))
+        entries = m.get('execution_config')
+        valid = (isinstance(entries, list) and bool(entries) and
+                 all(recorded_file(e) and e.get('role') in
+                     ('executor_descriptor', 'nextflow_config') and
+                     not Path(e['path']).is_absolute() for e in entries))
+        roles = [e['role'] for e in entries] if valid else []
+        valid = (valid and len(roles) == len(set(roles)) and
+                 'executor_descriptor' in roles and
+                 (m.get('predicate_facts', {}).get('wrapper_kind') != 'nextflow' or
+                  'nextflow_config' in roles))
+        return (isinstance(m.get('params'), dict) and parameter_present(m['params']) and
+                digest(m.get('config_sha256')) and valid)
     if number == 4:
         rows = m.get('containers')
         return (isinstance(rows, list) and bool(rows) and all(isinstance(r, dict) and

@@ -27,7 +27,8 @@
       "class": "required",
       "fields": [
         "params",
-        "config_sha256"
+        "config_sha256",
+        "execution_config"
       ],
       "name": "parameters (`params.yaml`) and `config_sha256`",
       "number": 3,

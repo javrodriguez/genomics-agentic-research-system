@@ -776,3 +776,337 @@ Only this report is staged with `git add -- docs/implementation/row_6_change_rep
 The commit message is read with `git commit -F ../gars-row-6-scratch/row6b-stop-commit-message.txt`.
 The scope audit verifies the original report as an exact byte prefix and no
 other changed tracked paths. No remote is added; no push, approval or merge occurs.
+
+## Owner ruling answered (step B (the reproduction build))
+
+2026-09-24, round **ruling-b**, on parent `1e2e560`. The supplied ruling is
+**R9 — the lane, under the owner's standing delegation of 23 September 2026**;
+it is not an independent review and is never quoted as additional owner words.
+The earlier report is preserved as an exact byte prefix. Records 0095 and 0096
+remain byte-identical. Record 0097 did not exist at this round's parent; the new
+record states the lane's specification and includes a dated R9 addendum.
+
+### B-1 answered (R9)
+
+Original question, preserved:
+
+**B-1: authorize or supply a prerequisite that records execution configuration at
+original prepare time.** The evidence above shows that replay from the manifest
+alone cannot recover the original Nextflow executor settings under the current
+writer. The Step B boundary forbids changing that writer or its wrapper callers.
+This is the producer's finding and proposed resolution, not an owner ruling.
+
+- **A: authorize a narrow prerequisite to capture the resolved executor descriptor
+  and the selected Nextflow config as immutable, hash-bound prepare evidence.**
+  The likely edit surface is `gars/_system/wrapperlib.py`, necessary wrapper
+  prepare callers and their tests, all currently outside Step B's boundary.
+  Preserve Step A's group classifications, predicates and sentinels. Require a
+  named replay refusal for older manifests lacking the original evidence; do not
+  retrofit them by guessing from today's files. Add R-042 tests showing that
+  changed Groovy/descriptor settings cannot silently replay. The exact format and
+  authorized file list must be settled before implementation resumes.
+- **B: provide that prerequisite in a separate owner-authorized change**, then
+  resume the reproduction half on top of it with the current Step B boundary.
+
+R9's answer: **Option A**, narrowed to wrapperlib.py, group 3's execution_config
+field, the checker support for that field, and tests, beyond brief B's files.
+The common submit-script generator captures the descriptor and actual Nextflow
+config/profile argv that prepare uses. It hands immutable file hashes and resolved
+values to the unchanged write_reproducibility signature. No wrapper call site or
+idempotency-key formula changes. Old manifests lack the required group-3 evidence;
+the instrument names the refusal instead of guessing today's configuration.
+R9 closes B-1. The separate newly demonstrated samplesheet prerequisite B-2 below
+is not covered by this execution-configuration ruling.
+
+## Step B: reproduction
+
+2026-09-24 continuation: the instrument, fixture, tolerance parser/comparator and
+R9 execution evidence are implemented. **Step B is not fully closed:** replay of
+scrna-qc-cluster stops for B-2. The owner's two institutional Slurm re-runs remain
+unmeasured; only the local fixture result is the instrument's self-test.
+
+### Requirements and acceptance
+
+| Requirement | Changed files | Test | Result / red-on-fault |
+|---|---|---|---|
+| R-091 real prepare → executor submit/status → real collect; two fresh fixture runs | scripts/rerun_check.py; gars/tests/fixtures/rerun-fixture/rerun_fixture.py; gars/tests/test_rerun_check.py | test_instrument_self_test | Instrument self-test only; nine fault witnesses below |
+| Exact bytes, numeric canonicalization, named pre-committed threshold, strict default | scripts/rerun_check.py; gars/_references/tolerances.yaml | test_numeric_threshold_and_canonicalization; test_byte_change_one_of_two; test_unlisted_defaults_to_exact_bytes; test_tolerance_refusals | Under threshold green, over threshold red; planted byte change yields reproduction: 1/2; faults 1–4 red: yes |
+| No incomplete/drifted/failed original, no silently omitted output | scripts/rerun_check.py; gars/tests/test_rerun_check.py | test_all_refusals_and_contract_agreement; test_slurm_unavailable; test_instrument_self_test | Refusals create no output folder; exact OUTPUTS inventory covered; faults 5–7 red: yes |
+| R9 / R-042 immutable prepare execution files | wrapperlib.py; manifest_schema.json; manifest_check.py; tests | test_execution_config_immutable_and_drift_refused; test_execution_config_shapes; test_all_real_wrapper_repreparations_and_execution_evidence | Descriptor/Groovy drift refused; both paths retain evidence at collect; old manifests grade group 3 missing; faults 8–9 red: yes |
+| Real-wrapper re-preparation equality | gars/tests/test_rerun_check.py | test_all_real_wrapper_repreparations_and_execution_evidence | All ten wrappers × both fixture backends preserve params, config hash, commands.sh hash and key in place. Fresh-folder prepare verified for nine × both backends; scrna-qc-cluster exposes B-2 |
+| R-042 records, counts and status | 0097; generated CONTEXT; report; README; DEVELOPMENT; test_manifest_groups.py positive fixture | Direct modules, whole suite, contracts and count checks | Summaries below; no real-run evidence promotion |
+
+The only tolerance entry is for the fixture's numeric TSV. It documents deliberate
+row/column shuffling and noise bounded by 1e-7 per cell; the threshold is 0.000001.
+Each disposable self-test checkout commits the tolerance file before executing the
+two re-runs; a changed uncommitted file refuses. The actual fixture seed comes from
+os.urandom(16) at prepare, is recorded in the manifest, is passed to the worker,
+and is independently checked against the worker's seed.json. No production wrapper
+tolerance or scientific threshold is invented. The comparator retains both hashes
+but does not use hashes to decide numeric tolerance.
+
+### Protected files touched in this round
+
+- gars/_system/wrapperlib.py — capture prepare's execution evidence only.
+- gars/_references/manifest_schema.json — group 3's field list only.
+- gars/_system/manifest_check.py — grade the new group-3 field only.
+- gars/_references/tolerances.yaml — fixture-only entry, for the owner's 0099.
+
+No wrapper call site, executor, guard, settings, evaluator, benchmark, CI, study,
+template, tool registry or pin changes. No 0098/0099 is written. The owner's
+protected-path approval at merge is not supplied or claimed by this producer.
+
+### Expectation changes
+
+| Earlier fixture/behavior | Required change | Why assertions remain meaningful |
+|---|---|---|
+| The all-groups positive control changes local to Nextflow but has only a descriptor | Add one synthetic nextflow_config entry to that synthetic manifest | R9 makes it required; every positive, field-removal and predicate-independence assertion is retained |
+| Old complete manifests have no execution_config | Group 3 now grades missing; rerun_check refuses no execution config recorded | Explicit R9 migration; no sentinel or classification changes |
+
+The first full run printed `Ran 488 tests in 314.595s` and
+`FAILED (failures=1, skipped=73)`: the all-groups synthetic positive control above.
+It was repaired by adding evidence, not by weakening the checker or an assertion.
+The final required checks are recorded below. A preliminary direct run briefly
+overlapped that initial suite; its results are not used as the final sequential
+verification. No threshold or guard was weakened.
+
+### Red-on-fault evidence
+
+Each plant was made only in its own disposable scratch copy. Each named test
+returned exit 1 with unittest `FAILED (failures=...)`; syntax/import errors were
+rejected for these fault witnesses. No mutation remains in production.
+
+| # | Plant | Named test in gars/tests/test_rerun_check.py | Red-on-fault seen |
+|---|---|---|---|
+| 1 | numeric_tolerance compared by SHA-256 | RerunCheckTests.test_numeric_threshold_and_canonicalization | yes; tolerance-positive assertion fails |
+| 2 | byte_stable compared after canonicalization | RerunCheckTests.test_byte_change_one_of_two | yes; byte-order-only change must yield reproduction: 1/2 |
+| 3 | unlisted output defaults to numeric | RerunCheckTests.test_unlisted_defaults_to_exact_bytes | yes; strict-default assertion fails |
+| 4 | cause/evidence check removed | RerunCheckTests.test_tolerance_refusals | yes; named refusal assertion fails |
+| 5 | incomplete-manifest refusal removed | RerunCheckTests.test_all_refusals_and_contract_agreement | yes; checker/refusal agreement fails |
+| 6 | output silently skipped | RerunCheckTests.test_instrument_self_test | yes; complete comparison/self-test fails |
+| 7 | --runs 2 executes once | RerunCheckTests.test_instrument_self_test | yes; run count/result fails |
+| 8 | execution-config drift ignored | RerunCheckTests.test_execution_config_immutable_and_drift_refused | yes; named drift refusal fails |
+| 9 | execution_config omitted at prepare | RerunCheckTests.test_execution_config_immutable_and_drift_refused | yes; completed fixture fails required group 3 |
+
+`RED-ON-FAULT: 9/9 observed`
+
+The parent checks copy only the new direct test module into `git archive` trees:
+
+```text
+PARENT 94249c5: new direct module red; exit 1; implementation prerequisite absent
+PARENT 2f891d8: new direct module red; exit 1; implementation prerequisite absent
+```
+
+These are explicitly **import-level reds**, with missing rerun_check.py, not
+claims that old implementations exercised the new assertions. The nine fault
+plants separately establish assertion-level failure sensitivity.
+
+### B-2 evidence: in-place equality does not establish fresh replay
+
+The real scrna-qc-cluster prepare consumes a samplesheet and collect checks its
+sample set. The wrapper's write_reproducibility call supplies only config and
+h5ad. Its completed synthetic manifest grades complete, but a fresh project built
+only from its manifest lacks that samplesheet. The real wrapper refuses before
+submission on both fixture backends. Borrowing an unrecorded sibling file would
+violate replay from the manifest and evade the recorded-input hash check.
+
+The direct real-wrapper regression prints:
+
+```text
+PROBE scrna-qc-cluster local: fresh real prepare refuses no samplesheet
+REPLAY BLOCKED scrna-qc-cluster local: samplesheet absent from manifest inputs
+PROBE scrna-qc-cluster slurm: fresh real prepare refuses no samplesheet
+REPLAY BLOCKED scrna-qc-cluster slurm: samplesheet absent from manifest inputs
+```
+
+The instrument refuses this case with
+`manifest lacks required samplesheet input: scrna-qc-cluster` before creating the
+output directory. B-2 was identified during fresh-project validation in this
+round; it was not included in the preceding execution-configuration probe. It
+has been put to the owner; no authorization has been received or inferred.
+
+### Final verification commands and summaries
+
+Python **3.13.2**; stdlib implementation and Python 3.6 grammar checks passed.
+Python 3.6 runtime execution is not claimed. The final verification commands ran
+sequentially, with no overlapping suite. TMPDIR, TEMP and TMP use the designated
+sibling scratch directory; logs are retained there under `r9-final-`.
+
+```bash
+export TMPDIR="$PWD/../gars-row-6-scratch/"
+export TEMP="$TMPDIR" TMP="$TMPDIR"
+export PYTHONDONTWRITEBYTECODE=1
+python3 ../gars-row-6-scratch/r9-faults.py
+python3 ../gars-row-6-scratch/r9-parent.py
+GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py
+python3 tests/check_contracts.py
+python3 tests/check_counts.py
+python3 evals/test_harness.py
+python3 evals/check_results.py --controls --lexicon
+python3 gars/tests/test_rerun_check.py
+python3 gars/tests/test_manifest_groups.py
+bash docs/decisions/build_index.sh
+```
+
+`r9-verify.py` in scratch invokes this sequence with each stdout/stderr captured
+separately. `r9-faults.py` copies tracked files plus this round's new sources into
+disposable scratch repositories and changes only the listed behavior for each
+plant. `r9-parent.py` extracts the two named Git archives and copies only the new
+test module. Parent import reds and fault assertion reds are deliberately distinct.
+The index builder reports its output using a local absolute path; that raw line
+is kept only in the scratch log, never copied into a committed record.
+
+`GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py`
+
+```text
+collected 226 tests from tests
+collected 262 tests from gars/tests
+MEASURE instrument self-test run 1: max_absolute_error=4.8673E-8; bytes differ
+MEASURE instrument self-test run 2: max_absolute_error=1.25052E-7; bytes differ
+reproduction: 2/2
+EXIT instrument self-test (fixture, local): reproduction 2/2
+Ran 488 tests in 351.033s
+OK (skipped=73)
+```
+
+`python3 tests/check_contracts.py`
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`
+
+```text
+collected 226 tests from tests
+collected 262 tests from gars/tests
+suite: 488 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`
+
+```text
+Ran 44 tests in 130.758s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`
+
+```text
+clean — graded=1
+```
+
+`python3 gars/tests/test_rerun_check.py`
+
+```text
+Ran 11 tests in 35.113s
+OK
+MEASURE instrument self-test run 1: max_absolute_error=1.59673E-7; bytes differ
+MEASURE instrument self-test run 2: max_absolute_error=1.16232E-7; bytes differ
+reproduction: 2/2
+EXIT instrument self-test (fixture, local): reproduction 2/2
+```
+
+`python3 gars/tests/test_manifest_groups.py`
+
+```text
+Ran 14 tests in 40.840s
+OK
+EXIT manifest completeness nfcore-atacseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-atacseq-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-chipseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-chipseq-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-cutandrun-wrapper local: 15/15
+EXIT manifest completeness nfcore-cutandrun-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-methylseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-methylseq-wrapper slurm: 16/16
+EXIT manifest completeness rnaseq-de local: 14/14
+EXIT manifest completeness rnaseq-de slurm: 15/15
+EXIT manifest completeness nfcore-rnaseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-rnaseq-wrapper slurm: 16/16
+EXIT manifest completeness scrna-qc-cluster local: 14/14
+EXIT manifest completeness scrna-qc-cluster slurm: 15/15
+EXIT manifest completeness nfcore-scrnaseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-scrnaseq-wrapper slurm: 16/16
+EXIT manifest completeness spatial-cluster-count local: 13/13
+EXIT manifest completeness spatial-cluster-count slurm: 14/14
+EXIT manifest completeness nfcore-spatialvi-wrapper local: 14/14
+EXIT manifest completeness nfcore-spatialvi-wrapper slurm: 15/15
+```
+
+The comparator also checks the original output against its recorded hash and
+symlink inventory at comparison time, so a re-run cannot change the original
+artifact and thereby move its own baseline. The strict-default regression plants
+that change and requires `original output drifted`. The final run above includes
+that regression and the fixture's actual-seed binding assertions. No Row 6 test
+skipped. The 73 whole-suite skips are environment-dependent inherited skips.
+
+### Hours
+
+Measured verification/build-continuation elapsed time from the first fixture-test
+log to this report assembly: **0.51 hours**. Earlier reading and implementation
+before that log were not timed. This is wall time, not human labor time.
+
+### Commit procedure and scope audit
+
+One round commit, with an explicit thirteen-file `git add --` list and the message
+read from `../gars-row-6-scratch/r9-commit-message.txt`. The scope audit checks the
+report's original bytes as an exact prefix; the supplied ruling stays unchanged
+and untracked. It checks records 0095/0096 and the frozen evaluator/guard/settings
+files byte for byte, group 3 as the schema's sole edit, unchanged input_key and
+check_pipeline functions, no 0098/0099, Python 3.6 grammar, and absence of session
+identifiers in additions. No remote, push, merge, pull request, installation or
+owner approval occurs.
+
+## Review round ruling-b fixes
+
+2026-09-24. This round applies a lane ruling supplied as the REVIEW file, not an
+independent review. There are no BLOCKER/MAJOR/MINOR/NOTE classifications to infer.
+
+| Finding / requirement | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| B-1 / R9: replay lacked immutable execution configuration | wrapperlib.py; manifest_schema.json; manifest_check.py; 0097; index; tests | execution-config drift, older-manifest refusal, real-wrapper equality and collect preservation | closed; yes, faults 8–9 fail their named regression |
+| Step B comparison instrument and self-test | rerun_check.py; fixture; tolerances.yaml; test_rerun_check.py | instrument self-test, refusal matrix, threshold edges, output sweep | implemented for available manifest inputs; yes, faults 1–7; the fixture result is not the owner's n = 2 |
+| Synthetic group-removal positive control under R9 | test_manifest_groups.py | test_group_removal_sweep | fixed; yes, original missing Nextflow evidence made the full suite red; every assertion remains |
+| Current counts/status and durable account | README; DEVELOPMENT; 0097; index; report | check_counts; scope audit; required verification above | counts pass; red-on-fault no, documentation follows measured results |
+| B-2: scrna-qc-cluster requires an unrecorded samplesheet | instrument's named refusal; new real-wrapper probe; 0097; report | real fresh-project prepare on both fixture backends | stopped for the owner; red-on-fault no, this is a measured missing prerequisite, not a passing replay |
+
+## Owner rulings needed
+
+**B-2: authorize or supply the missing scrna-qc-cluster samplesheet input.**
+R9 closes execution configuration but preserves existing wrapper calls and
+idempotency-key behavior. This wrapper's real prepare/collect need its samplesheet,
+which is absent from the manifest. Replaying it from an unrecorded sibling is not
+permitted. The reproduction instrument therefore stops that case before execution.
+
+- **A: authorize the narrow input fix** in
+  `gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py`: add the consumed
+  samplesheet to write_reproducibility's inputs, with an R-042 regression and
+  migration record. This changes that wrapper's downstream idempotency key by
+  including the new input; the owner must authorize that consequence explicitly.
+  Test fresh-project replay prepare, samplesheet drift refusal, and the new key.
+- **B: retain this round's boundary and supply a separate prerequisite** with the
+  required input and key/migration behavior decided by the owner. Keep the named
+  refusal until that prerequisite is available; do not claim full Step B closure.
+
+The question has been submitted to the owner. No response is assumed from elapsed
+time. B-1 is answered above; B-2 remains the only new open ruling and stops the lane.
+
+## Residual gaps
+
+- scrna-qc-cluster replay is stopped on B-2. Nine other real wrappers have fresh
+  prepare evidence on both fixture backends, not biological re-execution evidence.
+- The owner's two real institutional Slurm re-runs, recorded only by the owner in
+  0098, are NOT measured; whole-row reproduction exit is NOT claimed.
+- §8.4 second-backend behavior, §17's ≥ 4/5 on test data, the external pilot-1 re-run,
+  real-wrapper analysis execution, and model-mediated typed claim-set equality
+  remain NOT met. No bio environment is available in the suite.
+- The owner's separate protected-path approval 0099 remains pending at merge.
+  README's Manifest completeness and re-run diff row remains unmeasured.
+- All other Step A residuals remain, including real trace/sacct and GRCh38 hashes,
+  real-run completeness, deferred stage-03/authoring manifests, row-7 rendering,
+  data-handling/registry/liveness requirements and row-2 benchmark re-pinning.
+- Python 3.6 grammar is verified; Python 3.6 runtime and real scheduler behavior are
+  not verified. No protected-path approval, push, merge or release is claimed.
