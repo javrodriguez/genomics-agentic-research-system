@@ -113,6 +113,7 @@
         "venue",
         "purpose",
         "data_class",
+        "agreement_ref",
         "input_data_location",
         "artifact_destination"
       ],

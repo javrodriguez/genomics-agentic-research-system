@@ -299,3 +299,38 @@ been established by the passing container-format tests. No threat-model exclusio
 is adopted here. The report records the review's two options for a ruling; guard
 and settings changes stop under the round-2 instruction. The owner's 0099 is not
 supplied by this producer.
+
+
+## Addendum — ruling answered on fix round 2, 2026-09-24
+
+**R12 — the lane, under the owner's standing delegation of 23 September 2026.**
+This is the lane's ruling, not the owner's words or protected-path approval.
+The two READ_ONLY patterns `projects/*/02_bioinformatics/*/run/*` and
+`projects/*/02_bioinformatics/*/run/**/*`, beside the existing completion-marker
+entry, now protect the entire pipeline output tree. Settings carries exactly
+its matching four Edit/Write denies. The existing marker and dataset.tsv entries
+are unchanged; no other guard behavior changes.
+
+F1's covered item “pass a mutable container tag off as a digest” is now backed
+by those guard lines: the real mutable-tag trace grades group 4 missing, and the
+real hook refuses session Write/Edit and shell writes to trace/version sources.
+A sibling non-run file remains writable. **Residual:** a process outside the
+guarded session can still write the run tree. This is not OS-user isolation.
+
+F8's dataset-specific refusal message is declined under the same delegation:
+the generic refusal still names the protected path. The guard diff is limited
+to the two authorized READ_ONLY lines.
+
+**R13 — the lane, under the same standing delegation.** Group 11 additionally
+requires `agreement_ref`, captured at prepare from the same machine-owned
+00_data/dataset.tsv row as purpose and data_class. Missing source evidence stays
+missing; collect cannot invent or replace it. The checker uses finalize's
+existing agreement-value validation, including its already-defined literal
+`none`; group classes, predicates and the schema sentinel table are unchanged.
+Replay calls real finalize as specified in the corresponding 0097 addendum.
+
+Affected paths in this addendum: gars/_system/guard_hook.py,
+gars/.claude/settings.json, gars/_system/wrapperlib.py,
+gars/_references/manifest_schema.json, gars/_system/manifest_check.py,
+gars/tests/test_manifest_groups.py and gars/tests/test_rerun_check.py.
+The owner's 0099 approval and D-16 confirmation remain separate obligations.

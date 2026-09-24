@@ -115,6 +115,8 @@ def require_clean_code(repo, paths, label):
 
 
 def validate_manifest(manifest, stage):
+    require('agreement_ref' in manifest and manifest['agreement_ref'] is not None,
+            'no agreement_ref recorded')
     require('execution_config' in manifest, 'no execution config recorded')
     try:
         grade = mc.grade(manifest)
@@ -215,14 +217,28 @@ def bind_project(manifest, project, info, original_project=None):
         source = original_project / evidence['path']
         target = project / '01_samplesheets' / (info['assay'] + '_design_check.json')
         target.symlink_to(source.resolve())
-    data = project / '00_data'
-    data.mkdir()
-    with (data / 'dataset.tsv').open('w', encoding='utf-8', newline='') as handle:
-        writer = csv.writer(handle, delimiter='\t')
-        keys = ['purpose', 'data_class', 'input_data_location']
-        writer.writerow(keys)
-        writer.writerow([manifest['purpose'], manifest['data_class'], manifest['input_data_location']['dataset']])
-    (project / 'HISTORY.md').write_text('# Re-run from manifest\n', encoding='utf-8')
+    # Reconstruct registration links only from the recorded dataset locations.
+    # Finalize owns the row, its validation and its read-only mode.
+    locations = json.loads(manifest['input_data_location']['dataset'])
+    require(isinstance(locations, list) and bool(locations) and
+            all(isinstance(path, str) and Path(path).is_absolute() for path in locations),
+            'dataset locations are not a recorded path list')
+    raw = project / '00_data' / info['assay'] / 'raw'
+    raw.mkdir(parents=True)
+    for location in locations:
+        source = Path(location)
+        require(source.exists(), 'dataset input unavailable: ' + location)
+        target = raw / source.name
+        require(not target.exists(), 'dataset input basename collision: ' + source.name)
+        target.symlink_to(source)
+    for name in ('CONTEXT.md', 'HISTORY.md'):
+        (project / name).write_text('# Re-run from manifest\n', encoding='utf-8')
+    result = subprocess.run([sys.executable, str(REPO / 'gars/_system/stage00_register.py'),
+        'finalize', '--project', str(project), '--data-class', manifest['data_class'],
+        '--purpose', manifest['purpose'], '--agreement-ref', manifest['agreement_ref'],
+        '--model', 'none'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    require(result.returncode == 0, 'dataset finalize failed: ' +
+            result.stdout.decode('utf-8', 'replace') + result.stderr.decode('utf-8', 'replace'))
 
 
 def validate_preparation(original, replay, old_stage, new_stage):

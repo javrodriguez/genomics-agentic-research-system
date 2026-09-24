@@ -114,3 +114,29 @@ makes it incomplete again. Existing positive fixtures now supply their check.
 Collect continues preserving every prepare field. Replay verifies the recorded
 check hash and links that evidence into the fresh project from its original
 manifest location. No check is synthesized to complete a real run.
+
+
+## Addendum — ruling answered on fix round 2, 2026-09-24
+
+R-042 implementation account for the lane's R12/R13 under the owner's standing
+delegation, recorded in the dated 0095/0097 addenda. Earlier bytes are preserved.
+Prepare adds agreement_ref from the machine-owned dataset row; absent evidence
+is null, never inferred as `none`. Group 11 requires the field and applies the
+existing finalize value grammar. Collect preserves this prepare key unchanged.
+Older completed manifests without it grade group 11 missing and replay refuses
+`no agreement_ref recorded`. Prepare and complete a new original under the new
+writer; do not retrofit a historical manifest from today's dataset row.
+
+`test_agreement_ref_is_required_prepare_evidence` checks capture, preservation,
+missing-source behavior, schema membership and missing/invalid-field grading.
+`test_collect_evidence_guard_refuses_session_writes` checks the honest mutable
+trace, real hook refusals for both evidence files, and allowed sibling control.
+The report records full-suite/guard/tool-call checks and assertion-level fault
+plants. No legitimate agent path was newly refused in those passing checks.
+
+The replay instrument self-test now creates its original registration through
+real finalize and checks every replay's three values, complete dataset bytes
+and mode 0444. Synthetic raw sources retain valid registration names instead
+of collapsing eight links onto one arbitrarily named fixture source. The replay
+refusal sweep now expects R13's specific reason for group 11; its failure and
+no-output assertions remain intact. No test threshold or guard is weakened.

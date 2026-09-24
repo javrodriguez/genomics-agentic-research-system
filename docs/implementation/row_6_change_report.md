@@ -1995,3 +1995,371 @@ and no agreement reference is guessed in this round.
   stage-03/authoring manifests, row-7 methods/rendering/claim wiring,
   data-handling/registry/liveness requirements and row-2 benchmark re-pinning.
 - Python 3.6 grammar is checked; a Python 3.6 runtime is unavailable.
+
+
+## Ruling answered (fix round 2)
+
+2026-09-24, round **ruling-rd2**, parent `e534198`, branch
+`build/gars-row-6-manifest`. The supplied file is a lane ruling under the owner's
+standing delegation of 23 September 2026, not an independent review or additional
+words attributed to the owner. This section and the dated 0095–0097 addenda follow
+the exact earlier bytes. Records 0098/0099 remain exclusively the owner's.
+
+### F1 answered (R12)
+
+The guard adds exactly the two authorized READ_ONLY patterns beside the existing
+bioinformatics completion marker: `projects/*/02_bioinformatics/*/run/*` and
+`projects/*/02_bioinformatics/*/run/**/*`. Settings adds only their four matching
+Edit/Write denies. No other guard or settings byte changes, including the existing
+dataset.tsv and completion-marker entries. The mutable-container-tag covered
+threat is backed by the run-tree guard. An outside process can still write that
+tree; this does not provide separate-user isolation.
+
+The end-to-end regression prepares and collects a real wrapper with synthetic
+execution evidence and an honest mutable-tag trace, then verifies group 4 is
+missing. The real hook returns exit 2 for Write, Edit, redirection, tee, cp, mv
+in either direction and rm against both run/pipeline_info/gars_trace.txt and
+run/versions.json. A sibling notes.txt Write returns exit 0. The full suite and
+all existing guard/tool-call modules run below; no covered legitimate agent path
+is newly refused. The patterns are neither widened nor narrowed.
+
+### F9 answered (R13)
+
+Prepare captures agreement_ref from the same machine-owned dataset row as purpose
+and data_class. The group-11 required field list and checker enforce it; collect
+preserves every prepare key. The check mirrors finalize's existing agreement-value
+rules, including its existing literal `none`. Schema sentinels, predicates and
+group classifications are unchanged. A missing or null value receives
+`no agreement_ref recorded` before replay creates its output directory or submits.
+Older originals require new prepare/completion evidence; they are not repaired.
+
+Replay now calls the real stage00_register.py finalize CLI with all three original
+values. It builds registration symlinks from the recorded dataset location list,
+using source basenames, and minimal project metadata. Finalize applies its existing
+validation and writes the mode-0444 row. There is no direct dataset.tsv write in
+the instrument and no exception to single-writer ownership. Missing locations,
+basename collisions and registration names rejected by finalize fail the attempt;
+no sample-name pattern or missing agreement is guessed. Such attempts remain in
+the requested denominator and cannot submit a job.
+
+The self-test now registers its original through finalize, retains a nontrivial
+agreement reference, and checks each replay's three values as UTF-8 bytes, the
+entire dataset.tsv bytes and mode 0444. The manifest fixtures preserve valid raw
+source basenames rather than resolving eight named links to one arbitrarily named
+file. The existing group-removal refusal sweep changes only group 11's expected
+message to R13's named reason; its failure and no-output assertions remain intact.
+
+### F8 disposition
+
+**Declined by the lane under the same delegation.** The generic guard refusal
+still names the protected path. A dataset-specific message would exceed R12's
+exact two-line guard change. F8 remains a named residual, not an unanswered ruling.
+
+## Review round ruling-rd2 fixes
+
+2026-09-24. This table answers the supplied ruling; it does not invent a new review.
+
+| Finding / requirement | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| F1 BLOCKER / R12: session can forge collect evidence | guard_hook.py; settings.json; test_manifest_groups.py; 0095/0096 addenda | test_collect_evidence_guard_refuses_session_writes; full suite and every guard/tool-call module | Closed; yes, removing exactly the two new patterns fails real-hook Write/Edit assertions after the mutable trace grades missing |
+| F9 NOTE / R13: replay was a second dataset writer | rerun_check.py; test_rerun_check.py; 0097 addendum | test_instrument_self_test; test_no_direct_dataset_write | Closed; real finalize produces identical dataset bytes/values at mode 0444; yes, adding a direct dataset.tsv write makes the grep-style regression fail |
+| R13: immutable agreement capture and required group 11 | wrapperlib.py; manifest_schema.json; manifest_check.py; test_manifest_groups.py; 0095/0096 addenda | test_agreement_ref_is_required_prepare_evidence | Closed; yes, replacing capture with null or deleting checker validation fails the named assertions |
+| R13: refuse legacy originals before execution | rerun_check.py; test_rerun_check.py; 0097 addendum | test_missing_agreement_ref_refused; existing refusal sweep | Closed; yes, deleting the named preflight refusal fails its reason assertion; output directory remains absent |
+| F8 NOTE: dataset-specific guard message | 0095 addendum; this report | Exact guard diff audit | Declined as specified; red-on-fault no, no message change is authorized |
+| Append-only records, status and exact scope | README; DEVELOPMENT; 0095–0097 addenda; this report | Decision-index rebuild; count/release checks; scope/privacy/prefix audit | Verified; red-on-fault no, documentary and scope checks |
+
+### Protected changes and compatibility
+
+Protected implementation changes are limited to guard_hook.py, settings.json,
+wrapperlib.py, manifest_schema.json and manifest_check.py. The only schema delta
+is group 11's agreement_ref field; the checker adds only its value validation.
+Production wrappers, finalize, executor, templates, tool registry, tolerances,
+pins, evaluation code, CI and study trees are unchanged. The owner's 0099 remains
+the separate protected-path approval. No legitimate guard-flow refusal required
+an additional ruling in this run.
+
+The generated decision index was rebuilt and is byte-identical. The current
+DoD table remains generated and unmeasured; release_check --check verifies it.
+README/DEVELOPMENT reflect 499 collected tests without promoting real-run evidence.
+The supplied ruling remains untracked and unchanged, as do the other pre-existing
+untracked files. No remote, push, merge, pull request, installation or download
+occurs. One commit uses the explicit changed-file list and a scratch message file.
+
+### Initial checks and corrections
+
+The two new manifest regressions initially printed `Ran 2 tests in 3.677s` and
+`OK`. An interrupted test-edit script left the old replay fixture temporarily in
+place; its targeted invocation printed `Ran 3 tests in 0.658s` and
+`FAILED (failures=1, errors=2)`. After the fixture edit was completed, the first
+full replay-module run printed `Ran 19 tests in 59.782s` and
+`FAILED (failures=1)`: the existing group-removal sweep expected the generic reason
+for group 11. R13 requires the new specific reason. That expectation was corrected,
+with the grade/refusal/no-output assertions retained. The final verification below
+supersedes these initial results. No production guard or threshold was relaxed.
+
+### Final verification commands and verbatim summaries
+
+All commands run under Python 3.13.2 with PYTHONDONTWRITEBYTECODE=1 and TMPDIR,
+TEMP and TMP set to the designated sibling scratch folder. Suites run sequentially.
+The full suite retains GARS_TEST_NO_CONTAINER=1, as in the preceding round;
+its environment skips do not count as verification. No row-6 test is skipped.
+
+Supplied ruling SHA-256: `ac507e66cb41a6cd5106478e7945d152c631ed384fb32532f4dc3439500c2944`.
+
+`GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py`
+
+```text
+EXIT instrument self-test (fixture, local): reproduction 2/2
+Ran 499 tests in 352.752s
+OK (skipped=73)
+```
+
+`python3 tests/check_contracts.py`
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`
+
+```text
+suite: 499 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`
+
+```text
+Ran 44 tests in 114.218s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`
+
+```text
+clean — graded=1
+```
+
+`python3 gars/tests/test_rerun_check.py`
+
+```text
+Ran 19 tests in 60.461s
+OK
+EXIT instrument self-test (fixture, local): reproduction 2/2
+```
+
+`python3 gars/tests/test_manifest_groups.py`
+
+```text
+Ran 17 tests in 41.294s
+OK
+```
+
+`python3 gars/tests/test_data_class_required.py`
+
+```text
+Ran 4 tests in 2.020s
+OK
+```
+
+`python3 tests/test_registry_columns.py`
+
+```text
+Ran 3 tests in 0.045s
+OK
+```
+
+`python3 tests/run_tests.py GuardHookTests`
+
+```text
+Ran 8 tests in 3.410s
+OK
+```
+
+`python3 gars/tests/test_guard_hook.py`
+
+```text
+Ran 4 tests in 1.247s
+OK
+```
+
+`python3 gars/tests/test_lifecycle_cancel.py`
+
+```text
+Ran 11 tests in 1.252s
+OK
+```
+
+`python3 gars/tests/test_lifecycle_faults.py`
+
+```text
+Ran 1 test in 36.794s
+OK
+```
+
+`python3 gars/tests/test_planted_faults.py`
+
+```text
+Ran 3 tests in 11.127s
+OK
+```
+
+`python3 gars/tests/test_policy_attacks.py`
+
+```text
+Ran 19 tests in 1.834s
+OK
+```
+
+`python3 gars/tests/test_policy_faults.py`
+
+```text
+Ran 10 tests in 0.719s
+OK
+```
+
+`python3 gars/tests/test_protected_paths.py`
+
+```text
+Ran 5 tests in 13.863s
+OK
+```
+
+`python3 gars/tests/test_stage03_execution.py`
+
+```text
+Ran 17 tests in 4.961s
+OK
+```
+
+`python3 gars/tests/test_status_writer.py`
+
+```text
+Ran 10 tests in 2.936s
+OK
+```
+
+`python3 gars/tests/test_tool_schema_refusal.py`
+
+```text
+Ran 8 tests in 0.187s
+OK
+```
+
+`python3 gars/tests/test_downstream_keys.py`
+
+```text
+Ran 3 tests in 0.143s
+OK
+```
+
+`python3 scripts/release_check.py --check`
+
+```text
+DoD cells verified: 13/13 byte-stable
+```
+
+`python3 ../gars-row-6-scratch/rd2-verify.py`:
+
+```text
+REQUIRED VERIFICATION: 22/22 commands passed
+```
+
+The direct manifest module printed all twenty named fixture exit lines:
+
+```text
+EXIT manifest completeness nfcore-atacseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-atacseq-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-chipseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-chipseq-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-cutandrun-wrapper local: 15/15
+EXIT manifest completeness nfcore-cutandrun-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-methylseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-methylseq-wrapper slurm: 16/16
+EXIT manifest completeness rnaseq-de local: 14/14
+EXIT manifest completeness rnaseq-de slurm: 15/15
+EXIT manifest completeness nfcore-rnaseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-rnaseq-wrapper slurm: 16/16
+EXIT manifest completeness scrna-qc-cluster local: 14/14
+EXIT manifest completeness scrna-qc-cluster slurm: 15/15
+EXIT manifest completeness nfcore-scrnaseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-scrnaseq-wrapper slurm: 16/16
+EXIT manifest completeness spatial-cluster-count local: 13/13
+EXIT manifest completeness spatial-cluster-count slurm: 14/14
+EXIT manifest completeness nfcore-spatialvi-wrapper local: 14/14
+EXIT manifest completeness nfcore-spatialvi-wrapper slurm: 15/15
+```
+
+### Red-on-fault and boundary verification
+
+`python3 ../gars-row-6-scratch/rd2-faults.py` copies the tracked working-tree
+files into separate scratch trees without source history. Each plant runs only
+its named regression there. The driver requires a nonzero exit and assertion
+failures, rejecting syntax/import errors as evidence. No plant is retained.
+
+```text
+trace file writable by the session: Ran 1 test in 2.638s / FAILED (failures=4)
+replay directly writes dataset.tsv: Ran 1 test in 0.744s / FAILED (failures=1)
+prepare omits agreement capture: Ran 1 test in 0.538s / FAILED (failures=1)
+checker ignores required agreement: Ran 1 test in 0.837s / FAILED (failures=1)
+replay loses named legacy refusal: Ran 1 test in 0.779s / FAILED (failures=1)
+RED-ON-FAULT: 5/5 observed; assertion-level failures
+```
+
+`python3 evals/bench.py validate` retains the inherited refusal; no benchmark pin
+or evaluation code changes:
+
+```text
+refused: input sha256 mismatch: gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md
+```
+
+`bash docs/decisions/build_index.sh`: exit 0. The builder's absolute local path
+output stays in scratch. `git diff --exit-code -- docs/decisions/CONTEXT.md`:
+exit 0, no output. `git diff --check`: exit 0, no output.
+
+`python3 ../gars-row-6-scratch/rd2-audit.py` verifies the allowed path set, exact
+guard/settings and schema deltas, all pre-round append-only prefixes, unchanged
+ruling/index, absence of 0098/0099, privacy of additions, Python 3.6 grammar and
+the final owner-rulings body. Its summaries are:
+
+```text
+SCOPE AUDIT: allowed paths only; exact R12 guard/settings and R13 schema deltas
+RECORD AUDIT: append-only prefixes intact; index unchanged; ruling unchanged and untracked; no 0098/0099
+PRIVACY/GRAMMAR: no local identifiers in additions; changed Python parses as 3.6; diff clean
+REPORT: final owner-rulings body is exactly none; residuals follow separately
+```
+
+## Owner rulings needed
+
+none
+
+## Residual gaps
+
+- F8: the generic guard refusal still names the protected path; the dataset-specific
+  message is declined under R12, not awaiting a further ruling.
+- A process outside the guarded session can still write pipeline output/evidence.
+  The guard does not provide OS-user isolation or establish actual trace/sacct truth.
+- Current manifests do not record custom raw-registration aliases or sample-name
+  patterns. Replay preserves recorded source basenames; unavailable inputs,
+  collisions and names rejected by real finalize fail without submitting. No
+  compatibility pattern or registration metadata is invented.
+- F10's historical heading/frontmatter omissions remain visible under append-only
+  rules. F11's free-text version/timestamp placeholder issue remains; no new field
+  grammar is chosen in this round.
+- The unbounded active-scheduler wait and interrupted partial-comparison behavior
+  remain. Dirty patched pipeline checkouts refuse; real patched-pipeline replay
+  and a new executable pin/patch policy are not established.
+- The owner's two institutional Slurm re-runs remain unmeasured and belong solely
+  in 0098. Fixture reproduction 2/2 is the instrument self-test. The owner's 0099
+  protected-path/tolerance approval and D-16 confirmation remain pending at merge;
+  these are existing separate obligations, not unanswered implementation choices.
+- Biological execution, live scheduler behavior, §8.4 second-backend behavior,
+  §17's ≥ 4/5, external pilot-1 reproduction and typed claim-set equality remain
+  unverified. No real-run completeness or whole-row reproduction exit is claimed.
+- Earlier Step A residuals remain: GRCh38 hashes, stage-03/authoring manifests,
+  row-7 methods/rendering/claim wiring, data-handling/registry/liveness requirements
+  and row-2 benchmark re-pinning. Benchmark source-pin validation still refuses.
+- The 73 full-suite environment skips are unverified here; no row-6 test skipped.
+  Python 3.6 grammar is checked, but that runtime and live bio environments are
+  unavailable. No protected approval, push, merge or release is claimed.

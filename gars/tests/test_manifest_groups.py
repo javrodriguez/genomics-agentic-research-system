@@ -48,7 +48,10 @@ class ManifestGroupsTests(unittest.TestCase):
         raw.mkdir(parents=True)
         for sample in range(1,5):
             for read in (1,2):
-                (raw / ('S%d_S%d_L001_R%d_001.fastq.gz' % (sample,sample,read))).symlink_to(f.tmp / 'reads.fastq.gz')
+                name = 'S%d_S%d_L001_R%d_001.fastq.gz' % (sample,sample,read)
+                source = f.tmp / name
+                shutil.copyfile(str(f.tmp / 'reads.fastq.gz'), str(source))
+                (raw / name).symlink_to(source)
         checked([sys.executable,f.ws / '_system/stage00_register.py','finalize','--project',f.project,
                  '--data-class','public','--purpose','fixture','--model',MODEL], cwd=f.ws)
         registry = f.ws / '_references/genomes.md'
@@ -473,6 +476,61 @@ exit_file=stage/'fixture.exit';exit_file.write_text('0\\n')
             self.assertNotEqual(self.check_manifest(candidate)[0],0)
         candidate=copy.deepcopy(manifest);candidate['workflow_name']='no-rng-in-code-path'
         self.assertNotEqual(self.check_manifest(candidate)[0],0)
+
+    def test_agreement_ref_is_required_prepare_evidence(self):
+        original = self.prepare()
+        self.assertEqual(original['agreement_ref'], 'none')
+        self.fake_run(); self.submit()
+        complete = self.collect()
+        self.assertTrue(mc.grade(complete)['groups'][10]['present'])
+        self.assertIn('agreement_ref', mc.load_schema()['groups'][10]['fields'])
+        for value in (None, '', 'unknown', 'TODO', 'null'):
+            candidate = copy.deepcopy(complete)
+            candidate['agreement_ref'] = value
+            self.assertFalse(mc.grade(candidate)['groups'][10]['present'])
+        candidate = copy.deepcopy(complete)
+        del candidate['agreement_ref']
+        self.assertFalse(mc.grade(candidate)['groups'][10]['present'])
+        # A legacy dataset row must not acquire an invented agreement at prepare.
+        dataset = self.project / '00_data/dataset.tsv'
+        rows = list(csv.DictReader(dataset.read_text().splitlines(), delimiter='\t'))
+        rows[0].pop('agreement_ref')
+        dataset.chmod(0o644)
+        with dataset.open('w', newline='') as handle:
+            writer = csv.DictWriter(handle, fieldnames=list(rows[0]), delimiter='\t')
+            writer.writeheader(); writer.writerows(rows)
+        self.assertIsNone(self.prepare()['agreement_ref'])
+
+    def test_collect_evidence_guard_refuses_session_writes(self):
+        self.pipeline_fixtures(); self.configure_wrapper('scrnaseq', 'local', self.project)
+        self.fake_wrapper_run(); self.submit()
+        trace = self.stage / 'run/pipeline_info/gars_trace.txt'
+        lines = (GARS / 'tests/fixtures/manifest/trace.txt').read_text().splitlines()
+        trace.write_text(lines[0] + '\n' + lines[3] + '\n')
+        checked(self.wrapper_argv('collect', ['--model', MODEL]), cwd=self.ws, env=self.env)
+        manifest = json.loads(self.manifest_path.read_text())
+        self.assertFalse(mc.grade(manifest)['groups'][3]['present'])
+        self.assertNotEqual(self.check_manifest(manifest)[0], 0)
+        before = trace.read_bytes()
+        for suffix in ('run/pipeline_info/gars_trace.txt', 'run/versions.json'):
+            target = str((self.stage / suffix).relative_to(self.ws))
+            calls = [('Write', {'file_path': target, 'content': 'forged'}),
+                     ('Edit', {'file_path': target, 'old_string': 'tag', 'new_string': 'digest'})]
+            calls += [('Bash', {'command': command}) for command in (
+                'echo forged > ' + target, 'tee ' + target, 'cp source ' + target,
+                'mv source ' + target, 'mv ' + target + ' moved', 'rm ' + target)]
+            for tool, data in calls:
+                with self.subTest(target=suffix, tool=tool, data=data):
+                    result = run([sys.executable, self.ws / '_system/guard_hook.py'], cwd=self.ws,
+                        stdin=json.dumps(dict(tool_name=tool, tool_input=data, cwd=str(self.ws))),
+                        env={'CLAUDE_PROJECT_DIR': str(self.ws)})
+                    self.assertEqual(result.returncode, 2, result.stderr.decode())
+        sibling = str((self.stage / 'notes.txt').relative_to(self.ws))
+        result = run([sys.executable, self.ws / '_system/guard_hook.py'], cwd=self.ws,
+            stdin=json.dumps(dict(tool_name='Write', tool_input={'file_path': sibling}, cwd=str(self.ws))),
+            env={'CLAUDE_PROJECT_DIR': str(self.ws)})
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.assertEqual(trace.read_bytes(), before)
 
     def test_mutable_tag_and_immutable_trace_evidence(self):
         self.pipeline_fixtures();self.configure_wrapper('scrnaseq','local',self.project)

@@ -62,6 +62,8 @@ READ_ONLY = [
     "projects/*/.gars_local_jobs",
     "projects/*/.gars_local_jobs/*",
     "projects/*/02_bioinformatics/*/run/.gars_run_complete",
+    "projects/*/02_bioinformatics/*/run/*",
+    "projects/*/02_bioinformatics/*/run/**/*",
     "projects/*/03_custom_analysis/*/run/*",
     "projects/*/03_custom_analysis/*/run/**/*",
     "projects/*/03_custom_analysis/*/.gars_submissions.jsonl",

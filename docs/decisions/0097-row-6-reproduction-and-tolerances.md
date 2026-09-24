@@ -373,3 +373,45 @@ entry, scientific threshold or default comparison mode is changed.
 F9 remains a deferred policy gap: bind_project is a second dataset.tsv writer and
 old manifests do not carry agreement_ref. This addendum does not sanction an
 exception to finalize's ownership or invent the missing agreement reference.
+
+
+## Addendum — ruling answered on fix round 2, 2026-09-24
+
+**R13 — the lane, under the owner's standing delegation of 23 September 2026.**
+This is the lane's answer to F9, not additional words attributed to the owner.
+Replay invokes the real `stage00_register.py finalize` CLI with the original
+manifest's data_class, purpose and agreement_ref, plus model `none` for this
+non-model registration. It never writes dataset.tsv directly; finalize remains
+the single writer, with its existing validation and machine-owned mode.
+There is no sanctioned exception and no change to finalize itself.
+
+The fresh project receives raw symlinks from the recorded dataset path list,
+preserving source basenames, and minimal CONTEXT/HISTORY metadata. No original
+sibling registration is borrowed. Missing raw paths, duplicate basenames or
+names rejected by finalize fail the attempt and stay in its denominator; no
+sample-name pattern, source location or agreement is guessed. Custom registration
+aliases/patterns are not recorded by current manifests and are not reconstructed.
+The re-run's analysis inputs, config and execution evidence retain their existing
+bindings. A dataset registration failure never submits a job.
+
+An absent or null agreement_ref receives the named preflight refusal
+`no agreement_ref recorded`, before an output directory or submission exists.
+The shared group-11 checker also marks missing/invalid agreement evidence absent.
+Older manifests need a newly prepared and completed original, not a repair using
+current dataset metadata. The literal `none` retains finalize's existing meaning;
+no schema sentinel, group classification or applicability predicate changes.
+
+The instrument self-test compares all three values as UTF-8 bytes and the whole
+dataset.tsv byte-for-byte, and checks its mode 0444. The grep-style ownership test
+rejects a direct dataset.tsv write added to the script; its fault plant goes red.
+The missing-field and writer/checker plants separately verify refusal sensitivity.
+These local fixture results are the instrument's self-test, never the owner's
+two institutional Slurm re-runs. The latter belong solely in 0098; 0099 remains
+the owner's protected-path approval and D-16 confirmation.
+
+Affected paths: scripts/rerun_check.py, gars/_system/wrapperlib.py,
+gars/_references/manifest_schema.json, gars/_system/manifest_check.py,
+gars/tests/test_rerun_check.py and gars/tests/test_manifest_groups.py, plus
+README.md, DEVELOPMENT.md and the appended change report. R12's guard/settings
+changes are recorded in 0095. Tolerances, pins and comparison thresholds do not
+change; the prior real-run, scheduler and scientific-metric residuals remain.

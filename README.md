@@ -311,9 +311,11 @@ pilot-1 measurement remain unverified. See the
 [row-7 review response](docs/implementation/row_7_change_report.md#review-round-2-fixes).
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(495 tests in the current collection; environment skips are reported per run. Row 6 adds synthetic manifest coverage and the local instrument self-test; scrna-qc-cluster records its samplesheet and passes synthetic-worker replay; rnaseq-de now requires the canonical project design and passes synthetic-worker replay; legacy alternate-design manifests are refused. No real-cluster manifest or reproduction exit is claimed.)
-Row 6 review round 2 still has an open collect-evidence protection blocker and
-a replay dataset-writer ownership question; see the [change report](docs/implementation/row_6_change_report.md#review-round-2-fixes).
+(499 tests in the current collection; environment skips are reported per run. Row 6 adds synthetic manifest coverage and the local instrument self-test; scrna-qc-cluster records its samplesheet and passes synthetic-worker replay; rnaseq-de now requires the canonical project design and passes synthetic-worker replay; legacy alternate-design manifests are refused. No real-cluster manifest or reproduction exit is claimed.)
+Row 6 ruling-rd2 protects collect evidence throughout the bioinformatics run tree
+and routes replay dataset registration through finalize, retaining the recorded
+agreement reference. Older manifests without it refuse replay; see the
+[change report](docs/implementation/row_6_change_report.md#ruling-answered-fix-round-2).
 
 Row 15 review round 4 (2026-09-22), macOS / Python 3.8.2: 252 tests, <!-- not-the-suite-total -->
 `OK (skipped=50)`; no tests from row 15 skipped. R15-03's narrow fixture repair

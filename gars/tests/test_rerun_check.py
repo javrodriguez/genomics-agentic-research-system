@@ -2,6 +2,7 @@
 import ast
 import contextlib
 import copy
+import stat
 import io
 import hashlib
 import json
@@ -74,10 +75,16 @@ class RerunCheckTests(unittest.TestCase):
         (self.project / '01_samplesheets').mkdir()
         (self.project / '01_samplesheets/rerun-fixture_samplesheet.csv').write_text('sample\nfixture\n')
         (self.project / '01_samplesheets/rerun-fixture_design_check.json').write_text('{"fixture":true}\n')
-        (self.project / '00_data').mkdir()
-        (self.project / '00_data/dataset.tsv').write_text(
-            'purpose\tdata_class\tinput_data_location\nfixture\tpublic\tsynthetic\n')
-        (self.project / 'HISTORY.md').write_text('# fixture\n')
+        raw = self.project / '00_data/rerun-fixture/raw'
+        raw.mkdir(parents=True)
+        source = self.repo / 'S1_S1_L001_R1_001.fastq'
+        source.write_text('@fixture\nA\n+\nI\n')
+        (raw / source.name).symlink_to(source)
+        for name in ('CONTEXT.md', 'HISTORY.md'):
+            (self.project / name).write_text('# fixture\n')
+        checked([sys.executable, self.ws / '_system/stage00_register.py', 'finalize',
+                 '--project', self.project, '--data-class', 'deidentified_under_agreement',
+                 '--purpose', 'internal', '--agreement-ref', 'fixture-agreement-01', '--model', 'none'])
         checked([sys.executable, self.wrapper, 'prepare', '--project', self.project])
         self.stage = self.project / '02_bioinformatics/rerun-fixture/01_rerun-fixture'
         self.path = self.stage / 'reproducibility/manifest.json'
@@ -116,6 +123,21 @@ class RerunCheckTests(unittest.TestCase):
         self.assertIn(reason, text)
         self.assertFalse(self.out.exists(), 'refusal ran something')
 
+    def test_missing_agreement_ref_refused(self):
+        for missing in (True, False):
+            manifest = copy.deepcopy(self.manifest)
+            if missing:
+                del manifest['agreement_ref']
+            else:
+                manifest['agreement_ref'] = None
+            self.save(manifest)
+            self.assertFalse(mc.grade(manifest)['groups'][10]['present'])
+            self.refusal('no agreement_ref recorded')
+
+    def test_no_direct_dataset_write(self):
+        # Grep-style ownership tripwire: replay must only invoke finalize.
+        self.assertNotIn('dataset.tsv', INSTRUMENT.read_text())
+
     def test_instrument_self_test(self):
         text = self.cli()
         self.assertEqual(json.loads((self.stage / 'run/seed.json').read_text())['seed'],
@@ -135,6 +157,14 @@ class RerunCheckTests(unittest.TestCase):
             self.assertTrue(run_result['job'])
             replay_stage = self.out / ('run-%d' % run_result['run']) / '02_bioinformatics/rerun-fixture/01_rerun-fixture'
             replay_manifest = json.loads((replay_stage / 'reproducibility/manifest.json').read_text())
+            dataset = replay_stage.parents[2] / '00_data/dataset.tsv'
+            original_values = wl.dataset_record(self.project)
+            replay_values = wl.dataset_record(replay_stage.parents[2])
+            for field in ('data_class', 'purpose', 'agreement_ref'):
+                self.assertEqual(replay_values[field].encode('utf-8'), original_values[field].encode('utf-8'))
+                self.assertEqual(replay_manifest[field], original_values[field])
+            self.assertEqual(stat.S_IMODE(dataset.stat().st_mode), 0o444)
+            self.assertEqual(dataset.read_bytes(), (self.project / '00_data/dataset.tsv').read_bytes())
             self.assertEqual(json.loads((replay_stage / 'run/seed.json').read_text())['seed'],
                              replay_manifest['random_seeds'][0]['seed'])
             artifacts = run_result['artifacts']
@@ -278,7 +308,8 @@ class RerunCheckTests(unittest.TestCase):
                 manifest.pop(field, None)
             self.assertFalse(mc.grade(manifest)['ok'], group['number'])
             self.save(manifest)
-            self.refusal('no execution config recorded' if group['number'] == 3 else 'incomplete manifest')
+            self.refusal({3: 'no execution config recorded', 11: 'no agreement_ref recorded'}.get(
+                group['number'], 'incomplete manifest'))
         self.save(base)
         source = Path(base['inputs']['samplesheet'])
         old = source.read_bytes(); source.write_bytes(old + b'changed\n')

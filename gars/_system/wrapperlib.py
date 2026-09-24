@@ -767,6 +767,7 @@ def prepare_manifest_facts(stage, wrapper, inputs):
             'gars_commit':git_value(repo, 'rev-parse', 'HEAD'),
             'backend':backend, 'venue':backend, 'purpose':dataset.get('purpose'),
             'data_class':dataset.get('data_class'),
+            'agreement_ref':dataset.get('agreement_ref'),
             'artifact_destination':os.path.relpath(str(Path(stage).resolve() / 'run'), str(repo)),
             'random_seeds':calls.get(wrapper, 'no-rng-in-code-path'), 'threads':threads}
 

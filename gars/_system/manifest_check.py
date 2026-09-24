@@ -136,6 +136,8 @@ def group_present(number, m, schema):
                 m.get('venue') == m.get('backend') and
                 m.get('purpose') in ('fixture','internal','pilot_internal','pilot_external','commercial') and
                 m.get('data_class') in ('public','deidentified_under_agreement','identifiable') and
+                isinstance(m.get('agreement_ref'), str) and
+                m['agreement_ref'].strip().lower() not in ('', 'unknown', 'todo', 'null') and
                 isinstance(m.get('input_data_location'), dict) and bool(m['input_data_location']) and
                 all(text_present(v) for v in m['input_data_location'].values()) and text_present(m.get('artifact_destination')))
     if number == 12:
