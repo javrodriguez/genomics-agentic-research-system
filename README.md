@@ -311,7 +311,7 @@ pilot-1 measurement remain unverified. See the
 [row-7 review response](docs/implementation/row_7_change_report.md#review-round-2-fixes).
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(490 tests currently collected; execution summaries and environment skips are recorded in `docs/implementation/row_8_change_report.md`; expanded-suite cluster execution remains unverified).
+(491 tests currently collected; execution summaries and environment skips are recorded in `docs/implementation/row_8_change_report.md`; expanded-suite cluster execution remains unverified).
 Row 15 review round 4 (2026-09-22), macOS / Python 3.8.2: 252 tests, <!-- not-the-suite-total -->
 `OK (skipped=50)`; no tests from row 15 skipped. R15-03's narrow fixture repair
 is authorised by the owner, **confirmed on 22 September 2026** ([0067](docs/decisions/0067-owner-confirms-rows-15-and-4-provisional-rulings.md)).

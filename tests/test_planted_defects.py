@@ -115,7 +115,7 @@ def collect(table):
         return cli(DE, ['collect', '--project', project])
 
 
-def emission(project):
+def emission(project, transport=replay):
     with tempfile.TemporaryDirectory(prefix='defect-report-') as folder:
         out = Path(folder) / 'report.md'
         manifest = project / 'manifest.json'
@@ -126,15 +126,15 @@ def emission(project):
         with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
             code = emitter.main(['--snapshot', str(project / 'snapshot.json'),
                                  '--manifest', str(manifest), '--project', str(project / 'project'),
-                                 '--out', str(out)], transport=replay)
+                                 '--out', str(out)], transport=transport)
         return code, output.getvalue(), out.exists()
 
 
-def grade(project, cid, flag, detail=''):
+def grade(project, cid, flag, detail='', transport=replay):
     if cid == 10:
         return False
     if cid in (7, 9):
-        code, output, written = emission(project)
+        code, output, written = emission(project, transport=transport)
         return code != 0 and not written and flag in {line.split(':', 1)[0] for line in output.splitlines()}
     if cid == 8:
         code, result = collect(project / 'de_results.csv')
@@ -233,7 +233,9 @@ def sealed_measure(root, row1=None):
                     if flag not in FLAGS[cid] or expected['expected_stage'] != STAGES[cid]:
                         raise ValueError('expectation')
                 counts[cid][1] += 1
-                caught = grade(plant, cid, flag, detail)
+                # Sealed class 9 uses live lookup on the measurement host, never
+                # development replay; default tests stub the live transport in process.
+                caught = grade(plant, cid, flag, detail, None if cid == 9 else replay)
                 counts[cid][0] += int(caught)
                 totals['verdicts'].append((cid, 'caught' if caught else 'not_caught'))
             except BaseException:
@@ -285,6 +287,7 @@ class DevelopmentCatalogueTests(unittest.TestCase):
 
     def test_schema_contracts_match(self):
         interface = (REPO / 'benchmarks/defects/SEALED-INTERFACE.md').read_text()
+        interface, _ = interface.split('\n2026-09-24:', 1)
         self.assertIn(interface, __doc__)
         schema = interface[interface.index('**The schema the detectors read'):]
         for relative in ('gars/00_initialize_project/CONTEXT.md',
@@ -485,6 +488,44 @@ class SealedCatalogueTests(unittest.TestCase):
 
 
 class SealedOutputDisciplineTests(unittest.TestCase):
+    def test_sealed_class9_uses_live_transport(self):
+        # Producer-authored layout control, never a seal or live measurement.
+        reference = '10.5555/gars-d1-outside-protocol-fixtures'
+        resolver = emitter.evidence_check.resolve_citation
+        requests = []
+        def not_found(url):
+            requests.append(url)
+            return (404, b'{}') if 'crossref' in url else (404, b'{"responseCode":100}')
+        with tempfile.TemporaryDirectory(prefix='defect-doi-origin-') as folder:
+            root = Path(folder)
+            plant = root / 'p01'
+            plant.mkdir()
+            generate.claims(plant, reference=reference)
+            generate.write_json(plant / 'expected.json', dict(
+                class_id=9, expected_flag='citation_unresolved', expected_stage='report_emit',
+                seal_type='independent_context', canary='a' * 32))
+            with patch.object(resolver, 'live_transport', side_effect=not_found), \
+                    patch.object(emitter, 'main', wraps=emitter.main) as emit, \
+                    contextlib.redirect_stdout(io.StringIO()):
+                caught, counts, totals = sealed_measure(root)
+                self.assertEqual(counts[9], [1, 1])
+                self.assertEqual(totals['verdicts'], [(9, 'caught')])
+                self.assertEqual(totals['errors'], 0)
+                self.assertEqual(totals['graded'], totals['seen'])
+                self.assertIsNone(emit.call_args[1]['transport'])
+                self.assertFalse(Path(emit.call_args[0][0][-1]).exists())
+                self.assertEqual(requests, [
+                    'https://api.crossref.org/works/10.5555%2Fgars-d1-outside-protocol-fixtures',
+                    'https://doi.org/api/handles/10.5555%2Fgars-d1-outside-protocol-fixtures'])
+                # Development still uses replay, so this unrecorded DOI cannot score.
+                requests[:] = []
+                self.assertFalse(grade(plant, 9, 'citation_unresolved'))
+                self.assertIs(emit.call_args[1]['transport'], replay)
+                self.assertEqual(requests, [])
+                generate.claims(plant, reference=generate.FAKE_DOI)
+                self.assertTrue(grade(plant, 9, 'citation_unresolved'))
+                self.assertEqual(requests, [])
+
     def test_sentinel_and_error_accounting(self):
         sentinel = 'CONTENT_SENTINEL_801'
         with tempfile.TemporaryDirectory(prefix='defect-output-') as folder:

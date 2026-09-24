@@ -990,3 +990,148 @@ class-9 P(caught). Hours and metered cost: unknown, not zero.
 
 F2–F8 closed by code and regressions; F9 answered by the expectation table;
 F10 addressed prospectively by neutral commit metadata; F1 waits on the owner.
+
+## Step A round D1 (sealed class-9 transport and commit identity)
+
+Starting commit: `a8b54e53b62123f49c7674c54083fe49d4a78568`.
+This round implements only added delegated rulings 5 and 6 and review C1 F1,
+plus the count correction required by a failing Rule 5 count check.
+The transport and identity rulings were decided under the owner's standing delegation (23 Sep 2026).
+
+Sealed class 9 now selects the production live lookup with `transport=None` in
+`sealed_measure`, through `grade`, `emission` and the actual `emit_report.main`
+entry point. Measurement requires a networked host. Development plants retain
+in-process replay, and default tests use replay or in-process stubs without
+opening the network. No CLI option, environment variable or file selects a
+transport. Class 9 is never scored as a sealed measurement from replay.
+The committed DOI responses remain **synthetic protocol fixtures**, proving
+protocol logic only.
+
+`benchmarks/defects/SEALED-INTERFACE.md` preserves every inherited byte and
+appends the dated transport sentence. The schema equality test compares the
+original interface block before that dated addendum; its contract assertions
+are retained. No protected file is touched in this round.
+
+| Requirement | Changed files | Acceptance | Result |
+|---|---|---|---|
+| R-114, R-125; delegated ruling 5; C1 F1 | `tests/test_planted_defects.py`, `benchmarks/defects/SEALED-INTERFACE.md` | `SealedOutputDisciplineTests.test_sealed_class9_uses_live_transport` drives a producer-authored layout (c) control through sealed grading and actual emission, with an unrecorded DOI and a stub answering not-found at both services | Red on inherited transport, green with live selection; requests reach both services through the stub, `transport=None` reaches emission, citation_unresolved is caught, and development still uses replay |
+| Delegated ruling 6 | Commit metadata; this report | Repository-configured author and committer, no overrides | The configured identity is used exactly; no personal identity is copied into this report |
+
+Commit `a8b54e5` used another identity; it is not rewritten and stays as it is
+(append-only). This round uses this repository's own configured identity, as
+printed by `git config user.name` and `git config user.email`, without setting
+or overriding either author or committer. No approval, merge, push or remote
+operation is performed.
+
+### D1 checks and expectation changes
+
+Every command ran from the repository root, with TMPDIR, TEMP and TMP set to
+the scratch twin. Python: `Python 3.13.5`. Full-suite execution used
+`GARS_TEST_NO_CONTAINER=1`; only one full suite ran at a time. Logs were written
+in the scratch twin. No live DOI command or actual sealed fixture was used.
+Source and index reads used repository-relative paths; ripgrep was unavailable,
+so Python text reads were used. Edits used Python with exact replacements and
+append-only writes; the report and interface preserve inherited byte prefixes.
+
+The targeted command was
+`python3 tests/test_planted_defects.py SealedOutputDisciplineTests.test_sealed_class9_uses_live_transport`.
+Before the transport fix it printed `Ran 1 test in 0.002s` and
+`FAILED (failures=1)` because class 9 had counts `[0, 1]` instead of `[1, 1]`.
+After the fix it printed `Ran 1 test in 0.005s` and `OK`.
+This is the observed red-on-fault for retaining the inherited replay transport.
+The rest of the inherited mutation campaign was not rerun in this narrow round.
+
+`python3 tests/check_counts.py` initially reported `suite: 491 tests, from unittest's loader`
+and `3 problem(s):`; all three were inherited claims of 490 after adding the
+required regression. Only those three numbers were changed, then the check passed.
+
+| File and line | Old expectation | New expectation | Reason |
+|---|---|---|---|
+| `README.md:314` | 490 tests | 491 tests | Added transport regression; count check failure |
+| `DEVELOPMENT.md:119` | 490 tests | 491 tests | Same count check failure |
+| `DEVELOPMENT.md:138` | 490 tests | 491 tests | Same count check failure |
+| `tests/test_planted_defects.py`, `test_schema_contracts_match` | Entire interface document equals the inherited block | Original block before the required dated sentence equals the inherited block | Ruling 5 explicitly appends a sentence; all original contract/schema comparisons remain |
+
+Rule 5 summary lines, copied from the captured logs:
+
+`GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py`
+
+```text
+Ran 491 tests in 80.524s
+OK (skipped=79)
+```
+
+`python3 tests/check_contracts.py`
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`
+
+```text
+suite: 491 tests, from unittest's loader
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`
+
+```text
+Ran 44 tests in 37.521s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`
+
+```text
+clean — graded=1
+```
+
+`python3 tests/test_planted_defects.py`
+
+```text
+Ran 18 tests in 4.362s
+OK (skipped=1)
+```
+
+`python3 gars/tests/test_citation_resolution.py`
+
+```text
+Ran 5 tests in 0.007s
+OK (skipped=1)
+```
+
+Development EXIT lines only:
+
+```text
+planted-defects development (producer-authored, unsealed): 9/10 classes (placeholder 10 counted planted, not caught)
+false flags (producer-authored clean projects): 0/10
+graded 19 of 19 development projects seen
+class 6: measured with --verify-integrity full; stage 01 default is none
+```
+
+Additional checks: the changed Python module parses with
+`ast.parse(..., feature_version=(3, 6))`; this is syntax validation, not an
+actual Python 3.6 run. The sealed interface's inherited bytes remain its exact
+prefix. Added lines contain no literal home marker. Git diff scope and whitespace
+are checked before path-limited staging; the commit message comes from a file in
+the scratch twin. The supplied untracked review is left uncommitted.
+
+Hours and metered cost: unknown, not zero.
+
+### D1 residuals
+
+- **NOT met:** actual sealed measurement, sealed >= 9/10 and external_human_seal;
+  the real sealed test skipped. The synthetic layout regression is not a seal.
+- **NOT met:** live DOI resolution/capture or live class-9 P(caught); the live
+  citation test skipped. Networked measurement remains separate work.
+- **NOT met:** database verification for rows 5 and 7 on this host;
+  Row05DatabaseTests (17 tests) and ClaimConstraintTests (18 tests) skipped,
+  among the full suite's 79 environment skips.
+- **NOT met:** actual Python 3.6 execution, protected-change approval, fresh review,
+  deployment path-scan acceptance, merge and the pre-existing row-8 residuals.
+  No row exit is claimed; this round only resolves F1's transport selection.
+
+## Owner rulings needed
+
+None.

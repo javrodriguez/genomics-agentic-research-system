@@ -32,3 +32,5 @@ All columns are optional `samples.csv` columns under the open schema (decision 0
 - `library_index`: the library's i7 index sequence, or `i7+i5` for dual indexing, in the exact form the CASAVA 1.8 FASTQ header carries after the last `:` (for example `ACGTACGT` or `ACGTACGT+TTGACCAA`); never a library name.
 - `sex`: one of `F`, `M`, `unknown` (case-sensitive).
 - `age`: age in years, a non-negative number; blank means unknown.
+
+2026-09-24: Sealed class-9 plants use the live production transport (`transport=None`) on a networked measurement host, as decided under the owner's standing delegation (23 Sep 2026); development plants and default tests retain in-process replay or test stubs, and class 9 is never scored as a sealed measurement from replay.
