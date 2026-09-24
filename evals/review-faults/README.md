@@ -120,6 +120,18 @@ spellings below and claims nothing beyond them:
   after option words, including separated options, the end-of-options marker,
   and option clusters ending in c. Their program text is audited as a command.
 
+Decision 0125 amends command-field placement: each call starts at the kit root;
+only a top-level, unprefixed `cd` with one plain, statically resolvable argument
+and both lexical and symlink-resolved containment may move later relative and
+PWD tokens. Nested constructs inherit their entry placement; rejected changes
+reset to the root. A change preceded by `&&` lasts only through that chain.
+Whole-call shell-state hazards disable movement; token deduplication includes
+the placement folder. Other tools' path fields and all existing scan contexts
+are unchanged. The launcher removes CDPATH, BASH_ENV and ENV. **Residual:** an
+accepted `cd` is assumed to succeed; if it fails, a later semicolon-joined read
+may be misplaced. Symlinks are judged at audit time, so changed links can alter
+the result. These text-audit limits remain the sandbox's responsibility.
+
 Item 23 amends item 22(c-d): text is removed only when unambiguous; otherwise
 it is scanned. A comment hash must start a shell word at quote depth zero.
 Neither a comment nor a heredoc body is removed when the physical line holding

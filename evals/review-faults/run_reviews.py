@@ -140,7 +140,168 @@ def shell_words(text):
     lexer.whitespace = ' \t\r'
     lexer.whitespace_split = True
     lexer.commenters = ''
-    return list(lexer)
+    words = []
+    start = 0
+    for value in lexer:
+        # shlex reads one character ahead for punctuation. Keep the source slice
+        # so quoted operators never become placement syntax after quote removal.
+        end = lexer.instream.tell() - len(lexer._pushback_chars)
+        words.append(ShellWord(value, cleaned[start:end].strip(' \t\r')))
+        start = end
+    return words
+
+
+class ShellWord(str):
+    """A shell word retains source syntax and its placement through filtering."""
+    def __new__(cls, value, source=None, state=None, nested=0, folder=None):
+        word = str.__new__(cls, value)
+        word.source = value if source is None else source
+        word.operator = bool(value) and word.source == value and all(
+            char in ';&|<>()\n' for char in value)
+        word.state, word.nested, word.folder = state, nested, folder
+        return word
+
+    def derived(self, value):
+        return ShellWord(value, state=self.state, nested=self.nested, folder=self.folder)
+
+
+def placement_separator(word):
+    return word.operator and (word == '&&' or all(char in ';\n' for char in word))
+
+
+class CommandPlacement:
+    """Decision 0125: raw words govern placement; no shell text is executed.
+
+    One mutable state belongs to one command field. Nested programs inherit it
+    but cannot move it deeper; a rejected cd resets it even outside its construct.
+    """
+    def __init__(self, text, words):
+        self.state = text.state
+        self.nested = text.nested
+        self.words = words
+        self.pending = None
+        self.depths = []
+        parens = groups = keywords = 0
+        backquote = False
+        broken = False
+        command_start = True
+        for index, word in enumerate(words):
+            self.depths.append(parens + groups + keywords + int(backquote) + self.nested)
+            if word.operator:
+                for char in word:
+                    if char == '(':
+                        parens += 1
+                    elif char == ')':
+                        parens -= 1
+                        broken = broken or parens < 0
+                    elif char == '\n' and backquote:
+                        broken = True
+                command_start = True
+            elif word.source == word:
+                if command_start and word in ('if', 'while', 'until', 'for', 'select'):
+                    keywords += 1
+                elif command_start and word in ('fi', 'done'):
+                    keywords = max(0, keywords - 1)
+                elif command_start and word == '{':
+                    groups += 1
+                elif command_start and word == '}':
+                    groups = max(0, groups - 1)
+                command_start = word in ('if', 'then', 'elif', 'else', 'while', 'until', 'do', '{')
+            else:
+                command_start = False
+            # Backquotes are not quotes to shlex. Track them across physical
+            # newlines, ignoring single quotes and escaped backquotes.
+            quote = None
+            escaped = False
+            for char in word.source:
+                if escaped:
+                    escaped = False
+                elif char == chr(92) and quote != "'":
+                    escaped = True
+                elif char == quote:
+                    quote = None
+                elif char in ("'", '"') and quote is None:
+                    quote = char
+                elif char == '`' and quote != "'":
+                    backquote = not backquote
+                elif char == '\n' and backquote:
+                    broken = True
+            if index + 1 < len(words) and words[index + 1].operator:
+                following = words[index + 1]
+                if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', word) and (following.startswith('()') or
+                        (following == '(' and index + 2 < len(words) and words[index + 2].operator and
+                         words[index + 2].startswith(')'))):
+                    broken = True
+        forbidden = re.search(r'\b(?:case|alias|unalias|enable|shopt|unset|function|CDPATH|BASH_ENV)\b|\bENV=',
+                              text + ' ' + ' '.join(str(word) for word in words))
+        self.blocked = bool(forbidden or broken or parens != 0 or backquote or self.state.get('blocked'))
+        if self.blocked:
+            self.state['folder'] = self.state['kit']
+
+    def target(self, argument):
+        if not argument or argument == '-' or any(
+                char in '$`*?[' or ord(char) < 32 or 127 <= ord(char) < 160 for char in argument):
+            return None
+        if argument.startswith(chr(126)):
+            user, separator, suffix = argument[1:].partition(os.sep)
+            try:
+                account = pwd.getpwnam(user) if user else pwd.getpwuid(os.getuid())
+                argument = os.path.join(account.pw_dir, suffix)
+            except KeyError:
+                return None
+        joined = Path(os.path.join(str(self.state['folder']), argument))
+        target = Path(os.path.normpath(str(joined)))
+        kit = self.state['kit']
+        lexical = target == kit or kit in target.parents
+        if not (lexical and within(joined, kit)):
+            return None
+        return target
+
+    def word(self, index):
+        state = self.state
+        if self.pending is not None and index == self.pending[0]:
+            state['folder'], state['conditional'] = self.pending[1:]
+            self.pending = None
+        word = self.words[index]
+        depth = self.depths[index]
+        if state['conditional'] and depth == 0 and word.operator and word != '&&' and any(
+                char in ';&|\n' for char in word):
+            state['folder'], state['conditional'] = state['kit'], False
+        placed = ShellWord(word, word.source, state, self.nested + 1, state['folder'])
+        if word.strip('`') == 'cd':
+            previous = self.words[index - 1] if index else None
+            following = self.words[index + 2] if index + 2 < len(self.words) else None
+            top_level = (depth == 0 and (previous is None or placement_separator(previous)) and
+                         (following is None or placement_separator(following)))
+            argument = self.words[index + 1] if index + 1 < len(self.words) else None
+            plain = argument is not None and not argument.operator and not argument.startswith('-')
+            target = self.target(argument) if plain else None
+            accepted = not self.blocked and top_level and plain and target is not None
+            destination = target if accepted else state['kit']
+            conditional = accepted and (state['conditional'] or previous == '&&')
+            # The directory operand itself is checked from the old folder.
+            self.pending = (index + 2, destination, conditional)
+            if argument is None or argument.operator:
+                state['folder'], state['conditional'] = state['kit'], False
+        return placed
+
+    def finish(self):
+        if self.pending is not None:
+            self.state['folder'], self.state['conditional'] = self.pending[1:]
+
+
+def placed_command(text, kit):
+    state = {'kit': kit, 'folder': kit, 'conditional': False}
+    # Preflight every recognized shell program before placing any word: a
+    # whole-call hazard in a later nested program also forbids an earlier cd.
+    def inspect(source, words):
+        probe = ShellWord(source, state=state)
+        if CommandPlacement(probe, words).blocked:
+            state['blocked'] = True
+    source = ShellWord(text)
+    source.inspect_placement = inspect
+    list(audit_words(source))
+    return ShellWord(text, state=state)
 
 
 def path_field(field):
@@ -229,6 +390,10 @@ def audit_words(text):
     This is a bounded syntax audit, never an evaluator or sandbox.
     """
     words = shell_words(without_heredocs(text))
+    inspect = getattr(text, 'inspect_placement', None)
+    if inspect:
+        inspect(text, words)
+    placement = CommandPlacement(text, words) if isinstance(text, ShellWord) and text.state else None
     command = None
     argument = None
     prefix = None
@@ -242,13 +407,17 @@ def audit_words(text):
         'timeout': ('-s', '--signal', '-k', '--kill-after'),
         'nice': ('-n', '--adjustment'), 'stdbuf': ('-i', '-o', '-e'),
         'command': (), 'builtin': (), 'eval': (), 'nohup': ()}
-    for word in words:
+    for index, word in enumerate(words):
+        if placement:
+            word = placement.word(index)
         option_value = False
         command_word = False
         if argument:
             previous_argument = argument
             argument = None
             if previous_argument == 'shell':
+                if inspect:
+                    word.inspect_placement = inspect
                 yield ';', True
                 for pair in audit_words(word):
                     yield pair
@@ -256,7 +425,7 @@ def audit_words(text):
                 continue
             if previous_argument == 'interpreter':
                 for token in re.findall(r"[^\s\"'`;|<>()\[\],=]+", word):
-                    yield token, False
+                    yield word.derived(token) if placement else token, False
                 continue
             if previous_argument == 'delimiter':
                 yield word, False
@@ -310,7 +479,7 @@ def audit_words(text):
                              (word.startswith(option + '=') if option.startswith('--') else
                               word.startswith(option) and len(word) > len(option))), None)
             if attached is not None:
-                yield attached, False
+                yield word.derived(attached) if placement else attached, False
                 continue
         # Item 22(a): neither path rule applies to these data contexts.
         if not command_word and not option_value:
@@ -348,7 +517,7 @@ def audit_words(text):
                     if len(word) == offset:
                         argument = kind
                     elif kind == 'path':
-                        yield word[offset:], True
+                        yield word.derived(word[offset:]) if placement else word[offset:], True
                     continue
                 if not option_end and word in (('-v', '--assign') if command in ('awk', 'gawk', 'mawk') else ()):
                     argument = 'path'
@@ -361,6 +530,8 @@ def audit_words(text):
                     program_pending = False
                     continue
         yield word, True
+    if placement:
+        placement.finish()
 
 
 def root_word_hits(text, field):
@@ -403,7 +574,8 @@ def blindness(events, kit, session_id=None):
                 if field != 'command' and not path_field(field):
                     continue
                 try:
-                    decoded = [word for word, scan_root in audit_words(text)] if field == 'command' else [text]
+                    decoded = [(str(word), getattr(word, 'folder', None) or kit) for word, scan_root in
+                               audit_words(placed_command(text, kit))] if field == 'command' else [(text, kit)]
                     hits += root_word_hits(text, field)
                 except ValueError:
                     hits += 1
@@ -416,6 +588,7 @@ def blindness(events, kit, session_id=None):
                 if bare_cd:
                     hits += 1
                 for token in tokens:
+                    token, placement = token if isinstance(token, tuple) else (token, kit)
                     if ((field == 'command' and re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*=', token)) or
                             (token.startswith('-') and '=' in token)):
                         token = token.partition('=')[2]
@@ -439,10 +612,10 @@ def blindness(events, kit, session_id=None):
                             # Shell modifiers are not evaluated by this static scan.
                             hits += 1
                             continue
-                        value = pwd.getpwuid(os.getuid()).pw_dir if variable == brace_home else str(kit)
+                        value = pwd.getpwuid(os.getuid()).pw_dir if variable == brace_home else str(placement)
                         token = token.replace(variable, value)
                     elif token.startswith('$' + 'PWD'):
-                        token = str(kit) + token[len('$' + 'PWD'):]
+                        token = str(placement) + token[len('$' + 'PWD'):]
                     # Unknown variable expansion cannot establish kit containment.
                     if '$' in token and parent in token.split('/'):
                         hits += 1
@@ -458,7 +631,7 @@ def blindness(events, kit, session_id=None):
                         except KeyError:
                             hits += 1
                             continue
-                    path = Path(token) if os.path.isabs(token) else kit / token
+                    path = Path(token) if os.path.isabs(token) else placement / token
                     if within(path, kit):
                         continue
                     if saved_output is not None and within(path, saved_output):
@@ -525,7 +698,8 @@ def launch_identity(producer_account):
 def clean_environment(kit):
     env = {k: v for k, v in os.environ.items()
            if not ((k.startswith('CLAUDE') and k != 'CLAUDE_CODE_OAUTH_TOKEN') or
-                   k.startswith('ANTHROPIC_') or k.startswith('TMP') or k.startswith('TEMP'))}
+                   k.startswith('ANTHROPIC_') or k.startswith('TMP') or k.startswith('TEMP') or
+                   k in ('CDPATH', 'BASH_ENV', 'ENV'))}
     for key in ('TMPDIR', 'TEMP', 'TMP'):
         env[key] = str(kit / 'tmp')
     return env
