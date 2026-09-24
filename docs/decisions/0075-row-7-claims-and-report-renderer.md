@@ -234,3 +234,78 @@ D-10's local-only scope is unchanged: only throwaway PostgreSQL is used; R-131
 still governs authoritative deployment. Methods/reproduction remain with row 6.
 Reserved 0079 belongs to the owner and is not written here. This ruling resolves
 the registration authority question; it does not approve a push or merge.
+
+## Addendum — review round 2, 2026-09-23
+
+These are the lane's review corrections, not new words or rulings from the
+owner. All preceding bytes remain unchanged. This addendum supersedes the
+writer link-mutation grants and sentence-only lexical gate described above.
+
+### THREAT MODEL extension
+
+The covered writer must not **rewrite or remove a committed claim's evidence
+links**. UPDATE and DELETE on `claims.claim_evidence` are revoked; direct INSERT
+remains unavailable. The writer may create evidence parents and insert a new
+claim with links through `claim_insert`, but cannot change existing links.
+The deferred triggers remain defence for owner paths. Deletion, reassignment,
+immediate-constraint and REPEATABLE READ cases now exercise the non-superuser
+owner role; separate writer attacks require SQLSTATE 42501, including all three
+committed-link rewrites from the supplied review. A disposable UPDATE re-grant
+must make the new writer regression fail. This does not claim owner containment.
+
+Every snapshot claim must contain a nonempty evidence list. Missing, non-list
+and empty evidence refuse with `claim N has no evidence links`, preserving an
+existing output. Snapshot authenticity remains unverified; this local invariant
+is enforced independently of authenticity.
+
+The HYPOTHESIS observation-verb gate covers every free-text string rendered in
+its table row and adjacent limitation row, including nested JSON keys/values,
+evidence descriptions and reference release. The same Unicode normalization and
+twenty verb families apply. Noun uses such as `finding`, `record`, `measure`,
+`document` and `display` are also refused by this deliberately lexical rule;
+no part-of-speech classifier is claimed.
+
+UNKNOWN labels now identify `row 7: claim writer`, `row 7: run registrar` and
+`row 6: manifest producer` instead of the source names `claims snapshot`,
+`run registration` and `manifest`. The QC and other existing row labels remain.
+No row-6 fields or methods/reproduction implementation is added.
+
+The extra `qc_disposition` and `limitation` process-risk keys remain the lane's
+previously documented departure for R-141. The owner may ratify it in reserved
+0079; the producer neither writes that record nor supplies that approval.
+
+Verification and the responses to R7-01 through R7-06 are appended to the row-7
+change report. D-10's disposable-only scope and all other residual gaps remain.
+
+### Fresh review clarification — 2026-09-23
+
+The same HYPOTHESIS gate also covers its workflow-version text in the methods
+section. With constraints already IMMEDIATE, `claim_insert` refuses at the claim
+INSERT before inserting links; the tests assert that fail-closed behavior for
+both principals separately from immediate deletion of already committed links.
+
+### Default privileges hardening — 2026-09-23
+
+Fresh source review also identified administrator-configured default ACLs that
+could expand the writer's privileges at installation. Before explicit grants,
+the installer now revokes all schema, table and function privileges from PUBLIC
+and the writer. The cold-twin regression installs under deliberately permissive
+schema/table/function defaults, then requires 42501 on direct writes, link
+rewrites, TRUNCATE, eligible registration and schema creation. Export bytes
+remain identical. This is installation hardening, not containment of an owner
+or superuser who later grants privileges or disables triggers. The schema's
+application contract and explicit writer surface remain unchanged.
+
+### Lexical boundaries clarification — 2026-09-23
+
+The final fresh source review found that regex word boundaries treat underscores
+and digits as word characters, permitting readable verbs such as `__proves__`
+and `confirms2`. The gate now uses letter boundaries after the existing Unicode
+normalization: digits and underscores delimit verbs, while letters keep words
+such as `showingly` and `unconfirmed` intact. Tests cover these cases in every
+gated claim surface; a disposable reversion to word boundaries must fail them.
+This clarifies and strengthens the lane's lexical implementation; it does not
+change the twenty verb families or introduce a scientific classifier.
+
+The escaping comment is narrowed to headings, table rows and executable HTML.
+Suppression of GFM's extended automatic links is not claimed or verified.

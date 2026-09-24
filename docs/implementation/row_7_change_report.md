@@ -399,3 +399,220 @@ are not new unanswered scope questions for this round.
 ## Owner rulings needed
 
 none
+
+## Review round 2 fixes
+
+2026-09-23. Responds to the supplied independent review at
+`docs/reviews/row_7_review.md`, unchanged and untracked. Its SHA-256 is
+`84b089675c8082feb3214c1a1ee01418c01f90a037fc470d69a3996c0cc3b727`. Earlier sections above and every pre-existing byte of 0075 are
+preserved; this section supersedes their current-state descriptions where stated.
+No new statement is attributed to the owner. No persistent or authoritative DB
+was contacted; every test stack used disposable scratch storage.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| R7-01 MAJOR: mutable committed links | `claims.sql`; `test_claim_constraints.py`; 0075 addendum | `test_writer_cannot_rewrite_committed_evidence`; owner deletion/update/IMMEDIATE/RR controls | PASS; yes, UPDATE re-grant permits committed rewrites and fails the named writer regression. Removing the link trigger separately fails the owner deletion regression. Writer mutations require 42501; owner trigger cases retain cardinality/FK/serialization checks. |
+| R7-02 MINOR: empty snapshot evidence | `render_report.py`; `test_render_report.py`; 0075 addendum | `test_claim_requires_nonempty_evidence` | PASS; yes, disabling the evidence-list guard fails refusal assertions for missing, null, empty and non-list values. Existing output bytes remain unchanged on refusal. |
+| R7-03 MINOR: hypothesis side-cell verbs | Same renderer, tests and addendum | `test_hypothesis_all_rendered_text`; existing twenty-family and Unicode controls | PASS; yes, restoring a sentence-only gate fails side-cell assertions. The final gate includes both groups, nested keys/values, evidence, reference release, limitation and workflow-version text. |
+| R7-04 NOTE: nouns refused | 0075 addendum; renderer tests | Noun-use cases in `test_hypothesis_all_rendered_text` | Documented and PASS; no separate noun fault plant. This remains a lexical denylist, not a part-of-speech classifier. |
+| R7-05 NOTE: process-risk departure | This report; 0075 addendum | Existing group checks | Answered; no new fault plant. `qc_disposition` and `limitation` remain the lane's documented R-141 departure for owner awareness at 0079; no producer approval is supplied. |
+| R7-06 NOTE: source labels as owners | Renderer, UNKNOWN tests, regenerated golden `report.md`; 0075 addendum | `test_unknown_sources`, absent-limitations and golden tests | Fixed and PASS; no dedicated label fault plant. Labels name the row-7 claim writer/run registrar and row-6 manifest producer. |
+| Fresh F-1: IMMEDIATE insertion expectation | `test_claim_constraints.py`; 0075 addendum | `test_set_constraints_games` | PASS; no new dedicated plant. Both roles must receive the insertion cardinality refusal before links; separate committed-link deletions test the permissions and trigger. |
+| Fresh F-2: workflow-version text | Renderer and its tests; 0075 addendum | `test_hypothesis_all_rendered_text` | PASS; yes, the final sentence-only plant also misses the workflow-version refusal. |
+| Follow-up medium: inherited default ACLs | `claims.sql`; `test_claim_constraints.py`; 0075 addendum | `test_cold_twin_reapply_and_snapshot_binding` with permissive schema/table/function defaults | PASS; yes, removing the table ACL reset produces seven assertion failures, no errors/skips. |
+| Follow-up low: misleading IMMEDIATE comment | `test_claim_constraints.py` | Source inspection and `test_set_constraints_games` | Fixed and PASS; no separate comment fault plant. |
+| Final review medium: underscore/digit lexical bypass | Renderer, renderer tests and 0075 addendum | `test_hypothesis_all_rendered_text`; Unicode/boundary cases | PASS; yes, restoring word boundaries fails the new cases. Letter boundaries preserve legitimate longer words while refusing `__proves__`, `proves_it` and `confirms2`. |
+| Final review low: link-escaping comment | Renderer comment and 0075 addendum | Source inspection | Fixed; no fault plant. The comment no longer claims suppression of GFM extended automatic links; no rendered-link test was run. |
+
+Paths in the table abbreviated to their row-owned files:
+`gars/_system/claims/`, `gars/tests/`, `gars/tests/fixtures/claims/` and
+`docs/decisions/0075-row-7-claims-and-report-renderer.md`.
+README and DEVELOPMENT now describe round 2 and the measured collection count.
+The decision index was regenerated without a byte diff. Generated DoD cells and
+README's pilot orphan number/date remain unchanged and unmeasured.
+
+### Fresh source review
+
+A fresh Claude CLI context reviewed a supplied source bundle with tools, MCP,
+customizations and persistence disabled, using the same command as the earlier
+round with scratch-local input/output files. Its F-1 identified that IMMEDIATE
+claim insertion refuses before deletion: the test now asserts that refusal
+separately for both principals, while committed-link deletion still requires
+42501 for the writer and cardinality refusal for the owner. F-2 expanded the
+gate and its regression to workflow-version text in the methods section.
+Neither change weakens a constraint, threshold or guard.
+
+- F-3 NOTE: nonempty evidence element shape/authenticity remains unverified;
+  this correction enforces the requested list/cardinality invariant without
+  introducing an additional evidence-schema contract.
+- F-4 NOTE: fixture assumptions verified by the command below; no fixture
+  change is required.
+- F-5 NOTE: the review did not receive execution evidence or the final report;
+  the measured evidence below supplies those producer claims, not a review seal.
+
+Fixture command: parse `gars/tests/fixtures/claims/snapshot.json`, assert
+`claims[2].id == 3`, type `HYPOTHESIS`, string
+`evidence[0].source.reference`, and object-valued `bio_support`/`process_risk`. The exact Python assertions were:
+
+```python
+import json
+from pathlib import Path
+s = json.loads(Path('gars/tests/fixtures/claims/snapshot.json').read_text())
+h = s['claims'][2]
+assert h['type'] == 'HYPOTHESIS' and h['id'] == 3
+assert isinstance(h['evidence'][0]['source']['reference'], str)
+assert isinstance(h['bio_support'], dict) and isinstance(h['process_risk'], dict)
+```
+Output: `review F-4 fixture: claim 3 is HYPOTHESIS; source-backed evidence and both groups present`.
+
+A second fresh source context confirmed the required round-2 behavior, then
+reported inherited default ACLs (medium) and an inaccurate test comment (low).
+Both were fixed: the installer clears PUBLIC/writer schema/table/function
+privileges before explicit grants, and the cold-twin test installs under
+permissive defaults and attacks the resulting privilege surface. The comment
+now describes immediate insertion rather than an unreachable deletion.
+The default-ACL correction is accompanied by its own fault plant below.
+A final fresh context reviewed the completed privilege fix and reported the
+underscore/digit lexical bypass and the overbroad link-escaping comment. Both
+were corrected and covered by the final renderer/full-suite checks below; the
+old-boundary fault was observed red. Its automatic checkout git-status context
+noted the report was still unmodified: this report was deliberately finalized
+after testing to preserve the database byte guards. The supplied review remains
+untracked, so it is not added to 0075's committed `touches` list.
+These reviews are independent-context source reviews, not executed acceptance,
+an external human seal or owner approval.
+
+`claude-review.json`: SHA-256 `baeef5b0ec510c3e3146f360fa30ebe9e3d56918fde89eadea5ec13be3a3ac6a`.
+
+`claude-review-followup.json`: SHA-256 `e32942f405d98abae8537a245263654033ed528573722e3f04f3fa01e0a76254`.
+
+`claude-review-final.json`: SHA-256 `cecb3e6f3027081b227c1dc6be698720289567368c220250c0693b3d25782945`.
+
+### Commands and measured results
+
+All commands set TMPDIR, TEMP and TMP to the existing sibling scratch folder;
+Python runs also set PYTHONDONTWRITEBYTECODE=1 and database runs set
+GARS_ROW5_SCRATCH there. Logs, review bundles, fault drivers, temporary reports,
+credentials and test stacks stayed in that scratch folder. No repository edits
+or repository-mutating validation overlapped the whole-suite/database byte guards.
+The original brief is still not a file in this checkout; the seven required
+commands recorded by the prior producer report were rerun. No inaccessible
+additional brief check is claimed verified.
+
+| Command | Runner summary, verbatim | Mode / qualification |
+|---|---|---|
+| `python3 tests/run_tests.py` | `Ran 432 tests in 1752.730s` / `OK (skipped=11)` | Docker enabled; before default-ACL hardening; all row-7 tests ran |
+| `python3 tests/run_tests.py` | `Ran 414 tests in 302.817s` / `OK (skipped=29)` | Before the last lexical-boundary correction; GARS_TEST_NO_CONTAINER=1 |
+| `python3 tests/run_tests.py` | `Ran 414 tests in 471.458s` / `OK (skipped=29)` | Final source; GARS_TEST_NO_CONTAINER=1; live DB acceptance is below |
+| `python3 gars/tests/test_claim_constraints.py` | `Ran 21 tests in 284.416s` / `OK` | Docker enabled; before default-ACL hardening; no skips |
+| `python3 gars/tests/test_claim_constraints.py` | `Ran 21 tests in 305.732s` / `OK` | Final SQL/database-test source, Docker enabled, CI=1; before last renderer lexical correction; no skips |
+| `python3 gars/tests/test_render_report.py` | `Ran 14 tests in 54.856s` / `OK` | Before last lexical-boundary correction; no skips |
+| `python3 gars/tests/test_render_report.py` | `Ran 14 tests in 109.820s` / `OK` | Final source; no skips |
+| `python3 gars/tests/test_claim_constraints.py ClaimConstraintTests.test_from_db_golden` | `Ran 1 test in 70.398s` / `OK` | Final renderer with live DB export; CI=1; no skips |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |  |
+| `python3 tests/check_counts.py` | `suite: 432 tests, from unittest's loader` / `enforced=3` / `clean — every current claim matches the suite` |  |
+| `python3 evals/test_harness.py` | `Ran 44 tests in 200.043s` / `OK` |  |
+| `python3 evals/check_results.py --controls --lexicon` | `clean — graded=1` | Existing skipped controls retained |
+| `python3 scripts/release_check.py --check` | `DoD cells verified: 13/13 byte-stable` |  |
+| `python3 tests/test_decision_links_resolve.py` | `Ran 3 tests in 1.421s` / `OK` / `citations: 292/292 resolve` |  |
+
+The first renderer invocation, before extending the gate to workflow-version
+text, printed `Ran 14 tests in 67.287s` / `OK`; the final invocation is above.
+The live whole-suite skips are existing missing pipeline/reference/runtime and
+sealed-evidence inputs; none is row 7. Final no-container skips include the
+explicit database exclusions, which are covered by the final direct DB run.
+The original seven required commands all passed. The initial validation driver
+printed `checks: 8/8 commands passed`; the final driver printed
+`final checks: 3/3 commands passed`; the lexical follow-up printed
+`lexical final checks: 3/3 commands passed`.
+
+
+The named exit measurements in this run are `orphan claims: 0/4` on the
+synthetic fixture, `orphan claims: 0/5` after positive writer insertion and
+`template renders fixture: 8/8 sections`. None is pilot-1 evidence.
+
+`python3 ../gars-row-7-scratch/round-2/faults.py`:
+
+```text
+Ran 1 test in 65.100s
+FAILED (failures=5)
+RED-ON-FAULT: writer UPDATE re-grant
+Ran 1 test in 84.855s
+FAILED (failures=1)
+RED-ON-FAULT: owner link trigger removed
+Ran 1 test in 1.355s
+FAILED (failures=7)
+RED-ON-FAULT: empty evidence allowed
+Ran 1 test in 6.334s
+FAILED (failures=25)
+RED-ON-FAULT: sentence-only hypothesis gate
+fault plants: 4/4 red with assertion failures; no errors or skips
+```
+
+`python3 ../gars-row-7-scratch/round-2/final-faults.py`:
+
+```text
+Ran 1 test in 48.040s
+FAILED (failures=7)
+RED-ON-FAULT: inherited table ACL reset removed
+Ran 1 test in 0.842s
+FAILED (failures=7)
+RED-ON-FAULT: empty evidence allowed
+Ran 1 test in 4.105s
+FAILED (failures=29)
+RED-ON-FAULT: sentence-only hypothesis gate
+final fault plants: 3/3 red with assertion failures; no errors or skips
+```
+
+`python3 ../gars-row-7-scratch/round-2/lexical-fault.py`:
+
+```text
+Ran 1 test in 12.810s
+FAILED (failures=53)
+RED-ON-FAULT: old word boundaries restored
+lexical fault plant: 1/1 red with assertion failures; no errors or skips
+```
+Six distinct planted faults were caught. The second driver repeats the two
+renderer plants; the last driver checks the lexical-boundary correction. Drivers require real assertion failures with no errors
+or skips and exit 0 only for those expected reds. All plants change disposable
+schema strings or scratch code copies, never production files.
+
+
+Changed existing expectations: writer UPDATE/DELETE cases now require 42501;
+the previous trigger/FK expectations remain exercised as the non-superuser
+owner. REPEATABLE READ now uses two owner-role sessions and still requires
+40001 for the competing transaction. Immediate insertion retains its
+cardinality refusal, separately from deletion. UNKNOWN-label expectations and
+the CLI-generated golden reflect the explicit responsible roles. No test,
+threshold or guard was weakened.
+
+`bash docs/decisions/build_index.sh` completed with no index byte diff;
+`git diff --check` was clean. The boundary verifier confirmed only row-7 allowed
+paths changed, original 0075/change-report prefixes were preserved, and the
+supplied review stayed unchanged and untracked. Added content contains no
+personal name/login or absolute machine path. Protected trees, the rnaseq-de
+report gate and 0079 are unchanged. Existing compose teardown removed each
+started test stack with a successful `down -v`.
+
+
+## Owner rulings needed
+
+none
+
+### Residual gaps still open
+
+Authoritative deployment/R-131 restore readiness; R-120/R-122 result-class
+memory; R-089 workflow deprecation; row 6's R-090/pairing test, methods and
+reproduction, manifest checks, reruns and tolerances; per-run costs and pilot-1
+measurement; owner/superuser containment, content truth and exhaustive
+concurrency proof; actual Python 3.6.8/cluster execution and deployment
+credential separation; snapshot authenticity and evidence-element shape,
+cross-script homoglyph classification, GFM extended automatic-link suppression
+and availability guarantees; R-165's
+later committed review/Bench evidence. Human-touch hours and provider costs
+remain UNKNOWN (no full-task meter was kept). System temp folders were not audited.
+
+Reserved 0079 remains the owner's separate approval record and was not written.
+Records 0076–0078 remain unused. R7-05 is retained for the owner's awareness at
+0079; it is not a new implementation ruling blocking this round. No push,
+remote operation, merge or pull request occurred.

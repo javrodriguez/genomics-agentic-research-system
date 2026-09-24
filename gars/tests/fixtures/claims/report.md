@@ -33,13 +33,13 @@ Genome hashes, model/prompt/routing: UNKNOWN (owned by row 6)
 | id | type | claim | biological support | process risk | evidence links | reference |
 |---|---|---|---|---|---|---|
 | 1 | OBSERVATION | The synthetic table contains four rows\. | \{"statistical\_support": "synthetic only"\} | \{\} | \[\{"artifact": \{"id": 1, "path": "fixtures/counts\.tsv", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\}, "artifact\_id": 1, "id": 1, "kind": "computational", "relation": "supports", "source": null, "source\_id": null\}, \{"artifact": \{"id": 1, "path": "fixtures/counts\.tsv", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\}, "artifact\_id": 1, "id": 3, "kind": "statistical", "relation": "absent", "source": null, "source\_id": null\}\] | release\-A **REFERENCE RELEASE MISMATCH** |
-| | | Limitation: UNKNOWN (owned by claims snapshot) | | | | |
+| | | Limitation: UNKNOWN (owned by row 7: claim writer) | | | | |
 | 2 | INTERPRETATION | A group difference is compatible with this fixture\. | \{\} | \{"limitation": "Synthetic cohort only", "qc\_disposition": "DEGRADE"\} | \[\{"artifact": \{"id": 1, "path": "fixtures/counts\.tsv", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\}, "artifact\_id": 1, "id": 1, "kind": "computational", "relation": "supports", "source": null, "source\_id": null\}\] | release\-A **REFERENCE RELEASE MISMATCH** |
 | | | Limitation: Synthetic cohort only | | | | |
 | 3 | HYPOTHESIS | A regulatory association may be possible\. | \{"literature": "contradictory synthetic source"\} | \{\} | \[\{"artifact": null, "artifact\_id": null, "id": 2, "kind": "literature", "relation": "contradicts", "source": \{"id": 1, "reference": "Synthetic literature reference"\}, "source\_id": 1\}\] | release\-B **REFERENCE RELEASE MISMATCH** |
-| | | Limitation: UNKNOWN (owned by claims snapshot) | | | | |
+| | | Limitation: UNKNOWN (owned by row 7: claim writer) | | | | |
 | 4 | RECOMMENDATION | Consider an independent assay\. | \{\} | \{"qc\_disposition": "WARN"\} | \[\{"artifact": \{"id": 1, "path": "fixtures/counts\.tsv", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\}, "artifact\_id": 1, "id": 3, "kind": "statistical", "relation": "absent", "source": null, "source\_id": null\}\] | release\-B **REFERENCE RELEASE MISMATCH** |
-| | | Limitation: UNKNOWN (owned by claims snapshot) | | | | |
+| | | Limitation: UNKNOWN (owned by row 7: claim writer) | | | | |
 
 ## limitations adjacent to the affected claims
 

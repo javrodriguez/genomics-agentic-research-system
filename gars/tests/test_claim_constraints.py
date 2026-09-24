@@ -127,41 +127,73 @@ class ClaimConstraintTests(unittest.TestCase):
         self.attack("BEGIN; INSERT INTO claims.claim VALUES (99,1,'OBSERVATION','x','{}','{}','r','w'); COMMIT;",
                     'requires at least one evidence link', writer=False)
         # An immediate-only INSERT trigger would refuse this legitimate transaction.
-        self.ok("BEGIN; INSERT INTO claims.claim VALUES (99,1,'OBSERVATION','x','{}','{}','r','w');"
+        self.ok("SET ROLE gars_claims_owner; BEGIN; INSERT INTO claims.claim VALUES (99,1,'OBSERVATION','x','{}','{}','r','w');"
                 'INSERT INTO claims.claim_evidence VALUES (99,1); COMMIT;')
-        self.ok('BEGIN; DELETE FROM claims.claim_evidence WHERE claim_id=99; '
+        self.ok('SET ROLE gars_claims_owner; BEGIN; DELETE FROM claims.claim_evidence WHERE claim_id=99; '
                 'DELETE FROM claims.claim WHERE id=99; COMMIT;')
         self.orphan_count()
 
+    def test_writer_cannot_rewrite_committed_evidence(self):
+        before = self.ok('SELECT claims.claims_export(1);')
+        # Each review route must fail for permission, even if cardinality stays positive.
+        for query in (
+            'UPDATE claims.claim_evidence SET evidence_id=1 WHERE claim_id=3 AND evidence_id=2;',
+            'DELETE FROM claims.claim_evidence WHERE claim_id=1 AND evidence_id=3;',
+            "BEGIN; INSERT INTO claims.source VALUES (77,'invented ref'); "
+            "INSERT INTO claims.evidence VALUES (77,NULL,77,'literature','supports'); "
+            'UPDATE claims.claim_evidence SET evidence_id=77 WHERE claim_id=4; COMMIT;',
+            'UPDATE claims.claim_evidence SET claim_id=2 WHERE claim_id=4;',
+            'INSERT INTO claims.claim_evidence VALUES (3,1);',
+        ):
+            with self.subTest(query=query):
+                self.attack(query, '42501')
+                self.assertEqual(self.ok('SELECT claims.claims_export(1);'), before)
+
     def test_delete_links_same_and_later_transactions(self):
-        self.attack('BEGIN; ' + insert() + ' DELETE FROM claims.claim_evidence WHERE claim_id=99; COMMIT;',
-                    'requires at least one evidence link')
+        for writer in (True, False):
+            reason = '42501' if writer else 'requires at least one evidence link'
+            self.attack('BEGIN; ' + insert() + ' DELETE FROM claims.claim_evidence WHERE claim_id=99; COMMIT;',
+                        reason, writer=writer)
         self.ok(insert(), writer=True)
-        self.attack('BEGIN; DELETE FROM claims.claim_evidence WHERE claim_id=99; COMMIT;',
-                    'requires at least one evidence link')
-        # Removing one of two links is legitimate; removing the last one later is not.
-        self.ok('DELETE FROM claims.claim_evidence WHERE claim_id=1 AND evidence_id=3;', writer=True)
+        for writer in (True, False):
+            self.attack('BEGIN; DELETE FROM claims.claim_evidence WHERE claim_id=99; COMMIT;',
+                        '42501' if writer else 'requires at least one evidence link', writer=writer)
+        # Only the owner may remove one of two links; the last link still cannot go.
+        self.ok('SET ROLE gars_claims_owner; '
+                'DELETE FROM claims.claim_evidence WHERE claim_id=1 AND evidence_id=3;')
         self.attack('DELETE FROM claims.claim_evidence WHERE claim_id=1;',
-                    'requires at least one evidence link')
+                    'requires at least one evidence link', writer=False)
 
     def test_update_links_checks_old_and_new(self):
-        self.attack('UPDATE claims.claim_evidence SET claim_id=1 WHERE claim_id=3;',
-                    'requires at least one evidence link')
-        self.ok('UPDATE claims.claim_evidence SET evidence_id=2 WHERE claim_id=2;', writer=True)
-        self.attack('UPDATE claims.claim_evidence SET evidence_id=999 WHERE claim_id=2;', '23503')
-        self.attack('UPDATE claims.claim_evidence SET claim_id=999 WHERE claim_id=2;', '23503')
+        for writer in (True, False):
+            self.attack('UPDATE claims.claim_evidence SET claim_id=1 WHERE claim_id=3;',
+                        '42501' if writer else 'requires at least one evidence link', writer=writer)
+        self.ok('SET ROLE gars_claims_owner; '
+                'UPDATE claims.claim_evidence SET evidence_id=2 WHERE claim_id=2;')
+        for column in ('evidence_id', 'claim_id'):
+            for writer in (True, False):
+                self.attack('UPDATE claims.claim_evidence SET %s=999 WHERE claim_id=2;' % column,
+                            '42501' if writer else '23503', writer=writer)
         self.orphan_count()
 
     def test_set_constraints_games(self):
-        for mode in ('IMMEDIATE', 'DEFERRED'):
-            self.attack('BEGIN; SET CONSTRAINTS ALL ' + mode + '; '
-                        'DELETE FROM claims.claim_evidence WHERE claim_id=3; COMMIT;',
-                        'requires at least one evidence link')
-        self.attack('BEGIN; DELETE FROM claims.claim_evidence WHERE claim_id=3; '
-                    'SET CONSTRAINTS ALL IMMEDIATE; COMMIT;', 'requires at least one evidence link')
-        self.attack('BEGIN; SET CONSTRAINTS ALL IMMEDIATE; ' + insert() +
-                    ' DELETE FROM claims.claim_evidence WHERE claim_id=99; COMMIT;',
-                    'requires at least one evidence link')
+        queries = [
+            'BEGIN; SET CONSTRAINTS ALL ' + mode + '; '
+            'DELETE FROM claims.claim_evidence WHERE claim_id=3; COMMIT;'
+            for mode in ('IMMEDIATE', 'DEFERRED')
+        ] + [
+            'BEGIN; DELETE FROM claims.claim_evidence WHERE claim_id=3; '
+            'SET CONSTRAINTS ALL IMMEDIATE; COMMIT;',
+        ]
+        for query in queries:
+            for writer in (True, False):
+                with self.subTest(query=query, writer=writer):
+                    self.attack(query, '42501' if writer else 'requires at least one evidence link',
+                                writer=writer)
+        # IMMEDIATE refuses the claim INSERT before the function can insert its links.
+        for writer in (True, False):
+            self.attack('BEGIN; SET CONSTRAINTS ALL IMMEDIATE; ' + insert() + ' COMMIT;',
+                        'requires at least one evidence link', writer=writer)
 
     def test_evidence_exactly_one_and_enums(self):
         for parents in ('NULL,NULL', '1,1'):
@@ -248,21 +280,46 @@ class ClaimConstraintTests(unittest.TestCase):
         self.orphan_count()
         self.ok('DROP DATABASE IF EXISTS twin;', db='postgres')
         self.ok('CREATE DATABASE twin;', db='postgres')
+        # An administrator's permissive defaults must not expand the writer's surface.
+        self.ok('ALTER DEFAULT PRIVILEGES FOR ROLE gars_claims_owner '
+                'GRANT ALL ON SCHEMAS TO PUBLIC, gars_claims_writer; '
+                'ALTER DEFAULT PRIVILEGES FOR ROLE gars_claims_owner '
+                'GRANT ALL ON TABLES TO PUBLIC, gars_claims_writer; '
+                'ALTER DEFAULT PRIVILEGES FOR ROLE gars_claims_owner '
+                'GRANT ALL ON FUNCTIONS TO PUBLIC, gars_claims_writer;', db='twin')
         self.ok(SCHEMA, transaction=True, db='twin')
         self.ok((FIXTURE / 'fixture.sql').read_text(), transaction=True, db='twin')
         self.assertEqual(before, self.ok('SELECT claims.claims_export(1);', db='twin'))
         self.assertEqual(before.encode(), (FIXTURE / 'snapshot.json').read_bytes())
 
+        for query in (
+            "INSERT INTO claims.run VALUES (99,'q','p','h',false);",
+            "INSERT INTO claims.claim VALUES (99,1,'OBSERVATION','x','{}','{}','r','w');",
+            'INSERT INTO claims.claim_evidence VALUES (3,1);',
+            'UPDATE claims.claim_evidence SET evidence_id=1 WHERE claim_id=3;',
+            'DELETE FROM claims.claim_evidence WHERE claim_id=1 AND evidence_id=3;',
+            'TRUNCATE claims.claim_evidence;',
+            'DELETE FROM claims.evidence WHERE id=1;',
+            "SELECT claims.run_register_eligible(99,'q','p','h');",
+            'CREATE TABLE claims.injected(id integer);',
+        ):
+            with self.subTest(default_acl_attack=query):
+                result = self.sql(query, writer=True, db='twin')
+                self.assertIn('writer identity verified', result.stderr)
+                self.assertNotEqual(result.returncode, 0, 'default ACL attack committed: ' + query)
+                self.assertIn('42501', result.stderr)
+        self.assertEqual(before, self.ok('SELECT claims.claims_export(1);', db='twin'))
+
     def test_repeatable_read_cannot_orphan(self):
         sessions = []
         try:
             for evidence in (1, 3):
-                p = subprocess.Popen(self.client(writer=True), env=row5.scrubbed_env(self.env),
+                p = subprocess.Popen(self.client(), env=row5.scrubbed_env(self.env),
                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                      universal_newlines=True, bufsize=1)
                 sessions.append(p)
-                p.stdin.write("SET statement_timeout=\'15s\'; BEGIN ISOLATION LEVEL REPEATABLE READ; "
-                              "SELECT current_user = 'gars_claims_writer' AND NOT rolsuper "
+                p.stdin.write("SET ROLE gars_claims_owner; SET statement_timeout=\'15s\'; BEGIN ISOLATION LEVEL REPEATABLE READ; "
+                              "SELECT current_user = 'gars_claims_owner' AND NOT rolsuper "
                               "FROM pg_roles WHERE rolname = current_user; "
                               "DELETE FROM claims.claim_evidence WHERE claim_id=1 AND evidence_id=%s; "
                               "SELECT 'ready';\n" % evidence)
@@ -272,11 +329,11 @@ class ClaimConstraintTests(unittest.TestCase):
                 while True:
                     # The server statement_timeout bounds a blocked SQL command.
                     line = p.stdout.readline().strip()
-                    self.assertTrue(line, 'writer session ended before ready')
+                    self.assertTrue(line, 'owner session ended before ready')
                     lines.append(line)
                     if line == 'ready':
                         break
-                self.assertIn('t', lines, 'attack principal is not the restricted writer')
+                self.assertIn('t', lines, 'trigger principal is not the non-superuser owner')
             first_out, first_error = sessions[0].communicate('COMMIT;\n', timeout=60)
             self.assertEqual(sessions[0].returncode, 0, first_error)
             second_out, second_error = sessions[1].communicate('COMMIT;\n', timeout=60)

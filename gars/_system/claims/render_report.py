@@ -50,7 +50,8 @@ OBSERVATION_VERBS = (
     'exhibit|exhibits|exhibited|exhibiting',
     'display|displays|displayed|displaying',
 )
-OBSERVATION = re.compile(r'\b(?:' + '|'.join(OBSERVATION_VERBS) + r')\b', re.I)
+# Digits and underscores delimit a readable verb; letters preserve inflection boundaries.
+OBSERVATION = re.compile(r'(?<![^\W\d_])(?:' + '|'.join(OBSERVATION_VERBS) + r')(?![^\W\d_])', re.I)
 
 
 def unknown(owner):
@@ -62,7 +63,7 @@ def display(value, owner):
         return unknown(owner)
     if isinstance(value, (dict, list)):
         value = json.dumps(value, sort_keys=True, ensure_ascii=True)
-    # Input text cannot introduce headings, table rows, links or executable HTML.
+    # Input text cannot introduce headings, table rows or executable HTML.
     value = html.escape(str(value), quote=False)
     value = re.sub(r'([\\`*_{}\[\]()#+.!|>~$-])', r'\\\1', value)
     return value.replace('\r', ' ').replace('\n', ' ')
@@ -105,6 +106,19 @@ def reserved_keys(value):
     return False
 
 
+def free_text(value):
+    """Yield every string rendered in a cell, including nested JSON keys."""
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            yield key
+            yield from free_text(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from free_text(item)
+
+
 def render(snapshot, manifest, template):
     if not isinstance(snapshot, dict) or not isinstance(manifest, dict):
         raise ValueError('snapshot and manifest must be JSON objects')
@@ -131,6 +145,8 @@ def render(snapshot, manifest, template):
             raise ValueError('invalid claim type')
         if claim.get('text') is not None and not isinstance(claim['text'], str):
             raise ValueError('claim text must be a string')
+        if not isinstance(claim.get('evidence'), list) or not claim['evidence']:
+            raise ValueError('claim %s has no evidence links' % cid)
         for group in ('bio_support', 'process_risk'):
             if group in claim and not isinstance(claim[group], dict):
                 raise ValueError(group + ' must be a JSON object')
@@ -144,9 +160,6 @@ def render(snapshot, manifest, template):
     for claim in claims:
         cid = claim['id']
         text = claim.get('text') or ''
-        if claim.get('type') == 'HYPOTHESIS' and any(OBSERVATION.search(lexical(text, mode))
-                                                       for mode in (False, True)):
-            raise ValueError('HYPOTHESIS observation verb in claim %s' % cid)
         risk = claim.get('process_risk') or {}
         disposition = risk.get('qc_disposition')
         if disposition is not None and disposition not in ('HALT', 'DEGRADE', 'WARN'):
@@ -154,33 +167,37 @@ def render(snapshot, manifest, template):
         limitation = risk.get('limitation')
         if disposition == 'DEGRADE' and (not isinstance(limitation, str) or not any(c.isalnum() for c in lexical(limitation))):
             raise ValueError('DEGRADE requires limitation in claim %s' % cid)
-        label = 'claim ' + display(cid, 'claims snapshot')
+        label = 'claim ' + display(cid, 'row 7: claim writer')
         values = [cid, claim.get('type'), text, claim.get('bio_support'), risk,
                   claim.get('evidence'), claim.get('reference_release')]
-        cells = [display(v, 'claims snapshot') for v in values]
+        if claim.get('type') == 'HYPOTHESIS' and any(
+                OBSERVATION.search(lexical(value, mode))
+                for value in free_text(values + [claim.get('workflow_version')]) for mode in (False, True)):
+            raise ValueError('HYPOTHESIS observation verb in claim %s' % cid)
+        cells = [display(v, 'row 7: claim writer') for v in values]
         if len(releases) > 1:
             cells[-1] += ' **REFERENCE RELEASE MISMATCH**'
         rows.append('| ' + ' | '.join(cells) + ' |')
         # A separate table row immediately after its claim keeps the qualification adjacent.
-        rows.append('| | | Limitation: ' + display(limitation, 'claims snapshot') + ' | | | | |')
+        rows.append('| | | Limitation: ' + display(limitation, 'row 7: claim writer') + ' | | | | |')
         qc.append('- ' + label + ': ' + display(disposition, '§14 QC dispositions'))
         methods.append('- ' + label + ': workflow_version=' +
-                       display(claim.get('workflow_version'), 'claims snapshot') +
-                       '; reference_release=' + display(claim.get('reference_release'), 'claims snapshot'))
+                       display(claim.get('workflow_version'), 'row 7: claim writer') +
+                       '; reference_release=' + display(claim.get('reference_release'), 'row 7: claim writer'))
     values = {
-        'question': display(run.get('question'), 'run registration'),
+        'question': display(run.get('question'), 'row 7: run registrar'),
         'data': unknown('row 6: data_class, venue, purpose'),
-        'methods': 'pipeline_commit: ' + display(manifest.get('pipeline_commit'), 'manifest') +
-                   '\n\nparams: ' + display(manifest.get('params'), 'manifest') + '\n\n' +
-                   ('\n'.join(methods) or unknown('claims snapshot')) +
+        'methods': 'pipeline_commit: ' + display(manifest.get('pipeline_commit'), 'row 6: manifest producer') +
+                   '\n\nparams: ' + display(manifest.get('params'), 'row 6: manifest producer') + '\n\n' +
+                   ('\n'.join(methods) or unknown('row 7: claim writer')) +
                    '\n\nGenome hashes, model/prompt/routing: ' + unknown('row 6'),
         'qc': '\n'.join(qc) or unknown('§14 QC dispositions'),
-        'claims': '\n'.join(rows) if claims else unknown('claims snapshot'),
+        'claims': '\n'.join(rows) if claims else unknown('row 7: claim writer'),
         'limitations': ('Limitations from process_risk.limitation appear directly under each affected claim above.'
                         if any(c.get('process_risk', {}).get('limitation') for c in claims)
-                        else unknown('claims snapshot')),
-        'manifest': 'Manifest path: ' + display(run.get('manifest_path'), 'run registration') +
-                    '\n\nManifest sha256: ' + display(run.get('manifest_sha256'), 'run registration') +
+                        else unknown('row 7: claim writer')),
+        'manifest': 'Manifest path: ' + display(run.get('manifest_path'), 'row 7: run registrar') +
+                    '\n\nManifest sha256: ' + display(run.get('manifest_sha256'), 'row 7: run registrar') +
                     '\n\nReproduce this analysis (`commands.sh`): ' + unknown('row 6'),
         'cost': unknown('row 11: docs/ledger.csv has no per-run cost source'),
     }

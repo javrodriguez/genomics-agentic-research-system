@@ -168,11 +168,15 @@ LANGUAGE sql STABLE SET search_path = claims, pg_temp AS $$
     FROM claims.run r WHERE r.id = rid
 $$;
 
-REVOKE ALL ON ALL FUNCTIONS IN SCHEMA claims FROM PUBLIC;
+-- Reset administrator-supplied default ACLs before granting the writer's surface.
+REVOKE ALL ON SCHEMA claims FROM PUBLIC, gars_claims_writer;
+REVOKE ALL ON ALL TABLES IN SCHEMA claims FROM PUBLIC, gars_claims_writer;
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA claims FROM PUBLIC, gars_claims_writer;
 GRANT USAGE ON SCHEMA claims TO gars_claims_writer;
 GRANT SELECT ON ALL TABLES IN SCHEMA claims TO gars_claims_writer;
 GRANT INSERT ON claims.artifact, claims.source, claims.evidence TO gars_claims_writer;
-GRANT DELETE, UPDATE ON claims.claim_evidence TO gars_claims_writer;
+-- Evidence links are immutable to the writer, including after claim_insert.
+REVOKE UPDATE, DELETE ON claims.claim_evidence FROM gars_claims_writer;
 GRANT EXECUTE ON FUNCTION claims.claim_insert(bigint,bigint,text,text,jsonb,jsonb,text,text,bigint[]),
     claims.claims_export(bigint), claims.run_register(bigint,text,text,text) TO gars_claims_writer;
 RESET ROLE;

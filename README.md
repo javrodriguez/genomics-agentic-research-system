@@ -302,14 +302,16 @@ readers now ignore replacement objects. Restore rows retain terminal corrections
 with equal timestamps; venue/canary evidence remains unmeasured. See the
 [corrective record](docs/decisions/0062-row-11-raw-git-and-terminal-restore-addendum.md).
 
-Row 7 owner ruling 1 (2026-09-23) separates exploratory writer registration
-from owner-only registration of claim-eligible runs. Claims and reports are
-validated only against disposable local PostgreSQL; deployment and pilot-1
-measurement remain unverified. See the
-[row-7 ruling response](docs/implementation/row_7_change_report.md#owner-ruling-1-answered).
+Row 7 review round 2 (2026-09-23) makes evidence links immutable to the writer,
+refuses snapshot claims without evidence, and checks all text in HYPOTHESIS
+rows and their limitations for observation verbs. Registration remains split
+between exploratory writer runs and owner-only claim-eligible runs. Claims and
+reports are validated only against disposable local PostgreSQL; deployment and
+pilot-1 measurement remain unverified. See the
+[row-7 review response](docs/implementation/row_7_change_report.md#review-round-2-fixes).
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(429 tests collected; the preceding 397-case suite had 11 environment skips on macOS at the 2026-09-22 merge of the row-5 fix and rows 15, 4, 11 and 12, with Docker answering and row 5's scratch folder set as CI sets it; a macOS cold clone without it skips 55, or 86 with `TMPDIR` also unset as on Linux; no cluster run is evidenced for these rows).
+(432 tests collected; the preceding 397-case suite had 11 environment skips on macOS at the 2026-09-22 merge of the row-5 fix and rows 15, 4, 11 and 12, with Docker answering and row 5's scratch folder set as CI sets it; a macOS cold clone without it skips 55, or 86 with `TMPDIR` also unset as on Linux; no cluster run is evidenced for these rows).
 Row 15 review round 4 (2026-09-22), macOS / Python 3.8.2: 252 tests, <!-- not-the-suite-total -->
 `OK (skipped=50)`; no tests from row 15 skipped. R15-03's narrow fixture repair
 is authorised by the owner, **confirmed on 22 September 2026** ([0067](docs/decisions/0067-owner-confirms-rows-15-and-4-provisional-rulings.md)).

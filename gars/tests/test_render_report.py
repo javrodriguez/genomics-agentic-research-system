@@ -112,6 +112,42 @@ class RenderReportTests(unittest.TestCase):
         hypothesis['text'] = 'A showingly unconfirmed possibility.'
         self.assertEqual(self.invoke().returncode, 0)
 
+    def test_claim_requires_nonempty_evidence(self):
+        claim = self.snapshot['claims'][0]
+        for value in (None, [], {}, 'evidence', 1, False):
+            with self.subTest(value=value):
+                claim['evidence'] = value
+                self.refuse('report refused: claim 1 has no evidence links')
+        del claim['evidence']
+        self.refuse('report refused: claim 1 has no evidence links')
+
+    def test_hypothesis_all_rendered_text(self):
+        original = copy.deepcopy(self.snapshot)
+        paths = (
+            ('text',), ('bio_support', 'literature'),
+            ('bio_support', 'replication'), ('process_risk', 'limitation'),
+            ('process_risk', 'data_quality'), ('reference_release',), ('workflow_version',),
+            ('evidence', 0, 'source', 'reference'),
+        )
+        for path in paths:
+            for text in ('This proves the association.', 'Smith 2020 demonstrated and confirmed it',
+                         'This sh\u200bows a result.', 'This finding may reflect a mechanism.',
+                         'This proves_it.', 'This __proves__ it.', 'Replication confirms2 it.'):
+                with self.subTest(path=path, text=text):
+                    self.snapshot = copy.deepcopy(original)
+                    target = self.snapshot['claims'][2]
+                    for key in path[:-1]:
+                        target = target[key]
+                    target[path[-1]] = text
+                    self.refuse('HYPOTHESIS observation verb in claim 3')
+        for nested in ({'note': ['This proves it.']}, {'demonstrated': 'possible'}):
+            self.snapshot = copy.deepcopy(original)
+            self.snapshot['claims'][2]['bio_support']['literature'] = nested
+            self.refuse('HYPOTHESIS observation verb in claim 3')
+        self.snapshot = original
+        self.snapshot['claims'][2]['process_risk']['limitation'] = 'An association remains possible.'
+        self.assertEqual(self.invoke().returncode, 0)
+
     def test_degrade_requires_limitation(self):
         claim = next(c for c in self.snapshot['claims']
                      if c['process_risk'].get('qc_disposition') == 'DEGRADE')
@@ -124,7 +160,8 @@ class RenderReportTests(unittest.TestCase):
         hypothesis = next(c for c in self.snapshot['claims'] if c['type'] == 'HYPOTHESIS')
         original = copy.deepcopy(self.snapshot)
         for text in ('This sh\u200bows a result.', 'This sh\u00adows a result.', 'This ＳＨＯＷＳ a result.',
-                     'This sh\u034fows a result.', 'This sh\ufe0fows a result.', 'This sh\u3164ows a result.'):
+                     'This sh\u034fows a result.', 'This sh\ufe0fows a result.', 'This sh\u3164ows a result.',
+                     'This proves_it.', 'This __proves__ it.', 'Replication confirms2 it.'):
             hypothesis['text'] = text
             self.refuse('HYPOTHESIS observation verb')
         for separator in ('\n', '\t', '\r', '\v', '\f', '\x85', '\u3164', '\u200b'):
@@ -152,11 +189,12 @@ class RenderReportTests(unittest.TestCase):
 
     def test_unknown_sources(self):
         self.snapshot = {'run': {}, 'claims': []}
+        (self.fixture / 'manifest.json').write_text('{}')
         self.assertEqual(self.invoke().returncode, 0)
         report = self.out.read_text()
-        self.assertEqual(renderer.display(' \t\n', 'run registration'), 'UNKNOWN (owned by run registration)')
-        for owner in ('run registration', 'row 6: data_class, venue, purpose',
-                      'row 6', '§14 QC dispositions', 'claims snapshot',
+        self.assertEqual(renderer.display(' \t\n', 'row 7: run registrar'), 'UNKNOWN (owned by row 7: run registrar)')
+        for owner in ('row 7: run registrar', 'row 6: data_class, venue, purpose',
+                      'row 6', '§14 QC dispositions', 'row 7: claim writer', 'row 6: manifest producer',
                       'row 11: docs/ledger.csv has no per-run cost source'):
             self.assertIn('UNKNOWN (owned by %s)' % owner, report)
 
@@ -165,7 +203,7 @@ class RenderReportTests(unittest.TestCase):
             claim['process_risk'] = {}
         self.assertEqual(self.invoke().returncode, 0)
         section = self.out.read_text().split('## limitations adjacent to the affected claims\n', 1)[1]
-        self.assertTrue(section.lstrip().startswith('UNKNOWN (owned by claims snapshot)'))
+        self.assertTrue(section.lstrip().startswith('UNKNOWN (owned by row 7: claim writer)'))
         self.out.unlink()
         (self.fixture / 'manifest.json').write_text('[]')
         self.refuse('snapshot and manifest must be JSON objects')
@@ -181,8 +219,8 @@ class RenderReportTests(unittest.TestCase):
         self.assertEqual(self.invoke().returncode, 0)
         self.assertNotIn('\n## invented', self.out.read_text())
         self.assertNotIn('<script>', self.out.read_text())
-        self.assertEqual(renderer.display("cohort's", 'claims snapshot'), "cohort's")
-        self.assertEqual(renderer.display('~~not~~ $x$', 'claims snapshot'), r'\~\~not\~\~ \$x\$')
+        self.assertEqual(renderer.display("cohort's", 'row 7: claim writer'), "cohort's")
+        self.assertEqual(renderer.display('~~not~~ $x$', 'row 7: claim writer'), r'\~\~not\~\~ \$x\$')
 
     def test_three_inputs_invariant_sweep(self):
         sentinel = 'ROW7_FORBIDDEN_PROSE_SENTINEL'
