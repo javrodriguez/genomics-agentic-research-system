@@ -229,6 +229,9 @@ Sex perfectly confounded across arms refuses with `confounded_condition` naming 
 Otherwise female-proportion difference >= 0.5 or median-age difference >= 10 years
 adds `covariate_imbalance` with disposition `DEGRADE` in `design_check.flags`.
 All unknown sex or all blank age is `not_checkable` for that half.
+Values outside the case-sensitive sex vocabulary, or nonblank ages that are not
+finite non-negative numbers, refuse with `invalid_design`, naming the column.
+Invalid metadata never becomes an unknown value or a checked covariate.
 Cell-level rows or an arm with at least two rows but fewer than two independent
 subjects refuse with `pseudoreplication`; subject wins over biological_unit.
 The subject half needs one of those columns. There is no registered pseudobulk path.

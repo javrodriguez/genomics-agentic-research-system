@@ -699,3 +699,294 @@ Hours and metered cost: unknown; no new measurement is inferred.
 ## Owner rulings needed
 
 None.
+
+## Review round C2 fixes
+
+Date: 2026-09-24. Starting commit: `b98f2982bf087cb66ffbe7d42d0538cdff152672`.
+This round adds one commit on `build/gars-row-8-catalogue` in response to
+`docs/reviews/row_8_review_C1.md`, SHA-256
+`fa33698e1366d70381345219ca3a2fc0fe28519b57ea31ef99e7159a939a916f`.
+The review remains untracked and byte-identical. The earlier retry-scope
+restoration is already present at the starting commit; no restoration is repeated.
+The brief's rulings were decided under the owner's standing delegation (23 Sep 2026).
+The response-capture ruling stays resolved; F1 is a different, newly identified
+sealed-transport decision. The implementation does not choose an option for it.
+
+| Finding → requirement | Changed files | Acceptance test | Result; red-on-fault seen |
+|---|---|---|---|
+| F1 BLOCKER → R-114 | This report; appended 0101 addendum only | Scratch development snapshot with an unrecorded DOI, through emission | Reproduced citation_unverifiable, output absent, class-9 catch false; stopped for ruling; red-on-fault: no repair claimed |
+| F2 MAJOR → R-125 | `gars/_system/resolve_citation.py`, `gars/_system/claims/evidence_check.py`, `gars/tests/test_emit_report.py` | EmitReportTests.test_doi_reference_forms | Green for all five evasion forms and three malformed markers; absent/existing output preserved; red-on-fault: yes, start-only extraction and ignored markers both go red |
+| F3 MAJOR → R-042 | `gars/_system/wrappers/rnaseq-de/rnaseq_de.py`, its sub-stage contract, `tests/test_planted_defects.py` | DevelopmentCatalogueTests.test_collect_diagnostic_drift | Real collect and check-table refuse present padj without pvalue; red-on-fault: yes, removing the new refusal goes red |
+| F4 MAJOR → R-114 | `gars/_system/claims/evidence_check.py`, `gars/tests/test_emit_report.py` | EmitReportTests.test_malformed_evidence | Null/empty/ambiguous parents, missing fields and inconsistent IDs refuse evidence_missing; red-on-fault: yes, accepting malformed parents goes red |
+| F5 MAJOR → R-042 | `gars/_system/stage01_samplesheet.py`, stage-01 contract, `tests/test_planted_defects.py` | DevelopmentCatalogueTests.test_covariate_schema_refusals | Nonnumeric age refuses invalid_design in the single JSON response, with no writes; red-on-fault: yes, removing age refusal goes red |
+| F6 MINOR → R-141 | Same stage-01 files | DevelopmentCatalogueTests.test_covariate_schema_refusals | Invalid sex, negative/nonfinite age refuse for both bulk assays; red-on-fault: yes, removing sex or age refusal goes red |
+| F7 MAJOR → R-114 | `tests/test_planted_defects.py` | DevelopmentCatalogueTests.test_class_specific_details; test_sealed_grading_uses_class_details | Duplicate-ID invalid_design and batch-only confounding earn no class-2/3 credit; positive controls still count; red-on-fault: yes, each omitted detail gate goes red |
+| F8 MINOR → R-114 | `tests/test_planted_defects.py` | SealedOutputDisciplineTests; test_sealed_grading_uses_class_details | Graded derives from terminal verdicts; errors retain a class when parseable; graded equals seen asserted; red-on-fault: yes, dropping a verdict or skipping an error goes red |
+| F9 NOTE → documentation | This report's expectation table; README count only | `python3 tests/check_counts.py` | The earlier sentence rewrite is explicitly recorded below, choosing the review's documentation option; red-on-fault: no, documentation-only |
+| F10 NOTE → provenance | New commit metadata; this report | `git log -1 --format='%an <%ae> / %cn <%ce>'` | This round uses neutral GARS Producer author/committer metadata; historical commits are not rewritten; red-on-fault: no, metadata-only |
+
+All detector thresholds are unchanged. No config key, schema column or new failure
+code is introduced. The strict sex/age refusals enforce the schema already specified
+in the brief, using the existing invalid_design code; no new scientific choice is
+made. The new R-042 behavior and its red/green witnesses are appended to 0101.
+The ten committed clean projects, fixture hashes and existing ledger rows are unchanged.
+
+F8's development-loop allegation does not match the starting code: its increment
+already follows grade/clean. Reading
+`git show b98f298:tests/test_planted_defects.py` produced, in order:
+
+```text
+caught += int(grade(self.root / ('d%02d' % cid), cid, FLAGS[cid][0]))
+graded += 1
+false_flags += int(not clean(self.root / ('c%02d' % i), all_stages=True))
+graded += 1
+self.assertEqual(graded, seen)
+```
+
+That loop retains its existing verdict-based accounting. The sealed loop was
+incorrect; it now records content-free class/outcome pairs at terminal branches,
+and derives graded from those records. A parse error has unknown class and still
+counts as an error verdict. Unknown and unmapped cases cannot earn catch credit.
+No new sealed data was created or inspected: the added accounting regression uses
+producer development projects and in-memory declarations. Existing synthetic
+sentinel controls remain the required interface tests, never real seals.
+
+### Protected files touched in C2
+
+- `gars/_system/resolve_citation.py`
+- `gars/_system/claims/evidence_check.py`
+- `gars/_system/stage01_samplesheet.py`
+- `gars/_system/wrappers/rnaseq-de/rnaseq_de.py`
+- `gars/01_prepare_samplesheets/CONTEXT.md`
+- `gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md`
+
+### Expectation and documentation changes
+
+| File / location | Earlier shape | C2 disposition | Reason |
+|---|---|---|---|
+| `README.md:314` at round 1 | Historical 456-test row-7 sentence, including 11 skips, macOS, 2026-09-23 and Docker/scratch conditions | The prior replacement with a current collection count and change-report pointer is recorded explicitly; only 485 to 490 changes this round | F9's allowed documentation option; assigning historical platform/run conditions to an expanded current suite would imply evidence not measured |
+| `README.md` and two current counts in `DEVELOPMENT.md` | 485 collected tests | 490 collected tests | Five new test methods; unittest discovery confirms 240 plus 250 |
+| Existing test expectations | All prior verdicts and thresholds | No changes | Added adverse tables, metadata and references; existing assertions retained and strengthened |
+
+### Commands and execution conditions
+
+All commands ran from the repository root. Each set the following environment
+before reading, editing or testing; no command changed directory:
+
+```bash
+export TMPDIR="${PWD}-scratch" TEMP="${PWD}-scratch" TMP="${PWD}-scratch"
+```
+
+Python was **3.13.5**, including the eval harness (at least 3.9).
+Reads used Git, Python, cat and sed; the previous round established that rg is
+unavailable. Edits used short Python read/replace/write commands and append-only
+record writes. All scratch scripts, logs, temporary projects, fault copies and
+the commit-message file stayed in the scratch twin. Production code still has no
+replay switch; no network mode was enabled. Only one full suite ran at a time.
+Staging uses named paths and the message is read from the scratch file with `-F`.
+Neutral author/committer metadata is supplied for this commit; no remote, push,
+self-approval or merge is performed.
+
+Before production edits, the new regressions ran against the starting code:
+
+- `python3 tests/test_planted_defects.py DevelopmentCatalogueTests.test_covariate_schema_refusals DevelopmentCatalogueTests.test_class_specific_details DevelopmentCatalogueTests.test_collect_diagnostic_drift SealedOutputDisciplineTests`: `Ran 6 tests in 0.950s`; `FAILED (failures=22, errors=8)`.
+- `python3 gars/tests/test_emit_report.py EmitReportTests.test_doi_reference_forms EmitReportTests.test_malformed_evidence`: `Ran 2 tests in 0.432s`; `FAILED (failures=17)`.
+
+Those reds include the reported bypasses and the missing verdict records; their
+later green results are below. The fault driver's first invocation found a string
+quoting SyntaxError in a newly added mutation. That driver was repaired before
+any fault result was recorded; its final run executed all 33 mutations. An early
+count check found the second DEVELOPMENT count still at 485; that count was
+corrected to 490 and the final count check is clean. No test or guard was weakened.
+
+`bash docs/decisions/build_index.sh` regenerated the index with no byte change,
+because 0101's frontmatter is unchanged. `git diff --check` is clean; all changed
+Python files parse with `ast.parse(feature_version=(3, 6))`. Existing decision and
+report bytes are prefixes of their updated files. No added line contains U+007E;
+character checks build the character with chr(126). Row-7 invariance was checked
+with the following command, whose output is empty:
+
+```bash
+git diff dc6b803 -- gars/_system/claims/render_report.py gars/_system/claims/claims.sql gars/_system/claims/report_template.md
+```
+
+### Rule 5 summaries and development EXIT lines (verbatim)
+
+`GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py`:
+
+```text
+collected 240 tests from tests
+collected 250 tests from gars/tests
+planted-defects development (producer-authored, unsealed): 9/10 classes (placeholder 10 counted planted, not caught)
+false flags (producer-authored clean projects): 0/10
+graded 19 of 19 development projects seen
+class 6: measured with --verify-integrity full; stage 01 default is none
+Ran 490 tests in 80.522s
+OK (skipped=79)
+```
+
+`python3 tests/check_contracts.py`:
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`:
+
+```text
+collected 240 tests from tests
+collected 250 tests from gars/tests
+suite: 490 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`:
+
+```text
+Ran 44 tests in 37.557s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`:
+
+```text
+clean — graded=1
+```
+
+`python3 tests/test_planted_defects.py`:
+
+```text
+Ran 17 tests in 4.375s
+OK (skipped=1)
+planted-defects development (producer-authored, unsealed): 9/10 classes (placeholder 10 counted planted, not caught)
+false flags (producer-authored clean projects): 0/10
+graded 19 of 19 development projects seen
+class 6: measured with --verify-integrity full; stage 01 default is none
+```
+
+`python3 gars/tests/test_citation_resolution.py`:
+
+```text
+Ran 5 tests in 0.007s
+OK (skipped=1)
+```
+
+`python3 gars/tests/test_emit_report.py`:
+
+```text
+Ran 10 tests in 0.095s
+OK
+```
+
+`python3 gars/tests/test_integrity_records.py`:
+
+```text
+Ran 2 tests in 0.062s
+OK
+```
+
+### Parent and disposable-fault verification
+
+`python3 benchmarks/defects/baseline_check.py` ran against archived dc6b803:
+
+```text
+BASE import: RED (missing gars/_system/resolve_citation.py)
+BASE class 1: caught
+BASE class 2: caught
+BASE class 3: not caught
+BASE class 4: not caught
+BASE class 5: not caught
+BASE class 6: not caught
+BASE class 7: not caught
+BASE class 8: not caught
+BASE class 9: not caught
+BASE behavioral: 2/10; classes 3, 4, 5, 6, 7, 8, 9 not caught
+```
+
+`python3 benchmarks/defects/red_on_fault.py` used disposable copies and byte
+backups, restoring every modified file without a checkout restore. Every one
+of the original 24 faults was rerun, plus nine C2 faults:
+
+```text
+RED: sex confounding removed
+RED: imbalance threshold 0.9
+RED: cell pseudoreplication removed
+RED: subject count removed
+RED: index comparison inverted
+RED: not_checkable counted pass
+RED: evidence hash not compared
+RED: absolute evidence accepted
+RED: padj below pvalue allowed
+RED: BH recompute removed
+RED: Crossref 404 alone unresolved
+RED: network error resolved
+RED: unparseable plant skipped
+RED: unmapped folded into class
+RED: Hi-C denominator removed
+RED: truncated plain FASTQ passes
+RED: gzip-valid record truncation passes
+RED: report written before preflight
+RED: sealed stdout leaked
+RED: invalid_design mapped without family
+RED: BH tolerance 1e-6
+RED: environment replay switch
+RED: suppressed replay option
+RED: DOI tokens restricted to whole reference
+RED: malformed DOI marker ignored
+RED: malformed evidence accepted
+RED: padj without pvalue allowed
+RED: invalid sex treated unknown
+RED: invalid age allowed
+RED: class 2 detail ignored
+RED: class 3 detail ignored
+RED: graded verdict dropped
+RED: renderer receives from-db
+red-on-fault: 33/33
+```
+
+F1 was reproduced with a scratch development snapshot whose DOI is outside the
+committed replay set, imported through the existing emission helper:
+
+```text
+F1 reproduction: citation_unverifiable; report absent; class-9 catch false
+```
+
+The DOI protocol fixtures remain labelled **synthetic protocol fixtures**.
+These results demonstrate protocol logic, never live DOI resolution or sealed
+class-9 P(caught). Hours and metered cost: unknown, not zero.
+
+## Owner rulings needed
+
+1. **F1 — sealed class-9 transport (R-114), stopped.** The fixed development
+   replay has no response for a sealer-authored DOI outside its ten identifiers.
+   Emission correctly refuses citation_unverifiable, but the sealed class-9
+   contract requires citation_unresolved for a catch. Hi-C also remains not
+   caught, so such a set is capped at 8/10. Choose the review's alternatives:
+   **A:** layout (c) carries the plant's own recorded responses, including request
+   URL, status and body SHA-256, replayed in-process by the runner;
+   **B:** sealed class-9 runs use live transport on a networked host.
+   Both need a specified sealed run contract and a regression using a DOI outside
+   the committed development fixtures. Neither is selected or implemented here.
+   The delegated synthetic-fixture provenance ruling does not choose this transport.
+
+## Residual gaps after C2
+
+- **NOT met:** F1 sealed class-9 transport and sealed >= 9/10 over all ten classes;
+  external_human_seal and public catch-rate evidence. Actual sealed tests skipped.
+- **NOT met:** live DOI capture or live resolution; the network test skipped.
+  Class-9 replay catch rate remains development protocol evidence only.
+- **NOT met:** Docker database classes of rows 5 and 7 (Row05DatabaseTests and
+  ClaimConstraintTests), skipped on this host. The full suite has 79 total skips.
+- **NOT met:** actual Python 3.6 execution, live pipelines or cluster acceptance.
+- **NOT met:** PMID/E-utilities, literature-role wiring of R-125, R-069 artifact
+  liveness beyond claim evidence, and report emission wiring into stage 03 or
+  pilot flow. Direct renderer calls remain unguarded by the new preflight.
+- **NOT met:** class-10 detector, pilot-1 measurement, step B's data route and
+  backend bench, scientific model calibration, real-DOI relevance, swap checks
+  without library_index, and containment of system/catalogue editors.
+- **NOT met:** fresh review acceptance, separate protected-change approval,
+  deployment path-scan acceptance and merge; 0102, 0103 and 0104 remain untouched.
+
+F2–F8 closed by code and regressions; F9 answered by the expectation table;
+F10 addressed prospectively by neutral commit metadata; F1 waits on the owner.

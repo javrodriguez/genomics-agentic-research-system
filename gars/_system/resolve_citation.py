@@ -15,12 +15,19 @@ def parser():
     return result
 
 
+def dois(reference):
+    """Extract DOI tokens wherever a citation writes them, preserving suffix case."""
+    values = re.findall(r"10\.[0-9]{4,9}/[^\s<>\"']+", reference, re.I)
+    return [value[:-1] if value.endswith(('.', ',', ';')) else value for value in values]
+
+
 def doi(reference):
-    value = reference.strip()
-    value = re.sub(r'^(?:doi:\s*|https://(?:dx\.)?doi\.org/)', '', value, flags=re.I)
-    if value.endswith(('.', ',', ';')):
-        value = value[:-1]
-    return value if re.fullmatch(r'10\.[0-9]{4,9}/\S+', value, re.I) else None
+    values = dois(reference)
+    return values[0] if values else None
+
+
+def mentions_doi(reference):
+    return bool(re.search(r'\bdoi\b', reference, re.I))
 
 
 def live_transport(url):

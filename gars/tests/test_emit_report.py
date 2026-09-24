@@ -1,5 +1,6 @@
 """Preflight refusal preserves output; a single export feeds check and render."""
 import contextlib
+import copy
 import io
 import json
 from pathlib import Path
@@ -63,6 +64,45 @@ class EmitReportTests(unittest.TestCase):
         self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = generator.FAKE_DOI
         self.save()
         self.refuse('citation_unresolved')
+
+    def test_doi_reference_forms(self):
+        for reference in ('http://doi.org/' + generator.FAKE_DOI,
+                          'https://www.doi.org/' + generator.FAKE_DOI,
+                          'doi.org/' + generator.FAKE_DOI,
+                          'DOI ' + generator.FAKE_DOI,
+                          'Smith J. (2020) Nature. doi:' + generator.FAKE_DOI):
+            with self.subTest(reference=reference):
+                self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
+                self.save()
+                if self.out.exists():
+                    self.out.unlink()
+                self.refuse('citation_unresolved')
+        for reference in ('doi:invalid', 'https://doi.org/invalid', 'DOI missing'):
+            with self.subTest(reference=reference):
+                self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
+                self.save()
+                if self.out.exists():
+                    self.out.unlink()
+                self.refuse('citation_unverifiable')
+
+    def test_malformed_evidence(self):
+        artifact, source = copy.deepcopy(self.snapshot['claims'][0]['evidence'])
+        cases = [dict(artifact, artifact=None, path='results/fabricated_output.tsv'),
+                 dict(artifact, artifact={}), dict(source, source={}),
+                 dict(artifact, source=source['source'], source_id=1),
+                 dict(artifact, artifact_id=2), dict(artifact, artifact_id=None),
+                 dict(source, source_id=2), dict(source, source_id=None),
+                 dict(source, artifact_id=1), dict(artifact, source_id=1),
+                 dict(source, source={'id': 1, 'reference': None}),
+                 dict(artifact, artifact={'id': 1, 'path': 'evidence.tsv'}),
+                 dict(source, source={'id': 1, 'reference': ''})]
+        for evidence in cases:
+            with self.subTest(evidence=evidence):
+                self.snapshot['claims'][0]['evidence'] = [evidence]
+                self.save()
+                if self.out.exists():
+                    self.out.unlink()
+                self.refuse('evidence_missing')
 
     def test_path_containment(self):
         artifact = self.snapshot['claims'][0]['evidence'][0]['artifact']

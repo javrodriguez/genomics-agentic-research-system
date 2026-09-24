@@ -49,14 +49,37 @@ def main(argv=None, transport=None):
                 raise ValueError('invalid claim id')
             problems = set()
             for evidence in claim['evidence']:
-                if evidence.get('artifact') is not None:
-                    problem = artifact_problem(evidence['artifact'], args.project)
+                artifact, source = evidence.get('artifact'), evidence.get('source')
+                kind = 'artifact' if artifact is not None else 'source'
+                parent = artifact if kind == 'artifact' else source
+                other = 'source' if kind == 'artifact' else 'artifact'
+                if (not isinstance(parent, dict) or (artifact is not None and source is not None)
+                        or type(evidence.get(kind + '_id')) is not int
+                        or type(parent.get('id')) is not int
+                        or evidence[kind + '_id'] != parent['id']
+                        or evidence.get(other + '_id') is not None):
+                    problems.add('evidence_missing')
+                    continue
+                if kind == 'artifact':
+                    digest = artifact.get('sha256')
+                    if (not isinstance(artifact.get('path'), str) or not artifact['path'].strip()
+                            or not isinstance(digest, str) or len(digest) != 64
+                            or any(c not in '0123456789abcdef' for c in digest)):
+                        problems.add('evidence_missing')
+                        continue
+                    problem = artifact_problem(artifact, args.project)
                     if problem:
                         problems.add(problem)
-                if evidence.get('source') is not None:
-                    reference = evidence['source']['reference']
-                    if resolve_citation.doi(reference):
-                        problem = resolve_citation.resolve(reference, transport=transport)
+                else:
+                    reference = source.get('reference')
+                    if not isinstance(reference, str) or not reference.strip():
+                        problems.add('evidence_missing')
+                        continue
+                    identifiers = resolve_citation.dois(reference)
+                    if not identifiers and resolve_citation.mentions_doi(reference):
+                        problems.add('citation_unverifiable')
+                    for identifier in identifiers:
+                        problem = resolve_citation.resolve(identifier, transport=transport)
                         if problem != 'resolved':
                             problems.add(problem)
             for problem in sorted(problems):

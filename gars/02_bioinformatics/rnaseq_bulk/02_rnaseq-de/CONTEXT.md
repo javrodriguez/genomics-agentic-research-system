@@ -78,6 +78,7 @@ Projects produced by either path read the same downstream.
 
 **BH content gate (decision 0101).** `collect` and the diagnostic
 `check-table --table <de_results.csv>` share `uncorrected_pvalues`.
+A present padj with a missing pvalue refuses `uncorrected_pvalues`.
 Over rows with both probabilities present, refuse no tested rows in a nonempty table,
 any padj below pvalue, all equal raw/adjusted values with m >= 2 and any pvalue < 1,
 or a BH difference greater than relative 1e-4. A lone tested row must have padj = pvalue.

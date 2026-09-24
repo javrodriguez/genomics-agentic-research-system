@@ -331,6 +331,9 @@ def check_table(table):
     if ("pvalue" not in fields or "padj" not in fields
             or len(fields) != len(set(fields))):
         return [fail("uncorrected_pvalues", "missing or ambiguous probability columns")]
+    if any(r.get("padj", "").lower() not in missing
+           and r.get("pvalue", "").lower() in missing for r in rows):
+        return [fail("uncorrected_pvalues", "padj present without pvalue")]
     m = len(pairs)
     problem = None
     if rows and m == 0:

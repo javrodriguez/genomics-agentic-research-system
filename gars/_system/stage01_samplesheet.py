@@ -32,6 +32,7 @@ import gzip
 from collections import Counter
 from statistics import median
 import json
+import math
 import os
 import re
 import sys
@@ -587,7 +588,13 @@ def validate_assay(project, assay):
                 fails.append(fail("pseudoreplication", "fewer than two independent biological units in an arm"))
         covariates = {}
         flags = []
+        sex_valid = True
         if "sex" in samples["fields"]:
+            begin("sex_schema")
+            sex_valid = all(r.get("sex") in ("F", "M", "unknown") for r in incl_rows)
+            if not sex_valid:
+                fails.append(fail("invalid_design", "sex must be F, M or unknown"))
+        if "sex" in samples["fields"] and sex_valid:
             known = {arm: [r["sex"] for r in rows if r.get("sex") in ("F", "M")]
                      for arm, rows in arms.items()}
             sets = [set(values) for values in known.values()]
@@ -603,15 +610,32 @@ def validate_assay(project, assay):
                     flags.append({"check": "covariate_imbalance", "disposition": "DEGRADE",
                                   "detail": "sex: female proportion differs by at least 0.5"})
         if "age" in samples["fields"]:
+            begin("age_schema")
             ages = []
+            age_valid = True
             for rows in arms.values():
-                values = [float(r["age"]) for r in rows if r.get("age")]
+                values = []
+                for row in rows:
+                    if not row.get("age"):
+                        continue
+                    try:
+                        value = float(row["age"])
+                    except ValueError:
+                        age_valid = False
+                        continue
+                    if not math.isfinite(value) or value < 0:
+                        age_valid = False
+                    else:
+                        values.append(value)
                 if values:
                     ages.append(median(values))
-            covariates["age"] = "checked" if ages else "not_checkable"
-            if ages and max(ages) - min(ages) >= AGE_MEDIAN_THRESHOLD:
-                flags.append({"check": "covariate_imbalance", "disposition": "DEGRADE",
-                              "detail": "age: arm medians differ by at least 10 years"})
+            if not age_valid:
+                fails.append(fail("invalid_design", "age must be a finite non-negative number or blank"))
+            else:
+                covariates["age"] = "checked" if ages else "not_checkable"
+                if ages and max(ages) - min(ages) >= AGE_MEDIAN_THRESHOLD:
+                    flags.append({"check": "covariate_imbalance", "disposition": "DEGRADE",
+                                  "detail": "age: arm medians differ by at least 10 years"})
         if covariates:
             out["design_check"]["covariates"] = covariates
             out["design_check"]["flags"] = flags

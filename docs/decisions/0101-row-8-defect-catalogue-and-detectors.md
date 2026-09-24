@@ -271,3 +271,69 @@ this step, covering the same five real DOIs (including a DataCite DOI) and five
 fabricated DOIs. Its record must contain request URL, status and body SHA-256
 per DOI. That later record is not this producer's work. No live run or capture
 is claimed here, and no sealed or public catch-rate claim is promoted.
+
+## Addendum — review round C2, 2026-09-24
+
+The brief's rulings were decided under the owner's standing delegation (23 Sep 2026).
+This addendum implements review findings F2–F8 within the existing schema and
+threat model; it does not supply the missing F1 sealing decision. All earlier
+bytes remain preserved. Details and measured checks are in
+`docs/implementation/row_8_change_report.md`.
+
+DOI tokens are extracted throughout a source reference, including citation prose
+and alternative resolver URL spellings. Every extracted token is checked. A DOI
+marker with no parseable token refuses as citation_unverifiable. Service lookup,
+fallback, transient refusal, parser options, imports and in-process replay stay
+unchanged. Replay records remain **synthetic protocol fixtures**, proving protocol
+logic only; live DOI capture and live class-9 measurement remain NOT met.
+
+Evidence entries must carry exactly one non-null artifact or source dictionary,
+with its matching integer parent ID and a null other parent ID. An artifact needs
+a nonblank path and a SHA-256 digest; a source needs a nonblank string reference.
+Malformed entries refuse evidence_missing before rendering. Existing path/hash
+checks and the row-7 renderer remain unchanged.
+
+Stage 01 validates optional sex and age against the existing schema before the
+covariate calculation: sex is F, M or unknown; age is blank or a finite,
+non-negative number. Invalid values refuse invalid_design with the column named,
+without echoing the value. They never become not_checkable or checked. This uses
+an existing failure code and adds no config key, threshold or schema column.
+
+Collect and check-table refuse uncorrected_pvalues when padj is present but pvalue
+is missing. The tested-row BH rule and relative 1e-4 tolerance are unchanged.
+
+Class-2 invalid_design credit requires a catalogue group-of-one detail, and
+class-3 confounded_condition credit requires the word sex in the same failure.
+Row-1 mapped plants must also retain their supplied detail_contains. Sealed
+accounting records a terminal verdict (caught, not_caught, clean, flagged,
+unmapped or error) before counting a plant as graded. Errors preserve the parsed
+class when available and use an unknown class when parsing fails. The printed
+line prefixes and arithmetic thresholds are unchanged; graded equals seen is
+asserted by the sealed test. Development accounting already counts completed
+stage verdicts and retains its graded-equals-seen assertion.
+
+### R-042 — C2 changes and acceptance
+
+| Existing behavior changed | Acceptance red against the starting code, green after repair |
+|---|---|
+| Stage 01 crashes on nonnumeric age or silently drops invalid sex/nonfinite age | DevelopmentCatalogueTests.test_covariate_schema_refusals; both bulk assays, same JSON refusal contract |
+| Collect ignores nonmissing padj with missing pvalue | DevelopmentCatalogueTests.test_collect_diagnostic_drift; real collect and check-table on the same table |
+| DOI references in prose or alternative URL forms pass unexamined | EmitReportTests.test_doi_reference_forms; absent/existing output preserved |
+| Malformed evidence parents pass preflight | EmitReportTests.test_malformed_evidence; null, empty, ambiguous or inconsistent parents refuse |
+| Class-2/3 catch credit lacks the required detail | DevelopmentCatalogueTests.test_class_specific_details and test_sealed_grading_uses_class_details |
+| Sealed graded count increments before a verdict | SealedOutputDisciplineTests and test_sealed_grading_uses_class_details assert concrete verdicts and totals |
+
+No existing acceptance expectation is weakened. Tests add adverse inputs and
+assertions; the ten committed clean projects and their hashes remain unchanged.
+
+### F1 stop and residuals
+
+NOT met: sealed class-9 measurement on sealer-authored DOIs outside the fixed
+replay fixture set. Such a DOI produces citation_unverifiable, not the required
+citation_unresolved catch. With Hi-C also not caught, that set cannot reach
+9/10. Choosing between plant-supplied recorded responses in layout (c) and a
+live sealed class-9 run on a networked host changes the sealed interface or run
+contract. That part is stopped and the alternatives are recorded under the last
+Owner rulings needed section of the change report. No option is implemented.
+All prior residuals remain NOT met, including public sealing, PMID/literature
+wiring, stage-03/pilot emission wiring, pilot measurement and protected approval.

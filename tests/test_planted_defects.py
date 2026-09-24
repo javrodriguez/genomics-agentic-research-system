@@ -148,7 +148,13 @@ def grade(project, cid, flag, detail=''):
                        and detail in f.get('detail', '')
                        for assay in assays for f in assay.get('design_check', {}).get('flags', []))
     return code == 1 and result.get('ok') is False and any(
-        f.get('check') == flag and detail in f.get('detail', '') for f in failures)
+        f.get('check') == flag and detail in f.get('detail', '')
+        and (cid != 2 or flag != 'invalid_design' or any(
+            fragment in f.get('detail', '')
+            for fragment in CATALOGUE['entries'][1]['detail_contains']['invalid_design']))
+        and (cid != 3 or flag != 'confounded_condition'
+             or re.search(r'\bsex\b', f.get('detail', '')) is not None)
+        for f in failures)
 
 
 def clean(project, all_stages=False):
@@ -179,7 +185,7 @@ def sealed_measure(root, row1=None):
     counts = {i: [0, 0] for i in range(1, 11)}
     counts[10] = [0, 1]
     totals = dict(seen=0, graded=0, errors=0, clean=0, flagged=0, mapped=0, unmapped=0,
-                  independent_context=0, external_human_seal=0)
+                  independent_context=0, external_human_seal=0, verdicts=[])
     try:
         plants = [(p, False) for p in sorted(Path(root).iterdir()) if p.is_dir()]
         if row1:
@@ -191,7 +197,7 @@ def sealed_measure(root, row1=None):
         totals['errors'] += 1
     for plant, old in plants:
         totals['seen'] += 1
-        totals['graded'] += 1
+        cid = None
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             try:
                 expected = json.loads((plant / 'expected.json').read_text())
@@ -205,6 +211,7 @@ def sealed_measure(root, row1=None):
                     cid = row1_class(expected)
                     if cid is None:
                         totals['unmapped'] += 1
+                        totals['verdicts'].append((None, 'unmapped'))
                         continue
                     totals['mapped'] += 1
                     flag, detail = expected['reason'], expected['detail_contains']
@@ -219,14 +226,21 @@ def sealed_measure(root, row1=None):
                         if flag != 'none' or expected['expected_stage'] != '01_prepare_samplesheets':
                             raise ValueError('clean declaration')
                         totals['clean'] += 1
-                        totals['flagged'] += int(not clean(plant))
+                        flagged = not clean(plant)
+                        totals['flagged'] += int(flagged)
+                        totals['verdicts'].append((0, 'flagged' if flagged else 'clean'))
                         continue
                     if flag not in FLAGS[cid] or expected['expected_stage'] != STAGES[cid]:
                         raise ValueError('expectation')
                 counts[cid][1] += 1
-                counts[cid][0] += int(grade(plant, cid, flag, detail))
+                caught = grade(plant, cid, flag, detail)
+                counts[cid][0] += int(caught)
+                totals['verdicts'].append((cid, 'caught' if caught else 'not_caught'))
             except BaseException:
                 totals['errors'] += 1
+                error_class = cid if type(cid) is int and cid in range(11) else None
+                totals['verdicts'].append((error_class, 'error'))
+    totals['graded'] = len(totals['verdicts'])
     for cid, (caught, planted) in sorted(counts.items()):
         print('sealed %d: %d/%d' % (cid, caught, planted))
     caught = sum(planted > 0 and got == planted for got, planted in counts.values())
@@ -312,6 +326,68 @@ class DevelopmentCatalogueTests(unittest.TestCase):
                          {'sex': 'not_checkable', 'age': 'not_checkable'})
         self.assertFalse(grade(self.root / 'c08', 3, 'covariate_imbalance'))
 
+    def test_covariate_schema_refusals(self):
+        for column, values in (('age', ['NA', 'unknown', '45y', 'nan', '-1', 'inf', '-inf']),
+                               ('sex', ['f', 'm', 'female', 'male', '', 'Unknown'])):
+            for i, value in enumerate(values):
+                for assay in ('rnaseq_bulk', 'atacseq_bulk'):
+                    with self.subTest(column=column, value=value, assay=assay):
+                        root = self.root / (column + str(i) + assay)
+                        extra = {column: ['20', '22', '40', value] if column == 'age'
+                                 else ['F', 'F', 'M', value]}
+                        generate.project(root, assay=assay, extra=extra)
+                        code, result = stage(root)
+                        self.assertEqual(code, 1)
+                        self.assertIs(result['ok'], False)
+                        failures = result['assays'][assay]['failures']
+                        self.assertTrue(any(f['check'] == 'invalid_design' and column in f['detail']
+                                            for f in failures))
+                        self.assertEqual(result['wrote'], [])
+
+    def test_class_specific_details(self):
+        duplicate = self.root / 'duplicate'
+        data = generate.project(duplicate)
+        path = data / 'samples.csv'
+        lines = path.read_text().splitlines()
+        path.write_text('\n'.join(lines + [lines[1]]) + '\n')
+        self.assertFalse(grade(duplicate, 2, 'invalid_design'))
+        self.assertFalse(grade(self.root / 'd01', 3, 'confounded_condition'))
+        self.assertTrue(grade(self.root / 'd03', 3, 'confounded_condition'))
+        single = self.root / 'single'
+        generate.project(single, conditions=['A', 'B', 'B'])
+        self.assertTrue(grade(single, 2, 'invalid_design'))
+        self.assertFalse(grade(single, 2, 'invalid_design', 'duplicate'))
+
+    def test_sealed_grading_uses_class_details(self):
+        # Metadata is supplied in memory for development controls, never a seal.
+        duplicate = self.root / 'duplicate-control'
+        data = generate.project(duplicate)
+        path = data / 'samples.csv'
+        lines = path.read_text().splitlines()
+        path.write_text('\n'.join(lines + [lines[1]]) + '\n')
+        declarations = {duplicate: (2, 'invalid_design'),
+                        self.root / 'd01': (3, 'confounded_condition'),
+                        self.root / 'd02': (2, 'insufficient_biological_replicates'),
+                        self.root / 'd03': (3, 'confounded_condition')}
+        real_read = Path.read_text
+        def read(path, *args, **kwargs):
+            if path.name == 'expected.json' and path.parent in declarations:
+                cid, flag = declarations[path.parent]
+                return json.dumps(dict(class_id=cid, expected_flag=flag,
+                    expected_stage='01_prepare_samplesheets',
+                    seal_type='independent_context', canary='a' * 32))
+            return real_read(path, *args, **kwargs)
+        with patch.object(Path, 'iterdir', return_value=iter(declarations)), \
+                patch.object(Path, 'read_text', read), contextlib.redirect_stdout(io.StringIO()):
+            caught, counts, totals = sealed_measure(self.root)
+        self.assertEqual(counts[2], [1, 2])
+        self.assertEqual(counts[3], [1, 2])
+        self.assertEqual(totals['errors'], 0)
+        self.assertEqual(totals['graded'], totals['seen'])
+        self.assertEqual(sorted(totals['verdicts']),
+                         [(2, 'caught'), (2, 'not_caught'), (3, 'caught'), (3, 'not_caught')])
+        self.assertEqual(caught, 0)
+
     def test_row2_non_pseudoreplicate_controls(self):
         for name in ('batch-confounded', 'single-replicate'):
             with (REPO / 'benchmarks/fixtures' / (name + '.csv')).open() as handle:
@@ -371,6 +447,7 @@ class DevelopmentCatalogueTests(unittest.TestCase):
 
     def test_collect_diagnostic_drift(self):
         tables = [
+            ([(None, .01), (None, .04), (.1, .1)], False),
             ([(.01, .01), (.04, .04)], False), ([(.01, .005), (.04, .04)], False),
             ([(.01, .03), (.04, .06)], False), ([(None, None)], False), ([(.1, .09999999)], False),
             ([(.1, .2)], False), ([(.1, .1)], True), ([(.01, .02), (.04, .04)], True)]
@@ -434,6 +511,7 @@ class SealedOutputDisciplineTests(unittest.TestCase):
             self.assertEqual(totals['seen'], 2)
             self.assertEqual(totals['graded'], 2)
             self.assertEqual(totals['errors'], 2)
+            self.assertEqual(totals['verdicts'], [(4, 'error'), (None, 'error')])
             self.assertEqual(counts[4], [0, 1])
             self.assertEqual(counts[10], [0, 1])
             self.assertEqual(caught, 0)
@@ -469,6 +547,7 @@ class SealedOutputDisciplineTests(unittest.TestCase):
             with contextlib.redirect_stdout(io.StringIO()):
                 caught, counts, totals = sealed_measure(empty, old)
             self.assertEqual(totals['unmapped'], 1)
+            self.assertEqual(totals['verdicts'], [(None, 'unmapped')])
             self.assertEqual(totals['mapped'], 0)
             self.assertEqual(counts[2], [0, 0])
             self.assertEqual(caught, 0)
