@@ -353,6 +353,9 @@ class LaunchTests(unittest.TestCase):
         bad = ['ls issue#1 '+outside, 'echo $# ; cat '+outside,
                'echo ${#x}; cat '+outside, 'ls https:example#fragment '+outside,
                "ls 'issue'#1 "+outside, 'ls issue\\#1 '+outside]
+        for nonblank in (chr(12), chr(11), chr(13), chr(160)):
+            for tail in ('cat '+outside, 'ls '+os.sep, 'cd'):
+                bad.append('ls x'+nonblank+'#x; '+tail)
         good = ['ls issue#1', 'echo $#', 'echo ${#x}', 'ls issue # '+outside,
                 'ls issue;# '+outside, "echo '# literal' # "+outside]
         for command in bad + good:

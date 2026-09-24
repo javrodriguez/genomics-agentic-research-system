@@ -166,7 +166,10 @@ interpreter program text. Under item 22(a), file reads within awk program text
 Under item 23(e), further escapes depending on unparsed substitutions,
 arithmetic, eval, aliases, functions or nested quoting are named residuals,
 graded as NOTE requests to document them, rather than extending this detector
-into a shell evaluator.
+into a shell evaluator. AB1 F2 names four such constructs explicitly:
+backslash-newline continuation across the physical-line removal guard; legacy
+dollar-bracket arithmetic; operators inside parameter expansion; and ANSI-C
+quoted heredoc delimiters. These remain sandbox responsibilities.
 Those reads are the sandbox's to refuse; if the sandbox
 allowed one, the scan may not see it. Detection of some visible tokens inside such text does not
 establish coverage of the enclosing program. No model is run to test these rules.

@@ -129,7 +129,7 @@ def shell_syntax(text, state=(None, True)):
             word_start = True
             continue
         else:
-            word_start = char.isspace() or char in ';&|()'
+            word_start = char in ' \t\n;&|()'
         index += 1
     return ''.join(cleaned), heredocs, (quote, word_start)
 

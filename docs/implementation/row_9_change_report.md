@@ -3260,3 +3260,237 @@ push, merge or pull request is used.
 Closed: AA2 F1 and F2 under item 23. AA1 findings and items 20-22 remain
 addressed. No finding waits on the owner; sealing, measurement, protected
 approval, real fixture secret verification and the row exit remain open.
+
+
+## Review round AC1 fixes
+
+Date: 2026-09-24. Starting head: `1ac1b66b51e4bf7d4abcc2709902e9042b5d2bd0`.
+Review: `docs/reviews/row_9_review_AB1.md`, retained untracked and unchanged.
+**THE LANE, UNDER THE OWNER'S DELEGATION — THE LANE'S SPECIFICATION.**
+This final fix round answers AB1 only. Items 22 and 23 remain the contract;
+there is no refactor, new rule, model execution or prompt change.
+
+| Finding | Changed files | Test | Result (red-on-fault seen) |
+|---|---|---|---|
+| AB1 F1, MINOR: non-shell whitespace before a hash hides commands | `evals/review-faults/run_reviews.py`; `tests/test_review_faults_launch.py`; 0072 addendum | `LaunchTests.test_hash_comment_boundaries`, covered by existing `AA1 midword hash starts comment` mutation | Fixed: only space, tab, newline and the existing operators establish the boundary. Red-on-fault seen: yes; the twelve new combinations failed before the one-line fix and pass after it. The full retained mutation pass is reported below. |
+| AB1 F2, NOTE: four unparsed removal constructs | `evals/review-faults/README.md`; 0072 addendum | Documentation inspection against AB1 F2 and item 23(e) | Named all four: backslash-newline continuation across the physical-line guard, legacy dollar-bracket arithmetic, operators inside parameter expansion, ANSI-C quoted heredoc delimiters. Red-on-fault seen: no; documentation-only residual, with no code change requested. |
+
+The existing test now combines form feed, vertical tab, carriage return and
+no-break space before a hash with an outside read, root listing and bare
+directory change. Before the fix it printed:
+
+```text
+Ran 1 test in 0.005s
+FAILED (failures=12)
+```
+
+After the fix it printed:
+
+```text
+Ran 1 test in 0.005s
+OK
+```
+
+## Owner rulings needed
+
+None.
+
+## AC1 residual gaps
+
+Row 9 exit remains NOT met. Protected approval 0073, the three sealed slots,
+first measured run and combined record 0074, and later ledger entries remain
+external work. No model has been run against any case and the prompt is unchanged.
+Independent-context seals are development evidence only; public credibility
+remains unmeasured pending external-human seals. Science, trailer-gate JSON,
+launch_role() and R-093's code half remain open. Separate-user and read-only-token
+deployment evidence remains external. The uid check proves exactly: on the host
+where the review ran, the reviewing OS account is not the producing OS account.
+It does not prove which machine built the cases, and it does not bind GARS's
+own role decision.
+
+The deployment sandbox must enforce filesystem and network denial; settings
+hashing binds the file used without proving efficacy and may confirm guessed
+settings. Static indirection, unparsed substitutions, arithmetic, eval, aliases,
+functions, nested quoting, interpreter behavior and file access inside exempt
+awk and sed programs remain sandbox responsibilities. AB1 F2's four constructs
+are now explicitly named in the harness README and record addendum. Conservative
+false positives, long encoded session-store names, diff-style inference and
+shared model family remain residuals. One case per class is thin evidence;
+twelve of fifteen outcomes are publicly recomputable and three are hash-only.
+Real fixture secret scanning remains NOT met when gitleaks is absent under Q2 A.
+Docker mode A is unavailable to this account; native Python 3.6, cluster execution
+and merge-result CI remain unverified. Existing skips remain skips.
+
+Closed: AB1 F1 and F2; no finding waits on a new owner ruling.
+
+
+### AC1 final verification
+
+`python3 tests/run_tests.py (mode B; all temp variables set to scratch)`:
+
+```text
+collected 265 tests from tests
+collected 174 tests from gars/tests
+citations: 292/292 resolve
+DoD cells regenerated: 13/13
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 1/1 byte-stable
+added case-byte sweep: 12/12 clear; item 15 added lines and decoded objects
+fixtures: git apply --check passed for 12/12 against base archive
+plant match intervals: every file_lines answer overlaps changed lines
+honest-call corpus graded-against-seen: 278/278
+Ran 439 tests in 343.039s
+OK (skipped=59)
+```
+
+`python3 tests/run_tests.py (mode C; TMPDIR unset, TEMP and TMP set to scratch)`:
+
+```text
+collected 265 tests from tests
+collected 174 tests from gars/tests
+citations: 292/292 resolve
+DoD cells regenerated: 13/13
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 1/1 byte-stable
+added case-byte sweep: 12/12 clear; item 15 added lines and decoded objects
+fixtures: git apply --check passed for 12/12 against base archive
+plant match intervals: every file_lines answer overlaps changed lines
+honest-call corpus graded-against-seen: 278/278
+Ran 439 tests in 337.308s
+OK (skipped=86)
+```
+
+`python3 tests/check_contracts.py`:
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`:
+
+```text
+collected 265 tests from tests
+collected 174 tests from gars/tests
+suite: 439 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`:
+
+```text
+Ran 44 tests in 37.767s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`:
+
+```text
+clean — graded=1
+```
+
+`python3 scripts/release_check.py`:
+
+```text
+DoD cells regenerated: 13/13
+```
+
+`python3 tests/test_review_faults_build.py`:
+
+```text
+Ran 11 tests in 91.307s
+OK
+added case-byte sweep: 12/12 clear; item 15 added lines and decoded objects
+fixtures: git apply --check passed for 12/12 against base archive
+plant match intervals: every file_lines answer overlaps changed lines
+```
+
+`python3 tests/test_review_faults_core.py`:
+
+```text
+Ran 9 tests in 0.022s
+OK
+```
+
+`python3 tests/test_review_faults_launch.py`:
+
+```text
+Ran 20 tests in 1.835s
+OK
+```
+
+`python3 tests/test_review_faults_corpus.py`:
+
+```text
+Ran 1 test in 0.129s
+OK
+honest-call corpus graded-against-seen: 278/278
+```
+
+`python3 tests/test_review_faults_faults.py`:
+
+```text
+Ran 1 test in 189.417s
+OK
+```
+
+`feature_version=(3, 6) parse of every row Python file`:
+
+```text
+Python feature_version=(3, 6): 13/13 new Python files parsed
+```
+
+`repository pre-commit hook over fixtures staged in a disposable base tree`:
+
+```text
+fixture hook index: 24 fixture files staged against base
+gitleaks: REFUSED (gitleaks absent from PATH)
+citations: 292/292 resolve
+pre-commit: REFUSED
+```
+
+`disposable determinism test with resource.getrusage`:
+
+```text
+Ran 1 test in 6.013s
+OK
+determinism peak memory: 650028 KiB
+```
+
+The regenerated reviewer row, verbatim:
+
+```text
+| reviewer catch rate (code; science) | `evals/review-faults/`, `evals/bio-faults/` runners | ≥ 8/10 per set, ≤ 1/5 false alarms; first-run-at-sha reported (§21 Q3) | unmeasured |
+```
+
+Direct mutation evidence: **144 red fault witnesses** and **2 green unchanged-line exemption witnesses**. Every mutation passed its unchanged control first; corpus mutations identify failing calls. All retained bad lists passed, and the 278-call corpus remains green without exceptions.
+
+Before T1, the review host observed about 14 GiB for the whole-tree determinism comparison; that unsafe implementation was not rerun. The streamed-digest implementation remains in place; its fresh disposable measurement is above. Maximum child peak across verification was **669112 KiB**, below 1 GiB.
+
+The fixture pre-commit hook ran and refused because gitleaks is absent.
+Under Q2 A the real two-ruleset fixture scan remains NOT met; no substitute or
+bypass was used. Docker mode A was not run because this account cannot reach
+Docker. Python 3.6 syntax was parsed, but a native Python 3.6 run was not done.
+Deployment sandbox efficacy, long encoded store names, cluster execution and
+merge-result CI remain unverified. No model has been run against any case.
+
+Both full-suite modes and every direct module ran on the final Python source.
+All three living count claims match collection. Earlier record and report
+prefixes and the untracked AB1 review are preserved. The committed corpus and
+its README are unchanged; no supplied corpus copy was read or rewritten.
+Only allowed paths changed; protected fixtures and prompt, pinned trees,
+ledger, earlier decisions and reserved records remain untouched. The index
+and DoD were regenerated and remain byte-stable. Whitespace checks pass.
+One commit uses explicit staging paths and a message file in scratch; no remote,
+push, merge or pull request is used.
+
+Closed: AB1 F1 and F2. Items 22 and 23 remain the contract. No finding waits on the owner; sealing, measurement, protected
+approval, real fixture secret verification and the row exit remain open.

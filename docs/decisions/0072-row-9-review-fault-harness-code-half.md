@@ -894,3 +894,37 @@ is absent, under Q2 A. Docker mode A is unavailable; native Python 3.6, deployme
 sandbox efficacy, long encoded store names, cluster execution and merge-result
 CI remain unverified. Verification for AB1 is appended to
 `docs/implementation/row_9_change_report.md`.
+
+
+## Addendum — AC1 shell blanks and named residuals, 2026-09-24
+
+**THE LANE, UNDER THE OWNER'S DELEGATION — THE LANE'S SPECIFICATION.**
+This final fix round answers review AB1 F1 and F2 within items 22 and 23.
+No new words or choices are attributed to the owner. Earlier bytes remain
+unchanged; this record is 0072, with protected approval reserved as 0073 and
+the seal and first measured run reserved together as 0074.
+
+For F1, the comment scanner recognizes only space, tab and newline as shell
+blanks, alongside its existing operator characters. Python's broader whitespace
+classification is no longer used to establish a comment boundary. Form feed,
+vertical tab, carriage return and no-break space each precede a hash in the
+existing test_hash_comment_boundaries, with an outside read, a root listing
+and a bare directory change. The existing midword-hash mutation covers this
+test. No parser refactor or new audit rule is introduced.
+
+For F2, the named residual list now explicitly includes backslash-newline
+continuation across the physical-line removal guard, legacy dollar-bracket
+arithmetic, operators inside parameter expansion, and ANSI-C quoted heredoc
+delimiters. Under item 23(e), these unparsed constructs are documentation
+residuals. Their handling in code is unchanged. The deployment sandbox must
+refuse these reads; the bounded audit may miss them. Required settings hashing
+binds the file used, without proving filesystem or network enforcement.
+
+All earlier residuals and the two-wall distinction remain in force. Row 9 exit
+remains NOT met: no model is run against a case, no prompt is tuned, and no seal,
+measured run, protected approval or ledger entry is supplied. Independent-context
+seals remain development evidence only; public credibility requires external-human
+seals. The uid check proves exactly: on the host where the review ran, the reviewing
+OS account is not the producing OS account. It does not prove which machine built
+the cases, and it does not bind GARS's own role decision. Verification and remaining
+gaps are appended to `docs/implementation/row_9_change_report.md`.
