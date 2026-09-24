@@ -27,7 +27,7 @@ class LaunchTests(unittest.TestCase):
         settings=root/'settings.json'
         settings.write_text('{"permissions":{}}\n')
         args.settings=str(settings)
-        with launch_context(root):
+        with launch_context(root), mock.patch.object(run_reviews, 'blindness', wraps=run_reviews.blindness) as scan:
             self.assertEqual(run_reviews.run(args),0)
         neutral=manifest['cases'][0]
         record=common.read_json(Path(args.records)/(neutral+'.record.json'))
@@ -40,6 +40,9 @@ class LaunchTests(unittest.TestCase):
         kit=Path(args.kits_root)/neutral
         self.assertEqual((kit/'.claude/settings.json').read_bytes(),settings.read_bytes())
         invocation=common.read_json(kit/'invocation.json')
+        session=invocation['argv'][invocation['argv'].index('--session-id')+1]
+        self.assertEqual(scan.call_args[0][1:],(kit,session))
+        self.assertEqual(envelope['reviewer']['session_id'],session)
         self.assertEqual(invocation['stdin'],'')
         for flag,value in [('--model','stub-model'),('--permission-mode','auto'),
                            ('--permission-prompts','none'),('--setting-sources','project,local'),
@@ -116,20 +119,68 @@ class LaunchTests(unittest.TestCase):
                 'python3 -c "print(open(' + repr(outside_path) + ').read())"',
                 ('$'+'{HOME}')+os.sep+'file',
                 os.path.join('$'+'PWD',parent,'file'), '-C'+outside_path,
+                '-C'+os.path.join(parent,'file'), '-C'+home+os.sep+'file',
                 chr(92)+os.path.join(parent,'file')]
         good=['2>/dev/null','/usr/bin/env',str(kit/'file'),'repo/module.py']
+        good += ['--basetemp=tmp/x', '--git-dir=repo/.git',
+                 "awk -F '"+os.sep+"' '{print $1}' repo/input.txt",
+                 "cut -d '"+os.sep+"' -f 1 repo/input.txt",
+                 'python3 -c "print(8 '+os.sep*2+' 2)"',
+                 os.path.join('$'+'{PWD}','repo','file')]
         for token in bad+good:
             events=[{'type':'assistant','message':{'content':[{'type':'tool_use','input':{'command':'cat '+token}}]}}]
             result=run_reviews.blindness(events,kit)
             self.assertEqual(result['calls'],1)
             self.assertEqual(result['hits'],1 if token in bad else 0,token)
-        for command in ('cd && cat secret', '  cd', "bash -c 'cd && cat secret'", "cat 'unterminated"):
+        for command in ('cd && cat secret', '  cd', "bash -c 'cd && cat secret'", "cat 'unterminated",
+                        'echo ready\ncd\ncat secret', '( cd; cat secret )',
+                        '{ cd; cat secret; }', 'if true; then cd; cat secret; fi',
+                        'for x in y; do cd; cat secret; done', 'if false; then :; else cd; fi',
+                        'builtin cd; cat secret', 'command cd; cat secret',
+                        'cat '+('$'+'{HOME%/}')+os.sep+'file',
+                        'cat '+os.path.join('$'+'{PWD%/*}',parent,'file')):
             self.assertEqual(run_reviews.blindness([{'type':'tool_use','input':{'command':command}}],kit)['hits'],1,command)
+        prose='A slash '+os.sep+' or division '+os.sep*2+' is ordinary text.'
+        body=json.dumps({'verdict':'APPROVE_WITH_CHANGES','findings':[
+            {'summary':prose,'evidence':prose}]})
+        self.assertEqual(run_reviews.blindness([{'type':'tool_use','input':{
+            'file_path':'review.json','content':body}}],kit)['hits'],0)
+        for option in ('--git-dir=', '-C'):
+            command='git '+option+outside_path+' status'
+            self.assertGreater(run_reviews.blindness([{'type':'tool_use','input':{
+                'command':command}}],kit)['hits'],0,command)
         outside=root/'outside'
         outside.mkdir()
         (kit/'link').symlink_to(outside,target_is_directory=True)
         token=str(kit/'link'/'file')
         self.assertEqual(run_reviews.blindness([{'type':'tool_use','input':{'path':token}}],kit)['hits'],1)
+
+    def test_session_output_store_boundary(self):
+        root=temporary(self)
+        kit=root/'k_9.with space'/'a1-b2'
+        kit.mkdir(parents=True)
+        home=root/'h'
+        projects=home/'.claude'/'projects'
+        session='12345678-1234-4234-8234-123456789abc'
+        # Independent character-by-character oracle against the runtime kit path.
+        letters='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-'
+        project=''.join(c if c in letters else '-' for c in str(kit))
+        store=projects/project/session/'tool-results'
+        store.mkdir(parents=True)
+        (store/'link').symlink_to(root,target_is_directory=True)
+        outside=[projects/project/(session+'.jsonl'),
+                 projects/project/'other-session'/'tool-results'/'output.txt',
+                 projects/(project+'-other')/session/'tool-results'/'output.txt',
+                 projects/project/'memory'/'entry.md',store/'link'/'private.txt',
+                 store/(chr(46)*2)/'transcript.jsonl']
+        with mock.patch.object(run_reviews.pwd,'getpwuid',return_value=SimpleNamespace(pw_dir=str(home))):
+            self.assertEqual(run_reviews.session_output_store(kit,session),store)
+            for path in [store/'output.txt',store/'nested'/'output.txt']+outside:
+                event={'type':'tool_use','input':{'file_path':str(path)}}
+                hits=run_reviews.blindness([event],kit,session)['hits']
+                self.assertEqual(hits,1 if path in outside else 0,str(path.relative_to(root)))
+            event={'type':'tool_use','input':{'file_path':str(store/'output.txt')}}
+            self.assertEqual(run_reviews.blindness([event],kit)['hits'],1)
 
     def test_blindness_stream_makes_record_invalid(self):
         parent=chr(46)*2

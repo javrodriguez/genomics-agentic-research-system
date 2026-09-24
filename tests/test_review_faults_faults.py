@@ -93,6 +93,52 @@ for label,needle in [('nested shell','bash -c'),('nested interpreter','python3 -
 FAULTS.append(('blindness ignores bare cd','run_reviews.py',
                'if bare_cd:','if False:',
                'launch','LaunchTests.test_blindness_every_spelling'))
+FAULTS.extend([
+    ('blindness overcuts relative options','run_reviews.py',
+     "                    if token.startswith('-') and '=' in token:",
+     "                    if token.startswith('-') and os.sep in token:\n"
+     "                        token = token[token.index(os.sep):]\n"
+     "                    if token.startswith('-') and '=' in token:",
+     'launch','LaunchTests.test_blindness_every_spelling'),
+    ('blindness treats lone separators as paths','run_reviews.py',
+     'if token and not token.strip(os.sep):', 'if False:',
+     'launch','LaunchTests.test_blindness_every_spelling'),
+    ('blindness ignores attached parent and home paths','run_reviews.py',
+     "elif token.startswith('-'):", 'elif False:',
+     'launch','LaunchTests.test_blindness_every_spelling'),
+    ('blindness ignores HOME modifiers','run_reviews.py',
+     '                for token in tokens:',
+     "                if '{HOME%' in text: tokens = []\n                for token in tokens:",
+     'launch','LaunchTests.test_blindness_every_spelling'),
+    ('blindness ignores PWD modifiers','run_reviews.py',
+     '                for token in tokens:',
+     "                if '{PWD%' in text: tokens = []\n                for token in tokens:",
+     'launch','LaunchTests.test_blindness_every_spelling'),
+    ('saved output allowance widened to projects','run_reviews.py',
+     'within(path, saved_output)', 'within(path, saved_output.parents[2])',
+     'launch','LaunchTests.test_session_output_store_boundary'),
+    ('own saved output refused','run_reviews.py',
+     'if saved_output is not None and within(path, saved_output):', 'if False:',
+     'launch','LaunchTests.test_session_output_store_boundary'),
+    ('saved output ignores project normalization','run_reviews.py',
+     "project = re.sub(r'[^a-zA-Z0-9-]', '-', str(Path(kit).resolve()))",
+     "project = str(Path(kit).resolve()).replace(os.sep, '-')",
+     'launch','LaunchTests.test_session_output_store_boundary'),
+    ('launch session omitted from blindness','run_reviews.py',
+     'blindness(events, kit, session)', 'blindness(events, kit)',
+     'launch','LaunchTests.test_envelope_and_command_are_code_owned'),
+    ('absent reserved id leaks','build_cases.py',
+     "['P%02d' % n for n in range(1, 11)]", '[]',
+     'build','BuildTests.test_external_case_leak_refused'),
+])
+for label,needle in [('newline', 'echo ready'), ('subshell', '( cd;'),
+                     ('brace group', '{ cd;'), ('then', 'then cd;'),
+                     ('do', 'do cd;'), ('else', 'else cd;'),
+                     ('builtin', 'builtin cd;'), ('command', 'command cd;')]:
+    FAULTS.append(('bare cd ignores '+label,'run_reviews.py',
+                   '                if bare_cd:',
+                   '                if %r in text: bare_cd = None\n                if bare_cd:' % needle,
+                   'launch','LaunchTests.test_blindness_every_spelling'))
 
 
 # S1 carries R1's leak controls forward on item 15's committed surfaces.

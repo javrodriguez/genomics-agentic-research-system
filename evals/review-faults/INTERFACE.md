@@ -116,6 +116,34 @@ patch, or the deleted path for a deletion. The oracle strips at most one leading
 
 ## Seal, then run
 
+Before freezing hashes, check the candidate set with the coordinator's builder.
+Its leak check uses literal, case-sensitive substring matching: no added line,
+whole new file, commit message or new path may contain any of the ten class ids
+or any id P01 through P10 or C01 through C05. For example, `trace` contains
+`race` and is refused, including in an otherwise ordinary commit message.
+Fixture paths are forbidden too. Answer metadata stays private and is not a
+review surface, so its required class and id fields are exempt. Unchanged base
+lines are exempt by byte identity; new decoded Git content, both commits'
+metadata, neutral folder names and the manifest are checked. Compressed Git
+storage is not scanned as raw bytes.
+
+Ask the coordinator to run the following from its repository root, with
+`sealed_plants` naming the candidate folder containing P08, P09 and P10, and
+`preseal_output` naming a fresh private output folder outside every Git work
+tree. All temporary directories must be approved scratch. The coordinator
+returns the exit status and diagnostic, without exposing its fixtures or the
+generated repositories to the sealer:
+
+```sh
+GARS_SEALED_REVIEW_FAULTS_DIR="$sealed_plants" python3 evals/review-faults/build_cases.py --out "$preseal_output"
+```
+
+This runs the exact construction-time check over the candidate inputs and the
+shipped inputs, without a reviewer or model. Exit zero means construction and
+the sweep passed; a refusal must be fixed and checked again before sealing.
+Do not inspect generated cases, the private key, implementation or reviewer
+instructions. This mechanical preflight neither seals nor scores the set.
+
 Before handing over the set, freeze the diffs and expected metadata and retain
 sealer identity, seal date, base SHA, seal type and individual plant SHA-256 hashes.
 From inside the sealed folder, the fingerprint command is exactly:

@@ -118,7 +118,8 @@ def build(output, roots=None, run_salt=None, source=REPO, base_sha=BASE_SHA):
     from case_sweep import base_blobs, case_leaks
     import json
     baseline = base_blobs(source, base_sha)
-    forbidden = list(CLASSES) + list(cases)
+    forbidden = (list(CLASSES) + list(cases) +
+                 ['P%02d' % n for n in range(1, 11)] + ['C%02d' % n for n in range(1, 6)])
     for answer in cases.values():
         try:
             forbidden.append(str(answer['path'].relative_to(source)))

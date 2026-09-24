@@ -69,6 +69,12 @@ use synthetic records in scratch and do not create measurement evidence here.
 
 This is a post-run blindness audit, following lane specification item 8, not an OS
 sandbox. Tool path tokens are checked against the kit and the system allowlist.
+Item 19 also permits this launched session's saved tool output: the reviewer's
+home, `.claude/projects`, the kit path encoded by replacing every character
+outside ASCII letters, digits and hyphens with a hyphen, the launch session id,
+then `tool-results`. The launcher constructs this path from its own identity
+and session id. Transcripts, memory, other sessions and other kits remain outside
+the allowance; symlink targets must also stay inside the permitted boundary.
 Deployment supplies separate users and read-only credentials; GARS launch_role()
 remains producer. Independent context seals are development evidence only, science
 is unmeasured, and one plant per class is a thin sample. Public recomputation covers

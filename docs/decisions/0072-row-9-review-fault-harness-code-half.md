@@ -374,3 +374,45 @@ schema, threshold, scope, guard, test or CI decision is changed. All previously
 open residual gaps remain, including the NOT-met fixture secret scan and row
 9 exit. Protected approval, sealing and the first measured run wait on the
 owner and later independent verification.
+
+## Addendum — V1 review fixes and session output, 2026-09-23
+
+THE LANE, UNDER THE OWNER'S DELEGATION — THE LANE'S SPECIFICATION.
+This addendum implements U1 findings F1–F3 and head item 19. No new words
+are attributed to the owner. Every earlier byte of this record is preserved.
+Record numbering remains 0072 for this account, 0073 for protected approval,
+and 0074 for the seal and first measured run; neither reserved record is written.
+
+F1: attached short options are split only when their letters are immediately
+followed by a root separator; long option values are checked as ordinary tokens.
+Relative option paths and bare separator or division text do not become rooted
+paths. Tests include the reported test-directory option, Git-directory option,
+awk and cut delimiters, integer division and review JSON prose.
+F2: bare directory changes are recognized after newlines, shell groups, then,
+do, else, builtin and command. HOME and PWD brace expansions are inspected;
+exact forms resolve against the launch account or kit, and unresolved shell
+modifiers fail closed. Outside paths and parent steps still invalidate reviews.
+F3: the complete sealer interface now states case-sensitive substring rejection,
+including race inside trace, and gives the coordinator's existing builder command
+for a pre-seal check without showing the sealer producer inputs or implementation.
+All reserved case ids are forbidden even when their inputs are not yet present.
+
+Item 19's saved-output allowance is exactly the reviewer's home, the tool's
+`.claude/projects` folder, the encoded kit path, the session id passed by code
+to the launch command, and `tool-results`. Encoding replaces each character
+other than an ASCII letter, digit or hyphen with a hyphen. Paths are built at
+runtime; no machine-specific name is stored in source. Reading one's own saved
+tool output is allowed. The transcript beside that store, the memory folder,
+another session and another kit remain hits. Resolved symlink escapes remain
+hits. The session id is launch-owned and cannot be supplied by model output.
+A runtime-path test independently checks the encoding and both allowance
+boundaries; widening to the projects folder turns that named test red.
+
+These are static post-run audit fixes, not a shell sandbox or a claim to model
+every shell program. Deterministic mutation controls exercise the reported
+spellings, both saved-output boundaries and launch-to-audit session binding.
+The prompt and fixture bytes are unchanged; no model is run against any case.
+All earlier residual limits remain: row exit NOT met, three seals and a first
+measured run outstanding, protected approval and real fixture secret scanning
+outstanding, public credibility unmeasured, deployment evidence external,
+R-093 code half NOT met, science and JSON trailer consumption deferred.

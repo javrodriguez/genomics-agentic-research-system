@@ -1312,3 +1312,234 @@ CI or other decision was needed. Reserved 0073 and 0074 are not written here.
 Item 18's second renumbering, preserved history, live mappings and regenerated
 index are carried out; protected approval, secret verification, sealing, the
 first measured run and the row exit wait on the owner and independent verification.
+
+## Review round V1 fixes
+
+Date: 2026-09-23. Starting head:
+`c7aa6f2f152b42d2620e173d272b5291d819a338`.
+Review input: `docs/reviews/row_9_review_U1.md`, left untracked and unchanged.
+This round addresses U1 F1–F3 and, separately, head item 19. Earlier report
+sections and every existing byte of record 0072 are preserved. No model ran
+against any case. The reviewer prompt, fixtures and answer keys are unchanged.
+
+| Finding | Changed files | Test | Result; red-on-fault seen |
+|---|---|---|---|
+| U1 F1, MAJOR: ordinary commands and review prose became blindness hits | `evals/review-faults/run_reviews.py`; `tests/test_review_faults_launch.py`; `tests/test_review_faults_faults.py` | `LaunchTests.test_blindness_every_spelling`; `FaultTests.test_every_guard_fault_is_red` | PASS; yes — restoring the eager option cut or treating lone separators as paths turns the named test red. Test-directory and Git-directory relative options, awk/cut delimiters, integer division and review JSON prose remain clear. Rooted options and attached parent/home paths remain hits; removing the latter parsing also turns the test red. |
+| U1 F2, MINOR: shell boundaries and modified variables escaped scanning | Same launcher and two test modules | `LaunchTests.test_blindness_every_spelling`; `FaultTests.test_every_guard_fault_is_red` | PASS; yes — separately suppressing newline, subshell, brace group, then, do, else, builtin, command, HOME-modifier and PWD-modifier detection turns the named test red. Exact PWD resolves to the kit; unresolved modifiers fail closed. |
+| U1 F3, MINOR: sealer unaware of substring rejection | `evals/review-faults/INTERFACE.md`; `evals/review-faults/build_cases.py`; `tests/test_review_faults_build.py`; `tests/test_review_faults_faults.py` | `BuildTests.test_external_case_leak_refused`; `FaultTests.test_every_guard_fault_is_red`; interface inspection | PASS; yes — disabling the build refusal or dropping absent reserved ids turns the named test red. A disposable public-fixture copy refuses a commit message containing its id, race inside traceback, or an absent reserved id. The interface lists all forbidden ids, case-sensitive substrings and sweep surfaces, with a coordinator-run pre-seal command using the same builder. No sealer reads producer implementation or inputs. |
+| Item 19 (not a review finding): this session's saved-output store | `evals/review-faults/run_reviews.py`; `evals/review-faults/README.md`; `tests/test_review_faults_launch.py`; `tests/test_review_faults_faults.py`; 0072 addendum | `LaunchTests.test_session_output_store_boundary`; `test_envelope_and_command_are_code_owned`; `FaultTests.test_every_guard_fault_is_red` | PASS; yes — widening the allowance to the projects folder, denying own output, changing kit-name encoding, or omitting the launch session id makes the named test red. Own-session output is clear; the transcript, memory, another session, another kit and escaping symlinks or parent steps are hits. A character-by-character oracle verifies encoding of a runtime kit path with punctuation and spaces. |
+| Records and counts | README; DEVELOPMENT; append-only 0072 and this report; regenerated index | Required runner/count check; starting-head prefix and scope checks | PASS; red-on-fault: no separate prose mutation. Current suite count is 429; skip claims remain 59 and 86. Index regenerated without changing its bytes; release output remains unmeasured. |
+
+THE LANE, UNDER THE OWNER'S DELEGATION: the dated 0072 addendum labels item
+19 as the lane's specification. Its allowance uses the reviewer's home and the
+tool's projects folder, encoded kit path, launcher-supplied session id and
+`tool-results`, never a model-supplied location. No new statement is attributed
+to the owner. Reserved 0073 (protected approval) and 0074 (seal and first run)
+remain unwritten.
+
+### Required command summaries
+
+Commands ran from the repository root with all scratch and temporary data in
+the approved scratch twin. Mode C unsets TMPDIR and retains TEMP/TMP there.
+No network or model was used. Checks below report their final summaries verbatim;
+the direct fault run requires each unchanged control to pass before the changed
+copy fails for its expected reason. Initial verification logs remain in scratch.
+
+`python3 tests/run_tests.py (mode B)`:
+
+```text
+collected 255 tests from tests
+collected 174 tests from gars/tests
+Ran 429 tests in 334.317s
+OK (skipped=59)
+```
+
+`python3 tests/run_tests.py (mode C)`:
+
+```text
+collected 255 tests from tests
+collected 174 tests from gars/tests
+Ran 429 tests in 311.648s
+OK (skipped=86)
+```
+
+`python3 tests/check_contracts.py`:
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`:
+
+```text
+collected 255 tests from tests
+collected 174 tests from gars/tests
+suite: 429 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`:
+
+```text
+Ran 44 tests in 37.621s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`:
+
+```text
+clean — graded=1
+```
+
+`python3 scripts/release_check.py`:
+
+```text
+DoD cells regenerated: 13/13
+```
+
+`python3 tests/test_review_faults_build.py`:
+
+```text
+Ran 11 tests in 90.936s
+OK
+added case-byte sweep: 12/12 clear; item 15 added lines and decoded objects
+fixtures: git apply --check passed for 12/12 against base archive
+plant match intervals: every file_lines answer overlaps changed lines
+```
+
+`python3 tests/test_review_faults_core.py`:
+
+```text
+Ran 8 tests in 0.018s
+OK
+```
+
+`python3 tests/test_review_faults_launch.py`:
+
+```text
+Ran 12 tests in 0.845s
+OK
+```
+
+`python3 tests/test_review_faults_faults.py`:
+
+```text
+Ran 1 test in 174.488s
+OK
+```
+
+`feature_version=(3, 6) parse of every row Python file`:
+
+```text
+Python feature_version=(3, 6): 12/12 new Python files parsed
+```
+
+`python3 gars/_system/hooks/pre-commit (24 fixture files staged in a disposable base tree)`:
+
+```text
+fixture hook index: 24 fixture files staged against base
+gitleaks: REFUSED (gitleaks absent from PATH)
+citations: 292/292 resolve
+pre-commit: REFUSED
+```
+
+The final direct fault module observed 96 red fault witnesses and two green
+unchanged-line exemption witnesses. No threshold, assertion or guard was weakened.
+
+The regenerated reviewer row remains, verbatim:
+
+```text
+| reviewer catch rate (code; science) | `evals/review-faults/`, `evals/bio-faults/` runners | ≥ 8/10 per set, ≤ 1/5 false alarms; first-run-at-sha reported (§21 Q3) | unmeasured |
+```
+
+The index was regenerated with `bash docs/decisions/build_index.sh`; its output
+contains a machine-specific prefix retained only in scratch. Both the index and
+the release render are byte-identical to their starting versions. The README
+evidence row is unchanged.
+
+### Temp setup and memory
+
+Two initial mode-B invocations inherited a relative TMPDIR. Lifecycle controls
+change their child working directories, making that value invalid. Their setup
+errors were not product regressions, and no out-of-scope code was changed:
+
+```text
+Ran 429 tests in 319.145s
+FAILED (failures=15, skipped=59)
+```
+
+```text
+Ran 429 tests in 316.357s
+FAILED (failures=15, skipped=59)
+```
+
+The initial mode-C invocation passed:
+
+```text
+Ran 429 tests in 324.644s
+OK (skipped=86)
+```
+
+Final verification resolves the approved scratch location at runtime before
+launching children; mode C then removes TMPDIR and keeps TEMP/TMP there.
+Both final full-suite summaries above are green. Earlier exploratory and setup
+logs stay in scratch; none is represented as a clean mode-B run.
+
+The pre-T1 implementation's reported peak was about 14 GiB on the review host;
+that unbounded implementation was not rerun. T1 had already replaced whole-tree
+byte dictionaries with streamed digests. V1 preserves that implementation and
+its red-on-fault. A fresh disposable determinism-only process measured with
+`resource.getrusage(resource.RUSAGE_CHILDREN)` reports:
+
+```text
+Ran 1 test in 6.123s
+OK
+determinism peak memory: 648652 KiB
+```
+
+The final verification driver's cumulative child peak was 667140 KiB, below
+1 GiB across its full-suite and direct-module checks. The stream compares
+per-file digests and Git object ids; mismatch diagnostics never contain tree bytes.
+
+### Boundary and append-only verification
+
+Starting-head prefix checks preserve every earlier byte of 0072 and this report.
+The U1 review stays untracked and byte-identical; no review is staged. The diff
+against the public base touches no prohibited tree, ledger or other decision
+record. This round changes neither fixture nor reviewer-prompt bytes. The record
+index was regenerated, reserved 0073 and 0074 remain absent, and no measured-run
+file exists. No remote, push, merge or pull request was used. `git diff --check`
+is clean. Only explicitly named files are staged for the single V1 commit.
+
+## Owner rulings needed
+
+None. U1 F1–F3 and item 19 fit the supplied scope and delegation; no schema,
+threshold, protected-tree or CI decision was needed. Q2 A's existing independent
+secret-verification requirement remains open and does not need a new ruling.
+
+## Residual gaps after V1
+
+- **Fixture pre-commit check NOT met on this host:** the actual hook refused
+  because gitleaks is unavailable. Both rulesets await the lane's independent
+  verification. No installation, substitute scan or bypass was used.
+- **Row 9 exit NOT met:** the three sealed slots, first measured run, later
+  ledger rows and combined seal/run record 0074 remain later work. No model ran
+  against any case, and no catch rate or first-run result is claimed.
+- Protected-change approval remains the owner's reserved 0073. Live separate-user
+  and read-only-credential deployment evidence is external. The uid check proves
+  account inequality on the review host only; `launch_role()` still returns
+  producer, so R-093's code half remains NOT met.
+- Public credibility remains unmeasured until external-human seals. Independent
+  context seals are development evidence only. Science and trailer-gate JSON
+  consumption remain later rows. Diff-style inference, a shared model family,
+  thin per-class samples and hash-only checking of three sealed outcomes remain.
+- Docker mode A is not verified: this account cannot reach Docker. Native Python
+  3.6 execution, expanded-suite cluster execution and merge-result CI are not
+  verified. Existing test skips remain skips. The blindness scan is a static
+  post-run audit, not a complete shell interpreter or operating-system sandbox.
+
+Closed: U1 F1, F2 and F3; item 19 implemented and tested separately. No review
+finding awaits an owner ruling. Protected approval, secret verification, sealing,
+the first measured run and the row exit remain with the owner and independent
+verification.

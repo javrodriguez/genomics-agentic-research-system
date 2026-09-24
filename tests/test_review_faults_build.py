@@ -140,10 +140,14 @@ class BuildTests(unittest.TestCase):
         path=external/'P08/expected.json'
         expected=json.loads(path.read_text())
         expected['id']='P08'
-        expected['commit_message']='Clarify P08 handling'
-        path.write_text(json.dumps(expected))
-        with self.assertRaisesRegex(ValueError,'case leaks forbidden token: P08'):
-            build_cases.build(root/'out',[answers,external],run_salt='a'*32)
+        for index,(message,token) in enumerate([
+                ('Clarify P08 handling','P08'),
+                ('Show a shorter traceback','race'),
+                ('Clarify P10 handling','P10')]):
+            expected['commit_message']=message
+            path.write_text(json.dumps(expected))
+            with self.assertRaisesRegex(ValueError,'case leaks forbidden token: '+token):
+                build_cases.build(root/('out%d'%index),[answers,external],run_salt='a'*32)
 
     def test_answer_key_base_refused(self):
         root=temporary(self)

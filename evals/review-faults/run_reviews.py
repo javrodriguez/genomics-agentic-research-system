@@ -61,13 +61,21 @@ def tool_inputs(value):
                 yield data
 
 
-def blindness(events, kit):
+def session_output_store(kit, session_id):
+    """Item 19: only this launch's saved tool output, never the project store."""
+    project = re.sub(r'[^a-zA-Z0-9-]', '-', str(Path(kit).resolve()))
+    home = Path(pwd.getpwuid(os.getuid()).pw_dir)
+    return home / '.claude' / 'projects' / project / session_id / 'tool-results'
+
+
+def blindness(events, kit, session_id=None):
     """Lane specification item 8: token paths against kit and system allowlist.
 
     Resolve symlinks as well as lexical parent steps. Shell syntax is tokenized,
     never executed. Strings nested in tool inputs are all scanned.
     """
     kit = Path(kit).resolve()
+    saved_output = session_output_store(kit, session_id) if session_id else None
     trees = [Path(os.path.join(os.sep, x)) for x in ('usr', 'bin', 'sbin', 'lib', 'lib64')]
     devices = [Path(os.path.join(os.sep, 'dev', x)) for x in ('null', 'stdin', 'stdout', 'stderr')]
     calls = hits = 0
@@ -87,16 +95,38 @@ def blindness(events, kit):
                 parent = chr(46) * 2
                 home = '$' + 'HOME'
                 brace_home = '$' + '{HOME}'
-                bare_cd = re.search(r"(?:^|[;|&\"'])\s*cd\s*(?=$|[;|&\"'])", text)
+                bare_cd = re.search(
+                    r"(?:^|[\n;|&\"'({]|\b(?:then|do|else|builtin|command)\s+)"
+                    r"[^\S\n]*cd[^\S\n]*(?=$|[\n;|&\"')}])", text)
                 if bare_cd:
                     hits += 1
                 for token in tokens:
-                    if token.startswith('-') and os.sep in token:
-                        token = token[token.index(os.sep):]
+                    if token.startswith('-') and '=' in token:
+                        token = token.partition('=')[2]
+                    elif re.match(r'^-[a-zA-Z]+' + re.escape(os.sep), token):
+                        token = re.sub(r'^-[a-zA-Z]+', '', token)
+                    elif token.startswith('-'):
+                        option = re.match(r'^-[a-zA-Z]+', token)
+                        if option and token[option.end():].startswith((parent, chr(126), '$')):
+                            token = token[option.end():]
+                    # Separators alone are prose, delimiters or division operators.
+                    if token and not token.strip(os.sep):
+                        continue
+                    expansion = re.search(r'\$\{(?:HOME|PWD)(?=[^a-zA-Z0-9_])[^}]*\}?', token)
                     candidate = (os.path.isabs(token) or token.startswith((chr(126), home, brace_home)) or
-                                 parent in token.split('/'))
+                                 parent in token.split('/') or expansion or token.startswith('$' + 'PWD'))
                     if not candidate:
                         continue
+                    if expansion:
+                        variable = expansion.group()
+                        if variable not in (brace_home, '$' + '{PWD}'):
+                            # Shell modifiers are not evaluated by this static scan.
+                            hits += 1
+                            continue
+                        value = pwd.getpwuid(os.getuid()).pw_dir if variable == brace_home else str(kit)
+                        token = token.replace(variable, value)
+                    elif token.startswith('$' + 'PWD'):
+                        token = str(kit) + token[len('$' + 'PWD'):]
                     # Unknown variable expansion cannot establish kit containment.
                     if '$' in token and parent in token.split('/'):
                         hits += 1
@@ -114,6 +144,8 @@ def blindness(events, kit):
                             continue
                     path = Path(token) if os.path.isabs(token) else kit / token
                     if within(path, kit):
+                        continue
+                    if saved_output is not None and within(path, saved_output):
                         continue
                     if any(within(path, tree) for tree in trees) or path in devices:
                         continue
@@ -283,7 +315,7 @@ def run(args):
                 tool='claude', tool_version=version, login_entry=args.login_entry, attempt=attempt),
             'producer': producer, 'started_at': started, 'finished_at': finished,
             'exit_code': result.returncode, 'ended_on_usage_limit': limit,
-            'blindness': blindness(events, kit)}}
+            'blindness': blindness(events, kit, session)}}
         write_json(output, record)
         errors = invalid_reasons(record, manifest)
         print(neutral + ': ' + ('INVALID: ' + '; '.join(errors) if errors else 'VALID'))
