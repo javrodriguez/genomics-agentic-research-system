@@ -126,7 +126,11 @@ and both lexical and symlink-resolved containment may move later relative and
 PWD tokens. Nested constructs inherit their entry placement; rejected changes
 reset to the root. A change preceded by `&&` lasts only through that chain.
 Whole-call shell-state hazards disable movement, including pushd/popd, set,
-PWD/OLDPWD mutation, eval/source/dot commands and uncertain prefixed compounds.
+PWD/OLDPWD mutation (including append and subscript assignments), trap,
+eval/source/dot commands (including prefix options) and uncertain prefixed compounds.
+Retained comment cues and heredoc operators also disable movement: their data
+cannot prove a cd. Continuation newlines retain the preceding list or pipeline
+operator, including the conditional limit after AND.
 Backquotes on the cd word forbid movement; merged closing operators still end
 a conditional chain. Token deduplication includes the placement folder. Other
 tools' path fields and all existing scan contexts are unchanged. The launcher removes CDPATH, BASH_ENV and ENV. **Residual:** an

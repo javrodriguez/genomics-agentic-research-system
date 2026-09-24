@@ -242,3 +242,150 @@ and 144 original faults were observed red, with two original exemptions green.
 The changed/new Python grammar check parsed 4/4 files with feature_version=(3, 6).
 Both protected diffs against 5ba82c6 printed nothing. Full verbatim summaries,
 initial diagnostic failures and remaining NOT met gaps are in the report.
+
+## 2026-09-24 addendum — review round 3
+
+These are lane decisions under the existing delegation, addressing the second
+independent review's F1–F4. A newline continuing an AND, OR or pipeline operator
+retains that operator when judging cd and does not end its conditional chain.
+Whitespace, comments removed by item 23, and additional blank lines do not turn
+such a continuation into an unconditional command boundary. Merged separators
+still cannot independently qualify a directory change.
+
+A retained word-start comment cue or heredoc operator disables movement for the
+whole call. Item 23's conservative refusal to remove ambiguous text remains
+unchanged: scanning that text may add hits, but a cd in it cannot justify deeper
+placement. PWD and OLDPWD hazards now include append and subscript assignments.
+Trap also disables movement. A dot following prefix words and their options or
+option operands is conservatively treated as a source command; an ordinary
+unprefixed find dot operand remains data. These additional refusals keep the kit
+root as the fail-closed placement without changing the token classification
+rules, prior data exemptions, launcher environment cleanup or sandbox.
+
+The failed-cd and audit-time symlink residuals above remain NOT met, as do general
+shell indirection, interpreter text and unparsed constructs under 0072. Closing
+these concrete trap and prefixed-dot spellings is not a general shell evaluator.
+No measured review, first measured run or catch rate is claimed. All previous
+record bytes and records 0072 and 0073 remain intact.
+
+Acceptance extends `test_top_level_required`, `test_conditional_chain_limit`
+and `test_pwd_reassignment`, and adds `test_retained_data_cannot_move_placement`
+and `test_trap_and_prefixed_dot`. Before the code fix, the cd module reported
+`Ran 28 tests in 0.154s`, `FAILED (failures=24)`. Five additional disposable
+faults respectively remove continuation handling, retained-data refusal,
+extended variable matching, trap refusal and prefixed-dot detection. Each must
+turn its named acceptance red after a green control. Full final commands and
+verbatim results are appended below and in the round-3 change report.
+
+### Round 3 final verification — 2026-09-24
+
+`python3 tests/run_tests.py (mode B)` (exit 0):
+
+```text
+collected 294 tests from tests
+collected 233 tests from gars/tests
+cd-call corpus graded-against-seen: 11/11
+honest-call corpus graded-against-seen: 278/278
+Ran 527 tests in 398.726s
+OK (skipped=77)
+```
+
+`env -u TMPDIR python3 tests/run_tests.py (mode C)` (exit 0):
+
+```text
+collected 294 tests from tests
+collected 233 tests from gars/tests
+cd-call corpus graded-against-seen: 11/11
+honest-call corpus graded-against-seen: 278/278
+Ran 527 tests in 391.498s
+OK (skipped=104)
+```
+
+`python3 tests/check_contracts.py` (exit 0):
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py` (exit 0):
+
+```text
+collected 294 tests from tests
+collected 233 tests from gars/tests
+suite: 527 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py` (exit 0):
+
+```text
+Ran 44 tests in 38.688s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon` (exit 0):
+
+```text
+clean — graded=1
+```
+
+`python3 tests/test_review_faults_build.py` (exit 0):
+
+```text
+Ran 11 tests in 93.363s
+OK
+```
+
+`python3 tests/test_review_faults_cd.py` (exit 0):
+
+```text
+Ran 28 tests in 0.161s
+OK
+cd-call corpus graded-against-seen: 11/11
+```
+
+`python3 tests/test_review_faults_cd_faults.py` (exit 0):
+
+```text
+Ran 1 test in 3.166s
+OK
+```
+
+`python3 tests/test_review_faults_core.py` (exit 0):
+
+```text
+Ran 9 tests in 0.023s
+OK
+```
+
+`python3 tests/test_review_faults_corpus.py` (exit 0):
+
+```text
+Ran 1 test in 0.223s
+OK
+honest-call corpus graded-against-seen: 278/278
+```
+
+`python3 tests/test_review_faults_faults.py` (exit 0):
+
+```text
+Ran 1 test in 206.202s
+OK
+```
+
+`python3 tests/test_review_faults_launch.py` (exit 0):
+
+```text
+Ran 20 tests in 3.139s
+OK
+```
+
+Both corpora graded all seen calls (11/11 and 278/278). All 23 placement faults
+and 144 original faults were observed red; two original exemptions stayed green.
+Python feature_version=(3, 6): 4/4 changed or new Python files parse.
+Both required protected-path diffs printed nothing. Full modes collected 527
+with unchanged skips (77 in B, 104 in C). Mode A requires unreachable Docker;
+native Python 3.6, cluster and fresh-clone CI remain unverified. Supplied data
+hashes and append-only prefixes match. This is producer evidence pending review,
+not a measured review or a row-9 seal.

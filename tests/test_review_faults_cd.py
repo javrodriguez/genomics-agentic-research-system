@@ -120,7 +120,11 @@ class CdPlacementTests(unittest.TestCase):
                       ('for', 'for x in y; do cd repo; done;'),
                       ('select', 'select x in y; do cd repo; done;'),
                       ('nested-shell', "bash -c 'cd repo';"),
-                      ('substitution', 'x=$(cd repo);')]
+                      ('substitution', 'x=$(cd repo);'),
+                      ('or-space-newline', 'true || \ncd repo;'),
+                      ('pipe-space-newline', 'true | \ncd repo;'),
+                      ('pipe-stderr-newline', 'true |& \ncd repo;'),
+                      ('or-comment-newline', 'true || # note\ncd repo;')]
         self.bad([(label, '%s %s' % (prefix, self.read)) for label, prefix in constructs])
 
     def test_invalid_shape_and_prefixes(self):
@@ -134,7 +138,11 @@ class CdPlacementTests(unittest.TestCase):
         self.assertEqual(self.hits('cd $TARGET; cd repo; %s' % self.read), 0)
 
     def test_conditional_chain_limit(self):
-        self.bad([('semicolon', 'false && cd repo; %s' % self.read),
+        self.bad([('and-space-newline', 'false && \ncd repo; %s' % self.read),
+                  ('and-comment-newline', 'false && # note\ncd repo; %s' % self.read),
+                  ('and-merged-blank-newline', 'false &&\n \ncd repo; %s' % self.read),
+                  ('and-blank-newlines', 'false && \n \ncd repo; %s' % self.read),
+                  ('semicolon', 'false && cd repo; %s' % self.read),
                   ('newline', 'false && cd repo\n%s' % self.read),
                   ('later-chain', 'false && cd repo; true && %s' % self.read),
                   ('later-cd', 'cd repo; false && cd deeper; %s' % self.read),
@@ -142,8 +150,18 @@ class CdPlacementTests(unittest.TestCase):
                   ('merged-substitution-end', 'false && cd repo && echo $(true); %s' % self.read),
                   ('merged-newline-end', 'false && cd repo && (true)\n%s' % self.read)])
         self.assertEqual(self.hits('cd repo && %s' % self.read), 0)
+        self.assertEqual(self.hits('true && cd repo && \n%s' % self.read), 0)
+        self.assertEqual(self.hits('true && \ncd repo && %s' % self.read), 0)
         self.assertEqual(self.hits('true && cd repo && %s' % self.read), 0)
         self.assertEqual(self.hits('true && cd repo && %s; cd repo; %s' % (self.read, self.read)), 0)
+
+    def test_retained_data_cannot_move_placement(self):
+        self.bad([
+            ('ambiguous-heredoc', ': $(true); cat <<EOF\ncd repo\nEOF\n%s' % self.read),
+            ('ambiguous-comment', ': $(true) # ; cd repo\n%s' % self.read),
+            ('backquote-comment', ': `true` # ; cd repo\n%s' % self.read),
+            ('arithmetic-comment', ': $((1)) # ; cd repo\n%s' % self.read),
+        ])
 
     def test_other_directory_changers(self):
         self.bad([
@@ -184,12 +202,26 @@ class CdPlacementTests(unittest.TestCase):
                 command = 'cd repo; %s%s=%s; cat %s' % (prefix, variable, self.parent, read)
                 with self.subTest(variable=variable, prefix=prefix):
                     self.assertGreaterEqual(self.hits(command), 1)
+            for assignment in ('+=', '[0]=', '[0]+='):
+                value = os.path.join(os.sep, self.parent) if '+=' in assignment else self.parent
+                read = os.path.join('$' + 'PWD', self.parent, 'secret')
+                with self.subTest(variable=variable, assignment=assignment):
+                    self.assertGreaterEqual(self.hits('cd repo; %s%s%s; cat %s' %
+                                                     (variable, assignment, value, read)), 1)
             self.bad([(prefix, 'cd repo; %s %s; %s' % (prefix, variable, self.read))
                       for prefix in ('read', 'export', 'declare')])
 
     def test_indirect_shell_state(self):
         self.bad([(prefix, '%s; cd repo; %s' % (prefix, self.read))
                   for prefix in ("eval 'cd(){ :;}'", 'source startup', '. startup')])
+
+    def test_trap_and_prefixed_dot(self):
+        self.bad([('trap-debug', "cd repo; trap 'cd %s' DEBUG; %s" %
+                   (self.parent, self.read))])
+        self.bad([(prefix, 'cd repo; %s . ./startup; %s' % (prefix, self.read))
+                  for prefix in ('time -p', 'command --', 'builtin --',
+                                 'env -i', 'time -p command --', 'time -f elapsed', 'env -u NAME')])
+        self.assertEqual(self.hits('cd repo; find . -type f; %s' % self.read), 0)
 
     def test_nested_program_not_flattened(self):
         commands = []

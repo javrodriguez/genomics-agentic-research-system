@@ -182,15 +182,33 @@ class CommandPlacement:
         self.pending = None
         self.depths = []
         self.chain_ends = []
+        # A physical newline after a list or pipeline operator continues that
+        # operator; it is not a fresh command boundary or a chain end.
+        self.continuations = {}
+        for index, word in enumerate(words):
+            if word.operator and all(char == '\n' for char in word):
+                cursor = index - 1
+                while cursor >= 0 and words[cursor].operator and all(
+                        char == '\n' for char in words[cursor]):
+                    cursor -= 1
+                if cursor >= 0 and words[cursor].operator and words[cursor].rstrip('\n') in ('&&', '||', '|', '|&'):
+                    self.continuations[index] = ShellWord(words[cursor].rstrip('\n'))
         parens = groups = keywords = 0
         backquote = False
         broken = False
         command_start = True
         dot_command = False
         for index, word in enumerate(words):
-            if word == '.' and (command_start or (index and (
-                    words[index - 1] in ('builtin', 'command', '!', 'time') or
-                    '=' in words[index - 1]))):
+            cursor = index - 1
+            # Prefix options may consume operands. Conservatively retain a
+            # prefix anywhere in this simple command when judging a later dot.
+            dot_prefix = False
+            while cursor >= 0 and not words[cursor].operator:
+                dot_prefix = dot_prefix or (
+                    words[cursor] in ('builtin', 'command', '!', 'time', 'env', 'exec', 'coproc', 'nohup') or
+                    '=' in words[cursor])
+                cursor -= 1
+            if word == '.' and (command_start or dot_prefix):
                 dot_command = True
             self.depths.append(parens + groups + keywords + int(backquote) + self.nested)
             chain_end = False
@@ -225,7 +243,7 @@ class CommandPlacement:
                 command_start = word in ('if', 'then', 'elif', 'else', 'while', 'until', 'do', '{')
             else:
                 command_start = False
-            self.chain_ends.append(chain_end)
+            self.chain_ends.append(chain_end and index not in self.continuations)
             # Backquotes are not quotes to shlex. Track them across physical
             # newlines, ignoring single quotes and escaped backquotes.
             quote = None
@@ -261,8 +279,17 @@ class CommandPlacement:
         )
         values = set(str(word).split('=', 1)[0] for word in words
                      if word != '.' or dot_command)
+        for word in words:
+            variable = re.match(r'(PWD|OLDPWD)(?:\[[^]]*\])?(?:\+?=|$)', word)
+            if variable:
+                values.add(variable.group(1))
         shell_state = any(values.intersection(group) for group in hazards)
-        forbidden = forbidden or shell_state
+        # Retained data was safe to over-scan with root placement, but cannot
+        # prove a directory change: a kept comment or heredoc may contain cd.
+        retained_data = any((word.operator and '<<' in word) or
+                            word.source.startswith('#') for word in words)
+        trap_state = 'trap' in values
+        forbidden = forbidden or shell_state or retained_data or trap_state
         self.blocked = bool(forbidden or broken or parens != 0 or backquote or self.state.get('blocked'))
         if self.blocked:
             self.state['folder'] = self.state['kit']
@@ -297,7 +324,7 @@ class CommandPlacement:
             state['folder'], state['conditional'] = state['kit'], False
         placed = ShellWord(word, word.source, state, self.nested + 1, state['folder'])
         if word.strip('`') == 'cd':
-            previous = self.words[index - 1] if index else None
+            previous = self.continuations.get(index - 1, self.words[index - 1] if index else None)
             following = self.words[index + 2] if index + 2 < len(self.words) else None
             top_level = (depth == 0 and '`' not in word.source and
                          (previous is None or placement_separator(previous)) and
