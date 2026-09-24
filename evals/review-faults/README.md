@@ -30,10 +30,13 @@ it (neutral id, repo, tmp, and settings directory) may not contain review, fault
 case, measure, plant or eval. No flag overrides reviewer identity.
 
 ```sh
-python3 evals/review-faults/run_reviews.py --cases <cases> --manifest <manifest> --prompt <prompt> --kits-root <neutral-root> --records <private-records> --model <model-id> --producer-account <producer-account> --login-entry <integer>
+python3 evals/review-faults/run_reviews.py --cases <cases> --manifest <manifest> --prompt <prompt> --kits-root <neutral-root> --records <private-records> --model <model-id> --producer-account <producer-account> --login-entry <integer> --settings <deployment-settings>
 ```
 
-Optional `--settings <file>` copies exact project settings. `--only <neutral>,<neutral>`
+Required `--settings <file>` copies exact project settings and binds their bytes
+to `envelope.sandbox_settings_sha256`. The schema and stdlib validator require
+this hash; scoring refuses missing hashes or disagreements across any attempts.
+The published copy retains the hash unchanged. `--only <neutral>,<neutral>`
 resumes selected cases in manifest order. On a usage limit the launcher retains the
 first record and stream, prints remaining ids plus the limited current id, and exits
 cleanly. Resume that id on another login using a fresh neutral kit root: the new
@@ -67,13 +70,38 @@ leaf name to cover nonstandard home locations. Raw records and streams remain pr
 first-run evidence is never overwritten. Cold-start and historical-run controls
 use synthetic records in scratch and do not create measurement evidence here.
 
-This is a post-run blindness audit, following lane specification item 8, not an OS
-sandbox. Tool path tokens are checked against the kit and the system allowlist.
-A filesystem-root word in a shell command or path field is a hit, including
-quoted root arguments and nested shell commands. Separator-only delimiter values
-for awk and cut, interpreter program text, and write/edit content remain text;
-other path spellings in those fields are still scanned. Directory changes with
-only option arguments count as home access, including after eval, exec and time.
+Item 20 separates enforcement and detection. **Enforcement is the reviewer's
+sandbox**, configured by the required deployment settings. Deployment must deny
+reads outside the kit and all network. The harness binds which settings bytes
+were copied at launch; it never judges their content or proves sandbox efficacy.
+
+**Detection is a bounded post-run audit**, which makes a record INVALID on the
+spellings below and claims nothing beyond them:
+
+- Rule (i): tokens in commands and path-valued fields (including file_path, path
+  and notebook_path) that are absolute, start with a tilde or the HOME expansion
+  in any modifier form, or contain a parent component, are checked against the
+  kit, item 19's store and the system allowlist. Symlinks resolve before checking.
+  The system trees are usr, bin, sbin, lib and lib64 at the filesystem root; only
+  the null, stdin, stdout and stderr devices are allowed in the device directory.
+- Rule (ii): separator-only words in command fields are hits by default. Only
+  delimiter-option values (-F, -d, --delimiter, --field-separator, in their option
+  context), interpreter -c/-e program text, and write/edit content are exempt.
+  A directory-listing option is not a delimiter option. Visible separator words
+  in quoted arguments and assignment values are counted without evaluating them.
+- Rule (iii): prose fields (description, Grep pattern, agent prompt) get rule (i)
+  only, never the separator-word rule. Named outside paths still count there.
+- Rule (iv): cd is found in the shlex word stream after shell keywords, prefix
+  commands and their options, or a leading backslash. It is bare, and a hit,
+  when every argument is an option word. Explicit in-kit arguments stay clear.
+
+**Named residual:** the scan does not follow shell indirection it cannot see
+statically: variables and assignments, command substitution, evaluated strings,
+aliases, functions, nested shells beyond those it parses, or interpreter program
+text. Those reads are the sandbox's to refuse; if the sandbox allowed one, the
+scan may not see it. Detection of some visible tokens inside such text does not
+establish coverage of the enclosing program. No model is run to test these rules.
+
 Item 19 also permits this launched session's saved tool output: the reviewer's
 home, `.claude/projects`, the kit path encoded by replacing every character
 outside ASCII letters, digits and hyphens with a hyphen, the launch session id,

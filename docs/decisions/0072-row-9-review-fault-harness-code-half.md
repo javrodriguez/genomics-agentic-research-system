@@ -451,3 +451,70 @@ Real fixture secret verification, protected approval, external deployment
 evidence, public external-human seals, R-093's code half, science and trailer
 JSON consumption remain open. Required command results are appended to
 `docs/implementation/row_9_change_report.md`.
+
+## Addendum — X1 two walls and W2 findings, 2026-09-23
+
+THE LANE, UNDER THE OWNER'S DELEGATION — THE LANE'S SPECIFICATION.
+Item 20 supersedes the earlier THREAT MODEL claim of reading beyond the kit
+by any spelling, item 8's blindness paragraph wherever they differ, and the
+W2 addendum's unrestricted claims about quoted roots and nested commands.
+Every preceding byte remains unchanged. This is the lane's specification;
+no new words are attributed to the owner. Numbering remains 0072 for this
+record, 0073 for protected approval, and 0074 for the combined seal and first
+measured run. Neither reserved record is written here.
+
+Enforcement is the reviewer's sandbox. Every launch requires --settings and
+refuses before starting the tool when it is absent. The exact settings bytes
+copied into the kit are bound by envelope.sandbox_settings_sha256. The schema,
+stdlib validator, contract fixtures and published copy carry that required hash;
+the published value is unchanged, not masked. Scoring refuses missing or malformed
+hashes and disagreements between records, including invalid and earlier attempts.
+The deployment supplies settings denying reads outside the kit and all network.
+The harness binds WHICH file was used and never judges its content. This records
+configuration provenance; real sandbox enforcement remains deployment evidence.
+
+Detection is a static blindness audit, not a claim to decide what a shell reads.
+Its contract is exactly item 20(b):
+
+1. Every token in command or path-valued fields that is absolute, starts with
+a tilde or a HOME expansion in any modifier form, or contains a parent component,
+is placed against the kit and is a hit unless inside the kit, item 19's own-session
+store, or the system allowlist. The allowlist is the usr, bin, sbin, lib and lib64
+root trees and the null, stdin, stdout and stderr device files. Symlinks resolve.
+2. Separator-only command words default to hits. Exemptions are delimiter-option
+values (-F, -d, --delimiter, --field-separator in their command option context),
+interpreter -c/-e program text and write/edit content fields. The inversion is
+allow by listed context, never deny by listed spelling. Named path tokens in
+these fields still receive rule 1.
+3. Prose fields (description, Grep pattern, agent prompt) get rule 1 only, never
+rule 2. This corrects W2 F2's false INVALID.
+4. cd is detected as a shell word from shlex after any shell keyword, any prefix
+command with its options, or a leading backslash. It is bare and a hit when all
+its arguments are option words. This answers W2 F3 without a prefix regex.
+
+The good and bad lists in LaunchTests.test_blindness_every_spelling exercise
+each rule; disposable-copy mutations require the named test to turn red after
+an unchanged control passes. W2 F1 is answered under item 20(b)(ii), with visible
+separator words in quoted and assignment text, and item 20(c) for indirection.
+The uid check still proves exactly: on the host where the review ran, the
+reviewing OS account is not the producing OS account. It does not prove which
+machine built the cases, and it does not bind GARS's own role decision.
+
+### Not covered
+
+The scan does not follow shell indirection it cannot see statically (variables
+and assignments, command substitution, evaluated strings, aliases, functions,
+nested shells beyond those it parses) or interpreter program text (W2 F4).
+Those reads are the sandbox's to refuse; if the sandbox allowed one, the scan
+may not see it. Visible tokens detected in some examples are not proof of shell
+interpretation. The README states this limit beside the two separate walls.
+
+All other residuals stand: guessing from diff style, shared sealer/producer model
+family, independent-context evidence only, science and trailer JSON in later
+rows, thin per-class samples, and hash-only recomputation of three sealed outcomes.
+R-093's code half remains NOT met because launch_role() still returns producer.
+Separate-user and read-only-credential deployment evidence stays outside this
+repository. The protected prompt and fixtures are unchanged. No model is run,
+no sealed slot filled, no ledger row written and no measured run claimed.
+Real fixture secret scanning awaits independent verification under Q2 A;
+row 9 exit and public credibility remain NOT met and unmeasured respectively.

@@ -114,10 +114,10 @@ FAULTS.extend([
      "if previous_argument != 'path':", 'if True:',
      'launch','LaunchTests.test_blindness_every_spelling'),
     ('root scan exempts path fields','run_reviews.py',
-     "if field in ('content',", "if field in ('file_path', 'content',",
+     "if field != 'command' and not path_field(field):", "if field != 'command':",
      'launch','LaunchTests.test_blindness_every_spelling'),
     ('bare cd ignores option-only arguments','run_reviews.py',
-     r'cd(?:[^\S\n]+(?:--|-L|-P))*', 'cd',
+     "if all(argument.startswith('-') for argument in arguments):", 'if not arguments:',
      'launch','LaunchTests.test_blindness_every_spelling'),
     ('blindness treats lone separators as paths','run_reviews.py',
      'if token and not token.strip(os.sep):', 'if False:',
@@ -155,6 +155,47 @@ for label,needle in [('newline', 'echo ready'), ('subshell', '( cd;'),
                      ('do', 'do cd;'), ('else', 'else cd;'),
                      ('builtin', 'builtin cd;'), ('command', 'command cd;'),
                      ('eval', 'eval cd;'), ('exec', 'exec cd;'), ('time', 'time cd;')]:
+    FAULTS.append(('bare cd ignores '+label,'run_reviews.py',
+                   '                if bare_cd:',
+                   '                if %r in text: bare_cd = None\n                if bare_cd:' % needle,
+                   'launch','LaunchTests.test_blindness_every_spelling'))
+
+FAULTS.extend([
+    ('settings missing at launch accepted','run_reviews.py',
+     'if not args.settings:', 'if False:',
+     'launch','LaunchTests.test_settings_required_before_launch'),
+    ('settings CLI argument optional','run_reviews.py',
+     "parser.add_argument('--settings', required=True)", "parser.add_argument('--settings')",
+     'launch','LaunchTests.test_settings_required_before_launch'),
+    ('settings envelope hash invented','run_reviews.py',
+     "'sandbox_settings_sha256': sha256(settings)", "'sandbox_settings_sha256': '0' * 64",
+     'launch','LaunchTests.test_envelope_and_command_are_code_owned'),
+    ('missing settings hash scored','score.py',
+     "if not isinstance(settings_sha, str) or not re.fullmatch('[0-9a-f]{64}', settings_sha):",
+     'if False:', 'core','ScoreTests.test_sandbox_settings_bound_across_all_attempts'),
+    ('mixed settings hashes scored','score.py',
+     'if len(settings_shas) > 1:', 'if False:',
+     'core','ScoreTests.test_sandbox_settings_bound_across_all_attempts'),
+    ('settings hash masked as identity','score.py',
+     "if key == 'sandbox_settings_sha256':", 'if False:',
+     'core','ScoreTests.test_published_copy_masks_and_keeps_fields'),
+    ('prose separator treated as command','run_reviews.py',
+     "if field != 'command' and not path_field(field):", 'if False:',
+     'launch','LaunchTests.test_blindness_every_spelling'),
+    ('separator default skips embedded words','run_reviews.py',
+     'pieces = re.findall', 'pieces = [candidate] if True else re.findall',
+     'launch','LaunchTests.test_blindness_every_spelling'),
+    ('interpreter program exception removed','run_reviews.py',
+     "argument = 'code'", "argument = 'path'",
+     'launch','LaunchTests.test_blindness_every_spelling'),
+    ('settings hash optional in schema','schema/review_record.schema.json',
+     '"blindness",\n        "sandbox_settings_sha256"', '"blindness"',
+     'core','ContractTests.test_schema_contract_drift'),
+])
+EXPECTED_FAILURES['settings missing at launch accepted'] = 'TypeError'
+for label,needle in [('if keyword','if cd;'), ('escaped cd',chr(92)+'cd;'),
+                     ('time option','time -p cd;'), ('command option','command -- cd;'),
+                     ('arbitrary prefix','timeout 5 cd --;')]:
     FAULTS.append(('bare cd ignores '+label,'run_reviews.py',
                    '                if bare_cd:',
                    '                if %r in text: bare_cd = None\n                if bare_cd:' % needle,
@@ -245,7 +286,7 @@ class FaultTests(unittest.TestCase):
                 else:
                     self.assertNotEqual(proc.returncode,0,output)
                     self.assertIn('FAILED (',output)
-                    if label not in ('collision guard removed','settings copy altered','latest invalid attempt selected'):
+                    if label not in ('collision guard removed','settings copy altered','latest invalid attempt selected','settings missing at launch accepted'):
                         self.assertNotIn('ERROR:',output)
                     expected=EXPECTED_FAILURES.get(label, 'AssertionError')
                     self.assertIn(expected,output, 'wrong failure for '+label+'\n'+output)

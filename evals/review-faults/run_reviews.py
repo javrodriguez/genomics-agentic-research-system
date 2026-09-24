@@ -82,22 +82,50 @@ def input_fields(value, field=None):
                 yield pair
 
 
-def root_word_hits(text, field):
-    """W1 F1: root shell words count, delimiter values and program text do not.
-
-    This only classifies separator-only tokens. The ordinary path scan still
-    checks named absolute paths and parent/home spellings inside every field.
-    """
-    if field in ('content', 'old_string', 'new_string', 'old_text', 'new_text'):
-        return 0
+def shell_words(text):
     lexer = shlex.shlex(text, posix=True, punctuation_chars=';&|<>()\n')
     lexer.whitespace = ' \t\r'
     lexer.whitespace_split = True
     lexer.commenters = ''
-    words = list(lexer)
+    return list(lexer)
+
+
+def path_field(field):
+    return field in ('path', 'file', 'directory', 'filename', 'cwd') or bool(
+        field and field.endswith(('_path', '_paths', '_file', '_files', '_directory')))
+
+
+def bare_directory_change(text):
+    """Item 20(b)(iv): inspect shell words, including prefix options and escapes."""
+    words = shell_words(text)
+    for index, word in enumerate(words):
+        if word == 'cd':
+            arguments = []
+            for argument in words[index + 1:]:
+                if argument and all(c in ';&|<>()\n' for c in argument):
+                    break
+                arguments.append(argument)
+            if all(argument.startswith('-') for argument in arguments):
+                return True
+        if index and ((words[index - 1] == 'eval' and len(shell_words(word)) > 1) or
+                      (words[index - 1] == '-c' and index > 1 and
+                       words[index - 2] in ('sh', 'bash', 'dash', 'zsh', 'ksh'))):
+            if bare_directory_change(word):
+                return True
+    return False
+
+
+def root_word_hits(text, field):
+    """Item 20(b)(ii-iii): separator words default to hits, with named exemptions.
+
+    Prose gets ordinary path detection only. Interpreter program text is a named
+    residual; this classifier does not enforce filesystem or network permissions.
+    """
+    if field != 'command' and not path_field(field):
+        return 0
+    words = shell_words(text)
     command = None
     argument = None
-    text_program_pending = False
     hits = 0
     for word in words:
         if argument:
@@ -109,13 +137,11 @@ def root_word_hits(text, field):
                 continue
         if word and all(c in ';&|<>()\n' for c in word):
             command = None
-            text_program_pending = False
             continue
         if command is None and field == 'command':
             if word in ('then', 'do', 'else', '{', 'command', 'builtin', 'exec', 'time', 'eval'):
                 continue
             command = os.path.basename(word)
-            text_program_pending = command in ('awk', 'sed')
         else:
             delimiters = (('-F', '--field-separator') if command == 'awk' else
                           ('-d', '--delimiter') if command == 'cut' else ())
@@ -129,37 +155,30 @@ def root_word_hits(text, field):
             if word == '-c' and command in ('sh', 'bash', 'dash', 'zsh', 'ksh'):
                 argument = 'shell'
                 continue
-            if word == '-c' and command and re.fullmatch(r'(?:python[0-9.]*|perl|ruby|node)', command):
+            if word in ('-c', '-e') and command and re.fullmatch(r'(?:python[0-9.]*|perl|ruby|node)', command):
                 argument = 'code'
                 continue
             if command in ('awk', 'sed'):
-                # Explicit program options consume either code or a script path;
-                # neither leaves a later input filename eligible as program text.
-                code_options = ('-e', '--source', '--expression')
-                path_options = ('-f', '--file')
-                if word in code_options + path_options:
-                    text_program_pending = False
-                    argument = 'path' if word in path_options else 'code'
+                if word == '-e':
+                    argument = 'code'
                     continue
-                if any(word.startswith(option + '=') if option.startswith('--') else
-                       word.startswith(option) and len(word) > len(option)
-                       for option in code_options + path_options):
-                    text_program_pending = False
-            if text_program_pending and not word.startswith('-'):
-                text_program_pending = False
-                continue
+                if word in ('-f', '--file'):
+                    argument = 'path'
+                    continue
         candidate = word
         if word.startswith('-') and '=' in word:
             candidate = word.partition('=')[2]
         elif re.match(r'^-[a-zA-Z]+' + re.escape(os.sep), word):
             candidate = re.sub(r'^-[a-zA-Z]+', '', word)
-        if candidate and not candidate.strip(os.sep):
-            hits += 1
+        # Count visible separator-only tokens by default, including in quoted
+        # arguments and assignment values. No shell expansion is evaluated.
+        pieces = re.findall(r"[^\s\"'`;|<>()\[\],=]+", candidate)
+        hits += sum(1 for piece in pieces if piece and not piece.strip(os.sep))
     return hits
 
 
 def blindness(events, kit, session_id=None):
-    """Lane specification item 8: token paths against kit and system allowlist.
+    """Lane specification item 20: bounded audit, separate from sandbox enforcement.
 
     Resolve symlinks as well as lexical parent steps. Shell syntax is tokenized,
     never executed. Strings nested in tool inputs are all scanned.
@@ -186,9 +205,7 @@ def blindness(events, kit, session_id=None):
                 parent = chr(46) * 2
                 home = '$' + 'HOME'
                 brace_home = '$' + '{HOME}'
-                bare_cd = re.search(
-                    r"(?:^|[\n;|&\"'({]|\b(?:then|do|else|builtin|command|eval|exec|time)\s+)"
-                    r"[^\S\n]*cd(?:[^\S\n]+(?:--|-L|-P))*[^\S\n]*(?=$|[\n;|&\"')}])", text)
+                bare_cd = field == 'command' and bare_directory_change(text)
                 if bare_cd:
                     hits += 1
                 for token in tokens:
@@ -332,6 +349,9 @@ def run(args):
         raise ValueError('ANTHROPIC_API_KEY must be unset')
     if not args.model:
         raise ValueError('model required')
+    if not args.settings:
+        raise ValueError('sandbox settings required')
+    settings = Path(args.settings).read_bytes()
     manifest = read_json(args.manifest)
     prompt = Path(args.prompt).read_bytes()
     if sha256(prompt) != manifest['prompt_sha256'] or manifest['prompt_path'] != PROMPT_PATH:
@@ -367,12 +387,10 @@ def run(args):
         git(repo, 'remote', 'remove', 'origin')
         git(repo, 'reflog', 'expire', '--expire=all', '--all')
         (kit / 'BRIEF.md').write_bytes(prompt)
-        if args.settings:
-            settings = Path(args.settings).read_bytes()
-            (kit / '.claude').mkdir()
-            (kit / '.claude/settings.json').write_bytes(settings)
-            if (kit / '.claude/settings.json').read_bytes() != settings:
-                raise ValueError('settings copy differs')
+        (kit / '.claude').mkdir()
+        (kit / '.claude/settings.json').write_bytes(settings)
+        if (kit / '.claude/settings.json').read_bytes() != settings:
+            raise ValueError('settings copy differs')
         if kit == (repo / '.claude').resolve():
             raise ValueError('repository settings directory cannot be cwd')
         head = git(repo, 'rev-parse', 'HEAD').decode().strip()
@@ -401,6 +419,7 @@ def run(args):
             review = {'invalid_model': models, 'submitted_review': review}
         record = {'review': review, 'envelope': {
             'schema_version': 1, 'case': neutral, 'repo_head': head, 'repo_parent': parent,
+            'sandbox_settings_sha256': sha256(settings),
             'host_digest': host, 'reviewer': dict(reviewer, model_id=models[0] if models else 'unknown',
                 prompt_path=PROMPT_PATH, prompt_sha256=sha256(prompt), session_id=session,
                 tool='claude', tool_version=version, login_entry=args.login_entry, attempt=attempt),
@@ -422,7 +441,7 @@ def main(argv=None):
     for name in ('cases', 'manifest', 'prompt', 'kits-root', 'records', 'model', 'producer-account'):
         parser.add_argument('--' + name, required=True)
     parser.add_argument('--login-entry', type=int, required=True)
-    parser.add_argument('--settings')
+    parser.add_argument('--settings', required=True)
     parser.add_argument('--only')
     args = parser.parse_args(argv)
     try:

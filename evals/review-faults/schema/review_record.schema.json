@@ -108,7 +108,8 @@
         "finished_at",
         "exit_code",
         "ended_on_usage_limit",
-        "blindness"
+        "blindness",
+        "sandbox_settings_sha256"
       ],
       "properties": {
         "schema_version": {
@@ -251,6 +252,10 @@
             }
           },
           "additionalProperties": false
+        },
+        "sandbox_settings_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
         }
       },
       "additionalProperties": false

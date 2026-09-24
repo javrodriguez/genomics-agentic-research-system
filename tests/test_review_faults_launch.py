@@ -22,7 +22,8 @@ class LaunchTests(unittest.TestCase):
     def test_envelope_and_command_are_code_owned(self):
         root,args,manifest=launcher_fixture(self,1)
         events=[{'type':'system','subtype':'init','model':'stub-model',
-                 'envelope':{'reviewer':{'uid':0},'blindness':{'hits':0}}}]
+                 'envelope':{'reviewer':{'uid':0},'blindness':{'hits':0},
+                             'sandbox_settings_sha256':'0'*64}}]
         stub(root,events=events)
         settings=root/'settings.json'
         settings.write_text('{"permissions":{}}\n')
@@ -33,6 +34,7 @@ class LaunchTests(unittest.TestCase):
         record=common.read_json(Path(args.records)/(neutral+'.record.json'))
         self.assertEqual(review_record.invalid_reasons(record,manifest),[])
         envelope=record['envelope']
+        self.assertEqual(envelope['sandbox_settings_sha256'],common.sha256(settings.read_bytes()))
         self.assertEqual(envelope['reviewer']['uid'],os.getuid())
         self.assertNotEqual(envelope['reviewer']['uid'],envelope['producer']['uid'])
         self.assertEqual(envelope['reviewer']['model_id'],'stub-model')
@@ -89,6 +91,24 @@ class LaunchTests(unittest.TestCase):
                 run_reviews.run(args)
         self.assertFalse(Path(args.kits_root).exists())
 
+    def test_settings_required_before_launch(self):
+        root,args,manifest=launcher_fixture(self,1)
+        stub(root)
+        args.settings=None
+        with launch_context(root), mock.patch.object(run_reviews.subprocess, 'check_output') as launch:
+            with self.assertRaisesRegex(ValueError,'sandbox settings required'):
+                run_reviews.run(args)
+            launch.assert_not_called()
+        self.assertFalse(Path(args.kits_root).exists())
+        argv=[]
+        for name in ('cases','manifest','prompt','kits-root','records','model','producer-account','login-entry'):
+            argv.extend(['--'+name,str(getattr(args,name.replace('-','_')))])
+        with mock.patch('sys.stderr',io.StringIO()), mock.patch.object(run_reviews,'run') as run:
+            with self.assertRaises(SystemExit) as refused:
+                run_reviews.main(argv)
+            self.assertEqual(refused.exception.code,2)
+            run.assert_not_called()
+
     def test_review_output_owner(self):
         root=temporary(self)
         path=root/'review.json'
@@ -142,6 +162,9 @@ class LaunchTests(unittest.TestCase):
                         'cd -L -P --; cat secret', 'eval cd; cat secret',
                         'exec cd; cat secret', 'time cd; cat secret',
                         'eval cd --; cat secret',
+                        'if cd; then cat secret; fi', chr(92)+'cd; cat secret',
+                        'time -p cd; cat secret', 'command -- cd; cat secret',
+                        'env -- cd -P; cat secret', 'timeout 5 cd --; cat secret',
                         'cat '+('$'+'{HOME%/}')+os.sep+'file',
                         'cat '+os.path.join('$'+'{PWD%/*}',parent,'file')):
             self.assertEqual(run_reviews.blindness([{'type':'tool_use','input':{'command':command}}],kit)['hits'],1,command)
@@ -157,15 +180,27 @@ class LaunchTests(unittest.TestCase):
                          'awk -f repo/program '+os.sep,
                          'sed --file=repo/program '+os.sep,
                          'awk --source=program '+os.sep,
-                         'awk -e program '+os.sep]
+                         'awk -e program '+os.sep, 'awk '+repr(os.sep)+' repo/input.txt',
+                         'echo "$('+'ls '+os.sep+')"',
+                         'env bash -c "ls '+os.sep+'"',
+                         'bash -lc "ls '+os.sep+'"',
+                         'timeout 5 bash -c "ls '+os.sep+'"',
+                         'CDPATH='+os.sep+' cd etc',
+                         'x='+os.sep+'; cd $x',
+                         'printf "prefix '+os.sep+' suffix"']
         for command in root_commands:
             event={'type':'tool_use','input':{'command':command}}
             self.assertEqual(run_reviews.blindness([event],kit)['hits'],1,command)
-        for field in ('file_path','path'):
+        command='HOME='+os.sep+' cd'
+        self.assertEqual(run_reviews.blindness([{'type':'tool_use','input':{'command':command}}],kit)['hits'],2)
+        for field in ('file_path','path','notebook_path','directory','input_path'):
             event={'type':'tool_use','input':{field:os.sep}}
             self.assertEqual(run_reviews.blindness([event],kit)['hits'],1)
         for command in ['cd -- repo && cat module.py', 'cd -L repo',
                         'cd -P repo', 'eval cd repo', 'exec cd repo', 'time cd repo',
+                        'if cd repo; then cat module.py; fi', chr(92)+'cd repo',
+                        'time -p cd repo', 'command -- cd repo',
+                        'env -- cd repo', 'timeout 5 cd repo',
                         'cut --delimiter='+os.sep+' -f 1 repo/input.txt',
                         'cut --delimiter '+os.sep+' -f 1 repo/input.txt',
                         'awk --field-separator='+os.sep+" '{print $1}' repo/input.txt",
@@ -176,6 +211,20 @@ class LaunchTests(unittest.TestCase):
                         'python3 -c "'+os.sep+'"']:
             event={'type':'tool_use','input':{'command':command}}
             self.assertEqual(run_reviews.blindness([event],kit)['hits'],0,command)
+        # Item 20(b)(iii): prose is not a command; named paths still get rule (i).
+        for field,text in [('description','Compare old '+os.sep+' new files'),
+                           ('pattern',os.sep),('prompt','Split on '+os.sep+' please')]:
+            for value,expected in [(text,0),(outside_path,1),('repo/module.py',0)]:
+                event={'type':'tool_use','input':{field:value}}
+                self.assertEqual(run_reviews.blindness([event],kit)['hits'],expected,field)
+        # Item 20(c): interpreter program text is a sandbox responsibility.
+        for interpreter,option,program in [
+                ('python3','-c',"import os;os.chdir('"+os.sep+"');print(os.listdir())"),
+                ('perl','-e',"chdir('"+os.sep+"')"),
+                ('ruby','-e',"Dir.chdir('"+os.sep+"')"),
+                ('node','-e',"process.chdir('"+os.sep+"')")]:
+            event={'type':'tool_use','input':{'command':interpreter+' '+option+' "'+program+'"'}}
+            self.assertEqual(run_reviews.blindness([event],kit)['hits'],0)
         for field in ('content','old_string','new_string','old_text','new_text'):
             event={'type':'tool_use','input':{'file_path':'review.json',field:os.sep}}
             self.assertEqual(run_reviews.blindness([event],kit)['hits'],0,field)

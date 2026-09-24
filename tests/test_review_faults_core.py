@@ -35,6 +35,12 @@ class ContractTests(unittest.TestCase):
         schema = review_record.SCHEMA
         self.assertEqual(schema['$schema'], 'https://json-schema.org/draft/2020-12/schema')
         self.assertEqual(review_record.validate(sample), [])
+        envelope_schema=schema['properties']['envelope']
+        self.assertIn('sandbox_settings_sha256',envelope_schema['required'])
+        for bad_hash in ('', 'a'*63, 'g'*64, None, 5):
+            altered=copy.deepcopy(sample)
+            altered['envelope']['sandbox_settings_sha256']=bad_hash
+            self.assertTrue(review_record.validate(altered))
         allowed = {'type','required','properties','additionalProperties','enum','items','minLength',
                    'pattern','minimum','$schema','title'}
         def walk(node, spec, route):
@@ -160,6 +166,32 @@ class ScoreTests(unittest.TestCase):
             result=score.score(records,key,manifest,[answers],root/'runs')
             self.assertEqual(result['overall']['invalid']['n'],1)
 
+    def test_sandbox_settings_bound_across_all_attempts(self):
+        root,key,manifest,answers,records=score_fixture(self)
+        path=next(records.glob('*.json'))
+        original=common.read_json(path)
+        for bad_hash in (None, '', 'a'*63, 'z'*64, 4):
+            altered=copy.deepcopy(original)
+            if bad_hash is None:
+                del altered['envelope']['sandbox_settings_sha256']
+            else:
+                altered['envelope']['sandbox_settings_sha256']=bad_hash
+            path.write_text(json.dumps(altered))
+            with self.assertRaisesRegex(ValueError,'sandbox settings hash'):
+                score.score(records,key,manifest,[answers],root/'runs')
+        path.write_text(json.dumps(original))
+        changed=copy.deepcopy(original)
+        changed['envelope']['sandbox_settings_sha256']='e'*64
+        path.write_text(json.dumps(changed))
+        with self.assertRaisesRegex(ValueError,'mixed sandbox settings'):
+            score.score(records,key,manifest,[answers],root/'runs')
+        path.write_text(json.dumps(original))
+        changed['envelope']['reviewer']['attempt']=2
+        changed['envelope']['ended_on_usage_limit']=True
+        common.write_json(path.with_name(original['envelope']['case']+'.attempt2.record.json'),changed)
+        with self.assertRaisesRegex(ValueError,'mixed sandbox settings'):
+            score.score(records,key,manifest,[answers],root/'runs')
+
     def test_latest_valid_attempt_retains_all(self):
         root,key,manifest,answers,records=score_fixture(self)
         path=next(records.glob('*.json'))
@@ -201,6 +233,11 @@ class ScoreTests(unittest.TestCase):
         self.assertEqual(set(masked['envelope']),set(raw['envelope']))
         self.assertIn('uid',masked['envelope']['reviewer'])
         self.assertIn('host_digest',masked['envelope'])
+        self.assertEqual(masked['envelope']['sandbox_settings_sha256'],raw['envelope']['sandbox_settings_sha256'])
+        coincident=copy.deepcopy(raw)
+        coincident['envelope']['sandbox_settings_sha256']=coincident['envelope']['host_digest']
+        published=score.masked_copy(coincident,key['run_salt'],manifest['cases'],[])
+        self.assertEqual(published['envelope']['sandbox_settings_sha256'],coincident['envelope']['sandbox_settings_sha256'])
         self.assertEqual(masked,score.masked_copy(raw,key['run_salt'],manifest['cases'],['PLACEHOLDER_ONLY_LITERAL']))
         self.assertNotEqual(masked['envelope']['reviewer']['uid'],masked['envelope']['producer']['uid'])
         same=copy.deepcopy(raw)

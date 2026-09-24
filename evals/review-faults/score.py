@@ -41,6 +41,8 @@ def masked_copy(value, salt, neutral_ids, literals):
     collect(value)
 
     def mask(item, key=None):
+        if key == 'sandbox_settings_sha256':
+            return item
         if key in ('uid', 'host_digest'):
             return digest(item)
         if isinstance(item, dict):
@@ -113,10 +115,15 @@ def score(records, key, manifest, answers, runs, stamp=None):
             raise ValueError('key neutral id mismatch')
     histories = {n: [] for n in mapping}
     model_ids = set()
+    settings_shas = set()
     count = 0
     for path in sorted(Path(records).glob('*.record.json')):
         record = read_json(path)
         env = record.get('envelope', {})
+        settings_sha = env.get('sandbox_settings_sha256')
+        if not isinstance(settings_sha, str) or not re.fullmatch('[0-9a-f]{64}', settings_sha):
+            raise ValueError('sandbox settings hash missing or invalid')
+        settings_shas.add(settings_sha)
         neutral = env.get('case')
         if neutral not in mapping:
             raise ValueError('record case not in manifest')
@@ -133,6 +140,8 @@ def score(records, key, manifest, answers, runs, stamp=None):
         histories[neutral].append({'attempt': attempt, 'file': path.name,
                                    'invalid_reasons': errors, 'record': record})
         count += 1
+    if len(settings_shas) > 1:
+        raise ValueError('mixed sandbox settings run')
     if len(model_ids) > 1:
         raise ValueError('mixed-model run')
     model = next(iter(model_ids)) if model_ids else 'unknown'

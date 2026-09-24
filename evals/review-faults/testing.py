@@ -31,7 +31,7 @@ def finding(**changes):
 def record(neutral, prompt_sha, model='stub-model', attempt=1):
     return {'review': {'verdict': 'APPROVE', 'findings': []}, 'envelope': {
         'schema_version': 1, 'case': neutral, 'repo_head': 'a' * 40, 'repo_parent': 'b' * 40,
-        'host_digest': 'c' * 64,
+        'host_digest': 'c' * 64, 'sandbox_settings_sha256': 'd' * 64,
         'reviewer': {'uid': 41231, 'os_user': 'synthetic-reviewer', 'model_id': model,
                      'prompt_path': PROMPT_PATH, 'prompt_sha256': prompt_sha,
                      'session_id': 'synthetic-session', 'tool': 'claude', 'tool_version': 'stub-1',
@@ -59,9 +59,11 @@ def launcher_fixture(test, count=2):
     manifest = {'cases': ids, 'prompt_path': PROMPT_PATH, 'prompt_sha256': sha256(prompt.read_bytes()),
                 'base_sha': BASE_SHA, 'harness_commit': 'd' * 40}
     write_json(root / 'manifest.json', manifest)
+    settings = root / 'settings.json'
+    settings.write_text('{}\n')
     args = SimpleNamespace(cases=str(cases), manifest=str(root / 'manifest.json'), prompt=str(prompt),
                            kits_root=str(root / 'k'), records=str(root / 'r'), model='stub-model',
-                           producer_account='synthetic-producer', login_entry=1, only=None, settings=None)
+                           producer_account='synthetic-producer', login_entry=1, only=None, settings=str(settings))
     return root, args, manifest
 
 
