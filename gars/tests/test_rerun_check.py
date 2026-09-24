@@ -3,6 +3,7 @@ import ast
 import contextlib
 import copy
 import io
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -25,6 +26,15 @@ import manifest_check as mc
 rc = module(INSTRUMENT, 'rerun_instrument')
 
 
+def baseline_wrapper(path):
+    root = GARS / 'tests/fixtures/replay-baseline'
+    content = (root / path.name).read_bytes()
+    expected = json.loads((root / 'sha256.json').read_text())[path.name]
+    if hashlib.sha256(content).hexdigest() != expected:
+        raise AssertionError('baseline wrapper fixture drifted: ' + path.name)
+    return content
+
+
 def checked(argv, **kwargs):
     result = run(argv, **kwargs)
     if result.returncode:
@@ -40,7 +50,7 @@ class RerunCheckTests(unittest.TestCase):
         self.ws = self.repo / 'gars'
         self.ws.mkdir(parents=True)
         for folder in ('_system', '_references'):
-            shutil.copytree(str(GARS / folder), str(self.ws / folder))
+            shutil.copytree(str(GARS / folder), str(self.ws / folder), ignore=shutil.ignore_patterns('__pycache__'))
         (self.repo / 'scripts').mkdir()
         shutil.copyfile(str(INSTRUMENT), str(self.repo / 'scripts/rerun_check.py'))
         self.wrappers = self.ws / 'test-wrappers'
@@ -52,9 +62,10 @@ class RerunCheckTests(unittest.TestCase):
         shutil.move(str(self.ws / 'test-wrappers'), str(self.wrappers))
         self.wrapper = self.wrappers / 'rerun-fixture/rerun_fixture.py'
         (self.repo / '.rerun-self-test').write_text('suite only\n')
+        (self.repo / '.gitignore').write_text('__pycache__/\n*.pyc\n')
         (self.ws / '_system/gars-env.sh').write_text(':\n')
         checked(['git', 'init', '-q', self.repo])
-        checked(['git', '-C', self.repo, 'add', 'gars', 'scripts', '.rerun-self-test'])
+        checked(['git', '-C', self.repo, 'add', 'gars', 'scripts', '.rerun-self-test', '.gitignore'])
         self.commit()
         self.project = self.ws / 'projects/original'
         (self.project / '_config').mkdir(parents=True)
@@ -62,6 +73,7 @@ class RerunCheckTests(unittest.TestCase):
         (self.project / '_config/rerun-fixture.yaml').write_text('compute:\n  cpus: 1\n')
         (self.project / '01_samplesheets').mkdir()
         (self.project / '01_samplesheets/rerun-fixture_samplesheet.csv').write_text('sample\nfixture\n')
+        (self.project / '01_samplesheets/rerun-fixture_design_check.json').write_text('{"fixture":true}\n')
         (self.project / '00_data').mkdir()
         (self.project / '00_data/dataset.tsv').write_text(
             'purpose\tdata_class\tinput_data_location\nfixture\tpublic\tsynthetic\n')
@@ -113,6 +125,11 @@ class RerunCheckTests(unittest.TestCase):
         self.assertIn('reproduction: 2/2', text)
         result = json.loads((self.out / 'comparison.json').read_text())
         self.assertEqual(len(result['runs']), 2)
+        self.assertEqual(result['wrappers_root'], str(self.wrappers))
+        self.assertEqual(result['wrapper_sha256'], wl.sha256(self.wrapper))
+        for attempt in result['runs']:
+            self.assertEqual(attempt['code']['wrapper_sha256'], wl.sha256(self.wrapper))
+            self.assertEqual(attempt['code']['wrapperlib_sha256'], wl.sha256(self.ws / '_system/wrapperlib.py'))
         self.assertEqual(text.count('graded 2 of 2 outputs'), 2)
         for run_result in result['runs']:
             self.assertTrue(run_result['job'])
@@ -131,19 +148,88 @@ class RerunCheckTests(unittest.TestCase):
                     self.assertNotEqual(row['original_sha256'], row['replay_sha256'])
                     print('MEASURE instrument self-test run %d: max_absolute_error=%s; bytes differ' %
                           (run_result['run'], row['value']))
-        print('reproduction: 2/2')
         print('EXIT instrument self-test (fixture, local): reproduction 2/2')
 
+    def replay(self, expected=0):
+        output = io.StringIO()
+        with patch.object(rc, 'REPO', self.repo), patch.object(rc, 'TOLERANCES', self.ws / '_references/tolerances.yaml'):
+            with contextlib.redirect_stdout(output):
+                result = rc.reproduce(self.path, 2, self.out, self.wrappers)
+        self.assertEqual(result, expected, output.getvalue())
+        return output.getvalue()
+
     def test_byte_change_one_of_two(self):
-        # Plant only after worker execution, before real collect hashes the artifact.
-        source = self.wrapper.read_text().replace("wl.require_collect_config(project, ASSAY, SUBSTAGE)",
-            "wl.require_collect_config(project, ASSAY, SUBSTAGE)\n"
-            "        if project.name == 'run-2':\n"
-            "            (stage / 'run/stable.txt').write_text('id\\tvalue\\nb\\t2\\na\\t1\\n')")
-        self.wrapper.write_text(source)
-        text = self.cli(expected=1)
+        # Alter the output at the collect boundary; executed source stays committed.
+        original = rc.run_wrapper
+        def changed(wrapper, verb, project, manifest, env):
+            if verb == 'collect' and project.name == 'run-2':
+                stage = project / '02_bioinformatics/rerun-fixture/01_rerun-fixture'
+                (stage / 'run/stable.txt').write_text('id\tvalue\nb\t2\na\t1\n')
+            return original(wrapper, verb, project, manifest, env)
+        with patch.object(rc, 'run_wrapper', side_effect=changed):
+            text = self.replay(expected=1)
         self.assertIn('reproduction: 1/2', text)
         self.assertIn('run/stable.txt byte_stable match=no', text)
+
+    def test_dirty_code_and_real_wrapper_override_refused(self):
+        for path in (self.wrapper, self.ws / '_system/wrapperlib.py',
+                     self.repo / 'scripts/rerun_check.py'):
+            with self.subTest(path=path.name):
+                original = path.read_bytes()
+                path.write_bytes(original + b'\n# uncommitted\n')
+                try:
+                    self.refusal('GARS code has uncommitted changes')
+                finally:
+                    path.write_bytes(original)
+        untracked = self.ws / '_system/untracked.py'
+        untracked.write_text('# untracked\n')
+        try:
+            self.refusal('GARS code has uncommitted changes')
+        finally:
+            untracked.unlink()
+        for name in mc.load_schema()['wrappers']:
+            with self.subTest(wrapper=name):
+                with self.assertRaisesRegex(ValueError, 'override is only allowed for rerun-fixture'):
+                    rc.wrapper_info(dict(wrapper=name), self.wrappers)
+
+    def test_failed_attempts_stay_in_denominator(self):
+        original_status, original_wrapper = rc.ex.status, rc.run_wrapper
+        for fault in ('FAILED:EXIT_1', 'collect', 'inventory', 'unavailable'):
+            with self.subTest(fault=fault):
+                self.out = self.repo / ('replay-' + fault.replace(':', '-'))
+                def status(project, job):
+                    state, why = original_status(project, job)
+                    if project.name == 'run-2' and state in ('COMPLETED', 'VALIDATING', 'COMPLETE'):
+                        if fault == 'FAILED:EXIT_1':
+                            return fault, 'injected worker failure'
+                        if fault == 'unavailable':
+                            return None, 'injected accounting failure'
+                    return state, why
+                def wrapper(path, verb, project, manifest, env):
+                    if verb == 'collect' and project.name == 'run-2' and fault == 'collect':
+                        raise ValueError('wrapper collect failed: injected')
+                    original_wrapper(path, verb, project, manifest, env)
+                    if verb == 'collect' and project.name == 'run-2' and fault == 'inventory':
+                        stage = project / '02_bioinformatics/rerun-fixture/01_rerun-fixture'
+                        manifest_path = stage / 'reproducibility/manifest.json'
+                        value = json.loads(manifest_path.read_text())
+                        value['outputs'].reverse()
+                        manifest_path.write_text(json.dumps(value))
+                        index = stage / 'OUTPUTS.tsv'
+                        lines = index.read_text().splitlines()
+                        index.write_text('\n'.join([lines[0]] + list(reversed(lines[1:]))) + '\n')
+                with patch.object(rc.ex, 'status', side_effect=status), patch.object(rc, 'run_wrapper', side_effect=wrapper):
+                    text = self.replay(expected=1)
+                self.assertIn('reproduction: 1/2', text)
+                result = json.loads((self.out / 'comparison.json').read_text())
+                self.assertEqual(result['requested'], 2)
+                self.assertEqual(len(result['runs']), 2)
+                self.assertEqual([r['match'] for r in result['runs']], [True, False])
+                self.assertTrue(result['runs'][1]['job'])
+                reason = {'FAILED:EXIT_1': 're-run failed: FAILED:EXIT_1',
+                          'collect': 'wrapper collect failed', 'inventory': 'output inventory differs',
+                          'unavailable': 'executor unavailable'}[fault]
+                self.assertIn(reason, result['runs'][1]['reason'])
 
     def test_unlisted_defaults_to_exact_bytes(self):
         rule = rc.rule_for([], 'anything', dict(type='table', path='run/stable.txt'))
@@ -197,6 +283,11 @@ class RerunCheckTests(unittest.TestCase):
         source = Path(base['inputs']['samplesheet'])
         old = source.read_bytes(); source.write_bytes(old + b'changed\n')
         self.refusal('input hash changed'); source.write_bytes(old)
+        design_check = self.project / self.manifest['design_check']['path']
+        old = design_check.read_bytes()
+        design_check.write_bytes(old + b'changed\n')
+        self.refusal('design check changed or missing')
+        design_check.write_bytes(old)
         (self.stage / 'STATUS').write_text('FAILED\n')
         self.refusal('run status is not COMPLETE')
 
@@ -248,6 +339,32 @@ class RerunCheckTests(unittest.TestCase):
 
 
 class RealWrapperReplayTests(unittest.TestCase):
+    def test_dirty_pipeline_refused(self):
+        import test_manifest_groups as fixtures
+        case = fixtures.ManifestGroupsTests('test_all_ten_wrappers_both_backends')
+        self.addCleanup(case.doCleanups)
+        with contextlib.redirect_stdout(io.StringIO()):
+            case.setUp(); case.pipeline_fixtures()
+            case.configure_wrapper('rnaseq_bulk', 'local', case.project)
+        case.fake_wrapper_run(); case.submit()
+        checked(case.wrapper_argv('collect', ['--model', 'none']), cwd=case.ws, env=case.env)
+        manifest = json.loads(case.manifest_path.read_text())
+        pipeline = Path(manifest['checkout'])
+        with patch.object(rc, 'REPO', case.repo), patch.dict(os.environ, case.env):
+            rc.validate_manifest(manifest, case.stage)
+            for filename in ('main.nf', 'untracked.nf'):
+                path = pipeline / filename
+                old = path.read_bytes() if path.exists() else None
+                path.write_text('// dirty fixture\n')
+                try:
+                    with self.assertRaisesRegex(ValueError, 'pipeline code has uncommitted changes'):
+                        rc.validate_manifest(manifest, case.stage)
+                finally:
+                    if old is None:
+                        path.unlink()
+                    else:
+                        path.write_bytes(old)
+
     def test_rnaseq_design_prepare_identity(self):
         import test_manifest_groups as fixtures
         case = fixtures.ManifestGroupsTests('test_all_ten_wrappers_both_backends')
@@ -261,8 +378,7 @@ class RealWrapperReplayTests(unittest.TestCase):
         alias = case.project / 'design-link.csv'
         alias.symlink_to(canonical)
         original_source = case.wrapper.read_bytes()
-        relative = case.wrapper.relative_to(case.repo).as_posix()
-        baseline_source = run(['git', 'show', '6039276:' + relative]).stdout
+        baseline_source = baseline_wrapper(case.wrapper)
         self.assertTrue(baseline_source)
 
         def prepare(design):
@@ -337,8 +453,7 @@ class RealWrapperReplayTests(unittest.TestCase):
         alternate.write_bytes(canonical.read_bytes())
         # Produce a legacy COMPLETE manifest with the actual pre-R11 wrapper.
         source = case.wrapper.read_bytes()
-        relative = case.wrapper.relative_to(case.repo).as_posix()
-        baseline = run(['git', 'show', '6039276:' + relative]).stdout
+        baseline = baseline_wrapper(case.wrapper)
         self.assertTrue(baseline)
         try:
             case.wrapper.write_bytes(baseline)
@@ -504,8 +619,7 @@ class RealWrapperReplayTests(unittest.TestCase):
                     case.configure_wrapper(key, backend, base)
                     before = json.loads(case.manifest_path.read_text())
                     current_source = case.wrapper.read_bytes()
-                    relative = case.wrapper.relative_to(case.repo).as_posix()
-                    baseline_source = run(['git', 'show', '9def5b3:' + relative]).stdout
+                    baseline_source = baseline_wrapper(case.wrapper)
                     self.assertTrue(baseline_source)
                     try:
                         case.wrapper.write_bytes(baseline_source)

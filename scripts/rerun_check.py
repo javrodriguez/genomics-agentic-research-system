@@ -108,6 +108,12 @@ def compare_artifact(original, replay, row, rule):
                 original_sha256=left['sha256'], replay_sha256=right['sha256'])
 
 
+def require_clean_code(repo, paths, label):
+    status = wl.git_value(repo, 'status', '--porcelain', '--untracked-files=all', '--', *paths)
+    require(status is not None, 'cannot inspect ' + label + ' code')
+    require(not status, label + ' code has uncommitted changes')
+
+
 def validate_manifest(manifest, stage):
     require('execution_config' in manifest, 'no execution config recorded')
     try:
@@ -122,6 +128,14 @@ def validate_manifest(manifest, stage):
     require(wl.git_value(Path(manifest['checkout']), 'rev-parse', 'HEAD') == manifest['pipeline_commit'],
             'pipeline_commit differs from HEAD')
     require(wl.git_value(REPO, 'rev-parse', 'HEAD') == manifest['gars_commit'], 'gars_commit differs from HEAD')
+    require_clean_code(REPO, ['gars/_system', 'scripts'], 'GARS')
+    if manifest['predicate_facts']['wrapper_kind'] == 'nextflow':
+        require_clean_code(Path(manifest['checkout']), ['.'], 'pipeline')
+    if manifest['predicate_facts']['design_record']:
+        evidence = manifest['design_check']
+        design_check = stage.parents[2] / evidence['path']
+        require(design_check.is_file() and wl.sha256(design_check) == evidence['sha256'],
+                'design check changed or missing')
     if manifest['wrapper'] == 'rnaseq-de':
         design_path = stage.parents[2] / '01_samplesheets' / 'rnaseq_bulk_design.csv'
         require('design' in manifest['inputs'] and
@@ -149,8 +163,11 @@ def validate_manifest(manifest, stage):
 
 
 def wrapper_info(manifest, wrappers_root):
+    default_root = (REPO / 'gars/_system/wrappers').resolve()
+    require(wrappers_root == default_root or manifest['wrapper'] == 'rerun-fixture',
+            'wrappers root override is only allowed for rerun-fixture')
     info = mc.load_schema()['wrappers'].get(manifest['wrapper'])
-    if info is None and wrappers_root != WRAPPERS and manifest['wrapper'] == 'rerun-fixture':
+    if info is None and wrappers_root != default_root and manifest['wrapper'] == 'rerun-fixture':
         info = dict(name='rerun-fixture', assay='rerun-fixture', substage='01_rerun-fixture', kind='local')
     require(info is not None, 'unregistered wrapper')
     # Same directory and Python filename spelling as the tool registry and gars-env.
@@ -177,7 +194,7 @@ def run_wrapper(wrapper, verb, project, manifest, env):
             result.stdout.decode('utf-8', 'replace') + result.stderr.decode('utf-8', 'replace'))
 
 
-def bind_project(manifest, project, info):
+def bind_project(manifest, project, info, original_project=None):
     config = project / '_config'
     config.mkdir(parents=True)
     # Original inputs stay immutable and keep their resolved names and hashes.
@@ -193,6 +210,11 @@ def bind_project(manifest, project, info):
         for label, suffix in (('samplesheet', '_samplesheet.csv'), ('design', '_design.csv')):
             if label in manifest['inputs']:
                 (sheets / (info['assay'] + suffix)).symlink_to(Path(manifest['inputs'][label]))
+    if original_project is not None and manifest['predicate_facts']['design_record']:
+        evidence = manifest['design_check']
+        source = original_project / evidence['path']
+        target = project / '01_samplesheets' / (info['assay'] + '_design_check.json')
+        target.symlink_to(source.resolve())
     data = project / '00_data'
     data.mkdir()
     with (data / 'dataset.tsv').open('w', encoding='utf-8', newline='') as handle:
@@ -240,42 +262,52 @@ def reproduce(manifest_path, runs, out, wrappers_root=WRAPPERS):
     if info['kind'] == 'nextflow':
         env['GARS_PIPELINES'] = str(Path(manifest['checkout']).parent)
     for number in range(1, runs + 1):
-        validate_manifest(manifest, original_stage)
-        project = out / ('run-%d' % number)
-        bind_project(manifest, project, info)
-        stage = project / '02_bioinformatics' / info['assay'] / info['substage']
-        run_wrapper(wrapper, 'prepare', project, manifest, env)
-        replay_path = stage / 'reproducibility/manifest.json'
-        replay = json.loads(replay_path.read_text(encoding='utf-8'))
-        validate_preparation(manifest, replay, original_stage, stage)
-        job, reason = ex.submit(project, stage / 'submit.sh')
-        require(job is not None, 'submit refused: ' + str(reason))
-        while True:
-            state, reason = ex.status(project, job)
-            require(state is not None, 'executor unavailable: ' + str(reason))
-            if state in ('COMPLETED', 'VALIDATING', 'COMPLETE'):
-                break
-            require(state in ('PENDING', 'SUBMITTED', 'RUNNING'), 're-run failed: ' + str(state))
-            time.sleep(0.1 if manifest['backend'] == 'local' else 5)
-        run_wrapper(wrapper, 'collect', project, manifest, env)
-        require(wl.read_status(stage) == 'COMPLETE', 're-run status is not COMPLETE')
-        wl.verify_output_manifest(stage)
-        replay = json.loads(replay_path.read_text(encoding='utf-8'))
-        require([(r['type'], r['role'], r['path']) for r in replay['outputs']] ==
-                [(r['type'], r['role'], r['path']) for r in rows], 'output inventory differs')
-        comparisons = []
-        for row, rule in zip(rows, rules):
-            result = compare_artifact(original_stage, stage, row, rule)
-            comparisons.append(result)
-            print('%s %s match=%s %s=%s' % (result['path'], result['mode'],
-                  'yes' if result['match'] else 'no', result['metric'], result['value']), flush=True)
-        require(len(comparisons) == len(rows), 'output silently skipped')
-        print('graded %d of %d outputs' % (len(comparisons), len(rows)), flush=True)
-        success = all(r['match'] for r in comparisons)
+        job, comparisons, success, reason = None, [], False, None
+        code = dict(wrappers_root=str(wrapper.parent.parent), wrapper=str(wrapper))
+        try:
+            code.update(wrapper_sha256=wl.sha256(wrapper),
+                        wrapperlib_sha256=wl.sha256(REPO / 'gars/_system/wrapperlib.py'))
+            validate_manifest(manifest, original_stage)
+            project = out / ('run-%d' % number)
+            bind_project(manifest, project, info, original_stage.parents[2])
+            stage = project / '02_bioinformatics' / info['assay'] / info['substage']
+            run_wrapper(wrapper, 'prepare', project, manifest, env)
+            replay_path = stage / 'reproducibility/manifest.json'
+            replay = json.loads(replay_path.read_text(encoding='utf-8'))
+            validate_preparation(manifest, replay, original_stage, stage)
+            job, reason = ex.submit(project, stage / 'submit.sh')
+            require(job is not None, 'submit refused: ' + str(reason))
+            while True:
+                state, reason = ex.status(project, job)
+                require(state is not None, 'executor unavailable: ' + str(reason))
+                if state in ('COMPLETED', 'VALIDATING', 'COMPLETE'):
+                    break
+                require(state in ('PENDING', 'SUBMITTED', 'RUNNING'), 're-run failed: ' + str(state))
+                time.sleep(0.1 if manifest['backend'] == 'local' else 5)
+            run_wrapper(wrapper, 'collect', project, manifest, env)
+            require(wl.read_status(stage) == 'COMPLETE', 're-run status is not COMPLETE')
+            wl.verify_output_manifest(stage)
+            replay = json.loads(replay_path.read_text(encoding='utf-8'))
+            require([(r['type'], r['role'], r['path']) for r in replay['outputs']] ==
+                    [(r['type'], r['role'], r['path']) for r in rows], 'output inventory differs')
+            for row, rule in zip(rows, rules):
+                result = compare_artifact(original_stage, stage, row, rule)
+                comparisons.append(result)
+                print('%s %s match=%s %s=%s' % (result['path'], result['mode'],
+                      'yes' if result['match'] else 'no', result['metric'], result['value']), flush=True)
+            require(len(comparisons) == len(rows), 'output silently skipped')
+            print('graded %d of %d outputs' % (len(comparisons), len(rows)), flush=True)
+            success = all(r['match'] for r in comparisons)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            reason = str(exc)
+            print('run %d match=no reason=%s' % (number, reason), flush=True)
         matched += int(success)
-        results.append(dict(run=number, job=job, match=success, artifacts=comparisons))
+        results.append(dict(run=number, job=job, match=success, reason=reason,
+                            artifacts=comparisons, code=code))
         (out / 'comparison.json').write_text(json.dumps(dict(runs=results, requested=runs,
-            original=str(manifest_path), tolerances_sha256=tolerances_sha256), indent=2, sort_keys=True) + '\n')
+            original=str(manifest_path), tolerances_sha256=tolerances_sha256,
+            wrappers_root=str(wrapper.parent.parent), wrapper_sha256=results[0]['code'].get('wrapper_sha256')),
+            indent=2, sort_keys=True) + '\n')
     print('reproduction: %d/%d' % (matched, runs), flush=True)
     return 0 if matched == runs and len(results) == runs else 1
 

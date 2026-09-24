@@ -1714,3 +1714,284 @@ lane's ruling under the owner's standing delegation, not additional owner words.
   data-handling/registry/liveness requirements and row-2 benchmark re-pinning.
 - Python 3.6 grammar passes; Python 3.6 runtime is not available for verification.
   No producer approval, merge, push or release is claimed.
+
+
+## Review round 2 fixes
+
+2026-09-24, continuing `b46e79b` on `build/gars-row-6-manifest`.
+The supplied independent review is unchanged and untracked. This section follows
+the report's previous last byte. The producer does not issue a lane ruling or an
+owner approval. **F1 remains a BLOCKER and stops that part of the lane.**
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| F1 BLOCKER: session-written trace/version evidence | 0095 addendum; this report; DEVELOPMENT | `round2-probe.py`, real guard Write payloads | Stopped for ruling; trace and versions exit 0 while completion marker exits 2. Red-on-fault no: guard/settings remain frozen and no fix is claimed |
+| F2 MAJOR: tests require branch-local Git objects | test_rerun_check.py; fixtures/replay-baseline/ | All 17 replay tests on a history-free tree; canonical-design and all-wrapper baseline tests | Fixed; red-on-fault yes: restoring historical Git lookup fails the named design-identity assertion in the archive |
+| F3 MINOR: design-check evidence controls its own applicability | wrapperlib.py; test_manifest_groups.py; rerun_check.py; test_rerun_check.py; 0095/0096 addenda | `test_design_check_missing_cannot_shrink_denominator`; design-check drift refusal and synthetic-worker replays | Fixed; red-on-fault yes: restoring `design.is_file()` fails the independent applicability assertion |
+| F4 MINOR: replay code is not identified | rerun_check.py; test_rerun_check.py; 0097 addendum | Dirty wrapper/helper/script/untracked-code refusals, dirty pipeline refusal, every real-wrapper override refusal, self-test hash assertions | Fixed; red-on-fault yes: disabling each GARS/pipeline cleanliness check or the override restriction fails its named assertions |
+| F5 MINOR: unsuccessful replay drops the denominator | rerun_check.py; test_rerun_check.py; 0097 addendum | `test_failed_attempts_stay_in_denominator`: worker failure, collect failure, changed inventory and unavailable accounting on attempt 2 | Fixed; red-on-fault yes: dropping unsuccessful attempts fails the two-entry comparison assertion. The allowed alternative of documenting the unbounded status wait is used |
+| F6 MINOR: bare fixture reproduction line | test_rerun_check.py; 0097 addendum; this report | Direct and archive self-test stdout, plus restored-print plant | Fixed; red-on-fault yes: restoring the bare print trips the stdout provenance check while the underlying test remains green |
+| F7 NOTE: exact-byte defaults and missing real-artifact metrics | 0097 addendum | Read-back against unchanged tolerances.yaml and rule_for default | Fixed; red-on-fault no: documentation only, no tolerance or metric invented |
+| F8 NOTE: dataset refusal names the template rule | This report only | Guard/settings unchanged scope audit | Deferred with F1's protected guard ruling; red-on-fault no |
+| F9 NOTE: replay is a second dataset.tsv writer | 0097 addendum; this report | bind_project and prepare dataset-field inspection | Deferred for the owner: sanctioning the exception or routing replay through finalize changes the ownership contract; old manifests omit agreement_ref. Red-on-fault no |
+| F10 NOTE: historical heading offsets and touches omissions | 0097 append-only clarification; this report | Prefix audit and regenerated index | Answered: earlier bytes must remain intact; corrected round mapping is appended, future records must carry accurate touches. Red-on-fault no |
+| F11 NOTE: additional placeholder spellings | This report only | Existing checker and guarded writer source inspection | Deferred: version/timestamp shape rules need a declared field grammar; adding another deny-list does not solve that. No checker weakening; red-on-fault no |
+
+### Behavior and scope
+
+Group 14 now reads the design/samplesheet labels already recorded at prepare,
+not the existence of its own check. Its classification and predicate vocabulary
+are unchanged; D-16 remains the lane's answer pending the owner's confirmation.
+The cold-start positive fixture now supplies its synthetic design check. The new
+negative fixture omits the check before prepare, restores it for a positive
+control, and removes it again after prepare; the denominator never shrinks.
+Replay verifies the original check's recorded hash and links that exact evidence
+into the fresh project. It never manufactures a check for an incomplete original.
+
+F2's ten baseline wrappers are frozen data, hash-pinned in sha256.json, copied
+only into disposable workspaces at the normal wrapper paths. They preserve the
+old/current real-prepare assertions without any historical Git object lookup.
+`git diff --exit-code 9def5b3 6039276 -- gars/_system/wrappers/rnaseq-de/rnaseq_de.py`
+returned exit 0 with no output, establishing the one rnaseq-de fixture serves
+both earlier baselines. No production wrapper changed.
+
+F4 refuses dirty GARS code and dirty Nextflow trees before output creation,
+including untracked code. Comparison records contain wrapper-root identity and
+per-attempt wrapper/wrapperlib hashes. The byte-change test now alters the output
+at the collect boundary while keeping executed source committed; its exact-byte
+nonmatch assertions are retained. The strict pipeline check also refuses an
+uncommitted approved patch: CUT&RUN reproduction needs a separately established
+committed executable identity and new original; no pin or exception is invented.
+
+F5 retains failed attempts, available job IDs, partial comparisons and reasons,
+continues the requested attempts and returns exit 1 with the final rate. Exit 2
+is reserved for preflight refusal. The status loop is explicitly documented as
+unbounded while the scheduler keeps reporting an active state; interruption is
+not a completed measurement and there is no automatic cancellation.
+
+Every earlier bare `reproduction:` line quoted from suite logs in this report is
+**fixture self-test output**, not the owner's Slurm re-runs. Earlier bytes remain
+intact. Only `EXIT instrument self-test (fixture, local): reproduction 2/2` is the
+self-test's reserved success line. No real-run row exit is claimed.
+
+The only protected implementation edit in this round is wrapperlib.py's group-14
+fact derivation. Its approval remains the owner's 0099 obligation. Guard,
+settings, schema, tolerances, production wrapper files, pipeline pins, evaluation
+code, CI and study trees are unchanged. Records 0095–0097 receive dated addenda;
+0098/0099 are never written. The rebuilt decision index is byte-identical because
+frontmatter is preserved. README/DEVELOPMENT reflect 495 collected tests.
+
+### Initial verification and fixture correction
+
+The first replay-module run printed `Ran 17 tests in 48.739s` and
+`FAILED (failures=5, errors=5)`. The new cleanliness check detected tracked
+__pycache__ files copied into the disposable fixture; worker execution changed
+them. The fixture now excludes cached bytecode and supplies a committed ignore
+rule for generated bytecode, as the real repository does. Dirty .py files remain
+explicitly refused. No production check or assertion was relaxed.
+
+The targeted follow-up printed `Ran 12 tests in 16.333s` and `OK`.
+The final sequential verification below supersedes the initial fixture failure.
+
+### Final verification commands and verbatim summaries
+
+`GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py`
+
+```text
+EXIT instrument self-test (fixture, local): reproduction 2/2
+Ran 495 tests in 343.117s
+OK (skipped=73)
+```
+
+`python3 tests/check_contracts.py`
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`
+
+```text
+suite: 495 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`
+
+```text
+Ran 44 tests in 117.464s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`
+
+```text
+clean — graded=1
+```
+
+`python3 gars/tests/test_rerun_check.py`
+
+```text
+Ran 17 tests in 54.111s
+OK
+EXIT instrument self-test (fixture, local): reproduction 2/2
+```
+
+`python3 gars/tests/test_manifest_groups.py`
+
+```text
+Ran 15 tests in 37.954s
+OK
+```
+
+`python3 gars/tests/test_data_class_required.py`
+
+```text
+Ran 4 tests in 2.118s
+OK
+```
+
+`python3 tests/test_registry_columns.py`
+
+```text
+Ran 3 tests in 0.043s
+OK
+```
+
+`python3 ../gars-row-6-scratch/round2-verify.py`
+
+```text
+REQUIRED VERIFICATION: 9/9 commands passed
+```
+
+The direct manifest module printed all twenty named fixture exit lines:
+
+```text
+EXIT manifest completeness nfcore-atacseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-atacseq-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-chipseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-chipseq-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-cutandrun-wrapper local: 15/15
+EXIT manifest completeness nfcore-cutandrun-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-methylseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-methylseq-wrapper slurm: 16/16
+EXIT manifest completeness rnaseq-de local: 14/14
+EXIT manifest completeness rnaseq-de slurm: 15/15
+EXIT manifest completeness nfcore-rnaseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-rnaseq-wrapper slurm: 16/16
+EXIT manifest completeness scrna-qc-cluster local: 14/14
+EXIT manifest completeness scrna-qc-cluster slurm: 15/15
+EXIT manifest completeness nfcore-scrnaseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-scrnaseq-wrapper slurm: 16/16
+EXIT manifest completeness spatial-cluster-count local: 13/13
+EXIT manifest completeness spatial-cluster-count slurm: 14/14
+EXIT manifest completeness nfcore-spatialvi-wrapper local: 14/14
+EXIT manifest completeness nfcore-spatialvi-wrapper slurm: 15/15
+```
+
+`python3 ../gars-row-6-scratch/round2-probe.py` (read-only guard evaluation):
+
+```text
+F1 guard Write projects/p/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/pipeline_info/gars_trace.txt: exit 0
+F1 guard Write projects/p/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/versions.json: exit 0
+F1 guard Write projects/p/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/.gars_run_complete: exit 2
+```
+
+`python3 evals/bench.py validate` still refuses the inherited source pins; no benchmark file is changed:
+
+```text
+refused: input sha256 mismatch: gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md
+```
+
+### Archive and red-on-fault verification
+
+`python3 ../gars-row-6-scratch/round2-faults.py` copies tracked files plus the new
+baseline fixtures into a scratch tree without .git, then runs the full replay
+module. Each plant gets its own copy. No production mutation is retained.
+The six behavioral plants fail through assertions, never syntax/import errors.
+F6 has a separate stdout validator (exit 1) because restoring its bare print leaves
+the underlying instrument test green. The corresponding unmutated stdout has no
+bare reproduction line.
+
+| Case | Verbatim runner summary | Interpretation |
+|---|---|---|
+| archive | Ran 17 tests in 58.871s / OK | history-free module green |
+| F2-history | Ran 1 test in 1.318s / FAILED (failures=1) | assertion-level red observed |
+| F3-design | Ran 1 test in 0.910s / FAILED (failures=1) | assertion-level red observed |
+| F4-dirty | Ran 1 test in 2.115s / FAILED (failures=4) | assertion-level red observed |
+| F4-pipeline | Ran 1 test in 1.666s / FAILED (failures=1) | assertion-level red observed |
+| F4-root | Ran 1 test in 1.250s / FAILED (failures=10) | assertion-level red observed |
+| F5-denominator | Ran 1 test in 3.942s / FAILED (failures=4) | assertion-level red observed |
+| F6-label | Ran 1 test in 1.676s / OK | stdout provenance validator exit 1 |
+
+```text
+RED-ON-FAULT: 7/7 observed; archive replay module passes without source history
+```
+
+`bash docs/decisions/build_index.sh`: exit 0; generated index unchanged.
+`git diff --exit-code -- docs/decisions/CONTEXT.md`: exit 0, no output.
+The builder's local absolute-path output stays in scratch.
+
+
+### Boundaries and commit procedure
+
+All runs use Python 3.13.2, PYTHONDONTWRITEBYTECODE=1 and the designated sibling
+scratch directory for TMPDIR, TEMP, TMP, copied trees, scripts and logs. Full-suite
+container execution is disabled with GARS_TEST_NO_CONTAINER=1, as in the reviewed
+run. No row-6 test skipped; the 73 whole-suite skips are inherited environment
+skips. No install, download, remote, push, merge, pull request or owner approval
+occurs. One round commit uses an explicit path list and a message file in scratch;
+the supplied review and three pre-existing untracked ruling files are not staged.
+
+The audit checks exact pre-round prefixes for the report and 0095–0097, unchanged
+frozen paths and review, absence of 0098/0099, baseline hashes, no local identifiers
+in additions, Python 3.6 grammar and git diff --check. The generated index remains
+byte-identical. Original report sections are not corrected in place.
+
+## Owner rulings needed
+
+**F1 (BLOCKER): collect-time evidence protection requires the ruling explicitly
+requested by the review.** The current round says findings needing an owner
+ruling stop; the review says Step B froze guard_hook.py and asks for a lane ruling
+before the owner's 0099. No such ruling is inferred from older R8–R11 authority.
+The review's options are:
+
+- Add READ_ONLY guard entries and matching settings deny pairs for collect-time
+  evidence sources, at least `projects/*/02_bioinformatics/*/run/pipeline_info/*`
+  and `projects/*/02_bioinformatics/*/run/versions.json`, with real hook tests and
+  a red-on-fault plant, followed by the owner's 0099 approval. Include F8's cheap
+  dataset-specific refusal message naming finalize and R-060 when this guard
+  change is authorized.
+- If the lane decides otherwise, move the mutable-tag item from 0095's Covered
+  list to Not covered in a dated addendum with the owner's confirmation. It must
+  not remain claimed as covered. This producer has not chosen that exclusion.
+
+**F9 (NOTE): choose the replay dataset writer's ownership rule.** The review's
+options are to name rerun_check in a 0097 addendum as the one sanctioned exception
+and copy agreement_ref too, or have replay call finalize. The current manifest
+writer does not record agreement_ref, so copying it from old manifests is not
+possible without an explicit compatibility policy. No exception is sanctioned
+and no agreement reference is guessed in this round.
+
+## Residual gaps
+
+- F1 remains an open covered-threat bypass; F8 awaits the same guard authorization.
+  F9 remains an unsanctioned second dataset writer without agreement_ref.
+- F10's historical frontmatter omissions remain because original bytes cannot be
+  edited. F11's additional placeholder spellings remain accepted in free-text
+  fields; future shape validation needs the field grammar, not more guessed tokens.
+- Replay's status wait is unbounded for an active scheduler state. An interrupted
+  run can leave a partial comparison file and is not a completed rate measurement.
+  Dirty patched pipeline checkouts refuse replay; no new pin/patch exception or
+  real patched-pipeline acceptance is established.
+- The owner's two institutional Slurm re-runs remain unmeasured and belong solely
+  in 0098. Fixture reproduction 2/2 is the instrument self-test. No real-run manifest
+  completeness, whole-row reproduction or protected approval is claimed.
+- The owner's 0099 approval and D-16 confirmation remain pending. Biological and
+  actual scheduler execution, §8.4 second-backend behavior, §17's ≥ 4/5, external
+  pilot-1 reproduction and typed claim-set equality remain unverified.
+- Earlier Step A residuals remain: real trace/sacct and GRCh38 hashes,
+  stage-03/authoring manifests, row-7 methods/rendering/claim wiring,
+  data-handling/registry/liveness requirements and row-2 benchmark re-pinning.
+- Python 3.6 grammar is checked; a Python 3.6 runtime is unavailable.

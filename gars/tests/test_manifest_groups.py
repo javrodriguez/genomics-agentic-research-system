@@ -64,6 +64,7 @@ class ManifestGroupsTests(unittest.TestCase):
         checked(['git','-C',self.repo,'-c','user.name=fixture','-c','user.email=fixture@example.invalid',
                  'commit','-qm','synthetic GARS checkout'])
         self.env = {'PYTHONDONTWRITEBYTECODE':'1'}
+        (self.project / '01_samplesheets/rnaseq_bulk_design_check.json').write_text('{"fixture":true}\n')
 
     def prepare(self, backend='local'):
         (self.project / '_config/executor.yaml').write_text('name: %s\n' % backend)
@@ -133,6 +134,23 @@ exit_file=stage/'fixture.exit';exit_file.write_text('0\\n')
         self.assertEqual(len(calls),1)
         self.assertTrue(any(k.arg=='random_state' and isinstance(k.value,ast.Name) and k.value.id=='RANDOM_SEED' for k in calls[0].keywords))
         self.assertIn('RANDOM_SEED = 0',(self.stage / 'scripts/run_de.py').read_text())
+
+    def test_design_check_missing_cannot_shrink_denominator(self):
+        check = self.project / '01_samplesheets/rnaseq_bulk_design_check.json'
+        check.unlink()
+        self.prepare(); self.fake_run(); self.submit()
+        manifest = self.collect()
+        grade = mc.grade(manifest)
+        self.assertTrue(manifest['predicate_facts']['design_record'])
+        self.assertTrue(grade['groups'][13]['applicable'])
+        self.assertFalse(grade['groups'][13]['present'])
+        self.assertFalse(grade['ok'])
+        check.write_text('{"fixture":true}\n')
+        complete = self.collect()
+        self.assertTrue(mc.grade(complete)['ok'])
+        self.assertEqual(mc.grade(complete)['applicable'], grade['applicable'])
+        check.unlink()
+        self.assertFalse(mc.grade(self.collect())['ok'])
 
     def test_failure_collect_preserves_prepare_facts(self):
         self.prepare(); self.fake_run(); self.submit()

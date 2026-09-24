@@ -102,3 +102,15 @@ Standing R-042 record of the lane's Step A changes, with the lane's R8 recorded 
 ## Date
 
 2026-09-24
+
+
+## Addendum — review round 2, 2026-09-24
+
+R-042 / F3: `ManifestGroupsTests.test_design_check_missing_cannot_shrink_denominator`
+prepares a design-consuming run without its check, collects it, and requires
+group 14 to remain applicable but missing. Adding the check makes the same
+manifest complete without changing the denominator; removing it after prepare
+makes it incomplete again. Existing positive fixtures now supply their check.
+Collect continues preserving every prepare field. Replay verifies the recorded
+check hash and links that evidence into the fresh project from its original
+manifest location. No check is synthesized to complete a real run.

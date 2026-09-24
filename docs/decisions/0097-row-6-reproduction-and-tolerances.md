@@ -321,3 +321,55 @@ The R10 re-survey of the other nine wrappers is **COMPLETE**; **B-3 was its only
 finding**, as recorded in the preceding report's wrapper-by-wrapper survey.
 R11 answers it. No new owner ruling is needed for this implementation round.
 The existing real-execution gaps and the owner's separate 0098/0099 remain.
+
+
+## Addendum — review round 2, 2026-09-24
+
+This producer correction addresses F2–F7 of the supplied review; it is not an
+owner ruling or protected-path approval. Earlier bytes and historical headings
+remain intact. For clarity, R9 belongs to ruling-b, R10 to ruling-b2, and R11 to
+ruling-b3. The historical frontmatter omits R10/R11's scrna-qc-cluster and rnaseq-de
+wrappers, rnaseq-de contract and test_downstream_keys.py; those omissions remain
+visible under the append-only rule. Future records must list every affected path.
+This round changes scripts/rerun_check.py, gars/_system/wrapperlib.py,
+gars/tests/test_rerun_check.py, gars/tests/test_manifest_groups.py and the new
+gars/tests/fixtures/replay-baseline/ data, plus the living status documents.
+
+Replay now refuses uncommitted tracked or untracked changes under gars/_system
+and scripts, and throughout a Nextflow checkout, before creating its output
+folder. It repeats that check for each attempt. A non-default wrapper root is
+accepted only for rerun-fixture. comparison.json records the resolved wrapper
+root, wrapper SHA-256 and per-attempt wrapper/wrapperlib SHA-256. This is a
+preflight snapshot, not filesystem isolation against concurrent external edits.
+A deliberately patched, uncommitted pipeline checkout also refuses; this includes
+the documented CUT&RUN patch until its executable tree has a committed identity
+and a newly prepared original. This instrument does not rewrite pins or authorize
+a new pipeline revision. Real patched-pipeline reproduction remains unverified.
+
+After preflight, failed submission, failed/unavailable executor status, failed
+collect, incomplete artifacts and inventory/comparison errors are retained as
+match=false attempts with reasons and available job/artifact evidence. The
+instrument continues the requested attempts, reports matching attempts divided
+by requested attempts, and exits 1 for any nonmatch. Exit 2 remains for preflight
+refusals. The status wait remains **unbounded** while a scheduler reports PENDING,
+SUBMITTED or RUNNING; there is no automatic timeout or cancellation. An interrupted
+process may retain only earlier attempts and is not a completed reproduction
+measurement. No scheduler timeout threshold is invented in this round.
+
+F2's historical source comparisons now read hash-pinned wrapper bytes from the
+committed replay-baseline fixture, not branch-local Git objects. Both canonical
+design compatibility and the all-wrapper key comparisons retain their original
+assertions. The instrument's own fixture output is asserted from captured stdout;
+the test prints only its labelled EXIT line, not an additional bare reproduction
+line. Historical bare reproduction lines quoted in report suite logs are fixture
+self-test output, never the owner's Slurm n = 2.
+
+For F7, the first owner re-run may be the measurement that motivates tolerance
+entries: every unlisted artifact still defaults to exact bytes, including timed
+reports and BAM directories. Each new entry still needs its second re-run under
+§8.4. Artifact classes without a numeric TSV form have no metric yet. No tolerance
+entry, scientific threshold or default comparison mode is changed.
+
+F9 remains a deferred policy gap: bind_project is a second dataset.tsv writer and
+old manifests do not carry agreement_ref. This addendum does not sanction an
+exception to finalize's ownership or invent the missing agreement reference.

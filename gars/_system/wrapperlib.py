@@ -970,7 +970,8 @@ def complete_manifest(stage, model, status, failure_class=None):
     approvals = record.get('approvals', [])
     facts = {'wrapper_kind':info.get('kind'),
              'reference_named':bool(cfg.get('reference.fasta') or cfg.get('reference.gtf')),
-             'approval_gated':bool(approvals), 'design_record':design.is_file(),
+             'approval_gated':bool(approvals),
+             'design_record':bool({'design', 'samplesheet'}.intersection(manifest.get('inputs', {}))),
              'status':status, 'model_step':model != 'none', 'backend':record.get('executor')}
     containers, execution = trace_evidence(stage)
     if info.get('kind') == 'local':

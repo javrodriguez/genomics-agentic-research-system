@@ -282,3 +282,20 @@ owner's 0099 approval at merge.
 ## Date
 
 2026-09-24
+
+
+## Addendum — review round 2, 2026-09-24
+
+F3 corrects the source of `design_record`: collect derives it from the design or
+samplesheet input labels captured by prepare, independently of the design-check
+file it governs. A missing check therefore leaves group 14 applicable and missing.
+The group class, predicate vocabulary, sentinels and idempotency formulas do not
+change. This implementation correction remains part of the lane's D-16 answer,
+open to the owner's confirmation in 0099. It is not an owner ruling.
+
+F1 remains an open covered-threat failure: the session can write collect-time
+trace and software-version sources. The covered mutable-tag threat has **not**
+been established by the passing container-format tests. No threat-model exclusion
+is adopted here. The report records the review's two options for a ruling; guard
+and settings changes stop under the round-2 instruction. The owner's 0099 is not
+supplied by this producer.
