@@ -514,3 +514,265 @@ independently; final Step A repeats every Rule 6 command, one full suite at a ti
 Evaluation-code approval is listed above and belongs to the owner in 0099 at merge.
 The producer neither writes that record nor approves or merges its work.
 Benchmark task pins remain unchanged; row 2 owns re-pinning at its run commit.
+
+## Step B: reproduction
+
+Status: **blocked before implementation**, under the Step B instruction to stop
+and raise a ruling if replay needs a change to Step A, and the boundary excluding
+all existing `_system/` files. Parent: `94249c5` (Step A). This section is appended;
+every byte of the earlier report remains unchanged.
+
+### Requirements and acceptance
+
+| Requirement | Files examined or changed | Test / probe | Result |
+|---|---|---|---|
+| R-091: re-execute from the manifest alone | Existing Nextflow prepares, wrapperlib.py, executorlib.py and manifest schema examined; only this report changed | Disposable real prepare/collect probe described below | Blocked: execution settings needed for replay are neither recorded nor hashed in the manifest |
+| R-042: preserve existing behavior | No implementation file changed | Existing suite and direct manifest module, below | Baseline verification only; no expectation changes |
+| Instrument self-test, comparison modes and fault sensitivity | No instrument, fixture or tolerance file created | Not run: implementation stopped at the prerequisite boundary | NOT met; no fixture result or reproduction result is claimed |
+
+### Measured blocker: execution configuration is not recoverable from the manifest
+
+All seven Nextflow wrappers give `write_reproducibility` only `samplesheet` and
+`config` inputs. The latter is the assay YAML. Prepare also reads the project's
+`_config/executor.yaml` and the Nextflow config selected by that descriptor, usually
+`_config/nextflow.slurm.config`. Neither is a manifest input. The manifest contains
+only the backend name, not the resolved descriptor. The recorded `commands.sh`
+contains the submission command naming `submit.sh`; its hash does not cover
+`submit.sh` or the Groovy file that Nextflow will read.
+
+This is a replay prerequisite, not a proposed change to scientific tolerances.
+`executorlib.load` permits descriptor overrides of `nextflow_profile` and
+`nextflow_config`. `wrapperlib.check_groovy` permits scalar substitutions in the
+shipped grammar, including its process executor. Inferring current sibling files
+from the assay-config path would use unrecorded mutable state. Substituting the
+shipped defaults would guess the original execution settings. Hashing those files
+only when starting a re-run cannot recover the settings of a completed original.
+
+The disposable probe reuses `ManifestGroupsTests`' offline pipeline checkout,
+project, synthetic trace/accounting and real wrapper verbs. It executes no
+bioinformatics pipeline and contacts no institutional scheduler. It prepares an
+RNA-seq Slurm fixture, changes only Groovy `executor = 'slurm'` to
+`executor = 'local'`, and prepares again. Both prepares pass, and the **entire**
+prepare manifest is equal, including every re-preparation equality witness
+requested for Step B. It then restores the original config, supplies the existing
+synthetic completion evidence, submits through the existing fixture helper and
+calls real collect with `--model none`. That manifest grades complete. Repeating
+the Groovy mutation leaves the complete manifest, all recorded input hashes and
+both Git commits valid. A separate valid descriptor override selects Docker in
+place of Apptainer, also without changing any recorded input hash.
+
+Verbatim probe output:
+
+```text
+PROBE Groovy executor slurm -> local: both real prepare calls pass
+PROBE entire prepare manifest, params, config_sha256, commands.sh sha256 and idempotency_key: unchanged
+PROBE original synthetic completed run: COMPLETE; manifest grades complete
+PROBE after Groovy executor drift: COMPLETE, manifest grade, every recorded input hash and both commits still pass
+PROBE descriptor profile apptainer -> docker: descriptor valid; manifest grade and every recorded input hash still pass
+PROBE execution config is absent from manifest inputs: config, samplesheet
+```
+
+Probe command: `python3 ../gars-row-6-scratch/row6b-replay-probe.py`.
+The driver and captured output remain in the designated scratch directory. Its
+assertions use the existing `configure_wrapper('rnaseq_bulk', 'slurm', ...)`,
+`wrapper_argv('prepare')`, `fake_wrapper_run()`, `submit()` and
+`wrapper_argv('collect', ['--model', 'none'])` helpers, `manifest_check.grade`,
+per-input SHA-256 recomputation and `git rev-parse HEAD` for both fixture repos.
+This is evidence of the blocked prerequisite, not a Step B acceptance test or any
+of the seven required red-on-fault witnesses.
+
+The complete probe driver is preserved here for review and replay; save it at the
+scratch filename above and run from the repository root with the stated scratch
+environment. All generated projects and checkouts are disposable.
+
+```python
+import contextlib
+import io
+import json
+import sys
+from pathlib import Path
+repo = Path.cwd()
+sys.path.insert(0, str(repo / 'gars/tests'))
+from test_manifest_groups import ManifestGroupsTests, checked, sha, mc
+import wrapperlib as wl
+import executorlib as ex
+case = ManifestGroupsTests('test_all_ten_wrappers_both_backends')
+try:
+    with contextlib.redirect_stdout(io.StringIO()):
+        case.setUp()
+        case.pipeline_fixtures()
+        case.configure_wrapper('rnaseq_bulk', 'slurm', case.project)
+    before = case.prepared
+    command = sha(case.stage / 'reproducibility/commands.sh')
+    groovy = case.project / '_config/nextflow.slurm.config'
+    original = groovy.read_text()
+    assert "executor = 'slurm'" in original
+    groovy.write_text(original.replace("executor = 'slurm'", "executor = 'local'"))
+    fails = []
+    wl.check_groovy(groovy, fails)
+    assert not fails, fails
+    checked(case.wrapper_argv('prepare'), cwd=case.ws, env=case.env)
+    after = json.loads(case.manifest_path.read_text())
+    assert before == after
+    assert command == sha(case.stage / 'reproducibility/commands.sh')
+    print('PROBE Groovy executor slurm -> local: both real prepare calls pass')
+    print('PROBE entire prepare manifest, params, config_sha256, commands.sh sha256 and idempotency_key: unchanged')
+    groovy.write_text(original)
+    case.fake_wrapper_run()
+    case.submit()
+    checked(case.wrapper_argv('collect', ['--model', 'none']), cwd=case.ws, env=case.env)
+    manifest = json.loads(case.manifest_path.read_text())
+    assert mc.grade(manifest)['ok']
+    assert wl.read_status(case.stage) == 'COMPLETE'
+    assert all(sha(Path(path)) == manifest[key + '_sha256'] for key, path in manifest['inputs'].items())
+    print('PROBE original synthetic completed run: COMPLETE; manifest grades complete')
+    groovy.write_text(original.replace("executor = 'slurm'", "executor = 'local'"))
+    assert mc.grade(manifest)['ok']
+    assert all(sha(Path(path)) == manifest[key + '_sha256'] for key, path in manifest['inputs'].items())
+    assert wl.git_value(Path(manifest['checkout']), 'rev-parse', 'HEAD') == manifest['pipeline_commit']
+    assert wl.git_value(case.repo, 'rev-parse', 'HEAD') == manifest['gars_commit']
+    print('PROBE after Groovy executor drift: COMPLETE, manifest grade, every recorded input hash and both commits still pass')
+    descriptor = case.project / '_config/executor.yaml'
+    descriptor.write_text('name: slurm\nnextflow_profile: docker\n')
+    assert not ex.validate(ex.load(case.project))
+    assert ex.load(case.project)['nextflow_profile'] == 'docker'
+    assert mc.grade(manifest)['ok']
+    assert all(sha(Path(path)) == manifest[key + '_sha256'] for key, path in manifest['inputs'].items())
+    print('PROBE descriptor profile apptainer -> docker: descriptor valid; manifest grade and every recorded input hash still pass')
+    print('PROBE execution config is absent from manifest inputs: ' + ', '.join(sorted(manifest['inputs'])))
+finally:
+    case.doCleanups()
+```
+
+### Protected files touched
+
+None. Only this append-only report changes. Step A's manifest groups, schema,
+sentinels, predicates, writer and records 0095/0096 remain byte-identical. README
+and DEVELOPMENT counts remain unchanged because no tests were added. README's
+manifest/re-run evidence row stays `unmeasured`.
+
+### Expectation changes
+
+None. No tests, acceptance thresholds or production defaults changed.
+
+### Residuals
+
+- NOT met: the reproduction instrument, tolerance file, test-only wrapper and
+  instrument self-test. No `reproduction:` result line was produced.
+- NOT met: the seven Step B red-on-fault witnesses or the new test's parent-red and
+  implementation-green checks. An absent implementation is not credited as green.
+- NOT met: the owner's two real Slurm re-runs; only the owner records those in 0098.
+- NOT met: §8.4's second backend, §17's ≥ 4/5 on test data, the external pilot-1
+  re-run and real-wrapper re-execution. The suite has no bio environment.
+- NOT met: model-mediated typed claim-set comparison, which depends on row 7.
+- 0097 remains unwritten pending this ruling; 0098 and 0099 remain reserved for the
+  owner. No protected-path approval, push or merge is performed.
+
+## Owner rulings needed
+
+**B-1: authorize or supply a prerequisite that records execution configuration at
+original prepare time.** The evidence above shows that replay from the manifest
+alone cannot recover the original Nextflow executor settings under the current
+writer. The Step B boundary forbids changing that writer or its wrapper callers.
+This is the producer's finding and proposed resolution, not an owner ruling.
+
+- **A: authorize a narrow prerequisite to capture the resolved executor descriptor
+  and the selected Nextflow config as immutable, hash-bound prepare evidence.**
+  The likely edit surface is `gars/_system/wrapperlib.py`, necessary wrapper
+  prepare callers and their tests, all currently outside Step B's boundary.
+  Preserve Step A's group classifications, predicates and sentinels. Require a
+  named replay refusal for older manifests lacking the original evidence; do not
+  retrofit them by guessing from today's files. Add R-042 tests showing that
+  changed Groovy/descriptor settings cannot silently replay. The exact format and
+  authorized file list must be settled before implementation resumes.
+- **B: provide that prerequisite in a separate owner-authorized change**, then
+  resume the reproduction half on top of it with the current Step B boundary.
+
+The report-only commit records this stop; it does not substitute for the requested
+Step B implementation commit or establish the row's exit.
+
+### Step B stop-point commands and baseline summaries
+
+All commands run from the repository root, one suite at a time, under Python
+**3.13.2** (the evaluator harness requires Python ≥ 3.9). TMPDIR, TEMP and TMP use
+the designated sibling scratch directory; no installation or download occurs.
+Logs use the scratch prefix `row6b-baseline-`.
+
+```bash
+export TMPDIR="$PWD/../gars-row-6-scratch/"
+export TEMP="$TMPDIR" TMP="$TMPDIR"
+export PYTHONDONTWRITEBYTECODE=1
+python3 ../gars-row-6-scratch/row6b-replay-probe.py
+GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py
+python3 tests/check_contracts.py
+python3 tests/check_counts.py
+python3 evals/test_harness.py
+python3 evals/check_results.py --controls --lexicon
+python3 gars/tests/test_rerun_check.py
+python3 gars/tests/test_manifest_groups.py
+```
+
+`GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py`
+
+```text
+collected 226 tests from tests
+collected 251 tests from gars/tests
+Ran 477 tests in 285.675s
+OK (skipped=73)
+```
+
+`python3 tests/check_contracts.py`
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`
+
+```text
+collected 226 tests from tests
+collected 251 tests from gars/tests
+suite: 477 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`
+
+```text
+Ran 44 tests in 114.220s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`
+
+```text
+clean — graded=1
+```
+
+`python3 gars/tests/test_rerun_check.py`
+
+Exit **2**: the requested test file is absent because Step B implementation
+stopped before creating it. No test ran and no unittest summary or instrument
+self-test line printed. The interpreter error includes local absolute paths,
+so its raw text is retained only in the scratch log. This is **not green**.
+
+`python3 gars/tests/test_manifest_groups.py`
+
+```text
+Ran 14 tests in 34.592s
+OK
+```
+
+### Hours
+
+Measured elapsed time from writing the diagnostic driver through baseline-summary
+assembly: **0.15 hours**. Earlier required reading was not timed. This is
+wall time for diagnosis and verification, not implementation or human labor.
+
+### Commit procedure
+
+Only this report is staged with `git add -- docs/implementation/row_6_change_report.md`.
+The commit message is read with `git commit -F ../gars-row-6-scratch/row6b-stop-commit-message.txt`.
+The scope audit verifies the original report as an exact byte prefix and no
+other changed tracked paths. No remote is added; no push, approval or merge occurs.
