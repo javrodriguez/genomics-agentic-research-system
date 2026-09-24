@@ -88,6 +88,52 @@ class EmitReportTests(unittest.TestCase):
                     self.out.unlink()
                 self.refuse('citation_unverifiable')
 
+        # Ruling 7: separator spelling cannot bypass an explicit DOI token.
+        # Include concatenation and underscores as lexical separators too.
+        separators = ('', ' ', '  ', '-', ':', '=', '_')
+        enclosures = (('', ''), ('{', '}'), ('[', ']'), ('(', ')'))
+        references = ['doi = {10/abcfake}', 'doi=10/abcfake', 'DOI-10/abcfake']
+        for left in separators:
+            for opening, closing in enclosures:
+                for right in separators:
+                    for token in ('10/abcfake', '10.123/fake'):
+                        references.append('doi' + left + opening + right + token + closing)
+        # Neither adjacency nor order is required by the general rule.
+        references.extend(('Title mentions DOI; pages 10. No identifier supplied',
+                           'Pages 10. Journal of Doi Studies',
+                           '10/abcfake precedes the DOI token'))
+        for reference in references:
+            with self.subTest(reference=reference):
+                self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
+                self.save()
+                if self.out.exists():
+                    self.out.unlink()
+                # These contain no parseable DOI; refuse without a network lookup.
+                with patch.object(emitter.evidence_check.resolve_citation, 'resolve') as lookup:
+                    self.refuse('citation_unverifiable')
+                    lookup.assert_not_called()
+
+        # Ordinary title/journal prose plus a page number and no identifier is
+        # intentionally unverifiable under ruling 7, even if bibliographically
+        # legitimate: the general rule requires a parseable DOI. Adding the
+        # valid recorded DOI must emit and actually resolve that identifier.
+        for prose in ('Title mentions DOI; pages 10.', 'Journal of Doi Studies, p. 10.'):
+            self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = prose
+            self.save()
+            if self.out.exists():
+                self.out.unlink()
+            self.refuse('citation_unverifiable')
+            self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = (
+                prose + ' Registered reference: ' + generator.REAL_DOI)
+            self.save()
+            requests = []
+            def recorded(url):
+                requests.append(url)
+                return replay(url)
+            self.assertEqual(self.emit(recorded), (0, ''))
+            self.assertEqual(requests, [
+                'https://api.crossref.org/works/' + quote(generator.REAL_DOI, safe='')])
+
         reference = '10.1000.10/gars-fabricated-subdivided'
         requests = []
         def not_found(url):

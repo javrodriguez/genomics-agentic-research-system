@@ -436,3 +436,45 @@ only. Live DOI capture and live sealed class-9 measurement remain **NOT met**.
 All prior residuals remain **NOT met**, including sealed/public measurements,
 PMID/literature-role wiring, broader artifact liveness, class 10, stage-03/pilot
 emission wiring, pilot measurement, step B and protected-change approval.
+
+
+## Addendum — round E1 general DOI marker rule, 2026-09-24
+
+Item 7 was decided under the owner's standing delegation (23 Sep 2026).
+Review D3 F1 was the third round of the same shape: malformed short DOI
+references passed emission when punctuation changed. It is closed by a general
+rule, rather than another list of accepted separator spellings. All preceding
+bytes remain unchanged.
+
+An evidence source containing the case-insensitive word `doi` together with any
+`10.` or `10/` token anywhere in the reference must yield a parseable DOI or
+emission refuses `citation_unverifiable`. Order and distance do not matter.
+Lexical boundaries also admit an underscore separator or a directly attached
+numeric DOI token, so the required empty-separator and underscore cases cannot
+bypass the rule. Explicit `doi:` and resolver-domain markers retain their
+existing refusal behavior. Extracted DOI tokens still use the same registration
+lookups and transient-failure rules; no endpoint or transport switch is added.
+
+An author named Doi without a numeric DOI token still emits. Title or journal
+prose containing Doi and a page number `10.` emits when a valid DOI is present
+and resolved. Without any parseable DOI, that prose intentionally refuses as
+`citation_unverifiable` under the general rule; semantic intent is not inferred.
+The ten existing clean projects retain zero false flags. Replay records remain
+**synthetic protocol fixtures** and prove protocol logic only.
+
+### R-042 — E1 change and acceptance
+
+| Existing behavior changed | Acceptance red on 75f0a90 and green after repair |
+|---|---|
+| Unusual separators or distant DOI/numeric tokens bypass evidence preflight | EmitReportTests.test_doi_reference_forms: the three reviewer forms, generated separator/enclosure combinations, reversed order, title/journal controls, absent and byte-identical existing output |
+
+The regression extends the existing test without weakening any assertion.
+Two existing disposable mutation anchors follow the general predicate so their
+original faults still test ignored markers and false refusal of an author Doi.
+Exact command results are in `docs/implementation/row_8_change_report.md`.
+
+**NOT met:** live DOI capture/resolution, live sealed class-9 measurement,
+sealed/public catalogue measurement, PMID/literature-role wiring, broader
+artifact liveness, class 10, stage-03/pilot emission wiring, pilot measurement,
+step B and protected-change approval. Class 9's replay result is not a live
+measurement, and this addendum does not claim row 8's exit or self-approval.

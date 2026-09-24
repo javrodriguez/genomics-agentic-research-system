@@ -40,7 +40,14 @@ def doi(reference):
 
 
 def mentions_doi(reference):
-    return bool(re.search(r'\bdoi(?::|\.org\b|\s+10[./])', reference, re.I))
+    # Keep explicit resolver markers, including malformed identifiers.
+    explicit = re.search(r'\bdoi(?::|\.org\b)', reference, re.I)
+    # DOI and a numeric token may occur anywhere, in either order. Treat an
+    # underscore or an immediately attached numeric DOI token as a boundary,
+    # so removing separator whitespace cannot evade the same lexical rule.
+    marker = re.search(r'\bdoi(?=\b|_|10[./])', reference, re.I)
+    numeric = re.search(r'10[./]', reference)
+    return bool(explicit or (marker and numeric))
 
 
 def live_transport(url):
