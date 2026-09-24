@@ -148,20 +148,20 @@ def build_params(cfg, paths):
     params = [
         ("input", str(paths["samplesheet"].resolve())),
         ("outdir", str((paths["substage"] / "run" / "results").resolve())),
-        ("fasta", cfg["reference.fasta"]),
-        ("gtf", cfg["reference.gtf"]),
+        ("fasta", str(Path(cfg["reference.fasta"]).resolve())),
+        ("gtf", str(Path(cfg["reference.gtf"]).resolve())),
         ("aligner", aligner),
         ("macs_gsize", cfg["peaks.macs_gsize"]),
     ]
     if cfg["peaks.type"] == "narrow":
         params.append(("narrow_peak", "true"))
     if cfg.get("reference.blacklist"):
-        params.append(("blacklist", cfg["reference.blacklist"]))
+        params.append(("blacklist", str(Path(cfg["reference.blacklist"]).resolve())))
     derived = cfg.get("reference.derived_dir")
     if derived:
         index_dir = Path(derived) / aligner
         if index_dir.is_dir() and any(index_dir.iterdir()):
-            params.append((INDEX_PARAM[aligner], str(index_dir)))
+            params.append((INDEX_PARAM[aligner], str(index_dir.resolve())))
         else:
             params.append(("save_reference", "true"))
     params.extend(test_profile_params(cfg, ("skip_preseq",)))

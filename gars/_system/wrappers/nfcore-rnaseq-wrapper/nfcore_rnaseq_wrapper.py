@@ -112,8 +112,8 @@ def build_params(cfg, paths):
     params = [
         ("input", str(paths["samplesheet"].resolve())),
         ("outdir", str((paths["substage"] / "run" / "results").resolve())),
-        ("fasta", cfg["reference.fasta"]),
-        ("gtf", cfg["reference.gtf"]),
+        ("fasta", str(Path(cfg["reference.fasta"]).resolve())),
+        ("gtf", str(Path(cfg["reference.gtf"]).resolve())),
         ("aligner", aligner),
     ]
     derived = cfg.get("reference.derived_dir")
@@ -122,8 +122,8 @@ def build_params(cfg, paths):
         star, salmon, tfa = d / "index" / "star", d / "index" / "salmon", \
             d / "genome.transcripts.fa"
         if star.is_dir() and salmon.is_dir() and tfa.is_file():
-            params += [("star_index", str(star)), ("salmon_index", str(salmon)),
-                       ("transcript_fasta", str(tfa))]
+            params += [("star_index", str(star.resolve())), ("salmon_index", str(salmon.resolve())),
+                       ("transcript_fasta", str(tfa.resolve()))]
         else:
             # First run for this pipeline version: build and publish so collect harvests.
             params.append(("save_reference", "true"))

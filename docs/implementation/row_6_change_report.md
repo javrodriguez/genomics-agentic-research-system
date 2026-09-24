@@ -2734,3 +2734,336 @@ none
 - The 73 full-suite environment skips remain unverified; no row-6 test skipped.
   Python 3.6 grammar passes, but its runtime and live biological environments are
   not verified here. No release or protected-path approval is claimed.
+
+
+## Verification fixes (R14)
+
+2026-09-24, parent `ce67841`, branch `build/gars-row-6-manifest`.
+**R14 is the lane's independent CP3 verification under the owner's standing
+delegation of 23 September 2026**, not a reviewer's findings or the owner's words.
+The supplied `docs/reviews/row6-verification-r14.md` remains unchanged and untracked;
+its SHA-256 is `36a58887e156b2dd25e282c3b440954a0f67e5ff568e10436326a4ba21894908`. Records 0095 and every earlier byte of 0096,
+0097 and this report are preserved. The dated addenda belong to 0096 (writer
+behavior) and 0097 (instrument verification); 0098/0099 remain the owner's.
+
+### R14a: path survey, behavior and migration
+
+Every path-valued params expression now emits a resolved absolute string.
+The nine changed production wrapper files contain only those expression changes.
+The full survey, including branches with optional parameters, is:
+
+| Wrapper | Path parameters | Disposition |
+|---|---|---|
+| nfcore-atacseq-wrapper | input, outdir, fasta, gtf, blacklist, aligner index | input/outdir already resolved; normalize references, blacklist and index |
+| nfcore-chipseq-wrapper | input, outdir, fasta, gtf, blacklist, aligner index | input/outdir already resolved; normalize references, blacklist and index |
+| nfcore-cutandrun-wrapper | input, outdir, fasta, gtf, blacklist, spikein_fasta, spikein_bowtie2 | input/outdir already resolved; normalize reference and spike-in paths |
+| nfcore-methylseq-wrapper | input, outdir, fasta | normalize fasta; input/outdir already resolved |
+| nfcore-rnaseq-wrapper | input, outdir, fasta, gtf, star_index, salmon_index, transcript_fasta | input/outdir already resolved; normalize reference and optional cache paths |
+| nfcore-scrnaseq-wrapper | input, outdir, fasta, gtf, aligner index | input/outdir already resolved; normalize reference and index paths |
+| nfcore-spatialvi-wrapper | input, outdir | already resolved; file unchanged |
+| rnaseq-de | counts, design | normalize both CLI paths |
+| scrna-qc-cluster | h5ad | normalize CLI path; samplesheet is an input, not a params entry |
+| spatial-cluster-count | h5ad | normalize CLI path, including directory input |
+| rerun-fixture | none | sole parameter is noise; file unchanged |
+
+The new twenty-case prepare test keeps config bytes identical between the absolute
+and relative CLI invocation. Both serialized params bytes and idempotency keys
+must match; executor prepared_key must also match. Its config deliberately uses
+relative reference, blacklist, spike-in and derived-index paths, and assertions
+require their emitted params to be resolved absolute. Optional cache branches are
+exercised for ATAC, ChIP, bulk RNA and single-cell RNA.
+
+A separate measured regression prepares rnaseq-de with relative project, counts
+and design paths from the workspace root, collects a complete original, and drives
+two fresh replays through real prepare/submit/status/collect with a synthetic worker.
+It requires two submissions, complete replay manifests, matching keys and outputs,
+and `reproduction: 2/2`. This is fixture evidence only.
+
+**R-042 migration:** NEW prepares using previously unnormalized relative or symlink
+path spellings may produce a different key. Canonical absolute-path keys and both
+key formulas remain unchanged. Re-prepare a prepared-but-unsubmitted stage using
+the normal wrapper command; do not hand-edit a manifest or generated key. For an
+old completed original with unnormalized params, prepare and complete a new
+original before replay. No terminal reset or new legacy-submit refusal is added.
+Changing config bytes still changes their hash; path normalization does not erase
+that input identity. The instrument's params equality test is byte-identical.
+
+### R14b: failed collection and fault sensitivity
+
+All ten wrappers run real prepare and collect on both synthetic backends. Each
+fixture has a completion marker and successful executor evidence; removing required
+scientific output then drives its real artifact-failure branch. All twenty cases
+require FAILED status, workflow failure, applicable/present group 15, and unchanged
+values for every prepare-time key. No production failure branch was edited.
+
+The scratch-only fault driver separately planted
+`wl.complete_manifest = lambda *a, **k: None` immediately before `collect_failure`
+in **each of all ten wrappers**, running the entire new failure sweep each time.
+In particular, nfcore-rnaseq-wrapper, nfcore-atacseq-wrapper and rnaseq-de were
+individually planted and red, as were the other seven. Each plant produced exactly
+two assertion failures, one per backend, at the missing-completion assertion;
+these were not syntax, import or unrelated preflight failures. The D1 plant
+records counts as typed and makes the relative-path replay test fail with
+`re-preparation params differ` and `reproduction: 0/2`. No fault remains.
+
+`python3 ../gars-row-6-scratch/round4/faults.py`:
+
+```text
+D1-counts-as-typed: Ran 1 test in 3.252s; FAILED (failures=1)
+D1-counts-as-typed: assertion-level red observed
+D2-nfcore-atacseq-wrapper: Ran 1 test in 20.665s; FAILED (failures=2)
+D2-nfcore-atacseq-wrapper: assertion-level red observed
+D2-nfcore-chipseq-wrapper: Ran 1 test in 18.459s; FAILED (failures=2)
+D2-nfcore-chipseq-wrapper: assertion-level red observed
+D2-nfcore-cutandrun-wrapper: Ran 1 test in 17.647s; FAILED (failures=2)
+D2-nfcore-cutandrun-wrapper: assertion-level red observed
+D2-nfcore-methylseq-wrapper: Ran 1 test in 18.746s; FAILED (failures=2)
+D2-nfcore-methylseq-wrapper: assertion-level red observed
+D2-nfcore-rnaseq-wrapper: Ran 1 test in 18.943s; FAILED (failures=2)
+D2-nfcore-rnaseq-wrapper: assertion-level red observed
+D2-nfcore-scrnaseq-wrapper: Ran 1 test in 18.118s; FAILED (failures=2)
+D2-nfcore-scrnaseq-wrapper: assertion-level red observed
+D2-nfcore-spatialvi-wrapper: Ran 1 test in 17.284s; FAILED (failures=2)
+D2-nfcore-spatialvi-wrapper: assertion-level red observed
+D2-rnaseq-de: Ran 1 test in 16.642s; FAILED (failures=2)
+D2-rnaseq-de: assertion-level red observed
+D2-scrna-qc-cluster: Ran 1 test in 16.181s; FAILED (failures=2)
+D2-scrna-qc-cluster: assertion-level red observed
+D2-spatial-cluster-count: Ran 1 test in 16.116s; FAILED (failures=2)
+D2-spatial-cluster-count: assertion-level red observed
+RED-ON-FAULT: D1 1/1; D2 10/10 wrappers, both backends each
+```
+
+### Expectation changes
+
+R14 supersedes only the old prepare-identity test's assertion that a legacy
+relative/symlink design spelling has the same key as today's writer. The test now
+changes exactly the expected design params value and its derived key, compares
+all other manifest fields unchanged, requires the canonical key for every accepted
+spelling, and checks unchanged generated script bytes except the key comment.
+Its non-canonical-design refusals and no-write assertions remain intact. No test,
+threshold or guard is weakened. All other existing expectations remain unchanged.
+
+### Required sequential verification
+
+Python 3.13.2; TMPDIR, TEMP and TMP all point to the designated sibling scratch
+folder. The source-tree run uses PYTHONDONTWRITEBYTECODE=1. The full suite retains
+GARS_TEST_NO_CONTAINER=1, as in the preceding round. The commands run one suite at
+a time through `python3 ../gars-row-6-scratch/round4/verify.py`; logs stay in scratch.
+Runner summary lines below are verbatim. Benchmark refusal is NOT a passing check.
+
+`GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py` (exit 0):
+
+```text
+collected 226 tests from tests
+collected 276 tests from gars/tests
+Ran 502 tests in 421.030s
+OK (skipped=73)
+```
+
+`python3 tests/check_contracts.py` (exit 0):
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py` (exit 0):
+
+```text
+collected 226 tests from tests
+collected 276 tests from gars/tests
+suite: 502 tests, from unittest's loader
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py` (exit 0):
+
+```text
+Ran 44 tests in 121.994s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon` (exit 0):
+
+```text
+clean — graded=1
+```
+
+`python3 gars/tests/test_rerun_check.py` (exit 0):
+
+```text
+Ran 21 tests in 79.771s
+OK
+```
+
+`python3 gars/tests/test_manifest_groups.py` (exit 0):
+
+```text
+Ran 18 tests in 60.047s
+OK
+```
+
+`python3 gars/tests/test_data_class_required.py` (exit 0):
+
+```text
+Ran 4 tests in 2.387s
+OK
+```
+
+`python3 tests/test_registry_columns.py` (exit 0):
+
+```text
+Ran 3 tests in 0.053s
+OK
+```
+
+`python3 gars/tests/test_guard_hook.py` (exit 0):
+
+```text
+Ran 4 tests in 1.442s
+OK
+```
+
+`python3 gars/tests/test_downstream_keys.py` (exit 0):
+
+```text
+Ran 3 tests in 0.167s
+OK
+```
+
+`python3 scripts/release_check.py --check` (exit 0):
+
+```text
+DoD cells verified: 13/13 byte-stable
+```
+
+`python3 evals/bench.py validate` (exit 2):
+
+```text
+refused: input sha256 mismatch: gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md
+```
+
+The whole-suite and direct manifest logs each contain twenty completeness EXIT
+lines and twenty FAILED COLLECT lines. The replay logs contain twenty PATH PARAMS
+lines, the labelled local instrument self-test 2/2 and the new relative-path
+rnaseq-de fixture 2/2 with two submissions. None is the owner's Slurm measurement.
+No row-6 test is skipped. The 73 full-suite environment skips remain unverified.
+
+Additional targeted checks before the full suite:
+
+| Command suffix after `python3 gars/tests/` | Verbatim summary | Result |
+|---|---|---|
+| `test_rerun_check.py RealWrapperReplayTests.test_all_wrapper_path_params_are_canonical RealWrapperReplayTests.test_relative_rnaseq_prepare_replays_two_of_two RealWrapperReplayTests.test_rnaseq_design_prepare_identity` | `Ran 3 tests in 24.384s` / `OK` | pass |
+| `test_manifest_groups.py ManifestGroupsTests.test_all_ten_failure_collects_both_backends` | `Ran 1 test in 15.482s` / `OK` | pass |
+| `test_rerun_check.py RealWrapperReplayTests.test_all_wrapper_path_params_are_canonical` | `Ran 1 test in 12.178s` / `OK` | pass |
+
+### Scope and records
+
+Sixteen files change: nine wrappers, two test modules, README/DEVELOPMENT counts
+(now 502), two dated decision addenda and this appended report. The generated
+index was rebuilt and is byte-identical. The generated DoD table remains unchanged.
+`bash docs/decisions/build_index.sh`: exit 0 (its local-path output stays in scratch).
+`git diff --exit-code -- docs/decisions/CONTEXT.md`: exit 0, no output.
+`git diff --check`: exit 0, no output.
+
+No edits to 0095, 0098/0099, shared libraries, the replay script, schema, tolerances,
+templates, guard/settings, evaluation code, CI, study trees, registry or pins.
+No personal name, login or machine name is added to a committed file. The supplied
+review and earlier untracked reviews/rulings are left unchanged and untracked.
+
+## Review round 4 fixes
+
+2026-09-24. The round label is bookkeeping; the findings are the lane's R14 CP3
+verification under the owner's standing delegation.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| D1 / R14a: relative prepare falsely reports non-reproduction | Nine wrapper Python files; test_rerun_check.py; test_manifest_groups.py fixture helper; 0096/0097 addenda; count docs; this report | Relative-path rnaseq-de 2/2 regression; all-ten/both-backend path/key sweep; canonical-design migration regression; full suite | Closed. Yes: counts recorded as typed gives assertion-level red, re-preparation params differ, reproduction 0/2 |
+| D2 / R14b: FAILED collect coverage only reaches one wrapper | test_manifest_groups.py; 0096/0097 addenda; count docs; this report | All ten FAILED collect paths on local and Slurm fixtures; group 15 and immutable prepare keys; full suite | Closed. Yes: ten separate per-wrapper no-op completion plants, each red on both backends |
+
+## Owner rulings needed
+
+none
+
+## Residual gaps
+
+- The owner's two institutional Slurm re-runs remain unmeasured and belong solely
+  in 0098. Fixture 2/2 is the instrument self-test. The owner's 0099 protected-path
+  and tolerance approval and D-16 confirmation remain pending at merge; these are
+  existing separate obligations, not new implementation questions.
+- Strict cleanliness still refuses the documented uncommitted CUT&RUN patch;
+  patched-pipeline replay and an exact-patch policy remain unestablished. Use a
+  non-CUT&RUN original for 0098.
+- Earlier F8's dataset-specific guard message, F10's historical frontmatter/heading
+  omissions and F11's free-text version/timestamp placeholders remain open. No
+  schema or field grammar is chosen here.
+- Unguarded processes can still alter evidence; the guard provides neither OS-user
+  isolation nor proof of trace/sacct truth. Raw registration aliases and custom
+  sample patterns remain absent; missing/colliding inputs refuse. Scheduler waits
+  remain unbounded; interrupted comparisons are partial.
+- Biological execution, real-run manifest completeness, live scheduler behavior,
+  the second backend, §17's ≥ 4/5, external pilot-1 reproduction and typed claim-set
+  equality remain unverified. No whole-row reproduction exit is claimed.
+- Earlier Step A gaps remain: GRCh38 hashes, stage-03/authoring manifests, row-7
+  methods/rendering/claims, data handling, registry/liveness and benchmark re-pinning.
+  Source-pin validation still refuses; no source pin or threshold is changed.
+- The 73 environment skips and Python 3.6 runtime remain unverified. Python 3.6
+  grammar is checked. No release, protected-path approval, merge or push is claimed.
+
+
+## Committed-tree verification (R14)
+
+2026-09-24. The direct modules ran sequentially on a fresh local `git clone
+--no-hardlinks` and a separate `git archive` tree of the round commit before this
+evidence-only report addendum. No working-tree overlay was used. The clone's
+automatic origin entry was removed immediately; there was no network operation
+or source-repository remote configuration. All trees/logs remain in the designated
+sibling scratch folder. Before **each** direct module, the tree had no .pyc files
+or __pycache__ directories, and PYTHONDONTWRITEBYTECODE/PYTHONPYCACHEPREFIX were
+absent from the parent test environment. No history is required by the archive.
+
+The tested `gars/` Git tree object is `3edd412de32b63eb0a383d6f5758db2036f2630c`; it is unchanged by this
+report-only addendum. The final amended round commit retains this exact code/test
+tree. Both direct modules are also run from fresh trees of the final commit before
+delivery, with those final summary lines reported at delivery.
+
+| Tree | Direct command | Verbatim runner summary | Result |
+|---|---|---|---|
+| clone | `python3 gars/tests/test_rerun_check.py` | `Ran 21 tests in 82.102s` / `OK` | pass |
+| clone | `python3 gars/tests/test_manifest_groups.py` | `Ran 18 tests in 65.115s` / `OK` | pass |
+| archive | `python3 gars/tests/test_rerun_check.py` | `Ran 21 tests in 93.427s` / `OK` | pass |
+| archive | `python3 gars/tests/test_manifest_groups.py` | `Ran 18 tests in 79.563s` / `OK` | pass |
+
+All four runs pass without skips. Clone and archive replay logs both include the
+relative-path fixture's `reproduction: 2/2` with two submissions, and the distinct
+labelled local instrument self-test. Both manifest logs include all twenty FAILED
+collect cases and all twenty successful manifest completeness cases.
+
+`python3 ../gars-row-6-scratch/round4/audit.py`:
+
+```text
+SCOPE: 16 allowed files; protected libraries, schema, tolerances, CI and study trees unchanged
+RECORDS: original prefixes intact; 0095/index unchanged; review unchanged and untracked; no 0098/0099
+PRIVACY/GRAMMAR: no local identifiers in additions; changed Python parses as 3.6; diff clean
+REPORT: final Owner rulings needed body is exactly none; Residual gaps follows
+```
+
+One final round commit remains directly on `ce67841`; the report-only evidence
+amendment adds no second branch commit. Staging names the sixteen allowed paths
+explicitly and the commit message comes from a scratch file. The supplied review
+remains untracked and unchanged. No push, merge, pull request or owner approval.
+
+## Owner rulings needed
+
+none
+
+## Residual gaps
+
+The preceding R14 residual list remains open without changes: the owner's real
+Slurm 0098 measurement and separate 0099 approval/D-16 confirmation; patched
+CUT&RUN policy; F8/F10/F11; external evidence mutation, registration aliases and
+unbounded scheduler waits; real biological/backend/whole-row and external-pilot
+reproduction; earlier Step A and row-7/registry/data-handling gaps; inherited
+benchmark source-pin refusal; 73 environment skips and Python 3.6 runtime.
+No new implementation question needs an owner ruling, and no residual is promoted
+to a passing exit condition.

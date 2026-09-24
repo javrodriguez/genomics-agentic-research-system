@@ -398,7 +398,7 @@ def cmd_prepare(args):
     for s, p in paths["inputs"]:
         repro_inputs["h5ad_%s" % s] = p
     wl.write_reproducibility(substage, "spatial-cluster-count", WORKSPACE, repro_inputs,
-                             [("h5ad", str(args.h5ad)),
+                             [("h5ad", str(Path(args.h5ad).resolve())),
                               ("obs_column", OBS_COLUMN),
                               ("samples", ",".join(s for s, _ in inputs))])
 

@@ -450,3 +450,30 @@ N4 needs no guard change: the R12 Write/Edit cases discriminate its two patterns
 the Bash cases exercise existing R-09/R-092 refusals and do not establish R12
 fault sensitivity. These dispositions do not reopen the lane's D-16 answer or
 replace the owner's separate 0098 measurement and 0099 approval/confirmation.
+
+
+## Addendum — verification fixes (R14), 2026-09-24
+
+**R14 — the lane, under the owner's standing delegation of 23 September 2026.**
+The two defects were found by the lane's independent CP3 verification after
+review round 3; they are not a reviewer's findings or the owner's words.
+R14a fixes path normalization at the wrapper source, as recorded with key-change
+and re-prepare migration details in 0096. `rerun_check.py`, its params equality,
+all refusal checks, manifest schema and tolerance bytes remain unchanged.
+
+The new relative-path rnaseq-de regression requires a complete original to make
+two submissions, two complete fresh manifests and `reproduction: 2/2`, using
+real prepare/submit/status/collect and a synthetic worker. Recording counts as
+typed must make this test fail with re-preparation params differing. The all-ten,
+both-backend prepare sweep requires byte-identical serialized params and equal
+keys between relative and absolute CLI spellings; it also checks reference,
+blacklist, spike-in and optional index parameter paths are resolved absolute.
+The fixture wrapper was surveyed: its sole parameter is noise, not a path.
+
+R14b's companion failure sweep checks every production wrapper on both backends
+for group 15 and preservation of every prepare-time key. Per-wrapper plants
+replace complete_manifest with a no-op immediately before collect_failure;
+the report records assertion-level failures. These are instrument and writer
+regressions only. The fixture 2/2 remains the instrument's self-test, and the
+owner's two institutional Slurm re-runs belong solely in 0098. The owner's 0099
+approval and D-16 confirmation remain separate, pending obligations.

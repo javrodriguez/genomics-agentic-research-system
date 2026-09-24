@@ -265,6 +265,7 @@ exit_file=stage/'fixture.exit';exit_file.write_text('0\\n')
                 for n in range(1,5):
                     path=h5ad / ('S%d/data/S%d.h5ad' % (n,n));path.parent.mkdir(parents=True);path.write_text('fixture')
             extra=['--h5ad',h5ad]
+        self.prepare_extra = extra
         checked(self.wrapper_argv('prepare',extra),cwd=self.ws,env=self.env)
         self.manifest_path=self.stage / 'reproducibility/manifest.json'
         self.prepared=json.loads(self.manifest_path.read_text())
@@ -382,6 +383,45 @@ exit_file=stage/'fixture.exit';exit_file.write_text('0\\n')
                         broken = copy.deepcopy(manifest)
                         del broken[label + '_sha256']
                         self.assertFalse(mc.grade(broken)['groups'][0]['present'], label)
+
+    def test_all_ten_failure_collects_both_backends(self):
+        self.pipeline_fixtures()
+        base = self.project
+        wrappers = mc.load_schema()['wrappers']
+        self.assertEqual(len(wrappers), 10)
+        for key, info in sorted(wrappers.items()):
+            for backend in ('local', 'slurm'):
+                with self.subTest(wrapper=info['name'], backend=backend):
+                    self.configure_wrapper(key, backend, base)
+                    self.fake_wrapper_run(); self.submit()
+                    # Keep the completion marker and scheduler evidence, but remove
+                    # required scientific output so the real artifact gate fails.
+                    target = ('run/results' if info['kind'] == 'nextflow' else
+                              'run/clusters.tsv' if key == 'spatial-cluster-count' else
+                              'run/tables')
+                    missing = self.stage / target
+                    if missing.is_dir():
+                        shutil.rmtree(str(missing))
+                    else:
+                        missing.unlink()
+                    result = run(self.wrapper_argv('collect', ['--model', MODEL]),
+                                 cwd=self.ws, env=self.env)
+                    self.assertEqual(result.returncode, 1,
+                                     result.stdout.decode() + result.stderr.decode())
+                    self.assertTrue(json.loads(result.stdout.decode())['failures'])
+                    manifest = json.loads(self.manifest_path.read_text())
+                    self.assertEqual({k: manifest[k] for k in self.prepared}, self.prepared)
+                    self.assertEqual((self.stage / 'STATUS').read_text().split()[0], 'FAILED')
+                    self.assertIn('predicate_facts', manifest, 'failure completion omitted')
+                    self.assertIn('failure_class', manifest, 'group 15 omitted')
+                    self.assertEqual(manifest['predicate_facts']['status'], 'FAILED')
+                    self.assertEqual(manifest['failure_class'], 'workflow')
+                    group = mc.grade(manifest)['groups'][14]
+                    self.assertEqual(group['number'], 15)
+                    self.assertTrue(group['applicable'])
+                    self.assertTrue(group['present'])
+                    print('FAILED COLLECT %s %s: group 15 present; prepare keys unchanged' %
+                          (info['name'], backend))
 
     def assert_outputs(self, manifest):
         rows=[line.split('\t') for line in (self.stage/'OUTPUTS.tsv').read_text().splitlines() if line and not line.startswith('#')]

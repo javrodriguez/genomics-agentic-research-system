@@ -93,7 +93,7 @@ def build_params(cfg, paths):
     return [
         ("input", str(paths["samplesheet"].resolve())),
         ("outdir", str((paths["substage"] / "run" / "results").resolve())),
-        ("fasta", cfg["reference.fasta"]),
+        ("fasta", str(Path(cfg["reference.fasta"]).resolve())),
         ("aligner", cfg.get("aligner", "bismark")),
     ]
 

@@ -316,7 +316,8 @@ python3 "$WS/_system/adapt_counts.py" \\
                               "config": paths["config"]},
                              [("formula", cfg["de.formula"]),
                               ("contrast", cfg["de.contrast"]),
-                              ("counts", str(args.counts)), ("design", str(args.design))])
+                              ("counts", str(Path(args.counts).resolve())),
+                              ("design", str(Path(args.design).resolve()))])
 
     result.update({"ok": True,
                    "wrote": ["scripts/run_de.py", "submit.sh",

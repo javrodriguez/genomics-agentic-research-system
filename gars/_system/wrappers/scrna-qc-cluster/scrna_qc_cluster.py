@@ -383,7 +383,7 @@ def cmd_prepare(args):
     wl.write_reproducibility(substage, "scrna-qc-cluster", WORKSPACE,
                              {"h5ad": Path(args.h5ad), "config": paths["config"],
                               "samplesheet": paths["samplesheet"]},
-                             [("h5ad", str(args.h5ad)),
+                             [("h5ad", str(Path(args.h5ad).resolve())),
                               ("min_genes", cfg["qc.min_genes"]),
                               ("min_cells", cfg["qc.min_cells"]),
                               ("max_mito_pct", cfg["qc.max_mito_pct"]),

@@ -140,3 +140,47 @@ and mode 0444. Synthetic raw sources retain valid registration names instead
 of collapsing eight links onto one arbitrarily named fixture source. The replay
 refusal sweep now expects R13's specific reason for group 11; its failure and
 no-output assertions remain intact. No test threshold or guard is weakened.
+
+
+## Addendum — verification fixes (R14), 2026-09-24
+
+**R14 — the lane, under the owner's standing delegation of 23 September 2026.**
+These are the lane's independent CP3 verification findings and fixes, not a
+reviewer's findings or additional words attributed to the owner.
+
+R14a / R-042: every path-valued wrapper parameter is recorded as its resolved
+absolute path, matching the representation of inputs. This includes rnaseq-de's
+counts/design, both downstream h5ad arguments, Nextflow references, optional
+blacklists, spike-in paths and derived indexes. Nextflow input/outdir already
+resolved their paths; spatialvi needs no edit. The fixture wrapper has only the
+non-path noise parameter. The survey covers all ten production wrappers and the
+fixture. Changes are limited to parameter expressions in nine wrapper Python
+files; shared writers and the key formulas are unchanged.
+
+**Key change for NEW prepares:** relative or symlink spellings that previously
+entered params verbatim now use the resolved path. Their new idempotency keys can
+therefore differ from the old writer's keys. Canonical absolute-path preparations
+retain their keys. Relative and absolute CLI spellings against the same config
+bytes now produce byte-identical params and equal keys. Editing config bytes is
+still a different input; this fix does not erase config-hash differences.
+
+**Migration:** re-prepare a prepared-but-unsubmitted stage with the normal wrapper
+prepare command. Do not edit an existing manifest or generated key by hand.
+For an old completed original with unnormalized params, prepare and complete a
+new original before replay. There is no new legacy-submit refusal, terminal reset
+or automatic migration. R14 supersedes R11's historical claim of unchanged keys
+for every accepted spelling; its canonical-design refusal remains intact.
+
+`RealWrapperReplayTests.test_all_wrapper_path_params_are_canonical` checks all ten
+wrappers on both fixture backends, including optional reference/index paths.
+`test_rnaseq_design_prepare_identity` retains the legacy refusal and script checks
+and explicitly tests the new canonical key for relative and symlink spellings.
+`test_relative_rnaseq_prepare_replays_two_of_two` drives two fresh replay attempts
+from a relative-path original through the unchanged equality checks.
+
+R14b adds `ManifestGroupsTests.test_all_ten_failure_collects_both_backends`:
+real prepares and synthetic successful executor evidence reach each wrapper's
+artifact gate; missing required output drives FAILED collect. All twenty cases
+require group 15 to be applicable and present, workflow failure, FAILED status,
+and every prepare key/value unchanged. No collect implementation changes.
+The report records per-wrapper completion-omission fault plants and their reds.

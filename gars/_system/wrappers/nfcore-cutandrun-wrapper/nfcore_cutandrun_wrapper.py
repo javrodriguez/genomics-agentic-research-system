@@ -151,17 +151,17 @@ def build_params(cfg, paths):
     params = [
         ("input", str(paths["samplesheet"].resolve())),
         ("outdir", str((paths["substage"] / "run" / "results").resolve())),
-        ("fasta", cfg["reference.fasta"]),
-        ("gtf", cfg["reference.gtf"]),
+        ("fasta", str(Path(cfg["reference.fasta"]).resolve())),
+        ("gtf", str(Path(cfg["reference.gtf"]).resolve())),
         ("mito_name", cfg["reference.mito_name"]),
-        ("spikein_fasta", cfg["spikein.fasta"]),
-        ("spikein_bowtie2", cfg["spikein.bowtie2"]),
+        ("spikein_fasta", str(Path(cfg["spikein.fasta"]).resolve())),
+        ("spikein_bowtie2", str(Path(cfg["spikein.bowtie2"]).resolve())),
         ("peakcaller", cfg["peaks.peakcaller"]),
         ("normalisation_mode", cfg["peaks.normalisation"]),
         ("use_control", cfg.get("peaks.use_control", "true")),
     ]
     if cfg.get("reference.blacklist"):
-        params.append(("blacklist", cfg["reference.blacklist"]))
+        params.append(("blacklist", str(Path(cfg["reference.blacklist"]).resolve())))
     if str(cfg.get("qc.gene_heatmaps", "true")).lower() in ("false", "no", "off"):
         # Decision 0038: the all-samples x all-genes heatmap matrix cannot fit a sane
         # single-node allocation on real cohorts; the scoring consumes peaks/bigwigs, not

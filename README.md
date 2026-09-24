@@ -311,7 +311,7 @@ pilot-1 measurement remain unverified. See the
 [row-7 review response](docs/implementation/row_7_change_report.md#review-round-2-fixes).
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(499 tests in the current collection; environment skips are reported per run. Row 6 adds synthetic manifest coverage and the local instrument self-test; scrna-qc-cluster records its samplesheet and passes synthetic-worker replay; rnaseq-de now requires the canonical project design and passes synthetic-worker replay; legacy alternate-design manifests are refused. No real-cluster manifest or reproduction exit is claimed.)
+(502 tests in the current collection; environment skips are reported per run. Row 6 adds synthetic manifest coverage and the local instrument self-test; scrna-qc-cluster records its samplesheet and passes synthetic-worker replay; rnaseq-de now requires the canonical project design and passes synthetic-worker replay; legacy alternate-design manifests are refused. No real-cluster manifest or reproduction exit is claimed.)
 Row 6 ruling-rd2 protects collect evidence throughout the bioinformatics run tree
 and routes replay dataset registration through finalize, retaining the recorded
 agreement reference. Older manifests without it refuse replay; see the

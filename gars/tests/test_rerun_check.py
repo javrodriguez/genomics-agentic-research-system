@@ -470,11 +470,19 @@ class RealWrapperReplayTests(unittest.TestCase):
                 result = prepare(design)
                 self.assertEqual(result.returncode, 0, result.stdout.decode())
                 after = json.loads(case.manifest_path.read_text())
-                self.assertEqual(after, before)
+                expected = copy.deepcopy(before)
+                expected['params']['design'] = str(canonical.resolve())
+                expected['idempotency_key'] = wl.input_key(case.stage, expected)
+                self.assertEqual(after, expected)
                 self.assertEqual(after['inputs']['design'], str(canonical.resolve()))
-                self.assertEqual(ex.prepared_key(case.project, case.stage), before['idempotency_key'])
+                self.assertEqual(ex.prepared_key(case.project, case.stage), after['idempotency_key'])
+                self.assertEqual(after['idempotency_key'], migrated['idempotency_key'])
+                if str(design) != str(canonical.resolve()):
+                    self.assertNotEqual(after['idempotency_key'], before['idempotency_key'])
                 for name, content in scripts.items():
-                    self.assertEqual((case.stage / name).read_bytes(), content)
+                    self.assertEqual((case.stage / name).read_bytes(),
+                                     content.replace(before['idempotency_key'].encode(),
+                                                     after['idempotency_key'].encode()))
 
     def test_rnaseq_design_replay_and_legacy_refusal(self):
         import test_manifest_groups as fixtures
@@ -511,6 +519,13 @@ class RealWrapperReplayTests(unittest.TestCase):
                 submit.assert_not_called()
             self.assertFalse(out.exists())
 
+        self.check_rnaseq_replay(relative=False)
+
+    def test_relative_rnaseq_prepare_replays_two_of_two(self):
+        self.check_rnaseq_replay(relative=True)
+
+    def check_rnaseq_replay(self, relative):
+        import test_manifest_groups as fixtures
         # A separate canonical original uses the new code; no terminal stage reset.
         case = fixtures.ManifestGroupsTests('test_all_ten_wrappers_both_backends')
         self.addCleanup(case.doCleanups)
@@ -520,6 +535,13 @@ class RealWrapperReplayTests(unittest.TestCase):
         out = case.repo / 'rnaseq-replay'
         original_stage = case.stage
         canonical = case.project / '01_samplesheets/rnaseq_bulk_design.csv'
+        if relative:
+            argv = case.wrapper_argv('prepare', ['--counts', case.fixture.counts_native,
+                                               '--design', canonical])
+            for flag in ('--project', '--counts', '--design'):
+                index = argv.index(flag) + 1
+                argv[index] = os.path.relpath(str(argv[index]), str(case.ws))
+            checked(argv, cwd=case.ws, env=case.env)
         case.fake_wrapper_run(); case.submit()
         checked(case.wrapper_argv('collect', ['--model', 'none']), cwd=case.ws, env=case.env)
         original = json.loads(case.manifest_path.read_text())
@@ -563,7 +585,8 @@ class RealWrapperReplayTests(unittest.TestCase):
                 self.assertTrue(mc.grade(replay)['ok'])
                 rc.validate_manifest(replay, stage)
                 self.assertTrue(all(row['match'] for row in comparisons['runs'][number-1]['artifacts']))
-        print('RNASEQ design replay fixture: 2/2; real prepare/submit/status/collect, synthetic worker')
+        print('RNASEQ %s replay fixture: reproduction: 2/2; two submissions; synthetic worker' %
+              ('relative-path' if relative else 'design'))
 
     def test_scrna_samplesheet_replay_and_drift(self):
         import test_manifest_groups as fixtures
@@ -640,6 +663,64 @@ class RealWrapperReplayTests(unittest.TestCase):
                 self.assertTrue(mc.grade(replay)['ok'])
                 self.assertTrue(all(row['match'] for row in comparisons['runs'][number-1]['artifacts']))
         print('SCRNA replay fixture: 2/2; real prepare/submit/status/collect, synthetic worker')
+
+    def test_all_wrapper_path_params_are_canonical(self):
+        import test_manifest_groups as fixtures
+        case = fixtures.ManifestGroupsTests('test_all_ten_wrappers_both_backends')
+        self.addCleanup(case.doCleanups)
+        with contextlib.redirect_stdout(io.StringIO()):
+            case.setUp(); case.pipeline_fixtures()
+        base = case.project
+        wrappers = mc.load_schema()['wrappers']
+        self.assertEqual(len(wrappers), 10)
+        for key in sorted(wrappers):
+            for backend in ('local', 'slurm'):
+                with self.subTest(wrapper=key, backend=backend):
+                    case.configure_wrapper(key, backend, base)
+                    # Preserve config bytes/key inputs across both CLI spellings.
+                    # Relative reference config exercises normalization at the writer.
+                    config = case.project / '_config' / (case.assay + '.yaml')
+                    refs = case.fixture.refs
+                    for directory in ('bwa', 'simpleaf', 'index/star', 'index/salmon'):
+                        index = refs / directory
+                        index.mkdir(parents=True, exist_ok=True)
+                        (index / 'genomeParameters.txt').write_text('fixture index')
+                    (refs / 'genome.transcripts.fa').write_text('>fixture\nA\n')
+                    (refs / 'blacklist.bed').write_text('chr1\t1\t2\n')
+                    text = config.read_text().replace('reference:\n',
+                        'reference:\n  derived_dir: %s\n  blacklist: %s\n' %
+                        (refs, refs / 'blacklist.bed'))
+                    config.write_text(text.replace(
+                        str(refs), os.path.relpath(str(refs), str(case.ws))))
+                    absolute = case.wrapper_argv('prepare', case.prepare_extra)
+                    relative = list(absolute)
+                    for flag in ('--project', '--counts', '--design', '--h5ad'):
+                        if flag in relative:
+                            index = relative.index(flag) + 1
+                            relative[index] = os.path.relpath(str(relative[index]), str(case.ws))
+                    checked(absolute, cwd=case.ws, env=case.env)
+                    before = json.loads(case.manifest_path.read_text())
+                    checked(relative, cwd=case.ws, env=case.env)
+                    after = json.loads(case.manifest_path.read_text())
+                    self.assertEqual(json.dumps(before['params']).encode(),
+                                     json.dumps(after['params']).encode())
+                    self.assertEqual(before['idempotency_key'], after['idempotency_key'])
+                    self.assertEqual(ex.prepared_key(case.project, case.stage), after['idempotency_key'])
+                    path_keys = {'input', 'outdir', 'counts', 'design', 'h5ad', 'fasta', 'gtf',
+                                 'spikein_fasta', 'spikein_bowtie2', 'blacklist', 'bwa_index',
+                                 'simpleaf_index', 'star_index', 'salmon_index', 'transcript_fasta'}
+                    optional = {'atacseq_bulk': {'blacklist', 'bwa_index'},
+                                'chipseq_bulk': {'blacklist', 'bwa_index'},
+                                'cutandrun': {'blacklist'}, 'scrnaseq': {'simpleaf_index'},
+                                'rnaseq_bulk': {'star_index', 'salmon_index', 'transcript_fasta'}}
+                    self.assertTrue(optional.get(key, set()).issubset(after['params']))
+                    paths = path_keys.intersection(after['params'])
+                    self.assertTrue(paths)
+                    for name in paths:
+                        value = after['params'][name]
+                        self.assertTrue(Path(value).is_absolute(), (name, value))
+                        self.assertEqual(value, str(Path(value).resolve()))
+                    print('PATH PARAMS %s %s: byte-identical params; same key' % (key, backend))
 
     def test_all_real_wrapper_repreparations_and_execution_evidence(self):
         # Real prepare, synthetic checkouts/import probes; no bio execution is claimed.
