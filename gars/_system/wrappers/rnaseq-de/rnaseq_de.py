@@ -34,6 +34,7 @@ import argparse
 import csv
 import datetime
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -309,6 +310,58 @@ python3 "$WS/_system/adapt_counts.py" \\
     return emit(result, EXIT_OK)
 
 
+# Pre-committed relative tolerance (decision 0101), including six-significant-digit CSVs.
+BH_RELATIVE_TOLERANCE = 1e-4
+
+
+def check_table(table):
+    """Shared collect/diagnostic gate; tested rows have both probabilities present."""
+    with Path(table).open() as fh:
+        reader = csv.DictReader(fh)
+        fields = [name.strip().lower() for name in (reader.fieldnames or [])]
+        rows = [{k.strip().lower(): (v or "").strip() for k, v in row.items() if k}
+                for row in reader]
+    missing = {"", "na", "nan", "null"}
+    try:
+        pairs = [(float(r["pvalue"]), float(r["padj"])) for r in rows
+                 if r.get("pvalue", "").lower() not in missing
+                 and r.get("padj", "").lower() not in missing]
+    except (ValueError, KeyError):
+        return [fail("uncorrected_pvalues", "invalid probabilities")]
+    if ("pvalue" not in fields or "padj" not in fields
+            or len(fields) != len(set(fields))):
+        return [fail("uncorrected_pvalues", "missing or ambiguous probability columns")]
+    if any(r.get("padj", "").lower() not in missing
+           and r.get("pvalue", "").lower() in missing for r in rows):
+        return [fail("uncorrected_pvalues", "padj present without pvalue")]
+    m = len(pairs)
+    problem = None
+    if rows and m == 0:
+        problem = "no tested rows"
+    elif any(not math.isfinite(p) or not math.isfinite(q) or not 0 <= p <= q <= 1
+             for p, q in pairs):
+        problem = "padj below pvalue or invalid probabilities"
+    elif m >= 2 and all(p == q for p, q in pairs) and any(p < 1 for p, q in pairs):
+        problem = "raw p-values without correction"
+    else:
+        ordered = sorted(pairs)
+        corrected = 1.0
+        for i in range(m - 1, -1, -1):
+            p, q = ordered[i]
+            corrected = min(corrected, p * m / (i + 1))
+            if abs(q - corrected) > BH_RELATIVE_TOLERANCE * abs(corrected):
+                problem = "padj differs from BH"
+    return [fail("uncorrected_pvalues", problem)] if problem else []
+
+
+def cmd_check_table(args):
+    try:
+        failures = check_table(args.table)
+    except (OSError, ValueError):
+        failures = [fail("uncorrected_pvalues", "table unreadable")]
+    return emit({"ok": not failures, "failures": failures}, EXIT_FAILURE if failures else EXIT_OK)
+
+
 def cmd_collect(args):
     wl.require_collect_config(args.project, ASSAY, SUBSTAGE)
     project = Path(args.project)
@@ -342,6 +395,7 @@ def cmd_collect(args):
                                             "silent failure this gate exists for"))
         if rows and "padj" not in rows[0]:
             fails.append(fail("de_results", "no padj column"))
+        fails.extend(check_table(de))
         result["genes_tested"] = max(0, len(rows) - 1)
 
     normed = run / "tables" / "normalized_counts.csv"
@@ -419,11 +473,13 @@ def main(argv=None):
                    help="the exact model id of the agent executing this sub-stage (0024)")
     c.add_argument("--counts-from", default=None,
                    help="the sub-stage that supplied the counts, from the resolver")
+    t = sub.add_parser("check-table")
+    t.add_argument("--table", required=True)
     args = ap.parse_args(argv)
     if not args.cmd:
         ap.print_help(sys.stderr)
         return EXIT_USAGE
-    return {"check": cmd_check, "prepare": cmd_prepare, "collect": cmd_collect}[args.cmd](args)
+    return {"check": cmd_check, "prepare": cmd_prepare, "collect": cmd_collect, "check-table": cmd_check_table}[args.cmd](args)
 
 
 if __name__ == "__main__":

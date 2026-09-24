@@ -1,0 +1,5 @@
+sample_id,condition,group,replicate,batch,subject,sex,age,library_index
+DEV2722,A,A,1,x,d1,F,20,ACGTACGT
+DEV4367,A,A,2,y,d2,M,22,ACGTACGT
+DEV6821,B,B,1,x,d3,F,22,ACGTACGT
+DEV2864,B,B,2,y,d4,M,24,ACGTACGT

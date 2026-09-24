@@ -1,0 +1,5 @@
+sample_id,condition,group,replicate,cell_barcode
+DEV2722,A,A,1,c1
+DEV4367,A,A,2,c2
+DEV6821,B,B,1,c3
+DEV2864,B,B,2,c4

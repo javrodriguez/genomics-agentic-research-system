@@ -53,7 +53,10 @@ def check_one(path, mode="full"):
         return "does not resolve"
     if path.stat().st_size == 0:
         return "is empty"
-    if mode == "skip" or not str(path).endswith(".gz"):
+    if mode == "skip" or (mode == "quick" and not str(path).endswith(".gz")):
+        return None
+    if (mode == "full" and not str(path).endswith(".gz")
+            and not str(path).lower().endswith((".fastq", ".fq"))):
         return None
     if mode == "quick":
         try:
@@ -66,9 +69,25 @@ def check_one(path, mode="full"):
     try:
         # Python's gzip measured FASTER than the system `gzip -t` binary here (15.6 s vs 26.0 s on
         # a 666 MB file), so there is nothing to gain by shelling out.
-        with gzip.open(str(path), "rb") as fh:
-            while fh.read(1 << 20):
-                pass
+        is_fastq = str(path).lower().endswith((".fastq", ".fq", ".fastq.gz", ".fq.gz"))
+        opener = gzip.open if str(path).endswith(".gz") else open
+        with opener(str(path), "rb") as fh:
+            if is_fastq:
+                number = 0
+                while True:
+                    first = fh.readline()
+                    if not first:
+                        break
+                    number += 1
+                    record = [first] + [fh.readline() for _ in range(3)]
+                    if (any(not line.endswith(b"\n") for line in record)
+                            or not record[0].startswith(b"@")
+                            or not record[2].startswith(b"+")
+                            or len(record[1].rstrip(b"\r\n")) != len(record[3].rstrip(b"\r\n"))):
+                        return "truncated record %d" % number
+            else:
+                while fh.read(1 << 20):
+                    pass
     except Exception as exc:
         return "fails integrity check: %s" % exc
     return None

@@ -1,0 +1,5 @@
+sample_id,lane,fastq_1,fastq_2
+DEV2722,1,00_data/rnaseq_bulk/raw/DEV2722_L001_R1.fastq.gz,
+DEV4367,1,00_data/rnaseq_bulk/raw/DEV4367_L001_R1.fastq.gz,
+DEV6821,1,00_data/rnaseq_bulk/raw/DEV6821_L001_R1.fastq.gz,
+DEV2864,1,00_data/rnaseq_bulk/raw/DEV2864_L001_R1.fastq.gz,

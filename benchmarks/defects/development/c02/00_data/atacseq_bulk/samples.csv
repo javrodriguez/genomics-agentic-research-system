@@ -1,0 +1,5 @@
+sample_id,condition,group,replicate,batch
+DEV2722,A,A,1,x
+DEV4367,A,A,2,y
+DEV6821,B,B,1,x
+DEV2864,B,B,2,y

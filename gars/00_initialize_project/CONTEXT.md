@@ -89,8 +89,7 @@ only a pattern the *user* supplies via `--sample-id-pattern` resolves them.
 **Read pairing.** Wholly paired-end or wholly single-end. A mixed set is refused.
 
 **File integrity.** A linked raw file passes when its symlink resolves, the target is non-empty,
-and — for `.gz` files — a full decompression succeeds. This is the only check performed on file
-contents at this stage.
+and — for `.gz` files — the selected integrity mode succeeds. Full mode also validates FASTQ record structure.
 
 `--integrity` selects the depth, and the choice is **recorded in the project's `HISTORY.md`**, so
 a project can always name the verification it received:
@@ -98,7 +97,7 @@ a project can always name the verification it received:
 | Mode | Checks | Cost |
 |---|---|---|
 | `quick` (default) | resolves, non-empty, gzip magic | metadata only |
-| `full` | additionally decompresses every `.gz` | O(data) — see below |
+| `full` | additionally decompresses every `.gz` and checks whole FASTQ records, plain or gzip | O(data) — see below |
 | `skip` | resolves, non-empty | metadata only |
 
 **The default is `quick`, and that is deliberate.** This stage registers everything the user
@@ -162,6 +161,18 @@ between each:
 | 1 | failure; report and stop | T9 |
 | 2 | refused; its `template` field names the reply | T5 / T7 / T8 |
 | 3 | usage or precondition error | T9 |
+
+
+**The schema the detectors read (review MAJOR-2).**
+It is a contract, not detector rule text.
+The same block is copied verbatim into the sealed interface, into `benchmarks/defects/SEALED-INTERFACE.md`, and into the stage 00/01 contracts (`gars/00_initialize_project/CONTEXT.md`, `gars/01_prepare_samplesheets/CONTEXT.md`), so a sealer and a user read the same words.
+All columns are optional `samples.csv` columns under the open schema (decision 0043); no config key is added (review MAJOR-9).
+- `subject`: the independent biological unit (donor, patient, animal); rows sharing a value are not independent replicates.
+- `biological_unit`: a synonym of `subject` kept for row 2's fixtures; when both are present, `subject` wins.
+- `cell_barcode`: present only when each row is a single cell (or a cell-level sub-sample); its presence marks the design as cell-level.
+- `library_index`: the library's i7 index sequence, or `i7+i5` for dual indexing, in the exact form the CASAVA 1.8 FASTQ header carries after the last `:` (for example `ACGTACGT` or `ACGTACGT+TTGACCAA`); never a library name.
+- `sex`: one of `F`, `M`, `unknown` (case-sensitive).
+- `age`: age in years, a non-negative number; blank means unknown.
 
 ## Process
 1. Activated when the user says they want to start a new project. Reply T1.

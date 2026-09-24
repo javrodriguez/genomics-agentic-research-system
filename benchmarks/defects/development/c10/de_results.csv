@@ -1,0 +1,4 @@
+gene,baseMean,log2FoldChange,pvalue,padj,plant_note
+g0,10,2,0.0041234567,0.0123703701,synthetic
+g1,10,2,0.037654321,0.0564814815,synthetic
+g2,10,2,0.8,0.8,synthetic
