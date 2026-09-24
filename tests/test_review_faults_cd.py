@@ -175,6 +175,31 @@ class CdPlacementTests(unittest.TestCase):
         self.assertEqual(self.hits('true && cd repo && %s' % self.read), 0)
         self.assertEqual(self.hits('true && cd repo && %s; cd repo; %s' % (self.read, self.read)), 0)
 
+    def test_raw_line_continuation_guard(self):
+        read = 'cat %s' % os.path.join(self.parent, 'secret')
+        continuation = '%s\n\n' % chr(92)
+        self.bad([(label, '%s %scd repo; %s' % (prefix, continuation, read))
+                  for label, prefix in (('and-escaped-newline-blank', 'false &&'),
+                                        ('or-escaped-newline-blank', 'true ||'),
+                                        ('pipe-escaped-newline-blank', 'true |'))])
+        # The raw guard also applies inside text removed by the scan.
+        self.assertGreaterEqual(self.hits('cd repo; # note%s\n\n%s' %
+                                         (chr(92), read)), 1)
+
+    def test_raw_control_character_guard(self):
+        read = 'cat %s' % os.path.join(self.parent, 'secret')
+        self.bad([('cr-in-cd-word', 'cd%srepo; %s' % (chr(13), read)),
+                  ('cr-after-arg', 'cd repo%s; %s' % (chr(13), read))])
+        # Every prohibited control disables movement, even in removed data
+        # after an otherwise valid cd. Tab and newline remain permitted.
+        for code in list(range(32)) + list(range(127, 160)):
+            if code in (9, 10):
+                continue
+            with self.subTest(control=code):
+                self.assertGreaterEqual(self.hits('cd repo; # note%s\n%s' %
+                                                 (chr(code), read)), 1)
+        self.assertEqual(self.hits('cd\trepo;\n%s' % read), 0)
+
     def test_retained_data_cannot_move_placement(self):
         self.bad([
             ('ambiguous-heredoc', ': $(true); cat <<EOF\ncd repo\nEOF\n%s' % self.read),

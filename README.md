@@ -319,7 +319,7 @@ sealed slots and the first measured run are still to come, so the reviewer catch
 [0072](docs/decisions/0072-row-9-review-fault-harness-code-half.md).
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(529 tests collected for the row 9 cd-placement follow-up; row 5 needs its scratch folder set as CI sets it and Docker answering; a macOS cold clone without it skips 73, or 104 with `TMPDIR` also unset as on Linux; Docker mode A and cluster execution were not verified here).
+(531 tests collected for the row 9 cd-placement follow-up; row 5 needs its scratch folder set as CI sets it and Docker answering; a macOS cold clone without it skips 73, or 104 with `TMPDIR` also unset as on Linux; Docker mode A and cluster execution were not verified here).
 Row 15 review round 4 (2026-09-22), macOS / Python 3.8.2: 252 tests, <!-- not-the-suite-total -->
 `OK (skipped=50)`; no tests from row 15 skipped. R15-03's narrow fixture repair
 is authorised by the owner, **confirmed on 22 September 2026** ([0067](docs/decisions/0067-owner-confirms-rows-15-and-4-provisional-rulings.md)).

@@ -355,6 +355,12 @@ class CommandPlacement:
 
 def placed_command(text, kit):
     state = {'kit': kit, 'folder': kit, 'conditional': False}
+    # Item 8: inspect the untouched call before parsing or removing any data.
+    raw_hazard = (any((ord(char) < 32 and char not in '\n\t') or
+                      127 <= ord(char) < 160 for char in text) or
+                  chr(92) + '\n' in text)
+    if raw_hazard:
+        state['blocked'] = True
     # Preflight every recognized shell program before placing any word: a
     # whole-call hazard in a later nested program also forbids an earlier cd.
     def inspect(source, words):

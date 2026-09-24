@@ -579,3 +579,174 @@ against 5ba82c6 print nothing. The index was rebuilt, old record/report bytes
 and supplied data hashes match, and no owner ruling is needed. Docker mode A,
 native Python 3.6, macOS, cluster, fresh-clone CI and independent approval remain
 unverified; this is detector validation, not measured row-9 evidence.
+
+
+## 2026-09-24 addendum — review round C1, continuation C
+
+This is THE LANE'S SPECIFICATION, UNDER THE OWNER'S DELEGATION, item 8.
+It amends items 1 and 7 wherever they differ. Review B1 judged rounds 3 and B1,
+but deployment did not publish it: its step failed the deployment scan on a
+path shape in the reviewer's own leak-check pattern, not a read. The lane
+supplied the review to this clone by copy. The review remains untracked and
+unchanged; no reviewer conversation was read.
+
+F1 and F2 have one raw-text whole-call guard. Before any shell parsing or data
+removal, a carriage return, any other control character except newline and tab,
+or a backslash immediately followed by newline blocks every placement change
+in that call. Every word then uses the kit root. The implementation uses the
+existing control ranges (below 32 and 127 through 159), excluding newline and
+tab. The tokenizer is unchanged. The closed grammar is items 1(a–f), 2, 7(a)
+and 8(a), as implemented; all prior boundaries and the B1 threat-model
+replacement otherwise stand. No new shell interpretation rule is introduced.
+
+F3 named residual: ANSI-C and locale quoting and line-continuation interpretation
+are not parsed by the detector. The raw-text guard now refuses the reviewed
+split-cd and split-PWD continuation spellings without interpreting them. ANSI-C
+and locale quoting remain unparsed. F4 named residual: every heredoc operator
+blocks placement, even if its body was successfully removed. This conservative
+refusal is stricter than item 7(a) and can still flag an honest call. Neither
+NOTE changes parsing code. These limits join failed-cd runtime detection,
+audit-time symlink resolution, shell indirection and interpreter program text
+under item 3 and 0072 item 20(c); the sandbox remains the enforcement wall.
+
+F5 consolidates two duplicate mutation pairs while preserving all named test
+witnesses; the list now has 25 distinct placement plantings, including the new
+guard removal. F6 is answered by placing the round's sole new owner-rulings
+heading last, with exactly None. Earlier record and report bytes remain intact.
+The repository's own commit identity is used without overrides, as item 7(d)
+requires; no earlier commit is rewritten. Scratch uses the whole relative twin
+path, as item 7(e) requires. No protected path, fixture, measurement or row seal
+is changed. This follow-up measures nothing.
+
+### C1 tests
+
+The five exact reviewed F1/F2 spellings are built from runtime path pieces and
+scored with blindness. Before the guard, the two added tests printed
+`Ran 2 tests in 0.032s` and `FAILED (failures=69)`, including all five reviewed
+spellings and controls in removed comment data. With the guard, both tests
+pass; tab and ordinary newline remain accepted. A disposable-copy mutation
+removes only this guard, requires both named tests to fail, and checks failure
+output names all five spellings. The cd data still grades 11/11. Final command
+results, both full-suite modes, original corpus and fault witnesses are appended
+in the C1 change report and the verification addendum below.
+
+### C1 final verification — 2026-09-24
+
+`python3 tests/run_tests.py (mode B)` (exit 0):
+
+```text
+collected 298 tests from tests
+collected 233 tests from gars/tests
+cd-call corpus graded-against-seen: 11/11
+honest-call corpus graded-against-seen: 278/278
+Ran 531 tests in 397.014s
+OK (skipped=77)
+```
+
+`env -u TMPDIR python3 tests/run_tests.py (mode C)` (exit 0):
+
+```text
+collected 298 tests from tests
+collected 233 tests from gars/tests
+cd-call corpus graded-against-seen: 11/11
+honest-call corpus graded-against-seen: 278/278
+Ran 531 tests in 392.289s
+OK (skipped=104)
+```
+
+`python3 tests/check_contracts.py` (exit 0):
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py` (exit 0):
+
+```text
+collected 298 tests from tests
+collected 233 tests from gars/tests
+suite: 531 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py` (exit 0):
+
+```text
+Ran 44 tests in 39.918s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon` (exit 0):
+
+```text
+clean — graded=1
+```
+
+`python3 tests/test_review_faults_build.py` (exit 0):
+
+```text
+Ran 11 tests in 97.311s
+OK
+```
+
+`python3 tests/test_review_faults_cd.py` (exit 0):
+
+```text
+Ran 32 tests in 0.233s
+OK
+cd-call corpus graded-against-seen: 11/11
+```
+
+`python3 tests/test_review_faults_cd_faults.py` (exit 0):
+
+```text
+Ran 1 test in 4.086s
+OK
+```
+
+`python3 tests/test_review_faults_core.py` (exit 0):
+
+```text
+Ran 9 tests in 0.023s
+OK
+```
+
+`python3 tests/test_review_faults_corpus.py` (exit 0):
+
+```text
+Ran 1 test in 0.229s
+OK
+honest-call corpus graded-against-seen: 278/278
+```
+
+`python3 tests/test_review_faults_faults.py` (exit 0):
+
+```text
+Ran 1 test in 213.621s
+OK
+```
+
+`python3 tests/test_review_faults_launch.py` (exit 0):
+
+```text
+Ran 20 tests in 2.627s
+OK
+```
+
+Python feature_version=(3, 6): 3/3 changed or new Python files parse.
+Python feature_version=(3, 6): 15/15 harness and review-fault test modules parse.
+Python feature_version=(3, 6): 4/4 changed or new Python files since 5ba82c6 parse.
+
+Both full modes collect 531; skips remain 77 in B and 104 in C. Both corpora
+print 11/11 and 278/278. All 25 distinct placement faults and 144 original
+faults were observed red, with two exemptions green. Both protected diff-stat
+commands against 5ba82c6 print nothing; data hashes, record/report prefixes and
+review bytes match. The index is rebuilt. The C1 report names every acceptance
+and residual, ending with no owner rulings. Docker mode A, native Python 3.6,
+macOS, cluster, fresh-clone CI, real fixture gitleaks integration and independent
+approval remain unverified. Deployment command-path compliance is NOT met: an
+initial, unnecessary pwd invocation redirected output to the null device with
+a literal rooted path, violating the relative-only command rule. It was not
+repeated, but command history cannot be repaired and no deployment-scan
+acceptance is claimed. No measured result is claimed.

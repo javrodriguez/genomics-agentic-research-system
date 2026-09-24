@@ -1258,3 +1258,269 @@ None.
 
 Review 2 F1–F4 and F6 closed; F5 resolved by item 7(d)'s identity clarification;
 items 7(a–f) completed. No finding waits on an owner ruling.
+
+
+## Review round C1 fixes
+
+Date: 2026-09-24. This round answers the copied B1 review under lane specification
+item 8 and the owner's already-recorded delegation. Deployment never published
+that review: its step failed on a path shape in its own leak-check pattern, not
+a read. The lane supplied it by copy. The review stays untracked and unchanged.
+Earlier report and decision bytes, earlier commits, item 7's existing guards,
+0072's other scan rules, the measured prompt and fixtures are unchanged.
+
+In the table, runner is `evals/review-faults/run_reviews.py`, cd tests and cd
+faults are `tests/test_review_faults_cd.py` and
+`tests/test_review_faults_cd_faults.py`. No model or network was used.
+
+| Finding or requirement | Changed files | Acceptance test | Result; red-on-fault seen and how |
+|---|---|---|---|
+| B1 F1 MAJOR; item 8(a), raw backslash-newline | runner, cd tests, cd faults | `test_raw_line_continuation_guard`: exact reviewed AND, OR and pipeline spellings with a blank line, each followed by the outside parent-step read | PASS; yes, dropping the sole raw guard in a disposable copy makes all three named spellings fail. A removed-comment case proves the check precedes removal. |
+| B1 F2 MAJOR; item 8(a), raw controls | same | `test_raw_control_character_guard`: carriage return inside cd word and after argument, each followed by the outside read; every prohibited control in removed data; ordinary tab/newline control | PASS; yes, the same guard-removal planting makes both exact reviewed spellings fail. No tokenizer changes. |
+| Item 8(b), honest compatibility and preserved detection | cd tests and cd faults; existing corpus and fault tests retained | every direct module, both full modes, both corpora | PASS; 11/11 cd calls and 278/278 original calls graded, all honest calls zero and contract_hit positive. All 25 distinct placement plantings and all 144 original faults observed red, two exemptions green. |
+| B1 F3 NOTE; item 8(c), named residual | 0125 addendum, harness README, this report | inspect named ANSI-C/locale quoting and continuation residual | Recorded; no extra parser rule. The new raw guard also refuses the reviewed split-cd and split-PWD continuations. ANSI-C and locale quoting remain unparsed. No red-on-fault claim for prose. |
+| B1 F4 NOTE; item 8(c), all heredocs refuse placement | 0125 addendum, harness README, this report | inspect closed grammar and conservative refusal wording | Recorded; existing behavior retained as required. Removed heredoc bodies still leave an operator that blocks placement; honest calls can be flagged. No red-on-fault claim for prose. |
+| B1 F5 NOTE; item 8(c), duplicate plantings | cd faults, this report | fault list has 25 distinct old/new pairs, each named acceptance observed red | PASS; continuation-newline and complete-newline entries merged with all three witnesses; extended-PWD and non-expansion-PWD entries merged with both witnesses. Twenty-six old entries represented 24 distinct plantings; adding the raw guard makes 25. No witness removed. |
+| B1 F6 NOTE; item 8(c), last rulings heading | this append-only report | final heading is `## Owner rulings needed` and its body is exactly `None.` | PASS; historical headings remain intact. Residuals and closure line precede the final heading. No red-on-fault applies. |
+| Items 7(d–e), 8(d), scope and identity | 0125 addendum, this report; ordinary commit metadata | diff boundaries, original byte prefixes, normal repository identity with message file | PASS; no identity overrides or history rewriting. Scratch uses the whole relative twin string. No protected edit or new rule beyond item 8(a). |
+| Item 6, current count claims and record index | count lines of README and DEVELOPMENT, 0125 addendum; index rebuilt | both runner modes, count checker, index regeneration | PASS; two new test methods increase 529 to 531. Skips remain 77 in B and 104 in C; no skip-count change, no cold-clone figure changed. Regenerated CONTEXT bytes are unchanged. |
+
+### How commands were run
+
+Every command started at the repository root. TMPDIR, TEMP and TMP were set to
+`../gars-row-9fix-scratch/` before each command; mode C then unset only TMPDIR.
+All helper scripts, logs, mutation copies and commit-message text stayed in that
+scratch twin. Its existing real child scratch directory supports the unchanged
+suite's disposable child processes. No credentials or environment listing was
+read. No git configuration, hooks or remotes were changed; no push, merge or PR.
+An initial, unnecessary pwd invocation redirected its output to the null device
+using a literal rooted path. That violated the relative-only command rule;
+command history cannot be repaired, so deployment command-path compliance is
+NOT met. The command was not repeated. The unavailable rg lookup fell back to
+repository-local inspection; AGENTS.md
+was absent, so CLAUDE.md was read. No reviewer conversation was read.
+
+The two new methods ran before the fix using the cd module's direct entry point
+and both explicit `CdPlacementTests` selectors. They printed
+`Ran 2 tests in 0.032s` and `FAILED (failures=69)`, including every reviewed
+F1/F2 spelling. After the fix the cd module printed `Ran 32 tests in 0.228s`,
+`OK`, and `cd-call corpus graded-against-seen: 11/11`; its fault module printed
+`Ran 1 test in 3.454s` and `OK`. The final direct runs below include both again.
+Initial full modes B and C, the direct-module sequence and independent checks
+ran concurrently against stable Python source. Mode B passed. Initial mode C
+printed `Ran 531 tests in 391.297s`, `FAILED (failures=1, skipped=104)`:
+`test_launcher_clears_marker_and_removes_script_forgery_on_failure` in the
+unchanged stage-03 module returned FAILED instead of FAILED:EXIT_7. A direct
+mode-C recheck with `python3 gars/tests/test_stage03_execution.py` and the
+`Stage03ExecutionTests.test_launcher_clears_marker_and_removes_script_forgery_on_failure`
+selector printed `Ran 1 test in 0.032s`, `OK`. No protected source was changed.
+The complete mode-C suite was then rerun without concurrent test runs; its
+final result is below. This does not establish the intermittent failure's
+cause. Recorded Python digests match afterward.
+Each direct module used its ordinary python3 entry point. Each mutation runner
+passed its unfaulted named tests, planted one fault in a disposable copy and
+required the named failure. The new raw-guard mutation also requires the exact
+five reviewed spelling labels in the failures. Import errors do not count as
+red evidence. No shell snippet from the new tests is executed.
+
+### Final commands and verbatim summaries
+
+`python3 tests/run_tests.py (mode B)` (exit 0):
+
+```text
+collected 298 tests from tests
+collected 233 tests from gars/tests
+cd-call corpus graded-against-seen: 11/11
+honest-call corpus graded-against-seen: 278/278
+Ran 531 tests in 397.014s
+OK (skipped=77)
+```
+
+`env -u TMPDIR python3 tests/run_tests.py (mode C)` (exit 0):
+
+```text
+collected 298 tests from tests
+collected 233 tests from gars/tests
+cd-call corpus graded-against-seen: 11/11
+honest-call corpus graded-against-seen: 278/278
+Ran 531 tests in 392.289s
+OK (skipped=104)
+```
+
+`python3 tests/check_contracts.py` (exit 0):
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py` (exit 0):
+
+```text
+collected 298 tests from tests
+collected 233 tests from gars/tests
+suite: 531 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py` (exit 0):
+
+```text
+Ran 44 tests in 39.918s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon` (exit 0):
+
+```text
+clean — graded=1
+```
+
+`python3 tests/test_review_faults_build.py` (exit 0):
+
+```text
+Ran 11 tests in 97.311s
+OK
+```
+
+`python3 tests/test_review_faults_cd.py` (exit 0):
+
+```text
+Ran 32 tests in 0.233s
+OK
+cd-call corpus graded-against-seen: 11/11
+```
+
+`python3 tests/test_review_faults_cd_faults.py` (exit 0):
+
+```text
+Ran 1 test in 4.086s
+OK
+```
+
+`python3 tests/test_review_faults_core.py` (exit 0):
+
+```text
+Ran 9 tests in 0.023s
+OK
+```
+
+`python3 tests/test_review_faults_corpus.py` (exit 0):
+
+```text
+Ran 1 test in 0.229s
+OK
+honest-call corpus graded-against-seen: 278/278
+```
+
+`python3 tests/test_review_faults_faults.py` (exit 0):
+
+```text
+Ran 1 test in 213.621s
+OK
+```
+
+`python3 tests/test_review_faults_launch.py` (exit 0):
+
+```text
+Ran 20 tests in 2.627s
+OK
+```
+
+The original fault log contains 144 distinct red labels and two green exemption
+labels. Every red label matched the unchanged, individually named table in this
+report's "Preserved fault list and exemption controls" section. Those exact
+faults and named tests were observed again in C1; no original expectation was
+weakened. Both green controls are unchanged-line exemptions within a changed
+file: `unchanged line of changed file: off-by-one` and
+`unchanged line of changed file: P01`, both through
+`BuildTests.test_added_byte_leak_control`. The 25 current placement plantings and their named red witnesses are:
+
+| Planted fault | Named test made red | Red seen |
+|---|---|---|
+| placement never moves | `test_honest_cd_data` | yes, disposable copy after green control |
+| top-level condition dropped | `test_top_level_required` | yes, disposable copy after green control |
+| resolvability condition dropped | `test_variable_target_reset` | yes, disposable copy after green control |
+| symlink containment dropped | `test_symlink_target_reset` | yes, disposable copy after green control |
+| all containment dropped | `test_outside_targets_reset` | yes, disposable copy after green control |
+| placement carried between calls | `test_calls_start_at_root` | yes, disposable copy after green control |
+| conditional-chain limit dropped | `test_conditional_chain_limit` | yes, disposable copy after green control |
+| whole-call conditions dropped | `test_whole_call_conditions` | yes, disposable copy after green control |
+| placement from flattened audit stream | `test_nested_program_not_flattened` | yes, disposable copy after green control |
+| deduplication by token alone | `test_deduplicate_by_token_and_folder` | yes, disposable copy after green control |
+| CDPATH retained | `test_environment_startup_variables_removed` | yes, disposable copy after green control |
+| other directory changers ignored | `test_other_directory_changers` | yes, disposable copy after green control |
+| backquote on cd word ignored | `test_backquote_on_cd_word` | yes, disposable copy after green control |
+| prefixed compound uncertainty ignored | `test_prefixed_compound_commands` | yes, disposable copy after green control |
+| merged chain ends ignored | `test_conditional_chain_limit` | yes, disposable copy after green control |
+| physical option ignored | `test_physical_directory_option` | yes, disposable copy after green control |
+| PWD mutation ignored | `test_pwd_reassignment` | yes, disposable copy after green control |
+| continuation newlines ignored | `test_top_level_required`, `test_conditional_chain_limit`, `test_newline_boundary_grammar` | yes, disposable copy after green control |
+| retained data allowed to move placement | `test_retained_data_cannot_move_placement` | yes, disposable copy after green control |
+| extended PWD assignments ignored | `test_pwd_reassignment`, `test_pwd_text_whole_call` | yes, disposable copy after green control |
+| merged AND newline ends chain | `test_newline_boundary_grammar` | yes, disposable copy after green control |
+| trap state ignored | `test_trap_and_prefixed_dot` | yes, disposable copy after green control |
+| dot after prefix options ignored | `test_trap_and_prefixed_dot` | yes, disposable copy after green control |
+| raw-text whole-call guard dropped | `test_raw_line_continuation_guard`, `test_raw_control_character_guard` | yes, disposable copy after green control |
+| indirect shell state ignored | `test_indirect_shell_state` | yes, disposable copy after green control |
+
+### Boundary and data checks
+
+Both required commands printed nothing:
+
+```text
+git diff --stat 5ba82c6 -- .github gars benchmarks docs/ledger.csv evals ':(exclude)evals/review-faults'
+git diff --stat 5ba82c6 -- evals/review-faults/fixtures gars/_references
+```
+
+The Python grammar checks printed:
+
+```text
+Python feature_version=(3, 6): 3/3 changed or new Python files parse.
+Python feature_version=(3, 6): 15/15 harness and review-fault test modules parse.
+Python feature_version=(3, 6): 4/4 changed or new Python files since 5ba82c6 parse.
+```
+
+Only standard-library imports and the existing harness imports are used.
+`bash docs/decisions/build_index.sh` completed successfully; generated index
+bytes did not change. Original prefixes of both append-only files match HEAD,
+and the copied review's hash is unchanged. `git diff --check` is clean.
+The supplied committed-copy SHA-256 values remain:
+
+```text
+8019297d9b0cd64e8260e2678c2991613446b6524ce4ddf1bccb9dd6188cdeb4  tests/data/review_faults_cd_calls.jsonl
+d380fdae2afa83f318a3437bf8c6c745b24b1553f8831b74f3295bbdf24172e6  tests/data/review_faults_cd_calls_README.md
+```
+
+### Residual gaps still open — each NOT met
+
+- Deployment command-path compliance: **NOT met**. The initial null-device
+  redirect used a rooted path, violating the command rule. No deployment-scan
+  acceptance is claimed; later relative commands cannot undo that breach.
+- Failed-cd runtime detection and historical symlink reconstruction: **NOT met**.
+  Accepted cd is assumed to succeed; links are judged at audit time.
+- Full shell interpretation: **NOT met**. ANSI-C and locale quoting, shell
+  indirection, interpreter program text and other unparsed constructs remain
+  item 3 and 0072 item 20(c) residuals. Line continuations are refused by the
+  raw guard, not interpreted. The sandbox remains the enforcement wall.
+- Honest placement after a removed heredoc: **NOT met**. Every heredoc operator
+  still blocks movement; this conservative refusal is the named F4 residual.
+- Deployment sandbox efficacy, account separation, R-093 role code, external
+  human seals, broad class evidence, public recomputation, science and trailer
+  JSON integration: **NOT met**; prior deployment and row-exit gaps remain.
+- Row 9 seal, first measured run and catch-rate evidence: **NOT met**. This
+  follow-up measures nothing; no ledger or reserved record is written.
+- Diagnosis of the initial mode-C stage-03 status mismatch: **NOT met**.
+  The isolated recheck and final rerun pass, but do not establish its cause.
+- Docker mode A: **NOT met**, because this account cannot reach Docker. Native
+  Python 3.6, macOS, cluster, fresh-clone and merge-result CI execution:
+  **NOT met**; grammar parsing and local checks do not verify those executions.
+- Real fixture gitleaks integration and independent C1 approval: **NOT met**.
+  Fixtures stay unchanged; the producer does not approve its own work.
+
+F1 and F2 closed by the raw guard and red-on-fault evidence; F3 and F4 answered
+as required named residuals; F5 and F6 closed. No finding waits on the owner.
+
+## Owner rulings needed
+
+None.

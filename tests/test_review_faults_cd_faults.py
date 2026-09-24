@@ -65,25 +65,24 @@ FAULTS = [
      "{'PWD', 'OLDPWD'}", 'set()', ['test_pwd_reassignment']),
     ('continuation newlines ignored',
      "self.continuations[index] = ShellWord(previous.rstrip('\\n'))",
-     'pass', ['test_top_level_required', 'test_conditional_chain_limit']),
+     'pass', ['test_top_level_required', 'test_conditional_chain_limit',
+              'test_newline_boundary_grammar']),
     ('retained data allowed to move placement',
      'or retained_data or trap_state', 'or trap_state',
      ['test_retained_data_cannot_move_placement']),
     ('extended PWD assignments ignored',
-     "values.add('PWD')", 'pass', ['test_pwd_reassignment']),
-    ('complete newline grammar ignored',
-     "self.continuations[index] = ShellWord(previous.rstrip('\\n'))",
-     'pass', ['test_newline_boundary_grammar']),
+     "values.add('PWD')", 'pass', ['test_pwd_reassignment', 'test_pwd_text_whole_call']),
     ('merged AND newline ends chain',
      "word.rstrip('\\n') != '&&'", "word != '&&'",
      ['test_newline_boundary_grammar']),
-    ('non-expansion PWD text ignored',
-     "values.add('PWD')", 'pass', ['test_pwd_text_whole_call']),
     ('trap state ignored',
      "trap_state = 'trap' in values", 'trap_state = False', ['test_trap_and_prefixed_dot']),
     ('dot after prefix options ignored',
      "if word == '.' and (command_start or dot_prefix):",
      "if word == '.' and command_start:", ['test_trap_and_prefixed_dot']),
+    ('raw-text whole-call guard dropped',
+     'if raw_hazard:', 'if False:',
+     ['test_raw_line_continuation_guard', 'test_raw_control_character_guard']),
     ('indirect shell state ignored',
      "{'eval', 'source', '.'}", 'set()', ['test_indirect_shell_state']),
 ]
@@ -129,6 +128,10 @@ class CdFaultTests(unittest.TestCase):
                         self.assertIn("call='%s'" % call, output)
                 if label == 'top-level condition dropped':
                     for spelling in ('subshell', 'pipeline-left', 'or-left', 'nested-shell'):
+                        self.assertIn("spelling='%s'" % spelling, output)
+                if label == 'raw-text whole-call guard dropped':
+                    for spelling in ('and-escaped-newline-blank', 'or-escaped-newline-blank',
+                                     'pipe-escaped-newline-blank', 'cr-in-cd-word', 'cr-after-arg'):
                         self.assertIn("spelling='%s'" % spelling, output)
                 print('cd fault red: %s -> %s' % (label, ', '.join(names)))
                 for line in output.splitlines():
