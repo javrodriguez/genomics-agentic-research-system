@@ -302,6 +302,14 @@ readers now ignore replacement objects. Restore rows retain terminal corrections
 with equal timestamps; venue/canary evidence remains unmeasured. See the
 [corrective record](docs/decisions/0062-row-11-raw-git-and-terminal-restore-addendum.md).
 
+Row 7 review round 2 (2026-09-23) makes evidence links immutable to the writer,
+refuses snapshot claims without evidence, and checks all text in HYPOTHESIS
+rows and their limitations for observation verbs. Registration remains split
+between exploratory writer runs and owner-only claim-eligible runs. Claims and
+reports are validated only against disposable local PostgreSQL; deployment and
+pilot-1 measurement remain unverified. See the
+[row-7 review response](docs/implementation/row_7_change_report.md#review-round-2-fixes).
+
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
 (421 tests, 11 of them environment skips, on macOS at the 2026-09-23 row-12 post-merge fix round, with Docker answering and row 5's scratch folder set as CI sets it; a macOS cold clone without it skips 55, or 86 with `TMPDIR` also unset as on Linux; no cluster run is evidenced for these rows).
 Row 15 review round 4 (2026-09-22), macOS / Python 3.8.2: 252 tests, <!-- not-the-suite-total -->
@@ -440,7 +448,7 @@ external-human seals (§21 Q9). No benchmark or evidence regeneration is impleme
 | Design-defect catch rate | unmeasured | tests/test_stage01_design.py | unmeasured |
 | Reviewer catch rate (code, science) | unmeasured | none | unmeasured |
 | Manifest completeness and re-run diff | unmeasured | none | unmeasured |
-| Orphan claims | unmeasured | none | unmeasured |
+| Orphan claims | unmeasured | `gars/tests/test_claim_constraints.py` | unmeasured |
 | Policy bypass rate | unmeasured | none | unmeasured |
 | Restore-drill minutes and age | unmeasured | none | unmeasured |
 | Hours per verified capability | unmeasured | none | unmeasured |

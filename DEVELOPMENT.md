@@ -15,6 +15,15 @@ it constrains — template, menu, preflight, or decision — never parked here (
 
 ## Current Status
 
+**Row 7 review round 2, 2026-09-23:** writer evidence links are immutable;
+snapshot claims require evidence; the HYPOTHESIS verb gate covers all rendered
+row text and adjacent limitations. Owner-role trigger checks remain in place.
+The writer registers exploratory runs; only the owner registers claim-eligible
+runs. Verification and review dispositions are recorded in the
+[round-2 response](docs/implementation/row_7_change_report.md#review-round-2-fixes).
+Authoritative deployment, row-6 methods/reproduction, pilot evidence and the
+owner's separate protected-prefix approval remain outside this producer commit.
+
 **Row 12 review round 7, 2026-09-23: post-merge fixes on e59dfc0.**
 The prior row was merged and its protected changes approved in 0066. This fix makes
 cancel poll once before acting and refuse unknown scheduler state without changing evidence.
