@@ -17,8 +17,21 @@ def parser():
 
 def dois(reference):
     """Extract DOI tokens wherever a citation writes them, preserving suffix case."""
-    values = re.findall(r"10\.[0-9]{4,9}/[^\s<>\"']+", reference, re.I)
-    return [value[:-1] if value.endswith(('.', ',', ';')) else value for value in values]
+    values = re.findall(r"10\.[0-9]{4,9}(?:\.[0-9]+)*/[^\s<>\"']+", reference, re.I)
+    identifiers = []
+    for value in values:
+        punctuation_removed = False
+        while value:
+            if value[-1] in '.,;' and not punctuation_removed:
+                value = value[:-1]
+                punctuation_removed = True
+            elif (value[-1] in ')]'
+                  and value.count(value[-1]) > value.count({')': '(', ']': '['}[value[-1]])):
+                value = value[:-1]
+            else:
+                break
+        identifiers.append(value)
+    return identifiers
 
 
 def doi(reference):
@@ -27,7 +40,7 @@ def doi(reference):
 
 
 def mentions_doi(reference):
-    return bool(re.search(r'\bdoi\b', reference, re.I))
+    return bool(re.search(r'\bdoi(?::|\.org\b)', reference, re.I))
 
 
 def live_transport(url):

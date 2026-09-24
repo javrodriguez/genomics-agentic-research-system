@@ -10,6 +10,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from support import module, REPO
@@ -39,11 +40,11 @@ class EmitReportTests(unittest.TestCase):
             code = emitter.main(self.argv(), transport=transport)
         return code, output.getvalue()
 
-    def refuse(self, code):
+    def refuse(self, code, transport=replay):
         for exists in (False, True):
             if exists:
                 self.out.write_bytes(b'previous report\n')
-            rc, output = self.emit()
+            rc, output = self.emit(transport)
             self.assertNotEqual(rc, 0)
             self.assertIn(code, output)
             if exists:
@@ -77,13 +78,57 @@ class EmitReportTests(unittest.TestCase):
                 if self.out.exists():
                     self.out.unlink()
                 self.refuse('citation_unresolved')
-        for reference in ('doi:invalid', 'https://doi.org/invalid', 'DOI missing'):
+        for reference in ('doi:invalid', 'https://doi.org/invalid', 'DOI: missing'):
             with self.subTest(reference=reference):
                 self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
                 self.save()
                 if self.out.exists():
                     self.out.unlink()
                 self.refuse('citation_unverifiable')
+
+        reference = '10.1000.10/gars-fabricated-subdivided'
+        requests = []
+        def not_found(url):
+            requests.append(url)
+            return (404, b'{}') if 'crossref' in url else (404, b'{"responseCode":100}')
+        self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
+        self.save()
+        self.out.unlink()
+        self.refuse('citation_unresolved', transport=not_found)
+        self.assertEqual(requests, [
+            'https://api.crossref.org/works/' + quote(reference, safe=''),
+            'https://doi.org/api/handles/' + quote(reference, safe='')] * 2)
+
+        for reference in ('(doi:' + generator.REAL_DOI + ')',
+                          '[doi:' + generator.REAL_DOI + ']',
+                          '(doi:' + generator.REAL_DOI + ').',
+                          '[doi:' + generator.REAL_DOI + ';]'):
+            with self.subTest(reference=reference):
+                self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
+                self.save()
+                self.assertEqual(self.emit(), (0, ''))
+
+        # Brackets inside a suffix are meaningful; discard only unmatched closers.
+        for identifier in ('10.1000.10/synthetic(part)', '10.1000.10/synthetic[part]'):
+            for reference in (identifier, '(doi:' + identifier + ')'):
+                with self.subTest(reference=reference):
+                    requests = []
+                    def resolved(url):
+                        requests.append(url)
+                        return 200, b'{"status":"ok","message":{}}'
+                    self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
+                    self.save()
+                    self.assertEqual(self.emit(resolved), (0, ''))
+                    self.assertEqual(requests, [
+                        'https://api.crossref.org/works/' + quote(identifier, safe='')])
+
+        for reference in ('Doi T, Sato K (2019) J Synth Biol 3:1-9', 'DOI missing'):
+            with self.subTest(reference=reference):
+                self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
+                self.save()
+                with patch.object(emitter.evidence_check.resolve_citation, 'resolve') as lookup:
+                    self.assertEqual(self.emit(), (0, ''))
+                    lookup.assert_not_called()
 
     def test_malformed_evidence(self):
         artifact, source = copy.deepcopy(self.snapshot['claims'][0]['evidence'])
@@ -96,6 +141,19 @@ class EmitReportTests(unittest.TestCase):
                  dict(source, source={'id': 1, 'reference': None}),
                  dict(artifact, artifact={'id': 1, 'path': 'evidence.tsv'}),
                  dict(source, source={'id': 1, 'reference': ''})]
+        for original, parent_key in ((artifact, 'artifact'), (source, 'source')):
+            cases.append(dict(original, path='results/fabricated_output.tsv'))
+            extra_parent = copy.deepcopy(original)
+            extra_parent[parent_key]['extra_path'] = 'results/fabricated_output.tsv'
+            cases.append(extra_parent)
+            for key in original:
+                missing = copy.deepcopy(original)
+                del missing[key]
+                cases.append(missing)
+            for key in original[parent_key]:
+                missing = copy.deepcopy(original)
+                del missing[parent_key][key]
+                cases.append(missing)
         for evidence in cases:
             with self.subTest(evidence=evidence):
                 self.snapshot['claims'][0]['evidence'] = [evidence]

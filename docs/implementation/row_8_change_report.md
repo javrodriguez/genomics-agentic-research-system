@@ -1135,3 +1135,273 @@ Hours and metered cost: unknown, not zero.
 ## Owner rulings needed
 
 None.
+
+
+## Review round D2 fixes
+
+Date: 2026-09-24. Starting commit: `86d9b47d92aa6323f76faaa8bceba3485e50577f`.
+One new commit on `build/gars-row-8-catalogue` answers
+`docs/reviews/row_8_review_D1.md`, SHA-256
+`c40559446a525f8f3e8d61496d5ff4fbbe77bf43c394ba898ee22c908c50679d`.
+The supplied review remains untracked and unchanged. Earlier scope corrections
+are already present; no historical restoration or commit rewrite is repeated.
+The brief's rulings were decided under the owner's standing delegation (23 Sep 2026).
+
+| Finding → requirement | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| F1 MINOR → R-114 | `docs/decisions/0101-row-8-defect-catalogue-and-detectors.md` | Byte-prefix and exact dated interface-sentence comparison | Closed; D1 transport ruling appended, C2 stop superseded; red-on-fault: no, documentation only |
+| F2 MINOR → R-125, R-042 | `gars/_system/resolve_citation.py`, `gars/tests/test_emit_report.py`, `benchmarks/defects/red_on_fault.py` | EmitReportTests.test_doi_reference_forms through actual emission | Closed; subdivided fabricated DOI refused at both lookups, parenthesised real DOI accepted, balanced suffixes preserved, Doi author needs no lookup; red-on-fault: yes, each of the three corrections independently reversed in disposable copies |
+| F3 MINOR → R-114, R-042 | `gars/_system/claims/evidence_check.py`, `gars/tests/test_emit_report.py`, `benchmarks/defects/red_on_fault.py` | EmitReportTests.test_malformed_evidence | Closed; extra/missing keys in entries and both parent kinds refuse evidence_missing and preserve absent/existing output; red-on-fault: yes, independently remove entry-key and parent-key checks |
+| F4 MINOR → R-114, R-042 | `tests/test_planted_defects.py`, `benchmarks/defects/red_on_fault.py` | SealedOutputDisciplineTests.test_sentinel_and_error_accounting | Closed; real stage CLI crashes on producer-authored non-UTF-8 samples.csv, error stays graded and counts as flagged, sentinel appears zero times; red-on-fault: yes, excluding error from flagged count fails the regression |
+| F5 NOTE → R-125 | This report; appended 0101 residual | Existing test_sealed_class9_uses_live_transport | Answered; stub proves transport selection only, never network behavior; red-on-fault: no new change required, networked sealed measurement stays NOT met |
+
+All code changes implement the review's required fixes. No acceptance threshold,
+config key, closed failure vocabulary, catalogue entry, committed development
+fixture or ledger row changes. Tests extend existing methods, so the collection
+count remains 491 and README/DEVELOPMENT need no count edits.
+Decision 0101 receives dated addenda only. The index was regenerated with
+`bash docs/decisions/build_index.sh` and remains byte-identical.
+
+### Protected files touched in D2
+
+- `gars/_system/resolve_citation.py`
+- `gars/_system/claims/evidence_check.py`
+
+### Expectation changes
+
+| Test / location | Old shape | New shape | Reason |
+|---|---|---|---|
+| EmitReportTests.test_doi_reference_forms | `DOI missing` refused as an unparseable marker | `DOI: missing` retains the malformed-marker refusal; `DOI missing` explicitly emits with no lookup | F2 requires markers only as doi: or doi.org; a bare word is not a DOI marker |
+| SealedOutputDisciplineTests.test_sentinel_and_error_accounting | Two synthetic controls, both errors | Three synthetic controls, all errors, including class 0; flagged/clean is 1/1 | F4 adds a crashing clean control; all previous verdict, denominator and sentinel assertions remain |
+
+### Execution and red/green evidence
+
+Every shell command ran from the repository root without changing directory,
+with TMPDIR, TEMP and TMP set to the scratch twin before execution:
+
+```bash
+export TMPDIR="$(pwd)-scratch" TEMP="$(pwd)-scratch" TMP="$(pwd)-scratch"
+```
+
+Python: `Python 3.13.5`, including the eval harness (at least 3.9). Logs, byte
+backups, temporary projects, disposable fault copies and the commit-message
+file remain in the scratch twin. No network test was enabled and no real sealed
+plant was created, searched for or inspected. The layout controls are synthetic
+producer-authored regression inputs, not seals. One full suite ran at a time.
+Reads used Git, Python, cat and sed after confirming rg was unavailable. Edits
+used patches without literal home markers, and Python append-only record writes.
+
+Before production repairs, the expanded tests ran against the D1 code:
+
+`python3 gars/tests/test_emit_report.py EmitReportTests.test_doi_reference_forms`
+
+```text
+Ran 1 test in 0.033s
+FAILED (failures=1)
+```
+
+`python3 gars/tests/test_emit_report.py EmitReportTests.test_malformed_evidence`
+
+```text
+Ran 1 test in 0.363s
+FAILED (failures=14)
+```
+
+`python3 tests/test_planted_defects.py SealedOutputDisciplineTests.test_sentinel_and_error_accounting`
+
+```text
+Ran 1 test in 0.031s
+FAILED (failures=1)
+```
+
+All three are green with the repairs. The initial focused green runs printed
+`Ran 10 tests in 0.364s` / `OK` for `python3 gars/tests/test_emit_report.py`, and
+`Ran 1 test in 0.031s` / `OK` for the same sentinel command above.
+
+`python3 benchmarks/defects/red_on_fault.py` reran the inherited 33 faults plus
+six D2 faults in disposable copies, restoring byte backups after every fault.
+The inherited malformed-parent mutation now names its condition as well as its
+body so its target stays unique after adding a second refusal branch; its
+semantic fault and acceptance are unchanged. Every named fault went red:
+
+```text
+RED: sex confounding removed
+RED: imbalance threshold 0.9
+RED: cell pseudoreplication removed
+RED: subject count removed
+RED: index comparison inverted
+RED: not_checkable counted pass
+RED: evidence hash not compared
+RED: absolute evidence accepted
+RED: padj below pvalue allowed
+RED: BH recompute removed
+RED: Crossref 404 alone unresolved
+RED: network error resolved
+RED: unparseable plant skipped
+RED: unmapped folded into class
+RED: Hi-C denominator removed
+RED: truncated plain FASTQ passes
+RED: gzip-valid record truncation passes
+RED: report written before preflight
+RED: sealed stdout leaked
+RED: invalid_design mapped without family
+RED: BH tolerance 1e-6
+RED: environment replay switch
+RED: suppressed replay option
+RED: DOI tokens restricted to whole reference
+RED: malformed DOI marker ignored
+RED: malformed evidence accepted
+RED: subdivided DOI prefix ignored
+RED: unmatched DOI closing bracket retained
+RED: author Doi treated as DOI marker
+RED: extra evidence keys accepted
+RED: extra evidence parent keys accepted
+RED: erroring clean plant counted clean
+RED: padj without pvalue allowed
+RED: invalid sex treated unknown
+RED: invalid age allowed
+RED: class 2 detail ignored
+RED: class 3 detail ignored
+RED: graded verdict dropped
+RED: renderer receives from-db
+red-on-fault: 39/39
+```
+
+`python3 benchmarks/defects/baseline_check.py` repeated the original BASE
+import and behavioral checks with the runner/catalogue copied into scratch:
+
+```text
+BASE import: RED (missing gars/_system/resolve_citation.py)
+BASE class 1: caught
+BASE class 2: caught
+BASE class 3: not caught
+BASE class 4: not caught
+BASE class 5: not caught
+BASE class 6: not caught
+BASE class 7: not caught
+BASE class 8: not caught
+BASE class 9: not caught
+BASE behavioral: 2/10; classes 3, 4, 5, 6, 7, 8, 9 not caught
+```
+
+### Required and additional command summaries (verbatim)
+
+`GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py`
+
+```text
+Ran 491 tests in 80.808s
+OK (skipped=79)
+```
+
+`python3 tests/check_contracts.py`
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`
+
+```text
+suite: 491 tests, from unittest's loader
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`
+
+```text
+Ran 44 tests in 37.495s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`
+
+```text
+clean — graded=1
+```
+
+`python3 tests/test_planted_defects.py`
+
+```text
+Ran 18 tests in 4.412s
+OK (skipped=1)
+```
+
+`python3 gars/tests/test_citation_resolution.py`
+
+```text
+Ran 5 tests in 0.007s
+OK (skipped=1)
+```
+
+`python3 gars/tests/test_emit_report.py`
+
+```text
+Ran 10 tests in 0.359s
+OK
+```
+
+`python3 gars/tests/test_integrity_records.py`
+
+```text
+Ran 2 tests in 0.066s
+OK
+```
+
+Development EXIT lines only:
+
+```text
+planted-defects development (producer-authored, unsealed): 9/10 classes (placeholder 10 counted planted, not caught)
+false flags (producer-authored clean projects): 0/10
+graded 19 of 19 development projects seen
+class 6: measured with --verify-integrity full; stage 01 default is none
+```
+
+The class-9 development result uses **synthetic protocol fixtures**, proving
+protocol logic only. It is never reported as a live or sealed measurement.
+
+### Scope, provenance and verification limits
+
+`git diff --check` is clean. Changed Python files parse with
+`ast.parse(feature_version=(3, 6))`; that does not prove actual Python 3.6 execution.
+The original decision/report bytes remain exact prefixes. The copied D1
+transport sentence matches the sealed interface exactly. Added-line checks use
+`chr(126)` and find no literal home marker. The row-7 invariant command remains
+empty:
+
+```bash
+git diff dc6b803 -- gars/_system/claims/render_report.py gars/_system/claims/claims.sql gars/_system/claims/report_template.md
+```
+
+The full suite's 79 skips include Row05DatabaseTests (17) and
+ClaimConstraintTests (18); database behavior for rows 5 and 7 is not verified
+on this host. Actual sealed and live citation tests each skip explicitly.
+
+Commit `a8b54e5` used another identity; it is not rewritten and stays as it is
+(append-only). This round uses this repository's configured identity exactly
+as `git config user.name` and `git config user.email` print it, without author
+or committer overrides. Staging names only the seven changed paths; the commit
+message is read from a scratch-twin file. No push, remote, approval or merge.
+
+Hours and metered dollars: unknown, not zero.
+
+## Owner rulings needed
+
+None.
+
+## D2 residual gaps
+
+- **NOT met:** actual sealed catalogue and clean measurements, sealed >=9/10,
+  external_human_seal and public credibility; no row-8 exit is claimed.
+- **NOT met:** live DOI capture/resolution and the live sealed class-9 path.
+  Ruling 5's later networked measurement supplies that evidence; stubs do not.
+- **NOT met:** database verification for rows 5 and 7 on this host, live
+  pipelines/HPC, actual Python 3.6 execution and the other environment skips.
+- **NOT met:** PMID/E-utilities, literature-role typed-tool wiring, R-069 liveness
+  beyond claim evidence, a class-10 detector, stage-03/pilot emission wiring,
+  pilot-1 measurement and step B's data route/backend work.
+- **NOT met:** containment of system/catalogue edits, scientific DE-model
+  validity, DOI relevance, swaps without library_index, fresh independent
+  review of D2, protected-change approval, deployment path-scan acceptance
+  and merge. Direct renderer invocation remains unguarded.
+
+D1 F1–F4 closed; F5 answered as a measurement limit; no finding waits on a ruling.

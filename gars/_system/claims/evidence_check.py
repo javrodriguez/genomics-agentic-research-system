@@ -11,6 +11,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import resolve_citation
 
 
+# Exact keys emitted by claims.claims_export at BASE (decision 0075).
+EVIDENCE_KEYS = {'id', 'artifact_id', 'source_id', 'kind', 'relation', 'artifact', 'source'}
+PARENT_KEYS = {'artifact': {'id', 'path', 'sha256'}, 'source': {'id', 'reference'}}
+
+
 def parser():
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument('--snapshot', type=Path, required=True)
@@ -49,11 +54,15 @@ def main(argv=None, transport=None):
                 raise ValueError('invalid claim id')
             problems = set()
             for evidence in claim['evidence']:
+                if not isinstance(evidence, dict) or set(evidence) != EVIDENCE_KEYS:
+                    problems.add('evidence_missing')
+                    continue
                 artifact, source = evidence.get('artifact'), evidence.get('source')
                 kind = 'artifact' if artifact is not None else 'source'
                 parent = artifact if kind == 'artifact' else source
                 other = 'source' if kind == 'artifact' else 'artifact'
-                if (not isinstance(parent, dict) or (artifact is not None and source is not None)
+                if (not isinstance(parent, dict) or set(parent) != PARENT_KEYS[kind]
+                        or (artifact is not None and source is not None)
                         or type(evidence.get(kind + '_id')) is not int
                         or type(parent.get('id')) is not int
                         or evidence[kind + '_id'] != parent['id']

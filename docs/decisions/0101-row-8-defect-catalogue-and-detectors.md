@@ -337,3 +337,62 @@ contract. That part is stopped and the alternatives are recorded under the last
 Owner rulings needed section of the change report. No option is implemented.
 All prior residuals remain NOT met, including public sealing, PMID/literature
 wiring, stage-03/pilot emission wiring, pilot measurement and protected approval.
+
+
+## Addendum — D1 transport ruling, recorded in D2, 2026-09-24
+
+Ruling 5 was decided under the owner's standing delegation (23 Sep 2026).
+Option B resolves the C2 F1 stop above and was implemented in D1, commit
+`86d9b47`. Sealed class 9 uses `transport=None` through the production lookup
+on a networked host at measurement time; development keeps in-process replay.
+No production CLI flag, environment variable or file switches the transport.
+The dated sentence appended to the sealed interface in D1 is copied here:
+
+2026-09-24: Sealed class-9 plants use the live production transport (`transport=None`) on a networked measurement host, as decided under the owner's standing delegation (23 Sep 2026); development plants and default tests retain in-process replay or test stubs, and class 9 is never scored as a sealed measurement from replay.
+
+The regression uses an in-process stub of the live lookup to prove selection
+and refusal for an unrecorded DOI. It proves no network outcome. Replay records
+remain **synthetic protocol fixtures**, proving protocol logic only. Live DOI
+capture and live sealed class-9 measurement remain **NOT met**.
+
+## Addendum — review round D2 corrections, 2026-09-24
+
+The brief's rulings were decided under the owner's standing delegation (23 Sep 2026).
+All preceding bytes remain unchanged. D1 review findings F2–F4 are corrected
+within the existing export schema and detector contract; no threshold changes.
+
+DOI extraction accepts numeric registrant subdivisions separated by periods.
+It strips one trailing period, comma or semicolon and unmatched trailing closing
+parentheses or square brackets, preserving balanced brackets within a suffix.
+An unparseable DOI marker means `doi:` or `doi.org`, case-insensitively;
+an author named Doi alone is not such a marker.
+
+Evidence entries must have exactly the keys exported by claims_export at BASE:
+`id`, `artifact_id`, `source_id`, `kind`, `relation`, `artifact`, `source`.
+The non-null artifact parent has exactly `id`, `path`, `sha256`; the non-null
+source parent has exactly `id`, `reference`. Missing or extra keys refuse
+`evidence_missing`; artifact hashing and DOI registration checks remain active.
+The row-7 SQL, renderer and template remain unchanged.
+
+Sealed clean accounting derives both counts from terminal class-0 verdicts.
+An error remains graded and erroneous, and also counts as flagged, so a crash
+cannot print as a clean pass. Output prefixes and content suppression are
+unchanged; a malformed synthetic clean control must print `sealed clean: 1/1`.
+
+### R-042 — D2 changes and acceptance
+
+| Existing behavior changed | Acceptance red on D1 and green after repair |
+|---|---|
+| Subdivided DOI unchecked; enclosing brackets included in lookup; author Doi falsely refused | EmitReportTests.test_doi_reference_forms, including exact stub request URLs, balanced suffixes, replayed real DOI and no-lookup author control |
+| Unknown or missing evidence keys accepted by preflight | EmitReportTests.test_malformed_evidence, both parent kinds, absent and existing output |
+| Erroring sealed clean control printed with zero false flags | SealedOutputDisciplineTests.test_sentinel_and_error_accounting, real malformed UTF-8 stage input and zero sentinel leaks |
+
+The existing malformed-marker test now uses `DOI: missing`; the old `DOI missing`
+text is retained as an explicit non-marker control, as D1 F2 requires.
+All remaining assertions are retained or strengthened. Disposable faults reverse
+each correction; commands and outcomes are in
+`docs/implementation/row_8_change_report.md`.
+
+All prior residuals remain **NOT met**: actual sealed/public measurements, live
+DOI capture, PMID/literature-role wiring, broader artifact liveness, class 10,
+stage-03/pilot emission wiring, pilot measurement, step B and protected approval.

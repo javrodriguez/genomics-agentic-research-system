@@ -225,9 +225,7 @@ def sealed_measure(root, row1=None):
                     if cid == 0:
                         if flag != 'none' or expected['expected_stage'] != '01_prepare_samplesheets':
                             raise ValueError('clean declaration')
-                        totals['clean'] += 1
                         flagged = not clean(plant)
-                        totals['flagged'] += int(flagged)
                         totals['verdicts'].append((0, 'flagged' if flagged else 'clean'))
                         continue
                     if flag not in FLAGS[cid] or expected['expected_stage'] != STAGES[cid]:
@@ -243,6 +241,8 @@ def sealed_measure(root, row1=None):
                 error_class = cid if type(cid) is int and cid in range(11) else None
                 totals['verdicts'].append((error_class, 'error'))
     totals['graded'] = len(totals['verdicts'])
+    totals['clean'] = sum(cid == 0 for cid, verdict in totals['verdicts'])
+    totals['flagged'] = sum(cid == 0 and verdict != 'clean' for cid, verdict in totals['verdicts'])
     for cid, (caught, planted) in sorted(counts.items()):
         print('sealed %d: %d/%d' % (cid, caught, planted))
     caught = sum(planted > 0 and got == planted for got, planted in counts.values())
@@ -541,6 +541,12 @@ class SealedOutputDisciplineTests(unittest.TestCase):
             bad = root / ('p02_' + sentinel)
             bad.mkdir()
             (bad / 'expected.json').write_text(sentinel)
+            clean_plant = root / ('p03_' + sentinel)
+            clean_data = generate.project(clean_plant)
+            (clean_data / 'samples.csv').write_bytes(b'\xff' + sentinel.encode())
+            generate.write_json(clean_plant / 'expected.json', dict(
+                class_id=0, expected_flag='none', expected_stage='01_prepare_samplesheets',
+                seal_type='independent_context', canary='b' * 32, extra=sentinel))
             def raises(*args):
                 print(sentinel)
                 print(sentinel, file=sys.stderr)
@@ -549,10 +555,12 @@ class SealedOutputDisciplineTests(unittest.TestCase):
             with patch(__name__ + '.grade', side_effect=raises), contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
                 caught, counts, totals = sealed_measure(root)
             self.assertNotIn(sentinel, output.getvalue())
-            self.assertEqual(totals['seen'], 2)
-            self.assertEqual(totals['graded'], 2)
-            self.assertEqual(totals['errors'], 2)
-            self.assertEqual(totals['verdicts'], [(4, 'error'), (None, 'error')])
+            self.assertEqual(totals['seen'], 3)
+            self.assertEqual(totals['graded'], 3)
+            self.assertEqual(totals['errors'], 3)
+            self.assertEqual(totals['verdicts'], [(4, 'error'), (None, 'error'), (0, 'error')])
+            self.assertEqual((totals['flagged'], totals['clean']), (1, 1))
+            self.assertIn('sealed clean: 1/1\n', output.getvalue())
             self.assertEqual(counts[4], [0, 1])
             self.assertEqual(counts[10], [0, 1])
             self.assertEqual(caught, 0)
