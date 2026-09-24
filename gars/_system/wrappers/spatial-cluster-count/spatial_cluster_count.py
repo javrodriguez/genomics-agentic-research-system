@@ -109,6 +109,11 @@ def cluster_key(cluster_id):
 def main():
     result = {"tool": "count_clusters", "obs_column": OBS_COLUMN, "ok": False}
     os.makedirs(OUT, exist_ok=True)
+    import platform
+    with open(os.path.join(OUT, "versions.json"), "w") as version_file:
+        json.dump({"python": platform.python_version(), "anndata": anndata.__version__},
+                  version_file, sort_keys=True)
+
     per_sample = {}
     per_cluster = {}
     for sample, path in INPUTS:
@@ -551,7 +556,7 @@ def cmd_collect(args):
 
     if fails:
         result["failures"] = fails
-        return wl.collect_failure(substage, result, EXIT_FAILURE)
+        return wl.collect_failure(substage, result, EXIT_FAILURE, args.model)
 
     # Never an h5ad row: this sub-stage produces no object, and a row here would shadow
     # 02.01's for every later consumer (the resolver takes the newest native match).
@@ -563,6 +568,7 @@ def cmd_collect(args):
             fh.write("%s\t%s\t%s\n" % (typ, role, path))
 
     now = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    wl.complete_manifest(substage, args.model, "COMPLETE")
     wl.write_status(substage, "COMPLETE")  # STATUS follows the successful collect gate.
 
     version = ws.template_version(WORKSPACE)

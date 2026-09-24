@@ -44,6 +44,9 @@ This sub-stage performs the steps in Process and nothing else.
 
 ## Definitions
 
+`reference_hash_mismatch`: a configured reference differs from its registered SHA-256;
+prepare refuses it (R-090). Report the failure verbatim.
+
 **Wrapper invocation.** From the workspace root, on stock python:
 
 ```bash

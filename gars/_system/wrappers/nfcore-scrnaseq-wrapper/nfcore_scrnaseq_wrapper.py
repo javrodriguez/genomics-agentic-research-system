@@ -355,7 +355,7 @@ def cmd_collect(args):
 
     if fails:
         result["failures"] = fails
-        return wl.collect_failure(substage, result, EXIT_FAILURE)
+        return wl.collect_failure(substage, result, EXIT_FAILURE, args.model)
 
     rel = lambda p: str(p.relative_to(substage))  # noqa: E731
     outputs = [("h5ad", rel(combined_file)), ("qc_multiqc", rel(multiqc))]
@@ -374,6 +374,7 @@ def cmd_collect(args):
                                "action": action}
 
     now = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    wl.complete_manifest(substage, args.model, "COMPLETE")
     wl.write_status(substage, "COMPLETE")  # STATUS follows the successful collect gate.
 
     version = ws.template_version(WORKSPACE)

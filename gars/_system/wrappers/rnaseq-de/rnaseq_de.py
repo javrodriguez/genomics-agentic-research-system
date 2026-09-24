@@ -87,6 +87,7 @@ FACTOR, NUMERATOR, DENOMINATOR = {factor!r}, {numerator!r}, {denominator!r}
 # and neither pydeseq2's MLE, apeglm on either coefficient sign, nor naive normalized ratios
 # match its values). Rather than imitate an unidentifiable estimator, this publishes the
 # documented DESeq2 default; effect directions and significance are unchanged.
+RANDOM_SEED = 0
 MIN_COUNT, MIN_SAMPLES = 10, 2
 
 counts = pd.read_csv(COUNTS, sep="\\t").set_index("gene")
@@ -125,7 +126,7 @@ normed.to_csv("%s/normalized_counts.csv" % out_tables)
 logn = np.log2(normed + 1)
 top = logn.loc[logn.var(axis=1).sort_values(ascending=False).head(500).index]
 from sklearn.decomposition import PCA
-pca = PCA(n_components=2)
+pca = PCA(n_components=2, random_state=RANDOM_SEED)
 coords = pca.fit_transform(top.T.values)
 fig, ax = plt.subplots(figsize=(6, 5))
 for level, marker in zip(sorted(design[FACTOR].unique()), "osd^v<>"):
@@ -152,6 +153,16 @@ ax.scatter(np.log10(res["baseMean"] + 1), res["log2FoldChange"], s=4, alpha=0.4,
 ax.axhline(0, lw=0.8, color="black")
 ax.set_xlabel("log10 mean expression"); ax.set_ylabel("log2 fold change")
 fig.tight_layout(); fig.savefig("%s/ma_plot.png" % out_figures, dpi=200); plt.close(fig)
+
+import json
+import platform
+import pydeseq2
+import sklearn
+with open("%s/versions.json" % OUT, "w") as version_file:
+    json.dump(dict(python=platform.python_version(), numpy=np.__version__,
+                   pandas=pd.__version__, matplotlib=matplotlib.__version__,
+                   sklearn=sklearn.__version__, pydeseq2=pydeseq2.__version__),
+              version_file, sort_keys=True)
 
 idmap = pd.read_csv(IDMAP, sep="\\t")
 named = res.reset_index().merge(idmap, left_on="gene", right_on="gene_id", how="left")
@@ -371,7 +382,7 @@ def cmd_collect(args):
 
     if fails:
         result["failures"] = fails
-        return wl.collect_failure(substage, result, EXIT_FAILURE)
+        return wl.collect_failure(substage, result, EXIT_FAILURE, args.model)
 
     outputs = [("de_results", "native", "run/tables/de_results.csv"),
                ("counts_gene", "adapted", "adapted/counts_gene.tsv"),
@@ -382,6 +393,7 @@ def cmd_collect(args):
             fh.write("%s\t%s\t%s\n" % (typ, role, path))
 
     now = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    wl.complete_manifest(substage, args.model, "COMPLETE")
     wl.write_status(substage, "COMPLETE")  # STATUS follows the successful collect gate.
 
     version = ws.template_version(WORKSPACE)

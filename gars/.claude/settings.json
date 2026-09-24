@@ -96,6 +96,8 @@
       "Write(projects/*/STATUS)",
       "Edit(projects/*/00_data/*/files.csv)",
       "Write(projects/*/00_data/*/files.csv)",
+      "Edit(projects/*/00_data/dataset.tsv)",
+      "Write(projects/*/00_data/dataset.tsv)",
       "Edit(projects/*/01_samplesheets/*)",
       "Write(projects/*/01_samplesheets/*)",
       "Edit(projects/*/03_custom_analysis/*/PLAN.md.approved)",

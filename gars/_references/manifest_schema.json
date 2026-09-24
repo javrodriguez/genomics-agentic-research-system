@@ -1,0 +1,329 @@
+{
+  "groups": [
+    {
+      "class": "required",
+      "fields": [
+        "inputs",
+        "input_data_location"
+      ],
+      "name": "inputs and their sha256",
+      "number": 1,
+      "predicate": null
+    },
+    {
+      "class": "required",
+      "fields": [
+        "wrapper",
+        "pipeline_commit",
+        "workflow_name",
+        "workflow_version",
+        "gars_commit"
+      ],
+      "name": "workflow name and version (`pipeline_commit`)",
+      "number": 2,
+      "predicate": null
+    },
+    {
+      "class": "required",
+      "fields": [
+        "params",
+        "config_sha256"
+      ],
+      "name": "parameters (`params.yaml`) and `config_sha256`",
+      "number": 3,
+      "predicate": null
+    },
+    {
+      "class": "required_if_applicable",
+      "fields": [
+        "containers"
+      ],
+      "name": "**container digests per process** (from Nextflow trace/report enabled in `nextflow.slurm.config`; a mutable tag is not a provenance record)",
+      "number": 4,
+      "predicate": {
+        "equals": "nextflow",
+        "fact": "wrapper_kind"
+      }
+    },
+    {
+      "class": "required",
+      "fields": [
+        "software_versions"
+      ],
+      "name": "software versions",
+      "number": 5,
+      "predicate": null
+    },
+    {
+      "class": "required_if_applicable",
+      "fields": [
+        "reference"
+      ],
+      "name": "reference genome build **and** annotation release, with `fasta_sha256`, `gtf_sha256`",
+      "number": 6,
+      "predicate": {
+        "equals": true,
+        "fact": "reference_named"
+      }
+    },
+    {
+      "class": "required",
+      "fields": [
+        "command"
+      ],
+      "name": "the exact command (`commands.sh`)",
+      "number": 7,
+      "predicate": null
+    },
+    {
+      "class": "required",
+      "fields": [
+        "outputs"
+      ],
+      "name": "output artifacts with sha256 per file and `artifact_class`",
+      "number": 8,
+      "predicate": null
+    },
+    {
+      "class": "required",
+      "fields": [
+        "execution"
+      ],
+      "name": "execution timestamps",
+      "number": 9,
+      "predicate": null
+    },
+    {
+      "class": "required_if_applicable",
+      "fields": [
+        "resources"
+      ],
+      "name": "resources consumed (`sacct --format=Elapsed,MaxRSS,AllocCPUS`)",
+      "number": 10,
+      "predicate": {
+        "equals": "slurm",
+        "fact": "backend"
+      }
+    },
+    {
+      "class": "required",
+      "fields": [
+        "backend",
+        "venue",
+        "purpose",
+        "data_class",
+        "input_data_location",
+        "artifact_destination"
+      ],
+      "name": "backend, `venue`, `purpose`, `data_class`, `input_data_location`, `artifact_destination`",
+      "number": 11,
+      "predicate": null
+    },
+    {
+      "class": "required_if_applicable",
+      "fields": [
+        "approvals"
+      ],
+      "name": "approval record reference",
+      "number": 12,
+      "predicate": {
+        "equals": true,
+        "fact": "approval_gated"
+      }
+    },
+    {
+      "class": "required",
+      "fields": [
+        "random_seeds",
+        "threads"
+      ],
+      "name": "random seeds and thread counts",
+      "number": 13,
+      "predicate": null
+    },
+    {
+      "class": "required_if_applicable",
+      "fields": [
+        "design_check"
+      ],
+      "name": "design-check output",
+      "number": 14,
+      "predicate": {
+        "equals": true,
+        "fact": "design_record"
+      }
+    },
+    {
+      "class": "required_if_applicable",
+      "fields": [
+        "failure_class"
+      ],
+      "name": "failure class if any",
+      "number": 15,
+      "predicate": {
+        "equals": "FAILED",
+        "fact": "status"
+      }
+    },
+    {
+      "class": "required_if_applicable",
+      "fields": [
+        "model_steps"
+      ],
+      "name": "**for every model-mediated step:** provider, `model_id`, model version, `prompt_id`, `prompt_sha256` (git sha of the prompt/contract file), `routing_rule_id`, sampling parameters, and a reference to the input context",
+      "number": 16,
+      "predicate": {
+        "equals": true,
+        "fact": "model_step"
+      }
+    },
+    {
+      "class": "required",
+      "fields": [
+        "idempotency_key"
+      ],
+      "name": "`idempotency_key`",
+      "number": 17,
+      "predicate": null
+    },
+    {
+      "class": "required",
+      "fields": [
+        "template_version",
+        "agent_model"
+      ],
+      "name": "`template_version` and `agent_model` of the stage",
+      "number": 18,
+      "predicate": null
+    }
+  ],
+  "model_providers": {
+    "claude-": "anthropic",
+    "gemini-": "google",
+    "gpt-": "openai",
+    "o1": "openai",
+    "o3": "openai",
+    "o4": "openai"
+  },
+  "output_sha256_forms": [
+    "^[0-9a-f]{64}$",
+    "^sha256-tree:[0-9a-f]{64}$"
+  ],
+  "predicate_facts": {
+    "approval_gated": [
+      true,
+      false
+    ],
+    "backend": [
+      "local",
+      "slurm"
+    ],
+    "design_record": [
+      true,
+      false
+    ],
+    "model_step": [
+      true,
+      false
+    ],
+    "reference_named": [
+      true,
+      false
+    ],
+    "status": [
+      "COMPLETE",
+      "FAILED"
+    ],
+    "wrapper_kind": [
+      "nextflow",
+      "local"
+    ]
+  },
+  "sentinels": {
+    "agent_model": [
+      "none"
+    ],
+    "model_steps.routing_rule_id": [
+      "none"
+    ],
+    "model_steps.sampling_parameters": [
+      "not-exposed-by-harness"
+    ],
+    "random_seeds": [
+      "no-rng-in-code-path"
+    ]
+  },
+  "version": 1,
+  "wrappers": {
+    "atacseq_bulk": {
+      "assay": "atacseq_bulk",
+      "contract": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md",
+      "kind": "nextflow",
+      "name": "nfcore-atacseq-wrapper",
+      "substage": "01_nfcore-atacseq-wrapper"
+    },
+    "chipseq_bulk": {
+      "assay": "chipseq_bulk",
+      "contract": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md",
+      "kind": "nextflow",
+      "name": "nfcore-chipseq-wrapper",
+      "substage": "01_nfcore-chipseq-wrapper"
+    },
+    "cutandrun": {
+      "assay": "cutandrun",
+      "contract": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md",
+      "kind": "nextflow",
+      "name": "nfcore-cutandrun-wrapper",
+      "substage": "01_nfcore-cutandrun-wrapper"
+    },
+    "methylseq": {
+      "assay": "methylseq",
+      "contract": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md",
+      "kind": "nextflow",
+      "name": "nfcore-methylseq-wrapper",
+      "substage": "01_nfcore-methylseq-wrapper"
+    },
+    "rnaseq-de": {
+      "assay": "rnaseq_bulk",
+      "contract": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md",
+      "kind": "local",
+      "name": "rnaseq-de",
+      "substage": "02_rnaseq-de"
+    },
+    "rnaseq_bulk": {
+      "assay": "rnaseq_bulk",
+      "contract": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md",
+      "kind": "nextflow",
+      "name": "nfcore-rnaseq-wrapper",
+      "substage": "01_nfcore-rnaseq-wrapper"
+    },
+    "scrna-qc-cluster": {
+      "assay": "scrnaseq",
+      "contract": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md",
+      "kind": "local",
+      "name": "scrna-qc-cluster",
+      "substage": "02_scrna-qc-cluster"
+    },
+    "scrnaseq": {
+      "assay": "scrnaseq",
+      "contract": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md",
+      "kind": "nextflow",
+      "name": "nfcore-scrnaseq-wrapper",
+      "substage": "01_nfcore-scrnaseq-wrapper"
+    },
+    "spatial-cluster-count": {
+      "assay": "spatialvi",
+      "contract": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md",
+      "kind": "local",
+      "name": "spatial-cluster-count",
+      "substage": "02_spatial-cluster-count"
+    },
+    "spatialvi": {
+      "assay": "spatialvi",
+      "contract": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md",
+      "kind": "nextflow",
+      "name": "nfcore-spatialvi-wrapper",
+      "substage": "01_nfcore-spatialvi-wrapper"
+    }
+  }
+}

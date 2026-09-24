@@ -42,8 +42,9 @@ one fits: an analysis that produces a count matrix declares `counts_gene`, not `
 
 ## OUTPUTS.tsv
 
-Written by a sub-stage on completion, beside its `STATUS`. Tab-separated, three columns, one
-row per artifact:
+Written by a sub-stage on completion, beside its `STATUS`. Tab-separated, five columns, one
+row per artifact: `type`, `role`, `path`, `sha256`, `artifact_class`. Legacy
+three-column indexes remain readable. The example below shows their routing columns:
 
 ```
 # type          role      path
@@ -59,6 +60,14 @@ are references, never copies — an artifact is recorded where its producer wrot
 A path may name a **directory** when the artifact is inherently a per-sample set (`peaks`,
 `bigwig`): the set is the artifact, and a consumer globs inside it. Single-file artifacts keep
 single-file paths — a directory is never used to avoid naming the real file.
+
+The trailing `sha256` is a lowercase file SHA-256, or `sha256-tree:<hex>` for a
+directory. The tree hash covers the canonical member listing: every regular file,
+sorted by relative path, with one `<relpath>\t<sha256>\n` line per file. Symlinks
+are named in the manifest and never followed. The manifest records the complete
+listing; collect and the COMPLETE gate recompute the hashes. `artifact_class` is
+`durable` or `intermediate`; a path inside a `work` directory is intermediate.
+Directory routing paths stay unchanged.
 
 ### The `role` column
 

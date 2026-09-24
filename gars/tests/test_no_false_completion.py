@@ -15,6 +15,16 @@ import executorlib as ex
 import wrapperlib as wl
 
 
+def hashed_fixture_output(stage):
+    """Satisfy Row 6 evidence so scheduler-identity tests isolate their own gate."""
+    (stage / 'run/table.tsv').write_text('gene\tvalue\ng1\t1\n')
+    (stage / 'OUTPUTS.tsv').write_text('# type\trole\tpath\ntable\tnative\trun/table.tsv\n')
+    path = stage / 'reproducibility/manifest.json'
+    manifest = json.loads(path.read_text())
+    manifest['outputs'] = wl.complete_output_index(stage)
+    path.write_text(json.dumps(manifest))
+
+
 class NoFalseCompletionTests(unittest.TestCase):
     def test_killed_worker_and_unreachable_executor(self):
         false_completions = 0
@@ -70,7 +80,7 @@ class NoFalseCompletionTests(unittest.TestCase):
             record.update(job_id='43', script=str(root / 'sibling/submit.sh'))
             path.write_text(json.dumps(record))
             (stage / 'run').mkdir(); (stage / 'run/.gars_run_complete').write_text('forged\n')
-            (stage / 'OUTPUTS.tsv').write_text('# type\trole\tpath\n')
+            hashed_fixture_output(stage)
             with patch.object(ex, '_scheduler_status', return_value=('COMPLETED', None)):
                 with contextlib.redirect_stdout(io.StringIO()), self.assertRaises(SystemExit) as caught:
                     wl.require_collect_config(root, 'rnaseq_bulk', '01_fixture')
@@ -85,7 +95,7 @@ class NoFalseCompletionTests(unittest.TestCase):
             with patch.object(ex, '_submit_once', return_value=('42', None)):
                 ex.submit(root, stage / 'submit.sh')
             (stage / 'run').mkdir(); (stage / 'run/.gars_run_complete').write_text('done\n')
-            (stage / 'OUTPUTS.tsv').write_text('# type\trole\tpath\n')
+            hashed_fixture_output(stage)
             with patch.object(ex, '_scheduler_status', return_value=('COMPLETED', None)):
                 wl.write_status(stage, 'COMPLETE')
             before = (stage / 'STATUS').read_bytes()

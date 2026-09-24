@@ -1,0 +1,4 @@
+task_id	hash	process	name	status	container	start	complete
+1	aa/11	DIGEST	DIGEST (sample)	COMPLETED	fixture/tool@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa	2026-09-23T12:00:00	2026-09-23T12:01:00
+2	bb/22	LOCAL_IMAGE	LOCAL_IMAGE (sample)	COMPLETED	pipeline_info/fixture.sif	2026-09-23T12:00:00	2026-09-23T12:01:00
+3	cc/33	MUTABLE	MUTABLE (sample)	COMPLETED	fixture/tool:latest	2026-09-23T12:00:00	2026-09-23T12:01:00

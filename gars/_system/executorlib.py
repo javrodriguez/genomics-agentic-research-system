@@ -71,6 +71,7 @@ SLURM = {
     "submit_argv": ["sbatch", "{script}"],
     "job_id_regex": r"Submitted batch job (\d+)",
     "cancel_argv": ["scancel", "{job_id}"],
+    "resources_argv": ["sacct", "-j", "{job_id}", "--format=Elapsed,MaxRSS,AllocCPUS", "-P", "-n"],
     "start_argv": ["sacct", "-j", "{job_id}", "--format=Start", "--noheader", "--parsable2"],
     "status_argv": ["sacct", "-j", "{job_id}", "--format=State,ExitCode", "--noheader", "--parsable2"],
     "status_map": {
@@ -103,6 +104,7 @@ LOCAL = {
     "status_argv": [],
     "cancel_argv": [],
     "start_argv": [],
+    "resources_argv": [],
     "status_map": {},
     "nextflow_config": "",
     "nextflow_profile": "",
@@ -197,7 +199,7 @@ def validate(descriptor):
     if name not in BUILTINS:
         problems.append('R-075: backend must be the enum slurm|local')
     else:
-        for key in ('submit_argv', 'status_argv', 'cancel_argv', 'start_argv', 'job_id_regex', 'status_map', 'submit_note'):
+        for key in ('submit_argv', 'status_argv', 'cancel_argv', 'start_argv', 'resources_argv', 'job_id_regex', 'status_map', 'submit_note'):
             if key in descriptor and descriptor[key] != BUILTINS[name].get(key):
                 problems.append('R-075: %s is fixed by the backend enum' % key)
     for key in ('nextflow_config', 'nextflow_profile'):
@@ -336,6 +338,35 @@ def submit_argv(descriptor, script):
     if descriptor['name'] == 'slurm':
         argv.insert(1, '--export=' + ','.join(EXPORT_NAMES))
     return argv
+
+
+def resources_argv(descriptor, job_id):
+    return [_fill(a, {"job_id": job_id}) for a in BUILTINS[descriptor['name']]['resources_argv']]
+
+
+def resources(root, record):
+    if record.get('executor') == 'local':
+        return {'applicability':'not applicable'}
+    if record.get('executor') != 'slurm' or not record.get('job_id'):
+        return {}
+    values = {}
+    # Query the batch step explicitly: the mandated three-column format has no JobID.
+    for job in (record['job_id'], record['job_id'] + '.batch'):
+        try:
+            proc = subprocess.run(resources_argv(SLURM, job), stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE, env=execution_env())
+            rows = [line.split('|') for line in proc.stdout.decode('utf-8').splitlines() if line.strip()]
+            if proc.returncode or not rows or len(rows[0]) < 3:
+                continue
+            row = dict(zip(('Elapsed','MaxRSS','AllocCPUS'),rows[0][:3]))
+            if job.endswith('.batch'):
+                if row['MaxRSS']:
+                    values['MaxRSS'] = row['MaxRSS']
+            else:
+                values.update(row)
+        except (OSError, UnicodeError):
+            continue
+    return values
 
 
 def status_argv(descriptor, job_id):
@@ -1049,6 +1080,11 @@ def submit(config_root, script, descriptor=None):
                   'state': 'SUBMITTED', 'job_id': None, 'executor': descriptor['name'],
                   'submitted_at': time.time(), 'started_at': None,
                   'destructive': not (stage / 'params.yaml').is_file()}
+        if retry and retry.get('destructive', False):
+            analysis, workspace, plan, data, plan_path = _action_paths(config_root, retry, 'retry')
+            approval = analysis.approval_record_path(plan_path, workspace)
+            record['approvals'] = [{'id': approval.stem,
+                                    'sha256': hashlib.sha256(approval.read_bytes()).hexdigest()}]
         if prior and not retry:
             record['supersedes_key'] = prior['idempotency_key']
         if retry:
@@ -1132,6 +1168,8 @@ def _status_locked(config_root, job_id, descriptor, observed=None):
             _save_record(path, record)
         if state == 'COMPLETED' and not (Path(record['script']).parent / 'run/.gars_run_complete').is_file():
             state, detail = 'ARTIFACT_MISSING', 'R-135: scheduler success without .gars_run_complete'
+        if state == 'COMPLETED' and 'completed_at' not in record:
+            record['completed_at'] = time.time()
         if not _scheduler_terminal(recorded_state(record)):
             record['state'] = state or 'STALE'
             if state and state.startswith('FAILED'):

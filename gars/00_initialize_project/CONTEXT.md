@@ -55,6 +55,14 @@ This stage performs the steps in Process and nothing else.
 
 ## Definitions
 
+Finalize requires `--data-class` (`public`, `deidentified_under_agreement`, or
+`identifiable`) and `--purpose` (`fixture`, `internal`, `pilot_internal`,
+`pilot_external`, or `commercial`). `--agreement-ref` defaults to `none`.
+`data_class_required`, `purpose_required`, and `agreement_ref_required` refuse
+missing or unknown values. `dataset_classification_locked` refuses a re-finalize
+whose values differ from the existing machine-owned `00_data/dataset.tsv`.
+Re-finalize with the same values leaves that row unchanged.
+
 The script owns these rules; they are stated here so you can explain a refusal, not so you can
 perform the check.
 
@@ -230,7 +238,7 @@ between each:
     kill, and tell the user it is running:
 
     ```bash
-    python3 _system/stage00_register.py finalize --project projects/<title> --model "<model id>"
+    python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --purpose <purpose> --agreement-ref none --model "<model id>"
     ```
 
     `--model` is the exact model id you are running as, exactly as your harness reports it —
