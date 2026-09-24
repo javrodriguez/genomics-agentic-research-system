@@ -40,6 +40,9 @@ This sub-stage performs the steps in Process and nothing else.
 
 ## Definitions
 
+`reference_hash_mismatch`: a configured reference differs from its registered SHA-256;
+prepare refuses it (R-090). Report the failure verbatim.
+
 **Wrapper invocation.** From the workspace root, on stock python — no conda environment is
 needed for the wrapper itself (the pipeline's runtime arrives via `gars-env.sh` inside
 `submit.sh`):

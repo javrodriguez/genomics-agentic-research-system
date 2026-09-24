@@ -1,0 +1,13 @@
+{
+  "entries": [
+    {
+      "wrapper": "rerun-fixture",
+      "artifact": "fixture_numeric",
+      "mode": "numeric_tolerance",
+      "metric": "max_absolute_error",
+      "threshold": 0.000001,
+      "cause": "Suite fixture deliberately shuffles rows and columns and adds uniform noise bounded by 1e-7 per cell, seeded from os.urandom(16).",
+      "evidence": "Row 6 instrument self-test: the second local fixture re-run, like the first, differs in SHA-256 and matches by max_absolute_error; measured values are recorded in decision 0097."
+    }
+  ]
+}

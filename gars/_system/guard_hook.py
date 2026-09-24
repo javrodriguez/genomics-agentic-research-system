@@ -62,6 +62,8 @@ READ_ONLY = [
     "projects/*/.gars_local_jobs",
     "projects/*/.gars_local_jobs/*",
     "projects/*/02_bioinformatics/*/run/.gars_run_complete",
+    "projects/*/02_bioinformatics/*/run/*",
+    "projects/*/02_bioinformatics/*/run/**/*",
     "projects/*/03_custom_analysis/*/run/*",
     "projects/*/03_custom_analysis/*/run/**/*",
     "projects/*/03_custom_analysis/*/.gars_submissions.jsonl",
@@ -72,6 +74,7 @@ READ_ONLY = [
     "projects/*/.STATUS.lock",
     "projects/*/STATUS",  # R-151: only code writes lifecycle state (the owner, 13A).
     "projects/*/00_data/*/files.csv",
+    "projects/*/00_data/dataset.tsv",
     "projects/*/01_samplesheets/*",
     # The stage 03 approval record: written only by `stage03_analysis.py approve` (0042).
     "projects/*/03_custom_analysis/*/PLAN.md.approved",

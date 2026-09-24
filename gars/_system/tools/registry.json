@@ -310,6 +310,14 @@
         "finalize"
       ],
       "cli": {
+        "agreement-ref": {
+          "flag": "--agreement-ref",
+          "nargs": null
+        },
+        "data-class": {
+          "flag": "--data-class",
+          "nargs": null
+        },
         "date": {
           "flag": "--date",
           "nargs": null
@@ -326,6 +334,10 @@
           "flag": "--project",
           "nargs": null
         },
+        "purpose": {
+          "flag": "--purpose",
+          "nargs": null
+        },
         "sample-id-pattern": {
           "flag": "--sample-id-pattern",
           "nargs": null
@@ -335,6 +347,19 @@
       "input_schema": {
         "additionalProperties": false,
         "properties": {
+          "agreement-ref": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "data-class": {
+            "enum": [
+              "public",
+              "deidentified_under_agreement",
+              "identifiable"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
           "date": {
             "minLength": 1,
             "type": "string"
@@ -353,6 +378,17 @@
             "type": "string"
           },
           "project": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "purpose": {
+            "enum": [
+              "fixture",
+              "internal",
+              "pilot_internal",
+              "pilot_external",
+              "commercial"
+            ],
             "minLength": 1,
             "type": "string"
           },

@@ -61,3 +61,14 @@ One row. Requirements before adding it:
 Mouse is the obvious next one. `/gpfs/data/sequence/references/iGenomes/Mus_musculus/Ensembl/`
 exists on this cluster but has not been verified against a run, and an unverified row is worse
 than an absent one — the registry's value is that everything in it is known to work.
+
+## Reference hashes (R-090)
+
+This second table is keyed by ID and is parsed separately from the identity table
+above. It supersedes the earlier one-table instruction for hash provenance only.
+UNKNOWN is incomplete evidence; the owner must hash the registered files where
+they live before a run can satisfy manifest group 6.
+
+| ID | Annotation release | fasta_sha256 | gtf_sha256 |
+|---|---|---|---|
+| GRCh38 | Ensembl release 116 | UNKNOWN | UNKNOWN |

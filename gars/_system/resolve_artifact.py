@@ -48,15 +48,18 @@ def read_outputs(path):
         if not line.strip() or line.lstrip().startswith("#"):
             continue
         cells = line.split("\t")
-        if len(cells) != 3:
-            problems.append("%s line %d: expected 3 tab-separated columns, found %d"
+        if len(cells) not in (3, 5):
+            problems.append("%s line %d: expected 3 or 5 tab-separated columns, found %d"
                             % (path.name, n, len(cells)))
             continue
-        typ, role, rel = (c.strip() for c in cells)
+        typ, role, rel = (c.strip() for c in cells[:3])
         if role not in ("native", "adapted"):
             problems.append("%s line %d: role %r is not native or adapted" % (path.name, n, role))
             continue
-        rows.append({"type": typ, "role": role, "path": rel})
+        row = {"type": typ, "role": role, "path": rel}
+        if len(cells) == 5:
+            row.update(sha256=cells[3].strip(), artifact_class=cells[4].strip())
+        rows.append(row)
     return rows, problems
 
 

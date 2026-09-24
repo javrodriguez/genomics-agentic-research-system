@@ -1,0 +1,12 @@
+{
+  "nfcore_atacseq_wrapper.py": "64ec073b6fc0e04bfb293ff0d98cb9929ed82bf0608a0a5e1d95b27ffc0ad4c4",
+  "nfcore_chipseq_wrapper.py": "c61aa40762749bb28a382d292e1933c303004a15206ccd1aa12942acd928ccea",
+  "nfcore_cutandrun_wrapper.py": "30ba215dba656c7765907073b1a5279d30375de22e32c38b3b498352d8cdc37c",
+  "nfcore_methylseq_wrapper.py": "bb6f4e4cfd7b2ddc9f12f07b8b044d036c3cf428d9703fb8990633fca5117b71",
+  "nfcore_rnaseq_wrapper.py": "07ee890edce3c3ee462d327c00d4c96a26fc567437dd59ff11425fdc548daba0",
+  "nfcore_scrnaseq_wrapper.py": "693c358fba822adfa923141a0c86bc2ee2b5dad36902597ba49c0c47693da6ab",
+  "nfcore_spatialvi_wrapper.py": "62a099c8a3dd94ef7fa104693fa82ee363e90133ec7d8d503219cd70125ede08",
+  "rnaseq_de.py": "580c818d4648c47a9130464bdb510f820ab4c2de2a8a4c909148953658a178e0",
+  "scrna_qc_cluster.py": "d68506356a1d6e9aaada471a98f72371de8af3830abf7a7aa41314bae47cb832",
+  "spatial_cluster_count.py": "c41f20f3c281d19dfc8c7c62cd7a5e771ec3334bc46dd89a23e2d354615047c9"
+}

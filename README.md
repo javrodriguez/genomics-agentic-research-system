@@ -320,6 +320,15 @@ sealed slots and the first measured run are still to come, so the reviewer catch
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
 (533 tests, 13 of them environment skips, on macOS at the 2026-09-24 merge of row 8 step A, with Docker answering and row 5's scratch folder set as CI sets it; a macOS cold clone without it skips 75, or 106 with `TMPDIR` also unset as on Linux; no cluster run is evidenced for these rows).
+Row 6 adds synthetic manifest coverage and the local instrument self-test; scrna-qc-cluster records its samplesheet and passes synthetic-worker replay; rnaseq-de now requires the canonical project design and passes synthetic-worker replay; legacy alternate-design manifests are refused. No real-cluster manifest or reproduction exit is claimed.
+Row 6 ruling-rd2 protects collect evidence throughout the bioinformatics run tree
+and routes replay dataset registration through finalize, retaining the recorded
+agreement reference. Older manifests without it refuse replay; see the
+[change report](docs/implementation/row_6_change_report.md#ruling-answered-fix-round-2).
+Round 3 removes the replay tests' dependence on cached bytecode and refuses
+uncommitted reference-file changes during replay; see the
+[round-3 verification](docs/implementation/row_6_change_report.md#review-round-3-fixes).
+
 Row 15 review round 4 (2026-09-22), macOS / Python 3.8.2: 252 tests, <!-- not-the-suite-total -->
 `OK (skipped=50)`; no tests from row 15 skipped. R15-03's narrow fixture repair
 is authorised by the owner, **confirmed on 22 September 2026** ([0067](docs/decisions/0067-owner-confirms-rows-15-and-4-provisional-rulings.md)).

@@ -128,12 +128,12 @@ class FailureClassificationTests(unittest.TestCase):
                 self.assertEqual(wl.read_status(stage), 'VALIDATING')
                 with contextlib.redirect_stdout(io.StringIO()):
                     self.assertEqual(wl.collect_failure(stage, {'failures': ['missing counts']}), 1)
-                self.assertEqual(wl.read_status(stage), 'FAILED:EXIT_1')
+                self.assertEqual(wl.read_status(stage), 'FAILED')
                 ex.status(root, '42')
-                self.assertEqual(wl.read_status(stage), 'FAILED:EXIT_1')
+                self.assertEqual(wl.read_status(stage), 'FAILED')
             record = ex.stage_record(root, stage)
             self.assertEqual(record['scheduler_state'], 'COMPLETED')
-            self.assertEqual(record['state'], 'FAILED:EXIT_1')
+            self.assertEqual(record['state'], 'FAILED')
             cfg.write_text('aligner: hisat2\n')
             wl.write_reproducibility(stage, 'rnaseq_bulk', root, {'samplesheet': sheet, 'config': cfg}, [])
             with patch.object(ex, '_submit_once', return_value=('43', None)):

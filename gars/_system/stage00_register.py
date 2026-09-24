@@ -543,6 +543,29 @@ def cmd_finalize(args, workspace):
         result["failures"].append("project does not exist: %s" % project)
         return emit(result, EXIT_USAGE)
 
+    if args.data_class not in ("public", "deidentified_under_agreement", "identifiable"):
+        result["failures"].append("data_class_required: --data-class must name a registered class")
+        return emit(result, EXIT_REFUSED)
+    if args.purpose not in ("fixture", "internal", "pilot_internal", "pilot_external", "commercial"):
+        result["failures"].append("purpose_required: --purpose must name a registered purpose")
+        return emit(result, EXIT_REFUSED)
+    if not args.agreement_ref or args.agreement_ref.strip().lower() in ("", "unknown", "todo", "null"):
+        result["failures"].append("agreement_ref_required: name an agreement or use none")
+        return emit(result, EXIT_REFUSED)
+    dataset_path = project / "00_data/dataset.tsv"
+    dataset = {"data_class": args.data_class, "purpose": args.purpose,
+               "agreement_ref": args.agreement_ref,
+               "input_data_location": json.dumps(sorted({str(p.resolve()) for p in
+                   (project / "00_data").glob("*/raw/*")}), separators=(",", ":"))}
+    if dataset_path.exists():
+        try:
+            registered = list(csv.DictReader(dataset_path.read_text(encoding="utf-8").splitlines(), delimiter="\t"))
+        except (OSError, ValueError, UnicodeError):
+            registered = []
+        if registered != [dataset]:
+            result["failures"].append("dataset_classification_locked: existing dataset row differs")
+            return emit(result, EXIT_REFUSED)
+
     catalog, err = read_assay_map(workspace)
     if err:
         result["failures"].append(err)
@@ -701,6 +724,13 @@ def cmd_finalize(args, workspace):
         result["template"] = "T9"
         return emit(result, EXIT_FAILURE)
 
+    if not dataset_path.exists():
+        with ws.atomic_open(dataset_path, mode=ws.MACHINE_OWNED_MODE) as fh:
+            writer = csv.DictWriter(fh, fieldnames=["data_class", "purpose", "agreement_ref",
+                                                  "input_data_location"], delimiter="\t", lineterminator="\n")
+            writer.writeheader()
+            writer.writerow(dataset)
+
     result["template_version"] = version
     result["model"] = args.model or "unknown"
     result["created"] = created
@@ -742,6 +772,9 @@ def main(argv=None):
 
     f = sub.add_parser("finalize", help="metadata, placeholders, exit gate")
     f.add_argument("--project", required=True)
+    f.add_argument("--data-class", default=None)
+    f.add_argument("--purpose", default=None)
+    f.add_argument("--agreement-ref", default="none")
     f.add_argument("--date", default=None, help="creation date; defaults to today")
     f.add_argument("--sample-id-pattern", default=None)
     f.add_argument("--model",  default="unknown",
