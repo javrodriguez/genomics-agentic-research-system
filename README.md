@@ -321,8 +321,6 @@ Row 2 agent runs, independent nf-core references and held-out measurements remai
 Live validation is per-assay. Agent behaviour is
 graded separately and published in [docs/EVALS.md](docs/EVALS.md), against a pre-registration
 frozen before the first run:
-graded separately and published in [docs/EVALS.md](docs/EVALS.md), against a pre-registration
-frozen before the first run:
 
 | Assay | State |
 |---|---|
