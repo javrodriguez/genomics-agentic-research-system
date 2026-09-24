@@ -57,6 +57,11 @@ def main(argv=None, transport=None):
                 if not isinstance(evidence, dict) or set(evidence) != EVIDENCE_KEYS:
                     problems.add('evidence_missing')
                     continue
+                if (type(evidence['id']) is not int
+                        or evidence['kind'] not in ('computational', 'statistical', 'literature')
+                        or evidence['relation'] not in ('supports', 'contradicts', 'absent')):
+                    problems.add('evidence_missing')
+                    continue
                 artifact, source = evidence.get('artifact'), evidence.get('source')
                 kind = 'artifact' if artifact is not None else 'source'
                 parent = artifact if kind == 'artifact' else source

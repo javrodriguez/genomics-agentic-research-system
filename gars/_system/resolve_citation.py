@@ -40,7 +40,7 @@ def doi(reference):
 
 
 def mentions_doi(reference):
-    return bool(re.search(r'\bdoi(?::|\.org\b)', reference, re.I))
+    return bool(re.search(r'\bdoi(?::|\.org\b|\s+10[./])', reference, re.I))
 
 
 def live_transport(url):

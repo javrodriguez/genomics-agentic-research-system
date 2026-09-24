@@ -396,3 +396,43 @@ each correction; commands and outcomes are in
 All prior residuals remain **NOT met**: actual sealed/public measurements, live
 DOI capture, PMID/literature-role wiring, broader artifact liveness, class 10,
 stage-03/pilot emission wiring, pilot measurement, step B and protected approval.
+
+
+## Addendum — review round D3 corrections, 2026-09-24
+
+The brief's rulings were decided under the owner's standing delegation (23 Sep 2026).
+All preceding bytes remain unchanged. D2 review findings F1 and F2 are fixed
+within the existing DOI refusal contract and BASE evidence schema.
+
+A case-insensitive DOI marker also includes `doi` followed by whitespace and
+`10.` or `10/`. If no DOI can be extracted, emission refuses
+`citation_unverifiable`. This prevents short-form or malformed identifiers such
+as `DOI 10/x` from passing without validation. An author named Doi and the
+non-marker `DOI missing` still emit without a lookup. No new lookup endpoint,
+replay switch or short-DOI resolution claim is introduced.
+
+Every evidence entry requires an integer `id` (booleans are not integers for
+this contract), `kind` in `computational`, `statistical`, `literature`, and
+`relation` in `supports`, `contradicts`, `absent`, exactly as the BASE export's
+schema specifies. Other values refuse `evidence_missing` before rendering;
+absent output stays absent and existing output stays byte-identical. Both
+artifact and source evidence use the same checks. The row-7 SQL, renderer and
+template remain unchanged.
+
+### R-042 — D3 changes and acceptance
+
+| Existing behavior changed | Acceptance red on D2 and green after repair |
+|---|---|
+| Short-form DOI markers pass preflight without validation | EmitReportTests.test_doi_reference_forms: short and malformed numeric forms, case and whitespace variants, absent/existing output; existing Doi author control remains green |
+| Evidence ID, kind and relation carry arbitrary text into a report | EmitReportTests.test_malformed_evidence: invalid values for both parent kinds; test_clean_bytes_and_snapshot_shape: all permitted kind/relation combinations remain accepted |
+
+Disposable faults independently remove the short-form marker and each of the
+three evidence value checks. Commands and measured results are appended to
+`docs/implementation/row_8_change_report.md`. No existing test expectation or
+acceptance threshold changes. No extra test methods are added.
+
+Replay records remain **synthetic protocol fixtures**, proving protocol logic
+only. Live DOI capture and live sealed class-9 measurement remain **NOT met**.
+All prior residuals remain **NOT met**, including sealed/public measurements,
+PMID/literature-role wiring, broader artifact liveness, class 10, stage-03/pilot
+emission wiring, pilot measurement, step B and protected-change approval.

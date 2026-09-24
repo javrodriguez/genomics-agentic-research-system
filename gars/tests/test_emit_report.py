@@ -78,7 +78,9 @@ class EmitReportTests(unittest.TestCase):
                 if self.out.exists():
                     self.out.unlink()
                 self.refuse('citation_unresolved')
-        for reference in ('doi:invalid', 'https://doi.org/invalid', 'DOI: missing'):
+        for reference in ('doi:invalid', 'https://doi.org/invalid', 'DOI: missing',
+                          'DOI 10/x', 'doi 10/abcfake', 'DOI 10.123/fake',
+                          'Doi\t10/x', 'DOI\n10.123/fake'):
             with self.subTest(reference=reference):
                 self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
                 self.save()
@@ -142,6 +144,12 @@ class EmitReportTests(unittest.TestCase):
                  dict(artifact, artifact={'id': 1, 'path': 'evidence.tsv'}),
                  dict(source, source={'id': 1, 'reference': ''})]
         for original, parent_key in ((artifact, 'artifact'), (source, 'source')):
+            for key in ('id', 'kind', 'relation'):
+                for value in ('results/fabricated_output.tsv', '', None, True, 1.5, [], {}):
+                    cases.append(dict(original, **{key: value}))
+            for key, value in (('id', '1'), ('kind', 'Computational'),
+                               ('relation', 'Supports')):
+                cases.append(dict(original, **{key: value}))
             cases.append(dict(original, path='results/fabricated_output.tsv'))
             extra_parent = copy.deepcopy(original)
             extra_parent[parent_key]['extra_path'] = 'results/fabricated_output.tsv'
@@ -184,6 +192,15 @@ class EmitReportTests(unittest.TestCase):
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.assertEqual(result.returncode, 0)
         self.assertEqual(self.out.read_bytes(), baseline.read_bytes())
+        # Every BASE kind/relation remains legal for either evidence parent.
+        for kind in ('computational', 'statistical', 'literature'):
+            for relation in ('supports', 'contradicts', 'absent'):
+                with self.subTest(kind=kind, relation=relation):
+                    for evidence in self.snapshot['claims'][0]['evidence']:
+                        evidence['kind'] = kind
+                        evidence['relation'] = relation
+                    self.save()
+                    self.assertEqual(self.emit(), (0, ''))
 
     def test_preflight_before_renderer(self):
         with patch.object(emitter.evidence_check, 'main', return_value=1), patch.object(emitter.subprocess, 'run') as run:

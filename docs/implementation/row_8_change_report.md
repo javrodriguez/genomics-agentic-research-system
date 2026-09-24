@@ -1405,3 +1405,272 @@ None.
   and merge. Direct renderer invocation remains unguarded.
 
 D1 F1–F4 closed; F5 answered as a measurement limit; no finding waits on a ruling.
+
+
+## Review round D3 fixes
+
+Date: 2026-09-24. Starting commit: `ad70a1c993ad952197ee7be93dbdfdbb14fc9c0f`.
+One new commit on `build/gars-row-8-catalogue` answers
+`docs/reviews/row_8_review_D2.md`, SHA-256
+`61e68b560ebc1c302863ae2a61c7072d60f0cc81c0afc1f3e7f5025da9de14a8`. The supplied review stays untracked and unchanged.
+The brief's rulings were decided under the owner's standing delegation (23 Sep 2026).
+The earlier retry-scope correction and sealed transport ruling are already
+present; no restoration or historical commit rewrite is repeated.
+
+| Finding → requirement | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| F1 MINOR → R-125, R-042 | `gars/_system/resolve_citation.py`, `gars/tests/test_emit_report.py`, `benchmarks/defects/red_on_fault.py` | EmitReportTests.test_doi_reference_forms | Closed; case-insensitive DOI followed by whitespace and 10. or 10/ marks an unverifiable citation when extraction fails; author-named-Doi control still emits. Red-on-fault: yes, removing the short-form marker fails the test in a disposable copy |
+| F2 MINOR → R-114, R-042 | `gars/_system/claims/evidence_check.py`, `gars/tests/test_emit_report.py`, `benchmarks/defects/red_on_fault.py` | EmitReportTests.test_malformed_evidence; test_clean_bytes_and_snapshot_shape | Closed; integer ID and the BASE kind/relation vocabularies enforced for both parents; every permitted kind/relation combination emits. Red-on-fault: yes, independently disabling each of the three value checks fails the test in disposable copies |
+
+Decision 0101 receives only a dated append-only addendum naming the changed
+behavior and R-042 acceptance. The index was regenerated and remains unchanged.
+No threshold, catalogue entry, committed fixture, ledger row, config key or
+failure code changes. No test method is added; the suite remains 491 tests,
+so README and DEVELOPMENT counts remain unchanged.
+
+### Protected files touched in D3
+
+- `gars/_system/resolve_citation.py`
+- `gars/_system/claims/evidence_check.py`
+
+### Expectation changes
+
+| Existing test expectation | Change | Reason |
+|---|---|---|
+| All earlier inputs and assertions | None | Only adverse inputs and positive vocabulary controls added; no assertion, threshold or guard weakened |
+
+Both new refusals run through actual report emission. Every adverse input is
+checked with output absent and with a pre-existing output that must remain
+byte-identical. ID negatives include strings, booleans, floating-point values,
+null, arrays and objects. Kind and relation negatives include arbitrary path
+text and wrong case. The permitted vocabularies come directly from the existing
+claims.sql schema, not a new schema decision. Short-form DOI markers refuse
+citation_unverifiable; this does not claim short-DOI registration resolution.
+
+### Execution conditions and parent red
+
+Every shell command ran from the repository root, without changing directory,
+with these settings before execution:
+
+```bash
+export TMPDIR="$(pwd)-scratch" TEMP="$(pwd)-scratch" TMP="$(pwd)-scratch"
+```
+
+Logs, temporary projects, disposable fault copies, this report's append script
+and the commit-message file stay in the scratch twin. Reads used Git, Python,
+cat, sed and grep after confirming rg is unavailable. Edits used Python exact
+replacements and append-only writes. One full suite ran at a time. No network
+mode was enabled and no real sealed plant was created, searched for or read.
+Python was **3.13.5**, including the eval harness (at least 3.9).
+
+The expanded tests were run before changing production code, against D2:
+
+`python3 gars/tests/test_emit_report.py EmitReportTests.test_doi_reference_forms`
+
+```text
+Ran 1 test in 0.378s
+FAILED (failures=5)
+```
+
+`python3 gars/tests/test_emit_report.py EmitReportTests.test_malformed_evidence`
+
+```text
+Ran 1 test in 1.198s
+FAILED (failures=48)
+```
+
+The same tests pass with the repairs. The full emission module result is below.
+The 43-fault campaign restores byte backups after each disposable mutation.
+The inherited author-Doi mutation is re-anchored to the expanded regex; its
+semantic fault is unchanged. Every inherited and added fault went red:
+
+`python3 benchmarks/defects/red_on_fault.py`
+
+```text
+RED: sex confounding removed
+RED: imbalance threshold 0.9
+RED: cell pseudoreplication removed
+RED: subject count removed
+RED: index comparison inverted
+RED: not_checkable counted pass
+RED: evidence hash not compared
+RED: absolute evidence accepted
+RED: padj below pvalue allowed
+RED: BH recompute removed
+RED: Crossref 404 alone unresolved
+RED: network error resolved
+RED: unparseable plant skipped
+RED: unmapped folded into class
+RED: Hi-C denominator removed
+RED: truncated plain FASTQ passes
+RED: gzip-valid record truncation passes
+RED: report written before preflight
+RED: sealed stdout leaked
+RED: invalid_design mapped without family
+RED: BH tolerance 1e-6
+RED: environment replay switch
+RED: suppressed replay option
+RED: DOI tokens restricted to whole reference
+RED: malformed DOI marker ignored
+RED: malformed evidence accepted
+RED: subdivided DOI prefix ignored
+RED: unmatched DOI closing bracket retained
+RED: author Doi treated as DOI marker
+RED: short-form DOI marker ignored
+RED: noninteger evidence id accepted
+RED: arbitrary evidence kind accepted
+RED: arbitrary evidence relation accepted
+RED: extra evidence keys accepted
+RED: extra evidence parent keys accepted
+RED: erroring clean plant counted clean
+RED: padj without pvalue allowed
+RED: invalid sex treated unknown
+RED: invalid age allowed
+RED: class 2 detail ignored
+RED: class 3 detail ignored
+RED: graded verdict dropped
+RED: renderer receives from-db
+red-on-fault: 43/43
+```
+
+`python3 benchmarks/defects/baseline_check.py`
+
+```text
+BASE import: RED (missing gars/_system/resolve_citation.py)
+BASE class 1: caught
+BASE class 2: caught
+BASE class 3: not caught
+BASE class 4: not caught
+BASE class 5: not caught
+BASE class 6: not caught
+BASE class 7: not caught
+BASE class 8: not caught
+BASE class 9: not caught
+BASE behavioral: 2/10; classes 3, 4, 5, 6, 7, 8, 9 not caught
+```
+
+The BASE check retains the expected import red and behavioral 2/10 after copying
+the runner and catalogue into scratch; classes 3–9 are not caught. The original
+BASE evidence is not mistaken for the D2 parent regressions above.
+
+### Required and additional command summaries (verbatim)
+
+`GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py`
+
+```text
+Ran 491 tests in 81.488s
+OK (skipped=79)
+```
+
+`python3 tests/check_contracts.py`
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`
+
+```text
+suite: 491 tests, from unittest's loader
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`
+
+```text
+Ran 44 tests in 37.633s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`
+
+```text
+clean — graded=1
+```
+
+`python3 tests/test_planted_defects.py`
+
+```text
+Ran 18 tests in 4.578s
+OK (skipped=1)
+```
+
+`python3 gars/tests/test_citation_resolution.py`
+
+```text
+Ran 5 tests in 0.007s
+OK (skipped=1)
+```
+
+`python3 gars/tests/test_emit_report.py`
+
+```text
+Ran 10 tests in 0.598s
+OK
+```
+
+`python3 gars/tests/test_integrity_records.py`
+
+```text
+Ran 2 tests in 0.061s
+OK
+```
+
+Development EXIT lines only:
+
+```text
+planted-defects development (producer-authored, unsealed): 9/10 classes (placeholder 10 counted planted, not caught)
+false flags (producer-authored clean projects): 0/10
+graded 19 of 19 development projects seen
+class 6: measured with --verify-integrity full; stage 01 default is none
+```
+
+Replay uses **synthetic protocol fixtures**, proving protocol logic only.
+Class 9's replay catch rate is never a live or sealed measurement. Actual
+sealed and live DOI tests explicitly skip as unmeasured.
+
+### Scope and provenance checks
+
+`git diff --check` is clean. All four changed Python files parse with
+`ast.parse(feature_version=(3, 6))`; actual Python 3.6 execution is NOT met.
+The decision and report preserve their starting bytes as exact prefixes.
+The added-line check builds its character with chr(126) and finds no literal
+home marker. No row-7 SQL, renderer or template change is present:
+
+```bash
+git diff dc6b803 -- gars/_system/claims/render_report.py gars/_system/claims/claims.sql gars/_system/claims/report_template.md
+```
+
+The full suite skips Row05DatabaseTests (17 tests) and ClaimConstraintTests
+(18 tests), among its 79 environment skips. Database behavior for rows 5 and 7
+is not verified on this host.
+
+Commit `a8b54e5` used another identity; it is not rewritten and stays as it is
+(append-only). This round uses the repository's configured identity exactly
+as `git config user.name` and `git config user.email` print it, without author
+or committer overrides. Staging names only the six changed paths; the message
+is read from a scratch-twin file. No push, remote, self-approval or merge.
+Hours and metered dollars: unknown, not zero.
+
+## Owner rulings needed
+
+None.
+
+## D3 residual gaps
+
+- **NOT met:** actual sealed catalogue/clean measurements, sealed >=9/10,
+  external_human_seal and public catch-rate evidence. No row-8 exit is claimed.
+- **NOT met:** live DOI capture/resolution and live sealed class-9 measurement.
+  The later networked run remains separate work; replay and stubs do not prove it.
+- **NOT met:** database verification for rows 5 and 7, live pipelines/HPC,
+  actual Python 3.6 execution and the other environment-dependent checks.
+- **NOT met:** PMID/E-utilities, literature-role typed-tool wiring, R-069
+  liveness beyond claim evidence, class 10, stage-03/pilot emission wiring,
+  pilot-1 measurement and step B's data route/backend work.
+- **NOT met:** containment of system/catalogue edits, scientific DE-model
+  validity, real-DOI relevance and swaps without library_index. Direct renderer
+  calls remain unguarded. Short-form DOI registration resolution is not added.
+- **NOT met:** fresh independent review of D3, protected-change approval,
+  deployment path-scan acceptance and merge.
+
+D2 F1 and F2 closed; no finding waits on a ruling.
