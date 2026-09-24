@@ -341,11 +341,66 @@ class LaunchTests(unittest.TestCase):
             self.assertEqual(hits(tool+" 'pattern' "+outside), 1)
         for field in ('content', 'old_string', 'new_string', 'description', 'reason', 'prompt', 'pattern'):
             for value in (outside, "'unclosed", 'cd'):
-                event = {'type':'tool_use','input':{field:value}}
+                event = {'type':'tool_use','name':'Grep','input':{field:value}}
                 self.assertEqual(run_reviews.blindness([event],kit)['hits'],0)
         for field in ('path', 'file_path', 'notebook_path'):
             event = {'type':'tool_use','input':{field:outside+"'unclosed"}}
             self.assertEqual(run_reviews.blindness([event],kit)['hits'],1)
+
+    def test_hash_comment_boundaries(self):
+        kit = temporary(self)
+        outside = os.path.join(os.sep, 'outside', 'file')
+        bad = ['ls issue#1 '+outside, 'echo $# ; cat '+outside,
+               'echo ${#x}; cat '+outside, 'ls https:example#fragment '+outside,
+               "ls 'issue'#1 "+outside, 'ls issue\\#1 '+outside]
+        good = ['ls issue#1', 'echo $#', 'echo ${#x}', 'ls issue # '+outside,
+                'ls issue;# '+outside, "echo '# literal' # "+outside]
+        for command in bad + good:
+            with self.subTest(command=command):
+                event = {'type':'tool_use','name':'Bash','input':{'command':command}}
+                self.assertEqual(run_reviews.blindness([event],kit)['hits'],
+                                 1 if command in bad else 0)
+
+    def test_quoted_heredoc_operators(self):
+        kit = temporary(self)
+        outside = os.path.join(os.sep, 'outside', 'file')
+        for quoted in ("'<<'", '"<<"', '\\<\\<', "'<'<", "<'<'"):
+            for tail in ('cat '+outside, 'ls '+os.sep, 'cd'):
+                command = 'grep -c '+quoted+' repo/file\n'+tail
+                with self.subTest(command=command):
+                    event = {'type':'tool_use','name':'Bash','input':{'command':command}}
+                    self.assertEqual(run_reviews.blindness([event],kit)['hits'],1)
+        for delimiter in ('END', "'END'", '"END"', '-END'):
+            command = 'cat <<'+delimiter+'\n'+outside+'\nEND\ncat repo/file'
+            event = {'type':'tool_use','name':'Bash','input':{'command':command}}
+            self.assertEqual(run_reviews.blindness([event],kit)['hits'],0)
+
+    def test_glob_patterns_and_grep_prose(self):
+        kit = temporary(self)
+        outside = os.path.join(os.sep, 'outside', '*.py')
+        parent = chr(46) * 2
+        bad = [outside, os.sep, chr(126)+os.sep+'*.py',
+               ('$'+'HOME')+os.sep+'*.py', os.path.join(parent,'*.py')]
+        good = ['repo/*.py', str(kit/'*.py'), 'repo/file']
+        for tool in ('Glob', 'Grep'):
+            for pattern in bad + good:
+                with self.subTest(tool=tool, pattern=pattern):
+                    event = {'type':'tool_use','name':tool,'input':{'pattern':pattern}}
+                    self.assertEqual(run_reviews.blindness([event],kit)['hits'],
+                                     1 if tool == 'Glob' and pattern in bad else 0)
+
+    def test_key_value_operands(self):
+        kit = temporary(self)
+        outside = os.path.join(os.sep, 'outside', 'file')
+        for command, expected in [('dd if='+outside,1), ('dd if='+os.sep,1),
+                                  ('cat '+outside+'=value',1), ('dd if='+outside+'=value',1),
+                                  ('dd if='+str(kit/'input'),0), ('dd if=repo/input',0),
+                                  ('echo if='+outside,0), ('grep '+repr('if='+outside)+' repo/file',0)]:
+            with self.subTest(command=command):
+                event = {'type':'tool_use','name':'Bash','input':{'command':command}}
+                self.assertEqual(run_reviews.blindness([event],kit)['hits'],expected)
+        event = {'type':'tool_use','name':'Read','input':{'file_path':outside+'=value'}}
+        self.assertEqual(run_reviews.blindness([event],kit)['hits'],1)
 
     def test_session_output_store_boundary(self):
         root=temporary(self)

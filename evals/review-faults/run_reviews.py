@@ -2,7 +2,6 @@
 import argparse
 import datetime
 import hashlib
-import io
 import json
 import os
 import pwd
@@ -52,7 +51,7 @@ def strings(value):
 def tool_inputs(value):
     if isinstance(value, dict):
         if value.get('type') == 'tool_use':
-            yield value.get('input', {})
+            yield value.get('name'), value.get('input', {})
         for item in value.values():
             for data in tool_inputs(item):
                 yield data
@@ -83,20 +82,56 @@ def input_fields(value, field=None):
                 yield pair
 
 
+def shell_syntax(text, state=(None, True)):
+    """Keep source quoting for comments and real heredoc operators.
+
+    shlex removes quotes and recognizes comments inside words; neither behavior
+    can decide these two shell boundaries. Preserve offsets and newlines here.
+    """
+    quote, word_start = state
+    cleaned = list(text)
+    heredocs = []
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if char == '\\' and quote != "'":
+            if index + 1 < len(text) and text[index + 1] != '\n':
+                word_start = False
+            index += 2
+            continue
+        if quote:
+            if char == quote:
+                quote = None
+        elif char in ("'", '"'):
+            quote = char
+            word_start = False
+        elif char == '#' and word_start:
+            end = text.find('\n', index)
+            end = len(text) if end < 0 else end
+            cleaned[index:end] = ' ' * (end - index)
+            index = end
+            continue
+        elif char in '<>':
+            end = index + 1
+            while end < len(text) and text[end] in '<>':
+                end += 1
+            if text[index:end] == '<<':
+                heredocs.append(index)
+            index = end
+            word_start = True
+            continue
+        else:
+            word_start = char.isspace() or char in ';&|()'
+        index += 1
+    return ''.join(cleaned), heredocs, (quote, word_start)
+
+
 def shell_words(text):
-    class CommentStream(io.StringIO):
-        def readline(self, size=-1):
-            line = super().readline(size)
-            # shlex consumes comments with readline. Preserve their newline as
-            # a shell command boundary, including after an exempt text command.
-            if line.endswith('\n'):
-                self.seek(self.tell() - 1)
-                return line[:-1]
-            return line
-    lexer = shlex.shlex(CommentStream(text), posix=True, punctuation_chars=';&|<>()\n')
+    cleaned, operators, state = shell_syntax(text)
+    lexer = shlex.shlex(cleaned, posix=True, punctuation_chars=';&|<>()\n')
     lexer.whitespace = ' \t\r'
     lexer.whitespace_split = True
-    lexer.commenters = '#'
+    lexer.commenters = ''
     return list(lexer)
 
 
@@ -136,6 +171,7 @@ def without_heredocs(text):
     """Item 22(c): remove bodies, retaining command headers and later commands."""
     result = []
     pending = []
+    state = (None, True)
     for line in text.splitlines(True):
         if pending:
             delimiter, tabs = pending[0]
@@ -145,18 +181,21 @@ def without_heredocs(text):
             if candidate == delimiter:
                 pending.pop(0)
             continue
-        result.append(line)
+        cleaned, operators, state = shell_syntax(line, state)
+        result.append(cleaned)
         # Headers can contain quotes continued on later lines. The full shell
         # parser below, rather than this header inspection, diagnoses errors.
-        try:
-            words = shell_words(line)
-        except ValueError:
-            continue
-        for index, word in enumerate(words):
-            if word == '<<' and index + 1 < len(words):
-                delimiter = words[index + 1]
-                tabs = delimiter.startswith('-')
-                pending.append((delimiter[1:] if tabs else delimiter, tabs))
+        for index in operators:
+            tail = cleaned[index + 2:]
+            tabs = tail.startswith('-')
+            if tabs:
+                tail = tail[1:]
+            try:
+                words = shell_words(tail)
+            except ValueError:
+                continue
+            if words:
+                pending.append((words[0], tabs))
     return ''.join(result)
 
 
@@ -334,9 +373,11 @@ def blindness(events, kit, session_id=None):
     devices = [Path(os.path.join(os.sep, 'dev', x)) for x in ('null', 'stdin', 'stdout', 'stderr')]
     calls = hits = 0
     for event in events:
-        for data in tool_inputs(event):
+        for tool, data in tool_inputs(event):
             calls += 1
             for field, text in input_fields(data):
+                if tool == 'Glob' and field == 'pattern':
+                    field = 'path'
                 if field != 'command' and not path_field(field):
                     continue
                 try:
@@ -353,7 +394,8 @@ def blindness(events, kit, session_id=None):
                 if bare_cd:
                     hits += 1
                 for token in tokens:
-                    if token.startswith('-') and '=' in token:
+                    if ((field == 'command' and re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*=', token)) or
+                            (token.startswith('-') and '=' in token)):
                         token = token.partition('=')[2]
                     elif re.match(r'^-[a-zA-Z]+' + re.escape(os.sep), token):
                         token = re.sub(r'^-[a-zA-Z]+', '', token)

@@ -95,10 +95,10 @@ FAULTS.append(('blindness ignores bare cd','run_reviews.py',
                'launch','LaunchTests.test_blindness_every_spelling'))
 FAULTS.extend([
     ('blindness overcuts relative options','run_reviews.py',
-     "                    if token.startswith('-') and '=' in token:",
+     "                    if ((field == 'command' and re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*=', token)) or",
      "                    if token.startswith('-') and os.sep in token:\n"
      "                        token = token[token.index(os.sep):]\n"
-     "                    if token.startswith('-') and '=' in token:",
+     "                    if ((field == 'command' and re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*=', token)) or",
      'launch','LaunchTests.test_blindness_every_spelling'),
     ('blindness restores blanket root exemption','run_reviews.py',
      'hits += root_word_hits(text, field)', 'hits += 0',
@@ -252,7 +252,7 @@ FAULTS.extend([
      'words = shell_words(without_heredocs(text))', 'words = shell_words(text)',
      'corpus','CorpusTests.test_honest_call_corpus'),
     ('item 22d comments scanned again','run_reviews.py',
-     "lexer.commenters = '#'", "lexer.commenters = ''",
+     "elif char == '#' and word_start:", "elif False:",
      'corpus','CorpusTests.test_honest_call_corpus'),
     ('item 22d glued semicolon retained','run_reviews.py',
      "punctuation_chars=';&|<>()\\n'", "punctuation_chars='&|<>()\\n'",
@@ -268,6 +268,24 @@ FAULTS.extend([
      "if command in shells and re.fullmatch(r'-[a-zA-Z]*c', word):",
      "if command in shells and re.fullmatch(r'-[a-zA-Z]*c', word) and words[words.index(word) - 1] == command:",
      'corpus','CorpusTests.test_honest_call_corpus'),
+])
+
+FAULTS.extend([
+    ('AA1 midword hash starts comment','run_reviews.py',
+     "elif char == '#' and word_start:", "elif char == '#':",
+     'launch','LaunchTests.test_hash_comment_boundaries'),
+    ('AA1 quoted heredoc hides following commands','run_reviews.py',
+     'cleaned, operators, state = shell_syntax(line, state)',
+     "cleaned, operators, state = shell_syntax(line, state)\n"
+     "        cleaned = cleaned.replace(chr(39), '').replace(chr(34), '')\n"
+     "        cleaned, operators, state = shell_syntax(cleaned)",
+     'launch','LaunchTests.test_quoted_heredoc_operators'),
+    ('AA1 Glob pattern loses path role','run_reviews.py',
+     "if tool == 'Glob' and field == 'pattern':", 'if False:',
+     'launch','LaunchTests.test_glob_patterns_and_grep_prose'),
+    ('AA1 key value operand untested','run_reviews.py',
+     "(field == 'command' and re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*=', token))", 'False',
+     'launch','LaunchTests.test_key_value_operands'),
 ])
 
 # S1 carries R1's leak controls forward on item 15's committed surfaces.

@@ -753,3 +753,59 @@ Independent-context seals are development evidence only; public claims need
 external-human seals. Real fixture secret verification remains NOT met under
 Q2 A. No sealed slots, measured run or ledger entries are supplied. Row 9 exit
 remains NOT met.
+
+
+## 2026-09-24 addendum — review round AA2
+
+**THE LANE, UNDER THE OWNER'S DELEGATION — THE LANE'S SPECIFICATION.**
+No new words are attributed to the owner. This addendum preserves all earlier
+bytes. Record 0072 remains this row's decision; 0073 and 0074 remain reserved
+for protected approval and the seal with first measured run respectively.
+
+AA1 F1: shell comments begin only at an unquoted word boundary. A hash within
+a word, including parameter expressions, does not discard subsequent commands.
+AA1 F2: heredoc body removal recognizes only unquoted, unescaped operators.
+Quoted operator text is ordinary data and cannot suppress later lines. A small
+source pass retains quote state and word boundaries before shlex removes quotes;
+comment removal preserves newlines. Real heredoc bodies remain exempt content.
+AA1 F3: the tool name accompanies its input fields. Glob pattern is path-valued,
+while Grep pattern remains exempt prose. Both directions have named tests.
+AA1 F4: a visible command operand with an identifier and equals sign has its
+value path-tested, including dd input operands. Ordinary absolute paths with
+an equals sign are preserved. This is a literal value check, not evaluation.
+Each change has a named regression and an isolated red-on-fault entry.
+
+Item 22 continues to amend items 20 and 21: neither path rule scans the listed
+program, pattern and format data; file operands are scanned. Content and prose
+remain exempt, heredoc bodies are removed, and shell word boundaries and nested
+shell options retain the previous coverage. The supplied corpus files were
+copied again with cp and are byte-identical to the committed copies. Their
+provenance is seven real review sessions of this row on the deployment,
+sanitized before delivery; labels are the lane's reading of the contract and
+contain no account, host or owner identity. All 278 calls and the earlier
+item 22 mutation entries remain part of verification.
+
+### Not covered and row exit
+
+Item 20's two walls remain distinct: the deployment sandbox enforces filesystem
+and network restrictions; required settings bytes are hashed into the envelope.
+The harness binds which settings were used and never proves their efficacy.
+The audit detects its named spellings, not arbitrary shell behavior. Variables
+and assignments beyond their visible operand values, substitutions, evaluated
+strings, aliases, functions, unparsed nested shells, interpreter text and file
+access within exempt awk or sed programs remain sandbox responsibilities.
+The unsalted settings hash can confirm guessed configuration contents; long
+encoded session-store names remain unverified against the deployed tool.
+
+The uid check proves exactly: on the host where the review ran, the reviewing OS
+account is not the producing OS account. It does not prove which machine built
+the cases, and it does not bind GARS's own role decision. Separate-user and
+read-only-credential deployment evidence remains external. launch_role() still
+returns producer; R-093's code half remains NOT met. Diff-style inference,
+shared sealer and producer model family, the science half, trailer-gate JSON,
+thin one-per-class samples and three sealed outcomes checkable only by hash
+remain residuals. Public recomputation covers twelve of fifteen outcomes.
+Independent-context seals remain development evidence; public credibility
+requires external-human seals. Real fixture gitleaks verification remains
+NOT met under Q2 A. No model is run, no prompt is tuned, and no seal, measured
+run or ledger entry is supplied. Row 9 exit remains NOT met.

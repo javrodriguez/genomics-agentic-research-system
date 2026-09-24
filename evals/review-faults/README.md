@@ -83,7 +83,7 @@ were copied at launch; it never judges their content or proves sandbox efficacy.
 spellings below and claims nothing beyond them:
 
 - Rule (i): tokens in commands and path-valued fields (including file_path, path
-  and notebook_path) that are absolute, start with a tilde or the HOME expansion
+  and notebook_path, plus Glob pattern) that are absolute, start with a tilde or the HOME expansion
   in any modifier form, or contain a parent component, are checked against the
   kit, item 19's store and the system allowlist. Symlinks resolve before checking.
   The system trees are usr, bin, sbin, lib and lib64 at the filesystem root; only
@@ -110,7 +110,8 @@ spellings below and claims nothing beyond them:
 - Item 22(b) withdraws rule (iii): content and prose fields, including Write
   content, Edit strings, descriptions, reasons, prompts and Grep patterns,
   get neither rule. Only command fields are parsed as shell text; path-valued
-  fields are checked as whole paths. Quoting errors in prose are not hits.
+  fields are checked as whole paths. Glob patterns describe filesystem paths;
+  Grep patterns remain exempt prose. Quoting errors in prose are not hits.
 - Rule (iv): cd is found in the shlex word stream after shell keywords, prefix
   commands and their options, or a leading backslash. It is bare, and a hit,
   when every argument is an option word. Redirect descriptors, operators and
@@ -121,11 +122,18 @@ spellings below and claims nothing beyond them:
 
 Item 22(c-d) removes heredoc bodies before auditing, preserving headers and
 commands after each closing delimiter. Unquoted, single-quoted, double-quoted
-and tab-stripping delimiters are supported. Shell comments are ignored;
+and tab-stripping delimiters are supported. The heredoc operator itself must
+be unquoted and unescaped; quoted operator text cannot hide later commands.
+Shell comments start only at a word boundary; hashes inside words or parameter
+expansions preserve the rest of the command. Comments are ignored;
 operators terminate adjacent words; adjacent quoted pieces form one word.
 A separator embedded in a longer word, such as a tr character set, is not a
 separator-only word. The earlier regex tokenizer remains only inside the
 interpreter program text it already inspected.
+Visible values of command operands with a shell identifier followed by an
+equals sign receive the same path check as option values. This includes dd
+input operands; it does not evaluate assignments or follow their later use.
+An equals sign within an ordinary absolute pathname remains part of that path.
 
 The sanitized deployment corpus in `tests/data/review_faults_honest_calls.jsonl`
 contains 278 whole calls from seven real review sessions. Its labels are the
