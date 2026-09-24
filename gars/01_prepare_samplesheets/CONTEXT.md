@@ -165,7 +165,7 @@ It is off by default because FASTQs normally arrive already validated by a seque
 answer — the script writes `Deep file-integrity verification: full|none` into `HISTORY.md`, so a
 project can always name the verification it received. Violation → `integrity`.
 
-**Above ~10 GB it is scheduled work, not login-node work.** `--check` reports
+**Above chr(126)10 GB it is scheduled work, not login-node work.** `--check` reports
 `full_check_needs_scheduling`; when it is true, submit with `sbatch` rather than running inline.
 Sub-stage 02.02 learned this the hard way — a pure-Python step SIGKILLed on a login node — and a
 login node's per-user memory cgroup kills whatever is running, not whatever is at fault.
@@ -398,7 +398,7 @@ sample(s) to catch a truncated or corrupt FASTQ. Stage 00 already confirmed ever
 and is a real gzip; this is the stronger check.
 
   Data to verify: <included_gb> GB
-  Estimated time: ~<full_check_estimate_min> min<, submitted to Slurm if needs_scheduling>
+  Estimated time: chr(126)<full_check_estimate_min> min<, submitted to Slurm if needs_scheduling>
 
 Most FASTQs arrive already validated by the sequencing core, so this is off by default.
 

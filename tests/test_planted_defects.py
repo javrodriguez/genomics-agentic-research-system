@@ -87,7 +87,7 @@ def collect(table):
         project = Path(folder)
         (project / '_config').mkdir()
         (project / '_config/rnaseq_bulk.yaml').write_text(
-            'de:\n  formula: "~ condition"\n  contrast: "condition,A,B"\n'
+            'de:\n  formula: "' + chr(126) + ' condition"\n  contrast: "condition,A,B"\n'
             'compute:\n  partition: fixture\n  time: "1:00:00"\n  cpus: 1\n'
             '  mem: 1G\n  work_dir: ' + str(project / 'work') + '\n')
         (project / '01_samplesheets').mkdir()

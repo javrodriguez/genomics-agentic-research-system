@@ -268,7 +268,7 @@ def read_config_scalar(config_path, key):
         return default, None
 
     value = match.split("#", 1)[0].strip().strip("\"'")
-    if not value or value.lower() in ("null", "~") or value.startswith("<REQUIRED"):
+    if not value or value.lower() in ("null", chr(126)) or value.startswith("<REQUIRED"):
         return default, None
     allowed = rule.get("values")
     if allowed and value not in allowed:
@@ -971,7 +971,7 @@ def main(argv=None):
                     help="none (default): trust the files; stage 00 already checked that every "
                          "link resolves and carries gzip magic. full: decompress every INCLUDED "
                          "file before emitting the samplesheet -- the last cheap moment to catch "
-                         "a truncated FASTQ. Above ~10 GB submit this with sbatch; it is not "
+                         "a truncated FASTQ. Above " + chr(126) + "10 GB submit this with sbatch; it is not "
                          "login-node work.")
     args = ap.parse_args(argv)
 

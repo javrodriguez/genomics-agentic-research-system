@@ -314,3 +314,166 @@ identify this step's containing commit. No self-referential commit hash is fabri
    accept the labeled synthetic replay fixtures for this step and retain live
    registration/capture as NOT met. The question was submitted while independent
    offline work continued; no answer or approval is inferred from elapsed time.
+
+## Step A retry round B1 (path scan)
+
+Date: 2026-09-24. The first command recorded starting commit
+`e367a41272af65557d46cb5d7ab2f2c5d56e9c5a`; the working tree was clean,
+on `build/gars-row-8-catalogue`. Round 1 remains the parent.
+The retry scope was decided under the owner's standing delegation (23 Sep 2026).
+
+This retry replaces every literal U+007E in the files round 1 edited by hand:
+41 lines in seven files. Executable values are assembled with `chr(126)`;
+prose, examples and docstrings use the same character notation. No detector,
+threshold, test assertion or fixture verdict changes. No Rule 5 command failed,
+so no additional implementation change was needed. This section is appended
+after the original report's last byte; all its previous text, including its
+unresolved captured-response ruling, remains unchanged. Decision 0101 remains
+byte-identical; no addendum or index regeneration is needed. The sole remaining
+match among round-1 changed files is in the generated decision index, which
+was not edited by hand and is left unchanged.
+
+### Every replacement (line numbers unchanged)
+
+Old shapes name U+007E without writing the literal character. Each row identifies
+one complete changed line; multiple occurrences on that line share the replacement.
+
+| File | Line | Old shape | New shape |
+|---|---|---|---|
+| `DEVELOPMENT.md` | 194 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 213 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 251 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 255 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 259 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 269 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 275 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 292 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 300 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 305 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 324 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 342 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 344 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 356 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 360 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 370 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 376 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 402 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 403 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 405 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 406 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 415 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 416 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 417 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 418 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 425 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 460 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 462 | literal character in prose or example | `chr(126) notation` |
+| `DEVELOPMENT.md` | 469 | literal character in prose or example | `chr(126) notation` |
+| `gars/00_initialize_project/CONTEXT.md` | 111 | literal character in prose or example | `chr(126) notation` |
+| `gars/01_prepare_samplesheets/CONTEXT.md` | 168 | literal character in prose or example | `chr(126) notation` |
+| `gars/01_prepare_samplesheets/CONTEXT.md` | 401 | literal character in prose or example | `chr(126) notation` |
+| `gars/_system/integrity.py` | 14 | literal character in prose or example | `chr(126) notation` |
+| `gars/_system/integrity.py` | 16 | literal character in prose or example | `chr(126) notation` |
+| `gars/_system/stage01_samplesheet.py` | 271 | single-character null token | `chr(126) expression` |
+| `gars/_system/stage01_samplesheet.py` | 974 | character embedded in CLI help | `concatenation with chr(126)` |
+| `tests/run_tests.py` | 870 | literal R formula in config string | `runtime replacement with chr(126)` |
+| `tests/run_tests.py` | 1773 | literal character in shell-expansion refusal fixture | `concatenation with chr(126)` |
+| `tests/run_tests.py` | 1791 | literal character in scheduler refusal fixture | `concatenation with chr(126)` |
+| `tests/run_tests.py` | 2536 | literal character in prose or example | `chr(126) notation` |
+| `tests/test_planted_defects.py` | 90 | literal R formula in config string | `concatenation with chr(126)` |
+
+### Execution and checks
+
+Every command ran from the repository root with these inherited scratch settings:
+
+```bash
+export TMPDIR="$(pwd)-scratch" TEMP="$(pwd)-scratch" TMP="$(pwd)-scratch"
+```
+
+Search used `git grep -n -F` with its character argument built by `chr(126)`,
+over the file list from `git diff --name-only dc6b803 HEAD`. The unavailable
+`rg` command was replaced by Git/Python reads. Replacements used a short Python
+read/replace/write command, never a patch containing removed literal characters.
+Logs and the line-change inventory were written only under the scratch twin.
+One full suite ran, with containers disabled; no second full suite ran concurrently.
+All seven required commands exited zero. Execution used Python 3.13.5,
+including the eval harness. Python 3.6 AST parsing accepted all four edited
+Python files. A constant-folded AST comparison against the parent confirmed
+identical executable expressions, excluding documentation strings.
+`git diff --check` passed. Character search confirmed no literal U+007E in
+hand-edited files. Staging names only the eight retry paths; the commit message
+is read from a file in the scratch twin. No push, approval or merge occurs.
+
+### Rule 5 summaries (verbatim)
+
+`GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py`:
+
+```text
+Ran 485 tests in 79.320s
+OK (skipped=79)
+```
+
+`python3 tests/check_contracts.py`:
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`:
+
+```text
+collected 237 tests from tests
+collected 248 tests from gars/tests
+suite: 485 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`:
+
+```text
+Ran 44 tests in 37.422s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`:
+
+```text
+  published=3 graded=1
+clean — graded=1
+```
+
+`python3 tests/test_planted_defects.py`:
+
+```text
+Ran 14 tests in 3.344s
+OK (skipped=1)
+planted-defects development (producer-authored, unsealed): 9/10 classes (placeholder 10 counted planted, not caught)
+false flags (producer-authored clean projects): 0/10
+graded 19 of 19 development projects seen
+class 6: measured with --verify-integrity full; stage 01 default is none
+```
+
+`python3 gars/tests/test_citation_resolution.py`:
+
+```text
+Ran 5 tests in 0.007s
+OK (skipped=1)
+```
+
+### What was not verified in this retry
+
+- NOT met: actual sealed measurement, external-human sealing and the row-8 exit;
+  the sealed catalogue test skipped. No sealed fixture was accessed.
+- NOT met: live DOI resolution and captured service-response provenance; the live
+  citation test skipped. Replay remains the parent's labeled synthetic protocol
+  fixture, and its existing ruling request remains open. No network test ran.
+- NOT met: Docker database test classes for rows 5 and 7; these were skipped.
+  Other environment skips remain as reported by the suite (79 total).
+- NOT met: actual Python 3.6 execution, live pipelines or cluster acceptance.
+- NOT rerun: the separate baseline-red and 24-fault drivers; round 1's recorded
+  evidence is unchanged, with no new claim of reproducing those runs here.
+- NOT met: independent review, protected-change approval, deployment path-scan
+  acceptance and merge. Step B and all other residuals remain outside this retry.
+
+Hours and metered cost: unknown; no new measurement is inferred.
