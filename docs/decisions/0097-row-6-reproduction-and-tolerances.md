@@ -209,3 +209,66 @@ baseline to its new output. The strict-default regression plants this condition
 and requires `original output drifted`. The comparison file retains the hash of
 the tolerance file checked before execution, rather than re-reading its identity
 at result-writing time.
+
+
+## Addendum — step B's ruling round b (the reproduction build), 2026-09-24
+
+**R10 — the lane, under the owner's standing delegation of 23 September 2026.**
+This is the lane's ruling, not the owner's words. Option A of B-2 is authorized:
+a consumed input absent from the manifest is a false "complete", so it is recorded.
+Round ruling-b2 builds on `9def5b3`. The original bytes of this record and records
+0095/0096 are preserved; 0098/0099 remain exclusively the owner's records.
+
+### B-2 implementation and migration (R-042)
+
+The only wrapper edit adds `samplesheet: paths["samplesheet"]` to
+scrna-qc-cluster's existing `write_reproducibility` inputs. The unchanged writer
+supplies `samplesheet_sha256` and `input_data_location.samplesheet`, retains them
+through collect, and includes its bytes in `downstream-v1`. The formula is unchanged;
+the new declared input changes this wrapper's key. The other nine wrappers retain
+their base preparation keys, measured by running their `9def5b3` source and current
+source against identical fixture paths and bytes on both fixture backends.
+
+**Migration:** an existing prepared-but-unsubmitted scrna-qc-cluster stage must
+re-run its normal `prepare --project <project> --h5ad <recorded matrix>` command
+under the new code before submission. The regenerated manifest and submit-script
+comment carry the new key. An unchanged legacy preparation can still satisfy the
+unchanged `prepared_key` check: there is no automatic legacy-submit refusal or
+retrofit. The new preparation satisfies that same check and real submit path.
+Do not rewrite a manifest or key comment by hand. A completed legacy manifest
+without the input still receives `manifest lacks required samplesheet input:
+scrna-qc-cluster` from the instrument; prepare and complete a new original run.
+This addendum does not authorize resetting a running or terminal stage.
+
+No instrument edit is needed: its existing conditional B-2 guard admits the now
+recorded case and continues refusing the missing-input case. Changed samplesheet
+bytes refuse with `input hash changed: samplesheet` before an output folder or job
+exists; submit independently refuses `prepared key differs from input bytes`.
+
+`RealWrapperReplayTests.test_scrna_samplesheet_replay_and_drift` exercises fresh
+projects through rerun_check, real prepare, submit key/record checks, local status,
+collect and output comparison, with only the biological worker replaced by synthetic
+artifacts and local completion evidence. It is not biological execution. The
+all-wrapper test covers fresh prepare and execution-evidence preservation on both
+fixture backends, comparing keys to the base behavior. The manifest invariant sweep
+rehashes every declared input, checks each location and removes each input hash to
+require group 1 to fail. Dropping the samplesheet declaration is step B's tenth
+red-on-fault plant. Required commands and measured summaries are in the report.
+
+### Survey stop: B-3, rnaseq-de's alternate design
+
+The survey of the other nine wrappers found another consumed project file:
+`rnaseq_de.py` prepare accepts `--design` and records that path, but collect reads
+`01_samplesheets/rnaseq_bulk_design.csv` independently. When these paths differ,
+the canonical file is absent from inputs, config and execution_config. A disposable
+real-verb probe accepted the alternate design, changed only the canonical file
+while every recorded input hash remained equal, and got collect exit 1 with
+`normalized_counts.csv lacks sample(s): UNRECORDED`.
+
+R10 requires stopping this part and raising the question, so no rnaseq-de or
+instrument policy change is made here. B-3 in the report asks whether collect must
+use the recorded design, or prepare must require canonical-path identity (with
+migration and behavior tests), or the canonical collect input must be recorded
+separately with its key/migration consequence. B-2 is answered; full Step B closure
+is not claimed. The owner's real Slurm result and protected-path approval remain
+unmeasured/pending, separate from this implementation ruling.

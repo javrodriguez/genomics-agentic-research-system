@@ -381,7 +381,8 @@ def cmd_prepare(args):
     wl.write_submit_sh(substage, WORKSPACE, cfg, project.resolve().name,
                        "%s-qc" % ASSAY, body)
     wl.write_reproducibility(substage, "scrna-qc-cluster", WORKSPACE,
-                             {"h5ad": Path(args.h5ad), "config": paths["config"]},
+                             {"h5ad": Path(args.h5ad), "config": paths["config"],
+                              "samplesheet": paths["samplesheet"]},
                              [("h5ad", str(args.h5ad)),
                               ("min_genes", cfg["qc.min_genes"]),
                               ("min_cells", cfg["qc.min_cells"]),

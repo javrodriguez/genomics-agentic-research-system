@@ -352,6 +352,14 @@ exit_file=stage/'fixture.exit';exit_file.write_text('0\\n')
                     checked(self.wrapper_argv('collect',['--model',MODEL]),cwd=self.ws,env=self.env)
                     self.assertEqual(before,self.manifest_path.read_bytes())
                     self.assert_outputs(manifest)
+                    if key == 'scrna-qc-cluster':
+                        self.assertIn('samplesheet', manifest['inputs'])
+                    for label, source in manifest['inputs'].items():
+                        self.assertEqual(manifest[label + '_sha256'], sha(source))
+                        self.assertEqual(manifest['input_data_location'][label], source)
+                        broken = copy.deepcopy(manifest)
+                        del broken[label + '_sha256']
+                        self.assertFalse(mc.grade(broken)['groups'][0]['present'], label)
 
     def assert_outputs(self, manifest):
         rows=[line.split('\t') for line in (self.stage/'OUTPUTS.tsv').read_text().splitlines() if line and not line.startswith('#')]

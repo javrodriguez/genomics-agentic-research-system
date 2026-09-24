@@ -1110,3 +1110,311 @@ time. B-1 is answered above; B-2 remains the only new open ruling and stops the 
   data-handling/registry/liveness requirements and row-2 benchmark re-pinning.
 - Python 3.6 grammar is verified; Python 3.6 runtime and real scheduler behavior are
   not verified. No protected-path approval, push, merge or release is claimed.
+
+
+## Ruling answered (step B's ruling round b (the reproduction build))
+
+2026-09-24, round **ruling-b2**, parent `9def5b3`. **R10 — the lane, under
+the owner's standing delegation of 23 September 2026**, authorizes option A of
+B-2. This is a supplied lane ruling, not an independent review or additional
+words attributed to the owner. The earlier report and 0097 remain exact byte
+prefixes. Records 0095/0096 are unchanged; 0098/0099 are never written here.
+
+R10's scrna-qc-cluster change is implemented and verified below. The required
+survey found a separate rnaseq-de input mismatch, B-3; that part stops for a ruling.
+Neither full Step B closure nor the owner's real Slurm reproduction exit is claimed.
+
+## Review round ruling-b2 fixes
+
+2026-09-24. No BLOCKER/MAJOR/MINOR/NOTE severity is invented for this ruling.
+
+| Finding / requirement | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| R10 / B-2: record the samplesheet actually consumed | scrna_qc_cluster.py; test_rerun_check.py; test_manifest_groups.py | RealWrapperReplayTests.test_scrna_samplesheet_replay_and_drift; ManifestGroupsTests.test_all_ten_wrappers_both_backends | Closed; yes, dropping the one input makes the explicit membership assertion fail |
+| Fresh-project scrna replay, with missing-input refusal retained for legacy manifests | test_rerun_check.py | test_scrna_samplesheet_replay_and_drift | Two fresh projects pass real prepare/submit/status/collect/comparison with a synthetic worker; legacy refusal still tested; yes, fault 10 |
+| Samplesheet drift after prepare | test_rerun_check.py | test_scrna_samplesheet_replay_and_drift | `input hash changed: samplesheet` before output creation; prepared_key independently refuses changed bytes; yes, dropping the declaration fails the named test |
+| Authorized new key, migration and unchanged other-nine keys | test_rerun_check.py; 0097 addendum | test_all_real_wrapper_repreparations_and_execution_evidence | All ten × both fixture backends compared to real base-source preparation at identical paths; only scrna key changes; yes, dropping the declared input defeats its membership/key assertions |
+| Manifest invariant includes new input | test_manifest_groups.py | test_all_ten_wrappers_both_backends | Every input hash recomputed and location checked; deleting each hash makes group 1 missing; yes, declaration omission fails the scrna membership assertion |
+| Step B comparator/refusal fault sensitivity | No implementation changes; scratch mutation driver | Nine original RerunCheckTests fault witnesses plus new RealWrapperReplayTests witness | `RED-ON-FAULT: 10/10 observed`; yes, assertion-level failures, not import/syntax errors |
+| R10 survey of other nine wrappers | Report; 0097 addendum; DEVELOPMENT; README | Real-wrapper base/fresh preparation sweep and r10-survey.py | Survey complete; B-3 found and stopped, not fixed; red-on-fault no, diagnostic evidence of an existing gap |
+| R-042 record, current counts and boundaries | 0097 addendum; report; README; DEVELOPMENT; regenerated index | Required commands below; r10-audit.py | Original bytes preserved; scope and counts checked; red-on-fault no, documentation follows measured evidence |
+
+### Protected files and expectation changes
+
+The sole protected implementation edit is
+`gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py`: add the samplesheet
+to its existing write_reproducibility input dictionary. The common writer supplies
+its hash/location and includes it in the unchanged downstream key formula. No other
+wrapper, common helper, schema, tolerance, template, guard, setting, registry, pin,
+CI, evaluator, benchmark or study changes. The owner's separate approval remains
+0099 at merge. The producer does not provide it.
+
+`scripts/rerun_check.py` is byte-identical: its existing B-2 condition already
+accepts a manifest with the samplesheet, and still refuses the missing-input case.
+The index was regenerated with the required builder; unchanged frontmatter makes
+the generated index byte-identical, so no artificial index edit is committed.
+
+| Previous expectation | R10 expectation | Why this is not weakened |
+|---|---|---|
+| Fresh scrna prepare refuses `no samplesheet`; completed manifest lacks it | Fresh prepare validates on both fixture backends; completed manifest contains its path/hash/location | Real prepare and collect still run; all previous equality and execution-evidence assertions remain |
+| All current scrna prepares retain the legacy key | New key differs from base because the samplesheet is framed into downstream-v1 | Real base/current preparations use identical files; dropping only that input reconstructs the base key; other-nine equality is asserted |
+| Old scrna manifests receive the B-2 refusal | Same refusal for the old case; successful recorded case and drift refusal added | The production guard is unchanged, and the old case remains a negative test |
+
+A prepared-but-unsubmitted scrna stage must re-run its normal `prepare` with the
+recorded matrix before submission. A legacy manifest/script can still pass the
+unchanged prepared_key check; the code does not automatically detect that it needs
+the migration. The new prepare replaces the manifest and script comment with the
+new key, which submit accepts. Completed old manifests must not be hand-retrofitted.
+This change does not authorize resetting active or terminal stages.
+
+### Survey of the other nine wrappers
+
+The source survey followed prepare/check/collect reads, declared writer inputs,
+and shared configuration/provenance helpers; the real base/current and fresh-project
+prepare sweep runs on both fixture backends. Generated results, lifecycle records
+and pinned code resources are identified separately from original analysis inputs.
+
+| Wrapper | Consumed analysis/configuration files and binding | Finding |
+|---|---|---|
+| nfcore-atacseq-wrapper | samplesheet and assay config in inputs; selected executor/Groovy in execution_config; reference paths in config | No additional project input found |
+| nfcore-chipseq-wrapper | samplesheet (including antibody/control checks), config and execution configuration | No additional project input found |
+| nfcore-cutandrun-wrapper | samplesheet used by prepare and collect, config including reference/spike-in paths, execution configuration | No additional project input found |
+| nfcore-methylseq-wrapper | samplesheet sample set, config and execution configuration | No additional project input found |
+| nfcore-rnaseq-wrapper | samplesheet, config including reference/cache paths, execution configuration | No additional project input found |
+| nfcore-scrnaseq-wrapper | samplesheet, config and execution configuration; assets/protocols.json is a resource in the recorded pipeline checkout | No additional project input found; pipeline-source integrity remains the existing threat boundary |
+| nfcore-spatialvi-wrapper | samplesheet including spatial input paths, config and execution configuration | No additional project input found |
+| spatial-cluster-count | samplesheet, config and each resolved h5ad file in inputs; executor descriptor in execution_config | No additional project input found |
+| rnaseq-de | prepare's counts, supplied design and config are inputs; collect separately opens the canonical design path | **B-3: alternate --design leaves a consumed canonical file unrecorded** |
+
+The shared writer reads dataset classification into prepare facts; collect also
+reads its generated outputs, versions, trace/accounting, design-check evidence,
+and model context into their existing manifest groups. This survey does not claim
+real execution, recursive hashing of all pipeline data dependencies, or immutable
+external environment resources. None of those existing boundaries is widened here.
+
+The B-3 probe uses a disposable fixture, the actual prepare and collect verbs and
+the existing synthetic completion helper. The supplied alternate design initially
+has the same bytes as the canonical design; changing only the canonical file adds
+an unmatched sample. Every input that the manifest records retains its hash.
+
+Command: `python3 ../gars-row-6-scratch/r10-survey.py`
+
+```text
+SURVEY rnaseq-de: prepare accepts alternate --design; canonical design absent from inputs
+SURVEY rnaseq-de: canonical design changed; every recorded input hash unchanged
+SURVEY rnaseq-de: collect exit 1; {"check": "de_results", "detail": "normalized_counts.csv lacks sample(s): UNRECORDED"}
+```
+
+Source evidence: rnaseq_de.py's writer call records `Path(args.design)` at lines
+308–314; collect derives and opens `01_samplesheets/rnaseq_bulk_design.csv` at
+lines 359–365. `bind_project` restores the recorded design to that canonical name,
+so it cannot reconstruct a different unrecorded collect-time design. The probe is
+a diagnostic, not a passing reproduction exit. No fix or new refusal is inferred.
+
+### Red-on-fault evidence for this round
+
+`python3 ../gars-row-6-scratch/r10-faults.py` repeats all nine step B plants and
+adds plant 10, `samplesheet dropped from scrna-qc-cluster inputs`. Each mutation
+runs only in a separate disposable scratch copy and exits 1 with unittest
+`FAILED (failures=...)`; syntax/import errors do not count. Plants 1–9 use the
+same named tests listed in the preceding step B table. Plant 10 runs
+`RealWrapperReplayTests.test_scrna_samplesheet_replay_and_drift` and fails
+`assertIn('samplesheet', original['inputs'])`.
+
+The first plant-10 attempt exposed a KeyError in the test before its membership
+assertion existed. That error was rejected as an assertion-level witness. An
+explicit membership assertion was added; the entire ten-plant driver then passed.
+No production mutant remains and no threshold or guard was weakened.
+
+```text
+RED-ON-FAULT: 10/10 observed
+```
+
+### Required verification commands and verbatim summaries
+
+Python **3.13.2**. Commands ran sequentially, one suite at a time. TMPDIR, TEMP and
+TMP point to the designated sibling scratch folder, and PYTHONDONTWRITEBYTECODE=1.
+The scratch driver `r10-verify.py` retains individual stdout/stderr logs under
+`r10-final-`. No row-6 test is skipped. Whole-suite skips are inherited environment
+skips. Python 3.6 grammar is checked; Python 3.6 runtime is not claimed.
+
+Preliminary targeted command: `python3 gars/tests/test_rerun_check.py RealWrapperReplayTests`
+
+```text
+Ran 2 tests in 29.710s
+OK
+```
+
+`GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py`
+
+```text
+collected 226 tests from tests
+collected 263 tests from gars/tests
+SCRNA replay fixture: 2/2; real prepare/submit/status/collect, synthetic worker
+MEASURE instrument self-test run 1: max_absolute_error=1.48955E-7; bytes differ
+MEASURE instrument self-test run 2: max_absolute_error=9.2513E-8; bytes differ
+reproduction: 2/2
+EXIT instrument self-test (fixture, local): reproduction 2/2
+Ran 489 tests in 328.397s
+OK (skipped=73)
+```
+
+`python3 tests/check_contracts.py`
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`
+
+```text
+collected 226 tests from tests
+collected 263 tests from gars/tests
+suite: 489 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`
+
+```text
+Ran 44 tests in 115.003s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`
+
+```text
+clean — graded=1
+```
+
+`python3 gars/tests/test_rerun_check.py`
+
+```text
+Ran 12 tests in 40.314s
+OK
+SCRNA replay fixture: 2/2; real prepare/submit/status/collect, synthetic worker
+MEASURE instrument self-test run 1: max_absolute_error=1.48559E-7; bytes differ
+MEASURE instrument self-test run 2: max_absolute_error=1.69052E-7; bytes differ
+reproduction: 2/2
+EXIT instrument self-test (fixture, local): reproduction 2/2
+```
+
+`python3 gars/tests/test_manifest_groups.py`
+
+```text
+EXIT manifest completeness nfcore-atacseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-atacseq-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-chipseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-chipseq-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-cutandrun-wrapper local: 15/15
+EXIT manifest completeness nfcore-cutandrun-wrapper slurm: 16/16
+EXIT manifest completeness nfcore-methylseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-methylseq-wrapper slurm: 16/16
+EXIT manifest completeness rnaseq-de local: 14/14
+EXIT manifest completeness rnaseq-de slurm: 15/15
+EXIT manifest completeness nfcore-rnaseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-rnaseq-wrapper slurm: 16/16
+EXIT manifest completeness scrna-qc-cluster local: 14/14
+EXIT manifest completeness scrna-qc-cluster slurm: 15/15
+EXIT manifest completeness nfcore-scrnaseq-wrapper local: 15/15
+EXIT manifest completeness nfcore-scrnaseq-wrapper slurm: 16/16
+EXIT manifest completeness spatial-cluster-count local: 13/13
+EXIT manifest completeness spatial-cluster-count slurm: 14/14
+EXIT manifest completeness nfcore-spatialvi-wrapper local: 14/14
+Ran 14 tests in 36.435s
+OK
+EXIT manifest completeness nfcore-spatialvi-wrapper slurm: 15/15
+```
+
+`python3 gars/tests/test_data_class_required.py`
+
+```text
+Ran 4 tests in 2.047s
+OK
+```
+
+`bash docs/decisions/build_index.sh` exited 0 and regenerated a byte-identical index.
+Its raw absolute-path output is retained only in the scratch log.
+
+`python3 ../gars-row-6-scratch/r10-verify.py`
+
+```text
+REQUIRED VERIFICATION: 8/8 commands passed
+```
+
+### Hours
+
+Measured elapsed time from the first R10 edit through report assembly: **0.21 hours**.
+Earlier reading is not timed. This is wall time, not human labor time.
+
+### Scope audit and commit procedure
+
+`python3 ../gars-row-6-scratch/r10-audit.py` checks the exact allowed path set,
+report/0097 prefix preservation, byte-identical 0095/0096 and frozen implementation
+files, unchanged/untracked supplied ruling, the exact one-input wrapper diff,
+absence of 0098/0099 and session identifiers in additions, Python 3.6 grammar and
+`git diff --check`.
+
+```text
+SCOPE AUDIT: allowed paths only; append-only prefixes intact; protected files and ruling unchanged
+WRAPPER DIFF: samplesheet input addition only; scripts/rerun_check.py unchanged
+PRIVACY/GRAMMAR: no session identifiers in additions; changed Python parses as 3.6
+```
+
+One commit on `9def5b3`, staged with an explicit seven-file `git add --` list;
+message read from `../gars-row-6-scratch/r10-commit-message.txt`. The regenerated
+index has no diff. Both pre-existing untracked ruling files remain untracked;
+the supplied ruling-b2 file is hash-checked unchanged. No push, remote, merge,
+pull request, owner approval, installation or download occurs.
+
+## Owner rulings needed
+
+**B-3: choose rnaseq-de's design identity for collect when `--design` names a
+noncanonical file.** R10 requires this newly surveyed consumed-input gap to stop.
+The evidence above shows that prepare accepts and records the alternate design,
+while collect reads another file without its hash being a declared input. Replay
+binds the recorded design at the canonical path and can therefore use a different
+collect gate from the original. No implementation choice below is made here.
+
+- **A: authorize collect to use the manifest's recorded design input**, with
+  tests for alternate paths, input drift and migration of existing preparations.
+  Decide how existing completed runs whose collect used another design are handled.
+- **B: require prepare's supplied design to resolve to the canonical project
+  design**, with an explicit refusal for alternatives and migration/regression
+  coverage for existing alternate-path prepares.
+- **C: record the separate canonical collect design as an additional consumed
+  input**, explicitly authorizing the key change and migration, and decide how
+  replay reconstructs both identities when they differ or the canonical file is
+  absent.
+
+The lane stops this part for a ruling. The report cannot truthfully close this
+section with `none`. No answer or authorization is inferred.
+
+### B-2 answered (R10)
+
+R10 authorizes option A for scrna-qc-cluster. Its samplesheet is now recorded,
+hashed and included in its new preparation key. Fresh recorded-case replay,
+changed-input refusal, legacy missing-input refusal, base/current key comparison,
+submit acceptance and the manifest invariant sweep are verified above. The
+migration is re-running prepare on an existing prepared-but-unsubmitted stage;
+0097 records the exact legacy behavior. This answer is the lane's ruling under
+the owner's standing delegation, not additional words attributed to the owner.
+
+## Residual gaps
+
+- B-3 is the only newly identified implementation ruling; rnaseq-de's alternate
+  design/collect identity remains unresolved. Full Step B closure is not claimed.
+- The owner's two institutional Slurm re-runs remain unmeasured and belong solely
+  in 0098. Fixture 2/2 is the instrument self-test, not that exit condition.
+- Scrna replay here uses a synthetic worker. Biological execution, actual scheduler
+  behavior, §8.4 second-backend behavior, §17's ≥ 4/5 on test data, external pilot-1
+  reproduction and model-mediated typed claim-set equality remain unverified.
+- The owner's 0099 approval of protected changes/tolerances and confirmation of
+  the lane's D-16 classification remain pending at merge. The public manifest and
+  re-run evidence row remains unmeasured.
+- Earlier Step A residuals remain: real trace/sacct and GRCh38 hashes, real-run
+  completeness, stage-03/authoring manifests, row-7 methods/rendering/claim wiring,
+  data-handling/registry/liveness requirements and row-2 benchmark re-pinning.
+- Python 3.6 grammar passes; Python 3.6 runtime is not available for verification.
+  No producer approval, merge, push or release is claimed.

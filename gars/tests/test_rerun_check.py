@@ -248,6 +248,82 @@ class RerunCheckTests(unittest.TestCase):
 
 
 class RealWrapperReplayTests(unittest.TestCase):
+    def test_scrna_samplesheet_replay_and_drift(self):
+        import test_manifest_groups as fixtures
+        case = fixtures.ManifestGroupsTests('test_all_ten_wrappers_both_backends')
+        self.addCleanup(case.doCleanups)
+        with contextlib.redirect_stdout(io.StringIO()):
+            case.setUp(); case.pipeline_fixtures()
+            case.configure_wrapper('scrna-qc-cluster', 'local', case.project)
+        case.fake_wrapper_run(); case.submit()
+        checked(case.wrapper_argv('collect', ['--model', 'none']), cwd=case.ws, env=case.env)
+        original = json.loads(case.manifest_path.read_text())
+        original_stage = case.stage
+        sheet = case.project / '01_samplesheets/scrnaseq_samplesheet.csv'
+        self.assertIn('samplesheet', original['inputs'])
+        self.assertEqual(original['inputs']['samplesheet'], str(sheet.resolve()))
+        self.assertEqual(original['samplesheet_sha256'], wl.sha256(sheet))
+        self.assertEqual(original['input_data_location']['samplesheet'], str(sheet.resolve()))
+        self.assertEqual(original['samplesheet_sha256'], case.prepared['samplesheet_sha256'])
+        out = case.repo / 'scrna-replay'
+        submissions = []
+
+        def synthetic_execution(config_root, script, descriptor=None):
+            # Replace only the biological worker/scheduler: real prepare, submit's
+            # key/record checks, local status, collect and comparison still run.
+            stage = Path(script).parent
+            project = stage.parents[2]
+            case.stage = stage
+            try:
+                case.fake_wrapper_run()
+            finally:
+                case.stage = original_stage
+            job = str(5000 + len(submissions))
+            submissions.append(job)
+            jobs = ex._local_jobs_dir(project); jobs.mkdir(exist_ok=True)
+            exit_file = stage / 'fixture.exit'; exit_file.write_text('0\n')
+            (jobs / (job + '.json')).write_text(json.dumps(dict(
+                script=str(script), exit_file=str(exit_file), started_at=time.time()-1)))
+            return job, None
+
+        with patch.object(rc, 'REPO', case.repo), patch.dict(os.environ, case.env):
+            rc.validate_manifest(original, original_stage)
+            legacy = copy.deepcopy(original)
+            del legacy['inputs']['samplesheet']
+            with self.assertRaisesRegex(ValueError, 'manifest lacks required samplesheet input'):
+                rc.validate_manifest(legacy, original_stage)
+            saved = sheet.read_bytes()
+            sheet.write_bytes(saved + b'changed\n')
+            try:
+                with self.assertRaisesRegex(ValueError, 'input hash changed: samplesheet'):
+                    rc.reproduce(case.manifest_path, 2, out, case.ws / '_system/wrappers')
+                self.assertFalse(out.exists())
+                with self.assertRaisesRegex(ValueError, 'prepared key differs from input bytes'):
+                    ex.prepared_key(case.project, case.stage)
+            finally:
+                sheet.write_bytes(saved)
+            with patch.object(rc.ex, '_submit_once', side_effect=synthetic_execution):
+                output = io.StringIO()
+                with contextlib.redirect_stdout(output):
+                    result = rc.reproduce(case.manifest_path, 2, out, case.ws / '_system/wrappers')
+            self.assertEqual(result, 0, output.getvalue())
+            self.assertEqual(len(submissions), 2)
+            comparisons = json.loads((out / 'comparison.json').read_text())
+            self.assertEqual(len(comparisons['runs']), 2)
+            self.assertIn('reproduction: 2/2', output.getvalue())
+            for number in (1, 2):
+                project = out / ('run-%d' % number)
+                replay_sheet = project / '01_samplesheets/scrnaseq_samplesheet.csv'
+                self.assertTrue(replay_sheet.is_symlink())
+                self.assertEqual(replay_sheet.resolve(), sheet.resolve())
+                stage = project / '02_bioinformatics' / case.assay / case.info['substage']
+                replay = json.loads((stage / 'reproducibility/manifest.json').read_text())
+                self.assertEqual(replay['idempotency_key'], original['idempotency_key'])
+                self.assertEqual(replay['samplesheet_sha256'], original['samplesheet_sha256'])
+                self.assertTrue(mc.grade(replay)['ok'])
+                self.assertTrue(all(row['match'] for row in comparisons['runs'][number-1]['artifacts']))
+        print('SCRNA replay fixture: 2/2; real prepare/submit/status/collect, synthetic worker')
+
     def test_all_real_wrapper_repreparations_and_execution_evidence(self):
         # Real prepare, synthetic checkouts/import probes; no bio execution is claimed.
         import test_manifest_groups as fixtures
@@ -261,6 +337,32 @@ class RealWrapperReplayTests(unittest.TestCase):
                 with self.subTest(wrapper=key, backend=backend):
                     case.configure_wrapper(key, backend, base)
                     before = json.loads(case.manifest_path.read_text())
+                    current_source = case.wrapper.read_bytes()
+                    relative = case.wrapper.relative_to(case.repo).as_posix()
+                    baseline_source = run(['git', 'show', '9def5b3:' + relative]).stdout
+                    self.assertTrue(baseline_source)
+                    try:
+                        case.wrapper.write_bytes(baseline_source)
+                        checked(case.wrapper_argv('prepare', rc.prepare_arguments(before)), cwd=case.ws, env=case.env)
+                        baseline = json.loads(case.manifest_path.read_text())
+                        # No new legacy-submit refusal is authorized by R10.
+                        self.assertEqual(ex.prepared_key(case.project, case.stage), baseline['idempotency_key'])
+                    finally:
+                        case.wrapper.write_bytes(current_source)
+                    checked(case.wrapper_argv('prepare', rc.prepare_arguments(before)), cwd=case.ws, env=case.env)
+                    restored = json.loads(case.manifest_path.read_text())
+                    self.assertEqual(before, restored)
+                    if key == 'scrna-qc-cluster':
+                        self.assertEqual(set(before['inputs']), {'config', 'h5ad', 'samplesheet'})
+                        self.assertNotEqual(before['idempotency_key'], baseline['idempotency_key'])
+                        dropped = copy.deepcopy(before)
+                        del dropped['inputs']['samplesheet']
+                        self.assertEqual(wl.input_key(case.stage, dropped), baseline['idempotency_key'])
+                    else:
+                        self.assertEqual(before['idempotency_key'], baseline['idempotency_key'])
+                    self.assertEqual(ex.prepared_key(case.project, case.stage), before['idempotency_key'])
+                    print('BASE KEY %s %s: %s' % (key, backend,
+                          'samplesheet changes key' if key == 'scrna-qc-cluster' else 'unchanged from 9def5b3'))
                     command = wl.sha256(case.stage / 'reproducibility/commands.sh')
                     extras = rc.prepare_arguments(before)
                     checked(case.wrapper_argv('prepare', extras), cwd=case.ws, env=case.env)
@@ -275,30 +377,16 @@ class RealWrapperReplayTests(unittest.TestCase):
                         rc.bind_project(before, replay_project, case.info)
                     argv = case.wrapper_argv('prepare', extras)
                     argv[argv.index('--project') + 1] = replay_project
-                    if key == 'scrna-qc-cluster':
-                        refusal = run(argv, cwd=case.ws, env=case.env)
-                        self.assertNotEqual(refusal.returncode, 0)
-                        self.assertIn('no samplesheet', refusal.stdout.decode())
-                        print('PROBE scrna-qc-cluster %s: fresh real prepare refuses no samplesheet' % backend)
-                    else:
-                        checked(argv, cwd=case.ws, env=case.env)
-                        replay_stage = replay_project / '02_bioinformatics' / case.assay / case.info['substage']
-                        replay_manifest = json.loads((replay_stage / 'reproducibility/manifest.json').read_text())
-                        rc.validate_preparation(before, replay_manifest, case.stage, replay_stage)
+                    checked(argv, cwd=case.ws, env=case.env)
+                    replay_stage = replay_project / '02_bioinformatics' / case.assay / case.info['substage']
+                    replay_manifest = json.loads((replay_stage / 'reproducibility/manifest.json').read_text())
+                    rc.validate_preparation(before, replay_manifest, case.stage, replay_stage)
                     case.fake_wrapper_run(); case.submit()
                     checked(case.wrapper_argv('collect', ['--model', 'none']), cwd=case.ws, env=case.env)
                     completed = json.loads(case.manifest_path.read_text())
                     self.assertEqual(json.dumps(before['execution_config'], sort_keys=True),
                                      json.dumps(completed['execution_config'], sort_keys=True))
                     self.assertTrue(mc.grade(completed)['ok'])
-                    if key == 'scrna-qc-cluster':
-                        # Existing prepare/collect consume a samplesheet absent from inputs.
-                        # Do not borrow unrecorded sibling state to make replay appear green.
-                        self.assertNotIn('samplesheet', completed['inputs'])
-                        with patch.object(rc, 'REPO', case.repo):
-                            with self.assertRaisesRegex(ValueError, 'manifest lacks required samplesheet input'):
-                                rc.validate_manifest(completed, case.stage)
-                        print('REPLAY BLOCKED scrna-qc-cluster %s: samplesheet absent from manifest inputs' % backend)
                     if key == 'rnaseq_bulk' and backend == 'slurm':
                         groovy = case.project / '_config/nextflow.slurm.config'
                         groovy.write_text(groovy.read_text().replace("executor = 'slurm'", "executor = 'local'"))
