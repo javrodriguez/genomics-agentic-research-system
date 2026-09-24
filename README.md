@@ -311,7 +311,7 @@ pilot-1 measurement remain unverified. See the
 [row-7 review response](docs/implementation/row_7_change_report.md#review-round-2-fixes).
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(456 tests, 11 of them environment skips, on macOS at the 2026-09-23 merge of row 7, with Docker answering and row 5's scratch folder set as CI sets it; a macOS cold clone without it skips 73, or 104 with `TMPDIR` also unset as on Linux; no cluster run is evidenced for these rows).
+(459 tests in the current collection; environment skips are reported per run. Row 6 adds registry-reader compatibility tests; no new cluster run is evidenced.)
 Row 15 review round 4 (2026-09-22), macOS / Python 3.8.2: 252 tests, <!-- not-the-suite-total -->
 `OK (skipped=50)`; no tests from row 15 skipped. R15-03's narrow fixture repair
 is authorised by the owner, **confirmed on 22 September 2026** ([0067](docs/decisions/0067-owner-confirms-rows-15-and-4-provisional-rulings.md)).
