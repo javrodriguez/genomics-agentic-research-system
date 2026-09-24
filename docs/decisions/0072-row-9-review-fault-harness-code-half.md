@@ -352,3 +352,25 @@ builder and its controls. Every case, including externally supplied sealed input
 is checked before the key and manifest are written. No sealed plant is authored
 or inspected by the producer. A disposable renamed copy of a public producer
 fixture exercises the external-input path; it is never evidence or a seal.
+
+## Addendum — U1 second renumbering, 2026-09-23
+
+THE LANE, UNDER THE OWNER'S DELEGATION — THE LANE'S SPECIFICATION.
+This is item 18's supplied specification, not additional words of the owner.
+
+This record is renumbered again, from 0071 to 0072, because public main has
+since also landed its own 0071, row 12's owner record. Item 18 supersedes item
+16's numbers. Every preceding byte, including the T1 addendum, is preserved.
+Earlier bytes' mentions of 0070 or 0071 as this record mean 0072; mentions of
+any reserved number mean 0073 (the owner's approval of the protected changes)
+or 0074 (ONE record covering both the seal and the first measured run).
+Public main's 0070 and 0071 are not this row's and are never touched here.
+The producer never writes reserved 0073 or 0074 and claims neither approval
+nor sealing nor a measured run. Live references and the regenerated index use
+these numbers; earlier report sections retain their historical wording.
+
+U1 changes only this numbering and its documentation. T1's fixes stand; no
+schema, threshold, scope, guard, test or CI decision is changed. All previously
+open residual gaps remain, including the NOT-met fixture secret scan and row
+9 exit. Protected approval, sealing and the first measured run wait on the
+owner and later independent verification.

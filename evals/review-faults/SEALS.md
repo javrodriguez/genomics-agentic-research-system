@@ -19,5 +19,6 @@ A changed seal is a separate run with retained first-run evidence. The producer
 never fills these slots. Individual hashes and seal metadata reach the ledger
 only in the later records commit; this code-half change adds no ledger rows.
 
-Record numbering: code-half account 0071; protected approval 0072; seal 0073;
-first measured run 0074. The producer supplies none of the latter three.
+Record numbering: code-half account 0072; protected-change approval 0073;
+one record, 0074, covering both the seal and the first measured run. The latter
+two are reserved later records; the producer supplies neither.

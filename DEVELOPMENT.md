@@ -15,8 +15,9 @@ it constrains — template, menu, preflight, or decision — never parked here (
 
 ## Current Status
 
-Row 9 code-half record: `docs/decisions/0071-row-9-review-fault-harness-code-half.md`;
-reserved later records are protected approval 0072, seal 0073 and first run 0074.
+Row 9 code-half record: `docs/decisions/0072-row-9-review-fault-harness-code-half.md`;
+reserved later records are protected approval 0073 and one record, 0074,
+covering both the seal and the first measured run.
 Row 9 code tools are in `evals/review-faults/`: construct anonymous cases with
 `build_cases.py --out <external-output>`, launch from the separate reviewing OS
 account with `run_reviews.py`, then hash-check and publish masked records with

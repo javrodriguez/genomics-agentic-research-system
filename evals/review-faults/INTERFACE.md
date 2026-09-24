@@ -139,5 +139,6 @@ scores, regardless of model. Failed or blind-contaminated records are INVALID,
 never clean or caught. Sealer hashes enable checking the three private outcomes;
 only twelve of fifteen outcomes can be recomputed from public repository inputs.
 
-Record numbering: code-half account 0071, protected-change approval 0072, seal
-record 0073, first measured run 0074. The latter three are later independent records.
+Record numbering: code-half account 0072; protected-change approval 0073;
+one record, 0074, covering both the seal and the first measured run. The latter
+two are reserved later records; the producer supplies neither.

@@ -8,7 +8,7 @@ sealed inputs, with the same item-15 sweep used by regression tests. It checks c
 Git objects, case and repository names and the manifest. Unchanged lines and
 base-identical decoded content are exempt; compressed Git storage is not scanned.
 See `docs/implementation/row_9_change_report.md` and
-`docs/decisions/0071-row-9-review-fault-harness-code-half.md`.
+`docs/decisions/0072-row-9-review-fault-harness-code-half.md`.
 
 Use Python 3.6 or later, standard library, and Git. Work from the repository root
 with TMPDIR, TEMP and TMP naming external scratch. Build cases after sealing:
