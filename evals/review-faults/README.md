@@ -120,23 +120,32 @@ spellings below and claims nothing beyond them:
   after option words, including separated options, the end-of-options marker,
   and option clusters ending in c. Their program text is audited as a command.
 
-Decision 0125 amends command-field placement: each call starts at the kit root;
-only a top-level, unprefixed `cd` with one plain, statically resolvable argument
-and both lexical and symlink-resolved containment may move later relative and
-PWD tokens. Nested constructs inherit their entry placement; rejected changes
-reset to the root. A change preceded by `&&` lasts only through that chain.
-Whole-call shell-state hazards disable movement, including pushd/popd, set,
-PWD/OLDPWD mutation (including append and subscript assignments), trap,
-eval/source/dot commands (including prefix options) and uncertain prefixed compounds.
-Retained comment cues and heredoc operators also disable movement: their data
-cannot prove a cd. Continuation newlines retain the preceding list or pipeline
-operator, including the conditional limit after AND.
-Backquotes on the cd word forbid movement; merged closing operators still end
-a conditional chain. Token deduplication includes the placement folder. Other
-tools' path fields and all existing scan contexts are unchanged. The launcher removes CDPATH, BASH_ENV and ENV. **Residual:** an
-accepted `cd` is assumed to succeed; if it fails, a later semicolon-joined read
-may be misplaced. Symlinks are judged at audit time, so changed links can alter
-the result. These text-audit limits remain the sandbox's responsibility.
+Decision 0125 amends command-field placement with the **closed grammar** of
+items 1(a–f), 2 and 7(a), as implemented: each call starts at the kit root;
+only a top-level, unprefixed `cd` with one plain, statically resolvable argument,
+qualifying boundaries and both lexical and symlink-resolved containment moves
+later relative and exact PWD-expansion tokens. Nested constructs inherit entry
+placement; rejected changes reset to the root; conditional `&&` placement lasts
+only through its chain. A newline qualifies only after a plain word or qualifying
+semicolon; after `&&`, `||`, `|`, `|&`, `&`, `(`, `{`, `if`, `then`, `elif`, `else`,
+`while`, `until`, `do`, `in` or `!` it continues the command and cannot end that
+chain. Whole-call refusals include the named shell-state hazards, functions,
+unbalanced operator parentheses, multiline backquotes, pushd/popd, set,
+eval/source/dot commands (including prefix options), trap and uncertain prefixed
+compounds. Retained word-start comments or heredoc operators disable movement;
+so does PWD text anywhere except the two exact expansions `$PWD` and `${PWD}`.
+Backquotes on cd forbid movement; merged closing operators can end a chain but
+cannot qualify cd boundaries. Deduplication includes placement; other tools'
+path fields and existing scan contexts stay unchanged. The launcher removes
+CDPATH, BASH_ENV and ENV. The covered claim is: a relative read outside the kit
+still turns INVALID after any `cd` the audit's grammar does not accept, and a
+`cd` the grammar accepts moves the placement only as items 1–3 and 7 state.
+**Residual:** accepted cd is assumed to succeed and symlinks are judged at audit
+time. Escapes resting on shell constructs the audit does not parse, including
+shell indirection and interpreter program text, remain the text-audit residual
+of item 3 and 0072 item 20(c). The sandbox, 0072 item 20(a), is the enforcement
+wall; the audit is a detector. These rules are a closed list, not a promise to
+interpret arbitrary shell programs.
 
 Item 23 amends item 22(c-d): text is removed only when unambiguous; otherwise
 it is scanned. A comment hash must start a shell word at quote depth zero.

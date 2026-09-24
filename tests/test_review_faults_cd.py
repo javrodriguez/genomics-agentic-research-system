@@ -127,6 +127,26 @@ class CdPlacementTests(unittest.TestCase):
                       ('or-comment-newline', 'true || # note\ncd repo;')]
         self.bad([(label, '%s %s' % (prefix, self.read)) for label, prefix in constructs])
 
+    def test_newline_boundary_grammar(self):
+        # Only a plain word or a qualifying semicolon can precede a boundary.
+        for prefix in ('true &', '!', 'in', 'then', 'elif', 'else', 'do',
+                       'if', 'while', 'until', '(', '{', ')'):
+            for newline in (' \n', ' \n \n'):
+                with self.subTest(prefix=prefix, newline=newline):
+                    self.assertGreaterEqual(self.hits('%s%scd repo; %s' %
+                                                     (prefix, newline, self.read)), 1)
+        for prefix in ('true', 'true;', 'true; ', 'echo "!"', 'echo "{"', 'echo ""'):
+            with self.subTest(honest=prefix):
+                self.assertEqual(self.hits('%s\ncd repo; %s' % (prefix, self.read)), 0)
+        self.assertEqual(self.hits('true && cd repo && echo ok&&\n%s' % self.read), 0)
+        for operator in ('&&', '||', '|', '|&', '&', '(', '{', 'if', 'then',
+                         'elif', 'else', 'while', 'until', 'do', 'in', '!'):
+            words = run_reviews.shell_words('%s \n' % operator)
+            state = {'kit': self.kit, 'folder': self.kit, 'conditional': True}
+            placement = run_reviews.CommandPlacement(run_reviews.ShellWord('', state=state), words)
+            with self.subTest(continuation=operator):
+                self.assertFalse(placement.chain_ends[-1])
+
     def test_invalid_shape_and_prefixes(self):
         commands = ['cd -P repo', 'cd -L repo', 'cd -- repo', 'cd repo extra', 'cd ""',
                     'cd repo >output', 'cd repo 2>output', 'cd repo {fd}>output']
@@ -210,6 +230,18 @@ class CdPlacementTests(unittest.TestCase):
                                                      (variable, assignment, value, read)), 1)
             self.bad([(prefix, 'cd repo; %s %s; %s' % (prefix, variable, self.read))
                       for prefix in ('read', 'export', 'declare')])
+
+    def test_pwd_text_whole_call(self):
+        for text in ('PWD', 'OLDPWD', 'somePWDtext', '"PWD"', 'PWD+=value',
+                     'PWD[0]=value', 'P\"W\"D+=value', 'read PWD', 'export PWD', 'unset PWD',
+                     '$PWDsuffix', '${PWD:-value}', '# PWD',
+                     "python3 -c 'print(\"PWD\")'"):
+            with self.subTest(text=text):
+                self.assertGreaterEqual(self.hits('cd repo; %s;\n%s' % (text, self.read)), 1)
+        for expansion in ('$PWD', '${PWD}'):
+            read = os.path.join(expansion, self.parent, 'tmp')
+            with self.subTest(expansion=expansion):
+                self.assertEqual(self.hits('cd repo; cat %s' % read), 0)
 
     def test_indirect_shell_state(self):
         self.bad([(prefix, '%s; cd repo; %s' % (prefix, self.read))

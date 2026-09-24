@@ -191,8 +191,13 @@ class CommandPlacement:
                 while cursor >= 0 and words[cursor].operator and all(
                         char == '\n' for char in words[cursor]):
                     cursor -= 1
-                if cursor >= 0 and words[cursor].operator and words[cursor].rstrip('\n') in ('&&', '||', '|', '|&'):
-                    self.continuations[index] = ShellWord(words[cursor].rstrip('\n'))
+                previous = words[cursor] if cursor >= 0 else ShellWord('')
+                plain = (cursor >= 0 and not previous.operator and
+                         not (previous.source == previous and previous in
+                              ('{', 'if', 'then', 'elif', 'else', 'while', 'until', 'do', 'in', '!')))
+                semicolon = previous.operator and all(char in ';\n' for char in previous)
+                if not (plain or semicolon):
+                    self.continuations[index] = ShellWord(previous.rstrip('\n'))
         parens = groups = keywords = 0
         backquote = False
         broken = False
@@ -223,7 +228,7 @@ class CommandPlacement:
                         broken = True
                     # A merged close-paren/separator ends the chain only after
                     # its own parentheses close. It is still not a cd boundary.
-                    if (char in ';&|\n' and word != '&&' and
+                    if (char in ';&|\n' and word.rstrip('\n') != '&&' and
                             parens + groups + keywords + int(backquote) + self.nested == 0):
                         chain_end = True
                 command_start = True
@@ -279,10 +284,12 @@ class CommandPlacement:
         )
         values = set(str(word).split('=', 1)[0] for word in words
                      if word != '.' or dot_command)
-        for word in words:
-            variable = re.match(r'(PWD|OLDPWD)(?:\[[^]]*\])?(?:\+?=|$)', word)
-            if variable:
-                values.add(variable.group(1))
+        # Item 7: only these two exact expansions may contain PWD anywhere
+        # in the call, including text removed from the token scan as data.
+        pwd_source = text + ' ' + ' '.join(str(word) for word in words)
+        pwd_text = re.sub(r'\$(?:PWD(?![A-Za-z0-9_])|\{PWD\})', '', pwd_source)
+        if 'PWD' in pwd_text:
+            values.add('PWD')
         shell_state = any(values.intersection(group) for group in hazards)
         # Retained data was safe to over-scan with root placement, but cannot
         # prove a directory change: a kept comment or heredoc may contain cd.

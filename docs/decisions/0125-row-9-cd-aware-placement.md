@@ -389,3 +389,193 @@ with unchanged skips (77 in B, 104 in C). Mode A requires unreachable Docker;
 native Python 3.6, cluster and fresh-clone CI remain unverified. Supplied data
 hashes and append-only prefixes match. This is producer evidence pending review,
 not a measured review or a row-9 seal.
+
+## 2026-09-24 addendum — review round B1, continuation B
+
+This is THE LANE'S SPECIFICATION, UNDER THE OWNER'S DELEGATION, item 7.
+It amends items 1, 5, 6 and the THREAT MODEL wherever they differ. All earlier
+bytes remain historical. Round 3 already addressed review 2; B1 retains its
+retained-data refusal and prior guards and completes these fail-closed shapes:
+
+- A newline qualifies only after a plain word or qualifying semicolon token.
+  After `&&`, `||`, `|`, `|&`, `&`, `(`, `{`, or a keyword expecting more (`if`,
+  `then`, `elif`, `else`, `while`, `until`, `do`, `in`, `!`), it continues the
+  command: it neither qualifies a following cd nor ends a conditional chain.
+  Continuing AND retains its conditional effect; quoted ordinary words remain
+  words. Consecutive continuation newlines retain the same predecessor.
+- A retained heredoc operator or word-start comment cue disables every cd in
+  the call. Items 22(c–d) and 23 still decide removal unchanged. The existing
+  implementation conservatively refuses retained heredoc headers as well.
+- PWD text anywhere in the raw call except the two exact expansions `$PWD`
+  and `${PWD}` disables every cd. This includes assignments, append and
+  subscript forms, OLDPWD, variable operands and removed data text.
+
+The placement grammar is the closed list in items 1(a–f), 2 and 7(a), as the
+code implements them, with the previously recorded refusals retained. It covers
+raw words and nesting, top-level simple unprefixed cd with qualifying boundaries,
+one plain statically resolvable operand, lexical and resolved kit containment,
+per-call reset and conditional-chain lifetime, whole-call hazards and the three
+rules above. Placement applies only to existing relative and PWD candidates;
+constructs inherit entry placement, rejected cd resets it, token/folder pairs
+are deduplicated, and other tools retain root placement. The kit root remains
+the fail-closed ancestor; deeper placement requires this proof. The launcher
+still removes CDPATH, BASH_ENV and ENV. 0072 items 20–23 are otherwise unchanged.
+
+The former covered sentence, “a session that reads outside its kit … still
+turns INVALID, including after any `cd`, in any construct, to any target”, is
+withdrawn. Its replacement is: “a relative read outside the kit still turns
+INVALID after any `cd` the audit's grammar does not accept, and a `cd` the
+grammar accepts moves the placement only as items 1-3 and 7 state”.
+
+**Named residual:** an escape resting on shell constructs the audit does not
+parse is item 3's and 0072 item 20(c)'s text-audit residual. Failed accepted cd,
+audit-time rather than historical symlink resolution, shell indirection and
+interpreter program text remain NOT met. The sandbox in 0072 item 20(a) is the
+enforcement wall; the audit is a detector. After B1 a MINOR-or-higher finding
+must identify a defect against this grammar: a rejected spelling accepted by
+the code hiding an outside read, or an accepted honest spelling rejected by the
+code. A new escape solely through unparsed constructs is a NOTE requesting its
+name, not an instruction to extend the grammar. B1 does not pursue new classes.
+
+The repository-local maintainer public handle and code-host no-reply address
+are the intended public commit identity, as review S1 F7 ruled. Content privacy
+rules do not govern that identity. B1 uses the repository's identity without
+overrides. Rounds 2 and 3 (`d791388`, `9021f2a`) keep their neutral identity
+unchanged: the cause was this head's copied boundary line without the F7 ruling.
+The neutral name is not an address and leaks nothing. No history is rewritten,
+amended or rebased; round-1 identity needs no repair under this clarification.
+Scratch paths are written only as the complete relative sibling spelling,
+never as a lone parent-step string or path component. Commands run at the
+repository root and all temporary artifacts stay in the scratch twin.
+
+B1 acceptance adds two named tests for the complete newline and PWD-text rules,
+with disposable red-on-fault witnesses; all previous witnesses remain required.
+The pre-fix run printed `Ran 30 tests in 0.187s`, `FAILED (failures=25)` and
+`cd-call corpus graded-against-seen: 11/11`. Final commands and their verbatim
+results follow in this record and the B1 change-report section. No measured
+review, catch rate, first measured run or row-9 seal is claimed.
+
+The B1 newline rule also preserves an accepted conditional placement when an
+AND/newline token is merged later in its chain. Such a token still cannot
+qualify the boundary of an accepted cd. The added honest chain witness failed
+before this adjustment and passes after it; a separate disposable mutation
+turns that witness red. This is item 7(a)'s chain rule, not a grammar extension.
+
+An empty quoted word is still a plain predecessor for a qualifying newline;
+B1 distinguishes it from no predecessor. The honest control was observed red
+before that distinction and green after it. Final verification uses source
+frozen after this item-7(a) adjustment.
+
+### B1 final verification — 2026-09-24
+
+`python3 tests/run_tests.py (mode B)`:
+
+```text
+collected 296 tests from tests
+collected 233 tests from gars/tests
+cd-call corpus graded-against-seen: 11/11
+honest-call corpus graded-against-seen: 278/278
+Ran 529 tests in 436.509s
+OK (skipped=77)
+```
+
+`env -u TMPDIR python3 tests/run_tests.py (mode C)`:
+
+```text
+collected 296 tests from tests
+collected 233 tests from gars/tests
+cd-call corpus graded-against-seen: 11/11
+honest-call corpus graded-against-seen: 278/278
+Ran 529 tests in 430.491s
+OK (skipped=104)
+```
+
+`python3 tests/check_contracts.py`:
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`:
+
+```text
+collected 296 tests from tests
+collected 233 tests from gars/tests
+suite: 529 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`:
+
+```text
+Ran 44 tests in 38.311s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`:
+
+```text
+clean — graded=1
+```
+
+`python3 tests/test_review_faults_build.py`:
+
+```text
+Ran 11 tests in 111.177s
+OK
+```
+
+`python3 tests/test_review_faults_cd.py`:
+
+```text
+Ran 30 tests in 0.210s
+OK
+cd-call corpus graded-against-seen: 11/11
+```
+
+`python3 tests/test_review_faults_cd_faults.py`:
+
+```text
+Ran 1 test in 6.255s
+OK
+```
+
+`python3 tests/test_review_faults_core.py`:
+
+```text
+Ran 9 tests in 0.027s
+OK
+```
+
+`python3 tests/test_review_faults_corpus.py`:
+
+```text
+Ran 1 test in 0.247s
+OK
+honest-call corpus graded-against-seen: 278/278
+```
+
+`python3 tests/test_review_faults_faults.py`:
+
+```text
+Ran 1 test in 228.254s
+OK
+```
+
+`python3 tests/test_review_faults_launch.py`:
+
+```text
+Ran 20 tests in 2.914s
+OK
+```
+
+Python feature_version=(3, 6): 4/4 changed or new Python files parse.
+
+Both modes collected 529; skips remain 77 in B and 104 in C. Both corpora grade
+all calls (11/11 and 278/278). All 26 placement and 144 original faults were
+observed red, with two exemptions green. Both protected-path diff-stat commands
+against 5ba82c6 print nothing. The index was rebuilt, old record/report bytes
+and supplied data hashes match, and no owner ruling is needed. Docker mode A,
+native Python 3.6, macOS, cluster, fresh-clone CI and independent approval remain
+unverified; this is detector validation, not measured row-9 evidence.
