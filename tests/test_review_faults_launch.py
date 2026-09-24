@@ -168,6 +168,8 @@ class LaunchTests(unittest.TestCase):
                         'cd 2>/dev/null; cat secret', 'cd -P 2>/dev/null; cat secret',
                         'cd 2>/dev/null 3>/dev/null; cat secret',
                         'cd 2>&1; cat secret',
+                        'cd {fd}>out.txt; cat secret',
+                        'cd -P {_saved2}>>out.txt; cat secret',
                         'bash -lc "cd; cat secret"',
                         os.path.join(os.sep,'bin','bash')+' -c "cd; cat secret"',
                         'cat '+('$'+'{HOME%/}')+os.sep+'file',
@@ -187,14 +189,17 @@ class LaunchTests(unittest.TestCase):
                          'awk -f repo/program '+os.sep,
                          'sed --file=repo/program '+os.sep,
                          'awk --source=program '+os.sep,
-                         'awk -e program '+os.sep, 'awk '+repr(os.sep)+' repo/input.txt',
-                         'echo "$('+'ls '+os.sep+')"',
+                         'awk -e program '+os.sep,
                          'env bash -c "ls '+os.sep+'"',
                          'bash -lc "ls '+os.sep+'"',
                          'timeout 5 bash -c "ls '+os.sep+'"',
                          'CDPATH='+os.sep+' cd etc',
-                         'x='+os.sep+'; cd $x',
-                         'printf "prefix '+os.sep+' suffix"']
+                         'env X='+os.sep+' echo ready',
+                         'x='+os.sep+'; cd $x']
+        for tool in ('grep', 'egrep', 'fgrep', 'rg'):
+            root_commands += [tool+' -f '+os.sep+' '+os.path.join('repo','input.txt'),
+                              tool+' --file='+os.path.join('repo','patterns')+' '+os.sep,
+                              tool+' -e pattern '+os.sep]
         for command in root_commands:
             with self.subTest(command=command):
                 event={'type':'tool_use','input':{'command':command}}
@@ -209,6 +214,7 @@ class LaunchTests(unittest.TestCase):
                         'if cd repo; then cat module.py; fi', chr(92)+'cd repo',
                         'time -p cd repo', 'command -- cd repo',
                         'env -- cd repo', 'timeout 5 cd repo',
+                        'cd repo {fd}>out.txt', 'cd {_saved2}>>out.txt repo',
                         'cd repo 2>/dev/null', 'cd 2>/dev/null repo',
                         'cd -P 2>/dev/null repo', 'cd repo 2>&1',
                         'bash -lc "cd repo; cat module.py"',
@@ -223,6 +229,44 @@ class LaunchTests(unittest.TestCase):
                         'cut -d'+os.sep+' -f 1 repo/input.txt',
                         'python3 -c "print(8 '+os.sep+' 2)"',
                         'python3 -c "'+os.sep+'"']:
+            event={'type':'tool_use','input':{'command':command}}
+            self.assertEqual(run_reviews.blindness([event],kit)['hits'],0,command)
+        # Item 21: the same format contexts retain rule (i) path detection.
+        input_file = os.path.join("repo", "input.txt")
+        programs = []
+        for tool in ('awk', 'gawk', 'mawk'):
+            for option in ('', '-e ', '--expression '):
+                programs.append(tool+' '+option+repr('{split($0, a, " '+os.sep+' "); print a[1]}')+' '+input_file)
+        for option in ('', '-e ', '--expression '):
+            programs.append('sed '+option+repr('s'+os.sep+'old '+os.sep+' new'+os.sep+'g')+' '+input_file)
+        for option in ('--format=', '--pretty=format:', '--pretty=tformat:'):
+            programs.append('git log '+option+repr('%h '+os.sep+' %s'))
+        programs += ['printf '+repr('prefix '+os.sep+' %s')+' fragment',
+                     'printf "%s" '+repr('prefix '+os.sep+' suffix'),
+                     'echo '+repr('prefix '+os.sep+' suffix')]
+        for tool in ('grep', 'egrep', 'fgrep', 'rg'):
+            for option in ('', '-e ', '--regexp '):
+                programs.append(tool+' '+option+repr('old '+os.sep+' new')+' '+input_file)
+        programs += ['awk -v mode=1 '+repr('{print $1 '+os.sep+' 2}')+' '+input_file,
+                     'rg -A 2 '+repr('old '+os.sep+' new')+' '+input_file]
+        prefixes = ('', 'command -- ', 'builtin ', 'exec -- ', 'time -p ',
+                    'env -- ', 'timeout 5 ', 'nice -n 2 ', 'env -- timeout 5 command -- ')
+        for prefix in prefixes:
+            for program in programs:
+                honest = prefix+program
+                # Add one rooted token inside the existing quoted program or format.
+                rooted = honest.replace(os.sep, ' '+outside_path+' ', 1)
+                for command,expected in [(honest,0),(rooted,1)]:
+                    with self.subTest(item21=command):
+                        event={'type':'tool_use','input':{'command':command}}
+                        self.assertEqual(run_reviews.blindness([event],kit)['hits'],expected,command)
+                for operation in ('ls ', 'find ', 'cd '):
+                    command=honest+'; '+prefix+operation+os.sep
+                    with self.subTest(item21_root=command):
+                        event={'type':'tool_use','input':{'command':command}}
+                        self.assertEqual(run_reviews.blindness([event],kit)['hits'],1,command)
+        for command in ['awk '+repr(os.sep)+' '+input_file,
+                        'echo "$('+'ls '+os.sep+')"']:
             event={'type':'tool_use','input':{'command':command}}
             self.assertEqual(run_reviews.blindness([event],kit)['hits'],0,command)
         # Item 20(b)(iii): prose is not a command; named paths still get rule (i).
@@ -292,6 +336,7 @@ class LaunchTests(unittest.TestCase):
                       'x; ls '+os.sep, 'x; find '+os.sep+' -name sample',
                       'x; cd -- && cat secret', 'x; eval cd; cat secret',
                       'x; cd 2>/dev/null; cat secret',
+                      'x; cd {fd}>out.txt; cat secret',
                       'x; cd $'+repr(os.sep)+'; cat relative/file',
                       'x; cd $"'+os.sep+'"; cat relative/file',
                       'x; bash -lc "cd; cat secret"',

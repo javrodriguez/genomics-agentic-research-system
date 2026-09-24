@@ -593,3 +593,73 @@ consumption remain later work. Per-class samples are thin, and only twelve of
 fifteen outcomes are publicly recomputable, with three sealed outcomes checkable
 by hash. Fixture gitleaks verification remains subject to Q2 A. No seal, ledger
 entry or measured run is supplied; row 9 exit remains NOT met.
+
+
+## 2026-09-24 addendum — review round Z1
+
+**THE LANE, UNDER THE OWNER'S DELEGATION — THE LANE'S SPECIFICATION.**
+No new words in this addendum are attributed to the owner. Record 0072 remains
+this row's decision; 0073 is reserved for protected approval, and 0074 for the
+seal and first measured run together. Earlier bytes remain unchanged.
+
+### Items 20 and 21; Y2 F1
+
+Item 20 continues to supersede the earlier threat-model claim of detecting reads
+beyond the kit by any spelling. Enforcement is the deployment sandbox, configured
+by required settings; launch records sandbox_settings_sha256, and scoring refuses
+missing or mixed hashes. The harness binds the settings bytes without judging
+content or proving filesystem and network denial. The unchanged settings hash is
+configuration provenance, not privacy: it can confirm a guessed settings file.
+
+Detection is the bounded audit in item 20(b)(i)-(iv). Path tokens in commands and
+path-valued fields are checked against the kit, the exact own-session output
+store and the system allowlist. Separator-only command words default to hits;
+listed delimiter values, interpreter program text and write/edit content are
+exempt. Prose gets rule (i) only. The shlex stream identifies bare cd after shell
+keywords, prefix commands and options, or a leading backslash. Redirects and
+both numeric and named descriptors do not supply a directory argument (Y2 F1).
+Good and bad lists plus an isolated mutation prove the named-descriptor fix;
+a stub stream proves the hit produces an INVALID record.
+
+Item 21 extends item 20(b)(ii)'s listed contexts: program text for awk, gawk,
+mawk and sed (first non-option argument or an -e or --expression value), git
+--format=, --pretty=format: and --pretty=tformat: values, printf and echo format
+and argument text, and grep, egrep, fgrep and rg patterns (first non-option
+argument or an -e or --regexp value). The parser recognizes these after prefix
+commands and options. Separator text in these contexts names no directory.
+Rule (i) remains unchanged and scans the original field, including these words.
+Good lists require zero hits, corresponding absolute-path probes require one,
+and a listing, find or cd of the root after each command still requires one.
+Removing the new contexts turns the named test red. Earlier expected hits for
+awk program text, printf format text and echo argument text are superseded by
+item 21, with the same spellings retained as zero-hit controls. No model runs,
+prompt changes, fixture changes or thresholds are involved.
+
+### Not covered — Y2 F2 and F3
+
+A spaced numeric directory before a redirect, and a dollar directly before a
+separator outside listed text contexts, can invalidate a record. Item 21 exempts
+echo and printf text from the latter; the numeric-directory ambiguity remains.
+An echoed cd word can still trigger the bare-directory audit. These conservative
+false positives are detection limits, not evidence of sandbox enforcement.
+
+Item 20(c)'s named residual remains shell indirection the audit cannot resolve:
+variables and assignments, command substitution, evaluated strings, aliases,
+functions, nested shells beyond those parsed, and interpreter program text.
+The unparsed nested-shell forms include separated options, clusters where c is
+not last, and an end-of-options marker before the program (Y2 F3). Brace and
+parameter-default expansion and URL-embedded paths remain residuals. These reads
+are the sandbox's to refuse; if allowed, the scan may not see them. Very long
+encoded project folder names remain unverified against the deployed tool.
+
+The uid check proves exactly: on the host where the review ran, the reviewing OS
+account is not the producing OS account. It does not prove which machine built
+the cases, and it does not bind GARS's own role decision. Separate-user and
+read-only-credential deployment evidence remains external; launch_role() returns
+producer and R-093's code half remains NOT met. Diff-style inference, shared
+sealer/producer model family, science and trailer-gate JSON remain residuals.
+Independent-context seals are development evidence only; public credibility
+needs external-human seals. One sample per class remains thin; twelve of fifteen
+outcomes can be publicly recomputed and three sealed outcomes checked by hash.
+Real fixture gitleaks verification remains NOT met here under Q2 A. No seal,
+measured run or ledger entry is supplied. Row 9 exit remains NOT met.

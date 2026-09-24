@@ -204,7 +204,7 @@ for label,needle in [('if keyword','if cd;'), ('escaped cd',chr(92)+'cd;'),
 
 FAULTS.extend([
     ('bare cd counts redirect descriptor as argument','run_reviews.py',
-     "if argument.isdigit() and cursor + 1 < len(words) and words[cursor + 1] in redirects:",
+     "if descriptor and cursor + 1 < len(words) and words[cursor + 1] in redirects:",
      'if False:', 'launch','LaunchTests.test_blindness_every_spelling'),
     ('bare cd counts redirect target as argument','run_reviews.py',
      'if argument in redirects:', 'if False:',
@@ -218,6 +218,16 @@ FAULTS.extend([
     ('bare cd ignores full path shell','run_reviews.py',
      'os.path.basename(words[index - 2]) in', 'words[index - 2] in',
      'launch','LaunchTests.test_blindness_every_spelling'),
+])
+
+
+FAULTS.extend([
+    ('named redirect descriptor ignored','run_reviews.py',
+     "descriptor = argument.isdigit() or re.fullmatch(r'\\{[A-Za-z_][A-Za-z0-9_]*\\}', argument)",
+     'descriptor = argument.isdigit()', 'launch','LaunchTests.test_blindness_every_spelling'),
+    ('item 21 program contexts removed','run_reviews.py',
+     "if field == 'command' and not command_word and not option_value:",
+     'if False:', 'launch','LaunchTests.test_blindness_every_spelling'),
 ])
 
 

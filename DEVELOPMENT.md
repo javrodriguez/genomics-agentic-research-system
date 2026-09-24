@@ -34,6 +34,8 @@ interpreter program text remain sandbox responsibilities; no sealed run or
 public metric is claimed. Y2 fixes numbered redirects and dollar-quoted separators
 in the audit, restores two nested-shell bare-directory spellings, and documents
 conservative false positives and the published settings hash's disclosure limit.
+Z1 handles named redirect descriptors and applies item 21's program, format and
+pattern contexts, retaining path detection and default root-argument hits.
 
 **Row 12 review round 4, 2026-09-22: repo-side implementation; merge still gated.**
 All ten wrappers now prepare idempotency keys; downstream keys have a separate declared-input

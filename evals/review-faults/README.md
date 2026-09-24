@@ -91,6 +91,15 @@ spellings below and claims nothing beyond them:
 - Rule (ii): separator-only words in command fields are hits by default. Only
   delimiter-option values (-F, -d, --delimiter, --field-separator, in their option
   context), interpreter -c/-e program text, and write/edit content are exempt.
+  Item 21 also exempts awk, gawk, mawk and sed program text (the first
+  non-option argument or an -e or --expression value); git --format=,
+  --pretty=format: and --pretty=tformat: values; printf and echo format and
+  argument text; and grep, egrep, fgrep and rg patterns (the first non-option
+  argument or an -e or --regexp value). These contexts are recognized in the
+  shlex stream after prefix commands and options. A separator inside this text
+  names no directory. Rule (i) still scans the entire original text: absolute,
+  tilde, HOME and parent-component paths remain subject to the same boundaries.
+  A root directory used as a shell argument after a command separator still hits.
   A directory-listing option is not a delimiter option. Visible separator words
   in quoted arguments (including dollar-quoted separators) and assignment values
   are counted without evaluating them.
@@ -103,16 +112,18 @@ spellings below and claims nothing beyond them:
   clear. Nested shell option clusters ending in c and full-path shell names are
   recognized for this bare-directory audit.
 
-The default separator rule can invalidate ordinary review commands: quoted text
-with a spaced separator, awk division, sed substitution text and git log formats
-are not exempt unless they use a listed context. A prefix command can hide the
-delimiter-option context. The shell-word audit also treats an echoed cd word as
-bare. These conservative false positives are expected under item 20; no additional
-context exceptions are introduced before the first measured run.
+Conservative false positives remain: the shell-word audit treats an echoed cd
+word as bare. A spaced numeric directory before a redirect, and a dollar directly
+before a separator outside the listed text contexts, can invalidate a record.
+Item 21 exempts the latter inside echo and printf text; it does not change the
+numeric-directory ambiguity or rule (i). Other unlisted contexts remain subject
+to the default separator rule.
 
 **Named residual:** the scan does not follow shell indirection it cannot see
 statically: variables and assignments, command substitution, evaluated strings,
-aliases, functions, nested shells beyond those it parses, brace expansion,
+aliases, functions, nested shells beyond those it parses (separated shell
+options, clusters where c is not last, and an end-of-options marker before the
+program), brace expansion,
 parameter-default expansion, URL-embedded paths (including file-scheme URLs), or
 interpreter program text. Those reads are the sandbox's to refuse; if the sandbox
 allowed one, the scan may not see it. Detection of some visible tokens inside such text does not

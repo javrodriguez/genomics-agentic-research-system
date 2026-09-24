@@ -105,8 +105,9 @@ def bare_directory_change(text):
             redirects = ('<', '>', '>>', '<<', '<<<', '<&', '>&', '<>', '>|', '&>', '&>>', '<<-')
             while cursor < len(words):
                 argument = words[cursor]
-                # A descriptor and its redirect target are not cd arguments (Y1 F1).
-                if argument.isdigit() and cursor + 1 < len(words) and words[cursor + 1] in redirects:
+                # Numeric and named descriptors are not cd arguments (Y1 F1, Y2 F1).
+                descriptor = argument.isdigit() or re.fullmatch(r'\{[A-Za-z_][A-Za-z0-9_]*\}', argument)
+                if descriptor and cursor + 1 < len(words) and words[cursor + 1] in redirects:
                     cursor += 1
                     argument = words[cursor]
                 if argument in redirects:
@@ -138,7 +139,13 @@ def root_word_hits(text, field):
     command = None
     argument = None
     hits = 0
+    prefixed = False
+    program_pending = False
+    text_commands = ('awk', 'gawk', 'mawk', 'sed', 'grep', 'egrep', 'fgrep', 'rg')
+    prefixes = ('command', 'builtin', 'exec', 'time', 'eval', 'env', 'timeout', 'nice', 'nohup', 'stdbuf')
     for word in words:
+        option_value = False
+        command_word = False
         if argument:
             if argument == 'shell':
                 hits += root_word_hits(word, 'command')
@@ -146,15 +153,24 @@ def root_word_hits(text, field):
             argument = None
             if previous_argument != 'path':
                 continue
+            option_value = True
         if word and all(c in ';&|<>()\n' for c in word):
             command = None
+            prefixed = False
+            program_pending = False
             continue
         if command is None and field == 'command':
-            if word in ('then', 'do', 'else', '{', 'command', 'builtin', 'exec', 'time', 'eval'):
+            name = os.path.basename(word)
+            if word in ('if', 'then', 'do', 'else', '{') or name in prefixes:
+                prefixed = True
                 continue
-            command = os.path.basename(word)
-        else:
-            delimiters = (('-F', '--field-separator') if command == 'awk' else
+            if not (prefixed and (word.startswith('-') or '=' in word or
+                                  re.fullmatch(r'[0-9]+(?:[.][0-9]+)?[smhd]?', word))):
+                command = name
+                command_word = True
+                program_pending = command in text_commands
+        elif not option_value:
+            delimiters = (('-F', '--field-separator') if command in ('awk', 'gawk', 'mawk') else
                           ('-d', '--delimiter') if command == 'cut' else ())
             if word in delimiters:
                 argument = 'delimiter'
@@ -169,12 +185,38 @@ def root_word_hits(text, field):
             if word in ('-c', '-e') and command and re.fullmatch(r'(?:python[0-9.]*|perl|ruby|node)', command):
                 argument = 'code'
                 continue
-            if command in ('awk', 'sed'):
-                if word == '-e':
+            if command in text_commands:
+                if word in ('-e', '--expression'):
+                    program_pending = False
                     argument = 'code'
                     continue
                 if word in ('-f', '--file'):
+                    program_pending = False
                     argument = 'path'
+                    continue
+                if word.startswith(('--file=', '--source=')) or word.startswith('-f'):
+                    program_pending = False
+        # Item 21 exempts program and format words only from the separator rule.
+        # The independent path-token pass still scans every original field.
+        if field == 'command' and not command_word and not option_value:
+            if command in ('printf', 'echo'):
+                continue
+            if command == 'git' and word.startswith(('--format=', '--pretty=format:', '--pretty=tformat:')):
+                continue
+            if command in text_commands:
+                if word in ('-e', '--expression', '--regexp'):
+                    program_pending = False
+                    argument = 'code'
+                    continue
+                if word.startswith(('--expression=', '--regexp=')) or word.startswith('-e') and len(word) > 2:
+                    program_pending = False
+                    continue
+                if word in ('-v', '--assign', '-A', '-B', '-C', '-m', '--max-count', '--context',
+                            '--after-context', '--before-context', '-g', '--glob', '-t', '--type'):
+                    argument = 'path'
+                    continue
+                if program_pending and not word.startswith('-'):
+                    program_pending = False
                     continue
         candidate = word
         if word.startswith('-') and '=' in word:
