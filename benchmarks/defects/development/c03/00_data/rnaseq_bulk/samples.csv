@@ -1,0 +1,5 @@
+sample_id,condition,group,replicate,subject
+DEV2722,A,A,1,d1
+DEV4367,A,A,2,d2
+DEV6821,B,B,1,d3
+DEV2864,B,B,2,d4

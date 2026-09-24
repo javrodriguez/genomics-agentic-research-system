@@ -158,7 +158,7 @@ technical replicates, which is the intended handling of multi-lane samples.
 offers it rather than stage 00: this is the first moment the *included* subset exists, and the
 last cheap moment before hours of pipeline compute. Stage 00 already confirmed that every link
 resolves and carries the gzip magic; what `--verify-integrity full` adds is decompressing each
-included file, which is the only way to catch a truncated FASTQ.
+included gzip file and validating record structure for plain and gzip FASTQ.
 
 It is off by default because FASTQs normally arrive already validated by a sequencing core.
 **Ask the user**, quoting `included_gb` and `full_check_estimate_min` from `--check`. Record the
@@ -199,7 +199,7 @@ is missing, empty, or unreadable). Both mean stage 00's output was edited or dam
 user there rather than to `samples.csv`.
 
 **Design table.** `01_samplesheets/<Assay ID>_design.csv`, header
-`sample_id,condition,group,replicate` (plus optional `batch` and `subject` for RNA/ATAC). One row per included `sample_id`. Consumed by the
+`sample_id,condition,group,replicate` (plus optional metadata columns for RNA/ATAC). One row per included `sample_id`. Consumed by the
 differential-expression sub-stage of 02_bioinformatics.
 
 **The script's exit codes.** These, and not your reading of its output, determine the branch:
@@ -210,6 +210,36 @@ differential-expression sub-stage of 02_bioinformatics.
 | 1 | validation failed; nothing written | T3 |
 | 2 | a human gate is uncleared; nothing written | T7 and/or T5 |
 | 3 | preconditions not met | T6 |
+
+
+**The schema the detectors read (review MAJOR-2).**
+It is a contract, not detector rule text.
+The same block is copied verbatim into the sealed interface, into `benchmarks/defects/SEALED-INTERFACE.md`, and into the stage 00/01 contracts (`gars/00_initialize_project/CONTEXT.md`, `gars/01_prepare_samplesheets/CONTEXT.md`), so a sealer and a user read the same words.
+All columns are optional `samples.csv` columns under the open schema (decision 0043); no config key is added (review MAJOR-9).
+- `subject`: the independent biological unit (donor, patient, animal); rows sharing a value are not independent replicates.
+- `biological_unit`: a synonym of `subject` kept for row 2's fixtures; when both are present, `subject` wins.
+- `cell_barcode`: present only when each row is a single cell (or a cell-level sub-sample); its presence marks the design as cell-level.
+- `library_index`: the library's i7 index sequence, or `i7+i5` for dual indexing, in the exact form the CASAVA 1.8 FASTQ header carries after the last `:` (for example `ACGTACGT` or `ACGTACGT+TTGACCAA`); never a library name.
+- `sex`: one of `F`, `M`, `unknown` (case-sensitive).
+- `age`: age in years, a non-negative number; blank means unknown.
+
+**Row 8 checks (decision 0101).** Column names are trimmed and case-normalized;
+optional columns are preserved. No config key is added.
+Sex perfectly confounded across arms refuses with `confounded_condition` naming sex.
+Otherwise female-proportion difference >= 0.5 or median-age difference >= 10 years
+adds `covariate_imbalance` with disposition `DEGRADE` in `design_check.flags`.
+All unknown sex or all blank age is `not_checkable` for that half.
+Cell-level rows or an arm with at least two rows but fewer than two independent
+subjects refuse with `pseudoreplication`; subject wins over biological_unit.
+The subject half needs one of those columns. There is no registered pseudobulk path.
+When library_index exists, the helper streams the first 1,000 records per FASTQ,
+combines indexes over lanes per sample, and compares whole majority indexes.
+Mismatch refuses `sample_label_mismatch`, naming only the count.
+`sample_label_check.outcome` is `not_checkable` without library_index or CASAVA
+headers; this is never evidence of a clean swap check.
+Full integrity also validates every plain or gzip FASTQ record: four whole lines,
+@ header, + separator, matching sequence/quality lengths; violation → `integrity`.
+Class 6 is measured with --verify-integrity full; stage 01 default is none.
 
 ## Process
 1. Activated when the user asks to prepare samplesheets or to proceed past stage 00. Reply T1.
@@ -231,7 +261,7 @@ differential-expression sub-stage of 02_bioinformatics.
    python3 _system/stage01_samplesheet.py --project projects/<title> --check
    ```
 
-   It needs no conda environment, decompresses nothing, and is fast. Parse its JSON; branch on its
+   It needs no conda environment; when library_index is present it streams up to 1,000 records per FASTQ. Parse its JSON; branch on its
    **exit code** per Definitions.
 4. Exit 3 → reply T6 using its `error` field, and stop.
 5. Exit 1 → reply T3, rendering every entry of every assay's `failures` array verbatim in the
@@ -300,7 +330,9 @@ Validating the completed samples.csv for each assay before writing any sampleshe
 |---|---|---|---|---|---|
 | <Assay ID> | <samplesheet_rows> | <samples_included> of <samples_total> | <groups> | <layout> | <strandedness> |
 
-All checks passed. Writing samplesheets.
+Validation permits samplesheets.
+<recorded DEGRADE flags and limitations, if any>
+<checks recorded not_checkable, if any>
 ```
 
 **T3 — Validation failed**

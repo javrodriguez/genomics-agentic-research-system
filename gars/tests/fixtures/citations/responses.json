@@ -1,0 +1,115 @@
+{
+  "provenance": "Producer-authored protocol replay fixtures using the supplied CP0.9 oracle semantics; bodies are minimal synthetic responses, not captured live payloads.",
+  "real": [
+    "10.1038/nmeth.1618",
+    "10.1093/bioinformatics/btu170",
+    "10.1186/s13059-014-0550-8",
+    "10.1038/nmeth.2019",
+    "10.5281/zenodo.3727209"
+  ],
+  "fabricated": [
+    "10.5555/gars-fabricated-801-1",
+    "10.5555/gars-fabricated-801-2",
+    "10.5555/gars-fabricated-801-3",
+    "10.5555/gars-fabricated-801-4",
+    "10.5555/gars-fabricated-801-5"
+  ],
+  "responses": [
+    {
+      "request_url": "https://api.crossref.org/works/10.1038%2Fnmeth.1618",
+      "status": 200,
+      "body": "{\"message\": {\"DOI\": \"10.1038/nmeth.1618\"}, \"status\": \"ok\"}",
+      "body_sha256": "1cc7b43dd3faad39f2f24fff74973a9c10f708d704ac16cc610798df87af14a0"
+    },
+    {
+      "request_url": "https://api.crossref.org/works/10.1093%2Fbioinformatics%2Fbtu170",
+      "status": 200,
+      "body": "{\"message\": {\"DOI\": \"10.1093/bioinformatics/btu170\"}, \"status\": \"ok\"}",
+      "body_sha256": "67afab65bb5b6cc0fc7cf24a1fcfa0b05f4413afd7a6f04d77eecfc2da6fa805"
+    },
+    {
+      "request_url": "https://api.crossref.org/works/10.1186%2Fs13059-014-0550-8",
+      "status": 200,
+      "body": "{\"message\": {\"DOI\": \"10.1186/s13059-014-0550-8\"}, \"status\": \"ok\"}",
+      "body_sha256": "29bf42219aaa1a424df26d80e0ea1c85245c4c255474a1559c6f8d10de182094"
+    },
+    {
+      "request_url": "https://api.crossref.org/works/10.1038%2Fnmeth.2019",
+      "status": 200,
+      "body": "{\"message\": {\"DOI\": \"10.1038/nmeth.2019\"}, \"status\": \"ok\"}",
+      "body_sha256": "15896f76f968ab9f07a75276748554842a43cc8fcab8e830cce0d5f64dfa2e85"
+    },
+    {
+      "request_url": "https://api.crossref.org/works/10.5281%2Fzenodo.3727209",
+      "status": 404,
+      "body": "{\"status\": \"not-found\"}",
+      "body_sha256": "db2c688721701395779cd27414fe4f13c0ef6c4454bb428f8d7fe3b66620e0c8"
+    },
+    {
+      "request_url": "https://doi.org/api/handles/10.5281%2Fzenodo.3727209",
+      "status": 200,
+      "body": "{\"responseCode\": 1}",
+      "body_sha256": "131721283c6078882d836a9d93198c1b127b42ec61a8851d9227eec9723f14c2"
+    },
+    {
+      "request_url": "https://api.crossref.org/works/10.5555%2Fgars-fabricated-801-1",
+      "status": 404,
+      "body": "{\"status\": \"not-found\"}",
+      "body_sha256": "db2c688721701395779cd27414fe4f13c0ef6c4454bb428f8d7fe3b66620e0c8"
+    },
+    {
+      "request_url": "https://doi.org/api/handles/10.5555%2Fgars-fabricated-801-1",
+      "status": 404,
+      "body": "{\"responseCode\": 100}",
+      "body_sha256": "b7774854218b70b53432f6ae0571375b2c52b3b45a9a5c32a4b97585da0045ce"
+    },
+    {
+      "request_url": "https://api.crossref.org/works/10.5555%2Fgars-fabricated-801-2",
+      "status": 404,
+      "body": "{\"status\": \"not-found\"}",
+      "body_sha256": "db2c688721701395779cd27414fe4f13c0ef6c4454bb428f8d7fe3b66620e0c8"
+    },
+    {
+      "request_url": "https://doi.org/api/handles/10.5555%2Fgars-fabricated-801-2",
+      "status": 404,
+      "body": "{\"responseCode\": 100}",
+      "body_sha256": "b7774854218b70b53432f6ae0571375b2c52b3b45a9a5c32a4b97585da0045ce"
+    },
+    {
+      "request_url": "https://api.crossref.org/works/10.5555%2Fgars-fabricated-801-3",
+      "status": 404,
+      "body": "{\"status\": \"not-found\"}",
+      "body_sha256": "db2c688721701395779cd27414fe4f13c0ef6c4454bb428f8d7fe3b66620e0c8"
+    },
+    {
+      "request_url": "https://doi.org/api/handles/10.5555%2Fgars-fabricated-801-3",
+      "status": 404,
+      "body": "{\"responseCode\": 100}",
+      "body_sha256": "b7774854218b70b53432f6ae0571375b2c52b3b45a9a5c32a4b97585da0045ce"
+    },
+    {
+      "request_url": "https://api.crossref.org/works/10.5555%2Fgars-fabricated-801-4",
+      "status": 404,
+      "body": "{\"status\": \"not-found\"}",
+      "body_sha256": "db2c688721701395779cd27414fe4f13c0ef6c4454bb428f8d7fe3b66620e0c8"
+    },
+    {
+      "request_url": "https://doi.org/api/handles/10.5555%2Fgars-fabricated-801-4",
+      "status": 404,
+      "body": "{\"responseCode\": 100}",
+      "body_sha256": "b7774854218b70b53432f6ae0571375b2c52b3b45a9a5c32a4b97585da0045ce"
+    },
+    {
+      "request_url": "https://api.crossref.org/works/10.5555%2Fgars-fabricated-801-5",
+      "status": 404,
+      "body": "{\"status\": \"not-found\"}",
+      "body_sha256": "db2c688721701395779cd27414fe4f13c0ef6c4454bb428f8d7fe3b66620e0c8"
+    },
+    {
+      "request_url": "https://doi.org/api/handles/10.5555%2Fgars-fabricated-801-5",
+      "status": 404,
+      "body": "{\"responseCode\": 100}",
+      "body_sha256": "b7774854218b70b53432f6ae0571375b2c52b3b45a9a5c32a4b97585da0045ce"
+    }
+  ]
+}

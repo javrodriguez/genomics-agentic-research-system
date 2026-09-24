@@ -1,0 +1,5 @@
+sample_id,condition,group,replicate,age
+DEV2722,A,A,1,20
+DEV4367,A,A,2,22
+DEV6821,B,B,1,22
+DEV2864,B,B,2,24

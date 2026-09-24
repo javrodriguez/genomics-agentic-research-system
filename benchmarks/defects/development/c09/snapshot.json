@@ -1,0 +1,56 @@
+{
+  "claims": [
+    {
+      "bio_support": {},
+      "evidence": [
+        {
+          "artifact": {
+            "id": 1,
+            "path": "evidence.tsv",
+            "sha256": "4b0959ce9357adb21ccf2ae8a83e648e6222637722d45cf315c16072b1d756bd"
+          },
+          "artifact_id": 1,
+          "id": 1,
+          "kind": "computational",
+          "relation": "supports",
+          "source": null,
+          "source_id": null
+        },
+        {
+          "artifact": null,
+          "artifact_id": null,
+          "id": 2,
+          "kind": "literature",
+          "relation": "supports",
+          "source": {
+            "id": 1,
+            "reference": "10.1038/nmeth.1618"
+          },
+          "source_id": 1
+        }
+      ],
+      "id": 1,
+      "links": [
+        {
+          "claim_id": 1,
+          "evidence_id": 1
+        },
+        {
+          "claim_id": 1,
+          "evidence_id": 2
+        }
+      ],
+      "process_risk": {},
+      "reference_release": "synthetic-v1",
+      "run_id": 1,
+      "text": "Synthetic table has one row.",
+      "type": "OBSERVATION",
+      "workflow_version": "synthetic-v1"
+    }
+  ],
+  "run": {
+    "exploratory": false,
+    "id": 1,
+    "question": "Synthetic development question"
+  }
+}

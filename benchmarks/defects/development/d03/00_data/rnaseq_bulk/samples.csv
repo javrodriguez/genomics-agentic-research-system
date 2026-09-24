@@ -1,0 +1,5 @@
+sample_id,condition,group,replicate,sex
+DEV2722,A,A,1,F
+DEV4367,A,A,2,F
+DEV6821,B,B,1,M
+DEV2864,B,B,2,M

@@ -28,6 +28,9 @@ Emits a single JSON object on stdout. Exit codes:
 
 import argparse
 import csv
+import gzip
+from collections import Counter
+from statistics import median
 import json
 import os
 import re
@@ -37,6 +40,10 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import integrity            # noqa: E402  -- one home for the integrity rule
 import workspace as ws     # noqa: E402  -- one home for the template version
+
+# Pre-committed in decision 0101; never tuned to a run.
+SEX_PROPORTION_THRESHOLD = 0.5
+AGE_MEDIAN_THRESHOLD = 10
 
 RAW_SUFFIXES = (".fastq.gz", ".fq.gz", ".fastq", ".fq")
 STRANDEDNESS_VALUES = {"auto", "forward", "reverse", "unstranded"}
@@ -224,11 +231,11 @@ def read_csv(path):
     header_line = kept[0][0]
     rows = []
     for row, (lineno, _) in zip(reader, kept[1:]):
-        row = {(k.strip() if k else k): (v.strip() if isinstance(v, str) else v)
+        row = {(k.strip().lower() if k else k): (v.strip() if isinstance(v, str) else v)
                for k, v in row.items()}
         row["_n"] = lineno
         rows.append(row)
-    return {"rows": rows, "fields": [f.strip() for f in reader.fieldnames],
+    return {"rows": rows, "fields": [f.strip().lower() for f in reader.fieldnames],
             "header_line": header_line}, None
 
 
@@ -403,7 +410,7 @@ def validate_assay(project, assay):
         # R-072: batch is a design covariate, not a sample identifier. Preserve it
         # through emission; subject follows owner ruling 0043. Other roles remain unspecified.
         if name == "samples.csv" and assay in ("rnaseq_bulk", "atacseq_bulk"):
-            want = header + [c for c in got[len(header):] if c in ("batch", "subject")]
+            want = header + got[len(header):]
             if len(got) != len(set(got)):
                 want = header
         if got != want:
@@ -563,6 +570,93 @@ def validate_assay(project, assay):
             fails.append(fail("confounded_condition",
                               "batch perfectly confounded with condition; batch cannot "
                               "be separated from the condition effect (R-072)"))
+    # Row 8 optional metadata checks. IDs and lanes never increase replication.
+    if assay in ("rnaseq_bulk", "atacseq_bulk"):
+        arms = {}
+        for row in incl_rows:
+            arms.setdefault(row["condition"], []).append(row)
+        if "cell_barcode" in samples["fields"]:
+            begin("cell_replication")
+            fails.append(fail("pseudoreplication", "cell-level rows have no registered pseudobulk path"))
+        unit = ("subject" if "subject" in samples["fields"] else
+                "biological_unit" if "biological_unit" in samples["fields"] else None)
+        if unit:
+            begin("biological_replication")
+            if any(len(rows) >= 2 and len({r.get(unit, "") for r in rows}) < 2
+                   for rows in arms.values()):
+                fails.append(fail("pseudoreplication", "fewer than two independent biological units in an arm"))
+        covariates = {}
+        flags = []
+        if "sex" in samples["fields"]:
+            known = {arm: [r["sex"] for r in rows if r.get("sex") in ("F", "M")]
+                     for arm, rows in arms.items()}
+            sets = [set(values) for values in known.values()]
+            confounded = (len(sets) > 1 and all(len(v) == 1 for v in sets)
+                          and len(set(next(iter(v)) for v in sets)) == len(sets))
+            covariates["sex"] = "checked" if any(known.values()) else "not_checkable"
+            if confounded:
+                begin("sex_confounding")
+                fails.append(fail("confounded_condition", "sex perfectly confounded with condition"))
+            else:
+                proportions = [float(v.count("F")) / len(v) for v in known.values() if v]
+                if proportions and max(proportions) - min(proportions) >= SEX_PROPORTION_THRESHOLD:
+                    flags.append({"check": "covariate_imbalance", "disposition": "DEGRADE",
+                                  "detail": "sex: female proportion differs by at least 0.5"})
+        if "age" in samples["fields"]:
+            ages = []
+            for rows in arms.values():
+                values = [float(r["age"]) for r in rows if r.get("age")]
+                if values:
+                    ages.append(median(values))
+            covariates["age"] = "checked" if ages else "not_checkable"
+            if ages and max(ages) - min(ages) >= AGE_MEDIAN_THRESHOLD:
+                flags.append({"check": "covariate_imbalance", "disposition": "DEGRADE",
+                              "detail": "age: arm medians differ by at least 10 years"})
+        if covariates:
+            out["design_check"]["covariates"] = covariates
+            out["design_check"]["flags"] = flags
+
+    # Keep unavailable label checking explicit in CLI JSON, including column absence.
+    out["sample_label_check"] = {"outcome": "not_checkable"}
+    if "library_index" in samples["fields"]:
+        mismatched, checkable = 0, True
+        for sample in incl_rows:
+            indexes = Counter()
+            for row in files["rows"]:
+                if row["sample_id"] != sample["sample_id"]:
+                    continue
+                for col in ("fastq_1", "fastq_2"):
+                    if not row.get(col):
+                        continue
+                    path = project / row[col]
+                    try:
+                        opener = gzip.open if str(path).endswith(".gz") else open
+                        with opener(str(path), "rb") as fh:
+                            for _ in range(1000):
+                                header = fh.readline()
+                                if not header:
+                                    break
+                                rest = [fh.readline() for _ in range(3)]
+                                parts = header.decode("ascii", errors="replace").strip().split()
+                                if (len(parts) != 2 or len(parts[0].split(":")) != 7
+                                        or not re.fullmatch(r"[12]:[YN]:[0-9]+:[ACGTN]+(?:\+[ACGTN]+)?", parts[1])):
+                                    checkable = False
+                                    continue
+                                indexes[parts[1].rsplit(":", 1)[1]] += 1
+                    except (OSError, EOFError):
+                        checkable = False
+            if not indexes:
+                checkable = False
+            elif indexes.most_common(1)[0][0] != sample.get("library_index"):
+                mismatched += 1
+        if mismatched:
+            begin("sample_label_check")
+            fails.append(fail("sample_label_mismatch",
+                              "sample_label_mismatch: %d mismatched samples" % mismatched))
+            out["sample_label_check"]["outcome"] = "fail"
+        elif checkable:
+            out["sample_label_check"]["outcome"] = "pass"
+
     if assay == "atacseq_bulk":
         begin("atac_replication")
         levels = {}

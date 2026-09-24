@@ -1,0 +1,76 @@
+{
+  "gars/_system/resolve_citation.py": {
+    "options": [
+      [
+        "-h",
+        "--help"
+      ],
+      []
+    ],
+    "imports": [
+      "from urllib.error import HTTPError",
+      "from urllib.parse import quote",
+      "from urllib.request import urlopen",
+      "import argparse",
+      "import json",
+      "import re",
+      "import sys"
+    ]
+  },
+  "gars/_system/claims/evidence_check.py": {
+    "options": [
+      [
+        "-h",
+        "--help"
+      ],
+      [
+        "--snapshot"
+      ],
+      [
+        "--project"
+      ]
+    ],
+    "imports": [
+      "from os import pardir",
+      "from pathlib import Path",
+      "import argparse",
+      "import hashlib",
+      "import json",
+      "import resolve_citation",
+      "import sys"
+    ]
+  },
+  "gars/_system/claims/emit_report.py": {
+    "options": [
+      [
+        "-h",
+        "--help"
+      ],
+      [
+        "--snapshot"
+      ],
+      [
+        "--from-db"
+      ],
+      [
+        "--manifest"
+      ],
+      [
+        "--project"
+      ],
+      [
+        "--out"
+      ]
+    ],
+    "imports": [
+      "from pathlib import Path",
+      "import argparse",
+      "import evidence_check",
+      "import json",
+      "import render_report",
+      "import subprocess",
+      "import sys",
+      "import tempfile"
+    ]
+  }
+}

@@ -1031,7 +1031,7 @@ class RnaseqGarsWrapperTests(unittest.TestCase):
         self.assertTrue(any("anonymous" in f["detail"] for f in res["failures"]),
                         "an empty gene identifier must be caught (0010)")
         (run_dir / "tables" / "de_results.csv").write_text(
-            "gene,baseMean,log2FoldChange,pvalue,padj\ng1,1,2,0.1,0.2\n")
+            "gene,baseMean,log2FoldChange,pvalue,padj\ng1,1,2,0.01,0.02\ng2,1,2,0.04,0.04\n")
         completed_fixture_submission(self.project, self.de_substage)
         code, res, raw = run(self.de, ["collect", "--project", "projects/rna-test",
                                        "--model", "claude-test-1",

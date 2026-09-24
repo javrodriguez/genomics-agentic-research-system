@@ -1,0 +1,345 @@
+{
+  "seed": 801,
+  "seal_type": "unsealed",
+  "entries": [
+    {
+      "id": 1,
+      "class": "batch fully confounded with condition",
+      "requirement": [
+        "R-114"
+      ],
+      "preconditions": "Bulk RNA or ATAC design with multiple conditions and batch.",
+      "expected_flag": [
+        "confounded_condition"
+      ],
+      "expected_stage": "01_prepare_samplesheets",
+      "status": "active",
+      "entry_point": "python3 gars/_system/stage01_samplesheet.py --project <plant> --check --verify-integrity full",
+      "plant_recipe": "Assign a different constant batch to each arm.",
+      "fixture": "development/d01"
+    },
+    {
+      "id": 2,
+      "class": "n = 1 per group",
+      "requirement": [
+        "R-114"
+      ],
+      "preconditions": "Bulk RNA or ATAC design.",
+      "expected_flag": [
+        "insufficient_biological_replicates",
+        "invalid_design"
+      ],
+      "expected_stage": "01_prepare_samplesheets",
+      "status": "active",
+      "entry_point": "python3 gars/_system/stage01_samplesheet.py --project <plant> --check --verify-integrity full",
+      "plant_recipe": "Keep one sample in an ATAC arm (RNA: a group of one).",
+      "fixture": "development/d02",
+      "detail_contains": {
+        "invalid_design": [
+          "of one cannot be tested for differential expression",
+          "cannot be tested for differential expression"
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "class": "sex/age imbalance across arms",
+      "requirement": [
+        "R-114",
+        "R-072",
+        "R-141",
+        "R-042"
+      ],
+      "preconditions": "sex and/or age supplied; unknown sex and blank age are excluded.",
+      "expected_flag": [
+        "confounded_condition",
+        "covariate_imbalance"
+      ],
+      "expected_stage": "01_prepare_samplesheets",
+      "status": "active",
+      "entry_point": "python3 gars/_system/stage01_samplesheet.py --project <plant> --check --verify-integrity full",
+      "plant_recipe": "Assign F to one arm and M to the other; threshold variants use female proportions or arm median ages.",
+      "fixture": "development/d03"
+    },
+    {
+      "id": 4,
+      "class": "cells treated as replicates",
+      "requirement": [
+        "R-114",
+        "R-145",
+        "R-042"
+      ],
+      "preconditions": "Bulk RNA or ATAC; cell_barcode triggers the cell rule. The subject-count half applies only when subject or biological_unit exists; subject wins. Without either column that half does not apply.",
+      "expected_flag": [
+        "pseudoreplication"
+      ],
+      "expected_stage": "01_prepare_samplesheets",
+      "status": "active",
+      "entry_point": "python3 gars/_system/stage01_samplesheet.py --project <plant> --check --verify-integrity full",
+      "plant_recipe": "Add cell_barcode; alternatively duplicate subject or biological_unit within a condition.",
+      "fixture": "development/d04"
+    },
+    {
+      "id": 5,
+      "class": "sample labels swapped between `samples.csv` and FASTQ",
+      "requirement": [
+        "R-114",
+        "R-042"
+      ],
+      "preconditions": "library_index supplied and CASAVA 1.8 FASTQ headers; otherwise not_checkable.",
+      "expected_flag": [
+        "sample_label_mismatch"
+      ],
+      "expected_stage": "01_prepare_samplesheets",
+      "status": "active",
+      "entry_point": "python3 gars/_system/stage01_samplesheet.py --project <plant> --check --verify-integrity full",
+      "plant_recipe": "Declare library_index different from the majority CASAVA index.",
+      "fixture": "development/d05"
+    },
+    {
+      "id": 6,
+      "class": "truncated FASTQ",
+      "requirement": [
+        "R-114",
+        "R-042"
+      ],
+      "preconditions": "Stage 01 must use --verify-integrity full; default none does not catch record truncation.",
+      "expected_flag": [
+        "integrity"
+      ],
+      "expected_stage": "01_prepare_samplesheets",
+      "status": "active",
+      "entry_point": "python3 gars/_system/stage01_samplesheet.py --project <plant> --check --verify-integrity full",
+      "plant_recipe": "Write an incomplete FASTQ record inside an otherwise valid gzip stream; plain variants also fail.",
+      "fixture": "development/d06"
+    },
+    {
+      "id": 7,
+      "class": "fabricated output path in a finding",
+      "requirement": [
+        "R-114"
+      ],
+      "preconditions": "claims_export snapshot with artifact evidence and a named project.",
+      "expected_flag": [
+        "evidence_missing",
+        "evidence_hash_mismatch"
+      ],
+      "expected_stage": "report_emit",
+      "status": "active",
+      "entry_point": "python3 gars/_system/claims/emit_report.py --snapshot <plant>/snapshot.json --manifest <manifest> --project <plant>/project --out <out>; runner calls this CLI main in process with transport=replay",
+      "plant_recipe": "Name an absent project-relative artifact, or change its bytes after recording sha256.",
+      "fixture": "development/d07"
+    },
+    {
+      "id": 8,
+      "class": "DE table with raw p-values, no correction",
+      "requirement": [
+        "R-114",
+        "R-042"
+      ],
+      "preconditions": "Nonempty DE table with tested rows; real collect scaffold.",
+      "expected_flag": [
+        "uncorrected_pvalues"
+      ],
+      "expected_stage": "02_collect",
+      "status": "active",
+      "entry_point": "python3 gars/_system/wrappers/rnaseq-de/rnaseq_de.py collect --project <scaffold>",
+      "plant_recipe": "Copy every raw pvalue into padj in a multi-row table with a pvalue below one.",
+      "fixture": "development/d08"
+    },
+    {
+      "id": 9,
+      "class": "claim citing a non-existent DOI",
+      "requirement": [
+        "R-114",
+        "R-125"
+      ],
+      "preconditions": "claims_export source reference parses as DOI; recorded transport is in-process only.",
+      "expected_flag": [
+        "citation_unresolved"
+      ],
+      "expected_stage": "report_emit",
+      "status": "active",
+      "entry_point": "python3 gars/_system/claims/emit_report.py --snapshot <plant>/snapshot.json --manifest <manifest> --project <plant>/project --out <out>; runner calls this CLI main in process with transport=replay",
+      "plant_recipe": "Use a DOI for which both Crossref and the DOI handle API return not found.",
+      "fixture": "development/d09"
+    },
+    {
+      "id": 10,
+      "class": "Hi-C resolution mismatch (placeholder)",
+      "requirement": [
+        "R-114"
+      ],
+      "preconditions": "Hi-C out of scope.",
+      "expected_flag": [],
+      "expected_stage": null,
+      "status": "placeholder",
+      "entry_point": null,
+      "returns_when": "two benchmark tasks with cited references and one defect class exist for it"
+    }
+  ],
+  "sha256": {
+    "development/c01/00_data/rnaseq_bulk/files.csv": "279cb33e884295bdd0465213c092fba7b068ed08baeffebfc9b3d5479c9771bf",
+    "development/c01/00_data/rnaseq_bulk/raw/DEV2722_L001_R1.fastq.gz": "0b3a4c70969b18c25dc2662772b95c99baa4941249cc16a54b8148c390edcc66",
+    "development/c01/00_data/rnaseq_bulk/raw/DEV2864_L001_R1.fastq.gz": "0b3a4c70969b18c25dc2662772b95c99baa4941249cc16a54b8148c390edcc66",
+    "development/c01/00_data/rnaseq_bulk/raw/DEV4367_L001_R1.fastq.gz": "0b3a4c70969b18c25dc2662772b95c99baa4941249cc16a54b8148c390edcc66",
+    "development/c01/00_data/rnaseq_bulk/raw/DEV6821_L001_R1.fastq.gz": "0b3a4c70969b18c25dc2662772b95c99baa4941249cc16a54b8148c390edcc66",
+    "development/c01/00_data/rnaseq_bulk/samples.csv": "38066f238104e11338ca342c35fe8ad48478377fbb7ff7f5f5a3d22db4c7301e",
+    "development/c01/_config/rnaseq_bulk.yaml": "c2aa16a9157e6a552fbd4ee5eca88c3dba300743310dc801161448e4a603eada",
+    "development/c01/de_results.csv": "1ce955044b2acedc3af1f9468df494c6e3f56eda65bf7a6cd6c8edbbd3b8d6af",
+    "development/c01/manifest.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "development/c01/project/evidence.tsv": "4b0959ce9357adb21ccf2ae8a83e648e6222637722d45cf315c16072b1d756bd",
+    "development/c01/snapshot.json": "60163fae706a6137dc7fd3fa5fe490a71216f7accba58bd4b63837c65eb0302a",
+    "development/c02/00_data/atacseq_bulk/files.csv": "6981e3159a26b22ef7a309e8ef3de95a1a77c66b0128e83f72bcaf0c7e689902",
+    "development/c02/00_data/atacseq_bulk/raw/DEV2722_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/c02/00_data/atacseq_bulk/raw/DEV2864_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/c02/00_data/atacseq_bulk/raw/DEV4367_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/c02/00_data/atacseq_bulk/raw/DEV6821_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/c02/00_data/atacseq_bulk/samples.csv": "990ff1fd3107652ed12fa873466db82a80b7a465fd0d7e740c055734445d8b0a",
+    "development/c02/_config/atacseq_bulk.yaml": "c2aa16a9157e6a552fbd4ee5eca88c3dba300743310dc801161448e4a603eada",
+    "development/c02/de_results.csv": "0b9c6282c64ac7c00755a172a7e3d86621fafe2f8dd66dec7e26972182f88777",
+    "development/c02/manifest.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "development/c02/project/evidence.tsv": "4b0959ce9357adb21ccf2ae8a83e648e6222637722d45cf315c16072b1d756bd",
+    "development/c02/snapshot.json": "60163fae706a6137dc7fd3fa5fe490a71216f7accba58bd4b63837c65eb0302a",
+    "development/c03/00_data/rnaseq_bulk/files.csv": "58f0b73af2300867fdc80a86577f4f59ccb8ac2b13e83a200e5ec85b8890b399",
+    "development/c03/00_data/rnaseq_bulk/raw/DEV2722_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/c03/00_data/rnaseq_bulk/raw/DEV2864_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/c03/00_data/rnaseq_bulk/raw/DEV4367_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/c03/00_data/rnaseq_bulk/raw/DEV6821_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/c03/00_data/rnaseq_bulk/samples.csv": "f6dc858f99c9981c57738000d7cee78692d2e883003a4088ae8ac18cf50f83cd",
+    "development/c03/_config/rnaseq_bulk.yaml": "c2aa16a9157e6a552fbd4ee5eca88c3dba300743310dc801161448e4a603eada",
+    "development/c03/de_results.csv": "4db0dc8c008587da505b9b1712c06d2f43f4b9ed8993d55180ad06cfe020d522",
+    "development/c03/manifest.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "development/c03/project/evidence.tsv": "4b0959ce9357adb21ccf2ae8a83e648e6222637722d45cf315c16072b1d756bd",
+    "development/c03/snapshot.json": "60163fae706a6137dc7fd3fa5fe490a71216f7accba58bd4b63837c65eb0302a",
+    "development/c04/00_data/atacseq_bulk/files.csv": "10f1a67a829e7cb7302925dbb772f0dfe94972e95a3980f45ebb20521dc211b7",
+    "development/c04/00_data/atacseq_bulk/raw/DEV2722_L001_R1.fastq.gz": "0b3a4c70969b18c25dc2662772b95c99baa4941249cc16a54b8148c390edcc66",
+    "development/c04/00_data/atacseq_bulk/raw/DEV2864_L001_R1.fastq.gz": "0b3a4c70969b18c25dc2662772b95c99baa4941249cc16a54b8148c390edcc66",
+    "development/c04/00_data/atacseq_bulk/raw/DEV4367_L001_R1.fastq.gz": "0b3a4c70969b18c25dc2662772b95c99baa4941249cc16a54b8148c390edcc66",
+    "development/c04/00_data/atacseq_bulk/raw/DEV6821_L001_R1.fastq.gz": "0b3a4c70969b18c25dc2662772b95c99baa4941249cc16a54b8148c390edcc66",
+    "development/c04/00_data/atacseq_bulk/samples.csv": "ef2324df5f94615116dcf46d3457446ef660fb1f6a1b56a12aff929506a41e4a",
+    "development/c04/_config/atacseq_bulk.yaml": "c2aa16a9157e6a552fbd4ee5eca88c3dba300743310dc801161448e4a603eada",
+    "development/c04/de_results.csv": "1ce955044b2acedc3af1f9468df494c6e3f56eda65bf7a6cd6c8edbbd3b8d6af",
+    "development/c04/manifest.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "development/c04/project/evidence.tsv": "4b0959ce9357adb21ccf2ae8a83e648e6222637722d45cf315c16072b1d756bd",
+    "development/c04/snapshot.json": "60163fae706a6137dc7fd3fa5fe490a71216f7accba58bd4b63837c65eb0302a",
+    "development/c05/00_data/rnaseq_bulk/files.csv": "58f0b73af2300867fdc80a86577f4f59ccb8ac2b13e83a200e5ec85b8890b399",
+    "development/c05/00_data/rnaseq_bulk/raw/DEV2722_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/c05/00_data/rnaseq_bulk/raw/DEV2864_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/c05/00_data/rnaseq_bulk/raw/DEV4367_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/c05/00_data/rnaseq_bulk/raw/DEV6821_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/c05/00_data/rnaseq_bulk/samples.csv": "f1dc95dddf011669e12c40cf8f965406f9b3e38bccd239939afe7766df149468",
+    "development/c05/_config/rnaseq_bulk.yaml": "c2aa16a9157e6a552fbd4ee5eca88c3dba300743310dc801161448e4a603eada",
+    "development/c05/de_results.csv": "1ce955044b2acedc3af1f9468df494c6e3f56eda65bf7a6cd6c8edbbd3b8d6af",
+    "development/c05/manifest.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "development/c05/project/evidence.tsv": "4b0959ce9357adb21ccf2ae8a83e648e6222637722d45cf315c16072b1d756bd",
+    "development/c05/snapshot.json": "60163fae706a6137dc7fd3fa5fe490a71216f7accba58bd4b63837c65eb0302a",
+    "development/c06/00_data/atacseq_bulk/files.csv": "6981e3159a26b22ef7a309e8ef3de95a1a77c66b0128e83f72bcaf0c7e689902",
+    "development/c06/00_data/atacseq_bulk/raw/DEV2722_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/c06/00_data/atacseq_bulk/raw/DEV2864_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/c06/00_data/atacseq_bulk/raw/DEV4367_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/c06/00_data/atacseq_bulk/raw/DEV6821_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/c06/00_data/atacseq_bulk/samples.csv": "52c97d707f4e6896ab35145faa77b3a5efbe5159c91aa94cf59522ba511b4501",
+    "development/c06/_config/atacseq_bulk.yaml": "c2aa16a9157e6a552fbd4ee5eca88c3dba300743310dc801161448e4a603eada",
+    "development/c06/de_results.csv": "1ce955044b2acedc3af1f9468df494c6e3f56eda65bf7a6cd6c8edbbd3b8d6af",
+    "development/c06/manifest.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "development/c06/project/evidence.tsv": "4b0959ce9357adb21ccf2ae8a83e648e6222637722d45cf315c16072b1d756bd",
+    "development/c06/snapshot.json": "60163fae706a6137dc7fd3fa5fe490a71216f7accba58bd4b63837c65eb0302a",
+    "development/c07/00_data/rnaseq_bulk/files.csv": "279cb33e884295bdd0465213c092fba7b068ed08baeffebfc9b3d5479c9771bf",
+    "development/c07/00_data/rnaseq_bulk/raw/DEV2722_L001_R1.fastq.gz": "0b3a4c70969b18c25dc2662772b95c99baa4941249cc16a54b8148c390edcc66",
+    "development/c07/00_data/rnaseq_bulk/raw/DEV2864_L001_R1.fastq.gz": "0b3a4c70969b18c25dc2662772b95c99baa4941249cc16a54b8148c390edcc66",
+    "development/c07/00_data/rnaseq_bulk/raw/DEV4367_L001_R1.fastq.gz": "0b3a4c70969b18c25dc2662772b95c99baa4941249cc16a54b8148c390edcc66",
+    "development/c07/00_data/rnaseq_bulk/raw/DEV6821_L001_R1.fastq.gz": "0b3a4c70969b18c25dc2662772b95c99baa4941249cc16a54b8148c390edcc66",
+    "development/c07/00_data/rnaseq_bulk/samples.csv": "173cbb4154c32d05aaa96e3bb48e2920f770935ebbf0e0ae93af802a25955e7f",
+    "development/c07/_config/rnaseq_bulk.yaml": "c2aa16a9157e6a552fbd4ee5eca88c3dba300743310dc801161448e4a603eada",
+    "development/c07/de_results.csv": "1ce955044b2acedc3af1f9468df494c6e3f56eda65bf7a6cd6c8edbbd3b8d6af",
+    "development/c07/manifest.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "development/c07/project/evidence.tsv": "4b0959ce9357adb21ccf2ae8a83e648e6222637722d45cf315c16072b1d756bd",
+    "development/c07/snapshot.json": "60163fae706a6137dc7fd3fa5fe490a71216f7accba58bd4b63837c65eb0302a",
+    "development/c08/00_data/atacseq_bulk/files.csv": "6981e3159a26b22ef7a309e8ef3de95a1a77c66b0128e83f72bcaf0c7e689902",
+    "development/c08/00_data/atacseq_bulk/raw/DEV2722_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/c08/00_data/atacseq_bulk/raw/DEV2864_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/c08/00_data/atacseq_bulk/raw/DEV4367_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/c08/00_data/atacseq_bulk/raw/DEV6821_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/c08/00_data/atacseq_bulk/samples.csv": "e2059210a904018326365758827ff37c88a8a53ae01f358ad890c5db7d085c0b",
+    "development/c08/_config/atacseq_bulk.yaml": "c2aa16a9157e6a552fbd4ee5eca88c3dba300743310dc801161448e4a603eada",
+    "development/c08/de_results.csv": "1ce955044b2acedc3af1f9468df494c6e3f56eda65bf7a6cd6c8edbbd3b8d6af",
+    "development/c08/manifest.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "development/c08/project/evidence.tsv": "4b0959ce9357adb21ccf2ae8a83e648e6222637722d45cf315c16072b1d756bd",
+    "development/c08/snapshot.json": "60163fae706a6137dc7fd3fa5fe490a71216f7accba58bd4b63837c65eb0302a",
+    "development/c09/00_data/rnaseq_bulk/files.csv": "1209a8fcefe0ded810e787c95ef0cd7fc22a9b5e2f2435a04837e4bd78ddeef2",
+    "development/c09/00_data/rnaseq_bulk/raw/DEV2722_L001_R1.fastq": "2d7e8ee77fa3512c79b7fe419f974a5db1dced876c6433fb780911ae1425b64f",
+    "development/c09/00_data/rnaseq_bulk/raw/DEV2722_L002_R1.fastq": "0577a922f68c775c06966b2ddd8f4a9aa0238b0341f07e74415f36c23c2dbfb1",
+    "development/c09/00_data/rnaseq_bulk/raw/DEV2864_L001_R1.fastq": "2d7e8ee77fa3512c79b7fe419f974a5db1dced876c6433fb780911ae1425b64f",
+    "development/c09/00_data/rnaseq_bulk/raw/DEV2864_L002_R1.fastq": "0577a922f68c775c06966b2ddd8f4a9aa0238b0341f07e74415f36c23c2dbfb1",
+    "development/c09/00_data/rnaseq_bulk/raw/DEV4367_L001_R1.fastq": "2d7e8ee77fa3512c79b7fe419f974a5db1dced876c6433fb780911ae1425b64f",
+    "development/c09/00_data/rnaseq_bulk/raw/DEV4367_L002_R1.fastq": "0577a922f68c775c06966b2ddd8f4a9aa0238b0341f07e74415f36c23c2dbfb1",
+    "development/c09/00_data/rnaseq_bulk/raw/DEV6821_L001_R1.fastq": "2d7e8ee77fa3512c79b7fe419f974a5db1dced876c6433fb780911ae1425b64f",
+    "development/c09/00_data/rnaseq_bulk/raw/DEV6821_L002_R1.fastq": "0577a922f68c775c06966b2ddd8f4a9aa0238b0341f07e74415f36c23c2dbfb1",
+    "development/c09/00_data/rnaseq_bulk/samples.csv": "fb195a9f020daf8745ef54130d9da706e64b3632f237451a6701b36239fb9931",
+    "development/c09/_config/rnaseq_bulk.yaml": "c2aa16a9157e6a552fbd4ee5eca88c3dba300743310dc801161448e4a603eada",
+    "development/c09/de_results.csv": "1ce955044b2acedc3af1f9468df494c6e3f56eda65bf7a6cd6c8edbbd3b8d6af",
+    "development/c09/manifest.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "development/c09/project/evidence.tsv": "4b0959ce9357adb21ccf2ae8a83e648e6222637722d45cf315c16072b1d756bd",
+    "development/c09/snapshot.json": "60163fae706a6137dc7fd3fa5fe490a71216f7accba58bd4b63837c65eb0302a",
+    "development/c10/00_data/atacseq_bulk/files.csv": "10f1a67a829e7cb7302925dbb772f0dfe94972e95a3980f45ebb20521dc211b7",
+    "development/c10/00_data/atacseq_bulk/raw/DEV2722_L001_R1.fastq.gz": "0b3a4c70969b18c25dc2662772b95c99baa4941249cc16a54b8148c390edcc66",
+    "development/c10/00_data/atacseq_bulk/raw/DEV2864_L001_R1.fastq.gz": "0b3a4c70969b18c25dc2662772b95c99baa4941249cc16a54b8148c390edcc66",
+    "development/c10/00_data/atacseq_bulk/raw/DEV4367_L001_R1.fastq.gz": "0b3a4c70969b18c25dc2662772b95c99baa4941249cc16a54b8148c390edcc66",
+    "development/c10/00_data/atacseq_bulk/raw/DEV6821_L001_R1.fastq.gz": "0b3a4c70969b18c25dc2662772b95c99baa4941249cc16a54b8148c390edcc66",
+    "development/c10/00_data/atacseq_bulk/samples.csv": "a6dd1e6a10d7a3179f3706bb08a1021675b99138fed1edd34e8614e4ed5d5814",
+    "development/c10/_config/atacseq_bulk.yaml": "c2aa16a9157e6a552fbd4ee5eca88c3dba300743310dc801161448e4a603eada",
+    "development/c10/de_results.csv": "aa13b04fa3cd7061e5e8d5ba8bd1af9378570ad4b53735e5c885ced7a689c654",
+    "development/c10/manifest.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "development/c10/project/evidence.tsv": "4b0959ce9357adb21ccf2ae8a83e648e6222637722d45cf315c16072b1d756bd",
+    "development/c10/snapshot.json": "27ecd9808fed6e77050fa1e0b5403b5886449ec3379b17b31a62294abfc38664",
+    "development/d01/00_data/rnaseq_bulk/files.csv": "58f0b73af2300867fdc80a86577f4f59ccb8ac2b13e83a200e5ec85b8890b399",
+    "development/d01/00_data/rnaseq_bulk/raw/DEV2722_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/d01/00_data/rnaseq_bulk/raw/DEV2864_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/d01/00_data/rnaseq_bulk/raw/DEV4367_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/d01/00_data/rnaseq_bulk/raw/DEV6821_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/d01/00_data/rnaseq_bulk/samples.csv": "8edcf46e5304137049d16878dd6ff68d1992b516f5f0ef3e7fad194f6310ab8c",
+    "development/d01/_config/rnaseq_bulk.yaml": "c2aa16a9157e6a552fbd4ee5eca88c3dba300743310dc801161448e4a603eada",
+    "development/d02/00_data/atacseq_bulk/files.csv": "56e21dd11c7b3bc3bdfee67b4807b5040c8c679b2ce52586f724c8a7e944088f",
+    "development/d02/00_data/atacseq_bulk/raw/DEV2722_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/d02/00_data/atacseq_bulk/raw/DEV4367_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/d02/00_data/atacseq_bulk/raw/DEV6821_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/d02/00_data/atacseq_bulk/samples.csv": "b08b4eb8aac28092faca363f02dfd9ebc140d05f11aed7d1fcec41902f53c8fa",
+    "development/d02/_config/atacseq_bulk.yaml": "c2aa16a9157e6a552fbd4ee5eca88c3dba300743310dc801161448e4a603eada",
+    "development/d03/00_data/rnaseq_bulk/files.csv": "58f0b73af2300867fdc80a86577f4f59ccb8ac2b13e83a200e5ec85b8890b399",
+    "development/d03/00_data/rnaseq_bulk/raw/DEV2722_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/d03/00_data/rnaseq_bulk/raw/DEV2864_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/d03/00_data/rnaseq_bulk/raw/DEV4367_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/d03/00_data/rnaseq_bulk/raw/DEV6821_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/d03/00_data/rnaseq_bulk/samples.csv": "2958cb212f3373a0ec63b5d54b4511584cda27b9d0f1200a619330d27b34bca0",
+    "development/d03/_config/rnaseq_bulk.yaml": "c2aa16a9157e6a552fbd4ee5eca88c3dba300743310dc801161448e4a603eada",
+    "development/d04/00_data/rnaseq_bulk/files.csv": "58f0b73af2300867fdc80a86577f4f59ccb8ac2b13e83a200e5ec85b8890b399",
+    "development/d04/00_data/rnaseq_bulk/raw/DEV2722_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/d04/00_data/rnaseq_bulk/raw/DEV2864_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/d04/00_data/rnaseq_bulk/raw/DEV4367_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/d04/00_data/rnaseq_bulk/raw/DEV6821_L001_R1.fastq": "e2261d8b80a6dd0deb89762376c4d90c2e802813ae4e8e9e5d483834913021ef",
+    "development/d04/00_data/rnaseq_bulk/samples.csv": "8a045715612cf9ab5a0c92f19e74c742a41e2e96ee841fdd06eadb9ab476fe72",
+    "development/d04/_config/rnaseq_bulk.yaml": "c2aa16a9157e6a552fbd4ee5eca88c3dba300743310dc801161448e4a603eada",
+    "development/d05/00_data/rnaseq_bulk/files.csv": "58f0b73af2300867fdc80a86577f4f59ccb8ac2b13e83a200e5ec85b8890b399",
+    "development/d05/00_data/rnaseq_bulk/raw/DEV2722_L001_R1.fastq": "c214bfc05ddf124d95bdf7aafc4867645bd2ab29b2e32ab9ea50ee07cb4d2796",
+    "development/d05/00_data/rnaseq_bulk/raw/DEV2864_L001_R1.fastq": "c214bfc05ddf124d95bdf7aafc4867645bd2ab29b2e32ab9ea50ee07cb4d2796",
+    "development/d05/00_data/rnaseq_bulk/raw/DEV4367_L001_R1.fastq": "c214bfc05ddf124d95bdf7aafc4867645bd2ab29b2e32ab9ea50ee07cb4d2796",
+    "development/d05/00_data/rnaseq_bulk/raw/DEV6821_L001_R1.fastq": "c214bfc05ddf124d95bdf7aafc4867645bd2ab29b2e32ab9ea50ee07cb4d2796",
+    "development/d05/00_data/rnaseq_bulk/samples.csv": "173cbb4154c32d05aaa96e3bb48e2920f770935ebbf0e0ae93af802a25955e7f",
+    "development/d05/_config/rnaseq_bulk.yaml": "c2aa16a9157e6a552fbd4ee5eca88c3dba300743310dc801161448e4a603eada",
+    "development/d06/00_data/rnaseq_bulk/files.csv": "279cb33e884295bdd0465213c092fba7b068ed08baeffebfc9b3d5479c9771bf",
+    "development/d06/00_data/rnaseq_bulk/raw/DEV2722_L001_R1.fastq.gz": "27537443682f121b7dc940871acbcedfc6ddb5ad2b9e0dc0ef9e64fe659cb5a3",
+    "development/d06/00_data/rnaseq_bulk/raw/DEV2864_L001_R1.fastq.gz": "0b3a4c70969b18c25dc2662772b95c99baa4941249cc16a54b8148c390edcc66",
+    "development/d06/00_data/rnaseq_bulk/raw/DEV4367_L001_R1.fastq.gz": "0b3a4c70969b18c25dc2662772b95c99baa4941249cc16a54b8148c390edcc66",
+    "development/d06/00_data/rnaseq_bulk/raw/DEV6821_L001_R1.fastq.gz": "0b3a4c70969b18c25dc2662772b95c99baa4941249cc16a54b8148c390edcc66",
+    "development/d06/00_data/rnaseq_bulk/samples.csv": "38066f238104e11338ca342c35fe8ad48478377fbb7ff7f5f5a3d22db4c7301e",
+    "development/d06/_config/rnaseq_bulk.yaml": "c2aa16a9157e6a552fbd4ee5eca88c3dba300743310dc801161448e4a603eada",
+    "development/d07/manifest.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "development/d07/project/evidence.tsv": "4b0959ce9357adb21ccf2ae8a83e648e6222637722d45cf315c16072b1d756bd",
+    "development/d07/snapshot.json": "a072cf3276b79d9e44cb08a41a207a695affb6c25dba1f72544be916bc38ffc1",
+    "development/d08/de_results.csv": "18eece3716a20c9eea54ec595c63e5a50f421de2e076cd39d850fb9d73c7673e",
+    "development/d09/manifest.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "development/d09/project/evidence.tsv": "4b0959ce9357adb21ccf2ae8a83e648e6222637722d45cf315c16072b1d756bd",
+    "development/d09/snapshot.json": "1671a96aa3aa563c8d05b1b70c9fa90b3a7a2d716e0b3af3b90fa71e19065bd2"
+  }
+}
