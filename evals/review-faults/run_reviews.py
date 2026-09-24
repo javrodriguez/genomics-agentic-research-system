@@ -101,15 +101,26 @@ def bare_directory_change(text):
     for index, word in enumerate(words):
         if word == 'cd':
             arguments = []
-            for argument in words[index + 1:]:
+            cursor = index + 1
+            redirects = ('<', '>', '>>', '<<', '<<<', '<&', '>&', '<>', '>|', '&>', '&>>', '<<-')
+            while cursor < len(words):
+                argument = words[cursor]
+                # A descriptor and its redirect target are not cd arguments (Y1 F1).
+                if argument.isdigit() and cursor + 1 < len(words) and words[cursor + 1] in redirects:
+                    cursor += 1
+                    argument = words[cursor]
+                if argument in redirects:
+                    cursor += 2
+                    continue
                 if argument and all(c in ';&|<>()\n' for c in argument):
                     break
                 arguments.append(argument)
+                cursor += 1
             if all(argument.startswith('-') for argument in arguments):
                 return True
         if index and ((words[index - 1] == 'eval' and len(shell_words(word)) > 1) or
-                      (words[index - 1] == '-c' and index > 1 and
-                       words[index - 2] in ('sh', 'bash', 'dash', 'zsh', 'ksh'))):
+                      (re.fullmatch(r'-[a-zA-Z]*c', words[index - 1]) and index > 1 and
+                       os.path.basename(words[index - 2]) in ('sh', 'bash', 'dash', 'zsh', 'ksh'))):
             if bare_directory_change(word):
                 return True
     return False
@@ -173,6 +184,8 @@ def root_word_hits(text, field):
         # Count visible separator-only tokens by default, including in quoted
         # arguments and assignment values. No shell expansion is evaluated.
         pieces = re.findall(r"[^\s\"'`;|<>()\[\],=]+", candidate)
+        # shlex retains a dollar before ANSI-C and locale quoted separators (Y1 F2).
+        pieces = [piece[1:] if piece.startswith('$') else piece for piece in pieces]
         hits += sum(1 for piece in pieces if piece and not piece.strip(os.sep))
     return hits
 

@@ -165,10 +165,17 @@ class LaunchTests(unittest.TestCase):
                         'if cd; then cat secret; fi', chr(92)+'cd; cat secret',
                         'time -p cd; cat secret', 'command -- cd; cat secret',
                         'env -- cd -P; cat secret', 'timeout 5 cd --; cat secret',
+                        'cd 2>/dev/null; cat secret', 'cd -P 2>/dev/null; cat secret',
+                        'cd 2>/dev/null 3>/dev/null; cat secret',
+                        'cd 2>&1; cat secret',
+                        'bash -lc "cd; cat secret"',
+                        os.path.join(os.sep,'bin','bash')+' -c "cd; cat secret"',
                         'cat '+('$'+'{HOME%/}')+os.sep+'file',
                         'cat '+os.path.join('$'+'{PWD%/*}',parent,'file')):
             self.assertEqual(run_reviews.blindness([{'type':'tool_use','input':{'command':command}}],kit)['hits'],1,command)
         root_commands = ['cd '+os.sep+' && cat relative/file',
+                         'cd $'+repr(os.sep)+'; cat relative/file',
+                         'cd $"'+os.sep+'"; cat relative/file',
                          'ls '+os.sep, 'ls -d '+os.sep, 'cat awk '+os.sep, 'find '+os.sep+' -name sample',
                          'grep -R pattern '+os.sep,
                          'ls "'+os.sep+'"', 'ls '+os.sep*2,
@@ -189,8 +196,9 @@ class LaunchTests(unittest.TestCase):
                          'x='+os.sep+'; cd $x',
                          'printf "prefix '+os.sep+' suffix"']
         for command in root_commands:
-            event={'type':'tool_use','input':{'command':command}}
-            self.assertEqual(run_reviews.blindness([event],kit)['hits'],1,command)
+            with self.subTest(command=command):
+                event={'type':'tool_use','input':{'command':command}}
+                self.assertEqual(run_reviews.blindness([event],kit)['hits'],1,command)
         command='HOME='+os.sep+' cd'
         self.assertEqual(run_reviews.blindness([{'type':'tool_use','input':{'command':command}}],kit)['hits'],2)
         for field in ('file_path','path','notebook_path','directory','input_path'):
@@ -201,6 +209,12 @@ class LaunchTests(unittest.TestCase):
                         'if cd repo; then cat module.py; fi', chr(92)+'cd repo',
                         'time -p cd repo', 'command -- cd repo',
                         'env -- cd repo', 'timeout 5 cd repo',
+                        'cd repo 2>/dev/null', 'cd 2>/dev/null repo',
+                        'cd -P 2>/dev/null repo', 'cd repo 2>&1',
+                        'bash -lc "cd repo; cat module.py"',
+                        os.path.join(os.sep,'bin','bash')+' -c "cd repo; cat module.py"',
+                        'cd $'+repr('repo')+'; cat module.py',
+                        'cd $"repo"; cat module.py',
                         'cut --delimiter='+os.sep+' -f 1 repo/input.txt',
                         'cut --delimiter '+os.sep+' -f 1 repo/input.txt',
                         'awk --field-separator='+os.sep+" '{print $1}' repo/input.txt",
@@ -276,7 +290,12 @@ class LaunchTests(unittest.TestCase):
                       ('$'+'HOME')+os.sep+'file',os.path.join(parent,parent,'file'),
                       os.sep, 'x; cd '+os.sep+' && cat relative/file',
                       'x; ls '+os.sep, 'x; find '+os.sep+' -name sample',
-                      'x; cd -- && cat secret', 'x; eval cd; cat secret'):
+                      'x; cd -- && cat secret', 'x; eval cd; cat secret',
+                      'x; cd 2>/dev/null; cat secret',
+                      'x; cd $'+repr(os.sep)+'; cat relative/file',
+                      'x; cd $"'+os.sep+'"; cat relative/file',
+                      'x; bash -lc "cd; cat secret"',
+                      'x; '+os.path.join(os.sep,'bin','bash')+' -c "cd; cat secret"'):
             root,args,manifest=launcher_fixture(self,1)
             events=[{'type':'system','subtype':'init','model':'stub-model'},
                     {'type':'assistant','message':{'content':[{'type':'tool_use','input':{'command':'cat '+token}}]}}]

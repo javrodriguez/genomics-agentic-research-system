@@ -31,7 +31,9 @@ X1 requires deployment sandbox settings and binds their hash in every review;
 scoring refuses absent or mixed hashes. The static audit now follows item 20
 with explicit separator, prose and shell-word rules. Shell indirection and
 interpreter program text remain sandbox responsibilities; no sealed run or
-public metric is claimed.
+public metric is claimed. Y2 fixes numbered redirects and dollar-quoted separators
+in the audit, restores two nested-shell bare-directory spellings, and documents
+conservative false positives and the published settings hash's disclosure limit.
 
 **Row 12 review round 4, 2026-09-22: repo-side implementation; merge still gated.**
 All ten wrappers now prepare idempotency keys; downstream keys have a separate declared-input

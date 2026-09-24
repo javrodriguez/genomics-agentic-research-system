@@ -518,3 +518,78 @@ repository. The protected prompt and fixtures are unchanged. No model is run,
 no sealed slot filled, no ledger row written and no measured run claimed.
 Real fixture secret scanning awaits independent verification under Q2 A;
 row 9 exit and public credibility remain NOT met and unmeasured respectively.
+
+## Addendum — Y2 review fixes and item 20, 2026-09-24
+
+THE LANE, UNDER THE OWNER'S DELEGATION — THE LANE'S SPECIFICATION.
+This addendum answers the supplied Y1 review. Every preceding byte is preserved;
+no new words are attributed to the owner. This record remains 0072; protected
+approval is reserved 0073, and the seal and first measured run share reserved
+0074. Neither reserved record is written here.
+
+Item 20 continues to supersede the original THREAT MODEL's claim of detecting
+reading beyond the kit by any spelling, and item 8's blindness paragraph wherever
+they differ. Enforcement and detection are separate walls:
+
+- Enforcement is the reviewer's deployment sandbox, which must deny reads outside
+  the kit and all network. The launcher requires --settings, copies its exact
+  bytes, and binds envelope.sandbox_settings_sha256. The schema, validator and
+  contract fixtures require this field. Scoring refuses a missing or malformed
+  hash and disagreement across records, including earlier and invalid attempts.
+  The published copy retains the hash unchanged. The harness binds WHICH file
+  was used and never judges its content or proves sandbox enforcement.
+- Detection is the static audit of item 20(b)(i)-(iv). Absolute, tilde, HOME
+  expansion and parent-component tokens are checked against the kit, item 19's
+  exact own-session output store, and the system allowlist. Separator-only
+  command words default to hits; exemptions remain delimiter-option values in
+  their command context, interpreter -c/-e program text and write/edit content.
+  Prose fields receive the path-token rule only. Shell words identify cd after
+  shell keywords, prefix commands and options, or a leading backslash; a cd
+  with only option arguments is bare and a hit. The good and bad lists and the
+  existing per-rule mutation controls remain in force.
+
+Y1 F1: numeric redirect descriptors, redirect operators and their targets are
+not directory arguments. Skipping them preserves bare-cd detection while allowing
+an explicit in-kit directory before or after a redirect. Y1 F2: the dollar that
+shlex leaves before an ANSI-C or locale quoted separator no longer hides the
+separator word. Runtime-built probes cover both forms, with in-kit controls.
+Y1 F3: bare-cd recursion recognizes shell option clusters ending in c and the
+basename of full-path shell names. These restore the two reported spellings;
+they do not establish general shell interpretation. Stub launches bind each
+reported escape to an INVALID code-owned envelope; disposable mutations remove
+each fix and require the named regression to fail after its unchanged control.
+No prompt, fixture, threshold or public evidence row changes, and no model runs.
+
+### Not covered
+
+Item 20(c) remains explicit: the scan does not follow shell indirection it cannot
+see statically (variables and assignments, command substitution, evaluated strings,
+aliases, functions, nested shells beyond those it parses) or interpreter program
+text. Brace expansion, parameter-default expansion and URL-embedded paths,
+including file-scheme URLs, are also named residuals under Y1 F3. Those reads
+are the sandbox's to refuse; if the sandbox allowed one, the scan may not see it.
+
+Y1 F4: conservative false positives follow the specified context list. Quoted
+text with a spaced separator, awk division, sed substitution text and git log
+formats can invalidate ordinary review commands. Prefixes can obscure delimiter
+context, and echoed cd words can trigger the bare-directory audit. This round
+names those costs in the README without widening the listed exemptions.
+
+Y1 F5: the unchanged, unsalted settings hash required by item 20(a) can confirm
+a guessed settings file and account or home-folder text within it. It proves
+configuration identity, not privacy of that file's contents. The README names
+this disclosure limit; no alternate hash, schema change or unapproved deployment
+requirement is introduced.
+
+The uid check proves exactly: on the host where the review ran, the reviewing OS
+account is not the producing OS account. It does not prove which machine built
+the cases, and it does not bind GARS's own role decision.
+All earlier residuals remain: separate-user and read-only-credential deployment
+evidence is external; launch_role() still returns producer, so R-093's code half
+stays NOT met; guessing from diff style and shared sealer/producer model family
+are not prevented. Independent-context seals are development evidence only;
+public credibility requires external-human seals. Science and trailer-gate JSON
+consumption remain later work. Per-class samples are thin, and only twelve of
+fifteen outcomes are publicly recomputable, with three sealed outcomes checkable
+by hash. Fixture gitleaks verification remains subject to Q2 A. No seal, ledger
+entry or measured run is supplied; row 9 exit remains NOT met.

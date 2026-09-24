@@ -202,6 +202,25 @@ for label,needle in [('if keyword','if cd;'), ('escaped cd',chr(92)+'cd;'),
                    'launch','LaunchTests.test_blindness_every_spelling'))
 
 
+FAULTS.extend([
+    ('bare cd counts redirect descriptor as argument','run_reviews.py',
+     "if argument.isdigit() and cursor + 1 < len(words) and words[cursor + 1] in redirects:",
+     'if False:', 'launch','LaunchTests.test_blindness_every_spelling'),
+    ('bare cd counts redirect target as argument','run_reviews.py',
+     'if argument in redirects:', 'if False:',
+     'launch','LaunchTests.test_blindness_every_spelling'),
+    ('dollar quoted separator ignored','run_reviews.py',
+     "pieces = [piece[1:] if piece.startswith('$') else piece for piece in pieces]",
+     'pieces = pieces', 'launch','LaunchTests.test_blindness_every_spelling'),
+    ('bare cd ignores shell option cluster','run_reviews.py',
+     "re.fullmatch(r'-[a-zA-Z]*c', words[index - 1])", "words[index - 1] == '-c'",
+     'launch','LaunchTests.test_blindness_every_spelling'),
+    ('bare cd ignores full path shell','run_reviews.py',
+     'os.path.basename(words[index - 2]) in', 'words[index - 2] in',
+     'launch','LaunchTests.test_blindness_every_spelling'),
+])
+
+
 # S1 carries R1's leak controls forward on item 15's committed surfaces.
 for token in ('off-by-one', 'P01'):
     amend = "; build_cases.commit(folder/'repo', 'Clarify introduction', common.git(folder/'repo','rev-parse','HEAD~1').decode().strip())"

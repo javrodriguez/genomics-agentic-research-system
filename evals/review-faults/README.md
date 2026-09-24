@@ -36,8 +36,12 @@ python3 evals/review-faults/run_reviews.py --cases <cases> --manifest <manifest>
 Required `--settings <file>` copies exact project settings and binds their bytes
 to `envelope.sandbox_settings_sha256`. The schema and stdlib validator require
 this hash; scoring refuses missing hashes or disagreements across any attempts.
-The published copy retains the hash unchanged. `--only <neutral>,<neutral>`
-resumes selected cases in manifest order. On a usage limit the launcher retains the
+The published copy retains the hash unchanged, as item 20(a) requires. This
+unsalted hash can confirm a guessed settings file, including guessed account or
+home-folder text in it. It is configuration provenance, not a privacy guarantee
+for the settings' contents; deployment must account for this disclosure.
+
+`--only <neutral>,<neutral>` resumes selected cases in manifest order. On a usage limit the launcher retains the
 first record and stream, prints remaining ids plus the limited current id, and exits
 cleanly. Resume that id on another login using a fresh neutral kit root: the new
 attempt gets an `.attempt<n>` suffix. Successful records cannot be overwritten.
@@ -88,18 +92,30 @@ spellings below and claims nothing beyond them:
   delimiter-option values (-F, -d, --delimiter, --field-separator, in their option
   context), interpreter -c/-e program text, and write/edit content are exempt.
   A directory-listing option is not a delimiter option. Visible separator words
-  in quoted arguments and assignment values are counted without evaluating them.
+  in quoted arguments (including dollar-quoted separators) and assignment values
+  are counted without evaluating them.
 - Rule (iii): prose fields (description, Grep pattern, agent prompt) get rule (i)
   only, never the separator-word rule. Named outside paths still count there.
 - Rule (iv): cd is found in the shlex word stream after shell keywords, prefix
   commands and their options, or a leading backslash. It is bare, and a hit,
-  when every argument is an option word. Explicit in-kit arguments stay clear.
+  when every argument is an option word. Redirect descriptors, operators and
+  their targets do not supply a directory argument. Explicit in-kit arguments stay
+  clear. Nested shell option clusters ending in c and full-path shell names are
+  recognized for this bare-directory audit.
+
+The default separator rule can invalidate ordinary review commands: quoted text
+with a spaced separator, awk division, sed substitution text and git log formats
+are not exempt unless they use a listed context. A prefix command can hide the
+delimiter-option context. The shell-word audit also treats an echoed cd word as
+bare. These conservative false positives are expected under item 20; no additional
+context exceptions are introduced before the first measured run.
 
 **Named residual:** the scan does not follow shell indirection it cannot see
 statically: variables and assignments, command substitution, evaluated strings,
-aliases, functions, nested shells beyond those it parses, or interpreter program
-text. Those reads are the sandbox's to refuse; if the sandbox allowed one, the
-scan may not see it. Detection of some visible tokens inside such text does not
+aliases, functions, nested shells beyond those it parses, brace expansion,
+parameter-default expansion, URL-embedded paths (including file-scheme URLs), or
+interpreter program text. Those reads are the sandbox's to refuse; if the sandbox
+allowed one, the scan may not see it. Detection of some visible tokens inside such text does not
 establish coverage of the enclosing program. No model is run to test these rules.
 
 Item 19 also permits this launched session's saved tool output: the reviewer's

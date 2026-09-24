@@ -2031,3 +2031,247 @@ existing Q2 A secret-verification limitation remains open under that ruling.
 Closed under head item 20: W2 F1, F2, F3 and F4; item 20 implemented. No finding
 waits on a new owner ruling. Secret verification, protected approval, deployment
 validation, sealing, the measured run and row exit remain outstanding.
+
+## Review round Y2 fixes
+
+Date: 2026-09-24.
+THE LANE, UNDER THE OWNER'S DELEGATION — THE LANE'S SPECIFICATION.
+The only outside review read this round was `docs/reviews/row_9_review_Y1.md`;
+it remains untracked and unchanged. No new words are attributed to the owner.
+The preceding report and decision-record bytes are preserved. Record numbering
+remains 0072, with protected approval reserved as 0073 and the seal plus first
+measured run reserved as 0074. No reserved record is written.
+
+| Finding | Changed files | Test | Result; red-on-fault seen |
+|---|---|---|---|
+| Y1 F1, MINOR: redirect descriptor hides bare cd | `evals/review-faults/run_reviews.py`, `tests/test_review_faults_launch.py`, `tests/test_review_faults_faults.py`, harness README | `LaunchTests.test_blindness_every_spelling`; `test_blindness_stream_makes_record_invalid` | Redirect descriptors, operators and targets no longer supply a directory argument. Explicit in-kit directories before or after redirects remain clear. Red-on-fault: yes; the new regression failed on the starting implementation, and separate mutations restore descriptor and redirect-target misclassification. |
+| Y1 F2, MINOR: dollar-quoted separator escapes | Same launcher, launch tests, fault tests and harness README | `LaunchTests.test_blindness_every_spelling`; `test_blindness_stream_makes_record_invalid` | ANSI-C and locale quoted separators each hit; dollar-quoted in-kit paths remain clear. Red-on-fault: yes; removing dollar normalization makes both separator subtests fail. |
+| Y1 F3, NOTE: nested shell regression and unnamed expansions | Same launcher, launch tests, fault tests and harness README | `LaunchTests.test_blindness_every_spelling`; `test_blindness_stream_makes_record_invalid` | Restored bare-cd recursion for shell option clusters ending in c and full-path shell names, with in-kit controls. Brace expansion, parameter-default expansion and URL-embedded paths are named residuals. Red-on-fault: yes; separate mutations remove option-cluster and basename recognition. |
+| Y1 F4, NOTE: conservative false positives | Harness README, this report and decision addendum | Review against item 20's listed exemptions; existing good/bad lists | Documented that ordinary quoted text containing spaced separators can invalidate a record, as can positional awk/sed programs, git formats, hidden delimiter context and echoed cd. No exemption was widened. Red-on-fault: no new mutation for this documentation response; existing separator and prose controls remain. |
+| Y1 F5, NOTE: published settings hash can confirm guesses | Harness README, this report and decision addendum | `ScoreTests.test_published_copy_masks_and_keeps_fields` | The unsalted hash and its disclosure limit are documented. The unchanged publication rule is required by item 20(a), so no alternate hash or schema is introduced. Red-on-fault: yes, existing settings-hash masking mutation remains detected; no new mutation for the disclosure prose. |
+| Head item 20 in full | Launcher and audit tests strengthened above; harness README, DEVELOPMENT status and 0072 addendum updated; existing schema, validator, scorer and contract fixtures retained | Settings-required launch/CLI controls; schema drift; settings binding across all attempts; published copy; good/bad audit lists; full guard-fault module | Enforcement stays in the deployment sandbox, whose required settings bytes are bound through launch, validation, scoring and publication. Detection remains rules (i)-(iv), with prose separated and item (c) residuals named. Red-on-fault: yes; existing per-rule and settings guards plus this round's five new controls. |
+
+The named regression was run before changing the launcher:
+
+```text
+Ran 1 test in 0.007s
+FAILED (failures=1)
+```
+
+Its assertion was `0 != 1 : cd 2>/dev/null; cat secret`. After the fix, all launch
+checks pass. The probes assemble outside, home and parent paths at runtime; no
+new literal outside path or bare parent-step string is written. The two allowed
+system-path spellings retain their explicit exception in the head.
+
+## Owner rulings needed
+
+None. Item 20 governs the scope and the published settings hash; F3-F5 require
+no new owner decision. Q2 A still governs real fixture secret verification.
+
+## Residual gaps after Y2
+
+- Row 9 exit is NOT met: three sealed slots, the first real measured run, later
+  ledger entries and reserved combined record 0074 remain later work. No model
+  was run against any case, and no measured catch rate is claimed.
+- The deployment must actually enforce filesystem and network denial. Binding
+  settings bytes is not proof of their content or sandbox enforcement. Static
+  indirection and interpreter text, including the expansion and URL residuals
+  named above, remain the sandbox's responsibility. Conservative audit false
+  positives can invalidate ordinary commands. The raw settings hash can confirm
+  a guessed configuration; account and home-folder text within it is not made
+  private merely by hashing it.
+- Real fixture secret verification, protected approval in reserved 0073, and
+  separate-user/read-only-credential deployment evidence remain outstanding.
+  The uid check proves reviewing and producing account inequality on the review
+  host only; launch_role() remains producer and R-093's code half stays NOT met.
+- Public credibility stays unmeasured pending external-human seals. Independent
+  context seals are development evidence only; science, trailer-gate JSON,
+  diff-style inference, shared model family, thin samples and three hash-only
+  sealed outcomes remain the earlier residuals.
+- Docker mode A cannot be reached by this account. Native Python 3.6, live
+  deployment sandbox behavior, long encoded project-name handling by the tool,
+  cluster execution and merge-result CI remain unverified. Existing skips remain
+  skips. The unchanged determinism test remains memory-bounded.
+
+Closed: Y1 F1 and F2; F3's regression fixed and residuals named; F4 and F5 answered
+by documentation under item 20. Item 20 remains implemented and verified by the
+checks below. No finding waits on a new owner ruling; row exit remains open.
+
+### Verification in this round
+
+`python3 tests/run_tests.py (mode B: TMPDIR, TEMP and TMP set to scratch)`:
+
+```text
+citations: 1/1 resolve
+citations: 0/1 resolve
+citations: 0/1 resolve
+citations: 0/1 resolve
+citations: 0/0 resolve
+citations: 0/0 resolve
+citations: 0/1 resolve
+citations: 292/292 resolve
+DoD cells regenerated: 13/13
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 1/1 byte-stable
+added case-byte sweep: 12/12 clear; item 15 added lines and decoded objects
+fixtures: git apply --check passed for 12/12 against base archive
+plant match intervals: every file_lines answer overlaps changed lines
+Ran 431 tests in 323.799s
+OK (skipped=59)
+```
+
+`python3 tests/run_tests.py (mode C: TMPDIR unset; TEMP and TMP set to scratch)`:
+
+```text
+citations: 1/1 resolve
+citations: 0/1 resolve
+citations: 0/1 resolve
+citations: 0/1 resolve
+citations: 0/0 resolve
+citations: 0/0 resolve
+citations: 0/1 resolve
+citations: 292/292 resolve
+DoD cells regenerated: 13/13
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 1/1 byte-stable
+added case-byte sweep: 12/12 clear; item 15 added lines and decoded objects
+fixtures: git apply --check passed for 12/12 against base archive
+plant match intervals: every file_lines answer overlaps changed lines
+Ran 431 tests in 317.578s
+OK (skipped=86)
+```
+
+`python3 tests/check_contracts.py`:
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`:
+
+```text
+collected 257 tests from tests
+collected 174 tests from gars/tests
+suite: 431 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`:
+
+```text
+Ran 44 tests in 37.727s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`:
+
+```text
+clean — graded=1
+```
+
+`python3 scripts/release_check.py`:
+
+```text
+DoD cells regenerated: 13/13
+```
+
+`python3 tests/test_review_faults_build.py`:
+
+```text
+Ran 11 tests in 91.216s
+OK
+added case-byte sweep: 12/12 clear; item 15 added lines and decoded objects
+fixtures: git apply --check passed for 12/12 against base archive
+plant match intervals: every file_lines answer overlaps changed lines
+```
+
+`python3 tests/test_review_faults_core.py`:
+
+```text
+Ran 9 tests in 0.022s
+OK
+```
+
+`python3 tests/test_review_faults_launch.py`:
+
+```text
+Ran 13 tests in 1.520s
+OK
+```
+
+`python3 tests/test_review_faults_faults.py`:
+
+```text
+Ran 1 test in 170.701s
+OK
+```
+
+`feature_version=(3, 6) parse of every row Python file`:
+
+```text
+Python feature_version=(3, 6): 12/12 new Python files parsed
+```
+
+`python3 gars/_system/hooks/pre-commit (24 fixture files staged in a disposable base tree)`:
+
+```text
+fixture hook index: 24 fixture files staged against base
+gitleaks: REFUSED (gitleaks absent from PATH)
+citations: 292/292 resolve
+pre-commit: REFUSED
+```
+
+The regenerated reviewer row is, verbatim:
+
+```text
+| reviewer catch rate (code; science) | `evals/review-faults/`, `evals/bio-faults/` runners | ≥ 8/10 per set, ≤ 1/5 false alarms; first-run-at-sha reported (§21 Q3) | unmeasured |
+```
+
+Direct mutation evidence: **125 red fault witnesses** and **2 green unchanged-line exemption witnesses**.
+Each mutated test first passed its unchanged control; import errors do not count.
+All five new Y2 controls were red in both suite modes and the direct fault-module run.
+
+The fixture hook ran and refused because gitleaks is absent. Under Q2 A this
+check remains NOT met; both real gitleaks rulesets await independent verification.
+No bypass or replacement scanner was used. Docker mode A remains unavailable.
+Counts are unchanged at 431, with 59 skips in B and 86 in C; the three living
+claims already matched and needed no numeric edits. The README evidence row
+is unchanged, and the generated release render still says unmeasured.
+
+### Memory and final boundaries
+
+Before T1, the whole-tree determinism comparison was observed at about 14 GiB
+on the review host; that unsafe version was not rerun. The streamed-digest
+implementation is unchanged. This round measured a fresh disposable process
+with resource.getrusage(resource.RUSAGE_CHILDREN):
+
+```text
+Ran 1 test in 6.001s
+OK
+determinism peak memory: 650068 KiB
+```
+
+Maximum child peak across the verification driver: **668780 KiB**, below 1 GiB.
+
+Starting-head prefix checks preserve every earlier byte of the decision record
+and report; the Y1 review is untracked and unchanged. No review is staged.
+The full base diff is clear of prohibited trees, earlier decisions and the
+ledger. This round changes neither protected prompt nor fixture bytes.
+Reserved 0073 and 0074 remain absent. The decision index was regenerated with
+`bash docs/decisions/build_index.sh`; its output is retained in scratch.
+The index and DoD render remain byte-stable. Code digests match the verified
+copies. Final whitespace checks pass. One commit uses explicit staging paths
+and a message file in scratch; no remote, push, merge or pull request is used.
+
+Closed or answered: Y1 F1-F5 and head item 20. None waits on a new owner ruling.
+Sealing, real measurement, protected approval, deployment validation, real
+fixture secret verification and row 9 exit remain outstanding.
