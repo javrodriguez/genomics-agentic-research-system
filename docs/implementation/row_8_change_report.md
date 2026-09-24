@@ -477,3 +477,225 @@ OK (skipped=1)
   acceptance and merge. Step B and all other residuals remain outside this retry.
 
 Hours and metered cost: unknown; no new measurement is inferred.
+
+## Step A round C1 (retry scope corrected)
+
+Date: 2026-09-24. The first command, `git rev-parse HEAD`, recorded starting hash
+`7edc946017a3195d2ce6d88bbca4c67923371c50`. The working tree was clean on
+`build/gars-row-8-catalogue`. This round adds one commit on that parent.
+The scope correction and DOI ruling were decided under the owner's standing delegation (23 Sep 2026).
+
+The over-wide rewrite was caused by the wording of item 2, which the lane wrote,
+not by the producer. Item 3 corrects that scope: 40 inherited lines return to
+exact `e367a41` bytes, including readable prose, examples, docstrings and help.
+Only `tests/test_planted_defects.py:90`, an added line in
+`git diff dc6b803 e367a41`, keeps the retry's runtime `chr(126)` expression.
+No detector rule, threshold, assertion or expected verdict changes.
+
+### Every restored line
+
+Line numbers are unchanged. U+007E names the character without typing it.
+Restoration used a short Python command reading both versions through
+`git show`; zero-context Git diff hunks identify round 1's added lines.
+Each file is rebuilt from original bytes except those added lines, which keep
+the retry's bytes. The report is append-only and preserves the earlier retry record.
+
+| File | Line at e367a41 | Retry form | Restored form |
+|---|---|---|---|
+| `DEVELOPMENT.md` | 194 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 213 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 251 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 255 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 259 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 269 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 275 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 292 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 300 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 305 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 324 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 342 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 344 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 356 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 360 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 370 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 376 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 402 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 403 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 405 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 406 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 415 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 416 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 417 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 418 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 425 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 460 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 462 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `DEVELOPMENT.md` | 469 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `gars/00_initialize_project/CONTEXT.md` | 111 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `gars/01_prepare_samplesheets/CONTEXT.md` | 168 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `gars/01_prepare_samplesheets/CONTEXT.md` | 401 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `gars/_system/integrity.py` | 14 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `gars/_system/integrity.py` | 16 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `gars/_system/stage01_samplesheet.py` | 271 | runtime expression using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `gars/_system/stage01_samplesheet.py` | 974 | runtime expression using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `tests/run_tests.py` | 870 | runtime expression using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `tests/run_tests.py` | 1773 | runtime expression using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `tests/run_tests.py` | 1791 | runtime expression using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+| `tests/run_tests.py` | 2536 | character notation in prose or example using `chr(126)` | exact e367a41 bytes (literal U+007E) |
+
+### DOI ruling resolved
+
+The replay records remain labelled **synthetic protocol fixtures**, proving
+protocol logic only. The only fixture edit makes that exact label explicit in
+`gars/tests/fixtures/citations/responses.json:2`; request URLs, statuses, bodies
+and body SHA-256 values are unchanged. Replay stays in-process through
+`transport=`; no production flag, environment variable or file enables it.
+Decision 0101 records the ruling in a dated addendum after its previous last byte.
+Its frontmatter and index entry do not change; index regeneration is unnecessary.
+
+Live DOI capture in this step is **NOT met**: this host's sandbox has no network.
+The live evidence of record will be a later networked
+`GARS_NETWORK_TESTS=1 python3 gars/tests/test_citation_resolution.py` run outside
+this step, for the same five real DOIs (one DataCite) and five fabricated DOIs,
+recording request URL, status and body SHA-256 per DOI in a record that is not
+this producer's work. Class 9's replay P(caught) is never a live measurement.
+The historical ruling request and retry statement that it remained open are
+superseded by this resolution; their original bytes remain preserved.
+
+### Execution and verification
+
+Every command runs from the repository root with `TMPDIR`, `TEMP` and `TMP`
+set to the scratch twin using the following prefix:
+
+```bash
+export TMPDIR="${PWD}-scratch" TEMP="${PWD}-scratch" TMP="${PWD}-scratch"
+```
+
+Reads use Git and Python; `rg` is unavailable (the initial attempt exited 127).
+All file restoration uses Git blobs read by Python, with no patch containing
+removed characters. Logs and the restoration inventory are confined to the
+scratch twin. Tests inherit those scratch settings. No sealed fixture is
+created, searched for or inspected; no network test is enabled.
+
+All seven Rule 5 commands exited zero. One full suite ran at a time; no
+Rule 5 failure required any additional change. Execution used **Python 3.13.5**,
+including `evals/test_harness.py` (Python >=3.9).
+
+### Rule 5 summaries (verbatim)
+
+`GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py`:
+
+```text
+collected 237 tests from tests
+collected 248 tests from gars/tests
+planted-defects development (producer-authored, unsealed): 9/10 classes (placeholder 10 counted planted, not caught)
+false flags (producer-authored clean projects): 0/10
+graded 19 of 19 development projects seen
+class 6: measured with --verify-integrity full; stage 01 default is none
+Ran 485 tests in 79.515s
+OK (skipped=79)
+```
+
+`python3 tests/check_contracts.py`:
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`:
+
+```text
+collected 237 tests from tests
+collected 248 tests from gars/tests
+suite: 485 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`:
+
+```text
+Ran 44 tests in 37.374s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`:
+
+```text
+  published=3 graded=1
+clean — graded=1
+```
+
+`python3 tests/test_planted_defects.py`:
+
+```text
+Ran 14 tests in 3.257s
+OK (skipped=1)
+planted-defects development (producer-authored, unsealed): 9/10 classes (placeholder 10 counted planted, not caught)
+false flags (producer-authored clean projects): 0/10
+graded 19 of 19 development projects seen
+class 6: measured with --verify-integrity full; stage 01 default is none
+```
+
+`python3 gars/tests/test_citation_resolution.py`:
+
+```text
+Ran 5 tests in 0.006s
+OK (skipped=1)
+```
+
+### Scope and byte checks
+
+- Inherited restoration: six files byte-identical to `e367a41`.
+- Round-1 runtime formula: `tests/test_planted_defects.py:90` retains `7edc946` bytes.
+- Scope audit: every changed original line outside this report was added by round 1.
+  Against `e367a41`, only that formula line, the fixture's provenance label,
+  the appended 0101 addendum and this appended report differ.
+- Decision and change report: all bytes preceding these appendices preserved.
+- DOI fixture: only the provenance label changes; every response record is unchanged.
+- `git diff --check`: clean.
+- Python 3.6 AST parsing: four Python files accepted; actual Python 3.6 execution NOT met.
+- Row-7 renderer, SQL and report template: unchanged from `dc6b803`.
+
+The scope audit derives added-line membership from
+`git diff --unified=0 dc6b803 e367a41` and checks every changed original line
+in `git diff --unified=0 e367a41` against that set. It excludes only this
+append-only change report. Byte checks read historical content with `git show`.
+The character search uses `git grep -n -F`, with the character argument built
+at runtime by `chr(126)`, over files from `git diff --name-only dc6b803 HEAD`.
+It finds 41 inherited matches (40 restored lines plus the generated index);
+none is a newly typed literal. No patch was used for the restoration.
+
+Protected files restored in this round (one per line):
+
+- `gars/00_initialize_project/CONTEXT.md`
+- `gars/01_prepare_samplesheets/CONTEXT.md`
+- `gars/_system/integrity.py`
+- `gars/_system/stage01_samplesheet.py`
+
+Test expectation changes in this round: none. The earlier R-042 fixture change
+and every assertion remain as recorded in round 1. The fixture provenance edit
+changes no input or verdict. Staging names only the nine changed paths with
+`git add --`; the commit message is read from a file in the scratch twin.
+No push, remote addition, self-approval or merge is performed.
+
+### What was not verified in this round
+
+- **NOT met:** live DOI capture and live resolution. The opt-in live test skipped;
+  synthetic protocol fixtures prove only protocol logic, and class 9's replay
+  catch rate is not a live measurement. The later networked record is separate work.
+- **NOT met:** sealed measurement, external-human sealing and row-8 exit. The sealed
+  catalogue test skipped; no sealed fixture was created, searched for or inspected.
+- **NOT met:** Docker database test classes for rows 5 and 7; skipped. The full
+  suite reports 79 environment skips in total.
+- **NOT met:** actual Python 3.6 execution, live pipelines and cluster acceptance.
+- **NOT rerun:** baseline-red and the separate 24-fault driver; their historical
+  results remain unchanged and are not claimed as reproduced in this round.
+- **NOT met:** independent review, delegated protected-change approval, deployment
+  path-scan acceptance and merge. Step B and all other residuals remain outside scope.
+
+Hours and metered cost: unknown; no new measurement is inferred.
+
+## Owner rulings needed
+
+None.

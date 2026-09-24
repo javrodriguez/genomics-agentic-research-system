@@ -252,3 +252,22 @@ The response-capture limitation remains a ruling request in the change report.
 ## Date
 
 2026-09-24
+
+## Addendum — synthetic DOI protocol evidence, 2026-09-24
+
+The response-capture ruling was decided under the owner's standing delegation (23 Sep 2026).
+This addendum resolves the ruling request above and in the original change report;
+all preceding bytes remain unchanged.
+
+The replay records remain labelled **synthetic protocol fixtures**. They prove
+protocol logic only. Replay remains in-process through the `transport=` argument;
+no production CLI option, environment variable or file switches to replay.
+Class 9's P(caught) from replay is never reported as a live measurement.
+
+**NOT met:** live DOI capture in this step; this host's sandbox has no network.
+The live evidence of record is a later networked run of
+`GARS_NETWORK_TESTS=1 python3 gars/tests/test_citation_resolution.py` outside
+this step, covering the same five real DOIs (including a DataCite DOI) and five
+fabricated DOIs. Its record must contain request URL, status and body SHA-256
+per DOI. That later record is not this producer's work. No live run or capture
+is claimed here, and no sealed or public catch-rate claim is promoted.

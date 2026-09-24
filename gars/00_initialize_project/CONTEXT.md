@@ -108,7 +108,7 @@ be analysed belongs to **stage 01**, which offers it. See
 `docs/decisions/0013-integrity-verification-moves-to-stage-01.md`.
 
 If the user asks for `full` here anyway, quote the cost from `inspect`'s `total_gb` and
-`full_check_estimate_min`, and **submit it with `sbatch` when `total_bytes` exceeds chr(126)10 GB** —
+`full_check_estimate_min`, and **submit it with `sbatch` when `total_bytes` exceeds ~10 GB** —
 reading tens of GB on a shared login node is not this stage's to do, and the node's per-user
 memory cgroup will kill whatever is running rather than whatever is at fault.
 

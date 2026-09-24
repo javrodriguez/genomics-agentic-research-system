@@ -11,9 +11,9 @@ does not choose which samples to analyse until the 00 -> 01 gate. Deep-verifying
 registration spends the cost on files that are about to be excluded.
 
 Measured on this cluster (48 GB, 152 files, GPFS): the work is I/O-bound, not CPU-bound. A pass
-reading two bytes per file still took 3m51s wall at 0.1 s of CPU. A full pass sustains chr(126)130 MB/s
+reading two bytes per file still took 3m51s wall at 0.1 s of CPU. A full pass sustains ~130 MB/s
 and is throughput-limited -- 4 and 16 workers measure identically -- so concurrency past 4 buys
-nothing. Peak RSS is chr(126)70 MB; it does not leak.
+nothing. Peak RSS is ~70 MB; it does not leak.
 
 **Deep verification is scheduled work, not login-node work.** Above LOGIN_NODE_BYTES the calling
 contract submits it with sbatch rather than running it inline, for the same reason sub-stage 02.02

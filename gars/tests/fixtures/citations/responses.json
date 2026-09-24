@@ -1,5 +1,5 @@
 {
-  "provenance": "Producer-authored protocol replay fixtures using the supplied CP0.9 oracle semantics; bodies are minimal synthetic responses, not captured live payloads.",
+  "provenance": "Producer-authored synthetic protocol fixtures using the supplied CP0.9 oracle semantics; bodies are minimal synthetic responses, not captured live payloads. They prove protocol logic only.",
   "real": [
     "10.1038/nmeth.1618",
     "10.1093/bioinformatics/btu170",
