@@ -1543,3 +1543,240 @@ Closed: U1 F1, F2 and F3; item 19 implemented and tested separately. No review
 finding awaits an owner ruling. Protected approval, secret verification, sealing,
 the first measured run and the row exit remain with the owner and independent
 verification.
+
+
+## Review round W2 fixes
+
+Date: 2026-09-23. Starting head: `fcb41db099dbc9dfa739ea901aced5a5887056f7`.
+Independent review: `docs/reviews/row_9_review_W1.md`, unchanged and untracked.
+Every earlier byte of this report and decision 0072 is preserved. This round
+fixes W1 F1 and F2 without changing the prompt, fixtures, schema, thresholds or
+protected trees. No model ran against any case; row 9 exit remains NOT met.
+
+| Finding | Changed files | Test | Result; red-on-fault seen |
+|---|---|---|---|
+| W1 F1 BLOCKER: separator-only root access was exempt | `evals/review-faults/run_reviews.py`; `tests/test_review_faults_launch.py`; `tests/test_review_faults_faults.py` | `LaunchTests.test_blindness_every_spelling`; `test_blindness_stream_makes_record_invalid`; `FaultTests.test_every_guard_fault_is_red` | PASS; yes — restoring the blanket exemption makes the named test red. Root directory changes followed by relative reads, listing, search, quoted/repeated roots, path fields and root-valued options are hits. Stub records become INVALID. |
+| W1 F1 exemption boundary | Same three files; `evals/review-faults/README.md` | Same spelling and fault tests | PASS; yes — broadening delimiter allowance to other commands, omitting nested-shell roots, exempting path fields, or treating script-file paths as program text each fails the named test. Existing delimiter, division, relative-option and JSON-prose controls remain clear. Delimiter commands in tests now run as complete synthetic command inputs instead of arguments appended to cat; all expected hits and assertions remain. |
+| W1 F2 MINOR: option-only and prefixed home changes escaped | Same launcher and two test modules; harness README | Same spelling, stub-record and fault tests | PASS; yes — dropping option-only argument detection or separately suppressing eval, exec or time detection turns the named test red. The flags --, -L and -P, including combinations, are covered. Explicit in-kit directory arguments remain clear. |
+| Records and current status | Append-only 0072 and this report; `DEVELOPMENT.md`; regenerated decision index | Prefix/scope checks; required runner and count check | PASS; red-on-fault: no separate prose mutation. All three count claims already match 429 tests, so no count edit or README evidence-row edit is needed. Index and release render are byte-identical after regeneration. |
+
+THE LANE, UNDER THE OWNER'S DELEGATION — THE LANE'S SPECIFICATION:
+separator-only text is classified by field and shell-word context. File-content
+fields and interpreter program text are distinct from path arguments; the
+existing scan still checks named absolute, home and parent spellings everywhere.
+The root-only detector recognizes awk/cut delimiter options only for those
+commands. In particular, a listing command's directory option does not make the
+root a delimiter, and awk/sed script-file options do not hide root paths or later
+input files. The directory-change regex retains its existing boundaries and adds
+only the requested option words and prefixes. Item 19 and the uid check remain
+unchanged. These are static post-run checks, not a complete shell interpreter or
+OS sandbox. No new words are attributed to the owner.
+
+### Required command summaries
+
+All commands ran from the repository root, with scratch, logs and temporary
+copies in the approved scratch twin. Mode B resolves TMPDIR/TEMP/TMP there;
+mode C unsets TMPDIR and retains TEMP/TMP. Checks use the established empty
+pipeline directory and absent row-5 scratch for cold-clone execution. There is
+no network, model run, credential inspection, configuration change or hook bypass.
+
+`python3 tests/run_tests.py (mode B, final)`:
+
+```text
+collected 255 tests from tests
+collected 174 tests from gars/tests
+citations: 292/292 resolve
+DoD cells regenerated: 13/13
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 1/1 byte-stable
+added case-byte sweep: 12/12 clear; item 15 added lines and decoded objects
+fixtures: git apply --check passed for 12/12 against base archive
+plant match intervals: every file_lines answer overlaps changed lines
+Ran 429 tests in 322.954s
+OK (skipped=59)
+```
+
+`python3 tests/run_tests.py (mode C)`:
+
+```text
+collected 255 tests from tests
+collected 174 tests from gars/tests
+citations: 292/292 resolve
+DoD cells regenerated: 13/13
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 13/13 byte-stable
+DoD cells regenerated: 13/13
+DoD cells verified: 1/1 byte-stable
+added case-byte sweep: 12/12 clear; item 15 added lines and decoded objects
+fixtures: git apply --check passed for 12/12 against base archive
+plant match intervals: every file_lines answer overlaps changed lines
+Ran 429 tests in 313.846s
+OK (skipped=86)
+```
+
+`python3 tests/check_contracts.py`:
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`:
+
+```text
+collected 255 tests from tests
+collected 174 tests from gars/tests
+suite: 429 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`:
+
+```text
+Ran 44 tests in 37.710s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`:
+
+```text
+clean — graded=1
+```
+
+`python3 scripts/release_check.py`:
+
+```text
+DoD cells regenerated: 13/13
+```
+
+`python3 tests/test_review_faults_build.py`:
+
+```text
+Ran 11 tests in 90.790s
+OK
+added case-byte sweep: 12/12 clear; item 15 added lines and decoded objects
+fixtures: git apply --check passed for 12/12 against base archive
+plant match intervals: every file_lines answer overlaps changed lines
+```
+
+`python3 tests/test_review_faults_core.py`:
+
+```text
+Ran 8 tests in 0.018s
+OK
+```
+
+`python3 tests/test_review_faults_launch.py`:
+
+```text
+Ran 12 tests in 1.196s
+OK
+```
+
+`python3 tests/test_review_faults_faults.py`:
+
+```text
+Ran 1 test in 167.489s
+OK
+```
+
+`feature_version=(3, 6) parse of every row Python file`:
+
+```text
+Python feature_version=(3, 6): 12/12 new Python files parsed
+```
+
+`python3 gars/_system/hooks/pre-commit (24 fixture files staged in a disposable base tree)`:
+
+```text
+fixture hook index: 24 fixture files staged against base
+gitleaks: REFUSED (gitleaks absent from PATH)
+citations: 292/292 resolve
+pre-commit: REFUSED
+```
+
+The final direct mutation module observed **105 red fault witnesses** and **2 green unchanged-line exemption witnesses**. Each mutation first passes its unchanged control. No guard, assertion or threshold was weakened.
+
+The regenerated reviewer row remains, verbatim:
+
+```text
+| reviewer catch rate (code; science) | `evals/review-faults/`, `evals/bio-faults/` runners | ≥ 8/10 per set, ≤ 1/5 false alarms; first-run-at-sha reported (§21 Q3) | unmeasured |
+```
+
+The actual fixture hook refuses because gitleaks is absent. This check stays
+NOT met under Q2 A; both real rulesets await independent verification. The index
+was regenerated with `bash docs/decisions/build_index.sh`; its machine-specific
+output remains in scratch. No measured-run file exists.
+
+### Verification timing and memory
+
+The initial mode-B suite had already started when inspection identified the
+awk/sed script-file edge case. The final mode-B run above was repeated after
+that last code change; mode C and every final direct module started afterwards.
+The initial run is retained for transparency and is not the final acceptance:
+
+```text
+Ran 429 tests in 318.748s
+OK (skipped=59)
+```
+
+The pre-T1 implementation was reported at about 14 GiB on the review host;
+that unsafe whole-tree comparison was not rerun. W2 preserves streamed per-file
+digests and bounded mismatch diagnostics. A fresh disposable determinism-only
+process measured with `resource.getrusage(resource.RUSAGE_CHILDREN)` reports:
+
+```text
+Ran 1 test in 6.002s
+OK
+determinism peak memory: 649276 KiB
+```
+
+The maximum recorded child peak across the verification drivers was 667924 KiB, below 1 GiB.
+
+### Boundary and append-only checks
+
+Starting-head prefix comparisons preserve all preceding decision and report
+bytes. W1 stays untracked and byte-identical; no review is staged. The diff from
+the public base touches no prohibited tree, ledger or other decision record.
+This round changes neither protected prompt nor fixture bytes. Reserved 0073
+(protected approval) and 0074 (seal and first run) remain absent. The README
+evidence row is unchanged; the release render and decision index were regenerated.
+`git diff --check` is clean. The single W2 commit uses an explicit path list and
+a message file in scratch. No remote, push, merge or pull request was used.
+
+## Owner rulings needed
+
+None. W1 F1 and F2 fit the supplied scope. No schema, threshold, scope, CI or
+protected-path decision is needed. Q2 A's independent secret verification remains
+open under its existing ruling.
+
+## Residual gaps after W2
+
+- Fixture pre-commit secret verification remains NOT met: both gitleaks rulesets
+  await independent verification; no replacement scan or bypass was used.
+- Row 9 exit remains NOT met: three sealed slots, one real first measured run,
+  later ledger rows and reserved combined record 0074 remain later work. No
+  model was run, and no catch rate or first-run result is claimed.
+- Protected approval remains the owner's reserved 0073. Separate-user and
+  read-only-credential deployment evidence is external. The uid check proves
+  account inequality on the review host only; R-093's code half stays NOT met
+  because GARS launch_role() still returns producer.
+- Public credibility stays unmeasured until external-human seals; independent
+  context seals are development evidence only. Science and trailer-gate JSON
+  consumption remain later rows. Diff-style inference, a shared model family,
+  thin per-class samples and hash-only checking of three private outcomes remain.
+- Docker mode A is not verified because this account cannot reach Docker.
+  Native Python 3.6, expanded-suite cluster execution and merge-result CI are
+  unverified. Existing skips remain skips. Long project-name truncation/hashing
+  by the deployed reviewer tool remains unverified, as W1 disclosed; item 19's
+  supplied encoding is unchanged. The blindness audit is static, not a sandbox.
+
+Closed: W1 F1 and F2. No review finding waits on a new owner ruling. Secret
+verification, protected approval, sealing, the measured run and row exit remain
+with the owner and independent verification.

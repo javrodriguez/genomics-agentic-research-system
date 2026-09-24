@@ -416,3 +416,38 @@ All earlier residual limits remain: row exit NOT met, three seals and a first
 measured run outstanding, protected approval and real fixture secret scanning
 outstanding, public credibility unmeasured, deployment evidence external,
 R-093 code half NOT met, science and JSON trailer consumption deferred.
+
+## Addendum — W2 review fixes, 2026-09-23
+
+THE LANE, UNDER THE OWNER'S DELEGATION — THE LANE'S SPECIFICATION.
+This addendum addresses W1 F1 and F2. Every preceding byte is preserved; no new
+words are attributed to the owner. The record remains 0072; reserved 0073 is
+protected approval and 0074 covers the seal and first measured run. Neither is
+written by this round.
+
+W1 F1 corrects the V1 separator exemption: a separator-only shell argument is
+the filesystem root and is a blindness hit, including quoted arguments, repeated
+separators, root-valued path options and nested shell commands. Field context
+keeps write/edit content separate from path fields. The root-word audit exempts
+awk/cut delimiter values and interpreter program text, while the ordinary audit
+still scans named absolute paths and home/parent spellings inside every field.
+An option is a delimiter only in its command's context: directory-listing options
+cannot excuse root access. The V1 claim that all outside paths invalidate reviews
+was incorrect for root-only words; the W2 regression and mutation controls cover
+that gap without editing the earlier account.
+
+W1 F2 treats a directory change with only the option words --, -L or -P as home
+access. Prefix recognition now includes eval, exec and time. Explicit in-kit
+directory arguments remain clear. Stub-launch tests confirm these escapes make
+the code-owned envelope INVALID; disposable-copy controls remove each detection
+and require the named test to fail after its unchanged control passes.
+
+These remain static post-run checks, not a complete shell interpreter or an OS
+sandbox. Item 19's exact own-session output allowance is unchanged. The uid-check
+meaning and every residual in the preceding record remain unchanged. No prompt,
+fixture, schema, threshold, policy or CI change is made. No model runs against a
+case, no seal or first-run evidence is produced, and row 9 exit stays NOT met.
+Real fixture secret verification, protected approval, external deployment
+evidence, public external-human seals, R-093's code half, science and trailer
+JSON consumption remain open. Required command results are appended to
+`docs/implementation/row_9_change_report.md`.

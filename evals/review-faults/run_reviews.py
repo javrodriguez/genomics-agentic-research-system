@@ -68,6 +68,96 @@ def session_output_store(kit, session_id):
     return home / '.claude' / 'projects' / project / session_id / 'tool-results'
 
 
+def input_fields(value, field=None):
+    """Keep field context for separator-only text; other paths are always scanned."""
+    if isinstance(value, str):
+        yield field, value
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            for pair in input_fields(item, key):
+                yield pair
+    elif isinstance(value, list):
+        for item in value:
+            for pair in input_fields(item, field):
+                yield pair
+
+
+def root_word_hits(text, field):
+    """W1 F1: root shell words count, delimiter values and program text do not.
+
+    This only classifies separator-only tokens. The ordinary path scan still
+    checks named absolute paths and parent/home spellings inside every field.
+    """
+    if field in ('content', 'old_string', 'new_string', 'old_text', 'new_text'):
+        return 0
+    lexer = shlex.shlex(text, posix=True, punctuation_chars=';&|<>()\n')
+    lexer.whitespace = ' \t\r'
+    lexer.whitespace_split = True
+    lexer.commenters = ''
+    words = list(lexer)
+    command = None
+    argument = None
+    text_program_pending = False
+    hits = 0
+    for word in words:
+        if argument:
+            if argument == 'shell':
+                hits += root_word_hits(word, 'command')
+            previous_argument = argument
+            argument = None
+            if previous_argument != 'path':
+                continue
+        if word and all(c in ';&|<>()\n' for c in word):
+            command = None
+            text_program_pending = False
+            continue
+        if command is None and field == 'command':
+            if word in ('then', 'do', 'else', '{', 'command', 'builtin', 'exec', 'time', 'eval'):
+                continue
+            command = os.path.basename(word)
+            text_program_pending = command in ('awk', 'sed')
+        else:
+            delimiters = (('-F', '--field-separator') if command == 'awk' else
+                          ('-d', '--delimiter') if command == 'cut' else ())
+            if word in delimiters:
+                argument = 'delimiter'
+                continue
+            if any(word.startswith(option + '=') if option.startswith('--') else
+                   word.startswith(option) and len(word) > len(option)
+                   for option in delimiters):
+                continue
+            if word == '-c' and command in ('sh', 'bash', 'dash', 'zsh', 'ksh'):
+                argument = 'shell'
+                continue
+            if word == '-c' and command and re.fullmatch(r'(?:python[0-9.]*|perl|ruby|node)', command):
+                argument = 'code'
+                continue
+            if command in ('awk', 'sed'):
+                # Explicit program options consume either code or a script path;
+                # neither leaves a later input filename eligible as program text.
+                code_options = ('-e', '--source', '--expression')
+                path_options = ('-f', '--file')
+                if word in code_options + path_options:
+                    text_program_pending = False
+                    argument = 'path' if word in path_options else 'code'
+                    continue
+                if any(word.startswith(option + '=') if option.startswith('--') else
+                       word.startswith(option) and len(word) > len(option)
+                       for option in code_options + path_options):
+                    text_program_pending = False
+            if text_program_pending and not word.startswith('-'):
+                text_program_pending = False
+                continue
+        candidate = word
+        if word.startswith('-') and '=' in word:
+            candidate = word.partition('=')[2]
+        elif re.match(r'^-[a-zA-Z]+' + re.escape(os.sep), word):
+            candidate = re.sub(r'^-[a-zA-Z]+', '', word)
+        if candidate and not candidate.strip(os.sep):
+            hits += 1
+    return hits
+
+
 def blindness(events, kit, session_id=None):
     """Lane specification item 8: token paths against kit and system allowlist.
 
@@ -82,9 +172,10 @@ def blindness(events, kit, session_id=None):
     for event in events:
         for data in tool_inputs(event):
             calls += 1
-            for text in strings(data):
+            for field, text in input_fields(data):
                 try:
                     decoded = shlex.split(text)
+                    hits += root_word_hits(text, field)
                 except ValueError:
                     hits += 1
                     continue
@@ -96,8 +187,8 @@ def blindness(events, kit, session_id=None):
                 home = '$' + 'HOME'
                 brace_home = '$' + '{HOME}'
                 bare_cd = re.search(
-                    r"(?:^|[\n;|&\"'({]|\b(?:then|do|else|builtin|command)\s+)"
-                    r"[^\S\n]*cd[^\S\n]*(?=$|[\n;|&\"')}])", text)
+                    r"(?:^|[\n;|&\"'({]|\b(?:then|do|else|builtin|command|eval|exec|time)\s+)"
+                    r"[^\S\n]*cd(?:[^\S\n]+(?:--|-L|-P))*[^\S\n]*(?=$|[\n;|&\"')}])", text)
                 if bare_cd:
                     hits += 1
                 for token in tokens:
@@ -109,7 +200,7 @@ def blindness(events, kit, session_id=None):
                         option = re.match(r'^-[a-zA-Z]+', token)
                         if option and token[option.end():].startswith((parent, chr(126), '$')):
                             token = token[option.end():]
-                    # Separators alone are prose, delimiters or division operators.
+                    # Root-only tokens were classified with field and shell-word context.
                     if token and not token.strip(os.sep):
                         continue
                     expansion = re.search(r'\$\{(?:HOME|PWD)(?=[^a-zA-Z0-9_])[^}]*\}?', token)

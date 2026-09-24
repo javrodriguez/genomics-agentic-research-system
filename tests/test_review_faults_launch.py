@@ -128,7 +128,8 @@ class LaunchTests(unittest.TestCase):
                  'python3 -c "print(8 '+os.sep*2+' 2)"',
                  os.path.join('$'+'{PWD}','repo','file')]
         for token in bad+good:
-            events=[{'type':'assistant','message':{'content':[{'type':'tool_use','input':{'command':'cat '+token}}]}}]
+            command=token if token.startswith(('awk ', 'cut ', 'python3 ', 'bash ')) else 'cat '+token
+            events=[{'type':'assistant','message':{'content':[{'type':'tool_use','input':{'command':command}}]}}]
             result=run_reviews.blindness(events,kit)
             self.assertEqual(result['calls'],1)
             self.assertEqual(result['hits'],1 if token in bad else 0,token)
@@ -137,9 +138,47 @@ class LaunchTests(unittest.TestCase):
                         '{ cd; cat secret; }', 'if true; then cd; cat secret; fi',
                         'for x in y; do cd; cat secret; done', 'if false; then :; else cd; fi',
                         'builtin cd; cat secret', 'command cd; cat secret',
+                        'cd -- && cat secret', 'cd -L; cat secret', 'cd -P; cat secret',
+                        'cd -L -P --; cat secret', 'eval cd; cat secret',
+                        'exec cd; cat secret', 'time cd; cat secret',
+                        'eval cd --; cat secret',
                         'cat '+('$'+'{HOME%/}')+os.sep+'file',
                         'cat '+os.path.join('$'+'{PWD%/*}',parent,'file')):
             self.assertEqual(run_reviews.blindness([{'type':'tool_use','input':{'command':command}}],kit)['hits'],1,command)
+        root_commands = ['cd '+os.sep+' && cat relative/file',
+                         'ls '+os.sep, 'ls -d '+os.sep, 'cat awk '+os.sep, 'find '+os.sep+' -name sample',
+                         'grep -R pattern '+os.sep,
+                         'ls "'+os.sep+'"', 'ls '+os.sep*2,
+                         "bash -c 'ls "+os.sep+"'",
+                         'git -C'+os.sep+' status',
+                         'git --git-dir='+os.sep+' status',
+                         'awk -F '+os.sep+" '{print $1}' "+os.sep,
+                         'awk -f '+os.sep, 'sed -f '+os.sep,
+                         'awk -f repo/program '+os.sep,
+                         'sed --file=repo/program '+os.sep,
+                         'awk --source=program '+os.sep,
+                         'awk -e program '+os.sep]
+        for command in root_commands:
+            event={'type':'tool_use','input':{'command':command}}
+            self.assertEqual(run_reviews.blindness([event],kit)['hits'],1,command)
+        for field in ('file_path','path'):
+            event={'type':'tool_use','input':{field:os.sep}}
+            self.assertEqual(run_reviews.blindness([event],kit)['hits'],1)
+        for command in ['cd -- repo && cat module.py', 'cd -L repo',
+                        'cd -P repo', 'eval cd repo', 'exec cd repo', 'time cd repo',
+                        'cut --delimiter='+os.sep+' -f 1 repo/input.txt',
+                        'cut --delimiter '+os.sep+' -f 1 repo/input.txt',
+                        'awk --field-separator='+os.sep+" '{print $1}' repo/input.txt",
+                        'awk --field-separator '+os.sep+" '{print $1}' repo/input.txt",
+                        'awk -F'+os.sep+" '{print $1}' repo/input.txt",
+                        'cut -d'+os.sep+' -f 1 repo/input.txt',
+                        'python3 -c "print(8 '+os.sep+' 2)"',
+                        'python3 -c "'+os.sep+'"']:
+            event={'type':'tool_use','input':{'command':command}}
+            self.assertEqual(run_reviews.blindness([event],kit)['hits'],0,command)
+        for field in ('content','old_string','new_string','old_text','new_text'):
+            event={'type':'tool_use','input':{'file_path':'review.json',field:os.sep}}
+            self.assertEqual(run_reviews.blindness([event],kit)['hits'],0,field)
         prose='A slash '+os.sep+' or division '+os.sep*2+' is ordinary text.'
         body=json.dumps({'verdict':'APPROVE_WITH_CHANGES','findings':[
             {'summary':prose,'evidence':prose}]})
@@ -185,7 +224,10 @@ class LaunchTests(unittest.TestCase):
     def test_blindness_stream_makes_record_invalid(self):
         parent=chr(46)*2
         for token in (os.path.join(os.sep,'outside','file'),chr(126)+os.sep+'file',
-                      ('$'+'HOME')+os.sep+'file',os.path.join(parent,parent,'file')):
+                      ('$'+'HOME')+os.sep+'file',os.path.join(parent,parent,'file'),
+                      os.sep, 'x; cd '+os.sep+' && cat relative/file',
+                      'x; ls '+os.sep, 'x; find '+os.sep+' -name sample',
+                      'x; cd -- && cat secret', 'x; eval cd; cat secret'):
             root,args,manifest=launcher_fixture(self,1)
             events=[{'type':'system','subtype':'init','model':'stub-model'},
                     {'type':'assistant','message':{'content':[{'type':'tool_use','input':{'command':'cat '+token}}]}}]

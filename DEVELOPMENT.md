@@ -27,6 +27,9 @@ row exit remain NOT met. S1 implements Q3 A and Q4 A: added lines and decoded
 new Git content pass the twelve-case sweep, with unchanged-line exemptions
 proved in both directions. Required checks and remaining verification are in
 `docs/implementation/row_9_change_report.md`.
+W2 fixes root-only blindness escapes and home-directory changes with option-only
+arguments or eval/exec/time prefixes; delimiter and file-content controls remain
+in place. No sealed run or public metric is claimed.
 
 **Row 12 review round 4, 2026-09-22: repo-side implementation; merge still gated.**
 All ten wrappers now prepare idempotency keys; downstream keys have a separate declared-input

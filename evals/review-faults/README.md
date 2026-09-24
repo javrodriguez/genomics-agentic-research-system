@@ -69,6 +69,11 @@ use synthetic records in scratch and do not create measurement evidence here.
 
 This is a post-run blindness audit, following lane specification item 8, not an OS
 sandbox. Tool path tokens are checked against the kit and the system allowlist.
+A filesystem-root word in a shell command or path field is a hit, including
+quoted root arguments and nested shell commands. Separator-only delimiter values
+for awk and cut, interpreter program text, and write/edit content remain text;
+other path spellings in those fields are still scanned. Directory changes with
+only option arguments count as home access, including after eval, exec and time.
 Item 19 also permits this launched session's saved tool output: the reviewer's
 home, `.claude/projects`, the kit path encoded by replacing every character
 outside ASCII letters, digits and hyphens with a hyphen, the launch session id,
