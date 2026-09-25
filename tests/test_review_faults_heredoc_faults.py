@@ -41,6 +41,19 @@ FAULTS = [
     ('error edge skipped after a data-only block',
      "item.get('is_error', False) is not False or", 'False or',
      ['test_error_edge_after_data_only']),
+    # Round B (0129 item 7 (c)).
+    ('moving causes read from the raw text again',
+     'run, outside = shell_run, shell_outside', 'run, outside = text, set(range(len(words)))',
+     ['test_honest_review_bodies', 'test_honest_kept_comment_words']),
+    ('body exclusion extended to the whole call',
+     'run, outside = shell_run, shell_outside', "run, outside = '', set()",
+     ['test_command_words_next_to_heredoc_in_call', 'test_command_words_next_to_heredoc_next_call']),
+    ('unproven-heredoc guard dropped',
+     'unproven = heredocs != proven', 'unproven = False',
+     ['test_unproven_heredoc_in_call', 'test_unproven_heredoc_next_call']),
+    ('expanded-command-word guard dropped',
+     'expanded = any(', 'expanded = False and any(',
+     ['test_expanded_command_word_in_call', 'test_expanded_command_word_next_call']),
 ]
 # Subtests each fault must turn red, beside its named tests.
 WITNESSES = {
@@ -48,6 +61,24 @@ WITNESSES = {
     'carry applied to every blocked call': ["block='eval'", "block='pushd'", "block='heredoc-and-eval'"],
     'shell-moving block end carried to the next call': ["block='eval'", "block='pushd'",
                                                         "block='heredoc-and-eval'"],
+    # Each word of a body or comment whose word the raw text reads as a cause.
+    'moving causes read from the raw text again': (
+        ["session='%s', body='%s'" % (session, word) for session in ('C01', 'C02')
+         for word in ('case', 'function', 'enable', 'unset', 'alias', 'shopt', 'PWD', 'OLDPWD',
+                      'CDPATH', 'BASH_ENV', 'all')] +
+        ["comment='%s'" % word for word in heredoc.HeredocPlacementTests.WORDS if word not in ('cd', '.')] +
+        ["comment='all'"]),
+    # The case entry's own cd word is refused by item 1 (b) under this fault too.
+    'body exclusion extended to the whole call': [
+        "%s (command='%s')" % (name, label) for name in ('in_call', 'next_call')
+        for label in ('eval', 'pushd', 'set', 'alias', 'source', 'dot', 'unset', 'trap')],
+    # The double-parentheses spelling is also a broken parse; it stays a hit.
+    'unproven-heredoc guard dropped': [
+        "%s (spelling='%s')" % (name, label) for name in ('in_call', 'next_call')
+        for label in ('arithmetic', 'parameter')],
+    'expanded-command-word guard dropped': [
+        "%s (spelling='%s')" % (name, label) for name in ('in_call', 'next_call')
+        for label in ('ansi-c', 'variable')],
 }
 
 

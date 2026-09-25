@@ -197,6 +197,12 @@ folder before it and resets the rest of the call, and its end, to the kit root.
 The next call starts where such a call ended; the background, missing-result,
 error and reset-notice edges still apply. Every other blocked call is unchanged,
 because those causes can move the shell where the audit cannot see it.
+For this decision only (0129 round B), the whole-call causes are read without
+the heredoc bodies the harness removes and without kept comment text, so an
+ordinary word such as `case` or `set` in a review body no longer counts. A
+`<<` counts as data only when its body was removed from a line with no `$[`,
+`$((`, `((` or `${`; a command word that is an expansion or holds a backquote
+makes the call moving too.
 **Residual:** a heredoc or kept comment is assumed not to move the calling
 shell; a program that replaces or re-enters the shell from such data is 0125
 item 3's residual. 0129 changes no recorded run.

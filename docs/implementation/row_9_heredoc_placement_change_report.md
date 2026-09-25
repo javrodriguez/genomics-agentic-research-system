@@ -173,6 +173,153 @@ dropped. The cd-fault and session-fault modules printed 25 and 19 red lines.
 - The two injected faults show that the tests catch those bugs. They do not
   show a removable branch in the code, because the end carry is a single path.
 
+## Round B
+
+Base: round 1's commit `e6469eb61912b972cb8c738140a49931ee4b7b62`, on the same
+branch. Round B answers a fresh independent review of round 1 (APPROVE WITH
+CHANGES: F1 MAJOR, F2-F4 NOTE). It is the lane's specification under the
+owner's delegation (0129, as amended). The sections above are round 1's and
+are not rewritten. No model was run, and this follow-up measures nothing.
+
+In this table, `runner`, `heredoc tests` and `heredoc faults` mean what they
+mean above.
+
+| Requirement | Changed files | Acceptance | Result and red-on-fault evidence |
+|---|---|---|---|
+| 6 (a): moving causes read only from text the shell runs (removed heredoc bodies and kept comments left out) | runner (`without_heredocs` reports its removals; new `shell_run_text`; `run`, `run_names`, `run_state` in `CommandPlacement`), heredoc tests | `test_honest_review_bodies` (19 bodies × C01, C02), `test_honest_kept_comment_words` (19 comments) | PASS. Every body: C01 0 hits, 0 ambiguous; C02 0 hits, 2 ambiguous; last call data-only; graded-against-seen 7/7 and 10/10. Every comment 0 and 0. Red at `e6469eb`: yes, for the ten raw-text words and the all-words body in both sessions, and for every comment except `cd` and `.`. Red-on-fault seen: yes, `moving causes read from the raw text again` turns all those subtests red |
+| 6 (a), the other direction: the same words outside the body still make a call moving | runner, heredoc tests | `test_command_words_next_to_heredoc_in_call`, `_next_call` twin (eval, pushd, set, case, alias, source, `.`, unset, trap) | PASS, each at least 1 hit, and each next-call hit is the next call's own. Red-on-fault seen: yes, `body exclusion extended to the whole call` turns 8 of 9 spellings red in both tests. `case` stays a hit, because its own `cd` word is refused by item 1 (b) |
+| 6 (b): an unproven heredoc is a moving cause | runner (`heredocs`, `proven`, `unproven`), heredoc tests | `test_unproven_heredoc_in_call`, `_next_call` twin (`$[`, `$((`, `${` spellings) | PASS, each at least 1 hit. Red at `e6469eb`: `$[` and `${`. Red-on-fault seen: yes, `unproven-heredoc guard dropped` turns `$[` and `${` red in both tests. `$((` is a hit without the guard too: item 23 keeps that body, and the closing `))` breaks the parse |
+| 6 (c): an expanded command word is a moving cause | runner (`expanded`), heredoc tests | `test_expanded_command_word_in_call`, `_next_call` twin (`$'cd'`, `c=cd; $c`) | PASS, each at least 1 hit. Red at `e6469eb`: both. Red-on-fault seen: yes, `expanded-command-word guard dropped` turns both red in both tests |
+| 6 (d): every other cause and mixed case as round 1 | none | round 1's tests and faults | PASS. Round 1's six faults are still red |
+| 7: keep round 1's tests; change one only where round B changes its value | heredoc tests | `test_cd_word_in_data_only_call` | Changed, the only one. Round 1 put the `cd` word in a heredoc body item 23 keeps (a `$(` on the header line). Under 6 (b) that heredoc is unproven, so the call is moving, not data-only. The test now asserts that (every word at the kit root), and checks item 1 (b)'s data-only `cd`-word rule on kept comment text. Round 1's refused-cd fault still turns it red |
+| 7 (c): four faults in round 1's shape | heredoc faults | `test_heredoc_faults_are_red` | PASS. 10 of 10 are red, each with a passing unfaulted control and named subtest witnesses. A no-op round B fault was checked, and the runner fails it |
+| 8: record, harness README, report, count sentence | 0129, generated `CONTEXT.md`, `evals/review-faults/README.md`, this section, README.md, DEVELOPMENT.md | `bash docs/decisions/build_index.sh`, `tests/check_counts.py` | Done. The suite collects 723 (715 + 8 round B tests). README.md's sentence now says the skip figures were measured on the 702-test suite at 0074's landing (F4). DEVELOPMENT.md's two count lines said 715 after 0074, which was untrue, and now say 723 after 0129 |
+
+**Existing fault entries.** A scratch script compared every runner fault
+entry's match count in `run_reviews.py` against `e6469eb` and `da40061`:
+`entries checked: 134, changed counts: 0` for both. Round 1's six heredoc
+entries each match once, as at `e6469eb`. On a first pass the new
+`run_values.add('PWD')` line contained the bytes of the cd fault
+`extended PWD assignments ignored`, which raised that entry's count to 2.
+The fault patches only the first match, so it was still red, but the set was
+renamed `run_names` so every count is exactly as before.
+
+**Reading of the head where it needed one.** None of these needed an owner
+ruling, because the head's own words decide each one:
+
+- Item 6 (a) names "the bodies of the heredocs the harness itself removes"
+  and "kept comments", and says the same word "anywhere else still does". So
+  a comment that item 23 removed is still read by the moving check. This is
+  fail-closed, and it is named as a residual in 0129.
+- Item 6 (a) lists 0125's whole-call conditions. Round 1's item 1 (a) keeps
+  the parse checks and item 8's raw-text guard as separate categories. So
+  those still read the whole call.
+- Kept-comment text runs from the word-start `#` to the end of its physical
+  line. A shell word whose source spans a newline ends the comment and stays
+  in the moving check.
+- Item 6 (b)'s cue check reads the header line of each removed body. A `<<`
+  anywhere else (a kept body, or an unrecognized header) makes the heredoc
+  operators outnumber the proven removals, so the call is moving.
+- Item 7 (a)'s kept comment names a bare `cd` only as `cd:`. A bare `cd` in
+  kept comment text is a `cd` word, and item 1 (b), which stands, refuses it
+  and resets to the kit root. That is round 1's `test_cd_word_in_data_only_call`.
+
+### How every command was run (round B)
+
+As in round 1: every command ran from the repository root, with no change of
+directory, and with `TMPDIR`, `TEMP` and `TMP` set to the scratch twin as a
+relative path in the same shell. Each ran in the foreground with output
+captured to a scratch log, and the lines below were read from those logs.
+Helper scripts (the in-memory `e6469eb` run, the fault-entry count, the
+no-op fault, and the check that the `case` and `$((` entries stay hits under
+their faults) were written only in the scratch twin. `tests/run_tests.py`,
+`tests/test_review_faults_faults.py` and `tests/test_review_faults_build.py`
+were not run, as the head directs.
+
+```text
+python3 tests/check_counts.py
+suite: 723 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+python3 tests/check_contracts.py
+14 contracts clean: sections, wait points, vocabulary.
+python3 tests/test_review_faults_cd.py
+Ran 32 tests in 2.275s
+OK
+cd-call corpus graded-against-seen: 11/11
+python3 tests/test_review_faults_cd_faults.py
+Ran 1 test in 17.685s
+OK
+python3 tests/test_review_faults_core.py
+Ran 12 tests in 0.193s
+OK
+python3 tests/test_review_faults_corpus.py
+Ran 1 test in 2.817s
+OK
+honest-call corpus graded-against-seen: 278/278
+python3 tests/test_review_faults_data.py
+Ran 5 tests in 0.303s
+OK
+python3 tests/test_review_faults_heredoc.py
+Ran 20 tests in 3.680s
+OK
+heredoc-call corpus C01 graded-against-seen: 7/7
+heredoc-call corpus C01 hits: 0, ambiguous: 0
+heredoc-call corpus C02 graded-against-seen: 10/10
+heredoc-call corpus C02 hits: 0, ambiguous: 2
+heredoc review-body C01: 19 bodies, graded-against-seen 7/7
+heredoc review-body C02: 19 bodies, graded-against-seen 10/10
+python3 tests/test_review_faults_heredoc_faults.py
+Ran 1 test in 5.590s
+OK
+heredoc fault red: data-only carry dropped -> test_honest_heredoc_sessions, test_honest_data_only_carry
+heredoc fault red: refused cd in a data-only block keeps the carried placement -> test_refused_cd_in_call, test_refused_cd_next_call, test_cd_word_in_data_only_call
+heredoc fault red: carry applied to every blocked call -> test_shell_moving_in_call
+heredoc fault red: shell-moving block end carried to the next call -> test_shell_moving_next_call
+heredoc fault red: data-only block end not carried to the next call -> test_honest_data_only_carry
+heredoc fault red: error edge skipped after a data-only block -> test_error_edge_after_data_only
+heredoc fault red: moving causes read from the raw text again -> test_honest_review_bodies, test_honest_kept_comment_words
+heredoc fault red: body exclusion extended to the whole call -> test_command_words_next_to_heredoc_in_call, test_command_words_next_to_heredoc_next_call
+heredoc fault red: unproven-heredoc guard dropped -> test_unproven_heredoc_in_call, test_unproven_heredoc_next_call
+heredoc fault red: expanded-command-word guard dropped -> test_expanded_command_word_in_call, test_expanded_command_word_next_call
+python3 tests/test_review_faults_launch.py
+Ran 20 tests in 36.458s
+OK
+python3 tests/test_review_faults_session.py
+Ran 18 tests in 0.762s
+OK
+session-call corpus graded-against-seen: 8/8
+session-call corpus hits: 0, ambiguous: 1
+python3 tests/test_review_faults_session_faults.py
+Ran 1 test in 9.786s
+OK
+Python feature_version=(3, 6): 3/3 changed or new Python files parse
+```
+
+In the fault module's output, the honest-session and review-body lines are
+also printed for each control and each faulted run. Under
+`data-only carry dropped` the sessions print C01 `hits: 1, ambiguous: 0` and
+C02 `hits: 1, ambiguous: 1`, as at `da40061`. The cd-fault and session-fault
+modules printed 25 and 19 red lines.
+
+### Residual gaps (round B)
+
+- 0129's residuals (i)-(v). (v) is new: an unquoted heredoc body is expanded
+  by the shell, in a subshell or as assignments only, and the audit relies on
+  that when it leaves the body out of the moving check.
+- A comment that item 23 removed still counts in the moving check (fail-closed).
+- The real review bodies of C01 and C02 are not in this repository. Round B
+  shows 0 hits only for the review-like bodies its tests build. It claims
+  nothing about the real bodies, and 0074's records stand as recorded.
+- Two entries are guards that their round B fault does not turn red: `case`
+  under the body-exclusion fault, and `$((` under the unproven-heredoc fault.
+  Each stays a hit through another rule, as the table says.
+- Not run here: `tests/run_tests.py`, `tests/test_review_faults_faults.py`,
+  `tests/test_review_faults_build.py` (the deployment runs them), native
+  Python 3.6 (only the `feature_version=(3, 6)` parse was checked), and the
+  deployment sandbox. README.md's skip figures are from the 0074 landing run,
+  and no full run at 723 tests is claimed.
+
 ## Owner rulings needed
 
 None.

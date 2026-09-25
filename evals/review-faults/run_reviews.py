@@ -318,8 +318,8 @@ class CommandPlacement:
                         (following == '(' and index + 2 < len(words) and words[index + 2].operator and
                          words[index + 2].startswith(')'))):
                     broken = True
-        forbidden = re.search(r'\b(?:case|alias|unalias|enable|shopt|unset|function|CDPATH|BASH_ENV)\b|\bENV=',
-                              text + ' ' + ' '.join(str(word) for word in words))
+        forbidden_words = r'\b(?:case|alias|unalias|enable|shopt|unset|function|CDPATH|BASH_ENV)\b|\bENV='
+        forbidden = re.search(forbidden_words, text + ' ' + ' '.join(str(word) for word in words))
         # These commands can move the shell, change cd semantics, or redefine
         # cd indirectly. PWD mutation also invalidates substitution by folder.
         hazards = (
@@ -333,7 +333,8 @@ class CommandPlacement:
         # Item 7: only these two exact expansions may contain PWD anywhere
         # in the call, including text removed from the token scan as data.
         pwd_source = text + ' ' + ' '.join(str(word) for word in words)
-        pwd_text = re.sub(r'\$(?:PWD(?![A-Za-z0-9_])|\{PWD\})', '', pwd_source)
+        pwd_expansions = r'\$(?:PWD(?![A-Za-z0-9_])|\{PWD\})'
+        pwd_text = re.sub(pwd_expansions, '', pwd_source)
         if 'PWD' in pwd_text:
             values.add('PWD')
         shell_state = any(values.intersection(group) for group in hazards)
@@ -344,7 +345,27 @@ class CommandPlacement:
         trap_state = 'trap' in values
         # Decision 0129: every other cause can move the shell where this audit
         # cannot see it, in this program or in any the preflight inspected.
-        moving = bool(forbidden or shell_state or trap_state or broken or parens != 0 or backquote or
+        # Round B, item 6 (a): for this decision only, the whole-call causes
+        # read text the shell runs: removed heredoc bodies and kept comments
+        # are left out. The parse checks still read every word.
+        shell_run, shell_outside, proven = shell_run_text(text, words)
+        run, outside = shell_run, shell_outside
+        run_words = ' '.join(str(words[index]) for index in sorted(outside))
+        run_names = set(str(word).split('=', 1)[0] for index, word in enumerate(words)
+                         if index in outside and (word != '.' or index in command_words))
+        if 'PWD' in re.sub(pwd_expansions, '', run + ' ' + run_words):
+            run_names.add('PWD')
+        run_state = (re.search(forbidden_words, run + ' ' + run_words) or 'trap' in run_names or
+                     any(run_names.intersection(group) for group in hazards))
+        # Item 6 (b): a << is data only where it provably opens a heredoc the
+        # harness removed, from a line with no shift or parameter cue.
+        heredocs = sum(re.sub('<<<', '', words[index]).count('<<') for index in shell_outside
+                       if words[index].operator)
+        unproven = heredocs != proven
+        # Item 6 (c): an expanded command word may run any command, even cd.
+        expanded = any(index in shell_outside and (words[index].source.startswith('$') or '`' in words[index].source)
+                       for index in command_words)
+        moving = bool(run_state or unproven or expanded or broken or parens != 0 or backquote or
                       self.state.get('moving'))
         forbidden = forbidden or shell_state or retained_data or trap_state
         self.blocked = bool(forbidden or broken or parens != 0 or backquote or self.state.get('blocked'))
@@ -470,8 +491,12 @@ def bare_directory_change(text):
     return False
 
 
-def without_heredocs(text):
-    """Items 22(c), 23: remove only unambiguous bodies with confirmed closers."""
+def without_heredocs(text, removed=None):
+    """Items 22(c), 23: remove only unambiguous bodies with confirmed closers.
+
+    Decision 0129 round B: removed, when given, receives each removal as its
+    operator count and its range of physical lines.
+    """
     result = []
     state = (None, True)
     lines = text.splitlines(True)
@@ -512,8 +537,36 @@ def without_heredocs(text):
                 # No removal at all unless every queued body has its closer.
                 end = cursor
                 break
+        if removed is not None and end > cursor:
+            removed.append((len(pending), cursor, end))
         cursor = end
     return ''.join(result)
+
+
+def shell_run_text(text, words):
+    """Decision 0129 round B, item 6 (a): the text a moving cause is read from.
+
+    Leaves out the heredoc bodies without_heredocs removes and each kept
+    word-start comment, to the end of its physical line. Comments item 23
+    removed stay in. Returns that text, the indices of the words outside kept
+    comments, and how many heredocs were removed from a line without a shift
+    or parameter cue (item 6 (b)).
+    """
+    lines = text.splitlines(True)
+    removed = []
+    cleaned = without_heredocs(text, removed)
+    dropped = set(index for count, start, end in removed for index in range(start, end))
+    raw = ''.join(line for index, line in enumerate(lines) if index not in dropped)
+    removed_comments = ''.join(char if char != kept else ' ' for char, kept in zip(raw, cleaned))
+    comment = set()
+    for index, word in enumerate(words):
+        if word.source.startswith('#') or (index - 1 in comment and '\n' not in word.source):
+            comment.add(index)
+    outside = set(range(len(words))) - comment
+    run = ' '.join([words[index].source for index in sorted(outside)] + [removed_comments])
+    proven = sum(count for count, start, end in removed if not any(
+        cue in lines[start - 1] for cue in ('$[', '$((', '((', '${')))
+    return run, outside, proven
 
 
 def audit_words(text):
