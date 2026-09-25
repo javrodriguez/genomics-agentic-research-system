@@ -583,3 +583,222 @@ None.
   can outlive a refused run), both documented in `docs/pilot/README.md`.
 - **Lower bound only:** `outside minutes` under L1 still misses a forgotten span that has no
   human turn in it.
+
+## Step B
+
+2026-09-25. Started from `ca925a1` on `build/gars-row-13-pilot`: step A's four reviewed
+commits, ending `9220877`, with public main `e589ce8` merged in by the lane (rows 6, 8 step B and
+the non-public read block, 0107/0108). Step A is built on, never rewritten. This step builds D1
+(the writer), D5 (the closed-project doors), D6 (bring_home) and D8 (the threat model), recorded
+in [0141](../decisions/0141-row-13-closed-project-doors.md). No push, remote, install, download,
+approval or merge was performed.
+
+**Delegated specification.** D1, D5, D6, D8 and rulings D-i to D-vi are the lane's, under the
+owner's standing delegation of 23 Sep 2026 (the rulings confirmed by the lane's coordinator on
+25 Sep 2026). The owner's own words, quoted in 0141, are the two on §21 Q4 and on typed calls
+that return only summaries. Fixtures use `hourly_value_usd = 1`.
+
+**The producer and the review.** This step is produced by a headless Claude Code context
+(Claude Opus 5.5) because the lane's usual producer is unavailable, and it is reviewed by a
+separate fresh Claude Opus 5.5 context from a blind kit. Producer and reviewer are the same model
+family: the review's independence rests on a fresh context and a blind kit, not on model
+diversity (the 0009/0013/0014 precedent).
+
+### Protected files touched (one per line)
+
+- `gars/_system/guard_hook.py` (D5 additions 1–3 before 0107's door `return`, the `READ_ONLY` line, the changed `CLOSED_PROJECT_DOORS` line; no other line removed)
+- `gars/.claude/settings.json` (the `Edit(projects/*/pilot/*)` / `Write(projects/*/pilot/*)` pair, after the files.csv pair)
+- `gars/_system/tools/registry.json` (`closed_output` on every entry; `rnaseq_de.summary`, `pilot_log.begin`, `pilot_log.end`, `pilot_log.abort`, `pilot_log.check`; additions only)
+- `gars/_system/tool_call.py`
+- `gars/_system/tools/closed_output.py` (new)
+- `gars/_system/pilot_log.py` (new)
+- `gars/_system/wrappers/rnaseq-de/rnaseq_de.py` (the `summary` subcommand only)
+- `gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md` (the verb and its failure codes only; `SKILL.md` untouched)
+
+### Requirement → files → test → result
+
+| Requirement | Files | Test | Result |
+|---|---|---|---|
+| D1 writer: every verb, clock-only minutes, nonce, launch-bound actor, actor-matched end/abort, import-tool once, check | `gars/_system/pilot_log.py`, registry `pilot_log.*` | `test_pilot_log.py`: `test_every_verb_and_minutes_from_the_clock`, `test_no_minutes_argument_exists`, `test_actor_is_the_launch_token`, `test_end_and_abort_across_actors_refused`, `test_status_by_operation_grid` (open/closed/aborted × begin/end/abort/check), `test_check_names_what_fails`, `test_refusals` (extra column, out-of-vocabulary stage/actor, typed minutes, nonce missing, nonce unequal in log and in sidecar, changed header), `test_pre_created_by_hand_refused`, `test_cold_start_twin`, `test_import_tool` (double import refused, agent refused), `test_vocabulary_drift`, `test_through_the_dispatcher_the_actor_is_agent` | green; `EXIT pilot log (fixture): launch-bound actor` |
+| D1 machine-owned folder, direct spelling refused | `guard_hook.py` (additions 3, 4), `settings.json` | `test_guard_refuses_writes_and_the_direct_spelling` (Write, Edit, MultiEdit, NotebookEdit, `>`, `>>`, `tee`, `tee -a`, `cp` into `projects/<p>/pilot/`; the direct spelling with and without the token), `test_writer_is_outside_the_guard_and_settings_agree`; `test_protected_paths.test_settings_equal_guard_patterns` | green |
+| D5 filter, every tool (D-iii) | `closed_output.py`, `tool_call.py`, registry `closed_output` | `test_closed_project_outputs.py`: `test_marker_absent_from_every_tool` (all 63 tools through the real dispatcher; four markers), `test_positive_control_markers_are_planted`, `test_count_matrix_failure_keeps_code_loses_detail`, `test_collect_never_returns_history_entry`, `test_door_keep_lists`, `test_filter_rules`, `test_registry_keep_lists` | green; `EXIT closed outputs (fixture): marker absent from every tool` |
+| D5 closed-call rule (M2), D-iv, D-v | `closed_output.closed`, `tool_call.py` | `test_outside_paths_refused_with_named_codes`, `test_raw_link_target_is_the_closed_project`, `test_contract_drift_with_the_guards_reader`; `test_pilot_doors.test_dispatcher_refuses_outside_paths`, `test_declared_source_is_not_outside` | green |
+| R-042 identity | — | `test_public_output_byte_identical_to_base` (the same workspace run under `e589ce8`'s `_system/` and this one: seven calls, byte-identical) | green |
+| D-i, D-ii doors | `guard_hook.py` | `test_pilot_doors.py`: `test_doors_are_the_eleven_of_ruling_d_i`, `test_dispatcher_spelling_allowed_on_closed`, `test_direct_spelling_refused_on_closed`, `test_direct_spelling_from_inside_the_closed_project`, `test_non_doors_refused_on_closed_in_both_spellings` (94 calls), `test_bare_outside_workspace_refused_by_addition_2` | green; `EXIT pilot doors (fixture): dispatcher allowed on closed` |
+| `rnaseq_de.summary` | `rnaseq_de.py`, its CONTEXT.md, registry | `test_door_keep_lists`, `check_contracts.py` | green |
+| D6 bring_home | `scripts/bring_home.py`, `closed_output.py` (`BRING_HOME`, `RERUN_REASONS`, `PATH_KINDS`) | `test_bring_home.py`: `test_failing_wrapper_detail_stays_on_the_cluster` (the ruling's test), `test_passing_rerun_is_carried_by_kind`, `test_reason_prefixes_bound_to_rerun_check`, `test_manifest_check_error_lines_withheld`, `test_fixed_format_sections` (the output read back by `unit_economics.read_quantities`), `test_refusals`, `test_contract_drift_with_the_dispatcher` | green; `EXIT bring home (fixture): detail withheld` |
+| Bindings re-checked (step A's residual) | — | `test_bring_home.test_bench_binding_to_8b_real_header`: the header of the real `benchmarks/backend_bench.csv` at this commit equals `e589ce8`'s; the header-only file reads as no backend; a copy with one row built by 8B's own `csv_row` (its evidence validation patched out, the row's fields and order 8B's) reads by header name as `slurm` under `institutional_allocation`; `bring_home.BENCH_FIELDS` equals 8B's `FIELDS`. `comparison.json`: the real `rerun_check.py` output, passing and failing, read by `bring_home` in `test_bring_home` | green |
+| 3.6.8 syntax | the new modules and tests | `ast.parse(..., feature_version=(3, 6))` | `ast36 ok` |
+
+The ruling's test, concretely: `test_bring_home` builds `test_rerun_check`'s disposable repository
+and stub `sbatch`/`sacct`, and before its commit injects into the fixture wrapper a replay-only
+`prepare` that runs the real `rnaseq_de.py check` on a design whose one sample the count matrix
+lacks. The real `rerun_check.py` CLI prints `run 1 match=no reason=wrapper prepare failed: {…
+"detail": "count matrix lacks column(s) for design sample(s): MARKER0141bringS4" …}` and writes
+the same into `comparison.json`; `bring_home`'s output holds `run 1 match=no reason=wrapper
+prepare failed`, `run 1 job=none match=no reason=wrapper prepare failed`, `reproduction: 0/1`,
+both sections' `sha256` lines, and neither the marker nor `count matrix`.
+
+### D-vi, carried from step A
+
+- **n1** — `tests/test_session_turns.py`: new `test_human_turn_outside_the_window_gets_no_attention_interval` (a turn at 09:30 in a 10:00–10:05 window: `outside minutes: 0.00`, `outside window: 1`; its twin at 10:03: `3.00`). It pins behaviour that was already so, and was green on arrival.
+- **n2** — `scripts/unit_economics.py` refuses a line starting `human turns:` off session_turns' shape as `quantity_malformed`; `docs/pilot/README.md` says so. Red first: the new assertions in `test_quantity_lines_canonical_or_refused` failed against the unchanged script (`Ran 18 tests` / `FAILED (failures=1)`, `AssertionError: 0 != 2`, the sheet written), then passed after the fix.
+- **n3** — a mis-stamped LAST main-thread record still moves `session wall minutes` and `agent active minutes`; named under Residual gaps.
+- **n4** — the `DecimalException` handlers in `scripts/rerun_diff.py` and `scripts/session_turns.py` are defensive and untested; kept.
+- **n5** — the three readings of L7 are recorded in 0141 as the lane's rulings.
+
+### Red at the parents
+
+The four new modules and `pilot_fixture.py` copied into `git archive` trees of `9220877` (step A)
+and `e589ce8`, run from each tree's root:
+
+```text
+9220877 test_pilot_log: ModuleNotFoundError: No module named 'pilot_log'
+9220877 test_closed_project_outputs: ImportError: cannot import name 'closed_output' from 'tools' (…/base-9220877/gars/_system/tools/__init__.py)
+9220877 test_bring_home: ModuleNotFoundError: No module named 'test_rerun_check'
+9220877 test_pilot_doors: FAILED (errors=1)
+e589ce8 test_pilot_log: ModuleNotFoundError: No module named 'pilot_log'
+e589ce8 test_closed_project_outputs: ImportError: cannot import name 'closed_output' from 'tools' (…/base-e589ce8/gars/_system/tools/__init__.py)
+e589ce8 test_bring_home: ImportError: cannot import name 'closed_output' from 'tools' (…/base-e589ce8/gars/_system/tools/__init__.py)
+e589ce8 test_pilot_doors: FAILED (failures=24, errors=1)
+```
+
+### Red-on-fault
+
+A driver in the scratch folder (not committed) copies the working tree, checks the four modules
+green in the copy, plants each fault alone, runs the module(s) named, and restores the file's
+bytes; the checkout is never modified. The brief's "a keep-list widened to history_entry or a
+failure detail" is planted as two faults. Verbatim (Python 3.8.2, three runs of the driver):
+
+```text
+baseline test_pilot_log: OK
+baseline test_closed_project_outputs: OK
+baseline test_bring_home: OK
+baseline test_pilot_doors: OK
+1. the filter skipped for one tool: RED; test_closed_project_outputs FAILED (failures=2, errors=1) test_count_matrix_failure_keeps_code_loses_detail, test_marker_absent_from_every_tool, test_raw_link_target_is_the_closed_project
+2. a keep-list widened to a failure detail: RED; test_closed_project_outputs FAILED (failures=4) test_count_matrix_failure_keeps_code_loses_detail, test_filter_rules, test_marker_absent_from_every_tool
+3. a keep-list widened to history_entry: RED; test_closed_project_outputs FAILED (failures=2) test_collect_never_returns_history_entry, test_registry_keep_lists
+4. the outside-path refusal removed: RED; test_pilot_doors FAILED (failures=5) test_bare_outside_workspace_refused_by_addition_2, test_declared_source_is_not_outside, test_dispatcher_refuses_outside_paths | test_closed_project_outputs FAILED (failures=2) test_outside_paths_refused_with_named_codes
+5. a guard refusal removed (addition 1): RED; test_pilot_doors FAILED (failures=14) test_direct_spelling_refused_on_closed
+6. the READ_ONLY pilot line removed: RED; test_pilot_log FAILED (failures=11) test_guard_refuses_writes_and_the_direct_spelling, test_writer_is_outside_the_guard_and_settings_agree
+7. the actor taken from an input: RED; test_pilot_log FAILED (failures=1) test_actor_is_the_launch_token
+8. end allowed across actors: RED; test_pilot_log FAILED (failures=6) test_end_and_abort_across_actors_refused, test_through_the_dispatcher_the_actor_is_agent
+9. the nonce check removed: RED; test_pilot_log FAILED (failures=2) test_refusals
+10. bring_home passing a reason tail: RED; test_bring_home FAILED (failures=2) test_failing_wrapper_detail_stays_on_the_cluster, test_reason_prefixes_bound_to_rerun_check
+11. a door echoing file content (keep-list widened to raw stdout): RED; test_closed_project_outputs FAILED (failures=3, errors=1) test_count_matrix_failure_keeps_code_loses_detail, test_filter_rules, test_marker_absent_from_every_tool, test_raw_link_target_is_the_closed_project
+12. a door reached by its direct spelling (D-ii's check removed): RED; test_pilot_doors FAILED (failures=16) test_bare_outside_workspace_refused_by_addition_2, test_direct_spelling_from_inside_the_closed_project, test_direct_spelling_refused_on_closed
+13. CLOSED_PROJECT_DOORS widened by one non-door tool: RED; test_pilot_doors FAILED (failures=2) test_doors_are_the_eleven_of_ruling_d_i, test_non_doors_refused_on_closed_in_both_spellings
+14. D-iv's exemption removed (a declared path refused): RED; test_pilot_doors FAILED (failures=1) test_declared_source_is_not_outside
+15. D-iv's exemption widened to any outside path: RED; test_pilot_doors FAILED (failures=5) test_bare_outside_workspace_refused_by_addition_2, test_declared_source_is_not_outside, test_dispatcher_refuses_outside_paths
+```
+
+Each run's last line: `red-on-fault: 3/3 RED`, `red-on-fault: 7/7 RED`, `red-on-fault: 5/5 RED`
+(15 of 15). The driver's first attempt passed a relative copy path, so every module failed to
+start and every line read RED for the wrong reason; that output was discarded, the driver now
+refuses to count a module that printed no unittest summary, and the lines above are its rerun.
+
+| Fault planted | Where |
+|---|---|
+| filter skipped for one tool | `tool_call.py`: no filter for `rnaseq_de.check` |
+| failure detail kept | `closed_output._failures` keeps `detail` |
+| `history_entry` kept | `rnaseq_de.collect`'s keep-list and `RULES` gain it |
+| outside-path refusal removed | `closed()`'s `path_outside_workspace` raise → `pass` |
+| guard refusal removed | addition 1's `if project is not None` → `if False` |
+| `READ_ONLY` pilot line removed | `guard_hook.READ_ONLY` |
+| actor from an input | `pilot_log.py` gains `--actor` and uses it |
+| end across actors | `owned_open_span`'s actor check → `if False` |
+| nonce check removed | `load()`'s nonce comparison → `if False` |
+| reason tail passed | `reason_prefix` returns the whole reason |
+| door echoes raw stdout | `filter_output` returns `rnaseq_de.check`'s stdout unfiltered |
+| door by direct spelling | additions 1–2 skip `CLOSED_PROJECT_DOORS` names |
+| doors widened | `executor.cancel` added to `CLOSED_PROJECT_DOORS` |
+| D-iv removed | the declared-source `continue` → `pass` |
+| D-iv widened | the declared-source test also accepts any path outside the workspace root |
+
+### Commands and summary lines (verbatim)
+
+All from the repo root, in the foreground, one module at a time, with `TMPDIR`, `TEMP` and `TMP`
+in the scratch folder and `GARS_TEST_NO_CONTAINER=1`; `python3` is CPython 3.8.2.
+
+| Command | Summary |
+|---|---|
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/check_counts.py` | `clean — every current claim matches the suite` (781, from unittest's loader) |
+| `python3.13 evals/test_harness.py` (CPython 3.13.2) | `Ran 44 tests in 148.774s` / `OK` |
+| `python3 gars/tests/test_pilot_log.py` | `Ran 15 tests` / `OK`; `EXIT pilot log (fixture): launch-bound actor` |
+| `python3 gars/tests/test_closed_project_outputs.py` | `Ran 11 tests` / `OK`; `EXIT closed outputs (fixture): marker absent from every tool` |
+| `python3 gars/tests/test_bring_home.py` | `Ran 9 tests` / `OK`; `EXIT bring home (fixture): detail withheld` |
+| `python3 gars/tests/test_pilot_doors.py` | `Ran 8 tests` / `OK`; `EXIT pilot doors (fixture): dispatcher allowed on closed` |
+| the same four under `python3.13` (3.13.2) | `Ran 15` / `OK`, `Ran 11` / `OK`, `Ran 9` / `OK`, `Ran 8` / `OK`, each with its `EXIT` line |
+| `python3 tests/test_session_turns.py`, `test_unit_economics.py`, `test_rerun_diff.py` (3.8.2 and 3.13.2) | `Ran 11` / `OK`, `Ran 18` / `OK`, `Ran 8` / `OK`, each with its `EXIT` line |
+| `python3 gars/tests/test_nonpublic_read_block.py` | `Ran 20 tests in 77.550s` / **`FAILED (failures=20)`** — see Owner rulings needed |
+| `python3 gars/tests/test_rerun_check.py` | `Ran 26 tests in 139.087s` / `OK` |
+| `python3 gars/tests/test_protected_paths.py` | `Ran 5 tests in 17.828s` / `OK` |
+| `test_tool_schema_refusal`, `test_role_profiles`, `test_policy_faults`, `test_execution_policy`, `test_guard_hook`, `test_policy_attacks`, `test_wrapper_contract`, `test_approval_forgery` | `OK` each (8, 6, 10, 7, 4, 19, 1, 12 tests) |
+| `ast.parse(..., feature_version=(3, 6))` on the new and changed modules and tests | `ast36 ok` |
+| `bash docs/decisions/build_index.sh` | one row added (0141) |
+| `python3 tests/test_decision_links_resolve.py` | `Ran 3 tests` / `OK` once 0141 is staged (it reads citations through `git ls-files`) |
+| `git diff --check` | clean |
+
+**Not run by this producer: the whole suite (`tests/run_tests.py`).** Another lane may hold this
+machine, so the brief forbids it; the lane runs it on a separate host from a fresh clone of this
+commit. The count moves from 737 to 781 (43 new step-B tests and n1's), and `README.md` and
+`DEVELOPMENT.md` say so. Docker was not started.
+
+### Hours
+
+Not metered by this producer: unknown, not zero.
+
+## Owner rulings needed
+
+One item, for the lane (not the owner's classification question; nothing here reclassifies data).
+
+**`gars/tests/test_nonpublic_read_block.py` asserts 0107's empty door list, and ruling D-i
+changes it.** The brief asks for that module "still green" and does not put it within this
+step's bounds, so it is not edited here. Four of its methods fail, all by D-i's design and none
+by a leak (every direct spelling is still refused, and every door's output is filtered):
+
+1. `DoorTests.test_door_mechanism`: `assertEqual(guard_hook.CLOSED_PROJECT_DOORS, ())`.
+2. `Q8Tests.test_q8_alone`: its `door_hook` helper asserts the literal line
+   `CLOSED_PROJECT_DOORS = ()                   # empty in this lane (0107)` exists once.
+3. `EveryToolTests.test_every_registered_tool`: 12 subtests, the dispatcher spelling of
+   `resolve_artifact`, `rnaseq_de.check`, `rnaseq_de.prepare`, `rnaseq_de.summary`,
+   `executor.submit` and `executor.status` on `projects/pilot` and `projects/fresh`, which D-i
+   now allows. (`rnaseq_de.collect` and the `pilot_log.*` doors still fail there for other
+   reasons: no prepared manifest; a `log` value the schema refuses.)
+4. `EveryToolTests.test_cwd_inside_closed_project`: 6 subtests, the same six doors' dispatcher
+   spelling from a session cwd inside `projects/pilot`, naming the public project by absolute
+   path. The door `return` precedes 0107's cwd check (a base fact), and D5's guard additions
+   judge the direct spelling only; the dispatcher then judges the paths from that cwd too.
+
+Asked: a ruling to update those four assertions in the same change, e.g. (1) expect the eleven
+names, (2) match the new `CLOSED_PROJECT_DOORS` line or build `door_hook` from the constant,
+(3) and (4) exempt `CLOSED_PROJECT_DOORS` names in the dispatcher spelling (their direct
+spelling stays refused and is still checked), or a different test the lane prefers. Until then
+the whole suite is red in these 20 subtests.
+
+## Residual gaps
+
+- **NOT met: row 13's exit.** No pilot has run; human-touch minutes are not measured and no
+  re-run diff is explained. Every number is a synthetic fixture.
+- **`test_nonpublic_read_block.py` red in four methods** until the ruling above.
+- **D8's "not covered" list** (0141), each NOT met: a tool with no keep-list is fully withheld;
+  the SessionStart hook's prints (0107 residual 2); what a human types or pastes; a human writing
+  `agent` rows; closed data a human copies inside the workspace outside `projects/`; a forgotten
+  human span with no human turn; the truth of the baseline; the summary thresholds' adequacy.
+- **The path rule** judges a string as a path when it holds a separator or names something that
+  exists; a bare word naming nothing is not judged (0141, "What this does not close").
+- **The direct spelling of `pilot_log.py end|abort|check`** is refused by the transport's parse
+  (`R-092`: a four-token registry argv prefix matches only the first `pilot_log` entry in
+  `policy.parse_argv`, which is out of bounds here) before guard addition 3 is reached; `begin`
+  reaches addition 3. Both refuse; only the message differs.
+- **The stage 01–03 contract prose** still describes in-project agent reads (0107 item 11); a
+  named follow-up.
+- **n3:** a mis-stamped LAST main-thread record still moves `session wall minutes` and
+  `agent active minutes`.
+- **n4:** the `DecimalException` handlers in `rerun_diff.py` and `session_turns.py` are defensive
+  and untested.
+- **Not run here:** the whole suite; Python 3.6.8 execution (syntax only); any cluster run;
+  `import-tool` against a real slurm record.
+- **Review:** the fresh-context review has not happened; 0144 (Glitch's delegated approval of the
+  protected changes) and 0142/0143 (the owner's) are not written by this producer.

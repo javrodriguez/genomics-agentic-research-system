@@ -339,6 +339,14 @@ class UnitEconomicsTests(unittest.TestCase):
         self.assertEqual(ue.canonical_decimal('0.20'), '0.2')
         self.assertEqual(ue.canonical_decimal('100'), '100')
         self.assertEqual(ue.canonical_decimal('000.000'), '0')
+        # Step B, D-vi n2: a line starting `human turns:` off the session_turns shape is refused,
+        # never counted and ignored.
+        session = [l for l in quantities.splitlines() if l.startswith('human turns:')][0]
+        for line in (session.replace('; outside window: 0', ''),
+                     session.replace('1.50', '1.5'), session + ' ', 'human turns: 6',
+                     session.replace('graded 14 of 14 records', 'graded 14 of 15 records x')):
+            self.assert_refused('quantity_malformed', quantities=self.variant(
+                'bad-session.txt', quantities + line + '\n'))
         print('red-on-fault guard: malformed quantity lines refused; repeats compared canonically')
 
     def test_refusal_codes_do_not_depend_on_the_interpreter(self):

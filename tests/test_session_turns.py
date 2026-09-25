@@ -274,6 +274,23 @@ class SessionTurnsTests(unittest.TestCase):
                          (2, '', 'refused: session_window_inverted\n'))
         print('red-on-fault guard: a record outside the session window moves no minute')
 
+    def test_human_turn_outside_the_window_gets_no_attention_interval(self):
+        # Step B, D-vi n1 (the lane's reading of L7, confirmed): a human turn whose timestamp lies
+        # outside the session window counts as a turn and as an outside span, and adds no minute.
+        # Its twin inside the window gets its interval from the latest earlier record.
+        outside = [assistant('2026-01-15T10:00:00Z'), user('2026-01-15T09:30:00Z', 'early'),
+                   assistant('2026-01-15T10:05:00Z')]
+        self.assertEqual(self.line(outside, []),
+                         'human turns: 1; inside spans: 0; outside spans: 1; outside minutes: '
+                         '0.00; session wall minutes: 5.00; agent active minutes: 5.00; outside '
+                         'window: 1; graded 3 of 3 records\n')
+        inside = [assistant('2026-01-15T10:00:00Z'), user('2026-01-15T10:03:00Z', 'late'),
+                  assistant('2026-01-15T10:05:00Z')]
+        self.assertEqual(self.line(inside, []),
+                         'human turns: 1; inside spans: 0; outside spans: 1; outside minutes: '
+                         '3.00; session wall minutes: 5.00; agent active minutes: 5.00; outside '
+                         'window: 0; graded 3 of 3 records\n')
+
     def test_refusal_codes_do_not_depend_on_the_interpreter(self):
         # The lane's 3.13 host refused a NUL log row as `log_minutes` where 3.8 said
         # `log_malformed`: csv reads NUL as data from 3.11. A long integer in an extra key must

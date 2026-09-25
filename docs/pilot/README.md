@@ -57,8 +57,9 @@ A bring-home text file. `unit_economics.py` reads **only** lines of exactly thes
 and ignores every other line, printing `quantities: graded <k> of <n> lines` (k matched, n
 total) — except that a line starting with the word `quantity`, in any case and after any
 leading whitespace, which matches neither quantity shape (an extra space, a capital, a tab, a
-sign, an unknown backend) is refused as `quantity_malformed` (rulings L4 and n2); a word that
-only begins with it (`quantity_notes`) is another line, counted and ignored:
+sign, an unknown backend) is refused as `quantity_malformed` (rulings L4 and n2), and so is a
+line starting `human turns:` that is not the session_turns shape below (step B, D-vi n2); a word
+that only begins with `quantity` (`quantity_notes`) is another line, counted and ignored:
 
 - `quantity samples_in_design <non-negative integer>`
 - `quantity cpu_hours <backend> <non-negative decimal>`, backend one of `local`, `homelab`, `slurm`

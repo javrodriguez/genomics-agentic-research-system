@@ -65,6 +65,11 @@ level missing or under-sampled), `counts` (a design sample absent from the matri
 "design is not the canonical project design" when `--design` does not resolve to
 `01_samplesheets/rnaseq_bulk_design.csv` in the project.
 
+**Summary verb (decision 0141).** `python3 _system/wrappers/rnaseq-de/rnaseq_de.py summary
+--project projects/<title>` prints aggregates of the run: genes tested, `padj < 0.05` up and
+down, `padj < 0.1`, NA padj, samples in the design, the gate's codes and STATUS. Failure codes:
+`preconditions` (no DE table), `de_results`, `uncorrected_pvalues`.
+
 **Execution venue.** Always the workspace's configured executor — `_config/executor.yaml`
 names it (decision 0039); on this cluster that is Slurm (decision 0027, no opt-out). The generated `submit.sh`
 first runs `adapt_counts.py` (stdlib), then `run_de.py` under `$GARS_PY` — pandas, pydeseq2,

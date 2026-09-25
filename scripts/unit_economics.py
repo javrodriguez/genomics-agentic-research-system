@@ -18,8 +18,9 @@ What the sheet refuses (exit 2, `refused: <reason>` on stderr, nothing written):
 - a bench row whose derived fields do not recompute: its cost must be `unmetered` under an
   `owned_hardware` or `institutional_allocation` basis; a number there is a hand-typed cost;
 - a line starting `quantity` (any case, after leading whitespace) that is not one of the fixed
-  shapes (`quantity_malformed`), and a quantity repeated with a different canonical value
-  (`quantity_conflict`);
+  shapes (`quantity_malformed`), a line starting `human turns:` that is not the session_turns
+  shape (`quantity_malformed`, step B's D-vi n2), and a quantity repeated with a different
+  canonical value (`quantity_conflict`);
 - input that crashes a parser (a NUL byte, runaway nesting): a fixed code, never a traceback;
 - a number too large to print to the cent, or an exponent past the decimal context
   (`value_out_of_range`).
@@ -62,7 +63,8 @@ NUMBER = re.compile(r"^[0-9]+(\.[0-9]+)?$")
 
 # The three bring-home line shapes this sheet grades (docs/pilot/README.md); a line starting
 # starting `quantity` in any case after leading whitespace must match one of the first two (rulings
-# L4 and n2), every other line is counted and ignored.
+# L4 and n2), a line starting `human turns:` must match the third (step B, D-vi n2), and every
+# other line is counted and ignored.
 QUANTITY_PREFIX = re.compile(r"^\s*quantity\b", re.I)
 QUANTITY_SAMPLES = re.compile(r"^quantity samples_in_design ([0-9]+)$")
 QUANTITY_CPU = re.compile(r"^quantity cpu_hours (local|homelab|slurm) ([0-9]+(?:\.[0-9]+)?)$")
@@ -288,6 +290,10 @@ def read_quantities(path):
                 raise Refused("quantity_session_inconsistent")
             keep("session", (turns, inside, outside, str(Decimal(m.group(4)))))
             graded += 1
+            continue
+        if line.startswith("human turns:"):
+            # A session line off its fixed shape is refused, never ignored (step B, D-vi n2).
+            raise Refused("quantity_malformed")
     return found, graded, len(lines)
 
 

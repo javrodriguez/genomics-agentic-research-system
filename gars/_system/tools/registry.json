@@ -12,6 +12,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run stage00_register assays",
       "input_schema": {
         "additionalProperties": false,
@@ -71,6 +72,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run stage00_register create",
       "input_schema": {
         "additionalProperties": false,
@@ -147,6 +149,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run stage00_register inspect",
       "input_schema": {
         "additionalProperties": false,
@@ -234,6 +237,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run stage00_register link",
       "input_schema": {
         "additionalProperties": false,
@@ -351,6 +355,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run stage00_register finalize",
       "input_schema": {
         "additionalProperties": false,
@@ -486,6 +491,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Stage 01 \u2014 validate the experimental design and emit workflow-ready samplesheets.",
       "input_schema": {
         "additionalProperties": false,
@@ -571,6 +577,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run configure genomes",
       "input_schema": {
         "additionalProperties": false,
@@ -639,6 +646,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run configure peaks",
       "input_schema": {
         "additionalProperties": false,
@@ -698,6 +706,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run configure protocols",
       "input_schema": {
         "additionalProperties": false,
@@ -765,6 +774,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run configure contrasts",
       "input_schema": {
         "additionalProperties": false,
@@ -876,6 +886,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run configure apply",
       "input_schema": {
         "additionalProperties": false,
@@ -985,6 +996,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run stage03_analysis create",
       "input_schema": {
         "additionalProperties": false,
@@ -1057,6 +1069,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run stage03_analysis approve",
       "input_schema": {
         "additionalProperties": false,
@@ -1134,6 +1147,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run stage03_analysis verify",
       "input_schema": {
         "additionalProperties": false,
@@ -1222,6 +1236,11 @@
           "nargs": null
         }
       },
+      "closed_output": [
+        "ok",
+        "missing",
+        "resolved"
+      ],
       "description": "Resolve a sub-stage's inputs by artifact type, from the OUTPUTS.tsv of completed sub-stages.",
       "input_schema": {
         "additionalProperties": false,
@@ -1313,6 +1332,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_atacseq_wrapper check",
       "input_schema": {
         "additionalProperties": false,
@@ -1374,6 +1394,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_atacseq_wrapper prepare",
       "input_schema": {
         "additionalProperties": false,
@@ -1439,6 +1460,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_atacseq_wrapper collect",
       "input_schema": {
         "additionalProperties": false,
@@ -1504,6 +1526,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_chipseq_wrapper check",
       "input_schema": {
         "additionalProperties": false,
@@ -1565,6 +1588,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_chipseq_wrapper prepare",
       "input_schema": {
         "additionalProperties": false,
@@ -1630,6 +1654,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_chipseq_wrapper collect",
       "input_schema": {
         "additionalProperties": false,
@@ -1699,6 +1724,7 @@
           "nargs": 0
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_cutandrun_wrapper check",
       "input_schema": {
         "additionalProperties": false,
@@ -1767,6 +1793,7 @@
           "nargs": 0
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_cutandrun_wrapper prepare",
       "input_schema": {
         "additionalProperties": false,
@@ -1835,6 +1862,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_cutandrun_wrapper collect",
       "input_schema": {
         "additionalProperties": false,
@@ -1900,6 +1928,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_methylseq_wrapper check",
       "input_schema": {
         "additionalProperties": false,
@@ -1961,6 +1990,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_methylseq_wrapper prepare",
       "input_schema": {
         "additionalProperties": false,
@@ -2026,6 +2056,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_methylseq_wrapper collect",
       "input_schema": {
         "additionalProperties": false,
@@ -2091,6 +2122,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_rnaseq_wrapper check",
       "input_schema": {
         "additionalProperties": false,
@@ -2152,6 +2184,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_rnaseq_wrapper prepare",
       "input_schema": {
         "additionalProperties": false,
@@ -2217,6 +2250,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_rnaseq_wrapper collect",
       "input_schema": {
         "additionalProperties": false,
@@ -2282,6 +2316,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_scrnaseq_wrapper check",
       "input_schema": {
         "additionalProperties": false,
@@ -2343,6 +2378,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_scrnaseq_wrapper prepare",
       "input_schema": {
         "additionalProperties": false,
@@ -2408,6 +2444,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_scrnaseq_wrapper collect",
       "input_schema": {
         "additionalProperties": false,
@@ -2473,6 +2510,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_spatialvi_wrapper check",
       "input_schema": {
         "additionalProperties": false,
@@ -2534,6 +2572,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_spatialvi_wrapper prepare",
       "input_schema": {
         "additionalProperties": false,
@@ -2599,6 +2638,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run nfcore_spatialvi_wrapper collect",
       "input_schema": {
         "additionalProperties": false,
@@ -2672,6 +2712,11 @@
           "nargs": null
         }
       },
+      "closed_output": [
+        "ok",
+        "failures",
+        "wrote"
+      ],
       "description": "Run rnaseq_de check",
       "input_schema": {
         "additionalProperties": false,
@@ -2751,6 +2796,11 @@
           "nargs": null
         }
       },
+      "closed_output": [
+        "ok",
+        "failures",
+        "wrote"
+      ],
       "description": "Run rnaseq_de prepare",
       "input_schema": {
         "additionalProperties": false,
@@ -2830,6 +2880,13 @@
           "nargs": null
         }
       },
+      "closed_output": [
+        "ok",
+        "failures",
+        "outputs",
+        "template_version",
+        "model"
+      ],
       "description": "Run rnaseq_de collect",
       "input_schema": {
         "additionalProperties": false,
@@ -2889,6 +2946,78 @@
     {
       "argv": [
         "python3",
+        "_system/wrappers/rnaseq-de/rnaseq_de.py",
+        "summary"
+      ],
+      "assay": "rnaseq_bulk",
+      "cli": {
+        "project": {
+          "flag": "--project",
+          "nargs": null
+        }
+      },
+      "closed_output": [
+        "ok",
+        "command",
+        "assay",
+        "status",
+        "failures",
+        "gate",
+        "genes_tested",
+        "padj_lt_0.05",
+        "padj_lt_0.1",
+        "na_padj",
+        "samples_in_design"
+      ],
+      "description": "Run rnaseq_de summary",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "type": "object"
+      },
+      "name": "rnaseq_de.summary",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [],
+      "substage": "02_rnaseq-de",
+      "timeout_seconds": 120,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
         "_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py",
         "check"
       ],
@@ -2903,6 +3032,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run scrna_qc_cluster check",
       "input_schema": {
         "additionalProperties": false,
@@ -2972,6 +3102,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run scrna_qc_cluster prepare",
       "input_schema": {
         "additionalProperties": false,
@@ -3045,6 +3176,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run scrna_qc_cluster collect",
       "input_schema": {
         "additionalProperties": false,
@@ -3118,6 +3250,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run spatial_cluster_count check",
       "input_schema": {
         "additionalProperties": false,
@@ -3187,6 +3320,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run spatial_cluster_count prepare",
       "input_schema": {
         "additionalProperties": false,
@@ -3260,6 +3394,7 @@
           "nargs": null
         }
       },
+      "closed_output": [],
       "description": "Run spatial_cluster_count collect",
       "input_schema": {
         "additionalProperties": false,
@@ -3332,6 +3467,13 @@
           "nargs": null
         }
       },
+      "closed_output": [
+        "ok",
+        "job_id",
+        "state",
+        "terminal",
+        "refusal"
+      ],
       "description": "submit through the existing executor",
       "input_schema": {
         "additionalProperties": false,
@@ -3400,6 +3542,13 @@
           "nargs": null
         }
       },
+      "closed_output": [
+        "ok",
+        "job_id",
+        "state",
+        "terminal",
+        "refusal"
+      ],
       "description": "status through the existing executor",
       "input_schema": {
         "additionalProperties": false,
@@ -3469,6 +3618,13 @@
           "nargs": null
         }
       },
+      "closed_output": [
+        "ok",
+        "job_id",
+        "state",
+        "terminal",
+        "refusal"
+      ],
       "description": "cancel a recorded job; executor checks job/backend approval after one hour",
       "input_schema": {
         "additionalProperties": false,
@@ -3525,9 +3681,352 @@
     },
     {
       "argv": [
+        "python3",
+        "_system/pilot_log.py",
+        "begin",
+        "--launched-by-dispatcher"
+      ],
+      "cli": {
+        "action": {
+          "flag": "--action",
+          "nargs": null
+        },
+        "log": {
+          "flag": "--log",
+          "nargs": null
+        },
+        "reason": {
+          "flag": "--reason",
+          "nargs": null
+        },
+        "stage": {
+          "flag": "--stage",
+          "nargs": null
+        }
+      },
+      "closed_output": [
+        "*"
+      ],
+      "description": "Run pilot_log begin (actor bound at launch; decision 0141)",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "read_contract",
+              "resolve_inputs",
+              "check",
+              "prepare",
+              "submit",
+              "poll_status",
+              "collect",
+              "summarize",
+              "fill_config",
+              "approve_plan",
+              "fix_input",
+              "rerun",
+              "review_output",
+              "verify_result",
+              "interpret",
+              "draft_claims",
+              "write_report",
+              "wait_queue",
+              "compute",
+              "setup",
+              "break",
+              "other"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "log": {
+            "minLength": 1,
+            "pattern": "projects/(?!\\.)[A-Za-z0-9_.-]+/pilot/pilot1_log\\.csv",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "approval",
+              "fix",
+              "rerun",
+              "data",
+              "interpretation",
+              "other"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
+          "stage": {
+            "enum": [
+              "00_register",
+              "01_samplesheets",
+              "02_01_counts",
+              "02_02_de",
+              "rerun",
+              "report",
+              "other"
+            ],
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "log",
+          "reason",
+          "stage"
+        ],
+        "type": "object"
+      },
+      "name": "pilot_log.begin",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "pilot log sidecar"
+      ],
+      "timeout_seconds": 30,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/pilot_log.py",
+        "end",
+        "--launched-by-dispatcher"
+      ],
+      "cli": {
+        "log": {
+          "flag": "--log",
+          "nargs": null
+        },
+        "span": {
+          "flag": null,
+          "nargs": null
+        }
+      },
+      "closed_output": [
+        "*"
+      ],
+      "description": "Run pilot_log end (actor bound at launch; decision 0141)",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "log": {
+            "minLength": 1,
+            "pattern": "projects/(?!\\.)[A-Za-z0-9_.-]+/pilot/pilot1_log\\.csv",
+            "type": "string"
+          },
+          "span": {
+            "minLength": 1,
+            "pattern": "[0-9a-f]{16}",
+            "type": "string"
+          }
+        },
+        "required": [
+          "log",
+          "span"
+        ],
+        "type": "object"
+      },
+      "name": "pilot_log.end",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "pilot log append"
+      ],
+      "timeout_seconds": 30,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/pilot_log.py",
+        "abort",
+        "--launched-by-dispatcher"
+      ],
+      "cli": {
+        "log": {
+          "flag": "--log",
+          "nargs": null
+        },
+        "span": {
+          "flag": null,
+          "nargs": null
+        }
+      },
+      "closed_output": [
+        "*"
+      ],
+      "description": "Run pilot_log abort (actor bound at launch; decision 0141)",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "log": {
+            "minLength": 1,
+            "pattern": "projects/(?!\\.)[A-Za-z0-9_.-]+/pilot/pilot1_log\\.csv",
+            "type": "string"
+          },
+          "span": {
+            "minLength": 1,
+            "pattern": "[0-9a-f]{16}",
+            "type": "string"
+          }
+        },
+        "required": [
+          "log",
+          "span"
+        ],
+        "type": "object"
+      },
+      "name": "pilot_log.abort",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [
+        "pilot log sidecar"
+      ],
+      "timeout_seconds": 30,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
+        "python3",
+        "_system/pilot_log.py",
+        "check",
+        "--launched-by-dispatcher"
+      ],
+      "cli": {
+        "log": {
+          "flag": "--log",
+          "nargs": null
+        }
+      },
+      "closed_output": [
+        "*"
+      ],
+      "description": "Run pilot_log check (actor bound at launch; decision 0141)",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "log": {
+            "minLength": 1,
+            "pattern": "projects/(?!\\.)[A-Za-z0-9_.-]+/pilot/pilot1_log\\.csv",
+            "type": "string"
+          }
+        },
+        "required": [
+          "log"
+        ],
+        "type": "object"
+      },
+      "name": "pilot_log.check",
+      "network_required": false,
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "exit_code": {
+            "type": "integer"
+          },
+          "stderr": {
+            "type": "string"
+          },
+          "stdout": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
+        "type": "object"
+      },
+      "roles": {
+        "human": "allow",
+        "producer": "allow",
+        "reviewer": "refuse"
+      },
+      "side_effects": [],
+      "timeout_seconds": 30,
+      "version": "1.0.0"
+    },
+    {
+      "argv": [
         "ls"
       ],
       "cli": {},
+      "closed_output": [],
       "description": "Read-only filesystem list",
       "filesystem": true,
       "input_schema": {
@@ -3595,6 +4094,7 @@
         "cat"
       ],
       "cli": {},
+      "closed_output": [],
       "description": "Read-only filesystem read",
       "filesystem": true,
       "input_schema": {
@@ -3657,6 +4157,7 @@
         "head"
       ],
       "cli": {},
+      "closed_output": [],
       "description": "Read-only filesystem head",
       "filesystem": true,
       "input_schema": {
@@ -3719,6 +4220,7 @@
         "tail"
       ],
       "cli": {},
+      "closed_output": [],
       "description": "Read-only filesystem tail",
       "filesystem": true,
       "input_schema": {
@@ -3781,6 +4283,7 @@
         "stat"
       ],
       "cli": {},
+      "closed_output": [],
       "description": "Read-only filesystem metadata",
       "filesystem": true,
       "input_schema": {
@@ -3843,6 +4346,7 @@
         "shasum"
       ],
       "cli": {},
+      "closed_output": [],
       "description": "Read-only filesystem checksum",
       "filesystem": true,
       "input_schema": {
@@ -3907,6 +4411,7 @@
         "wc"
       ],
       "cli": {},
+      "closed_output": [],
       "description": "Read-only filesystem lines",
       "filesystem": true,
       "input_schema": {
@@ -3971,6 +4476,7 @@
         "grep"
       ],
       "cli": {},
+      "closed_output": [],
       "description": "Read-only filesystem search",
       "filesystem": true,
       "input_schema": {
@@ -4042,6 +4548,7 @@
         "rg"
       ],
       "cli": {},
+      "closed_output": [],
       "description": "Read-only filesystem inspect",
       "filesystem": true,
       "input_schema": {
@@ -4112,6 +4619,7 @@
         "find"
       ],
       "cli": {},
+      "closed_output": [],
       "description": "Read-only filesystem find",
       "filesystem": true,
       "input_schema": {

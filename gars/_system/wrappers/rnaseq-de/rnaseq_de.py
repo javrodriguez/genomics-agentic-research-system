@@ -25,6 +25,9 @@ Subcommands:
            matrix, all three figures and the report real. Writes OUTPUTS.tsv (de_results
            native, counts_gene adapted, gene_id_map native), the lifecycle state file, and returns the history
            entry (template version + model + which sub-stage supplied the counts).
+  summary  aggregates of a completed run, for a non-public project's door (decision 0141):
+           genes tested, padj < 0.05 up/down, padj < 0.1, NA padj, design size, gate codes
+           and STATUS; never a gene, a sample, a path or a failure's detail.
 
 Inputs `--counts` and `--design` are the PATHS the router resolved by artifact type
 (_system/resolve_artifact.py) — this wrapper never searches for them itself.
@@ -476,6 +479,71 @@ def cmd_collect(args):
     return emit(result, EXIT_OK)
 
 
+def cmd_summary(args):
+    """Aggregates of a completed DE run, for a non-public project's door (decision 0141): counts
+    and codes only -- never a gene, a sample, a path or a failure's detail."""
+    result = {"command": "summary", "ok": False, "assay": ASSAY, "failures": []}
+    project = Path(args.project)
+    if not project.is_dir():
+        result["failures"] = [{"check": "preconditions"}]
+        return emit(result, EXIT_USAGE)
+    substage = paths_for(project)["substage"]
+    try:
+        status = wl.read_status(substage) or "NOT_STARTED"
+    except (OSError, UnicodeError):
+        status = "unrecognized"
+    result["status"] = status if status in ("NOT_STARTED", "CREATED", "SUBMITTED", "RUNNING",
+                                            "VALIDATING", "COMPLETE", "FAILED",
+                                            "CANCELLED") else "unrecognized"
+    design_path = project / "01_samplesheets" / ("%s_design.csv" % ASSAY)
+    try:
+        with design_path.open() as fh:
+            result["samples_in_design"] = len(list(csv.DictReader(fh)))
+    except (OSError, UnicodeError, csv.Error):
+        result["samples_in_design"] = None
+    de = substage / "run" / "tables" / "de_results.csv"
+    try:
+        with de.open() as fh:
+            rows = list(csv.reader(fh))
+    except (OSError, UnicodeError, csv.Error):
+        result["failures"] = [{"check": "preconditions"}]
+        return emit(result, EXIT_FAILURE)
+    gate = []
+    header = [c.strip().lower() for c in rows[0]] if rows else []
+    if not rows or rows[0][0] != "gene" or any(not r or not r[0].strip() for r in rows[1:]) \
+            or "padj" not in header or "log2foldchange" not in header:
+        gate.append("de_results")
+    try:
+        gate.extend(f["check"] for f in check_table(de))
+    except (OSError, ValueError):
+        gate.append("uncorrected_pvalues")
+    missing = {"", "na", "nan", "null"}
+    up = down = below_01 = na = 0
+    if "de_results" not in gate:
+        lfc_at, padj_at = header.index("log2foldchange"), header.index("padj")
+        try:
+            for r in rows[1:]:
+                padj = r[padj_at].strip().lower() if len(r) > padj_at else ""
+                if padj in missing:
+                    na += 1
+                    continue
+                q = float(padj)
+                lfc = r[lfc_at].strip().lower() if len(r) > lfc_at else ""
+                if q < 0.1:
+                    below_01 += 1
+                if q < 0.05 and lfc not in missing:
+                    up += int(float(lfc) > 0)
+                    down += int(float(lfc) < 0)
+        except ValueError:
+            gate.append("de_results")
+    result.update({"genes_tested": max(0, len(rows) - 1), "padj_lt_0.05": {"up": up,
+                   "down": down}, "padj_lt_0.1": below_01, "na_padj": na,
+                   "gate": sorted(set(gate))})
+    result["failures"] = [{"check": code} for code in result["gate"]]
+    result["ok"] = not gate
+    return emit(result, EXIT_OK if result["ok"] else EXIT_FAILURE)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd")
@@ -494,11 +562,14 @@ def main(argv=None):
                    help="the sub-stage that supplied the counts, from the resolver")
     t = sub.add_parser("check-table")
     t.add_argument("--table", required=True)
+    m = sub.add_parser("summary")
+    m.add_argument("--project", required=True)
     args = ap.parse_args(argv)
     if not args.cmd:
         ap.print_help(sys.stderr)
         return EXIT_USAGE
-    return {"check": cmd_check, "prepare": cmd_prepare, "collect": cmd_collect, "check-table": cmd_check_table}[args.cmd](args)
+    return {"check": cmd_check, "prepare": cmd_prepare, "collect": cmd_collect, "check-table": cmd_check_table,
+            "summary": cmd_summary}[args.cmd](args)
 
 
 if __name__ == "__main__":

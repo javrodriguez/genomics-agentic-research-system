@@ -74,6 +74,7 @@ READ_ONLY = [
     "projects/*/.STATUS.lock",
     "projects/*/STATUS",  # R-151: only code writes lifecycle state (the owner, 13A).
     "projects/*/00_data/*/files.csv",
+    "projects/*/pilot/*",  # the pilot log and its sidecar: only pilot_log.py writes them (0141)
     "projects/*/00_data/dataset.tsv",
     "projects/*/01_samplesheets/*",
     # The stage 03 approval record: written only by `stage03_analysis.py approve` (0042).
@@ -113,7 +114,7 @@ DECLARATIONS = "data_sources.tsv"
 DECLARATIONS_HEADER = ["source", "data_class", "declared_by"]
 OPEN_IN_CLOSED_EXACT = (DATASET_ROW,)
 OPEN_IN_CLOSED_BASENAME = ("STATUS",)
-CLOSED_PROJECT_DOORS = ()                   # empty in this lane (0107)
+CLOSED_PROJECT_DOORS = ("resolve_artifact", "rnaseq_de.check", "rnaseq_de.prepare", "rnaseq_de.collect", "rnaseq_de.summary", "executor.submit", "executor.status", "pilot_log.begin", "pilot_log.end", "pilot_log.abort", "pilot_log.check")  # row 13, dispatcher spelling only, output filtered (0141)
 # What `stage00_register.py create` leaves in a project, project-relative; `{assay}` stands for
 # each assay directory under 00_data/. Bound to the real `create` by a drift test (0107).
 CREATE_STAMP = (
@@ -816,6 +817,36 @@ def closed_bash_refusal(tool, args, tokens, root, cwd):
              "their own terminal, or to declare the source."
              % (name.split(".")[1], failed or "this call is not a declared registration",
                 CLOSED_WHY))
+    # Row 13 (decision 0141), addition 3: an agent reaches the pilot log's writer only through
+    # the dispatcher, whose registry argv carries the launch token that makes the actor `agent`.
+    if not dispatcher and os.path.realpath(os.path.join(cwd, tokens[1])) == os.path.realpath(
+            os.path.join(root, "_system", "pilot_log.py")):
+        deny("Blocked: _system/pilot_log.py is the pilot log's writer. An agent session reaches it "
+             "only through the dispatcher, which binds the actor at launch (decision 0141): "
+             "python3 _system/tool_call.py pilot_log.<verb> '<json>'.")
+    # Row 13 (decision 0141), additions 1 and 2: a door is the dispatcher spelling only. A direct
+    # spelling is judged by the rule the dispatcher applies (tools/closed_output.py), before
+    # 0107's door below: (1) a closed project, its raw data, or the session cwd inside one is
+    # refused; (2) a path outside the workspace while a non-public project exists is refused.
+    if not dispatcher and closed and declared is None and not tool.get("filesystem"):
+        from tools.closed_output import ClosedRefusal, closed as closed_call
+        for form in _forms(cwd, (root,)):
+            for project, label, project_forms in closed:
+                if any(_inside(form, f) for f in project_forms):
+                    deny("Blocked: the session's working directory is in project %s, whose "
+                         "data_class is %s. %s A door (decision 0141) is reached only through the "
+                         "dispatcher, from outside the project: python3 _system/tool_call.py "
+                         "<tool> '<json>'." % (project, label, CLOSED_WHY))
+        try:
+            project = closed_call([t for _, w in words[1:] for t in _spellings(w)], root, cwd)
+        except ClosedRefusal as exc:
+            deny("Blocked: %s. While a non-public project exists, a direct call names only paths "
+                 "inside the workspace, and a closed project only with paths inside it (decisions "
+                 "0107, 0141). %s" % (exc.code, CLOSED_WHY))
+        if project is not None:
+            deny("Blocked: this call names project %s, whose data is not public (decision 0107). "
+                 "%s A door (decision 0141) is reached only through the dispatcher, which filters "
+                 "its output: python3 _system/tool_call.py %s '<json>'." % (project, CLOSED_WHY, name))
     if name in CLOSED_PROJECT_DOORS or not closed:
         return
     exempt = declared or ()
