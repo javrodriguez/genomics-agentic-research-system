@@ -71,6 +71,7 @@ SLURM = {
     "submit_argv": ["sbatch", "{script}"],
     "job_id_regex": r"Submitted batch job (\d+)",
     "cancel_argv": ["scancel", "{job_id}"],
+    "resources_argv": ["sacct", "-j", "{job_id}", "--format=Elapsed,MaxRSS,AllocCPUS", "-P", "-n"],
     "start_argv": ["sacct", "-j", "{job_id}", "--format=Start", "--noheader", "--parsable2"],
     "status_argv": ["sacct", "-j", "{job_id}", "--format=State,ExitCode", "--noheader", "--parsable2"],
     "status_map": {
@@ -103,6 +104,7 @@ LOCAL = {
     "status_argv": [],
     "cancel_argv": [],
     "start_argv": [],
+    "resources_argv": [],
     "status_map": {},
     "nextflow_config": "",
     "nextflow_profile": "",
@@ -111,6 +113,59 @@ LOCAL = {
 }
 
 BUILTINS = {"slurm": SLURM, "local": LOCAL}
+
+
+# Machine-owned operator marker; no agent-selectable override.
+HOMELAB_MARKER = os.path.join(os.sep, "etc", "gars", "homelab")
+
+
+def venue_of(descriptor):
+    if descriptor['name'] == 'slurm':
+        return 'slurm'
+    return 'homelab' if Path(HOMELAB_MARKER).exists() else 'local'
+
+
+def _venue_refusal(config_root, executed, stage_kind, stage_dir, script):
+    """Read the executed request before reservation or analysis launcher creation."""
+    import csv
+    import wrapperlib as wl
+    import venue_policy as policy
+    row = wl.dataset_record(config_root)
+    failures, fastqs = [], []
+    memory = None
+    try:
+        if stage_kind == '02':
+            parts = Path(stage_dir).relative_to(Path(config_root).resolve()).parts
+            cfg = wl.read_config(Path(config_root) / '_config' / (parts[1] + '.yaml'))
+            memory = cfg.get('compute.mem')
+            manifest = json.loads((Path(stage_dir) / 'reproducibility/manifest.json').read_text())
+            for value in manifest.get('inputs', {}).values():
+                sheet = Path(value)
+                if sheet.suffix.lower() != '.csv':
+                    continue
+                with sheet.open(encoding='utf-8', newline='') as handle:
+                    reader = csv.DictReader(handle)
+                    if not set(reader.fieldnames or ()).intersection(('fastq_1', 'fastq_2')):
+                        continue
+                    for sample in reader:
+                        for column in ('fastq_1', 'fastq_2'):
+                            value = sample.get(column)
+                            if value and value.lower().endswith(('.fastq', '.fq', '.fastq.gz', '.fq.gz')):
+                                path = Path(value)
+                                fastqs.append(path if path.is_absolute() else sheet.parent / path)
+        else:
+            declarations = re.findall(r'^#SBATCH\s+--mem(?:=|\s+)([^\r\n]+)',
+                                      Path(script).read_text(), re.M)
+            memory = declarations[0].strip() if len(declarations) == 1 else (None if not declarations else '')
+    except (OSError, ValueError, TypeError, KeyError, csv.Error):
+        failures.append(policy.fail("input_missing", 'policy inputs unreadable'))
+    try:
+        mem_bytes = policy.memory_bytes(memory)
+    except ValueError:
+        mem_bytes = None
+        failures.append(policy.fail("resource_unparseable", 'declared memory is not K/M/G/T'))
+    failures.extend(policy.check(row, venue_of(executed), row.get('purpose'), mem_bytes, fastqs))
+    return '; '.join(item['check'] + ': ' + item['detail'] for item in failures) or None
 
 
 # --- the descriptor ----------------------------------------------------------------------------
@@ -197,7 +252,7 @@ def validate(descriptor):
     if name not in BUILTINS:
         problems.append('R-075: backend must be the enum slurm|local')
     else:
-        for key in ('submit_argv', 'status_argv', 'cancel_argv', 'start_argv', 'job_id_regex', 'status_map', 'submit_note'):
+        for key in ('submit_argv', 'status_argv', 'cancel_argv', 'start_argv', 'resources_argv', 'job_id_regex', 'status_map', 'submit_note'):
             if key in descriptor and descriptor[key] != BUILTINS[name].get(key):
                 problems.append('R-075: %s is fixed by the backend enum' % key)
     for key in ('nextflow_config', 'nextflow_profile'):
@@ -336,6 +391,35 @@ def submit_argv(descriptor, script):
     if descriptor['name'] == 'slurm':
         argv.insert(1, '--export=' + ','.join(EXPORT_NAMES))
     return argv
+
+
+def resources_argv(descriptor, job_id):
+    return [_fill(a, {"job_id": job_id}) for a in BUILTINS[descriptor['name']]['resources_argv']]
+
+
+def resources(root, record):
+    if record.get('executor') == 'local':
+        return {'applicability':'not applicable'}
+    if record.get('executor') != 'slurm' or not record.get('job_id'):
+        return {}
+    values = {}
+    # Query the batch step explicitly: the mandated three-column format has no JobID.
+    for job in (record['job_id'], record['job_id'] + '.batch'):
+        try:
+            proc = subprocess.run(resources_argv(SLURM, job), stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE, env=execution_env())
+            rows = [line.split('|') for line in proc.stdout.decode('utf-8').splitlines() if line.strip()]
+            if proc.returncode or not rows or len(rows[0]) < 3:
+                continue
+            row = dict(zip(('Elapsed','MaxRSS','AllocCPUS'),rows[0][:3]))
+            if job.endswith('.batch'):
+                if row['MaxRSS']:
+                    values['MaxRSS'] = row['MaxRSS']
+            else:
+                values.update(row)
+        except (OSError, UnicodeError):
+            continue
+    return values
 
 
 def status_argv(descriptor, job_id):
@@ -901,6 +985,10 @@ def _submit_analysis(root, script, descriptor):
     holds, why = _analysis_approval(adir)
     if not holds:
         return None, 'R-073: ' + why
+    executed = descriptor
+    problems = validate(executed)
+    if problems:
+        return None, '; '.join(problems)
     descriptor = _analysis_descriptor(adir, descriptor)
     problems = validate(descriptor)
     if problems:
@@ -919,11 +1007,15 @@ def _submit_analysis(root, script, descriptor):
                     return None, 'R-077: scheduler state unknown; resubmit refused: %s' % detail
                 if not _scheduler_terminal(state):
                     return None, 'R-076: duplicate_submission; recorded job is %s' % state
+            refusal = _venue_refusal(root, executed, '03', adir, script)
+            if refusal:
+                return None, refusal
             script_hash = _sha256(script)
             launcher = _analysis_launcher(adir, script, descriptor)
             entry = {'script': str(script), 'script_sha256': script_hash,
                      'launcher': str(launcher), 'launcher_sha256': _sha256(launcher),
-                     'executor': descriptor['name'], 'submitted_at': time.time()}
+                     'executor': descriptor['name'], 'venue': venue_of(executed),
+                     'submitted_at': time.time()}
             job, detail = _submit_once(root, launcher, descriptor)
             if job is None and isinstance(detail, SubmissionFailure):
                 # No backend accepted this attempt; retain prior history unchanged.
@@ -1045,10 +1137,19 @@ def submit(config_root, script, descriptor=None):
         if terminal and not (prior and previous == recorded_state(prior) and
                              (previous.startswith('FAILED') or previous == 'CANCELLED')):
             return None, 'R-152: retry_policy_unresolved; terminal stage has no matching failed or cancelled record'
+        refusal = _venue_refusal(config_root, descriptor, '02', stage, script)
+        if refusal:
+            return None, refusal
         record = {'idempotency_key': key, 'script': str(Path(script).resolve()),
                   'state': 'SUBMITTED', 'job_id': None, 'executor': descriptor['name'],
+                  'venue': venue_of(descriptor),
                   'submitted_at': time.time(), 'started_at': None,
                   'destructive': not (stage / 'params.yaml').is_file()}
+        if retry and retry.get('destructive', False):
+            analysis, workspace, plan, data, plan_path = _action_paths(config_root, retry, 'retry')
+            approval = analysis.approval_record_path(plan_path, workspace)
+            record['approvals'] = [{'id': approval.stem,
+                                    'sha256': hashlib.sha256(approval.read_bytes()).hexdigest()}]
         if prior and not retry:
             record['supersedes_key'] = prior['idempotency_key']
         if retry:
@@ -1132,6 +1233,8 @@ def _status_locked(config_root, job_id, descriptor, observed=None):
             _save_record(path, record)
         if state == 'COMPLETED' and not (Path(record['script']).parent / 'run/.gars_run_complete').is_file():
             state, detail = 'ARTIFACT_MISSING', 'R-135: scheduler success without .gars_run_complete'
+        if state == 'COMPLETED' and 'completed_at' not in record:
+            record['completed_at'] = time.time()
         if not _scheduler_terminal(recorded_state(record)):
             record['state'] = state or 'STALE'
             if state and state.startswith('FAILED'):

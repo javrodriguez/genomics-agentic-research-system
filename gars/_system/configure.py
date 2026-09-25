@@ -51,7 +51,7 @@ def emit(result, code):
 # --- genome registry ----------------------------------------------------------------------------
 
 def read_genomes(workspace):
-    """Parse the single table in _references/genomes.md."""
+    """Parse the identity table and the separate ID-keyed hash table."""
     path = Path(workspace) / "_references" / "genomes.md"
     if not path.is_file():
         return None, "genome registry not found at %s" % path
@@ -81,6 +81,19 @@ def read_genomes(workspace):
                      "macs_gsize": cells[8] if len(cells) > 8 and cells[8] else None})
     if not rows:
         return None, "genome registry has no table headed `| ID | Species |`"
+    hashes = {}
+    in_hashes = False
+    for line in path.read_text(encoding="utf-8").splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if cells == ["ID", "Annotation release", "fasta_sha256", "gtf_sha256"]:
+            in_hashes = True
+            continue
+        if in_hashes and not line.strip().startswith("|"):
+            in_hashes = False
+        if in_hashes and len(cells) == 4 and set(cells[0]) - set("-: "):
+            hashes[cells[0]] = dict(zip(("annotation_release", "fasta_sha256", "gtf_sha256"), cells[1:]))
+    for row in rows:
+        row.update(hashes.get(row["id"], {}))
     return rows, None
 
 
@@ -422,6 +435,12 @@ def cmd_apply(args, workspace):
                        "aligner": aligner})
 
     text = cfg.read_text(encoding="utf-8")
+    for key in ("fasta_sha256", "gtf_sha256"):
+        value = genome.get(key, "UNKNOWN")
+        text, replaced = set_yaml_scalar(text, key, value, "  ")
+        if not replaced:
+            text = re.sub(r"^reference:\s*$", "reference:\n  %s: %s" % (key, value),
+                          text, count=1, flags=re.M)
     applied = {}
     for key, value, indent in updates:
         text, ok = set_yaml_scalar(text, key, value, indent)

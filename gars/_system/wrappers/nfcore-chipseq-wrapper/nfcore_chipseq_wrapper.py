@@ -148,20 +148,20 @@ def build_params(cfg, paths):
     params = [
         ("input", str(paths["samplesheet"].resolve())),
         ("outdir", str((paths["substage"] / "run" / "results").resolve())),
-        ("fasta", cfg["reference.fasta"]),
-        ("gtf", cfg["reference.gtf"]),
+        ("fasta", str(Path(cfg["reference.fasta"]).resolve())),
+        ("gtf", str(Path(cfg["reference.gtf"]).resolve())),
         ("aligner", aligner),
         ("macs_gsize", cfg["peaks.macs_gsize"]),
     ]
     if cfg["peaks.type"] == "narrow":
         params.append(("narrow_peak", "true"))
     if cfg.get("reference.blacklist"):
-        params.append(("blacklist", cfg["reference.blacklist"]))
+        params.append(("blacklist", str(Path(cfg["reference.blacklist"]).resolve())))
     derived = cfg.get("reference.derived_dir")
     if derived:
         index_dir = Path(derived) / aligner
         if index_dir.is_dir() and any(index_dir.iterdir()):
-            params.append((INDEX_PARAM[aligner], str(index_dir)))
+            params.append((INDEX_PARAM[aligner], str(index_dir.resolve())))
         else:
             params.append(("save_reference", "true"))
     params.extend(test_profile_params(cfg, ("skip_preseq",)))
@@ -286,7 +286,7 @@ def cmd_collect(args):
 
     if fails:
         result["failures"] = fails
-        return wl.collect_failure(substage, result, EXIT_FAILURE)
+        return wl.collect_failure(substage, result, EXIT_FAILURE, args.model)
 
     rel = lambda p: str(p.relative_to(substage))  # noqa: E731
     outputs = [("peaks", rel(peaks_dir)), ("peaks_consensus", rel(consensus_root)),
@@ -307,6 +307,7 @@ def cmd_collect(args):
                                "action": action}
 
     now = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    wl.complete_manifest(substage, args.model, "COMPLETE")
     wl.write_status(substage, "COMPLETE")  # STATUS follows the successful collect gate.
 
     version = ws.template_version(WORKSPACE)

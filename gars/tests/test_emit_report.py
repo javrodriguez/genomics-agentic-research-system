@@ -19,6 +19,19 @@ emitter = module(REPO / 'gars/_system/claims/emit_report.py', 'report_emit_test'
 generator = module(REPO / 'benchmarks/defects/generate.py', 'report_generator')
 
 
+def doi_separator_forms():
+    """The same 392 generated malformed forms exercise both identifier paths."""
+    references = []
+    separators = ('', ' ', '  ', '-', ':', '=', '_')
+    enclosures = (('', ''), ('{', '}'), ('[', ']'), ('(', ')'))
+    for left in separators:
+        for opening, closing in enclosures:
+            for right in separators:
+                for token in ('10/abcfake', '10.123/fake'):
+                    references.append('doi' + left + opening + right + token + closing)
+    return references
+
+
 class EmitReportTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='emit-report-')
@@ -90,14 +103,8 @@ class EmitReportTests(unittest.TestCase):
 
         # Ruling 7: separator spelling cannot bypass an explicit DOI token.
         # Include concatenation and underscores as lexical separators too.
-        separators = ('', ' ', '  ', '-', ':', '=', '_')
-        enclosures = (('', ''), ('{', '}'), ('[', ']'), ('(', ')'))
         references = ['doi = {10/abcfake}', 'doi=10/abcfake', 'DOI-10/abcfake']
-        for left in separators:
-            for opening, closing in enclosures:
-                for right in separators:
-                    for token in ('10/abcfake', '10.123/fake'):
-                        references.append('doi' + left + opening + right + token + closing)
+        references.extend(doi_separator_forms())
         # Neither adjacency nor order is required by the general rule.
         references.extend(('Title mentions DOI; pages 10. No identifier supplied',
                            'Pages 10. Journal of Doi Studies',
@@ -120,6 +127,7 @@ class EmitReportTests(unittest.TestCase):
         # legitimate: the general rule requires a parseable DOI. Adding the
         # valid recorded DOI still resolves, but cannot hide the remaining
         # marker and page token under item 8's residual-text rule.
+        # The lane's 0130 and 0131 decisions change the with-DOI half to emit.
         for prose in ('Title mentions DOI; pages 10.', 'Journal of Doi Studies, p. 10.'):
             self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = prose
             self.save()
@@ -135,9 +143,10 @@ class EmitReportTests(unittest.TestCase):
                 return replay(url)
             with self.subTest(residual_prose=prose):
                 self.out.unlink()
-                self.refuse('citation_unverifiable', transport=recorded)
+                self.assertEqual(self.emit(recorded), (0, ''))
+                self.assertTrue(self.out.is_file())
                 self.assertEqual(requests, [
-                    'https://api.crossref.org/works/' + quote(generator.REAL_DOI, safe='')] * 2)
+                    'https://api.crossref.org/works/' + quote(generator.REAL_DOI, safe='')])
 
         # E1 F2: a real DOI cannot conceal a second, unparseable identifier.
         for reference in ('doi:' + generator.REAL_DOI + '; doi = {10/abcfake}',
@@ -179,14 +188,18 @@ class EmitReportTests(unittest.TestCase):
         for reference in ('(doi:' + generator.REAL_DOI + ')',
                           '[doi:' + generator.REAL_DOI + ']',
                           '(doi:' + generator.REAL_DOI + ').',
-                          '[doi:' + generator.REAL_DOI + ';]'):
+                          '[doi:' + generator.REAL_DOI + ';]',
+                          '{doi:' + generator.REAL_DOI + '}',
+                          'doi = {' + generator.REAL_DOI + '},',
+                          '{doi:' + generator.REAL_DOI + ';}'):
             with self.subTest(reference=reference):
                 self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
                 self.save()
                 self.assertEqual(self.emit(), (0, ''))
 
         # Brackets inside a suffix are meaningful; discard only unmatched closers.
-        for identifier in ('10.1000.10/synthetic(part)', '10.1000.10/synthetic[part]'):
+        for identifier in ('10.1000.10/synthetic(part)', '10.1000.10/synthetic[part]',
+                           '10.1000.10/synthetic{part}'):
             for reference in (identifier, '(doi:' + identifier + ')'):
                 with self.subTest(reference=reference):
                     requests = []
@@ -206,6 +219,133 @@ class EmitReportTests(unittest.TestCase):
                 with patch.object(emitter.evidence_check.resolve_citation, 'resolve') as lookup:
                     self.assertEqual(self.emit(), (0, ''))
                     lookup.assert_not_called()
+
+    def test_doi_clean_reference_corpus(self):
+        styles = (
+            ('PubMed/NLM', 'Smith J. Synthetic methods. Nature. 2011;8(5):321-326.'),
+            ('Vancouver', 'Smith J. Synthetic methods. Nature. 2011;8:321-6.'),
+            ('APA 7', 'Smith, J. (2011). Synthetic methods. Nature, 8(5), 321-326.'),
+            ('BibTeX', '@article{smith2011, author = {Smith, J.}, title = {Synthetic methods},'),
+            ('Harvard', "Smith, J. (2011) 'Synthetic methods', Nature, 8, pp. 321-326. Accessed 3 March 2020."))
+        forms = ('doi:{}', 'doi: {}', 'DOI {}', 'https://doi.org/{}',
+                 'http://dx.doi.org/{}', 'doi = {{{}}},',
+                 'url = {{https://doi.org/{}}},', '{}')
+        stray_numbers = ('Epub 2011 Apr 10.', 'vol. 10.', 'pages 10.1-10.9',
+                         'accessed 10/03/2020')
+        for style, citation in styles:
+            for form in forms:
+                for stray in stray_numbers:
+                    for before in (False, True):
+                        for prose in ('', 'Doi T. Author contribution.', 'Title: Doi studies.'):
+                            identifier = form.format(generator.REAL_DOI)
+                            parts = (stray, identifier) if before else (identifier, stray)
+                            reference = ' '.join((citation, prose) + parts)
+                            with self.subTest(style=style, reference=reference):
+                                self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
+                                self.save()
+                                requests = []
+                                def recorded(url):
+                                    requests.append(url)
+                                    return replay(url)
+                                self.assertEqual(self.emit(recorded), (0, ''))
+                                self.assertTrue(self.out.is_file())
+                                self.assertEqual(requests, [
+                                    'https://api.crossref.org/works/' + quote(generator.REAL_DOI, safe='')])
+
+        # C1 F1: Unicode words stop both walks; numeric boundaries stay ASCII.
+        references = [
+            '\u738b. \u65b9\u6cd5. DOI:' + generator.REAL_DOI + '. \u8bbf\u95ee\u4e8e 10/03/2020.',
+            'DOI: ' + generator.REAL_DOI + ' (\u0434\u0430\u0442\u0430 \u043e\u0431\u0440\u0430\u0449\u0435\u043d\u0438\u044f: 10/03/2020).',
+            'doi:' + generator.REAL_DOI + ' \u95b2\u89a7\u65e5 10/03/2020',
+            'doi: ' + generator.REAL_DOI + ' \u03c3\u03b5\u03bb. 10.1-10.9']
+        # Move B1's three guards here under the lane's C1 acceptance ruling.
+        malformed = 'doi: ' + chr(233) + '10/abcfake'
+        references.extend((malformed + '; doi:' + generator.REAL_DOI,
+                           'doi:' + generator.REAL_DOI + '; ' + malformed,
+                           'doi:' + generator.REAL_DOI + '; ' + chr(233) + ' 10/abcfake'))
+        for reference in references:
+            with self.subTest(unicode_word=reference):
+                self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
+                self.save()
+                requests = []
+                def recorded(url):
+                    requests.append(url)
+                    return replay(url)
+                self.assertEqual(self.emit(recorded), (0, ''))
+                self.assertTrue(self.out.is_file())
+                self.assertEqual(requests, [
+                    'https://api.crossref.org/works/' + quote(generator.REAL_DOI, safe='')])
+
+        # Internal markers never existed in the base's residual reference.
+        identifier = '10.1000/synthetic_doi:10/abcfake'
+        for reference in (identifier, identifier + '; 10/fake', 'doi:' + identifier,
+                          'doi:' + identifier + '; pages 10.',
+                          'doi:' + generator.REAL_DOI + '; ' + identifier):
+            with self.subTest(internal_marker=reference):
+                requests = []
+                def resolved(url):
+                    requests.append(url)
+                    return 200, b'{"status":"ok","message":{}}'
+                self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
+                self.save()
+                self.assertEqual(self.emit(resolved), (0, ''))
+                expected = [identifier]
+                if generator.REAL_DOI in reference:
+                    expected.insert(0, generator.REAL_DOI)
+                self.assertEqual(requests, [
+                    'https://api.crossref.org/works/' + quote(value, safe='') for value in expected])
+
+        # Ruling 0134: a bound suffix number belongs to its parsed identifier.
+        identifier = '10.1000.10/synthetic-doi-10.5'
+        reference = 'doi:doi' + identifier
+        requests = []
+        def resolved(url):
+            requests.append(url)
+            return 200, b'{"status":"ok","message":{}}'
+        self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
+        self.save()
+        with self.subTest(bound_inside_identifier=reference):
+            self.assertEqual(self.emit(resolved), (0, ''))
+            self.assertTrue(self.out.is_file())
+            self.assertEqual(requests, [
+                'https://api.crossref.org/works/' + quote(identifier, safe='')])
+
+        # Consuming that span must still chain to a malformed trailing number.
+        self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference + ' 10/fake'
+        self.save()
+        if self.out.exists():
+            self.out.unlink()
+        requests[:] = []
+        self.refuse('citation_unverifiable', transport=resolved)
+        self.assertEqual(requests, [
+            'https://api.crossref.org/works/' + quote(identifier, safe='')] * 2)
+
+    def test_doi_fabricated_beside_verified(self):
+        forms = doi_separator_forms()
+        self.assertEqual(len(forms), 392)
+        references = []
+        for malformed in forms:
+            for before in (False, True):
+                verified = 'doi:' + generator.REAL_DOI
+                parts = (malformed, verified) if before else (verified, malformed)
+                references.append('; '.join(parts))
+        references.extend(('doi:' + generator.REAL_DOI + '; 10/abcfake',
+                           'doi:' + generator.REAL_DOI + ', 10.123/fake',
+                           'doi:' + generator.REAL_DOI + '; ' + generator.REAL_DOI + '; 10/abcfake'))
+        for reference in references:
+            with self.subTest(reference=reference):
+                self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
+                self.save()
+                if self.out.exists():
+                    self.out.unlink()
+                requests = []
+                def recorded(url):
+                    requests.append(url)
+                    return replay(url)
+                self.refuse('citation_unverifiable', transport=recorded)
+                self.assertEqual(requests, [
+                    'https://api.crossref.org/works/' + quote(generator.REAL_DOI, safe='')]
+                    * (2 * reference.count(generator.REAL_DOI)))
 
     def test_malformed_evidence(self):
         artifact, source = copy.deepcopy(self.snapshot['claims'][0]['evidence'])

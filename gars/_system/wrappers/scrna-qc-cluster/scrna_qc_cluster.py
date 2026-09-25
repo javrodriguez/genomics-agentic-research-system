@@ -80,6 +80,7 @@ matplotlib.use("Agg")
 
 IN_H5AD = "{h5ad}"
 OUT = "{out}"
+RANDOM_SEED = 0
 MIN_GENES = {min_genes}
 MIN_CELLS = {min_cells}
 MAX_MITO_PCT = {max_mito}
@@ -90,6 +91,28 @@ MITO_PREFIX = "{mito_prefix}"
 os.makedirs(os.path.join(OUT, "tables"), exist_ok=True)
 os.makedirs(os.path.join(OUT, "figures"), exist_ok=True)
 os.makedirs(os.path.join(OUT, "data"), exist_ok=True)
+import platform
+import anndata
+import pandas
+import sklearn
+import leidenalg
+# Distribution metadata also covers packages without a module __version__.
+import sys
+from email.parser import Parser
+from pathlib import Path
+versions = dict(python=platform.python_version())
+packages = ("numpy", "scanpy", "matplotlib", "anndata", "pandas", "scikit-learn", "leidenalg")
+for search in sys.path:
+    for metadata in Path(search).glob("*.dist-info/METADATA"):
+        record = Parser().parsestr(metadata.read_text(encoding="utf-8"))
+        package = record.get("Name", "").lower().replace("_", "-")
+        if package in packages:
+            versions[package] = record.get("Version")
+for package in packages:
+    versions.setdefault(package, None)
+with open(os.path.join(OUT, "versions.json"), "w") as version_file:
+    json.dump(versions, version_file, sort_keys=True)
+
 
 sc.settings.figdir = os.path.join(OUT, "figures")
 sc.settings.verbosity = 1
@@ -141,11 +164,11 @@ adata = adata[:, adata.var.highly_variable].copy()
 sc.pp.scale(adata, max_value=10)
 
 n_comps = int(min(50, max(2, min(adata.n_obs, adata.n_vars) - 1)))
-sc.tl.pca(adata, n_comps=n_comps)
-sc.pp.neighbors(adata, n_neighbors=int(min(15, max(2, adata.n_obs - 1))), n_pcs=n_comps)
-sc.tl.umap(adata)
+sc.tl.pca(adata, n_comps=n_comps, random_state=RANDOM_SEED)
+sc.pp.neighbors(adata, n_neighbors=int(min(15, max(2, adata.n_obs - 1))), n_pcs=n_comps, random_state=RANDOM_SEED)
+sc.tl.umap(adata, random_state=RANDOM_SEED)
 sc.tl.leiden(adata, resolution=RESOLUTION, key_added="leiden", flavor="igraph",
-             n_iterations=2, directed=False)
+             n_iterations=2, directed=False, random_state=RANDOM_SEED)
 
 n_clusters = int(adata.obs["leiden"].nunique())
 
@@ -358,8 +381,9 @@ def cmd_prepare(args):
     wl.write_submit_sh(substage, WORKSPACE, cfg, project.resolve().name,
                        "%s-qc" % ASSAY, body)
     wl.write_reproducibility(substage, "scrna-qc-cluster", WORKSPACE,
-                             {"h5ad": Path(args.h5ad), "config": paths["config"]},
-                             [("h5ad", str(args.h5ad)),
+                             {"h5ad": Path(args.h5ad), "config": paths["config"],
+                              "samplesheet": paths["samplesheet"]},
+                             [("h5ad", str(Path(args.h5ad).resolve())),
                               ("min_genes", cfg["qc.min_genes"]),
                               ("min_cells", cfg["qc.min_cells"]),
                               ("max_mito_pct", cfg["qc.max_mito_pct"]),
@@ -481,7 +505,7 @@ def cmd_collect(args):
 
     if fails:
         result["failures"] = fails
-        return wl.collect_failure(substage, result, EXIT_FAILURE)
+        return wl.collect_failure(substage, result, EXIT_FAILURE, args.model)
 
     outputs = [("h5ad", "native", "run/data/processed.h5ad"),
                ("table", "native", "run/tables/cluster_markers.csv"),
@@ -493,6 +517,7 @@ def cmd_collect(args):
             fh.write("%s\t%s\t%s\n" % (typ, role, path))
 
     now = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    wl.complete_manifest(substage, args.model, "COMPLETE")
     wl.write_status(substage, "COMPLETE")  # STATUS follows the successful collect gate.
 
     version = ws.template_version(WORKSPACE)

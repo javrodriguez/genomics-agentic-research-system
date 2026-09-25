@@ -171,8 +171,8 @@ def assert_registry(case, path, contract, output_root, input_root):
             if line.strip() and not line.startswith('#')]
     registry = {}
     for row in csv.reader(rows, delimiter='\t'):
-        case.assertEqual(len(row), 3, 'registry needs type, role, path')
-        typ, role, target = row
+        case.assertIn(len(row), (3, 5), 'registry needs 3 or 5 columns')
+        typ, role, target = row[:3]
         case.assertNotIn(typ, registry, 'duplicate artifact type')
         case.assertEqual(role, 'native')
         artifact = contained(path.parent, target)

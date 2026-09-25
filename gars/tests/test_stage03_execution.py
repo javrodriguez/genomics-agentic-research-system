@@ -12,7 +12,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
-from support import GARS, run
+from support import GARS, run, write_fixture_dataset
 import guard_hook
 from test_approval_forgery import PLAN
 import executorlib as ex
@@ -26,6 +26,7 @@ class Stage03ExecutionTests(unittest.TestCase):
         self.workspace = Path(self.tmp.name) / 'gars'; self.workspace.mkdir()
         (self.workspace / '_references').symlink_to(GARS / '_references', target_is_directory=True)
         self.root = self.workspace / 'projects/p'
+        write_fixture_dataset(self.root)
         self.adir = self.root / '03_custom_analysis/01_fixture'
         (self.adir / 'scripts').mkdir(parents=True)
         (self.adir / 'results').mkdir()

@@ -65,6 +65,16 @@ def completed_fixture_submission(project, stage):
     from unittest.mock import patch
     import executorlib as ex
     import wrapperlib as wl
+    sys.path.insert(0, str(GARS / 'tests'))
+    from support import write_fixture_dataset
+    write_fixture_dataset(project)
+    cfg = project / '_config' / (stage.relative_to(project).parts[1] + '.yaml')
+    text = cfg.read_text()
+    if re.search(r'^  mem:', text, re.M):
+        text = re.sub(r'^  mem:.*$', '  mem: 2G', text, flags=re.M)
+    else:
+        text += '\ncompute:\n  mem: 2G\n'
+    cfg.write_text(text)
     manifest_path = stage / 'reproducibility/manifest.json'
     manifest = json.loads(manifest_path.read_text())
     params = dict(manifest.get('params', {}))
@@ -198,7 +208,7 @@ class WorkspaceFixture(unittest.TestCase):
                                       "--assay", "rnaseq_bulk", "--source", str(self.src)],
                            self.ws)
         self.assertEqual(code, 0, raw)
-        code, res, raw = run(self.reg, ["finalize", "--project", "projects/tall-test"], self.ws)
+        code, res, raw = run(self.reg, ["finalize", "--data-class", "public", "--purpose", "fixture", "--project", "projects/tall-test"], self.ws)
         self.assertEqual(code, 0, raw)
         files_csv = self.project / "00_data" / "rnaseq_bulk" / "files.csv"
         samples_csv = self.project / "00_data" / "rnaseq_bulk" / "samples.csv"
@@ -220,7 +230,7 @@ class WorkspaceFixture(unittest.TestCase):
         with samples_csv.open("w", newline="") as fh:
             csv.writer(fh).writerows(rows)
         before = samples_csv.read_bytes()
-        code, res, raw = run(self.reg, ["finalize", "--project", "projects/tall-test"], self.ws)
+        code, res, raw = run(self.reg, ["finalize", "--data-class", "public", "--purpose", "fixture", "--project", "projects/tall-test"], self.ws)
         self.assertEqual(code, 0, raw)
         self.assertEqual(samples_csv.read_bytes(), before,
                          "finalize must never overwrite a user-filled samples.csv (0017)")
@@ -269,7 +279,7 @@ class WorkspaceFixture(unittest.TestCase):
         checks = [f["check"] for a in res["assays"].values() for f in a.get("failures", [])]
         self.assertIn("registry", checks)
         # restore
-        code, _, raw = run(self.reg, ["finalize", "--project", "projects/tall-test"], self.ws)
+        code, _, raw = run(self.reg, ["finalize", "--data-class", "public", "--purpose", "fixture", "--project", "projects/tall-test"], self.ws)
         self.assertEqual(code, 0, raw)
         code, _, raw = run(self.sheet, ["--project", "projects/tall-test", "--force"], self.ws)
         self.assertEqual(code, 0, raw)
@@ -664,7 +674,7 @@ class AtacseqWrapperTests(unittest.TestCase):
                                          "--assay", "atacseq_bulk", "--source", str(self.src)],
                            self.ws)
         self.assertEqual(code, 0, raw)
-        code, _, raw = run(self.reg_py, ["finalize", "--project", "projects/atac-test"], self.ws)
+        code, _, raw = run(self.reg_py, ["finalize", "--data-class", "public", "--purpose", "fixture", "--project", "projects/atac-test"], self.ws)
         self.assertEqual(code, 0, raw)
         samples_csv = self.project / "00_data" / "atacseq_bulk" / "samples.csv"
         with samples_csv.open() as fh:
@@ -1089,7 +1099,7 @@ class ChipFamilyAndMethylTests(unittest.TestCase):
         for argv in (["create", "--title", title, "--assays", assay],
                      ["link", "--project", "projects/" + title, "--assay", assay,
                       "--source", str(self.src)],
-                     ["finalize", "--project", "projects/" + title]):
+                     ["finalize", "--data-class", "public", "--purpose", "fixture", "--project", "projects/" + title]):
             code, res, raw = run(self.reg_py, argv, self.ws)
             self.assertEqual(code, 0, raw)
         return self.ws / "projects" / title
@@ -1347,7 +1357,7 @@ class ProjectStateTests(unittest.TestCase):
         for args in (["create", "--title", "state-test", "--assays", "rnaseq_bulk"],
                      ["link", "--project", "projects/state-test", "--assay", "rnaseq_bulk",
                       "--source", str(cls.src)],
-                     ["finalize", "--project", "projects/state-test"]):
+                     ["finalize", "--data-class", "public", "--purpose", "fixture", "--project", "projects/state-test"]):
             code, _, raw = run(reg, args, cls.ws)
             assert code == 0, raw
         cls.state = cls.ws / "_system" / "project_state.py"
@@ -1512,10 +1522,12 @@ class ExecutorSeamTests(unittest.TestCase):
         text = (GARS / "_templates" / "config" / "executor.yaml").read_text(encoding="utf-8")
         parsed = self.ex.parse_descriptor(text)  # Raw template equality: no legacy normalization.
         for key, value in self.ex.SLURM.items():
-            if key == "submit_note":
-                continue        # prose, carried by the built-in only
+            if key in ("submit_note", "resources_argv"):
+                continue        # prose and fixed accounting argv are supplied by the built-in
             self.assertEqual(parsed.get(key), value, "resolved template drifted on %r" % key)
         self.assertEqual(self.ex.validate(parsed), [])
+        self.assertEqual(self.ex.load(self._project("accounting-default"))["resources_argv"],
+                         self.ex.SLURM["resources_argv"])
 
     def test_02_stage_00_seeds_the_descriptor(self):
         self.assertIn("executor.yaml",
@@ -2373,7 +2385,7 @@ class ScrnaseqWrapperTests(unittest.TestCase):
         for argv in (["create", "--title", title, "--assays", "scrnaseq"],
                      ["link", "--project", "projects/" + title, "--assay", "scrnaseq",
                       "--source", str(self.src)],
-                     ["finalize", "--project", "projects/" + title]):
+                     ["finalize", "--data-class", "public", "--purpose", "fixture", "--project", "projects/" + title]):
             code, res, raw = run(self.reg_py, argv, self.ws)
             self.assertEqual(code, 0, raw)
         project = self.ws / "projects" / title
@@ -2697,7 +2709,7 @@ class SpatialviTests(unittest.TestCase):
         for argv in (["create", "--title", title, "--assays", "spatialvi"],
                      ["link", "--project", "projects/" + title, "--assay", "spatialvi",
                       "--source", str(source or self.src)],
-                     ["finalize", "--project", "projects/" + title]):
+                     ["finalize", "--data-class", "public", "--purpose", "fixture", "--project", "projects/" + title]):
             code, res, raw = run(self.reg_py, argv, self.ws)
             self.assertEqual(code, 0, raw)
         project = self.ws / "projects" / title
@@ -2898,7 +2910,7 @@ class ScrnaQcClusterTests(unittest.TestCase):
         for argv in (["create", "--title", title, "--assays", "scrnaseq"],
                      ["link", "--project", "projects/" + title, "--assay", "scrnaseq",
                       "--source", str(self.src)],
-                     ["finalize", "--project", "projects/" + title]):
+                     ["finalize", "--data-class", "public", "--purpose", "fixture", "--project", "projects/" + title]):
             code, res, raw = run(self.reg_py, argv, self.ws)
             self.assertEqual(code, 0, raw)
         project = self.ws / "projects" / title
@@ -3173,7 +3185,7 @@ class SpatialClusterCountTests(unittest.TestCase):
         for argv in (["create", "--title", title, "--assays", "spatialvi"],
                      ["link", "--project", "projects/" + title, "--assay", "spatialvi",
                       "--source", str(source or self.src)],
-                     ["finalize", "--project", "projects/" + title]):
+                     ["finalize", "--data-class", "public", "--purpose", "fixture", "--project", "projects/" + title]):
             code, res, raw = run(self.reg_py, argv, self.ws)
             self.assertEqual(code, 0, raw)
         project = self.ws / "projects" / title
@@ -3398,7 +3410,7 @@ class SpatialClusterCountTests(unittest.TestCase):
             return
         self.assertEqual(code, 0, raw)
         outputs = (substage / "OUTPUTS.tsv").read_text().splitlines()
-        self.assertEqual(outputs, ["# type\trole\tpath",
+        self.assertEqual(["\t".join(row.split("\t")[:3]) for row in outputs], ["# type\trole\tpath",
                                    "table\tnative\trun/clusters.tsv",
                                    "report\tnative\trun/report.md"])
         self.assertNotIn("h5ad", "\n".join(outputs), "an h5ad row would shadow 02.01's")

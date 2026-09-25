@@ -536,12 +536,106 @@ def cmd_link(args, workspace):
 
 # --- finalize -----------------------------------------------------------------------------------
 
+DATASET_BASE_FIELDS = ['data_class', 'purpose', 'agreement_ref', 'input_data_location']
+DATASET_ROUTE_FIELDS = ['permitted_backends', 'provider_exposure', 'retention', 'expiry']
+
+
+def dataset_values(project, base, permitted_backends=None, expiry=None):
+    """Validate immutable registration before any finalize writes."""
+    import executorlib as ex
+    import venue_policy as policy
+    path = Path(project) / '00_data/dataset.tsv'
+    registered = None
+    if path.exists():
+        try:
+            with path.open(encoding='utf-8', newline='') as handle:
+                rows = list(csv.DictReader(handle, delimiter='\t'))
+            registered = rows[0] if len(rows) == 1 else {}
+        except (OSError, ValueError, UnicodeError):
+            registered = {}
+        if {key: registered.get(key) for key in DATASET_BASE_FIELDS} != base:
+            raise ValueError('dataset_classification_locked: existing dataset row differs')
+    if base['data_class'] == 'identifiable':
+        raise ValueError('class_not_permitted: identifiable has no route')
+    if ex.venue_of(ex.LOCAL) == 'homelab' and base['data_class'] != 'public':
+        raise ValueError('storage_venue_not_permitted: homelab storage is public only')
+    route = policy.routes()[base['data_class']]
+    permitted = policy.narrowed(base['data_class'], permitted_backends)
+    if expiry is None:
+        expiry = 'none'
+    if expiry != 'none':
+        try:
+            policy.expiry_date(expiry)
+        except ValueError:
+            raise ValueError('dataset_expired: expiry must be YYYY-MM-DD')
+    elif base['data_class'] == 'deidentified_under_agreement':
+        raise ValueError('dataset_expired: agreement expiry required')
+    row = dict(base, permitted_backends=permitted, provider_exposure=route['provider_exposure'],
+               retention=route['retention_rule'], expiry=expiry)
+    if registered is not None and set(registered) != set(DATASET_BASE_FIELDS) and registered != row:
+        raise ValueError('dataset_classification_locked: existing dataset route differs')
+    return row
+
+
+def write_dataset_record(project, row):
+    """Finalize's writer; bench also uses it only in a newly created public/fixture project."""
+    path = Path(project) / '00_data/dataset.tsv'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        with path.open(encoding='utf-8', newline='') as handle:
+            reader = csv.DictReader(handle, delimiter='\t')
+            rows = list(reader)
+        if rows == [row]:
+            return
+        if (reader.fieldnames != DATASET_BASE_FIELDS or len(rows) != 1 or
+                rows[0] != {key: row[key] for key in DATASET_BASE_FIELDS}):
+            raise ValueError('dataset_classification_locked: existing dataset row differs')
+        # Sanctioned row-6 migration preserves each existing serialized field byte.
+        import io
+        suffix = io.StringIO()
+        writer = csv.DictWriter(suffix, fieldnames=DATASET_ROUTE_FIELDS, delimiter='\t',
+                                lineterminator='\n', extrasaction='ignore')
+        writer.writeheader(); writer.writerow(row)
+        header, body = path.read_bytes().split(b'\n', 1)
+        old = [header + b'\n', body]
+        new = suffix.getvalue().encode('utf-8').splitlines(keepends=True)
+        with ws.atomic_open(path, mode=ws.MACHINE_OWNED_MODE) as handle:
+            for prefix, extra in zip(old, new):
+                handle.write((prefix.rstrip(b'\r\n') + b'\t' + extra).decode('utf-8'))
+        return
+    with ws.atomic_open(path, mode=ws.MACHINE_OWNED_MODE) as handle:
+        writer = csv.DictWriter(handle, fieldnames=DATASET_BASE_FIELDS + DATASET_ROUTE_FIELDS,
+                                delimiter='\t', lineterminator='\n')
+        writer.writeheader(); writer.writerow(row)
+
+
 def cmd_finalize(args, workspace):
     result = {"command": "finalize", "ok": False, "assays": {}, "failures": []}
     project = Path(args.project)
     if not project.is_dir():
         result["failures"].append("project does not exist: %s" % project)
         return emit(result, EXIT_USAGE)
+
+    if args.data_class not in ("public", "deidentified_under_agreement", "identifiable"):
+        result["failures"].append("data_class_required: --data-class must name a registered class")
+        return emit(result, EXIT_REFUSED)
+    if args.purpose not in ("fixture", "internal", "pilot_internal", "pilot_external", "commercial"):
+        result["failures"].append("purpose_required: --purpose must name a registered purpose")
+        return emit(result, EXIT_REFUSED)
+    if not args.agreement_ref or args.agreement_ref.strip().lower() in ("", "unknown", "todo", "null"):
+        result["failures"].append("agreement_ref_required: name an agreement or use none")
+        return emit(result, EXIT_REFUSED)
+    dataset_path = project / "00_data/dataset.tsv"
+    dataset = {"data_class": args.data_class, "purpose": args.purpose,
+               "agreement_ref": args.agreement_ref,
+               "input_data_location": json.dumps(sorted({str(p.resolve()) for p in
+                   (project / "00_data").glob("*/raw/*")}), separators=(",", ":"))}
+    try:
+        dataset = dataset_values(project, dataset, getattr(args, 'permitted_backends', None),
+                                 getattr(args, 'expiry', None))
+    except ValueError as exc:
+        result["failures"].append(str(exc))
+        return emit(result, EXIT_REFUSED)
 
     catalog, err = read_assay_map(workspace)
     if err:
@@ -701,6 +795,8 @@ def cmd_finalize(args, workspace):
         result["template"] = "T9"
         return emit(result, EXIT_FAILURE)
 
+    write_dataset_record(project, dataset)
+
     result["template_version"] = version
     result["model"] = args.model or "unknown"
     result["created"] = created
@@ -742,6 +838,11 @@ def main(argv=None):
 
     f = sub.add_parser("finalize", help="metadata, placeholders, exit gate")
     f.add_argument("--project", required=True)
+    f.add_argument("--data-class", default=None)
+    f.add_argument("--purpose", default=None)
+    f.add_argument("--agreement-ref", default="none")
+    f.add_argument("--permitted-backends", default=None)
+    f.add_argument("--expiry", default=None)
     f.add_argument("--date", default=None, help="creation date; defaults to today")
     f.add_argument("--sample-id-pattern", default=None)
     f.add_argument("--model",  default="unknown",

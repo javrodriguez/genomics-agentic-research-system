@@ -100,6 +100,23 @@ source "$WS/_system/gars-env.sh"
 python3 _system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py ...   # wrappers run from anywhere
 ```
 
+**Venue preflight (0100, R-062/R-064).** Both executor submit paths read
+`00_data/dataset.tsv` and the executed descriptor before reservation or launcher
+creation. `dataset_unclassified` refuses an absent or unreadable row;
+`class_not_permitted` refuses identifiable data; `dataset_expired` refuses an
+expired or malformed expiry and an agreement dataset with no expiry.
+`venue_not_permitted` reports every violated route, purpose, local memory or
+FASTQ rule. Local permits exactly public/fixture FASTQ inputs, at most 8 GiB
+of declared memory, and no declaration only for public/fixture.
+`resource_undeclared` names other absent local memory declarations;
+`resource_unparseable` names an invalid K/M/G/T declaration; `input_missing`
+names an unreadable policy input or a missing listed FASTQ. Samplesheet inputs
+use only fastq_1/fastq_2; analysis inputs are artifacts. The machine-owned
+homelab marker changes the local descriptor's venue without adding a backend.
+Group 11 records the prepare-time venue; submission records the executed venue.
+Login-node analysis records executor local and the pre-swap descriptor's venue.
+Report every refusal and stop; no override is available.
+
 ## Process
 1. Activated when the user asks to run bioinformatics, or names an assay to process. Reply T1.
 2. Resolve the project and the Assay ID. If the project does not exist, or the Assay ID is not

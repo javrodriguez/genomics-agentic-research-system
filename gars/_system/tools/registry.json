@@ -310,8 +310,20 @@
         "finalize"
       ],
       "cli": {
+        "agreement-ref": {
+          "flag": "--agreement-ref",
+          "nargs": null
+        },
+        "data-class": {
+          "flag": "--data-class",
+          "nargs": null
+        },
         "date": {
           "flag": "--date",
+          "nargs": null
+        },
+        "expiry": {
+          "flag": "--expiry",
           "nargs": null
         },
         "integrity": {
@@ -322,8 +334,16 @@
           "flag": "--model",
           "nargs": null
         },
+        "permitted-backends": {
+          "flag": "--permitted-backends",
+          "nargs": null
+        },
         "project": {
           "flag": "--project",
+          "nargs": null
+        },
+        "purpose": {
+          "flag": "--purpose",
           "nargs": null
         },
         "sample-id-pattern": {
@@ -335,7 +355,24 @@
       "input_schema": {
         "additionalProperties": false,
         "properties": {
+          "agreement-ref": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "data-class": {
+            "enum": [
+              "public",
+              "deidentified_under_agreement",
+              "identifiable"
+            ],
+            "minLength": 1,
+            "type": "string"
+          },
           "date": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "expiry": {
             "minLength": 1,
             "type": "string"
           },
@@ -352,7 +389,22 @@
             "minLength": 1,
             "type": "string"
           },
+          "permitted-backends": {
+            "minLength": 1,
+            "type": "string"
+          },
           "project": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "purpose": {
+            "enum": [
+              "fixture",
+              "internal",
+              "pilot_internal",
+              "pilot_external",
+              "commercial"
+            ],
             "minLength": 1,
             "type": "string"
           },

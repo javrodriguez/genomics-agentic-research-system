@@ -219,8 +219,8 @@ def build_params(cfg, paths):
     params = [
         ("input", str(paths["samplesheet"].resolve())),
         ("outdir", str((paths["substage"] / "run" / "results").resolve())),
-        ("fasta", cfg["reference.fasta"]),
-        ("gtf", cfg["reference.gtf"]),
+        ("fasta", str(Path(cfg["reference.fasta"]).resolve())),
+        ("gtf", str(Path(cfg["reference.gtf"]).resolve())),
         ("aligner", aligner),
         ("protocol", cfg["protocol"]),
         # iGenomes is an AWS-hosted default that would silently download; GARS always names
@@ -231,7 +231,7 @@ def build_params(cfg, paths):
     if derived:
         index_dir = Path(derived) / aligner
         if index_dir.is_dir() and any(index_dir.iterdir()):
-            params.append((INDEX_PARAM[aligner], str(index_dir)))
+            params.append((INDEX_PARAM[aligner], str(index_dir.resolve())))
         else:
             # First run for this pipeline version: build and publish the index so collect can
             # harvest it into the cache (mirrors the atacseq/rnaseq discipline, 0009).
@@ -355,7 +355,7 @@ def cmd_collect(args):
 
     if fails:
         result["failures"] = fails
-        return wl.collect_failure(substage, result, EXIT_FAILURE)
+        return wl.collect_failure(substage, result, EXIT_FAILURE, args.model)
 
     rel = lambda p: str(p.relative_to(substage))  # noqa: E731
     outputs = [("h5ad", rel(combined_file)), ("qc_multiqc", rel(multiqc))]
@@ -374,6 +374,7 @@ def cmd_collect(args):
                                "action": action}
 
     now = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    wl.complete_manifest(substage, args.model, "COMPLETE")
     wl.write_status(substage, "COMPLETE")  # STATUS follows the successful collect gate.
 
     version = ws.template_version(WORKSPACE)

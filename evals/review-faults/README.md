@@ -120,6 +120,71 @@ spellings below and claims nothing beyond them:
   after option words, including separated options, the end-of-options marker,
   and option clusters ending in c. Their program text is audited as a command.
 
+Decision 0127 adds one data context to item 22(a): every non-option operand of
+`tr`, found in the same shlex stream after prefix commands and options, gets
+neither rule (i) nor rule (ii), because `tr` reads standard input only and never
+opens an operand. Its options (-c, -C, -d, -s, -t and long forms, ended by `--`)
+stay scanned. Redirection targets in the same command are files the shell opens
+and stay scanned, as do every other command's operands. A sed `y` program was
+already program text. A path assembled at run time through `tr` and read by a
+later command, and a command substitution inside a quoted or backquoted `tr`
+operand, are item 20(c) residuals, as for echo and printf text.
+
+Decision 0125 amends command-field placement with the **closed grammar** of
+items 1(a–f), 2, 7(a) and 8(a), as implemented: each call starts at the kit root;
+only a top-level, unprefixed `cd` with one plain, statically resolvable argument,
+qualifying boundaries and both lexical and symlink-resolved containment moves
+later relative and exact PWD-expansion tokens. Nested constructs inherit entry
+placement; rejected changes reset to the root; conditional `&&` placement lasts
+only through its chain. A newline qualifies only after a plain word or qualifying
+semicolon; after `&&`, `||`, `|`, `|&`, `&`, `(`, `{`, `if`, `then`, `elif`, `else`,
+`while`, `until`, `do`, `in` or `!` it continues the command and cannot end that
+chain. Whole-call refusals include the named shell-state hazards, functions,
+unbalanced operator parentheses, multiline backquotes, pushd/popd, set,
+eval/source/dot commands (including prefix options), trap and uncertain prefixed
+compounds. The raw call is checked before parsing: any control character except
+newline or tab, or a backslash immediately followed by newline, disables every
+cd. Retained word-start comments or any heredoc operator disable movement, even
+when its body was removed (a conservative refusal beyond item 7(a)); so does PWD text anywhere except the two exact expansions `$PWD` and `${PWD}`.
+Backquotes on cd forbid movement; merged closing operators can end a chain but
+cannot qualify cd boundaries. Deduplication includes placement; other tools'
+path fields and existing scan contexts stay unchanged. The launcher removes
+CDPATH, BASH_ENV and ENV. The covered claim is: a relative read outside the kit
+still turns INVALID after any `cd` the audit's grammar does not accept, and a
+`cd` the grammar accepts moves the placement only as items 1–3, 7 and 8 state.
+**Residual:** accepted cd is assumed to succeed and symlinks are judged at audit
+time. Escapes resting on shell constructs the audit does not parse, including
+shell indirection, interpreter program text, ANSI-C and locale quoting, and
+line-continuation interpretation, remain the text-audit residual
+of item 3 and 0072 item 20(c). The sandbox, 0072 item 20(a), is the enforcement
+wall; the audit is a detector. These rules are a closed list, not a promise to
+interpret arbitrary shell programs. The raw-text guard refuses the reviewed
+split-cd and split-PWD line continuations without interpreting them; quoting
+remains unparsed. The conservative heredoc refusal can still flag honest calls.
+
+Decision 0128 corrects 0125's premise that nothing carries between calls: the
+reviewer's Bash tool keeps its working directory. The audit keeps one placement
+per chain of Bash calls, in stream order. A chain's first call starts at the kit
+root; each later call starts where the previous one ended under 0125's rules (a
+still-conditional placement counts as the root). The next call starts at the
+root instead when the previous call was blocked, ran in the background, had no
+tool result before the next call, had an error result, or had a result whose
+text contains `Shell cwd was reset to`. A sub-agent's calls (a parent tool-use
+id) form their own chain. Other tools' paths stay placed against the kit root.
+**Residual:** a call that passed these edges is assumed to have left its shell
+where its text says.
+0128's round B rulings (the lane's, under the owner's delegation) amend this.
+A `.` after a simple command's command word is that command's operand; only
+assignments and the named prefix commands before it make it a dot command.
+Each chain is placed twice: pessimistically as above, and optimistically,
+assuming every accepted `cd` joined by `&&` ran unless its call hit an edge.
+A token outside the kit under both placements, or under the optimistic one
+only, is a hit. A token outside only pessimistically is counted `ambiguous`:
+the envelope's blindness object carries the count, `score.py` prints it per
+record, and it never makes a record INVALID. **Residual:** a session that fails
+an `&&` link on purpose and then reads relative to the skipped `cd` is
+ambiguous, not INVALID; the measured run's sandbox is the wall for that read.
+
 Item 23 amends item 22(c-d): text is removed only when unambiguous; otherwise
 it is scanned. A comment hash must start a shell word at quote depth zero.
 Neither a comment nor a heredoc body is removed when the physical line holding

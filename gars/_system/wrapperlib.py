@@ -17,6 +17,7 @@ import pathlib
 import os
 import re
 import shutil
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -86,6 +87,11 @@ def _write_status_locked(stage, state, reason, submission_key):
     previous = read_status(stage)
     if previous and previous.split(':', 1)[0] in TERMINAL_STATES:
         if previous == value:
+            if state == 'COMPLETE' and (stage / 'reproducibility/manifest.json').is_file():
+                try:
+                    verify_output_manifest(stage)
+                except (OSError, ValueError, KeyError, TypeError) as exc:
+                    raise StatusRefusal('completion_gate: %s' % exc)
             return value
         corrective = False
         if state == 'SUBMITTED' and submission_key and (previous.startswith('FAILED') or previous == 'CANCELLED'):
@@ -121,6 +127,11 @@ def _write_status_locked(stage, state, reason, submission_key):
                 observed, detail = ex._scheduler_status(ex.config_root_for(stage), record['job_id'])
                 if observed != 'COMPLETED':
                     raise ValueError(detail or observed or 'executor unavailable')
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            raise StatusRefusal('completion_gate: %s' % exc)
+    if state == 'COMPLETE' and (stage / 'reproducibility/manifest.json').is_file():
+        try:
+            verify_output_manifest(stage)
         except (OSError, ValueError, KeyError, TypeError) as exc:
             raise StatusRefusal('completion_gate: %s' % exc)
     metadata = ''
@@ -191,9 +202,9 @@ def require_collect_config(project, assay, substage):
                                'error': 'R-135: %s' % exc}, EXIT_REFUSED))
 
 
-def collect_failure(stage, result, code=EXIT_FAILURE):
+def collect_failure(stage, result, code=EXIT_FAILURE, model="unknown"):
     """A failed artifact gate owns its failure; scheduler evidence remains separate."""
-    state = 'FAILED:EXIT_' + str(code)
+    state = 'FAILED'
     root = ex.config_root_for(stage)
     directory = ex._records(root)
     directory.mkdir(exist_ok=True)
@@ -207,6 +218,7 @@ def collect_failure(stage, result, code=EXIT_FAILURE):
             ex._save_record(directory / (record['idempotency_key'] + '.json'), record)
         else:
             ex.record_failure(stage, {}, state, json.dumps(result, sort_keys=True))
+        complete_manifest(stage, model, 'FAILED', ex.classify(state, code))
         write_status(stage, state)
     return emit(result, code)
 
@@ -422,6 +434,9 @@ def check_config_common(cfg, required_keys, fails):
         v = cfg.get(key)
         if v and "<REQUIRED" not in v and not os.access(v, os.R_OK):
             fails.append(fail("config", "%s is not readable: %s" % (key, v)))
+    evidence, mismatches = reference_evidence(cfg)
+    if mismatches:
+        fails.append(fail("reference_hash_mismatch", "R-090: registry hash differs for " + ", ".join(mismatches)))
     work_dir = cfg.get("compute.work_dir", "")
     # A remote URI (s3://... on AWS Batch) is as absolute as a path gets; isabs() just
     # cannot know that. The refusal is only for RELATIVE paths, which silently resolve
@@ -513,6 +528,30 @@ def samplesheet_samples(sheet_path, column=0):
     return sorted({l.split(",")[column] for l in lines[1:] if l.strip()})
 
 
+# One preparation process; values come from the generator that consumed them, R9.
+_PREPARE_EXECUTION = {}
+
+
+def execution_evidence(substage, descriptor, body):
+    root = ex.config_root_for(substage)
+    repo = Path(__file__).resolve().parents[2]
+    paths = [('executor_descriptor', ex.descriptor_path(root))]
+    resolved = {'backend': descriptor.get('name')}
+    # Read the already-resolved argv supplied by the wrapper, never guess a sibling.
+    # This also preserves the two wrappers with a literal apptainer profile and the
+    # local descriptor's wrapper-selected fallback config.
+    tokens = shlex.split(body.replace('\\\n', ' '))
+    if 'nextflow' in tokens and 'run' in tokens:
+        config = Path(tokens[tokens.index('-c') + 1])
+        paths.append(('nextflow_config', config))
+        resolved.update(nextflow_config=config.name,
+                        nextflow_profile=tokens[tokens.index('-profile') + 1]
+                        if '-profile' in tokens else '')
+    entries = [dict(role=role, path=os.path.relpath(str(path.resolve()), str(repo)),
+                    sha256=sha256(path)) for role, path in paths if path.is_file()]
+    return {'execution_config': entries, 'execution_config_resolved': resolved}
+
+
 def write_submit_sh(substage, workspace_root, cfg, project_name, assay, body):
     """The batch script: directives from compute.*, the environment, the requeue guard,
     then the wrapper-specific body. Generated, never agent-written (decision 0011).
@@ -528,6 +567,7 @@ def write_submit_sh(substage, workspace_root, cfg, project_name, assay, body):
       resume could not do this; plain Nextflow can — decision 0028.)
     """
     descriptor = ex.load(ex.config_root_for(substage))
+    _PREPARE_EXECUTION[str(Path(substage).resolve())] = execution_evidence(substage, descriptor, body)
     directives = "".join(
         line + "\n" for line in
         ex.header_lines(None, cfg, project_name, assay, substage, descriptor=descriptor))
@@ -622,6 +662,10 @@ def write_reproducibility(substage, assay, checkout, inputs, params):
     manifest['key_formula'] = ('stage01-v1' if (substage / 'params.yaml').is_file()
                                and 'samplesheet' in inputs and 'config' in inputs else 'downstream-v1')
     manifest['idempotency_key'] = input_key(substage, manifest)
+    manifest.update(prepare_manifest_facts(substage, assay, inputs))
+    evidence = _PREPARE_EXECUTION.pop(str(Path(substage).resolve()), None)
+    if evidence is not None:
+        manifest.update(evidence)
     script_path = substage / 'submit.sh'
     script = script_path.read_text(encoding='utf-8')
     script = re.sub(r'^# idempotency_key=[0-9a-f]+\n', '', script, flags=re.M)
@@ -668,3 +712,302 @@ def harvest_cache(derived_dir, subdir_name, built_dir, provenance_lines,
         return "reused"      # another run won the race; theirs is fine
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+# Collect evidence extends the prepare manifest; these helpers do not own input keys.
+def manifest_schema():
+    import manifest_check
+    return manifest_check.load_schema()
+
+
+def git_value(repo, *args):
+    try:
+        proc = subprocess.run(['git', '--no-replace-objects', '-C', str(repo)] + list(args),
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return proc.stdout.decode('utf-8').strip() if proc.returncode == 0 else None
+    except (OSError, UnicodeError):
+        return None
+
+
+def dataset_record(project):
+    import csv
+    path = Path(project) / '00_data/dataset.tsv'
+    try:
+        rows = list(csv.DictReader(path.read_text(encoding='utf-8').splitlines(), delimiter='\t'))
+        return rows[0] if len(rows) == 1 else {}
+    except (OSError, ValueError, UnicodeError):
+        return {}
+
+
+def prepare_manifest_facts(stage, wrapper, inputs):
+    root = ex.config_root_for(stage)
+    cfg = read_config(Path(inputs['config'])) if 'config' in inputs else {}
+    schema = manifest_schema()
+    info = schema['wrappers'].get(wrapper, {})
+    dataset = dataset_record(root)
+    backend = ex.load(root).get('name')
+    repo = Path(__file__).resolve().parents[2]
+    version = (ws.PIPELINES.get(info.get('assay'), '').rsplit('-', 1)[-1]
+               if info.get('kind') == 'nextflow' else ws.template_version(repo / 'gars'))
+    calls = {
+        'rnaseq-de': [{'call':'sklearn.decomposition.PCA','seed':0},
+                      {'call':'pydeseq2.dds.DeseqDataSet.deseq2','seed_supported':False,'determinism':'unknown'},
+                      {'call':'pydeseq2.ds.DeseqStats.summary','seed_supported':False,'determinism':'unknown'}],
+        'scrna-qc-cluster': [{'call':name,'seed':0} for name in
+                             ('scanpy.tl.pca','scanpy.pp.neighbors','scanpy.tl.umap','scanpy.tl.leiden')],
+    }
+    try:
+        threads = int(cfg.get('compute.cpus', '0'))
+    except ValueError:
+        threads = None
+    locations = {k:str(Path(p).resolve()) for k,p in inputs.items()}
+    locations['dataset'] = dataset.get('input_data_location')
+    return {'input_data_location':locations,
+            'workflow_name':info.get('name'), 'workflow_version':version,
+            'gars_commit':git_value(repo, 'rev-parse', 'HEAD'),
+            'backend':backend, 'venue':ex.venue_of(ex.load(root)), 'purpose':dataset.get('purpose'),
+            'data_class':dataset.get('data_class'),
+            'agreement_ref':dataset.get('agreement_ref'),
+            'expiry':dataset.get('expiry'),
+            'permitted_backends':dataset.get('permitted_backends'),
+            'artifact_destination':os.path.relpath(str(Path(stage).resolve() / 'run'), str(repo)),
+            'random_seeds':calls.get(wrapper, 'no-rng-in-code-path'), 'threads':threads}
+
+
+_REFERENCE_HASH_CACHE = {}
+
+
+def reference_sha256(path):
+    path = Path(path).resolve()
+    stat = path.stat()
+    key = (str(path), stat.st_size, stat.st_mtime_ns)
+    if key not in _REFERENCE_HASH_CACHE:
+        _REFERENCE_HASH_CACHE[key] = sha256(path)
+    return _REFERENCE_HASH_CACHE[key]
+
+
+def reference_evidence(cfg):
+    """Registry hashes are authoritative; editable config cannot redefine a checksum."""
+    import configure
+    named = {kind:cfg.get('reference.' + kind) for kind in ('fasta','gtf')
+             if cfg.get('reference.' + kind)}
+    rows, error = configure.read_genomes(Path(__file__).resolve().parents[1])
+    matches = [r for r in (rows or []) if all(os.path.realpath(r[k]) == os.path.realpath(v)
+                                            for k,v in named.items())] if named else []
+    if len(matches) != 1:
+        return {'comparison':'missing','reason':error or 'reference_registry_missing'}, []
+    row = matches[0]
+    evidence = {'id':row['id'],'build':row['build'],'annotation_release':row.get('annotation_release'),
+                'fasta_sha256':row.get('fasta_sha256'),'gtf_sha256':row.get('gtf_sha256'),
+                'comparison':'matched','observed':{}}
+    mismatches = []
+    for kind in ('fasta','gtf'):
+        expected = row.get(kind + '_sha256')
+        # A registry UNKNOWN is an honest missing group, never an invented digest.
+        if not isinstance(expected, str) or not re.fullmatch(r'[0-9a-f]{64}', expected):
+            evidence.update(comparison='missing', reason='reference_hash_unknown')
+        try:
+            actual = reference_sha256(named.get(kind) or row[kind])
+            evidence['observed'][kind + '_sha256'] = actual
+            if isinstance(expected, str) and re.fullmatch(r'[0-9a-f]{64}', expected) and actual != expected:
+                evidence.update(comparison='mismatch', reason='reference_hash_mismatch')
+                mismatches.append(kind)
+        except OSError:
+            evidence.update(comparison='missing', reason='reference_hash_unreadable')
+    return evidence, mismatches
+
+
+def output_evidence(stage, row):
+    """Directory identity is a canonical regular-file listing; never traverse symlinks."""
+    path = Path(stage) / row['path']
+    result = dict(row)
+    result['artifact_class'] = 'intermediate' if 'work' in Path(row['path']).parts else 'durable'
+    if path.is_symlink():
+        raise ValueError('output_hash: output row is a symlink, not a regular file or directory')
+    if path.is_file():
+        result['sha256'] = sha256(path)
+    elif path.is_dir():
+        members, links = [], []
+        for parent, directories, files in os.walk(str(path), followlinks=False):
+            for name in list(directories) + files:
+                child = Path(parent) / name
+                relative = child.relative_to(path).as_posix()
+                if '\t' in relative or '\n' in relative or '\r' in relative:
+                    raise ValueError('output_hash: member path cannot be serialized canonically')
+                if child.is_symlink():
+                    links.append({'path':relative,'target':os.readlink(str(child))})
+                    if name in directories:
+                        directories.remove(name)
+                elif child.is_file():
+                    members.append({'path':relative,'sha256':sha256(child)})
+        members.sort(key=lambda r:r['path'])
+        links.sort(key=lambda r:r['path'])
+        listing = ''.join(r['path'] + '\t' + r['sha256'] + '\n' for r in members)
+        result.update(sha256='sha256-tree:' + hashlib.sha256(listing.encode('utf-8')).hexdigest(),
+                      members=members, symlinks=links)
+    else:
+        raise ValueError('output_hash: declared artifact is absent')
+    return result
+
+
+def output_rows(stage):
+    from resolve_artifact import read_outputs
+    path = Path(stage) / 'OUTPUTS.tsv'
+    if not path.exists():
+        return []
+    rows, problems = read_outputs(path)
+    if problems:
+        raise ValueError('output_hash: ' + '; '.join(problems))
+    return rows
+
+
+def complete_output_index(stage):
+    rows = [output_evidence(stage, {k:r[k] for k in ('type','role','path')}) for r in output_rows(stage)]
+    if rows:
+        with ws.atomic_open(Path(stage) / 'OUTPUTS.tsv') as fh:
+            fh.write('# type\trole\tpath\tsha256\tartifact_class\n')
+            for r in rows:
+                fh.write('\t'.join(r[k] for k in ('type','role','path','sha256','artifact_class')) + '\n')
+    return rows
+
+
+def verify_output_manifest(stage):
+    manifest = json.loads((Path(stage) / 'reproducibility/manifest.json').read_text(encoding='utf-8'))
+    stored = manifest.get('outputs')
+    rows = output_rows(stage)
+    if not rows or not isinstance(stored, list) or len(rows) != len(stored):
+        raise ValueError('output_hash: manifest and OUTPUTS.tsv must name every artifact')
+    for row, recorded in zip(rows, stored):
+        actual = output_evidence(stage, {k:row[k] for k in ('type','role','path')})
+        if actual != recorded or any(row.get(k) != actual[k] for k in ('sha256','artifact_class')):
+            raise ValueError('output_hash: OUTPUTS.tsv, manifest and artifact bytes disagree')
+
+
+def manifest_file(path, base):
+    path = Path(path)
+    return {'path':os.path.relpath(str(path),str(base)), 'sha256':sha256(path)} if path.is_file() else None
+
+
+def trace_evidence(stage):
+    import csv
+    path = Path(stage) / 'run/pipeline_info/gars_trace.txt'
+    if not path.is_file():
+        return [], {}
+    rows = list(csv.DictReader(path.read_text(encoding='utf-8').splitlines(), delimiter='\t'))
+    containers, starts, completes = [], [], []
+    for r in rows:
+        image = r.get('container','')
+        process = r.get('process') or r.get('name')
+        item = {'process':process,'image':image}
+        match = re.search(r'@(sha256:[0-9a-f]{64})$', image)
+        if match:
+            item['digest'] = match.group(1)
+        else:
+            local = Path(image[7:] if image.startswith('file://') else image)
+            if not local.is_absolute():
+                local = Path(stage) / 'run' / local
+            if local.is_file():
+                item.update(image_path=str(local),image_sha256=sha256(local))
+        containers.append(item)
+        if r.get('start') and r['start'] != '-':
+            starts.append(r['start'])
+        if r.get('complete') and r['complete'] != '-':
+            completes.append(r['complete'])
+    return containers, {'start':min(starts) if starts else None,'complete':max(completes) if completes else None}
+
+
+def software_evidence(stage, kind):
+    paths = [Path(stage) / 'run/versions.json'] if kind == 'local' else sorted(
+        p for p in (Path(stage) / 'run/results').rglob('*versions*')
+        if p.is_file() and 'pipeline_info' in p.parts and p.suffix in ('.yml','.yaml','.json'))
+    records = []
+    for path in paths:
+        if not path.is_file():
+            continue
+        versions = {}
+        try:
+            if path.suffix == '.json':
+                versions = json.loads(path.read_text(encoding='utf-8'))
+            else:
+                # pipeline_info YAML mappings: retain qualified process/package names.
+                parents = []
+                for line in path.read_text(encoding='utf-8').splitlines():
+                    match = re.match(r'^( *)([^:#][^:]*):\s*(.*?)\s*$',line)
+                    if not match:
+                        continue
+                    indent, key, value = len(match[1]), match[2].strip('"\''), match[3].strip('"\'')
+                    parents = [(i,k) for i,k in parents if i < indent]
+                    if value:
+                        versions['/'.join([k for i,k in parents] + [key])] = value
+                    else:
+                        parents.append((indent,key))
+        except (ValueError, UnicodeError):
+            versions = {}
+        record = manifest_file(path,stage)
+        record['versions'] = versions
+        records.append(record)
+    return records
+
+
+def epoch_text(value):
+    if type(value) not in (int,float):
+        return None
+    return datetime.datetime.fromtimestamp(value, datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+def complete_manifest(stage, model, status, failure_class=None):
+    """Add current collect-gate evidence atomically, without rewriting prepare facts.
+
+    status is supplied by lifecycle code, never a CLI flag or the previous STATUS file.
+    Missing evidence stays missing: collect cannot manufacture a complete provenance record.
+    """
+    stage = Path(stage)
+    path = stage / 'reproducibility/manifest.json'
+    manifest = json.loads(path.read_text(encoding='utf-8'))
+    root = ex.config_root_for(stage)
+    schema = manifest_schema()
+    info = schema['wrappers'].get(manifest['wrapper'], {})
+    cfg = read_config(root / '_config' / (stage.parent.name + '.yaml'))
+    record = ex.stage_record(root, stage) or {}
+    design = root / '01_samplesheets' / (stage.parent.name + '_design_check.json')
+    approvals = record.get('approvals', [])
+    facts = {'wrapper_kind':info.get('kind'),
+             'reference_named':bool(cfg.get('reference.fasta') or cfg.get('reference.gtf')),
+             'approval_gated':bool(approvals),
+             'design_record':bool({'design', 'samplesheet'}.intersection(manifest.get('inputs', {}))),
+             'status':status, 'model_step':model != 'none', 'backend':record.get('executor')}
+    containers, execution = trace_evidence(stage)
+    if info.get('kind') == 'local':
+        execution = {'start':epoch_text(record.get('started_at')),
+                     'complete':epoch_text(record.get('completed_at'))}
+    additions = {'predicate_facts':facts, 'containers':containers,
+                 'software_versions':software_evidence(stage,info.get('kind')),
+                 'reference':reference_evidence(cfg)[0],
+                 'command':manifest_file(stage / 'reproducibility/commands.sh',stage),
+                 'outputs':complete_output_index(stage), 'execution':execution,
+                 'resources':ex.resources(root,record), 'approvals':approvals,
+                 'design_check':manifest_file(design,root), 'failure_class':failure_class,
+                 'agent_model':model, 'model_steps':[]}
+    if model != 'none':
+        repo = Path(__file__).resolve().parents[2]
+        contract = info.get('contract')
+        oid = git_value(repo, 'hash-object', '--', str(repo / contract)) if contract else None
+        # hash-object computes Git's blob object id from the contract bytes at collect.
+        provider = next((v for k,v in schema['model_providers'].items() if model.startswith(k)),None)
+        additions['model_steps'] = [{'provider':provider,'model_id':model,'model_version':model,
+            'prompt_id':contract, 'prompt_sha256':{'algorithm':'git-sha256' if oid and len(oid)==64 else 'git-sha1','value':oid},
+            'routing_rule_id':'none','sampling_parameters':'not-exposed-by-harness',
+            'input_context':manifest_file(root / 'HISTORY.md',root)}]
+    # These keys are exclusively collect-owned. Existing prepare fields are never assigned.
+    manifest.update(additions)
+    fd, temporary = tempfile.mkstemp(prefix='.manifest-', dir=str(path.parent))
+    try:
+        with os.fdopen(fd,'w',encoding='utf-8') as fh:
+            json.dump(manifest,fh,indent=2,sort_keys=True)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(temporary,str(path))
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+    return manifest

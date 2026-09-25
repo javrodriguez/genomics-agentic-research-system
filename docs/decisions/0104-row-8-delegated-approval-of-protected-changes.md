@@ -74,3 +74,61 @@ Standing. Approval of step A's protected changes only; it does not claim the row
 ## Date
 
 2026-09-24
+
+## Addendum, 2026-09-25: step B's protected changes, under the owner's delegation
+
+Written by Glitch under the owner's standing delegation of 23 Sep 2026; no sentence in it is the owner's.
+The record above stays byte-identical; this addendum approves row 8's step B (the data route, the venue policy and the backend bench; spec §18 line 397), which merges after it.
+
+### Context
+
+Step B was built on its own branch from a seed commit that adds [0100](0100-row-8-data-handling.md) on public main `452fe33` (rows 6 and 7 and step A merged), by a producer (Codex) running as one unprivileged OS account, and reviewed by fresh-context reviewers (Claude Opus 5.5) running as a second, separate unprivileged OS account, through the unattended queue runner, which checked that every producer commit carries the repository's configured identity.
+The step took three producer commits after the seed, `efbe369`, `633778a` and `433b41e`.
+Round 1's commit failed the runner's path scan on one false alarm (a relative glob whose folder segment shares its name with a top-level system folder) and raised one ruling; the retry round rewrote the flagged strings and answered the ruling.
+Review B1 was a REJECT (one BLOCKER: with the homelab marker present, manifest group 11 refused the venue the re-pointed derivation records); its step also failed on two path-scan false alarms of the reviewer's own, so the lane carried the review into the producer's clone by hand, hash-checked.
+Review C1 on `433b41e` was APPROVE WITH CHANGES with one NOTE and nothing else; its SHA-256 is `198c1d210dd274dafd8d6ae7b3783a4cce91f96c9a358b8c4e849990582d5d5f`, and every review of the step is kept outside the repository.
+
+### Decision
+
+Glitch, under the owner's delegation, approves step B's protected changes as merged:
+
+1. **New `gars/_system/venue_policy.py` and new `gars/_references/data_policy.tsv`**: 0100's route table, machine-readable, and the policy that refuses a submission whose class, venue and purpose the table does not permit, before any record, launcher or scheduler call.
+2. **`gars/_system/executorlib.py`**: `venue_of` (the homelab venue of the built-in `local` descriptor on a host carrying the machine-owned marker, whose path is a module constant), the two call sites in the stage 02 and stage 03 submit paths, and the `venue` key in submission records.
+3. **`gars/_system/stage00_register.py`** and **`gars/_system/tools/registry.json`** (finalize's entry only): the dataset record's `permitted_backends`, `provider_exposure`, `retention` and `expiry` columns, narrowing only, and the refusals at finalize (`identifiable`, a missing expiry for `deidentified_under_agreement`, non-public data on a homelab-marked host).
+4. **`gars/_system/wrapperlib.py`**: group 11's venue derived through `venue_of`, and, by the delegated ruling on the step's first raised question, two recorded manifest facts, `expiry` and `permitted_backends` ("the manifest gains two recorded facts; none removed").
+5. **`gars/_system/manifest_check.py`** and **`gars/_references/manifest_schema.json`**: the checker and schema know the two new facts; and group 11 accepts exactly the three backend and venue pairs the re-pointed derivation records (`local`/`local`, `local`/`homelab`, `slurm`/`slurm`), no wider.
+   **Ratification, answering review C1's NOTE.** Review C1 noted that 0102's addendum cites the ruling on the two recorded facts as the authority for the venue-pair edit, which that ruling did not cover. The venue-pair edit is ratified here, under the owner's delegation, as in-spec: step B's deliverable 10 requires the suite to pass with the homelab marker present and absent, and without the edit every manifest prepared on a marked host fails group 11. This ratification is the authority for that edit; 0102 stays byte-identical.
+6. **The stage 00, 02 and 03 contracts**: the new failure codes.
+
+Row 6's reproduction replay (`scripts/rerun_check.py`, not a protected path) now passes the recorded expiry and permitted backends and refuses, with `manifest_predates_expiry_recording`, a `deidentified_under_agreement` manifest prepared before those facts were recorded; without that change every re-run of such data would have reported a false non-reproduction, as reproduced below.
+
+### What this does not close
+
+Copied from 0102:
+
+- The homelab and Slurm bench rows, and the local one: `backend rows: 0/3`; each row arrives later from its venue, bound to its evidence.
+- R-193's priced unit economics (the rows are `unmetered` inputs); per-sample cost of real FASTQ analyses; `cloud`.
+- R-061 and the enforcement of "only `public` enters a hosted-model prompt" (0100); the second backup destination; any institutional agreement.
+- The venue is inferred from the descriptor that executes, not attested by the host; a session with sudo on the homelab can create the marker.
+- A process outside the guarded session, or one that deletes and rewrites `00_data/dataset.tsv`, is not stopped by the guard (row 6's residual).
+
+### Test
+
+Glitch verified the step independently, each evidence run alone on its host:
+
+- At the reviewed head `433b41e`, on the build node's owner account from a fresh clone of a bundle, with the temporary folder outside the clone: the suite in modes B and C, `Ran 610 tests`, `OK` with 79 and 106 skips; contracts, counts, harness and pre-registration checks clean; `data route recorded: 3/3`; `backend rows: 0/3 ()`; no temporary-file leak; no other test process on the host.
+- The catalogue's development line is unchanged from step A (0103, clause 1, line 1): `planted-defects development (producer-authored, unsealed): 9/10 classes (placeholder 10 counted planted, not caught)`, false flags 0/10, graded 19 of 19; the one class not caught is the Hi-C placeholder, class 10, by design, and step B's diff does not touch `benchmarks/defects/` or `tests/test_planted_defects.py`.
+- The new test modules fail at the seed (import errors naming `gars/_system/venue_policy.py`, `gars/_references/data_policy.tsv` and `scripts/backend_bench.py`) and pass at the head.
+- With step B's code but the seed's replay, row 6's reproduction check reports `reproduction: 0/2` with `dataset finalize failed: … dataset_expired: agreement expiry required`; with step B's replay it passes.
+- Six mutations re-planted in a disposable clone each turned their named tests red and passed again once the bytes were restored: either submit path skipping the policy, the FASTQ exemption widened, the old-manifest refusal removed, the homelab marker read from an environment variable, and the 8 GiB boundary moved.
+- gitleaks over `452fe33..433b41e` under the push door's ruleset and under `gars/.gitleaks.toml`: 0 findings; no canary; no account, host, address or home path in any added line or commit metadata.
+- At this merge's tree (`19599ba`, step B merged onto main `57f9cc5`): `Ran 660 tests` in each documented mode, `OK` with 13 skips (mode A, on the owner's workstation with the container runtime answering), 79 (mode B) and 106 (mode C, both on the build node's owner account from a fresh clone of a bundle); canary 0 of 9 in modes A and B; contracts, counts and pre-registration checks clean; `evals/test_harness.py` `Ran 44 tests`, `OK`; row 6's `test_manifest_groups` and `test_rerun_check` green; `data route recorded: 3/3`; `backend rows: 0/3 ()`; no temporary-file or container leak.
+  Two items of the lane's own checking script were corrected, not the repository: its harness step had run on the workstation's Python 3.8, which lacks string and syntax-tree functions the harness uses (under Python 3.12 the harness passes), and its pinned expectation for row 6's reproduction self-test still read the old `(fixture, local)` label, which step B changed to `(fixture, stub slurm)` as named in 0102 and the change report, with the result unchanged at `reproduction 2/2`.
+
+### Status
+
+Standing. Approval of step B's protected changes only; it does not claim the row's exit.
+
+### Date
+
+2026-09-25

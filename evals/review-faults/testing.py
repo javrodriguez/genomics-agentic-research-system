@@ -38,7 +38,7 @@ def record(neutral, prompt_sha, model='stub-model', attempt=1):
                      'login_entry': 1, 'attempt': attempt},
         'producer': {'uid': 41232, 'os_user': 'synthetic-producer'},
         'started_at': '2000-01-01T00:00:00Z', 'finished_at': '2000-01-01T00:00:01Z',
-        'exit_code': 0, 'ended_on_usage_limit': False, 'blindness': {'calls': 0, 'hits': 0}}}
+        'exit_code': 0, 'ended_on_usage_limit': False, 'blindness': {'calls': 0, 'hits': 0, 'ambiguous': 0}}}
 
 
 def launcher_fixture(test, count=2):

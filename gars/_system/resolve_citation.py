@@ -9,29 +9,64 @@ from urllib.parse import quote
 from urllib.request import urlopen
 
 
+DOI_PATTERN = r"10\.[0-9]{4,9}(?:\.[0-9]+)*/[^\s<>\"']+"
+MARKER_PATTERN = r'(?<![0-9A-Za-z])doi(?=\b|_|10[./])'
+UNICODE_ALNUM_PATTERN = r"[^\W_]"
+
+
 def parser():
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument('reference')
     return result
 
 
-def dois(reference):
+def _doi_spans(reference):
     """Extract DOI tokens wherever a citation writes them, preserving suffix case."""
-    values = re.findall(r"10\.[0-9]{4,9}(?:\.[0-9]+)*/[^\s<>\"']+", reference, re.I)
-    identifiers = []
-    for value in values:
+    for match in re.finditer(DOI_PATTERN, reference, re.I):
+        value = match.group()
         punctuation_removed = False
         while value:
             if value[-1] in '.,;' and not punctuation_removed:
                 value = value[:-1]
                 punctuation_removed = True
-            elif (value[-1] in ')]'
-                  and value.count(value[-1]) > value.count({')': '(', ']': '['}[value[-1]])):
+            elif (value[-1] in ')]}'
+                  and value.count(value[-1]) > value.count({')': '(', ']': '[', '}': '{'}[value[-1]])):
                 value = value[:-1]
             else:
                 break
-        identifiers.append(value)
-    return identifiers
+        yield value, match.start(), match.start() + len(value)
+
+
+def dois(reference):
+    return [value for value, start, end in _doi_spans(reference)]
+
+
+def _has_unbound_doi_number(reference):
+    """Bind marker-local numbers, consuming parsed identifiers and their lists."""
+    spans = list(_doi_spans(reference))
+    for marker in re.finditer(MARKER_PATTERN, reference, re.I):
+        if any(start <= marker.start() < end for value, start, end in spans):
+            continue
+        # Check the leading boundary after the marker, including attached DOI10/.
+        tail = reference[marker.end():]
+        token_end = re.match(r'\S*', tail).end()
+        number = re.search(r'(?<![0-9A-Za-z])10[./]', tail)
+        if number is None or re.search(UNICODE_ALNUM_PATTERN, tail[token_end:number.start()]):
+            continue
+        number_start = marker.end() + number.start()
+        while True:
+            identifier_end = next((end for value, start, end in spans
+                                   if start <= number_start < end), None)
+            if identifier_end is None:
+                return True
+            # Any number inside the identifier is satisfied; chain from its end.
+            cursor = identifier_end
+            while cursor < len(reference) and not re.match(UNICODE_ALNUM_PATTERN, reference[cursor]):
+                cursor += 1
+            if not re.match(r'10[./]', reference[cursor:]):
+                break
+            number_start = cursor
+    return False
 
 
 def doi(reference):
@@ -43,6 +78,7 @@ def mentions_doi(reference):
     # Check what remains after every parsed identifier is removed: one valid
     # DOI cannot conceal another, unparseable DOI in the same reference.
     identifiers = dois(reference)
+    if identifiers: return _has_unbound_doi_number(reference)
     for identifier in identifiers:
         reference = reference.replace(identifier, ' ')
     # A resolved DOI may leave its own explicit marker behind. Preserve the

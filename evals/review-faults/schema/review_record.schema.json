@@ -239,7 +239,8 @@
           "type": "object",
           "required": [
             "calls",
-            "hits"
+            "hits",
+            "ambiguous"
           ],
           "properties": {
             "calls": {
@@ -247,6 +248,10 @@
               "minimum": 0
             },
             "hits": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "ambiguous": {
               "type": "integer",
               "minimum": 0
             }

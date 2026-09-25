@@ -55,6 +55,23 @@ This stage performs the steps in Process and nothing else.
 
 ## Definitions
 
+Finalize requires `--data-class` (`public`, `deidentified_under_agreement`, or
+`identifiable`) and `--purpose` (`fixture`, `internal`, `pilot_internal`,
+`pilot_external`, or `commercial`). `--agreement-ref` defaults to `none`.
+`data_class_required`, `purpose_required`, and `agreement_ref_required` refuse
+missing or unknown values. `dataset_classification_locked` refuses a re-finalize
+whose values differ from the existing machine-owned `00_data/dataset.tsv`.
+Re-finalize with the same values leaves that row unchanged, except that a
+row-6-only row gains the four route columns while retaining its existing field
+bytes. `--permitted-backends` may only narrow the class default from
+`_references/data_policy.tsv`; `permitted_backends_invalid` and
+`permitted_backends_widened` refuse invalid or widened routes. Provider exposure
+and retention are derived from that table. `--expiry YYYY-MM-DD` is required
+for deidentified_under_agreement; `dataset_expired` refuses absent or invalid
+agreement expiry. `class_not_permitted` refuses identifiable data, after the
+existing classification lock. `storage_venue_not_permitted` refuses any
+non-public class on a host carrying the machine-owned homelab marker.
+
 The script owns these rules; they are stated here so you can explain a refusal, not so you can
 perform the check.
 
@@ -241,7 +258,7 @@ All columns are optional `samples.csv` columns under the open schema (decision 0
     kill, and tell the user it is running:
 
     ```bash
-    python3 _system/stage00_register.py finalize --project projects/<title> --model "<model id>"
+    python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --purpose <purpose> --agreement-ref none --model "<model id>"
     ```
 
     `--model` is the exact model id you are running as, exactly as your harness reports it —

@@ -44,6 +44,9 @@ This sub-stage performs the steps in Process and nothing else.
 
 ## Definitions
 
+`reference_hash_mismatch`: a configured reference differs from its registered SHA-256;
+prepare refuses it (R-090). Report the failure verbatim.
+
 **Wrapper invocation.** From the workspace root, on stock python:
 
 ```bash
@@ -58,6 +61,9 @@ stage-helper standard: 0 ok, 1 failure, 2 refused, 3 usage.
 **Failure vocabulary.** `preconditions`, `config`, `config_unfilled`, `design` (contrast
 level missing or under-sampled), `counts` (a design sample absent from the matrix header);
 `collect` adds `de_results`, `figures`, `report`, `adaptation`.
+`design_not_canonical`: prepare refuses (exit 2), writes nothing, and reports
+"design is not the canonical project design" when `--design` does not resolve to
+`01_samplesheets/rnaseq_bulk_design.csv` in the project.
 
 **Execution venue.** Always the workspace's configured executor — `_config/executor.yaml`
 names it (decision 0039); on this cluster that is Slurm (decision 0027, no opt-out). The generated `submit.sh`
