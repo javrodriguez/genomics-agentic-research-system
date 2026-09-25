@@ -1,0 +1,63 @@
+{
+  "original": "@ORIGINAL_STAGE@/reproducibility/manifest.json",
+  "requested": 2,
+  "runs": [
+    {
+      "artifacts": [
+        {
+          "match": true,
+          "metric": "sha256",
+          "mode": "exact",
+          "original_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "path": "run/tables/normalized_counts_SAMPLEFIX_A7.csv",
+          "replay_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "value": null
+        },
+        {
+          "match": true,
+          "metric": "sha256",
+          "mode": "exact",
+          "original_sha256": "901efba911e88d032ce92c9503fe3ab3c425b25887969a7f4b8160e357b19ab3",
+          "path": "run/tables/de_results.csv",
+          "replay_sha256": "901efba911e88d032ce92c9503fe3ab3c425b25887969a7f4b8160e357b19ab3",
+          "value": null
+        }
+      ],
+      "code": 0,
+      "job": "1001",
+      "match": true,
+      "reason": "identical; SAMPLEFIX_A7 counts equal",
+      "run": 1
+    },
+    {
+      "artifacts": [
+        {
+          "match": false,
+          "metric": "max_rel_delta",
+          "mode": "tolerance",
+          "original_sha256": "901efba911e88d032ce92c9503fe3ab3c425b25887969a7f4b8160e357b19ab3",
+          "path": "run/tables/de_results.csv",
+          "replay_sha256": "ce5e74d846f2f462715273c8e6db4491359b1986c75970b430eb9973200a006a",
+          "value": 0.0206
+        },
+        {
+          "match": true,
+          "metric": "sha256",
+          "mode": "exact",
+          "original_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "path": "run/tables/normalized_counts_SAMPLEFIX_A7.csv",
+          "replay_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "value": null
+        }
+      ],
+      "code": 0,
+      "job": "1002",
+      "match": false,
+      "reason": "GENEFIX0003 padj crossed 0.05 in SAMPLEFIX_B2 contrast",
+      "run": 2
+    }
+  ],
+  "tolerances_sha256": "b9d1def5ec54f83dd308580e7d7a3ce33d409200c650f666420b37937cddaf6f",
+  "wrapper_sha256": "615da6036d31fcc4abb4e9dcc00a36e9061482e57942344f0b11c5325784ec25",
+  "wrappers_root": "@WRAPPERS_ROOT@"
+}

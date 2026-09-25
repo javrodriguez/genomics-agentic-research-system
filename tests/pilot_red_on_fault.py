@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+"""Row 13 step A red-on-fault driver (decision 0140). Not collected by the suite.
+
+    python3 tests/pilot_red_on_fault.py
+
+Copies the three pilot scripts, their tests, fixtures and docs/pilot into a temporary tree under
+$TMPDIR, checks every module is green there, then plants each named fault on its own, runs the
+module that must catch it and requires it to go red, and restores the planted file's bytes
+before the next fault. The checkout is never modified.
+"""
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+
+REPO = Path(__file__).resolve().parents[1]
+COPY = ('scripts/unit_economics.py', 'scripts/rerun_diff.py', 'scripts/session_turns.py',
+        'tests/test_unit_economics.py', 'tests/test_rerun_diff.py',
+        'tests/test_session_turns.py', 'tests/fixtures/pilot', 'docs/pilot')
+MODULES = ('test_unit_economics', 'test_rerun_diff', 'test_session_turns')
+
+# (name, file, old, new, module that must go red)
+FAULTS = (
+    ('a hand-typed cost accepted', 'scripts/unit_economics.py',
+     'if row["cost_usd_per_sample"] != "unmetered":', 'if False:', 'test_unit_economics'),
+    ('verification counted twice', 'scripts/unit_economics.py',
+     'if r["stage"] == stage and r["action"] not in verification), Decimal(0))',
+     'if r["stage"] == stage), Decimal(0))', 'test_unit_economics'),
+    ('margin computed with no price', 'scripts/unit_economics.py',
+     'add("margin", "margin", "uncomputable: no price (R-193)")',
+     'add("margin", "margin", "$%s" % two(Decimal(0) - dollars))', 'test_unit_economics'),
+    ('a gene id printed by rerun_diff', 'scripts/rerun_diff.py',
+     '"genes matched: %d" % len(matched),',
+     '"genes matched: %d (%s)" % (len(matched), matched[0] if matched else ""),',
+     'test_rerun_diff'),
+    ('a tool_result record counted as a human turn', 'scripts/session_turns.py',
+     '    if all(results):\n        return "tool_result"',
+     '    if all(results):\n        return "human"', 'test_session_turns'),
+    ('a discrepancy auto-corrected', 'scripts/unit_economics.py',
+     'turns, inside, outside, outside_minutes = session',
+     'turns, inside, outside, outside_minutes = session[0], session[0], 0, "0.00"',
+     'test_unit_economics'),
+    ('a record silently skipped', 'scripts/session_turns.py',
+     'raise ue.Refused("unclassifiable record line %d" % number)', 'continue',
+     'test_session_turns'),
+    ('a non-deterministic ordering', 'scripts/unit_economics.py',
+     'stages = [s for s in vocab["stage"]\n              if any(r["stage"] == s for r in rows) or s in base]',
+     'stages = list({r["stage"] for r in rows} | set(base))', 'test_unit_economics'),
+)
+
+
+def run(tree, module):
+    result = subprocess.run([sys.executable, str(tree / 'tests' / (module + '.py'))],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            universal_newlines=True, env=dict(os.environ))
+    failed = sorted(set(re.findall(r'^(?:FAIL|ERROR): (\w+)', result.stderr, re.M)))
+    summary = [l for l in result.stderr.splitlines() if l.startswith(('OK', 'FAILED'))]
+    return result.returncode, failed, summary[-1] if summary else 'no summary'
+
+
+def main():
+    red = 0
+    with tempfile.TemporaryDirectory(prefix='row13-faults-') as temp:
+        tree = Path(temp)
+        for relative in COPY:
+            source, target = REPO / relative, tree / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if source.is_dir():
+                shutil.copytree(str(source), str(target))
+            else:
+                shutil.copyfile(str(source), str(target))
+        for module in MODULES:
+            code, failed, summary = run(tree, module)
+            print('baseline %s: %s' % (module, summary))
+            if code != 0:
+                print('FAIL: baseline is not green')
+                return 1
+        for name, relative, old, new, module in FAULTS:
+            path = tree / relative
+            original = path.read_bytes()
+            text = original.decode()
+            if text.count(old) != 1:
+                print('FAIL: anchor for %r found %d times' % (name, text.count(old)))
+                return 1
+            path.write_text(text.replace(old, new))
+            code, failed, summary = run(tree, module)
+            path.write_bytes(original)
+            verdict = 'RED' if code != 0 else 'GREEN (fault survived)'
+            red += code != 0
+            print('%s: %s; %s; %s' % (name, verdict, summary, ', '.join(failed)))
+        for module in MODULES:
+            code, failed, summary = run(tree, module)
+            print('restored %s: %s' % (module, summary))
+            if code != 0:
+                return 1
+    print('red-on-fault: %d/%d RED' % (red, len(FAULTS)))
+    return 0 if red == len(FAULTS) else 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())

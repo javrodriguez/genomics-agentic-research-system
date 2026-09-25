@@ -1,0 +1,9 @@
+# bring-home, synthetic fixture (step B's bring_home.py emits the real one)
+stage 02_02_de: collect OK
+quantity samples_in_design 6
+quantity cpu_hours slurm 1.75
+quantity cpu_hours local 0.20
+quantity cpu_hours slurm 1.75
+human turns: 6; inside spans: 4; outside spans: 2; outside minutes: 1.50; session wall minutes: 47.00; agent active minutes: 45.50; graded 14 of 14 records
+quantity cpu_hours cloud 3.00
+note: a line of any other shape is counted and ignored

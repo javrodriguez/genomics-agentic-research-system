@@ -1,0 +1,2 @@
+# gars-pilot-log v1 nonce=<32 hex>
+ts,stage,actor,action,reason_code,minutes
