@@ -13,7 +13,7 @@ BASES = {'rna-a': ('rnaseq_bulk', 731947205861304921), 'rna-b': ('rnaseq_bulk', 
 LAYOUT = {'samples.csv': '1-design/samples.csv', 'config.yaml': '1-design/_config/{assay}.yaml',
           'PLAN.md': '1-design/PLAN.md', 'approval.json': '1-design/approval.json',
           'files.csv': '2-data/files.csv', 'counts.tsv': '2-data/counts.tsv',
-          'provenance.csv': '2-data/provenance.csv', 'raw': '2-data/raw',
+          'provenance.csv': '2-data/provenance.csv', 'libraries': '2-data/libraries',
           'de_results.csv': '3-results/de_results.csv',
           'normalized_counts.csv': '3-results/normalized_counts.csv',
           'manifest.json': '3-results/manifest.json', 'qc.md': '3-results/qc.md',
@@ -21,16 +21,22 @@ LAYOUT = {'samples.csv': '1-design/samples.csv', 'config.yaml': '1-design/_confi
 
 
 # Copied and adapted from benchmarks/defects/generate.py:16-17, 20-30,
-# 33-65 and 68-94 at a779084: JSON/CSV writing, seeded sample/FASTQ generation
+# 33-65 and 68-94 at a779084: JSON/CSV writing, seeded sample generation
 # and a claims export with hashed computational evidence. No runtime import.
 def write_json(path, value):
-    path.write_text(json.dumps(value, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+    write_text(path, json.dumps(value, indent=2, sort_keys=True) + '\n')
+
+
+def write_text(path, text):
+    # Explicit UTF-8 and LF on every platform, including JSON hash inputs.
+    path.write_bytes(text.encode('utf-8'))
 
 
 def table(path, header, rows, delimiter=','):
-    with path.open('w', newline='') as handle:
+    with path.open('w', newline='', encoding='utf-8') as handle:
         writer = csv.writer(handle, lineterminator='\n', delimiter=delimiter)
-        writer.writerows([header] + rows)
+        writer.writerows([[format(value, '.12g') if isinstance(value, float) else value
+                          for value in row] for row in [header] + rows])
 
 
 def bh(values):
@@ -109,7 +115,7 @@ def simulate(seed):
 
 
 def analyse(counts):
-    geometric = [math.exp(sum(math.log(x) for x in row) / len(row))
+    geometric = [math.exp(math.fsum(math.log(x) for x in row) / len(row))
                  if all(x > 0 for x in row) else None for row in counts]
     factors = [statistics.median(row[j] / gm for row, gm in zip(counts, geometric) if gm)
                for j in range(6)]
@@ -118,10 +124,11 @@ def analyse(counts):
     for row in normalized:
         logs = [math.log(x + 1.0, 2) for x in row]
         left, right = logs[:3], logs[3:]
-        pooled = (statistics.variance(left) + statistics.variance(right)) / 2.0
-        difference = statistics.mean(right) - statistics.mean(left)
+        means = [math.fsum(group) / len(group) for group in (left, right)]
+        pooled = math.fsum((x - means[j // 3]) ** 2 for j, x in enumerate(logs)) / 4.0
+        difference = means[1] - means[0]
         t = difference / math.sqrt(pooled * (2.0 / 3.0)) if pooled else 0.0
-        results.append([statistics.mean(row), difference, t, student_p(t)])
+        results.append([math.fsum(row) / len(row), difference, t, student_p(t)])
     for row, q in zip(results, bh([row[3] for row in results])):
         row.append(q)
     return normalized, results
@@ -133,36 +140,51 @@ def generate(destination, base_project, seed=None):
     rng = random.Random(seed)
     root = Path(destination)
     root.mkdir(parents=True, exist_ok=True)
-    (root / 'raw').mkdir()
+    (root / 'libraries').mkdir()
     conditions = ['A'] * 3 + ['B'] * 3
     samples, files, provenance = [], [], []
     for i, condition in enumerate(conditions):
         sid = condition + '_REP' + str(conditions[:i].count(condition) + 1)
         samples.append([sid, condition, condition, conditions[:i].count(condition) + 1, 'seq%d' % (i % 3 + 1)])
-        raw = root / 'raw' / (sid + '.fastq')
-        raw.write_text('@READ:1:FLOW:1:1:1:1 1:N:0:ACGTACGT\nACGT\n+\nIIII\n')
-        files.append([sid, '1', '2-data/raw/' + raw.name, ''])
         provenance.append([sid, 'donor%d' % (i + 1), 'run%d' % (i % 3 + 1)])
     table(root / 'samples.csv', ['sample_id', 'condition', 'group', 'replicate', 'batch'], samples)
-    table(root / 'files.csv', ['sample_id', 'lane', 'fastq_1', 'fastq_2'], files)
     table(root / 'provenance.csv', ['sample_id', 'biological_source', 'processing_run'], provenance)
     config = (('strandedness: auto\n' if assay == 'rnaseq_bulk' else '') +
               'unit_of_replication: sample\nreference_release: synthetic-v1\n'
               'de:\n  formula: "' + chr(126) + ' condition"\n  contrast: "condition,B,A"\n')
-    (root / 'config.yaml').write_text(config)
-    feature = lambda i: ('g%d' % i if assay == 'rnaseq_bulk' else 'chr1:%d-%d' % (i * 100, i * 100 + 99))
+    write_text(root / 'config.yaml', config)
+    features = []
+    position = 10000
+    for i in range(FEATURES):
+        if i % 80 == 0:
+            position = 10000
+        position += rng.randint(500, 25000)
+        end = position + rng.randint(150, 900)
+        features.append('g%d' % (i + 1) if assay == 'rnaseq_bulk' else
+                        'chr%d:%d-%d' % (i // 80 + 1, position, end))
+        position = end
     counts, unused_effects = simulate(seed)
     normalized, results = analyse(counts)
     names = [s[0] for s in samples]
     table(root / 'counts.tsv', ['gene'] + names,
-          [[feature(i + 1)] + row for i, row in enumerate(counts)], '\t')
+          [[features[i]] + row for i, row in enumerate(counts)], '\t')
     table(root / 'normalized_counts.csv', ['gene'] + names,
-          [[feature(i + 1)] + row for i, row in enumerate(normalized)])
+          [[features[i]] + row for i, row in enumerate(normalized)])
     table(root / 'de_results.csv', ['gene', 'baseMean', 'log2FoldChange', 'stat', 'pvalue', 'padj'] + names,
-          [[feature(i + 1)] + row + normalized[i] for i, row in enumerate(results)])
+          [[features[i]] + row + normalized[i] for i, row in enumerate(results)])
+    for j, sid in enumerate(names):
+        library = root / 'libraries' / (sid + '.tsv')
+        table(library, ['gene', 'count'], [[features[i], row[j]] for i, row in enumerate(counts)], '\t')
+        files.append([sid, sum(row[j] for row in counts), '2-data/libraries/' + library.name,
+                      sha256(library.read_bytes())])
+    table(root / 'files.csv', ['sample_id', 'read_count', 'count_file', 'count_sha256'], files)
     assay_method = ('Gene counts; no pathway analysis.\n' if assay == 'rnaseq_bulk' else
                     'Union consensus peaks; blacklist excluded. Global scaling assumes no global shift.\n')
     plan = ('# Analysis plan\nStatus: APPROVED\n\n## Goal\nCompare B with A in a small bulk study.\n'
+            '## Inputs\nAnalysis starts from the supplied count matrix in 2-data/counts.tsv.\n'
+            'No raw reads are supplied. files.csv lists each analysed library read count and the SHA-256\n'
+            'of its feature-count column export in libraries/; read_count is the sum over supplied features.\n'
+            'These are assigned reads, not a claim about total sequencing depth or upstream QC.\n'
             '## Method\nIndependent samples; condition-only model. Three biological replicates per arm.\n'
             'Processing runs balanced across arms; no pooling of subjects.\n'
             'Median-of-ratios size factors across features with positive counts in every sample.\n'
@@ -172,20 +194,22 @@ def generate(destination, base_project, seed=None):
             'Outliers retained; descriptive association only; no pathway or causal claims.\n' + assay_method +
             '## Outputs\n| File | Type | Description |\n|---|---|---|\n'
             '| de_results.csv | de_results | Differential table |\n\n## Execution\nRuns: batch\n')
-    (root / 'PLAN.md').write_text(plan)
+    write_text(root / 'PLAN.md', plan)
     write_json(root / 'approval.json', {'actor': 'human', 'timestamp': '2026-09-25T00:00:00Z',
                'expiry': '2026-09-26T00:00:00Z', 'plan_sha256': sha256(plan.encode())})
-    assay_qc = ('RNA QC: mapping rate 0.96; assigned-read fraction 0.88; inferred strandedness agrees with auto inference.\n'
+    assay_qc = ('RNA QC: mapping rate, assigned-read fraction and inferred strandedness are unavailable from counts.\n'
                 if assay == 'rnaseq_bulk' else
-                'ATAC QC: FRiP 0.35; TSS enrichment 9; nucleosomal fragment-length periodicity retained.\n')
-    (root / 'qc.md').write_text('All six libraries retained. No outliers removed.\n' + assay_qc +
+                'ATAC QC: FRiP, TSS enrichment and fragment-length periodicity are unavailable from counts.\n')
+    write_text(root / 'qc.md', 'All six libraries retained. No outliers removed.\n' + assay_qc +
+        'Count QC: 240 nonnegative integer features per library; library totals and checksums in files.csv.\n'
+        'QC disposition DEGRADE: upstream read-level QC cannot be assessed; conclusions concern supplied counts only.\n'
         'QC disposition WARN: n = 3 per group limits precision and generalisation.\n')
     manifest = {'pipeline_commit': 'synthetic-v1', 'params': {'assay': assay,
                 'unit_of_replication': 'sample', 'formula': 'condition',
                 'execution_started_at': '2026-09-25T01:00:00Z', 'execution_finished_at': '2026-09-25T01:01:00Z',
                 'contrast': 'B versus A', 'normalisation': 'median-of-ratios',
                 'test': 'pooled Student t on log2(normalised count + 1)', 'df': 4,
-                'alpha': .05, 'multiple_testing_scope': '240 tested features'}}
+                'alpha': '0.05', 'multiple_testing_scope': '240 tested features'}}
     write_json(root / 'manifest.json', manifest)
     evidence = {'id': 1, 'artifact_id': 1, 'source_id': None, 'kind': 'statistical',
                 'relation': 'supports', 'source': None, 'artifact': {'id': 1,
@@ -197,8 +221,8 @@ def generate(destination, base_project, seed=None):
         'bio_support': {'statistical_support': 'BH across 240 features', 'replication': 'n = 3 biological replicates per group',
                         'effect_size': 'See differential table', 'orthogonal_assay': 'none', 'literature': 'not used'},
         'process_risk': {'data_quality': 'All libraries retained', 'confounding_risk': 'Processing balanced',
-            'provenance_completeness': 'Library origins in provenance.csv', 'qc_disposition': 'WARN',
-            'limitation': 'n = 3 per group limits precision; associations do not establish causation. Global scaling assumes no global shift.'},
+            'provenance_completeness': 'Library origins in provenance.csv', 'qc_disposition': 'DEGRADE',
+            'limitation': 'Upstream read-level QC unavailable; conclusions concern supplied counts only. n = 3 per group limits precision; associations do not establish causation. Global scaling assumes no global shift.'},
         'reference_release': 'synthetic-v1', 'workflow_version': 'synthetic-v1', 'evidence': [evidence]}]})
     return root
 

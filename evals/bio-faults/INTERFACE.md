@@ -69,6 +69,18 @@ n = 3 per group limitation. The seed and base id are handoff metadata only;
 neither is copied into reviewer-visible files. Approval records are historical
 data, never an approval command.
 
+The supplied count matrix is the analysis input; no raw reads are supplied.
+files.csv lists each library's analysed read count (the sum over supplied
+features) and the SHA-256 of its per-library count export. It does not assert
+a total sequencing depth. Upstream read-level QC is unavailable from these
+inputs, marked DEGRADE with the limitation attached to the rendered claim;
+no mapping, strandedness, FRiP, TSS or fragment-periodicity measurement is
+invented. ATAC coordinates have seeded widths of 150–900 bases and gaps of
+500–25000 bases over three chromosomes. Numeric CSV values use twelve
+significant digits, floating sums use math.fsum, and all files use UTF-8/LF.
+Base fingerprints use the sorted (relative path, SHA-256) JSON list and hash
+algorithm shown below for seals, applied to every file in a base tree.
+
 ## LAYOUT MAP
 
 Every target below is under the anonymous case's `project/` folder.
@@ -82,12 +94,12 @@ Every target below is under the anonymous case's `project/` folder.
 | files.csv | 2-data/files.csv |
 | counts.tsv | 2-data/counts.tsv |
 | provenance.csv | 2-data/provenance.csv |
-| raw/A_REP1.fastq | 2-data/raw/A_REP1.fastq |
-| raw/A_REP2.fastq | 2-data/raw/A_REP2.fastq |
-| raw/A_REP3.fastq | 2-data/raw/A_REP3.fastq |
-| raw/B_REP1.fastq | 2-data/raw/B_REP1.fastq |
-| raw/B_REP2.fastq | 2-data/raw/B_REP2.fastq |
-| raw/B_REP3.fastq | 2-data/raw/B_REP3.fastq |
+| libraries/A_REP1.tsv | 2-data/libraries/A_REP1.tsv |
+| libraries/A_REP2.tsv | 2-data/libraries/A_REP2.tsv |
+| libraries/A_REP3.tsv | 2-data/libraries/A_REP3.tsv |
+| libraries/B_REP1.tsv | 2-data/libraries/B_REP1.tsv |
+| libraries/B_REP2.tsv | 2-data/libraries/B_REP2.tsv |
+| libraries/B_REP3.tsv | 2-data/libraries/B_REP3.tsv |
 | de_results.csv | 3-results/de_results.csv |
 | normalized_counts.csv | 3-results/normalized_counts.csv |
 | manifest.json | 3-results/manifest.json |

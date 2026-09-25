@@ -500,3 +500,191 @@ on an owner ruling.
 ## Owner rulings needed
 
 None.
+
+## Review round S1 fixes
+
+2026-09-25. This answers the supplied round-R2 review. The continuation guidance
+and lane rulings are **Glitch under the owner's standing delegation of
+23 Sep 2026**, never the owner's words. Earlier report and decision bytes remain
+unchanged. Option (ii) is implemented: analysis begins with counts, with no raw
+reads. No in-scope planted class requires raw reads, so option (i) is not used.
+
+| Finding | Changed files | Test | Result; red-on-fault seen and how |
+|---|---|---|---|
+| F1 MAJOR | bio_generate_base.py, bio_gates.py, INTERFACE.md, P01/P02 expected.json, pipeline/fault tests | test_count_inputs_consistent; test_each_gate_refuses; test_student_reference_and_analysis; four-case build | PASS; yes: inventing measured RNA QC or dropping count integrity fails the named consistency test after a green control |
+| F2 MAJOR | bio_generate_base.py; pipeline/fault tests; INTERFACE.md; 0136 addendum | test_base_fingerprints; test_determinism_stats_neutral; test_bases_and_bh | PASS on Python 3.13.5; yes: restoring built-in floating sum or dropping fixed formatting fails the fingerprint test; other interpreters/platforms remain unverified |
+| F3 MINOR | bio_score.py; pipeline/fault tests | test_resume_id_differs_count | PASS; yes: counting unstarted B fails the extended test; also checks missing-init, 0/0, disagreement staying valid and the printed count |
+| F4 NOTE | bio_generate_base.py; INTERFACE.md; pipeline/fault tests | test_atac_peak_coordinates | PASS; yes: restoring abutting single-chromosome tiles fails the named coordinate test |
+| F5 NOTE | append-only 0136 and this report | no repository fix requested | Answered: the prior round's disclosed scratch-containment breach remains a process fact; no mutation applies |
+
+### Statistical rationales against the S1 bases
+
+The three fixed seeds still draw 240 negative-binomial features, dispersion
+0.015, skewed lognormal baselines, differing library exposures and 24 effects
+of absolute log2 size 1–3 in both directions. All six libraries are retained.
+Each library's count export exactly matches its matrix column, its read_count
+is the sum over the supplied features, and its SHA-256 is verifiable locally.
+No file claims that these are total sequencing depths. There are no raw reads,
+real-experiment claims or measured upstream QC values. Analysis begins at the
+count matrix; unavailable RNA or ATAC read-level QC is explicitly DEGRADE,
+with the resulting limitation next to the report claim. This removes the
+contradiction identified by F1 without manufacturing sequencing evidence.
+
+Median-of-ratios normalization, log2(normalized count + 1), pooled two-sided
+Student t with df = 4, and BH over 240 tests at alpha 0.05 remain pre-specified
+and recomputed. C01 has 22 significant features, 12 higher and 10 lower in B;
+C02 has 21, 12 higher and 9 lower. Both have six independent donors and balanced
+processing assignments. Their reports state descriptive association, n = 3
+per group, unavailable upstream QC and the global-scaling limitation. The
+ATAC feature universe now has seeded widths and gaps across three chromosomes;
+its counts and test statistics retain the same draws. These clean analyses
+make claims only about the supplied count evidence.
+
+P01 changes only processing_run in provenance.csv: all A libraries share one
+run and all B libraries another. The condition-only matrix is full rank,
+but the contrast cannot separate a condition effect from the processing effect.
+The t-test compares group means without estimating that inseparable processing
+contribution. Its 22 numerical discoveries cannot identify a biological
+condition contrast independently of run. The plan, conditions and origin table
+expose this one batch-confounded contrast. No count, QC value, result, approval
+or rendered number is altered by the patch.
+
+P02 changes only biological_source in provenance.csv: the three A libraries
+are aliquots of one donor, and the three B libraries aliquots of another.
+The pooled t-test uses aliquot-level variance and df = 4 as though there were
+three independent biological replicates per group. There is actually one donor
+per condition and no estimable between-donor residual variance for the
+biological contrast. Treating the aliquots as independent understates that
+uncertainty, giving the 24 significant features unjustified biological
+inference. This is one pseudoreplication error, visible from the plan and source
+mapping, with the numerical computation and report internally consistent.
+
+Both patches were re-derived with difflib against the S1 bases and matched
+their existing plant.diff bytes exactly. The expanded plan moved the method
+match ranges from lines 7–11 to 12–16; expected.json is updated accordingly.
+The provenance ranges remain 2–7. No extra case or planted class is authored.
+These rationales are confined to this report; independent honesty audit remains
+later work.
+
+### Reproducibility and gate scope
+
+The generator uses math.fsum for floating reductions, twelve significant digits
+for numeric CSV values, and UTF-8/LF for every base file. test_base_fingerprints
+pins all three tree hashes recorded in the S1 addendum to 0136, using the sorted
+(relative path, file SHA-256) compact-JSON hash. Python 3.13.5 produced these
+hashes repeatedly. No different Python interpreter is available here, so
+3.6–3.12 and cross-platform byte equality have not been verified. Grammar
+compatibility is reported separately below.
+
+Stage 01's unchanged real checker receives the case design/config and a scratch
+registration view with the count registry's sample ids and empty FASTQ fields.
+There are no asserted raw paths or manufactured reads. The imported integrity
+checker processes the actual supplied count artifacts; catalogue_integrity also
+checks library checksums, totals and matrix-column agreement. Every previously
+named gate still runs. Raw-read-specific checks have no applicable raw files.
+Existing wrapper/approval execution scaffolds are content-check data, never
+claims of a real run. Missing, corrupted or contradictory count artifacts
+refuse. Gate refusal, import drift, fixed stats, visibility and oracle tests
+remain intact.
+
+### Verification
+
+All final runs resolve the scratch twin for TMPDIR, TEMP and TMP before running
+children. Mode C unsets TMPDIR only. No model, network, remote, push, merge or
+pull request ran. The direct modules ran individually in mode B; each is under
+120 seconds. All 37 mutations went red after unchanged green controls, including
+six added for S1. No existing guard, threshold or test assertion was weakened.
+The first pipeline probe had two failures in newly added assertions: rendered
+Markdown escapes were not decoded, and the expected 0/0 line omitted its ratio.
+Those test-only expectations were corrected to assert the complete rendered
+content and the existing formatter contract. Its superseded summary was
+`Ran 36 tests in 11.462s`; `FAILED (failures=2)`. The targeted correction printed
+`Ran 2 tests in 1.160s`; `OK`. Final acceptance results follow.
+
+The first full mode-B run printed `Ran 730 tests in 538.231s`;
+`FAILED (failures=1, skipped=79)`. Its sole failure was the unchanged
+ExecutionPolicyTests.test_prepared_local_failure_refuses_unclassified_retry:
+the local executor returned FAILED instead of FAILED:EXIT_17. An unchanged
+isolated rerun printed `Ran 1 test in 0.074s`; `OK`. No system code or test
+was edited to obtain that result. The final full rerun is recorded below;
+the earlier failure remains disclosed.
+
+| Command | Verbatim summary | Wall time |
+|---|---|---|
+| `python3 tests/run_tests.py (B, final rerun)` | `Ran 730 tests in 538.191s`; `OK (skipped=79)` | 538.398 s |
+| `python3 tests/run_tests.py (C)` | `Ran 730 tests in 558.161s`; `OK (skipped=106)` | 558.356 s |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` | 0.017 s |
+| `python3 tests/check_counts.py` | `suite: 730 tests, from unittest's loader`; `enforced=3`; `clean — every current claim matches the suite` | 0.180 s |
+| `python3 evals/test_harness.py` | `Ran 44 tests in 38.522s`; `OK` | 38.556 s |
+| `python3 evals/check_results.py --controls --lexicon` | `clean — graded=1` | 0.210 s |
+| `python3 scripts/release_check.py` | `DoD cells regenerated: 13/13` | 0.021 s |
+| `python3 tests/test_bio_faults_core.py` | `Ran 12 tests in 0.119s`; `OK` | 0.155 s |
+| `python3 tests/test_bio_faults_pipeline.py` | `Ran 36 tests in 11.978s`; `OK` | 12.050 s |
+| `python3 tests/test_bio_faults_faults.py` | `Ran 1 test in 31.892s`; `OK` | 31.921 s |
+| `python3 evals/bio-faults/bio_build_cases.py (repository fixtures)` | `cases 4; sweep hits 0` | 0.474 s |
+| Python 3.6 grammar | `Python feature_version=(3, 6): 11/11 Python files parse` | n/a |
+
+The initial narrow generator probe printed `Ran 3 tests in 0.917s`; `OK`.
+The preliminary mutation probe printed `Ran 1 test in 31.906s`; `OK`, with all
+37 red witnesses. Final direct module results above supersede these probes.
+The full runners' FAILED COLLECT messages are intentional negative controls
+from test_manifest_groups.py; the unittest summary determines suite success.
+The actual initial B unittest failure is separately disclosed above.
+
+The builder emitted `cases 4; sweep hits 0`. Its private log records:
+
+```text
+C01: catalogue_evidence=pass, catalogue_integrity=pass, catalogue_probabilities=pass, count_matrix_header=pass, de_identifiers=pass, group_rep_presence=pass, render_report=pass, stage01_design=pass, stage03_verify=pass
+C02: catalogue_evidence=pass, catalogue_integrity=pass, catalogue_probabilities=pass, count_matrix_header=pass, de_identifiers=pass, group_rep_presence=pass, render_report=pass, stage01_design=pass, stage03_verify=pass
+P01: catalogue_evidence=pass, catalogue_integrity=pass, catalogue_probabilities=pass, count_matrix_header=pass, de_identifiers=pass, group_rep_presence=pass, render_report=pass, stage01_design=pass, stage03_verify=pass
+P02: catalogue_evidence=pass, catalogue_integrity=pass, catalogue_probabilities=pass, count_matrix_header=pass, de_identifiers=pass, group_rep_presence=pass, render_report=pass, stage01_design=pass, stage03_verify=pass
+sweep hits 0
+```
+
+The release script regenerated this reviewer row; the README evidence row was
+not edited:
+
+```text
+| reviewer catch rate (code; science) | `evals/review-faults/`, `evals/bio-faults/` runners | ≥ 8/10 per set, ≤ 1/5 false alarms; first-run-at-sha reported (§21 Q3) | unmeasured |
+```
+
+The repository pre-commit hook ran with P01/P02 fixture changes staged:
+
+```text
+gitleaks: REFUSED (gitleaks absent from PATH)
+citations: 365/365 resolve
+pre-commit: REFUSED
+hook exit: 1
+```
+
+Gitleaks is absent, so the hook refused and the secret scan is unverified.
+No scanner was installed, substituted or bypassed. The citation check passed.
+The suite and count checker agree on 730 tests; README.md and DEVELOPMENT.md
+match. Mode B has 79 environment skips, mode C 106, and no science test skips.
+The Linux cold-clone skip figure remains 106. The existing macOS figure of
+75 is unchanged and was not remeasured. The decision index was regenerated;
+the append-only addition does not change its generated table.
+
+Scope/prefix checks preserve all earlier decision records, including 0135,
+and preserve the prior bytes of 0136 and this report. The supplied R2 review
+remains unchanged and untracked; the pre-existing R1 review is left unread,
+unchanged and untracked. The science prompt is unchanged. No reserved decision
+or seal is written. Staging names only allowed paths, and the single round
+commit uses the configured identity and the scratch message file.
+
+Residual gaps: mode A needs Docker, which this account cannot reach. Gitleaks,
+native Python 3.6–3.12, cross-platform base hashes, macOS cold-clone execution,
+live analysis/scheduler execution, deployment sandbox efficacy and actual
+Claude resume, independent honesty audit, protected approval, sealed slots,
+measured first run and repeat, and merge-result CI remain unverified. The first
+B execution-policy failure remains an observed transient failure in unchanged
+code; no cause or system fix is claimed. The prior round's scratch-containment
+breach remains disclosed. Row 10's exit and the full science threshold are not
+claimed.
+
+F1–F4 are closed by implementation and named regression/mutation tests; F5 is
+answered as a retained process fact. No finding waits on an owner ruling.
+
+## Owner rulings needed
+
+None.

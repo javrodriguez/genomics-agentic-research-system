@@ -66,8 +66,13 @@ def mapped_project(base, root, assay):
     data = root / '00_data' / assay
     data.mkdir(parents=True)
     shutil.copyfile(str(base / 'samples.csv'), str(data / 'samples.csv'))
-    shutil.copytree(str(base / 'raw'), str(data / 'raw'))
-    files = (base / 'files.csv').read_text().replace('2-data/raw/', '00_data/' + assay + '/raw/')
+    # Stage 01's design checker requires its registration header. No FASTQ
+    # paths are asserted for a count-only input; integrity checks the supplied
+    # count artifacts separately through the same imported integrity module.
+    with (base / 'files.csv').open() as handle:
+        registrations = list(csv.DictReader(handle))
+    files = 'sample_id,lane,fastq_1,fastq_2\n' + ''.join(
+        row['sample_id'] + ',1,,\n' for row in registrations)
     put(data / 'files.csv', files)
     put(root / '_config' / (assay + '.yaml'), (base / 'config.yaml').read_text())
     return data
@@ -213,6 +218,30 @@ def evidence_gate(base, root, assay):
     return code == 0
 
 
+def count_input_integrity(base):
+    with (base / 'files.csv').open() as handle:
+        entries = list(csv.DictReader(handle))
+    with (base / 'counts.tsv').open() as handle:
+        matrix = list(csv.reader(handle, delimiter='\t'))
+    paths = [('counts.tsv', base / 'counts.tsv')]
+    for entry in entries:
+        relative = Path(entry['count_file'])
+        if relative.is_absolute() or '..' in relative.parts or relative.parts[:2] != ('2-data', 'libraries'):
+            return False
+        path = base / Path(*relative.parts[1:])
+        paths.append((entry['sample_id'], path))
+        if sha256(path.read_bytes()) != entry['count_sha256']:
+            return False
+        with path.open() as handle:
+            column = list(csv.reader(handle, delimiter='\t'))
+        j = matrix[0].index(entry['sample_id'])
+        if column != [['gene', 'count']] + [[row[0], row[j]] for row in matrix[1:]]:
+            return False
+        if int(entry['read_count']) != sum(int(row[j]) for row in matrix[1:]):
+            return False
+    return not stage01.integrity.check_many(paths, 'full', log=io.StringIO())
+
+
 def run_gates(base, assay):
     base = Path(base)
     results = {}
@@ -230,7 +259,7 @@ def run_gates(base, assay):
         with patch.object(stage01.integrity, 'check_many',
                           partial(stage01.integrity.check_many, log=io.StringIO())):
             code, unused = captured(stage01.main, ['--project', str(project), '--check', '--verify-integrity', 'full'])
-        results['catalogue_integrity'] = code == 0
+        results['catalogue_integrity'] = code == 0 and check(lambda: count_input_integrity(base))
         results['catalogue_probabilities'] = check(lambda: not de.check_table(base / 'de_results.csv'))
         results['group_rep_presence'] = check(lambda: group_rep_presence(base, root))
         results['count_matrix_header'] = check(lambda: wrapper_scaffold(base, root / 'w', assay, atac if assay == 'atacseq_bulk' else rna))

@@ -115,6 +115,12 @@ FAULTS = [
      'return regularized_beta(df / (df + t * t), df / 2.0, 0.5)',
      'return regularized_beta(df / (df + t * t), df / 2.0, 0.5) / 2.0',
      'pipeline', 'BuildTests.test_student_reference_and_analysis'),
+    ('unavailable RNA QC asserted measured', 'evals/bio-faults/bio_generate_base.py', 'RNA QC: mapping rate, assigned-read fraction and inferred strandedness are unavailable from counts.', 'RNA QC: mapping rate 0.96; assigned-read fraction 0.88; inferred strandedness verified.', 'pipeline', 'BuildTests.test_count_inputs_consistent'),
+    ('count integrity omitted', 'evals/bio-faults/bio_gates.py', "results['catalogue_integrity'] = code == 0 and check(lambda: count_input_integrity(base))", "results['catalogue_integrity'] = code == 0", 'pipeline', 'BuildTests.test_count_inputs_consistent'),
+    ('floating sum version dependent', 'evals/bio-faults/bio_generate_base.py', 'math.exp(math.fsum(math.log(x)', 'math.exp(sum(math.log(x)', 'pipeline', 'BuildTests.test_base_fingerprints'),
+    ('float format dropped', 'evals/bio-faults/bio_generate_base.py', "format(value, '.12g')", 'str(value)', 'pipeline', 'BuildTests.test_base_fingerprints'),
+    ('unstarted resume counted', 'evals/bio-faults/bio_score.py', "and phases[1].get('session_id') not in (None, '', 'not-started', 'missing-init')", 'and True', 'pipeline', 'ScoreTests.test_resume_id_differs_count'),
+    ('ATAC peaks tiled', 'evals/bio-faults/bio_generate_base.py', "'chr%d:%d-%d' % (i // 80 + 1, position, end)", "'chr1:%d-%d' % (i * 100, i * 100 + 99)", 'pipeline', 'BuildTests.test_atac_peak_coordinates'),
 ]
 
 

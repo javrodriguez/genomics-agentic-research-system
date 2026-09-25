@@ -292,3 +292,82 @@ folder. This breached scratch containment. Final verification uses a
 runtime-resolved scratch twin; it does not erase the initial breach. The
 fixture hook also refused because gitleaks is absent. Neither complete
 invocation compliance nor a secret-scan pass is claimed.
+
+## Addendum — 2026-09-25, review round S1
+
+The continuation guidance and the earlier scope and lane rulings are **Glitch
+under the owner's standing delegation of 23 Sep 2026**, never the owner's
+words. For review R2 F1 this implements option (ii), the delegated preference:
+count-matrix analysis inputs, no raw reads, per-library analysed read totals
+and checksums. None of the five in-scope classes requires reads. The totals
+are explicitly the sum over supplied features, not invented total sequencing
+depths. Each checksum binds a per-library feature-count export; the aggregate
+matrix must equal those exports. RNA and ATAC read-level QC is unavailable
+from these inputs. The QC disposition is DEGRADE, with the limitation beside
+the rendered claim; no mapping fraction, inferred strandedness, FRiP, TSS
+value or fragment-periodicity observation is invented. All samples remain,
+and the original pre-specified pooled Student t/BH analysis is retained.
+
+Stage 01 still runs its real check against the unchanged design and config.
+Its scratch registration view projects the count registry's sample ids to the
+required sample/lane/FASTQ header, with both FASTQ columns empty. It asserts no
+raw input. The supplied count artifacts instead run through the imported
+integrity.check_many entry point, with checksum, per-library total and matrix
+column consistency checks in catalogue_integrity. No gate is omitted, no
+system file changes, and the scratch registration is never copied into a
+case. Missing, empty or inconsistent count inputs refuse. Raw-read-specific
+catalogue checks are inapplicable without raw reads; no fabricated FASTQ is
+introduced merely to satisfy a gate. Wrapper and approval execution scaffolds
+remain content-check scaffolds, not evidence of a real pipeline run.
+
+F2 replaces floating sums in the analysis with math.fsum and serializes all
+numeric CSV values at twelve significant digits. All base files use explicit
+UTF-8 and LF. Integer counts and integer event counts still use integer sum.
+The base fingerprint is SHA-256 over the compact ASCII JSON encoding of the
+sorted (relative file path, file SHA-256) list. The pinned hashes are:
+
+| Base | SHA-256 |
+|---|---|
+| rna-a | 42418064a7d2ede5a797cbb6792e48989c7e79266c83f0a2c1aeedf39d579f4e |
+| rna-b | 890c7988af399fdf168bd916ed00f134e2fe901a65060ba8466426b9566eb9f7 |
+| atac-a | 52a704ff3e389c8614756f7d80de46dbaa3b90406284d2f6bf2a257143eae9fb |
+
+Python 3.13.5 produced these hashes. python3 and python3.13 both identify that
+same version; no distinct Python 3.6–3.12 interpreter is available here.
+Cross-version and cross-platform equality therefore remains unverified, not
+inferred from the grammar parse. The named fingerprint test pins these bytes
+for the lane's other interpreters. Separate mutations restoring built-in
+floating sum and removing fixed formatting each fail that named test.
+
+F3 narrows the resume observation to records with a phase-B stream-init id:
+not-started, missing-init and absent ids contribute to neither its numerator
+nor denominator. Retained attempts with a phase-B init still each contribute.
+The printed line is resume id differs: n/d, with 0/0 uncomputable when none
+started. A disagreement remains recorded rather than INVALID, as the earlier
+lane ruling requires. The test includes an unstarted B and missing-init, and a
+mutation counting unstarted B goes red. CP5.6 still settles actual resume
+behavior on the deployment host; only stubs ran here.
+
+F4 assigns the ATAC consensus features seeded widths of 150–900 bases, gaps
+of 500–25000 bases, and three chromosomes. Counts, effects and inference retain
+the same seeded draws; the new coordinate stream is separate. A coordinate
+regression and a mutation restoring adjacent single-chromosome tiles cover it.
+P01/P02's provenance-only patches were re-derived on these bases; they remain
+byte-identical. Their plan match intervals move to the method lines after the
+new input declaration. Statistical rationales are only in the S1 change report.
+
+F5 needs no repository fix: the prior round's disclosed scratch-containment
+breach remains a process fact. This round resolves scratch settings before
+running children, including outside-cwd regressions; mode C unsets TMPDIR only.
+Tests added or extended in tests/test_bio_faults_pipeline.py and mutation
+entries in tests/test_bio_faults_faults.py cover F1–F4. The change report records
+all required command summaries and direct module wall times.
+
+The threat model and named residuals above remain unchanged. R1/R2 projection
+and exact manifest exemptions remain unchanged; row 9's validator is reused by
+projecting the prompt path; the science-path equality is checked first and
+separately. No measured reviewer, prompt tuning, seal, independent honesty
+audit, protected approval or row exit is claimed. 0135 remains unchanged;
+0137, 0138 and 0139 are not written. Sealed slots, measurement, repeat, deployment
+sandbox and actual resume remain later work; the partial set never meets the
+full science threshold.

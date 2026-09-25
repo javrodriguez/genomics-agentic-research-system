@@ -53,7 +53,7 @@ def score(records, key, manifest, answers, runs, stamp=None):
     settings_shas = set()
     count = 0
     total_ambiguous = 0
-    resume_differs = 0
+    resume_differs = phase_b_started = 0
     for path in sorted(Path(records).glob('*.record.json')):
         record = read_json(path)
         env = record.get('envelope', {})
@@ -72,7 +72,9 @@ def score(records, key, manifest, answers, runs, stamp=None):
             raise ValueError('record filename and envelope differ')
         errors = invalid_reasons(record, manifest)
         phases = env.get('phases', [])
-        if len(phases) == 2 and all(isinstance(p, dict) for p in phases):
+        if (len(phases) == 2 and all(isinstance(p, dict) for p in phases)
+                and phases[1].get('session_id') not in (None, '', 'not-started', 'missing-init')):
+            phase_b_started += 1
             resume_differs += int(phases[0].get('session_id') != phases[1].get('session_id'))
         # Decision 0128 round B: the ambiguous count stays visible per record.
         judged, absent = read_ambiguous(record)
@@ -147,7 +149,7 @@ def score(records, key, manifest, answers, runs, stamp=None):
                          'd': plants, 'types': sorted({e['seal_type'] for e in mapping.values() if e['seal_type'] != 'unsealed'})},
               'sealed_clean': ratio(sum(e['kind'] == 'clean' and e['seal_type'] != 'unsealed' for e in mapping.values()), clean),
               'cases': outcomes, 'ambiguous': total_ambiguous,
-              'resume_id_differs': ratio(resume_differs, count)}
+              'resume_id_differs': ratio(resume_differs, phase_b_started)}
     literals = [s for entry in mapping.values() for s in entry['mask_literals']]
     result = masked_copy(result, key['run_salt'], list(mapping), literals)
     return result

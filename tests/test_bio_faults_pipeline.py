@@ -1,5 +1,7 @@
 """Science construction, validity, stub launch and scoring; stdlib, no models."""
 import contextlib
+import ast
+import inspect
 import copy
 import csv
 import datetime
@@ -29,6 +31,7 @@ import bio_review_record as validator
 import bio_run_reviews as launcher
 import bio_score as scorer
 support = bio.load_row9('testing')
+BASE_HASHES = {'atac-a': '52a704ff3e389c8614756f7d80de46dbaa3b90406284d2f6bf2a257143eae9fb', 'rna-a': '42418064a7d2ede5a797cbb6792e48989c7e79266c83f0a2c1aeedf39d579f4e', 'rna-b': '890c7988af399fdf168bd916ed00f134e2fe901a65060ba8466426b9566eb9f7'}
 
 
 def temporary(test):
@@ -180,6 +183,89 @@ class BuildTests(unittest.TestCase):
             else:
                 self.assertIn('FRiP', qc); self.assertNotIn('strandedness', (base / 'config.yaml').read_text() + qc)
 
+    def test_count_inputs_consistent(self):
+        root = temporary(self)
+        builder.build(root / 'built')
+        for project in (root / 'built/cases').glob('*/project'):
+            self.assertFalse((project / '2-data/raw').exists())
+            self.assertFalse(list(project.rglob('*.fastq')))
+            with (project / '2-data/counts.tsv').open() as handle:
+                matrix = list(csv.reader(handle, delimiter='\t'))
+            with (project / '2-data/files.csv').open() as handle:
+                files = list(csv.DictReader(handle))
+            self.assertEqual([r['sample_id'] for r in files], matrix[0][1:])
+            for j, entry in enumerate(files, 1):
+                column = project / entry['count_file']
+                self.assertEqual(entry['count_sha256'], bio.sha256(column.read_bytes()))
+                with column.open() as handle:
+                    rows = list(csv.reader(handle, delimiter='\t'))
+                self.assertEqual(rows, [['gene', 'count']] + [[r[0], r[j]] for r in matrix[1:]])
+                self.assertEqual(int(entry['read_count']), sum(int(r[j]) for r in matrix[1:]))
+            plan = (project / '1-design/PLAN.md').read_text()
+            self.assertIn('Analysis starts from the supplied count matrix', plan)
+            self.assertIn('read_count is the sum over supplied features', plan)
+            qc = (project / '3-results/qc.md').read_text()
+            self.assertIn('are unavailable from counts', qc)
+            self.assertNotIn('mapping rate 0.96', qc)
+            report = (project / '4-report/report.md').read_text().replace(chr(92), '')
+            self.assertIn('Upstream read-level QC unavailable; conclusions concern supplied counts only.', report)
+            self.assertIn('DEGRADE', report)
+        # Integrity still rejects a mismatching checksum, total, column or absent input.
+        for mutation in ('checksum', 'total', 'column', 'missing'):
+            base = generator.generate(root / mutation, 'rna-a')
+            if mutation in ('checksum', 'total'):
+                with (base / 'files.csv').open() as handle:
+                    rows = list(csv.reader(handle))
+                rows[1][3 if mutation == 'checksum' else 1] = '0'
+                generator.table(base / 'files.csv', rows[0], rows[1:])
+            else:
+                library = base / 'libraries/A_REP1.tsv'
+                if mutation == 'missing': library.unlink()
+                else:
+                    library.write_text(library.read_text().replace('g1', 'renamed', 1))
+                    with (base / 'files.csv').open() as handle:
+                        rows = list(csv.reader(handle))
+                    rows[1][3] = bio.sha256(library.read_bytes())
+                    generator.table(base / 'files.csv', rows[0], rows[1:])
+            self.assertFalse(gates.run_gates(base, 'rnaseq_bulk')[0]['catalogue_integrity'], mutation)
+
+    def test_base_fingerprints(self):
+        hashes = BASE_HASHES
+        root = temporary(self)
+        for name, expected in sorted(hashes.items()):
+            base = generator.generate(root / name, name)
+            entries = sorted((p.relative_to(base).as_posix(), bio.sha256(p.read_bytes()))
+                             for p in base.rglob('*') if p.is_file())
+            payload = json.dumps(entries, separators=(',', ':'), ensure_ascii=True).encode('utf-8')
+            self.assertEqual(bio.sha256(payload), expected, name)
+            for path in base.rglob('*'):
+                if path.is_file(): self.assertNotIn(b'\r', path.read_bytes())
+        # Built-in sum has different float semantics before/after Python 3.12.
+        tree = ast.parse(inspect.getsource(generator.analyse))
+        self.assertFalse(any(isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+                             and n.func.id == 'sum' for n in ast.walk(tree)))
+
+    def test_atac_peak_coordinates(self):
+        root = temporary(self)
+        base = generator.generate(root / 'base', 'atac-a')
+        with (base / 'counts.tsv').open() as handle:
+            rows = list(csv.reader(handle, delimiter='\t'))[1:]
+        previous, widths, gaps = {}, set(), set()
+        for row in rows:
+            chrom, interval = row[0].split(':')
+            start, end = [int(value) for value in interval.split('-')]
+            self.assertGreaterEqual(end - start, 150)
+            self.assertLessEqual(end - start, 900)
+            widths.add(end - start)
+            if chrom in previous:
+                gap = start - previous[chrom]
+                self.assertGreaterEqual(gap, 500)
+                gaps.add(gap)
+            previous[chrom] = end
+        self.assertGreater(len(previous), 1)
+        self.assertGreater(len(widths), 20)
+        self.assertGreater(len(gaps), 20)
+
     def test_base_identity_not_visible(self):
         root = temporary(self)
         builder.build(root / 'built')
@@ -219,7 +305,7 @@ class BuildTests(unittest.TestCase):
     def test_each_gate_refuses(self):
         mutations = [
             ('stage01_design', 'samples.csv', 'A_REP1,A,A,1', 'A_REP2,A,A,1'),
-            ('catalogue_integrity', 'raw/A_REP1.fastq', '+\nIIII', '+\nI'),
+            ('catalogue_integrity', 'libraries/A_REP1.tsv', 'gene', 'changed'),
             ('catalogue_probabilities', 'de_results.csv', 'padj', 'raw_p'),
             ('group_rep_presence', 'normalized_counts.csv', 'A_REP1', 'removed'),
             ('count_matrix_header', 'counts.tsv', 'A_REP1', 'removed'),
@@ -524,6 +610,32 @@ class ScoreTests(unittest.TestCase):
         output = io.StringIO()
         with contextlib.redirect_stdout(output): scorer.print_score(result)
         self.assertIn('resume id differs: 1/4', output.getvalue())
+        paths = sorted(records.glob('*.record.json'))
+        other = next(p for p in paths if p != path)
+        value = bio.read_json(other)
+        # Mirror the launcher's code-stamped shape when B never ran.
+        phase = value['envelope']['phases'][1]
+        phase.update(session_id='not-started', exit_code=1, session_matches_phase_a=False)
+        other.write_text(json.dumps(value))
+        result = scorer.score(records, key, m, [bio.HERE / 'fixtures'], runs)
+        self.assertEqual(result['resume_id_differs'], {'n': 1, 'd': 3})
+        self.assertEqual(result['overall']['invalid']['n'], 1)
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output): scorer.print_score(result)
+        self.assertIn('resume id differs: 1/3', output.getvalue())
+        phase['session_id'] = 'missing-init'
+        other.write_text(json.dumps(value))
+        self.assertEqual(scorer.score(records, key, m, [bio.HERE / 'fixtures'], runs)
+                         ['resume_id_differs'], {'n': 1, 'd': 3})
+        for p in paths:
+            value = bio.read_json(p)
+            value['envelope']['phases'][1]['session_id'] = 'not-started'
+            p.write_text(json.dumps(value))
+        result = scorer.score(records, key, m, [bio.HERE / 'fixtures'], runs)
+        self.assertEqual(result['resume_id_differs'], {'n': 0, 'd': 0})
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output): scorer.print_score(result)
+        self.assertIn('resume id differs: 0/0 uncomputable', output.getvalue())
 
     def test_tampered_answer_and_key(self):
         root, records, m, key, runs = self.setup_score()
