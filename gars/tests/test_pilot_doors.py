@@ -6,18 +6,23 @@ a closed project `pilot` and a fresh project from `create`. Ruling D-i names the
 D-ii admits a door only through the dispatcher, D-vii (b) refuses a door's direct spelling whatever it
 names while a closed project exists, and D-vii (a) keeps 0107's session-cwd rule for doors; D5 refuses a door call naming a path outside the
 workspace or outside its closed project; D-iv keeps a declared-public folder registrable.
+Step B review round 1 (F-1, F-2): an agent's Write inside a closed project is refused like the
+Edit family, and the DE doors read their design and counts only at the fixed layout.
 """
 import json
 import os
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from support import GARS  # noqa: E402
+from support import GARS, REPO  # noqa: E402
 import pilot_fixture as fx  # noqa: E402
 import guard_hook  # noqa: E402
+from tools import closed_output as co  # noqa: E402
 
 REGISTRY = json.loads((GARS / '_system/tools/registry.json').read_text())['tools']
 BY_NAME = dict((t['name'], t) for t in REGISTRY)
@@ -200,10 +205,12 @@ class DoorTests(unittest.TestCase):
         self.assertTrue(any(p.name.startswith('D1_S1') for p in
                             (ws / 'projects/fresh/00_data' / fx.ASSAY / 'raw').iterdir()))
         # The same folder named by a door beside the closed project it names is public data,
-        # neither outside the workspace nor outside the project.
+        # neither outside the workspace nor outside the project; the DE door then refuses it as
+        # not its fixed-layout counts (review round 1 F-1), never as an outside path.
         args = dict(fx.door_args('rnaseq_de.check'), counts=declared)
         exit_code, record, raw = fx.tool_call(ws, 'rnaseq_de.check', args)
-        self.assertNotEqual(record.get('type'), 'tool_refusal', raw)
+        self.assertEqual(exit_code, 2, raw)
+        self.assertTrue(record['message'].startswith('path_not_fixed_layout:'), raw)
         for name, args in (('stage00_register.inspect', {'assay': fx.ASSAY,
                                                          'source': undeclared}),
                            ('rnaseq_de.check', dict(fx.door_args('rnaseq_de.check',
@@ -226,6 +233,203 @@ class DoorTests(unittest.TestCase):
                                               fx.door_args('rnaseq_de.check', 'projects/open1'))
         self.assertNotEqual(record.get('type'), 'tool_refusal', raw)
         self.assertIn(fx.DESIGN_MARKER, raw)    # a public project's output is not filtered
+
+
+
+BASE_COMMIT = 'e589ce8'     # the row's base under gars/ (equal to ca925a1 there)
+
+
+class ClosedWriteTests(unittest.TestCase):
+    """F-2 / F-1: an agent's Write inside a closed project is refused, judged like the Edit
+    family; Bash write routes into it stay refused; with no closed project nothing changes."""
+
+    def allowed(self, result):
+        self.assertEqual(result.returncode, 0, result.stderr.decode('utf-8', 'replace'))
+
+    def refused(self, result, *words):
+        err = result.stderr.decode('utf-8', 'replace')
+        self.assertEqual(result.returncode, 2, err)
+        for word in words:
+            self.assertIn(word, err)
+        return err
+
+    def test_agent_write_inside_closed_project_refused(self):
+        print('red-on-fault: closed write', flush=True)
+        ws = STATE['ws']
+        cases = [
+            ({'file_path': 'projects/pilot/probe/a.csv'}, ''),
+            ({'file_path': str(ws / 'projects/pilot/probe/b.csv')}, ''),
+            ({'file_path': '../pilot/probe/c.csv'}, 'projects/open1'),
+            ({'file_path': 'Projects/PILOT/probe/d.csv'}, ''),
+            ({'file_path': 'projects/open1/../pilot/probe/e.csv'}, ''),
+            ({'file_path': 'projects/pilot/HISTORY.md'}, ''),
+            ({'file_path': 'projects/pilot/_config/rnaseq_bulk.yaml'}, ''),
+            ({'file_path': 'projects/pilot/' + fx.DE_STAGE + '/scripts/run_de.py'}, ''),
+            ({'file_path': 'projects/fresh/probe.csv'}, ''),
+        ]
+        for data, cwd in cases:
+            data = dict(data, content='sample_id,condition\n' + fx.COUNTS_MARKER + ',A\n')
+            with self.subTest(data=data['file_path'], cwd=cwd):
+                self.refused(fx.hook_call(ws, 'Write', data, cwd), '0107', '0141',
+                             'never writes inside a closed project')
+        # Path boundaries: a sibling that only shares the prefix, and a public project beside
+        # the closed one, are not inside it.
+        for path in ('projects/pilot-2/a.csv', 'projects/open1/notes/a.csv'):
+            with self.subTest(path=path):
+                self.allowed(fx.hook_call(ws, 'Write', {'file_path': path, 'content': 'x'}))
+        # The Edit family keeps 0107's own refusal, unchanged.
+        err = self.refused(fx.hook_call(ws, 'Edit', {
+            'file_path': 'projects/pilot/HISTORY.md', 'old_string': 'a', 'new_string': 'b'}),
+            '0107')
+        self.assertNotIn('never writes inside a closed project', err)
+
+    def test_generated_script_written_after_prepare_refused(self):
+        """F-2: after the prepare door writes scripts/run_de.py, no agent route replaces it."""
+        print('red-on-fault: generated script', flush=True)
+        ws = fx.build(STATE['top'] / 'prepared')
+        counts = ws / 'projects/pilot' / fx.COUNTS
+        # The human's matrix, with every design sample, so prepare succeeds.
+        counts.write_text(counts.read_text().replace(fx.COUNTS_MARKER, fx.DESIGN_MARKER))
+        self.allowed(fx.hook_call(ws, 'Bash', {'command': fx.dispatch(
+            'rnaseq_de.prepare', fx.door_args('rnaseq_de.prepare'))}))
+        exit_code, record, raw = fx.tool_call(ws, 'rnaseq_de.prepare',
+                                              fx.door_args('rnaseq_de.prepare'))
+        self.assertEqual(exit_code, 0, raw)
+        self.assertIn('scripts/run_de.py', json.loads(record['stdout'])['wrote'])
+        relative = 'projects/pilot/' + fx.DE_STAGE + '/scripts/run_de.py'
+        script = ws / relative
+        before = script.read_bytes()
+        calls = [('Write', {'file_path': relative, 'content': 'print(1)\n'}),
+                 ('Write', {'file_path': str(script), 'content': 'print(1)\n'}),
+                 ('Edit', {'file_path': relative, 'old_string': 'import', 'new_string': 'x'}),
+                 ('MultiEdit', {'file_path': relative,
+                                'edits': [{'old_string': 'import', 'new_string': 'x'}]})]
+        calls += [('Bash', {'command': command % relative}) for command in (
+            'echo x > %s', 'echo x >> %s', 'tee %s', 'tee -a %s', 'cp _references/VERSION %s',
+            'mv projects/open1/HISTORY.md %s', 'sed -i s/import/x/ %s', "sed -i '' s/a/b/ %s")]
+        for tool, data in calls:
+            with self.subTest(tool=tool, data=data):
+                self.refused(fx.hook_call(ws, tool, data))
+        self.assertEqual(script.read_bytes(), before)
+
+    def test_bash_writes_inside_closed_project_refused(self):
+        ws = STATE['ws']
+        for target in ('projects/pilot/probe.csv', 'projects/pilot/' + fx.DESIGN,
+                       'projects/pilot/_config/rnaseq_bulk.yaml'):
+            for command in ('echo x > %s', 'echo x >> %s', 'printf x 1> %s', 'tee %s',
+                            'tee -a %s', 'cp _references/VERSION %s',
+                            'mv projects/open1/HISTORY.md %s', 'sed -i s/a/b/ %s'):
+                with self.subTest(command=command % target):
+                    self.refused(fx.hook_call(ws, 'Bash', {'command': command % target}))
+
+    def test_write_without_closed_project_unchanged(self):
+        """R-042: with no closed project, Write and Edit are judged exactly as BASE's guard
+        judges them (exit code and message)."""
+        print('red-on-fault: R-042 write identity', flush=True)
+        ws = STATE['open_ws']
+        base = STATE['top'] / 'base-guard'
+        base.mkdir()
+        archive = subprocess.run(['git', 'archive', BASE_COMMIT, 'gars/_system'],
+                                 cwd=str(REPO), stdout=subprocess.PIPE, check=True).stdout
+        subprocess.run(['tar', '-x', '-C', str(base)], input=archive, check=True)
+        hook = base / 'gars/_system/guard_hook.py'
+        cases = [('Write', {'file_path': 'projects/open1/probe/a.csv', 'content': 'x'}, ''),
+                 ('Write', {'file_path': str(ws / 'projects/open1/HISTORY.md'), 'content': 'x'},
+                  ''),
+                 ('Write', {'file_path': 'probe/a.csv', 'content': 'x'}, 'projects/open1'),
+                 ('Write', {'file_path': 'projects/new/a.csv', 'content': 'x'}, ''),
+                 ('Edit', {'file_path': 'projects/open1/HISTORY.md', 'old_string': 'a',
+                           'new_string': 'b'}, ''),
+                 ('Write', {'file_path': '_system/x.py', 'content': 'x'}, ''),
+                 ('Write', {'file_path': 'projects/open1/00_data/dataset.tsv', 'content': 'x'},
+                  '')]
+        allowed = 0
+        for tool, data, cwd in cases:
+            with self.subTest(tool=tool, data=data, cwd=cwd):
+                ours = fx.hook_call(ws, tool, data, cwd)
+                theirs = fx.hook_call(ws, tool, data, cwd, hook=hook)
+                self.assertEqual((ours.returncode, ours.stderr), (theirs.returncode,
+                                                                  theirs.stderr))
+                allowed += ours.returncode == 0
+        self.assertEqual(allowed, 5)
+
+
+class FixedLayoutTests(unittest.TestCase):
+    """F-1, defence in depth: while a project is closed, rnaseq_de.check and .prepare take their
+    design and counts only at the fixed-layout, machine-owned paths; a probe file anywhere else
+    (placed by a human, or by any process outside the agent's guarded tools) is refused before
+    the wrapper runs, so no exit code or ok bit answers a guess about the project's samples."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.ws = fx.build(STATE['top'] / 'probe')
+        project = cls.ws / 'projects/pilot'
+        probe = project / 'probe'
+        probe.mkdir()
+        # The reviewer's oracle: a design naming a guessed sample, right and wrong.
+        for name, guess in (('right', fx.COUNTS_MARKER), ('wrong', 'S9')):
+            (probe / (name + '.csv')).write_text(
+                'sample_id,condition\n%s,A\nS2,A\nS3,B\nS4,B\n' % guess)
+        (probe / 'counts.tsv').write_text('gene_id\tgene_name\t%s\tS2\tS3\tS4\n'
+                                          'G1\tg1\t1\t2\t3\t4\n' % fx.DESIGN_MARKER)
+        (probe / 'design-link.csv').symlink_to(project / fx.DESIGN)
+        de_counts = project / fx.DE_STAGE / fx.COUNTS[len(fx.COUNTS_STAGE) + 1:]
+        de_counts.parent.mkdir(parents=True)
+        shutil.copyfile(str(project / fx.COUNTS), str(de_counts))
+        cls.de_counts = str(de_counts.relative_to(cls.ws))
+        (cls.ws / 'projects/open1/probe.csv').write_text(
+            'sample_id,condition\n%s,A\nS2,A\nS3,B\nS4,B\n' % fx.COUNTS_MARKER)
+
+    def test_probe_inputs_refused(self):
+        print('red-on-fault: fixed layout', flush=True)
+        ws = self.ws
+        refusals = []
+        for name in ('rnaseq_de.check', 'rnaseq_de.prepare'):
+            base = fx.door_args(name)
+            for args in (dict(base, design='projects/pilot/probe/right.csv'),
+                         dict(base, design='projects/pilot/probe/wrong.csv'),
+                         dict(base, counts='projects/pilot/probe/counts.tsv'),
+                         dict(base, counts=self.de_counts),
+                         dict(base, design='projects/pilot/01_samplesheets/other_design.csv'),
+                         dict(base, design='projects/pilot/probe/../probe/right.csv')):
+                with self.subTest(door=name, args=args):
+                    self.assertEqual(fx.hook_call(ws, 'Bash', {'command': fx.dispatch(
+                        name, args)}).returncode, 0)
+                    exit_code, record, raw = fx.tool_call(ws, name, args)
+                    self.assertEqual(exit_code, 2, raw)
+                    self.assertEqual(record['type'], 'tool_refusal')
+                    self.assertTrue(record['message'].startswith('path_not_fixed_layout:'),
+                                    raw)
+                    self.assertNotIn('stdout', record)
+                    self.assertNotIn('"ok"', raw)
+                    for marker in fx.MARKERS:
+                        self.assertNotIn(marker, raw)
+                    refusals.append((name, raw))
+        # A right guess and a wrong one read the same, byte for byte: no oracle.
+        for name in ('rnaseq_de.check', 'rnaseq_de.prepare'):
+            self.assertEqual(len(set(raw for n, raw in refusals if n == name)), 1)
+
+    def test_fixed_layout_accepted(self):
+        ws = self.ws
+        project = str(ws / 'projects/pilot')
+        for args in (fx.door_args('rnaseq_de.check'),
+                     dict(fx.door_args('rnaseq_de.check'), design=project + '/' + fx.DESIGN,
+                          counts=project + '/' + fx.COUNTS),
+                     dict(fx.door_args('rnaseq_de.check'),
+                          design='projects/pilot/probe/design-link.csv')):
+            with self.subTest(args=args):
+                exit_code, record, raw = fx.tool_call(ws, 'rnaseq_de.check', args)
+                self.assertNotEqual(record.get('type'), 'tool_refusal', raw)
+                self.assertEqual(json.loads(record['stdout'])['failures'],
+                                 [{'check': 'counts', 'detail': co.WITHHELD}])
+
+    def test_public_project_unchanged(self):
+        """R-042: a public project's door reads any path, unfiltered, as before."""
+        args = dict(fx.door_args('rnaseq_de.check', 'projects/open1'),
+                    design='projects/open1/probe.csv')
+        exit_code, record, raw = fx.tool_call(self.ws, 'rnaseq_de.check', args)
+        self.assertEqual(exit_code, 0, raw)
+        self.assertEqual(json.loads(record['stdout'])['ok'], True)
 
 
 if __name__ == '__main__':

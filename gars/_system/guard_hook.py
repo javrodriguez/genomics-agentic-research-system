@@ -771,8 +771,11 @@ EDIT_TOOLS = ("Edit", "MultiEdit", "NotebookEdit")
 
 def closed_edit_refusal(tool, tool_input, root, cwd):
     """Edit, MultiEdit and NotebookEdit in a closed project: an edit's result echoes the file
-    around the change, so it is a read (0107, review round 1 F3; was residual 10)."""
-    if tool not in EDIT_TOOLS:
+    around the change, so it is a read (0107, review round 1 F3; was residual 10). Write too,
+    create or overwrite (0141, step B review round 1 F-1/F-2): a file an agent places in a closed
+    project is one a door may compare or run, so a door's exit code would become an oracle on
+    the project's data, or its job would run agent-authored code."""
+    if tool not in WRITE_TOOLS:
         return
     closed = closed_projects(root)
     if not closed:
@@ -782,7 +785,9 @@ def closed_edit_refusal(tool, tool_input, root, cwd):
         deny(UNREADABLE)
     hit = closed_hit(path, root, _bases(cwd, root), False, closed)
     if hit:
-        deny(closed_refusal(path, hit))
+        deny(closed_refusal(path, hit) + (
+            " An agent never writes inside a closed project either (decision 0141): a door may "
+            "compare or run what is there." if tool not in EDIT_TOOLS else ""))
 
 
 def closed_bash_refusal(tool, args, tokens, root, cwd):

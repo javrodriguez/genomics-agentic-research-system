@@ -27,7 +27,7 @@ if str(SYSTEM) not in sys.path:
 import guard_hook  # noqa: E402  0107's closed-project reader, imported, never copied
 
 WITHHELD = "withheld: non-public project (0141)"
-REFUSALS = ("path_outside_workspace", "path_outside_closed_project")
+REFUSALS = ("path_outside_workspace", "path_outside_closed_project", "path_not_fixed_layout")
 
 CODE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 STATE_CODES = ("PENDING", "SUBMITTED", "RUNNING", "VALIDATING", "COMPLETED", "COMPLETE",
@@ -303,6 +303,39 @@ def closed(path_args, workspace, cwd=None):
     if len(hits) > 1 or loose:
         raise ClosedRefusal("path_outside_closed_project")
     return hits.pop()
+
+
+# While a project is closed, the DE doors read their two path inputs only where the machine wrote
+# them (step B review round 1, F-1): the stage 01 design and the 02.01 counts, both READ_ONLY to
+# an agent. A file anywhere else in the project could be one the agent placed there, and the
+# door's exit code or `ok` over it would answer a question about the project's samples.
+FIXED_INPUTS = {
+    "rnaseq_de.check": {"design": re.compile(r"^01_samplesheets/rnaseq_bulk_design\.csv$"),
+                        "counts": re.compile(
+                            r"^02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/"
+                            r"(?:star_salmon|star_rsem|salmon)/"
+                            r"salmon\.merged\.gene_counts_length_scaled\.tsv$")},
+}
+FIXED_INPUTS["rnaseq_de.prepare"] = FIXED_INPUTS["rnaseq_de.check"]
+
+
+def fixed_inputs(tool_name, args, workspace, project):
+    """ClosedRefusal("path_not_fixed_layout") unless each of the tool's fixed inputs, resolved
+    from the workspace root where the dispatcher runs the tool, is the closed project's own
+    fixed-layout file. Judged on the resolved form: that is the file the tool opens."""
+    rules = FIXED_INPUTS.get(tool_name)
+    if not rules:
+        return
+    root = os.path.realpath(str(workspace))
+    home = os.path.realpath(os.path.join(root, "projects", project))
+    for key in sorted(rules):
+        value = args.get(key)
+        if not isinstance(value, str) or not value:
+            raise ClosedRefusal("path_not_fixed_layout")
+        real = os.path.realpath(os.path.join(root, value))
+        relative = os.path.relpath(real, home).replace(os.sep, "/")
+        if relative.startswith("../") or not rules[key].match(relative):
+            raise ClosedRefusal("path_not_fixed_layout")
 
 
 def registration(tool, args, workspace, cwd=None):

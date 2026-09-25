@@ -344,6 +344,7 @@ class UnitEconomicsTests(unittest.TestCase):
         session = [l for l in quantities.splitlines() if l.startswith('human turns:')][0]
         for line in (session.replace('; outside window: 0', ''),
                      session.replace('1.50', '1.5'), session + ' ', 'human turns: 6',
+                     ' human turns: 6', 'Human turns: 6',
                      session.replace('graded 14 of 14 records', 'graded 14 of 15 records x')):
             self.assert_refused('quantity_malformed', quantities=self.variant(
                 'bad-session.txt', quantities + line + '\n'))

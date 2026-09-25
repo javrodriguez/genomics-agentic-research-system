@@ -409,3 +409,119 @@ changes. No code changes.
 
 `python3 gars/tests/test_nonpublic_read_block.py` (`Ran 20 tests` / `OK`). One more planted fault
 goes red, 18 of 18 in all: Q8 disabled for the dispatcher spelling (`test_q8_alone`).
+
+## Addendum — step B review round 2 fixes, 2026-09-25
+
+Every ruling in this addendum is **the lane's**, made on 25 Sep 2026 under the owner's standing
+delegation of 23 Sep 2026; none is the owner's ruling. The owner's words are only the two quoted
+in Context above. All earlier bytes of this record, both addenda included, are unchanged; where
+this addendum differs from them, it governs. It answers step B's fresh-context review, round 1
+(REJECT: one BLOCKER, F-2; two MAJOR, F-1 and F-3; three MINOR; three NOTE), and one finding of
+the lane's own whole-suite run; the evidence is in
+[the change report](../implementation/row_13_change_report.md), section "Step B review round 2
+fixes".
+
+### The lane's rulings
+
+- **F-2 and F-1 (one cause: an agent could Write inside a closed project).** 0107's
+  `closed_edit_refusal` in `gars/_system/guard_hook.py` now refuses `Write` too: any agent Write,
+  create or overwrite, of a path inside a closed project is refused, judged exactly as the Edit
+  family is (both bases, both forms, casefolded, at path boundaries), and the refusal adds a
+  sentence naming this decision. Only that function's body changed; `WRITE_TOOLS`, `EDIT_TOOLS`
+  and every other constant are byte-identical.
+- **F-1, defence in depth.** While a project is closed, the dispatcher
+  (`gars/_system/tools/closed_output.py`, `fixed_inputs`, called from `gars/_system/tool_call.py`)
+  accepts `rnaseq_de.check`'s and `rnaseq_de.prepare`'s `design` and `counts` only at their
+  fixed-layout, machine-owned paths: `01_samplesheets/rnaseq_bulk_design.csv`, and
+  `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/<aligner>/salmon.merged.gene_counts_length_scaled.tsv`
+  (the 02.01 counts file at its `LAYOUT` path under `run/`), judged on the resolved path from the
+  workspace root, where the tool runs. Any other path is refused `path_not_fixed_layout`
+  (`R-094`) before the wrapper runs, so no exit code or `ok` bit is produced. D-iv's
+  declared-public exemption still keeps such a path from being called "outside"; the DE doors
+  then refuse it as not their fixed layout.
+- **F-2, the remainder.** The generated `scripts/` are not bound into R-076's prepared key
+  (`executorlib`/`wrapperlib` are outside this step's bounds) and are not changed here. What
+  remains is named below and in the change report's Residual gaps.
+- **F-3.** Ruling D-viii (the second addendum) **is the lane's**: made on 25 Sep 2026 at 16:2x,
+  recorded in the lane's plan and told to its coordinator. The D-viii hunk of
+  `gars/tests/test_nonpublic_read_block.py` is unchanged.
+- **F-4.** `gars/tests/pilot_fixture.py` plants a lowercase snake_case marker, a valid `CODE`,
+  as a design column, a counts-header column and an OUTPUTS type and role; a test asserts it
+  absent from every door's output, `resolve_artifact`'s list mode included.
+- **F-5.** `scripts/unit_economics.py` refuses a `human turns:` line off session_turns' shape
+  case-insensitively after leading whitespace (`^\s*human turns:`, `re.I`), as its sibling
+  `quantity` rule does.
+- **F-6, `touches` corrected here (the frontmatter stays byte-identical).** This step also
+  changed `gars/tests/test_nonpublic_read_block.py` (under D-vii (c) and D-viii), which the
+  frontmatter omits; a future editor of 0107's test module should read this record. The
+  frontmatter lists `tests/pilot_emulation.py`, which this step did not change. Every file this
+  round changes is already listed, except the living `README.md` and `DEVELOPMENT.md`.
+- **The lane's whole-suite finding** (`test_status_writer.test_every_wrapper_uses_writer`, red on
+  the lane's Linux host under Python 3.13). The cause is not the interpreter or the host: step
+  B's new usage line in `rnaseq_de.py`'s module docstring named `STATUS`, and that test's plain
+  token sweep allows the word only in comments and in `wl.write_status(...)` calls. It is red on
+  macOS under 3.8.2 and 3.13.2 alike at `3e8f939`; step B's producer never ran that module. The
+  docstring now says "the lifecycle state".
+
+### D8, corrected by this addendum
+
+The covered list gains the class the review named. **What a door lets an agent infer or cause**
+— a producer agent session whose every tool call passes the guard must not be able to:
+
+- **infer a sample-level fact from a door's exit code or `ok` bit over a file it chose.**
+  - *Agent-placed probe files* (a design naming a guessed sample, a counts header, a config
+    whose formula or contrast names a guessed column): closed by the Write refusal above, the
+    Edit family's (0107), and the Bash write routes (`>`, `>>`, `tee`, `cp`, `mv`, `sed -i`),
+    which the guard already refused.
+  - *Files a human, or a process outside the agent session, placed elsewhere in the project*:
+    closed for the two DE doors' `design` and `counts` by `path_not_fixed_layout`.
+    `executor.submit` accepts only the stage's generated `submit.sh` (`executorlib.submit`,
+    unchanged). `resolve_artifact`, `rnaseq_de.collect` and `rnaseq_de.summary` read only fixed
+    places (OUTPUTS, STATUS, the DE table), and the `pilot_log.*` log path is fixed by schema.
+- **cause a closed project's job to run code it wrote.** `executor.submit` runs the generated
+  `submit.sh`, which runs `scripts/run_de.py`. Replacing that script is refused by Write (above),
+  by the Edit family, and on every Bash write route.
+
+The not-covered list gains:
+
+- **The generated script between `prepare` and job start.** A human, or a process outside the
+  agent session, can change a closed project's `scripts/run_de.py` after the `prepare` door
+  and before the job starts, including while a slurm job waits in the queue. The script is not
+  `READ_ONLY` and its hash is not in R-076's prepared key. Binding it into the key, or
+  verifying it at job start, is a named follow-up.
+- **The fixed-layout inputs themselves.** A door's answer over the machine-written design,
+  counts and config is the intended aggregate (a failure code, never its detail). A human who
+  edits those files by hand can still turn that answer into a question about a sample.
+- **Other doors' path arguments** are judged by `closed()` only (inside the one closed
+  project), not by a fixed layout. `executor.submit`'s script identity is `executorlib`'s own
+  check.
+
+### R-042, amended by this addendum
+
+14. **An agent's Write inside a closed project is refused**, where it was allowed
+    (`test_pilot_doors.ClosedWriteTests.test_agent_write_inside_closed_project_refused`,
+    `test_generated_script_written_after_prepare_refused`). The Edit family's refusal message is
+    unchanged. With no closed project, Write and Edit are judged exactly as `e589ce8`'s guard
+    judges them, exit code and message (`test_write_without_closed_project_unchanged`).
+15. **A DE door's design or counts outside the fixed layout is refused** on a closed project
+    (`FixedLayoutTests.test_probe_inputs_refused`). The fixed paths, spelled absolutely or
+    through a link that resolves to them, are accepted (`test_fixed_layout_accepted`). A public
+    project's door is unchanged (`test_public_project_unchanged`). Item 5's raw-link target,
+    named as a door's counts, is now refused `path_not_fixed_layout` after `closed()` judges it
+    the closed project's own path; `test_declared_source_is_not_outside` expects the same code
+    for a declared folder.
+16. **`unit_economics.py`** also refuses ` human turns: …` and `Human turns: …` off shape.
+
+### Test
+
+`python3 gars/tests/test_pilot_doors.py` (`Ran 17 tests` / `OK`) and
+`python3 gars/tests/test_closed_project_outputs.py` (`Ran 12 tests` / `OK`) are red at
+`3e8f939`'s code and green here. Seven more planted faults go red, 25 of 25 in all:
+
+- Write not refused inside a closed project;
+- Write refused with no closed project;
+- the fixed-layout rule removed;
+- the fixed counts widened to any sub-stage;
+- a CODE-judged field carrying project text;
+- `human turns:` matched case-sensitively at column 0;
+- a wrapper docstring naming `STATUS`.

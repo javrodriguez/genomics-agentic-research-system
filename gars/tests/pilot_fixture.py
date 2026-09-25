@@ -5,7 +5,8 @@ runs against it), a public project `open1` and a closed project `pilot` register
 stage 00 helper (0107's fixture shape), a fresh project from `create`, an external folder and a
 folder a human declared public, both outside the workspace. Sample-name markers are planted in
 the closed project's design, its counts header, its DE table and its OUTPUTS index, and in the
-external folder.
+external folder; a lowercase CODE-shaped marker in the design, the counts header and the OUTPUTS
+type and role.
 """
 import gzip
 import hashlib
@@ -23,7 +24,11 @@ DESIGN_MARKER = 'MARKER0141designS9'
 COUNTS_MARKER = 'MARKER0141countsS8'
 GENE_MARKER = 'MARKER0141geneX7'
 EXTERNAL_MARKER = 'MARKER0141externalS6'
-MARKERS = (DESIGN_MARKER, COUNTS_MARKER, GENE_MARKER, EXTERNAL_MARKER)
+# A valid CODE (closed_output.CODE, lowercase snake_case), so a field judged by that rule alone
+# would let it through (review round 1 F-4): planted as a design column, a counts column and an
+# OUTPUTS type and role.
+CODE_MARKER = 'zzmarker0141_code'
+MARKERS = (DESIGN_MARKER, COUNTS_MARKER, GENE_MARKER, EXTERNAL_MARKER, CODE_MARKER)
 COUNTS_STAGE = '02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper'
 DE_STAGE = '02_bioinformatics/rnaseq_bulk/02_rnaseq-de'
 COUNTS = COUNTS_STAGE + '/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv'
@@ -69,15 +74,18 @@ def plant(project):
     samples.chmod(0o644)
     samples.write_text('sample_id,condition\n%s,A\nS2,A\nS3,B\nS4,B\n' % DESIGN_MARKER)
     (project / '01_samplesheets').mkdir(exist_ok=True)
-    (project / DESIGN).write_text('sample_id,condition\n%s,A\nS2,A\nS3,B\nS4,B\n' % DESIGN_MARKER)
+    (project / DESIGN).write_text('sample_id,condition,%s\n%s,A,x\nS2,A,x\nS3,B,y\nS4,B,y\n'
+                                  % (CODE_MARKER, DESIGN_MARKER))
     (project / '_config' / (ASSAY + '.yaml')).write_text(CONFIG)
     counts = project / COUNTS
     counts.parent.mkdir(parents=True)
-    counts.write_text('gene_id\tgene_name\t%s\tS2\tS3\tS4\nG1\tg1\t1\t2\t3\t4\n' % COUNTS_MARKER)
+    counts.write_text('gene_id\tgene_name\t%s\tS2\tS3\tS4\t%s\nG1\tg1\t1\t2\t3\t4\t5\n'
+                      % (COUNTS_MARKER, CODE_MARKER))
     stage = project / COUNTS_STAGE
     (stage / 'OUTPUTS.tsv').write_text(
         '# type\trole\tpath\ncounts_gene\tnative\t%s\ntable\tnative\trun/%s.tsv\n'
-        % (COUNTS[len(COUNTS_STAGE) + 1:], GENE_MARKER))
+        '%s\tnative\trun/results/code.tsv\ntable\t%s\trun/results/role.tsv\n'
+        % (COUNTS[len(COUNTS_STAGE) + 1:], GENE_MARKER, CODE_MARKER, CODE_MARKER))
     (stage / 'STATUS').write_text('COMPLETE\n')
     de = project / DE_STAGE
     (de / 'run/tables').mkdir(parents=True)

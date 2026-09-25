@@ -1104,3 +1104,171 @@ None.
   file parses under `ast.parse(..., feature_version=(3, 6))`: `ast36 ok`); any cluster run.
 - **Review:** the fresh-context review of this round has not happened; 0142, 0143 and 0144 are
   not written by this producer.
+
+## Step B review round 2 fixes
+
+2026-09-25. Built on `3e8f939` on `build/gars-row-13-pilot`. It answers step B's fresh-context
+review, round 1 (`docs/reviews/row_13b_row_13_review.md`, untracked and unchanged; REJECT: one
+BLOCKER, F-2; two MAJOR, F-1 and F-3), and one finding from the lane's whole-suite run. Every
+ruling applied here is **the lane's**, made on 25 Sep 2026 under the owner's standing delegation
+of 23 Sep 2026; none is the owner's. The rulings are recorded in
+[0141](../decisions/0141-row-13-closed-project-doors.md)'s third addendum, "step B review round 2
+fixes". The earlier sections of this report and every earlier byte of 0140 and 0141 are
+unchanged. No push, remote, install, download, approval or merge was performed.
+
+### Finding → changed files → test → result
+
+"Red at `3e8f939`" means a clean local clone of `3e8f939`, in the scratch folder, with only this
+round's test files and `pilot_fixture.py` laid over it. "Red-on-fault" means the round's driver
+(below), run on a clone with the whole working tree laid over it.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: how) |
+|---|---|---|---|
+| **F-2** (BLOCKER) and **F-1** (MAJOR): one cause, an agent could Write inside a closed project | `gars/_system/guard_hook.py`: `closed_edit_refusal`'s body only (`WRITE_TOOLS` in place of `EDIT_TOOLS`; for Write, one sentence naming 0141 added to 0107's refusal) | `test_pilot_doors.ClosedWriteTests.test_agent_write_inside_closed_project_refused`: a probe file, relative, absolute, from `projects/open1` as `../pilot/…`, casefolded (`Projects/PILOT/…`), through `open1/..`, an overwrite of `HISTORY.md`, the config, `scripts/run_de.py`, and another closed project; `projects/pilot-2/…` and `projects/open1/…` still allowed; Edit's message unchanged | **yes**: red at `3e8f939`, 9 subtests `AssertionError: 0 != 2`; red-on-fault 19 |
+| F-2: `scripts/run_de.py` written after the `prepare` door | same | `test_generated_script_written_after_prepare_refused`: `prepare` through the real dispatcher (exit 0, `scripts/run_de.py` in `wrote`); then Write (relative and absolute), Edit, MultiEdit and eight Bash routes (`>`, `>>`, `tee`, `tee -a`, `cp`, `mv`, `sed -i`, `sed -i ''`) all refused; the script's bytes unchanged | **yes**: red at `3e8f939` in the two Write subtests (`0 != 2`); the Edit and Bash routes were already refused there; red-on-fault 19 |
+| F-2: Bash write routes into a closed project | none (already refused) | `test_bash_writes_inside_closed_project_refused`: `>`, `>>`, `1>`, `tee`, `tee -a`, `cp`, `mv`, `sed -i` into a probe path, the design and the config | green at `3e8f939` and here, as the ruling expected ("add the test even if already refused"); no fault of this round reaches these routes |
+| R-042: Write with no closed project unchanged | — | `test_write_without_closed_project_unchanged`: seven Write/Edit calls on a workspace with no closed project, run through `e589ce8`'s guard (`git archive`) and this one: equal exit codes and stderr; five allowed | green at `3e8f939` (identity); **yes**: red-on-fault 20 (Write refused with no closed project) |
+| **F-1**, defence in depth | `gars/_system/tools/closed_output.py` (`FIXED_INPUTS`, `fixed_inputs`, `path_not_fixed_layout` in `REFUSALS`), `gars/_system/tool_call.py` (the call and its refusal message) | `FixedLayoutTests.test_probe_inputs_refused`: the reviewer's oracle. A probe design naming a right guess and a wrong guess, a probe counts header, the 02.02 stage's counts path, another assay's design name, and a `..` spelling are placed **directly** (a human or an outside process; the agent's Write is refused). For both DE doors each is refused `path_not_fixed_layout` with no `stdout` and no `"ok"`, and the right and wrong guesses read byte-identical. `test_fixed_layout_accepted`: the fixed paths, absolute, and through a link that resolves to them. `test_public_project_unchanged` | **yes**: red at `3e8f939` (13 subtests, 4 of them `KeyError: 'type'` where `prepare` refused on its own). The oracle there, verbatim: `3e8f939 guess=right exit=0 ok=True failures=[]` / `3e8f939 guess=wrong exit=1 ok=False failures=['counts']`. Red-on-fault 21 and 22 |
+| F-1: tests the rule changes | `gars/tests/test_pilot_doors.py` (`test_declared_source_is_not_outside`), `gars/tests/test_closed_project_outputs.py` (`test_raw_link_target_is_the_closed_project`) | the door naming a declared folder, or a raw link's target, as its counts is now refused `path_not_fixed_layout`, not `path_outside_*`; the raw-link test still pins `closed()`'s verdict, and pins the filter over the wrapper's traceback at unit level (`filter_output` on the wrapper's direct output). No assertion was dropped: each "not refused" became "refused with this code" | **yes**: both red at `3e8f939` (they expect the new code); faults 11, 14 and 21 still catch them |
+| F-2 remainder: `scripts/` not bound into the R-076 key | none (`executorlib`/`wrapperlib` outside bounds) | — | named in 0141's D8 not-covered list and under Residual gaps |
+| D8 | `docs/decisions/0141-…md` (addendum) | — | the class "what a door lets an agent infer or cause" added, with what closes each route and what remains |
+| **F-3** (MAJOR) | `docs/decisions/0141-…md` (addendum) | — | D-viii **is the lane's**: made 25 Sep 2026 at 16:2x, recorded in the lane's plan and told to its coordinator. The D-viii hunk is unchanged |
+| **F-4** (MINOR) | `gars/tests/pilot_fixture.py` (`CODE_MARKER = 'zzmarker0141_code'`, a design column, a counts-header column, an OUTPUTS type row and role row; added to `MARKERS`), `gars/tests/test_closed_project_outputs.py` (`test_code_marker_absent_from_every_door`) | every door, plus `resolve_artifact` in list mode and with `consumes`, on the closed project: marker absent; positive control on `open1` (list mode, the design, the counts): marker present; `CODE` matches the marker | **yes**, with a plant (below). Widening `CODE` itself to `^.*$` left the sweep green, as the review found: no door routes project text into a CODE-judged field today. The plant is therefore a CODE-judged field that does carry project text: `resolve_artifact` keeps `artifacts`, each entry's type and role judged by `CODE`. With 3e8f939's fixture the existing sweep stays green (`Ran 1 test` / `OK`); with the new fixture the new test is red (`AssertionError: 'zzmarker0141_code' unexpectedly found in '{"exit_code": 1, … "type": "zzmarker0141_code" …'`, `FAILED (failures=1)`). Red-on-fault 23 |
+| **F-5** (MINOR) | `scripts/unit_economics.py` (`SESSION_PREFIX = re.compile(r"^\s*human turns:", re.I)`), `tests/test_unit_economics.py` (`' human turns: 6'`, `'Human turns: 6'`), `docs/pilot/README.md` | `test_quantity_lines_canonical_or_refused` | **yes**: red on the unchanged script (`AssertionError: 0 != 2`, `Ran 18 tests` / `FAILED (failures=1)`); red-on-fault 24 |
+| **F-6** (MINOR) | `docs/decisions/0141-…md` (addendum; frontmatter byte-identical) | `bash docs/decisions/build_index.sh` (index unchanged) | the addendum names `gars/tests/test_nonpublic_read_block.py` (changed by this step, omitted from `touches`) and `tests/pilot_emulation.py` (listed, not changed) |
+| **F-7** (NOTE) | — | — | **No process was killed by pattern this round**, and no process was killed at all. Every command ran in the foreground under `timeout`; none was backgrounded |
+| **F-8** (NOTE) | — | — | No change. The guard re-importing itself through `tools.closed_output` costs one extra parse per checked door call; it is correct as it is |
+| **F-9** (NOTE) | — | — | No change. The summary's aggregates are defined at fixed thresholds, as documented; their adequacy stays in D8's not-covered list |
+| **The lane's finding**: `test_status_writer.test_every_wrapper_uses_writer` red on its Linux host, Python 3.13.5 | `gars/_system/wrappers/rnaseq-de/rnaseq_de.py`: one docstring line (`and STATUS;` → `and the lifecycle state;`) | `gars/tests/test_status_writer.py`, unchanged | **Cause:** not the interpreter or the host. Step B added `summary`'s usage line to `rnaseq_de.py`'s module docstring naming `STATUS`. The test's plain token sweep (`unowned_status_mentions`) allows that word only in comments and inside `wl.write_status(...)`; the docstring is one STRING token starting at line 2, hence `[2]`. It fails the same on this Mac: `AssertionError: [2] is not false : …/rnaseq_de.py` under 3.8.2 and 3.13.2, `FAILED (failures=1)` each. Step B's producer ran a fixed module list that did not include `test_status_writer.py`. Green here under 3.8.2 and 3.13.2 (`Ran 10 tests` / `OK` each); red-on-fault 25 |
+
+### Red-on-fault
+
+The step B driver (`r5_red_on_fault.py` in the scratch folder, not committed) runs on a clone of
+`3e8f939` with the working tree laid over it. It gains seven plants and accepts a module path
+outside `gars/tests/`. It plants each fault alone, restores the file's bytes, and calls a fault
+RED when a test fails that passed in its own baseline. Every baseline was green:
+`test_pilot_doors`, `test_closed_project_outputs`, `test_pilot_log`, `test_bring_home`,
+`test_status_writer`, `tests/test_unit_economics` and `test_nonpublic_read_block`, each `OK`.
+Fault 1's anchor, `if project is not None:`, now occurs twice in `tool_call.py`, so it was
+narrowed to include the filter's next line; the planted change is the same.
+
+| Fault planted | Where |
+|---|---|
+| 19. Write not refused inside a closed project | `closed_edit_refusal`: `if tool not in WRITE_TOOLS` → `EDIT_TOOLS` |
+| 20. Write refused with no closed project (R-042 broken) | `closed_edit_refusal`: `if not closed:` denies a Write |
+| 21. the fixed-layout rule removed | `fixed_inputs`: `rules = None` |
+| 22. the fixed counts widened to any sub-stage | `FIXED_INPUTS`' counts: `01_nfcore-rnaseq-wrapper` → `[0-9]{2}_[a-z0-9-]+` |
+| 23. a CODE-judged field carrying project text | `RULES` and `resolve_artifact`'s keep-list gain `artifacts` (`_outputs`) |
+| 24. `human turns:` matched case-sensitively at column 0 | `SESSION_PREFIX` → `re.compile(r"^human turns:")` |
+| 25. a wrapper docstring naming `STATUS` | `rnaseq_de.py`: `and the lifecycle state;` → `and STATUS;` |
+
+Verbatim (Python 3.8.2):
+
+```text
+1. the filter skipped for one tool: RED; test_closed_project_outputs FAILED (failures=2) test_count_matrix_failure_keeps_code_loses_detail, test_marker_absent_from_every_tool
+2. a keep-list widened to a failure detail: RED; test_closed_project_outputs FAILED (failures=4) test_count_matrix_failure_keeps_code_loses_detail, test_filter_rules, test_marker_absent_from_every_tool
+3. a keep-list widened to history_entry: RED; test_closed_project_outputs FAILED (failures=2) test_collect_never_returns_history_entry, test_registry_keep_lists
+4. the outside-path refusal removed: RED; test_pilot_doors FAILED (failures=5) test_bare_outside_workspace_refused_by_addition_2, test_declared_source_is_not_outside, test_dispatcher_refuses_outside_paths | test_closed_project_outputs FAILED (failures=2) test_outside_paths_refused_with_named_codes
+5. a guard refusal removed (addition 1): RED; test_pilot_doors FAILED (failures=7) test_direct_spelling_refused_on_closed
+6. the READ_ONLY pilot line removed: RED; test_pilot_log FAILED (failures=9) test_guard_refuses_writes_and_the_direct_spelling, test_writer_is_outside_the_guard_and_settings_agree
+7. the actor taken from an input: RED; test_pilot_log FAILED (failures=1) test_actor_is_the_launch_token
+8. end allowed across actors: RED; test_pilot_log FAILED (failures=6) test_end_and_abort_across_actors_refused, test_through_the_dispatcher_the_actor_is_agent
+9. the nonce check removed: RED; test_pilot_log FAILED (failures=2) test_refusals
+10. bring_home passing a reason tail: RED; test_bring_home FAILED (failures=2) test_failing_wrapper_detail_stays_on_the_cluster, test_reason_prefixes_bound_to_rerun_check
+11. a door echoing file content (keep-list widened to raw stdout): RED; test_closed_project_outputs FAILED (failures=3, errors=1) test_count_matrix_failure_keeps_code_loses_detail, test_filter_rules, test_marker_absent_from_every_tool, test_raw_link_target_is_the_closed_project
+12. a door reached by its direct spelling (D-ii's check removed): RED; test_pilot_doors FAILED (failures=8) test_bare_outside_workspace_refused_by_addition_2, test_direct_spelling_refused_on_closed
+13. CLOSED_PROJECT_DOORS widened by one non-door tool: RED; test_pilot_doors FAILED (failures=2) test_doors_are_the_eleven_of_ruling_d_i, test_non_doors_refused_on_closed_in_both_spellings
+14. D-iv's exemption removed (a declared path refused): RED; test_pilot_doors FAILED (failures=1) test_declared_source_is_not_outside
+15. D-iv's exemption widened to any outside path: RED; test_pilot_doors FAILED (failures=5) test_bare_outside_workspace_refused_by_addition_2, test_declared_source_is_not_outside, test_dispatcher_refuses_outside_paths
+red-on-fault: 15/15 RED
+16. D-vii (a) removed: a door's dispatcher call exempt from 0107's cwd rule: RED; test_pilot_doors FAILED (failures=11) test_dispatcher_from_inside_the_closed_project_refused | test_nonpublic_read_block FAILED (failures=6) test_cwd_inside_closed_project
+17. D-vii (b) removed: a door's direct spelling judged by its paths only: RED; test_pilot_doors FAILED (failures=7) test_direct_spelling_refused_while_any_project_is_closed | test_nonpublic_read_block FAILED (failures=6) test_every_registered_tool
+18. Q8 disabled for the dispatcher spelling (D-viii): RED; test_nonpublic_read_block FAILED (failures=1) test_q8_alone
+red-on-fault: 3/3 RED
+19. Write not refused inside a closed project (F-2/F-1): RED; test_pilot_doors FAILED (failures=11) test_agent_write_inside_closed_project_refused, test_generated_script_written_after_prepare_refused
+20. Write refused with no closed project (R-042 broken): RED; test_pilot_doors FAILED (failures=5) test_write_without_closed_project_unchanged
+21. the fixed-layout rule removed (F-1 defence in depth): RED; test_pilot_doors FAILED (failures=10, errors=4) test_declared_source_is_not_outside, test_probe_inputs_refused | test_closed_project_outputs FAILED (failures=1) test_raw_link_target_is_the_closed_project
+22. the fixed counts widened to any sub-stage: RED; test_pilot_doors FAILED (failures=2) test_probe_inputs_refused
+23. a CODE-judged field carrying project text (resolve_artifact keeps artifacts; F-4): RED; test_closed_project_outputs FAILED (failures=2) test_code_marker_absent_from_every_door, test_door_keep_lists
+24. human turns: matched case-sensitively at column 0 (F-5): RED; tests/test_unit_economics FAILED (failures=1) test_quantity_lines_canonical_or_refused
+25. a wrapper docstring naming STATUS (the lane's 3.13 finding): RED; test_status_writer FAILED (failures=1) test_every_wrapper_uses_writer
+red-on-fault: 7/7 RED
+```
+
+25 of 25 RED. Fault 1 no longer lists `test_raw_link_target_is_the_closed_project`: that door
+call is now refused before any output exists. Fault 6 moved from 11 failing assertions to 9,
+because this round's Write refusal also refuses two of its Write cases inside the closed
+project. The clone was checked after each run and held only the overlay.
+
+### Commands and summary lines (verbatim)
+
+From the repo root, in the foreground, one module per call or a sequential loop of single-module
+calls, each under `timeout`. `TMPDIR`, `TEMP` and `TMP` were in the scratch folder and
+`GARS_TEST_NO_CONTAINER=1` was set. `python3` is CPython 3.8.2 and `python3.13` is CPython 3.13.2.
+
+| Command | Summary |
+|---|---|
+| `python3 gars/tests/test_pilot_doors.py` | `Ran 17 tests in 29.013s` / `OK`; `EXIT pilot doors (fixture): dispatcher allowed on closed` |
+| `python3 gars/tests/test_closed_project_outputs.py` | `Ran 12 tests in 24.353s` / `OK`; `EXIT closed outputs (fixture): marker absent from every tool` |
+| `python3 gars/tests/test_pilot_log.py` | `Ran 15 tests in 6.108s` / `OK`; `EXIT pilot log (fixture): launch-bound actor` |
+| `python3 gars/tests/test_bring_home.py` | `Ran 9 tests in 10.953s` / `OK`; `EXIT bring home (fixture): detail withheld` |
+| `python3 tests/test_session_turns.py` | `Ran 11 tests in 4.438s` / `OK`; `EXIT session turns (fixture): counts only` |
+| `python3 tests/test_unit_economics.py` | `Ran 18 tests in 6.845s` / `OK`; `EXIT unit economics (fixture): regenerated byte-identical` |
+| `python3 tests/test_rerun_diff.py` | `Ran 8 tests in 2.327s` / `OK`; `EXIT rerun diff (fixture): aggregates only` |
+| `python3 gars/tests/test_nonpublic_read_block.py` | `Ran 20 tests in 86.585s` / `OK` |
+| `python3 gars/tests/test_rerun_check.py` | `Ran 26 tests in 155.844s` / `OK`; `EXIT instrument self-test (fixture, stub slurm): reproduction 2/2` |
+| `python3 gars/tests/test_status_writer.py` | `Ran 10 tests in 3.068s` / `OK` |
+| `python3 gars/tests/test_lifecycle_faults.py` | `Ran 1 test in 53.250s` / `OK` |
+| `python3 gars/tests/test_protected_paths.py` | `Ran 5 tests in 13.453s` / `OK` |
+| `python3 gars/tests/test_data_class_required.py` | `Ran 4 tests in 2.376s` / `OK` |
+| `python3 gars/tests/test_guard_hook.py` | `Ran 4 tests in 1.214s` / `OK` |
+| `python3 gars/tests/test_hooks_records.py` | `Ran 14 tests in 23.210s` / `OK` |
+| `python3 gars/tests/test_approval_forgery.py` | `Ran 12 tests in 0.207s` / `OK` |
+| `python3 gars/tests/test_venue_policy.py` | `Ran 16 tests in 5.286s` / `OK` |
+| `python3 gars/tests/test_manifest_groups.py` | `Ran 19 tests in 56.418s` / `OK` |
+| `python3 gars/tests/test_stage03_execution.py` | `Ran 17 tests in 5.502s` / `OK` |
+| `python3 tests/test_review_faults_session.py` | `Ran 18 tests in 0.590s` / `OK` |
+| `test_policy_attacks`, `test_policy_faults`, `test_tool_schema_refusal`, `test_role_profiles`, `test_execution_policy`, `test_wrapper_contract` | `OK` each (19, 10, 8, 6, 7, 1 tests) |
+| the same under `python3.13`: `test_pilot_doors`, `test_closed_project_outputs`, `test_pilot_log`, `test_bring_home`, `test_status_writer`, `tests/test_unit_economics`, `test_data_class_required`, `test_protected_paths` | `Ran 17` / `OK`, `Ran 12` / `OK`, `Ran 15` / `OK`, `Ran 9` / `OK`, `Ran 10` / `OK`, `Ran 18` / `OK`, `Ran 4` / `OK`, `Ran 5` / `OK` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/check_counts.py` | `clean — every current claim matches the suite` (791: 783 and eight new methods, seven in `test_pilot_doors` and one in `test_closed_project_outputs`) |
+| `python3 tests/test_decision_links_resolve.py` | `Ran 3 tests` / `OK` |
+| `bash docs/decisions/build_index.sh` | index unchanged (0141's frontmatter not edited) |
+| `ast.parse(..., feature_version=(3, 6))` on the nine changed `.py` files | `ast36 ok 9` |
+| `git diff --check` | clean |
+| the red-on-fault driver | `red-on-fault: 15/15 RED`, `3/3 RED`, `7/7 RED` (25 of 25) |
+
+Every module that drives the guard with `Write` (found by grep across `gars/tests` and `tests`)
+ran green above. That is the check that the new Write refusal breaks no existing expectation.
+
+**Not run by this producer: the whole suite (`tests/run_tests.py`), `evals/`, and Docker**, as
+the brief directs; the lane runs the suite on a separate host.
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps
+
+- **NOT met: row 13's exit.** No pilot has run; every number is a synthetic fixture.
+- **The generated script between `prepare` and job start (F-2 remainder).** A human, or a
+  process outside the agent session, can change a closed project's generated
+  `scripts/run_de.py` after the `prepare` door and before the job starts, including during a
+  slurm queue wait. The script is not `READ_ONLY` and not bound into R-076's prepared key.
+  Binding the script's hash into the key is a named follow-up (`executorlib`/`wrapperlib`,
+  outside this step's bounds). Every agent route to it is refused and tested.
+- **The fixed-layout inputs themselves.** A door's code over the machine-written design,
+  counts and config is the intended aggregate. A human who edits those files can still pose a
+  sample-level question through it.
+- **Other doors' path arguments** are judged by `closed()` only, not by a fixed layout.
+  `executor.submit`'s script identity is `executorlib`'s own check, not re-tested here.
+- **F-4's end-to-end red needs a route.** No door today routes project text into a CODE-judged
+  field, so widening `CODE` alone is still caught only by `test_filter_rules`. The new marker
+  catches any field that does carry such text, which the plant shows.
+- Carried, unchanged: addition 1's overlap with D-vii (b); a path-free door call unreachable
+  end to end; D8's earlier not-covered list; the lexical-plus-existence path rule; the
+  `pilot_log.py end|abort|check` direct spelling refused by the transport's parse; the stage
+  01–03 contract prose; n3; n4.
+- **Not run here:** the whole suite; Python 3.6.8 execution (syntax only); any cluster run.
+- **Review:** the fresh-context review of this round has not happened; 0142, 0143 and 0144 are
+  not written by this producer.

@@ -27,7 +27,7 @@ Subcommands:
            entry (template version + model + which sub-stage supplied the counts).
   summary  aggregates of a completed run, for a non-public project's door (decision 0141):
            genes tested, padj < 0.05 up/down, padj < 0.1, NA padj, design size, gate codes
-           and STATUS; never a gene, a sample, a path or a failure's detail.
+           and the lifecycle state; never a gene, a sample, a path or a failure's detail.
 
 Inputs `--counts` and `--design` are the PATHS the router resolved by artifact type
 (_system/resolve_artifact.py) — this wrapper never searches for them itself.

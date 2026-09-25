@@ -98,6 +98,33 @@ class EveryToolTests(unittest.TestCase):
         self.assertEqual((ws / 'projects/pilot/00_data/dataset.tsv').read_bytes(), dataset)
         print('EXIT closed outputs (fixture): marker absent from every tool', flush=True)
 
+    def test_code_marker_absent_from_every_door(self):
+        """Review round 1 F-4: a lowercase snake_case marker is a valid CODE, so a field judged by
+        that rule alone would let it through. It is planted in the design, the counts header and
+        an OUTPUTS type and role; no door's output carries it, resolve_artifact's list included,
+        and the same calls on the public project, unfiltered, do."""
+        print('red-on-fault: code-shaped marker', flush=True)
+        ws = STATE['ws']
+        self.assertRegex(fx.CODE_MARKER, co.CODE)
+        listing = {'assay': fx.ASSAY, 'list': True}
+        consumes = {'assay': fx.ASSAY, 'consumes': ['counts_gene', 'table', 'design']}
+        calls = [(name, fx.door_args(name)) for name in fx.DOORS] + [
+            ('resolve_artifact', dict(listing, project='projects/pilot')),
+            ('resolve_artifact', dict(consumes, project='projects/pilot'))]
+        ran = 0
+        for name, args in calls:
+            with self.subTest(door=name, args=args):
+                code, record, raw = fx.tool_call(ws, name, args)
+                self.assertNotIn(fx.CODE_MARKER, raw)
+                ran += record.get('type') != 'tool_refusal'
+        self.assertGreaterEqual(ran, 9)
+        for name, args in (('resolve_artifact', dict(listing, project='projects/open1')),
+                           ('fs.read', {'paths': ['projects/open1/' + fx.DESIGN]}),
+                           ('fs.read', {'paths': ['projects/open1/' + fx.COUNTS]})):
+            with self.subTest(control=name, args=args):
+                code, record, raw = fx.tool_call(ws, name, args)
+                self.assertIn(fx.CODE_MARKER, record['stdout'])
+
     def test_positive_control_markers_are_planted(self):
         """The same calls on the public project, unfiltered, do carry the markers."""
         ws = STATE['ws']
@@ -255,11 +282,22 @@ class ClosedRuleTests(unittest.TestCase):
         self.assertTrue(record['message'].startswith('path_outside_closed_project:'))
         args = dict(fx.door_args('rnaseq_de.check'), counts=target)
         code, record, raw = fx.tool_call(ws, 'rnaseq_de.check', args)
-        self.assertNotEqual(record.get('type'), 'tool_refusal', raw)
-        # The wrapper's traceback on a gzip file is withheld whole; its line count is kept.
-        self.assertEqual(json.loads(record['stdout']), {'exit_code': code, 'withheld': True})
-        self.assertRegex(record['stderr'], '^' + re.escape(W) + '; stderr lines: [0-9]+\n$')
+        # Judged the closed project's own path, not outside it; the DE door then refuses it as
+        # not its fixed-layout counts (step B review round 1, F-1).
+        self.assertEqual(code, 2, raw)
+        self.assertTrue(record['message'].startswith('path_not_fixed_layout:'), raw)
         self.assertNotIn('seqrun', raw)
+        # The wrapper's traceback on a gzip file, as the filter would return it: withheld whole,
+        # its line count kept.
+        direct = run([sys.executable, ws / '_system/wrappers/rnaseq-de/rnaseq_de.py', 'check',
+                      '--project', 'projects/pilot', '--counts', target, '--design',
+                      'projects/pilot/' + fx.DESIGN], cwd=ws)
+        self.assertIn(b'Traceback', direct.stderr)
+        stdout, stderr = co.filter_output('rnaseq_de.check', direct.stdout.decode(),
+                                          direct.stderr.decode(), direct.returncode)
+        self.assertEqual(json.loads(stdout), {'exit_code': direct.returncode, 'withheld': True})
+        self.assertRegex(stderr, '^' + re.escape(W) + '; stderr lines: [0-9]+\n$')
+        self.assertNotIn('seqrun', stdout + stderr)
 
     def test_contract_drift_with_the_guards_reader(self):
         """closed_output.closed and the guard's 0107 reader judge the same projects alike."""
