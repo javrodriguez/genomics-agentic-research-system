@@ -160,3 +160,15 @@ Round 6 is the coordinator's ruling, under the owner's standing delegation of 23
 Ten plants went red in disposable copies on the new tests: the reviewer's G4, C4a, C4b, X1, X2 and X4, and four of the producer's own (K1–K4).
 The suite rises to 874 tests. The seven R-164 modules take about 9.7 s together on the producer's machine and add no skip.
 This is producer-authored development evidence, not a mutation score. The exit still needs the second seal (0088, 0089), and nothing in this addendum claims it.
+
+## Addendum, 2026-09-25: the ruling on stage 03's allocated folders (round 7)
+
+The bytes above, including the five earlier addenda, are unchanged; this addendum records the ruling on round 6's owner question (`docs/reviews/row3fu_ruling_round7.md`, R2; [change report](../implementation/row_3_followup_change_report.md), "Review round 7 fixes").
+The ruling is the coordinator's, under the owner's standing delegation of 23 Sep 2026, by the precedent of round 5's ruling; it is not the owner's own words.
+
+- **Ruling: option (a).** A failed `stage03_analysis create` that leaves its allocated `03_custom_analysis/01_<slug>/`, `results/` and `scripts/` behind is a real R-164 failure-path defect, the same shape as round 5's stage 00 project creation.
+- **A fifth class-2 residual, observed, untestable as built.** Round 6's directory check saw the folders stay on unmodified code when the `PLAN.md` write fails. A test would fail on current code, which the test-only rule forbids, so it is not fixed here and not tested around; the `test_stage03_analysis_create` row of `gars/tests/test_r164_writer_recovery.py` keeps its `creates` list for those four folders, and every other path in its tree is still judged.
+- **Where the fix lands.** The same later, non-test-only item that fixes round 5's four writers under `gars/_system/` fixes this one, and then removes the row's `creates` list.
+- **Reading the second seal.** The second seal's class-2 result is read with these five residuals in mind.
+
+No code or test changed in this round. This is not a mutation score; the exit still needs the second seal (0088, 0089), and nothing in this addendum claims it.

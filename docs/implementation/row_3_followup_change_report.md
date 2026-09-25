@@ -637,3 +637,45 @@ Not run, as the brief requires: the whole suite, the mutation runner and every `
 - The whole suite in modes B and C, and its added wall time, are for the lane to measure on its node. The seven R-164 modules take about 9.7 s here, against the 15 s allowance.
 - Descriptor-level faults, `chmod` after the rename, and the `O_EXCL` approval records stay as stated above.
 - Producer and reviewer share a model (0087, Context).
+
+## Review round 7 fixes
+
+Dated 2026-09-25. This round answers `docs/reviews/row3fu_ruling_round7.md` (left untracked and unchanged), a ruling round with no code. The ruling is the coordinator's, under the owner's standing delegation of 23 Sep 2026, by the precedent of round 5's ruling; it is not the owner's own words. The sections above are unchanged. 0087 carries a sixth dated addendum after its last byte; its round-6 bytes are a byte-identical prefix of the new file (20820 of 22476 bytes, checked against a copy taken before the append).
+
+**The ruling on round 6's owner question (R2): option (a).** A failed `stage03_analysis create` that leaves its allocated `03_custom_analysis/01_<slug>/`, `results/` and `scripts/` behind, when the `PLAN.md` write fails, is a real R-164 failure-path defect, the same shape as round 5's stage 00 project creation. It is not fixed in this test-only follow-up and not tested around: a test for it would fail on current code, which the test-only rule forbids. It joins round 5's four as a class-2 residual, untestable as built:
+
+| Writer | What goes wrong | Evidence |
+|---|---|---|
+| `stage03_analysis create` (`cmd_create`), `03_custom_analysis/01_<slug>/` with `results/` and `scripts/` | the allocated folders stay after the `PLAN.md` write fails at open, write, fsync or rename | observed (round 6's directory check, on unmodified code) |
+
+The same later item that is not test-only, with its own approval record, fixes it under `gars/_system/` beside round 5's four writers, and then removes the `creates` list of the `stage03_analysis create` row in `gars/tests/test_r164_writer_recovery.py`. The second seal's class-2 result is read with these five residuals in mind.
+
+| Finding | Changed files | Test | Result |
+|---|---|---|---|
+| R2 (ruling recorded) | `docs/decisions/0087-row-3-followup-suite-strengthening.md` (dated addendum after its last byte), this report (this section) | `tests/test_decision_links_resolve.py`, `tests/check_counts.py`, `tests/check_contracts.py` | pass. Red-on-fault seen: no, not applicable, because nothing in this row changes behaviour |
+
+`bash docs/decisions/build_index.sh` was re-run. No code or test changed, and the test count stays 874.
+
+### Commands and summary lines, round 7
+
+All commands were run from the repository root with `TMPDIR`, `TEMP` and `TMP` at `<scratch>`.
+
+- `bash docs/decisions/build_index.sh` rewrote `docs/decisions/CONTEXT.md` byte-identically: no record's frontmatter changed.
+- `python3 tests/test_decision_links_resolve.py`: `Ran 3 tests in 1.531s` / `OK`, `citations: 376/376 resolve`.
+- `python3 tests/check_counts.py`: `collected 360 tests from tests`, `collected 514 tests from gars/tests`, `suite: 874 tests, from unittest's loader`, `clean — every current claim matches the suite`.
+- `python3 tests/check_contracts.py`: `14 contracts clean: sections, wait points, vocabulary.`
+
+Not run, as the ruling names only these three and no code changed: the whole suite, the R-164 modules, `evals/test_harness.py` and `evals/check_results.py`.
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps after round 7
+
+- The five class-2 residuals (round 5's four writers and stage 03's allocated folders) wait on a later item that is not test-only.
+- The comment above the `stage03_analysis create` row in `gars/tests/test_r164_writer_recovery.py` still calls the folders an open owner question; the ruling forbids a test change in this round, so it is corrected when that later item removes the row's `creates` list.
+- Review 4's one-step-out faults C1b, G1, G3b and G5b, and F3's `cache/bowtie2` rename row, remain as round 6 stated them.
+- The whole suite in modes B and C, and its added wall time, are for the lane to measure on its node.
+- Descriptor-level faults, `chmod` after the rename, and the `O_EXCL` approval records stay as stated above.
+- Producer and reviewer share a model (0087, Context).
