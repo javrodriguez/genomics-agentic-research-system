@@ -74,3 +74,4 @@ In the finishing session, the coordinating tool's own permission layer refused t
 The step's purpose, running exactly the pinned 19-check checker on both accounts, was met without them: the copy already on each account (placed on 24 Sep) hashed `81b76e5366a1713d4ba60588a666a336068df542e1780f24ff815c8fd8bc1f80`, equal to the checker extracted from the deployment's history and verified before use, and that hash was read again in the same remote session that then ran the checker.
 Both accounts passed, 19 checks and 0 failures each, exit 0, at 2026-09-25T17:05:01Z.
 The lanes' coordinator ruled the substitution equivalent, and it is recorded here as a named deviation; no pinned instrument was changed.
+The refusal, the copies' placement date, the hash reads and the ruling are recorded in the owner's private operations record.

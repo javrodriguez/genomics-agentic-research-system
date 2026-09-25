@@ -57,7 +57,7 @@ Its sandbox settings hash `5f4fd164fbad2a9f22ee713c6c782430804cf8126c61c88b9113c
 The measured prompt is `gars/_references/prompts/review_faults_code.md`, SHA-256 `29d9ab7fc987849615b10d38c34a2ca419f3ca284a6cf4af87bb846e4c2d1b81`.
 
 **Order of events, 2026-09-25, UTC.**
-The seal date and the session, check and scoring times come from the seal record, the records and the run file; the pin, build and launch times come from the coordinator's log in the owner's private operations record.
+The seal date comes from the seal record, the session times from the records, the check time from the two isolation-check outputs and the scoring time from the run file; the pin, build and launch times come from the coordinator's log in the owner's private operations record, where the isolation-check outputs are kept too.
 
 - 16:06:30: seal date, from the sealer's own `date -u`.
 - 16:17:54: the seal pinned read-only.
@@ -129,7 +129,7 @@ The fix is reserved for follow-up 0129, not yet written; this run is not re-scor
 
 **The generated evidence cell, changed in this landing; the grader is not.**
 Before this landing, `scripts/release_check.py` rendered the reviewer cell as "10/10 catch, 0/5 false alarms" from hard-coded `/10` and `/5`, beside the "≤ 1/5" threshold, with neither the INVALID count nor the thresholds verdict: on the page meant for evidence status, the run read as passing.
-The lane, under the owner's delegation, changed the generator in its own commit so that every figure comes from the run file's own fields: catch n/d, false alarms over valid clean reviews with the clean cases left without a valid review, the INVALID count, and the scorer's `thresholds_met` as "met" or "not met".
+The lane, under the owner's delegation, changed the generator in its own commit so that every figure comes from the run file's own fields: catch n/d, false alarms over valid clean reviews with, for a complete set, the clean cases left without a valid review, the INVALID count, and the scorer's `thresholds_met` as "met" or "not met".
 A test in `tests/test_review_faults_core.py` fails at the previous generator on this run file and passes after.
 `score.py` and the run file are unchanged, and nothing is re-scored; the scorer's own `overall false alarms 0/5` line stays as printed, and a later record may change how the scorer shows INVALID records.
 
