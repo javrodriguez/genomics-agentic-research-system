@@ -3067,3 +3067,23 @@ reproduction; earlier Step A and row-7/registry/data-handling gaps; inherited
 benchmark source-pin refusal; 73 environment skips and Python 3.6 runtime.
 No new implementation question needs an owner ruling, and no residual is promoted
 to a passing exit condition.
+
+## Merge interaction with row 8 step A (at merge)
+
+Row 6 merged onto public main `ef5c8af`, which carries row 8 step A.
+Row 8 step A added a Benjamini-Hochberg gate to rnaseq-de's collect: `check_table` recomputes BH and refuses a DE table whose `padj` is not BH(`pvalue`) (`uncorrected_pvalues`, "padj differs from BH").
+Row 6's tests predate that gate, and their fake one-gene DE table wrote `pvalue` 0.1 with `padj` 0.2.
+At the merge candidate `5f393e9`, `gars/tests/test_manifest_groups.py` failed 11 tests and `gars/tests/test_rerun_check.py` failed 4 (it imports the same fixture).
+Each of the 15 failures was a single "padj differs from BH" refusal.
+This was a semantic merge conflict: neither side is wrong alone, and git reported no conflict.
+
+The resolution is `049c0c3`, a test-fixture-only commit.
+The fixture's `padj` is now 0.1, because with one tested gene BH(`pvalue`) equals `pvalue`.
+No production file changes, the BH gate and its callers are byte-identical to `ef5c8af`, and no assertion, expected value, skip or tolerance changes.
+The two modules then pass (18 and 21 tests OK), and all 20 manifest completeness lines print n/n.
+Restoring `padj` 0.2 brings back the same 15 failures, and the file was then restored from a byte backup.
+A fresh-context review of that commit alone returned APPROVE with 0 BLOCKER and 0 MAJOR findings.
+That review also neutered `check_table` in a copy and saw main's own BH test (`tests/test_planted_defects.py`, `test_collect_diagnostic_drift`) go red.
+Its one MINOR finding predates this commit: `test_failure_collect_preserves_prepare_facts` asserts only the failure class, so it cannot tell which check refused its malformed table.
+Since row 8 step A, both the anonymous-gene check and the BH gate refuse that table.
+That test is left as it is, as a named follow-up: it could assert the "anonymous" detail, as main's `tests/run_tests.py` does.
