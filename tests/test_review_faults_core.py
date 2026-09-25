@@ -314,6 +314,38 @@ class ScoreTests(unittest.TestCase):
         self.assertIn('unmeasured (public: needs external_human_seal); development, code: 10/10 catch',value)
         self.assertIn('science: unmeasured',value)
 
+    def test_release_cell_shows_invalid_records_and_verdict(self):
+        """0074: the cell never reads as passing when INVALID records left the run below threshold."""
+        spec=importlib.util.spec_from_file_location('rf_release_invalid',str(REPO/'scripts/release_check.py'))
+        release=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(release)
+        published=REPO/'evals/review-faults/runs/29d9ab7fc987-claude-opus-5-5-20260925T170519Z.json'
+        run=json.loads(published.read_text(encoding='utf-8'))
+        root=temporary(self)
+        folder=root/'evals/review-faults/runs'
+        folder.mkdir(parents=True)
+        common.write_json(folder/published.name,run)
+        value,date,meets=release.reviewer_measurement(root)
+        self.assertFalse(meets)
+        self.assertIn('10/10 catch',value)
+        self.assertIn('0/3 false alarms in valid clean reviews (2 of 5 clean cases without a valid review)',value)
+        self.assertIn('invalid 2/15',value)
+        self.assertIn('thresholds not met',value)
+        self.assertNotIn('0/5 false alarms',value)
+        # The rendering follows the run file's own fields, not fixed denominators.
+        run['overall']['invalid']['n']=0
+        run['thresholds_met']=True
+        for rates in run['per_class'].values():
+            rates['false_alarms']['d']=5
+        run['overall']['false_alarms']['n']=1
+        (folder/published.name).unlink()
+        common.write_json(folder/published.name,run)
+        value=release.reviewer_measurement(root)[0]
+        self.assertIn('1/5 false alarms in valid clean reviews (0 of 5 clean cases without a valid review)',value)
+        self.assertIn('invalid 0/15',value)
+        self.assertIn('thresholds met',value)
+        self.assertNotIn('thresholds not met',value)
+
 
 if __name__=='__main__':
     unittest.main(verbosity=2)

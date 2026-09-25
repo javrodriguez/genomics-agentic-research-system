@@ -251,9 +251,20 @@ def reviewer_measurement(root):
                 all(values == ['external_human_seal'] for values in slots.values()))
     public = ('unmeasured (public: needs external_human_seal); ' if not external else
               'public code seals external_human_seal; ')
-    value = (public + 'development, code: %s/10 catch, %s/5 false alarms, seals %s, '
+    # 0074: every figure comes from the run file's own fields. The scorer's overall
+    # false-alarm denominator is every clean case; the per-class denominator counts only
+    # valid clean reviews, so the cell prints that one and the clean cases left without a
+    # valid review, then the INVALID count and the scorer's own threshold verdict.
+    clean_total = overall['false_alarms']['d']
+    clean_valid = max((rates['false_alarms']['d'] for rates in record['per_class'].values()), default=0)
+    value = (public + 'development, code: %s/%s catch, %s/%s false alarms in valid clean reviews '
+             '(%s of %s clean cases without a valid review), invalid %s/%s, thresholds %s, seals %s, '
              'first-run-at-sha %s (%s); science: unmeasured') % (
-                 overall['caught']['n'], overall['false_alarms']['n'], ','.join(types) or 'unsealed',
+                 overall['caught']['n'], overall['caught']['d'],
+                 overall['false_alarms']['n'], clean_valid, clean_total - clean_valid, clean_total,
+                 overall['invalid']['n'], overall['invalid']['d'],
+                 'met' if record['thresholds_met'] else 'not met',
+                 ','.join(types) or 'unsealed',
                  str(record['first_run_at_sha']).lower(), path.relative_to(root).as_posix())
     # This clause includes science; even external code seals cannot complete it.
     return value, when, False
