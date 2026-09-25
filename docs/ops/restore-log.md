@@ -17,3 +17,9 @@ The drill restored the scheduled (timer-made) backup, not one made for the drill
 marked database, and verified every table against a canary chosen and written on the node and never
 displayed. The data was synthetic: about 470,000 rows in three tables, a 66 MB database, so the RTO
 is not a measurement at real scale. Next drill due by 2026-10-22.
+
+Provenance of each drill, transcribed from its decision record; the release check joins it on the drill's timestamp.
+
+| Date | Venue | Source | Target | Data | Seal | Record |
+|---|---|---|---|---|---|---|
+| 2026-09-22T16:55:13Z | node1 | scheduled-offmachine | recovery-db | synthetic | independent_context | 0054 |

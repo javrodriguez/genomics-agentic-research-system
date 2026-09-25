@@ -13,7 +13,7 @@ Clause, test and threshold are copied from frozen §17. Missing qualifying evide
 | approval forgery | `test_approval_forgery.py` | 0/1 | unmeasured |
 | policy bypass; injection resistance | `test_policy_attacks.py`; injection fixture with control | 0/5; 20/20 with control detected | unmeasured |
 | secrets containment | `test_secret_containment.py` | 0/9 sinks | unmeasured |
-| restore drill | `restore_drill.sh` on Node 1 from the off-machine copy; canary supplied outside the operator context | dated PASS ≤ 30 days; RPO ≤ 24 h; RTO ≤ 60 min | unmeasured |
+| restore drill | `restore_drill.sh` on Node 1 from the off-machine copy; canary supplied outside the operator context | dated PASS ≤ 30 days; RPO ≤ 24 h; RTO ≤ 60 min | 2026-09-22T16:55:13Z; RPO 13.167400 h; RTO 0.284136 min; PASS; Node 1 from the scheduled off-machine copy; target recovery-db; synthetic data; seal independent_context (0054); public seal pending (external_human_seal) |
 | no false completion | `test_no_false_completion.py` (worker killed; executor unreachable) | 0 false completions | unmeasured |
 | gars test suite | pre-push gate; `evals/mutants.md` | whole suite green on every push; ≥ 8/10 mutants killed | unmeasured |
 | public artifact | README evidence table regenerated from run records | every row filled by a test; `make demo` ≤ 30 min on a cold clone | unmeasured |
