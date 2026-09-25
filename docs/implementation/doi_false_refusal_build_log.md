@@ -180,3 +180,163 @@ Independent review, protected-change approval, and merge remain outstanding.
 ## Owner rulings needed
 
 None.
+
+## Review round B1 fixes
+
+2026-09-24. Producer build evidence for the continuation of round 1 at `31e48da`.
+Ruling 0134 and the Continuation B instructions are the lane's under the owner's
+standing delegation of 23 September 2026; no sentence in those rulings is the owner's.
+This section records implementation and verification, not a decision, change report or approval.
+Glitch remains responsible for decision records and the change report.
+
+Ruling 0134 now satisfies a bound number anywhere inside a parsed identifier and
+continues chaining from that identifier's end. F2 uses the ASCII `[0-9A-Za-z]`
+class in both walks. The marker pattern and the no-identifier path are unchanged.
+The added cases extend existing methods, so the suite count remains 536.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| Ruling 0134: suffix number bound inside a parsed DOI | `gars/_system/resolve_citation.py`, `gars/tests/test_emit_report.py`, `benchmarks/defects/red_on_fault.py` | `EmitReportTests.test_doi_clean_reference_corpus` | Red first at round 1, then green; red-on-fault seen: yes, `bound number inside a parsed identifier counted` restores the start-only condition. The clean case emits with its exact request list; its trailing ` 10/fake` twin refuses and preserves absent/existing output. |
+| F2: ASCII alphanumeric class in both walks | Same three files | `EmitReportTests.test_doi_fabricated_beside_verified` | Red first at round 1, then green; red-on-fault seen: yes, new `separator walks use Unicode alphanumerics` restores Unicode behavior in both walks. `chr(233)` covers the separator walk in both reference orders and the chaining walk. All 392 generated forms and existing assertions remain. |
+| F3: inherited residual-prose comment | `gars/tests/test_emit_report.py` | Full gate's `EmitReportTests.test_doi_reference_forms`; byte comparison of inherited comments | Green; red-on-fault seen: no for this comment-only addition. Added one line naming the lane's 0130 and 0131 decisions immediately after the unchanged inherited comments. |
+| F1, F4, F5: no code or historical-log change requested | This appended build-log section only | Review disposition and append-only byte comparison | Addressed below; red-on-fault seen: no, no behavior change. |
+
+F1: No change; a bare date immediately after a URL-form DOI remains a known false refusal under the specified chaining rule.
+F4: No change; 536 is the collection count, not a new macOS measurement, as round 1 already disclosed.
+F5: No change; the build log is append-only, and the earlier scratch-folder wording remains preserved.
+
+### Red-first and green evidence
+
+`python3 -u gars/tests/test_emit_report.py EmitReportTests.test_doi_clean_reference_corpus`
+ran with the new ruling 0134 case while production was byte-identical to round 1's
+`31e48da`, and then after the span-containment fix:
+```text
+Ran 1 test in 24.459s
+FAILED (failures=1)
+Ran 1 test in 24.122s
+OK
+```
+`python3 -u gars/tests/test_emit_report.py EmitReportTests.test_doi_fabricated_beside_verified`
+ran in a disposable scratch twin with the new F2 cases and the resolver taken by
+`git show 31e48da:gars/_system/resolve_citation.py`, then in the source tree after the ASCII fix:
+```text
+Ran 1 test in 0.697s
+FAILED (failures=3)
+Ran 1 test in 0.614s
+OK
+```
+The subsequent full gate below covers both changes together.
+All commands ran from the repository root with `TMPDIR`, `TEMP` and `TMP` set to
+the job's scratch folder. Red-first logs and complete gate logs are retained there
+under `b1/`. The synthetic 200-ok transport and recorded replay establish protocol
+behavior only; no live DOI lookup was made.
+
+The first full gate found only a documentation-citation error in the added F3
+comment: the checker treated 0130 as a dangling repository citation.
+Its summary was:
+```text
+Ran 536 tests in 408.501s
+FAILED (failures=1, skipped=79)
+```
+The supplied lane decisions are not repository decision files in this checkout.
+The new comment now explicitly names the lane's 0130 and 0131 decisions; inherited
+comments, the citation checker and its tests remain unchanged. The targeted command
+`python3 -u tests/test_decision_links_resolve.py DecisionLinksTests.test_repository_citations_resolve`
+then printed:
+```text
+citations: 301/301 resolve
+Ran 1 test in 0.110s
+OK
+```
+
+### GATE
+
+`GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py`
+(one suite at a time; database classes skipped, verified elsewhere).
+```text
+collected 283 tests from tests
+collected 253 tests from gars/tests
+Ran 536 tests in 386.887s
+OK (skipped=79)
+```
+`python3 tests/check_contracts.py`
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+`python3 tests/check_counts.py`
+```text
+suite: 536 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+`python3 -u tests/test_planted_defects.py DevelopmentCatalogueTests`
+```text
+planted-defects development (producer-authored, unsealed): 9/10 classes (placeholder 10 counted planted, not caught)
+false flags (producer-authored clean projects): 0/10
+graded 19 of 19 development projects seen
+Ran 13 tests in 4.368s
+OK
+```
+`TMPDIR=<the job's scratch folder> python3 -u benchmarks/defects/red_on_fault.py`
+```text
+red-on-fault: 53/53
+```
+
+The first campaign ended `red-on-fault: 52/53`: the inherited
+`markers inside a parsed identifier counted` fault survived. Under ruling 0134,
+its old examples could now satisfy the numbers inside their spans even when the
+marker-skip was removed. The clean corpus now also includes the bare synthetic
+identifier containing that marker followed by `; 10/fake`. The internal marker
+must be ignored, leaving the outside number unbound; the mutant incorrectly
+chains from the internal marker and refuses. This adds a behavioral witness,
+without weakening an assertion or changing production to fit the fault.
+The strengthened clean-corpus command then printed `Ran 1 test in 24.256s`
+and `OK` before the complete campaign was rerun.
+The intermediate full gate before adding this witness had already printed
+`Ran 536 tests in 392.230s` and `OK (skipped=79)`; the final gate above was rerun
+with the strengthened corpus.
+
+The campaign total is **43 + 10 = 53**: eight faults from round 1 and two from B1.
+The added F2 fault is `separator walks use Unicode alphanumerics`; it changes the
+shared walk class to Unicode alphanumerics and turns the fabricated-beside-verified
+guard red. The 0134 fault restores start-only satisfaction and turns the new clean
+case red. Every inherited fault remains red, including the four required faults
+on `EmitReportTests.test_doi_reference_forms`. Only anchors were adjusted for the
+span lookup and ASCII chaining implementation; no production edit was made to fit
+an anchor. Before making its twin, the campaign printed 28 DOI/EVIDENCE anchor
+counts and required 1 for each. All were 1. The two added faults printed:
+```text
+anchor count: bound number inside a parsed identifier counted: 1
+anchor count: separator walks use Unicode alphanumerics: 1
+RED: bound number inside a parsed identifier counted
+RED: separator walks use Unicode alphanumerics
+red-on-fault: 53/53
+```
+
+Structural and compatibility checks:
+```text
+inherited mentions_doi, resolve and protected files: byte-identical; DOI regex and legacy predicate: unique
+review unchanged; inherited residual comments preserved; build log append-only
+Python 3.6 syntax: parsed 3 changed files
+```
+The review file remains untracked and unchanged (SHA-256
+`92cc6894592ebf7a618a142730d813f7b087fce8cce577af10f2c14177a19248`).
+The no-DOI residual-prose half, marker pattern, inherited `mentions_doi` body,
+`resolve()`, evidence checker and emitter remain unchanged. No prior log bytes
+were edited, and no decision or change-report record was written by the producer.
+
+### Residual gaps still open
+
+No live network DOI resolution or capture, actual Python 3.6 execution, cluster
+execution or database execution was verified here. Database classes were skipped
+under the requested gate and are verified elsewhere. No spent sealed measurement
+was run or promoted. The existing broader short-DOI, PMID/literature, relevance,
+stage-03/pilot emission, public catch-rate and other 0103 residuals remain outside
+this lane. F1's bare-date chaining refusal remains as specified. Independent
+review of B1, protected-change approval and merge remain outside this producer run.
+
+Ruling 0134 and F2/F3 are fixed; F1/F4/F5 are closed by the requested no-change responses; no findings wait on a ruling.
+
+## Owner rulings needed
+
+None.

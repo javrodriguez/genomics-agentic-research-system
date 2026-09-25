@@ -11,6 +11,7 @@ from urllib.request import urlopen
 
 DOI_PATTERN = r"10\.[0-9]{4,9}(?:\.[0-9]+)*/[^\s<>\"']+"
 MARKER_PATTERN = r'(?<![0-9A-Za-z])doi(?=\b|_|10[./])'
+ASCII_ALNUM_PATTERN = r"[0-9A-Za-z]"
 
 
 def parser():
@@ -43,7 +44,6 @@ def dois(reference):
 def _has_unbound_doi_number(reference):
     """Bind marker-local numbers, consuming parsed identifiers and their lists."""
     spans = list(_doi_spans(reference))
-    ends = {start: end for value, start, end in spans}
     for marker in re.finditer(MARKER_PATTERN, reference, re.I):
         if any(start <= marker.start() < end for value, start, end in spans):
             continue
@@ -51,15 +51,17 @@ def _has_unbound_doi_number(reference):
         tail = reference[marker.end():]
         token_end = re.match(r'\S*', tail).end()
         number = re.search(r'(?<![0-9A-Za-z])10[./]', tail)
-        if number is None or any(c.isalnum() for c in tail[token_end:number.start()]):
+        if number is None or re.search(ASCII_ALNUM_PATTERN, tail[token_end:number.start()]):
             continue
         number_start = marker.end() + number.start()
         while True:
-            if number_start not in ends:
+            identifier_end = next((end for value, start, end in spans
+                                   if start <= number_start < end), None)
+            if identifier_end is None:
                 return True
-            # Its own prefix is satisfied; only punctuation can extend the list.
-            cursor = ends[number_start]
-            while cursor < len(reference) and not reference[cursor].isalnum():
+            # Any number inside the identifier is satisfied; chain from its end.
+            cursor = identifier_end
+            while cursor < len(reference) and not re.match(ASCII_ALNUM_PATTERN, reference[cursor]):
                 cursor += 1
             if not re.match(r'10[./]', reference[cursor:]):
                 break

@@ -127,6 +127,7 @@ class EmitReportTests(unittest.TestCase):
         # legitimate: the general rule requires a parseable DOI. Adding the
         # valid recorded DOI still resolves, but cannot hide the remaining
         # marker and page token under item 8's residual-text rule.
+        # The lane's 0130 and 0131 decisions change the with-DOI half to emit.
         for prose in ('Title mentions DOI; pages 10.', 'Journal of Doi Studies, p. 10.'):
             self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = prose
             self.save()
@@ -253,7 +254,7 @@ class EmitReportTests(unittest.TestCase):
 
         # Internal markers never existed in the base's residual reference.
         identifier = '10.1000/synthetic_doi:10/abcfake'
-        for reference in (identifier, 'doi:' + identifier,
+        for reference in (identifier, identifier + '; 10/fake', 'doi:' + identifier,
                           'doi:' + identifier + '; pages 10.',
                           'doi:' + generator.REAL_DOI + '; ' + identifier):
             with self.subTest(internal_marker=reference):
@@ -270,6 +271,31 @@ class EmitReportTests(unittest.TestCase):
                 self.assertEqual(requests, [
                     'https://api.crossref.org/works/' + quote(value, safe='') for value in expected])
 
+        # Ruling 0134: a bound suffix number belongs to its parsed identifier.
+        identifier = '10.1000.10/synthetic-doi-10.5'
+        reference = 'doi:doi' + identifier
+        requests = []
+        def resolved(url):
+            requests.append(url)
+            return 200, b'{"status":"ok","message":{}}'
+        self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
+        self.save()
+        with self.subTest(bound_inside_identifier=reference):
+            self.assertEqual(self.emit(resolved), (0, ''))
+            self.assertTrue(self.out.is_file())
+            self.assertEqual(requests, [
+                'https://api.crossref.org/works/' + quote(identifier, safe='')])
+
+        # Consuming that span must still chain to a malformed trailing number.
+        self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference + ' 10/fake'
+        self.save()
+        if self.out.exists():
+            self.out.unlink()
+        requests[:] = []
+        self.refuse('citation_unverifiable', transport=resolved)
+        self.assertEqual(requests, [
+            'https://api.crossref.org/works/' + quote(identifier, safe='')] * 2)
+
     def test_doi_fabricated_beside_verified(self):
         forms = doi_separator_forms()
         self.assertEqual(len(forms), 392)
@@ -282,6 +308,11 @@ class EmitReportTests(unittest.TestCase):
         references.extend(('doi:' + generator.REAL_DOI + '; 10/abcfake',
                            'doi:' + generator.REAL_DOI + ', 10.123/fake',
                            'doi:' + generator.REAL_DOI + '; ' + generator.REAL_DOI + '; 10/abcfake'))
+        # F2: both walks treat non-ASCII letters as separators.
+        malformed = 'doi: ' + chr(233) + '10/abcfake'
+        references.extend((malformed + '; doi:' + generator.REAL_DOI,
+                           'doi:' + generator.REAL_DOI + '; ' + malformed,
+                           'doi:' + generator.REAL_DOI + '; ' + chr(233) + ' 10/abcfake'))
         for reference in references:
             with self.subTest(reference=reference):
                 self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
