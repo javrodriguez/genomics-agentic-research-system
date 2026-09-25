@@ -104,7 +104,8 @@ absolute paths, nondeterministic values, network calls and runtime dependency in
 Use Python 3.6.8 syntax and stdlib only. For file-output behavior, make disposable fixtures
 under `TMPDIR`, observe the resulting artifact semantically, and clean those fixtures. Never
 write into the supplied source tree. Set fixture-specific environment variables within the
-probe rather than relying on the coordinator's machine. The subprocess limit is 300 seconds.
+probe rather than relying on the coordinator's machine. The subprocess limit is 300 seconds
+for probes and `git`, and 1800 seconds for each whole-suite run.
 
 The probe must independently demonstrate the **behavioral** difference. It may call a library
 function or an existing CLI against synthetic inputs; it must not dump or hash source text,
@@ -137,20 +138,24 @@ may identify an empty external fixture directory for an explicitly offline run. 
 R-166 Linux integration. The runner refuses a dirty source checkout, resolves HEAD as
 `run_sha`, and materializes only that commit's tracked blobs, modes and symlinks under
 `TMPDIR` using Git object reads. Ignored local files (including discovered tests and project
-data), `.git`, and untracked files never enter the tested snapshot. Export attributes do
-not omit tracked files; unsupported entries such as submodules refuse the run. It
+data) and untracked files never enter the tested snapshot. The snapshot then gets a `.git`
+cloned from the source, with HEAD detached at `run_sha` and a clean index, so tests that read
+history or HEAD see a clean checkout (0110). Export attributes do not omit tracked files;
+unsupported entries such as submodules refuse the run. It
 checks the intact whole suite first, then applies one diff at a time. Each probe must match
 its declared before/after observation and leave source files unchanged. A failure to load,
 apply, observe, or restore refuses the run; it is never a kill.
 
-Each effective mutant runs `python3 tests/run_tests.py` in its scratch copy. Nonzero with a
+Each effective mutant is committed inside its disposable scratch copy (a fixed runner identity,
+hooks off), so the suite sees a clean checkout at a new HEAD and a dirty tree alone can never
+kill it (0110). It then runs `python3 tests/run_tests.py` in that copy. Nonzero with a
 named failing unittest yields `killed`; success yields `survived`. An unchanged probe or
 unchanged Python AST yields `ineffective`, never `killed`, and cannot satisfy a ten-semantic-
 mutant set. The first failing test is recorded in execution order (including subtests).
 The scratch tree is restored from its snapshot after each mutant and hashed before/after;
 the source tree is independently hashed before/after the entire run. Names, bytes, modes,
-empty directories and symlink targets are included; `.git` is excluded. This is process
-isolation for trusted independent fault authors, not an operating-system security sandbox.
+empty directories and symlink targets are included; `.git` is excluded from the hash. This is
+process isolation for trusted independent fault authors, not an operating-system security sandbox.
 
 Output: one JSON row per mutant (`id`, `requirement`, `run_sha`, `status`, `test`, optional
 `reason`), followed by `killed/total` with the actual numbers. Each row also records the
