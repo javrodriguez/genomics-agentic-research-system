@@ -114,6 +114,8 @@
         "purpose",
         "data_class",
         "agreement_ref",
+        "expiry",
+        "permitted_backends",
         "input_data_location",
         "artifact_destination"
       ],

@@ -266,3 +266,62 @@ boundary ruling. This is not approval, merge authorization or a completed row.
 ## Date
 
 2026-09-25
+
+
+## Addendum — retry round B1, 2026-09-25
+
+Starting commit: `efbe369003ea21fb211e7cdabb92d83eccdf354d`.
+The retry rulings were decided under the owner's standing delegation (23 Sep 2026).
+Ruling 7 selects option (a) of round 1's replay-fields question. It authorizes
+exactly two additional entries in `prepare_manifest_facts`, taken from the
+registered dataset row: `expiry` and `permitted_backends`. Missing source values
+remain missing; collect preserves the recorded prepare values. This answers the
+writer-boundary ruling above; the historical stopped-status account remains
+unchanged. The retry verification is in `docs/implementation/row_8_change_report.md`.
+
+### R-042
+
+Under R-042, the manifest gains two recorded facts; none removed. Group 11's field list in
+`gars/_references/manifest_schema.json` names both facts, and
+`gars/_system/manifest_check.py` checks their presence using its existing
+placeholder rules and the dataset's literal `none`. Group numbering, predicates,
+required-group denominators and idempotency formulas are unchanged. Historical
+public manifests that lack both fields retain their prior completeness and
+replay behavior; a present null or placeholder is not substituted with a default.
+
+`scripts/rerun_check.py` refuses a deidentified_under_agreement manifest lacking
+either field with `manifest_predates_expiry_recording`, before generic
+completeness grading and before any replay output directory or comparison is
+created. Direct replay binding uses the same check. Prepare and complete a new
+original to record missing facts; do not repair historical evidence from today's
+dataset row. Recorded route values still pass through round 1's comparison with
+the dataset, producing `replay_dataset_mismatch` on drift, and through real
+finalize on replay. Public legacy replay retains its existing class-default
+route and absent-expiry handling.
+
+`gars/tests/test_rerun_check.py` adds capture/preservation/schema assertions,
+agreement replay 2/2, missing-field refusal before execution, each recorded-field
+mismatch, and public/fixture replay 2/2 with both historical fields absent. The
+existing replay and manifest assertions are retained. The historical-fixture
+variant extends the existing RNASEQ replay helper without changing its normal
+callers. The named old-manifest fault disables the new refusal: its test goes
+red on all three missing-field combinations. Removing the writer entries and
+removing public legacy fallback also make their respective tests red.
+
+Ruling 6's source spelling correction changes one launcher glob and four
+embedded script shebang strings in `gars/tests/test_venue_policy.py` and
+`scripts/backend_bench.py`. Path components are joined at runtime. Generated
+script bytes and the glob's meaning are unchanged; no policy, scheduler,
+workload or test assertion is weakened. README and DEVELOPMENT change only the
+three current suite-count claims, from 603 to 607, after the count gate reports
+the four new regression tests.
+
+### What this does not close
+
+No backend was measured: all three rows remain NOT met, and the CSV stays header
+only. R-193 priced economics, real FASTQ costs, cloud, R-061/prompt enforcement,
+second backup destination and institutional agreements remain NOT met. Actual
+Python 3.6.8, live Slurm accounting, live resource measurements and the rows 5/7
+Docker database classes remain unverified here. The existing threat-model
+residuals stand. Independent review, protected approval, merge and row 8's exit
+are not claimed. Records 0100, 0101, 0103 and 0104 remain unchanged.

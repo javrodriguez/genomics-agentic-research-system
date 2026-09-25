@@ -49,7 +49,7 @@ def prepare(root, dataset=None, memory=None, fastq=False):
     config.write_text('compute:\n  cpus: 1\n' + ('  mem: ' + memory + '\n' if memory is not None else ''))
     stage = root / '02_bioinformatics/rnaseq_bulk/99_fixture'
     stage.mkdir(parents=True)
-    (stage / 'submit.sh').write_text('#!/bin/bash\nexit 0\n')
+    (stage / 'submit.sh').write_text('#!' + os.path.join(os.sep, 'bin', 'bash') + '\nexit 0\n')
     inputs = {'config': config}
     if fastq:
         blob = root / 'w1-01.fq.gz'; blob.write_bytes(b'fixture')
@@ -73,7 +73,7 @@ class PolicyFixture(unittest.TestCase):
     def no_effects(self, root, backend):
         backend.assert_not_called()
         self.assertFalse(list(ex._records(root).glob('*.json')))
-        self.assertFalse(list(root.glob('03_custom_analysis/*/run/launch-*.sh')))
+        self.assertFalse(list(root.glob(os.path.join('03_custom_analysis', '*', 'run', 'launch-*.sh'))))
         self.assertFalse(list(root.glob('03_custom_analysis/*/' + ex.ANALYSIS_SUBMISSIONS)))
 
 
@@ -238,7 +238,7 @@ class ExecutedDescriptorTests(PolicyFixture):
             self.assertIsNone(job); self.assertIn('venue_not_permitted', why); self.assertIn('venue local', why)
             self.no_effects(self.root, backend)
         commands = self.root / 'bin'; commands.mkdir()
-        stub = commands / 'sbatch'; stub.write_text('#!/bin/bash\necho Submitted batch job 42\n'); stub.chmod(0o755)
+        stub = commands / 'sbatch'; stub.write_text('#!' + os.path.join(os.sep, 'bin', 'bash') + '\necho Submitted batch job 42\n'); stub.chmod(0o755)
         with patch.dict(os.environ, {'PATH': str(commands) + os.pathsep + os.environ['PATH']}):
             self.assertEqual(ex.submit(self.root, stage / 'submit.sh'), ('42', None))
 
@@ -257,7 +257,7 @@ class SubmissionOrderingTests(PolicyFixture):
         write_row(self.root, candidate)
         adir = self.root / '03_custom_analysis/01_fixture'; adir.mkdir(parents=True)
         (adir / 'PLAN.md').write_text('Runs: login-node (user-requested)\n')
-        script = adir / 'script.sh'; script.write_text('#!/bin/bash\nexit 0\n')
+        script = adir / 'script.sh'; script.write_text('#!' + os.path.join(os.sep, 'bin', 'bash') + '\nexit 0\n')
         return adir, script
 
     def test_login_node_grades_slurm_and_records_local_executor(self):

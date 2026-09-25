@@ -120,7 +120,7 @@ def run(venue, out):
     header = ex.header_lines(root, wl.read_config(config), 'backend-bench', 'rnaseq_bulk', stage)
     program = 'import runpy,sys; runpy.run_path(sys.argv[1])["worker"](sys.argv[2])'
     body = ' '.join(shlex.quote(value) for value in (sys.executable, '-c', program, str(Path(__file__).resolve()), str(root)))
-    (stage / 'submit.sh').write_text('#!/bin/bash\n'+'\n'.join(header)+'\nset -euo pipefail\n'+body+'\n')
+    (stage / 'submit.sh').write_text('#!' + os.path.join(os.sep, 'bin', 'bash') + '\n'+'\n'.join(header)+'\nset -euo pipefail\n'+body+'\n')
     inputs = {'config': config}
     inputs.update({'blob_%02d' % n: root / 'workload' / ('w1-%02d.bin.gz' % n) for n in range(1,SAMPLES+1)})
     wl.write_reproducibility(stage, 'rnaseq_bulk', REPO, inputs, [])

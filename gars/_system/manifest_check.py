@@ -132,8 +132,14 @@ def group_present(number, m, schema):
         r = m.get('resources')
         return isinstance(r, dict) and all(text_present(r.get(k)) for k in ('Elapsed','MaxRSS','AllocCPUS'))
     if number == 11:
+        # Legacy public fixture manifests remain replayable. New prepares record
+        # both route facts; agreement data must never infer either missing fact.
+        route_fields = ('expiry', 'permitted_backends')
+        route_present = ((m.get('data_class') == 'public' and
+                          not any(k in m for k in route_fields)) or
+                         all(text_present(m.get(k), ('none',)) for k in route_fields))
         return (m.get('backend') in ('local','slurm') and m.get('backend') == m['predicate_facts']['backend'] and
-                m.get('venue') == m.get('backend') and
+                m.get('venue') == m.get('backend') and route_present and
                 m.get('purpose') in ('fixture','internal','pilot_internal','pilot_external','commercial') and
                 m.get('data_class') in ('public','deidentified_under_agreement','identifiable') and
                 isinstance(m.get('agreement_ref'), str) and

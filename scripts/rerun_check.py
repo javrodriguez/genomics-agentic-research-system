@@ -114,10 +114,17 @@ def require_clean_code(repo, paths, label):
     require(not status, label + ' code has uncommitted changes')
 
 
+def require_route_recording(manifest):
+    if manifest.get('data_class') == 'deidentified_under_agreement':
+        require(all(key in manifest for key in ('expiry', 'permitted_backends')),
+                'manifest_predates_expiry_recording: prepare and complete a new original')
+
+
 def validate_manifest(manifest, stage):
     require('agreement_ref' in manifest and manifest['agreement_ref'] is not None,
             'no agreement_ref recorded')
     require('execution_config' in manifest, 'no execution config recorded')
+    require_route_recording(manifest)
     try:
         grade = mc.grade(manifest)
     except (ValueError, TypeError, KeyError) as exc:
@@ -200,6 +207,7 @@ def run_wrapper(wrapper, verb, project, manifest, env):
 def replay_dataset_values(manifest, original_project=None):
     """Compare recorded classification and route before constructing a replay."""
     import venue_policy
+    require_route_recording(manifest)
     values = {key: manifest.get(key) for key in ('data_class', 'purpose', 'agreement_ref',
                                                 'expiry', 'permitted_backends')}
     # Old public manifests have no expiry requirement and use the class route.
