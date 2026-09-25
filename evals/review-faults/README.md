@@ -187,6 +187,20 @@ record, and it never makes a record INVALID. **Residual:** a session that fails
 an `&&` link on purpose and then reads relative to the skipped `cd` is
 ambiguous, not INVALID; the measured run's sandbox is the wall for that read.
 
+Decision 0129 (the lane's specification, under the owner's delegation) narrows
+the blocked-call edge. A call blocked only by retained data (a heredoc or
+here-string operator, or a kept comment), and by no other whole-call condition,
+parse check or raw-text guard in any program the preflight inspects, starts at
+its carried placement in both placements. It still accepts no `cd`: each `cd`
+word, even in kept heredoc or comment text, has its operand judged from the
+folder before it and resets the rest of the call, and its end, to the kit root.
+The next call starts where such a call ended; the background, missing-result,
+error and reset-notice edges still apply. Every other blocked call is unchanged,
+because those causes can move the shell where the audit cannot see it.
+**Residual:** a heredoc or kept comment is assumed not to move the calling
+shell; a program that replaces or re-enters the shell from such data is 0125
+item 3's residual. 0129 changes no recorded run.
+
 Item 23 amends item 22(c-d): text is removed only when unambiguous; otherwise
 it is scanned. A comment hash must start a shell word at quote depth zero.
 Neither a comment nor a heredoc body is removed when the physical line holding

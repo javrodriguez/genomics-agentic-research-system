@@ -337,15 +337,25 @@ class CommandPlacement:
         if 'PWD' in pwd_text:
             values.add('PWD')
         shell_state = any(values.intersection(group) for group in hazards)
-        # Retained data was safe to over-scan with root placement, but cannot
-        # prove a directory change: a kept comment or heredoc may contain cd.
+        # Retained data cannot prove a directory change: a kept comment or
+        # heredoc may contain cd. It cannot move the shell either (0129).
         retained_data = any((word.operator and '<<' in word) or
                             word.source.startswith('#') for word in words)
         trap_state = 'trap' in values
+        # Decision 0129: every other cause can move the shell where this audit
+        # cannot see it, in this program or in any the preflight inspected.
+        moving = bool(forbidden or shell_state or trap_state or broken or parens != 0 or backquote or
+                      self.state.get('moving'))
         forbidden = forbidden or shell_state or retained_data or trap_state
         self.blocked = bool(forbidden or broken or parens != 0 or backquote or self.state.get('blocked'))
+        self.data_only = self.blocked and not moving
+        carried = self.state['folder']
         if self.blocked:
             self.state['folder'] = self.state['kit']
+        # A call blocked only by retained data keeps its carried placement; it
+        # still accepts no cd, and each cd word resets to the kit root below.
+        if self.data_only:
+            self.state['folder'] = carried
 
     def target(self, argument):
         if not argument or argument == '-' or any(
@@ -411,13 +421,17 @@ def placed_command(text, kit, start=None, optimistic=False):
                       127 <= ord(char) < 160 for char in text) or
                   chr(92) + '\n' in text)
     if raw_hazard:
-        state['blocked'] = True
+        state['blocked'] = state['moving'] = True
     # Preflight every recognized shell program before placing any word: a
     # whole-call hazard in a later nested program also forbids an earlier cd.
     def inspect(source, words):
         probe = ShellWord(source, state=state)
-        if CommandPlacement(probe, words).blocked:
+        placement = CommandPlacement(probe, words)
+        if placement.blocked:
             state['blocked'] = True
+        # Decision 0129: only a call whose every block is retained data is data-only.
+        if placement.blocked and not placement.data_only:
+            state['moving'] = True
     source = ShellWord(text)
     source.inspect_placement = inspect
     list(audit_words(source))
@@ -803,7 +817,8 @@ def blindness(events, kit, session_id=None):
                     continue
                 decoded = [pair + tuple(folder[index] for folder in folders) for index, pair in enumerate(decoded)]
                 # A blocked call already ended at the kit root (0125 item 4 and
-                # item 8's raw-text guard); a still-conditional one counts as root.
+                # item 8's raw-text guard), unless its only block was retained
+                # data (0129); a still-conditional one counts as root.
                 if carried and not background:
                     if not placed.state['conditional']:
                         end = placed.state['folder']
