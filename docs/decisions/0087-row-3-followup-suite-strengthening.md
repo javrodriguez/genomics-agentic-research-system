@@ -129,3 +129,19 @@ Every ruling in it is the lane's, under the owner's standing delegation of 23 Se
 Twelve class-2 plants in writers that no earlier test named (W1–W12) went red in disposable copies on the new module. So did three earlier call-site plants (N2b, R2b, R2d) and M05. The five survivors still go red on their modules, and the unplanted copy was green on all seven.
 The suite rises to 860 tests; the seven R-164 modules take about 8.2 s together on the producer's machine and add no skip.
 This is producer-authored development evidence, not a mutation score. The exit still needs the second seal (0088, 0089), and nothing in this addendum claims it.
+
+## Addendum, 2026-09-25: the ruling on the non-atomic writers (round 5)
+
+The bytes above, including the three earlier addenda, are unchanged; this addendum records the ruling on round 4's owner question (`docs/reviews/row3fu_ruling_round5.md`, R1; [change report](../implementation/row_3_followup_change_report.md), "Review round 5 fixes").
+The ruling is the coordinator's, under the owner's standing delegation of 23 Sep 2026; it is not the owner's own words.
+
+- **Ruling: option (a).** The four non-atomic writers of recorded state that round 4 found are real R-164 failure-path defects: a torn job record or launcher after a write fault is exactly class 2's shape.
+- **Class-2 residuals, untestable as built.** A test would fail on current code, which the test-only rule forbids, so none is fixed here and none is tested around:
+  - `executorlib._local_submit`'s `jobs/<pid>.json`, **observed** by a scratch probe: left torn after a write fault once the job has started;
+  - `executorlib._analysis_launcher`'s `run/launch-*.sh`, **observed** by a scratch probe: left truncated after a write fault;
+  - `_submit_analysis`'s append to `ANALYSIS_SUBMISSIONS`, **code-derived, not probed**: could leave a torn final line;
+  - stage 00's project creation, **code-derived, not probed**: could leave a partial project.
+- **Where the fix lands.** A later, non-test-only item with its own approval record fixes these writers under `gars/_system/` and then adds their rows to `gars/tests/test_r164_writer_recovery.py`.
+- **Reading the second seal.** The second seal's class-2 result is read with these four residuals in mind.
+
+No code or test changed in this round. This is not a mutation score; the exit still needs the second seal (0088, 0089), and nothing in this addendum claims it.

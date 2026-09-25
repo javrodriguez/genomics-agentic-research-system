@@ -476,3 +476,48 @@ Not run, as the brief requires: the whole suite, the mutation runner and every `
 - `chmod` after the rename (`MACHINE_OWNED_MODE`) is not faulted: a chmod failure after the replace leaves the new bytes in place, which is not a prior-bytes situation.
 - The writers listed in the "Left out" table above.
 - Producer and reviewer share a model (0087, Context).
+
+## Review round 5 fixes
+
+Dated 2026-09-25. This round answers `docs/reviews/row3fu_ruling_round5.md`, a ruling round with no code. The ruling is the coordinator's, under the owner's standing delegation of 23 Sep 2026; it is not the owner's own words.
+
+**The ruling on round 4's owner question (R1): option (a).** The four non-atomic writers of recorded state that round 4 found are real R-164 failure-path defects: a torn job record or launcher after a write fault is exactly class 2's shape. They are not fixed in this test-only follow-up, and they are not tested around: a test for them would fail on current code, which the test-only rule forbids. Each is a class-2 residual, untestable as built:
+
+| Writer | What goes wrong | Evidence |
+|---|---|---|
+| `executorlib._local_submit`, `jobs/<pid>.json` | left torn after a write fault once the job has started | observed (round-4 scratch probe) |
+| `executorlib._analysis_launcher`, `run/launch-*.sh` | left truncated after a write fault | observed (round-4 scratch probe) |
+| `_submit_analysis`, append to `ANALYSIS_SUBMISSIONS` | could leave a torn final line | code-derived, not probed |
+| stage 00's project creation | could leave a partial project | code-derived, not probed |
+
+A later item that is not test-only, with its own approval record, fixes these writers under `gars/_system/` and then adds their rows to `gars/tests/test_r164_writer_recovery.py`. The second seal's class-2 result is read with these residuals in mind.
+
+| Finding | Changed files | Test | Result |
+|---|---|---|---|
+| R1 (ruling recorded) | `docs/decisions/0087-row-3-followup-suite-strengthening.md` (dated addendum after its last byte), this report (this section) | `tests/test_decision_links_resolve.py`, `tests/check_counts.py`, `tests/check_contracts.py` | pass. Red-on-fault: not applicable, because nothing in this row changes behaviour |
+| Found while running the named checks: 0111 lacked its required sections | `docs/decisions/0111-row-3-followup-suite-index-addendum.md` (dated addendum and the five required sections after its last byte; the earlier bytes are unchanged) | `tests/test_decision_links_resolve.py` | pass after the fix. Red-on-fault seen: yes. On `167e7db` plus the 0087 addendum, the test printed `decision links: REFUSED (docs/decisions/0111-row-3-followup-suite-index-addendum.md: new record missing Context)`, `Ran 3 tests` / `FAILED (failures=1)` |
+
+Round 4 reported this test as `OK`. That was wrong for the committed tree: the check reads tracked files only, so it probably ran before 0111 was tracked. No pre-commit hook is installed in the build checkout, so nothing refused the commit.
+
+`bash docs/decisions/build_index.sh` was re-run, and the index is byte-identical: neither record's frontmatter changed. No code or test changed, and the test count stays 860.
+
+### Commands and summary lines, round 5
+
+All commands were run from the repository root with `TMPDIR`, `TEMP` and `TMP` at `<scratch>`.
+
+- `python3 tests/test_decision_links_resolve.py`: `Ran 3 tests in 1.175s` / `OK`, `citations: 376/376 resolve`.
+- `python3 tests/check_counts.py`: `collected 360 tests from tests`, `collected 500 tests from gars/tests`, `suite: 860 tests, from unittest's loader`, `clean — every current claim matches the suite`.
+- `python3 tests/check_contracts.py`: `14 contracts clean: sections, wait points, vocabulary.`
+
+Not run, as the ruling names only these three and no code changed: the whole suite, the R-164 modules, `evals/test_harness.py` and `evals/check_results.py`.
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps after round 5
+
+- The four class-2 residuals in the table above wait on a later item that is not test-only.
+- The whole suite in modes B and C, and its added wall time, are for the lane to measure on its node.
+- Descriptor-level faults, `chmod` after the rename, and the writers in round 4's "Left out" table remain as round 4 stated them.
+- Producer and reviewer share a model (0087, Context).
