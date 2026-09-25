@@ -8,6 +8,8 @@ import io
 import json
 import os
 import shutil
+import math
+import statistics
 import stat
 import subprocess
 import sys
@@ -121,6 +123,99 @@ class BuildTests(unittest.TestCase):
                 expected = min([1.0] + [p * len(ps) / (j + 1) for j, p in enumerate(ranked) if j + 1 >= rank])
                 self.assertAlmostEqual(float(row['padj']), expected)
 
+    def test_student_reference_and_analysis(self):
+        # Independent df=4 closed form: integrates (1+t*t/4)**(-5/2).
+        for t in (0, 0.1, 1, 2.776, 8.61, 30):
+            y = t / math.sqrt(t*t + 4)
+            expected = 1 - 1.5*y + 0.5*y**3
+            self.assertAlmostEqual(generator.student_p(t), expected, places=12)
+            self.assertEqual(generator.student_p(t), generator.student_p(-t))
+        self.assertAlmostEqual(generator.student_p(2.776), .05, delta=.0001)
+        self.assertAlmostEqual(generator.student_p(8.61), .001, delta=.00001)
+        self.assertAlmostEqual(generator.regularized_beta(.3, 1, 1), .3)
+        root = temporary(self)
+        for name, (assay, seed) in generator.BASES.items():
+            base = generator.generate(root / name, name)
+            counts, effects = generator.simulate(seed)
+            self.assertGreaterEqual(len(counts), 200)
+            self.assertEqual(len(effects), len(counts) // 10)
+            self.assertTrue(all(1 <= abs(v) <= 3 for v in effects.values()))
+            self.assertTrue(any(v < 0 for v in effects.values()))
+            self.assertTrue(any(v > 0 for v in effects.values()))
+            self.assertEqual(counts, generator.simulate(seed)[0])
+            sizes = [sum(row[j] for row in counts) for j in range(6)]
+            self.assertEqual(len(set(sizes)), 6)
+            ratios = [[] for unused in range(6)]
+            for row in counts:
+                if min(row) > 0:
+                    product = 1
+                    for x in row: product *= x
+                    gm = product ** (1.0 / 6.0)
+                    for j in range(6): ratios[j].append(row[j] / gm)
+            factors = [statistics.median(values) for values in ratios]
+            with (base / 'de_results.csv').open() as handle:
+                results = list(csv.DictReader(handle))
+            up = down = 0
+            for row, output in zip(counts, results):
+                normalized = [x / f for x, f in zip(row, factors)]
+                logs = [math.log2(x + 1) for x in normalized]
+                means = [sum(logs[:3]) / 3, sum(logs[3:]) / 3]
+                ss = sum((x - means[j // 3])**2 for j, x in enumerate(logs))
+                t = (means[1] - means[0]) / math.sqrt((ss / 4) * (2.0 / 3))
+                self.assertAlmostEqual(float(output['baseMean']), sum(normalized) / 6)
+                self.assertAlmostEqual(float(output['stat']), t)
+                self.assertAlmostEqual(float(output['log2FoldChange']), means[1] - means[0])
+                y = abs(t) / math.sqrt(t*t + 4)
+                self.assertAlmostEqual(float(output['pvalue']), 1 - 1.5*y + .5*y**3)
+                if float(output['padj']) < .05:
+                    up += int(t > 0); down += int(t < 0)
+            self.assertGreater(up, 0); self.assertGreater(down, 0)
+            claim = bio.read_json(base / 'snapshot.json')['claims'][0]['text']
+            self.assertIn('%d of 240' % (up + down), claim)
+            self.assertIn('%d higher and %d lower' % (up, down), claim)
+            qc = (base / 'qc.md').read_text()
+            self.assertIn('n = 3 per group', qc)
+            if assay == 'rnaseq_bulk':
+                self.assertIn('strandedness', qc); self.assertNotIn('FRiP', qc)
+            else:
+                self.assertIn('FRiP', qc); self.assertNotIn('strandedness', (base / 'config.yaml').read_text() + qc)
+
+    def test_base_identity_not_visible(self):
+        root = temporary(self)
+        builder.build(root / 'built')
+        for path in (root / 'built/cases').rglob('*'):
+            if path.is_file():
+                content = path.read_bytes()
+                for name, (assay, seed) in generator.BASES.items():
+                    self.assertNotIn(name.encode(), content)
+                    self.assertNotIn(str(seed).encode(), content)
+                for text in (b'"seed"', b'illustrative', b'not the source'):
+                    self.assertNotIn(text, content)
+
+    def test_build_from_outside_repository(self):
+        root = temporary(self)
+        commit = subprocess.check_output(['git', '-C', str(REPO), 'rev-parse', 'HEAD']).decode().strip()
+        # Launch from a scratch cwd without changing this test process's cwd.
+        code = 'import sys; sys.path.insert(0, sys.argv[1]); import bio_build_cases as b; b.build(sys.argv[2])'
+        out = root / 'built'
+        proc = subprocess.run([sys.executable, '-B', '-c', code, str(bio.HERE), str(out)],
+                              cwd=str(root), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+        self.assertEqual(bio.read_json(out / 'manifest.json')['harness_commit'], commit)
+
+    def test_group_rep_collector_drift(self):
+        root = temporary(self)
+        for change in ('none', 'missing'):
+            base = generator.generate(root / change, 'atac-a')
+            if change == 'missing':
+                p = base / 'counts.tsv'
+                p.write_text(p.read_text().replace('A_REP1', 'removed'))
+            adapter_root = root / ('adapter-' + change); adapter_root.mkdir()
+            adapter = gates.group_rep_presence(base, adapter_root)
+            actual = gates.wrapper_scaffold(base, root / ('real-' + change), 'atacseq_bulk', gates.atac)
+            self.assertEqual(adapter, actual, change)
+            self.assertEqual(actual, change == 'none')
+
     def test_each_gate_refuses(self):
         mutations = [
             ('stage01_design', 'samples.csv', 'A_REP1,A,A,1', 'A_REP2,A,A,1'),
@@ -140,6 +235,15 @@ class BuildTests(unittest.TestCase):
             path.write_text(path.read_text().replace(old, new))
             results, unused = gates.run_gates(base, 'rnaseq_bulk')
             self.assertFalse(results[name], name)
+        base = generator.generate(root / 'imbalance', 'rna-a')
+        path = base / 'samples.csv'
+        lines = path.read_text().splitlines()
+        lines[0] += ',age'
+        for i in range(1, 7): lines[i] += ',' + str(20 + i if i <= 3 else 60 + i)
+        path.write_text('\n'.join(lines) + '\n')
+        results, unused = gates.run_gates(base, 'rnaseq_bulk')
+        self.assertFalse(results['stage01_design'], 'covariate_imbalance')
+
 
     def test_stage03_verify_drift(self):
         root = temporary(self)
@@ -221,6 +325,7 @@ class BuildTests(unittest.TestCase):
         entries = bio.read_json(root / 'bad/private/key.json')['cases']
         self.assertTrue(all(not v['gates']['stage01_design'] for v in entries.values()))
         self.assertTrue(log.exists())
+        self.assertFalse((root / 'bad/manifest.json').exists())
         def absent_output(destination, name, seed):
             base = original(destination, name, seed)
             (base / 'de_results.csv').unlink()
@@ -280,6 +385,7 @@ if b and mode == 'limit': print("Claude usage limit reached.")
 value = {'verdict': 'APPROVE', 'findings': []} if b else {'findings': []}
 if b and mode == 'envelope': value['envelope'] = {'exit_code': 0, 'ended_on_usage_limit': False}
 Path('review.json' if b else 'notes.json').write_text(json.dumps(value))
+if not b and mode == 'made-report': Path('project/4-report').mkdir()
 '''.replace('MODE', repr(mode))
         (binary / 'claude').write_text(source); (binary / 'claude').chmod(0o755)
         # The executable is a runtime stub. It neither invokes nor emulates a model.
@@ -311,7 +417,18 @@ Path('review.json' if b else 'notes.json').write_text(json.dumps(value))
         value = bio.read_json(next((root / 'r').glob('*.record.json')))
         self.assertEqual(value['envelope']['phases'][1]['session_id'], 'different-session')
         self.assertFalse(value['envelope']['phases'][1]['session_matches_phase_a'])
-        self.assertTrue(validator.invalid_reasons(value, m))
+        self.assertEqual(validator.invalid_reasons(value, m), [])
+
+    def test_phase_a_created_report_recorded(self):
+        root, args, m = self.setup_launch('made-report')
+        self.assertEqual(launcher.run(args), 0)
+        records = list((root / 'r').glob('*.record.json'))
+        self.assertEqual(len(records), len(m['cases']))
+        for path in records:
+            value = bio.read_json(path)
+            self.assertTrue(validator.invalid_reasons(value, m))
+            self.assertIn('phase A created project/4-report', value['review']['invalid_notes'])
+            self.assertEqual(value['envelope']['phases'][1]['exit_code'], 1)
 
     def test_each_phase_hit(self):
         for mode in ('hit-a', 'hit-b'):
@@ -392,6 +509,21 @@ class ScoreTests(unittest.TestCase):
         self.assertEqual(second['repeat']['caught'], dict(both=1, one=0, neither=1))
         with contextlib.redirect_stdout(output): scorer.print_score(second)
         self.assertIn('repeatability observation (not a metric)', output.getvalue())
+
+    def test_resume_id_differs_count(self):
+        root, records, m, key, runs = self.setup_score()
+        path = next(records.glob('*.record.json'))
+        value = bio.read_json(path)
+        value['envelope']['phases'][1]['session_id'] = 'different-session'
+        value['envelope']['phases'][1]['session_matches_phase_a'] = False
+        self.assertEqual(validator.invalid_reasons(value, m), [])
+        path.write_text(json.dumps(value))
+        result = scorer.score(records, key, m, [bio.HERE / 'fixtures'], runs)
+        self.assertEqual(result['resume_id_differs'], {'n': 1, 'd': 4})
+        self.assertEqual(result['overall']['invalid']['n'], 0)
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output): scorer.print_score(result)
+        self.assertIn('resume id differs: 1/4', output.getvalue())
 
     def test_tampered_answer_and_key(self):
         root, records, m, key, runs = self.setup_score()

@@ -210,3 +210,85 @@ rooted null-device redirect, contrary to the lane's command-path rule. Passing
 functional tests does not repair those three violations. The fixture hook also
 refused because gitleaks was absent; no secret-scan pass is claimed. These facts
 are separate from implementation acceptance and are recorded in the change report.
+
+## Addendum — 2026-09-25, review round R2
+
+The following rulings are **Glitch under the owner's standing delegation of
+23 Sep 2026**, never the owner's words. R1 and R2 remain settled as option (a):
+**row 9's validator is reused by projecting the prompt path; the science-path equality is checked first and separately**.
+The projection changes only the prompt path after the three-way equality check;
+the science hash comparison remains unchanged. The only public-manifest sweep
+exceptions remain the whole `harness_commit` key and the whole science prompt
+path value under `prompt_path`. No case bytes receive either exception.
+The scope-of-stop ruling applied only to those two questions; the complete
+surrounding harness from the preceding addendum remains implemented.
+
+Glitch's lane ruling on review F5 supersedes this record's earlier sentence
+"Session disagreement is INVALID": phase-B disagreement is recorded, never an
+INVALID reason. The launcher still stamps both session ids and their equality,
+and audits B using B's own stream-init id. The scorer reports
+`resume id differs: n/total`, over the records read, including retained attempts.
+The named test `ScoreTests.test_resume_id_differs_count` requires the disagreement
+to remain valid and the count to print; separate mutations drop the count and
+restore the rejected invalidation. Resume remains the only implementation;
+CP5.6 on the deployment host settles whether it continues the actual session.
+No model was run against any case.
+
+Glitch's lane ruling on F1 replaces the earlier four-feature permutation bases
+with 240 negative-binomial features, dispersion 0.015, a skewed lognormal
+baseline, differing library exposures and 24 seeded effects of absolute log2
+size 1 to 3 in both directions. The approved method is median-of-ratios
+normalisation, log2(normalised count + 1), a two-sided pooled Student t-test
+with df = 4, and BH across every tested feature at alpha 0.05. The standard
+library implementation evaluates the regularised incomplete beta function.
+Tests compare it with reference tails and an independent df=4 integral, then
+recompute normalisation, statistics, p-values, BH and report counts. Reports
+state directions and n = 3 per group limits, with association rather than
+causation. QC and configuration text are specific to the assay. The three
+fixed seeds are listed in INTERFACE.md and the private case definitions;
+neither those seeds nor base ids occur in built reviewer-visible bytes.
+P01 and P02 were re-derived against these bases; the provenance-only diffs
+remain byte-identical. Their statistical rationales are in the R2 change
+report only. Exactly P01, P02, C01 and C02 exist; reserved slots stay empty.
+
+Review F2 binds the harness commit to the source repository instead of the
+caller's working directory, with an outside-cwd regression. F3 now refuses
+stage-01 design flags, including catalogue covariate_imbalance DEGRADE output.
+F4 removes the seed metadata and tests every built case byte. F6's renamed
+module mutation supplies a live shim under the prohibited bare name and must
+reach `FAIL: test_one_process_both_import_orders`, without an import failure.
+
+F7's direct stub-stream comparison reduces to object-identity drift test (a):
+both launchers import the same blindness function. The distinct phase call
+site is exercised by `LaunchTests.test_phase_b_session_audit` and both-phase
+hit tests; a mutation using A's id for B fails the named call-site test.
+For F8, a refused build retains the private key and gate log but publishes no
+manifest. For F9, a phase-A-created report directory records a named invalid
+output with B unstarted and a nonzero phase exit; the launcher continues through
+the remaining ids. It adds no validity rule or schema field.
+
+For F10, RNA wrappers expose no membership gate to import. The shared adapter
+uses the imported wrapperlib token function; the new
+`BuildTests.test_group_rep_collector_drift` drives that adapter and the actual
+ATAC collector over identical intact and missing-token inputs. This tests the
+membership comparison against production behavior without editing a wrapper.
+F11: this addendum also touches `tests/test_bio_faults_pipeline.py`; the frozen
+frontmatter is intentionally not rewritten. R2 uses the required report heading.
+F12 requires no identity change; repository configuration remains untouched.
+
+The threat model and its named residuals above remain in force: deployment
+bounds reads, the harness binds settings and runs row 9's audit, and 0072 items
+20–23 and 0125 apply unchanged. Style-based guesses, common Codex context family,
+independent-context seals as development evidence only, thin per-class samples,
+four eventual hash-only sealed outcomes, five unplanted classes and R-093's code
+half remain outside these checks. Invalid records remain in denominators;
+science remains a partial set and never meets the full threshold. The R2 report
+records executed checks and limitations. Protected approval belongs to later
+record 0137; neither it nor 0138 or 0139 is written or claimed here.
+
+R2 invocation limitation: an initial outside-cwd regression probe inherited
+relative temporary-directory settings and fell back to the system temporary
+folder. This breached scratch containment. Final verification uses a
+runtime-resolved scratch twin; it does not erase the initial breach. The
+fixture hook also refused because gitleaks is absent. Neither complete
+invocation compliance nor a secret-scan pass is claimed.

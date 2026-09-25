@@ -96,6 +96,25 @@ FAULTS = [
      "target = 'commit' if 'harness_commit' in key else key",
      'pipeline', 'BuildTests.test_manifest_sweep_exact'),
 
+    ('resume count dropped', 'evals/bio-faults/bio_score.py',
+     "    print('resume id differs: ' + format_ratio(result['resume_id_differs']))", '    pass',
+     'pipeline', 'ScoreTests.test_resume_id_differs_count'),
+    ('resume mismatch invalidated', 'evals/bio-faults/bio_review_record.py',
+     "    if not env['narrative_withheld_until_phase_b']:\n        errors.append('narrative not withheld')\n    return errors\n", "    if not env['narrative_withheld_until_phase_b']:\n        errors.append('narrative not withheld')\n    if phases[0]['session_id'] != phases[1]['session_id']:\n        errors.append('resume session differs')\n    return errors\n",
+     'pipeline', 'ScoreTests.test_resume_id_differs_count'),
+    ('caller commit used', 'evals/bio-faults/bio_build_cases.py',
+     "['git', '-C', str(REPO), 'rev-parse', 'HEAD']", "['git', 'rev-parse', 'HEAD']",
+     'pipeline', 'BuildTests.test_build_from_outside_repository'),
+    ('design flags ignored', 'evals/bio-faults/bio_gates.py',
+     "results['stage01_design'] = code == 0 and not any(", "results['stage01_design'] = code == 0 or not any(",
+     'pipeline', 'BuildTests.test_each_gate_refuses'),
+    ('base seed exposed', 'evals/bio-faults/bio_generate_base.py',
+     "'params': {'assay': assay,", "'params': {'assay': assay, 'seed': seed,",
+     'pipeline', 'BuildTests.test_base_identity_not_visible'),
+    ('Student tail halved', 'evals/bio-faults/bio_generate_base.py',
+     'return regularized_beta(df / (df + t * t), df / 2.0, 0.5)',
+     'return regularized_beta(df / (df + t * t), df / 2.0, 0.5) / 2.0',
+     'pipeline', 'BuildTests.test_student_reference_and_analysis'),
 ]
 
 
@@ -114,6 +133,12 @@ class FaultTests(unittest.TestCase):
                     target = root / relative_file
                     target.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copyfile(str(REPO / relative_file), str(target))
+                # A minimal local object store binds provenance to this disposable copy.
+                # Copy only the HEAD commit object; no remote, config or identity changes.
+                subprocess.check_call(['git', 'init', '--quiet', str(root)])
+                commit = subprocess.check_output(['git', '-C', str(REPO), 'cat-file', 'commit', 'HEAD'])
+                head = subprocess.check_output(['git', '-C', str(root), 'hash-object', '-t', 'commit', '-w', '--stdin'], input=commit).decode().strip()
+                subprocess.check_call(['git', '-C', str(root), 'update-ref', 'HEAD', head])
                 script = root / ('tests/test_bio_faults_' + module + '.py')
                 argv = [sys.executable, '-B', str(script), name]
                 control = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=20)
@@ -121,6 +146,15 @@ class FaultTests(unittest.TestCase):
                 path = root / relative
                 if old is None:
                     path.rename(str(root / new))
+                    # Keep importers live while loading the science implementation
+                    # under the prohibited bare name. The named test must run.
+                    path.write_text('import importlib.util, sys\nfrom pathlib import Path\n'
+                        'p = Path(__file__).with_name("oracle.py")\n'
+                        'spec = importlib.util.spec_from_file_location("oracle", str(p))\n'
+                        'module = importlib.util.module_from_spec(spec)\n'
+                        'sys.modules["oracle"] = module\n'
+                        'spec.loader.exec_module(module)\n'
+                        'globals().update({k: v for k, v in vars(module).items() if not k.startswith("__")})\n')
                 else:
                     source = path.read_text()
                     self.assertEqual(source.count(old), 1)
@@ -128,9 +162,7 @@ class FaultTests(unittest.TestCase):
                 failed = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=20)
                 self.assertNotEqual(failed.returncode, 0, label)
                 evidence = failed.stdout.decode()
-                if old is None:
-                    self.assertIn('ModuleNotFoundError', evidence)
-                elif label == 'envelope from stub text':
+                if label == 'envelope from stub text':
                     self.assertIn('FAIL: ', evidence)
                 else:
                     self.assertIn('FAIL: ' + name.split('.')[-1], evidence)

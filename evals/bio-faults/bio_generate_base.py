@@ -2,14 +2,14 @@
 import argparse
 import csv
 import json
-import itertools
+import statistics
 import math
 import random
 from pathlib import Path
 from bio_common import sha256
 
-BASES = {'rna-a': ('rnaseq_bulk', 1001), 'rna-b': ('rnaseq_bulk', 1002),
-         'atac-a': ('atacseq_bulk', 1003)}
+BASES = {'rna-a': ('rnaseq_bulk', 731947205861304921), 'rna-b': ('rnaseq_bulk', 731947205861304922),
+         'atac-a': ('atacseq_bulk', 731947205861304923)}
 LAYOUT = {'samples.csv': '1-design/samples.csv', 'config.yaml': '1-design/_config/{assay}.yaml',
           'PLAN.md': '1-design/PLAN.md', 'approval.json': '1-design/approval.json',
           'files.csv': '2-data/files.csv', 'counts.tsv': '2-data/counts.tsv',
@@ -43,6 +43,90 @@ def bh(values):
     return result
 
 
+FEATURES = 240
+DISPERSION = 0.015
+
+
+def beta_fraction(a, b, x):
+    """Continued fraction for the regularised incomplete beta integral."""
+    tiny = 1e-300
+    c = 1.0
+    d = 1.0 - (a + b) * x / (a + 1.0)
+    d = 1.0 / (d if abs(d) > tiny else tiny)
+    h = d
+    for m in range(1, 201):
+        for numerator in (m * (b - m) * x / ((a + 2*m - 1) * (a + 2*m)),
+                          -(a + m) * (a + b + m) * x / ((a + 2*m) * (a + 2*m + 1))):
+            d = 1.0 + numerator * d
+            c = 1.0 + numerator / c
+            d = 1.0 / (d if abs(d) > tiny else tiny)
+            c = c if abs(c) > tiny else tiny
+            delta = d * c
+            h *= delta
+        if abs(delta - 1.0) < 3e-14:
+            return h
+    raise ValueError('beta fraction did not converge')
+
+
+def regularized_beta(x, a, b):
+    if x <= 0.0: return 0.0
+    if x >= 1.0: return 1.0
+    weight = math.exp(math.lgamma(a + b) - math.lgamma(a) - math.lgamma(b)
+                      + a * math.log(x) + b * math.log1p(-x))
+    if x < (a + 1.0) / (a + b + 2.0):
+        return weight * beta_fraction(a, b, x) / a
+    return 1.0 - weight * beta_fraction(b, a, 1.0 - x) / b
+
+
+def student_p(t, df=4):
+    """Two-sided Student t tail, I[df/(df+t*t)](df/2, 1/2)."""
+    return regularized_beta(df / (df + t * t), df / 2.0, 0.5)
+
+
+def negative_binomial(rng, mean, dispersion):
+    # Gamma-Poisson mixture: variance = mean + dispersion * mean**2.
+    intensity = rng.gammavariate(1.0 / dispersion, mean * dispersion)
+    elapsed, count = rng.expovariate(1.0), 0
+    while elapsed < intensity:
+        count += 1
+        elapsed += rng.expovariate(1.0)
+    return count
+
+
+def simulate(seed):
+    rng = random.Random(seed)
+    affected = rng.sample(range(FEATURES), FEATURES // 10)
+    effects = {i: (-1 if j % 2 else 1) * rng.uniform(1.0, 3.0)
+               for j, i in enumerate(affected)}
+    exposure = [0.75, 1.2, 0.9, 1.1, 0.8, 1.3]
+    counts = []
+    for i in range(FEATURES):
+        mean = rng.lognormvariate(math.log(120.0), 0.8)
+        counts.append([negative_binomial(rng, mean * size *
+                       (2 ** effects.get(i, 0.0) if j >= 3 else 1.0), DISPERSION)
+                       for j, size in enumerate(exposure)])
+    return counts, effects
+
+
+def analyse(counts):
+    geometric = [math.exp(sum(math.log(x) for x in row) / len(row))
+                 if all(x > 0 for x in row) else None for row in counts]
+    factors = [statistics.median(row[j] / gm for row, gm in zip(counts, geometric) if gm)
+               for j in range(6)]
+    normalized = [[x / size for x, size in zip(row, factors)] for row in counts]
+    results = []
+    for row in normalized:
+        logs = [math.log(x + 1.0, 2) for x in row]
+        left, right = logs[:3], logs[3:]
+        pooled = (statistics.variance(left) + statistics.variance(right)) / 2.0
+        difference = statistics.mean(right) - statistics.mean(left)
+        t = difference / math.sqrt(pooled * (2.0 / 3.0)) if pooled else 0.0
+        results.append([statistics.mean(row), difference, t, student_p(t)])
+    for row, q in zip(results, bh([row[3] for row in results])):
+        row.append(q)
+    return normalized, results
+
+
 def generate(destination, base_project, seed=None):
     assay, fixed_seed = BASES[base_project]
     seed = fixed_seed if seed is None else seed
@@ -62,43 +146,46 @@ def generate(destination, base_project, seed=None):
     table(root / 'samples.csv', ['sample_id', 'condition', 'group', 'replicate', 'batch'], samples)
     table(root / 'files.csv', ['sample_id', 'lane', 'fastq_1', 'fastq_2'], files)
     table(root / 'provenance.csv', ['sample_id', 'biological_source', 'processing_run'], provenance)
-    config = ('strandedness: auto\nunit_of_replication: sample\nreference_release: synthetic-v1\n'
+    config = (('strandedness: auto\n' if assay == 'rnaseq_bulk' else '') +
+              'unit_of_replication: sample\nreference_release: synthetic-v1\n'
               'de:\n  formula: "' + chr(126) + ' condition"\n  contrast: "condition,B,A"\n')
     (root / 'config.yaml').write_text(config)
     feature = lambda i: ('g%d' % i if assay == 'rnaseq_bulk' else 'chr1:%d-%d' % (i * 100, i * 100 + 99))
-    rows = [[feature(i)] + [rng.randrange(50, 151) for unused in samples] for i in range(1, 5)]
-    table(root / 'counts.tsv', ['gene'] + [s[0] for s in samples], rows, '\t')
-    table(root / 'normalized_counts.csv', ['gene'] + [s[0] for s in samples], rows)
-    probabilities = []
-    for row in rows:
-        values = row[1:]
-        observed = abs(sum(values[3:]) - sum(values[:3]))
-        probabilities.append(sum(abs(2 * sum(values[i] for i in group) - sum(values)) >= observed
-                                 for group in itertools.combinations(range(6), 3)) / 20.0)
-    table(root / 'de_results.csv', ['gene', 'baseMean', 'log2FoldChange', 'pvalue', 'padj'] + [row[0] for row in samples],
-          [[feature(i + 1), sum(rows[i][1:]) / 6.0,
-            math.log(sum(rows[i][4:]) / sum(rows[i][1:4]), 2), p, q] + rows[i][1:] for i, (p, q) in enumerate(zip(probabilities, bh(probabilities)))])
+    counts, unused_effects = simulate(seed)
+    normalized, results = analyse(counts)
+    names = [s[0] for s in samples]
+    table(root / 'counts.tsv', ['gene'] + names,
+          [[feature(i + 1)] + row for i, row in enumerate(counts)], '\t')
+    table(root / 'normalized_counts.csv', ['gene'] + names,
+          [[feature(i + 1)] + row for i, row in enumerate(normalized)])
+    table(root / 'de_results.csv', ['gene', 'baseMean', 'log2FoldChange', 'stat', 'pvalue', 'padj'] + names,
+          [[feature(i + 1)] + row + normalized[i] for i, row in enumerate(results)])
+    assay_method = ('Gene counts; no pathway analysis.\n' if assay == 'rnaseq_bulk' else
+                    'Union consensus peaks; blacklist excluded. Global scaling assumes no global shift.\n')
     plan = ('# Analysis plan\nStatus: APPROVED\n\n## Goal\nCompare B with A in a small bulk study.\n'
             '## Method\nIndependent samples; condition-only model. Three biological replicates per arm.\n'
             'Processing runs balanced across arms; no pooling of subjects.\n'
-            'Exact two-sided permutation tests of mean abundance; all 20 three-versus-three assignments; BH across four features.\n'
-            'Equal library exposure; counts already on a common scale. No filtering or shrinkage; alpha 0.05; report effect sizes.\n'
-            'Outliers retained; descriptive inference only; no pathway or causal claims.\n'
-            'ATAC uses union consensus, blacklist exclusion and global scaling; no global shift assumed.\n'
+            'Median-of-ratios size factors across features with positive counts in every sample.\n'
+            'Transform log2(normalised count + 1); two-sided two-sample Student t-test, pooled variance, df = 4.\n'
+            'BH across all 240 tested features; alpha 0.05; no filtering or shrinkage.\n'
+            'Report mean normalised count and difference of mean log2 abundances (B minus A).\n'
+            'Outliers retained; descriptive association only; no pathway or causal claims.\n' + assay_method +
             '## Outputs\n| File | Type | Description |\n|---|---|---|\n'
             '| de_results.csv | de_results | Differential table |\n\n## Execution\nRuns: batch\n')
     (root / 'PLAN.md').write_text(plan)
     write_json(root / 'approval.json', {'actor': 'human', 'timestamp': '2026-09-25T00:00:00Z',
                'expiry': '2026-09-26T00:00:00Z', 'plan_sha256': sha256(plan.encode())})
-    (root / 'qc.md').write_text('All six libraries retained. No outliers removed.\n'
-        'Count summaries are seeded illustrative measurements; tiny FASTQs test file integrity and are not their source.\n'
-        'RNA: inferred strandedness agrees with declared auto inference.\n'
-        'ATAC: FRiP 0.35, TSS enrichment 9, nucleosomal fragment periodicity retained.\n'
-        'QC disposition WARN: small illustrative study; no population or causal generalization.\n')
-    manifest = {'pipeline_commit': 'synthetic-v1', 'params': {'assay': assay, 'seed': seed,
+    assay_qc = ('RNA QC: mapping rate 0.96; assigned-read fraction 0.88; inferred strandedness agrees with auto inference.\n'
+                if assay == 'rnaseq_bulk' else
+                'ATAC QC: FRiP 0.35; TSS enrichment 9; nucleosomal fragment-length periodicity retained.\n')
+    (root / 'qc.md').write_text('All six libraries retained. No outliers removed.\n' + assay_qc +
+        'QC disposition WARN: n = 3 per group limits precision and generalisation.\n')
+    manifest = {'pipeline_commit': 'synthetic-v1', 'params': {'assay': assay,
                 'unit_of_replication': 'sample', 'formula': 'condition',
-                'execution_started_at': '2026-09-25T01:00:00Z', 'execution_finished_at': '2026-09-25T01:01:00Z', 'contrast': 'B versus A',
-                'alpha': .05, 'multiple_testing_scope': 'four tested features'}}
+                'execution_started_at': '2026-09-25T01:00:00Z', 'execution_finished_at': '2026-09-25T01:01:00Z',
+                'contrast': 'B versus A', 'normalisation': 'median-of-ratios',
+                'test': 'pooled Student t on log2(normalised count + 1)', 'df': 4,
+                'alpha': .05, 'multiple_testing_scope': '240 tested features'}}
     write_json(root / 'manifest.json', manifest)
     evidence = {'id': 1, 'artifact_id': 1, 'source_id': None, 'kind': 'statistical',
                 'relation': 'supports', 'source': None, 'artifact': {'id': 1,
@@ -106,12 +193,12 @@ def generate(destination, base_project, seed=None):
     write_json(root / 'snapshot.json', {'run': {'id': 1, 'question': 'Is bulk abundance associated with condition?',
         'manifest_path': '3-results/manifest.json', 'manifest_sha256': sha256((root / 'manifest.json').read_bytes())},
         'claims': [{'id': 1, 'run_id': 1, 'type': 'OBSERVATION',
-        'text': 'No tested feature meets BH adjusted p below 0.05.',
-        'bio_support': {'statistical_support': 'BH across four features', 'replication': 'Three samples per arm',
+        'text': '%d of 240 features have BH adjusted p below 0.05: %d higher and %d lower in B; descriptive association, not causation.' % (sum(r[4] < .05 for r in results), sum(r[4] < .05 and r[1] > 0 for r in results), sum(r[4] < .05 and r[1] < 0 for r in results)),
+        'bio_support': {'statistical_support': 'BH across 240 features', 'replication': 'n = 3 biological replicates per group',
                         'effect_size': 'See differential table', 'orthogonal_assay': 'none', 'literature': 'not used'},
         'process_risk': {'data_quality': 'All libraries retained', 'confounding_risk': 'Processing balanced',
             'provenance_completeness': 'Library origins in provenance.csv', 'qc_disposition': 'WARN',
-            'limitation': 'Small descriptive study; lack of significance does not establish equivalence.'},
+            'limitation': 'n = 3 per group limits precision; associations do not establish causation. Global scaling assumes no global shift.'},
         'reference_release': 'synthetic-v1', 'workflow_version': 'synthetic-v1', 'evidence': [evidence]}]})
     return root
 

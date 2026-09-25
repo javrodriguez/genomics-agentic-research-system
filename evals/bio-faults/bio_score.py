@@ -53,6 +53,7 @@ def score(records, key, manifest, answers, runs, stamp=None):
     settings_shas = set()
     count = 0
     total_ambiguous = 0
+    resume_differs = 0
     for path in sorted(Path(records).glob('*.record.json')):
         record = read_json(path)
         env = record.get('envelope', {})
@@ -70,6 +71,9 @@ def score(records, key, manifest, answers, runs, stamp=None):
         if path.name != stem + '.record.json':
             raise ValueError('record filename and envelope differ')
         errors = invalid_reasons(record, manifest)
+        phases = env.get('phases', [])
+        if len(phases) == 2 and all(isinstance(p, dict) for p in phases):
+            resume_differs += int(phases[0].get('session_id') != phases[1].get('session_id'))
         # Decision 0128 round B: the ambiguous count stays visible per record.
         judged, absent = read_ambiguous(record)
         blindness = judged.get('envelope', {}).get('blindness')
@@ -142,7 +146,8 @@ def score(records, key, manifest, answers, runs, stamp=None):
               'sealed': {'n': sum(e['kind'] == 'plant' and e['seal_type'] != 'unsealed' for e in mapping.values()),
                          'd': plants, 'types': sorted({e['seal_type'] for e in mapping.values() if e['seal_type'] != 'unsealed'})},
               'sealed_clean': ratio(sum(e['kind'] == 'clean' and e['seal_type'] != 'unsealed' for e in mapping.values()), clean),
-              'cases': outcomes, 'ambiguous': total_ambiguous}
+              'cases': outcomes, 'ambiguous': total_ambiguous,
+              'resume_id_differs': ratio(resume_differs, count)}
     literals = [s for entry in mapping.values() for s in entry['mask_literals']]
     result = masked_copy(result, key['run_salt'], list(mapping), literals)
     return result
@@ -162,6 +167,7 @@ def print_score(result):
           (format_ratio(overall['caught']), format_ratio(overall['false_alarms'])))
     print('false alarms %s (%d invalid, not clean)' % (format_ratio(overall['false_alarms']), result['invalid_clean']))
     print('invalid ' + format_ratio(overall['invalid']))
+    print('resume id differs: ' + format_ratio(result['resume_id_differs']))
     print('graded-against-seen ' + format_ratio(overall['graded_against_seen']))
     print('first-run-at-sha: ' + str(result['first_run_at_sha']).lower())
     if not result['first_run_at_sha']:

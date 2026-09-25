@@ -69,6 +69,8 @@ def run(args):
         review = {'invalid_output': 'phase B not run'}
         for name in ('A', 'B'):
             if name == 'B':
+                if (kit / 'project/4-report').exists() or (kit / 'project/4-report').is_symlink():
+                    notes_errors.append('phase A created project/4-report')
                 if phases[0]['ended_on_usage_limit'] or phases[0]['exit_code'] or notes_errors:
                     phases.append(dict(name='B', session_id='not-started', started_at=now(), finished_at=now(),
                         exit_code=1, ended_on_usage_limit=False, blindness={'calls': 0, 'hits': 0}, session_matches_phase_a=False))

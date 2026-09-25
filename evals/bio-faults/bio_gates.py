@@ -223,8 +223,10 @@ def run_gates(base, assay):
             mapped_project(base, project, assay)
         except (OSError, ValueError, KeyError, TypeError):
             pass  # The real stage check below names the absent/unreadable input.
-        code, unused = captured(stage01.main, ['--project', str(project), '--check'])
-        results['stage01_design'] = code == 0
+        code, output = captured(stage01.main, ['--project', str(project), '--check'])
+        results['stage01_design'] = code == 0 and not any(
+            assay.get('design_check', {}).get('flags')
+            for assay in json.loads(output).get('assays', {}).values())
         with patch.object(stage01.integrity, 'check_many',
                           partial(stage01.integrity.check_many, log=io.StringIO())):
             code, unused = captured(stage01.main, ['--project', str(project), '--check', '--verify-integrity', 'full'])

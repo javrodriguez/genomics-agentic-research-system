@@ -112,7 +112,7 @@ def build(out, roots=None, salt=None, log=None, quiet_ids=False):
             (project / '4-report/report.md').write_text(report, encoding='utf-8')
     order = sorted(mapping)
     random.Random(salt).shuffle(order)
-    commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip()
+    commit = subprocess.check_output(['git', '-C', str(REPO), 'rev-parse', 'HEAD']).decode().strip()
     manifest = {'cases': order, 'base_sha': BASE_SHA, 'prompt_path': PROMPT_PATH,
                 'prompt_sha256': sha256((REPO / PROMPT_PATH).read_bytes()), 'harness_commit': commit}
     manifest_bytes = (json.dumps(manifest, sort_keys=True, indent=2) + '\n').encode()
@@ -127,11 +127,12 @@ def build(out, roots=None, salt=None, log=None, quiet_ids=False):
         write_json(log, {'cases': log_rows, 'sweep_hits': len(hits)})
     if hits:
         raise ValueError('forbidden case bytes')
-    (out / 'manifest.json').write_bytes(manifest_bytes)
     write_json(out / 'private/key.json', key)
     fixed_tree(out)
     if refused:
         raise ValueError('gate refused')
+    (out / 'manifest.json').write_bytes(manifest_bytes)
+    fixed_tree(out)
     return manifest, key
 
 
@@ -149,7 +150,7 @@ def main(argv=None):
         manifest, key = build(args.out, roots, log=args.log, quiet_ids=args.quiet_ids)
         print('cases %d; sweep hits 0' % len(manifest['cases']))
         return 0
-    except (OSError, ValueError, KeyError, TypeError) as exc:
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as exc:
         print('build refused: ' + str(exc), file=sys.stderr)
         return 2
 

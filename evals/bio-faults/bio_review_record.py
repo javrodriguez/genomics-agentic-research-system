@@ -51,6 +51,4 @@ def invalid_reasons(record, manifest=None):
             errors.append('phase ' + phase['name'] + ': blindness hit')
     if not env['narrative_withheld_until_phase_b']:
         errors.append('narrative not withheld')
-    if not phases[1]['session_matches_phase_a'] or phases[0]['session_id'] != phases[1]['session_id']:
-        errors.append('resume session differs')
     return errors

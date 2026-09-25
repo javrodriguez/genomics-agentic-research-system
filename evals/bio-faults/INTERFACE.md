@@ -47,21 +47,27 @@ The pinned harness base is `a77908474f2fc463f481a55f2d0c2ceeee8be660`.
 
 | base_project | assay | base_seed |
 |---|---|---|
-| rna-a | rnaseq_bulk | 1001 |
-| rna-b | rnaseq_bulk | 1002 |
-| atac-a | atacseq_bulk | 1003 |
+| rna-a | rnaseq_bulk | 731947205861304921 |
+| rna-b | rnaseq_bulk | 731947205861304922 |
+| atac-a | atacseq_bulk | 731947205861304923 |
 
 The coordinator generates each base with:
 
 ```sh
-python3 evals/bio-faults/bio_generate_base.py --base rna-a --seed 1001 --out "$base_folder"
+python3 evals/bio-faults/bio_generate_base.py --base rna-a --seed 731947205861304921 --out "$base_folder"
 ```
 
 Substitute the base id and seed from the table. The trees are deterministic data.
-The base differential table uses an exact two-sided permutation test over all
-20 assignments of three samples per arm; BH step-up covers all tested rows.
-Libraries have equal exposure. The approval is historical data, not a command.
-Raw FASTQs are tiny integrity inputs, not the source of a real sequencing run.
+Each base contains 240 negative-binomial features with dispersion 0.015,
+a lognormal baseline (log location log(120), log standard deviation 0.8), differing
+library exposures, and a seeded 10% subset with effects of absolute log2 size
+between 1 and 3 in both directions. The pre-specified analysis uses
+median-of-ratios size factors, log2(normalised count + 1), a two-sided pooled
+Student t-test (df = 4), and BH across all tested rows at alpha 0.05. Reports
+state significant counts and directions, descriptive association and the
+n = 3 per group limitation. The seed and base id are handoff metadata only;
+neither is copied into reviewer-visible files. Approval records are historical
+data, never an approval command.
 
 ## LAYOUT MAP
 
