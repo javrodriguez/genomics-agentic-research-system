@@ -765,6 +765,25 @@ def closed_read_refusal(tool, tool_input, root, cwd):
             deny(closed_refusal(token, hit))
 
 
+EDIT_TOOLS = ("Edit", "MultiEdit", "NotebookEdit")
+
+
+def closed_edit_refusal(tool, tool_input, root, cwd):
+    """Edit, MultiEdit and NotebookEdit in a closed project: an edit's result echoes the file
+    around the change, so it is a read (0107, review round 1 F3; was residual 10)."""
+    if tool not in EDIT_TOOLS:
+        return
+    closed = closed_projects(root)
+    if not closed:
+        return
+    path = tool_input.get("file_path") or tool_input.get("notebook_path")
+    if not isinstance(path, str) or not path:
+        deny(UNREADABLE)
+    hit = closed_hit(path, root, _bases(cwd, root), False, closed)
+    if hit:
+        deny(closed_refusal(path, hit))
+
+
 def closed_bash_refusal(tool, args, tokens, root, cwd):
     """A registered Bash call, bare or through the dispatcher, once `authorize` passed (0107):
     the rg --pre refusal, Q8, the stage 00 opening, then the closed-project rule."""
@@ -863,6 +882,7 @@ def main():
             closed_read_refusal(tool, tool_input, root, cwd)
         if tool in WRITE_TOOLS:
             check_write_tool(tool_input, root, cwd)
+            closed_edit_refusal(tool, tool_input, root, cwd)
         elif tool == "Bash":
             check_bash(tool_input, root, cwd)
     except Exception as exc:  # deny() raises SystemExit, which is not an Exception

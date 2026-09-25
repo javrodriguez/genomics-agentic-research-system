@@ -529,3 +529,67 @@ Each is NOT met; 0107 states them in full.
 ## Owner rulings needed
 
 None.
+
+## Review round 2 fixes (pg)
+
+Dated 2026-09-25. Review: `docs/reviews/lane_pg_review1.md` (round 1 of item 2, verdict APPROVE
+WITH CHANGES; left untracked and unchanged). The sections above are unchanged; 0107 gains a dated
+addendum after its last byte (51 added lines, 0 removed), and the index was re-run
+(`bash docs/decisions/build_index.sh`; no row changed, since 0107's frontmatter is unchanged).
+
+| Finding | Changed files | Test | Result | Red-on-fault seen |
+|---|---|---|---|---|
+| F1 MAJOR, settings pair outside scope | 0107 addendum, this section (no code change) | `test_settings_equal_guard_patterns` (unchanged) | answered with evidence: the item's specification, point 3, requires the pair and its Rules 1 boundary allows "`gars/.claude/settings.json` (exactly the one pair)"; `git diff --numstat 0754ec6 -- gars/.claude/settings.json` gives `2	0`; 0108 (the lane's, at hand-off) must name the file | n/a (no code change) |
+| F2 MINOR, README/DEVELOPMENT count sentences | `README.md`, `DEVELOPMENT.md` | `tests/check_counts.py` | the collected count (now 680) is stated alone; the skip counts are marked as the 660-test run's at the row 8 step B merge; the lane's solo run restates them | yes: `check_counts.py` flagged 3 × `states 679, suite has 680` after the new test, then clean |
+| F3 MINOR, residual 10 closable | `gars/_system/guard_hook.py` (additions only: `EDIT_TOOLS`, `closed_edit_refusal`, one call in `main()` after `check_write_tool`), `gars/tests/test_nonpublic_read_block.py`, 0107 addendum | `ControlAndDriftTests.test_edit_family_refused_in_closed_project` | Edit, MultiEdit, NotebookEdit into a closed project refused with the 0107 message; Edit in `open1` allowed | yes: before the guard change `FAILED (failures=8)`; on a disposable clone, call removed `FAILED (failures=8)`, `EDIT_TOOLS` reduced to Edit `FAILED (failures=2)`, cwd base dropped `FAILED (failures=1)`; restored sha256 `347859796ea7…` equal, `OK` |
+| F4 MINOR, STATUS exemption wider than its purpose | 0107 addendum (residual 18, NOT met) | none (no code change) | named as a residual: point 2 binds "every file named exactly `STATUS` anywhere under the project"; narrowing it changes the binding rule, left to the lane or row 13 | n/a |
+| F5 MINOR, census and gate-proof claims | 0107 addendum | none | the 36-project census marked as carried from the lane's specification, not measured; item 9 restated as the lane's obligation, evidence to 0108 or the solo-run record | n/a |
+| F6 NOTE, consequences for the owner's sight | this section | none | listed below | n/a |
+| F7 NOTE, Q4-Q7 and Amendment 1 wording | none | none | stays: the lane holds the ruling texts and appends them at hand-off (0108 or an addendum); this producer does not have them | n/a |
+| F8 NOTE, same-model blind spot | none | none | stays: no fix in this lane; 0107 keeps the sentence | n/a |
+
+**For the owner's sight at merge (F6; no ruling needed).** Every existing project with no
+`dataset.tsv` becomes closed (the lane's census: 36 of 36 in its working copy); stages 01-03, every
+in-project Read and now every in-project Edit on a non-public project are refused until row 13
+adds doors with output filtering; root-level searching is refused while any closed project exists;
+stage 00 on undeclared data is human-run.
+
+The `rg --pre` evidence, red at parent and mutations P1-P31 of round 1 were not re-run; this round
+changes only additions beside them, and the whole module is green (below).
+
+### Commands (round 2)
+
+Run from the repository root with `TMPDIR`, `TEMP` and `TMP` set to the lane's scratch folder.
+
+| Command | Summary line |
+|---|---|
+| `python3 -m py_compile gars/_system/guard_hook.py gars/tests/test_nonpublic_read_block.py` | exit 0, no output |
+| `python3 gars/tests/test_nonpublic_read_block.py` | `Ran 20 tests in 72.652s` / `OK` |
+| `python3 gars/tests/test_guard_hook.py` | `Ran 4 tests in 1.583s` / `OK` |
+| `python3 gars/tests/test_protected_paths.py` | `Ran 5 tests in 16.738s` / `OK` |
+| `python3 gars/tests/test_policy_attacks.py` | `Ran 19 tests in 2.085s` / `OK` |
+| `python3 gars/tests/test_data_class_required.py` | `Ran 4 tests in 2.646s` / `OK` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/check_counts.py` | `suite: 680 tests, from unittest's loader`; `clean — every current claim matches the suite` |
+| `python3 tests/test_decision_links_resolve.py` | `citations: 366/366 resolve`; `Ran 3 tests in 1.377s` / `OK` |
+| `git diff -U0 0754ec6 -- gars/_system/guard_hook.py gars/.claude/settings.json .gitignore \| grep -c '^-[^-]'` | `0` |
+
+`tests/run_tests.py` was not run (machine budget); the lane runs the whole suite solo.
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps after review round 2 (pg)
+
+Each is NOT met.
+
+- 0107's residuals 1-9 and 11-17 as stated there; residual 10 is closed for Edit, MultiEdit and
+  NotebookEdit, and Write into a closed project stays open (not a read; whether the harness echoes
+  prior contents on an overwrite is untested).
+- Residual 18: a file named `STATUS` anywhere in a closed project is readable, including in trees
+  `write_status` never writes.
+- The census and the live-project gate proof are the lane's to measure and record.
+- The individual wording of Q4-Q7 and Amendment 1's round-3 fixes is the lane's to append.
+- The whole suite, a case-sensitive filesystem (Linux), and the harness's read-before-edit
+  behaviour were not exercised here.

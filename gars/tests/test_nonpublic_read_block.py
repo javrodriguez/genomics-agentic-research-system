@@ -732,6 +732,33 @@ class ControlAndDriftTests(HookCase):
         err = self.refused(call(root, 'Bash', {'command': 'tee ' + DATASET}), 'R-092', root)
         self.assertIn('unregistered helper', err)
 
+    def test_edit_family_refused_in_closed_project(self):
+        # Review round 1, F3: an edit echoes the file around it, so residual 10 is closed here.
+        print('red-on-fault: edit family', flush=True)
+        root = ROOTS['R0']
+        cases = [
+            ('Edit', {'file_path': P + '/HISTORY.md', 'old_string': 'a', 'new_string': 'b'}, ''),
+            ('Edit', {'file_path': str(Path(root) / P / 'HISTORY.md'), 'old_string': 'a',
+                      'new_string': 'b'}, ''),
+            ('Edit', {'file_path': '../pilot/HISTORY.md', 'old_string': 'a',
+                      'new_string': 'b'}, 'projects/open1'),
+            ('Edit', {'file_path': 'projects/open1/lnk-pilot/rnaseq_bulk/samples.csv',
+                      'old_string': 'a', 'new_string': 'b'}, ''),
+            ('Edit', {'file_path': P + '/_config/rnaseq_bulk.yaml', 'old_string': 'a',
+                      'new_string': 'b'}, ''),
+            ('MultiEdit', {'file_path': P + '/HISTORY.md',
+                           'edits': [{'old_string': 'a', 'new_string': 'b'}]}, ''),
+            ('NotebookEdit', {'notebook_path': P + '/x.ipynb', 'new_source': 'b'}, ''),
+            ('Edit', {'file_path': 'projects/fresh/HISTORY.md', 'old_string': 'a',
+                      'new_string': 'b'}, ''),
+        ]
+        for tool, data, cwd in cases:
+            with self.subTest(tool=tool, data=data, cwd=cwd):
+                err = self.refused(call(root, tool, data, cwd), root=root)
+                self.assertIn('is in project', err)
+        self.allowed(call(root, 'Edit', {'file_path': 'projects/open1/HISTORY.md',
+                                         'old_string': 'a', 'new_string': 'b'}))
+
     def test_contract_drift(self):
         print('red-on-fault: contract drift', flush=True)
         root = ROOTS['R1']

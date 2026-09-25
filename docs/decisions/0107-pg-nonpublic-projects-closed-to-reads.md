@@ -344,3 +344,54 @@ changes (`guard_hook.py`, `settings.json`) take effect only with the lane's appr
 ## Date
 
 2026-09-25
+
+## Addendum — review round 2, 2026-09-25
+
+The independent review of round 1 (verdict APPROVE WITH CHANGES) found one major, four minor and
+three note-level gaps. The text above stays as written; this addendum narrows or corrects the
+sentences named below.
+
+**The settings pair is inside this item's scope (F1).** The review read `gars/.claude/` as a
+path this item must leave unchanged. The lane's specification for this item names it: point 3
+requires the `READ_ONLY` line `"data_sources.tsv"` "and its matching pair
+`"Edit(data_sources.tsv)",` and `"Write(data_sources.tsv)",` in `gars/.claude/settings.json`,
+placed immediately after row 6's `dataset.tsv` pair", and its Rules 1 boundary allows
+"`gars/.claude/settings.json` (exactly the one pair)". The pair is that change and nothing else
+(two added lines, none removed). The lane's approval record, 0108, must name
+`gars/.claude/settings.json` explicitly beside `guard_hook.py`, as the Status above already says
+both take effect only with it.
+
+**Residual 10 is closed (F3).** An edit's result shows the file around the change, so an edit is
+a read. `closed_edit_refusal`, called in `main()` right after `check_write_tool`, refuses Edit,
+MultiEdit and NotebookEdit whose target `closed_hit` places inside a closed project, on both bases
+and both forms, with the 0107 refusal. Residual 10 ("Edit's echo, left to the harness's
+read-before-edit requirement") no longer applies to those three tools, and R-042 item 6 now
+reads: editing `_config/<assay>.yaml`, `HISTORY.md` or any other file in a closed project with
+Edit, MultiEdit or NotebookEdit is refused by the guard, not only in practice. Write stays open:
+it carries content into the project and is not a read of it; whether the harness shows prior
+contents when Write overwrites an existing file is not tested here. Test:
+`test_edit_family_refused_in_closed_project` (red on the parent commit, 8 of 8 cases; red with
+the call removed, with the tool list reduced to Edit, and with the cwd base dropped).
+
+**The STATUS exemption is wider than its purpose (F4); residual 18, NOT met.** Point 2's
+purpose is the lifecycle files `wrapperlib.write_status` writes, which hold a state word or
+`state:reason`. The mechanism, as the specification binds it ("every file named exactly `STATUS`
+anywhere under the project"), opens every file named `STATUS` at any depth of a closed project,
+including trees `write_status` never writes: a raw-data folder a human links under
+`00_data/<assay>/raw/`, and a pipeline's output tree. A file named `STATUS` there is readable by
+Read and the `fs.*` reads whatever it holds. Binding the exemption to the sub-stage and
+custom-analysis directories would change the binding rule, so it is left to the lane or row 13.
+
+**Two R-042 sentences claimed more than this item measured (F5).** Item 2's census ("36
+projects, 0 with `dataset.tsv`, 36 closed") is carried from the lane's specification; this item
+did not measure it (the producer reads only this repository, whose `gars/projects/` holds none).
+Item 9's "the lane proves the gate separately in a working copy that holds live projects" is an
+obligation, not a done thing: the lane must prove it, and record the evidence in 0108 or its
+solo-run record.
+
+**Notes.** F6: the operational consequences are listed for the owner's sight in the change
+report's round 2 section. F7: the individual wording of rulings Q4 to Q7 and Amendment 1's
+review-round-3 fixes is the lane's to append at hand-off (0108 or an addendum), so each traces to
+points 1 to 5. F8: no change; the sentence "no independent pre-build reviewer attacked the token
+spellings; coverage is the builder's red-first grid" stands, and a producer and reviewer on the
+same model share blind spots.
