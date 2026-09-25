@@ -276,6 +276,30 @@ class SubmissionOrderingTests(PolicyFixture):
             self.assertIsNone(job); self.assertIn('class_not_permitted', why)
             self.no_effects(self.root, backend)
 
+    def test_analysis_memory_declarations(self):
+        adir, script = self.analysis(row())
+        original = script.read_text()
+        for declarations, reason in (
+                ('#SBATCH --mem=8G\n', None),
+                ('#SBATCH --mem=16G\n', 'memory rule: above 8 GiB'),
+                ('#SBATCH --mem=2G\n#SBATCH --mem=4G\n', 'resource_unparseable')):
+            with self.subTest(declarations=declarations):
+                script.write_text(original.splitlines(True)[0] + declarations + 'exit 0\n')
+                with patch.object(ex, '_analysis_approval', return_value=(True, None)), \
+                        patch.object(ex, '_submit_once', return_value=('42', None)) as backend:
+                    job, why = ex.submit(self.root, script, ex.LOCAL)
+                    if reason is None:
+                        self.assertEqual((job, why), ('42', None))
+                        backend.assert_called_once()
+                        entry = ex._analysis_entries(adir)[0]
+                        self.assertEqual((entry['executor'], entry['venue']), ('local', 'local'))
+                        (adir / ex.ANALYSIS_SUBMISSIONS).unlink()
+                        Path(entry['launcher']).unlink()
+                    else:
+                        self.assertIsNone(job)
+                        self.assertIn(reason, why)
+                        self.no_effects(self.root, backend)
+
     def test_existing_analysis_refusals_first(self):
         adir, script = self.analysis(row('identifiable'))
         with patch.object(ex, '_analysis_approval', return_value=(False, 'not approved')):

@@ -603,11 +603,18 @@ class RealWrapperReplayTests(unittest.TestCase):
     def test_legacy_public_fixture_manifest_replays_two_of_two(self):
         self.check_rnaseq_replay(relative=False, legacy_route=True)
 
-    def check_rnaseq_replay(self, relative, legacy_route=False):
+    def test_marker_venues_prepare_grade_and_replay(self):
+        for present in (False, True):
+            with self.subTest(marker_present=present):
+                self.check_rnaseq_replay(relative=False, marker_present=present)
+
+    def check_rnaseq_replay(self, relative, legacy_route=False, marker_present=None):
         import test_manifest_groups as fixtures
         # A separate canonical original uses the new code; no terminal stage reset.
         case = fixtures.ManifestGroupsTests('test_all_ten_wrappers_both_backends')
         self.addCleanup(case.doCleanups)
+        if marker_present is not None:
+            case.marker_present = marker_present
         with contextlib.redirect_stdout(io.StringIO()):
             case.setUp(); case.pipeline_fixtures()
             case.configure_wrapper('rnaseq-de', 'local', case.project)
@@ -624,6 +631,12 @@ class RealWrapperReplayTests(unittest.TestCase):
         case.fake_wrapper_run(); case.submit()
         checked(case.wrapper_argv('collect', ['--model', 'none']), cwd=case.ws, env=case.env)
         original = json.loads(case.manifest_path.read_text())
+        if marker_present is not None:
+            expected_venue = 'homelab' if marker_present else 'local'
+            self.assertEqual((original['backend'], original['venue']), ('local', expected_venue))
+            self.assertEqual(case.prepared['venue'], expected_venue)
+            self.assertTrue(mc.grade(original)['ok'])
+            self.assertEqual(ex.stage_record(case.project, case.stage)['venue'], expected_venue)
         if legacy_route:
             for field in ('expiry', 'permitted_backends'):
                 original.pop(field, None)
@@ -668,6 +681,9 @@ class RealWrapperReplayTests(unittest.TestCase):
                 self.assertEqual(replay['idempotency_key'], original['idempotency_key'])
                 self.assertEqual(replay['design_sha256'], original['design_sha256'])
                 self.assertTrue(mc.grade(replay)['ok'])
+                if marker_present is not None:
+                    self.assertEqual((replay['backend'], replay['venue']), ('local', expected_venue))
+                    self.assertEqual(ex.stage_record(project, stage)['venue'], expected_venue)
                 rc.validate_manifest(replay, stage)
                 self.assertTrue(all(row['match'] for row in comparisons['runs'][number-1]['artifacts']))
         print('RNASEQ %s replay fixture: reproduction: 2/2; two submissions; synthetic worker' %

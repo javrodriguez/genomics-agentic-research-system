@@ -2631,3 +2631,308 @@ append-only evidence of round 1.
 ## Owner rulings needed
 
 None.
+
+
+## Step B retry round C1
+
+2026-09-25. Starting commit: `633778af004752158c1d10431352e5c04b5f031b`.
+This continuation keeps both earlier step-B commits and adds one C1 commit.
+The B1 retry already implemented rulings 6 and 7; their historical records are
+preserved. This round answers `docs/reviews/row_8_review_stepB_B1.md`, which
+remains untracked and unchanged. The rulings were decided under the owner's standing delegation (23 Sep 2026).
+Only the review corrections below are added. Step A's report prefix is intact.
+
+### Every changed line block
+
+Line numbers below name the final candidate files. An inserted block includes
+its separating blank lines; no unlisted source line is changed.
+
+| File | Candidate lines | Change |
+|---|---|---|
+| `DEVELOPMENT.md` | 156; 175 | Current suite counts 607 to 610 only |
+| `README.md` | 322 | Current suite count 607 to 610 only |
+| `gars/_system/manifest_check.py` | 142–143 | Accept the three specified backend/venue pairs in group 11 |
+| `gars/tests/test_manifest_groups.py` | 12 | Import patch for the optional marker fixture |
+| `gars/tests/test_manifest_groups.py` | 44–54 | Optional scratch marker in the calling process and copied executor |
+| `gars/tests/test_manifest_groups.py` | 523–539 | Valid, invalid and predicate-mismatched backend/venue pairs |
+| `gars/tests/test_rerun_check.py` | 606–611 | Both-marker-state replay test and optional helper argument |
+| `gars/tests/test_rerun_check.py` | 616–617 | Pass the optional marker state to the existing manifest fixture |
+| `gars/tests/test_rerun_check.py` | 634–639 | Assert original prepare/collect completeness and executed venue |
+| `gars/tests/test_rerun_check.py` | 684–686 | Assert both replay manifests and submission records carry that venue |
+| `gars/tests/test_venue_policy.py` | 279–302 | Stage-03 memory boundary, over-limit and duplicate-declaration cases |
+| `gars/tests/test_venue_policy_faults.py` | 24–26 | Behavioral fault that removes stage-03 memory extraction |
+| `docs/decisions/0102-row-8-venue-policy-and-backend-bench.md` | 328–381 | Dated append-only C1 addendum and R-042 account |
+| `docs/implementation/row_8_change_report.md` | Appended C1 sections through end of file | This line table, finding/expectation account, commands and residuals |
+
+The decision index was regenerated with `bash docs/decisions/build_index.sh`;
+its bytes did not change. No manifest-schema edit was necessary. The added-line
+path-spelling check passed, including the parent-step and U+007E exclusions.
+The deployment's external scan itself is not available to this producer.
+
+## Step B review round C1 fixes
+
+2026-09-25. Producer effort: approximately 0.75 hours including verification;
+no benchmark or production venue measurement was performed. The implementation
+uses the existing mapping and ruling 7(i)'s manifest-consistency authorization.
+It introduces no new route, schema field, threshold or backend.
+
+| Finding / requirement | Changed files | Acceptance test | Result; red-on-fault seen |
+|---|---|---|---|
+| F1 BLOCKER / R-042 | `gars/_system/manifest_check.py`; `gars/tests/test_manifest_groups.py`; `gars/tests/test_rerun_check.py`; 0102 | `test_backend_venue_pairs`; `test_marker_venues_prepare_grade_and_replay`; full suites | PASS; yes: both new tests failed with the starting backend-equals-venue checker, then passed after its correction; both marker states replay 2/2 with complete manifests and the expected executed venue |
+| F2 MINOR / R-062 | `gars/tests/test_venue_policy.py`; `gars/tests/test_venue_policy_faults.py`; 0102 | `test_analysis_memory_declarations` and the stage03 memory-source fault | PASS; yes: replacing script-derived memory with None turns the witness red; the unmodified path allows 8G, refuses 16G naming the memory rule and refuses duplicate declarations as resource_unparseable, with no refused-submit effects |
+| F3 NOTE / R-042 | This appended report and 0102 | Source inheritance/door survey below | Closed by the five explicit module lines; red-on-fault seen: no, documentation only |
+
+Protected file touched in C1, one per line:
+
+- `gars/_system/manifest_check.py`
+
+The checker validates historical prepare evidence against the three permitted
+backend/venue pairs without consulting today's marker. Its backend/predicate
+binding, required fields and applicability remain intact. Source comparison with
+the starting commit confirms no executor, policy, finalize, route table, replay
+instrument, schema, benchmark instrument, template, step-A or frozen classification
+test changed. All lifecycle fault anchors therefore remain byte-identical.
+
+### Expectation changes and pre-list disposition
+
+| Test / file and line | Old | New | Requirement |
+|---|---|---|---|
+| `ManifestGroupsTests` fixture, `gars/tests/test_manifest_groups.py:44` | No optional controlled marker at prepare | Optional scratch marker patches the constant in the parent process and copied executor; default callers unchanged | R-042 |
+| `test_backend_venue_pairs`, same file line 523 | Homelab manifest incompleteness untested | Three valid pairs accepted; all tested invalid pairs and backend/predicate mismatches refused | R-042 |
+| `test_marker_venues_prepare_grade_and_replay`, `gars/tests/test_rerun_check.py:606`; helper line 611 | No marked prepare/grade/replay control | Explicit absent/present states each preserve every existing replay assertion and reproduce 2/2; original and replay manifests/records have the expected venue | R-042 |
+| `test_analysis_memory_declarations`, `gars/tests/test_venue_policy.py:279` | No direct stage-03 script-memory witness | Real submit enforces 8G/16G and duplicate-declaration cases before side effects | R-062 |
+| Fault table, `gars/tests/test_venue_policy_faults.py:24` | Memory source could be disabled without a step-test failure | Syntax-valid memory=None fault is killed by the stage-03 witness | R-062 |
+
+No existing assertion is removed or weakened. The normal replay helper path and
+all prior legacy-manifest assertions are retained. The five pre-listed modules
+need no builder change, for these source-derived reasons:
+
+- `gars/tests/test_executorlib_resume.py`: its submit targets an unprepared stage outside both permitted doors, so it retains R-073 before policy; its other test executes the generated guard directly.
+- `gars/tests/test_failure_classification.py`: imports `test_lifecycle_executor.prepared`, which already calls `write_fixture_dataset` before preparation.
+- `gars/tests/test_lifecycle_cancel.py`: its fixture and direct prepared runs use `test_lifecycle_executor.prepared`, inheriting the same public/fixture row.
+- `gars/tests/test_lifecycle_faults.py`: copies the test tree and invokes the already-classified lifecycle and stage-03 builders; no separate submit builder or pinned-string change is needed.
+- `gars/tests/test_no_false_completion.py`: imports `test_lifecycle_executor.prepared`, inheriting its public/fixture dataset for each submit-reaching case.
+
+Source survey commands read these five modules and their shared builder with
+`cat` and `sed`, and reviewed the resulting diff with `git diff`. All five run
+unchanged in each complete suite. The original report used abbreviated module
+names; these full names make that inheritance explicit and searchable.
+
+The six-module `git grep -n -E` survey used the pattern
+`from test_lifecycle_executor import prepared|write_fixture_dataset|shutil.copytree|R-073: submit requires`
+and printed:
+
+```text
+gars/tests/test_executorlib_resume.py:56:                self.assertIn('R-073: submit requires a prepared stage or approved analysis', error)
+gars/tests/test_failure_classification.py:10:from test_lifecycle_executor import prepared
+gars/tests/test_lifecycle_cancel.py:12:from test_lifecycle_executor import prepared
+gars/tests/test_lifecycle_executor.py:9:from support import GARS, write_fixture_dataset
+gars/tests/test_lifecycle_executor.py:15:    write_fixture_dataset(root)
+gars/tests/test_lifecycle_faults.py:219:                    shutil.copytree(str(GARS / directory), str(root / directory),
+gars/tests/test_no_false_completion.py:13:from test_lifecycle_executor import prepared
+```
+
+### Commands and verbatim summaries
+
+All shell commands launched from the repository root with `TMPDIR`, `TEMP` and
+`TMP` set to the scratch twin. Logs, copied trees, fixtures and the commit message
+stayed there. Python was 3.13.5, including the evaluation harness (3.9 or later).
+Full suites ran sequentially, never concurrently. Unit-module and static checks
+could run alongside a suite. No network, remote, push, pull request or merge was
+used. The review stayed untracked; its SHA-256 was checked before staging.
+
+The required suite runs directly from the workspace. The additional full-suite
+probes use a scratch snapshot of the same candidate with only its marker constant
+patched to a fixed scratch path, shared by subprocess copies. One setup probe was
+interrupted after noticing its relative marker expression moved when copied; it
+has no completed-suite result and is not counted. The corrected setup first
+printed `subprocess prepare with shared scratch marker: local/homelab`.
+The fixture-controlled marker tests never inspect or create the host marker.
+
+`GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py`:
+
+```text
+collected 292 tests from tests
+collected 318 tests from gars/tests
+planted-defects development (producer-authored, unsealed): 9/10 classes (placeholder 10 counted planted, not caught)
+false flags (producer-authored clean projects): 0/10
+graded 19 of 19 development projects seen
+class 6: measured with --verify-integrity full; stage 01 default is none
+EXIT instrument self-test (fixture, stub slurm): reproduction 2/2
+Ran 610 tests in 461.155s
+OK (skipped=79)
+```
+
+`Same full-suite runner in scratch, marker present`:
+
+```text
+collected 292 tests from tests
+collected 318 tests from gars/tests
+planted-defects development (producer-authored, unsealed): 9/10 classes (placeholder 10 counted planted, not caught)
+false flags (producer-authored clean projects): 0/10
+graded 19 of 19 development projects seen
+class 6: measured with --verify-integrity full; stage 01 default is none
+EXIT instrument self-test (fixture, stub slurm): reproduction 2/2
+Ran 610 tests in 413.800s
+OK (skipped=79)
+```
+
+`Same full-suite runner in scratch, marker absent`:
+
+```text
+collected 292 tests from tests
+collected 318 tests from gars/tests
+planted-defects development (producer-authored, unsealed): 9/10 classes (placeholder 10 counted planted, not caught)
+false flags (producer-authored clean projects): 0/10
+graded 19 of 19 development projects seen
+class 6: measured with --verify-integrity full; stage 01 default is none
+EXIT instrument self-test (fixture, stub slurm): reproduction 2/2
+Ran 610 tests in 474.371s
+OK (skipped=79)
+```
+
+`python3 tests/check_contracts.py`:
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`:
+
+```text
+collected 292 tests from tests
+collected 318 tests from gars/tests
+suite: 610 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`:
+
+```text
+Ran 44 tests in 37.515s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`:
+
+```text
+clean — graded=1
+```
+
+`python3 tests/test_planted_defects.py`:
+
+```text
+Ran 18 tests in 4.881s
+OK (skipped=1)
+planted-defects development (producer-authored, unsealed): 9/10 classes (placeholder 10 counted planted, not caught)
+false flags (producer-authored clean projects): 0/10
+graded 19 of 19 development projects seen
+class 6: measured with --verify-integrity full; stage 01 default is none
+```
+
+`python3 gars/tests/test_venue_policy.py`:
+
+```text
+Ran 16 tests in 1.246s
+OK
+```
+
+`python3 gars/tests/test_data_route.py`:
+
+```text
+Ran 1 test in 0.000s
+OK
+data route recorded: 3/3
+```
+
+`python3 gars/tests/test_data_class_required.py`:
+
+```text
+Ran 4 tests in 0.661s
+OK
+```
+
+`python3 tests/test_backend_bench.py`:
+
+```text
+Ran 6 tests in 1.521s
+OK
+backend rows: 0/3 ()
+```
+
+`python3 gars/tests/test_manifest_groups.py`:
+
+```text
+Ran 19 tests in 14.454s
+OK
+```
+
+`python3 gars/tests/test_rerun_check.py`:
+
+```text
+Ran 26 tests in 27.865s
+OK
+EXIT instrument self-test (fixture, stub slurm): reproduction 2/2
+```
+
+`python3 gars/tests/test_venue_policy_faults.py`:
+
+```text
+Ran 2 tests in 5.854s
+OK
+```
+
+Both full-suite marker probes patch only the constant in a scratch source
+snapshot; the fixed path stays identical when the suite copies executorlib into
+subprocess fixtures. The same marker file is then removed for the absent probe.
+Neither probe creates the machine-owned marker or changes production routing.
+The full workspace suite and both copied-suite runs retain the 79 environment
+skips; rows 5 and 7 database classes are skipped because Docker is unavailable.
+
+The pre-implementation F1 pair test printed `Ran 1 test in 0.229s` and
+`FAILED (failures=1)` for local/homelab. The replay test printed
+`Ran 1 test in 1.004s` and `FAILED (failures=1)` for its marker-present case;
+the missing-marker control already replayed 2/2. With the fix, the same tests
+printed `Ran 1 test in 0.241s` / `OK` and `Ran 1 test in 1.317s` / `OK`.
+The latter prints the labelled synthetic-worker 2/2 line for each marker state.
+The direct stage-03 memory test printed `Ran 1 test in 0.005s` / `OK`.
+The fault harness above additionally prints `fault red: stage03 memory source ignored`.
+All 30 earlier step-B fault controls remain green as a harness; their planted
+faults remain red. No syntax/import error is counted as the new behavioral kill.
+
+The first count check correctly reported three stale 607 claims; the count-only
+README/DEVELOPMENT edits make its recorded rerun clean at 610. Ancillary source
+reads and scope checks used cat, sed, Git grep/diff/status/show/log/branch/config,
+and Python. Short Python rewriters performed edits; no forbidden removed-line
+spelling was reintroduced through a patch. Scratch snapshots used Git archive,
+tarfile and a local copy of Git metadata, with no remote added. Marker probes
+and targeted tests used Python subprocesses or the same runner by its runtime-
+resolved scratch path, all launched from the repository root. Python 3.6 grammar
+parsing, append-only prefix checks, unchanged-file scope checks, added-line
+spelling checks and `git diff --check` passed. These do not claim the external
+path scan. Staging names each changed file, and Git reads the commit message
+from scratch using the repository's configured identity without an override.
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps — C1
+
+- **NOT met:** all three measured backend rows; `backend rows: 0/3 ()`. The CSV
+  remains header only, and all venue measurements arrive later. Row 8 exit is
+  not claimed.
+- **NOT met:** actual Python 3.6.8 execution, live Slurm accounting, real timing
+  and platform RSS measurements, and per-sample real FASTQ costs.
+- **NOT met:** Docker-backed database verification for rows 5 and 7 on this host.
+- **NOT met:** R-193 priced unit economics; the instrument records unmetered
+  inputs. Cloud, R-061/prompt-exposure enforcement, the second backup destination
+  and institutional agreements remain open.
+- **NOT met:** prior threat-model residuals: privileged or unguarded rewrites,
+  host attestation beyond the marker, actual rather than declared memory,
+  FASTQ paths outside the named columns, and independent timing attestation.
+- **NOT met:** independent acceptance of this C1 commit, protected-change
+  approval, merge, external deployment path-scan verification or any sealed exit.
+
+F1, F2 and F3 are closed by this producer response; no finding waits on a ruling.

@@ -325,3 +325,57 @@ Python 3.6.8, live Slurm accounting, live resource measurements and the rows 5/7
 Docker database classes remain unverified here. The existing threat-model
 residuals stand. Independent review, protected approval, merge and row 8's exit
 are not claimed. Records 0100, 0101, 0103 and 0104 remain unchanged.
+
+
+## Addendum — review round C1, 2026-09-25
+
+Starting commit: `633778af004752158c1d10431352e5c04b5f031b`.
+This corrects F1 and adds the F2 regression coverage from the supplied B1 review;
+F3's full module names and inheritance are accounted for in
+`docs/implementation/row_8_change_report.md`. The existing venue mapping and
+schema-consistency scope were decided under the owner's standing delegation (23 Sep 2026).
+Ruling 7(i) already authorizes keeping the manifest checker consistent with the
+recorded facts; no new route, backend, schema field or threshold is introduced.
+All preceding bytes of this record remain intact.
+
+### R-042 — C1 manifest grading and regression coverage
+
+`gars/_system/manifest_check.py` group 11 accepts exactly the recorded pairs
+`local`/`local`, `local`/`homelab` and `slurm`/`slurm`. Backend must still equal
+the executor-derived predicate fact. Missing, unknown, case-changed, whitespace-
+changed or cross-backend venues remain incomplete. The checker grades historical
+prepare evidence without consulting the current host marker. Group fields,
+applicability and required denominators do not change. The residual remains:
+"group 11 records the prepare-time venue; the policy grades the executed one".
+
+| Test or fixture | Previous behavior | C1 behavior | Requirement |
+|---|---|---|---|
+| `gars/tests/test_manifest_groups.py` optional marked fixture | No controlled marker at prepare in the manifest fixture | Optional scratch marker patches the module constant in the calling process and copied executor before registration and prepare; normal callers retain their existing fixture | R-042 |
+| `ManifestGroupsTests.test_backend_venue_pairs` | No explicit homelab grading control | All three valid pairs pass; cross-backend, malformed and predicate-mismatched values fail | R-042 |
+| `RealWrapperReplayTests.test_marker_venues_prepare_grade_and_replay` and its helper in `gars/tests/test_rerun_check.py` | No marked-host prepare/grade/replay regression | Both marker states prepare and collect complete public/fixture manifests, replay 2/2, and retain expected venues in each manifest and submission record | R-042 |
+| `SubmissionOrderingTests.test_analysis_memory_declarations` in `gars/tests/test_venue_policy.py` | Stage-03 memory source lacked a direct policy test | Real local submit accepts 8G, refuses 16G with the memory rule, and refuses duplicate declarations as resource_unparseable before launcher, record or backend effects | R-062 |
+| `gars/tests/test_venue_policy_faults.py` fault table | No stage-03 memory-source fault | Replacing script-derived memory with None fails the new test | R-062 |
+
+The marked replay test uses the real prepare, submit, status, collect, grading
+and comparison code, with a synthetic worker. It does not measure scientific
+reproduction. Its missing-marker control retains local/local. The two F1 tests
+fail against the starting checker and pass after the correction. The F2 fault
+is syntax-checked and fails behaviorally. No existing assertion is removed or
+weakened. README and DEVELOPMENT change only current suite counts, 607 to 610.
+The report records exact command outcomes and each changed line block.
+
+Protected code changed in this round: `gars/_system/manifest_check.py` only.
+The manifest schema already has the required fields and needs no byte change.
+The executor, all pinned strings, route table, policy, finalize, replay instrument,
+step A and the frozen row-6 classification test remain byte-identical to the
+starting commit. The index is regenerated; frontmatter remains append-only.
+
+### What this does not close
+
+All three measured backend rows remain NOT met; the CSV is still header only.
+Actual Python 3.6.8 execution, live scheduler accounting, real timing/RSS evidence
+and Docker-backed rows 5/7 tests remain NOT met here. R-193 prices, real FASTQ
+per-sample costs, cloud, R-061/prompt exposure, the second backup destination,
+institutional agreements and the existing threat-model residuals remain NOT met.
+No new approval, merge, sealed measurement or row-8 exit is claimed. Verification
+is implementation evidence pending another independent review.

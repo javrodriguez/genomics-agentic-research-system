@@ -139,7 +139,8 @@ def group_present(number, m, schema):
                           not any(k in m for k in route_fields)) or
                          all(text_present(m.get(k), ('none',)) for k in route_fields))
         return (m.get('backend') in ('local','slurm') and m.get('backend') == m['predicate_facts']['backend'] and
-                m.get('venue') == m.get('backend') and route_present and
+                (m.get('backend'), m.get('venue')) in
+                (('local', 'local'), ('local', 'homelab'), ('slurm', 'slurm')) and route_present and
                 m.get('purpose') in ('fixture','internal','pilot_internal','pilot_external','commercial') and
                 m.get('data_class') in ('public','deidentified_under_agreement','identifiable') and
                 isinstance(m.get('agreement_ref'), str) and
