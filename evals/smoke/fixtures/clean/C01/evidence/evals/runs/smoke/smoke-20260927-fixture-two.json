@@ -1,0 +1,61 @@
+{
+  "delta": "-2/3",
+  "floor": {
+    "record": "evals/runs/smoke/smoke-20260925-fixture-floor.json",
+    "value": "1/3"
+  },
+  "git_sha": "726d7c87e4394c989b16771cb960d9a20fc83fb7",
+  "interpretation": "decrease",
+  "kind": "smoke",
+  "model": "fixture-model",
+  "parent_sha": "d580c19c23e05b8064a49421fc1d3faba9818738",
+  "path": "evals/runs/smoke/smoke-20260927-fixture-two.json",
+  "previous": "evals/runs/smoke/smoke-20260926-fixture-one.json",
+  "prompt_sha256": "cf32c619d3064aed8a9dbd11df260f0ad8366134b3bdb39bda1eed3f0ff5f202",
+  "run_id": "smoke-20260927-fixture-two",
+  "runs": [
+    {
+      "denominator": 3,
+      "numerator": 1,
+      "outputs": {
+        "batch-confounded/response.json": "4bc096da5c37d047b07eb39d3b932b47afdc1b7d0f2d95016cf83edb9251b574",
+        "pseudoreplicates/response.json": "cdbcab1b8ac2552fd41e94b0db31d6730d8bb69714a18905a9d59a94bdabbc1a",
+        "single-replicate/response.json": "4bc096da5c37d047b07eb39d3b932b47afdc1b7d0f2d95016cf83edb9251b574"
+      },
+      "resource": {
+        "cost_usd": "unknown",
+        "tokens": "unknown",
+        "wall_time_seconds": "unknown"
+      },
+      "run_label": "run-1",
+      "tasks": {
+        "batch-confounded": {
+          "passed": false,
+          "reason": "artifact contract failed: AssertionError"
+        },
+        "pseudoreplicates": {
+          "passed": true,
+          "reason": "all artifact assertions passed"
+        },
+        "single-replicate": {
+          "passed": false,
+          "reason": "artifact contract failed: AssertionError"
+        }
+      },
+      "transcript_sha256": {
+        "batch-confounded": "08d6cb33bd117f506c4ecc07a24f3ee11f21c8ba427b55beacf3ad4ece39adab",
+        "pseudoreplicates": "349104be6c3a1d4342be6354104574a104498d53ebbc814a784c7c06a36d388f",
+        "single-replicate": "5f0cc536ad826d08a0a41abbead9c6d9153c6c10bf6f95c77c9a7b1032ee55b5"
+      }
+    }
+  ],
+  "schema": "gars-smoke/1",
+  "suite": {
+    "suite_sha256": "ea2f1cde3342e085b95d7081b1ecbf69b64274b6834eed63d7d4b6a47dfe31b1",
+    "task_ids": [
+      "batch-confounded",
+      "pseudoreplicates",
+      "single-replicate"
+    ]
+  }
+}

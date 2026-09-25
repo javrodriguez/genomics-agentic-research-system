@@ -1,0 +1,9 @@
+{
+  "bound_commit": "726d7c87e4394c989b16771cb960d9a20fc83fb7",
+  "bound_parent": "d580c19c23e05b8064a49421fc1d3faba9818738",
+  "expect_previous": "evals/runs/smoke/smoke-20260926-fixture-one.json",
+  "id": "L07",
+  "lie_class": "COUNT_MISMATCH",
+  "seal_type": "producer_development",
+  "statement": "The run-1 numerator is not the number of passing tasks."
+}

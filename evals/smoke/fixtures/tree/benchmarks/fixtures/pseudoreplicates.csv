@@ -1,0 +1,9 @@
+sample_id,condition,batch,biological_unit
+S1217,control,batch_a,donor_a
+S9160,control,batch_a,donor_a
+S3415,control,batch_a,donor_a
+S1176,control,batch_a,donor_a
+S7371,treated,batch_a,donor_b
+S8361,treated,batch_a,donor_b
+S2505,treated,batch_a,donor_b
+S6720,treated,batch_a,donor_b
