@@ -9,6 +9,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -40,6 +41,19 @@ class ManifestGroupsTests(unittest.TestCase):
         self.addCleanup(self.fixture.tearDownClass)
         f = self.fixture
         self.ws, self.project, self.stage = f.ws, f.project, f.de_substage
+        # Optional venue fixture patches the constant in both interpreter copies.
+        if hasattr(self, 'marker_present'):
+            import executorlib as ex
+            marker = f.tmp / 'operator-marker'
+            if self.marker_present:
+                marker.touch()
+            marker_patch = patch.object(ex, 'HOMELAB_MARKER', str(marker))
+            marker_patch.start(); self.addCleanup(marker_patch.stop)
+            copied = self.ws / '_system/executorlib.py'
+            copied.write_text(copied.read_text() +
+                "\nHOMELAB_MARKER = str(Path(__file__).resolve().parents[2] / 'operator-marker')\n")
+        config = self.project / '_config/rnaseq_bulk.yaml'
+        config.write_text(config.read_text().replace('mem: 32G', 'mem: 2G'))
         for directory in ('00_initialize_project', '02_bioinformatics'):
             shutil.copytree(str(GARS / directory), str(f.ws / directory))
         for name in ('HISTORY.md', 'CONTEXT.md'):
@@ -505,6 +519,23 @@ exit_file=stage/'fixture.exit';exit_file.write_text('0\\n')
         self.assertNotEqual(self.check_manifest(candidate)[0],0)
         schema['groups'][3]['predicate']={'group':'containers','equals':True}
         with self.assertRaises(ValueError): mc.grade(manifest,schema)
+
+    def test_backend_venue_pairs(self):
+        manifest = self.complete_rna()
+        allowed = {('local', 'local'), ('local', 'homelab'), ('slurm', 'slurm')}
+        for backend in ('local', 'slurm', 'homelab', 'unknown', None):
+            for venue in ('local', 'homelab', 'slurm', 'Local', 'homelab ', None):
+                with self.subTest(backend=backend, venue=venue):
+                    candidate = copy.deepcopy(manifest)
+                    candidate.update(backend=backend, venue=venue)
+                    candidate['predicate_facts']['backend'] = backend
+                    self.assertEqual(mc.group_present(11, candidate, mc.load_schema()),
+                                     (backend, venue) in allowed)
+        for venue in ('local', 'homelab'):
+            candidate = copy.deepcopy(manifest)
+            candidate.update(backend='local', venue=venue)
+            candidate['predicate_facts']['backend'] = 'slurm'
+            self.assertFalse(mc.group_present(11, candidate, mc.load_schema()))
 
     def test_model_sentinels_and_known_prefix(self):
         self.prepare();self.fake_run();self.submit()

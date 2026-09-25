@@ -6,12 +6,13 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from support import GARS
+from support import GARS, write_fixture_dataset
 import executorlib as ex
 import wrapperlib as wl
 
 
 def prepared(root):
+    write_fixture_dataset(root)
     (root / '_config').mkdir()
     (root / '_system').mkdir()
     (root / '_system/gars-env.sh').write_text(':\n')

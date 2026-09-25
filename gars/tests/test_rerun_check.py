@@ -62,6 +62,40 @@ class RerunCheckTests(unittest.TestCase):
         self.wrappers = self.ws / '_system/test-wrappers'
         shutil.move(str(self.ws / 'test-wrappers'), str(self.wrappers))
         self.wrapper = self.wrappers / 'rerun-fixture/rerun_fixture.py'
+        copied_executor = self.ws / '_system/executorlib.py'
+        copied_executor.write_text(copied_executor.read_text() +
+            '\nHOMELAB_MARKER = str(Path(__file__).resolve().parents[1] / "fixture-marker")\n')
+        marker = patch.object(ex, 'HOMELAB_MARKER', str(self.repo / 'fixture-marker'))
+        marker.start(); self.addCleanup(marker.stop)
+        commands = self.repo / 'bin'; commands.mkdir()
+        scheduler = """import json, subprocess, sys
+from pathlib import Path
+base = Path(__file__).resolve().parent
+if '--version' in sys.argv:
+    print('fixture scheduler'); sys.exit(0)
+if Path(__file__).name == 'sbatch':
+    count = base / 'count'
+    job = int(count.read_text()) + 1 if count.exists() else 100
+    count.write_text(str(job))
+    result = subprocess.run(['bash', sys.argv[-1]], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    (base / str(job)).write_text(str(result.returncode))
+    print('Submitted batch job ' + str(job))
+else:
+    fields = ' '.join(sys.argv)
+    if 'Elapsed,MaxRSS,AllocCPUS' in fields:
+        print('00:00:01|1024K|1|')
+    elif '--format=Start' in fields:
+        print('2026-09-25T00:00:00|')
+    else:
+        code = int((base / sys.argv[sys.argv.index('-j')+1]).read_text())
+        print(('COMPLETED|0:0' if code == 0 else 'FAILED|%d:0' % code))
+"""
+        for name in ('sbatch', 'sacct'):
+            command = commands / name
+            command.write_text('#!' + sys.executable + '\n' + scheduler)
+            command.chmod(0o755)
+        environment = patch.dict(os.environ, {'PATH': str(commands) + os.pathsep + os.environ['PATH']})
+        environment.start(); self.addCleanup(environment.stop)
         (self.repo / '.rerun-self-test').write_text('suite only\n')
         (self.repo / '.gitignore').write_text('__pycache__/\n*.pyc\n')
         (self.ws / '_system/gars-env.sh').write_text(':\n')
@@ -70,7 +104,7 @@ class RerunCheckTests(unittest.TestCase):
         self.commit()
         self.project = self.ws / 'projects/original'
         (self.project / '_config').mkdir(parents=True)
-        (self.project / '_config/executor.yaml').write_text('name: local\n')
+        (self.project / '_config/executor.yaml').write_text('name: slurm\n')
         (self.project / '_config/rerun-fixture.yaml').write_text('compute:\n  cpus: 1\n')
         (self.project / '01_samplesheets').mkdir()
         (self.project / '01_samplesheets/rerun-fixture_samplesheet.csv').write_text('sample\nfixture\n')
@@ -84,7 +118,8 @@ class RerunCheckTests(unittest.TestCase):
             (self.project / name).write_text('# fixture\n')
         checked([sys.executable, self.ws / '_system/stage00_register.py', 'finalize',
                  '--project', self.project, '--data-class', 'deidentified_under_agreement',
-                 '--purpose', 'internal', '--agreement-ref', 'fixture-agreement-01', '--model', 'none'])
+                 '--purpose', 'internal', '--agreement-ref', 'fixture-agreement-01',
+                 '--expiry', '2099-01-01', '--model', 'none'])
         checked([sys.executable, self.wrapper, 'prepare', '--project', self.project])
         self.stage = self.project / '02_bioinformatics/rerun-fixture/01_rerun-fixture'
         self.path = self.stage / 'reproducibility/manifest.json'
@@ -122,6 +157,47 @@ class RerunCheckTests(unittest.TestCase):
         text = self.cli(expected=2, env=env)
         self.assertIn(reason, text)
         self.assertFalse(self.out.exists(), 'refusal ran something')
+
+    def test_route_facts_recorded_preserved_and_required(self):
+        fields = ('expiry', 'permitted_backends')
+        dataset = wl.dataset_record(self.project)
+        group = mc.load_schema()['groups'][10]
+        for field in fields:
+            self.assertIn(field, group['fields'])
+            self.assertEqual(self.prepared[field], dataset[field])
+            self.assertEqual(self.manifest[field], self.prepared[field])
+            for value in (None, '', 'unknown'):
+                incomplete = dict(self.manifest, **{field: value})
+                self.assertFalse(mc.grade(incomplete)['groups'][10]['present'])
+            incomplete = dict(self.manifest)
+            del incomplete[field]
+            self.assertFalse(mc.grade(incomplete)['groups'][10]['present'])
+        text = self.cli()
+        self.assertIn('reproduction: 2/2', text)
+        for number in (1, 2):
+            project = self.out / ('run-%d' % number)
+            stage = project / '02_bioinformatics' / 'rerun-fixture' / '01_rerun-fixture'
+            replay = json.loads((stage / 'reproducibility/manifest.json').read_text())
+            for field in fields:
+                self.assertEqual(replay[field], dataset[field])
+                self.assertEqual(wl.dataset_record(project)[field], dataset[field])
+
+    def test_legacy_agreement_manifest_refused_before_replay(self):
+        for missing in (('expiry',), ('permitted_backends',), ('expiry', 'permitted_backends')):
+            with self.subTest(missing=missing):
+                manifest = dict(self.manifest)
+                for field in missing:
+                    manifest.pop(field, None)
+                self.save(manifest)
+                self.refusal('manifest_predates_expiry_recording')
+                self.assertFalse((self.out / 'comparison.json').exists())
+
+    def test_recorded_route_mismatch_refused(self):
+        for field, value in (('expiry', '2099-02-01'),
+                             ('permitted_backends', 'slurm:internal')):
+            with self.subTest(field=field):
+                self.save(dict(self.manifest, **{field: value}))
+                self.refusal('replay_dataset_mismatch: ' + field)
 
     def test_missing_agreement_ref_refused(self):
         for missing in (True, False):
@@ -178,7 +254,7 @@ class RerunCheckTests(unittest.TestCase):
                     self.assertNotEqual(row['original_sha256'], row['replay_sha256'])
                     print('MEASURE instrument self-test run %d: max_absolute_error=%s; bytes differ' %
                           (run_result['run'], row['value']))
-        print('EXIT instrument self-test (fixture, local): reproduction 2/2')
+        print('EXIT instrument self-test (fixture, stub slurm): reproduction 2/2')
 
     def replay(self, expected=0):
         output = io.StringIO()
@@ -524,11 +600,21 @@ class RealWrapperReplayTests(unittest.TestCase):
     def test_relative_rnaseq_prepare_replays_two_of_two(self):
         self.check_rnaseq_replay(relative=True)
 
-    def check_rnaseq_replay(self, relative):
+    def test_legacy_public_fixture_manifest_replays_two_of_two(self):
+        self.check_rnaseq_replay(relative=False, legacy_route=True)
+
+    def test_marker_venues_prepare_grade_and_replay(self):
+        for present in (False, True):
+            with self.subTest(marker_present=present):
+                self.check_rnaseq_replay(relative=False, marker_present=present)
+
+    def check_rnaseq_replay(self, relative, legacy_route=False, marker_present=None):
         import test_manifest_groups as fixtures
         # A separate canonical original uses the new code; no terminal stage reset.
         case = fixtures.ManifestGroupsTests('test_all_ten_wrappers_both_backends')
         self.addCleanup(case.doCleanups)
+        if marker_present is not None:
+            case.marker_present = marker_present
         with contextlib.redirect_stdout(io.StringIO()):
             case.setUp(); case.pipeline_fixtures()
             case.configure_wrapper('rnaseq-de', 'local', case.project)
@@ -545,6 +631,18 @@ class RealWrapperReplayTests(unittest.TestCase):
         case.fake_wrapper_run(); case.submit()
         checked(case.wrapper_argv('collect', ['--model', 'none']), cwd=case.ws, env=case.env)
         original = json.loads(case.manifest_path.read_text())
+        if marker_present is not None:
+            expected_venue = 'homelab' if marker_present else 'local'
+            self.assertEqual((original['backend'], original['venue']), ('local', expected_venue))
+            self.assertEqual(case.prepared['venue'], expected_venue)
+            self.assertTrue(mc.grade(original)['ok'])
+            self.assertEqual(ex.stage_record(case.project, case.stage)['venue'], expected_venue)
+        if legacy_route:
+            for field in ('expiry', 'permitted_backends'):
+                original.pop(field, None)
+            case.manifest_path.write_text(json.dumps(original))
+            self.assertEqual((original['data_class'], original['purpose']), ('public', 'fixture'))
+            self.assertTrue(mc.grade(original)['ok'])
         submissions = []
 
         def synthetic_execution(config_root, script, descriptor=None):
@@ -583,6 +681,9 @@ class RealWrapperReplayTests(unittest.TestCase):
                 self.assertEqual(replay['idempotency_key'], original['idempotency_key'])
                 self.assertEqual(replay['design_sha256'], original['design_sha256'])
                 self.assertTrue(mc.grade(replay)['ok'])
+                if marker_present is not None:
+                    self.assertEqual((replay['backend'], replay['venue']), ('local', expected_venue))
+                    self.assertEqual(ex.stage_record(project, stage)['venue'], expected_venue)
                 rc.validate_manifest(replay, stage)
                 self.assertTrue(all(row['match'] for row in comparisons['runs'][number-1]['artifacts']))
         print('RNASEQ %s replay fixture: reproduction: 2/2; two submissions; synthetic worker' %

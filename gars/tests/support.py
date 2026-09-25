@@ -60,3 +60,15 @@ def mini_tree(root):
     result = run(['git', 'init', '-q', root])
     if result.returncode:
         raise RuntimeError(result.stderr)
+
+
+def write_fixture_dataset(root, data_class="public", purpose="fixture"):
+    """The same immutable row and mode as finalize; repeated fixture setup is a no-op."""
+    import json
+    from stage00_register import dataset_values, write_dataset_record
+    root = Path(root)
+    base = {'data_class': data_class, 'purpose': purpose, 'agreement_ref': 'none',
+            'input_data_location': json.dumps(sorted({str(p.resolve()) for p in
+                (root / '00_data').glob('*/raw/*')}), separators=(',', ':'))}
+    row = dataset_values(root, base)
+    write_dataset_record(root, row)

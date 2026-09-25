@@ -322,12 +322,20 @@
           "flag": "--date",
           "nargs": null
         },
+        "expiry": {
+          "flag": "--expiry",
+          "nargs": null
+        },
         "integrity": {
           "flag": "--integrity",
           "nargs": null
         },
         "model": {
           "flag": "--model",
+          "nargs": null
+        },
+        "permitted-backends": {
+          "flag": "--permitted-backends",
           "nargs": null
         },
         "project": {
@@ -364,6 +372,10 @@
             "minLength": 1,
             "type": "string"
           },
+          "expiry": {
+            "minLength": 1,
+            "type": "string"
+          },
           "integrity": {
             "enum": [
               "full",
@@ -374,6 +386,10 @@
             "type": "string"
           },
           "model": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "permitted-backends": {
             "minLength": 1,
             "type": "string"
           },
