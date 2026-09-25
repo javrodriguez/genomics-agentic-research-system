@@ -78,6 +78,30 @@ class ContractTests(unittest.TestCase):
         self.assertTrue(review_record.validate(sample))
 
 
+    def test_ambiguous_blindness_count(self):
+        """Decision 0128 round B: ambiguous is carried, never INVALID, and old records read as 0."""
+        sample = record('a' * 12, 'b' * 64)
+        self.assertIn('ambiguous', review_record.SCHEMA['properties']['envelope']['properties']
+                      ['blindness']['required'])
+        sample['envelope']['blindness']['ambiguous'] = 3
+        self.assertEqual(review_record.validate(sample), [])
+        self.assertEqual(review_record.invalid_reasons(sample), [])
+        for bad in (-1, 'x', None, 1.5):
+            altered = copy.deepcopy(sample)
+            altered['envelope']['blindness']['ambiguous'] = bad
+            self.assertTrue(review_record.invalid_reasons(altered), bad)
+        sample['envelope']['blindness']['hits'] = 1
+        self.assertEqual(review_record.invalid_reasons(sample), ['blindness hit'])
+        legacy = record('a' * 12, 'b' * 64)
+        del legacy['envelope']['blindness']['ambiguous']
+        self.assertTrue(review_record.validate(legacy))
+        self.assertEqual(review_record.invalid_reasons(legacy), [])
+        judged, absent = review_record.read_ambiguous(legacy)
+        self.assertTrue(absent)
+        self.assertEqual(judged['envelope']['blindness']['ambiguous'], 0)
+        self.assertNotIn('ambiguous', legacy['envelope']['blindness'])
+        self.assertFalse(review_record.read_ambiguous(sample)[1])
+
 class OracleTests(unittest.TestCase):
     def test_full_grid(self):
         expected = {'class':'off-by-one','match':dict(file='gars/sample.py',line_start=10,line_end=12,mode='file_lines'),
@@ -137,6 +161,33 @@ class ScoreTests(unittest.TestCase):
         path.write_text(json.dumps(item))
         invalid=score.score(records,key,manifest,[answers],root/'empty')
         self.assertEqual(invalid['overall']['invalid']['n'],1)
+
+    def test_ambiguous_counts_published(self):
+        root,key,manifest,answers,records=score_fixture(self)
+        paths=sorted(records.glob('*.json'))
+        first=common.read_json(paths[0])
+        first['envelope']['blindness']['ambiguous']=2
+        paths[0].write_text(json.dumps(first))
+        second=common.read_json(paths[1])
+        del second['envelope']['blindness']['ambiguous']
+        paths[1].write_text(json.dumps(second))
+        result=score.score(records,key,manifest,[answers],root/'runs',stamp='20000101T000000Z')
+        self.assertEqual(result['ambiguous'],2)
+        self.assertEqual(result['overall']['invalid']['n'],0)
+        attempts={case['attempts'][0]['file']:case['attempts'][0] for case in result['cases'].values()}
+        self.assertEqual(attempts[paths[0].name]['ambiguous'],2)
+        self.assertFalse(attempts[paths[0].name]['ambiguous_absent'])
+        self.assertEqual(attempts[paths[0].name]['record']['envelope']['blindness']['ambiguous'],2)
+        self.assertEqual(attempts[paths[1].name]['ambiguous'],0)
+        self.assertTrue(attempts[paths[1].name]['ambiguous_absent'])
+        output=io.StringIO()
+        with redirect_stdout(output):
+            score.print_score(result)
+        text=output.getvalue()
+        self.assertIn('ambiguous 2 (every record read)',text)
+        self.assertIn('%s attempt 1 ambiguous 2\n' % first['envelope']['case'],text)
+        self.assertIn('%s attempt 1 ambiguous 0 (written before the ambiguous field; read as 0)'
+                      % second['envelope']['case'],text)
 
     def test_tamper_and_mixed_records(self):
         root,key,manifest,answers,records=score_fixture(self)

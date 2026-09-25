@@ -219,3 +219,182 @@ not approve or merge its own work, and this follow-up measures nothing.
 ## Date
 
 2026-09-25
+
+## Addendum 2026-09-25 — round B: the lane's rulings on round 1's two questions
+
+Round 1 stopped with the rehearsal target not met under 0125's unchanged
+grammar and asked two questions. **The lanes' coordinator ruled both under the
+owner's delegation (item 5 of the head, 25 Sep 2026). What follows is the
+lane's specification and the lane's rulings, under that delegation; none of it
+is attributed to the owner.** It amends item 1 and item 3 where they differ.
+The frontmatter above is left as round 1 wrote it, since round 1's bytes stay
+an exact prefix of this file. Round B also touches
+`evals/review-faults/review_record.py`,
+`evals/review-faults/schema/review_record.schema.json`,
+`evals/review-faults/score.py`, `evals/review-faults/testing.py` and
+`tests/test_review_faults_core.py`.
+
+### Ruling 1 (the lane's ruling, option (a)): the dot scan looks before the command name
+
+This amends 0125's grammar. A `.` is a dot command only at the start of a simple
+command or when every word before it in that simple command is an assignment
+(`NAME=`, `NAME+=`, `NAME[…]=`), one of the named prefix commands (`builtin`,
+`command`, `exec`, `time`, `env`, `coproc`, `nohup`, `!`), an option of a named
+prefix command already seen (with the value word of `env -u/-C/-S`, `exec -a`
+and `time -o/-f` and their long forms), or a reserved word that opens a
+command (`if`, `then`, `elif`, `else`, `while`, `until`, `do`, `{`). The first
+other word is the command name, and a `.` after it is that command's operand:
+`grep -rn x --include=*.py .` no longer blocks the call. `X=1 . file`,
+`env . file`, `command . file`, `X=1 env -u NAME . file`,
+`time -f elapsed . file` and `if . file` still block. The option-skipping is
+the lane's reading of "the named prefix commands": their options are not a
+command name. It leaves the old scan's verdict on every shape the cd tests pin.
+
+### Ruling 2 (the lane's ruling, option (d)): ambiguous, published
+
+A `cd` joined by `&&` may not have run. The audit now places every relative
+token of every chain twice.
+
+- **Pessimistic:** round 1's rule as it stands. A conditional `cd`'s placement
+  returns to the kit root at its chain's end and counts as the kit root for the
+  next Bash call.
+- **Optimistic:** an accepted `cd` joined by `&&` ran. The call's placement
+  never becomes conditional, so it survives its chain's end and carries to the
+  next call. It uses every other rule unchanged: 0125's grammar with ruling 1,
+  item 1 (c)-(f), and 0127's data contexts. A `cd` that 0125 rejects resets
+  both placements to the kit root.
+- **Fail-closed edges.** The next call starts at the kit root in both
+  placements after any edge of item 1 (c), as in round 1. A call that itself
+  hit an edge (a background call; its result missing, an error, or carrying the
+  reset notice) keeps its own `&&` `cd`s conditional in the optimistic
+  placement too, since "unless its call hit any fail-closed edge". The
+  optimistic start it inherited from earlier calls is kept, because those calls
+  passed their edges. A result is known only when the stream has been read, so
+  each call's tokens are judged at the end of the stream. A blocked call is
+  already at the kit root in both placements.
+
+For each token:
+
+| Pessimistic | Optimistic | Counted |
+|---|---|---|
+| outside | outside | hit (the record INVALID, as today) |
+| outside | inside | `ambiguous`, not a hit |
+| inside | outside | hit |
+| inside | inside | clean |
+
+The third row is the lane's reading, because the ruling names no exemption for
+it and rule 1 of the round forbids a widened one. It arises only through a
+symlink that the optimistic folder reaches and the kit root does not. Before
+round B it was clean. It is now a hit, since the `cd` may have run.
+
+The envelope's blindness object gains an integer `ambiguous` beside `calls` and
+`hits`. It is required by the schema, so the contract-drift test's rule that
+every object requires exactly its properties still holds. It is checked by the
+validator and carried in the drift fixture (`testing.record`).
+`review_record.read_ambiguous` reads a record written before the field existed
+as `ambiguous` 0, without changing the stored record, and `invalid_reasons`
+judges that completed copy. A non-zero `ambiguous` never makes a record
+INVALID. A negative or non-integer one fails validation. `score.py` records
+`ambiguous` and `ambiguous_absent` on every attempt in the run file, and the
+total over every record read as the result's `ambiguous`. None of these is
+masked, since masking touches only strings and identity keys. `print_score`
+prints `ambiguous N (every record read)` and one
+`<case> attempt <n> ambiguous <k>` line per record. It adds
+`(written before the ambiguous field; read as 0)` for a record that lacked it.
+
+### What round B does not close
+
+- **Named residual.** A session that makes an `&&` link fail on purpose, and
+  then reads relative to the skipped `cd`, is counted ambiguous, not INVALID.
+  The measured run's sandbox is the wall for that read. The audit never turns
+  "cannot know" into "clean": the ambiguity stays visible in every record and
+  in the published results.
+- The call-level assumption of item 4's residual line stands for both
+  placements. An `is_error` false result is taken as a call that passed its
+  edges, although it reflects only the final status.
+- The ruling-1 prefix list is closed. A prefix command outside it (for example
+  `sudo`, `timeout`, `nice`) followed by `.` is not treated as a dot command,
+  as under the old scan.
+- Everything 0072, 0125, 0127 and round 1 already name. Producer and reviewer
+  are both Claude Opus 5.5 sessions (this round's producer is a headless
+  session; its reviewer is a separate fresh session), a shared model family.
+
+### Test (round B)
+
+- `test_honest_session_data`: the eight calls as one session score **0 hits and
+  exactly 1 ambiguous**, printed as `session-call corpus hits: 0, ambiguous: 1`,
+  with graded-against-seen 8/8. The ambiguous token is S2-52's two-step climb
+  into `repo` after its chain-ended conditional `cd` into `tmp/base`: at the
+  kit root pessimistically, and at `tmp/base` optimistically. S2-25 and S2-28
+  are no longer blocked. Call by call from the kit root, the three calls still
+  score 7.
+- `test_dot_operand_ruling`: the grep shape does not block, within one call and
+  across calls; six prefixed spellings still block, within and across calls.
+- `test_ambiguous_across_calls`: a conditional `cd` into repo, then a later
+  parent-step read inside the kit only if it ran, gives (0 hits, 1 ambiguous),
+  also across an intervening call. The same read after the same `cd` marked
+  is_error gives at least 1 hit and 0 ambiguous. The background, missing-result,
+  reset-notice and blocked edges each give at least 1 hit, and a sub-agent read
+  after a main-chain conditional `cd` also gives at least 1.
+- `test_ambiguous_within_call`: the same shape inside one call gives (0, 1). With
+  an error result, no result, or a background call it gives (1, 0).
+- `test_ambiguous_both_ways_outside`: a read outside under both placements after
+  a conditional `cd` is a hit with 0 ambiguous. This holds across calls and
+  within one call, and for an absolute path too.
+- `test_optimistic_only_outside`: a parent-step path through a symlink that only
+  the optimistic folder reaches is a hit.
+- Round 1's `test_conditional_and_subshell_edges` now asserts (0 hits, 1
+  ambiguous) for `false && cd repo`, as ruling 2 amends item 3(b). Its subshell
+  and nested-shell entries still hit. `test_honest_carrying` also asserts 0
+  ambiguous.
+- `ContractTests.test_ambiguous_blindness_count` and
+  `ScoreTests.test_ambiguous_counts_published` cover the envelope, legacy
+  records, the run file and the printed lines.
+
+Red-on-fault, in `tests/test_review_faults_session_faults.py`: 18 entries, each
+red. Round 1's eleven are kept. Two of them, `background edge dropped` and
+`conditional end carried`, now mutate the lines that replaced round 1's shared
+condition. Seven are new:
+
+- `old dot scan restored`, red on `test_dot_operand_ruling` and
+  `test_honest_session_data`;
+- `ambiguous counted as a hit`, red on the honest session;
+- `ambiguous counted as clean when optimistic is also outside`;
+- `optimistic placement applied after an error result`, red on
+  `test_ambiguous_within_call`;
+- `optimistic-only outside counted clean`;
+- `optimistic carrying dropped`;
+- `conditional cd never assumed to run`.
+
+Every other fault entry's source bytes (the 25 cd entries and the original
+list's runner entries) match the same number of times as before round B. This
+was checked by counting each entry's bytes before and after.
+
+Results on the build host (Python 3.8.2, macOS; scratch outside the checkout):
+
+| Command | Result |
+|---|---|
+| `python3 tests/check_counts.py` | `suite: 640 tests, from unittest's loader`; `enforced=3`; `clean — every current claim matches the suite` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/test_review_faults_cd.py` | `Ran 32 tests in 1.532s`; `OK`; `cd-call corpus graded-against-seen: 11/11` |
+| `python3 tests/test_review_faults_cd_faults.py` | `Ran 1 test in 12.223s`; `OK`; 25 `cd fault red:` lines |
+| `python3 tests/test_review_faults_core.py` | `Ran 11 tests in 0.100s`; `OK` |
+| `python3 tests/test_review_faults_corpus.py` | `Ran 1 test in 1.822s`; `OK`; `honest-call corpus graded-against-seen: 278/278` |
+| `python3 tests/test_review_faults_data.py` | `Ran 5 tests in 0.197s`; `OK` |
+| `python3 tests/test_review_faults_launch.py` | `Ran 20 tests in 29.801s`; `OK` |
+| `python3 tests/test_review_faults_session.py` | `Ran 17 tests in 0.535s`; `OK`; `session-call corpus graded-against-seen: 8/8`; `session-call corpus hits: 0, ambiguous: 1` |
+| `python3 tests/test_review_faults_session_faults.py` | `Ran 1 test in 9.144s`; `OK`; 18 `session fault red:` lines |
+
+`Python feature_version=(3, 6): 7/7 changed or new Python files parse`.
+`tests/run_tests.py`, `tests/test_review_faults_faults.py` and
+`tests/test_review_faults_build.py` were not run, as the head directs.
+
+### Status (round B)
+
+Rulings 1 and 2 are implemented, and the rehearsal acceptance is met: 0 hits and
+1 ambiguous. The work waits on the separate review. This producer does not
+approve or merge its own work, and this follow-up measures nothing.
+
+## Owner rulings needed
+
+None.

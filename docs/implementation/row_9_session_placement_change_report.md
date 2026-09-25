@@ -120,3 +120,102 @@ were not run, per item 4. The protected prompt and fixtures are untouched
    in-kit from every one. This is a new grammar rule, and it still hits S2-52,
    since one candidate leaves the kit.
    With 1(a) alone, S2-34 and S2-43 would carry, and only S2-52's hit would remain.
+
+## Review round B fixes
+
+Dated 2026-09-25. Round B answers round 1's two questions with the lanes'
+coordinator's rulings, made under the owner's delegation (item 5 of the head).
+They are the lane's rulings, not the owner's. 0128 carries a dated addendum,
+and round 1's bytes of 0128 and of this report stay an exact prefix. Round 1's
+commit is not rewritten. No model was run, and no catch rate or first measured
+run is claimed.
+
+In this table, `runner` means `evals/review-faults/run_reviews.py`, and `session
+tests` and `session faults` mean round 1's two modules. `record` means
+`evals/review-faults/review_record.py`, `schema` means
+`evals/review-faults/schema/review_record.schema.json`, and `fixture` means
+`evals/review-faults/testing.py`.
+
+| Requirement | Changed files | Acceptance | Result and red-on-fault evidence |
+|---|---|---|---|
+| 5(a) ruling 1: the dot scan looks only before the command name | runner, session tests, session faults | `test_dot_operand_ruling`; `test_honest_session_data` (S2-25 and S2-28 not blocked) | PASS: the grep shape does not block, and `X=1`, `env`, `command`, `X=1 env -u NAME`, `time -f elapsed` and `if` before `.` still block, within one call and across calls. Red-on-fault seen: yes, `old dot scan restored` turns both tests red. cd module's `test_trap_and_prefixed_dot` still PASS, and its `dot after prefix options ignored` entry is still red |
+| 5(b) ruling 2: both placements; hit if outside under both; ambiguous if outside only pessimistically | runner, session tests, session faults | `test_honest_session_data`, `test_ambiguous_across_calls`, `test_ambiguous_within_call`, `test_ambiguous_both_ways_outside` | PASS. Red-on-fault seen: yes, `ambiguous counted as a hit`, `ambiguous counted as clean when optimistic is also outside`, `optimistic carrying dropped` and `conditional cd never assumed to run`, each red |
+| 5(b) optimistic placement closed by item 1(c) edges | runner, session tests, session faults | `test_ambiguous_across_calls` (error, background, missing result, notice, blocked); `test_ambiguous_within_call` (error, missing, background) | PASS. Red-on-fault seen: yes, `optimistic placement applied after an error result` turns `test_ambiguous_within_call` red. Across calls, round 1's shared carry map closes both placements, so round 1's edge faults cover them |
+| 5(b) outside only optimistically (lane's reading, see 0128) | runner, session tests, session faults | `test_optimistic_only_outside` | PASS, a hit. Red-on-fault seen: yes, `optimistic-only outside counted clean` |
+| 5(b) envelope `ambiguous`: schema, validator, drift fixture, published unmasked | schema, record, fixture, `tests/test_review_faults_core.py` | `test_schema_contract_drift`, `test_ambiguous_blindness_count` | PASS. Red-on-fault not written for this row. The drift test's walk deletes each required key, `ambiguous` included, and asserts that validation fails |
+| 5(b) score.py prints the total and each record's count, and records them in the run file; a legacy record reads as 0, said per record | `evals/review-faults/score.py`, core tests | `test_ambiguous_counts_published` | PASS: `ambiguous 2 (every record read)`, a per-record line, and `(written before the ambiguous field; read as 0)`. Red-on-fault not written for this row |
+| 5(c) the eight calls as one session | session tests | `test_honest_session_data` | **PASS: 0 hits, exactly 1 ambiguous**, printed; graded-against-seen 8/8. Round 1's 3(a) target is met |
+| 5(c) conditional `cd`, then a later read: (0, 1); after is_error: at least 1 hit, 0 ambiguous; outside under both: at least 1 | session tests | the tests above | PASS |
+| 5(d) everything kept | round 1's `test_conditional_and_subshell_edges` amended as ruling 2 directs; two fault entries re-pointed | all eight permitted modules | PASS. All 18 session faults, all 25 cd faults and every other entry's bytes are matched as often as before (checked by count before and after) |
+| 4 counts | README.md, DEVELOPMENT.md | `tests/check_counts.py` | 633 → 640 (seven new tests) |
+
+Round 1's `test_conditional_and_subshell_edges` asserted at least 1 hit for
+`false && cd repo` followed by the read. Item 5(c) makes that shape
+(0 hits, 1 ambiguous), and the test now says so. Round 1's `background edge
+dropped` and `conditional end carried` entries mutated the single condition
+`not (background or placed.state['conditional'])`. That condition is now split
+so that the optimistic end can carry past a conditional `cd`. The two entries
+now mutate `if carried and not background:` and
+`if not placed.state['conditional']:`, and both still turn their named tests red.
+In 0125's cd module, calls built with no tool-use id and no result keep both
+placements equal. The no-result edge closes the optimistic one, so 0125's
+conditional-chain bad list still scores hits unchanged.
+
+### How every command was run (round B)
+
+As in round 1: from the repository root, never changing directory, with
+`TMPDIR`, `TEMP` and `TMP` set to the scratch twin by relative path in the same
+shell before each command. Every command ran in the foreground, with output
+captured to a scratch log. The fault-entry byte counts came from a scratch
+script that loads the three fault lists and counts each entry's bytes in its
+target file, before and after the edits.
+
+During development, the first run of the session module after the runner change
+had two expected failures: `test_conditional_and_subshell_edges` (`0 not greater
+than or equal to 1`) and `test_honest_session_data` (`None is not true : S2-25`).
+Both were the rulings' intended changes, and the tests were updated as item
+5(c) directs. The first symlink test used a token with no parent step, which the
+audit does not place, and failed (`0 not greater than or equal to 1`). It was
+rewritten with a parent step through the link.
+
+### Verification summaries (round B, verbatim)
+
+| Command | Summary |
+|---|---|
+| `python3 tests/check_counts.py` | `suite: 640 tests, from unittest's loader` / `enforced=3` / `clean — every current claim matches the suite` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/test_review_faults_cd.py` | `Ran 32 tests in 1.532s` / `OK` / `cd-call corpus graded-against-seen: 11/11` |
+| `python3 tests/test_review_faults_cd_faults.py` | `Ran 1 test in 12.223s` / `OK`; 25 `cd fault red:` lines |
+| `python3 tests/test_review_faults_core.py` | `Ran 11 tests in 0.100s` / `OK` |
+| `python3 tests/test_review_faults_corpus.py` | `Ran 1 test in 1.822s` / `OK` / `honest-call corpus graded-against-seen: 278/278` |
+| `python3 tests/test_review_faults_data.py` | `Ran 5 tests in 0.197s` / `OK` |
+| `python3 tests/test_review_faults_launch.py` | `Ran 20 tests in 29.801s` / `OK` |
+| `python3 tests/test_review_faults_session.py` | `Ran 17 tests in 0.535s` / `OK` / `session-call corpus graded-against-seen: 8/8` / `session-call corpus hits: 0, ambiguous: 1` |
+| `python3 tests/test_review_faults_session_faults.py` | `Ran 1 test in 9.144s` / `OK`; 18 `session fault red:` lines |
+| feature_version parse | `Python feature_version=(3, 6): 7/7 changed or new Python files parse` |
+
+Interpreter: Python 3.8.2 on macOS. `tests/run_tests.py`,
+`tests/test_review_faults_faults.py` and `tests/test_review_faults_build.py`
+were not run, as item 5(f) directs. The measured prompt and
+`evals/review-faults/fixtures/` are untouched.
+
+### Residual gaps (round B) — each NOT closed here
+
+- A session that fails an `&&` link on purpose and then reads relative to the
+  skipped `cd` is counted ambiguous, not INVALID. The measured run's sandbox is
+  the wall for that read (ruling 2's named residual).
+- `test_review_faults_faults.py` was not run. Its entries' bytes all still
+  match, and the runner's single-call, id-less events keep both placements
+  equal. That module's red-on-fault results for this change are unverified here.
+- The full suite, native Python 3.6 and the deployment's end-to-end rerun were
+  not run here.
+- 0128's frontmatter `touches` does not list round B's added paths
+  (`review_record.py`, the schema, `score.py`, `testing.py`,
+  `tests/test_review_faults_core.py`). Round 1's bytes had to stay a prefix;
+  the addendum lists them in prose.
+- Producer and reviewer are both Claude Opus 5.5 sessions: a shared model family.
+- Everything 0072, 0125, 0127 and round 1 already name.
+
+## Owner rulings needed
+
+None.

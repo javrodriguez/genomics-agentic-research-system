@@ -15,7 +15,7 @@ FAULTS = [
      "        if self.blocked:\n            self.state['folder'] = self.state['kit']",
      '        if False:\n            pass', ['test_blocked_call_edge']),
     ('background edge dropped',
-     "not (background or placed.state['conditional'])", "not placed.state['conditional']",
+     'if carried and not background:', 'if carried:',
      ['test_background_edge']),
     ('missing-result edge dropped',
      'carries.get(previous[0])', 'carries.get(previous[0], True)', ['test_missing_result_edge']),
@@ -28,13 +28,35 @@ FAULTS = [
     ('reset notice in tool_use_result ignored',
      'notice = isinstance(event, dict) and any(', 'notice = False and any(', ['test_reset_notice_edge']),
     ('conditional end carried',
-     "not (background or placed.state['conditional'])", 'not background',
+     "if not placed.state['conditional']:", 'if True:',
      ['test_conditional_and_subshell_edges']),
     ('sub-agent chains merged',
      "chain = event.get('parent_tool_use_id') if isinstance(event, dict) else None", 'chain = None',
      ['test_subagent_chains']),
     ('carrying extended to non-Bash tools',
      "else [(text, kit)]", 'else [(text, start or kit)]', ['test_other_tools_stay_at_root']),
+    # Round B, rulings 1 and 2.
+    ('old dot scan restored',
+     "            dot_prefix = False\n            prefix = None\n            value = False\n"
+     "            for earlier in words[cursor + 1:index]:\n",
+     "            dot_prefix = any(earlier in ('builtin', 'command', '!', 'time', 'env', 'exec', 'coproc',\n"
+     "                                         'nohup') or '=' in earlier for earlier in words[cursor + 1:index])\n"
+     "            prefix = None\n            value = False\n"
+     "            for earlier in []:\n",
+     ['test_dot_operand_ruling', 'test_honest_session_data']),
+    ('ambiguous counted as a hit',
+     'ambiguous += 1', 'hits += 1', ['test_honest_session_data']),
+    ('ambiguous counted as clean when optimistic is also outside',
+     'if pessimistic and optimistic:', 'if False:', ['test_ambiguous_both_ways_outside']),
+    ('optimistic placement applied after an error result',
+     'optimistic = hopeful if carries.get(use_id) and not background else cautious', 'optimistic = hopeful',
+     ['test_ambiguous_within_call']),
+    ('optimistic-only outside counted clean',
+     'elif optimistic:', 'elif False:', ['test_optimistic_only_outside']),
+    ('optimistic carrying dropped',
+     'hopeful_start = previous[2]', 'hopeful_start = None', ['test_honest_session_data']),
+    ('conditional cd never assumed to run',
+     "accepted and not state['optimistic'] and", 'accepted and', ['test_honest_session_data']),
 ]
 
 

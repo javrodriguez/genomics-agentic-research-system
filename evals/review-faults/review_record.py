@@ -47,7 +47,24 @@ def review_errors(review):
     return validate(review, SCHEMA['properties']['review'], 'review')
 
 
+def read_ambiguous(record):
+    """Decision 0128 round B: a record written before `ambiguous` existed reads as 0.
+
+    Return the record to judge and whether the count was absent. Only a
+    blindness object without the field is completed; nothing else is changed.
+    """
+    envelope = record.get('envelope') if isinstance(record, dict) else None
+    blindness = envelope.get('blindness') if isinstance(envelope, dict) else None
+    if not isinstance(blindness, dict) or 'ambiguous' in blindness:
+        return record, False
+    record = json.loads(json.dumps(record))
+    record['envelope']['blindness']['ambiguous'] = 0
+    return record, True
+
+
 def invalid_reasons(record, manifest=None):
+    # An ambiguous count never makes a record INVALID; only hits do.
+    record = read_ambiguous(record)[0]
     errors = validate(record)
     if errors:
         return errors

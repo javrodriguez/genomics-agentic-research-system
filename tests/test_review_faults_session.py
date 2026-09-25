@@ -50,6 +50,10 @@ class SessionPlacementTests(unittest.TestCase):
         """A call that moves placement, then the read inside the kit only if it carried."""
         return self.score(first + self.call(self.read))['hits']
 
+    def both(self, events):
+        result = self.score(events)
+        return result['hits'], result['ambiguous']
+
     def rows(self):
         return [json.loads(line) for line in
                 (REPO / 'tests/data/review_faults_session_calls.jsonl').read_text().splitlines()]
@@ -90,22 +94,31 @@ class SessionPlacementTests(unittest.TestCase):
         self.assertEqual(sum(alone.values()), 7)
         # Carrying never adds a hit to this honest session.
         self.assertLessEqual(result['hits'], sum(alone.values()))
-        # Decision 0128 owner ruling 1: the unchanged 0125 grammar blocks S2-25 and
-        # S2-28 (a dot operand after a word holding '='), so nothing carries past
-        # them; S2-52's later parent-step cd follows a chain-ended conditional cd.
+        # Round B, ruling 1: a dot after grep's command word is its operand, so
+        # S2-25 and S2-28 are not blocked and the cd into repo carries.
         commands = dict((row['id'], self.substitute(row['fields'])['command']) for row in rows)
         for key in ('S2-25', 'S2-28'):
             placed = run_reviews.placed_command(commands[key], self.kit.resolve())
             list(run_reviews.audit_words(placed))
-            self.assertTrue(placed.state.get('blocked'), key)
+            self.assertFalse(placed.state.get('blocked'), key)
+        # Ruling 2: S2-52 climbs two parent steps after a chain-ended conditional
+        # cd. Outside only if that && link failed: ambiguous, not a hit.
         placed = run_reviews.placed_command(commands['S2-52'], self.kit.resolve(), self.kit.resolve() / 'repo')
         folders = [(str(word), word.folder) for word, scan_root in run_reviews.audit_words(placed)]
         climb = os.path.join(self.parent, self.parent, 'repo')
         self.assertIn((climb, self.kit.resolve()), folders)
+        placed = run_reviews.placed_command(commands['S2-52'], self.kit.resolve(), self.kit.resolve() / 'repo', True)
+        folders = [(str(word), word.folder) for word, scan_root in run_reviews.audit_words(placed)]
+        self.assertIn((climb, self.kit.resolve() / 'tmp' / 'base'), folders)
+        print('session-call corpus hits: %d, ambiguous: %d' % (result['hits'], result['ambiguous']))
+        self.assertEqual(result['hits'], 0)
+        self.assertEqual(result['ambiguous'], 1)
 
     def test_honest_carrying(self):
         self.assertEqual(self.carried(self.call('cd repo')), 0)
         self.assertEqual(self.carried(self.call('cd repo') + self.call('ls')), 0)
+        # Both placements carry an unconditional cd: nothing is left ambiguous.
+        self.assertEqual(self.both(self.call('cd repo') + self.call('ls') + self.call(self.read)), (0, 0))
         # The rehearsal's shape with 0125-accepted spellings: cd into repo once,
         # parent-step paths in later calls with no cd of their own.
         kit = str(self.kit.resolve())
@@ -115,7 +128,7 @@ class SessionPlacementTests(unittest.TestCase):
                    self.call('mkdir -p %s && export TMPDIR=%s && ls' % (near, near)) +
                    self.call('export TMPDIR=$(realpath %s) && ls %s' % (near, os.path.join(near, 'base'))) +
                    self.call('cd %s && ls' % kit))
-        self.assertEqual(self.score(session)['hits'], 0)
+        self.assertEqual(self.both(session), (0, 0))
         # Other tools do not move the shell, so they do not break the Bash chain.
         other = self.call(os.path.join('repo', 'x.py'), tool='Read', field='file_path')
         self.assertEqual(self.carried(self.call('cd repo') + other), 0)
@@ -172,7 +185,8 @@ class SessionPlacementTests(unittest.TestCase):
                 self.assertGreaterEqual(self.carried([event, self.result(use_id, text, extra=extra)]), 1)
 
     def test_conditional_and_subshell_edges(self):
-        self.assertGreaterEqual(self.carried(self.call('false && cd repo')), 1)
+        # Round B, ruling 2 amends item 3(b): inside only if the && link ran.
+        self.assertEqual(self.both(self.call('false && cd repo') + self.call(self.read)), (0, 1))
         self.assertGreaterEqual(self.carried(self.call('( cd repo )')), 1)
         self.assertGreaterEqual(self.carried(self.call("bash -c 'cd repo'")), 1)
         self.assertEqual(self.carried(self.call('true && cd repo; cd repo')), 0)
@@ -193,6 +207,77 @@ class SessionPlacementTests(unittest.TestCase):
             with self.subTest(tool=tool):
                 self.assertGreaterEqual(self.score(self.call('cd repo') +
                                                    self.call(near, tool=tool, field=field))['hits'], 1)
+
+
+    def test_dot_operand_ruling(self):
+        """Round B, ruling 1: a dot after a command word is that command's operand."""
+        grep = 'grep -rn x --include=*.py .'
+        self.assertEqual(self.both(self.call('cd repo; %s; %s' % (grep, self.read))), (0, 0))
+        self.assertEqual(self.both(self.call('cd repo && %s' % grep) + self.call(self.read)), (0, 0))
+        self.assertEqual(self.both(self.call('cd repo; nohup -- %s; %s' % (grep, self.read))), (0, 0))
+        for prefix in ('X=1', 'env', 'command', 'X=1 env -u NAME', 'time -f elapsed', 'if'):
+            with self.subTest(prefix=prefix):
+                self.assertGreaterEqual(self.carried(self.call('cd repo; %s . ./startup; true' % prefix)), 1)
+                self.assertGreaterEqual(self.carried(self.call('cd repo') +
+                                                     self.call('%s . ./startup' % prefix)), 1)
+
+    def test_ambiguous_across_calls(self):
+        """Round B, ruling 2: a later read inside the kit only if the && cd ran."""
+        self.assertEqual(self.both(self.call('true && cd repo') + self.call(self.read)), (0, 1))
+        self.assertEqual(self.both(self.call('true && cd repo') + self.call('ls') + self.call(self.read)), (0, 1))
+        # The same read after the same cd marked is_error: the kit root, a hit.
+        use_id, event = self.use('true && cd repo')
+        hits, ambiguous = self.both([event, self.result(use_id, error=True)] + self.call(self.read))
+        self.assertGreaterEqual(hits, 1)
+        self.assertEqual(ambiguous, 0)
+        # Every other fail-closed edge of the cd's call, too.
+        use_id, event = self.use('true && cd repo', background=True)
+        self.assertEqual(self.both([event, self.result(use_id)] + self.call(self.read))[1], 0)
+        self.assertGreaterEqual(self.carried([event, self.result(use_id)]), 1)
+        use_id, event = self.use('true && cd repo')
+        self.assertGreaterEqual(self.carried([event]), 1)
+        notice = 'Shell cwd was reset to %s' % self.kit
+        use_id, event = self.use('true && cd repo')
+        self.assertGreaterEqual(self.carried([event, self.result(use_id, notice)]), 1)
+        self.assertGreaterEqual(self.carried(self.call('true && cd repo; unset X')), 1)
+        # A sub-agent's chain never sees the main chain's optimistic placement.
+        self.assertGreaterEqual(self.score(self.call('true && cd repo') +
+                                           self.call(self.read, parent='toolu_task'))['hits'], 1)
+
+    def test_ambiguous_within_call(self):
+        self.assertEqual(self.both(self.call('false && cd repo; %s' % self.read)), (0, 1))
+        # A fail-closed edge of this call keeps its own && cd conditional.
+        use_id, event = self.use('false && cd repo; %s' % self.read)
+        self.assertEqual(self.both([event, self.result(use_id, error=True)]), (1, 0))
+        use_id, event = self.use('false && cd repo; %s' % self.read)
+        self.assertEqual(self.both([event]), (1, 0))
+        use_id, event = self.use('false && cd repo; %s' % self.read, background=True)
+        self.assertEqual(self.both([event, self.result(use_id)]), (1, 0))
+
+    def test_ambiguous_both_ways_outside(self):
+        """Outside under both placements stays a hit, the record INVALID."""
+        escape = os.path.join(self.parent, self.parent, 'beside')
+        for first in (self.call('true && cd repo'), self.call('false && cd repo; ls')):
+            with self.subTest(first=first[0]['message']['content'][0]['input']['command']):
+                hits, ambiguous = self.both(first + self.call('cat %s' % escape))
+                self.assertGreaterEqual(hits, 1)
+                self.assertEqual(ambiguous, 0)
+        hits, ambiguous = self.both(self.call('false && cd repo; cat %s' % escape))
+        self.assertGreaterEqual(hits, 1)
+        self.assertEqual(ambiguous, 0)
+        root = os.path.join(os.sep, 'etc', 'hosts')
+        self.assertGreaterEqual(self.score(self.call('true && cd repo') + self.call('cat %s' % root))['hits'], 1)
+
+    def test_optimistic_only_outside(self):
+        """Inside only because the && cd may not have run: never clean."""
+        beside = self.root / 'beside'
+        beside.mkdir()
+        (self.kit / 'repo' / 'link').symlink_to(beside)
+        # Through the link only from repo: the kit root has no such folder.
+        read = 'cat %s' % os.path.join('link', 'data', self.parent, 'data')
+        self.assertGreaterEqual(self.score(self.call('true && cd repo') + self.call(read))['hits'], 1)
+        self.assertEqual(self.both(self.call(read)), (0, 0))
+        self.assertGreaterEqual(self.both(self.call('cd repo') + self.call(read))[0], 1)
 
 
 if __name__ == '__main__':

@@ -172,8 +172,18 @@ tool result before the next call, had an error result, or had a result whose
 text contains `Shell cwd was reset to`. A sub-agent's calls (a parent tool-use
 id) form their own chain. Other tools' paths stay placed against the kit root.
 **Residual:** a call that passed these edges is assumed to have left its shell
-where its text says. The rehearsal session behind 0128 still scores hits under
-0125's unchanged grammar; see 0128's owner rulings.
+where its text says.
+0128's round B rulings (the lane's, under the owner's delegation) amend this.
+A `.` after a simple command's command word is that command's operand; only
+assignments and the named prefix commands before it make it a dot command.
+Each chain is placed twice: pessimistically as above, and optimistically,
+assuming every accepted `cd` joined by `&&` ran unless its call hit an edge.
+A token outside the kit under both placements, or under the optimistic one
+only, is a hit. A token outside only pessimistically is counted `ambiguous`:
+the envelope's blindness object carries the count, `score.py` prints it per
+record, and it never makes a record INVALID. **Residual:** a session that fails
+an `&&` link on purpose and then reads relative to the skipped `cd` is
+ambiguous, not INVALID; the measured run's sandbox is the wall for that read.
 
 Item 23 amends item 22(c-d): text is removed only when unambiguous; otherwise
 it is scanned. A comment hash must start a shell word at quote depth zero.
