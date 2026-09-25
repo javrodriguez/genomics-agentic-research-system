@@ -68,6 +68,24 @@ def session_output_store(kit, session_id):
     return home / '.claude' / 'projects' / project / session_id / 'tool-results'
 
 
+def stream_items(value):
+    """Tool calls and tool results in stream order, as tool_inputs finds calls."""
+    if isinstance(value, dict):
+        if value.get('type') in ('tool_use', 'tool_result'):
+            yield value
+        for item in value.values():
+            for data in stream_items(item):
+                yield data
+    elif isinstance(value, list):
+        for item in value:
+            for data in stream_items(item):
+                yield data
+
+
+# Decision 0128: the stable prefix of the tool's own working-directory reset notice.
+CWD_RESET = 'Shell cwd was reset to'
+
+
 def input_fields(value, field=None):
     """Retain field names so content and prose can be excluded before parsing."""
     if isinstance(value, str):
@@ -353,8 +371,11 @@ class CommandPlacement:
             self.state['folder'], self.state['conditional'] = self.pending[1:]
 
 
-def placed_command(text, kit):
+def placed_command(text, kit, start=None):
     state = {'kit': kit, 'folder': kit, 'conditional': False}
+    # Decision 0128: a Bash call starts where the previous one provably ended.
+    if start is not None:
+        state['folder'] = start
     # Item 8: inspect the untouched call before parsing or removing any data.
     raw_hazard = (any((ord(char) < 32 and char not in '\n\t') or
                       127 <= ord(char) < 160 for char in text) or
@@ -643,21 +664,58 @@ def blindness(events, kit, session_id=None):
     trees = [Path(os.path.join(os.sep, x)) for x in ('usr', 'bin', 'sbin', 'lib', 'lib64')]
     devices = [Path(os.path.join(os.sep, 'dev', x)) for x in ('null', 'stdin', 'stdout', 'stderr')]
     calls = hits = 0
+    # Decision 0128: the tool keeps a Bash call's working directory for the
+    # next Bash call of the same chain. A sub-agent's calls (parent tool-use id)
+    # form their own chain. A chain carries only a placement proven at the end
+    # of a call whose result arrived before the next call, without error or
+    # reset notice; every other edge starts the next call at the kit root.
+    chains = {}
+    seen = set()
+    carries = {}
     for event in events:
-        for tool, data in tool_inputs(event):
+        chain = event.get('parent_tool_use_id') if isinstance(event, dict) else None
+        notice = isinstance(event, dict) and any(
+            CWD_RESET in text for text in strings(event.get('tool_use_result')))
+        for item in stream_items(event):
+            use_id = item.get('tool_use_id') if item.get('type') == 'tool_result' else item.get('id')
+            use_id = use_id if isinstance(use_id, str) else None
+            if item.get('type') == 'tool_result':
+                if use_id in seen:
+                    carry = not (notice or item.get('is_error', False) is not False or
+                                 any(CWD_RESET in text for text in strings(item)))
+                    carries[use_id] = carries.get(use_id, True) and carry
+                continue
+            tool, data = item.get('name'), item.get('input', {})
             calls += 1
+            if use_id is not None:
+                seen.add(use_id)
+            command = data.get('command') if tool == 'Bash' and isinstance(data, dict) else None
+            previous = chains.get(chain)
+            start = None
+            if previous is not None and previous[0] is not None and carries.get(previous[0]):
+                start = previous[1]
+            background = command is not None and data.get('run_in_background', False) is not False
+            end = None
             for field, text in input_fields(data):
                 if tool == 'Glob' and field == 'pattern':
                     field = 'path'
                 if field != 'command' and not path_field(field):
                     continue
+                # Only the Bash call's own command field starts at the carried
+                # placement; other tools' paths stay placed against the kit root.
+                carried = command is not None and field == 'command' and text is command
                 try:
+                    placed = placed_command(text, kit, start if carried else None) if field == 'command' else None
                     decoded = [(str(word), getattr(word, 'folder', None) or kit) for word, scan_root in
-                               audit_words(placed_command(text, kit))] if field == 'command' else [(text, kit)]
+                               audit_words(placed)] if field == 'command' else [(text, kit)]
                     hits += root_word_hits(text, field)
                 except ValueError:
                     hits += 1
                     continue
+                # A blocked call already ended at the kit root (0125 item 4 and
+                # item 8's raw-text guard); a still-conditional one counts as root.
+                if carried and not (background or placed.state['conditional']):
+                    end = placed.state['folder']
                 tokens = list(dict.fromkeys(decoded))
                 parent = chr(46) * 2
                 home = '$' + 'HOME'
@@ -717,6 +775,8 @@ def blindness(events, kit, session_id=None):
                     if any(within(path, tree) for tree in trees) or path in devices:
                         continue
                     hits += 1
+            if tool == 'Bash':
+                chains[chain] = (use_id, end)
     return {'calls': calls, 'hits': hits}
 
 

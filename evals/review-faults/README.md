@@ -162,6 +162,19 @@ interpret arbitrary shell programs. The raw-text guard refuses the reviewed
 split-cd and split-PWD line continuations without interpreting them; quoting
 remains unparsed. The conservative heredoc refusal can still flag honest calls.
 
+Decision 0128 corrects 0125's premise that nothing carries between calls: the
+reviewer's Bash tool keeps its working directory. The audit keeps one placement
+per chain of Bash calls, in stream order. A chain's first call starts at the kit
+root; each later call starts where the previous one ended under 0125's rules (a
+still-conditional placement counts as the root). The next call starts at the
+root instead when the previous call was blocked, ran in the background, had no
+tool result before the next call, had an error result, or had a result whose
+text contains `Shell cwd was reset to`. A sub-agent's calls (a parent tool-use
+id) form their own chain. Other tools' paths stay placed against the kit root.
+**Residual:** a call that passed these edges is assumed to have left its shell
+where its text says. The rehearsal session behind 0128 still scores hits under
+0125's unchanged grammar; see 0128's owner rulings.
+
 Item 23 amends item 22(c-d): text is removed only when unambiguous; otherwise
 it is scanned. A comment hash must start a shell word at quote depth zero.
 Neither a comment nor a heredoc body is removed when the physical line holding
