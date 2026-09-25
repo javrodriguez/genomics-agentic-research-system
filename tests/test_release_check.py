@@ -165,6 +165,28 @@ class ReleaseCheckTests(unittest.TestCase):
         self.assertFalse(meets)
         print('red-on-fault: repository drill RPO 24.000001 -> not qualifying')
 
+    def test_repository_provenance_bound_to_0054(self):
+        # Review round 2 (P1, P2): a hand edit that upgrades a transcribed claim beyond what
+        # 0054 witnesses must stop qualifying.
+        row = ('| 2026-09-22T16:55:13Z | node1 | scheduled-offmachine | recovery-db | synthetic '
+               '| independent_context | 0054 |')
+        edits = [
+            ('seal external_human_seal', '| independent_context | 0054 |', '| external_human_seal | 0054 |'),
+            ('target primary', '| recovery-db |', '| primary |'),
+            ('data real', '| synthetic |', '| real |'),
+        ]
+        log = (REPO / release.RESTORE).read_text()
+        self.assertEqual(log.count(row), 1)
+        for label, old, new in edits:
+            with self.subTest(label), tempfile.TemporaryDirectory(prefix='rc-bound-') as temp:
+                root = Path(temp)
+                shutil.copytree(str(REPO / self.DECISIONS), str(root / self.DECISIONS))
+                (root / release.RESTORE).parent.mkdir(parents=True)
+                (root / release.RESTORE).write_text(log.replace(row, row.replace(old, new)))
+                value, when, meets = release.restore_measurement(root)
+                self.assertEqual((meets, 'not qualifying' in value), (False, True), value)
+                print('red-on-fault: repository provenance %s on 0054 -> not qualifying' % label)
+
     def test_restore_table_strict(self):
         head = '| Date | RPO_h | RTO_min | Result |\n|---|---|---|---|\n'
         faults = [
@@ -172,6 +194,15 @@ class ReleaseCheckTests(unittest.TestCase):
             ('NaN', head + '| 2026-09-22T16:55:13Z | NaN | 1 | PASS |\n'),
             ('bad stamp', head + '| 2026-09-22 16:55:13 | 1 | 1 | PASS |\n'),
             ('outside a block', '# log\n\n| 2026-09-22T16:55:13Z | 1 | 1 | PASS |\n'),
+            # Review round 2: an indented row or line still renders, so it must not be skipped;
+            # an unpadded stamp would sort after a padded later one.
+            ('indented table', head + '| 2026-09-22T16:55:13Z | 1 | 1 | PASS |\n'
+                               ' | 2026-09-23T10:00:00Z | 1.0 | 1.0 | FAIL |\n'),
+            ('indented CSV', head + '| 2026-09-22T16:55:13Z | 1 | 1 | PASS |\n\n'
+                             '  2026-09-23T10:00:00Z, 1.0, 1.0, FAIL\n'),
+            ('unpadded table stamp', head + '| 2026-09-22T16:55:13Z | 1 | 1 | PASS |\n'
+                                     '| 2026-9-3T1:2:3Z | 1 | 1 | FAIL |\n'),
+            ('unpadded CSV stamp', '2026-09-22T16:55:13Z, 1, 1, PASS\n2026-09-03T1:2:3Z, 1, 1, FAIL\n'),
         ]
         for label, log in faults:
             with self.subTest(label), tempfile.TemporaryDirectory(prefix='rc-strict-') as temp:
@@ -220,65 +251,80 @@ class ReleaseCheckTests(unittest.TestCase):
 
     def test_restore_qualification_grid(self):
         stamp = '2026-09-20T10:00:00Z'
+        NEGATED = 'The seal class is therefore `independent_context`, not `external_human_seal`.\n'
         # result rows (status, RPO, RTO) at the stamp; provenance rows (stamp, venue, source,
         # target, data, seal, record); record file (number, status, touches the log,
-        # body has the CSV evidence line, body has the seal token); expected
+        # body has the CSV evidence line, body has the seal token or the NEGATED text, body
+        # quotes the whole provenance row); expected
         # (meets, text contains, text lacks) or ValueError.
         grid = [
             ('0054-like record', [('PASS', '13.17', '0.28')],
              [(stamp, 'node1', 'scheduled-offmachine', 'recovery-db', 'synthetic', 'independent_context', '0054')],
-             ('0054', 'standing', True, True, True), (True, 'seal independent_context', None)),
+             ('0054', 'standing', True, True, True, False), (True, 'seal independent_context', None)),
             ('inclusive bounds, external seal', [('PASS', '24', '60')],
              [(stamp, 'node1', 'scheduled-offmachine', 'recovery-db', 'synthetic', 'external_human_seal', '0054')],
-             ('0054', 'standing', True, True, True), (True, 'seal external_human_seal', 'public seal pending')),
+             ('0054', 'standing', True, True, True, True), (True, 'seal external_human_seal', 'public seal pending')),
             ('RPO 24.000001', [('PASS', '24.000001', '1')],
              [(stamp, 'node1', 'scheduled-offmachine', 'recovery-db', 'synthetic', 'independent_context', '0054')],
-             ('0054', 'standing', True, True, True), (False, 'not qualifying', None)),
+             ('0054', 'standing', True, True, True, False), (False, 'not qualifying', None)),
             ('RTO 60.000001', [('PASS', '1', '60.000001')],
              [(stamp, 'node1', 'scheduled-offmachine', 'recovery-db', 'synthetic', 'independent_context', '0054')],
-             ('0054', 'standing', True, True, True), (False, 'not qualifying', None)),
+             ('0054', 'standing', True, True, True, False), (False, 'not qualifying', None)),
             ('no provenance row', [('PASS', '1', '1')], [],
              None, (False, 'venue/canary unmeasured', None)),
             ('seal none', [('PASS', '1', '1')],
              [(stamp, 'node1', 'scheduled-offmachine', 'recovery-db', 'synthetic', 'none', '0054')],
-             ('0054', 'standing', True, True, True), (False, 'not qualifying', None)),
+             ('0054', 'standing', True, True, True, False), (False, 'not qualifying', None)),
             ('venue laptop', [('PASS', '1', '1')],
              [(stamp, 'laptop', 'scheduled-offmachine', 'recovery-db', 'synthetic', 'independent_context', '0054')],
-             ('0054', 'standing', True, True, True), ValueError),
+             ('0054', 'standing', True, True, True, False), ValueError),
             ('record 9999 absent', [('PASS', '1', '1')],
              [(stamp, 'node1', 'scheduled-offmachine', 'recovery-db', 'synthetic', 'independent_context', '9999')],
-             ('0054', 'standing', True, True, True), (False, 'not qualifying', None)),
+             ('0054', 'standing', True, True, True, False), (False, 'not qualifying', None)),
             ('record superseded', [('PASS', '1', '1')],
              [(stamp, 'node1', 'scheduled-offmachine', 'recovery-db', 'synthetic', 'independent_context', '0054')],
-             ('0054', 'superseded', True, True, True), (False, 'not qualifying', None)),
+             ('0054', 'superseded', True, True, True, False), (False, 'not qualifying', None)),
             ('record touches lack the log', [('PASS', '1', '1')],
              [(stamp, 'node1', 'scheduled-offmachine', 'recovery-db', 'synthetic', 'independent_context', '0054')],
-             ('0054', 'standing', False, True, True), (False, 'not qualifying', None)),
+             ('0054', 'standing', False, True, True, False), (False, 'not qualifying', None)),
             ('record body lacks the CSV line', [('PASS', '1', '1')],
              [(stamp, 'node1', 'scheduled-offmachine', 'recovery-db', 'synthetic', 'independent_context', '0054')],
-             ('0054', 'standing', True, False, True), (False, 'not qualifying', None)),
+             ('0054', 'standing', True, False, True, False), (False, 'not qualifying', None)),
             ('record body lacks the seal', [('PASS', '1', '1')],
              [(stamp, 'node1', 'scheduled-offmachine', 'recovery-db', 'synthetic', 'independent_context', '0054')],
-             ('0054', 'standing', True, True, False), (False, 'not qualifying', None)),
+             ('0054', 'standing', True, True, False, False), (False, 'not qualifying', None)),
             ('real data', [('PASS', '1', '1')],
              [(stamp, 'node1', 'scheduled-offmachine', 'recovery-db', 'real', 'independent_context', '0054')],
-             ('0054', 'standing', True, True, True), (True, 'real data', None)),
+             ('0054', 'standing', True, True, True, True), (True, 'real data', None)),
             ('data mock', [('PASS', '1', '1')],
              [(stamp, 'node1', 'scheduled-offmachine', 'recovery-db', 'mock', 'independent_context', '0054')],
-             ('0054', 'standing', True, True, True), ValueError),
+             ('0054', 'standing', True, True, True, False), ValueError),
             ('FAIL', [('FAIL', '1', '1')],
              [(stamp, 'node1', 'scheduled-offmachine', 'recovery-db', 'synthetic', 'independent_context', '0054')],
-             ('0054', 'standing', True, True, True), (False, 'FAIL', None)),
+             ('0054', 'standing', True, True, True, False), (False, 'FAIL', None)),
             ('PASS then FAIL, same stamp', [('PASS', '1', '1'), ('FAIL', '1', '1')],
              [(stamp, 'node1', 'scheduled-offmachine', 'recovery-db', 'synthetic', 'independent_context', '0054')],
-             ('0054', 'standing', True, True, True), (False, 'FAIL', None)),
+             ('0054', 'standing', True, True, True, False), (False, 'FAIL', None)),
             ('provenance for an absent stamp', [('PASS', '1', '1')],
              [('2026-09-19T10:00:00Z', 'node1', 'scheduled-offmachine', 'recovery-db', 'synthetic', 'independent_context', '0054')],
-             ('0054', 'standing', True, True, True), ValueError),
+             ('0054', 'standing', True, True, True, False), ValueError),
             ('two provenance rows, one stamp', [('PASS', '1', '1')],
              [(stamp, 'node1', 'scheduled-offmachine', 'recovery-db', 'synthetic', 'independent_context', '0054'),
               (stamp, 'node1', 'scheduled-offmachine', 'primary', 'synthetic', 'independent_context', '0054')],
-             ('0054', 'standing', True, True, True), ValueError),
+             ('0054', 'standing', True, True, True, False), ValueError),
+            # Review round 2: a claim stronger than 0054's needs the record to quote the row.
+            ('external seal, record negates it', [('PASS', '1', '1')],
+             [(stamp, 'node1', 'scheduled-offmachine', 'recovery-db', 'synthetic', 'external_human_seal', '0054')],
+             ('0054', 'standing', True, True, NEGATED, False), (False, 'not qualifying', None)),
+            ('target primary, row not quoted', [('PASS', '1', '1')],
+             [(stamp, 'node1', 'scheduled-offmachine', 'primary', 'synthetic', 'independent_context', '0054')],
+             ('0054', 'standing', True, True, True, False), (False, 'not qualifying', None)),
+            ('data real, row not quoted', [('PASS', '1', '1')],
+             [(stamp, 'node1', 'scheduled-offmachine', 'recovery-db', 'real', 'independent_context', '0054')],
+             ('0054', 'standing', True, True, True, False), (False, 'not qualifying', None)),
+            ('target primary, row quoted', [('PASS', '1', '1')],
+             [(stamp, 'node1', 'scheduled-offmachine', 'primary', 'synthetic', 'independent_context', '0054')],
+             ('0054', 'standing', True, True, True, True), (True, 'target primary', None)),
         ]
         for label, results, provenance, record, expected in grid:
             log = '# log\n\n| Date | RPO_h | RTO_min | Result |\n|---|---|---|---|\n'
@@ -287,14 +333,18 @@ class ReleaseCheckTests(unittest.TestCase):
             log += '\n' + self.PROVENANCE + ''.join('| %s |\n' % ' | '.join(row) for row in provenance)
             records = []
             if record is not None:
-                number, status, touches, evidence, seal = record
+                number, status, touches, evidence, seal, quotes = record
                 status_row, rpo, rto = results[-1]
                 text = '---\ndate: 2026-09-20\nstatus: %s\nkind: decision\ntouches:\n' % status
                 text += '  - docs/ops/%s\n---\n# Fixture drill\n\n' % ('restore-log.md' if touches else 'HARDWARE.md')
                 if evidence:
                     text += '- **Drill:** `%s, %s, %s, %s`.\n' % (stamp, rpo, rto, status_row)
-                if seal:
+                if seal is NEGATED:
+                    text += NEGATED
+                elif seal:
                     text += 'The seal class is `%s`.\n' % provenance[0][5]
+                if quotes:
+                    text += '\n| %s |\n' % ' | '.join(provenance[0])
                 records.append((number + '-fixture.md', text))
             with self.subTest(label), tempfile.TemporaryDirectory(prefix='rc-grid-') as temp:
                 root = self.restore_root(temp, log, records)

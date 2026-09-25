@@ -22,6 +22,11 @@ PROVENANCE_HEADER = '| Date | Venue | Source | Target | Data | Seal | Record |'
 # README's public row still needs external_human_seal.
 ACCEPTED_SEALS = ('independent_context', 'external_human_seal')
 DECISIONS = 'docs/decisions'
+# A zero-padded UTC stamp, so string order is time order (0105, round 2).
+STAMP_PATTERN = r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\Z'
+# Claims stronger than 0054's drill; the cited record must quote the whole provenance row
+# for any of them, because a bare token also matches a negation (0105, round 2).
+BOUND_CLAIMS = ('external_human_seal', 'primary', 'real')
 
 
 def clauses(root):
@@ -48,6 +53,8 @@ def restore_cells(line, count):
     if len(cells) != count:
         raise ValueError('malformed restore table row')
     try:
+        if not re.match(STAMP_PATTERN, cells[0]):
+            raise ValueError('unpadded stamp')
         datetime.datetime.strptime(cells[0], '%Y-%m-%dT%H:%M:%SZ')
     except ValueError:
         raise ValueError('malformed restore table row')
@@ -56,6 +63,8 @@ def restore_cells(line, count):
 
 def restore_result_record(stamp, rpo_text, rto_text, status):
     """One result, CSV or table: (date, stamp, RPO, RTO, status, raw RPO, raw RTO)."""
+    if not re.match(STAMP_PATTERN, stamp):
+        raise ValueError('invalid restore output')
     when = datetime.datetime.strptime(stamp, '%Y-%m-%dT%H:%M:%SZ').date()
     rpo, rto = Decimal(rpo_text), Decimal(rto_text)
     if not all(x.is_finite() and x >= 0 for x in (rpo, rto)) or status not in ('PASS', 'FAIL'):
@@ -68,7 +77,8 @@ def restore_records(text):
 
     Legacy `date, RPO_h, RTO_min, PASS|FAIL` lines, rows of the RESULT_HEADER table and rows
     of the PROVENANCE_HEADER table. A date-led table row outside a known table, or any
-    malformed row inside one, raises: the log is never skipped silently (0105).
+    malformed row inside one, raises: the log is never skipped silently (0105). An indented
+    date-led line or table row raises too, since markdown still renders it (0105, round 2).
     """
     records, provenance = [], {}
     block = None
@@ -102,12 +112,15 @@ def restore_records(text):
             block = 'result' if line == RESULT_HEADER else 'provenance'
             separator = True
             continue
-        if re.match(r'^\d{4}-\d{2}-\d{2}', line):
+        bare = line.lstrip()
+        if re.match(r'^\d{4}-\d{2}-\d{2}', bare):
+            if bare != line:
+                raise ValueError('indented restore line')
             fields = [value.strip() for value in line.split(',')]
             if len(fields) != 4:
                 raise ValueError('malformed restore output')
             records.append(restore_result_record(*fields))
-        elif line.startswith('|') and re.match(r'^\d{4}-\d{2}-\d{2}', line[1:].strip()):
+        elif bare.startswith('|') and re.match(r'^\d{4}-\d{2}-\d{2}', bare[1:].strip()):
             raise ValueError('restore table row outside a known table')
     stamps = set(row[1] for row in records)
     if any(stamp not in stamps for stamp in provenance):
@@ -119,7 +132,8 @@ def restore_qualifies(root, record, provenance):
     """(value, meets) for a result with a provenance row, or None without one.
 
     The cited record must be standing, touch the restore log, and carry the drill's own
-    CSV evidence line and the seal token, so no other record can vouch for the drill.
+    CSV evidence line and the seal token, so no other record can vouch for the drill. A
+    claim in BOUND_CLAIMS also needs the record to quote the whole provenance row.
     """
     when, stamp, rpo, rto, status, rpo_text, rto_text = record
     if stamp not in provenance:
@@ -137,8 +151,11 @@ def restore_qualifies(root, record, provenance):
     elif seal not in ACCEPTED_SEALS:
         failed = 'seal %s not accepted' % seal
     else:
+        quoted = None
+        if any(claim in BOUND_CLAIMS for claim in (target, data, seal)):
+            quoted = '| %s |' % ' | '.join((stamp,) + provenance[stamp])
         failed = restore_record_fails(root, number, '%s, %s, %s, %s' % (
-            stamp, rpo_text, rto_text, status), seal)
+            stamp, rpo_text, rto_text, status), seal, quoted)
     head = '%s; RPO %s h; RTO %s min; %s; ' % (stamp, rpo_text, rto_text, status)
     if failed is not None:
         return head + 'not qualifying: ' + failed, False
@@ -149,7 +166,7 @@ def restore_qualifies(root, record, provenance):
     return value, True
 
 
-def restore_record_fails(root, number, evidence, seal):
+def restore_record_fails(root, number, evidence, seal, quoted=None):
     paths = sorted((root / DECISIONS).glob(number + '-*.md'))
     if len(paths) != 1:
         return 'record %s not found exactly once' % number
@@ -177,6 +194,8 @@ def restore_record_fails(root, number, evidence, seal):
         return 'record %s lacks the evidence line' % number
     if seal not in body:
         return 'record %s lacks the seal %s' % (number, seal)
+    if quoted is not None and quoted not in body:
+        return 'record %s does not quote the provenance row' % number
     return None
 
 
@@ -185,7 +204,9 @@ def restore_measurement(root):
 
     The latest result qualifies only with a provenance-table row naming Node 1, the
     scheduled off-machine copy and an accepted seal, citing a standing decision record
-    that touches the log and quotes the drill's CSV evidence line and seal (0105).
+    that touches the log and quotes the drill's CSV evidence line and seal (0105); an
+    external_human_seal, primary target or real data also needs the record to quote the
+    whole provenance row (0105, round 2).
     Without that row the missing venue/canary evidence stays unmeasured. Age is left to
     release_failures, so the generated cell stays byte-stable.
     """

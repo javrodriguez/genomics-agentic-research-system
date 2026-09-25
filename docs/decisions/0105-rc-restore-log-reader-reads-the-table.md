@@ -134,3 +134,58 @@ lane's, under the owner's standing delegation of 23 Sep 2026.
 ## Date
 
 2026-09-25
+
+## Addendum — review round 2, 2026-09-25
+
+The independent review of round 1 found three gaps; the text above stays as written, and this
+addendum narrows two of its sentences.
+
+**The binding was narrower than stated (F1).** The sentence "That last check binds the
+transcription to the record that witnessed the drill" held for the stamp, RPO, RTO and status
+(the CSV evidence line), not for Seal, Target or Data. The seal check was a substring test, and
+0054 passes it for `external_human_seal` because it says "`independent_context`, not
+`external_human_seal`". A one-cell edit to the provenance row turned the cell into
+`seal external_human_seal`, `target primary` or `real data`, each still qualifying, claims 0054
+denies. Now `BOUND_CLAIMS = ('external_human_seal', 'primary', 'real')`: when the row makes any
+of these claims, the cited record's body must also quote the whole provenance row, in the form
+`| <stamp> | <venue> | <source> | <target> | <data> | <seal> | <record> |`, which a negation
+cannot satisfy. The weaker claims (`independent_context`, `recovery-db`, `synthetic`) keep the
+checks above, so 0054, which predates the quoted form, still qualifies for exactly what it
+witnesses. Ruling Q3 (the lane, under the owner's standing delegation of 23 Sep 2026): the quoted
+row is the record form for the stronger claims, the same rule the evidence line already follows.
+It is a rule for future records, not an edit to any existing one.
+
+**Indented lines (F2).** The sentence "every date-led line is read or refused" held only for
+lines starting in column 0. A result row or CSV line with leading spaces still renders, yet it
+ended the table and matched no check, so it was skipped. The reader now tests the date-led and
+`|`-led patterns on the line with leading whitespace stripped; an indented date-led line or
+table row raises `ValueError`. With that, every date-led line, indented or not, is read or
+refused.
+
+**Unpadded stamps (F3).** `strptime` accepts `2026-9-3T1:2:3Z`, and selection compares stamps
+as strings, so an unpadded stamp sorted after a padded later one. Every stamp, table or CSV, must
+now fully match `STAMP_PATTERN`, zero-padded, or it raises. Row 5's writer emits padded stamps,
+so no committed line changes reading.
+
+**Age (F4).** The cell carries no age: after 22 Oct 2026 it still reads `PASS` for this drill.
+§17's 30-day limit is enforced only at tag time, by the stricter 14-day rule. NOT met in the cell.
+
+**Q2 (F5).** Q2 lets a fresh drill with Target `recovery-db` satisfy the §17 restore row at tag
+time without §13.2's primary deletion, which 0044 recorded as NOT met under the owner's safety
+rule. It stands as the lane's, under the owner's standing delegation of 23 Sep 2026, and is
+listed for the owner's sight at merge.
+
+**Still open.** The `independent_context` check stays a token test: a record that names
+`independent_context` only in a negation would pass it. That is not an upgrade over what 0054
+states, but it is not a positive binding either.
+
+**Test.** `test_repository_provenance_bound_to_0054` edits the real log's Seal, Target and Data
+in turn against the real 0054 and expects `not qualifying`. The grid gains four rows (a
+0054-like body that negates `external_human_seal`; Target `primary` and Data `real` without the
+quoted row; Target `primary` with it, qualifying), and the rows for `external_human_seal` and
+Data `real` now quote the row. `test_restore_table_strict` gains an indented table row, an
+indented CSV line, and an unpadded stamp in each shape. Against the round-1 reader these fail
+(10 failures, only the new controls). Mutations, each watched red and restored green: the
+quoted-row check dropped (6 failures); the leading-whitespace strip dropped (the two indented
+probes); the padding pattern dropped (the two unpadded probes). M1 to M8 were re-run on this
+reader and each is still red.
