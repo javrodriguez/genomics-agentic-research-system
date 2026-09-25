@@ -145,3 +145,18 @@ The ruling is the coordinator's, under the owner's standing delegation of 23 Sep
 - **Reading the second seal.** The second seal's class-2 result is read with these four residuals in mind.
 
 No code or test changed in this round. This is not a mutation score; the exit still needs the second seal (0088, 0089), and nothing in this addendum claims it.
+
+## Addendum, 2026-09-25: review 4, the last round before the seal (round 6)
+
+The bytes above, including the four earlier addenda, are unchanged. This addendum records the round-6 fixes for review 4 (`docs/reviews/row3fu_review4.md`), within the lane's round-6 scope (`docs/reviews/row3fu_round6_scope.md`); see the [change report](../implementation/row_3_followup_change_report.md), "Review round 6 fixes".
+Round 6 is the coordinator's ruling, under the owner's standing delegation of 23 Sep 2026; it is not the owner's own words.
+
+- **Class 4 by principle (F1).** `gars/tests/test_r164_keyed_lookups.py` adds `KeyedTablePrincipleTests`. The lookups come from the code: every dict or `get` lookup in scope keyed on a backend, a recorded executor, an assay or an input kind. Each one not already driven is now driven through its public interface, with a non-default key beside a default one whose content differs, and the test asserts the chosen key's content. On the backend side that means `validate`, `submit_argv`, `resources_argv`, stage 03's resubmission poll, its execution evidence, and `status` of an analysis job. On the assay side it means each nf-core wrapper's recorded pipeline, the genome menu's cache folder, `configure apply`'s decisions, the assay menu, and stage 00's `inspect`, `link` and `finalize` and stage 01's path column by input kind. The change report lists the lookups left out, each with its reason.
+- **Stage 03's approve and verify writers (F2).** `gars/tests/test_r164_writer_recovery.py` gains rows for `stage03_analysis approve` (`PLAN.md`) and `verify` (`OUTPUTS.tsv`). Each builds its workspace under the row's own folder, as `test_stage03_execution` does. Round 4's "Left out" entry is corrected in the change report: only the `O_EXCL` approval records stay out.
+- **Directories (F3) and the half copy (F4).** The tree check now lists every path, directories included, so a leaked temporary directory fails the row. The hook installer's half-copy fault now writes fixed bytes and no longer reads the shipped hook.
+- **Owner question.** With directories visible, a failed `stage03_analysis create` leaves its allocated analysis folders behind. The row stops judging those folders, and the change report asks for a ruling.
+- **Named residuals, with no new tests (review 4's MINOR and NOTE).** Four one-step-out faults survive the modules the reviewer ran: C1b (the retry approval digest), G1 (the dataset-record migration), G3b (R1 and R2 exchanged in `files.csv`) and G5b (replicate `0` accepted). The round-4 plant driver and probes remain uncommitted scratch material.
+
+Ten plants went red in disposable copies on the new tests: the reviewer's G4, C4a, C4b, X1, X2 and X4, and four of the producer's own (K1–K4).
+The suite rises to 874 tests. The seven R-164 modules take about 9.7 s together on the producer's machine and add no skip.
+This is producer-authored development evidence, not a mutation score. The exit still needs the second seal (0088, 0089), and nothing in this addendum claims it.

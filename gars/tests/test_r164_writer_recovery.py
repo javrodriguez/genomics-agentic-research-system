@@ -5,8 +5,8 @@ is driven through its public interface once cleanly, then again with ONE fault i
 ONE destination file: refusing the open-for-write, failing a write part-way, refusing the
 fsync, refusing the rename into place, and (where a row names them) a helper or copy step.
 The postcondition is the same for every row: the fault surfaces, the destination keeps its
-prior bytes exactly (or stays absent on a first write), and no file appears anywhere in the
-fixture tree. A writer added later is covered by one more row.
+prior bytes exactly (or stays absent on a first write), and no file or directory appears
+anywhere in the fixture tree. A writer added later is covered by one more row.
 
 Faults are matched by destination, not by writer, so a writer that bypasses the atomic helper
 (plain `open`, `write_text`) is still caught: its partial write lands on the destination.
@@ -23,6 +23,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 from support import GARS, module, write_fixture_dataset
+from test_approval_forgery import PLAN
 from test_lifecycle_executor import prepared
 import configure
 import executorlib as ex
@@ -32,6 +33,7 @@ import test_r164_boundaries as bounds
 import test_r164_collect_gates as gates
 import test_r164_failure_recovery as recovery
 import test_r164_params_mapping as mapping
+import test_stage03_execution as stage03
 
 WRAPPERS = GARS / '_system/wrappers'
 RAISED = object()
@@ -179,8 +181,10 @@ class Writer(object):
 
 
 def files(tree):
-    return sorted(str(p.relative_to(tree)) for p in tree.rglob('*')
-                  if p.is_file() or p.is_symlink())
+    """Every path in the tree, directories marked with a trailing `/`, so a leaked temporary
+    directory is as visible as a leaked file."""
+    return sorted(str(p.relative_to(tree)) + ('/' if p.is_dir() and not p.is_symlink() else '')
+                  for p in tree.rglob('*'))
 
 
 def pinned(call):
@@ -405,6 +409,32 @@ def analysis_plan(test, tmp):
                                   '--slug', 'fixture'])
 
 
+def analysis_approve(test, tmp):
+    """A DRAFT plan in a workspace under the row's folder, built as test_stage03_execution
+    builds it; the approval store beside the workspace already exists, as after any approval."""
+    workspace = tmp / 'gars'
+    workspace.mkdir()
+    (workspace / '_references').symlink_to(GARS / '_references', target_is_directory=True)
+    root = workspace / 'projects/p'
+    write_fixture_dataset(root)
+    adir = root / '03_custom_analysis/01_fixture'
+    (adir / 'results').mkdir(parents=True)
+    (adir / 'results/table.tsv').write_text('fixture\n')
+    (adir / 'PLAN.md').write_text(PLAN.replace('Status: APPROVED 2026-09-21', 'Status: DRAFT'))
+    s03.check_store(workspace, create=True)
+    args = argparse.Namespace(project=str(root), analysis='01_fixture', model='fixture', date=None)
+    return tmp, lambda: s03.cmd_approve(args, workspace)
+
+
+def analysis_verify(test, tmp):
+    """An approved analysis whose script ran to completion on the local backend."""
+    case = stage03.Stage03ExecutionTests('setUp')
+    case.setUp()
+    test.addCleanup(case.doCleanups)
+    test.assertEqual(case.finish()[1], 'COMPLETED')
+    return Path(case.tmp.name).resolve(), lambda: s03.cmd_verify(case.args, case.workspace)
+
+
 def stage01(test, tmp):
     case = recovery.CallSiteRecoveryTests('setUp')
     case.setUp()
@@ -441,7 +471,7 @@ def hooks(test, tmp):
 def half_copy(injector):
     def copyfile(source, destination, *args, **kwargs):
         with open(str(destination), 'wb') as fh:
-            fh.write(Path(source).read_bytes()[:10])
+            fh.write(b'#!/bin/sh\n')
         injector.fire('copy')
     return patch.object(shutil, 'copyfile', copyfile)
 
@@ -512,9 +542,19 @@ def rows():
                ['01_samplesheets/rnaseq_bulk_samplesheet.csv',
                 '01_samplesheets/rnaseq_bulk_design.csv',
                 '01_samplesheets/rnaseq_bulk_design_check.json'], success=0),
+        # The folders `create` allocates before PLAN.md stay behind when PLAN.md's write fails;
+        # that is an open owner question (change report, round 6), so they are not judged here.
         Writer('stage03_analysis create', analysis_plan,
                ['project/%s/01_fixture/PLAN.md' % s03.stage_root(Path('project')).name],
-               success=0, prime=False, steps=('open', 'write', 'fsync', 'replace')),
+               success=0, prime=False, steps=('open', 'write', 'fsync', 'replace'),
+               creates=['project/%s/%s' % (s03.stage_root(Path('project')).name, sub)
+                        for sub in ('', '01_fixture/', '01_fixture/results/',
+                                    '01_fixture/scripts/')]),
+        Writer('stage03_analysis approve', analysis_approve,
+               ['gars/projects/p/03_custom_analysis/01_fixture/PLAN.md'], success=0, prime=False,
+               steps=('open', 'write', 'fsync', 'replace')),
+        Writer('stage03_analysis verify', analysis_verify,
+               ['gars/projects/p/03_custom_analysis/01_fixture/OUTPUTS.tsv'], success=0),
         Writer('configure.py apply', configure_apply, ['project/_config/scrnaseq.yaml'],
                success=0, reads=['project/_config/scrnaseq.yaml']),
         Writer('adapt_counts.py main', adapt_counts,

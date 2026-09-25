@@ -521,3 +521,119 @@ None.
 - The whole suite in modes B and C, and its added wall time, are for the lane to measure on its node.
 - Descriptor-level faults, `chmod` after the rename, and the writers in round 4's "Left out" table remain as round 4 stated them.
 - Producer and reviewer share a model (0087, Context).
+
+## Review round 6 fixes
+
+Dated 2026-09-25. This section answers review 4 (`docs/reviews/row3fu_review4.md`, left untracked and unchanged). It stays within the lane's round-6 scope (`docs/reviews/row3fu_round6_scope.md`, untracked): round 6 is the last round before the seal. It is the coordinator's ruling, under the owner's standing delegation of 23 Sep 2026, and not the owner's own words. The sections above are unchanged. 0087 carries a fifth dated addendum after its last byte; its round-5 bytes are a byte-identical prefix of the new file (17782 of 20820 bytes, checked against a copy taken before the append). `bash docs/decisions/build_index.sh` was re-run.
+
+### Findings
+
+| Finding | Changed files | Test(s) | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| F1 MAJOR, class 4 has no kill among fresh faults | `gars/tests/test_r164_keyed_lookups.py` (new class `KeyedTablePrincipleTests`, 12 tests) | the 12 tests in the inventory below | fixed; yes: the reviewer's G4, C4a and C4b, and the producer's K1–K4, each went red on its row in a disposable copy (plant table below). No per-fault test was written: each fault is caught by the lookup's row |
+| F2 MAJOR, stage 03's `approve` and `verify` writers left out on a refuted reason | `gars/tests/test_r164_writer_recovery.py` (rows `stage03_analysis approve` → `PLAN.md`, unprimed, and `stage03_analysis verify` → `OUTPUTS.tsv`, primed by a real local run; each builds its workspace under the row's folder as `test_stage03_execution` does) | `test_stage03_analysis_approve`, `test_stage03_analysis_verify` | fixed; yes: X1 `FAILED (failures=3)` on `test_stage03_analysis_approve`, X2 `FAILED (failures=4)` on `test_stage03_analysis_verify`. The "Left out" entry is corrected below |
+| F3 MINOR, the tree check ignores directories | `gars/tests/test_r164_writer_recovery.py` (`files()` lists every path, directories marked with a trailing `/`) | every row | fixed; yes: X4 (`harvest_cache` no longer removes its `.bowtie2-incoming-*` directory) `FAILED (failures=5)` on `test_wrapperlib_harvest_cache`. Found by this change on unmodified code: a failed `stage03_analysis create` leaves its allocated folders behind (see `## Owner rulings needed`). The finding's second part, a `cache/bowtie2` destination with a rename fault, is not added, because the round-6 scope names only the directory check |
+| F4 MINOR, `half_copy` reads `gars/_system/hooks/pre-push` | `gars/tests/test_r164_writer_recovery.py` (`half_copy` writes the fixed bytes `#!/bin/sh\n`) | `test_hooks_install_py_install_hook` | fixed; red-on-fault: not applicable, because the change removes a read and adds no behaviour check. `grep -n "read_bytes\|read_text" gars/tests/test_r164_writer_recovery.py` now shows only fixture reads |
+| MINOR, one-step-out faults in classes 1, 3 and 5 (C1b, G1, G3b, G5b) | none (the scope says answer, don't test) | none | stays a named residual: the scope bounds round 6 to F1–F4, so these four survive the modules the reviewer ran. The whole suite's inline tests may kill G3b or G5b, but that is not verified |
+| NOTE, round-4 claims rest on uncommitted scratch probes | none | none | stays: the review requires no fix. The round-4 driver and probes, and this round's `<scratch>/plants/drive_r6.py`, stay uncommitted in `<scratch>`; the lane may archive them |
+
+Existing tests changed: none outside this lane's own modules. Inside them, `files()` was widened (it lists directories as well as files), `half_copy` writes fixed bytes, and the `stage03_analysis create` row gains a `creates` list that names its four allocated folders. No assertion was removed.
+
+### Class 4 inventory (F1)
+
+The inventory was derived by searching `gars/_system/**/*.py` (outside `authoring/`) for dict and `get` lookups whose key is a backend (`BUILTINS[...]`, `descriptor['name']`), a recorded executor (`entry['executor']`, `previous['executor']`), an assay (`PIPELINES`, `ASSAY_DECISIONS`, `FORMATS`, `EXTRA_DESIGN_COLUMNS`, `NEXTFLOW_LEGACY_PARSER`, `catalog[aid]`) or an input kind (`INPUT_KINDS`, `FILES_HEADERS`, `input_kind(...)`).
+
+| Lookup (file:function) | Key pair driven | Test |
+|---|---|---|
+| `executorlib.load` `BUILTINS.get(name)`; `nextflow_config_path`, `nextflow_profile`, `header_lines` | slurm (default) / local | `test_executor_descriptor_by_backend` (round 1) |
+| `executorlib.validate` `BUILTINS[name]` (fixed keys, `directives`) | slurm / local, each with the other's entry swapped in | `test_validate_reads_the_named_backends_own_entry` |
+| `executorlib.submit_argv`, `resources_argv` `BUILTINS[descriptor['name']]` | slurm / local | `test_submit_and_resources_argv_are_the_backends_own` |
+| `executorlib._submit_analysis` `BUILTINS[previous['executor']]` (G4) | prior slurm job resubmitted via local, and prior local job via slurm | `test_resubmission_polls_the_prior_jobs_own_backend` |
+| `executorlib.analysis_execution_evidence` `BUILTINS[entry['executor']]` (C4a) | one slurm and one local script in one analysis | `test_execution_evidence_polls_each_scripts_own_backend` |
+| `executorlib._analysis_job_descriptor` via `status` | slurm job asked through local, and local job through slurm | `test_status_of_an_analysis_job_uses_its_recorded_backend` |
+| `executorlib._scheduler_status` `status_map` | scheduler tokens | `SchedulerStateMapTests` (round 2) |
+| `workspace.PIPELINES` via `wrapperlib.pipeline_checkout` | all seven assays | `test_pipeline_checkout_by_assay` (round 1) |
+| `workspace.PIPELINES[ASSAY]` in each nf-core wrapper's `cmd_check` | all seven wrappers, pairwise distinct | `test_check_records_the_wrappers_own_pipeline` |
+| `configure.genome_menu` `PIPELINES.get(assay)` | rnaseq_bulk / atacseq_bulk / spatialvi / no assay | `test_genome_menu_cache_is_the_assays_own_pipeline` |
+| `configure.ASSAY_DECISIONS` in `cmd_apply` | cutandrun, methylseq (genome) beside spatialvi (unregistered); scrnaseq and atacseq_bulk in `test_r164_params_mapping` | `test_apply_completes_the_assays_own_decisions` |
+| `stage00_register.menu` `catalog[aid]` | two fixture assays with distinct names and sub-stages | `test_assay_menu_entries_carry_their_own_assays_row` |
+| `workspace.NEXTFLOW_LEGACY_PARSER` in `write_submit_sh` | all seven assays | `test_legacy_parser_export_follows_the_assay` (round 1) |
+| `workspace.EXTRA_DESIGN_COLUMNS`; `INPUT_KINDS`/`FILES_HEADERS` | chipseq_bulk / cutandrun / the rest; spatialvi / rnaseq_bulk | `test_design_columns_and_input_kind_by_assay` (round 1) |
+| `stage00_register.cmd_inspect`, `cmd_link` `input_kind(args.assay)` | spatialvi / rnaseq_bulk over one mixed source | `test_inspect_and_link_find_the_assays_own_kind_of_input` |
+| `stage00_register.cmd_finalize` `input_kind(aid)` (registration and the gate, C4b), `design_columns(aid)`, `catalog_names` | spatialvi / rnaseq_bulk / chipseq_bulk in one project; a dangling spatial link | `test_finalize_registers_and_gates_each_assay_by_its_own_kind` |
+| `stage01_samplesheet.path_column`, the registry reconciliation's `input_kind(assay)`, `FORMATS['spatialvi']` | spatialvi (rnaseq_bulk and four others in `Stage01FormatByAssayTests`) | `test_stage01_emits_the_directory_column_for_a_directory_assay` |
+
+Left out, each with its reason:
+
+| Code | Reason |
+|---|---|
+| Equality branches on a backend name: `venue_of`, `_analysis_launcher`'s header, `scheduler_start`, `cancel`, `_local_submit`'s selection, `resources`, `_analysis_local_binding`, `wrapperlib` manifest `info.get('kind') == 'local'`, `venue_policy`'s `venue == 'local'` | Each is a comparison with a literal, not a table lookup; the scope bounds F1 to dict and `get` lookups |
+| `manifest_check` `backend in ('local', 'slurm')` | A membership check, not a lookup |
+| `tools/policy.py` `tool['assay']` | A field of the tool's own record, not a table keyed on assay |
+| `evidence_check.PARENT_KEYS[kind]`, `render_report.GROUP_KEYS`, `wrapperlib.STATUS_ALIASES`, `stage01_samplesheet.CONFIG_RULES`, `INDEX_PARAM` and the scrnaseq protocol table (aligner, rounds 1–3), `_PREPARE_EXECUTION`, `_REFERENCE_HASH_CACHE` | Keyed on another domain (evidence kind, claim group, status token, config key, aligner, path), not on a backend or an assay |
+| `stage00_register` `per_assay[aid]`, `stage01_samplesheet` `results[assay]` | Accumulators built in the same loop that reads them, not tables |
+| `authoring/` | Developer scaffolding, not a recorded state or a runtime path |
+
+### Class 2: the corrected "Left out" entry (F2)
+
+Round 4's row "`stage03_analysis` `approve` (`PLAN.md` and the `O_EXCL` approval record) and `verify` (`OUTPUTS.tsv`, `STATUS`); `executorlib` action approval records (`O_EXCL`)" now reads as follows. `approve`'s `PLAN.md` and `verify`'s `OUTPUTS.tsv` are rows of the table. `verify`'s `STATUS` is written by `wrapperlib.write_status`, which has its own row. Left out: `approve`'s approval record and `executorlib`'s action approval records, because `O_EXCL` creation refuses to overwrite by construction ("a crash leaves an invalid record, never approval"). The table now holds 48 rows.
+
+### Plant table, round 6
+
+Driver: `<scratch>/plants/drive_r6.py`, not committed. Each plant gets a fresh `rsync -a --exclude .git --exclude __pycache__` copy under `<scratch>`, a one-occurrence replacement asserted unique, and `PYTHONDONTWRITEBYTECODE=1`. Only the named module is run, and the copy is deleted afterwards. The unplanted tree printed `OK` on both modules (commands below).
+
+| Plant | Class | file:function | Diff, in one line | Module run | Failing test(s) | Red seen |
+|---|---|---|---|---|---|---|
+| G4 (reviewer) | 4 | `executorlib.py:_submit_analysis` | `BUILTINS[previous['executor']]` → `BUILTINS['local']` | `test_r164_keyed_lookups` | `test_resubmission_polls_the_prior_jobs_own_backend` (`FAILED (failures=1)`) | yes |
+| C4a (reviewer) | 4 | `executorlib.py:analysis_execution_evidence` | `BUILTINS[entry['executor']]` → `BUILTINS['local']` | `test_r164_keyed_lookups` | `test_execution_evidence_polls_each_scripts_own_backend` (`FAILED (failures=1)`) | yes |
+| C4b (reviewer) | 4 | `stage00_register.py:cmd_finalize` | gate `ws.input_kind(aid)` → `ws.input_kind("rnaseq_bulk")` | `test_r164_keyed_lookups` | `test_finalize_registers_and_gates_each_assay_by_its_own_kind` (`FAILED (errors=1)`) | yes |
+| K1 | 4 | `executorlib.py:_analysis_job_descriptor` | `return BUILTINS[entry['executor']]` → `return BUILTINS['slurm']` | `test_r164_keyed_lookups` | `test_status_of_an_analysis_job_uses_its_recorded_backend` (`FAILED (failures=1)`) | yes |
+| K2 | 4 | `configure.py:genome_menu` | `ws.PIPELINES.get(assay)` → `ws.PIPELINES.get("rnaseq_bulk")` | `test_r164_keyed_lookups` | `test_genome_menu_cache_is_the_assays_own_pipeline` (`FAILED (failures=3)`) | yes |
+| K3 | 4 | `stage01_samplesheet.py:path_column` | `ws.input_kind(assay)` → `ws.input_kind("rnaseq_bulk")` | `test_r164_keyed_lookups` | `test_stage01_emits_the_directory_column_for_a_directory_assay` (`FAILED (errors=1)`) | yes |
+| K4 | 4 | `stage00_register.py:menu` | `catalog[aid]["assay"]` → `catalog[sorted(catalog)[0]]["assay"]` | `test_r164_keyed_lookups` | `test_assay_menu_entries_carry_their_own_assays_row` (`FAILED (failures=1)`) | yes |
+| X1 (reviewer) | 2 | `stage03_analysis.py:cmd_approve` | `PLAN.md` `ws.atomic_open` → plain `open(..., "w")` | `test_r164_writer_recovery` | `test_stage03_analysis_approve` (`FAILED (failures=3)`) | yes |
+| X2 (reviewer) | 2 | `stage03_analysis.py:cmd_verify` | `OUTPUTS.tsv` `ws.atomic_open` → plain `open(..., "w")` | `test_r164_writer_recovery` | `test_stage03_analysis_verify` (`FAILED (failures=4)`) | yes |
+| X4 (reviewer) | 2 | `wrapperlib.py:harvest_cache` | `finally: shutil.rmtree(tmp, ...)` → `pass` | `test_r164_writer_recovery` | `test_wrapperlib_harvest_cache` (`FAILED (failures=5)`) | yes |
+
+Counts: 10 of 10 plants went red. Seven are class 4 (the reviewer's three and four of the producer's), and three are class 2 (all the reviewer's). This is development evidence, not a mutation score, and these kills are in the named modules only.
+
+### Commands and summary lines, round 6
+
+All commands were run from the repository root with `TMPDIR`, `TEMP` and `TMP` at `<scratch>`, on macOS, with `python3` = 3.8.2.
+
+| Module | Summary line | `real` (s) |
+|---|---|---|
+| `test_r164_exact_bytes` | `Ran 10 tests in 0.525s` / `OK` | 0.73 |
+| `test_r164_failure_recovery` | `Ran 17 tests in 0.631s` / `OK` | 0.87 |
+| `test_r164_params_mapping` | `Ran 13 tests in 0.303s` / `OK` | 0.52 |
+| `test_r164_keyed_lookups` (changed) | `Ran 27 tests in 0.435s` / `OK` | 0.59 |
+| `test_r164_boundaries` | `Ran 22 tests in 0.321s` / `OK` | 0.54 |
+| `test_r164_collect_gates` | `Ran 33 tests in 0.833s` / `OK` | 1.05 |
+| `test_r164_writer_recovery` (changed) | `Ran 49 tests in 5.084s` / `OK` | 5.35 |
+| `test_stage03_execution` (existing; both changed modules build on it) | `Ran 17 tests in 8.120s` / `OK` | 8.36 |
+
+- The seven R-164 modules sum to 9.65 s (171 tests, no skip). The two changed modules also printed `OK` under `/usr/local/bin/python3` (3.13.2): `Ran 27 tests in 0.452s` and `Ran 49 tests in 3.177s`. Both parse under `ast.parse(..., feature_version=(3, 6))`.
+- `python3 tests/check_contracts.py`: `14 contracts clean: sections, wait points, vocabulary.`
+- `python3 tests/check_counts.py`: `collected 360 tests from tests`, `collected 514 tests from gars/tests`, `suite: 874 tests, from unittest's loader`, `clean — every current claim matches the suite`. This was after README line 322 and DEVELOPMENT lines 156 and 175 were moved from 860 to 874; nothing else in those files changed.
+- `python3 evals/test_harness.py` (3.8.2): `Ran 44 tests in 181.450s` / `FAILED (errors=13)`. All 13 errors are `AttributeError`s for `str.removesuffix`, `str.removeprefix` and `ast.unparse`, which Python 3.8 lacks; `evals/` is untouched, and round 1's 3.8 log shows the same 13. `/usr/local/bin/python3 evals/test_harness.py` (3.13.2): `Ran 44 tests in 163.512s` / `OK`.
+- `python3 evals/check_results.py --controls --lexicon`: `clean — graded=1`.
+- `bash docs/decisions/build_index.sh` rewrote `docs/decisions/CONTEXT.md` byte-identically: no record's frontmatter changed. `python3 tests/test_decision_links_resolve.py` then printed `Ran 3 tests in 1.410s` / `OK`, `citations: 376/376 resolve`.
+- `git diff --stat 2a81999 -- gars/_system gars/02_bioinformatics gars/_references gars/_templates gars/.claude .github benchmarks evals` printed nothing before the commit, and the same command against `HEAD` is re-checked after the commit.
+
+Not run, as the brief requires: the whole suite, the mutation runner and every `test_review_faults_*` module.
+
+## Owner rulings needed
+
+- **A failed `stage03_analysis create` leaves its allocated analysis folders behind (found by F3's directory check on unmodified code; not fixed and not tested around, per the brief's rule 2).** `cmd_create` allocates `03_custom_analysis/01_<slug>/` with `results/` and `scripts/`, then writes `PLAN.md`. When that write fails (open, write, fsync or rename refused), the exception surfaces and no `PLAN.md` is left, but the four folders stay. The failing check is `test_stage03_analysis_create` in `gars/tests/test_r164_writer_recovery.py`, whose tree listing gains `project/03_custom_analysis/`, `.../01_fixture/`, `.../01_fixture/results/` and `.../01_fixture/scripts/` at every step. That check is left out of the commit: the row's `creates` names those four folders, and every other path in its tree is still judged. Options, framed as round 4 framed its own owner question:
+  - (a) rule it a defect, the same shape as round 5's "stage 00's project creation could leave a partial project". A later, non-test-only item then fixes it, and the `creates` list is removed.
+  - (b) rule it outside the principle, as a creation-only allocation with no prior bytes, and record that ruling so the exclusion is the owner's and not the producer's.
+
+## Residual gaps after round 6
+
+- The one owner question above.
+- The four class-2 residuals ruled in round 5 still wait on a later item that is not test-only.
+- Review 4's one-step-out faults C1b, G1, G3b and G5b (classes 1, 3 and 5) survive the modules the reviewer ran; round 6 adds no test for them, by its scope.
+- F3's second part, a `cache/bowtie2` destination with a rename fault on the harvest row, is not added, by the scope.
+- The whole suite in modes B and C, and its added wall time, are for the lane to measure on its node. The seven R-164 modules take about 9.7 s here, against the 15 s allowance.
+- Descriptor-level faults, `chmod` after the rename, and the `O_EXCL` approval records stay as stated above.
+- Producer and reviewer share a model (0087, Context).
