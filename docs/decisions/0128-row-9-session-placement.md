@@ -536,3 +536,15 @@ this follow-up measures nothing.
 ## Owner rulings needed
 
 None.
+
+## Addendum, 2026-09-25: the round C re-review's NOTEs, recorded at landing
+
+This addendum is written by the lane at landing, under the owner's delegation quoted in 0072; it is not the producer's text, and nothing in it is attributed to the owner.
+The fresh re-review of round C (a separate Claude Opus 5.5 session) returned APPROVE: it found round B's review closed (its MAJOR fixed, its NOTEs recorded above) and raised two NOTEs, answered here with no change to code or tests.
+
+- **A dot command reached through an expansion** (an empty unquoted expansion before the `.`, `"$@"` with no arguments, an empty backquote substitution, or a brace expansion that yields the `.`) still escapes the command-word scan, because the shell expands those words before it finds the command word and the audit does not.
+  This is 0125's named shell-indirection residual and 0072 item 23 (e)'s unparsed-construct residual; with this record's carrying it can now span calls.
+  No rule is written for it: a rule written from the spellings a review reproduced leaves the next spelling uncovered, and the reviewer's sandbox is the enforcement wall for such reads.
+- **A test gap in the honest direction:** no test fails if the scan over-blocks a dot operand after a redirection (for example `grep -rn x >o .`); the code at this merge is correct for those shapes, so the gap is named here and left for a later round.
+
+The re-review's full text, its hash and the deployment's evidence at this merge are kept with the deployment.
