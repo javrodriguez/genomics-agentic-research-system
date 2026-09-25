@@ -297,6 +297,11 @@ class UnitEconomicsTests(unittest.TestCase):
                 '"hourly_value_usd": 1', '"hourly_value_usd": 1e30')))
         self.assert_refused('value_out_of_range', log=self.variant(
             'huge.csv', log.replace(',data,5.00', ',data,99999999999999999999999999999.00')))
+        # An exponent past the context's Emax raises decimal.Overflow, not InvalidOperation (m1).
+        for exponent in ('1e999999', '1E+999999999'):
+            self.assert_refused('value_out_of_range', inputs=self.variant(
+                'overflow.json', json.dumps(dict(inputs, hourly_value_usd=1)).replace(
+                    '"hourly_value_usd": 1', '"hourly_value_usd": ' + exponent)))
         print('red-on-fault: seventh column, unknown key, typed liability, non-null price, '
               'hand-typed bench cost -> each REFUSED with its reason')
 
@@ -438,8 +443,8 @@ class UnitEconomicsTests(unittest.TestCase):
         for shape in ('quantity samples_in_design <non-negative integer>',
                       'quantity cpu_hours <backend> <non-negative decimal>',
                       'human turns: <t>; inside spans: <i>; outside spans: <o>; outside minutes: '
-                      '<m>; session wall minutes: <w>; agent active minutes: <a>; graded <n> of '
-                      '<n> records'):
+                      '<m>; session wall minutes: <w>; agent active minutes: <a>; outside window: '
+                      '<k>; graded <n> of <n> records'):
             self.assertIn(shape, readme)
         examples = re.findall(r'^    (quantity .+|human turns: .+)$', readme, re.M)
         self.assertEqual(len(examples), 3)

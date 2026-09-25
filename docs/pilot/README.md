@@ -27,10 +27,14 @@ python3 scripts/session_turns.py --transcript <session.jsonl> --log pilot1_log.c
 All three are stdlib-only; written for Python 3.6.8 (syntax checked, not executed on 3.6.8). A
 refusal exits 2 with `refused: <reason>` on stderr and writes nothing; input that would crash a
 parser (a NUL byte, runaway JSON nesting) is refused with a fixed code too, never a traceback, and
-so is a number too large to print to the cent (`value_out_of_range`). Every refusal code is the
-same on every Python from 3.6 to 3.13: a NUL byte is refused before the `csv` module sees it
-(3.11 and later read one as data), integers are never converted through `int()` of their text
-(3.11 and later cap its digits), and every file is read as UTF-8 whatever the locale. A
+so is a number too large to print to the cent or an exponent past the decimal context
+(`value_out_of_range`, whichever decimal signal it raises). Refusal codes are required to be
+the same on every Python from 3.6 to 3.13, tested by emulating both sides of each known split
+(`tests/pilot_emulation.py`); executed on CPython 3.8.2, 3.8.19, 3.9.6, 3.9.21, 3.10.16, 3.12.9,
+3.12.14, 3.13.2 and 3.14.7, not on 3.6, 3.7 or 3.11. To that end a NUL byte is refused before the
+`csv` module sees it (3.11 and later read one as data), integers are never converted through
+`int()` of their text (3.11 and later cap its digits), and every file is read as UTF-8 whatever
+the locale. A
 refused `unit_economics.py` run leaves any sheet already in `--out` untouched, so a stale sheet
 can outlive a refused regeneration: compare its `input … sha256` lines with the inputs before
 using it.
@@ -59,13 +63,13 @@ only begins with it (`quantity_notes`) is another line, counted and ignored:
 - `quantity samples_in_design <non-negative integer>`
 - `quantity cpu_hours <backend> <non-negative decimal>`, backend one of `local`, `homelab`, `slurm`
 - the session_turns line exactly as `session_turns.py` prints it:
-  `human turns: <t>; inside spans: <i>; outside spans: <o>; outside minutes: <m>; session wall minutes: <w>; agent active minutes: <a>; graded <n> of <n> records`
+  `human turns: <t>; inside spans: <i>; outside spans: <o>; outside minutes: <m>; session wall minutes: <w>; agent active minutes: <a>; outside window: <k>; graded <n> of <n> records`
 
 For example (one of each shape):
 
     quantity samples_in_design 6
     quantity cpu_hours slurm 1.75
-    human turns: 6; inside spans: 4; outside spans: 2; outside minutes: 1.50; session wall minutes: 47.00; agent active minutes: 45.50; graded 14 of 14 records
+    human turns: 6; inside spans: 4; outside spans: 2; outside minutes: 1.50; session wall minutes: 47.00; agent active minutes: 45.50; outside window: 0; graded 14 of 14 records
 
 Values are stored and printed in canonical form (no leading zeros, no trailing fractional
 zeros: `01.750` is `1.75`, `0.20` is `0.2`), and a repeated quantity is compared by canonical
@@ -126,16 +130,28 @@ one table are counted, never printed.
 
 ### The session transcript (`--transcript`)
 
-A Claude Code session JSONL, one record per line. A record classifies as a human turn
-(`type == "user"`, not `isMeta`, `isCompactSummary` or `isSidechain`, content not
-`tool_result`), a tool result, meta or harness record (non-human), or an assistant record
-(`type == "assistant"`, not `isSidechain`). A `user` record with `isCompactSummary` true is
-written by Claude Code itself (ruling L2), and a record of **any** type with `isSidechain` true
-is subagent traffic the human does not see (ruling L6): either is graded but never counts as a
-human turn, never starts an outside turn's attention interval (so it cannot change `outside
-minutes`) and is never part of the agent-active span. It still counts toward `session wall
-minutes`, which spans every record. An extra key on an otherwise known
-record does not change its class; each needs an ISO-8601 `timestamp` with `Z` or a numeric
-offset. Any other record — another type, a missing or unparseable timestamp, a blank line — is
+A Claude Code session JSONL, one record per line. The type is checked first (ruling L7): only
+`user` and `assistant` are known, and a record with a missing, null or unknown `type` is
+unclassifiable and exits 2 whatever its flags (`isSidechain`, `isMeta`, `isCompactSummary`). A
+known record classifies as a human turn (`type == "user"`, none of the three flags, content not
+all `tool_result`), a tool result, meta or harness record (non-human), or an assistant record
+(`type == "assistant"`, none of the three flags). A record with `isCompactSummary` true is
+written by Claude Code itself (ruling L2), a record with `isSidechain` true is subagent traffic
+the human does not see (ruling L6), and a record with `isMeta` true is meta: each is graded but
+never counts as a human turn, never starts an outside turn's attention interval (so it cannot
+change `outside minutes`) and is never part of the agent-active span; either flag is enough
+(ruling m2). Their content is not examined.
+
+The session's window (ruling L7) runs from the timestamp of the first main-thread record in file
+order to that of the last, a main-thread record being a `user` or `assistant` record carrying
+none of the three flags; a start later than the end is refused `session_window_inverted`.
+`session wall minutes` is the window's length. A record whose timestamp lies outside the window
+is graded, counted in `outside window: <k>`, and never used in session wall minutes, agent-active
+minutes, outside minutes or as a predecessor; a human turn outside it still counts as a turn. A
+transcript with no main-thread record has an empty window, and every record lies outside it.
+
+An extra key on an otherwise known record does not change its class; each needs an ISO-8601
+`timestamp` with `Z` or a numeric offset. Any other record — a missing or unparseable timestamp,
+main-thread `user` content mixing `tool_result` with other blocks, a blank line — is
 unclassifiable and exits 2. `outside minutes` follows ruling L1 (decision 0140) and is a lower
 bound on unlogged human attention; it never changes a logged minute.

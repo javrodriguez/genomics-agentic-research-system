@@ -4,6 +4,7 @@ The comparison layout is built under the scratch folder at test time from commit
 tables; no machine path is committed. Every check drives the real CLI.
 """
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -91,10 +92,10 @@ class RerunDiffTests(unittest.TestCase):
         return [a for a in self.data['runs'][run_index]['artifacts']
                 if a['path'].endswith('de_results.csv')][0]
 
-    def run_diff(self):
+    def run_diff(self, env=None):
         return subprocess.run([sys.executable, str(SCRIPT), '--comparison', str(self.comparison)],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                              universal_newlines=True)
+                              universal_newlines=True, env=dict(os.environ, **(env or {})))
 
     def assert_clean(self, text):
         forbidden = ['GENEFIX', 'SAMPLEFIX', str(self.root), str(REPO), 'de_results',
@@ -238,6 +239,18 @@ class RerunDiffTests(unittest.TestCase):
                 with emulation.emulating(side, [rd]):
                     seen.append(emulation.outcome(rd.main, ['--comparison', str(self.comparison)]))
             self.assertEqual(seen, [expected, expected], name)
+        # A non-ASCII comparison key (carried, never printed) reads the same under a C locale as
+        # under UTF-8 (review round 3, n3).
+        path.write_text(good)
+        self.de_artifact(1)['replay_sha256'] = sha(path)
+        self.comparison.write_bytes(json.dumps(dict(self.data, **{'r\u00e9sum\u00e9': 'caf\u00e9'}),
+                                               ensure_ascii=False).encode('utf-8'))
+        self.assertIn(b'\xc3\xa9', self.comparison.read_bytes())
+        runs = [self.run_diff(env=env) for env in (
+            {'LC_ALL': 'C', 'LANG': 'C', 'PYTHONUTF8': '0', 'PYTHONCOERCECLOCALE': '0'},
+            {'PYTHONUTF8': '1'})]
+        self.assertEqual([(r.returncode, r.stdout, r.stderr) for r in runs],
+                         [(0, EXPECTED, '')] * 2)
         print('red-on-fault guard: every refusal code is the same on both sides of each '
               'Python-version split')
 

@@ -21,12 +21,15 @@ What the sheet refuses (exit 2, `refused: <reason>` on stderr, nothing written):
   shapes (`quantity_malformed`), and a quantity repeated with a different canonical value
   (`quantity_conflict`);
 - input that crashes a parser (a NUL byte, runaway nesting): a fixed code, never a traceback;
-- a number too large to print to the cent (`value_out_of_range`).
+- a number too large to print to the cent, or an exponent past the decimal context
+  (`value_out_of_range`).
 
-Every refusal code is the same on every Python from 3.6 to 3.13: a NUL byte is refused before
-the csv module sees it (3.11 and later accept one), integers are never converted through `int()`
-of their text (3.11 and later, and backports, limit its digits), and every file is read as
-UTF-8 whatever the locale.
+Refusal codes are required to be the same on every Python from 3.6 to 3.13, tested by emulating
+both sides of each known split (tests/pilot_emulation.py); executed on CPython 3.8.2, 3.8.19,
+3.9.6, 3.9.21, 3.10.16, 3.12.9, 3.12.14, 3.13.2 and 3.14.7, not on 3.6, 3.7 or 3.11. To that end
+a NUL byte is refused before the csv module sees it (3.11 and later accept one), integers are
+never converted through `int()` of their text (3.11 and later, and backports, limit its
+digits), and every file is read as UTF-8 whatever the locale.
 
 What it never does: print a free-text field (the owner's strings, a path), compute a margin
 without a price, or correct the session cross-check -- a human turn outside every logged span
@@ -42,7 +45,7 @@ import io
 import json
 import re
 import sys
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import Decimal, DecimalException, ROUND_HALF_UP
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -66,7 +69,8 @@ QUANTITY_CPU = re.compile(r"^quantity cpu_hours (local|homelab|slurm) ([0-9]+(?:
 SESSION_LINE = re.compile(
     r"^human turns: ([0-9]+); inside spans: ([0-9]+); outside spans: ([0-9]+); "
     r"outside minutes: ([0-9]+\.[0-9]{2}); session wall minutes: ([0-9]+\.[0-9]{2}); "
-    r"agent active minutes: ([0-9]+\.[0-9]{2}); graded ([0-9]+) of \7 records$")
+    r"agent active minutes: ([0-9]+\.[0-9]{2}); outside window: ([0-9]+); "
+    r"graded ([0-9]+) of \8 records$")
 
 
 class Refused(Exception):
@@ -446,8 +450,9 @@ def main(argv=None):
     except Refused as why:
         sys.stderr.write("refused: %s\n" % why)
         return EXIT_REFUSED
-    except InvalidOperation:
-        # A number past the decimal context (28 digits) cannot be printed to the cent.
+    except DecimalException:
+        # A number past the decimal context (28 digits, or an exponent past Emax, which raises
+        # Overflow rather than InvalidOperation) cannot be printed to the cent.
         sys.stderr.write("refused: value_out_of_range\n")
         return EXIT_REFUSED
     out = Path(args.out)

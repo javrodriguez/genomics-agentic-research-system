@@ -1,40 +1,55 @@
 #!/usr/bin/env python3
 """Session cross-check (M4): human turns in an agent session against the logged human spans.
 
-Row 13 step A (decision 0140, D4b and rulings L1, L2, L6). Stdlib-only; written for Python 3.6.8
-(syntax checked, not executed on 3.6.8).
+Row 13 step A (decision 0140, D4b and rulings L1, L2, L6, L7). Stdlib-only; written for Python
+3.6.8 (syntax checked, not executed on 3.6.8).
 
     python3 scripts/session_turns.py --transcript <session.jsonl> --log <pilot1_log.csv> \
         --stage 02_02_de
 
-Every line of the transcript is one record and must classify:
-- `type == "user"` with `isMeta` true: a meta record (non-human);
-- a record of ANY type with `isSidechain` true (ruling L6: subagent traffic the human does not
-  see), or `type == "user"` with `isCompactSummary` true (ruling L2): harness-generated,
-  graded like every record but never a human turn, never the predecessor that starts an outside
-  turn's attention interval (so it cannot change `outside minutes`) and never part of the
-  agent-active span;
+Every line of the transcript is one record and must classify. The type is checked first (ruling
+L7): only `user` and `assistant` are known, and a record with a missing, null or unknown `type`
+is unclassifiable whatever its flags. Then:
+- a `user` or `assistant` record with `isSidechain` true (ruling L6: subagent traffic the human
+  does not see) or `isCompactSummary` true (ruling L2): harness-generated;
+- a `user` or `assistant` record with `isMeta` true: a meta record;
 - `type == "user"` whose content is all `tool_result` blocks: a tool result (non-human);
 - any other `type == "user"` record (string content, or blocks none of which is a
   `tool_result`): a human turn;
-- `type == "assistant"` without `isSidechain`: an agent record.
-The flags must be booleans. Each record needs an ISO-8601 `timestamp` with `Z` or a numeric offset. Anything else -- another
-record type, a missing or unparseable timestamp, content mixing `tool_result` with other blocks,
-a blank line, a JSON line nested past the parser's depth -- is unclassifiable and exits 2; no
-record is skipped. An extra key on an otherwise known record does not change its class, whatever
-Python reads it: integers are parsed as decimals, never through `int()` of their text, whose
-digits 3.11 and later cap. Every file is read as UTF-8 whatever the locale.
+- any other `type == "assistant"` record: an agent record.
+A harness or meta record is graded like every record but is never a human turn, never the
+predecessor that starts an outside turn's attention interval (so it cannot change `outside
+minutes`) and never part of the agent-active span (ruling m2: either flag is enough). The
+content of a harness or meta record is not examined.
+The flags must be booleans. Each record needs an ISO-8601 `timestamp` with `Z` or a numeric
+offset. Anything else -- a missing or unparseable timestamp, main-thread `user` content mixing
+`tool_result` with other blocks, a blank line, a JSON line nested past the parser's depth -- is
+unclassifiable and exits 2; no record is skipped. An extra key on an otherwise known record does
+not change its class, whatever Python reads it: integers are parsed as decimals, never through
+`int()` of their text, whose digits 3.11 and later cap. Every file is read as UTF-8 whatever the
+locale. Refusal codes are required to be the same on every Python from 3.6 to 3.13, tested by
+emulating both sides of each known split (tests/pilot_emulation.py); executed on CPython 3.8.2,
+3.8.19, 3.9.6, 3.9.21, 3.10.16, 3.12.9, 3.12.14, 3.13.2 and 3.14.7, not on 3.6, 3.7 or 3.11.
+A decimal signal is `value_out_of_range`, never a traceback.
+
+The session's window (ruling L7) runs from the timestamp of the FIRST main-thread record in file
+order to that of the LAST, a main-thread record being a human turn, a tool result or an agent
+record; a start later than the end is refused `session_window_inverted`. A record whose timestamp
+lies outside the window is graded and counted as `outside window`, and is never used in `session
+wall minutes` (the window's length), `agent active minutes`, `outside minutes` or as a
+predecessor; a human turn outside it is still counted as a turn, inside or outside the spans. A
+transcript with no main-thread record has an empty window: every record lies outside it.
 
 A human turn is inside when its timestamp falls within a `human` span (`ts` to `ts + minutes`)
 of the stage. `outside minutes` (ruling L1) is a LOWER BOUND on unlogged human attention: each
-outside turn's interval runs from the latest record strictly earlier in time to the turn, is
-clipped to the part outside every human span of the stage, and the union of those intervals is
-measured once, rounded half-up to two decimals. It is never added to or subtracted from any
-logged minute.
+outside turn's interval runs from the latest main-thread record in the window strictly earlier in
+time to the turn, is clipped to the part outside every human span of the stage, and the union of
+those intervals is measured once, rounded half-up to two decimals. It is never added to or
+subtracted from any logged minute.
 
 Prints one line of numbers only; never message content, a path or an identifier:
 `human turns: <t>; inside spans: <i>; outside spans: <o>; outside minutes: <m>; session wall
-minutes: <w>; agent active minutes: <a>; graded <n> of <n> records`.
+minutes: <w>; agent active minutes: <a>; outside window: <k>; graded <n> of <n> records`.
 """
 
 import argparse
@@ -42,7 +57,7 @@ import calendar
 import json
 import re
 import sys
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import Decimal, DecimalException, ROUND_HALF_UP
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -79,26 +94,27 @@ def micros(text):
     return seconds * 1000000 + sub
 
 
+KNOWN_TYPES = ("user", "assistant")
+FLAGS = ("isSidechain", "isMeta", "isCompactSummary")
+MAIN_THREAD = ("human", "tool_result", "assistant")
+
+
 def classify(record):
     """'human', 'tool_result', 'meta', 'harness' or 'assistant'; None when unclassifiable."""
-    if not isinstance(record, dict) or micros(record.get("timestamp")) is None:
+    # Ruling L7 (a): the type first, so no flag makes an unknown or missing type classifiable.
+    if not isinstance(record, dict) or record.get("type") not in KNOWN_TYPES:
         return None
-    kind = record.get("type")
-    sidechain = record.get("isSidechain", False)
-    if not isinstance(sidechain, bool):
+    if micros(record.get("timestamp")) is None:
         return None
-    if kind == "user":
-        meta, compact = record.get("isMeta", False), record.get("isCompactSummary", False)
-        if not isinstance(meta, bool) or not isinstance(compact, bool):
-            return None
-        if meta:
-            return "meta"
-        sidechain = sidechain or compact
-    elif kind != "assistant" and not sidechain:
+    kind = record["type"]
+    sidechain, meta, compact = (record.get(flag, False) for flag in FLAGS)
+    if not all(isinstance(flag, bool) for flag in (sidechain, meta, compact)):
         return None
-    if sidechain:
+    if sidechain or compact:
         # rulings L2 and L6: written by Claude Code or a subagent, never seen or typed by a human
         return "harness"
+    if meta:
+        return "meta"
     if kind == "assistant":
         return "assistant"
     message = record.get("message")
@@ -180,25 +196,33 @@ def count(transcript, log, stage):
             raise ue.Refused("unclassifiable record line %d" % number)
         records.append((kind, micros(record["timestamp"])))
 
-    times = [t for _, t in records]
-    # Rulings L2 and L6: a harness record never starts an outside turn's attention interval, and
-    # a subagent's assistant record is not agent activity the human sees.
-    predecessors = [t for kind, t in records if kind != "harness"]
-    agent = [t for kind, t in records if kind == "assistant"]
+    # Ruling L7 (b): the session's window runs from the first to the last main-thread record in
+    # file order; a record outside it is counted, never timed. Without a main-thread record the
+    # window is empty and every record lies outside it.
+    main_thread = [t for kind, t in records if kind in MAIN_THREAD]
+    if main_thread and main_thread[0] > main_thread[-1]:
+        raise ue.Refused("session_window_inverted")
+    start, end = (main_thread[0], main_thread[-1]) if main_thread else (None, None)
+    within = [(kind, t) for kind, t in records if start is not None and start <= t <= end]
+    # Rulings L2, L6 and m2: a harness or meta record never starts an outside turn's attention
+    # interval, and a subagent's assistant record is not agent activity the human sees.
+    predecessors = [t for kind, t in within if kind in MAIN_THREAD]
+    agent = [t for kind, t in within if kind == "assistant"]
     human = [t for kind, t in records if kind == "human"]
     inside = [t for t in human if any(s <= t <= e for s, e in spans)]
     outside = [t for t in human if not any(s <= t <= e for s, e in spans)]
     attention = []
     for t in outside:
         earlier = [x for x in predecessors if x < t]
-        if earlier:
+        if earlier and start <= t <= end:
             attention.extend(subtract((max(earlier), t), spans))
     return ("human turns: %d; inside spans: %d; outside spans: %d; outside minutes: %s; "
-            "session wall minutes: %s; agent active minutes: %s; graded %d of %d records"
+            "session wall minutes: %s; agent active minutes: %s; outside window: %d; "
+            "graded %d of %d records"
             % (len(human), len(inside), len(outside), minutes(union_length(attention)),
-               minutes(max(times) - min(times)),
+               minutes(end - start if main_thread else 0),
                minutes(max(agent) - min(agent) if agent else 0),
-               len(records), len(lines)))
+               len(records) - len(within), len(records), len(lines)))
 
 
 def main(argv=None):
@@ -212,7 +236,7 @@ def main(argv=None):
     except ue.Refused as why:
         sys.stderr.write("refused: %s\n" % why)
         return EXIT_REFUSED
-    except InvalidOperation:
+    except DecimalException:
         sys.stderr.write("refused: value_out_of_range\n")
         return EXIT_REFUSED
     print(line)

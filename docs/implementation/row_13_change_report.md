@@ -430,3 +430,156 @@ None.
 - **Lower bound only:** `outside minutes` under L1 still misses a forgotten span that has no
   human turn in it. Harness records, sidechain ones included, still count toward
   `session wall minutes`.
+
+## Review round 4 fixes
+
+2026-09-25. Answers the round-3 review (the independent review of `7c202a4`, verdict APPROVE WITH
+CHANGES: m1, m2, m3 MINOR; n3, n4, n5 NOTE) under the lane's rulings L7, m1, m2, n3, n4 and n5,
+recorded in 0140's third addendum as **the lane's**, made on 25 Sep 2026 under the owner's
+standing delegation of 23 Sep 2026; none is the owner's ruling. This is the final fix round of
+step A. Earlier sections of this report and 0140's earlier bytes are unchanged (0140 at
+`7c202a4`, 17 510 bytes, is an exact prefix of the new 0140, checked with `head -c | cmp`).
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| **m3 / L7 (a)**: an unknown or missing `type` with `isSidechain` was graded, and a far-future one moved session wall minutes to 2103853.33 | `scripts/session_turns.py` (`classify` checks the type first) | new `test_unknown_type_exits_2_whatever_its_flags`: the reviewer's exact record `{"type":"banana","isSidechain":true,"timestamp":"2030-01-15T10:12:20Z"}` appended to the fixture, plus `null`, missing and `system` types, each with each of the three flags | **yes**: red against `7c202a4`'s scripts (quoted below), green after; planted `an unknown type classified by its flags` RED under 3.8.2 and 3.13.2 |
+| **L7 (b)**: the session's time window and `outside window: <k>` | `scripts/session_turns.py`, `scripts/unit_economics.py` (`SESSION_LINE`), `docs/pilot/README.md`, `tests/fixtures/pilot/bring_home.txt`, the two test modules' expected lines | new `test_session_window_ruling_l7`: the variant `{"type":"assistant","isSidechain":true,"timestamp":"2030-01-15T10:12:20Z"}` appended leaves session wall minutes at 47.00 and every other number unchanged and prints `outside window: 1`; flagged records before the start and after the end; a main-thread record earlier than the start; an inverted window refused `session_window_inverted` | **yes**: red against `7c202a4` (quoted below); planted `a record outside the window used as a predecessor`, `wall minutes spanning every record` and `an inverted window accepted` each RED under 3.8.2 and 3.13.2. The fixture's numbers are unchanged apart from `outside window: 0` |
+| **m1**: `decimal.Overflow` (an exponent in `hourly_value_usd`) printed a traceback with a host path | `scripts/unit_economics.py`, `scripts/rerun_diff.py`, `scripts/session_turns.py` (every `main` catches `decimal.DecimalException` → `value_out_of_range`) | `test_refusals`: `hourly_value_usd: 1e999999` and `1E+999999999` | **yes**: red against `7c202a4` (`AssertionError: 1 != 2 : Traceback … decimal.Overflow: [<class 'decimal.Overflow'>]`); planted `a decimal Overflow left as a traceback` (the handler narrowed back to `InvalidOperation`) RED under 3.8.2 and 3.13.2; by CLI, the fixture with `1e999999` prints `refused: value_out_of_range`, exit 2 |
+| **m2**: a sidechain `isMeta` record (and any `isMeta` record) was still a predecessor | `scripts/session_turns.py` (flags read on both known types; `isSidechain`/`isCompactSummary` → harness, `isMeta` → meta; predecessors are main-thread records only) | `test_harness_records_are_graded_not_human`: a `user` record carrying both flags at 10:12:20, an `isMeta` `user` at 10:12:22 and an `isMeta` `assistant` at 10:12:24, inserted before the 10:12:30 outside turn, leave `outside minutes: 1.50` | **yes**: planted `a meta record starting an attention interval` (predecessors = every non-harness record, `7c202a4`'s rule) RED under 3.8.2 and 3.13.2. Against `7c202a4` itself the test first fails on the new line shape, so that run does not isolate m2; the plant does |
+| **n3**: the C-locale case did not guard `rerun_diff`'s or `session_turns`' read | `tests/test_rerun_diff.py`, `tests/test_session_turns.py` | the C-locale case in each `test_refusal_codes_do_not_depend_on_the_interpreter`: a non-ASCII carried key in `comparison.json`, a non-ASCII assistant record in the transcript, run under `LC_ALL=C PYTHONUTF8=0 PYTHONCOERCECLOCALE=0` and under `PYTHONUTF8=1` | **yes**: planted `a comparison read in the locale encoding` and `a transcript read in the locale encoding` (each `encoding="utf-8"` removed) RED under 3.8.2 and 3.13.2; the reviewer's two plants were green at `7c202a4` |
+| **n4**: the version claim stated as fact | the three script docstrings, `docs/pilot/README.md`, `DEVELOPMENT.md` | none (wording) | n/a: each now reads "refusal codes are required to be the same on every Python from 3.6 to 3.13, tested by emulating both sides of each known split; executed on CPython 3.8.2, 3.8.19, 3.9.6, 3.9.21, 3.10.16, 3.12.9, 3.12.14, 3.13.2 and 3.14.7, not on 3.6, 3.7 or 3.11", the nine interpreters run this round (below) |
+| **n5**: `tests/pilot_emulation.py` not in 0140's `touches:` | none (0140's frontmatter is not edited) | none | n/a: **for 0141's `touches:` (step B's record): `tests/pilot_emulation.py`**. `bash docs/decisions/build_index.sh` leaves `docs/decisions/CONTEXT.md` unchanged |
+
+The reviewer's m3 evidence that a sidechain `user` record whose content mixes `tool_result` with
+text is graded stays true and is now stated: the content of a harness or meta record is not
+examined (the script's docstring and `docs/pilot/README.md`); only main-thread `user` content
+mixing the two is unclassifiable. L7 checks the type first and says nothing about the content of
+flagged records, so no refusal was added.
+
+The review's side note on `pilot_emulation.emulating` (it patches `csv.reader` and `json.loads`
+process-wide and sets `sys.set_int_max_str_digits(640)` inside its `with` block) is unchanged:
+every patch and the digit limit are restored on exit, including on an exception. If a test fails
+only in the whole-suite run under 3.11 or later, test ordering around the three row-13 modules is
+the first place to look.
+
+### Red first: the round-4 tests against `7c202a4`'s scripts (Python 3.8.2)
+
+The new tests, fixture and README were written first and run while `scripts/` still equalled
+`7c202a4` (`git diff --quiet 7c202a4 -- scripts` → equal):
+
+```
+test_session_turns:  Ran 10 tests / FAILED (failures=5)
+FAIL: test_fixture_counts_only
+FAIL: test_harness_records_are_graded_not_human
+FAIL: test_refusal_codes_do_not_depend_on_the_interpreter
+FAIL: test_session_window_ruling_l7
+FAIL: test_unknown_type_exits_2_whatever_its_flags
+test_unit_economics: Ran 18 tests / FAILED (failures=7)   (test_refusals among them)
+test_rerun_diff:     Ran 8 tests / OK                     (n3's guard is red only by plant)
+```
+
+The reviewer's banana record, `test_unknown_type_exits_2_whatever_its_flags`:
+
+```
+AssertionError: Tuples differ: (0, 'human turns: 6; inside spans: 4; outs[126 chars], '') != (2, '', 'refused: unclassifiable record line 15\n')
+- (0,
+-  'human turns: 6; inside spans: 4; outside spans: 2; outside minutes: 1.50; '
+-  'session wall minutes: 2103853.33; agent active minutes: 45.50; graded 15 of '
+-  '15 records\n',
+-  '') : {"type":"banana","isSidechain":true,"timestamp":"2030-01-15T10:12:20Z"}
+```
+
+The assistant variant, `test_session_window_ruling_l7`:
+
+```
+- human turns: 6; inside spans: 4; outside spans: 2; outside minutes: 1.50; session wall minutes: 2103853.33; agent active minutes: 45.50; graded 15 of 15 records
++ human turns: 6; inside spans: 4; outside spans: 2; outside minutes: 1.50; session wall minutes: 47.00; agent active minutes: 45.50; outside window: 1; graded 15 of 15 records
+```
+
+### Green after the fix
+
+```
+test_session_turns:  Ran 10 tests / OK
+test_rerun_diff:     Ran 8 tests / OK
+test_unit_economics: Ran 18 tests / OK
+```
+
+By CLI on the fixture: the banana record and a typeless `isSidechain` record each give
+`refused: unclassifiable record line 15`, exit 2; the assistant variant gives
+`human turns: 6; inside spans: 4; outside spans: 2; outside minutes: 1.50; session wall minutes: 47.00; agent active minutes: 45.50; outside window: 1; graded 15 of 15 records`,
+exit 0; the fixture alone gives the same line with `outside window: 0; graded 14 of 14 records`.
+
+### Red-on-fault, round 4
+
+`tests/pilot_red_on_fault.py` gains eight faults (32 in all); three round-3 anchors moved with
+the code (`except DecimalException`, `if sidechain or compact`, and the harness-predecessor plant
+now uses every record, since `times` is gone). Baselines `OK`, every fault RED, restored modules
+`OK`, under both interpreters. The round-4 lines, 3.8.2:
+
+```
+an unknown type classified by its flags: RED; FAILED (failures=1); test_unknown_type_exits_2_whatever_its_flags
+a record outside the window used as a predecessor: RED; FAILED (failures=1); test_session_window_ruling_l7
+wall minutes spanning every record: RED; FAILED (failures=1); test_session_window_ruling_l7
+an inverted window accepted: RED; FAILED (failures=1); test_session_window_ruling_l7
+a meta record starting an attention interval: RED; FAILED (failures=1); test_harness_records_are_graded_not_human
+a decimal Overflow left as a traceback: RED; FAILED (failures=1); test_refusals
+a comparison read in the locale encoding: RED; FAILED (failures=1); test_refusal_codes_do_not_depend_on_the_interpreter
+a transcript read in the locale encoding: RED; FAILED (failures=1); test_refusal_codes_do_not_depend_on_the_interpreter
+red-on-fault: 32/32 RED
+```
+
+Under 3.13.2: `red-on-fault: 32/32 RED`, exit 0. The 3.8.2 driver run passed the harness's
+two-minute foreground limit and the harness moved it to the background; it ran to completion
+into the scratch folder and its log was read in full. The 3.13.2 run stayed in the foreground.
+
+### Commands and summary lines, round 4 (verbatim)
+
+| Command (from the repo root, `TMPDIR`/`TEMP`/`TMP` in the scratch folder, `GARS_TEST_NO_CONTAINER=1`) | Summary |
+|---|---|
+| each of the three modules under 3.8.2, 3.8.19, 3.9.6, 3.9.21, 3.10.16, 3.12.9, 3.12.14, 3.13.2 and 3.14.7 | `Ran 18 tests` / `OK`, `Ran 8 tests` / `OK`, `Ran 10 tests` / `OK` on every one |
+| `python3 tests/pilot_red_on_fault.py` (3.8.2) | `red-on-fault: 32/32 RED` |
+| `python3.13 tests/pilot_red_on_fault.py` (3.13.2) | `red-on-fault: 32/32 RED` |
+| `python3 tests/check_counts.py` | `clean — every current claim matches the suite` (569, from unittest's loader) |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/test_decision_links_resolve.py` | `Ran 3 tests` / `OK` |
+| `ast.parse(..., feature_version=(3, 6))` on the three scripts, the three modules, the driver and `pilot_emulation.py` | `ast36 ok` |
+| `bash docs/decisions/build_index.sh` | regenerated; no change (0140's frontmatter is unchanged) |
+| `git diff --check` | clean |
+
+**Not run by this producer: the whole suite (`tests/run_tests.py`).** The lane's brief for this
+round says the lane runs it. The count moves from 567 to 569 (two new test methods in
+`test_session_turns`), and `README.md` and `DEVELOPMENT.md` say so.
+
+Files for 0141's `touches:` (step B's record, n5): `tests/pilot_emulation.py`.
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps
+
+- **NOT met: row 13's exit.** The pilot, measured human-touch minutes, a real re-run diff
+  explained, the real sheet, the report, R-192 and any price are all still open. Every number
+  here is a synthetic fixture.
+- **NOT met: step B** (the writer, the doors, `bring_home`).
+- **Unverified bindings:** the bench CSV against 8B's code, and `comparison.json` against row 6's
+  `rerun_check.py`.
+- **Unverified on a real transcript:** L2, L6 and L7 cover the record kinds found so far. A real
+  transcript with any type other than `user` and `assistant` (a `summary` or `system` record,
+  for instance) exits 2 until a recorded ruling names it; so does a real transcript whose first
+  main-thread record in file order is later than its last.
+- **Readings of L7 for the lane to confirm** (0140's third addendum, not rulings): a human turn
+  outside the window still counts as a turn; a transcript with no main-thread record has an
+  empty window with every minute 0.00; `isMeta` and `isCompactSummary` are read, and must be
+  booleans, on `assistant` records too.
+- **Not run here:** the whole suite (the lane runs it); execution on Python 3.6, 3.7 and 3.11;
+  any cluster run.
+- **Emulated, not exhaustive:** the version-independence tests cover the three splits found
+  (csv NUL handling, the integer-digit limit, the locale encoding). A different stdlib change
+  between 3.6 and 3.13 would show only on a run under that version.
+- **n1, the folder names:** the reviews are cited by round and reviewed commit; the lane records
+  the folder names.
+- **Stated, not changed:** N3 (an `NA`↔significant move is not a crossing) and N4 (a stale sheet
+  can outlive a refused run), both documented in `docs/pilot/README.md`.
+- **Lower bound only:** `outside minutes` under L1 still misses a forgotten span that has no
+  human turn in it.

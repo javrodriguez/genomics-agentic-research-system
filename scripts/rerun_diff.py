@@ -22,10 +22,13 @@ that name. `NA` or empty `padj` is counted, never dropped silently; a gene whose
 between `NA` and a value is not a crossing and shows only in `na_padj`. An empty `runs` list and a
 repeated run number are refused (ruling L5). Refusals exit 2 with a fixed reason code on stderr;
 input that crashes a parser (a NUL byte, runaway nesting) is a fixed code too, never a traceback.
-Every code is the same on every Python from 3.6 to 3.13: a NUL byte is refused before the csv
-module sees it (3.11 and later read one as data), JSON integers are parsed as decimals, never
-through `int()` of their text (whose digits 3.11 and later cap), and `comparison.json` is read as
-UTF-8 whatever the locale.
+Refusal codes are required to be the same on every Python from 3.6 to 3.13, tested by emulating
+both sides of each known split (tests/pilot_emulation.py); executed on CPython 3.8.2, 3.8.19,
+3.9.6, 3.9.21, 3.10.16, 3.12.9, 3.12.14, 3.13.2 and 3.14.7, not on 3.6, 3.7 or 3.11. To that
+end a NUL byte is refused before the csv module sees it (3.11 and later read one as data), JSON
+integers are parsed as decimals, never through `int()` of their text (whose digits 3.11 and
+later cap), and `comparison.json` is read as UTF-8 whatever the locale. A decimal signal is
+`value_out_of_range`, never a traceback.
 """
 
 import argparse
@@ -35,7 +38,7 @@ import io
 import json
 import math
 import sys
-from decimal import Decimal
+from decimal import Decimal, DecimalException
 from pathlib import Path, PurePosixPath
 
 EXIT_REFUSED = 2
@@ -229,6 +232,9 @@ def main(argv=None):
         lines = diff(args.comparison)
     except Refused as why:
         sys.stderr.write("refused: %s\n" % why)
+        return EXIT_REFUSED
+    except DecimalException:
+        sys.stderr.write("refused: value_out_of_range\n")
         return EXIT_REFUSED
     for line in lines:
         print(line)

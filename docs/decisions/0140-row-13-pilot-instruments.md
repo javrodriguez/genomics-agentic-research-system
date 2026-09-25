@@ -266,3 +266,56 @@ append-only, so the correction is made here and in the round-3 section. The prod
 given the review folders' names and may not read those folders, so it cites each review by its
 round and the commit it reviewed (round 1: `76ebf7f`; round 2: `8764b01`) and leaves the folder
 names for the lane to record.
+
+## Addendum — review round 4, 2026-09-25
+
+Every ruling in this addendum is **the lane's**, made on 25 Sep 2026 under the owner's standing
+delegation of 23 Sep 2026 and ordered by the Row-orchestrator; none is the owner's ruling. All
+earlier bytes of this record, the round-2 and round-3 addenda included, are unchanged; where a
+ruling below narrows L6, this addendum governs. The fixes and their evidence are in
+[the change report](../implementation/row_13_change_report.md), section "Review round 4 fixes".
+The round answers the round-3 review (the independent review of `7c202a4`) and is the final fix
+round of step A.
+
+**Ruling L7 (the lane's; narrows L6; review m3).** (a) A transcript record's type is checked
+first. Only `user` and `assistant` are known types; a record with a missing, null or unknown
+`type` exits 2 whatever its flags (`isSidechain`, `isMeta`, `isCompactSummary`). L6's "a record
+of **any** type" now reads "a `user` or `assistant` record". (b) The session has its own time
+window. Its start is the timestamp of the first main-thread record in file order and its end the
+timestamp of the last main-thread record in file order, where a main-thread record is a `user` or
+`assistant` record carrying none of `isSidechain`, `isMeta` and `isCompactSummary`. A start later
+than the end is refused `session_window_inverted` (exit 2). Every record whose timestamp lies
+outside [start, end] is graded, counted and printed as `outside window: <k>`, inserted in
+session_turns' line just before `graded <n> of <n> records`, and is never used in session wall
+minutes, agent-active minutes, outside minutes or as a predecessor. The quantities shape in
+`unit_economics.py`, `docs/pilot/README.md` and the fixtures follow the new line; the fixture's
+numbers are unchanged apart from the new field (`outside window: 0`). The motivating record,
+`{"type":"banana","isSidechain":true,"timestamp":"2030-01-15T10:12:20Z"}`, moved the fixture's
+session wall minutes from 47.00 to 2103853.33 at `7c202a4`: a far-future record corrupted row
+13's own exit measure. It now exits 2; the same record typed `assistant` leaves every number as
+it was and prints `outside window: 1`.
+
+**Ruling m1 (the lane's; completes r1).** Every script's `main` catches
+`decimal.DecimalException`, `Overflow` included, and maps it to `value_out_of_range`; an
+exponent such as `hourly_value_usd: 1e999999` is refused, never a traceback or a host path.
+
+**Ruling m2 (the lane's).** A record carrying `isSidechain` or `isMeta` (either flag) is never a
+predecessor and never a human turn; a record carrying both is no different.
+
+**Ruling n3 (the lane's).** The C-locale case covers `rerun_diff.py`'s `comparison.json` read and
+`session_turns.py`'s transcript read, each with non-ASCII input, so dropping either
+`encoding="utf-8"` is red.
+
+**Ruling n4 (the lane's).** The version claim is worded as a requirement everywhere: refusal
+codes are required to be the same on every Python from 3.6 to 3.13, tested by emulating both
+sides of each known split, with the interpreters the tests were actually executed on named.
+
+**Ruling n5 (the lane's).** This record's frontmatter is not edited. `tests/pilot_emulation.py`
+is named in the change report for the `touches:` list of 0141 (step B's record).
+
+**Readings of L7 made in the code (the producer's, for the lane to confirm; not rulings).** A
+human turn outside the window still counts in `human turns` and in `inside spans` or `outside
+spans`, since L7 lists only the four quantities it never enters. A transcript with no
+main-thread record has an empty window, so every record is outside it and every minute is 0.00.
+`isMeta` and `isCompactSummary` are now read, and must be booleans, on `assistant` records too,
+since L7 defines main-thread by all three flags on either type.

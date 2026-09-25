@@ -5,6 +5,7 @@ assistant records, with two human turns outside every logged span. Every check d
 real CLI; the output is numbers only.
 """
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -21,10 +22,11 @@ import pilot_emulation as emulation  # noqa: E402
 FIXTURES = REPO / 'tests/fixtures/pilot'
 SCRIPT = REPO / 'scripts/session_turns.py'
 EXPECTED = ('human turns: 6; inside spans: 4; outside spans: 2; outside minutes: 1.50; '
-            'session wall minutes: 47.00; agent active minutes: 45.50; graded 14 of 14 records')
+            'session wall minutes: 47.00; agent active minutes: 45.50; outside window: 0; '
+            'graded 14 of 14 records')
 LINE = re.compile(r'^human turns: \d+; inside spans: \d+; outside spans: \d+; outside minutes: '
                   r'\d+\.\d\d; session wall minutes: \d+\.\d\d; agent active minutes: \d+\.\d\d; '
-                  r'graded (\d+) of (\d+) records\n$')
+                  r'outside window: \d+; graded (\d+) of (\d+) records\n$')
 LOG_HEAD = ('# gars-pilot-log v1 nonce=0123456789abcdef0123456789abcdef\n'
             'ts,stage,actor,action,reason_code,minutes\n')
 
@@ -60,12 +62,13 @@ class SessionTurnsTests(unittest.TestCase):
     def tearDown(self):
         self._temp.cleanup()
 
-    def run_turns(self, transcript=None, log=None, stage='02_02_de'):
+    def run_turns(self, transcript=None, log=None, stage='02_02_de', env=None):
         return subprocess.run(
             [sys.executable, str(SCRIPT), '--transcript',
              str(transcript or FIXTURES / 'session.jsonl'), '--log',
              str(log or FIXTURES / 'pilot1_log.csv'), '--stage', stage],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True,
+            env=dict(os.environ, **(env or {})))
 
     def write(self, name, records):
         path = self.root / name
@@ -132,18 +135,30 @@ class SessionTurnsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, EXPECTED.replace('graded 14 of 14', 'graded 16 of 16')
                          + '\n')
-        # Ruling L6: a record of ANY type carrying isSidechain is subagent traffic. A subagent's
-        # reply at 10:12:20 would otherwise start the 10:12:30 outside turn's interval (0.17 min,
-        # not 1.50), and one at 09:59:30 would stretch the agent-active span to 46.50.
+        # Ruling L6, narrowed by L7: a user or assistant record carrying isSidechain is subagent
+        # traffic. A subagent's reply at 10:12:20 would otherwise start the 10:12:30 outside
+        # turn's interval (0.17 min, not 1.50), and one at 09:59:30 would stretch the agent-active
+        # span to 46.50.
         sidechain = [json.dumps(assistant('2026-01-15T10:12:20Z', sidechain=True)),
                      json.dumps(assistant('2026-01-15T09:59:30Z', sidechain=True)),
-                     json.dumps({'type': 'system', 'isSidechain': True,
-                                 'timestamp': '2026-01-15T10:12:25Z'})]
+                     json.dumps(dict(user('2026-01-15T10:12:25Z', 'subagent prompt'),
+                                     isSidechain=True))]
         self.assertEqual([st.classify(json.loads(l)) for l in sidechain], ['harness'] * 3)
         self.assertEqual(st.classify(assistant('2026-01-15T10:12:20Z', sidechain=False)),
                          'assistant')
         self.assertIsNone(st.classify(assistant('2026-01-15T10:12:20Z', sidechain='yes')))
         result = self.run_turns(self.write('s.jsonl', lines[:8] + sidechain + lines[8:]))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, EXPECTED.replace('graded 14 of 14', 'graded 17 of 17')
+                         + '\n')
+        # Review round 3, m2: a record carrying isSidechain OR isMeta is never a predecessor and
+        # never a human turn, whichever flag is read first; one carrying both is no different.
+        both = user('2026-01-15T10:12:20Z', 'subagent hook output', meta=True)
+        both['isSidechain'] = True
+        flagged = [json.dumps(both), json.dumps(user('2026-01-15T10:12:22Z', 'hook', meta=True)),
+                   json.dumps(dict(assistant('2026-01-15T10:12:24Z'), isMeta=True))]
+        self.assertNotIn('human', [st.classify(json.loads(l)) for l in flagged])
+        result = self.run_turns(self.write('m.jsonl', lines[:8] + flagged + lines[8:]))
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, EXPECTED.replace('graded 14 of 14', 'graded 17 of 17')
                          + '\n')
@@ -177,7 +192,7 @@ class SessionTurnsTests(unittest.TestCase):
         out = self.line(records, [span, other_stage])
         self.assertEqual(out, 'human turns: 4; inside spans: 1; outside spans: 3; outside '
                               'minutes: 4.00; session wall minutes: 19.50; agent active minutes: '
-                              '9.50; graded 6 of 6 records\n')
+                              '9.50; outside window: 0; graded 6 of 6 records\n')
         # Overlapping attention intervals are counted once: two turns at one instant share one.
         overlap = [assistant('2026-01-15T10:00:00Z'), user('2026-01-15T10:03:00Z', 'a'),
                    user('2026-01-15T10:03:00Z', 'b')]
@@ -213,6 +228,52 @@ class SessionTurnsTests(unittest.TestCase):
         self.assertEqual((result.returncode, result.stderr), (2, 'refused: log_malformed line 3\n'))
         print('red-on-fault guard: every unclassifiable record exits 2; none skipped')
 
+    def test_unknown_type_exits_2_whatever_its_flags(self):
+        # Ruling L7 (a), review round 3 m3: the type is checked first; only `user` and `assistant`
+        # are known, and no flag makes a missing, null or unknown type classifiable. The first
+        # record is the reviewer's, which moved session wall minutes to 2103853.33 at 7c202a4.
+        lines = (FIXTURES / 'session.jsonl').read_text().splitlines()
+        for flag in ('isSidechain', 'isMeta', 'isCompactSummary'):
+            for record in ('{"type":"banana","%s":true,"timestamp":"2030-01-15T10:12:20Z"}' % flag,
+                           '{"type":null,"%s":true,"timestamp":"2026-01-15T10:12:20Z"}' % flag,
+                           '{"%s":true,"timestamp":"2026-01-15T10:12:20Z"}' % flag,
+                           '{"type":"system","%s":true,"timestamp":"2026-01-15T10:12:20Z"}' % flag):
+                result = self.run_turns(self.write('u.jsonl', lines + [record]))
+                self.assertEqual((result.returncode, result.stdout, result.stderr),
+                                 (2, '', 'refused: unclassifiable record line 15\n'), record)
+        print('red-on-fault guard: an unknown record type exits 2 whatever its flags')
+
+    def test_session_window_ruling_l7(self):
+        # Ruling L7 (b): the window runs from the first to the last main-thread record in file
+        # order; a record outside it is graded and counted as `outside window`, and moves no
+        # minute. The reviewer's far-future record, as a known type, leaves every number as is.
+        lines = (FIXTURES / 'session.jsonl').read_text().splitlines()
+        far = '{"type":"assistant","isSidechain":true,"timestamp":"2030-01-15T10:12:20Z"}'
+        result = self.run_turns(self.write('far.jsonl', lines + [far]))
+        self.assertEqual((result.returncode, result.stderr), (0, ''))
+        self.assertEqual(result.stdout, EXPECTED.replace('outside window: 0', 'outside window: 1')
+                         .replace('graded 14 of 14', 'graded 15 of 15') + '\n')
+        # Flagged records before the start and after the end: outside, whatever their kind.
+        early = json.dumps(user('2026-01-15T09:00:00Z', 'hook', meta=True))
+        late = json.dumps(dict(user('2026-01-15T12:00:00Z', 'summary'), isCompactSummary=True))
+        result = self.run_turns(self.write('edges.jsonl', [early] + lines + [late]))
+        self.assertEqual(result.stdout, EXPECTED.replace('outside window: 0', 'outside window: 2')
+                         .replace('graded 14 of 14', 'graded 16 of 16') + '\n')
+        # A main-thread record between the first and the last in file order but earlier in time
+        # than the first is outside the window too: never a predecessor, never wall time.
+        records = [assistant('2026-01-15T10:00:00Z'), assistant('2026-01-15T09:30:00Z'),
+                   user('2026-01-15T10:03:00Z', 'outside')]
+        self.assertEqual(self.line(records, []),
+                         'human turns: 1; inside spans: 0; outside spans: 1; outside minutes: '
+                         '3.00; session wall minutes: 3.00; agent active minutes: 0.00; outside '
+                         'window: 1; graded 3 of 3 records\n')
+        # A start later than the end is refused.
+        inverted = [assistant('2026-01-15T10:05:00Z'), user('2026-01-15T10:00:00Z', 'first')]
+        result = self.run_turns(self.write('inv.jsonl', inverted))
+        self.assertEqual((result.returncode, result.stdout, result.stderr),
+                         (2, '', 'refused: session_window_inverted\n'))
+        print('red-on-fault guard: a record outside the session window moves no minute')
+
     def test_refusal_codes_do_not_depend_on_the_interpreter(self):
         # The lane's 3.13 host refused a NUL log row as `log_minutes` where 3.8 said
         # `log_malformed`: csv reads NUL as data from 3.11. A long integer in an extra key must
@@ -237,6 +298,17 @@ class SessionTurnsTests(unittest.TestCase):
                 with emulation.emulating(side, [st, st.ue]):
                     seen.append(emulation.outcome(st.main, argv + ['--stage', '02_02_de']))
             self.assertEqual(seen, [expected, expected])
+        # A non-ASCII transcript record (never printed) reads the same under a C locale as under
+        # UTF-8 (review round 3, n3).
+        accented = self.root / 'accented.jsonl'
+        accented.write_bytes(('\n'.join(lines).replace('Config filled.', 'Config rempli, caf\u00e9.')
+                              + '\n').encode('utf-8'))
+        self.assertIn(b'\xc3\xa9', accented.read_bytes())
+        runs = [self.run_turns(accented, env=env) for env in (
+            {'LC_ALL': 'C', 'LANG': 'C', 'PYTHONUTF8': '0', 'PYTHONCOERCECLOCALE': '0'},
+            {'PYTHONUTF8': '1'})]
+        self.assertEqual([(r.returncode, r.stdout, r.stderr) for r in runs],
+                         [(0, EXPECTED + '\n', '')] * 2)
         print('red-on-fault guard: every refusal code is the same on both sides of each '
               'Python-version split')
 
