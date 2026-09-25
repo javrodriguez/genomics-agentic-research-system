@@ -116,3 +116,16 @@ The bytes above, including the round-1 addendum, are unchanged; this addendum re
 The reviewer's four fresh faults in scope (N2a, N2b, N2c, N3a) and seven further plants (R2a–R2e, R3a, R3b) went red in disposable copies on the new tests; the five survivors still go red; the unplanted copy was green.
 The suite rises to 813 tests; the six R-164 modules take about 4.1 s together on the producer's machine and add no skip.
 This is producer-authored development evidence, not a mutation score; the exit still needs the second seal (0088, 0089), and nothing in this addendum claims it.
+
+## Addendum, 2026-09-25: the lane's extra round (round 4)
+
+The bytes above, including both earlier addenda, are unchanged; this addendum records the fixes for the lane's extra round (`docs/reviews/row3fu_lane_extra_round.md`, E1 and E2; [change report](../implementation/row_3_followup_change_report.md), "Review round 4 fixes").
+Every ruling in it is the lane's, under the owner's standing delegation of 23 Sep 2026.
+
+- **Class 2 by principle (E2).** `gars/tests/test_r164_writer_recovery.py` holds one table row per public entry point that writes a recorded state or artifact file, 46 rows over `wrapperlib`, `executorlib`, each wrapper's `check`, `prepare` and `collect`, stages 00, 01 and 03, `configure.py`, `adapt_counts.py` and the hook installer. Each row is driven through its public interface, once cleanly and then with one fault per destination file: the open-for-write refused, a write that lands half its data and fails, the fsync refused, the rename into place refused, the same write fault on a first write, and named helper or copy faults. Every run must surface the fault, keep the destination's prior bytes exactly and leave no file anywhere in the fixture tree. Faults are matched by destination, so a writer that bypasses the atomic helper is caught at its own file. The writers left out, each with its reason, are listed in the change report.
+- **The index (E1).** The two modules added after this record's first round are made findable by path in [0111](0111-row-3-followup-suite-index-addendum.md), the plan's reserved spare number, on the lane's ruling; this record's frontmatter is not edited.
+- **Owner rulings.** Probes in a scratch folder show that two writers outside the table, the local backend's job record and stage 03's launcher, leave a partial file behind when a write fails. Whether that is a defect is the owner's to rule; the change report states both behaviours, and no test for them is committed.
+
+Twelve class-2 plants in writers that no earlier test named (W1–W12) went red in disposable copies on the new module. So did three earlier call-site plants (N2b, R2b, R2d) and M05. The five survivors still go red on their modules, and the unplanted copy was green on all seven.
+The suite rises to 860 tests; the seven R-164 modules take about 8.2 s together on the producer's machine and add no skip.
+This is producer-authored development evidence, not a mutation score. The exit still needs the second seal (0088, 0089), and nothing in this addendum claims it.

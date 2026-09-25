@@ -316,3 +316,163 @@ Not run, by the brief: the whole suite, the mutation runner and every `test_revi
 - `executorlib.submit`'s refusal branches are driven with `_submit_once` stubbed, not through a real scheduler.
 - `test_r164_collect_gates.py` is not in 0087's `touches` or the index (F4, above).
 - Producer and reviewer share a model (0087, Context).
+
+## Review round 4 fixes
+
+Dated 2026-09-25. This section answers the lane's extra round (`docs/reviews/row3fu_lane_extra_round.md`, left untracked and unchanged) and builds on fix round 3 (`6c89d9a`) as it stands. The sections above are unchanged. 0087 carries a third dated addendum after its last byte, 0111 is new, and `bash docs/decisions/build_index.sh` was re-run: the index gains 0111's row and nothing else changes.
+Rulings in this section are the lane's, under the owner's standing delegation of 23 Sep 2026.
+
+### Findings
+
+| Finding | Changed files | Test(s) | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| E1 MINOR, `test_r164_collect_gates.py` is in no record's `touches` (the lane's ruling (b) on round 3's F4) | `docs/decisions/0111-row-3-followup-suite-index-addendum.md` (new, frontmatter in 0087's shape; `touches` lists `gars/tests/test_r164_collect_gates.py` and this round's `gars/tests/test_r164_writer_recovery.py`); `docs/decisions/CONTEXT.md` (regenerated) | `python3 tests/test_decision_links_resolve.py`; the index row for 0111 names both paths | fixed. 0087's bytes are not edited: its round-3 bytes are a byte-identical prefix of the new file (checked with a byte comparison against a copy taken before the append). Red-on-fault: not applicable (a record) |
+| E2 MAJOR, class 2 by principle, not per function | `gars/tests/test_r164_writer_recovery.py` (new) | `WriterRecoveryTests`: one generated test per table row (46 rows, 84 destination files, 417 fault runs as subtests) plus `test_the_table_names_every_wrapper` | fixed; yes: W1–W12 (twelve writers no earlier test named), N2b, R2b, R2d and M05 all went red on the new module in disposable copies (plant table below) |
+
+Existing tests changed: none.
+
+### How the table works
+
+Each row is `Writer(name, setup, destinations, ...)`. `setup` builds a fixture under a fresh temporary folder and returns a zero-argument call that drives the entry point through its public interface: the function itself, the wrapper's `cmd_check`, `cmd_prepare` or `cmd_collect`, or the stage helper's `main`.
+A row that is primed runs cleanly once. Then, for each destination file and each step, the row runs again with one fault. Every such run must meet three conditions:
+
+- the fault fired, so the step was actually reached;
+- the fault surfaced, as an exception or a result other than the row's success value;
+- the destination's bytes equal the prior bytes exactly, or it is still absent on a first write, and the set of files in the whole fixture tree is unchanged.
+
+The steps are:
+
+- `open`: an open-for-write of the destination or of its temporary is refused (`builtins.open`, `io.open` and `tempfile.mkstemp`).
+- `write`: the first write lands half its data and then raises.
+- `fsync`: the fsync is refused on the file descriptor opened for that destination.
+- `replace`: `os.replace` or `os.rename` to that destination is refused.
+- `first-write`: the destination is removed first, then the write fault is injected.
+- Named extras: `prepare_manifest_facts` raising before `write_reproducibility` writes anything, `write_reproducibility` raising inside each nf-core `prepare`, and the hook installer's copy (half-written) and chmod.
+
+Faults are matched by the destination's folder and name, including the `name.tmp` and `.stem-XXXX` temporaries, and never by the writer. A writer that bypasses `ws.atomic_open` for a plain `open` or `write_text` therefore meets the same fault on its own file. That is what W1–W12 plant.
+Two fixture shortcuts are used, each named in the module. `run_checks` and `build_params` are stubbed in the wrapper rows, because they are class 3's, and the collect-side lifecycle writers are stubbed by the shared collect harness, as in rounds 1–3. Inside `prepare`, `git rev-parse` on the pipeline checkout is answered in-process, because the commit value is not observed and one subprocess per fault run cost about 5 s. `test_the_table_names_every_wrapper` fails if a wrapper directory on disk has no `prepare` or `collect` row, or no `check` row when its check writes a record.
+
+### Writer inventory
+
+The inventory was derived by searching `gars/_system/` for `atomic_open`, `os.replace`, `os.rename`, `.rename(`, `open(..., 'w'/'wb'/'a'/'x')`, `write_text`, `write_bytes`, `json.dump(`, `shutil.move/copy*`, `mkstemp` and `NamedTemporaryFile`, and its shell scripts for `>` redirections.
+
+In the table (46 rows):
+
+| Entry point | Destinations |
+|---|---|
+| `wrapperlib.write_params_yaml`, `write_submit_sh` | `params.yaml`, `submit.sh` |
+| `wrapperlib.write_reproducibility` | `submit.sh`, `reproducibility/manifest.json`, `reproducibility/commands.sh` |
+| `wrapperlib.complete_output_index`, `write_status`, `complete_manifest`, `harvest_cache` | `OUTPUTS.tsv`, `STATUS`, `reproducibility/manifest.json`, `PROVENANCE` |
+| `executorlib._save_record`, `record_failure` | the submission record; `logs/failure-<job>.log` and `.class` |
+| `stage00_register.write_dataset_record`; `finalize` (re-run; first run) | `00_data/dataset.tsv`; `files.csv`, `CONTEXT.md`, `HISTORY.md`; `samples.csv` |
+| `stage01_samplesheet main` | the samplesheet, the design table, the design-check record |
+| `stage03_analysis create` | `PLAN.md` |
+| `configure.py apply`; `adapt_counts.py main` | `_config/<assay>.yaml`; `adapted/counts_gene.tsv`, `adapted/gene_id_to_name.tsv` |
+| `hooks/install.py install_hook` | the installed `pre-push` (with rollback to the user's own hook) |
+| `cmd_check` of the seven nf-core wrappers, `scrna-qc-cluster` and `spatial-cluster-count` | `preflight/check_result.json` |
+| `cmd_prepare` of all ten wrappers | `params.yaml` (nf-core), `scripts/<script>.py` (downstream), `submit.sh`, `reproducibility/manifest.json`, `reproducibility/commands.sh` |
+| `cmd_collect` of all ten wrappers | `OUTPUTS.tsv` |
+
+Left out, with the reason for each:
+
+| Writer | Reason |
+|---|---|
+| `workspace.atomic_open`, `claims/render_report.py main`, `claims/emit_report.py main`, `executorlib.submit` (refusal branches) | Already covered by `test_r164_failure_recovery.py` at each step. `render_report` writes through `NamedTemporaryFile`, which opens by descriptor and so is outside this injector; that module injects its write and replace faults directly. |
+| `rnaseq-de cmd_check` | It writes no file. |
+| `executorlib._local_submit`, job record `jobs/<pid>.json` (plain `open`, `w`) | A fault leaves a partial record, and the job has already started. Probed; see `## Owner rulings needed`. |
+| `executorlib._analysis_launcher`, `run/launch-<uuid>.sh` (`write_bytes`) | A fault leaves a partial launcher behind. Probed; see `## Owner rulings needed`. |
+| `executorlib._submit_analysis`, `ANALYSIS_SUBMISSIONS` (append plus fsync) | An append log never rewrites prior bytes. A fault mid-append leaves a torn final line, by inspection only (not probed); the same question is in `## Owner rulings needed`. |
+| `stage03_analysis` `approve` (`PLAN.md` and the `O_EXCL` approval record) and `verify` (`OUTPUTS.tsv`, `STATUS`); `executorlib` action approval records (`O_EXCL`) | The approval store is derived from the installed workspace (its parent folder), so driving these writes outside any fixture tree. `O_EXCL` creation refuses to overwrite by construction, and the code's own comment says "a crash leaves an invalid record, never approval". These writers are owned by `test_approval_forgery.py` and `test_stage03_execution.py`. |
+| `stage00_register` project creation (`copytree` of the stamp, `_config` seeding via `write_text` and `copy2`) | Creation-only, into a project folder that did not exist, so there are no prior bytes. A fault mid-creation leaves a partial project, by inspection only; the same question is in `## Owner rulings needed`. |
+| `authoring/create_bioinformatics_skill.py` (`write_text` of a new wrapper's source and `SKILL.md`) | A developer scaffolding tool that writes new source files, not a recorded state of any project. |
+| The generated job scripts' own writes (`versions.json`, `report.md`, the markers table, `summary.json`) | These run inside the job with numpy, scanpy or anndata, which the offline suite does not have. Their outputs are what the collect gates (classes 5 and 2) judge. |
+| `build_projects_index.sh` (`> "$OUT"`) | A generated render, rebuilt on every session boot, and not a record (`gars/CLAUDE.md`, "State"). |
+
+### Plant table, round 4
+
+Same method as rounds 1–3. The driver is `<scratch>/plants/drive_r4.py` and is not committed. Each plant gets a fresh `rsync -a --exclude .git` copy under `<scratch>` and a one-occurrence string replacement asserted unique. Only the named module is run, and the copy is deleted afterwards. The unplanted copy printed `OK` for all seven R-164 modules. W-ids are this round's plants, each in a writer that no earlier test of this item named. N2b, R2b and R2d are round 3's plants, re-run against the new module, and M05w is M05 run against the new module. The whole driver run took 2 min 12 s.
+
+| Plant | Class | file:function | Diff, in one line | Module run | Failing test(s) | Red seen |
+|---|---|---|---|---|---|---|
+| M03 | survivor (1) | `wrapperlib.py:sha256` | `h.update(chunk)` → `h.update(chunk.rstrip())` | `test_r164_exact_bytes` | `test_sha256_is_the_digest_of_the_exact_bytes` and four others (`FAILED (failures=13)`) | yes |
+| M05 | survivor (2) | `workspace.py:atomic_open` | `tmp.unlink()` → `path.unlink()` | `test_r164_failure_recovery` | six tests (`FAILED (failures=2, errors=10)`) | yes |
+| M07 | survivor (3) | `nfcore_rnaseq_wrapper.py:build_params` | the two index values exchanged, by hand | `test_r164_params_mapping` | `test_rnaseq_indices_are_not_exchanged` (`FAILED (failures=1)`) | yes |
+| M08 | survivor (4) | `nfcore_scrnaseq_wrapper.py:supported_protocols` | `data.get(aligner)` → `data.get("simpleaf")` | `test_r164_keyed_lookups` | `test_scrnaseq_protocols_are_read_for_the_selected_aligner`, `test_scrnaseq_preflight_judges_protocol_against_its_own_aligner` (`FAILED (failures=7)`) | yes |
+| M10 | survivor (5) | `spatial_cluster_count.py:cmd_collect` | `n_obs <= 0` → `n_obs < 0` | `test_r164_boundaries` | `test_spot_count_boundary` (`FAILED (failures=1)`) | yes |
+| M05w | survivor (2) | `workspace.py:atomic_open` | as M05 | `test_r164_writer_recovery` | 43 of the 47 tests (`FAILED (failures=174, errors=37)`) | yes |
+| W1 | 2 | `nfcore_atacseq_wrapper.py:cmd_check` | `check_result.json` `ws.atomic_open` → plain `open(..., "w")` | `test_r164_writer_recovery` | `test_nfcore_atacseq_wrapper_check` (`FAILED (failures=4)`) | yes |
+| W2 | 2 | `spatial_cluster_count.py:cmd_collect` | `OUTPUTS.tsv` `ws.atomic_open` → plain `open` | `test_r164_writer_recovery` | `test_spatial_cluster_count_collect` (`FAILED (failures=4)`) | yes |
+| W3 | 2 | `executorlib.py:record_failure` | `wl.ws.atomic_open(logs / ...)` → plain `open` | `test_r164_writer_recovery` | `test_executorlib_record_failure` (`FAILED (failures=8)`) | yes |
+| W4 | 2 | `configure.py:cmd_apply` | `ws.atomic_open(cfg, newline=None)` → plain `open` | `test_r164_writer_recovery` | `test_configure_py_apply` (`FAILED (failures=3)`) | yes |
+| W5 | 2 | `adapt_counts.py:main` | `gene_id_to_name.tsv` `ws.atomic_open` → plain `open` | `test_r164_writer_recovery` | `test_adapt_counts_py_main` (`FAILED (failures=4)`) | yes |
+| W6 | 2 | `hooks/install.py:install_hook` | rollback `previous.rename(target)` → `pass` | `test_r164_writer_recovery` | `test_hooks_install_py_install_hook` (`FAILED (failures=3)`) | yes |
+| W7 | 2 | `wrapperlib.py:write_reproducibility` | `commands.sh` `ws.atomic_open` → plain `open` | `test_r164_writer_recovery` | the ten `prepare` rows and `test_wrapperlib_write_reproducibility` (`FAILED (failures=44)`) | yes |
+| W8 | 2 | `stage03_analysis.py:cmd_create` | `PLAN.md` `ws.atomic_open` → plain `open` | `test_r164_writer_recovery` | `test_stage03_analysis_create` (`FAILED (failures=3)`) | yes |
+| W9 | 2 | `wrapperlib.py:complete_output_index` | `OUTPUTS.tsv` `ws.atomic_open` → plain `open` | `test_r164_writer_recovery` | `test_wrapperlib_complete_output_index` (`FAILED (failures=3)`) | yes |
+| W10 | 2 | `rnaseq_de.py:cmd_prepare` | `scripts/run_de.py` `ws.atomic_open` → plain `open` | `test_r164_writer_recovery` | `test_rnaseq_de_prepare` (`FAILED (failures=4)`) | yes |
+| W11 | 2 | `stage00_register.py:write_dataset_record` (first write) | `ws.atomic_open(path, mode=...)` → plain `open` | `test_r164_writer_recovery` | `test_stage00_register_write_dataset_record` (`FAILED (failures=3)`) | yes |
+| W12 | 2 | `nfcore_methylseq_wrapper.py:cmd_collect` | `OUTPUTS.tsv` `ws.atomic_open` → plain `open` | `test_r164_writer_recovery` | `test_nfcore_methylseq_wrapper_collect` (`FAILED (failures=4)`) | yes |
+| N2b | 2 | `stage01_samplesheet.py:write_assay` | design table `ws.atomic_open` → plain `open` | `test_r164_writer_recovery` | `test_stage01_samplesheet_main` (`FAILED (failures=4)`) | yes |
+| R2b | 2 | `stage00_register.py:cmd_finalize` | `samples.csv` `ws.atomic_open` → plain `open` | `test_r164_writer_recovery` | `test_stage00_register_finalize__first_run` (`FAILED (failures=3)`) | yes |
+| R2d | 2 | `stage00_register.py:cmd_finalize` | `CONTEXT.md`/`HISTORY.md` `ws.atomic_open` → plain `open` | `test_r164_writer_recovery` | `test_stage00_register_finalize__re_run` (`FAILED (failures=6)`) | yes |
+
+Counts:
+
+- The 5 survivors were re-checked on their own modules, and all went red.
+- 12 class-2 plants were made in writers that no earlier test named, and all went red.
+- 4 earlier plants (M05, N2b, R2b, R2d) were re-run against the new module, and all went red.
+- In total, 21 of 21 plants went red.
+
+This is development evidence, not a mutation score, and these kills are in the named modules only.
+
+### Commands and summary lines, round 4
+
+All commands were run from the repository root with `TMPDIR`, `TEMP` and `TMP` at `<scratch>`, on macOS, with `python3` = 3.8.2.
+
+| Module | Summary line | `real` (s) |
+|---|---|---|
+| `test_r164_exact_bytes` | `Ran 10 tests in 0.440s` / `OK` | 0.62 |
+| `test_r164_failure_recovery` | `Ran 17 tests in 0.589s` / `OK` | 0.79 |
+| `test_r164_params_mapping` | `Ran 13 tests in 0.267s` / `OK` | 0.46 |
+| `test_r164_keyed_lookups` | `Ran 15 tests in 0.350s` / `OK` | 0.55 |
+| `test_r164_boundaries` | `Ran 22 tests in 0.291s` / `OK` | 0.49 |
+| `test_r164_collect_gates` | `Ran 33 tests in 0.748s` / `OK` | 0.95 |
+| `test_r164_writer_recovery` (new) | `Ran 47 tests in 4.090s` / `OK` | 4.31 |
+
+The seven modules sum to 8.17 s (157 tests, no skip). The new module's wall time varied between 2.9 s and 4.5 s across runs on this shared machine. Under `/usr/local/bin/python3` (3.13.2) it printed `Ran 47 tests in 3.955s` / `OK`. The new file parses under `ast.parse(..., feature_version=(3, 6))`.
+
+Existing modules over the newly reached sources:
+
+| Module | Summary line | `real` (s) |
+|---|---|---|
+| `gars/tests/test_pre_push.py` (the hook installer) | `Ran 7 tests in 14.445s` / `OK` | 14.61 |
+| `gars/tests/test_lifecycle_executor.py` | `Ran 16 tests in 6.005s` / `OK` | 6.20 |
+| `gars/tests/test_wrapper_contract.py` | `Ran 1 test in 3.547s` / `OK` | 3.70 |
+
+Checks:
+
+- `python3 tests/check_contracts.py`: `14 contracts clean: sections, wait points, vocabulary.`
+- `python3 tests/check_counts.py`: `collected 360 tests from tests`, `collected 500 tests from gars/tests`, `suite: 860 tests, from unittest's loader`, `clean — every current claim matches the suite`. This was after README line 322 and DEVELOPMENT lines 156 and 175 were moved from 813 to 860; nothing else in those files changed.
+- `/usr/local/bin/python3 evals/test_harness.py` (3.13.2): `Ran 44 tests in 166.222s` / `OK`.
+- `python3 evals/check_results.py --controls --lexicon`: `clean — graded=1`.
+- `python3 tests/test_decision_links_resolve.py`, after `bash docs/decisions/build_index.sh`: `Ran 3 tests in 1.435s` / `OK`, `citations: 376/376 resolve`.
+- `git diff --stat 2a81999 HEAD -- gars/_system gars/02_bioinformatics gars/_references gars/_templates gars/.claude .github benchmarks evals`: prints nothing (checked after the commit).
+
+Not run, as the brief requires: the whole suite, the mutation runner and every `test_review_faults_*` module. The round-4 plant driver ran longer than the tool's two-minute foreground limit, and the harness moved it to a background task, which the brief does not allow. The driver ran to completion (exit 0), and its results, above, were read from its output file in `<scratch>`.
+
+## Owner rulings needed
+
+- **Non-atomic writers of recorded state (found by E2's principle; not fixed and not tested around, per the brief's rule 2).** Scratch probes (`<scratch>/r4/probe_local.py`, `<scratch>/r4/probe_launcher.py`, not committed) drove this round's injector against two writers outside the table:
+  - `executorlib._local_submit` writes the local job record `jobs/<pid>.json` with plain `open(..., "w")` after the job has started. A write fault leaves the record present and torn: the probe observed `31848.json b''`, with the exception raised.
+  - `executorlib._analysis_launcher` writes `run/launch-<uuid>.sh` with `write_bytes`. A write fault leaves a partial launcher behind (the probe observed `#!/bin/bash\ncd ...` truncated). `_submit_analysis` then reports an R-135 refusal.
+
+  Two further writers have the same shape by inspection only (not probed): `_submit_analysis`'s append to `ANALYSIS_SUBMISSIONS` could leave a torn final line, and stage 00's project creation could leave a partial project.
+  Options, as E2 frames class 2: (a) rule these to be defects, to be fixed in `gars/_system/` by a later, non-test-only item, and add their rows to `test_r164_writer_recovery.py` then; or (b) rule them to be outside the principle (a started job's record, a per-attempt launcher, an append log, a creation-only project) and record that ruling so the table's exclusions are the owner's, not the producer's.
+
+## Residual gaps after round 4
+
+- The kills above are in the named modules only. Whether the whole suite stays green in modes B and C, and its added wall time on the lane's node, are for the lane to measure. The seven R-164 modules now take about 8.2 s here, against the 15 s allowance.
+- Descriptor-level faults (`os.write` on a raw descriptor, `NamedTemporaryFile`) are outside the table's injector. The two writers that use them, `render_report` and `emit_report`, are covered by `test_r164_failure_recovery.py`.
+- `chmod` after the rename (`MACHINE_OWNED_MODE`) is not faulted: a chmod failure after the replace leaves the new bytes in place, which is not a prior-bytes situation.
+- The writers listed in the "Left out" table above.
+- Producer and reviewer share a model (0087, Context).
