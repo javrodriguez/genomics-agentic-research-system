@@ -219,3 +219,77 @@ were not run, as item 5(f) directs. The measured prompt and
 ## Owner rulings needed
 
 None.
+
+## Review round C fixes
+
+Dated 2026-09-25. Round C answers review 1, which judged round B's head. The
+lanes' coordinator ruled the fix under the owner's delegation (item 6 of the
+head); it is the lane's specification, not the owner's. 0128 carries a dated
+round C addendum, and round 1's and round B's bytes of 0128 and of this report
+stay an exact prefix. Earlier commits are not rewritten. No model was run, and
+no catch rate or first measured run is claimed.
+
+`runner`, `session tests` and `session faults` mean what they mean in round B;
+`cd faults` means `tests/test_review_faults_cd_faults.py`.
+
+| Requirement | Changed files | Acceptance | Result and red-on-fault evidence |
+|---|---|---|---|
+| 6(a) F1: the dot scan finds the command word by grammar (skip assignments, redirections with their targets and descriptor words, the named prefix commands with their options) | runner | `test_dot_after_redirection` | PASS: review 1's five spellings and four more each score at least 1 hit, in the same call and in a later call. Red-on-fault seen: yes, `walk-back-to-the-operator dot scan restored` turns it red |
+| 6(b) ruling 1's grep-dot still does not block | session tests | `test_dot_operand_ruling`, `test_dot_after_redirection` (`grep x . >o`, `2>o grep -rn x .`) | PASS, 0 hits and 0 ambiguous. Red-on-fault seen: yes, `old dot scan restored` (re-pointed onto the new check) turns `test_dot_operand_ruling` and `test_honest_session_data` red |
+| 6(b) the eight session calls | session tests | `test_honest_session_data` | PASS: 0 hits, 1 ambiguous, unchanged; graded-against-seen 8/8 |
+| 6(d) everything kept | session faults, cd faults | all permitted modules | PASS. `dot after prefix options ignored` (cd faults) re-pointed onto the new check and still red. Every other entry's bytes are matched as often as before (counted before and after) |
+| 6(c) NOTEs F2, F3, F4, F6 | 0128 | the addendum | Recorded as named residual (F2, F3, F4) and as the prose-listing note (F6). F5 is left to the deployment |
+| 4 counts | README.md, DEVELOPMENT.md | `tests/check_counts.py` | 640 → 641 (one new test); only the numbers changed |
+
+### How every command was run (round C)
+
+As in rounds 1 and B: from the repository root, never changing directory, with
+`TMPDIR`, `TEMP` and `TMP` set to the scratch twin by relative path in the same
+shell before each command. Every command ran in the foreground, with output
+captured to scratch logs. The fault-entry byte counts came from a scratch
+script. It reads every fault tuple in the four fault and build modules and
+compares each entry's byte count in the committed runner with the edited one.
+Only the three entries round C wrote or re-pointed differ.
+
+During development, the first edit left a duplicated `self.depths.append` line
+in the runner, which was removed before any test ran on it.
+
+### Verification summaries (round C, verbatim)
+
+| Command | Summary |
+|---|---|
+| `python3 tests/check_counts.py` | `suite: 641 tests, from unittest's loader` / `enforced=3` / `clean — every current claim matches the suite` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/test_review_faults_cd.py` | `Ran 32 tests in 1.396s` / `OK` / `cd-call corpus graded-against-seen: 11/11` |
+| `python3 tests/test_review_faults_cd_faults.py` | `Ran 1 test in 10.992s` / `OK`; 25 `cd fault red:` lines |
+| `python3 tests/test_review_faults_core.py` | `Ran 11 tests in 0.089s` / `OK` |
+| `python3 tests/test_review_faults_corpus.py` | `Ran 1 test in 1.491s` / `OK` / `honest-call corpus graded-against-seen: 278/278` |
+| `python3 tests/test_review_faults_data.py` | `Ran 5 tests in 0.149s` / `OK` |
+| `python3 tests/test_review_faults_launch.py` | `Ran 20 tests in 24.247s` / `OK` |
+| `python3 tests/test_review_faults_session.py` | `Ran 18 tests in 0.524s` / `OK` / `session-call corpus graded-against-seen: 8/8` / `session-call corpus hits: 0, ambiguous: 1` |
+| `python3 tests/test_review_faults_session_faults.py` | `Ran 1 test in 8.136s` / `OK`; 19 `session fault red:` lines |
+| feature_version parse | `Python feature_version=(3, 6): 4/4 changed Python files parse` |
+
+Interpreter: Python 3.8.2 on macOS. `tests/run_tests.py`,
+`tests/test_review_faults_faults.py` and `tests/test_review_faults_build.py`
+were not run, as item 6(e) directs. The measured prompt and
+`evals/review-faults/fixtures/` are untouched.
+
+### Residual gaps (round C) — each NOT closed here
+
+- F2: shell indirection (`c=cd; $c`) can move the shell unseen, and carrying
+  lets it span calls (0125's shell-indirection residual).
+- F3: stream order and separate sub-agent chains are assumptions about the tool
+  (items 1(a) and 1(d)).
+- F4: a statically failing `&&` link counts ambiguous (ruling 2's residual).
+- F5: the count prose still names 0127; the deployment fixes it at landing.
+- `test_review_faults_faults.py` was not run. Its entries' bytes all still
+  match, so its red-on-fault results for this change are unverified here.
+- The full suite, native Python 3.6 and the deployment's end-to-end rerun were
+  not run here.
+- Producer and reviewer are both Claude Opus 5.5 sessions: a shared model family.
+- Everything 0072, 0125, 0127, round 1 and round B already name.
+
+## Owner rulings needed
+
+None.

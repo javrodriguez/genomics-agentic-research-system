@@ -36,14 +36,20 @@ FAULTS = [
     ('carrying extended to non-Bash tools',
      "else [(text, kit)]", 'else [(text, start or kit)]', ['test_other_tools_stay_at_root']),
     # Round B, rulings 1 and 2.
+    # Round C rewrote the dot scan; this entry now restores 0125's scan on it.
     ('old dot scan restored',
-     "            dot_prefix = False\n            prefix = None\n            value = False\n"
-     "            for earlier in words[cursor + 1:index]:\n",
-     "            dot_prefix = any(earlier in ('builtin', 'command', '!', 'time', 'env', 'exec', 'coproc',\n"
-     "                                         'nohup') or '=' in earlier for earlier in words[cursor + 1:index])\n"
-     "            prefix = None\n            value = False\n"
-     "            for earlier in []:\n",
+     "            if word == '.' and index in command_words:\n",
+     "            if word == '.' and (index in command_words or any(\n"
+     "                    earlier in ('builtin', 'command', '!', 'time', 'env', 'exec', 'coproc', 'nohup') or\n"
+     "                    '=' in earlier for earlier in\n"
+     "                    words[1 + max([-1] + [i for i in range(index) if words[i].operator]):index])):\n",
      ['test_dot_operand_ruling', 'test_honest_session_data']),
+    # Round C, review 1's F1.
+    ('walk-back-to-the-operator dot scan restored',
+     "                separator = bool(re.sub(redirection_syntax, '', word))\n"
+     "                redirection = re.search('(?:%s)$' % redirection_syntax, word) is not None\n",
+     "                separator, redirection = True, False\n",
+     ['test_dot_after_redirection']),
     ('ambiguous counted as a hit',
      'ambiguous += 1', 'hits += 1', ['test_honest_session_data']),
     ('ambiguous counted as clean when optimistic is also outside',

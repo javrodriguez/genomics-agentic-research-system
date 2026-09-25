@@ -221,32 +221,45 @@ class CommandPlacement:
         broken = False
         command_start = True
         dot_command = False
+        # Decision 0128 ruling 1 and round C: a dot is a dot command only as
+        # the simple command's command word, found by grammar. After the
+        # preceding separator, skip assignments, redirections with their
+        # targets, and the named prefix commands with their options; the
+        # first word left is the command word. Any other dot is an operand.
+        redirection_syntax = r'&>>?|[<>]+[&|]?'
+        command_words = set()
+        prefix_run, target, prefix, value = True, False, None, False
         for index, word in enumerate(words):
-            cursor = index - 1
-            while cursor >= 0 and not words[cursor].operator:
-                cursor -= 1
-            # Decision 0128 ruling 1: only the words before the command name
-            # (assignments, the named prefix commands and their options) can
-            # make a later dot a dot command; after a command word it is an operand.
-            dot_prefix = False
-            prefix = None
-            value = False
-            for earlier in words[cursor + 1:index]:
-                if value:
-                    value = False
-                elif earlier in ('builtin', 'command', '!', 'time', 'env', 'exec', 'coproc', 'nohup'):
-                    prefix = earlier
-                    dot_prefix = True
-                elif re.match(r'[A-Za-z_][A-Za-z0-9_]*(?:\[[^]]*\])?[+]?=', earlier):
-                    dot_prefix = True
-                elif prefix and earlier.startswith('-'):
-                    value = earlier in {'env': ('-u', '--unset', '-C', '--chdir', '-S', '--split-string'),
-                                        'exec': ('-a',), 'time': ('-o', '--output', '-f', '--format')
-                                        }.get(prefix, ())
-                elif earlier not in ('if', 'then', 'elif', 'else', 'while', 'until', 'do', '{'):
-                    dot_prefix = False
-                    break
-            if word == '.' and (command_start or dot_prefix):
+            if word.operator:
+                separator = bool(re.sub(redirection_syntax, '', word))
+                redirection = re.search('(?:%s)$' % redirection_syntax, word) is not None
+                if separator:
+                    prefix_run, prefix, value = True, None, False
+                target = redirection
+            elif target:
+                target = False
+            elif not prefix_run:
+                pass
+            elif value:
+                value = False
+            elif (re.fullmatch(r'[0-9]+|\{[A-Za-z_][A-Za-z0-9_]*\}', word) and index + 1 < len(words) and
+                  words[index + 1].operator and re.match(redirection_syntax, words[index + 1])):
+                pass
+            elif word in ('builtin', 'command', '!', 'time', 'env', 'exec', 'coproc', 'nohup'):
+                prefix = word
+            elif re.match(r'[A-Za-z_][A-Za-z0-9_]*(?:\[[^]]*\])?[+]?=', word):
+                pass
+            elif prefix and word.startswith('-'):
+                value = word in {'env': ('-u', '--unset', '-C', '--chdir', '-S', '--split-string'),
+                                 'exec': ('-a',), 'time': ('-o', '--output', '-f', '--format')
+                                 }.get(prefix, ())
+            elif word in ('if', 'then', 'elif', 'else', 'while', 'until', 'do', '{'):
+                prefix = None
+            else:
+                prefix_run = False
+                command_words.add(index)
+        for index, word in enumerate(words):
+            if word == '.' and index in command_words:
                 dot_command = True
             self.depths.append(parens + groups + keywords + int(backquote) + self.nested)
             chain_end = False

@@ -398,3 +398,141 @@ approve or merge its own work, and this follow-up measures nothing.
 ## Owner rulings needed
 
 None.
+
+## Addendum 2026-09-25 — round C: the command word by grammar (review 1)
+
+Review 1 judged round B's head and found one MAJOR (F1) and five NOTEs. **The
+lanes' coordinator ruled the fix under the owner's delegation (item 6 of the
+head, 25 Sep 2026). What follows is the lane's specification, under that
+delegation; none of it is attributed to the owner.** It amends 0125's
+dot-command rule and round B's ruling 1 where they differ. Round 1's and round
+B's bytes of this file stay an exact prefix. Round C touches only
+`evals/review-faults/run_reviews.py`, `tests/test_review_faults_session.py`,
+`tests/test_review_faults_session_faults.py`,
+`tests/test_review_faults_cd_faults.py`, the count lines of `README.md` and
+`DEVELOPMENT.md`, this file and the change report.
+
+### The fix (the lane's specification): the command word is found by shell grammar
+
+Round B's scan walked back from a `.` to the nearest operator word. A
+redirection operator is an operator word, so `>o . ./f` left `o` as the
+apparent command name and the `.` as its operand, although bash sources the
+file in the current shell. A sourced `cd` could then move the shell while the
+audit kept carrying the deeper folder, so an outside read in a later call
+scored 0 hits and 0 ambiguous. Within one call the gap was already 0125's;
+carrying made it span calls.
+
+The dot scan now walks each simple command forward. It starts after the
+preceding separator (`;`, `&`, `&&`, `|`, `||`, `|&`, a newline, `(` or `)`,
+including when one is merged with a redirection into one operator word, such as
+`;>`). It then skips:
+
+- variable assignments (`NAME=`, `NAME+=`, `NAME[…]=`);
+- redirections together with their targets: every operator word that ends in a
+  redirection (`<`, `>`, `>>`, `<<`, `<<<`, `<>`, `>|`, `>&`, `<&`, `&>`,
+  `&>>`) takes the next word as its target, and a file-descriptor word (digits,
+  or `{name}`) directly before a redirection is skipped with it;
+- the named prefix commands (`builtin`, `command`, `exec`, `time`, `env`,
+  `coproc`, `nohup`, `!`) with their options, and the value word of
+  `env -u/-C/-S`, `exec -a` and `time -o/-f` and their long forms;
+- the reserved words that open a command (`if`, `then`, `elif`, `else`,
+  `while`, `until`, `do`, `{`).
+
+The first word left is the command word. A `.` there is a dot command, and it
+blocks placement for the call as 0125 requires; `source` blocks anywhere, as
+before. A `.` anywhere else is an operand, so ruling 1 stands:
+`grep -rn x --include=*.py .`, `grep x . >o` and `2>o grep -rn x .` do not
+block. A digit word separated by a space from a following redirection is also
+skipped as a descriptor. That reading is wrong in bash, where the digit word is
+the command word, but it only blocks more calls, so it fails closed.
+
+### Review 1's NOTEs
+
+- **F2, shell indirection across calls.** After `cd repo`, a call such as
+  `c=cd; $c` with a parent step moves the shell up unseen, and carrying lets a
+  later read score 0. This is 0125's named shell-indirection residual. Carrying
+  (item 1 (b)) now lets it span calls. It is named residual here, not closed.
+- **F3, stream order and separate sub-agent chains.** Item 1 (a) places a
+  chain's Bash calls in stream order, and item 1 (d) gives each sub-agent its
+  own chain. Both are assumptions about the tool. If the tool ran parallel Bash
+  calls out of stream order, or shared one shell between a sub-agent and the
+  main chain, an outside read could score 0. Named residual, tied to items
+  1 (a) and 1 (d).
+- **F4, a statically failing `&&` link.** `false && cd repo; true` followed by
+  a read outside the kit counts ambiguous, not a hit. This is exactly ruling 2's
+  named residual; the measured run's sandbox is the wall for that read.
+- **F5, the count prose.** The deployment fixes it at landing. Round C changes
+  only the numbers that `tests/check_counts.py` enforces.
+- **F6, the index entry.** Round B's added files
+  (`evals/review-faults/review_record.py`, its schema, `score.py`,
+  `testing.py` and `tests/test_review_faults_core.py`) are listed in round B's
+  addendum in prose because the frontmatter is round 1's bytes, which stay an
+  exact prefix of this file. So the regenerated `CONTEXT.md` row does not name
+  them.
+
+### What round C does not close
+
+- F2, F3 and F4 above, as named.
+- A prefix command outside the closed list (for example `sudo`, `timeout`,
+  `nice`) followed by `.` is still not a dot command, as under rounds 1 and B.
+- Everything 0072, 0125, 0127, round 1 and round B already name. Producer and
+  reviewer are both Claude Opus 5.5 sessions (this round's producer is a
+  headless session; its reviewer is a separate fresh session), a shared model
+  family.
+
+### Test (round C)
+
+New: `test_dot_after_redirection` in `tests/test_review_faults_session.py`.
+Review 1's five spellings (`>o . ./f`, `<i . ./f`, `2>&1 . ./f`,
+`X=1 2>o . ./f`, `>o command . ./f`), plus `&>o . ./f`, `2>>o . ./f`,
+`{fd}>o . ./f` and `true;>o . ./f`, each score at least 1 hit when a parent-step
+read that is inside the kit only if placement carried follows in the same call,
+in the same call after a `cd` into `repo`, or in a later call. The grep shapes
+above score 0 hits and 0 ambiguous. The eight session calls still score 0 hits
+and exactly 1 ambiguous.
+
+Faults:
+
+- new, `walk-back-to-the-operator dot scan restored`: every operator word ends
+  the prefix run and no redirection takes a target. It turns
+  `test_dot_after_redirection` red.
+- re-pointed, `old dot scan restored` (session faults): round C replaced the
+  bytes it mutated, so it now adds 0125's scan (any prefix word or `=` since the
+  nearest operator) to the new check. It still turns `test_dot_operand_ruling`
+  and `test_honest_session_data` red.
+- re-pointed, `dot after prefix options ignored` (cd faults): it now replaces
+  the command-word check with the bare command-start check. It still turns
+  `test_trap_and_prefixed_dot` red.
+
+Every other fault entry's source bytes, in all four fault lists, match as many
+times as before round C. This was checked by counting each entry's bytes in the
+runner before and after.
+
+Results on the build host (Python 3.8.2, macOS; scratch outside the checkout):
+
+| Command | Result |
+|---|---|
+| `python3 tests/check_counts.py` | `suite: 641 tests, from unittest's loader`; `enforced=3`; `clean — every current claim matches the suite` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/test_review_faults_cd.py` | `Ran 32 tests in 1.396s`; `OK`; `cd-call corpus graded-against-seen: 11/11` |
+| `python3 tests/test_review_faults_cd_faults.py` | `Ran 1 test in 10.992s`; `OK`; 25 `cd fault red:` lines |
+| `python3 tests/test_review_faults_core.py` | `Ran 11 tests in 0.089s`; `OK` |
+| `python3 tests/test_review_faults_corpus.py` | `Ran 1 test in 1.491s`; `OK`; `honest-call corpus graded-against-seen: 278/278` |
+| `python3 tests/test_review_faults_data.py` | `Ran 5 tests in 0.149s`; `OK` |
+| `python3 tests/test_review_faults_launch.py` | `Ran 20 tests in 24.247s`; `OK` |
+| `python3 tests/test_review_faults_session.py` | `Ran 18 tests in 0.524s`; `OK`; `session-call corpus graded-against-seen: 8/8`; `session-call corpus hits: 0, ambiguous: 1` |
+| `python3 tests/test_review_faults_session_faults.py` | `Ran 1 test in 8.136s`; `OK`; 19 `session fault red:` lines |
+
+`Python feature_version=(3, 6): 4/4 changed Python files parse`.
+`tests/run_tests.py`, `tests/test_review_faults_faults.py` and
+`tests/test_review_faults_build.py` were not run, as the head directs.
+
+### Status (round C)
+
+Review 1's F1 is fixed, and its NOTEs are recorded above. The work waits on
+the separate review. This producer does not approve or merge its own work, and
+this follow-up measures nothing.
+
+## Owner rulings needed
+
+None.

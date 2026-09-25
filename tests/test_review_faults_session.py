@@ -221,6 +221,20 @@ class SessionPlacementTests(unittest.TestCase):
                 self.assertGreaterEqual(self.carried(self.call('cd repo') +
                                                      self.call('%s . ./startup' % prefix)), 1)
 
+    def test_dot_after_redirection(self):
+        """Round C: redirections and their targets before the command word are skipped."""
+        for spelling in ('>o . ./f', '<i . ./f', '2>&1 . ./f', 'X=1 2>o . ./f', '>o command . ./f',
+                         '&>o . ./f', '2>>o . ./f', '{fd}>o . ./f', 'true;>o . ./f'):
+            with self.subTest(spelling=spelling):
+                self.assertGreaterEqual(self.score(self.call('cd repo; %s; %s' % (spelling, self.read)))['hits'], 1)
+                self.assertGreaterEqual(self.carried(self.call('cd repo; %s' % spelling)), 1)
+                self.assertGreaterEqual(self.carried(self.call('cd repo') + self.call(spelling)), 1)
+        # A redirection after the command word leaves the dot an operand.
+        for grep in ('grep -rn x --include=*.py .', 'grep x . >o', '2>o grep -rn x .'):
+            with self.subTest(spelling=grep):
+                self.assertEqual(self.both(self.call('cd repo; %s; %s' % (grep, self.read))), (0, 0))
+                self.assertEqual(self.both(self.call('cd repo; %s' % grep) + self.call(self.read)), (0, 0))
+
     def test_ambiguous_across_calls(self):
         """Round B, ruling 2: a later read inside the kit only if the && cd ran."""
         self.assertEqual(self.both(self.call('true && cd repo') + self.call(self.read)), (0, 1))
