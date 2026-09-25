@@ -121,3 +121,104 @@ Not run, by the brief: the whole suite (`tests/run_tests.py`), the mutation runn
 ## Owner rulings needed
 
 None.
+
+## Review round 2 fixes
+
+Dated 2026-09-25. Answers the independent review of `01eed13` (`docs/reviews/row3fu_review1.md`, left untracked and unchanged). The sections above are unchanged; 0087 carries a dated addendum after its last byte, and `bash docs/decisions/build_index.sh` was re-run (the index is byte-identical, since 0087's frontmatter did not change).
+Rulings in this section are the lane's, under the owner's standing delegation of 23 Sep 2026.
+
+### Findings
+
+| Finding | Changed files | Test(s) | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| F1 MAJOR, class 2 reach | `gars/tests/test_r164_failure_recovery.py` (new class `CollectWriterRecoveryTests`) | `test_complete_manifest_interrupted_keeps_previous_manifest` (faults at `json.dump`, `fsync`, `os.replace`); `test_submission_record_interrupted_keeps_previous_record` (`executorlib._save_record`: unserialisable value, `fsync`, `os.replace`); `test_report_render_interrupted_keeps_previous_report` (`render_report.main`: at the write, at `os.replace`) | fixed; yes: G2a red on the manifest test, G2b red on the report test, M05 also red on the record test (plant table below) |
+| F2 MAJOR, class 5 reach | new `gars/tests/test_r164_collect_gates.py`; `gars/tests/test_r164_boundaries.py` | collect gates of rnaseq, atacseq, chipseq, cutandrun, methylseq, rnaseq-de and scrna-qc-cluster (complete layout passes; each byte-gated artifact at 0 and 1 byte; each required artifact absent; each per-sample content check; scrna-qc-cluster totals at 1, 0, −1 and per-sample cells missing/zero/extra); `test_check_one_byte_boundary_in_every_mode`; `test_failed_exit_code_split` (`0:0`, `1:0`, `2:0`, `137:9`, `0:15`, empty); `test_a_contrast_needs_two_levels` (0, 1, 2 levels) | fixed; yes: G5a, G5b, G5c, G5d and Q5a–Q5f red |
+| F3 MINOR, classes 1, 3, 4 one call away | `test_r164_exact_bytes.py`, `test_r164_params_mapping.py`, `test_r164_keyed_lookups.py` | `test_executor_script_digest_is_exact` (`executorlib._sha256` over the shared payload set); `test_legacy_prepared_key_is_the_exact_concatenation`; `test_scrnaseq_protocol_and_aligner_land_in_their_own_keys` and `test_peaks_type_gsize_and_mito_land_in_their_own_keys` (`configure.py apply`, two genomes with distinct values); `Stage01FormatByAssayTests` (rnaseq, methylseq, atacseq sheets); `SchedulerStateMapTests` (own map with distinct values, and the Slurm tokens as sacct prints them) | fixed; yes: G1a, G1c, G3b, Q3a, G4a, G4b red |
+| F4 MINOR, README skip sentence | `README.md:322` | `python3 tests/check_counts.py` | fixed: the line now says 806 tests at 0087 (no new skip) and attributes the skip figures to 0110, "when the suite numbered 703"; written without the "N tests" shape so the guard does not read the historical figure as a current claim; clean |
+| F5 NOTE, threshold read from the module | `test_r164_boundaries.py:test_login_node_threshold` | the same test | fixed: now also pins 10 × 1000³ bytes, the "~10 GB" that stages 00 and 01 state as policy, on both sides; the module-constant assertions stay |
+| F6 NOTE, whole-list `build_params` equality | none | none | stays: the review requires no fix, and whole-list equality is what catches an exchange or a drop; a legitimately added parameter should make the test fail and be re-read |
+
+Existing tests changed: none from before this item. One round-1 test of this item changed, `test_login_node_threshold` (F5): assertions added, none removed.
+
+### Plant table, round 2
+
+Same method as round 1 (driver `<scratch>/plants/drive_r2.py`, not committed): each plant in a fresh `rsync -a --exclude .git` copy under `<scratch>`, a one-occurrence string replacement asserted unique, only the named module run, the copy deleted. The unplanted copy printed `OK` for all six modules (10, 12, 13, 13, 22 and 33 tests). G-ids are the review's own faults, re-planted as it describes them; Q-ids are this round's own. G1b and G3a are not re-planted: the review found existing tests already kill them.
+
+| Plant | Class | file:function | Diff, in one line | Module run | Failing test(s) | Red seen |
+|---|---|---|---|---|---|---|
+| M03 | survivor (1) | `wrapperlib.py:sha256` | `h.update(chunk)` → `h.update(chunk.rstrip())` | `test_r164_exact_bytes` | `test_sha256_is_the_digest_of_the_exact_bytes` and four others, as round 1 (`FAILED (failures=13)`) | yes |
+| M05 | survivor (2) | `workspace.py:atomic_open` | `tmp.unlink()` → `path.unlink()` | `test_r164_failure_recovery` | round 1's three, plus `test_submission_record_interrupted_keeps_previous_record` (`FAILED (failures=1, errors=7)`) | yes |
+| M07 | survivor (3) | `nfcore_rnaseq_wrapper.py:build_params` | the two index values exchanged | `test_r164_params_mapping` | `test_rnaseq_indices_are_not_exchanged` (`FAILED (failures=1)`) | yes |
+| M08 | survivor (4) | `nfcore_scrnaseq_wrapper.py:supported_protocols` | `data.get(aligner)` → `data.get("simpleaf")` | `test_r164_keyed_lookups` | `test_scrnaseq_protocols_are_read_for_the_selected_aligner`, `test_scrnaseq_preflight_judges_protocol_against_its_own_aligner` (`FAILED (failures=7)`) | yes |
+| M10 | survivor (5) | `spatial_cluster_count.py:cmd_collect` | `n_obs <= 0` → `n_obs < 0` | `test_r164_boundaries` | `test_spot_count_boundary` (`FAILED (failures=1)`) | yes |
+| G1a | 1 | `executorlib.py:_sha256` | `read_bytes()` → `read_bytes().rstrip()` | `test_r164_exact_bytes` | `test_executor_script_digest_is_exact` (`FAILED (failures=8)`) | yes |
+| G1c | 1 | `executorlib.py:prepared_key` (legacy branch) | `digest.update(chunk)` → `digest.update(chunk.rstrip())` | `test_r164_exact_bytes` | `test_legacy_prepared_key_is_the_exact_concatenation` (`FAILED (failures=1, errors=5)`) | yes |
+| G2a | 2 | `wrapperlib.py:complete_manifest` | `finally:` `os.unlink(temporary)` → `os.unlink(str(path))` | `test_r164_failure_recovery` | `test_complete_manifest_interrupted_keeps_previous_manifest` (`FAILED (errors=4)`) | yes |
+| G2b | 2 | `claims/render_report.py:main` | `finally:` `os.unlink(temporary)` → `pass` | `test_r164_failure_recovery` | `test_report_render_interrupted_keeps_previous_report` (`FAILED (failures=3)`) | yes |
+| G3b | 3 | `configure.py:cmd_apply` (scrnaseq) | `protocol` and `aligner` values exchanged | `test_r164_params_mapping` | `test_scrnaseq_protocol_and_aligner_land_in_their_own_keys` (`FAILED (failures=3)`) | yes |
+| Q3a | 3 | `configure.py:cmd_apply` (peaks) | `macs_gsize` and `mito_name` values exchanged | `test_r164_params_mapping` | `test_peaks_type_gsize_and_mito_land_in_their_own_keys` (`FAILED (failures=2)`) | yes |
+| G4a | 4 | `executorlib.py:_scheduler_status` | `status_map.get(token)` → `.get("COMPLETED")` | `test_r164_keyed_lookups` | `test_each_token_reads_its_own_entry`, `test_slurm_tokens_as_sacct_prints_them` (`FAILED (failures=10)`) | yes |
+| G4b | 4 | `stage01_samplesheet.py:validate_assay` | `FORMATS.get(assay)` → `FORMATS.get("rnaseq_bulk") if assay in FORMATS else None` | `test_r164_keyed_lookups` | `test_methylseq_sheet_has_no_rna_column`, `test_atacseq_sheet_names_the_group_and_replicate` (`FAILED (failures=2)`) | yes |
+| G5a | 5 | `configure.py:cmd_contrasts` | `len(levels) < 2` → `< 1` | `test_r164_boundaries` | `test_a_contrast_needs_two_levels` (`FAILED (failures=1)`) | yes |
+| G5b | 5 | `integrity.py:check_one` | `st_size == 0` → `st_size < 0` | `test_r164_boundaries` | `test_check_one_byte_boundary_in_every_mode` (`FAILED (failures=6)`) | yes |
+| G5c | 5 | `nfcore_rnaseq_wrapper.py:cmd_collect` | counts `st_size == 0` → `st_size < 0` | `test_r164_collect_gates` | `test_counts_matrix_byte_boundary_and_sample_columns` (`FAILED (errors=1)`) | yes |
+| G5d | 5 | `executorlib.py:_scheduler_status` | `int(exit_code) > 0` → `> 1` | `test_r164_boundaries` | `test_failed_exit_code_split` (`FAILED (failures=1)`) | yes |
+| Q5a | 5 | `nfcore_atacseq_wrapper.py:cmd_collect` | multiqc `st_size == 0` → `< 0` | `test_r164_collect_gates` | `AtacseqCollectGateTests.test_each_byte_gate_at_zero_and_one_byte` (`FAILED (failures=1)`) | yes |
+| Q5b | 5 | `nfcore_chipseq_wrapper.py:cmd_collect` | multiqc `st_size == 0` → `< 0` | `test_r164_collect_gates` | `ChipseqCollectGateTests.test_each_byte_gate_at_zero_and_one_byte` (`FAILED (failures=1)`) | yes |
+| Q5c | 5 | `nfcore_cutandrun_wrapper.py:cmd_collect` | target-group peak check → `missing = []` | `test_r164_collect_gates` | `test_a_target_group_without_peaks_is_named` (`FAILED (failures=1)`) | yes |
+| Q5d | 5 | `nfcore_methylseq_wrapper.py:cmd_collect` | per-sample coverage check → `missing = []` | `test_r164_collect_gates` | `test_a_sample_without_coverage_is_named` (`FAILED (failures=1)`) | yes |
+| Q5e | 5 | `rnaseq_de.py:cmd_collect` | report `st_size == 0` → `< 0` | `test_r164_collect_gates` | `RnaseqDeCollectGateTests.test_each_byte_gate_at_zero_and_one_byte` (`FAILED (failures=1)`) | yes |
+| Q5f | 5 | `scrna_qc_cluster.py:cmd_collect` | `n_cells_out <= 0` → `< 0` | `test_r164_collect_gates` | `test_cell_and_cluster_totals_at_one_zero_and_minus_one` (`FAILED (failures=1)`) | yes |
+
+Counts: 5 survivors re-checked, all red; 18 plants outside round 1's coverage map, all red (class 1: 2, class 2: 2, class 3: 2, class 4: 2, class 5: 10); 23 of 23 red. The driver run took 1 min 50 s.
+This is development evidence, not a mutation score; the review's F1–F3 survivals were "in the modules it ran", and these kills are likewise in the named modules only.
+
+### Commands and summary lines, round 2
+
+From the repository root with `TMPDIR`, `TEMP` and `TMP` at `<scratch>`, macOS, `python3` = 3.8.2.
+
+| Module | Summary line | `real` (s) |
+|---|---|---|
+| `test_r164_exact_bytes` | `Ran 10 tests in 0.414s` / `OK` | 0.61 |
+| `test_r164_failure_recovery` | `Ran 12 tests in 0.209s` / `OK` | 0.38 |
+| `test_r164_params_mapping` | `Ran 13 tests in 0.274s` / `OK` | 0.45 |
+| `test_r164_keyed_lookups` | `Ran 13 tests in 0.313s` / `OK` | 0.50 |
+| `test_r164_boundaries` | `Ran 22 tests in 0.260s` / `OK` | 0.44 |
+| `test_r164_collect_gates` (new) | `Ran 33 tests in 0.646s` / `OK` | 0.82 |
+
+Sum: 3.20 s for the six modules (103 tests, no skip). Under `/usr/local/bin/python3` (3.13.2) each printed `OK` with the same counts. All six files parse under `ast.parse(..., feature_version=(3, 6))`.
+
+Existing modules over the newly covered sources (no source changed, so these characterise the base):
+
+| Module | Summary line | `real` (s) |
+|---|---|---|
+| `gars/tests/test_render_report.py` | `Ran 14 tests in 50.635s` / `OK` | 50.80 |
+| `gars/tests/test_integrity_records.py` | `Ran 2 tests in 0.290s` / `OK` | 0.47 |
+| `gars/tests/test_executorlib_resume.py` | `Ran 2 tests in 0.079s` / `OK` | 0.27 |
+| `gars/tests/test_lifecycle_executor.py` | `Ran 16 tests in 5.752s` / `OK` | 5.95 |
+| `gars/tests/test_failure_classification.py` | `Ran 5 tests in 1.449s` / `OK` | 1.65 |
+| `gars/tests/test_no_false_completion.py` | `Ran 5 tests in 0.595s` / `OK` | 0.80 |
+| `tests/test_stage01_design.py` | `Ran 23 tests in 8.373s` / `OK (skipped=1)` (the skip is the pre-existing sealed-fixture skip) | 8.54 |
+
+Checks:
+
+- `python3 tests/check_contracts.py`: `14 contracts clean: sections, wait points, vocabulary.`
+- `python3 tests/check_counts.py`: `collected 360 tests from tests`, `collected 446 tests from gars/tests`, `suite: 806 tests, from unittest's loader`, `clean — every current claim matches the suite`.
+- `/usr/local/bin/python3 evals/test_harness.py` (3.13.2): `Ran 44 tests in 191.146s` / `OK`. Not re-run under 3.8.2 this round; round 1 showed it needs Python 3.9 or later there, and nothing under `evals/` changed.
+- `python3 evals/check_results.py --controls --lexicon`: `clean — graded=1`.
+- `python3 tests/test_decision_links_resolve.py`, after `bash docs/decisions/build_index.sh`: `Ran 3 tests in 1.390s` / `OK`, `citations: 376/376 resolve`.
+- `git diff --stat 2a81999 HEAD -- gars/_system gars/02_bioinformatics gars/_references gars/_templates gars/.claude .github benchmarks evals`: prints nothing (checked after the commit).
+
+Not run, by the brief: the whole suite, the mutation runner and every `test_review_faults_*` module.
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps after round 2
+
+- The kills above are in the named modules only; whether the whole suite stays green in modes B and C, and its added wall time on the lane's node, are the lane's to measure.
+- The scrnaseq, spatialvi and spatial-cluster-count collect gates are covered as round 1 left them. Every wrapper's collect is exercised with the lifecycle writers stubbed.
+- `executorlib._scheduler_status` is exercised through a stub status command (`/bin/echo`), not `sacct`; the local backend's `_local_status` is covered by the existing lifecycle suites, not here.
+- `render_report.main` is covered at the write and at `os.replace`; a fault inside `render` itself is the existing `test_render_report`'s.
+- Producer and reviewer share a model (0087, Context).

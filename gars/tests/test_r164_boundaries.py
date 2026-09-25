@@ -5,6 +5,7 @@ Collect is driven through each wrapper's cmd_collect with the lifecycle writers 
 """
 import argparse
 import contextlib
+import gzip
 import io
 import json
 import tempfile
@@ -12,6 +13,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 from support import GARS, module
+import configure
+import executorlib as ex
 import integrity
 import wrapperlib as wl
 
@@ -305,6 +308,11 @@ class ScalarBoundaryTests(unittest.TestCase):
                 self.assertEqual(wl.is_commit_pin(version), expected)
 
     def test_login_node_threshold(self):
+        # Stages 00 and 01 state the policy: above ~10 GB the check is scheduled work.
+        for size, scheduled in ((10 * 1000 ** 3 - 1, False), (10 * 1000 ** 3, False),
+                                (10 * 1000 ** 3 + 1, True), (0, False)):
+            with self.subTest(size=size):
+                self.assertEqual(integrity.needs_scheduling(size), scheduled)
         limit = integrity.LOGIN_NODE_BYTES
         self.assertFalse(integrity.needs_scheduling(limit - 1))
         self.assertFalse(integrity.needs_scheduling(limit))
@@ -333,6 +341,77 @@ class ScalarBoundaryTests(unittest.TestCase):
             self.assertEqual(len(fails()), 1)
             (stage / 'run/.gars_run_complete').write_text('done\n')
             self.assertEqual(fails(), [])
+
+
+class IntegrityBoundaryTests(unittest.TestCase):
+    def test_check_one_byte_boundary_in_every_mode(self):
+        with tempfile.TemporaryDirectory(prefix='gars-bounds-') as tmp:
+            root = Path(tmp)
+            empty_gz, one_gz = root / 'e.fastq.gz', root / 'g.fastq.gz'
+            empty_gz.write_bytes(b'')
+            with gzip.open(str(one_gz), 'wb') as fh:
+                fh.write(b'@r\nA\n+\nI\n')
+            for name, data in (('e.txt', b''), ('o.txt', b'x'), ('e.fq', b''),
+                               ('o.fq', b'@r\nA\n+\nI\n'), ('bad.gz', b'x')):
+                (root / name).write_bytes(data)
+            cases = [('e.txt', 'full', 'is empty'), ('o.txt', 'full', None),
+                     ('e.txt', 'skip', 'is empty'), ('o.txt', 'skip', None),
+                     ('e.txt', 'quick', 'is empty'), ('o.txt', 'quick', None),
+                     ('e.fq', 'full', 'is empty'), ('o.fq', 'full', None),
+                     ('e.fastq.gz', 'full', 'is empty'), ('g.fastq.gz', 'full', None),
+                     ('e.fastq.gz', 'quick', 'is empty'), ('g.fastq.gz', 'quick', None),
+                     ('bad.gz', 'quick', 'is not gzip (bad magic)'),
+                     ('absent.txt', 'full', 'does not resolve')]
+            for name, mode, problem in cases:
+                with self.subTest(name=name, mode=mode):
+                    self.assertEqual(integrity.check_one(root / name, mode), problem)
+
+
+class SchedulerExitBoundaryTests(unittest.TestCase):
+    def status(self, line):
+        descriptor = dict(ex.BUILTINS['slurm'], status_argv=['/bin/echo', '{job_id}'])
+        return ex._scheduler_status(None, line, descriptor)
+
+    def test_failed_exit_code_split(self):
+        for line, state in (('FAILED|0:0', 'FAILED'), ('FAILED|1:0', 'FAILED:EXIT_1'),
+                            ('FAILED|2:0', 'FAILED:EXIT_2'), ('FAILED|137:9', 'FAILED:EXIT_137'),
+                            ('FAILED|0:15', 'FAILED'), ('FAILED|', 'FAILED'), ('FAILED', 'FAILED'),
+                            ('COMPLETED|1:0', 'COMPLETED'), ('TIMEOUT|1:0', 'FAILED:TIMEOUT')):
+            with self.subTest(line=line):
+                self.assertEqual(self.status(line), (state, None))
+
+
+class ContrastLevelBoundaryTests(unittest.TestCase):
+    def contrasts(self, levels):
+        with tempfile.TemporaryDirectory(prefix='gars-bounds-') as tmp:
+            project = Path(tmp)
+            (project / '01_samplesheets').mkdir()
+            rows = ''.join('s%d,%s\n' % (i, level) for i, level in enumerate(levels))
+            (project / '01_samplesheets/rnaseq_bulk_design.csv').write_text(
+                'sample_id,condition\n' + rows)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                code = configure.main(['--workspace', tmp, 'contrasts', '--project', tmp,
+                                       '--assay', 'rnaseq_bulk'])
+            return code, json.loads(out.getvalue())
+
+    def test_a_contrast_needs_two_levels(self):
+        code, result = self.contrasts(['a', 'a', 'b', 'b'])
+        self.assertEqual((code, result['ok'], result['levels']), (0, True, ['a', 'b']))
+        self.assertEqual([c['spec'] for c in result['contrasts']],
+                         ['condition,a,b', 'condition,b,a'])
+        for levels, named in ((['a', 'a'], "1 level(s)"), (['', ''], "0 level(s)")):
+            with self.subTest(levels=levels):
+                code, result = self.contrasts(levels)
+                self.assertEqual((code, result['ok']), (1, False))
+                self.assertIn(named, result['error'])
+
+    def test_a_level_needs_two_samples_to_be_testable(self):
+        code, result = self.contrasts(['a', 'b', 'b', 'c', 'c', 'c'])
+        testable = {c['spec']: c['testable'] for c in result['contrasts']}
+        self.assertEqual(testable, {'condition,a,b': False, 'condition,a,c': False,
+                                    'condition,b,a': False, 'condition,b,c': True,
+                                    'condition,c,a': False, 'condition,c,b': True})
 
 
 if __name__ == '__main__':

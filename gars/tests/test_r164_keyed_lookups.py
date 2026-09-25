@@ -3,6 +3,9 @@
 Each fixture carries at least two keys whose content differs, and the test asserts the
 chosen key's content, so reading another key's entry is visible.
 """
+import contextlib
+import csv
+import io
 import json
 import os
 import tempfile
@@ -12,6 +15,7 @@ from unittest.mock import patch
 from support import GARS, module
 import configure
 import executorlib as ex
+import stage01_samplesheet as s01
 import workspace as ws
 import wrapperlib as wl
 
@@ -175,6 +179,89 @@ class KeyedLookupTests(unittest.TestCase):
         self.assertFalse(any(l.startswith('#SBATCH') for l in local_lines))
         self.assertIn('# compute.* stays in the record: partition=part9 time=02:00:00 '
                       'cpus=3 mem=5G', local_lines)
+
+
+class Stage01FormatByAssayTests(unittest.TestCase):
+    """The emitted samplesheet is the selected assay's own format, never another's."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory(prefix='gars-keyed-')
+        self.project = Path(self._tmp.name).resolve()
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def fixture(self, assay):
+        data = self.project / '00_data' / assay
+        (data / 'raw').mkdir(parents=True)
+        (self.project / '_config').mkdir(exist_ok=True)
+        (self.project / '_config' / (assay + '.yaml')).write_text(
+            'strandedness: reverse\nunit_of_replication: sample\nreference_release: synthetic-v1\n')
+        with (data / 'samples.csv').open('w', newline='') as fh:
+            csv.writer(fh).writerows([['sample_id', 'condition', 'group', 'replicate'],
+                                      ['K1', 'A', 'GA', '1'], ['K2', 'A', 'GA', '2'],
+                                      ['K3', 'B', 'GB', '1'], ['K4', 'B', 'GB', '2']])
+        with (data / 'files.csv').open('w', newline='') as fh:
+            writer = csv.writer(fh)
+            writer.writerow(['sample_id', 'lane', 'fastq_1', 'fastq_2'])
+            for sample in ('K1', 'K2', 'K3', 'K4'):
+                raw = data / 'raw' / ('%s_R1.fastq' % sample)
+                raw.write_text('@synthetic\nACGT\n+\nIIII\n')
+                writer.writerow([sample, '1', str(raw.relative_to(self.project)), ''])
+
+    def emitted(self, assay):
+        self.fixture(assay)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = s01.main(['--project', str(self.project)])
+        self.assertEqual(code, 0, out.getvalue())
+        sheet = self.project / '01_samplesheets' / ('%s_samplesheet.csv' % assay)
+        rows = list(csv.reader(sheet.read_text().splitlines()))
+        return rows[0], [row[:1] + row[3:] for row in rows[1:]]
+
+    def test_rnaseq_sheet_carries_strandedness_and_sample_ids(self):
+        header, rows = self.emitted('rnaseq_bulk')
+        self.assertEqual(header, ['sample', 'fastq_1', 'fastq_2', 'strandedness'])
+        self.assertEqual(rows, [['K1', 'reverse'], ['K2', 'reverse'], ['K3', 'reverse'],
+                                ['K4', 'reverse']])
+
+    def test_methylseq_sheet_has_no_rna_column(self):
+        header, rows = self.emitted('methylseq')
+        self.assertEqual(header, ['sample', 'fastq_1', 'fastq_2'])
+        self.assertEqual(rows, [['K1'], ['K2'], ['K3'], ['K4']])
+
+    def test_atacseq_sheet_names_the_group_and_replicate(self):
+        header, rows = self.emitted('atacseq_bulk')
+        self.assertEqual(header, ['sample', 'fastq_1', 'fastq_2', 'replicate'])
+        self.assertEqual(rows, [['GA', '1'], ['GA', '2'], ['GB', '1'], ['GB', '2']])
+
+
+class SchedulerStateMapTests(unittest.TestCase):
+    """The backend's first token is looked up in the descriptor's own status_map."""
+
+    def status(self, line, status_map=None):
+        descriptor = dict(ex.BUILTINS['slurm'], status_argv=['/bin/echo', '{job_id}'])
+        if status_map is not None:
+            descriptor['status_map'] = status_map
+        return ex._scheduler_status(None, line, descriptor)
+
+    def test_each_token_reads_its_own_entry(self):
+        table = {'QUEUED': 'PENDING', 'GOING': 'RUNNING', 'DONE': 'COMPLETED',
+                 'KILLED': 'CANCELLED', 'BROKEN': 'FAILED:NODE_FAIL'}
+        for token, state in table.items():
+            with self.subTest(token=token):
+                self.assertEqual(self.status(token + '|0:0', table), (state, None))
+        state, why = self.status('UNKNOWN|0:0', table)
+        self.assertIsNone(state)
+        self.assertIn("unmapped backend state 'UNKNOWN'", why)
+
+    def test_slurm_tokens_as_sacct_prints_them(self):
+        for line, state in (('PENDING', 'PENDING'), ('RUNNING|0:0', 'RUNNING'),
+                            ('COMPLETED+|0:0', 'COMPLETED'), ('CANCELLED by 1234|0:15', 'CANCELLED'),
+                            ('OUT_OF_MEMORY|0:125', 'FAILED:OUT_OF_MEMORY'),
+                            ('NODE_FAIL|1:0', 'FAILED:NODE_FAIL'), ('completed|0:0', 'COMPLETED')):
+            with self.subTest(line=line):
+                self.assertEqual(self.status(line), (state, None))
 
 
 if __name__ == '__main__':

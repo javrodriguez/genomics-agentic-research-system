@@ -3,14 +3,19 @@
 Faults are injected at each step of each writer through the os functions it calls; the
 observation is the directory afterwards: the previous complete bytes, and no sibling.
 """
+import json
 import os
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from support import run
+from support import GARS, module, run
+from test_lifecycle_executor import prepared
+import executorlib as ex
 import workspace as ws
 import wrapperlib as wl
+
+CLAIMS_FIXTURE = GARS / 'tests/fixtures/claims'
 
 
 class Boom(Exception):
@@ -156,6 +161,96 @@ class FailureRecoveryTests(unittest.TestCase):
         self.assertEqual(run(['bash', script]).returncode, 0)
         self.assertEqual(effects.read_text(), 'body []\nbody [-resume]\n')
         self.assertTrue((stage / 'run/.gars_run_complete').is_file())
+
+
+class CollectWriterRecoveryTests(unittest.TestCase):
+    """The collect-side writers: the manifest, the submission record and the report."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory(prefix='gars-recovery-')
+        self.root = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def submitted(self):
+        stage = prepared(self.root)[0]
+        (self.root / '_config/executor.yaml').write_text('name: local\n')
+        with patch.object(ex, '_submit_once', return_value=('42', None)):
+            job, why = ex.submit(self.root, stage / 'submit.sh')
+        self.assertEqual(job, '42', why)
+        return stage
+
+    def test_complete_manifest_interrupted_keeps_previous_manifest(self):
+        stage = self.submitted()
+        manifest = stage / 'reproducibility/manifest.json'
+        before = manifest.read_bytes()
+        listing = sorted(p.name for p in manifest.parent.iterdir())
+
+        def half_then_fail(obj, fh, **kwargs):
+            fh.write('{"half": ')
+            raise OSError('injected fault')
+
+        faults = [('dump', patch.object(wl.json, 'dump', half_then_fail)),
+                  ('fsync', patch.object(wl.os, 'fsync', refuse)),
+                  ('replace', patch.object(wl.os, 'replace', refuse))]
+        for label, fault in faults:
+            with self.subTest(step=label):
+                with fault, self.assertRaises(OSError):
+                    wl.complete_manifest(stage, 'none', 'COMPLETE')
+                self.assertEqual(manifest.read_bytes(), before)
+                self.assertEqual(sorted(p.name for p in manifest.parent.iterdir()), listing)
+        written = wl.complete_manifest(stage, 'none', 'COMPLETE')
+        self.assertEqual(json.loads(manifest.read_text()), written)
+        self.assertEqual(written['predicate_facts']['status'], 'COMPLETE')
+        self.assertEqual(sorted(p.name for p in manifest.parent.iterdir()), listing)
+
+    def test_submission_record_interrupted_keeps_previous_record(self):
+        records = self.root / '.gars_submissions'
+        records.mkdir()
+        path = records / ('a' * 64 + '.json')
+        ex._save_record(path, {'job_id': '1', 'state': 'PENDING'})
+        before = path.read_bytes()
+        self.assertEqual(json.loads(before.decode()), {'job_id': '1', 'state': 'PENDING'})
+        for label in ('unserialisable', 'fsync', 'replace'):
+            with self.subTest(step=label):
+                if label == 'unserialisable':
+                    with self.assertRaises(TypeError):
+                        ex._save_record(path, {'job_id': '1', 'state': object()})
+                else:
+                    with patch.object(ws.os, label, refuse), self.assertRaises(OSError):
+                        ex._save_record(path, {'job_id': '1', 'state': 'COMPLETED'})
+                self.assertEqual(path.read_bytes(), before)
+                self.assertEqual(sorted(p.name for p in records.iterdir()), [path.name])
+
+    def test_report_render_interrupted_keeps_previous_report(self):
+        renderer = module(GARS / '_system/claims/render_report.py', 'r164_recovery_renderer')
+        out = self.root / 'report.md'
+        argv = ['--snapshot', str(CLAIMS_FIXTURE / 'snapshot.json'),
+                '--manifest', str(CLAIMS_FIXTURE / 'manifest.json'), '--out', str(out)]
+        real = renderer.tempfile.NamedTemporaryFile
+
+        def failing_write(*args, **kwargs):
+            handle = real(*args, **kwargs)
+            handle.write(b'half')
+            handle.write = refuse
+            return handle
+
+        out.write_bytes(b'previous report\n')
+        faults = [('write', patch.object(renderer.tempfile, 'NamedTemporaryFile', failing_write)),
+                  ('replace', patch.object(renderer.os, 'replace', refuse))]
+        for label, fault in faults:
+            with self.subTest(step=label):
+                with fault, open(os.devnull, 'w') as sink, patch.object(renderer.sys, 'stderr', sink):
+                    self.assertEqual(renderer.main(argv), 1)
+                self.assertEqual(out.read_bytes(), b'previous report\n')
+                self.assertEqual(self.names(), ['report.md'])
+        self.assertEqual(renderer.main(argv), 0)
+        self.assertEqual(out.read_bytes(), (CLAIMS_FIXTURE / 'report.md').read_bytes())
+        self.assertEqual(self.names(), ['report.md'])
+
+    def names(self):
+        return sorted(p.name for p in self.root.iterdir())
 
 
 if __name__ == '__main__':

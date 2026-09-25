@@ -90,3 +90,16 @@ standing; test-only change awaiting independent review; Row 3 exit NOT met and n
 ## Date
 
 2026-09-25
+
+## Addendum, 2026-09-25: review round 1
+
+The bytes above are unchanged; this addendum records the round-2 fixes for the independent review of `01eed13` ([change report](../implementation/row_3_followup_change_report.md), "Review round 2 fixes").
+The review found the suite killed its named functions but did not reach one call further: of its 13 own-class faults outside the coverage map, none went red on the new modules, and classes 2 and 5 had no kill at all (F1, F2, F3).
+
+- **Class 2** now injects faults into the collect-side writers: `wrapperlib.complete_manifest` (at `json.dump`, `fsync`, `os.replace`), the executor's submission record (`executorlib._save_record`: unserialisable value, `fsync`, `os.replace`) and `claims/render_report.py` `main` (at the write and at `os.replace`); each keeps the previous bytes and leaves no temporary sibling.
+- **Class 5** adds `gars/tests/test_r164_collect_gates.py`, a module this record's `touches` list does not name because the frontmatter is not edited: it drives `cmd_collect` of the rnaseq, atacseq, chipseq, cutandrun, methylseq, rnaseq-de and scrna-qc-cluster wrappers over a complete layout, with each byte-gated artifact at zero and one byte, each required artifact absent, and each per-sample content check missing a sample. `test_r164_boundaries.py` adds `integrity.check_one` at zero and one byte in every mode, the Slurm `FAILED` exit-code split at `0:0`, `1:0` and `2:0`, and `configure.py contrasts` at zero, one and two levels. The login-node threshold is now pinned to the stages' stated ~10 GB (F5).
+- **Class 1** adds `executorlib._sha256` over the shared payload set and the legacy branch of `executorlib.prepared_key`; **class 3** adds `configure.py apply` for the scrnaseq protocol/aligner and the peaks type/gsize/mito keys; **class 4** adds the stage-01 samplesheet format by assay and the scheduler `status_map` lookup, which closes the gap this record named above for the Slurm state map (observed through a stub status command, not a scheduler).
+
+Every one of the reviewer's faults that was in scope (G1a, G1c, G2a, G2b, G3b, G4a, G4b, G5a–G5d) and eight further plants went red in a disposable copy on a new test, and the five survivors still go red on the extended modules; the unplanted copy was green.
+The suite rises to 806 tests; the six R-164 modules take about 3.2 s together on the producer's machine and add no skip.
+This is producer-authored development evidence, not a mutation score; the exit still needs the second seal (0088, 0089), and nothing in this addendum claims it.

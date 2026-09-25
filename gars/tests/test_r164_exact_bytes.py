@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from support import GARS, module
+import executorlib as ex
 import wrapperlib as wl
 from tools.execution import config_holds
 
@@ -167,6 +168,50 @@ class ExactBytesTests(unittest.TestCase):
                 artifact = {'path': 'e.bin', 'sha256': digest(data + b' ')}
                 self.assertEqual(check.artifact_problem(artifact, project),
                                  'evidence_hash_mismatch')
+
+    def test_executor_script_digest_is_exact(self):
+        seen = set()
+        for label, data in payloads():
+            with self.subTest(payload=label):
+                path = self.write('scripts/' + label, data)
+                self.assertEqual(ex._sha256(path), digest(data))
+                seen.add(ex._sha256(path))
+        self.assertEqual(len(seen), len(payloads()))
+
+    def legacy_stage(self, config_bytes, sheet_bytes):
+        root = self.root / 'legacy'
+        stage = root / '02_bioinformatics/rnaseq_bulk/01_fixture'
+        (stage / 'reproducibility').mkdir(parents=True, exist_ok=True)
+        (root / '_config').mkdir(exist_ok=True)
+        (root / '_config/rnaseq_bulk.yaml').write_bytes(config_bytes)
+        sheet = root / 'sheet.csv'
+        sheet.write_bytes(sheet_bytes)
+        wl.write_params_yaml(stage, 'rnaseq_bulk', [('input', str(sheet.resolve()))])
+        return root, stage
+
+    def claim(self, stage, key):
+        (stage / 'reproducibility/manifest.json').write_text(json.dumps({'idempotency_key': key}))
+        (stage / 'submit.sh').write_text('#!/bin/bash\n# idempotency_key=%s\ntrue\n' % key)
+
+    def test_legacy_prepared_key_is_the_exact_concatenation(self):
+        near = b'c' * (MIB - 1)
+        cases = [(b'aligner: star\n', b'a,b\n'), (b'aligner: star \n', b'a,b\n'),
+                 (b'aligner: star\n\n', b'a,b \n'), (near + b' ', b''), (b'', b'')]
+        keys = set()
+        for config_bytes, sheet_bytes in cases:
+            with self.subTest(config=config_bytes[-4:], sheet=sheet_bytes):
+                root, stage = self.legacy_stage(config_bytes, sheet_bytes)
+                params = (stage / 'params.yaml').read_bytes()
+                exact = digest(params + sheet_bytes + config_bytes)
+                self.claim(stage, exact)
+                self.assertEqual(ex.prepared_key(root, stage), exact)
+                keys.add(exact)
+                lossy = digest(params.rstrip() + sheet_bytes.rstrip() + config_bytes.rstrip())
+                if lossy != exact:
+                    self.claim(stage, lossy)
+                    with self.assertRaises(ValueError):
+                        ex.prepared_key(root, stage)
+        self.assertEqual(len(keys), len(cases))
 
 
 if __name__ == '__main__':

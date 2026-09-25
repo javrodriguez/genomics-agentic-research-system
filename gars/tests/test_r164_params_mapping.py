@@ -14,6 +14,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 from support import GARS, module
+import configure
 import executorlib as ex
 
 WRAPPERS = GARS / '_system/wrappers'
@@ -251,6 +252,76 @@ class DirectiveMappingTests(unittest.TestCase):
                 '#SBATCH --output=%s/logs/slurm-%%j.out' % stage,
                 '#SBATCH --error=%s/logs/slurm-%%j.err' % stage])
 
+
+class ConfigureApplyMappingTests(unittest.TestCase):
+    """configure.py apply writes each selection into its own key of the project config."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory(prefix='gars-params-')
+        self.root = Path(self._tmp.name).resolve()
+        refs = self.root / 'refs'
+        refs.mkdir()
+        for name in ('g1.fa', 'g1.gtf', 'g2.fa', 'g2.gtf'):
+            (refs / name).write_text(name)
+        (self.root / '_references').mkdir()
+        (self.root / '_references/genomes.md').write_text(
+            '| ID | Species | Build | Source | FASTA | GTF | Derived cache root | Mito contig | MACS gsize |\n'
+            '|---|---|---|---|---|---|---|---|---|\n'
+            '| G1 | Mus fixture | B1 | S1 | %s | %s | %s | chrMito1 | 111 |\n'
+            '| G2 | Homo fixture | B2 | S2 | %s | %s | %s | chrMito2 | 222 |\n\n'
+            '| ID | Annotation release | fasta_sha256 | gtf_sha256 |\n|---|---|---|---|\n'
+            '| G1 | r1 | %s | %s |\n| G2 | r2 | %s | %s |\n'
+            % (refs / 'g1.fa', refs / 'g1.gtf', self.root / 'cache1',
+               refs / 'g2.fa', refs / 'g2.gtf', self.root / 'cache2',
+               '1' * 64, '2' * 64, '3' * 64, '4' * 64))
+        self.project = self.root / 'project'
+        (self.project / '_config').mkdir(parents=True)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def apply(self, assay, template, *options):
+        (self.project / '_config' / (assay + '.yaml')).write_text(template)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = configure.main(['--workspace', str(self.root), 'apply', '--project',
+                                   str(self.project), '--assay', assay] + list(options))
+        result = json.loads(out.getvalue())
+        self.assertEqual(code, 0, result)
+        return (self.project / '_config' / (assay + '.yaml')).read_text()
+
+    def genome_lines(self, genome):
+        """The genome's lines under `reference:`; line order within the block is not asserted."""
+        n = genome.lower()
+        sums = ('1' * 64, '2' * 64) if genome == 'G1' else ('3' * 64, '4' * 64)
+        return ['  fasta_sha256: %s' % sums[0], '  gtf_sha256: %s' % sums[1],
+                '  fasta: %s' % (self.root / 'refs' / (n + '.fa')),
+                '  gtf: %s' % (self.root / 'refs' / (n + '.gtf'))]
+
+    def test_scrnaseq_protocol_and_aligner_land_in_their_own_keys(self):
+        template = ('reference:\n  fasta: <REQUIRED>\n  gtf:   <REQUIRED>\n'
+                    'protocol: <REQUIRED>\naligner: simpleaf\n')
+        for aligner, protocol, genome in (('star', 'dropseq', 'G2'), ('kallisto', '10XV2', 'G1'),
+                                          ('simpleaf', '10XV4', 'G2')):
+            with self.subTest(aligner=aligner, protocol=protocol):
+                text = self.apply('scrnaseq', template, '--genome', genome,
+                                  '--protocol', protocol, '--aligner', aligner)
+                self.assertEqual(sorted(text.splitlines()), sorted(
+                    ['reference:'] + self.genome_lines(genome) +
+                    ['protocol: %s' % protocol, 'aligner: %s' % aligner]))
+
+    def test_peaks_type_gsize_and_mito_land_in_their_own_keys(self):
+        template = ('reference:\n  fasta: <REQUIRED>\n  gtf: <REQUIRED>\n  mito_name: <REQUIRED>\n'
+                    'peaks:\n  type: <REQUIRED>\n  macs_gsize: <REQUIRED>\n')
+        for genome, peaks, mito, gsize in (('G1', 'broad', 'chrMito1', '111'),
+                                           ('G2', 'narrow', 'chrMito2', '222')):
+            with self.subTest(genome=genome, peaks=peaks):
+                text = self.apply('atacseq_bulk', template, '--genome', genome,
+                                  '--peaks-type', peaks)
+                self.assertEqual(sorted(text.splitlines()), sorted(
+                    ['reference:'] + self.genome_lines(genome) +
+                    ['  mito_name: %s' % mito, 'peaks:', '  type: %s' % peaks,
+                     '  macs_gsize: %s' % gsize]))
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
