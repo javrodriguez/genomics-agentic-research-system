@@ -59,14 +59,16 @@ the producer does not write or claim it. See [0069](docs/decisions/0069-row-12-f
 and the [round-7 report](docs/implementation/row_12_change_report.md#review-round-7-fixes-post-merge-on-e59dfc0).
 
 Row 9 code-half record: `docs/decisions/0072-row-9-review-fault-harness-code-half.md`;
-reserved later records are protected approval 0073 and one record, 0074,
-covering both the seal and the first measured run.
+protected approval 0073; the seal and the first measured run are recorded in
+[0074](docs/decisions/0074-row-9-seal-and-first-measured-run.md): 10/10 plants
+caught, 0 false alarms in 3 valid clean reviews, 2 of 15 records INVALID, so the
+thresholds are NOT met; the public claim stays unmeasured.
 Row 9 code tools are in `evals/review-faults/`: construct anonymous cases with
 `build_cases.py --out <external-output>`, launch from the separate reviewing OS
 account with `run_reviews.py`, then hash-check and publish masked records with
 `score.py` (full arguments in that folder's README). Seal before the first model
-run. No model was run in this round; sealed slots, public credibility and the
-row exit remain NOT met. S1 implements Q3 A and Q4 A: added lines and decoded
+run. No model was run in the code-half round; public credibility and the row
+exit remain NOT met. S1 implements Q3 A and Q4 A: added lines and decoded
 new Git content pass the twelve-case sweep, with unchanged-line exemptions
 proved in both directions. Required checks and remaining verification are in
 `docs/implementation/row_9_change_report.md`.

@@ -8,7 +8,6 @@ symptoms:
   - the pinned measurement procedure names a harness commit whose audit has since been fixed
   - the pinned procedure deploys the working-tree isolation checker, which is now a later version
 ---
-
 # Row 9 measurement procedure: deviations from the pinned instrument
 
 ## Context
@@ -37,7 +36,7 @@ If the harness commit changes before it is public, a dated MEASURE-3 supersedes 
 
 ## What this does not close
 
-The first measured run waits until `84505eb` is public and its CI and Fresh clone are green, so that `harness_commit` in every manifest resolves for any reader.
+The first measured run waits until `84505eb` is public and its CI and Fresh clone are green, so that `harness_commit` in every manifest resolves for any reader (superseded by the MEASURE-3 addendum below: the run waited for `a779084` instead).
 The seal and the measured run are recorded in 0074.
 
 ## Test
@@ -64,7 +63,7 @@ The sandbox evidence for the seal is the settings' byte-identity (the permission
 
 ## Addendum, 2026-09-25: MEASURE-4 supersedes MEASURE-3 (the sealer's Codex home only)
 
-The Mac's default Codex account was at its usage limit until 28 Sep, so R9-C (a fresh Codex context on the Mac) runs as written on the owner's second Codex account, which the owner logged into a separate Codex home himself.
+The coordinating machine's default Codex account could not be used for the seal, so R9-C (a fresh Codex context on that machine) runs as written on the owner's second Codex account, which the owner logged into a separate Codex home.
 The deployment's MEASURE-4.md changes only CP7.4 and its correction round: they run with a fresh, seal-only Codex home whose credential file is a symbolic link to that account's (created, never copied or opened), and the procedure's instruction-file check and session lookup read that home. MEASURE.md, MEASURE-2.md and MEASURE-3.md stay byte-identical.
 MEASURE-4.md's sha256 is `1869158c02d287fdf8b20514992fa3ac5b5ceb8aec0a404c2a113ee2e8356b93`; a fresh-context reader confirmed from the diff that nothing else changed.
 

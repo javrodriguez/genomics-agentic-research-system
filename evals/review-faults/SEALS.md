@@ -2,6 +2,7 @@
 
 State: **sealed** (`independent_context`), first run recorded. Score: development
 evidence only; the public claim stays **unmeasured**. Row 9 exit: **NOT met**.
+The first run's thresholds are **NOT met**: 2 of 15 records are INVALID (0074).
 The producer has not authored or inspected the three sealed plants. A fresh Codex
 context sealed them on 2026-09-25; the first measured run is recorded in
 [0074](../../docs/decisions/0074-row-9-seal-and-first-measured-run.md).
