@@ -68,6 +68,24 @@ def session_output_store(kit, session_id):
     return home / '.claude' / 'projects' / project / session_id / 'tool-results'
 
 
+def stream_items(value):
+    """Tool calls and tool results in stream order, as tool_inputs finds calls."""
+    if isinstance(value, dict):
+        if value.get('type') in ('tool_use', 'tool_result'):
+            yield value
+        for item in value.values():
+            for data in stream_items(item):
+                yield data
+    elif isinstance(value, list):
+        for item in value:
+            for data in stream_items(item):
+                yield data
+
+
+# Decision 0128: the stable prefix of the tool's own working-directory reset notice.
+CWD_RESET = 'Shell cwd was reset to'
+
+
 def input_fields(value, field=None):
     """Retain field names so content and prose can be excluded before parsing."""
     if isinstance(value, str):
@@ -203,17 +221,45 @@ class CommandPlacement:
         broken = False
         command_start = True
         dot_command = False
+        # Decision 0128 ruling 1 and round C: a dot is a dot command only as
+        # the simple command's command word, found by grammar. After the
+        # preceding separator, skip assignments, redirections with their
+        # targets, and the named prefix commands with their options; the
+        # first word left is the command word. Any other dot is an operand.
+        redirection_syntax = r'&>>?|[<>]+[&|]?'
+        command_words = set()
+        prefix_run, target, prefix, value = True, False, None, False
         for index, word in enumerate(words):
-            cursor = index - 1
-            # Prefix options may consume operands. Conservatively retain a
-            # prefix anywhere in this simple command when judging a later dot.
-            dot_prefix = False
-            while cursor >= 0 and not words[cursor].operator:
-                dot_prefix = dot_prefix or (
-                    words[cursor] in ('builtin', 'command', '!', 'time', 'env', 'exec', 'coproc', 'nohup') or
-                    '=' in words[cursor])
-                cursor -= 1
-            if word == '.' and (command_start or dot_prefix):
+            if word.operator:
+                separator = bool(re.sub(redirection_syntax, '', word))
+                redirection = re.search('(?:%s)$' % redirection_syntax, word) is not None
+                if separator:
+                    prefix_run, prefix, value = True, None, False
+                target = redirection
+            elif target:
+                target = False
+            elif not prefix_run:
+                pass
+            elif value:
+                value = False
+            elif (re.fullmatch(r'[0-9]+|\{[A-Za-z_][A-Za-z0-9_]*\}', word) and index + 1 < len(words) and
+                  words[index + 1].operator and re.match(redirection_syntax, words[index + 1])):
+                pass
+            elif word in ('builtin', 'command', '!', 'time', 'env', 'exec', 'coproc', 'nohup'):
+                prefix = word
+            elif re.match(r'[A-Za-z_][A-Za-z0-9_]*(?:\[[^]]*\])?[+]?=', word):
+                pass
+            elif prefix and word.startswith('-'):
+                value = word in {'env': ('-u', '--unset', '-C', '--chdir', '-S', '--split-string'),
+                                 'exec': ('-a',), 'time': ('-o', '--output', '-f', '--format')
+                                 }.get(prefix, ())
+            elif word in ('if', 'then', 'elif', 'else', 'while', 'until', 'do', '{'):
+                prefix = None
+            else:
+                prefix_run = False
+                command_words.add(index)
+        for index, word in enumerate(words):
+            if word == '.' and index in command_words:
                 dot_command = True
             self.depths.append(parens + groups + keywords + int(backquote) + self.nested)
             chain_end = False
@@ -341,7 +387,8 @@ class CommandPlacement:
             target = self.target(argument) if plain else None
             accepted = not self.blocked and top_level and plain and target is not None
             destination = target if accepted else state['kit']
-            conditional = accepted and (state['conditional'] or previous == '&&')
+            # Decision 0128 ruling 2: the optimistic placement assumes it ran.
+            conditional = accepted and not state['optimistic'] and (state['conditional'] or previous == '&&')
             # The directory operand itself is checked from the old folder.
             self.pending = (index + 2, destination, conditional)
             if argument is None or argument.operator:
@@ -353,8 +400,12 @@ class CommandPlacement:
             self.state['folder'], self.state['conditional'] = self.pending[1:]
 
 
-def placed_command(text, kit):
+def placed_command(text, kit, start=None, optimistic=False):
     state = {'kit': kit, 'folder': kit, 'conditional': False}
+    state['optimistic'] = optimistic
+    # Decision 0128: a Bash call starts where the previous one provably ended.
+    if start is not None:
+        state['folder'] = start
     # Item 8: inspect the untouched call before parsing or removing any data.
     raw_hazard = (any((ord(char) < 32 and char not in '\n\t') or
                       127 <= ord(char) < 160 for char in text) or
@@ -642,31 +693,127 @@ def blindness(events, kit, session_id=None):
     saved_output = session_output_store(kit, session_id) if session_id else None
     trees = [Path(os.path.join(os.sep, x)) for x in ('usr', 'bin', 'sbin', 'lib', 'lib64')]
     devices = [Path(os.path.join(os.sep, 'dev', x)) for x in ('null', 'stdin', 'stdout', 'stderr')]
-    calls = hits = 0
+    calls = hits = ambiguous = 0
+    parent = chr(46) * 2
+    home = '$' + 'HOME'
+    brace_home = '$' + '{HOME}'
+
+    def outside(token, placement):
+        """One normalized token, placed in one folder: True when it is a hit."""
+        # Root-only tokens were classified with field and shell-word context.
+        if token and not token.strip(os.sep):
+            return False
+        expansion = re.search(r'\$\{(?:HOME|PWD)(?=[^a-zA-Z0-9_])[^}]*\}?', token)
+        candidate = (os.path.isabs(token) or token.startswith((chr(126), home, brace_home)) or
+                     parent in token.split('/') or expansion or token.startswith('$' + 'PWD'))
+        if not candidate:
+            return False
+        if expansion:
+            variable = expansion.group()
+            if variable not in (brace_home, '$' + '{PWD}'):
+                # Shell modifiers are not evaluated by this static scan.
+                return True
+            value = pwd.getpwuid(os.getuid()).pw_dir if variable == brace_home else str(placement)
+            token = token.replace(variable, value)
+        elif token.startswith('$' + 'PWD'):
+            token = str(placement) + token[len('$' + 'PWD'):]
+        # Unknown variable expansion cannot establish kit containment.
+        if '$' in token and parent in token.split('/'):
+            return True
+        if token.startswith((home, brace_home)):
+            prefix = brace_home if token.startswith(brace_home) else home
+            token = pwd.getpwuid(os.getuid()).pw_dir + token[len(prefix):]
+        elif token.startswith(chr(126)):
+            user, separator, suffix = token[1:].partition(os.sep)
+            try:
+                account = pwd.getpwnam(user) if user else pwd.getpwuid(os.getuid())
+                token = os.path.join(account.pw_dir, suffix)
+            except KeyError:
+                return True
+        path = Path(token) if os.path.isabs(token) else placement / token
+        if within(path, kit):
+            return False
+        if saved_output is not None and within(path, saved_output):
+            return False
+        if any(within(path, tree) for tree in trees) or path in devices:
+            return False
+        return True
+
+    # Decision 0128: the tool keeps a Bash call's working directory for the
+    # next Bash call of the same chain. A sub-agent's calls (parent tool-use id)
+    # form their own chain. A chain carries only a placement proven at the end
+    # of a call whose result arrived before the next call, without error or
+    # reset notice; every other edge starts the next call at the kit root.
+    # Round B, ruling 2: each chain is placed twice. The pessimistic placement
+    # is 0125's; the optimistic one assumes every accepted cd joined by && ran.
+    # A token is judged once the stream ends, when its call's result is known.
+    chains = {}
+    seen = set()
+    carries = {}
+    judged = []
     for event in events:
-        for tool, data in tool_inputs(event):
+        chain = event.get('parent_tool_use_id') if isinstance(event, dict) else None
+        notice = isinstance(event, dict) and any(
+            CWD_RESET in text for text in strings(event.get('tool_use_result')))
+        for item in stream_items(event):
+            use_id = item.get('tool_use_id') if item.get('type') == 'tool_result' else item.get('id')
+            use_id = use_id if isinstance(use_id, str) else None
+            if item.get('type') == 'tool_result':
+                if use_id in seen:
+                    carry = not (notice or item.get('is_error', False) is not False or
+                                 any(CWD_RESET in text for text in strings(item)))
+                    carries[use_id] = carries.get(use_id, True) and carry
+                continue
+            tool, data = item.get('name'), item.get('input', {})
             calls += 1
+            if use_id is not None:
+                seen.add(use_id)
+            command = data.get('command') if tool == 'Bash' and isinstance(data, dict) else None
+            previous = chains.get(chain)
+            start = hopeful_start = None
+            if previous is not None and previous[0] is not None and carries.get(previous[0]):
+                start = previous[1]
+                hopeful_start = previous[2]
+            background = command is not None and data.get('run_in_background', False) is not False
+            end = hopeful_end = None
+            outcomes = []
             for field, text in input_fields(data):
                 if tool == 'Glob' and field == 'pattern':
                     field = 'path'
                 if field != 'command' and not path_field(field):
                     continue
+                # Only the Bash call's own command field starts at the carried
+                # placement; other tools' paths stay placed against the kit root.
+                carried = command is not None and field == 'command' and text is command
                 try:
+                    placed = placed_command(text, kit, start if carried else None) if field == 'command' else None
                     decoded = [(str(word), getattr(word, 'folder', None) or kit) for word, scan_root in
-                               audit_words(placed_command(text, kit))] if field == 'command' else [(text, kit)]
+                               audit_words(placed)] if field == 'command' else [(text, kit)]
+                    # The optimistic chain's start, with this call's own
+                    # conditional cds kept conditional or assumed to have run.
+                    cautious = placed_command(text, kit, hopeful_start if carried else None) if field == 'command' else None
+                    hopeful = placed_command(text, kit, hopeful_start if carried else None,
+                                             not background) if field == 'command' else None
+                    folders = [[getattr(word, 'folder', None) or kit for word, scan_root in audit_words(variant)]
+                               if field == 'command' else [folder for token, folder in decoded]
+                               for variant in (cautious, hopeful)]
                     hits += root_word_hits(text, field)
                 except ValueError:
                     hits += 1
                     continue
+                decoded = [pair + tuple(folder[index] for folder in folders) for index, pair in enumerate(decoded)]
+                # A blocked call already ended at the kit root (0125 item 4 and
+                # item 8's raw-text guard); a still-conditional one counts as root.
+                if carried and not background:
+                    if not placed.state['conditional']:
+                        end = placed.state['folder']
+                    hopeful_end = hopeful.state['folder']
                 tokens = list(dict.fromkeys(decoded))
-                parent = chr(46) * 2
-                home = '$' + 'HOME'
-                brace_home = '$' + '{HOME}'
                 bare_cd = field == 'command' and bare_directory_change(text)
                 if bare_cd:
                     hits += 1
                 for token in tokens:
-                    token, placement = token if isinstance(token, tuple) else (token, kit)
+                    token, placement, careful, hoped = token if isinstance(token, tuple) else (token, kit, kit, kit)
                     if ((field == 'command' and re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*=', token)) or
                             (token.startswith('-') and '=' in token)):
                         token = token.partition('=')[2]
@@ -676,48 +823,23 @@ def blindness(events, kit, session_id=None):
                         option = re.match(r'^-[a-zA-Z]+', token)
                         if option and token[option.end():].startswith((parent, chr(126), '$')):
                             token = token[option.end():]
-                    # Root-only tokens were classified with field and shell-word context.
-                    if token and not token.strip(os.sep):
-                        continue
-                    expansion = re.search(r'\$\{(?:HOME|PWD)(?=[^a-zA-Z0-9_])[^}]*\}?', token)
-                    candidate = (os.path.isabs(token) or token.startswith((chr(126), home, brace_home)) or
-                                 parent in token.split('/') or expansion or token.startswith('$' + 'PWD'))
-                    if not candidate:
-                        continue
-                    if expansion:
-                        variable = expansion.group()
-                        if variable not in (brace_home, '$' + '{PWD}'):
-                            # Shell modifiers are not evaluated by this static scan.
-                            hits += 1
-                            continue
-                        value = pwd.getpwuid(os.getuid()).pw_dir if variable == brace_home else str(placement)
-                        token = token.replace(variable, value)
-                    elif token.startswith('$' + 'PWD'):
-                        token = str(placement) + token[len('$' + 'PWD'):]
-                    # Unknown variable expansion cannot establish kit containment.
-                    if '$' in token and parent in token.split('/'):
-                        hits += 1
-                        continue
-                    if token.startswith((home, brace_home)):
-                        prefix = brace_home if token.startswith(brace_home) else home
-                        token = pwd.getpwuid(os.getuid()).pw_dir + token[len(prefix):]
-                    elif token.startswith(chr(126)):
-                        user, separator, suffix = token[1:].partition(os.sep)
-                        try:
-                            account = pwd.getpwnam(user) if user else pwd.getpwuid(os.getuid())
-                            token = os.path.join(account.pw_dir, suffix)
-                        except KeyError:
-                            hits += 1
-                            continue
-                    path = Path(token) if os.path.isabs(token) else placement / token
-                    if within(path, kit):
-                        continue
-                    if saved_output is not None and within(path, saved_output):
-                        continue
-                    if any(within(path, tree) for tree in trees) or path in devices:
-                        continue
-                    hits += 1
-    return {'calls': calls, 'hits': hits}
+                    outcomes.append(tuple(outside(token, folder) for folder in (placement, careful, hoped)))
+            judged.append((use_id, background, outcomes))
+            if tool == 'Bash':
+                chains[chain] = (use_id, end, hopeful_end)
+    for use_id, background, outcomes in judged:
+        for pessimistic, cautious, hopeful in outcomes:
+            # A call that hit a fail-closed edge keeps its own conditional cds
+            # conditional in the optimistic placement too (ruling 2).
+            optimistic = hopeful if carries.get(use_id) and not background else cautious
+            if pessimistic and optimistic:
+                hits += 1
+            elif pessimistic:
+                # Outside only if an && link failed: visible, not INVALID.
+                ambiguous += 1
+            elif optimistic:
+                hits += 1
+    return {'calls': calls, 'hits': hits, 'ambiguous': ambiguous}
 
 
 def parse_stream(raw):

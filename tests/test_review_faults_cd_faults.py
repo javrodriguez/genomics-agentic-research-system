@@ -78,7 +78,7 @@ FAULTS = [
     ('trap state ignored',
      "trap_state = 'trap' in values", 'trap_state = False', ['test_trap_and_prefixed_dot']),
     ('dot after prefix options ignored',
-     "if word == '.' and (command_start or dot_prefix):",
+     "if word == '.' and index in command_words:",
      "if word == '.' and command_start:", ['test_trap_and_prefixed_dot']),
     ('raw-text whole-call guard dropped',
      'if raw_hazard:', 'if False:',

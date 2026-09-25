@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from common import CLASSES, SEALED, load_cases, read_json, sha256, write_json
 from oracle import caught, false_alarm
-from review_record import invalid_reasons
+from review_record import invalid_reasons, read_ambiguous
 
 
 def masked_copy(value, salt, neutral_ids, literals):
@@ -117,6 +117,7 @@ def score(records, key, manifest, answers, runs, stamp=None):
     model_ids = set()
     settings_shas = set()
     count = 0
+    total_ambiguous = 0
     for path in sorted(Path(records).glob('*.record.json')):
         record = read_json(path)
         env = record.get('envelope', {})
@@ -134,11 +135,18 @@ def score(records, key, manifest, answers, runs, stamp=None):
         if path.name != stem + '.record.json':
             raise ValueError('record filename and envelope differ')
         errors = invalid_reasons(record, manifest)
+        # Decision 0128 round B: the ambiguous count stays visible per record.
+        judged, absent = read_ambiguous(record)
+        blindness = judged.get('envelope', {}).get('blindness')
+        count_ambiguous = blindness.get('ambiguous') if isinstance(blindness, dict) else None
+        count_ambiguous = count_ambiguous if type(count_ambiguous) is int and count_ambiguous >= 0 else 0
         model = env.get('reviewer', {}).get('model_id')
         if isinstance(model, str) and model != 'unknown':
             model_ids.add(model)
         histories[neutral].append({'attempt': attempt, 'file': path.name,
-                                   'invalid_reasons': errors, 'record': record})
+                                   'invalid_reasons': errors, 'record': record,
+                                   'ambiguous': count_ambiguous, 'ambiguous_absent': absent})
+        total_ambiguous += count_ambiguous
         count += 1
     if len(settings_shas) > 1:
         raise ValueError('mixed sandbox settings run')
@@ -195,7 +203,7 @@ def score(records, key, manifest, answers, runs, stamp=None):
               'thresholds_met': bool(complete and invalid == 0 and total_caught >= 8 and total_alarms <= 1),
               'complete_set': complete,
               'sealed_slots': {cls: [mapping[n]['seal_type'] for n in mapping if mapping[n]['class'] == cls] for cls in SEALED},
-              'cases': outcomes}
+              'cases': outcomes, 'ambiguous': total_ambiguous}
     literals = [s for entry in mapping.values() for s in entry['mask_literals']]
     result = masked_copy(result, key['run_salt'], list(mapping), literals)
     return result
@@ -219,6 +227,13 @@ def print_score(result):
             if attempt['invalid_reasons']:
                 print('%s attempt %d INVALID: %s' %
                       (neutral, attempt['attempt'], '; '.join(attempt['invalid_reasons'])))
+    # Decision 0128 round B: outside the kit only if an && link failed.
+    print('ambiguous %d (every record read)' % result['ambiguous'])
+    for neutral, case in sorted(result['cases'].items()):
+        for attempt in case['attempts']:
+            print('%s attempt %d ambiguous %d%s' %
+                  (neutral, attempt['attempt'], attempt['ambiguous'],
+                   ' (written before the ambiguous field; read as 0)' if attempt['ambiguous_absent'] else ''))
     print('thresholds: ' + ('met' if result['thresholds_met'] else 'not met'))
 
 
