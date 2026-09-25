@@ -313,9 +313,11 @@ pilot-1 measurement remain unverified. See the
 Row 9 adds the review fault harness, code half: anonymous history-free cases, a JSON review record
 whose envelope the launcher writes rather than the model, and a deterministic oracle that counts a
 catch only on the right class, file, lines and severity. The launcher refuses a review run from the
-OS account that produced the code under review. No model has been run against a case: the three
-sealed slots and the first measured run are still to come, so the reviewer catch rate stays
-`unmeasured`. See the [row-9 change report](docs/implementation/row_9_change_report.md) and
+OS account that produced the code under review. The three sealed slots were sealed by a fresh
+Codex context (`independent_context`) and the first measured run is recorded in
+[0074](docs/decisions/0074-row-9-seal-and-first-measured-run.md): 2 of 15 records are INVALID, so
+the thresholds are not met, and the public reviewer catch rate stays `unmeasured`. See the
+[row-9 change report](docs/implementation/row_9_change_report.md) and
 [0072](docs/decisions/0072-row-9-review-fault-harness-code-half.md).
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
@@ -344,6 +346,7 @@ results and skips are recorded in the [Row 2 report](docs/implementation/row_2_c
 The [benchmark sealing interface](benchmarks/HOLDOUT.md) is maintained in place;
 Row 2 agent runs, independent nf-core references and held-out measurements remain unmeasured.
 Row 3: development evidence (independent_context seal): [evals/mutation-runs/2026-09-23-2a65dbf-first-run.json](evals/mutation-runs/2026-09-23-2a65dbf-first-run.json) — 5/10 mutants killed at `2a65dbf` at the first run, exit not met; public claim unmeasured.
+Row 9: development evidence (independent_context seals): [evals/review-faults/runs/29d9ab7fc987-claude-opus-5-5-20260925T170519Z.json](evals/review-faults/runs/29d9ab7fc987-claude-opus-5-5-20260925T170519Z.json) — 10/10 plants caught and 0 false alarms in 3 valid clean reviews at `a779084` at the first run; 2 of 5 clean cases INVALID (unmeasured), so thresholds not met; public claim unmeasured. See [0074](docs/decisions/0074-row-9-seal-and-first-measured-run.md).
 Live validation is per-assay. Agent behaviour is
 graded separately and published in [docs/EVALS.md](docs/EVALS.md), against a pre-registration
 frozen before the first run:

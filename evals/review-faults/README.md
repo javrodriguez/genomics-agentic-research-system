@@ -1,8 +1,10 @@
 # Code review measurement tools
 
-Repository implementation only; **row 9 exit NOT met**. No model has been run
-against these cases. Read [SEALS.md](SEALS.md) for the empty sealed slots and
-[INTERFACE.md](INTERFACE.md) for the sealer's complete independent handoff.
+**Row 9 exit NOT met.** The first measured run, at `a779084`, is recorded in
+[0074](../../docs/decisions/0074-row-9-seal-and-first-measured-run.md): 2 of 15
+records are INVALID, so the thresholds are not met. Read [SEALS.md](SEALS.md) for
+the sealed slots and [INTERFACE.md](INTERFACE.md) for the sealer's complete
+independent handoff.
 Before writing a manifest, the builder audits every case, including external
 sealed inputs, with the same item-15 sweep used by regression tests. It checks committed added lines, whole added files, decoded new
 Git objects, case and repository names and the manifest. Unchanged lines and

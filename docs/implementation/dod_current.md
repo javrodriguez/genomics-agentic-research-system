@@ -6,7 +6,7 @@ Clause, test and threshold are copied from frozen §17. Missing qualifying evide
 | Clause | Test | Threshold | Current value |
 |---|---|---|---|
 | design-defect catch rate | `tests/test_planted_defects.py` | ≥ 9/10 on the sealed catalogue; ≤ 1/10 false flags | unmeasured |
-| reviewer catch rate (code; science) | `evals/review-faults/`, `evals/bio-faults/` runners | ≥ 8/10 per set, ≤ 1/5 false alarms; first-run-at-sha reported (§21 Q3) | unmeasured |
+| reviewer catch rate (code; science) | `evals/review-faults/`, `evals/bio-faults/` runners | ≥ 8/10 per set, ≤ 1/5 false alarms; first-run-at-sha reported (§21 Q3) | unmeasured (public: needs external_human_seal); development, code: 10/10 catch, 0/5 false alarms, seals independent_context, first-run-at-sha true (evals/review-faults/runs/29d9ab7fc987-claude-opus-5-5-20260925T170519Z.json); science: unmeasured |
 | manifest completeness | `manifest_check.py` | 100% of applicable `required` and `required_if_applicable` field groups on every completed run; missing optional groups reported separately; model-step fields required whenever a model-mediated step occurred | unmeasured |
 | reproduction rate | `scripts/rerun_check.py` | ≥ 4/5 on test data; one external re-run of a pilot-1 manifest matching under the pre-committed tolerances | unmeasured |
 | orphan claims | DB constraint + `claims` ≥ 1 for pilot 1 | 0 / n, n > 0 | unmeasured |
