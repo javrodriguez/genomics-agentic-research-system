@@ -251,17 +251,20 @@ def reviewer_measurement(root):
                 all(values == ['external_human_seal'] for values in slots.values()))
     public = ('unmeasured (public: needs external_human_seal); ' if not external else
               'public code seals external_human_seal; ')
-    # 0074: every figure comes from the run file's own fields. The scorer's overall
-    # false-alarm denominator is every clean case; the per-class denominator counts only
-    # valid clean reviews, so the cell prints that one and the clean cases left without a
-    # valid review, then the INVALID count and the scorer's own threshold verdict.
+    # 0074: the scorer's overall false-alarm line uses a fixed denominator of 5
+    # (score.py:192), so the cell prints the per-class denominator instead, which counts
+    # only valid clean reviews. The clean cases left without a valid review are counted
+    # only for a complete set; a partial set says so. Then the INVALID count and the
+    # scorer's own threshold verdict.
     clean_total = overall['false_alarms']['d']
     clean_valid = max((rates['false_alarms']['d'] for rates in record['per_class'].values()), default=0)
+    missing = ('%s of %s clean cases without a valid review' % (clean_total - clean_valid, clean_total)
+               if record['complete_set'] else 'partial set')
     value = (public + 'development, code: %s/%s catch, %s/%s false alarms in valid clean reviews '
-             '(%s of %s clean cases without a valid review), invalid %s/%s, thresholds %s, seals %s, '
+             '(%s), invalid %s/%s, thresholds %s, seals %s, '
              'first-run-at-sha %s (%s); science: unmeasured') % (
                  overall['caught']['n'], overall['caught']['d'],
-                 overall['false_alarms']['n'], clean_valid, clean_total - clean_valid, clean_total,
+                 overall['false_alarms']['n'], clean_valid, missing,
                  overall['invalid']['n'], overall['invalid']['d'],
                  'met' if record['thresholds_met'] else 'not met',
                  ','.join(types) or 'unsealed',

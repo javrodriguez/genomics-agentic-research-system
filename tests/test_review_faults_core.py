@@ -338,13 +338,24 @@ class ScoreTests(unittest.TestCase):
         for rates in run['per_class'].values():
             rates['false_alarms']['d']=5
         run['overall']['false_alarms']['n']=1
+        run['overall']['false_alarms']['d']=6
+        run['overall']['caught']['d']=9
+        run['overall']['invalid']['d']=14
         (folder/published.name).unlink()
         common.write_json(folder/published.name,run)
         value=release.reviewer_measurement(root)[0]
-        self.assertIn('1/5 false alarms in valid clean reviews (0 of 5 clean cases without a valid review)',value)
-        self.assertIn('invalid 0/15',value)
+        self.assertIn('10/9 catch',value)
+        self.assertIn('1/5 false alarms in valid clean reviews (1 of 6 clean cases without a valid review)',value)
+        self.assertIn('invalid 0/14',value)
         self.assertIn('thresholds met',value)
         self.assertNotIn('thresholds not met',value)
+        # A partial set never states a count of clean cases without a valid review.
+        run['complete_set']=False
+        (folder/published.name).unlink()
+        common.write_json(folder/published.name,run)
+        value=release.reviewer_measurement(root)[0]
+        self.assertIn('1/5 false alarms in valid clean reviews (partial set)',value)
+        self.assertNotIn('clean cases without a valid review',value)
 
 
 if __name__=='__main__':
