@@ -222,3 +222,97 @@ None.
 - `executorlib._scheduler_status` is exercised through a stub status command (`/bin/echo`), not `sacct`; the local backend's `_local_status` is covered by the existing lifecycle suites, not here.
 - `render_report.main` is covered at the write and at `os.replace`; a fault inside `render` itself is the existing `test_render_report`'s.
 - Producer and reviewer share a model (0087, Context).
+
+## Review round 3 fixes
+
+Dated 2026-09-25. Answers the independent review of `51b0e47` (`docs/reviews/row3fu_review2.md`, left untracked and unchanged). The sections above are unchanged; 0087 carries a second dated addendum after its last byte, and `bash docs/decisions/build_index.sh` was re-run (the index is byte-identical, since 0087's frontmatter did not change).
+Rulings in this section are the lane's, under the owner's standing delegation of 23 Sep 2026.
+
+### Findings
+
+| Finding | Changed files | Test(s) | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| F1 MAJOR, class 2 reach stops at the named writers | `gars/tests/test_r164_failure_recovery.py` (new class `CallSiteRecoveryTests`, helper `replace_refused_for`) | `test_refused_first_submission_leaves_no_record` and `test_refused_retry_restores_the_failed_record` (`executorlib.submit` with `_submit_once` returning a `SubmissionFailure`: first submission leaves no record and the stage `STALE`; a retry leaves the failed record's exact bytes, the listing and `STATUS` unchanged, and the next retry's lineage names only the first attempt); `test_emit_report_leaves_no_snapshot_on_any_exit` (`emit_report.main --from-db`: preflight refuses, preflight raises, renderer fails, export fails, success; each leaves only the previous `report.md`); `test_stage01_interrupted_keeps_each_previous_file` (stage 01 `main --force` with `os.replace` refused at the sheet, the design table and the check record in turn); `test_finalize_interrupted_keeps_each_previous_file` (stage 00 `finalize` refused at `samples.csv` on the first run, then at `files.csv`, `CONTEXT.md` and `HISTORY.md`) | fixed; yes: N2a, N2b, N2c and R2a–R2e red (plant table below) |
+| F2 MINOR, stage 01 control columns | `gars/tests/test_r164_keyed_lookups.py` (`Stage01FormatByAssayTests`: `fixture`/`emitted` take a samples table and drop the fastq columns by name) | `test_chipseq_control_columns_are_the_controls_group_and_replicate` (crossed controls: IP rep 1 → input rep 2, so own group, own replicate, control group and control replicate all differ); `test_cutandrun_control_is_each_rows_own_igg_group` (two targets with two IgG groups) | fixed; yes: N3a, R3a and R3b red |
+| F3 MINOR, "eight further plants" | `docs/decisions/0087-row-3-followup-suite-strengthening.md` (appended addendum) | `python3 tests/test_decision_links_resolve.py` | fixed by a dated correction in the new addendum ("should read seven"); the round-1 addendum's bytes are not edited, as the round's rules require |
+| F4 MINOR, `touches` misses `test_r164_collect_gates.py` | none | none | **waits on the owner**: both fixes the review offers are closed to this round (the frontmatter is 0087's existing bytes; a follow-up record needs a record number, and 0087 is this lane's only one). See `## Owner rulings needed` below |
+| F5 NOTE, N1a near-equivalent | none | none | stays: the review requires no fix; the name is derived by the same function on write and read and the content is checked separately, and the optional assertion it suggests belongs in an existing approval test, which this lane may change only if it is wrong |
+
+Existing tests changed: none from before this item. Two helpers of this item's own round-1 class changed, `Stage01FormatByAssayTests.fixture` and `.emitted`: an optional samples table was added and the fastq columns are dropped by name instead of by position (identical rows for the three existing formats); the three existing tests are unchanged and still pass.
+
+### Plant table, round 3
+
+Same method as rounds 1 and 2 (driver `<scratch>/plants/drive_r3.py`, not committed): each plant in a fresh `rsync -a --exclude .git` copy under `<scratch>`, a one-occurrence string replacement asserted unique, only the named module run, the copy deleted. The unplanted copy printed `OK` for all six modules. N-ids are the review's own fresh faults, re-planted as it describes them; R-ids are this round's own, each in a function no earlier test of this item names. The whole driver run took 1 min 10 s.
+
+| Plant | Class | file:function | Diff, in one line | Module run | Failing test(s) | Red seen |
+|---|---|---|---|---|---|---|
+| M03 | survivor (1) | `wrapperlib.py:sha256` | `h.update(chunk)` → `h.update(chunk.rstrip())` | `test_r164_exact_bytes` | `test_sha256_is_the_digest_of_the_exact_bytes` and four others (`FAILED (failures=13)`) | yes |
+| M05 | survivor (2) | `workspace.py:atomic_open` | `tmp.unlink()` → `path.unlink()` | `test_r164_failure_recovery` | round 2's four, plus `test_stage01_interrupted_keeps_each_previous_file`, `test_finalize_interrupted_keeps_each_previous_file` (`FAILED (failures=2, errors=10)`) | yes |
+| M07 | survivor (3) | `nfcore_rnaseq_wrapper.py:build_params` | the two index values exchanged, by hand | `test_r164_params_mapping` | `test_rnaseq_indices_are_not_exchanged` (`FAILED (failures=1)`) | yes |
+| M08 | survivor (4) | `nfcore_scrnaseq_wrapper.py:supported_protocols` | `data.get(aligner)` → `data.get("simpleaf")` | `test_r164_keyed_lookups` | `test_scrnaseq_protocols_are_read_for_the_selected_aligner`, `test_scrnaseq_preflight_judges_protocol_against_its_own_aligner` (`FAILED (failures=7)`) | yes |
+| M10 | survivor (5) | `spatial_cluster_count.py:cmd_collect` | `n_obs <= 0` → `n_obs < 0` | `test_r164_boundaries` | `test_spot_count_boundary` (`FAILED (failures=1)`) | yes |
+| N2a | 2 | `claims/emit_report.py:main` | on a preflight refusal, `temporary = None` before `return code` | `test_r164_failure_recovery` | `test_emit_report_leaves_no_snapshot_on_any_exit` (`FAILED (failures=5)`) | yes |
+| N2b | 2 | `stage01_samplesheet.py:write_assay` | design table `ws.atomic_open(design)` → plain `open(str(design), "w", ...)` | `test_r164_failure_recovery` | `test_stage01_interrupted_keeps_each_previous_file` (`FAILED (failures=2)`) | yes |
+| N2c | 2 | `executorlib.py:submit` | on a refused retry, `_save_record(path, retry)` → `pass` | `test_r164_failure_recovery` | `test_refused_retry_restores_the_failed_record` (`FAILED (failures=1)`) | yes |
+| N3a | 3 | `stage01_samplesheet.py:write_assay` (`lookup:control_group`) | the control's `group` → its `replicate` | `test_r164_keyed_lookups` | `test_chipseq_control_columns_are_the_controls_group_and_replicate` (`FAILED (failures=1)`) | yes |
+| R2a | 2 | `executorlib.py:submit` | on a refused first submission, `path.unlink()` → `pass` | `test_r164_failure_recovery` | `test_refused_first_submission_leaves_no_record` (`FAILED (failures=1)`) | yes |
+| R2b | 2 | `stage00_register.py:cmd_finalize` | `samples.csv` `ws.atomic_open` → plain `open` | `test_r164_failure_recovery` | `test_finalize_interrupted_keeps_each_previous_file` (`FAILED (failures=1)`) | yes |
+| R2c | 2 | `stage01_samplesheet.py:write_assay` | design-check record `ws.atomic_open(record)` → plain `open` | `test_r164_failure_recovery` | `test_stage01_interrupted_keeps_each_previous_file` (`FAILED (failures=1)`) | yes |
+| R2d | 2 | `stage00_register.py:cmd_finalize` | `CONTEXT.md`/`HISTORY.md` placeholder write `ws.atomic_open` → plain `open` | `test_r164_failure_recovery` | `test_finalize_interrupted_keeps_each_previous_file` (`FAILED (failures=2)`) | yes |
+| R2e | 2 | `claims/emit_report.py:main` | on a renderer failure, `temporary = None` | `test_r164_failure_recovery` | `test_emit_report_leaves_no_snapshot_on_any_exit` (`FAILED (failures=3)`) | yes |
+| R3a | 3 | `stage01_samplesheet.py:write_assay` (`lookup:control_replicate`) | the control's replicate → the row's own (`d.get("replicate", "")`) | `test_r164_keyed_lookups` | `test_chipseq_control_columns_are_the_controls_group_and_replicate` (`FAILED (failures=1)`) | yes |
+| R3b | 3 | `stage01_samplesheet.py:FORMATS["cutandrun"]` | `("control", "design:control")` → `("control", "design:group")` | `test_r164_keyed_lookups` | `test_cutandrun_control_is_each_rows_own_igg_group` (`FAILED (failures=1)`) | yes |
+
+Counts: 5 survivors re-checked, all red; 11 plants outside the earlier coverage map, all red (class 2: 8, class 3: 3); 16 of 16 red.
+This is development evidence, not a mutation score; these kills are in the named modules only.
+
+### Commands and summary lines, round 3
+
+From the repository root with `TMPDIR`, `TEMP` and `TMP` at `<scratch>`, macOS, `python3` = 3.8.2.
+
+| Module | Summary line | `real` (s) |
+|---|---|---|
+| `test_r164_exact_bytes` | `Ran 10 tests in 0.496s` / `OK` | 0.71 |
+| `test_r164_failure_recovery` (changed) | `Ran 17 tests in 0.607s` / `OK` | 0.84 |
+| `test_r164_params_mapping` | `Ran 13 tests in 0.289s` / `OK` | 0.49 |
+| `test_r164_keyed_lookups` (changed) | `Ran 15 tests in 0.384s` / `OK` | 0.59 |
+| `test_r164_boundaries` | `Ran 22 tests in 0.302s` / `OK` | 0.51 |
+| `test_r164_collect_gates` | `Ran 33 tests in 0.743s` / `OK` | 0.95 |
+
+Sum: 4.09 s for the six modules (110 tests, no skip). Under `/usr/local/bin/python3` (3.13.2) the two changed modules printed `Ran 17 tests in 0.409s` / `OK` and `Ran 15 tests in 0.254s` / `OK`. All six files parse under `ast.parse(..., feature_version=(3, 6))`.
+
+Existing modules over the newly reached sources (no source changed, so these characterise the base):
+
+| Module | Summary line | `real` (s) |
+|---|---|---|
+| `gars/tests/test_emit_report.py` | `Ran 12 tests in 127.012s` / `OK` | 127.22 |
+| `gars/tests/test_claim_constraints.py` | `Ran 21 tests in 0.004s` / `OK (skipped=18)` (pre-existing skips) | 0.19 |
+| `gars/tests/test_lifecycle_executor.py` | `Ran 16 tests in 5.259s` / `OK` | 5.44 |
+| `gars/tests/test_failure_classification.py` | `Ran 5 tests in 1.269s` / `OK` | 1.45 |
+| `gars/tests/test_executorlib_resume.py` | `Ran 2 tests in 0.075s` / `OK` | 0.25 |
+| `tests/test_stage01_design.py` | `Ran 23 tests in 7.264s` / `OK (skipped=1)` (the pre-existing sealed-fixture skip) | 7.42 |
+
+`stage00_register`'s own existing tests are inline in `tests/run_tests.py`, which this lane does not run on this machine.
+
+Checks:
+
+- `python3 tests/check_contracts.py`: `14 contracts clean: sections, wait points, vocabulary.`
+- `python3 tests/check_counts.py`: `collected 360 tests from tests`, `collected 453 tests from gars/tests`, `suite: 813 tests, from unittest's loader`, `clean — every current claim matches the suite` (after README line 322 and DEVELOPMENT lines 156 and 175 were moved from 806 to 813; nothing else in those files changed).
+- `/usr/local/bin/python3 evals/test_harness.py` (3.13.2): `Ran 44 tests in 165.976s` / `OK`.
+- `python3 evals/check_results.py --controls --lexicon`: `clean — graded=1`.
+- `python3 tests/test_decision_links_resolve.py`, after `bash docs/decisions/build_index.sh`: `Ran 3 tests in 1.460s` / `OK`, `citations: 376/376 resolve`.
+- `git diff --stat 2a81999 HEAD -- gars/_system gars/02_bioinformatics gars/_references gars/_templates gars/.claude .github benchmarks evals`: prints nothing (checked after the commit).
+
+Not run, by the brief: the whole suite, the mutation runner and every `test_review_faults_*` module.
+
+## Owner rulings needed
+
+- **F4, 0087's `touches` and `gars/tests/test_r164_collect_gates.py`.** The index cannot find the module's record. The review offers two fixes: (a) while 0087 is still unmerged, add the path to its `touches` and re-run `bash docs/decisions/build_index.sh`; (b) if the lane rules that the frontmatter is frozen, a one-line follow-up record that touches the module. This round's rules close both: 0087's existing bytes are never edited, and no record number other than 0087 is this lane's to write. Which one, if either, is the owner's (or the lane's) to decide.
+
+## Residual gaps after round 3
+
+- The kills above are in the named modules only; whether the whole suite stays green in modes B and C, and its added wall time on the lane's node, are the lane's to measure.
+- Class 2's call-site faults are injected at `os.replace` by destination name; a fault at `fsync` or mid-body inside stage 00, stage 01 and `emit_report` is covered only through `atomic_open`'s own tests.
+- `executorlib.submit`'s refusal branches are driven with `_submit_once` stubbed, not through a real scheduler.
+- `test_r164_collect_gates.py` is not in 0087's `touches` or the index (F4, above).
+- Producer and reviewer share a model (0087, Context).

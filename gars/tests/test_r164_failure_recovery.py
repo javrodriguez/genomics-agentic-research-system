@@ -3,8 +3,13 @@
 Faults are injected at each step of each writer through the os functions it calls; the
 observation is the directory afterwards: the previous complete bytes, and no sibling.
 """
+import contextlib
+import csv
+import gzip
+import io
 import json
 import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,6 +17,8 @@ from unittest.mock import patch
 from support import GARS, module, run
 from test_lifecycle_executor import prepared
 import executorlib as ex
+import stage00_register as s00
+import stage01_samplesheet as s01
 import workspace as ws
 import wrapperlib as wl
 
@@ -24,6 +31,17 @@ class Boom(Exception):
 
 def refuse(*args, **kwargs):
     raise OSError('injected fault')
+
+
+def replace_refused_for(name):
+    """os.replace that refuses only when the destination is `name`: one writer, one fault."""
+    real = os.replace
+
+    def replace(source, destination, *args, **kwargs):
+        if Path(str(destination)).name == name:
+            raise OSError('injected fault at %s' % name)
+        return real(source, destination, *args, **kwargs)
+    return patch.object(ws.os, 'replace', replace)
 
 
 class Unprintable(object):
@@ -251,6 +269,196 @@ class CollectWriterRecoveryTests(unittest.TestCase):
 
     def names(self):
         return sorted(p.name for p in self.root.iterdir())
+
+
+class CallSiteRecoveryTests(unittest.TestCase):
+    """The same postcondition at the writers' callers and on their recovery branches."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory(prefix='gars-recovery-')
+        self.root = Path(self._tmp.name).resolve()
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def listing(self, directory):
+        return sorted(p.name for p in directory.iterdir())
+
+    # -- executorlib.submit: a definite refusal rolls the record back ------------------------
+
+    def test_refused_first_submission_leaves_no_record(self):
+        stage = prepared(self.root)[0]
+        (self.root / '_config/executor.yaml').write_text('name: local\n')
+        refusal = ex.SubmissionFailure('definite refusal')
+        with patch.object(ex, '_submit_once', return_value=(None, refusal)):
+            self.assertEqual(ex.submit(self.root, stage / 'submit.sh'), (None, refusal))
+        records = ex._records(self.root)
+        self.assertEqual([n for n in self.listing(records) if n != '.lock'], [])
+        self.assertEqual(wl.read_status(stage), 'STALE')
+        with patch.object(ex, '_submit_once', return_value=('43', None)):
+            self.assertEqual(ex.submit(self.root, stage / 'submit.sh'), ('43', None))
+        self.assertEqual(ex.stage_record(self.root, stage)['job_id'], '43')
+
+    def test_refused_retry_restores_the_failed_record(self):
+        stage = prepared(self.root)[0]
+        (self.root / '_config/executor.yaml').write_text('name: local\n')
+        (self.root / '_config/nextflow.slurm.config').write_text('maxRetries = 3\n')
+        with patch.object(ex, '_submit_once', return_value=('42', None)):
+            self.assertEqual(ex.submit(self.root, stage / 'submit.sh'), ('42', None))
+        with patch.object(ex, '_scheduler_status', return_value=('FAILED:EXIT_104', None)):
+            ex.status(self.root, '42')
+        records = ex._records(self.root)
+        names = self.listing(records)
+        (path,) = [records / n for n in names if n.endswith('.json')]
+        before, status = path.read_bytes(), (stage / 'STATUS').read_bytes()
+        refusal = ex.SubmissionFailure('definite refusal')
+        with patch.object(ex, '_submit_once', return_value=(None, refusal)):
+            self.assertEqual(ex.submit(self.root, stage / 'submit.sh'), (None, refusal))
+        self.assertEqual(path.read_bytes(), before)
+        self.assertEqual(self.listing(records), names)
+        self.assertEqual((stage / 'STATUS').read_bytes(), status)
+        with patch.object(ex, '_submit_once', return_value=('43', None)):
+            self.assertEqual(ex.submit(self.root, stage / 'submit.sh'), ('43', None))
+        record = ex.stage_record(self.root, stage)
+        self.assertEqual(record['job_id'], '43')
+        self.assertEqual([a['job_id'] for a in record['attempts']], ['42'])
+
+    # -- claims/emit_report.py main: the exported snapshot never outlives the call ------------
+
+    def test_emit_report_leaves_no_snapshot_on_any_exit(self):
+        emitter = module(GARS / '_system/claims/emit_report.py', 'r164_recovery_emitter')
+        out = self.root / 'report.md'
+        out.write_bytes(b'previous report\n')
+        argv = ['--from-db', 'fixture-db', '--manifest', str(self.root / 'manifest.json'),
+                '--project', str(self.root), '--out', str(out)]
+        seen = []
+
+        def preflight(code):
+            def check(args, transport=None):
+                snapshot = Path(args[args.index('--snapshot') + 1])
+                seen.append(json.loads(snapshot.read_text()))
+                if isinstance(code, Exception):
+                    raise code
+                return code
+            return check
+
+        def renderer(code):
+            return lambda *args, **kwargs: subprocess.CompletedProcess(args, code, b'', b'')
+
+        cases = [('preflight refuses', {'k': 'v'}, preflight(3), renderer(0), 3),
+                 ('preflight raises', {'k': 'v'}, preflight(OSError('down')), renderer(0), 1),
+                 ('renderer fails', {'k': 'v'}, preflight(0), renderer(2), 2),
+                 ('export fails', {'k': object()}, preflight(0), renderer(0), 1),
+                 ('rendered', {'k': 'v'}, preflight(0), renderer(0), 0)]
+        for label, payload, check, render, code in cases:
+            with self.subTest(case=label):
+                del seen[:]
+                with patch.object(emitter.render_report, 'database_snapshot',
+                                  return_value=payload), \
+                        patch.object(emitter.evidence_check, 'main', check), \
+                        patch.object(emitter.subprocess, 'run', render), \
+                        open(os.devnull, 'w') as sink, patch.object(emitter.sys, 'stderr', sink):
+                    self.assertEqual(emitter.main(argv), code)
+                if label != 'export fails':
+                    self.assertEqual(seen, [payload])
+                self.assertEqual(self.listing(self.root), ['report.md'])
+                self.assertEqual(out.read_bytes(), b'previous report\n')
+
+    # -- stage 01: each file main() writes keeps its previous bytes ---------------------------
+
+    def stage01_project(self):
+        data = self.root / '00_data/rnaseq_bulk'
+        (data / 'raw').mkdir(parents=True)
+        (self.root / '_config').mkdir()
+        with (data / 'files.csv').open('w', newline='') as fh:
+            writer = csv.writer(fh)
+            writer.writerow(['sample_id', 'lane', 'fastq_1', 'fastq_2'])
+            for sample in ('K1', 'K2', 'K3', 'K4'):
+                raw = data / 'raw' / ('%s_R1.fastq' % sample)
+                raw.write_text('@synthetic\nACGT\n+\nIIII\n')
+                writer.writerow([sample, '1', str(raw.relative_to(self.root)), ''])
+        return data
+
+    def stage01(self, data, strandedness, second, force=True):
+        (self.root / '_config/rnaseq_bulk.yaml').write_text(
+            'strandedness: %s\nunit_of_replication: sample\n'
+            'reference_release: synthetic-v1\n' % strandedness)
+        with (data / 'samples.csv').open('w', newline='') as fh:
+            csv.writer(fh).writerows([['sample_id', 'condition', 'group', 'replicate'],
+                                      ['K1', 'A', 'GA', '1'], ['K2', 'A', 'GA', '2'],
+                                      ['K3', second, 'GB', '1'], ['K4', second, 'GB', '2']])
+        with contextlib.redirect_stdout(io.StringIO()):
+            return s01.main(['--project', str(self.root)] + (['--force'] if force else []))
+
+    def test_stage01_interrupted_keeps_each_previous_file(self):
+        data = self.stage01_project()
+        sheets = self.root / '01_samplesheets'
+        self.assertEqual(self.stage01(data, 'reverse', 'B', force=False), 0)
+        written = ['rnaseq_bulk_samplesheet.csv', 'rnaseq_bulk_design.csv',
+                   'rnaseq_bulk_design_check.json']
+        self.assertEqual(self.listing(sheets), sorted(written))
+        before = {name: (sheets / name).read_bytes() for name in written}
+        for name in written:
+            with self.subTest(file=name):
+                with replace_refused_for(name), self.assertRaises(OSError):
+                    self.stage01(data, 'forward', 'C')
+                self.assertEqual((sheets / name).read_bytes(), before[name])
+                self.assertEqual(self.listing(sheets), sorted(written))
+                for other in written:
+                    (sheets / other).write_bytes(before[other])
+        self.assertEqual(self.stage01(data, 'forward', 'C'), 0)
+        for name in written[:2]:
+            self.assertNotEqual((sheets / name).read_bytes(), before[name])
+
+    # -- stage 00 finalize: files.csv, samples.csv and the stamped placeholders ---------------
+
+    def finalize(self):
+        with contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            return s00.main(['finalize', '--project', str(self.root), '--data-class', 'public',
+                             '--purpose', 'fixture', '--date', '2026-09-25'])
+
+    def link(self, sample):
+        source = self.root / 'source'
+        source.mkdir(exist_ok=True)
+        raw = self.root / '00_data/rnaseq_bulk/raw'
+        raw.mkdir(parents=True, exist_ok=True)
+        for read in ('R1', 'R2'):
+            fastq = source / ('%s_S1_L001_%s_001.fastq.gz' % (sample, read))
+            fastq.write_bytes(gzip.compress(b'@r\nACGT\n+\nIIII\n'))
+            os.symlink(str(fastq), str(raw / fastq.name))
+
+    def test_finalize_interrupted_keeps_each_previous_file(self):
+        stamps = {'CONTEXT.md': '# {{project_title}}\n', 'HISTORY.md': 'v {{template_version}}\n'}
+        (self.root / '_config').mkdir()
+        for name, text in stamps.items():
+            (self.root / name).write_text(text)
+        self.link('K1')
+        self.link('K2')
+        data = self.root / '00_data/rnaseq_bulk'
+        # First finalize, interrupted at samples.csv: no half-created user file is left.
+        with replace_refused_for('samples.csv'), self.assertRaises(OSError):
+            self.finalize()
+        self.assertEqual(self.listing(data), ['files.csv', 'raw'])
+        self.assertEqual(self.finalize(), 0)
+        self.assertEqual(self.listing(data), ['files.csv', 'raw', 'samples.csv'])
+        # A re-run regenerates files.csv from the same raw/ (the dataset record locks the
+        # input list), so the previous bytes are also the expected ones; the fault must still
+        # surface, and nothing may be left beside the file.
+        files_before = (data / 'files.csv').read_bytes()
+        for name, directory, before in [('files.csv', data, files_before)] + [
+                (stamp, self.root, text.encode()) for stamp, text in sorted(stamps.items())]:
+            with self.subTest(file=name):
+                for stamp, text in stamps.items():
+                    (self.root / stamp).write_text(text)
+                listing = self.listing(directory)
+                with replace_refused_for(name), self.assertRaises(OSError):
+                    self.finalize()
+                self.assertEqual((directory / name).read_bytes(), before)
+                self.assertEqual(self.listing(directory), listing)
+        self.assertEqual(self.finalize(), 0)
+        self.assertEqual((data / 'files.csv').read_bytes(), files_before)
+        self.assertEqual((self.root / 'CONTEXT.md').read_text(), '# %s\n' % self.root.name)
 
 
 if __name__ == '__main__':

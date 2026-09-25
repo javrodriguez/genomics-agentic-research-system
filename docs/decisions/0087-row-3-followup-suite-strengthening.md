@@ -103,3 +103,16 @@ The review found the suite killed its named functions but did not reach one call
 Every one of the reviewer's faults that was in scope (G1a, G1c, G2a, G2b, G3b, G4a, G4b, G5a–G5d) and eight further plants went red in a disposable copy on a new test, and the five survivors still go red on the extended modules; the unplanted copy was green.
 The suite rises to 806 tests; the six R-164 modules take about 3.2 s together on the producer's machine and add no skip.
 This is producer-authored development evidence, not a mutation score; the exit still needs the second seal (0088, 0089), and nothing in this addendum claims it.
+
+## Addendum, 2026-09-25: review round 2
+
+The bytes above, including the round-1 addendum, are unchanged; this addendum records the round-3 fixes for the independent review of `51b0e47` ([change report](../implementation/row_3_followup_change_report.md), "Review round 3 fixes").
+
+- **Correction.** The round-1 addendum's "eight further plants went red" should read **seven**: the round-2 plant table holds Q3a and Q5a–Q5f, and its count line (18 = 11 reviewer plants + 7 own) was right.
+- **Class 2 now reaches the writers' callers.** `gars/tests/test_r164_failure_recovery.py` adds `CallSiteRecoveryTests`: `executorlib.submit` on a definite refusal (a first submission leaves no record; a retry restores the failed record's exact bytes and its lineage), `claims/emit_report.py` `main` with `--from-db` (no exported `.claims-*` snapshot outlives a preflight refusal, a preflight exception, a renderer failure or a failed export), stage 01's `main` with `os.replace` refused at each of the samplesheet, the design table and the design-check record, and stage 00's `finalize` with it refused at `samples.csv` (first run), `files.csv`, `CONTEXT.md` and `HISTORY.md`; each keeps the previous bytes and leaves no sibling.
+- **Class 3 reaches stage 01's control columns.** `gars/tests/test_r164_keyed_lookups.py` adds chipseq and cutandrun sheets with crossed controls, so a row's own group and replicate and its control's group and replicate are all distinct.
+- **`touches` is not extended.** `gars/tests/test_r164_collect_gates.py` is still missing from this record's frontmatter and so from the index: the frontmatter is not edited, and no other record number is this lane's; the change report asks for a ruling.
+
+The reviewer's four fresh faults in scope (N2a, N2b, N2c, N3a) and seven further plants (R2a–R2e, R3a, R3b) went red in disposable copies on the new tests; the five survivors still go red; the unplanted copy was green.
+The suite rises to 813 tests; the six R-164 modules take about 4.1 s together on the producer's machine and add no skip.
+This is producer-authored development evidence, not a mutation score; the exit still needs the second seal (0088, 0089), and nothing in this addendum claims it.

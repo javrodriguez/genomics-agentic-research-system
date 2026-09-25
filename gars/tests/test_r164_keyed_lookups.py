@@ -191,33 +191,35 @@ class Stage01FormatByAssayTests(unittest.TestCase):
     def tearDown(self):
         self._tmp.cleanup()
 
-    def fixture(self, assay):
+    def fixture(self, assay, samples=None):
+        samples = samples or [['sample_id', 'condition', 'group', 'replicate'],
+                              ['K1', 'A', 'GA', '1'], ['K2', 'A', 'GA', '2'],
+                              ['K3', 'B', 'GB', '1'], ['K4', 'B', 'GB', '2']]
         data = self.project / '00_data' / assay
         (data / 'raw').mkdir(parents=True)
         (self.project / '_config').mkdir(exist_ok=True)
         (self.project / '_config' / (assay + '.yaml')).write_text(
             'strandedness: reverse\nunit_of_replication: sample\nreference_release: synthetic-v1\n')
         with (data / 'samples.csv').open('w', newline='') as fh:
-            csv.writer(fh).writerows([['sample_id', 'condition', 'group', 'replicate'],
-                                      ['K1', 'A', 'GA', '1'], ['K2', 'A', 'GA', '2'],
-                                      ['K3', 'B', 'GB', '1'], ['K4', 'B', 'GB', '2']])
+            csv.writer(fh).writerows(samples)
         with (data / 'files.csv').open('w', newline='') as fh:
             writer = csv.writer(fh)
             writer.writerow(['sample_id', 'lane', 'fastq_1', 'fastq_2'])
-            for sample in ('K1', 'K2', 'K3', 'K4'):
+            for sample in [row[0] for row in samples[1:]]:
                 raw = data / 'raw' / ('%s_R1.fastq' % sample)
                 raw.write_text('@synthetic\nACGT\n+\nIIII\n')
                 writer.writerow([sample, '1', str(raw.relative_to(self.project)), ''])
 
-    def emitted(self, assay):
-        self.fixture(assay)
+    def emitted(self, assay, samples=None):
+        self.fixture(assay, samples)
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             code = s01.main(['--project', str(self.project)])
         self.assertEqual(code, 0, out.getvalue())
         sheet = self.project / '01_samplesheets' / ('%s_samplesheet.csv' % assay)
         rows = list(csv.reader(sheet.read_text().splitlines()))
-        return rows[0], [row[:1] + row[3:] for row in rows[1:]]
+        keep = [i for i, name in enumerate(rows[0]) if name not in ('fastq_1', 'fastq_2')]
+        return rows[0], [[row[i] for i in keep] for row in rows[1:]]
 
     def test_rnaseq_sheet_carries_strandedness_and_sample_ids(self):
         header, rows = self.emitted('rnaseq_bulk')
@@ -235,6 +237,33 @@ class Stage01FormatByAssayTests(unittest.TestCase):
         self.assertEqual(header, ['sample', 'fastq_1', 'fastq_2', 'replicate'])
         self.assertEqual(rows, [['GA', '1'], ['GA', '2'], ['GB', '1'], ['GB', '2']])
 
+
+    def test_chipseq_control_columns_are_the_controls_group_and_replicate(self):
+        # Controls are crossed (IP rep 1 -> input rep 2), so a row's own replicate, its
+        # control's replicate, its group and its control's group are all distinguishable.
+        header, rows = self.emitted('chipseq_bulk', [
+            ['sample_id', 'condition', 'group', 'replicate', 'antibody', 'control'],
+            ['IP1', 'A', 'GIP', '1', 'H3K27ac', 'IN2'],
+            ['IP2', 'A', 'GIP', '2', 'H3K27ac', 'IN1'],
+            ['IN1', 'A', 'GIN', '1', '', ''],
+            ['IN2', 'A', 'GIN', '2', '', '']])
+        self.assertEqual(header, ['sample', 'fastq_1', 'fastq_2', 'replicate', 'antibody',
+                                  'control', 'control_replicate'])
+        self.assertEqual(rows, [['GIP', '1', 'H3K27ac', 'GIN', '2'],
+                                ['GIP', '2', 'H3K27ac', 'GIN', '1'],
+                                ['GIN', '1', '', '', ''],
+                                ['GIN', '2', '', '', '']])
+
+    def test_cutandrun_control_is_each_rows_own_igg_group(self):
+        header, rows = self.emitted('cutandrun', [
+            ['sample_id', 'condition', 'group', 'replicate', 'control'],
+            ['T1', 'A', 'GT1', '1', 'IGA'],
+            ['T2', 'A', 'GT2', '1', 'IGB'],
+            ['G1', 'A', 'IGA', '1', ''],
+            ['G2', 'A', 'IGB', '1', '']])
+        self.assertEqual(header, ['group', 'replicate', 'fastq_1', 'fastq_2', 'control'])
+        self.assertEqual(rows, [['GT1', '1', 'IGA'], ['GT2', '1', 'IGB'],
+                                ['IGA', '1', ''], ['IGB', '1', '']])
 
 class SchedulerStateMapTests(unittest.TestCase):
     """The backend's first token is looked up in the descriptor's own status_map."""
