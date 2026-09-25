@@ -46,11 +46,11 @@ FAULTS = [
     ('environment replay switch', 'gars/_system/resolve_citation.py', '    transport = transport or live_transport', '    import os\n    if os.getenv("GARS_REPLAY"):\n        with open(os.getenv("GARS_REPLAY")) as handle:\n            recorded = json.load(handle)["responses"]\n        def recorded_transport(url):\n            row = next(r for r in recorded if r["request_url"] == url)\n            return row["status"], row["body"].encode("utf-8")\n        transport = recorded_transport\n    transport = transport or live_transport', 'gars/tests/test_citation_resolution.py', 'CitationResolutionTests.test_no_replay_switch'),
     ('suppressed replay option', DOI, "result.add_argument('reference')", "result.add_argument('reference')\n    result.add_argument('--replay', help=argparse.SUPPRESS)", 'gars/tests/test_citation_resolution.py', CITATION_TEST + 'test_no_replay_switch'),
     ('DOI tokens restricted to whole reference', DOI,
-     '    values = re.findall(r"10', '    values = re.findall(r"^10',
+     'DOI_PATTERN = r"10', 'DOI_PATTERN = r"^10',
      'gars/tests/test_emit_report.py', REPORT_TEST + 'test_doi_reference_forms'),
     ('malformed DOI marker ignored', EVIDENCE,
-     'if not identifiers and resolve_citation.mentions_doi(reference):',
-     'if False and not identifiers and resolve_citation.mentions_doi(reference):',
+     'if resolve_citation.mentions_doi(reference):',
+     'if False and resolve_citation.mentions_doi(reference):',
      'gars/tests/test_emit_report.py', REPORT_TEST + 'test_doi_reference_forms'),
     ('malformed evidence accepted', EVIDENCE,
      "or evidence.get(other + '_id') is not None):\n                    problems.add('evidence_missing')",
@@ -58,8 +58,8 @@ FAULTS = [
      'gars/tests/test_emit_report.py', REPORT_TEST + 'test_malformed_evidence'),
     ('subdivided DOI prefix ignored', DOI, r'(?:\.[0-9]+)*', '',
      'gars/tests/test_emit_report.py', REPORT_TEST + 'test_doi_reference_forms'),
-    ('unmatched DOI closing bracket retained', DOI, "elif (value[-1] in ')]'",
-     "elif (False and value[-1] in ')]'",
+    ('unmatched DOI closing bracket retained', DOI, "elif (value[-1] in ')]}'",
+     "elif (False and value[-1] in ')]}'",
      'gars/tests/test_emit_report.py', REPORT_TEST + 'test_doi_reference_forms'),
     ('author Doi treated as DOI marker', DOI, 'bool(explicit or (marker and numeric))', 'bool(explicit or marker)',
      'gars/tests/test_emit_report.py', REPORT_TEST + 'test_doi_reference_forms'),
@@ -97,10 +97,43 @@ FAULTS = [
     ('graded verdict dropped', RUNNER, "totals['verdicts'].append((cid, 'caught' if caught else 'not_caught'))",
      'pass', RUNNER, DESIGN_TEST + 'test_sealed_grading_uses_class_details'),
     ('renderer receives from-db', EMIT, "'--snapshot', str(snapshot), '--manifest', str(args.manifest)", "'--from-db', args.from_db or '1', '--manifest', str(args.manifest)", 'gars/tests/test_emit_report.py', REPORT_TEST + 'test_database_export_once_same_snapshot'),
+    ('own prefix not consumed', DOI,
+     'number_start = marker.end() + number.start()', 'number_start = marker.start()',
+     'gars/tests/test_emit_report.py', REPORT_TEST + 'test_doi_clean_reference_corpus'),
+    ('identifier path falls back to the anywhere rule', DOI,
+     'if identifiers: return _has_unbound_doi_number(reference)', 'if identifiers: pass',
+     'gars/tests/test_emit_report.py', REPORT_TEST + 'test_doi_clean_reference_corpus'),
+    ('every bound number satisfied', DOI,
+     'if number_start not in ends:\n                return True',
+     'if number_start not in ends:\n                return False',
+     'gars/tests/test_emit_report.py', REPORT_TEST + 'test_doi_fabricated_beside_verified'),
+    ('chaining removed', DOI, 'number_start = cursor', 'break',
+     'gars/tests/test_emit_report.py', REPORT_TEST + 'test_doi_fabricated_beside_verified'),
+    ('separator walk crosses letters', DOI,
+     'not reference[cursor].isalnum()', 'not reference[cursor].isdigit()',
+     'gars/tests/test_emit_report.py', REPORT_TEST + 'test_doi_clean_reference_corpus'),
+    ('new rule applied on the no-identifier path', DOI,
+     'if identifiers: return _has_unbound_doi_number(reference)',
+     'if True: return _has_unbound_doi_number(reference)',
+     'gars/tests/test_emit_report.py', REPORT_TEST + 'test_doi_reference_forms'),
+    ('brace removed from the closer set', DOI,
+     "elif (value[-1] in ')]}'", "elif (value[-1] in ')]'",
+     'gars/tests/test_emit_report.py', REPORT_TEST + 'test_doi_reference_forms'),
+    ('markers inside a parsed identifier counted', DOI,
+     'if any(start <= marker.start() < end for value, start, end in spans):',
+     'if False and any(start <= marker.start() < end for value, start, end in spans):',
+     'gars/tests/test_emit_report.py', REPORT_TEST + 'test_doi_clean_reference_corpus'),
 ]
 
 
 def main():
+    for name, relative, old, new, test, method in FAULTS:
+        if relative in (DOI, EVIDENCE):
+            source = (REPO / relative).read_text()
+            count = source.count(old)
+            print('anchor count: %s: %d' % (name, count), flush=True)
+            if count != 1:
+                raise ValueError('mutation target not unique: ' + name)
     outcomes = []
     with tempfile.TemporaryDirectory(prefix='defect-faults-') as folder:
         twin = Path(folder)
