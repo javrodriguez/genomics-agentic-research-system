@@ -160,6 +160,14 @@ Four passages written before the run said no model had been run and that the led
 - `DEVELOPMENT.md`, row 9's status lines: 0073 and 0074 are written, the first run is recorded, the thresholds are NOT met with 2 of 15 records INVALID, and the public claim stays unmeasured.
 The suite total in `README.md` and `DEVELOPMENT.md` moves to 702 for the generator's new test.
 
+**The suite at this landing.**
+All three suite modes ran on `2c76e2c`, the landing's head before the commit that adds this paragraph, which changes only this record.
+Mode B on macOS: 702 tests, OK, 75 skipped. Modes B and C on Linux: 702 tests, OK, 80 and 107 skipped. Mode A on macOS (containers answering): 702 tests, 13 skipped, one error.
+That error is the timed-out baseline subprocess of `test_review_faults_faults` (its 180-second per-case cap); rerun alone in the mode A environment, the module passed (1 test, OK, 146 guard faults red).
+The contracts, counts and pre-registration checks were clean in every mode.
+**Named caveat: the macOS runs were not solo.** Another session's builders ran suites and mutation loops on the same machine from 14:03 to 15:42 Eastern, overlapping mode B and mode A, as that session disclosed; its gate suite also overlapped the first 36 seconds of the module rerun.
+Extra load can cause a timing-only failure, such as mode A's one error, but not a false pass, and this evidence is pass or fail with skip counts, not timings.
+
 ## Deviations, named
 
 - MEASURE-4's CP8.7 `scp` of the checker was not run: the coordinating tool refused the remote writes, and the identical copies already on both accounts were used after their hash was re-read ([0126](0126-row-9-measurement-procedure-deviations.md), last addendum).
