@@ -48,12 +48,33 @@ FAULTS = [
     ('body exclusion extended to the whole call',
      'run, outside = shell_run, shell_outside', "run, outside = '', set()",
      ['test_command_words_next_to_heredoc_in_call', 'test_command_words_next_to_heredoc_next_call']),
+    # Round C replaced round B's 6 (b) by allow-list clauses (a) and (b); this
+    # entry now drops both, the whole of the guard it named.
     ('unproven-heredoc guard dropped',
-     'unproven = heredocs != proven', 'unproven = False',
+     'unproven = not (plain_heredocs and plain_text)', 'unproven = False',
      ['test_unproven_heredoc_in_call', 'test_unproven_heredoc_next_call']),
     ('expanded-command-word guard dropped',
      'expanded = any(', 'expanded = False and any(',
      ['test_expanded_command_word_in_call', 'test_expanded_command_word_next_call']),
+    # Round C (0129 item 11 (c)): each allow-list clause dropped in turn.
+    ('allow-list clause (a) dropped: plain heredoc delimiters',
+     'plain_heredocs = (', 'plain_heredocs = True or (',
+     ['test_allow_list_clause', 'test_split_cue']),
+    ('allow-list clause (b) dropped: no cue outside the bodies',
+     'plain_text = not any(', 'plain_text = True or not any(',
+     ['test_allow_list_clause']),
+    ('allow-list clause (c) dropped: no word spans a line',
+     'single_lines = not any(', 'single_lines = True or not any(',
+     ['test_allow_list_clause', 'test_block_causes']),
+    ('allow-list clause (d) dropped: plain kept comments',
+     'plain_comments = not any(', 'plain_comments = True or not any(',
+     ['test_allow_list_clause']),
+    ('allow-list clause (e) dropped: plain command words',
+     'expanded = any(', 'expanded = False and any(',
+     ['test_allow_list_clause', 'test_spelled_command_word']),
+    ('allow-list clause (f) dropped: plain here-string operands',
+     'plain_strings = all(', 'plain_strings = True or all(',
+     ['test_allow_list_clause']),
 ]
 # Subtests each fault must turn red, beside its named tests.
 WITNESSES = {
@@ -79,6 +100,18 @@ WITNESSES = {
     'expanded-command-word guard dropped': [
         "%s (spelling='%s')" % (name, label) for name in ('in_call', 'next_call')
         for label in ('ansi-c', 'variable')],
+    # Round C: each clause's own entry, and the review 2 spellings it alone holds.
+    'allow-list clause (a) dropped: plain heredoc delimiters': [
+        "test_allow_list_clause (entry='a')", "test_split_cue (entry='ansi-c-delimiter')"],
+    'allow-list clause (b) dropped: no cue outside the bodies': ["test_allow_list_clause (entry='b')"],
+    'allow-list clause (c) dropped: no word spans a line': [
+        "test_allow_list_clause (entry='c')", "test_block_causes (cause='nested-heredoc')"],
+    'allow-list clause (d) dropped: plain kept comments': ["test_allow_list_clause (entry='d')"],
+    'allow-list clause (e) dropped: plain command words': (
+        ["test_allow_list_clause (entry='e')"] +
+        ["test_spelled_command_word (entry='%s')" % label
+         for label in ('quoted-variable', 'suffix-variable', 'brace')]),
+    'allow-list clause (f) dropped: plain here-string operands': ["test_allow_list_clause (entry='f')"],
 }
 
 

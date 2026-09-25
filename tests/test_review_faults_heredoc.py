@@ -127,7 +127,8 @@ class HeredocPlacementTests(unittest.TestCase):
         causes = [('heredoc', self.heredoc('cat'), 'data-only'),
                   ('here-string', 'cat <<< text', 'data-only'),
                   ('kept-comment', 'true # note $(date)', 'data-only'),
-                  ('nested-heredoc', "bash -c %s" % "'cat <<EOF\nbody\nEOF\n'", 'data-only'),
+                  # Round C, item 10 (c): the outer word holding the program spans lines.
+                  ('nested-heredoc', "bash -c %s" % "'cat <<EOF\nbody\nEOF\n'", 'blocked'),
                   ('eval', eval_cd, 'blocked'),
                   ('pushd', 'pushd %s' % self.parent, 'blocked'),
                   ('heredoc-and-eval', self.heredoc('%s; cat' % eval_cd), 'blocked'),
@@ -317,6 +318,59 @@ class HeredocPlacementTests(unittest.TestCase):
         for label, command in self.expanded():
             with self.subTest(spelling=label):
                 self.next_call(self.heredoc('%s; cat' % command), 'cat %s' % self.outside)
+
+    # Round C (0129 items 9-11): an allow-list replaces round B's shape checks.
+    def moving_after(self, entries):
+        """Each entry is moving, and a parent-step read scores in the call and in the next."""
+        for label, command in entries:
+            with self.subTest(entry=label):
+                call = '%s\ncat %s' % (command, self.outside)
+                self.assertEqual(self.status(call), 'blocked')
+                self.assertGreaterEqual(self.in_call(call), 1)
+                self.next_call(command, 'cat %s' % self.outside)
+
+    def comment_quotes(self):
+        """Review 2's F1: a quote in a kept comment swallows the lines bash runs."""
+        parent = self.parent
+        return [('single', "echo $(date) # don't\ncd %s\ntrue # '" % parent),
+                ('pushd', "echo $(date) # don't\npushd %s\ntrue # '" % parent),
+                ('double', 'echo $(date) # say "hi\ncd %s\ntrue # "' % parent)]
+
+    def split_cues(self):
+        """Review 2's F2: a cue on the line before the <<, and an ANSI-C delimiter."""
+        parent = self.parent
+        return [('arithmetic', 'echo $[1\n<<2]\ncd %s\n2]' % parent),
+                ('parameter', 'echo ${v:-\n<<EOF}\ncd %s\nEOF}' % parent),
+                ('ansi-c-delimiter', "cat <<$'EOF'\nbody line\nEOF\ncd %s\n$EOF" % parent)]
+
+    def spelled_commands(self):
+        """Review 2's F3: cd run through a quoted, suffixed or braced command word."""
+        parent = self.parent
+        return [(label, self.heredoc('%s; cat' % command)) for label, command in (
+            ('quoted-variable', 'c=cd; "$c" %s' % parent), ('suffix-variable', 'c=d; c$c %s' % parent),
+            ('brace', '{cd,} %s' % parent))]
+
+    def clauses(self):
+        """Item 10 (a)-(f): a call that breaks only that clause."""
+        return [('a', 'cat <<E.F\nbody line\nE.F'),
+                ('b', 'v=1; echo ${v}\n%s' % self.heredoc('cat')),
+                ('c', "echo 'two\nlines'\n%s" % self.heredoc('cat')),
+                ('d', "true # it's $(date) '"),
+                ('e', self.heredoc('"cat"')),
+                ('f', 'cat <<< "$v"')]
+
+    def test_comment_quote(self):
+        self.moving_after(self.comment_quotes())
+
+    def test_split_cue(self):
+        self.moving_after(self.split_cues())
+
+    def test_spelled_command_word(self):
+        self.moving_after(self.spelled_commands())
+
+    def test_allow_list_clause(self):
+        # Each alone: every other clause holds, so dropping this one makes the call data-only.
+        self.moving_after(self.clauses())
 
 
 if __name__ == '__main__':

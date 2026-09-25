@@ -199,13 +199,19 @@ error and reset-notice edges still apply. Every other blocked call is unchanged,
 because those causes can move the shell where the audit cannot see it.
 For this decision only (0129 round B), the whole-call causes are read without
 the heredoc bodies the harness removes and without kept comment text, so an
-ordinary word such as `case` or `set` in a review body no longer counts. A
-`<<` counts as data only when its body was removed from a line with no `$[`,
-`$((`, `((` or `${`; a command word that is an expansion or holds a backquote
-makes the call moving too.
+ordinary word such as `case` or `set` in a review body no longer counts. Round
+C replaces round B's shape checks with an allow-list: such a call keeps its
+carried placement only when, in every program of the call and outside the
+removed bodies, each `<<` opens a removed heredoc under a plain-name delimiter
+(bare or wholly quoted), no `$[`, `$((`, `((`, `${` or backquote appears, no
+word spans a physical line, no kept comment holds a quote, backslash or
+backquote, every command word matches `[A-Za-z0-9_./+-]+`, and every
+here-string operand is such a word or one single-quoted line. Anything else is
+moving and falls back to the kit root.
 **Residual:** a heredoc or kept comment is assumed not to move the calling
 shell; a program that replaces or re-enters the shell from such data is 0125
-item 3's residual. 0129 changes no recorded run.
+item 3's residual, and a function or alias defined in an earlier call and run
+by a plain command word is 0125 and 0128's. 0129 changes no recorded run.
 
 Item 23 amends item 22(c-d): text is removed only when unambiguous; otherwise
 it is scanned. A comment hash must start a shell word at quote depth zero.

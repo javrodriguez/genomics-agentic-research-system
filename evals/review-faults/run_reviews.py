@@ -348,7 +348,7 @@ class CommandPlacement:
         # Round B, item 6 (a): for this decision only, the whole-call causes
         # read text the shell runs: removed heredoc bodies and kept comments
         # are left out. The parse checks still read every word.
-        shell_run, shell_outside, proven = shell_run_text(text, words)
+        shell_run, shell_outside, proven, shell_text = shell_run_text(text, words)
         run, outside = shell_run, shell_outside
         run_words = ' '.join(str(words[index]) for index in sorted(outside))
         run_names = set(str(word).split('=', 1)[0] for index, word in enumerate(words)
@@ -357,15 +357,50 @@ class CommandPlacement:
             run_names.add('PWD')
         run_state = (re.search(forbidden_words, run + ' ' + run_words) or 'trap' in run_names or
                      any(run_names.intersection(group) for group in hazards))
-        # Item 6 (b): a << is data only where it provably opens a heredoc the
-        # harness removed, from a line with no shift or parameter cue.
-        heredocs = sum(re.sub('<<<', '', words[index]).count('<<') for index in shell_outside
-                       if words[index].operator)
-        unproven = heredocs != proven
-        # Item 6 (c): an expanded command word may run any command, even cd.
-        expanded = any(index in shell_outside and (words[index].source.startswith('$') or '`' in words[index].source)
-                       for index in command_words)
-        moving = bool(run_state or unproven or expanded or broken or parens != 0 or backquote or
+        # Round C, item 10: an allow-list replaces round B's shape checks. The
+        # call keeps its carried placement only when every part of it outside
+        # the removed bodies is in this small, plainly readable vocabulary.
+        plain_name = r'[A-Za-z_][A-Za-z0-9_]*'
+        plain_word = r'[A-Za-z0-9_./+-]+'
+        # (a) Each << opens a heredoc the harness removed, under a delimiter
+        # that is a plain name, bare or wholly quoted; <<- on the same terms.
+        heredocs = [index for index, word in enumerate(words) if word.operator and '<<' in word and word != '<<<']
+        delimiters = []
+        for index in heredocs:
+            following = list(words[index + 1:index + 3]) + [ShellWord(';')] * 2
+            delimiter = '' if following[0].operator else following[0].source
+            if delimiter == '-':
+                delimiter = '' if following[1].operator else following[1].source
+            elif delimiter.startswith('-'):
+                delimiter = delimiter[1:]
+            delimiters.append(delimiter)
+        plain_heredocs = (len(heredocs) == proven and all(words[index] == '<<' for index in heredocs) and
+                          all(re.fullmatch("%s|'%s'|\"%s\"" % ((plain_name,) * 3), delimiter)
+                              for delimiter in delimiters))
+        # (b) No shift, arithmetic, parameter or backquote cue anywhere outside the bodies.
+        plain_text = not any(cue in shell_text for cue in ('$[', '$((', '((', '${', '`'))
+        # (c) No word spans a physical line: a quote the tokenizer opened
+        # can never swallow a line bash runs.
+        single_lines = not any('\n' in word.source for word in words if not word.operator)
+        # (d) Kept comment text, from its # to the end of its physical line,
+        # holds nothing the tokenizer could read as a quote or an escape.
+        comment_text, inside = [], False
+        for word in words:
+            inside = inside or word.source.startswith('#')
+            if inside:
+                comment_text.append(word.source.split('\n')[0])
+                inside = '\n' not in word.source
+        plain_comments = not any(char in part for part in comment_text for char in ("'", '"', chr(92), '`'))
+        # (e) Every command word is spelled plainly: an expanded, quoted or
+        # braced command word may run any command, even cd.
+        expanded = any(not re.fullmatch(plain_word, words[index].source) for index in command_words)
+        # (f) A here-string's operand is a plain word or one single-quoted line.
+        plain_strings = all(index + 1 < len(words) and not words[index + 1].operator and
+                            re.fullmatch("%s|'[^'\n]*'" % plain_word, words[index + 1].source)
+                            for index, word in enumerate(words) if word.operator and word == '<<<')
+        unproven = not (plain_heredocs and plain_text)
+        self.allowed = not (unproven or expanded) and single_lines and plain_comments and plain_strings
+        moving = bool(run_state or not self.allowed or broken or parens != 0 or backquote or
                       self.state.get('moving'))
         forbidden = forbidden or shell_state or retained_data or trap_state
         self.blocked = bool(forbidden or broken or parens != 0 or backquote or self.state.get('blocked'))
@@ -452,6 +487,10 @@ def placed_command(text, kit, start=None, optimistic=False):
             state['blocked'] = True
         # Decision 0129: only a call whose every block is retained data is data-only.
         if placement.blocked and not placement.data_only:
+            state['moving'] = True
+        # Round C, item 10: the allow-list reads every program of the call,
+        # blocked or not, so a block in a nested program cannot pass the outer text.
+        if not placement.allowed:
             state['moving'] = True
     source = ShellWord(text)
     source.inspect_placement = inspect
@@ -549,8 +588,8 @@ def shell_run_text(text, words):
     Leaves out the heredoc bodies without_heredocs removes and each kept
     word-start comment, to the end of its physical line. Comments item 23
     removed stay in. Returns that text, the indices of the words outside kept
-    comments, and how many heredocs were removed from a line without a shift
-    or parameter cue (item 6 (b)).
+    comments, how many heredocs were removed, and the call's text outside the
+    removed bodies (round C, item 10 (a), (b)).
     """
     lines = text.splitlines(True)
     removed = []
@@ -564,9 +603,8 @@ def shell_run_text(text, words):
             comment.add(index)
     outside = set(range(len(words))) - comment
     run = ' '.join([words[index].source for index in sorted(outside)] + [removed_comments])
-    proven = sum(count for count, start, end in removed if not any(
-        cue in lines[start - 1] for cue in ('$[', '$((', '((', '${')))
-    return run, outside, proven
+    proven = sum(count for count, start, end in removed)
+    return run, outside, proven, raw
 
 
 def audit_words(text):

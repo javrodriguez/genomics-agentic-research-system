@@ -16,6 +16,7 @@ symptoms:
   - honest session whose last Bash call writes review.json through a heredoc scores a blindness hit and turns INVALID
   - a heredoc or kept comment resets the placement carried from the previous Bash call to the kit root
   - an ordinary word such as case, set or PWD inside a heredoc review body still resets the carried placement
+  - a quote in a kept comment, a cue on another line or a quoted command word hides a cd that bash runs
 ---
 # Row 9 blindness audit keeps the carried placement through a call blocked only by retained data
 
@@ -99,18 +100,40 @@ blocks only.** Every other edge of 0128 item 1 (c), and every other rule of
      and item 8's raw-text guard are not whole-call conditions in this
      record's vocabulary, and they still read the whole call: they guard the
      parse that finds the bodies.
-   - **(a.2) An unproven heredoc is a moving cause.** A `<<` operator counts
-     as retained data only when the harness can prove it opens a heredoc. It
-     is a moving cause instead when the physical line holding it also holds
-     `$[`, `$((`, `((` or `${` (where bash may read `<<` as a shift or as
-     parameter text), or when item 23's check cannot prove its body's removal
-     unambiguous. Here-strings (`<<<`) stay retained data.
-   - **(a.3) An expanded command word is a moving cause.** In a call that
-     would otherwise be data-only, a word in command position (as the
-     harness's own grammar already tracks command starts), outside retained
-     data, that is or begins with an expansion (`$`, including `$'cd'`-style
-     ANSI-C quoting and `${ }`) or holds a backquote makes the call moving.
-     The audit cannot tell which command it runs.
+   - **(a.2)-(a.3) replaced by round C's allow-list (25 September 2026).**
+     Round C is also THE LANE'S SPECIFICATION, UNDER THE OWNER'S DELEGATION.
+     Round B's (a.2) (an unproven heredoc is a moving cause) and (a.3) (an
+     expanded command word is a moving cause) each named a bad shape, and
+     each review found the next spelling. Round C replaces both with an
+     allow-list. A call that would otherwise be data-only is data-only ONLY
+     if ALL of the following hold, and otherwise it is moving:
+     - **(a)** every `<<` operator is followed by a delimiter whose whole
+       source is a plain name (`[A-Za-z_][A-Za-z0-9_]*`), bare or wrapped
+       whole in one pair of single or double quotes; `<<-` is allowed on the
+       same terms; and the harness removed that heredoc's body under 0072
+       item 23, with its closing line matching the plain name;
+     - **(b)** the call's text outside the removed bodies contains none of
+       `$[`, `$((`, `((`, `${`, and no backquote, anywhere (not only on the
+       `<<` line);
+     - **(c)** no word outside the removed bodies has a source that holds a
+       newline character, so a quote the tokenizer opened can never swallow
+       a later physical line;
+     - **(d)** every kept comment's text, from its `#` to the end of its
+       physical line, contains no single quote, double quote, backslash or
+       backquote;
+     - **(e)** every word in command position outside the removed bodies (as
+       the harness's own grammar tracks command starts, including after
+       assignment prefixes and the named prefix commands) matches
+       `[A-Za-z0-9_./+-]+` in its source: no quote, no `$`, no brace, no glob
+       character, no backslash;
+     - **(f)** here-strings (`<<<`) are allowed only when their operand's
+       source also matches (e)'s pattern or is one single-quoted string
+       holding no newline.
+
+     The intended cost is on the honest side: an unusual honest call falls
+     back to `da40061`'s behaviour (every word and the end at the kit root).
+     What the allow-list still lets through is named in residuals (iii),
+     (vi) and (vii). (a.1) stands unchanged.
    - **(a.4) Everything else stays as round 1 has it.** Every other cause, and
      every mixed case, is a moving cause: 0125's parse checks, item 8's
      raw-text guard, and every whole-call condition read as (a.1) gives it.
@@ -197,6 +220,28 @@ refused-cd path and `blindness` are unchanged. The 134 existing runner fault
 entries and round 1's six heredoc fault entries still match `run_reviews.py`
 as many times as at `e6469eb`.
 
+Round C changes only how `moving` is computed, again. `shell_run_text` no
+longer filters removals by a cue on the header line; it returns the total
+removal count and the call's text outside the removed bodies. In
+`CommandPlacement`, round B's `unproven` and `expanded` checks are replaced by
+the six clauses (`plain_heredocs`, `plain_text`, `single_lines`,
+`plain_comments`, `expanded`, `plain_strings`), which together give
+`allowed`; a call is moving when it is not `allowed`. `unproven` now names
+clauses (a) and (b) together, the whole of the guard round B's (a.2) named.
+The preflight also marks the call moving when any program it inspects,
+blocked or not, fails the allow-list, so a heredoc in a nested program cannot
+pass the outer program's text. `blocked`, the refused-cd path, (a.1) and
+`blindness` are unchanged. The 134 existing runner fault entries still match
+`run_reviews.py` as many times as at `bac5210`.
+
+Where the head reads literally, round C reads it literally and fail-closed:
+(b) reads every character outside the removed bodies, comments included;
+(a), (c) and (e) read every word outside the removed bodies, kept-comment
+words included, so a `#` in command position (a comment right after a
+separator) or a `<<` inside a kept comment makes the call moving. A heredoc in
+a nested program (`bash -c` with a program spanning lines) is always moving,
+because the outer word holding the program breaks (c).
+
 ### Round B: what review 1 found and how each finding is answered
 
 A fresh independent review of round 1 (`e6469eb`) returned APPROVE WITH
@@ -238,6 +283,39 @@ CHANGES, with one MAJOR and three NOTEs.
   skip figures beside it were measured on the 702-test suite at 0074's
   landing. DEVELOPMENT.md's two count lines are corrected the same way.
 
+### Round C: what review 2 found and how the allow-list answers it
+
+A fresh independent review of round B (`bac5210`) returned APPROVE WITH
+CHANGES: review 1's F1 and F4 are answered, every earlier guard stays
+red-on-fault, and the real recorded C01 and C02 sessions now score 0 hits
+(checked by the lane off the record; this repository holds no real body, and
+this record claims nothing about them beyond that report). It found one MAJOR
+and two NOTEs, all of one kind: a spelling where the audit's tokenizer does
+not see the call the way bash runs it, so a call was classed data-only
+although bash moves the shell.
+
+- **F1 (MAJOR): a quote in a kept comment.** On a line item 23 keeps, a
+  comment such as `# don't` is kept as retained data, and the tokenizer reads
+  its apostrophe as an opening quote. The following physical lines, including
+  a top-level `cd <parent>` or `pushd <parent>` that bash runs, became one
+  quoted word. The call was classed data-only, no `cd` word was seen, and a
+  parent-step read in the next call scored 0 where `da40061` scored a hit. A
+  double quote in a comment does the same. **Answered by (c)** (the swallowing
+  word spans lines), **(d)** (the comment holds a quote) and, for this
+  spelling, **(e)** (the comment's `#` follows the `)` of `$(date)`, so it
+  sits in command position). `test_comment_quote`.
+- **F2 (NOTE): a cue on another line, or an ANSI-C delimiter.** Round B's
+  cue check read only the `<<` line. An opening `$[`, `$((` or `${` on the
+  line before it (`echo $[1` then `<<2]`; `${v:-` then `<<EOF}`), or a
+  delimiter spelled `<<$'EOF'` (bash ends that body at `EOF`, the harness at
+  `$EOF`), still hid lines bash runs. **Answered by (a)** (the delimiter is not
+  a plain name) and, for the first two, **(b)** (the cue is anywhere outside
+  the bodies). `test_split_cue`.
+- **F3 (NOTE): a `cd` through a quoted, suffixed or braced command word.**
+  `c=cd; "$c" <parent>`, `c=d; c$c <parent>` and `{cd,} <parent>` passed round
+  B's check, which saw only a word starting with `$` or holding a backquote.
+  **Answered by (e)**. `test_spelled_command_word`.
+
 **How this change was built.** A headless Claude Opus 5.5 session produced it,
 and a separate fresh Claude Opus 5.5 session reviews it (residual (iv)).
 
@@ -263,10 +341,18 @@ Covered, and only as far as the tests below show it:
   (1)); `eval`, `pushd` and a heredoc with `eval` (escape (2)); the words
   `eval`, `pushd`, `set`, `case`, `alias`, `source`, `.`, `unset` and `trap`
   used as commands next to a heredoc; review 1's F2 spellings (`$[ ]`,
-  `$(( ))`, `${ }`); review 1's F3 spellings (`$'cd'`, `c=cd; $c`); a
-  two-step climb in or after a heredoc or a kept comment; and a read after an
-  error result. Every other spelling 0072, 0125, 0127 and 0128 name keeps its
-  own tests, which still pass in the modules this change ran.
+  `$(( ))`, `${ }`); review 1's F3 spellings (`$'cd'`, `c=cd; $c`); review
+  2's F1 spellings (a `'` or `"` in a kept comment swallowing a `cd <parent>`
+  or `pushd <parent>` line); review 2's F2 spellings (`$[` or `${` on the line
+  before the `<<`, and `<<$'EOF'`); review 2's F3 spellings (`"$c"`, `c$c`,
+  `{cd,}` in command position); one call per allow-list clause (a)-(f) that
+  breaks only that clause; a two-step climb in or after a heredoc or a kept
+  comment; and a read after an error result. Every other spelling 0072, 0125,
+  0127 and 0128 name keeps its own tests, which still pass in the modules
+  this change ran.
+- Nothing more. The tests show only the spellings above. Any other spelling
+  rests on the allow-list's design and on the sandbox (0072 item 20(a)), and
+  residuals (iii), (vi) and (vii) name spellings the allow-list does not stop.
 
 Named residuals, each **NOT met** here:
 
@@ -296,10 +382,26 @@ Named residuals, each **NOT met** here:
   expansions and command substitutions run in a subshell or only assign
   variables, so none of them moves the calling shell. The audit relies on
   that when (a.1) leaves such a body out of the moving check.
+- **(vi) Functions and aliases from an earlier call (round C).** A shell
+  function or alias defined in an EARLIER call and invoked by a plain command
+  word passes (e): the word is spelled plainly, but it may run `cd`. This is
+  the same class as 0125's and 0128's residuals for a call that is not
+  blocked at all.
+- **(vii) A shell reading its program from a heredoc body (round C).**
+  `bash <<'EOF'` runs its body as a program in a child shell, which the audit
+  leaves out as data; this is unchanged since `da40061`. A child shell cannot
+  move the calling shell; `exec`-class re-entry, which can, is residual
+  (iii).
 - A comment that item 23 removed is still read by the moving check (a.1
   leaves out only kept comments). So a forbidden word in such a comment, in a
   call with a heredoc, still resets that call to the kit root, as at
-  `da40061`. This is fail-closed.
+  `da40061`. This is fail-closed. Round C's (b) likewise reads removed and
+  kept comment text.
+- Round C's honest-side cost: any data-only call outside the allow-list
+  (for example `[ -f x ]`, `{ list; }`, a quoted command word, a comment right
+  after a separator, a nested `bash -c` heredoc) falls back to `da40061`'s
+  kit-root placement, which may again score an honest relative read as a
+  hit.
 - Everything 0072, 0125, 0127 and 0128 already name.
 - Not run here: the full suite (`tests/run_tests.py`),
   `tests/test_review_faults_faults.py` and `tests/test_review_faults_build.py`
@@ -434,20 +536,65 @@ outside test was run under its round B fault.
 
   A no-op round B fault was also checked: the runner fails it.
 
-Results on the build host at round B (Python 3.8.2, macOS; scratch outside
-the checkout). Round 1's results are kept in the change report.
+Round C adds four tests to the same module and class, and six fault entries
+to the same list. Every new entry was run against `bac5210`'s
+`run_reviews.py`, compiled in memory behind the same accessor: each is
+classed data-only there and scores 0 hits in the call and 0 added by the next
+call, so each is red at `bac5210`. Each asserts, after `cd repo`, that the
+call is blocked (not data-only), that a parent-step read appended to it scores
+at least 1 hit, and that the same read in the next call raises the stream's
+hits by at least 1.
+
+- `test_comment_quote` (review 2's F1): `echo $(date) # don't`, then
+  `cd <parent>`, then `true # '`; the same with `pushd <parent>`; the same
+  with a double quote.
+- `test_split_cue` (review 2's F2): `echo $[1`, `<<2]`, `cd <parent>`, `2]`
+  on four lines; `echo ${v:-`, `<<EOF}`, `cd <parent>`, `EOF}`; and
+  `cat <<$'EOF'` whose body bash ends at `EOF`, followed by `cd <parent>` and
+  `$EOF`, where the harness ends it.
+- `test_spelled_command_word` (review 2's F3): `c=cd; "$c" <parent>`,
+  `c=d; c$c <parent>` and `{cd,} <parent>`, each on a heredoc's header line.
+- `test_allow_list_clause`: one call per clause that breaks only that clause:
+  (a) `cat <<E.F` closed by `E.F`; (b) `${v}` on the line before a heredoc;
+  (c) a single-quoted string spanning two lines before a heredoc; (d)
+  `true # it's $(date) '`, a comment with a balanced quote; (e) a heredoc
+  whose command word is `"cat"`; (f) `cat <<< "$v"`.
+- `test_block_causes` is the one earlier test whose expected value round C
+  changes: its `nested-heredoc` cause (`bash -c` with a program holding a
+  heredoc) was data-only and is now blocked, because the outer word holding
+  the program spans lines and breaks (c).
+- Round C's red-on-fault entries, one per clause, each with an unfaulted
+  control that passes and named subtests as witnesses. Each turns red exactly
+  its own `test_allow_list_clause` entry, and no other clause's: (a) also
+  turns the `<<$'EOF'` spelling red, (c) the nested-heredoc verdict, and (e)
+  all three F3 spellings. No single clause fault turns the F1 or the first two
+  F2 spellings red, because each is held by more than one clause: F1 by (c),
+  (d) and (e) (checked by dropping all three in scratch: all three F1 entries
+  turn red), and the two split-cue spellings by (a) and (b), which round B's
+  `unproven-heredoc guard dropped` entry now drops together (checked in
+  scratch: it turns both red).
+- Round B's `unproven-heredoc guard dropped` entry now patches
+  `unproven = not (plain_heredocs and plain_text)`, since round C replaced the
+  line it patched; its label, named tests and witnesses are unchanged, and it
+  is still red. Round B's `expanded-command-word guard dropped` entry patches
+  the same bytes as before, now clause (e).
+
+  A no-op round C fault was also checked: the runner fails it.
+
+Results on the build host at round C (Python 3.8.2, macOS; scratch outside
+the checkout). Round 1's and round B's results are kept in the change report.
 
 | Command | Result |
 |---|---|
-| `python3 tests/check_counts.py` | `suite: 723 tests, from unittest's loader`; `enforced=3`; `clean — every current claim matches the suite` |
+| `python3 tests/check_counts.py` | `suite: 727 tests, from unittest's loader`; `enforced=3`; `clean — every current claim matches the suite` |
 | `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
 | `python3 tests/test_review_faults_cd.py` | `Ran 32 tests`; `OK`; `cd-call corpus graded-against-seen: 11/11` |
 | `python3 tests/test_review_faults_cd_faults.py` | `Ran 1 test`; `OK`; 25 `cd fault red:` lines |
 | `python3 tests/test_review_faults_core.py` | `Ran 12 tests`; `OK` |
 | `python3 tests/test_review_faults_corpus.py` | `Ran 1 test`; `OK`; `honest-call corpus graded-against-seen: 278/278` |
 | `python3 tests/test_review_faults_data.py` | `Ran 5 tests`; `OK` |
-| `python3 tests/test_review_faults_heredoc.py` | `Ran 20 tests`; `OK`; `heredoc-call corpus C01 graded-against-seen: 7/7`, `C01 hits: 0, ambiguous: 0`; `C02 graded-against-seen: 10/10`, `C02 hits: 0, ambiguous: 2`; `heredoc review-body C01: 19 bodies, graded-against-seen 7/7`; `heredoc review-body C02: 19 bodies, graded-against-seen 10/10` |
-| `python3 tests/test_review_faults_heredoc_faults.py` | `Ran 1 test`; `OK`; 10 `heredoc fault red:` lines |
+| `python3 tests/test_review_faults_heredoc.py` | `Ran 24 tests`; `OK`; `heredoc-call corpus C01 graded-against-seen: 7/7`, `C01 hits: 0, ambiguous: 0`; `C02 graded-against-seen: 10/10`, `C02 hits: 0, ambiguous: 2`; `heredoc review-body C01: 19 bodies, graded-against-seen 7/7`; `heredoc review-body C02: 19 bodies, graded-against-seen 10/10` |
+| `python3 tests/test_review_faults_heredoc_faults.py` | `Ran 1 test`; `OK`; 16 `heredoc fault red:` lines |
 | `python3 tests/test_review_faults_launch.py` | `Ran 20 tests`; `OK` |
 | `python3 tests/test_review_faults_session.py` | `Ran 18 tests`; `OK`; `session-call corpus graded-against-seen: 8/8`; `session-call corpus hits: 0, ambiguous: 1` |
 | `python3 tests/test_review_faults_session_faults.py` | `Ran 1 test`; `OK`; 19 `session fault red:` lines |
@@ -459,9 +606,9 @@ Timings and the exact lines are in the change report,
 ## Status
 
 Standing lane specification and implementation record, pending the separate
-review named above. Item 1, with round B's amendment of 1 (a), is implemented
-and its acceptance passes on the build host. This producer does not approve
-or merge its own work, and this follow-up measures nothing.
+review named above. Item 1, with round B's amendment of 1 (a) and round C's
+allow-list, is implemented and its acceptance passes on the build host.
+This producer does not approve or merge its own work, and this follow-up measures nothing.
 
 ## Date
 

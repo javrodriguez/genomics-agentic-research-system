@@ -320,6 +320,180 @@ modules printed 25 and 19 red lines.
   deployment sandbox. README.md's skip figures are from the 0074 landing run,
   and no full run at 723 tests is claimed.
 
+## Round C
+
+Base: round B's commit `bac5210d718387541bc3b43322ed0b0f9f091992`, on the same
+branch. Round C answers a fresh independent review of round B (APPROVE WITH
+CHANGES: F1 MAJOR, F2-F3 NOTE, all of one kind: a spelling the tokenizer does
+not see the way bash runs it). It is the lane's specification under the
+owner's delegation (0129, as amended). The sections above are round 1's and
+round B's and are not rewritten. No model was run, and this follow-up
+measures nothing.
+
+In this table, `runner`, `heredoc tests` and `heredoc faults` mean what they
+mean above.
+
+| Requirement | Changed files | Acceptance | Result and red-on-fault evidence |
+|---|---|---|---|
+| 10 (a)-(f): an allow-list replaces round B's 6 (b) and 6 (c); 6 (a) stands | runner (`shell_run_text` returns the total removal count and the text outside the removed bodies; in `CommandPlacement`, `plain_heredocs`, `plain_text`, `single_lines`, `plain_comments`, `expanded`, `plain_strings`, `unproven`, `allowed`; the preflight marks the call moving when any inspected program fails the allow-list) | all tests below | PASS |
+| 11 (b): review 2's F1, a quote in a kept comment | heredoc tests | `test_comment_quote` (`'`, `'` with `pushd`, `"`) | PASS: each blocked, 1 hit in the call, next call adds 1. Red at `bac5210`: yes, all three (data-only there, 0 hits both ways). Held by clauses (c), (d) and (e) together, so no single clause fault turns it red; dropping all three in scratch turns all three entries red |
+| 11 (b): review 2's F2, a cue on another line, an ANSI-C delimiter | heredoc tests | `test_split_cue` (`$[`, `${`, `<<$'EOF'`) | PASS, as above. Red at `bac5210`: yes, all three. Red-on-fault seen: clause (a) turns `<<$'EOF'` red; `$[` and `${` are held by (a) and (b) together, and round B's `unproven-heredoc guard dropped` (now both) turns all three red (checked in scratch) |
+| 11 (b): review 2's F3, a quoted, suffixed or braced command word | heredoc tests | `test_spelled_command_word` (`"$c"`, `c$c`, `{cd,}`) | PASS, as above. Red at `bac5210`: yes, all three. Red-on-fault seen: yes, clause (e) turns all three red |
+| 11 (b): one entry per clause, breaking only that clause | heredoc tests | `test_allow_list_clause` (a)-(f) | PASS, as above. Red at `bac5210`: yes, all six. Red-on-fault seen: yes, each clause fault turns red exactly its own entry and no other entry of this test (checked in scratch) |
+| 11 (a): honest targets unchanged | none | `test_honest_heredoc_sessions`, `test_honest_review_bodies`, `test_honest_kept_comment_words`, `test_honest_data_only_carry`, session, cd and corpus modules | PASS: C01 0/0, C02 0 hits and 2 ambiguous, with the placeholder and all 19 review-like bodies; synthetic carry 0/0; session data 0/1; cd data 11/11; honest corpus 278/278 and green |
+| 11: change an earlier test only where round C changes its value | heredoc tests | `test_block_causes` | Changed, the only one: its `nested-heredoc` cause (`bash -c` with a program holding a heredoc) was data-only and is now blocked, because the outer word holding the program spans lines and breaks (c). Clause (c)'s fault turns it back, so it names that fault |
+| 11 (c): six clause faults, round B's entries kept | heredoc faults | `test_heredoc_faults_are_red` | PASS: 16 of 16 red, each with a passing unfaulted control and named subtest witnesses. Round B's `unproven-heredoc guard dropped` patched a line round C replaced; it now patches `unproven = not (plain_heredocs and plain_text)` (clauses (a) and (b), the whole guard it named), with its label, named tests and witnesses unchanged. A no-op round C fault was checked, and the runner fails it |
+| 12: record, harness README, report, counts | 0129, generated `CONTEXT.md`, `evals/review-faults/README.md`, this section, README.md, DEVELOPMENT.md | `bash docs/decisions/build_index.sh`, `tests/check_counts.py` | Done. The suite collects 727 (723 + 4 round C tests); the three enforced count lines now say 727 |
+
+**Existing fault entries.** A scratch script compared every runner fault
+entry's match count in `run_reviews.py` against `bac5210`:
+`entries checked: 134, changed counts: 0`. Each of the 16 heredoc entries
+matches exactly once (the module asserts it).
+
+**Reading of the head where it needed one.** None of these needed an owner
+ruling; each is the literal, fail-closed reading, and each costs only honest
+calls:
+
+- (b) says "the call's text outside the removed bodies … anywhere". It is
+  read over every character outside the removed bodies, including kept and
+  item-23-removed comment text.
+- (a), (c) and (e) say "outside the removed bodies" and do not exempt kept
+  comments. They read every word outside the removed bodies, including
+  kept-comment words: a `<<` inside a kept comment, or a `#` in command
+  position (a comment right after a separator), makes the call moving.
+- (a)'s "every `<<` operator": an operator word that holds `<<` but is neither
+  exactly `<<` nor `<<<` (for example `;<<`, merged by the tokenizer) fails
+  (a). `<<-` is read as `<<` followed by a delimiter word that starts with
+  `-`, or by a lone `-` and then the delimiter, as the harness's own heredoc
+  removal reads it.
+- (d)'s comment text is read from the words: from a word starting with `#`,
+  each word's source up to its first newline, ending at the first word or
+  operator that holds a newline. This includes the start of a word a quote
+  swallowed, so (d) sees F1's apostrophe too.
+- "A call … is data-only ONLY if ALL of the following hold" is read for the
+  whole call: the preflight marks the call moving when any program it
+  inspects fails the allow-list, blocked or not. Without this, a heredoc in a
+  nested program could leave the preflight's verdict data-only while the outer
+  program's own placement fell back to the kit root.
+- The allow-list's regexes are ASCII classes as the head writes them; the
+  single-quoted here-string operand is `'[^'\n]*'`.
+
+### How every command was run (round C)
+
+As in rounds 1 and B: every command ran from the repository root, with no
+change of directory, and with `TMPDIR`, `TEMP` and `TMP` set to the scratch
+twin as a relative path in the same shell. Each ran in the foreground with
+output captured to a scratch log, and the lines below were read from those
+logs (`check_contracts.py`'s per-contract token table is left out). Helper
+scripts (the in-memory `bac5210` runs, the per-clause and paired-clause fault
+checks, the fault-entry count, the no-op fault, and the bash probes of the
+spellings, which ran only `echo` and `cat`) were written only in the scratch
+twin. `tests/run_tests.py`, `tests/test_review_faults_faults.py` and
+`tests/test_review_faults_build.py` were not run, as the head directs.
+
+```text
+python3 tests/check_counts.py
+suite: 727 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+python3 tests/check_contracts.py
+14 contracts clean: sections, wait points, vocabulary.
+python3 tests/test_review_faults_cd.py
+Ran 32 tests in 2.176s
+OK
+cd-call corpus graded-against-seen: 11/11
+python3 tests/test_review_faults_cd_faults.py
+Ran 1 test in 12.982s
+OK
+python3 tests/test_review_faults_core.py
+Ran 12 tests in 0.114s
+OK
+python3 tests/test_review_faults_corpus.py
+Ran 1 test in 2.039s
+OK
+honest-call corpus graded-against-seen: 278/278
+python3 tests/test_review_faults_data.py
+Ran 5 tests in 0.216s
+OK
+python3 tests/test_review_faults_heredoc.py
+Ran 24 tests in 2.805s
+OK
+heredoc-call corpus C01 graded-against-seen: 7/7
+heredoc-call corpus C01 hits: 0, ambiguous: 0
+heredoc-call corpus C02 graded-against-seen: 10/10
+heredoc-call corpus C02 hits: 0, ambiguous: 2
+heredoc review-body C01: 19 bodies, graded-against-seen 7/7
+heredoc review-body C02: 19 bodies, graded-against-seen 10/10
+python3 tests/test_review_faults_heredoc_faults.py
+Ran 1 test in 5.455s
+OK
+heredoc-call corpus C01 graded-against-seen: 7/7
+heredoc-call corpus C01 hits: 0, ambiguous: 0
+heredoc-call corpus C02 graded-against-seen: 10/10
+heredoc-call corpus C02 hits: 0, ambiguous: 2
+heredoc-call corpus C01 hits: 1, ambiguous: 0
+heredoc-call corpus C02 hits: 1, ambiguous: 1
+heredoc fault red: data-only carry dropped -> test_honest_heredoc_sessions, test_honest_data_only_carry
+heredoc fault red: refused cd in a data-only block keeps the carried placement -> test_refused_cd_in_call, test_refused_cd_next_call, test_cd_word_in_data_only_call
+heredoc fault red: carry applied to every blocked call -> test_shell_moving_in_call
+heredoc fault red: shell-moving block end carried to the next call -> test_shell_moving_next_call
+heredoc fault red: data-only block end not carried to the next call -> test_honest_data_only_carry
+heredoc fault red: error edge skipped after a data-only block -> test_error_edge_after_data_only
+heredoc review-body C01: 19 bodies, graded-against-seen 7/7
+heredoc review-body C02: 19 bodies, graded-against-seen 10/10
+heredoc fault red: moving causes read from the raw text again -> test_honest_review_bodies, test_honest_kept_comment_words
+heredoc fault red: body exclusion extended to the whole call -> test_command_words_next_to_heredoc_in_call, test_command_words_next_to_heredoc_next_call
+heredoc fault red: unproven-heredoc guard dropped -> test_unproven_heredoc_in_call, test_unproven_heredoc_next_call
+heredoc fault red: expanded-command-word guard dropped -> test_expanded_command_word_in_call, test_expanded_command_word_next_call
+heredoc fault red: allow-list clause (a) dropped: plain heredoc delimiters -> test_allow_list_clause, test_split_cue
+heredoc fault red: allow-list clause (b) dropped: no cue outside the bodies -> test_allow_list_clause
+heredoc fault red: allow-list clause (c) dropped: no word spans a line -> test_allow_list_clause, test_block_causes
+heredoc fault red: allow-list clause (d) dropped: plain kept comments -> test_allow_list_clause
+heredoc fault red: allow-list clause (e) dropped: plain command words -> test_allow_list_clause, test_spelled_command_word
+heredoc fault red: allow-list clause (f) dropped: plain here-string operands -> test_allow_list_clause
+python3 tests/test_review_faults_launch.py
+Ran 20 tests in 28.704s
+OK
+python3 tests/test_review_faults_session.py
+Ran 18 tests in 0.682s
+OK
+session-call corpus graded-against-seen: 8/8
+session-call corpus hits: 0, ambiguous: 1
+python3 tests/test_review_faults_session_faults.py
+Ran 1 test in 9.137s
+OK
+Python feature_version=(3, 6): 3/3 changed or new Python files parse
+```
+
+In the fault module's output, the honest-session and review-body lines are
+also printed for each control and each faulted run; under
+`data-only carry dropped` the sessions print C01 `hits: 1, ambiguous: 0` and
+C02 `hits: 1, ambiguous: 1`, as at `da40061`. The cd-fault and session-fault
+modules printed 25 and 19 red lines.
+
+### Residual gaps (round C)
+
+- 0129's residuals (i)-(vii). (vi) and (vii) are new: a function or alias
+  defined in an earlier call and run by a plain command word passes (e), and
+  a shell that reads its program from a heredoc body (`bash <<'EOF'`) is left
+  out as data, unchanged since `da40061`; `exec`-class re-entry stays (iii).
+- The honest-side cost: any otherwise data-only call outside the allow-list
+  (for example `[ -f x ]`, `{ list; }`, a quoted command word, a comment after
+  a separator, a nested `bash -c` heredoc) falls back to `da40061`'s kit-root
+  placement.
+- Three spelling groups are held by more than one clause, so no single clause
+  fault turns them red: F1 ((c), (d), (e)), and the `$[` and `${` split cues
+  ((a), (b)). Each is red at `bac5210`, and each turns red when its clauses
+  are dropped together (checked in scratch; for (a) and (b), by round B's
+  entry).
+- The tests show only the spellings they build; the real review bodies of C01
+  and C02 are not in this repository, and 0074's records stand as recorded.
+- Not run here: `tests/run_tests.py`, `tests/test_review_faults_faults.py`,
+  `tests/test_review_faults_build.py` (the deployment runs them), native
+  Python 3.6 (only the `feature_version=(3, 6)` parse was checked), and the
+  deployment sandbox. README.md's skip figures are from the 0074 landing run,
+  and no full run at 727 tests is claimed.
+
 ## Owner rulings needed
 
 None.
