@@ -494,6 +494,14 @@ modules printed 25 and 19 red lines.
   deployment sandbox. README.md's skip figures are from the 0074 landing run,
   and no full run at 727 tests is claimed.
 
+## Round C addendum
+
+Review 3 approved round C's commit `b284271` with one NOTE, and no
+fresh-context adversarial search through round C's allow-list was completed.
+0129's `Addendum 2026-09-25: review 3 and the review loop's end` records the
+NOTE as a residual, adds residual (viii), and records that the review loop for
+0129 ends there. This addendum changes records only.
+
 ## Owner rulings needed
 
 None.

@@ -613,3 +613,37 @@ This producer does not approve or merge its own work, and this follow-up measure
 ## Date
 
 2026-09-25
+
+## Addendum 2026-09-25: review 3 and the review loop's end
+
+This addendum is the lane's specification under the owner's delegation (the
+delegation 0072 quotes). The lanes' coordinator ruled it under the same
+delegation. It changes records only: no code, test or data file changes. The
+sections above stand as written.
+
+Review 3, a fresh independent review of round C, approved commit `b284271`
+(APPROVE) with one NOTE. The NOTE: round B's fault entry
+`expanded-command-word guard dropped` and round C's entry
+`allow-list clause (e) dropped: plain command words` apply the identical
+patch. So the heredoc fault list counts 16 entries where 15 distinct faults
+are planted. This record names that as a residual. The fault list is not
+changed.
+
+Review 3 also stated that it did not carry out the adversarial search through
+round C's allow-list. That gives a new named residual, **NOT met** here:
+
+- **(viii) No fresh-context adversarial search through round C's allow-list
+  was completed.** Review 3 did not attempt it. A dedicated fresh-context
+  review whose only job was that search was halted by a safety check before
+  it ran any probe, and the lane closed the review loop rather than re-frame
+  that task. The outside direction (a call that leaves the kit's `repo/`
+  folder scores a hit) rests on three things. First, round C's tests for
+  every allow-list clause and for every spelling reviews 1 and 2 reported,
+  each red under its own fault. Second, the re-plants in reviews 2 and 3, all
+  red. Third, the lane's own probes, each also run in real bash, which scored
+  a hit wherever bash left the kit's `repo/` folder. The allow-list fails
+  closed by construction: a call outside it gets exactly `da40061`'s
+  behaviour.
+
+The review loop for 0129 ends here, with review 3, on the lanes'
+coordinator's ruling under the delegation.
