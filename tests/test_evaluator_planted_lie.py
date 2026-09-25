@@ -43,6 +43,8 @@ def load_smoke():
 
 SMOKE = load_smoke()
 LIE_CLASSES = [code for code in SMOKE.CODES if code not in ('SCHEMA', 'UNREADABLE')]
+# The producer set: one plant per class, plus L12, the voluntary re-floor (a second FLOOR_MISMATCH).
+DEVELOPMENT_CLASSES = sorted(LIE_CLASSES + ['FLOOR_MISMATCH'])
 
 
 def record_under_test(evidence):
@@ -61,6 +63,24 @@ def record_under_test(evidence):
     SMOKE.bench.require(len(candidates) == 1,
                         'evidence must hold exactly one record named by no other record')
     return candidates[0]
+
+
+def schema_defects(evidence):
+    """Every smoke record in the evidence set that is not JSON or fails the closed schema.
+
+    A comparison record's schema failure reaches the verdict as PREVIOUS_MISMATCH or
+    FLOOR_MISMATCH, so the oracle reads the whole set itself: a plant is defective when any record
+    in its evidence fails SCHEMA, not only the record under test."""
+    folder = evidence / 'evals/runs/smoke'
+    defects = []
+    for path in sorted(folder.glob('*.json')) if folder.is_dir() else []:
+        try:
+            problems = SMOKE.schema_problems(SMOKE.parse_json(path.read_bytes()))
+        except (ValueError, UnicodeError, TypeError):
+            problems = [('record', 'not a JSON document')]
+        if problems:
+            defects.append('evals/runs/smoke/' + path.name)
+    return defects
 
 
 def git_tree_reader(commit):
@@ -100,7 +120,7 @@ def grade(folder, tree_reader, seal_types):
     codes = [finding['code'] for finding in verdict['findings']]
     if not lie:
         return ('passed' if verdict['ok'] else 'false alarm'), None, verdict
-    if 'SCHEMA' in codes:
+    if 'SCHEMA' in codes or schema_defects(evidence):
         return 'defective', expected['lie_class'], verdict
     if expected['lie_class'] == 'other':
         caught = any(code not in ('SCHEMA', 'UNREADABLE') for code in codes)
@@ -196,13 +216,13 @@ class DevelopmentSetTests(unittest.TestCase):
     def test_development_set(self):
         result = grade_set(FIXTURES, fixture_tree_reader, (DEVELOPMENT_SEAL,))
         print(development_line(result))
-        self.assertEqual(result['n'], len(LIE_CLASSES))
+        self.assertEqual(result['n'], len(DEVELOPMENT_CLASSES))
         self.assertEqual(sorted(item[1] for key, item in result['outcomes'].items()
-                                if key.startswith('lies/')), sorted(LIE_CLASSES))
+                                if key.startswith('lies/')), DEVELOPMENT_CLASSES)
         missed = [key for key, item in result['outcomes'].items() if item[0] not in ('caught', 'passed')]
         self.assertEqual(missed, [])
         self.assertEqual((result['c'], result['d'], result['p'], result['q']),
-                         (len(LIE_CLASSES), 0, 2, 2))
+                         (len(DEVELOPMENT_CLASSES), 0, 3, 3))
 
     def test_generator_reproduces_fixtures(self):
         spec = importlib.util.spec_from_file_location('gars_smoke_generate', str(FIXTURES / 'generate.py'))
@@ -274,6 +294,34 @@ class SealedPassRulesTests(unittest.TestCase):
         self.assertEqual(lines[0], 'planted-lie (independent_context): caught 0/1; clean controls '
                                    'passed 1/1; defective 1; graded 2 of 2 seen')
         self.assertEqual(lines[2], '§18 row 14 exit: planted-lie catch 0/1 — not met')
+
+    def test_schema_invalid_comparison_record_is_defective(self):
+        # Round-2 review MAJOR: the evaluator reports a schema-invalid predecessor as
+        # PREVIOUS_MISMATCH, so a plant must be judged defective from every record in its set.
+        shutil.rmtree(str(self.root / 'lies/L01'))
+        shutil.copytree(str(FIXTURES / 'clean/C01'), str(self.root / 'lies/L01'))
+        path = self.root / 'lies/L01/expected.json'
+        expected = json.loads(path.read_text())
+        del expected['kind']
+        expected.update(id='L01', lie_class='PREVIOUS_MISMATCH', seal_type='independent_context',
+                        statement='The predecessor carries a field the closed schema does not know.')
+        path.write_text(json.dumps(expected, indent=2, sort_keys=True) + '\n')
+        path = self.root / 'lies/L01/evidence/evals/runs/smoke/smoke-20260926-fixture-one.json'
+        record = json.loads(path.read_text())
+        record['unexpected_field'] = True
+        path.write_text(json.dumps(record, indent=2, sort_keys=True) + '\n')
+        outcome = grade(self.root / 'lies/L01', fixture_tree_reader, SEAL_TYPES)
+        self.assertEqual(outcome[0], 'defective', outcome[2])
+        code, lines = self.run_pass(self.seals(fingerprint(self.root)))
+        self.assertEqual(code, 0)
+        self.assertEqual(lines, ['planted-lie (independent_context): caught 0/1; clean controls '
+                                 'passed 1/1; defective 1; graded 2 of 2 seen', 'first run: true',
+                                 '§18 row 14 exit: planted-lie catch 0/1 — not met'])
+        # The same with the predecessor made unparsable: still defective, never caught.
+        path.write_bytes(b'{"schema": ')
+        code, lines = self.run_pass(self.seals(fingerprint(self.root)))
+        self.assertEqual(lines[2], '§18 row 14 exit: planted-lie catch 0/1 — not met')
+        print('defective: a schema-invalid comparison record is never counted as caught')
 
     def test_count_only_and_unset_environment(self):
         env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')

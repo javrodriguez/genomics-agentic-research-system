@@ -59,7 +59,11 @@ The review itself stays outside the repository; the stub's format is in
 A **floor record** carries three runs at its own `git_sha` and names itself as its floor
 (`floor.record` is its own path); its floor value is the range of its three run values
 (`bench.noise_floor`'s arithmetic). Run a floor at activation and whenever the model, the
-prompt bundle or the suite changes. An **ordinary record** carries one run and names the floor
+prompt bundle or the suite changes, and **only** then: a record may be a floor record only when
+`previous` is `null` (the first record after activation) or when at least one of `model`,
+`prompt_sha256` or `suite_sha256` differs from its predecessor's. A voluntary re-floor, with all
+three unchanged, would let a landing widen the floor its own delta is read against and turn a
+real decrease into `no change`; the evaluator refuses it with `FLOOR_MISMATCH`. An **ordinary record** carries one run and names the floor
 its predecessor names. Its value is its run-1 `numerator/denominator`.
 
 ## The rules the evaluator enforces (R-112, as code)
@@ -72,6 +76,8 @@ its predecessor names. Its value is its run-1 `numerator/denominator`.
 - the floor record, the previous record and this record share `model`, `prompt_sha256` and
   `suite_sha256`; otherwise this record must itself be a floor record, its `delta` is
   `uncomputable: changed <field>[, <field>]` and its `interpretation` is `uncomputable`;
+- a floor record whose predecessor shares all three of `model`, `prompt_sha256` and
+  `suite_sha256` is refused (`FLOOR_MISMATCH`): a floor only at activation or at a change;
 - `previous` is the Bench path of the nearest earlier checked first-parent commit (in dir mode,
   the `--expect-previous` argument), and `null` only for the first record after activation,
   whose `delta` is `uncomputable: no previous smoke record`;

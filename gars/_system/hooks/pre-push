@@ -18,7 +18,7 @@ ACTIVATION_RECORD = 'docs/decisions/0120-row-14-evaluator-smoke-delta-bench-gate
 # Changing either file is a protected change that must update this pin (evals/smoke/SMOKE.md).
 TRUSTED_EVALUATOR = {
     'evals/bench.py': '27888b8b73748628052b62375ff1eb3c54cead906f028f0d663f06681e948755',
-    'evals/smoke/smoke.py': 'c06c8b06d485fcf528985d37f3ff8f3b39c74d3a21fa3778e1ee38e4e016dac6',
+    'evals/smoke/smoke.py': '60b4ed364169b435861e3c20cbe1c42e2005da8a04cbb0c6c4a861fb5acd6c87',
 }
 
 

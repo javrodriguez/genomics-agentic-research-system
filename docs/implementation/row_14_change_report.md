@@ -224,3 +224,73 @@ written; 0122 (approval of this row's protected changes) is Glitch's.
 ## Owner rulings needed
 
 None.
+
+## Review round 2 fixes
+
+These are the fixes for the blind review of the round-1 commit `f37cc17`
+(`docs/reviews/row_14_review.md`: APPROVE WITH CHANGES, one MAJOR, six NOTEs). The producer (a
+headless Claude Code context, claude-opus-5-5) and the reviewer (a fresh Claude Code context,
+claude-opus-5-5, from a blind kit) are the same model family, so review independence rests on
+a fresh context and a blind kit, not on model diversity. The lane's rulings L1–L3 for this
+round are recorded as the lane's in 0120's addendum of 2026-09-25.
+
+| Finding | Changed files | Test | Result | Red-on-fault seen |
+|---|---|---|---|---|
+| **MAJOR**: the oracle counted a plant with a schema-invalid comparison record as caught (the evaluator reports it as `PREVIOUS_MISMATCH`/`FLOOR_MISMATCH`), so a first sealed run could print the §18 exit as met | `tests/test_evaluator_planted_lie.py` (`schema_defects`: every `evals/runs/smoke/*.json` in the evidence set must parse and pass `schema_problems`, else defective); `evals/smoke/LIE-INTERFACE.md` ("a plant whose evidence fails the schema … any record in the evidence set") | `SealedPassRulesTests.test_schema_invalid_comparison_record_is_defective`: the reviewer's case (C01 copied as L01, `unexpected_field` added to the predecessor, `lie_class` `PREVIOUS_MISMATCH`, `independent_context`), then the predecessor made unparsable | `defective 1`, `caught 0/1`, `§18 row 14 exit: planted-lie catch 0/1 — not met` | **yes, red first**: before the fix the new test failed with `AssertionError: 'caught' != 'defective'` (finding `PREVIOUS_MISMATCH … is not a valid smoke record (unexpected_field)`); green after. Also a new fault in `tests/test_smoke_delta.py` (`comparison-record schema defects ignored by the oracle`) reverts the rule in a disposable copy: red, then green after restore |
+| NOTE, voluntary re-floor (lane ruling **L1**: enforce the floor rule) | `evals/smoke/smoke.py` (one check in the floor branch: `FLOOR_MISMATCH` when a floor record's predecessor shares model, prompt and suite); `gars/_system/hooks/pre-push` (`TRUSTED_EVALUATOR` re-pinned to the new `smoke.py`); `evals/smoke/fixtures/generate.py` + new `lies/L12/` and `clean/C03/`; `evals/smoke/SMOKE.md` (the floor rule and the rules list); `evals/smoke/fixtures/README.md` | `EvaluatorTests.test_plant_voluntary_refloor` (L12 caught with exactly `FLOOR_MISMATCH` naming the rule; its record states floor 2/3, delta -2/3, `no change`; C03 passes); `DevelopmentSetTests` now expects 12 plants and 3 clean controls | `caught 12/12; clean controls passed 3/3` | **yes, red first**: round 1's `smoke.py` (from `git show HEAD:`) on L12 gave `ok=True findings=[] floor=2/3 delta=-2/3 interpretation=no change`. New fault `voluntary re-floor allowed` (the check replaced by `if False:`): red, then green after restore |
+| NOTE, the `--all` fault pinned one spelling (lane ruling **L3**) | `gars/tests/test_hooks_bench_smoke.py` (`git update-ref refs/heads/fixture-tip <tip>` in `test_deletion_and_readdition_cannot_move_activation`; new fault `activation searched over --all, no tip, latest add`, the reviewer's spelling) | `BenchSmokeHookFaultTests.test_hook_guards_go_red` | both `--all` spellings red, then green after restore | yes, via the fault harness (five hook/audit faults now) |
+| NOTE, past records re-read at HEAD (lane ruling **L2**) | `docs/decisions/0120-…` addendum: the residual named in the lane's words | none (a residual, no guard change) | named | n/a |
+| NOTE, README count inside the lane's sentence | `README.md:322` and `DEVELOPMENT.md:166,185`: only the enforced count, 621 → 623 (two tests added this round); the rest of the sentence stays the lane's to rewrite at landing, as the review asked | `python3 tests/check_counts.py` | `clean — every current claim matches the suite` | n/a |
+| NOTE, 0120's eighth residual bullet is a status non-claim | none; the review said no fix is needed | — | — | — |
+| NOTE, `read_record.listing` and row 11 amendment 4 | none; the review accepted both and asked that the approver of 0122 see them (change report round 1, "Hook diff" and amendment 4) | — | — | — |
+
+**Why the MAJOR fix is in the oracle, not the evaluator.** An invalid comparison record already
+refuses the gate (`PREVIOUS_MISMATCH`/`FLOOR_MISMATCH`, `ok` false), so the gate needs no change.
+What was wrong was the oracle's accounting. Fixing it where the accounting happens leaves the
+evaluator's verdicts untouched and needs no pin change for this finding.
+
+**Compatibility rule (SMOKE.md, item 5).** `smoke.py` changed, so `TRUSTED_EVALUATOR` changed.
+The audit at this round's head refuses for the same reason as at `f37cc17`: the build-branch
+commits carry no trailers. No smoke record exists on the first-parent line, so no record's
+verdict can change. The output is quoted in the producer's final message.
+
+### Checks run by the producer this round
+
+The lane conditions apply: no whole-suite run. Each line below is the summary as printed.
+
+| Command | Summary |
+|---|---|
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/check_counts.py` | `clean — every current claim matches the suite` (623) |
+| `python3 evals/test_harness.py` | Python 3.8.2 (`python3` here): `Ran 44 tests` / `FAILED (errors=13)`. All 13 are `AttributeError`s for 3.9+ APIs (`removesuffix` ×11, `removeprefix`, `ast.unparse`) in files this row does not touch. Under `python3.12`: `Ran 44 tests in 176.732s` / `OK` |
+| `python3 evals/check_results.py --controls --lexicon` | `clean — graded=1` |
+| `python3 tests/test_evaluator_planted_lie.py` | `development set (producer-written; not the §18 exit): caught 12/12; clean controls passed 3/3`; `Ran 7 tests` / `OK (skipped=1)` (the sealed set: unset); also OK under 3.12 |
+| `python3 tests/test_smoke_delta.py` | `Ran 24 tests in 10.355s` / `OK`, 12 red-on-fault plants each red then green; also OK under 3.12 |
+| `python3 gars/tests/test_hooks_bench_smoke.py` | `Ran 13 tests in 93.363s` / `OK`, 5 hook/audit red-on-fault plants |
+| `python3 gars/tests/test_hooks_records.py` | `Ran 14 tests in 50.766s` / `OK` |
+| `python3 gars/_system/hooks/audit_trailers.py --rev 452fe33…` | `trailers audit: not applicable — not activated at 452fe33; graded 0 commits and claims nothing` |
+| `python3 gars/_system/hooks/audit_trailers.py` at this round's head | run after the commit; it must refuse `f37cc17` and this round's commit with `missing Review, Bench or Session trailer`. Quoted in the producer's final message |
+| `ast.parse(..., feature_version=(3, 6))` | 8/8 parse: smoke.py, fixtures/generate.py, pre-push, audit_trailers.py, the four test modules |
+
+**Run by the lane, not by the producer:** the whole suite in modes A, B and C, including
+`gars/tests/test_pre_push.py`, `gars/tests/test_hooks_gitleaks.py`,
+`gars/tests/test_secret_containment.py` and `tests/test_decision_links_resolve.py`, which the
+review also named. The README cold-clone skip figures are the lane's.
+
+The test runs need `TMPDIR` set to an absolute folder. The fault harnesses start their
+subprocesses from a disposable copy, where a relative `TMPDIR` does not resolve. The first
+`test_smoke_delta.py` run this round used a relative `TMPDIR` and went red for that reason
+alone (`FileNotFoundError` in `mkdtemp`). The run above sets `TMPDIR` to an absolute path built
+at run time.
+
+### Residual gaps — each NOT met
+
+- **Row 14 exit, planted-lie catch 1/1**: NOT met. No sealed lie exists yet.
+- **Row 14 exit, `Bench:` on every `_system/` merge**: NOT met. It needs the landing.
+- **L2**: past records are re-read at the audited commit, and `evals/runs/smoke/` is
+  unprotected (named in 0120's addendum).
+- Round 1's residuals are unchanged.
+
+## Owner rulings needed
+
+None.

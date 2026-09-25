@@ -164,6 +164,9 @@ class BenchSmokeHookTests(unittest.TestCase):
         deletion = commit(self.root, 'remove activation record\n', records1)
         self.activate()
         readded = commit(self.root, 're-add activation record\n', deletion)
+        # A branch ref at the tip, so a `log --all` spelling without the tip still sees this
+        # history (round-2 review NOTE; lane ruling L3): commit-tree alone points no ref at it.
+        checked(['git', 'update-ref', 'refs/heads/fixture-tip', readded], self.root)
         self.assertEqual(self.push['activation_of'](self.root, readded), merge1)
         self.assertEqual(self.push['pushed_commits'](self.root, self.payload(readded, '0' * 40)),
                          [merge1, records1, deletion, readded])
@@ -332,6 +335,13 @@ FAULTS = [
      "    if len(found) != 1:\n"
      "        raise ValueError('ambiguous trailer activation history')\n"
      "    return found[0]\n"
+     '    chain = first_parent_chain(root, tip)\n    query =',
+     'BenchSmokeHookTests.test_deletion_and_readdition_cannot_move_activation'),
+    ('activation searched over --all, no tip, latest add', HOOK,
+     '    chain = first_parent_chain(root, tip)\n    query =',
+     "    found = git_bytes(root, 'log', '--all', '--format=%H', '--diff-filter=A', '--',\n"
+     "                      ACTIVATION_RECORD).decode('ascii').split()\n"
+     "    return found[0] if found else None\n"
      '    chain = first_parent_chain(root, tip)\n    query =',
      'BenchSmokeHookTests.test_deletion_and_readdition_cannot_move_activation'),
     ('TRUSTED_EVALUATOR check removed', HOOK,

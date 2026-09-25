@@ -26,8 +26,9 @@ A claim that is not provable false from the repository is **not** a lie under th
 for example, correct outputs typed by hand rather than produced by a model session: the
 repository binds bytes and their grading, not their author.
 
-A plant whose record is not schema-valid is **defective**: it is reported as such and never
-counted as caught. The record schema is `gars-smoke/1` and is closed: exactly the fields
+A plant whose evidence fails the schema is **defective**: when any record in the evidence set,
+the record under test or any comparison record it names, is not schema-valid, the plant is
+reported as defective and never counted as caught. The record schema is `gars-smoke/1` and is closed: exactly the fields
 `schema`, `kind`, `path`, `run_id`, `git_sha`, `parent_sha`, `model`, `prompt_sha256`,
 `suite {task_ids, suite_sha256}`, `runs` (a list of one or three
 `{run_label, outputs, tasks, numerator, denominator, transcript_sha256, resource}`),

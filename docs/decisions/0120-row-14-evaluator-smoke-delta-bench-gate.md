@@ -226,3 +226,58 @@ the reserved approval record 0122.
 ## Date
 
 2026-09-25
+
+## Addendum 2026-09-25 — review round 2
+
+Appended after the bytes above, which are unchanged. The blind review of the round-1 commit
+(`f37cc17`) returned APPROVE WITH CHANGES: one MAJOR and six NOTEs. The producer and the
+reviewer are the same model family (claude-opus-5-5), so review independence rests on a fresh
+context and a blind kit, not on model diversity.
+
+### Lane rulings for this round (the lane's, 25 Sep 2026, under the owner's standing delegation; not the owner's words)
+
+- **L1 (voluntary re-floor).** The floor rule is enforced, not only documented. A record may be
+  a floor record (three runs, `floor.record` its own path) only when `previous` is null (the
+  first record after activation) or when at least one of `model`, `prompt_sha256` or
+  `suite_sha256` differs from its predecessor's; otherwise the evaluator reports
+  `FLOOR_MISMATCH` naming the rule.
+- **L2 (past records re-read at HEAD).** Named here as a residual, in the lane's words: every
+  audit re-reads each past record and its outputs from the audited commit, and
+  `evals/runs/smoke/` is not a protected path, so a later non-_system commit could rewrite a
+  past record chain self-consistently; protecting that folder is a guard change outside this
+  row's boundaries. The guard is not changed.
+- **L3 (the `--all` fault).** The activation test points a branch ref at the fixture tip, so a
+  `log --all` spelling of the fault sees the history, and that spelling is shown red too.
+
+### What changed
+
+- **The oracle's defective rule (the MAJOR).** A plant is defective when *any* smoke record in
+  its evidence set is not JSON or fails the closed schema, not only the record under test. A
+  schema-invalid comparison record reaches the verdict as `PREVIOUS_MISMATCH` or
+  `FLOOR_MISMATCH`, which the round-1 oracle counted as caught, so a first sealed run could
+  have printed the §18 exit as met on a defective plant. `tests/test_evaluator_planted_lie.py`
+  now reads the whole set (`schema_defects`); `evals/smoke/LIE-INTERFACE.md` says "a plant
+  whose evidence fails the schema", matching the specification's item 12. The evaluator's
+  verdict is unchanged by this fix.
+- **The floor rule (L1)** is one added check in `evals/smoke/smoke.py`. The producer's
+  development set gains `lies/L12` (a second `FLOOR_MISMATCH` plant: a self-floor with model,
+  prompt and suite unchanged, whose 2/3 floor turns a -2/3 decrease into `no change`) and its
+  clean twin `clean/C03` (a re-floor at a model change, delta uncomputable). The development
+  line is now `caught 12/12; clean controls passed 3/3`.
+- **`TRUSTED_EVALUATOR`** in `gars/_system/hooks/pre-push` is re-pinned to the new `smoke.py`
+  bytes; `evals/bench.py` and its pin are unchanged. **Compatibility rule:** the audit over the
+  full activation..HEAD walk refuses at this branch's head for the same reason before and after
+  the change (the build-branch commits carry no trailers), and no smoke record exists on the
+  line yet, so no record's verdict can change. The L1 check can refuse only a record that is a
+  floor record with an unchanged predecessor; no such record exists.
+
+### Residuals added
+
+- The L2 residual above.
+- The defective rule reads records only under `evals/runs/smoke/*.json` in the evidence set,
+  which is the only place the closed schema lets a record path point.
+
+### Status
+
+Unchanged: standing, not landed, not approved. The protected changes, including this round's
+`TRUSTED_EVALUATOR` pin and the new fixtures, await the reserved approval record 0122.

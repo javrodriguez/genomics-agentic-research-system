@@ -69,7 +69,7 @@ def responses(tree, wrong):
     return result
 
 
-def record(tree, evidence, run_id, commit, parent, runs, previous, floor):
+def record(tree, evidence, run_id, commit, parent, runs, previous, floor, model=MODEL):
     labels = ['run-%d' % (index + 1) for index in range(len(runs))]
     outputs = {label: responses(tree, wrong) for label, wrong in zip(labels, runs)}
     transcripts = {label: {task: smoke.sha256(('synthetic transcript %s %s %s'
@@ -78,7 +78,7 @@ def record(tree, evidence, run_id, commit, parent, runs, previous, floor):
     resources = {label: {'wall_time_seconds': 'unknown', 'tokens': 'unknown', 'cost_usd': 'unknown'}
                  for label in labels}
     path, files = smoke.build_evidence(tree, outputs, run_id, COMMITS[commit], COMMITS[parent],
-                                       MODEL, transcripts, resources, previous, floor,
+                                       model, transcripts, resources, previous, floor,
                                        lambda name: evidence[name])
     evidence.update(files)
     return path
@@ -101,8 +101,20 @@ def edit(evidence, path, change):
     evidence[path] = dumps(value)
 
 
-def lies(evidence, floor, first, second):
-    """One plant per finding code other than SCHEMA and UNREADABLE; record under test R2."""
+def refloor(tree, evidence, first, model):
+    """R2 rebuilt as its own floor record: run-1 is R2's decrease, run-2 and run-3 widen the floor."""
+    second_path = smoke.RECORD_DIR + 'smoke-20260927-fixture-two.json'
+    for name in list(evidence):
+        if name == second_path or name.startswith(smoke.OUTPUTS_DIR + 'smoke-20260927-fixture-two/'):
+            del evidence[name]
+    wrong = ('batch-confounded', 'single-replicate')
+    record(tree, evidence, 'smoke-20260927-fixture-two', 'C', 'B', [wrong, (), wrong], first,
+           'self', model)
+
+
+def lies(tree, evidence, floor, first, second):
+    """One plant per finding code other than SCHEMA and UNREADABLE, plus the voluntary re-floor
+    (a second FLOOR_MISMATCH plant, L12); record under test R2."""
     output = smoke.outputs_prefix('smoke-20260927-fixture-two', 'run-1') + 'batch-confounded/response.json'
 
     def run1(change):
@@ -137,6 +149,9 @@ def lies(evidence, floor, first, second):
          lambda e: edit(e, second, lambda v: v.update(interpretation='no change'))),
         ('PREVIOUS_MISMATCH', 'The record skips its true predecessor and compares against the '
          'floor record instead.', lambda e: skip_predecessor(e, floor, first, second)),
+        ('FLOOR_MISMATCH', 'A record whose model, prompt and suite equal its predecessor\'s '
+         'declares itself a new floor, so its widened floor turns a decrease into no change.',
+         lambda e: refloor(tree, e, first, MODEL)),
     ]
     for index, (code, statement, plant) in enumerate(plants, 1):
         copy = dict(evidence)
@@ -163,7 +178,11 @@ def generate(out, tree_folder):
                 smoke.OUTPUTS_DIR + 'smoke-20260925-fixture-floor/')},
              {'kind': 'clean', 'bound_commit': COMMITS['A'], 'bound_parent': COMMITS['A0'],
               'expect_previous': None})]
-    sets.extend(lies(evidence, floor, first, second))
+    changed = dict(evidence)
+    refloor(tree, changed, first, 'fixture-model-b')
+    sets.append(('clean/C03', changed, {'kind': 'clean', 'bound_commit': COMMITS['C'],
+                                        'bound_parent': COMMITS['B'], 'expect_previous': first}))
+    sets.extend(lies(tree, evidence, floor, first, second))
     for name, files, expected in sets:
         folder = out / name
         for path, data in sorted(files.items()):

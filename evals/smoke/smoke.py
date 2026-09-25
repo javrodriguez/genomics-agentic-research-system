@@ -488,6 +488,12 @@ def _evaluate(state, record_bytes, bound_commit, bound_parent, expect_previous, 
             add('FLOOR_MISMATCH', 'runs', 'a floor record carries three runs')
         else:
             floor_value = floor_range(values)
+        # The floor rule: a new floor only at the first record after activation or when model,
+        # prompt or suite changes; never a voluntary re-floor that widens its own floor.
+        if previous is not None and all(identity(previous)[field] == own[field] for field in COMPARED):
+            add('FLOOR_MISMATCH', 'floor.record', 'a floor record is allowed only as the first record '
+                'after activation or when model, prompt_sha256 or suite_sha256 changes; the '
+                'predecessor %s shares all three' % previous['path'])
     else:
         if len(record['runs']) != 1:
             add('FLOOR_MISMATCH', 'runs', 'an ordinary record carries one run')

@@ -194,6 +194,24 @@ class EvaluatorTests(unittest.TestCase):
         print('contract drift: patching bench.score_task changes the verdict')
 
 
+    def test_plant_voluntary_refloor(self):
+        # Lane ruling L1: a floor record only first after activation or at a model, prompt or
+        # suite change. L12 re-floors with all three unchanged; C03 re-floors at a model change.
+        folder = FIXTURES / 'lies/L12'
+        self.assertEqual(expected(folder)['lie_class'], 'FLOOR_MISMATCH')
+        outcome, lie_class, verdict = oracle.grade(folder, oracle.fixture_tree_reader,
+                                                   (oracle.DEVELOPMENT_SEAL,))
+        self.assertEqual((outcome, codes(verdict)), ('caught', ['FLOOR_MISMATCH']), verdict)
+        self.assertIn('allowed only as the first record', verdict['findings'][0]['detail'])
+        record = json.loads((folder / 'evidence' / SECOND).read_text())
+        self.assertEqual((record['floor'], record['delta'], record['interpretation']),
+                         ({'record': SECOND, 'value': '2/3'}, '-2/3', 'no change'))
+        twin = oracle.grade(FIXTURES / 'clean/C03', oracle.fixture_tree_reader,
+                            (oracle.DEVELOPMENT_SEAL,))
+        self.assertEqual(twin[0], 'passed', twin[2])
+        print('plant voluntary re-floor: caught; clean twin (re-floor at a model change) passed')
+
+
 for _code in oracle.LIE_CLASSES:
     setattr(EvaluatorTests, 'test_plant_' + _code,
             (lambda code: lambda self: self.plant(code))(_code))
@@ -350,6 +368,12 @@ FAULTS = [
        'changed = []')], 'EvaluatorTests.test_plant_MODEL_MISMATCH'),
     ('git_sha binding dropped', SMOKE_PY, [("if record['git_sha'] != bound_commit:", 'if False:')],
      'EvaluatorTests.test_plant_BINDING_MISMATCH'),
+    ('voluntary re-floor allowed', SMOKE_PY,
+     [('if previous is not None and all(identity(previous)[field] == own[field] for field in COMPARED):',
+       'if False:')], 'EvaluatorTests.test_plant_voluntary_refloor'),
+    ('comparison-record schema defects ignored by the oracle', 'tests/test_evaluator_planted_lie.py',
+     [("if 'SCHEMA' in codes or schema_defects(evidence):", "if 'SCHEMA' in codes:")],
+     'oracle.SealedPassRulesTests.test_schema_invalid_comparison_record_is_defective'),
     ('smoke glob made recursive in the cohort test', COHORT,
      [("paths = sorted((REPO / 'evals/runs').glob('*.json'))",
        "paths = sorted((REPO / 'evals/runs').rglob('*.json'))")],
