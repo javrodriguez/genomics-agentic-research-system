@@ -82,7 +82,9 @@ class ManifestGroupsTests(unittest.TestCase):
 
     def fake_run(self):
         # Same artifacts as RnaseqGarsWrapperTests.test_04_de_prepare_and_collect.
-        files = {'run/tables/de_results.csv':'gene,baseMean,log2FoldChange,pvalue,padj\ng1,1,2,0.1,0.2\n',
+        # One tested gene, so BH(pvalue) == pvalue: padj must equal it or collect's
+        # BH gate (row 8 step A, rule 8) refuses the table as uncorrected_pvalues.
+        files = {'run/tables/de_results.csv':'gene,baseMean,log2FoldChange,pvalue,padj\ng1,1,2,0.1,0.1\n',
                  'run/tables/normalized_counts.csv':'gene,S1,S2,S3,S4\ng1,1,2,3,4\n',
                  'run/report.md':'# fixture report\n',
                  'adapted/counts_gene.tsv':'gene\tS1\ng\t1\n',
