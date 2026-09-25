@@ -847,9 +847,18 @@ def closed_bash_refusal(tool, args, tokens, root, cwd):
             deny("Blocked: this call names project %s, whose data is not public (decision 0107). "
                  "%s A door (decision 0141) is reached only through the dispatcher, which filters "
                  "its output: python3 _system/tool_call.py %s '<json>'." % (project, CLOSED_WHY, name))
-    if name in CLOSED_PROJECT_DOORS or not closed:
+    # Row 13 (decision 0141, ruling D-vii b): fail-closed, a door's direct spelling is refused
+    # whatever it names while any closed project exists, so no door's unfiltered output reaches
+    # a session by a path-free direct call.
+    if not dispatcher and closed and name in CLOSED_PROJECT_DOORS:
+        deny("Blocked: %s is a door (decision 0141), reached only through the dispatcher while a "
+             "non-public project exists, because only the dispatcher filters its output: "
+             "python3 _system/tool_call.py %s '<json>'. %s" % (name, name, CLOSED_WHY))
+    if not closed:
         return
     exempt = declared or ()
+    # 0107's cwd rule holds for doors too (decision 0141, ruling D-vii a): it precedes the door
+    # return, so a door's dispatcher call from inside a closed project is refused here.
     for form in _forms(cwd, (root,)):
         for project, label, project_forms in closed:
             if project not in exempt and any(_inside(form, f) for f in project_forms):
@@ -858,6 +867,8 @@ def closed_bash_refusal(tool, args, tokens, root, cwd):
                      "files, from outside the project. Ask the human to run the step, declare a "
                      "public source in data_sources.tsv, or work in a public project."
                      % (project, label, CLOSED_WHY))
+    if name in CLOSED_PROJECT_DOORS:
+        return
     recursive = _recursive(name, [w for _, w in words])
     readable = bool(tool.get("filesystem"))
     for key, word in words:

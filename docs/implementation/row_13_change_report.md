@@ -802,3 +802,165 @@ the whole suite is red in these 20 subtests.
   `import-tool` against a real slurm record.
 - **Review:** the fresh-context review has not happened; 0144 (Glitch's delegated approval of the
   protected changes) and 0142/0143 (the owner's) are not written by this producer.
+
+## Step B ruling round
+
+2026-09-25. Built on step B's `1d4399a` on `build/gars-row-13-pilot`. The lane answered this
+report's "Owner rulings needed" (Step B) with **ruling D-vii**, the lane's under the owner's
+standing delegation of 23 Sep 2026 and told to the lane's coordinator; none of it is the owner's
+ruling. It is recorded in [0141](../decisions/0141-row-13-closed-project-doors.md)'s dated
+addendum "ruling round 1 (D-vii)". The earlier sections of this report are unchanged. No push,
+remote, install, download, approval or merge was performed.
+
+### Ruling item → changed files → test → result
+
+"Red" is the named test on `1d4399a`'s code: the edited test modules were copied into a local
+clone of `1d4399a` in the scratch folder and run from its root.
+
+| Ruling item | Changed files | Test | Result |
+|---|---|---|---|
+| D-vii (a): 0107's cwd rule before the door `return` | `gars/_system/guard_hook.py` (0107's cwd loop moved above the door `return`; text unchanged) | `test_nonpublic_read_block.EveryToolTests.test_cwd_inside_closed_project` (**not edited**) | red on `1d4399a`: 6 subtests (`resolve_artifact`, `rnaseq_de.check`, `.prepare`, `.summary`, `executor.submit`, `.status`, dispatcher spelling from `projects/pilot`); **green** here |
+| D-vii (a) | — | `test_pilot_doors.test_dispatcher_from_inside_the_closed_project_refused` (new: all eleven doors' dispatcher spelling from `projects/pilot`, naming the public project, refused with 0107's cwd message) | red on `1d4399a`: 11 subtests; **green** |
+| D-vii (b): a door's direct spelling refused whatever it names while a closed project exists | `gars/_system/guard_hook.py` (one check after additions 1 and 2) | `test_pilot_doors.test_direct_spelling_refused_while_any_project_is_closed` (new: the seven non-`pilot_log` doors' direct spelling naming only `projects/open1` refused with `0141` and `tool_call.py <door>` while a closed project exists, and allowed in a fixture with none; the path-free spelling refused by the transport, `R-094`, in both) | red on `1d4399a`: 7 subtests; **green** |
+| D-vii (b) | — | `test_pilot_doors.test_direct_spelling_refused_on_closed` tightened: the door's refusal must carry addition 1's own wording (`this call names project pilot`), so planted fault 5 stays detectable once D-vii (b) also refuses those calls | green on `1d4399a` and here |
+| D-vii (c): `DoorTests.test_door_mechanism` | `gars/tests/test_nonpublic_read_block.py` | asserts the eleven names of D-i in order | the old `()` assertion red on `1d4399a` (`the step-B module on `1d4399a`: `FAIL: test_door_mechanism`); **green** |
+| D-vii (c): `Q8Tests`' `door_hook` helper | same file | matches the line by its `CLOSED_PROJECT_DOORS = ` prefix, checks its value equals the constant, and replaces it with the test's doors (the mutation the test drives) | the old literal red on `1d4399a`; `test_q8_alone` then **still red**: see Owner rulings needed |
+| D-vii (c): `EveryToolTests.test_every_registered_tool` | same file | a door's dispatcher spelling on `projects/pilot` and `projects/fresh` allowed where the same call on `projects/open1` passes the base hook; every non-door tool and every door's direct spelling refused (on `projects/open1` the door's direct spelling is refused, with `0141` where the base hook allowed it) | old expectation red on `1d4399a` in 12 subtests; new expectation red on `1d4399a` in 6 (the door direct spelling on `open1`); **green** |
+| `pilot_fixture.py` accepted; `touches:` | `docs/decisions/0141-…md` (addendum) | `bash docs/decisions/build_index.sh` | the index unchanged (frontmatter not edited) |
+| counts | `README.md`, `DEVELOPMENT.md` (count lines, status paragraph) | `python3 tests/check_counts.py` | `clean — every current claim matches the suite` (783) |
+
+Red first, verbatim: the edited `test_nonpublic_read_block.py` on `1d4399a`'s code,
+`Ran 20 tests in 101.275s` / `FAILED (failures=13)` (6 × `test_cwd_inside_closed_project`,
+6 × `test_every_registered_tool`, 1 × `test_q8_alone`); the step-B module on `1d4399a`,
+`Ran 20 tests in 85.661s` / `FAILED (failures=20)` (1 × `test_door_mechanism`, 12 ×
+`test_every_registered_tool`, 6 × `test_cwd_inside_closed_project`, 1 × `test_q8_alone`); the
+edited `test_pilot_doors.py` on `1d4399a`'s code, `Ran 10 tests in 16.725s` /
+`FAILED (failures=18)` (7 × `test_direct_spelling_refused_while_any_project_is_closed`, 11 ×
+`test_dispatcher_from_inside_the_closed_project_refused`).
+
+### Red-on-fault
+
+The step B driver, extended with two plants and changed in one respect: a fault is RED when a
+test fails that passed in the driver's baseline of the same copy (the 0107 module's baseline
+carries `test_q8_alone` red). The copy is a local clone of `1d4399a` with the working tree laid
+over it; each plant is restored byte-for-byte, and the copy was checked clean after each run.
+
+| Fault planted | Where |
+|---|---|
+| 16. D-vii (a) removed | 0107's cwd loop skips `CLOSED_PROJECT_DOORS` names |
+| 17. D-vii (b) removed | the fail-closed direct-spelling check → `if False:` |
+
+Verbatim (Python 3.8.2). The first run, all 17 faults against the step before the tightening,
+read `red-on-fault: 16/17 RED`: fault 5 (addition 1 removed) was `GREEN (NOT CAUGHT)`, because
+D-vii (b) refused the same calls with a message the old assertion accepted. After the tightening
+above, faults 5, 12, 16 and 17 were re-run:
+
+```text
+baseline test_pilot_doors: OK
+baseline test_nonpublic_read_block: FAILED (failures=1) test_q8_alone
+5. a guard refusal removed (addition 1): RED; test_pilot_doors FAILED (failures=7) test_direct_spelling_refused_on_closed
+12. a door reached by its direct spelling (D-ii's check removed): RED; test_pilot_doors FAILED (failures=8) test_bare_outside_workspace_refused_by_addition_2, test_direct_spelling_refused_on_closed
+red-on-fault: 2/2 RED
+16. D-vii (a) removed: a door's dispatcher call exempt from 0107's cwd rule: RED; test_pilot_doors FAILED (failures=11) test_dispatcher_from_inside_the_closed_project_refused | test_nonpublic_read_block FAILED (failures=7) test_cwd_inside_closed_project, test_q8_alone
+red-on-fault: 1/1 RED
+17. D-vii (b) removed: a door's direct spelling judged by its paths only: RED; test_pilot_doors FAILED (failures=7) test_direct_spelling_refused_while_any_project_is_closed | test_nonpublic_read_block FAILED (failures=7) test_every_registered_tool, test_q8_alone
+red-on-fault: 1/1 RED
+```
+
+The first run's lines for faults 1–4 and 6–15, all RED, match the Step B table's modules and methods
+except fault 12, which moved from 16 to 1 failing assertion in `test_pilot_doors` there (the
+direct-spelling refusals it removed are now also made by D-vii (b)) and to 8 after the
+tightening. 17 of 17 faults are RED on the final tests. (`test_q8_alone` appears in 16's and
+17's lines because it is red in the baseline too; the verdicts rest on the other methods.)
+
+### Commands and summary lines (verbatim)
+
+From the repo root, in the foreground, one module per call, `TMPDIR`, `TEMP` and `TMP` in the
+scratch folder, `GARS_TEST_NO_CONTAINER=1`; `python3` is CPython 3.8.2.
+
+| Command | Summary |
+|---|---|
+| `python3 gars/tests/test_pilot_doors.py` | `Ran 10 tests in 17.385s` / `OK`; `EXIT pilot doors (fixture): dispatcher allowed on closed` |
+| `python3 gars/tests/test_pilot_log.py` | `Ran 15 tests in 6.035s` / `OK`; `EXIT pilot log (fixture): launch-bound actor` |
+| `python3 gars/tests/test_bring_home.py` | `Ran 9 tests in 10.197s` / `OK`; `EXIT bring home (fixture): detail withheld` |
+| `python3 gars/tests/test_closed_project_outputs.py` | `Ran 11 tests in 19.304s` / `OK`; `EXIT closed outputs (fixture): marker absent from every tool` |
+| `python3 tests/test_session_turns.py` | `Ran 11 tests in 4.449s` / `OK`; `EXIT session turns (fixture): counts only` |
+| `python3 tests/test_unit_economics.py` | `Ran 18 tests in 6.510s` / `OK`; `EXIT unit economics (fixture): regenerated byte-identical` |
+| `python3 tests/test_rerun_diff.py` | `Ran 8 tests in 2.300s` / `OK`; `EXIT rerun diff (fixture): aggregates only` |
+| `python3 gars/tests/test_nonpublic_read_block.py` | `Ran 20 tests in 121.994s` / **`FAILED (failures=1)`** (`test_q8_alone`; see Owner rulings needed) |
+| `python3 gars/tests/test_protected_paths.py` | `Ran 5 tests in 20.006s` / `OK` |
+| `python3 gars/tests/test_rerun_check.py` | `Ran 26 tests in 190.515s` / `OK`; `EXIT instrument self-test (fixture, stub slurm): reproduction 2/2` |
+| `test_guard_hook`, `test_policy_attacks`, `test_approval_forgery`, `test_policy_faults`, `test_tool_schema_refusal`, `test_role_profiles`, `test_execution_policy` | `OK` each (4, 19, 12, 10, 8, 6, 7 tests) |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/check_counts.py` | `clean — every current claim matches the suite` (783: 781 and step B's two new `test_pilot_doors` methods) |
+| `bash docs/decisions/build_index.sh` | index unchanged |
+| `ast.parse(..., feature_version=(3, 6))` on the three changed files | `ast36 ok` |
+| `git diff --check` | clean |
+| the red-on-fault driver | `red-on-fault: 16/17 RED` (before the tightening), then `2/2`, `1/1`, `1/1 RED` (faults 5 and 12, 16, 17) |
+
+**Not run by this producer: the whole suite (`tests/run_tests.py`) and Docker**, as the brief
+directs; the lane runs the suite on a separate host.
+
+**Run conditions, stated.** Another lane's session shared this machine. Three driver runs ran
+past the 10-minute foreground limit and the harness moved them to the background: the first
+(all 17 faults, which completed and is quoted above) and two baseline attempts, one stopped by
+its own `timeout` and one ended by a module's 900 s timeout, both before any plant; neither is
+quoted. A copy-run of `test_pilot_doors.py` took 1136 s under that load (one guard call timed
+out at 120 s), where the same module takes about 17 s; rerun alone it was green. While clearing
+those runs, a `pkill -f 'gars/tests/test_'` issued by this producer matched by command line and
+could have ended test processes of the other lane's session on this machine; it is reported to
+the lane in this producer's completion message.
+
+## Owner rulings needed
+
+One item, for the lane (not the owner's classification question; nothing here reclassifies data).
+
+**`Q8Tests.test_q8_alone` cannot go green under D-vii (c) as written.** Its body (not the
+helper) ends with `self.allowed(...)` on the **direct** spelling
+`python3 _system/stage00_register.py finalize --project projects/fresh --data-class
+deidentified_under_agreement --purpose fixture`, with `stage00_register.finalize` made the only
+door by `door_hook`. `projects/fresh` is a closed project. Guard addition 1 (ruling D-ii, step B)
+already refuses that call on `1d4399a` (`this call names project fresh, whose data is not public
+(decision 0107) … A door (decision 0141) is reached only through the dispatcher`), and D-vii (b)
+would refuse it too. The step B report named only the helper's literal as this method's
+failure; that was incomplete. The helper change is made as ruled; the method stays red in one
+assertion; neither the guard nor the test is weakened.
+
+Probe (scratch, not committed; the module's own fixture, `door_hook` with finalize the only
+door):
+
+```text
+public direct 2 True True True
+public dispatch 2 True True True
+deidentified_under_agreement direct 2 True False False
+deidentified_under_agreement dispatch 0 False False False
+```
+
+(exit code; `§21 Q4`, `classifying data is the owner's`, `data_sources.tsv` in the message.)
+The test's intent, "with finalize a door, only Q8 stands between the agent and class public",
+holds in the dispatcher spelling: `public` is refused by Q8 in both spellings, and
+`deidentified_under_agreement` is allowed through the dispatcher only.
+
+Asked: a ruling to change `test_q8_alone`'s calls to the dispatcher spelling (both halves, or the
+allowed half only), or a different test the lane prefers. Until then the whole suite is red in
+this one method.
+
+## Residual gaps
+
+- **NOT met: row 13's exit.** No pilot has run; every number is a synthetic fixture.
+- **`test_nonpublic_read_block.Q8Tests.test_q8_alone` red** until the ruling above.
+- **Addition 1 overlaps D-vii (b) for doors.** For a door's direct spelling naming a closed
+  project both refuse; addition 1 answers first. Addition 1 still alone refuses a non-door
+  helper's direct spelling on 0141's closed-call rule; only its wording shows which check
+  answered, which is what the tightened test pins.
+- **A path-free door call is not reachable** to test end to end: every door's schema requires a
+  project under `projects/`, so the transport refuses it (`R-094`) before the guard's
+  closed-project rules; D-vii (b) covers it by construction, and the test pins the transport's
+  refusal in both fixtures.
+- Carried from Step B, unchanged: D8's "not covered" list; the lexical-plus-existence path rule;
+  the `pilot_log.py end|abort|check` direct spelling refused by the transport's parse before
+  addition 3; the stage 01–03 contract prose; n3; n4.
+- **Not run here:** the whole suite; Python 3.13 and 3.6.8 for this round (the round's code
+  parses under `feature_version=(3, 6)`, below); any cluster run.
+- **Review:** the fresh-context review of this round has not happened; 0142, 0143 and 0144 are
+  not written by this producer.

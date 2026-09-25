@@ -3,7 +3,8 @@
 Drives the real `_system/guard_hook.py` with json.dumps payloads, and the real
 `_system/tool_call.py` of a fixture workspace (pilot_fixture.py), over a public project `open1`,
 a closed project `pilot` and a fresh project from `create`. Ruling D-i names the eleven doors;
-D-ii admits a door only through the dispatcher; D5 refuses a door call naming a path outside the
+D-ii admits a door only through the dispatcher, D-vii (b) refuses a door's direct spelling whatever it
+names while a closed project exists, and D-vii (a) keeps 0107's session-cwd rule for doors; D5 refuses a door call naming a path outside the
 workspace or outside its closed project; D-iv keeps a declared-public folder registrable.
 """
 import json
@@ -28,6 +29,7 @@ def setUpModule():
     STATE['tmp'] = tmp
     STATE['top'] = Path(os.path.realpath(tmp.name))
     STATE['ws'] = fx.build(STATE['top'])
+    STATE['open_ws'] = fx.build(STATE['top'] / 'no-closed', closed=False)
 
 
 def tearDownModule():
@@ -86,8 +88,10 @@ class DoorTests(unittest.TestCase):
                     self.refused(fx.hook_call(ws, 'Bash', {'command': command}), *words)
             else:
                 with self.subTest(door=name, spelling='bare'):
+                    # addition 1's own refusal, which precedes D-vii (b)'s path-free one
                     self.refused(fx.hook_call(ws, 'Bash', {'command': fx.bare(tool, args)}),
-                                 '0107', '0141', 'tool_call.py ' + name)
+                                 '0107', '0141', 'tool_call.py ' + name,
+                                 'this call names project pilot')
 
     def test_direct_spelling_from_inside_the_closed_project(self):
         ws = STATE['ws']
@@ -95,6 +99,40 @@ class DoorTests(unittest.TestCase):
         command = fx.bare(tool, {'project': '.', 'assay': fx.ASSAY, 'list': True}).replace(
             '_system/', '../../_system/', 1)
         self.refused(fx.hook_call(ws, 'Bash', {'command': command}, 'projects/pilot'), '0107')
+
+    def test_direct_spelling_refused_while_any_project_is_closed(self):
+        """Ruling D-vii (b): fail-closed, a door's direct spelling is refused whatever it names
+        while a closed project exists, and the same call is allowed when none does."""
+        print('red-on-fault: door direct spelling fail-closed', flush=True)
+        ws, open_ws = STATE['ws'], STATE['open_ws']
+        for name in fx.DOORS:
+            if name.startswith('pilot_log.'):
+                continue    # refused in every agent session (addition 3), closed or not
+            command = fx.bare(BY_NAME[name], fx.door_args(name, 'projects/open1'))
+            with self.subTest(door=name, workspace='closed project exists'):
+                self.refused(fx.hook_call(ws, 'Bash', {'command': command}), '0141',
+                             'tool_call.py ' + name)
+            with self.subTest(door=name, workspace='no closed project'):
+                self.allowed(fx.hook_call(open_ws, 'Bash', {'command': command}))
+        # A door with no path at all: every door's schema requires a project, so the transport
+        # refuses the path-free spelling (R-094) before the guard's closed-project rules.
+        command = 'python3 _system/executorlib.py status 100 --workspace .'
+        for root in (ws, open_ws):
+            with self.subTest(command=command, root=str(root)):
+                self.refused(fx.hook_call(root, 'Bash', {'command': command}), 'R-094')
+
+    def test_dispatcher_from_inside_the_closed_project_refused(self):
+        """Ruling D-vii (a): 0107's session-cwd rule holds for a door's dispatcher spelling."""
+        print('red-on-fault: door dispatcher from inside', flush=True)
+        ws = STATE['ws']
+        cwd = 'projects/pilot'
+        for name in fx.DOORS:
+            # the public project by absolute path; the log's schema takes the workspace form
+            args = fx.door_args(name, 'projects/open1' if name.startswith('pilot_log.')
+                                else str(ws / 'projects/open1'))
+            with self.subTest(door=name):
+                self.refused(fx.hook_call(ws, 'Bash', {'command': fx.dispatch(name, args, cwd)},
+                                          cwd), '0107', "session's working directory")
 
     def test_non_doors_refused_on_closed_in_both_spellings(self):
         print('red-on-fault: non-doors stay closed', flush=True)

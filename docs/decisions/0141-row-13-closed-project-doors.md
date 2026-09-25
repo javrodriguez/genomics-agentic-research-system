@@ -300,3 +300,80 @@ producer. Row 13's exit is not met.
 ## Date
 
 2026-09-25
+
+## Addendum — ruling round 1 (D-vii), 2026-09-25
+
+Every ruling in this addendum is **the lane's**, made on 25 Sep 2026 under the owner's standing
+delegation of 23 Sep 2026 and told to the lane's coordinator; none is the owner's ruling. The
+owner's words are only the two quoted in Context above. All earlier bytes of this record are
+unchanged; where this addendum differs from them, it governs. It answers the question raised
+under "Owner rulings needed" in the change report's "Step B" section; the evidence is in
+[the change report](../implementation/row_13_change_report.md), section "Step B ruling round".
+
+**Ruling D-vii (a) (the lane's): 0107's session-cwd rule holds for doors too.** In
+`closed_bash_refusal` a door call is admitted only after 0107's check that the session cwd is not
+inside a closed project. A door's dispatcher call from a cwd inside any closed project is refused
+with 0107's own message. `guard_hook.py`: 0107's cwd loop now precedes the door `return` (which
+moved below it); its text is unchanged.
+
+**Ruling D-vii (b) (the lane's): the door is the dispatcher spelling only, fail-closed.** While
+any closed project exists, the direct spelling of any tool in `CLOSED_PROJECT_DOORS` is refused
+whatever its arguments, not only when a path names a closed project, so no door's unfiltered
+output reaches a session by a path-free direct call. `guard_hook.py`: one check after additions
+1 and 2 (their more specific refusals still come first), naming 0141 and the dispatcher spelling.
+Every door's schema requires a project under `projects/`, so a door's direct spelling with no path
+at all is already refused by the transport (R-094) before this check; the check is what refuses
+a door's direct spelling on a public project.
+
+**Ruling D-vii (c) (the lane's): 0107's test module changes in exactly these places**, each an
+expectation change caused by ruling D-i (and, for one half, D-vii (b)):
+`DoorTests.test_door_mechanism` asserts `CLOSED_PROJECT_DOORS` equals D-i's eleven names in
+order; `Q8Tests`' `door_hook` helper matches the doors line by its `CLOSED_PROJECT_DOORS = `
+prefix, checks that line's value equals the constant, and still replaces it with the test's own
+doors; `EveryToolTests.test_every_registered_tool` expects a door's dispatcher spelling allowed on
+a closed project from a cwd outside it (where the same call on the public project passes the base
+hook), and every non-door tool and every door's direct spelling refused.
+`EveryToolTests.test_cwd_inside_closed_project` is not edited; the code change turns it green.
+
+**`gars/tests/pilot_fixture.py`** is accepted as the step B modules' shared fixture builder (not
+collected).
+
+**The `touches:` list, by this addendum** (the frontmatter above is not edited): add
+`gars/tests/test_nonpublic_read_block.py`; `gars/tests/pilot_fixture.py`,
+`gars/tests/test_pilot_doors.py` and `gars/_system/guard_hook.py` are already listed.
+
+### R-042, amended by this addendum
+
+- **Item 1 narrowed.** A door called through the dispatcher from a session cwd inside a closed
+  project is refused by the guard again, as 0107 refuses every call there
+  (`test_pilot_doors.test_dispatcher_from_inside_the_closed_project_refused`, new;
+  `test_nonpublic_read_block.EveryToolTests.test_cwd_inside_closed_project`, unedited). Both are
+  red on `1d4399a` (11 and 6 subtests) and green here.
+- **Item 14 (new): a door's direct spelling is refused while any closed project exists**, on a
+  public project too; with no closed project the same call is allowed
+  (`test_pilot_doors.test_direct_spelling_refused_while_any_project_is_closed`, new, red on
+  `1d4399a` in 7 subtests; `EveryToolTests.test_every_registered_tool`'s six door subtests in the
+  direct spelling on `projects/open1`, red on `1d4399a`).
+- **Item 13 replaced.** `test_nonpublic_read_block.py`'s named expectation changes, caused by
+  ruling D-i: `DoorTests.test_door_mechanism` (the eleven names; the old `()` assertion fails on
+  `1d4399a`, the new one fails on `e589ce8`); the `door_hook` helper (the old literal fails on
+  `1d4399a`); `EveryToolTests.test_every_registered_tool` (the door dispatcher spelling allowed on
+  a closed project: 12 subtests red with the old expectation on `1d4399a`; the door direct
+  spelling refused on a public project: 6 subtests red with the new expectation on `1d4399a`).
+  No assertion was removed.
+- **Not green: `Q8Tests.test_q8_alone`.** Its second assertion expects the direct spelling of
+  `stage00_register.finalize`, made the only door by `door_hook`, allowed on the closed project
+  `projects/fresh`. Guard addition 1 (ruling D-ii) refuses that call on `1d4399a` already, and
+  D-vii (b) refuses it too; the helper change alone cannot make it pass, and its body is outside
+  D-vii (c). It is raised under "Owner rulings needed" in the change report; neither the test nor
+  the guard is weakened.
+
+### Test
+
+`python3 gars/tests/test_pilot_doors.py` (`Ran 10 tests` / `OK`) and
+`python3 gars/tests/test_nonpublic_read_block.py` (`Ran 20 tests` / `FAILED (failures=1)`,
+`test_q8_alone` alone). Two more planted faults go red, 17 of 17 in all: D-vii (a) removed (a
+door's dispatcher call exempt from the cwd rule) and D-vii (b) removed (a door's direct spelling
+judged by its paths only). Fault 5 (addition 1 removed) went green once D-vii (b) also refused its
+calls; `test_direct_spelling_refused_on_closed` now requires addition 1's own wording and catches
+it again.
