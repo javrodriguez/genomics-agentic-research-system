@@ -120,6 +120,16 @@ spellings below and claims nothing beyond them:
   after option words, including separated options, the end-of-options marker,
   and option clusters ending in c. Their program text is audited as a command.
 
+Decision 0127 adds one data context to item 22(a): every non-option operand of
+`tr`, found in the same shlex stream after prefix commands and options, gets
+neither rule (i) nor rule (ii), because `tr` reads standard input only and never
+opens an operand. Its options (-c, -C, -d, -s, -t and long forms, ended by `--`)
+stay scanned. Redirection targets in the same command are files the shell opens
+and stay scanned, as do every other command's operands. A sed `y` program was
+already program text. A path assembled at run time through `tr` and read by a
+later command, and a command substitution inside a quoted or backquoted `tr`
+operand, are item 20(c) residuals, as for echo and printf text.
+
 Decision 0125 amends command-field placement with the **closed grammar** of
 items 1(a–f), 2, 7(a) and 8(a), as implemented: each call starts at the kit root;
 only a top-level, unprefixed `cd` with one plain, statically resolvable argument,

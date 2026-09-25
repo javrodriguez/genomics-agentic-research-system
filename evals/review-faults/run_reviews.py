@@ -550,6 +550,15 @@ def audit_words(text):
             if attached is not None:
                 yield word.derived(attached) if placement else attached, False
                 continue
+        # Decision 0127: tr reads standard input only; its operands are character
+        # sets, data. Option words stay scanned; redirection targets are option
+        # values here and stay scanned.
+        if command == 'tr' and not command_word and not option_value:
+            if not option_end and word == '--':
+                option_end = True
+                continue
+            if option_end or not word.startswith('-') or word == '-':
+                continue
         # Item 22(a): neither path rule applies to these data contexts.
         if not command_word and not option_value:
             if command in ('printf', 'echo'):
