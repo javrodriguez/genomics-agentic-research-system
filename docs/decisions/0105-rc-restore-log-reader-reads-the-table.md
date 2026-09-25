@@ -189,3 +189,46 @@ indented CSV line, and an unpadded stamp in each shape. Against the round-1 read
 quoted-row check dropped (6 failures); the leading-whitespace strip dropped (the two indented
 probes); the padding pattern dropped (the two unpadded probes). M1 to M8 were re-run on this
 reader and each is still red.
+
+## Addendum — review round 3, 2026-09-25
+
+The independent review of round 2 found one more gap and three notes; the text above stays as
+written, and this addendum narrows two of its sentences.
+
+**Unpadded dates were routed past `STAMP_PATTERN` (R2-F1).** The round-2 sentence "Every stamp,
+table or CSV, must now fully match `STAMP_PATTERN`, zero-padded, or it raises" held only for
+lines the reader already treated as date-led, and that gate was `^\d{4}-\d{2}-\d{2}`. A CSV line
+`2026-9-23T10:00:00Z, 1.0, 1.0, FAIL`, its unpadded-day twin, or an unpadded `|` row outside a
+table matched no check and was skipped, leaving the earlier PASS in the cell. The routing now
+uses `DATE_LED = r'^\d{1,4}-\d{1,2}-\d{1,2}'`, for the CSV branch and the outside-table `|`
+branch alike, so such a line reaches `STAMP_PATTERN` and raises. With that, the round-2 sentence
+holds as written.
+
+**Evidence-shaped lines in other markdown forms (R2-F2).** A result written as a list item
+(`- 2026-09-23T…, FAIL`) or inside a block quote (`> | 2026-09-23T… | FAIL |`) renders, but it
+is neither date-led nor `|`-led, so it was skipped. Now any line of the log that holds a
+stamp-shaped token, `STAMP_TOKEN = r'\d{1,4}-\d{1,2}-\d{1,2}T\d{1,2}:\d{1,2}:\d{1,2}'` (the log's
+UTC date-time, padded or not), and is not read as a result or provenance row raises
+`ValueError`. Prose lines without such a token stay ignored, including the log's own dated prose
+("ran on Node 1 on 2026-09-22", "due by 2026-10-22"), which carries no time part. The rule is
+fail-closed: a stamp the reader cannot place stops the release check instead of being dropped.
+
+**The quoted row is a substring test (R2-F3).** The round-2 sentence says the quoted row is a
+form "which a negation cannot satisfy". That overstates it: the check is `quoted not in body`,
+so a record that quotes the whole row inside a negating sentence would still pass. The accurate
+claim is that the quoted row is harder to satisfy by accident than a bare token, since a record
+must write the full seven-cell row verbatim, besides being standing, touching the log and
+carrying the CSV evidence line. It is not a positive reading of the record's meaning.
+
+**Delegated rulings (R2-F4).** Q1, Q2 and Q3 above are the lane's, under the owner's standing
+delegation of 23 Sep 2026; the change report lists all three in one line for the owner's sight
+at merge.
+
+**Test.** `test_restore_table_strict` gains review 2's probes A (unpadded month), A2 (unpadded
+day), B (an unpadded row outside a table), C (a list item) and D (a block quote), each appended
+after a passing table, and two date-only probes (`2026-9-23, …` as CSV and as an outside-table
+row), which carry no stamp token and so test the routing alone; each must raise. A prose line
+with dates but no stamp must still read `unmeasured`. Against the round-2 reader the seven
+probes fail and nothing else does. Mutations, each watched red and restored green: the routing
+padded again (the two date-only probes); the stamp-token refusal dropped (probes C and D); the
+token widened to any date (the prose control and every test that reads the committed log).

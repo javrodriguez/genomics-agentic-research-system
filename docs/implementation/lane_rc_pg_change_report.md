@@ -199,3 +199,83 @@ budget.
 ## Owner rulings needed
 
 None.
+
+## Review round 3 fixes (rc)
+
+2026-09-25. Fixes for the round-2 independent review of item 1 (`docs/reviews/lane_rc_review2.md`,
+not committed; verdict APPROVE WITH CHANGES: one MINOR, three NOTE). The record change is a dated
+addendum appended to [0105](../decisions/0105-rc-restore-log-reader-reads-the-table.md) after its
+last byte; its earlier bytes are unchanged (a byte-prefix `cmp` against the round-2 file passes,
+and its diff has zero removed lines), and 0106 was not written. The index was re-run
+(`bash docs/decisions/build_index.sh`); 0105's front matter is unchanged, so the index did not
+change. `docs/implementation/dod_current.md` was regenerated and is byte-identical: the
+repository cell still reads the qualifying text for the 22 Sep drill.
+
+| Finding | Changed files | Test | Result (red-on-fault seen) |
+|---|---|---|---|
+| R2-F1 MINOR: unpadded date-led lines routed past `STAMP_PATTERN` | `scripts/release_check.py` (`DATE_LED = r'^\d{1,4}-\d{1,2}-\d{1,2}'` routes the CSV branch and the outside-table `\|` branch); 0105 addendum | `test_restore_table_strict` [probe A unpadded month], [probe A2 unpadded day], [probe B unpadded row outside a table], [unpadded date-only CSV], [unpadded date-only row outside a table] → `ValueError` | green. Red: yes, all five fail against the round-2 reader (copy of HEAD c3b6872 with the new test file); mutation N5 (routing padded again) fails the two date-only probes, which carry no stamp token and so test the routing alone |
+| R2-F2 NOTE: list items and block quotes skipped | `scripts/release_check.py` (`STAMP_TOKEN`; any unread line holding a stamp-shaped token raises); 0105 addendum | `test_restore_table_strict` [probe C list item], [probe D block quote] → `ValueError`; a prose line with dates but no stamp → `unmeasured` | fixed (fail-closed). Red: yes, C and D fail against the round-2 reader; mutation N6 (refusal dropped) fails both; mutation N7 (token widened to any date) fails the prose control and every test reading the committed log |
+| R2-F3 NOTE: "which a negation cannot satisfy" overstated | 0105 addendum ("harder to satisfy by accident", a substring test, not a positive reading) | none (documentation) | fixed |
+| R2-F4 NOTE: Q1–Q3 not listed in one line for the owner | this section's last line; 0105 addendum | none (documentation) | fixed |
+
+### Red at parent and mutations (round 3)
+
+The round-3 test file on a `git archive` copy of c3b6872 (the round-2 reader): `Ran 14 tests` /
+`FAILED (failures=7)`, exactly [probe A unpadded month], [probe A2 unpadded day], [probe B unpadded
+row outside a table], [probe C list item], [probe D block quote], [unpadded date-only CSV],
+[unpadded date-only row outside a table]; every other test and subtest passes. Mutations ran on a
+disposable copy under the scratch folder with a byte backup; each was restored and watched green,
+and the restored file is `cmp`-equal to the working tree.
+
+| Control | Result when faulted | Restored |
+|---|---|---|
+| N5 routing padded again (`DATE_LED` back to `^\d{4}-\d{2}-\d{2}`) | `FAILED (failures=2)`: strict [unpadded date-only CSV], [unpadded date-only row outside a table] | `OK` |
+| N6 stamp-token refusal dropped | `FAILED (failures=2)`: strict [probe C list item], [probe D block quote] | `OK` |
+| N7 stamp token widened to any date | `FAILED (failures=1, errors=7)`: strict (the prose control), `test_repository_restore_cell`, `test_repository_table_regenerated`, `test_restore_qualified_cli`, `test_restore_qualified_tag_path`, three `test_repository_provenance_bound_to_0054` subtests | `OK` |
+| N4 padding pattern made permissive (re-run) | `FAILED (failures=4)`: strict [probe A unpadded month], [probe A2 unpadded day], [unpadded CSV stamp], [unpadded table stamp] | `OK` |
+| M1 date-only filter restored (re-run) | `FAILED (failures=46)` | `OK` |
+| M5 any seal accepted (re-run) | `FAILED (failures=1)`: grid [seal none] | `OK` |
+
+M2–M4, M6–M8, N1 and N3 were not re-planted in round 3; the round-3 change touches only the
+routing and the new refusal in `restore_records`.
+
+### Commands (round 3)
+
+Run from the repository root with `TMPDIR`, `TEMP` and `TMP` set to the lane's scratch folder.
+
+| Command | Summary line |
+|---|---|
+| `python3 -m py_compile scripts/release_check.py tests/test_release_check.py` | exit 0, no output |
+| `python3 tests/test_release_check.py` | `Ran 14 tests in 0.971s` / `OK` |
+| `python3 tests/test_decision_links_resolve.py` | `citations: 345/345 resolve`; `Ran 3 tests in 1.444s` / `OK` |
+| `python3 tests/check_counts.py` | `suite: 588 tests, from unittest's loader`; `clean — every current claim matches the suite` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 scripts/release_check.py` | `DoD cells regenerated: 13/13`; `dod_current.md` unchanged |
+| `python3 scripts/release_check.py --check` | `DoD cells verified: 13/13 byte-stable` (exit 0) |
+| `python3 scripts/release_check.py --tag` | `DoD cells verified: 13/13 byte-stable`, then 24 `release tag: REFUSED (…)` lines, none naming `restore`; exit 1 |
+| `git diff 452fe33 -- docs/ops/restore-log.md \| grep -c '^-[^-]'` | `0` |
+
+The suite count is unchanged at 588 (round 3 adds subtests, not tests), so README and
+DEVELOPMENT are untouched. Scope: lines 1-14 and everything from `def reviewer_measurement` to
+the end of `scripts/release_check.py` are unchanged in this round. `tests/run_tests.py` was not
+run, by the lane's machine budget.
+
+### Residual gaps (after round 3)
+
+- The DoD cell shows no age: after 22 Oct 2026 it still reads `PASS` for this drill; §17's
+  30-day limit is enforced only at tag time, by the 14-day rule. NOT met in the cell.
+- `independent_context` is bound by a token test and the stronger claims by a quoted-row
+  substring test; a record quoting either inside a negation would pass. NOT a positive binding.
+- A date-time written without the `T` separator or in another format (for example
+  `2026-09-23 10:00`) inside a list item or block quote is not stamp-shaped by `STAMP_TOKEN` and
+  is still ignored as prose. NOT covered.
+- The README public row, `external_human_seal`, §13.2 primary deletion, the release tag after
+  6 Oct 2026, the manual transcription and RTO at real scale: NOT met, unchanged from round 1.
+- Whole-suite run (`tests/run_tests.py`) and `tests/test_row05_backup.py`: NOT verified in this
+  round.
+
+For the owner's sight at merge, the lane's delegated rulings (the lane, under the owner's standing delegation of 23 Sep 2026): Q1 `independent_context` qualifies the §17 cell, the README public row stays `unmeasured`; Q2 the §13.2 primary deletion is recorded, not gating; Q3 the stronger claims need the cited record to quote the whole provenance row.
+
+## Owner rulings needed
+
+None.

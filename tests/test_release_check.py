@@ -203,6 +203,24 @@ class ReleaseCheckTests(unittest.TestCase):
             ('unpadded table stamp', head + '| 2026-09-22T16:55:13Z | 1 | 1 | PASS |\n'
                                      '| 2026-9-3T1:2:3Z | 1 | 1 | FAIL |\n'),
             ('unpadded CSV stamp', '2026-09-22T16:55:13Z, 1, 1, PASS\n2026-09-03T1:2:3Z, 1, 1, FAIL\n'),
+            # Review round 3: review 2's probes A, A2, B, C and D, each appended after a
+            # passing table; an unpadded date, a list item or a block quote must not be skipped.
+            ('probe A unpadded month', head + '| 2026-09-22T16:55:13Z | 1 | 1 | PASS |\n\n'
+                                       '2026-9-23T10:00:00Z, 1.0, 1.0, FAIL\n'),
+            ('probe A2 unpadded day', head + '| 2026-09-22T16:55:13Z | 1 | 1 | PASS |\n\n'
+                                      '2026-09-3T10:00:00Z, 1.0, 1.0, FAIL\n'),
+            ('probe B unpadded row outside a table', head + '| 2026-09-22T16:55:13Z | 1 | 1 | PASS |\n\n'
+                                                     '| 2026-9-23T10:00:00Z | 1.0 | 1.0 | FAIL |\n'),
+            ('probe C list item', head + '| 2026-09-22T16:55:13Z | 1 | 1 | PASS |\n\n'
+                                  '- 2026-09-23T10:00:00Z, 1.0, 1.0, FAIL\n'),
+            ('probe D block quote', head + '| 2026-09-22T16:55:13Z | 1 | 1 | PASS |\n\n'
+                                    '> | 2026-09-23T10:00:00Z | 1.0 | 1.0 | FAIL |\n'),
+            # An unpadded date with no time part is not stamp-shaped, so only the routing
+            # must reach STAMP_PATTERN for it.
+            ('unpadded date-only CSV', head + '| 2026-09-22T16:55:13Z | 1 | 1 | PASS |\n\n'
+                                       '2026-9-23, 1.0, 1.0, FAIL\n'),
+            ('unpadded date-only row outside a table', head + '| 2026-09-22T16:55:13Z | 1 | 1 | PASS |\n\n'
+                                                       '| 2026-9-23 | 1.0 | 1.0 | FAIL |\n'),
         ]
         for label, log in faults:
             with self.subTest(label), tempfile.TemporaryDirectory(prefix='rc-strict-') as temp:
@@ -214,6 +232,10 @@ class ReleaseCheckTests(unittest.TestCase):
             root = self.restore_root(temp, '# log\n\n' + head + '\nprose\n')
             self.assertEqual(release.restore_measurement(root), ('unmeasured', None, False))
         print('red-on-fault: header-only restore table -> unmeasured')
+        with tempfile.TemporaryDirectory(prefix='rc-strict-') as temp:
+            root = self.restore_root(temp, '# log\n\nDrill ran on 2026-09-22; next due 2026-10-22.\n')
+            self.assertEqual(release.restore_measurement(root), ('unmeasured', None, False))
+        print('red-on-fault: prose with a date but no stamp -> ignored')
 
     def test_restore_mixed_shapes(self):
         head = '| Date | RPO_h | RTO_min | Result |\n|---|---|---|---|\n'

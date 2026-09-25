@@ -27,6 +27,10 @@ STAMP_PATTERN = r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\Z'
 # Claims stronger than 0054's drill; the cited record must quote the whole provenance row
 # for any of them, because a bare token also matches a negation (0105, round 2).
 BOUND_CLAIMS = ('external_human_seal', 'primary', 'real')
+# Any date or date-time in the log's UTC form, padded or not: routing and the stamp-token
+# refusal use these, so no evidence-shaped line reaches the skip (0105, round 3).
+DATE_LED = r'^\d{1,4}-\d{1,2}-\d{1,2}'
+STAMP_TOKEN = r'\d{1,4}-\d{1,2}-\d{1,2}T\d{1,2}:\d{1,2}:\d{1,2}'
 
 
 def clauses(root):
@@ -79,6 +83,8 @@ def restore_records(text):
     of the PROVENANCE_HEADER table. A date-led table row outside a known table, or any
     malformed row inside one, raises: the log is never skipped silently (0105). An indented
     date-led line or table row raises too, since markdown still renders it (0105, round 2).
+    So does any other line holding a stamp-shaped token, padded or not: list items, block
+    quotes, unpadded dates (0105, round 3). Prose without such a token is ignored.
     """
     records, provenance = [], {}
     block = None
@@ -113,15 +119,17 @@ def restore_records(text):
             separator = True
             continue
         bare = line.lstrip()
-        if re.match(r'^\d{4}-\d{2}-\d{2}', bare):
+        if re.match(DATE_LED, bare):
             if bare != line:
                 raise ValueError('indented restore line')
             fields = [value.strip() for value in line.split(',')]
             if len(fields) != 4:
                 raise ValueError('malformed restore output')
             records.append(restore_result_record(*fields))
-        elif bare.startswith('|') and re.match(r'^\d{4}-\d{2}-\d{2}', bare[1:].strip()):
+        elif bare.startswith('|') and re.match(DATE_LED, bare[1:].strip()):
             raise ValueError('restore table row outside a known table')
+        elif re.search(STAMP_TOKEN, line):
+            raise ValueError('restore stamp outside a result or provenance row')
     stamps = set(row[1] for row in records)
     if any(stamp not in stamps for stamp in provenance):
         raise ValueError('restore provenance row names no result')
