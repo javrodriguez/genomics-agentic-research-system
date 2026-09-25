@@ -168,3 +168,36 @@ This follow-up measures nothing and does not close row 9's measured exit.
 ## Date
 
 2026-09-25
+
+## Addendum, 2026-09-25: the independent review's NOTEs, recorded at landing
+
+This addendum is written by the lane at landing, under the owner's delegation quoted in 0072; it is not the producer's text, and nothing in it is attributed to the owner.
+The independent review of this change (a fresh Claude Opus 5.5 session, verdict APPROVE, five NOTEs, no finding of MINOR or above) is answered here, with no change to code or tests.
+The lanes' coordinator ruled, under the same delegation, that no further producer round is run for these NOTEs.
+
+**F1-F3, named residual under 0072 item 20 (c) and item 23 (e).**
+The data context this record adds is recognised on the audit's shell word stream, so the spellings the audit does not parse reach it as they reach every earlier context:
+
+- F1: a process substitution attached to a redirection (`<(` read as one punctuation word) leaves the command it contains inside the `tr` data context, so that command's operands are not scanned.
+- F2: when a substitution sits in the middle of another command's words and is followed by the word `tr`, the audit takes `tr` as the command and exempts the following operands, although the shell passes them to the preceding command, which may open them. This substitution-prefix shape already exempted such operands for `echo` and `printf` at the base commit; this record extends the same shape to `tr`.
+- F3: the context is keyed on the command word's basename, so a shell function or an in-kit program named `tr` has its operands exempted, although it may open them.
+
+What this limits, stated plainly: the blindness audit is a screen that keeps honest sessions VALID and turns INVALID the outside reads its stated grammar names; it is not evasion-proof.
+A session that builds an outside read out of substitutions, functions or programs the audit does not parse can score 0.
+The reviewer's sandbox (0072 item 20 (a)) is the enforcement wall for those reads.
+No new rule is written for F1-F3: a rule written from the spellings a review reproduced leaves the next spelling uncovered.
+
+**F4, the fault-red count, re-derived by running the list.**
+The Test section above quotes 146 `fault red:` lines.
+Re-derived at landing by running the module and counting the lines it prints:
+
+```
+TMPDIR=<a scratch folder outside the clone> python3 -B tests/test_review_faults_faults.py 2>&1 | grep -c '^fault red: '
+```
+
+printed `146` lines starting with `fault red: ` and `2` lines starting with `exemption green: `, with the module's summary `Ran 1 test in 202.575s` / `OK`.
+The run confirms the Test section's 146. The review's figure of one more was inferred from the number of entries in the list, not from a run, and the run does not bear it out; the Test section stands as written.
+The run was made at the landing merge, on the deployment's Linux host, alone on the host (a first attempt that overlapped another suite was stopped and discarded).
+
+**F5, the README's suite sentence.**
+The count and its anchor are set at the landing merge to what the suite collects there, and the skip figures beside it are measured at that tree on the platforms they name.
