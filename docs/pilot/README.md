@@ -26,7 +26,11 @@ python3 scripts/session_turns.py --transcript <session.jsonl> --log pilot1_log.c
 
 All three are stdlib-only; written for Python 3.6.8 (syntax checked, not executed on 3.6.8). A
 refusal exits 2 with `refused: <reason>` on stderr and writes nothing; input that would crash a
-parser (a NUL byte, runaway JSON nesting) is refused with a fixed code too, never a traceback. A
+parser (a NUL byte, runaway JSON nesting) is refused with a fixed code too, never a traceback, and
+so is a number too large to print to the cent (`value_out_of_range`). Every refusal code is the
+same on every Python from 3.6 to 3.13: a NUL byte is refused before the `csv` module sees it
+(3.11 and later read one as data), integers are never converted through `int()` of their text
+(3.11 and later cap its digits), and every file is read as UTF-8 whatever the locale. A
 refused `unit_economics.py` run leaves any sheet already in `--out` untouched, so a stale sheet
 can outlive a refused regeneration: compare its `input … sha256` lines with the inputs before
 using it.
@@ -47,8 +51,10 @@ These are defined here once; `tests/test_unit_economics.py`, `tests/test_rerun_d
 
 A bring-home text file. `unit_economics.py` reads **only** lines of exactly these three shapes
 and ignores every other line, printing `quantities: graded <k> of <n> lines` (k matched, n
-total) — except that a line starting `quantity ` which matches neither quantity shape (an extra
-space, a capital, a sign, an unknown backend) is refused as `quantity_malformed` (ruling L4):
+total) — except that a line starting with the word `quantity`, in any case and after any
+leading whitespace, which matches neither quantity shape (an extra space, a capital, a tab, a
+sign, an unknown backend) is refused as `quantity_malformed` (rulings L4 and n2); a word that
+only begins with it (`quantity_notes`) is another line, counted and ignored:
 
 - `quantity samples_in_design <non-negative integer>`
 - `quantity cpu_hours <backend> <non-negative decimal>`, backend one of `local`, `homelab`, `slurm`
@@ -122,10 +128,13 @@ one table are counted, never printed.
 
 A Claude Code session JSONL, one record per line. A record classifies as a human turn
 (`type == "user"`, not `isMeta`, `isCompactSummary` or `isSidechain`, content not
-`tool_result`), a tool result, meta or harness record (non-human), or an assistant record. A
-`user` record with `isCompactSummary` or `isSidechain` true is written by Claude Code itself
-(ruling L2): it is graded but never counts as a human turn, and never starts an outside turn's
-attention interval, so it cannot change `outside minutes`. An extra key on an otherwise known
+`tool_result`), a tool result, meta or harness record (non-human), or an assistant record
+(`type == "assistant"`, not `isSidechain`). A `user` record with `isCompactSummary` true is
+written by Claude Code itself (ruling L2), and a record of **any** type with `isSidechain` true
+is subagent traffic the human does not see (ruling L6): either is graded but never counts as a
+human turn, never starts an outside turn's attention interval (so it cannot change `outside
+minutes`) and is never part of the agent-active span. It still counts toward `session wall
+minutes`, which spans every record. An extra key on an otherwise known
 record does not change its class; each needs an ISO-8601 `timestamp` with `Z` or a numeric
 offset. Any other record — another type, a missing or unparseable timestamp, a blank line — is
 unclassifiable and exits 2. `outside minutes` follows ruling L1 (decision 0140) and is a lower

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Session cross-check (M4): human turns in an agent session against the logged human spans.
 
-Row 13 step A (decision 0140, D4b and rulings L1, L2). Stdlib-only; written for Python 3.6.8
+Row 13 step A (decision 0140, D4b and rulings L1, L2, L6). Stdlib-only; written for Python 3.6.8
 (syntax checked, not executed on 3.6.8).
 
     python3 scripts/session_turns.py --transcript <session.jsonl> --log <pilot1_log.csv> \
@@ -9,17 +9,21 @@ Row 13 step A (decision 0140, D4b and rulings L1, L2). Stdlib-only; written for 
 
 Every line of the transcript is one record and must classify:
 - `type == "user"` with `isMeta` true: a meta record (non-human);
-- `type == "user"` with `isCompactSummary` or `isSidechain` true: harness-generated (ruling L2,
-  non-human), graded like every record but never a human turn and never the predecessor that
-  starts an outside turn's attention interval, so it cannot change `outside minutes`;
+- a record of ANY type with `isSidechain` true (ruling L6: subagent traffic the human does not
+  see), or `type == "user"` with `isCompactSummary` true (ruling L2): harness-generated,
+  graded like every record but never a human turn, never the predecessor that starts an outside
+  turn's attention interval (so it cannot change `outside minutes`) and never part of the
+  agent-active span;
 - `type == "user"` whose content is all `tool_result` blocks: a tool result (non-human);
 - any other `type == "user"` record (string content, or blocks none of which is a
   `tool_result`): a human turn;
-- `type == "assistant"`: an agent record.
-Each record needs an ISO-8601 `timestamp` with `Z` or a numeric offset. Anything else -- another
+- `type == "assistant"` without `isSidechain`: an agent record.
+The flags must be booleans. Each record needs an ISO-8601 `timestamp` with `Z` or a numeric offset. Anything else -- another
 record type, a missing or unparseable timestamp, content mixing `tool_result` with other blocks,
 a blank line, a JSON line nested past the parser's depth -- is unclassifiable and exits 2; no
-record is skipped. An extra key on an otherwise known record does not change its class.
+record is skipped. An extra key on an otherwise known record does not change its class, whatever
+Python reads it: integers are parsed as decimals, never through `int()` of their text, whose
+digits 3.11 and later cap. Every file is read as UTF-8 whatever the locale.
 
 A human turn is inside when its timestamp falls within a `human` span (`ts` to `ts + minutes`)
 of the stage. `outside minutes` (ruling L1) is a LOWER BOUND on unlogged human attention: each
@@ -38,7 +42,7 @@ import calendar
 import json
 import re
 import sys
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -80,17 +84,23 @@ def classify(record):
     if not isinstance(record, dict) or micros(record.get("timestamp")) is None:
         return None
     kind = record.get("type")
+    sidechain = record.get("isSidechain", False)
+    if not isinstance(sidechain, bool):
+        return None
+    if kind == "user":
+        meta, compact = record.get("isMeta", False), record.get("isCompactSummary", False)
+        if not isinstance(meta, bool) or not isinstance(compact, bool):
+            return None
+        if meta:
+            return "meta"
+        sidechain = sidechain or compact
+    elif kind != "assistant" and not sidechain:
+        return None
+    if sidechain:
+        # rulings L2 and L6: written by Claude Code or a subagent, never seen or typed by a human
+        return "harness"
     if kind == "assistant":
         return "assistant"
-    if kind != "user":
-        return None
-    flags = [record.get(key, False) for key in ("isMeta", "isCompactSummary", "isSidechain")]
-    if not all(isinstance(flag, bool) for flag in flags):
-        return None
-    if flags[0]:
-        return "meta"
-    if flags[1] or flags[2]:
-        return "harness"  # ruling L2: written by Claude Code itself, not typed by a human
     message = record.get("message")
     if not isinstance(message, dict):
         return None
@@ -154,15 +164,15 @@ def count(transcript, log, stage):
             start = micros(row["ts"])
             spans.append((start, start + int(row["minutes"] * MICROS_PER_MINUTE)))
     try:
-        lines = Path(transcript).read_text().splitlines()
-    except (OSError, UnicodeDecodeError):
+        lines = Path(transcript).read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError, ValueError):
         raise ue.Refused("transcript_unreadable")
     if not lines:
         raise ue.Refused("transcript_empty")
     records = []
     for number, line in enumerate(lines, start=1):
         try:
-            record = json.loads(line)
+            record = json.loads(line, parse_int=Decimal)
         except (ValueError, RecursionError):
             record = None
         kind = classify(record)
@@ -171,7 +181,8 @@ def count(transcript, log, stage):
         records.append((kind, micros(record["timestamp"])))
 
     times = [t for _, t in records]
-    # Ruling L2: a harness record never starts an outside turn's attention interval.
+    # Rulings L2 and L6: a harness record never starts an outside turn's attention interval, and
+    # a subagent's assistant record is not agent activity the human sees.
     predecessors = [t for kind, t in records if kind != "harness"]
     agent = [t for kind, t in records if kind == "assistant"]
     human = [t for kind, t in records if kind == "human"]
@@ -200,6 +211,9 @@ def main(argv=None):
         line = count(args.transcript, args.log, args.stage)
     except ue.Refused as why:
         sys.stderr.write("refused: %s\n" % why)
+        return EXIT_REFUSED
+    except InvalidOperation:
+        sys.stderr.write("refused: value_out_of_range\n")
         return EXIT_REFUSED
     print(line)
     return 0

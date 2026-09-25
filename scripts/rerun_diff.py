@@ -22,6 +22,10 @@ that name. `NA` or empty `padj` is counted, never dropped silently; a gene whose
 between `NA` and a value is not a crossing and shows only in `na_padj`. An empty `runs` list and a
 repeated run number are refused (ruling L5). Refusals exit 2 with a fixed reason code on stderr;
 input that crashes a parser (a NUL byte, runaway nesting) is a fixed code too, never a traceback.
+Every code is the same on every Python from 3.6 to 3.13: a NUL byte is refused before the csv
+module sees it (3.11 and later read one as data), JSON integers are parsed as decimals, never
+through `int()` of their text (whose digits 3.11 and later cap), and `comparison.json` is read as
+UTF-8 whatever the locale.
 """
 
 import argparse
@@ -31,6 +35,7 @@ import io
 import json
 import math
 import sys
+from decimal import Decimal
 from pathlib import Path, PurePosixPath
 
 EXIT_REFUSED = 2
@@ -69,6 +74,8 @@ def read_table(path, expected_sha):
         text = data.decode("utf-8")
     except UnicodeDecodeError:
         raise Refused("table_unreadable")
+    if "\x00" in text:
+        raise Refused("table_malformed")  # 3.10 and earlier raise on it; 3.11 and later read it
     reader = csv.DictReader(io.StringIO(text))
     try:
         rows = list(reader)
@@ -170,7 +177,7 @@ def compare(original, replay):
 def diff(comparison_path):
     comparison_path = Path(comparison_path)
     try:
-        data = json.loads(comparison_path.read_text())
+        data = json.loads(comparison_path.read_text(encoding="utf-8"), parse_int=Decimal)
     except (OSError, UnicodeDecodeError, ValueError, RecursionError):
         raise Refused("comparison_unreadable")
     if not isinstance(data, dict) or not isinstance(data.get("runs"), list):
@@ -190,8 +197,9 @@ def diff(comparison_path):
         if not isinstance(run, dict) or not isinstance(run.get("artifacts"), list):
             raise Refused("comparison_run")
         n = run.get("run")
-        if isinstance(n, bool) or not isinstance(n, int) or n < 0:
+        if not isinstance(n, Decimal) or n < 0:
             raise Refused("comparison_run_number")
+        n = abs(n)  # an integer literal, printed from its digits; -0 is run 0
         if n in numbers:
             raise Refused("comparison_run_duplicate")
         numbers.add(n)
@@ -205,11 +213,11 @@ def diff(comparison_path):
         for key in ("original_sha256", "replay_sha256"):
             if not isinstance(artifact.get(key), str):
                 raise Refused("artifact_sha256")
-        replay_stage = (comparison_path.parent / ("run-%d" % n) / "02_bioinformatics"
+        replay_stage = (comparison_path.parent / ("run-%s" % n) / "02_bioinformatics"
                         / assay / substage)
         first = read_table(stage / str(relative), artifact["original_sha256"])
         second = read_table(replay_stage / str(relative), artifact["replay_sha256"])
-        blocks.append(["run %d" % n] + compare(first, second))
+        blocks.append(["run %s" % n] + compare(first, second))
     return ["runs: %d" % len(blocks)] + [line for block in blocks for line in block]
 
 

@@ -1,4 +1,4 @@
-"""Row 13 step A: the session cross-check (decision 0140, D4b and ruling L1).
+"""Row 13 step A: the session cross-check (decision 0140, D4b and rulings L1, L2, L6).
 
 The transcript is synthetic: human turns, tool_result user records, isMeta records and
 assistant records, with two human turns outside every logged span. Every check drives the
@@ -14,7 +14,9 @@ import unittest
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / 'scripts'))
+sys.path.insert(0, str(REPO / 'tests'))
 import session_turns as st  # noqa: E402 -- red at the parent: the script does not exist there
+import pilot_emulation as emulation  # noqa: E402
 
 FIXTURES = REPO / 'tests/fixtures/pilot'
 SCRIPT = REPO / 'scripts/session_turns.py'
@@ -42,9 +44,12 @@ def harness(ts, key):
     return record
 
 
-def assistant(ts):
-    return {'type': 'assistant', 'timestamp': ts,
-            'message': {'role': 'assistant', 'content': [{'type': 'text', 'text': 'ok'}]}}
+def assistant(ts, sidechain=None):
+    record = {'type': 'assistant', 'timestamp': ts,
+              'message': {'role': 'assistant', 'content': [{'type': 'text', 'text': 'ok'}]}}
+    if sidechain is not None:
+        record['isSidechain'] = sidechain
+    return record
 
 
 class SessionTurnsTests(unittest.TestCase):
@@ -127,6 +132,21 @@ class SessionTurnsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, EXPECTED.replace('graded 14 of 14', 'graded 16 of 16')
                          + '\n')
+        # Ruling L6: a record of ANY type carrying isSidechain is subagent traffic. A subagent's
+        # reply at 10:12:20 would otherwise start the 10:12:30 outside turn's interval (0.17 min,
+        # not 1.50), and one at 09:59:30 would stretch the agent-active span to 46.50.
+        sidechain = [json.dumps(assistant('2026-01-15T10:12:20Z', sidechain=True)),
+                     json.dumps(assistant('2026-01-15T09:59:30Z', sidechain=True)),
+                     json.dumps({'type': 'system', 'isSidechain': True,
+                                 'timestamp': '2026-01-15T10:12:25Z'})]
+        self.assertEqual([st.classify(json.loads(l)) for l in sidechain], ['harness'] * 3)
+        self.assertEqual(st.classify(assistant('2026-01-15T10:12:20Z', sidechain=False)),
+                         'assistant')
+        self.assertIsNone(st.classify(assistant('2026-01-15T10:12:20Z', sidechain='yes')))
+        result = self.run_turns(self.write('s.jsonl', lines[:8] + sidechain + lines[8:]))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, EXPECTED.replace('graded 14 of 14', 'graded 17 of 17')
+                         + '\n')
         # An unknown bookkeeping key on a human turn leaves it a human turn.
         extra_key = json.loads(lines[0])
         extra_key.update({'uuid': 'u', 'cwd': 'c', 'isSidechain': False, 'somethingNew': 1})
@@ -136,7 +156,8 @@ class SessionTurnsTests(unittest.TestCase):
             bad = harness('2026-01-15T10:12:00Z', key)
             bad[key] = 'yes'
             self.assertIsNone(st.classify(bad))
-        print('red-on-fault guard: isCompactSummary and isSidechain records graded, never human')
+        print('red-on-fault guard: isCompactSummary and isSidechain records graded, never human, '
+              'never a predecessor, never agent activity')
 
     def test_outside_minutes_ruling_l1(self):
         span = '2026-01-15T10:10:00Z,02_02_de,human,check,other,5.00'  # 10:10-10:15
@@ -191,6 +212,33 @@ class SessionTurnsTests(unittest.TestCase):
         result = self.run_turns(log=nul_log)
         self.assertEqual((result.returncode, result.stderr), (2, 'refused: log_malformed line 3\n'))
         print('red-on-fault guard: every unclassifiable record exits 2; none skipped')
+
+    def test_refusal_codes_do_not_depend_on_the_interpreter(self):
+        # The lane's 3.13 host refused a NUL log row as `log_minutes` where 3.8 said
+        # `log_malformed`: csv reads NUL as data from 3.11. A long integer in an extra key must
+        # not be unclassifiable on one Python and graded on another.
+        nul_log = self.root / 'nul.csv'
+        nul_log.write_text(LOG_HEAD + '2026-01-15T10:00:00Z,02_02_de,human,check,other,5.00\x00\n')
+        long_key = assistant('2026-01-15T10:47:00Z')
+        long_key['requestId'] = '@LONG@'
+        lines = (FIXTURES / 'session.jsonl').read_text().splitlines()
+        transcript = self.root / 'long.jsonl'
+        transcript.write_text('\n'.join(lines + [json.dumps(long_key).replace(
+            '"@LONG@"', '9' * 5000)]) + '\n')
+        fixture_log = str(FIXTURES / 'pilot1_log.csv')
+        for argv, expected in (
+                (['--transcript', str(FIXTURES / 'session.jsonl'), '--log', str(nul_log)],
+                 (2, '', 'refused: log_malformed line 3\n')),
+                (['--transcript', str(transcript), '--log', fixture_log],
+                 (0, EXPECTED.replace('47.00', '48.00').replace('45.50', '46.50')
+                  .replace('graded 14 of 14', 'graded 15 of 15') + '\n', ''))):
+            seen = []
+            for side in ('old', 'new'):
+                with emulation.emulating(side, [st, st.ue]):
+                    seen.append(emulation.outcome(st.main, argv + ['--stage', '02_02_de']))
+            self.assertEqual(seen, [expected, expected])
+        print('red-on-fault guard: every refusal code is the same on both sides of each '
+              'Python-version split')
 
     def test_log_is_validated(self):
         bad_log = self.root / 'bad.csv'

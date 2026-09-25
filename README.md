@@ -319,7 +319,7 @@ sealed slots and the first measured run are still to come, so the reviewer catch
 [0072](docs/decisions/0072-row-9-review-fault-harness-code-half.md).
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(564 tests collected after row 13 step A review round 2, whose producer did not run the whole suite; no cluster run is evidenced for these rows).
+(567 tests collected after row 13 step A review round 3, whose producer did not run the whole suite; no cluster run is evidenced for these rows).
 The last whole-suite run is row 8 step A's, at its 2026-09-24 merge on macOS: 533 tests, 13 of them environment skips, with Docker answering and row 5's scratch folder set as CI sets it; a macOS cold clone without it skips 75, or 106 with `TMPDIR` also unset as on Linux. <!-- not-the-suite-total -->
 Row 15 review round 4 (2026-09-22), macOS / Python 3.8.2: 252 tests, <!-- not-the-suite-total -->
 `OK (skipped=50)`; no tests from row 15 skipped. R15-03's narrow fixture repair

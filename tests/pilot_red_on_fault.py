@@ -19,7 +19,8 @@ import tempfile
 REPO = Path(__file__).resolve().parents[1]
 COPY = ('scripts/unit_economics.py', 'scripts/rerun_diff.py', 'scripts/session_turns.py',
         'tests/test_unit_economics.py', 'tests/test_rerun_diff.py',
-        'tests/test_session_turns.py', 'tests/fixtures/pilot', 'docs/pilot')
+        'tests/test_session_turns.py', 'tests/pilot_emulation.py', 'tests/fixtures/pilot',
+        'docs/pilot')
 MODULES = ('test_unit_economics', 'test_rerun_diff', 'test_session_turns')
 
 # (name, file, old, new, module that must go red)
@@ -68,6 +69,31 @@ FAULTS = (
     ('a parser crash left as a traceback', 'scripts/rerun_diff.py',
      'except csv.Error:\n        raise Refused("table_malformed")',
      'except KeyError:\n        raise Refused("table_malformed")', 'test_rerun_diff'),
+    # Review round 3 (0140's second addendum): the lane's Python 3.13 finding, r1, r2/L6, n2.
+    ('a NUL byte left to the csv module (unit_economics)', 'scripts/unit_economics.py',
+     'if "\\x00" in text:\n        raise Refused(code)', 'if False:\n        raise Refused(code)',
+     'test_unit_economics'),
+    ('a NUL byte left to the csv module (rerun_diff)', 'scripts/rerun_diff.py',
+     'if "\\x00" in text:', 'if False:', 'test_rerun_diff'),
+    ('a long count read through int()', 'scripts/unit_economics.py',
+     'keep("samples_in_design", canonical_decimal(m.group(1)))',
+     'keep("samples_in_design", str(int(m.group(1))))', 'test_unit_economics'),
+    ('a long transcript integer read through int()', 'scripts/session_turns.py',
+     'json.loads(line, parse_int=Decimal)', 'json.loads(line)', 'test_session_turns'),
+    ('a long comparison integer read through int()', 'scripts/rerun_diff.py',
+     'parse_int=Decimal)', 'parse_int=lambda text: Decimal(int(text)))', 'test_rerun_diff'),
+    ('a file read in the locale encoding', 'scripts/unit_economics.py',
+     'return Path(path).read_text(encoding="utf-8")', 'return Path(path).read_text()',
+     'test_unit_economics'),
+    ('an out-of-range number left as a traceback', 'scripts/unit_economics.py',
+     'except InvalidOperation:\n        # A number', 'except ZeroDivisionError:\n        # A number',
+     'test_unit_economics'),
+    ('a subagent reply starting an attention interval', 'scripts/session_turns.py',
+     'if sidechain:\n        # rulings L2 and L6',
+     'if sidechain and kind != "assistant":\n        # rulings L2 and L6', 'test_session_turns'),
+    ('a mistyped quantity keyword ignored', 'scripts/unit_economics.py',
+     'QUANTITY_PREFIX = re.compile(r"^\\s*quantity\\b", re.I)',
+     'QUANTITY_PREFIX = re.compile(r"quantity ")', 'test_unit_economics'),
 )
 
 

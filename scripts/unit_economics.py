@@ -17,9 +17,16 @@ What the sheet refuses (exit 2, `refused: <reason>` on stderr, nothing written):
   number is `liability_typed`), a price that is not null;
 - a bench row whose derived fields do not recompute: its cost must be `unmetered` under an
   `owned_hardware` or `institutional_allocation` basis; a number there is a hand-typed cost;
-- a line starting `quantity ` that is not one of the fixed shapes (`quantity_malformed`), and a
-  quantity repeated with a different canonical value (`quantity_conflict`);
-- input that crashes a parser (a NUL byte, runaway nesting): a fixed code, never a traceback.
+- a line starting `quantity` (any case, after leading whitespace) that is not one of the fixed
+  shapes (`quantity_malformed`), and a quantity repeated with a different canonical value
+  (`quantity_conflict`);
+- input that crashes a parser (a NUL byte, runaway nesting): a fixed code, never a traceback;
+- a number too large to print to the cent (`value_out_of_range`).
+
+Every refusal code is the same on every Python from 3.6 to 3.13: a NUL byte is refused before
+the csv module sees it (3.11 and later accept one), integers are never converted through `int()`
+of their text (3.11 and later, and backports, limit its digits), and every file is read as
+UTF-8 whatever the locale.
 
 What it never does: print a free-text field (the owner's strings, a path), compute a margin
 without a price, or correct the session cross-check -- a human turn outside every logged span
@@ -35,7 +42,7 @@ import io
 import json
 import re
 import sys
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -51,8 +58,9 @@ INPUT_KEYS = ("hourly_value_usd", "hourly_value_source", "project_definition", "
 NUMBER = re.compile(r"^[0-9]+(\.[0-9]+)?$")
 
 # The three bring-home line shapes this sheet grades (docs/pilot/README.md); a line starting
-# `quantity ` must match one of the first two (ruling L4), every other line is counted and ignored.
-QUANTITY_PREFIX = "quantity "
+# starting `quantity` in any case after leading whitespace must match one of the first two (rulings
+# L4 and n2), every other line is counted and ignored.
+QUANTITY_PREFIX = re.compile(r"^\s*quantity\b", re.I)
 QUANTITY_SAMPLES = re.compile(r"^quantity samples_in_design ([0-9]+)$")
 QUANTITY_CPU = re.compile(r"^quantity cpu_hours (local|homelab|slurm) ([0-9]+(?:\.[0-9]+)?)$")
 SESSION_LINE = re.compile(
@@ -66,7 +74,7 @@ class Refused(Exception):
 
 
 def vocabulary():
-    return json.loads(VOCABULARY.read_text())
+    return json.loads(VOCABULARY.read_text(encoding="utf-8"))
 
 
 def sha256(path):
@@ -86,13 +94,18 @@ def ratio(numerator, denominator):
 
 def read_text(path, code):
     try:
-        return Path(path).read_text()
+        return Path(path).read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError, ValueError):
         raise Refused(code)
 
 
 def csv_rows(text, code):
-    """Every row of a CSV text; a parser error (a NUL byte, an oversized field) is `code`."""
+    """Every row of a CSV text; a parser error (a NUL byte, an oversized field) is `code`.
+
+    The NUL byte is refused here, not left to the csv module: 3.10 and earlier raise on it, 3.11
+    and later read it as data, and the refusal code must not depend on which ran."""
+    if "\x00" in text:
+        raise Refused(code)
     try:
         return list(csv.reader(io.StringIO(text)))
     except csv.Error:
@@ -104,6 +117,12 @@ def canonical_decimal(text):
     whole, _, fraction = text.partition(".")
     whole, fraction = whole.lstrip("0") or "0", fraction.rstrip("0")
     return whole + "." + fraction if fraction else whole
+
+
+def whole_number(text):
+    """The int of a digit string, never through int(text): 3.11 and later cap that conversion's
+    digits, so a long count would refuse (or crash) on one Python and pass on another."""
+    return int(Decimal(text))
 
 
 # ---------------------------------------------------------------------------------------------
@@ -233,8 +252,9 @@ def read_bench(path):
 def read_quantities(path):
     """The fixed-format lines of a bring-home file; returns (quantities, graded, total).
 
-    Values are kept in canonical form (an int; a canonical decimal text), so a repeat is compared
-    by value, not spelling, and the sheet's text does not depend on line order (ruling L4)."""
+    Values are kept as canonical decimal text, so a repeat is compared by value, not spelling,
+    and the sheet's text does not depend on line order (ruling L4). Counts stay text: printing a
+    Python int of more than 4300 digits fails on 3.11 and later."""
     lines = read_text(path, "quantities_unreadable").splitlines()
     found = {}
     graded = 0
@@ -247,7 +267,7 @@ def read_quantities(path):
     for line in lines:
         m = QUANTITY_SAMPLES.match(line)
         if m:
-            keep("samples_in_design", int(m.group(1)))
+            keep("samples_in_design", canonical_decimal(m.group(1)))
             graded += 1
             continue
         m = QUANTITY_CPU.match(line)
@@ -255,12 +275,12 @@ def read_quantities(path):
             keep("cpu_hours " + m.group(1), canonical_decimal(m.group(2)))
             graded += 1
             continue
-        if line.startswith(QUANTITY_PREFIX):
+        if QUANTITY_PREFIX.match(line):
             raise Refused("quantity_malformed")
         m = SESSION_LINE.match(line)
         if m:
-            turns, inside, outside = (int(m.group(i)) for i in (1, 2, 3))
-            if inside + outside != turns:
+            turns, inside, outside = (canonical_decimal(m.group(i)) for i in (1, 2, 3))
+            if whole_number(inside) + whole_number(outside) != whole_number(turns):
                 raise Refused("quantity_session_inconsistent")
             keep("session", (turns, inside, outside, str(Decimal(m.group(4)))))
             graded += 1
@@ -345,10 +365,11 @@ def sheet(log, baseline, bench, inputs, quantities):
         % (", ".join(metered) or "none measured", two(agent_minutes)))
     if samples is None:
         add("cost", "per sample", "uncomputable (samples_in_design unmeasured)")
-    elif samples == 0:
+    elif samples == "0":
         add("cost", "per sample", ratio("$%s" % dollars, 0))
     else:
-        add("cost", "per sample", "$%s/%d = $%s" % (dollars, samples, two(dollars / samples)))
+        add("cost", "per sample", "$%s/%s = $%s"
+            % (dollars, samples, two(dollars / Decimal(samples))))
     add("margin", "margin", "uncomputable: no price (R-193)")
 
     # Ruling L3: the total is like for like, over the stages that have a baseline row only; the
@@ -385,11 +406,11 @@ def sheet(log, baseline, bench, inputs, quantities):
         add("cross-check", "M4", "unmeasured")
     else:
         turns, inside, outside, outside_minutes = session
-        add("cross-check", "M4", "human turns in 02_02 session: %d; inside a human span: %d; "
-            "outside any span: %d (%s min)" % (turns, inside, outside, outside_minutes))
-        if outside > 0:
+        add("cross-check", "M4", "human turns in 02_02 session: %s; inside a human span: %s; "
+            "outside any span: %s (%s min)" % (turns, inside, outside, outside_minutes))
+        if outside != "0":
             add("cross-check", "DISCREPANCY",
-                "%d human turns outside any logged span" % outside)
+                "%s human turns outside any logged span" % outside)
     return lines
 
 
@@ -425,10 +446,14 @@ def main(argv=None):
     except Refused as why:
         sys.stderr.write("refused: %s\n" % why)
         return EXIT_REFUSED
+    except InvalidOperation:
+        # A number past the decimal context (28 digits) cannot be printed to the cent.
+        sys.stderr.write("refused: value_out_of_range\n")
+        return EXIT_REFUSED
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "unit_economics.csv").write_text(render_csv(lines))
-    (out / "unit_economics.md").write_text(render_md(lines))
+    (out / "unit_economics.csv").write_text(render_csv(lines), encoding="utf-8")
+    (out / "unit_economics.md").write_text(render_md(lines), encoding="utf-8")
     for sec, item, value in lines:
         if sec == "cross-check" and item == "DISCREPANCY":
             print("DISCREPANCY: " + value)

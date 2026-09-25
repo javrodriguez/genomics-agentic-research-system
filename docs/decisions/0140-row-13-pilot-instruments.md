@@ -219,3 +219,50 @@ means a record for the owner to write. It is not a decision the owner made.
 **Stated, not changed (review N3, N4).** A gene whose `padj` moves between `NA` and a value is
 not counted as a crossing; it shows only in `na_padj`. A refused sheet run leaves any earlier
 sheet in `--out` in place. Both are stated in `docs/pilot/README.md`.
+
+## Addendum — review round 3, 2026-09-25
+
+Every ruling in this addendum is **the lane's**, made on 25 Sep 2026 under the owner's standing
+delegation of 23 Sep 2026; none is the owner's ruling. All earlier bytes of this record are
+unchanged. The fixes and their evidence are in
+[the change report](../implementation/row_13_change_report.md), section "Review round 3 fixes".
+The round answers the round-2 review (the independent review of `8764b01`) and the lane's own
+whole-suite verification of `8764b01` on Python 3.13.5.
+
+**Refusal codes do not depend on the Python version (the lane's verification finding).** Under
+Python 3.13 three refusal tests failed: a NUL byte in a log row gave `log_minutes line 3` where
+3.8 gave `log_malformed line 3`, and a NUL byte in a DE table gave `table_value` where 3.8 gave
+`table_malformed`. The cause is a change in the `csv` module: through 3.10 it raises
+`csv.Error` on a NUL byte, and from 3.11 it reads the byte as data, so the row reached a later
+check. Every refusal code is now required to be the same on every Python from 3.6 to 3.13. A
+NUL byte is refused before the `csv` module sees it, with the code the parser error had. Two
+further version splits of the same kind are closed in the same change: integers are never
+converted through `int()` of their text (from 3.11, and in the 3.8.14, 3.9.14 and 3.10.7
+backports, that conversion refuses more than 4300 digits, so a long count crashed or refused on
+one Python and passed on another), and every input is read as UTF-8 whatever the locale (a
+C-locale Python reads text as ASCII). The tests emulate both sides of each split in-process, so
+they go red on a regression whichever Python runs them.
+
+**Ruling r1 (the lane's).** A number too large for the sheet's decimal arithmetic (a
+`decimal.InvalidOperation`) is refused with the fixed code `value_out_of_range`; no route prints
+a traceback.
+
+**Ruling L6 (the lane's; widens L2; review r2).** A record of **any** type carrying
+`isSidechain: true` is subagent traffic the human does not see. It is graded (it counts in
+`graded <n> of <n> records`) but is never a human turn, never the predecessor that starts an
+outside turn's attention interval, and never part of the agent-active span. `isSidechain` must
+be a boolean on every record. A `user` record carrying `isCompactSummary: true` stays harness
+under L2. Harness records still count toward `session wall minutes`, which spans every record.
+
+**Ruling n2 (the lane's).** The quantities reader treats a line as a quantity line when it
+matches `^\s*quantity\b` case-insensitively, so a mistyped keyword (`Quantity`, a leading space,
+a tab, `QUANTITY`, a bare `quantity`) is refused as `quantity_malformed` instead of being
+ignored. A word that only begins with the keyword (`quantity_notes`) is another line shape.
+
+**Ruling n1 (the lane's).** The round-1 and round-2 reviews are cited by their review folder,
+never by a repository path: they are not files of this repository. The round-2 fixes section of
+the change report cites the round-1 review by a path that does not exist here; that section is
+append-only, so the correction is made here and in the round-3 section. The producer was not
+given the review folders' names and may not read those folders, so it cites each review by its
+round and the commit it reviewed (round 1: `76ebf7f`; round 2: `8764b01`) and leaves the folder
+names for the lane to record.

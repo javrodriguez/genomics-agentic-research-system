@@ -16,7 +16,9 @@ import unittest
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / 'scripts'))
+sys.path.insert(0, str(REPO / 'tests'))
 import unit_economics as ue  # noqa: E402 -- red at the parent: the script does not exist there
+import pilot_emulation as emulation  # noqa: E402
 
 FIXTURES = REPO / 'tests/fixtures/pilot'
 SCRIPT = REPO / 'scripts/unit_economics.py'
@@ -285,8 +287,16 @@ class UnitEconomicsTests(unittest.TestCase):
         self.assert_refused('log_malformed line 3', log=self.variant('nul.csv', nul))
         self.assert_refused('bench_malformed', bench=self.variant(
             'nul-bench.csv', bench.replace('local,', 'lo\x00cal,')))
+        self.assert_refused('bench_malformed', bench=self.variant(
+            'long-bench.csv', bench.replace('local,', 'l' + 'o' * 200000 + 'cal,')))
         self.assert_refused('inputs_not_json',
                             inputs=self.variant('deep.json', '[' * 100000))
+        # A number past the decimal context cannot be printed to the cent: a fixed code (r1).
+        self.assert_refused('value_out_of_range', inputs=self.variant(
+            'huge.json', json.dumps(dict(inputs, hourly_value_usd=1)).replace(
+                '"hourly_value_usd": 1', '"hourly_value_usd": 1e30')))
+        self.assert_refused('value_out_of_range', log=self.variant(
+            'huge.csv', log.replace(',data,5.00', ',data,99999999999999999999999999999.00')))
         print('red-on-fault: seventh column, unknown key, typed liability, non-null price, '
               'hand-typed bench cost -> each REFUSED with its reason')
 
@@ -296,7 +306,10 @@ class UnitEconomicsTests(unittest.TestCase):
         for line in ('quantity samples_in_design 7 ', 'quantity  samples_in_design 8',
                      'quantity cpu_hours Slurm 9.00', 'quantity samples_in_design -3',
                      'quantity cpu_hours cloud 3.00', 'quantity samples_in_design',
-                     'quantity wall_hours slurm 1'):
+                     'quantity wall_hours slurm 1',
+                     # the keyword in any case, after leading whitespace, is a quantity line (n2)
+                     'Quantity samples_in_design 7', ' quantity samples_in_design 7',
+                     'quantity\tsamples_in_design 7', 'QUANTITY samples_in_design 7', 'quantity'):
             self.assert_refused('quantity_malformed', quantities=self.variant(
                 'bad-q.txt', quantities + line + '\n'))
         # A repeat is compared by canonical value and printed canonically, so line order and
@@ -314,10 +327,72 @@ class UnitEconomicsTests(unittest.TestCase):
             self.assertIn(expected, sheets[0])
         self.assert_refused('quantity_conflict cpu_hours slurm', quantities=self.variant(
             'conflict.txt', quantities + 'quantity cpu_hours slurm 1.76\n'))
+        # A word that merely starts with the keyword is another line shape: counted, ignored.
+        ignored = self.sheet_lines(quantities=self.variant(
+            'word.txt', quantities + 'quantity_notes: none\n'))
+        self.assertIn('quantities graded: 5 of 10 lines', ignored)
         self.assertEqual(ue.canonical_decimal('0.20'), '0.2')
         self.assertEqual(ue.canonical_decimal('100'), '100')
         self.assertEqual(ue.canonical_decimal('000.000'), '0')
         print('red-on-fault guard: malformed quantity lines refused; repeats compared canonically')
+
+    def test_refusal_codes_do_not_depend_on_the_interpreter(self):
+        # The lane's 3.13 host refused a NUL log row as `log_minutes` where 3.8 said
+        # `log_malformed`: csv reads NUL as data from 3.11. Each case must give the same exit code,
+        # stdout and stderr with the interpreter emulated on both sides of every split.
+        log = self.inputs['log'].read_text()
+        bench = self.inputs['bench'].read_text()
+        baseline = self.inputs['baseline'].read_text()
+        quantities = self.inputs['quantities'].read_text()
+        many = '9' * 5000
+        session = [l for l in quantities.splitlines() if l.startswith('human turns: ')][0]
+        cases = (
+            ('refused: log_malformed line 3\n',
+             {'log': self.variant('nul.csv', log.replace(',data,5.00', ',data,5.00\x00'))}),
+            ('refused: bench_malformed\n',
+             {'bench': self.variant('nul-b.csv', bench.replace('local,', 'lo\x00cal,'))}),
+            ('refused: baseline_malformed\n', {'baseline': self.variant(
+                'nul-base.csv', baseline.replace('estimate', 'esti\x00mate'))}),
+            ('', {'quantities': self.variant('long.txt', quantities.replace(
+                'quantity samples_in_design 6', 'quantity samples_in_design ' + many))}),
+            ('', {'quantities': self.variant('long-s.txt', quantities.replace(
+                session, session.replace('human turns: 6; inside spans: 4',
+                                         'human turns: %s; inside spans: %s'
+                                         % (many, '9' * 4999 + '7'))))}),
+            ('refused: quantity_session_inconsistent\n', {'quantities': self.variant(
+                'long-x.txt', quantities.replace(session, session.replace(
+                    'human turns: 6', 'human turns: ' + many)))}),
+        )
+        results = []
+        for number, (stderr, override) in enumerate(cases):
+            paths = dict(self.inputs, **override)
+            seen = []
+            for side in ('old', 'new'):
+                argv = []
+                for role in ('log', 'baseline', 'bench', 'inputs', 'quantities'):
+                    argv += ['--' + role, str(paths[role])]
+                argv += ['--out', str(self.root / ('emulated-%d-%s' % (number, side)))]
+                with emulation.emulating(side, [ue]):
+                    seen.append(emulation.outcome(ue.main, argv))
+            self.assertEqual(seen[0], seen[1], 'case %d differs between interpreters' % number)
+            self.assertEqual((seen[0][0], seen[0][2]), (2 if stderr else 0, stderr))
+            results.append(seen[0])
+        self.assertTrue('quantity samples_in_design: ' + many in results[3][1].splitlines(),
+                        'the long count is not printed from its digits')
+        self.assertIn('DISCREPANCY: 2 human turns outside any logged span',
+                      results[4][1].splitlines())
+        # A non-ASCII owner string (never printed) reads the same under a C locale as under UTF-8.
+        inputs = json.loads(self.inputs['inputs'].read_text())
+        accented = self.root / 'accented.json'
+        accented.write_bytes(json.dumps(dict(inputs, hourly_value_source='synthetic f\u00e9e'),
+                                        ensure_ascii=False).encode('utf-8'))
+        runs = [self.run_sheet(out='locale-' + name, env=env, inputs=accented) for name, env in (
+            ('c', {'LC_ALL': 'C', 'LANG': 'C', 'PYTHONUTF8': '0', 'PYTHONCOERCECLOCALE': '0'}),
+            ('utf8', {'PYTHONUTF8': '1'}))]
+        self.assertEqual([r.returncode for r in runs], [0, 0], runs[0].stderr + runs[1].stderr)
+        self.assertEqual(runs[0].stdout, runs[1].stdout)
+        print('red-on-fault guard: every refusal code is the same on both sides of each '
+              'Python-version split')
 
     def test_templates_are_not_inputs(self):
         # The committed templates cannot be used as filled files: they carry placeholders.

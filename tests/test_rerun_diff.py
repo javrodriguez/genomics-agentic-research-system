@@ -14,7 +14,9 @@ import unittest
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / 'scripts'))
+sys.path.insert(0, str(REPO / 'tests'))
 import rerun_diff as rd  # noqa: E402 -- red at the parent: the script does not exist there
+import pilot_emulation as emulation  # noqa: E402
 
 FIXTURES = REPO / 'tests/fixtures/pilot'
 SCRIPT = REPO / 'scripts/rerun_diff.py'
@@ -205,10 +207,39 @@ class RerunDiffTests(unittest.TestCase):
                 ('table_columns', good.replace('padj', 'qvalue')),
                 ('table_row_shape', good + 'GENEFIX0100,1,1\n'),
                 # a parser crash is a named refusal, never a traceback naming a host path
-                ('table_malformed', good + 'GENEFIX0100,1,1,1,\x00\n')):
+                ('table_malformed', good + 'GENEFIX0100,1,1,1,\x00\n'),
+                # a field past the csv module's limit (131072 characters on every version)
+                ('table_malformed', good + 'GENEFIX0100,' + 'x' * 200000 + ',1,1,1\n')):
             path.write_text(text)
             self.de_artifact(1)['replay_sha256'] = sha(path)
             self.assert_refused(reason)
+
+    def test_refusal_codes_do_not_depend_on_the_interpreter(self):
+        # The lane's 3.13 host refused a NUL table row as `table_value` where 3.8 said
+        # `table_malformed`: csv reads NUL as data from 3.11. A long integer, carried or as a run
+        # number, must not be `comparison_unreadable` on one Python and read on another.
+        path = self.replay(2) / TABLE
+        good = (FIXTURES / 'de_run2.csv').read_text()
+        for name, table, long_key, long_run, expected in (
+                ('nul', good + 'GENEFIX0100,1,1,1,\x00\n', False, False,
+                 (2, '', 'refused: table_malformed\n')),
+                ('carried', good, True, False, (0, EXPECTED, '')),
+                ('run', good, True, True, (2, '', 'refused: table_unreadable\n'))):
+            path.write_text(table)
+            self.de_artifact(1)['replay_sha256'] = sha(path)
+            data = json.loads(json.dumps(self.data))
+            if long_key:
+                data['carried'] = '@LONG@'
+            if long_run:
+                data['runs'][1]['run'] = '@LONG@'
+            self.comparison.write_text(json.dumps(data).replace('"@LONG@"', '9' * 5000))
+            seen = []
+            for side in ('old', 'new'):
+                with emulation.emulating(side, [rd]):
+                    seen.append(emulation.outcome(rd.main, ['--comparison', str(self.comparison)]))
+            self.assertEqual(seen, [expected, expected], name)
+        print('red-on-fault guard: every refusal code is the same on both sides of each '
+              'Python-version split')
 
     def test_spearman_and_ranks(self):
         self.assertEqual(rd.ranks([3.0, 1.0, 3.0, 2.0]), [3.5, 1.0, 3.5, 2.0])

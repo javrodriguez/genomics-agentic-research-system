@@ -276,3 +276,157 @@ None.
   can outlive a refused run), both documented in `docs/pilot/README.md`.
 - **Lower bound only:** `outside minutes` under L1 still misses a forgotten span that has no
   human turn in it.
+
+## Review round 3 fixes
+
+Dated 2026-09-25. This round answers the round-2 review (the independent review of `8764b01`,
+verdict APPROVE WITH CHANGES) and the lane's whole-suite verification of `8764b01` on a
+separate Linux host under Python 3.13.5, which failed three tests. It builds on `8764b01`; the
+sections above are unchanged. Rulings r1, L6 (which widens L2), n1 and n2 are **the lane's**,
+made on 25 Sep 2026 under the owner's standing delegation of 23 Sep 2026, and are recorded as
+the lane's in 0140's second dated addendum. None of them is the owner's ruling. Fixture values
+are still synthetic, with `hourly_value_usd = 1`.
+
+### The cause of the lane's Python 3.13 failures
+
+The `csv` module changed in Python 3.11. Through 3.10 it raises `csv.Error: line contains NUL`
+on a NUL byte; from 3.11 it reads the byte as data. The three failing tests plant a NUL byte:
+under 3.8 the parser error gave `log_malformed line 3` and `table_malformed`, while under 3.13
+the row reached a later check and gave `log_minutes line 3` (the NUL sat in the minutes field)
+and `table_value` (in the `padj` field). Reproduced here with Python 3.13.2 before the fix: the
+same three assertions, verbatim as the lane quoted them. This producer's earlier runs used
+Python 3.8.2, where they passed.
+
+Looking for the same kind of split turned up two more, both fixed in the same change:
+
+- **The integer-digit limit.** From 3.11, and in the 3.8.14, 3.9.14 and 3.10.7 security
+  backports, `int()` of a string with more than 4300 digits (lowerable to 640) raises
+  `ValueError`, and so does `json.loads` of such an integer. Before the fix, a long count in a
+  `quantity samples_in_design` line or a session line crashed with a traceback on 3.13 and
+  passed on 3.8.2; a long integer in an extra transcript key made the record unclassifiable on
+  3.13 and graded on 3.8.2; a long run number in `comparison.json` was `comparison_unreadable`
+  on 3.13 and `table_unreadable` on 3.8.2. Measured here: `json.loads` of a 5000-digit integer
+  succeeds on 3.8.2 and raises `ValueError` on 3.8.19 and 3.13.2.
+- **The locale encoding.** `Path.read_text()` without an encoding uses the locale's. Under
+  `LC_ALL=C PYTHONUTF8=0 PYTHONCOERCECLOCALE=0`, both 3.8.2 and 3.13.2 here report `US-ASCII`,
+  so a non-ASCII owner string would be `inputs_unreadable` on such a host and read on another.
+
+The fixes: `csv_rows` (unit_economics) and `read_table` (rerun_diff) refuse a NUL byte before
+the csv module sees it, with the code the parser error had. Counts in the quantities file are
+kept as canonical digit text and compared through `int(Decimal(text))`, which has no digit
+limit. `session_turns.py` and `rerun_diff.py` parse JSON integers as `Decimal`, and a run number
+is printed from its digits. Every file is read and written as UTF-8.
+
+The tests emulate both sides of each split in-process (`tests/pilot_emulation.py`, not a test
+module): `emulating('old')` makes `csv.reader` raise on NUL, as 3.10 does, and lifts the digit
+limit; `emulating('new')` makes `csv.reader` read NUL as data, as 3.11+ does, and imposes the
+strictest digit limit (640) on `json.loads` and on `int` in the script modules. Each new
+`test_refusal_codes_do_not_depend_on_the_interpreter` requires the same exit code, stdout and
+stderr on both sides, so a regression is red whichever Python runs the suite. The locale case
+runs the sheet under a C locale and under UTF-8 mode and requires identical output.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| **Lane verification** (MAJOR): three refusal codes differ under Python 3.13 | `scripts/unit_economics.py`, `scripts/rerun_diff.py`, `scripts/session_turns.py`, `tests/pilot_emulation.py` (new), the three test modules | the three failing tests (`test_refusals`, `test_malformed_tables_are_refused`, `test_unclassifiable_records_exit_2`) now pass on 3.13; new `test_refusal_codes_do_not_depend_on_the_interpreter` in each module (NUL in the log, bench, baseline and DE table; long counts in the quantities and session lines; a long integer in a transcript key, a carried `comparison.json` key and a run number; a non-ASCII owner string under a C locale) | green on nine interpreters (below); **yes**: the round-3 tests run against `8764b01`'s scripts fail on **3.8.2** too, e.g. `(2, '', 'refused: log_malformed line 3\n') != (2, '', 'refused: log_minutes line 3\n')` and `[… 'refused: table_malformed\n'), (2, '', 'refused: table_value\n')] != …`, the lane's 3.13 failures reproduced on 3.8. Planted `a NUL byte left to the csv module` (both scripts), `a long count read through int()`, `a long transcript integer read through int()`, `a long comparison integer read through int()` and `a file read in the locale encoding` are each RED under both 3.8.2 and 3.13.2 |
+| **r1** (MINOR): `decimal.InvalidOperation` traceback (ruling r1) | `scripts/unit_economics.py`, `scripts/session_turns.py` | `test_refusals`: `hourly_value_usd: 1e30` and a log `minutes` of `99999999999999999999999999999.00` each give exactly `refused: value_out_of_range\n`, exit 2, no output | green; **yes**: planted `an out-of-range number left as a traceback` is RED. The review's command (`hourly_value_usd: 100000000000000000000000000000`, script run by absolute path) prints `refused: value_out_of_range`, exit 2, on 3.8.2 and 3.13.2 |
+| **r2** (MINOR): an `isSidechain` assistant record shortens `outside minutes` (ruling L6) | `scripts/session_turns.py`, `docs/pilot/README.md` | `test_harness_records_are_graded_not_human`: `isSidechain` assistant records at 10:12:20 (before the outside turn) and 09:59:30 (before the first assistant record) and an `isSidechain` `system` record classify `harness`; with all three inserted the fixture line is unchanged except `graded 17 of 17` (outside minutes 1.50, agent active 45.50); a non-boolean `isSidechain` on an assistant record is unclassifiable | green; **yes**: planted `a subagent reply starting an attention interval` is RED. The review's record inserted before the outside turn now prints `outside minutes: 1.50`, `graded 15 of 15 records`, exit 0 |
+| **n1** (NOTE): the round-1 review is cited by a repository path that does not exist | 0140 addendum, this section | — | fixed here and in 0140's second addendum: the reviews are cited by round and reviewed commit (round 1 of `76ebf7f`, round 2 of `8764b01`); the round-2 section above is append-only and keeps its wording. The review folders' names were not given to this producer, which may not read those folders (residual gap below) |
+| **n2** (NOTE): a mistyped `quantity` keyword is ignored (ruling n2) | `scripts/unit_economics.py`, `docs/pilot/README.md` | `test_quantity_lines_canonical_or_refused`: `Quantity …`, ` quantity …`, `quantity<TAB>…`, `QUANTITY …` and a bare `quantity` each give `quantity_malformed`; `quantity_notes: none` is counted and ignored (`graded 5 of 10 lines`) | green; **yes**: planted `a mistyped quantity keyword ignored` is RED. The review's four spellings each print `refused: quantity_malformed`, exit 2 |
+
+Knock-on: with NUL refused before the parser, round 2's fault `a parser crash left as a
+traceback` would no longer reach `csv.Error`. `test_malformed_tables_are_refused` and
+`test_refusals` therefore gain an oversized field (200 000 characters, past the csv module's
+131 072 limit on every version), giving `table_malformed` and `bench_malformed`, and that fault
+stays RED.
+
+### Red-on-fault
+
+`tests/pilot_red_on_fault.py` now plants 24 faults: round 2's 15 and nine new ones. It also
+copies `tests/pilot_emulation.py`. It was run once under each interpreter, in the foreground.
+The new lines and the last line, verbatim, Python 3.8.2 (exit 0):
+
+```text
+a NUL byte left to the csv module (unit_economics): RED; FAILED (failures=1); test_refusal_codes_do_not_depend_on_the_interpreter
+a NUL byte left to the csv module (rerun_diff): RED; FAILED (failures=1); test_refusal_codes_do_not_depend_on_the_interpreter
+a long count read through int(): RED; FAILED (errors=1); test_refusal_codes_do_not_depend_on_the_interpreter
+a long transcript integer read through int(): RED; FAILED (failures=1); test_refusal_codes_do_not_depend_on_the_interpreter
+a long comparison integer read through int(): RED; FAILED (failures=1); test_refusal_codes_do_not_depend_on_the_interpreter
+a file read in the locale encoding: RED; FAILED (failures=1); test_refusal_codes_do_not_depend_on_the_interpreter
+an out-of-range number left as a traceback: RED; FAILED (failures=1); test_refusals
+a subagent reply starting an attention interval: RED; FAILED (failures=1); test_harness_records_are_graded_not_human
+a mistyped quantity keyword ignored: RED; FAILED (failures=1); test_quantity_lines_canonical_or_refused
+red-on-fault: 24/24 RED
+```
+
+Python 3.13.2 (exit 0). The two NUL faults are also caught there by the pre-existing tests,
+because 3.13's csv reads NUL as data:
+
+```text
+a NUL byte left to the csv module (unit_economics): RED; FAILED (failures=2); test_refusal_codes_do_not_depend_on_the_interpreter, test_refusals
+a NUL byte left to the csv module (rerun_diff): RED; FAILED (failures=2); test_malformed_tables_are_refused, test_refusal_codes_do_not_depend_on_the_interpreter
+a long count read through int(): RED; FAILED (errors=1); test_refusal_codes_do_not_depend_on_the_interpreter
+a long transcript integer read through int(): RED; FAILED (failures=1); test_refusal_codes_do_not_depend_on_the_interpreter
+a long comparison integer read through int(): RED; FAILED (failures=1); test_refusal_codes_do_not_depend_on_the_interpreter
+a file read in the locale encoding: RED; FAILED (failures=1); test_refusal_codes_do_not_depend_on_the_interpreter
+an out-of-range number left as a traceback: RED; FAILED (failures=1); test_refusals
+a subagent reply starting an attention interval: RED; FAILED (failures=1); test_harness_records_are_graded_not_human
+a mistyped quantity keyword ignored: RED; FAILED (failures=1); test_quantity_lines_canonical_or_refused
+red-on-fault: 24/24 RED
+```
+
+Round 2's 15 faults are RED in both runs; the three baselines and the three restored modules are
+`OK` in both.
+
+### Commands and summary lines, round 3 (verbatim)
+
+All commands ran from the repo root in the foreground, with `TMPDIR`, `TEMP` and `TMP` set to
+the scratch folder and `GARS_TEST_NO_CONTAINER=1`.
+
+| Command | Summary line |
+|---|---|
+| `python3.13 tests/test_{unit_economics,rerun_diff,session_turns}.py` at `8764b01` (before the fix) | `FAILED (failures=1)` each, with the lane's three assertions verbatim |
+| each of the three modules under 3.8.2, 3.8.19, 3.9.6, 3.9.21, 3.10.16, 3.12.9, 3.12.14, 3.13.2 and 3.14.7 | `Ran 18 tests` / `OK`, `Ran 8 tests` / `OK`, `Ran 8 tests` / `OK` on every one |
+| the round-3 test modules against `8764b01`'s scripts, under 3.8.2 | `FAILED (failures=3)`, `FAILED (failures=1)`, `FAILED (failures=2)` |
+| the same, under 3.13.2 | `FAILED (failures=3)`, `FAILED (failures=2)`, `FAILED (failures=3)` |
+| `python3 tests/pilot_red_on_fault.py` (3.8.2) and `python3.13 tests/pilot_red_on_fault.py` | `red-on-fault: 24/24 RED`, exit 0, each |
+| `python3 tests/check_counts.py` | `clean — every current claim matches the suite` (567, loader count) |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/test_decision_links_resolve.py` | `Ran 3 tests` / `OK` |
+| `ast.parse(..., feature_version=(3, 6))` on the three scripts, the three modules, the driver and `pilot_emulation.py` | `ast36 ok` |
+| `bash docs/decisions/build_index.sh` | regenerated; no change (0140's frontmatter is unchanged) |
+| `git diff --check` | clean |
+
+**Not run by this producer: the whole suite (`tests/run_tests.py`).** The lane's brief for this
+round says the lane runs it. The count moves from 564 to 567 (three new test methods), and
+`README.md` and `DEVELOPMENT.md` say so. Python 3.6, 3.7 and 3.11 are not installed here, so the
+modules were not executed on them. 3.6 is covered by the syntax check, and every version is
+covered by the in-process emulation of both sides of each split.
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps
+
+- **NOT met: row 13's exit.** The pilot, measured human-touch minutes, a real re-run diff
+  explained, the real sheet, the report, R-192 and any price are all still open. Every number
+  here is a synthetic fixture.
+- **NOT met: step B** (the writer, the doors, `bring_home`).
+- **Unverified bindings:** the bench CSV against 8B's code, and `comparison.json` against row 6's
+  `rerun_check.py`.
+- **Unverified on a real transcript:** L2 and L6 cover the harness kinds found so far. A real
+  transcript with another non-sidechain `type` still exits 2 until a recorded ruling widens the
+  set.
+- **Not run here:** the whole suite (the lane runs it); execution on Python 3.6, 3.7 and 3.11;
+  any cluster run.
+- **Emulated, not exhaustive:** the version-independence tests cover the three splits found
+  (csv NUL handling, the integer-digit limit, the locale encoding). A different stdlib change
+  between 3.6 and 3.13 would show only on a run under that version.
+- **n1, the folder names:** the reviews are cited by round and reviewed commit. This producer
+  was not given the review folders' names and may not read those folders, so the lane records
+  them.
+- **Stated, not changed:** N3 (an `NA`↔significant move is not a crossing) and N4 (a stale sheet
+  can outlive a refused run), both documented in `docs/pilot/README.md`.
+- **Lower bound only:** `outside minutes` under L1 still misses a forgotten span that has no
+  human turn in it. Harness records, sidechain ones included, still count toward
+  `session wall minutes`.
