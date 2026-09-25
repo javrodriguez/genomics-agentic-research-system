@@ -593,3 +593,14 @@ Each is NOT met.
 - The individual wording of Q4-Q7 and Amendment 1's round-3 fixes is the lane's to append.
 - The whole suite, a case-sensitive filesystem (Linux), and the harness's read-before-edit
   behaviour were not exercised here.
+
+## Item 2 (pg): merge evidence and hand-off (the lane, 2026-09-25)
+
+The merge candidate is `bf5b0d9`: lane head `808bdbe` merged onto public main `a779084`, then the count commit (701 tests).
+The lane's approval of the protected changes, and its answers to review round 2's findings, are in [0108](../decisions/0108-pg-delegated-approval-of-protected-changes.md), whose Test section holds the evidence lines.
+Review round 2's F2 (the README skip figures) is answered here: README now states the candidate's own measured figures, 13 skips on macOS with Docker and row 5's scratch folder, 75 on macOS without that folder, and 80 and 107 on Linux.
+Review round 2's F6 (the reviews' location): every review of this lane is kept outside the repository, as for earlier lanes; the citations to `docs/reviews/` in the round 2 section name the untracked copy the fix round read.
+
+## Owner rulings needed
+
+None.
