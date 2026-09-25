@@ -232,3 +232,21 @@ with dates but no stamp must still read `unmeasured`. Against the round-2 reader
 probes fail and nothing else does. Mutations, each watched red and restored green: the routing
 padded again (the two date-only probes); the stamp-token refusal dropped (probes C and D); the
 token widened to any date (the prose control and every test that reads the committed log).
+
+## Addendum — review round 4, 2026-09-25
+
+The independent review of round 3 found that the round-3 change report's residual understated
+what the reader still skips; the text above stays as written, and this addendum widens that
+residual.
+
+**Result-shaped lines the reader still ignores (R3-F1).** Routing (`DATE_LED`) and the refusal
+(`STAMP_TOKEN`) both recognise only the log's `YYYY-MM-DD` form. So any line whose date or
+date-time is not in that form with `T` and seconds, for example a slash-separated stamp
+(`2026/09/23T10:00:00Z, 1.0, 1.0, FAIL`), a compact one (`20260923T100000Z, …`), a date-time
+without seconds or without `T` inside a list item, is ignored as prose; so is a date-only result
+that is not led by the date, for example a list item `- 2026-09-23, 1.0, 1.0, FAIL`, which is the
+shape the log's own `Format:` line documents. Each such line leaves an earlier `PASS` in the cell.
+The exposure is a hand edit: row 5's writer emits padded ISO stamps, which the reader reads or
+refuses. This round changes no code; the round-3 sentence "any line of the log that holds a
+stamp-shaped token … raises" stays true of `STAMP_TOKEN` as defined, and the gap is recorded,
+not closed.

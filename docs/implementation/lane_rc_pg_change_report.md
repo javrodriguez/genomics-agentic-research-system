@@ -279,3 +279,48 @@ For the owner's sight at merge, the lane's delegated rulings (the lane, under th
 ## Owner rulings needed
 
 None.
+
+## Review round 4 fixes (rc)
+
+2026-09-25. Fixes for the round-3 independent review of item 1 (`docs/reviews/lane_rc_review3.md`,
+not committed; verdict APPROVE WITH CHANGES: one MINOR, one NOTE). Documentation only: no script,
+test, log, generated table, README or DEVELOPMENT change. The record change is a dated addendum
+appended to [0105](../decisions/0105-rc-restore-log-reader-reads-the-table.md) after its last
+byte; its earlier bytes are unchanged (a byte-prefix `cmp` against the round-3 file passes). The
+index was re-run (`bash docs/decisions/build_index.sh`); 0105's front matter is unchanged, so the
+index did not change.
+
+| Finding | Changed files | Test | Result (red-on-fault seen) |
+|---|---|---|---|
+| R3-F1 MINOR: the round-3 residual understated which result-shaped lines are skipped | 0105 addendum (round 4); this section's residual | none (documentation, the review's first option) | fixed as documentation. Red: n/a, no code changed; the review's probes P1, P3, P8 and P11 were re-run on a `git archive` copy of 96680d8 and each left the 22 Sep `PASS` in the cell, which is the behaviour the widened residual now states |
+| R3-F2 NOTE: the comment at `DATE_LED`/`STAMP_TOKEN` (`scripts/release_check.py:29-30`) says more than the constants do ("no line with a stamp in the log's UTC form reaches the skip" is the accurate reading) | none | none | stays until the file is next touched: this round is documentation only |
+
+### Commands (round 4)
+
+Run from the repository root with `TMPDIR`, `TEMP` and `TMP` set to the lane's scratch folder.
+
+| Command | Summary line |
+|---|---|
+| `python3 tests/test_decision_links_resolve.py` | `citations: 345/345 resolve`; `Ran 3 tests in 1.250s` / `OK` |
+| `python3 tests/check_counts.py` | `suite: 588 tests, from unittest's loader`; `enforced=3`; `clean — every current claim matches the suite` |
+
+`tests/run_tests.py`, `tests/test_release_check.py` and the release checks were not run in this
+round: no code or generated file changed.
+
+### Residual gaps (after round 4)
+
+- Any line whose date or date-time is not in the log's `YYYY-MM-DD` form with `T` and seconds
+  (for example a slash-separated or compact stamp), or a date-only result that is not led by the
+  date (for example a list item), is ignored. The exposure is a hand edit, since row 5's writer
+  emits padded ISO stamps. NOT covered. This replaces round 3's narrower third residual.
+- The DoD cell shows no age: after 22 Oct 2026 it still reads `PASS` for this drill; §17's
+  30-day limit is enforced only at tag time, by the 14-day rule. NOT met in the cell.
+- `independent_context` is bound by a token test and the stronger claims by a quoted-row
+  substring test; a record quoting either inside a negation would pass. NOT a positive binding.
+- The README public row, `external_human_seal`, §13.2 primary deletion, the release tag after
+  6 Oct 2026, the manual transcription and RTO at real scale: NOT met, unchanged from round 1.
+- Whole-suite run (`tests/run_tests.py`) and `tests/test_row05_backup.py`: NOT verified.
+
+## Owner rulings needed
+
+None.
