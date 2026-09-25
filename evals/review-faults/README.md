@@ -120,6 +120,38 @@ spellings below and claims nothing beyond them:
   after option words, including separated options, the end-of-options marker,
   and option clusters ending in c. Their program text is audited as a command.
 
+Decision 0125 amends command-field placement with the **closed grammar** of
+items 1(a–f), 2, 7(a) and 8(a), as implemented: each call starts at the kit root;
+only a top-level, unprefixed `cd` with one plain, statically resolvable argument,
+qualifying boundaries and both lexical and symlink-resolved containment moves
+later relative and exact PWD-expansion tokens. Nested constructs inherit entry
+placement; rejected changes reset to the root; conditional `&&` placement lasts
+only through its chain. A newline qualifies only after a plain word or qualifying
+semicolon; after `&&`, `||`, `|`, `|&`, `&`, `(`, `{`, `if`, `then`, `elif`, `else`,
+`while`, `until`, `do`, `in` or `!` it continues the command and cannot end that
+chain. Whole-call refusals include the named shell-state hazards, functions,
+unbalanced operator parentheses, multiline backquotes, pushd/popd, set,
+eval/source/dot commands (including prefix options), trap and uncertain prefixed
+compounds. The raw call is checked before parsing: any control character except
+newline or tab, or a backslash immediately followed by newline, disables every
+cd. Retained word-start comments or any heredoc operator disable movement, even
+when its body was removed (a conservative refusal beyond item 7(a)); so does PWD text anywhere except the two exact expansions `$PWD` and `${PWD}`.
+Backquotes on cd forbid movement; merged closing operators can end a chain but
+cannot qualify cd boundaries. Deduplication includes placement; other tools'
+path fields and existing scan contexts stay unchanged. The launcher removes
+CDPATH, BASH_ENV and ENV. The covered claim is: a relative read outside the kit
+still turns INVALID after any `cd` the audit's grammar does not accept, and a
+`cd` the grammar accepts moves the placement only as items 1–3, 7 and 8 state.
+**Residual:** accepted cd is assumed to succeed and symlinks are judged at audit
+time. Escapes resting on shell constructs the audit does not parse, including
+shell indirection, interpreter program text, ANSI-C and locale quoting, and
+line-continuation interpretation, remain the text-audit residual
+of item 3 and 0072 item 20(c). The sandbox, 0072 item 20(a), is the enforcement
+wall; the audit is a detector. These rules are a closed list, not a promise to
+interpret arbitrary shell programs. The raw-text guard refuses the reviewed
+split-cd and split-PWD line continuations without interpreting them; quoting
+remains unparsed. The conservative heredoc refusal can still flag honest calls.
+
 Item 23 amends item 22(c-d): text is removed only when unambiguous; otherwise
 it is scanned. A comment hash must start a shell word at quote depth zero.
 Neither a comment nor a heredoc body is removed when the physical line holding
