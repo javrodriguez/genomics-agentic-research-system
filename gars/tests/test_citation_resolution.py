@@ -3,6 +3,7 @@ import ast
 import contextlib
 import hashlib
 import io
+import inspect
 import json
 import os
 from pathlib import Path
@@ -33,6 +34,14 @@ class CitationResolutionTests(unittest.TestCase):
         with contextlib.redirect_stdout(output):
             code = resolver.main([ref], transport=transport)
         return code, output.getvalue().strip()
+
+    def test_marker_pattern_constant(self):
+        source = inspect.getsource(resolver.mentions_doi)
+        lines = [line.strip() for line in source.splitlines()
+                 if line.strip().startswith('pattern = ')]
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(ast.literal_eval(lines[0].split(' = ', 1)[1]),
+                         resolver.MARKER_PATTERN)
 
     def test_ten_recorded_dois(self):
         self.assertEqual(len(RECORDS['real']), 5)
