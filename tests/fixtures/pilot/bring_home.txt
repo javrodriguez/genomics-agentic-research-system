@@ -5,5 +5,5 @@ quantity cpu_hours slurm 1.75
 quantity cpu_hours local 0.20
 quantity cpu_hours slurm 1.75
 human turns: 6; inside spans: 4; outside spans: 2; outside minutes: 1.50; session wall minutes: 47.00; agent active minutes: 45.50; graded 14 of 14 records
-quantity cpu_hours cloud 3.00
+stage rerun: collect OK
 note: a line of any other shape is counted and ignored

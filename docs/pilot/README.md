@@ -24,8 +24,19 @@ python3 scripts/rerun_diff.py --comparison <out>/comparison.json
 python3 scripts/session_turns.py --transcript <session.jsonl> --log pilot1_log.csv --stage 02_02_de
 ```
 
-All three are stdlib-only and run on Python 3.6.8. A refusal exits 2 with `refused: <reason>`
-on stderr and writes nothing.
+All three are stdlib-only; written for Python 3.6.8 (syntax checked, not executed on 3.6.8). A
+refusal exits 2 with `refused: <reason>` on stderr and writes nothing; input that would crash a
+parser (a NUL byte, runaway JSON nesting) is refused with a fixed code too, never a traceback. A
+refused `unit_economics.py` run leaves any sheet already in `--out` untouched, so a stale sheet
+can outlive a refused regeneration: compare its `input … sha256` lines with the inputs before
+using it.
+
+The sheet's cost line names every part it does not price, by backend:
+`cost total: $<x> + unmetered compute (<backends with a bench row>) + unmeasured compute
+(<backends without one>) + unmetered agent + unpriced liability` (either compute part is omitted
+when it names no backend). `time saved total` covers the stages that have a baseline row only;
+the human hours of the others are printed on their own line,
+`human hours without a baseline: <h> (<stages>)`, and never subtracted (ruling L3).
 
 ## Interfaces fixed for step B
 
@@ -36,7 +47,8 @@ These are defined here once; `tests/test_unit_economics.py`, `tests/test_rerun_d
 
 A bring-home text file. `unit_economics.py` reads **only** lines of exactly these three shapes
 and ignores every other line, printing `quantities: graded <k> of <n> lines` (k matched, n
-total):
+total) — except that a line starting `quantity ` which matches neither quantity shape (an extra
+space, a capital, a sign, an unknown backend) is refused as `quantity_malformed` (ruling L4):
 
 - `quantity samples_in_design <non-negative integer>`
 - `quantity cpu_hours <backend> <non-negative decimal>`, backend one of `local`, `homelab`, `slurm`
@@ -49,7 +61,10 @@ For example (one of each shape):
     quantity cpu_hours slurm 1.75
     human turns: 6; inside spans: 4; outside spans: 2; outside minutes: 1.50; session wall minutes: 47.00; agent active minutes: 45.50; graded 14 of 14 records
 
-A quantity line repeated with a different value is refused (`quantity_conflict`). A missing
+Values are stored and printed in canonical form (no leading zeros, no trailing fractional
+zeros: `01.750` is `1.75`, `0.20` is `0.2`), and a repeated quantity is compared by canonical
+value: the same value in another spelling is accepted, a different value is refused
+(`quantity_conflict`). A missing
 `samples_in_design` makes every per-sample figure `uncomputable`, never zero; a missing CPU-hour
 line prints `unmeasured`; a missing session_turns line prints the cross-check as `unmeasured`.
 A session line whose inside and outside counts do not sum to its turns is refused.
@@ -78,6 +93,8 @@ original_sha256, replay_sha256}`, `path` relative to its stage folder.
 - The original stage folder is the parent of the parent of `original`.
 - Run n's re-run stage folder is `<the folder holding comparison.json>/run-<n>/02_bioinformatics/<assay>/<substage>/`,
   `<assay>/<substage>` being the original stage folder's last two path parts.
+- An empty `runs` list (`comparison_runs_empty`) and a run number listed twice
+  (`comparison_run_duplicate`) are refused (ruling L5).
 - Per run, the one artifact whose path ends in `de_results.csv` is compared (none or more than
   one: refused). Each table must hash to `original_sha256` / `replay_sha256` (else refused).
 - One block per run, in `runs` order: `rows original/re-run`, `genes matched`, `genes only in
@@ -96,14 +113,20 @@ of `gars/_system/wrappers/rnaseq-de/rnaseq_de.py`). `NA`, empty or NaN `padj` is
 `na_padj`, never dropped silently. The table has no Wald `stat` column, so D4's `spearman stat`
 is computed as Spearman's rank correlation of `log2FoldChange` over the matched genes and is
 printed as `spearman log2FoldChange`. `max_rel_delta padj` is max |a−b| / max(|a|,|b|) over
-matched genes with both values present (0 when both are 0). Genes are matched by `gene`; genes
-in only one table are counted, never printed.
+matched genes with both values present (0 when both are 0). Crossings count only genes with
+both `padj` values present: a gene whose `padj` moves between `NA` and a value below 0.05 is not
+a crossing and shows only as a change in `na_padj`. Genes are matched by `gene`; genes in only
+one table are counted, never printed.
 
 ### The session transcript (`--transcript`)
 
 A Claude Code session JSONL, one record per line. A record classifies as a human turn
-(`type == "user"`, not `isMeta`, content not `tool_result`), a tool result or meta record
-(non-human), or an assistant record; each needs an ISO-8601 `timestamp` with `Z` or a numeric
+(`type == "user"`, not `isMeta`, `isCompactSummary` or `isSidechain`, content not
+`tool_result`), a tool result, meta or harness record (non-human), or an assistant record. A
+`user` record with `isCompactSummary` or `isSidechain` true is written by Claude Code itself
+(ruling L2): it is graded but never counts as a human turn, and never starts an outside turn's
+attention interval, so it cannot change `outside minutes`. An extra key on an otherwise known
+record does not change its class; each needs an ISO-8601 `timestamp` with `Z` or a numeric
 offset. Any other record — another type, a missing or unparseable timestamp, a blank line — is
 unclassifiable and exits 2. `outside minutes` follows ruling L1 (decision 0140) and is a lower
 bound on unlogged human attention; it never changes a logged minute.

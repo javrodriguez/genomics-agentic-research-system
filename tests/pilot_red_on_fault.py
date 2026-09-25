@@ -49,6 +49,25 @@ FAULTS = (
     ('a non-deterministic ordering', 'scripts/unit_economics.py',
      'stages = [s for s in vocab["stage"]\n              if any(r["stage"] == s for r in rows) or s in base]',
      'stages = list({r["stage"] for r in rows} | set(base))', 'test_unit_economics'),
+    # Review round 2 (0140's addendum): one fault per new guard.
+    ('a malformed quantity line ignored', 'scripts/unit_economics.py',
+     'raise Refused("quantity_malformed")', 'pass', 'test_unit_economics'),
+    ('an unmeasured backend called unmetered', 'scripts/unit_economics.py',
+     '(("unmetered", metered), ("unmeasured", unmeasured))',
+     '(("unmetered", metered + unmeasured),)', 'test_unit_economics'),
+    ('uncovered stages subtracted from time saved', 'scripts/unit_economics.py',
+     'two(covered_minutes / 60), two(base_total - covered_minutes / 60)',
+     'two(human_minutes / 60), two(base_total - human_minutes / 60)', 'test_unit_economics'),
+    ('a harness record counted as a human turn', 'scripts/session_turns.py',
+     'return "harness"', 'return "human"', 'test_session_turns'),
+    ('a harness record starting an attention interval', 'scripts/session_turns.py',
+     'earlier = [x for x in predecessors if x < t]', 'earlier = [x for x in times if x < t]',
+     'test_session_turns'),
+    ('a repeated run compared twice', 'scripts/rerun_diff.py',
+     'raise Refused("comparison_run_duplicate")', 'pass', 'test_rerun_diff'),
+    ('a parser crash left as a traceback', 'scripts/rerun_diff.py',
+     'except csv.Error:\n        raise Refused("table_malformed")',
+     'except KeyError:\n        raise Refused("table_malformed")', 'test_rerun_diff'),
 )
 
 

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Aggregate diff of a re-run's DE table against the original's -- "re-run diff explained".
 
-Row 13 step A (decision 0140, D4). Stdlib only; runs on Python 3.6.8.
+Row 13 step A (decision 0140, D4). Stdlib-only; written for Python 3.6.8 (syntax checked, not
+executed on 3.6.8).
 
     python3 scripts/rerun_diff.py --comparison <out>/comparison.json
 
@@ -17,8 +18,10 @@ whose path ends in `de_results.csv` is compared: both tables must hash to the ar
 Prints one block of aggregates per run, in `runs` order. It never prints a gene identifier, a
 sample name, a path or any `reason` text, and it changes no tolerance. The DE table has no Wald
 `stat` column, so the rank correlation is Spearman's over `log2FoldChange` and is printed under
-that name. `NA` or empty `padj` is counted, never dropped silently. Refusals exit 2 with a fixed
-reason code on stderr.
+that name. `NA` or empty `padj` is counted, never dropped silently; a gene whose `padj` moves
+between `NA` and a value is not a crossing and shows only in `na_padj`. An empty `runs` list and a
+repeated run number are refused (ruling L5). Refusals exit 2 with a fixed reason code on stderr;
+input that crashes a parser (a NUL byte, runaway nesting) is a fixed code too, never a traceback.
 """
 
 import argparse
@@ -58,7 +61,7 @@ def number(text):
 def read_table(path, expected_sha):
     try:
         data = Path(path).read_bytes()
-    except OSError:
+    except (OSError, ValueError):
         raise Refused("table_unreadable")
     if hashlib.sha256(data).hexdigest() != expected_sha:
         raise Refused("table_sha256_mismatch")
@@ -67,11 +70,16 @@ def read_table(path, expected_sha):
     except UnicodeDecodeError:
         raise Refused("table_unreadable")
     reader = csv.DictReader(io.StringIO(text))
-    if any(c not in (reader.fieldnames or []) for c in DE_COLUMNS):
+    try:
+        rows = list(reader)
+        fieldnames = reader.fieldnames
+    except csv.Error:
+        raise Refused("table_malformed")
+    if any(c not in (fieldnames or []) for c in DE_COLUMNS):
         raise Refused("table_columns")
     table = {}
     seen = 0
-    for row in reader:
+    for row in rows:
         seen += 1
         if None in row or any(v is None for v in row.values()):
             raise Refused("table_row_shape")
@@ -163,10 +171,12 @@ def diff(comparison_path):
     comparison_path = Path(comparison_path)
     try:
         data = json.loads(comparison_path.read_text())
-    except (OSError, UnicodeDecodeError, ValueError):
+    except (OSError, UnicodeDecodeError, ValueError, RecursionError):
         raise Refused("comparison_unreadable")
     if not isinstance(data, dict) or not isinstance(data.get("runs"), list):
         raise Refused("comparison_runs")
+    if not data["runs"]:
+        raise Refused("comparison_runs_empty")
     original = data.get("original")
     if not isinstance(original, str) or not Path(original).is_absolute():
         raise Refused("comparison_original")
@@ -175,12 +185,16 @@ def diff(comparison_path):
         raise Refused("comparison_original")
     assay, substage = stage.parts[-2], stage.parts[-1]
     blocks = []
+    numbers = set()
     for run in data["runs"]:
         if not isinstance(run, dict) or not isinstance(run.get("artifacts"), list):
             raise Refused("comparison_run")
         n = run.get("run")
         if isinstance(n, bool) or not isinstance(n, int) or n < 0:
             raise Refused("comparison_run_number")
+        if n in numbers:
+            raise Refused("comparison_run_duplicate")
+        numbers.add(n)
         chosen = [x for x in run["artifacts"]
                   if isinstance(x, dict) and isinstance(x.get("path"), str)
                   and x["path"].endswith(DE_SUFFIX)]

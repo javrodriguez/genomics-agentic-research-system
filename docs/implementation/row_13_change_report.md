@@ -156,3 +156,123 @@ None.
 - **Not run here:** the whole suite (see above); Python 3.6.8 execution; any cluster run.
 - **Review:** independent review has not happened; the reviewer is the same model family (see
   the deviation above).
+
+## Review round 2 fixes
+
+Dated 2026-09-24. This round answers `docs/reviews/row_13_review.md` (the round-1 review of
+`76ebf7f`, verdict APPROVE WITH CHANGES). It builds on `76ebf7f`; the sections above are
+unchanged. Rulings L2–L5 are **the lane's**, made on 24 Sep 2026 under the owner's standing
+delegation of 23 Sep 2026, and are recorded as the lane's in 0140's dated addendum. None of them
+is the owner's ruling. Fixture values are still synthetic, with `hourly_value_usd = 1`.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| **M1** ordering fault caught by chance | `tests/test_unit_economics.py`, `tests/pilot_red_on_fault.py` | `test_regenerated_byte_identical` now pins seeds 0 and 1. It first asserts that they iterate `{'02_02_de', 'rerun'}` in opposite orders (`['02_02_de', 'rerun']` vs `['rerun', '02_02_de']`), then asserts that the stage lines follow the vocabulary's order | green; **yes**: `a non-deterministic ordering: RED` on 5 of 5 driver runs, `test_regenerated_byte_identical` failing in each (quoted below) |
+| **m1** near-miss `quantity` lines ignored (ruling L4) | `scripts/unit_economics.py`, `tests/fixtures/pilot/bring_home.txt`, `docs/pilot/README.md` | new `test_quantity_lines_canonical_or_refused`: seven malformed shapes, including every one of the review's, give `quantity_malformed`; `006`/`1.750`/`01.75`/`0.2` in either line order give the same sheet; `1.76` gives `quantity_conflict cpu_hours slurm` | green; **yes**: planted `a malformed quantity line ignored` is RED. The review's `q2.txt` command now prints `refused: quantity_malformed`, exit 2, and writes no output folder |
+| **m2** parser crashes give a traceback with host paths | all three scripts | `test_refusals` (a NUL in a log row gives `log_malformed line 3`; a NUL in the bench gives `bench_malformed`; `[`×100000 inputs give `inputs_not_json`); `test_malformed_tables_are_refused` (a NUL row gives `table_malformed`); `test_refusals_never_name_what_they_refuse` (a NUL in `original` gives `table_unreadable`; `[`×100000 as `comparison.json` gives `comparison_unreadable`); `test_unclassifiable_records_exit_2` (`[`×100000 gives `unclassifiable record line 2`; a NUL log row gives `log_malformed line 3`). The sheet's `assert_refused` now requires stderr to be exactly `refused: <reason>\n` | green; **yes**: planted `a parser crash left as a traceback` is RED |
+| **m3** cost line misnames unmeasured compute | `scripts/unit_economics.py`, `docs/pilot/README.md` | `test_no_slurm_row_is_unmeasured` checks the cost line with the slurm row removed (`unmetered compute (local) + unmeasured compute (homelab, slurm)`) and with a header-only bench (`unmeasured compute (local, homelab, slurm)`, `compute none measured`); `test_fixture_sheet` checks the fixture's line (`unmetered compute (local, slurm) + unmeasured compute (homelab)`) | green; **yes**: planted `an unmeasured backend called unmetered` is RED |
+| **m4** harness `user` records counted as human (ruling L2, which replaces the review's exit-2 suggestion) | `scripts/session_turns.py`, `docs/pilot/README.md` | new `test_harness_records_are_graded_not_human`: an `isCompactSummary` record and an `isSidechain` record, each with real bookkeeping keys, are placed just before the fixture's outside turn. The result is the fixture line unchanged except `graded 16 of 16`. An extra unknown key leaves a human turn human, and a non-boolean flag is unclassifiable. The review's compaction record appended to the fixture now prints `human turns: 6; … outside minutes: 1.50; … graded 15 of 15 records` | green; **yes**: planted `a harness record counted as a human turn` and `a harness record starting an attention interval` are both RED |
+| **m5** "runs on Python 3.6.8" | three script docstrings, `docs/pilot/README.md` | `grep -n "run on Python\|runs on Python"` over scripts, pilot docs and tests: no hits | fixed; wording only (no fault to plant) |
+| **m6** time-saved total not like for like (ruling L3) | `scripts/unit_economics.py`, `docs/pilot/README.md` | `test_fixture_sheet`: `time saved total: baseline 2.50 h - human 0.35 h = 2.15 h` and `human hours without a baseline: 0.15 (rerun)` | green; **yes**: planted `uncovered stages subtracted from time saved` is RED |
+| **N1** "(the owner's record)" | 0140 addendum | — | answered in the addendum; 0140's earlier bytes cannot change |
+| **N2** empty `runs` and repeated run (ruling L5) | `scripts/rerun_diff.py`, `docs/pilot/README.md` | `test_refusals_never_name_what_they_refuse`: `comparison_runs_empty`, `comparison_run_duplicate` | green; **yes**: planted `a repeated run compared twice` is RED |
+| **N3** `NA`↔significant is not a crossing | `docs/pilot/README.md`, `scripts/rerun_diff.py` docstring | — | stated, not changed: adding a line would change D4's block shape, which the lane fixed |
+| **N4** stale sheet survives a refused run | `docs/pilot/README.md` | — | documented: the sheet's `input … sha256` lines tell a stale sheet from a fresh one; refusing a non-empty `--out` would change D3's CLI contract |
+
+The fixture's bring-home line `quantity cpu_hours cloud 3.00` was there to be ignored. Under L4
+it is refused, so it is replaced by `stage rerun: collect OK`; the count stays `graded 5 of 9
+lines`. Canonical form prints the fixture's local CPU hours as `0.2` (previously `0.20`).
+
+A harness record still counts toward `session wall minutes`, which spans every record. L2 fixes
+only the human-turn count and `outside minutes`. With the review's compaction record at 10:55
+appended, wall minutes go from 47.00 to 56.00.
+
+### Red-on-fault, five consecutive runs
+
+`python3 tests/pilot_red_on_fault.py` now plants 15 faults: the original eight plus one for each
+new guard. It was run five times in a row, in the foreground, each run into its own file in the
+scratch folder. In every run, every line except line 11 (the ordering fault) is byte-identical
+to run 1's. Run 1, verbatim:
+
+```text
+baseline test_unit_economics: OK
+baseline test_rerun_diff: OK
+baseline test_session_turns: OK
+a hand-typed cost accepted: RED; FAILED (failures=1); test_refusals
+verification counted twice: RED; FAILED (failures=4); test_fixture_sheet, test_no_slurm_row_is_unmeasured, test_regenerated_byte_identical, test_verification_partition
+margin computed with no price: RED; FAILED (failures=2); test_fixture_sheet, test_margin_uncomputable_and_no_price_anywhere
+a gene id printed by rerun_diff: RED; FAILED (failures=2); test_fixture_aggregates_only, test_graded_equals_seen_and_one_side_genes_counted
+a tool_result record counted as a human turn: RED; FAILED (failures=3); test_fixture_counts_only, test_harness_records_are_graded_not_human, test_tool_result_and_meta_are_not_human
+a discrepancy auto-corrected: RED; FAILED (failures=1); test_cross_check_flags_and_never_corrects
+a record silently skipped: RED; FAILED (failures=1); test_unclassifiable_records_exit_2
+a non-deterministic ordering: RED; FAILED (failures=2); test_regenerated_byte_identical, test_row_and_input_order_do_not_change_the_sheet
+a malformed quantity line ignored: RED; FAILED (failures=1); test_quantity_lines_canonical_or_refused
+an unmeasured backend called unmetered: RED; FAILED (failures=4); test_fixture_sheet, test_no_slurm_row_is_unmeasured, test_regenerated_byte_identical, test_verification_partition
+uncovered stages subtracted from time saved: RED; FAILED (failures=1); test_fixture_sheet
+a harness record counted as a human turn: RED; FAILED (failures=1); test_harness_records_are_graded_not_human
+a harness record starting an attention interval: RED; FAILED (failures=1); test_harness_records_are_graded_not_human
+a repeated run compared twice: RED; FAILED (failures=1); test_refusals_never_name_what_they_refuse
+a parser crash left as a traceback: RED; FAILED (failures=1); test_malformed_tables_are_refused
+restored test_unit_economics: OK
+restored test_rerun_diff: OK
+restored test_session_turns: OK
+red-on-fault: 15/15 RED
+```
+
+Line 11 and the last line of each run, verbatim (each run exited 0):
+
+```text
+run 1: a non-deterministic ordering: RED; FAILED (failures=2); test_regenerated_byte_identical, test_row_and_input_order_do_not_change_the_sheet | red-on-fault: 15/15 RED
+run 2: a non-deterministic ordering: RED; FAILED (failures=4); test_cross_check_flags_and_never_corrects, test_quantity_lines_canonical_or_refused, test_regenerated_byte_identical, test_row_and_input_order_do_not_change_the_sheet | red-on-fault: 15/15 RED
+run 3: a non-deterministic ordering: RED; FAILED (failures=2); test_cross_check_flags_and_never_corrects, test_regenerated_byte_identical | red-on-fault: 15/15 RED
+run 4: a non-deterministic ordering: RED; FAILED (failures=4); test_cross_check_flags_and_never_corrects, test_quantity_lines_canonical_or_refused, test_regenerated_byte_identical, test_row_and_input_order_do_not_change_the_sheet | red-on-fault: 15/15 RED
+run 5: a non-deterministic ordering: RED; FAILED (failures=2); test_cross_check_flags_and_never_corrects, test_regenerated_byte_identical | red-on-fault: 15/15 RED
+```
+
+The set of unseeded tests that also fail varies from run to run; that is the chance the review
+measured. The pinned-seed `test_regenerated_byte_identical` fails in all five runs, and it is
+the guard that makes the fault red every time. The earlier `8/8 RED` block above is round 1's
+output and is superseded by this one.
+
+### Commands and summary lines, round 2 (verbatim)
+
+All commands ran from the repo root in the foreground, with `TMPDIR`, `TEMP` and `TMP` set to
+the scratch folder and `GARS_TEST_NO_CONTAINER=1` set for the checks.
+
+| Command | Summary line |
+|---|---|
+| `python3 tests/test_unit_economics.py` | `Ran 17 tests` / `OK`; `EXIT unit economics (fixture): regenerated byte-identical` |
+| `python3 tests/test_rerun_diff.py` | `Ran 7 tests` / `OK`; `EXIT rerun diff (fixture): aggregates only` |
+| `python3 tests/test_session_turns.py` | `Ran 7 tests` / `OK`; `EXIT session turns (fixture): counts only` |
+| `python3 tests/pilot_red_on_fault.py` (×5) | `red-on-fault: 15/15 RED`, exit 0, each time |
+| `python3 tests/check_counts.py` | `clean — every current claim matches the suite` (564, loader count) |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/test_decision_links_resolve.py` | `Ran 3 tests` / `OK` |
+| `ast.parse(..., feature_version=(3, 6))` on the three scripts | silent, exit 0 |
+| `bash docs/decisions/build_index.sh` | regenerated; no change (0140's frontmatter is unchanged) |
+| `git diff --check` | clean |
+
+**Not run by this producer: the whole suite (`tests/run_tests.py`).** The lane's brief for this
+round says the lane runs it. The count moves from 562 to 564 (two new test methods), and
+`README.md` and `DEVELOPMENT.md` say so.
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps
+
+- **NOT met: row 13's exit.** The pilot, measured human-touch minutes, a real re-run diff
+  explained, the real sheet, the report, R-192 and any price are all still open. Every number
+  here is a synthetic fixture.
+- **NOT met: step B** (the writer, the doors, `bring_home`).
+- **Unverified bindings:** the bench CSV against 8B's code, and `comparison.json` against row 6's
+  `rerun_check.py`.
+- **Unverified on a real transcript:** L2 covers the two harness kinds the review found. A real
+  transcript with another `type` still exits 2 until a recorded ruling widens the set.
+- **Not run here:** the whole suite (the lane runs it); execution on Python 3.6.8; any cluster
+  run.
+- **Stated, not changed:** N3 (an `NA`↔significant move is not a crossing) and N4 (a stale sheet
+  can outlive a refused run), both documented in `docs/pilot/README.md`.
+- **Lower bound only:** `outside minutes` under L1 still misses a forgotten span that has no
+  human turn in it.

@@ -34,6 +34,14 @@ def user(ts, content, meta=None):
     return record
 
 
+def harness(ts, key):
+    """A user record Claude Code writes itself (ruling L2), with real bookkeeping keys."""
+    record = user(ts, 'This session is being continued from a previous conversation.')
+    record.update({key: True, 'uuid': 'fixture-uuid', 'parentUuid': None, 'cwd': 'fixture-cwd',
+                   'userType': 'external', 'version': '0.0.0', 'gitBranch': 'fixture'})
+    return record
+
+
 def assistant(ts):
     return {'type': 'assistant', 'timestamp': ts,
             'message': {'role': 'assistant', 'content': [{'type': 'text', 'text': 'ok'}]}}
@@ -106,6 +114,30 @@ class SessionTurnsTests(unittest.TestCase):
                                        'outside minutes: 0.00; session wall minutes: 2.00;'))
         print('red-on-fault guard: tool_result and isMeta user records counted non-human')
 
+    def test_harness_records_are_graded_not_human(self):
+        # Ruling L2: isCompactSummary and isSidechain user records are non-human; graded, never a
+        # human turn, never the predecessor of an outside turn. The fixture's outside turn at
+        # 10:12:30 has its predecessor at 10:10:30; harness records at 10:12:00 and 10:12:15
+        # would shorten its interval if they counted.
+        lines = (FIXTURES / 'session.jsonl').read_text().splitlines()
+        extra = [json.dumps(harness('2026-01-15T10:12:00Z', 'isCompactSummary')),
+                 json.dumps(harness('2026-01-15T10:12:15Z', 'isSidechain'))]
+        self.assertEqual([st.classify(json.loads(l)) for l in extra], ['harness', 'harness'])
+        result = self.run_turns(self.write('h.jsonl', lines[:8] + extra + lines[8:]))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, EXPECTED.replace('graded 14 of 14', 'graded 16 of 16')
+                         + '\n')
+        # An unknown bookkeeping key on a human turn leaves it a human turn.
+        extra_key = json.loads(lines[0])
+        extra_key.update({'uuid': 'u', 'cwd': 'c', 'isSidechain': False, 'somethingNew': 1})
+        self.assertEqual(st.classify(extra_key), 'human')
+        # The flags must be booleans, like isMeta.
+        for key in ('isCompactSummary', 'isSidechain'):
+            bad = harness('2026-01-15T10:12:00Z', key)
+            bad[key] = 'yes'
+            self.assertIsNone(st.classify(bad))
+        print('red-on-fault guard: isCompactSummary and isSidechain records graded, never human')
+
     def test_outside_minutes_ruling_l1(self):
         span = '2026-01-15T10:10:00Z,02_02_de,human,check,other,5.00'  # 10:10-10:15
         other_stage = '2026-01-15T10:00:00Z,rerun,human,check,other,30.00'
@@ -150,8 +182,14 @@ class SessionTurnsTests(unittest.TestCase):
                     {'type': 'user', 'message': {'role': 'user', 'content': 'no timestamp'}},
                     user('2026-01-15T10:01:00Z', 'meta not a bool', meta='yes'),
                     user('2026-01-15T10:01:00Z', []),
-                    mixed, 'not json', '', '[1, 2]'):
+                    mixed, 'not json', '', '[1, 2]',
+                    # a parser crash is unclassifiable, never a traceback naming a host path
+                    '[' * 100000):
             self.assert_unclassifiable([good, bad, good], 2)
+        nul_log = self.root / 'nul.csv'
+        nul_log.write_text(LOG_HEAD + '2026-01-15T10:00:00Z,02_02_de,human,check,other,5.00\x00\n')
+        result = self.run_turns(log=nul_log)
+        self.assertEqual((result.returncode, result.stderr), (2, 'refused: log_malformed line 3\n'))
         print('red-on-fault guard: every unclassifiable record exits 2; none skipped')
 
     def test_log_is_validated(self):

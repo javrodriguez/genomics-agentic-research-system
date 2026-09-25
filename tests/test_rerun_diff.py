@@ -175,9 +175,25 @@ class RerunDiffTests(unittest.TestCase):
         self.data['runs'][1]['run'] = 'two'
         self.assert_refused('comparison_run_number')
         self.data['runs'][1]['run'] = 2
+        # Ruling L5: neither an empty list nor a run compared twice is a re-run diff.
+        self.data['runs'][1]['run'] = 1
+        self.assert_refused('comparison_run_duplicate')
+        self.data['runs'][1]['run'] = 2
+        runs, self.data['runs'] = self.data['runs'], []
+        self.assert_refused('comparison_runs_empty')
+        self.data['runs'] = runs
+        original = self.data['original']
+        self.data['original'] = original.replace('02_rnaseq-de', '02_rnaseq\x00-de')
+        self.assert_refused('table_unreadable')
         self.data['original'] = 'relative/manifest.json'
         self.assert_refused('comparison_original')
-        print('red-on-fault: sha mismatch, unsafe path, zero or two DE artifacts -> REFUSED')
+        self.data['original'] = original
+        self.comparison.write_text('[' * 100000)
+        result = self.run_diff()
+        self.assertEqual((result.returncode, result.stderr, result.stdout),
+                         (2, 'refused: comparison_unreadable\n', ''))
+        print('red-on-fault: sha mismatch, unsafe path, zero or two DE artifacts, no runs, a '
+              'repeated run -> REFUSED')
 
     def test_malformed_tables_are_refused(self):
         path = self.replay(2) / TABLE
@@ -187,7 +203,9 @@ class RerunDiffTests(unittest.TestCase):
                 ('table_empty_gene', good + ',1,1,1,1\n'),
                 ('table_value', good.replace('0.577216', 'high')),
                 ('table_columns', good.replace('padj', 'qvalue')),
-                ('table_row_shape', good + 'GENEFIX0100,1,1\n')):
+                ('table_row_shape', good + 'GENEFIX0100,1,1\n'),
+                # a parser crash is a named refusal, never a traceback naming a host path
+                ('table_malformed', good + 'GENEFIX0100,1,1,1,\x00\n')):
             path.write_text(text)
             self.de_artifact(1)['replay_sha256'] = sha(path)
             self.assert_refused(reason)

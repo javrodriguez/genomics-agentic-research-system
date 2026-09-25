@@ -168,3 +168,54 @@ above. Not approved or merged by its producer. Row 13's exit is not met.
 ## Date
 
 2026-09-24
+
+## Addendum — review round 2, 2026-09-24
+
+Every ruling in this addendum is **the lane's**, made on 24 Sep 2026 under the owner's standing
+delegation of 23 Sep 2026; none is the owner's ruling. All earlier bytes of this record are
+unchanged. The fixes and their evidence are in
+[the change report](../implementation/row_13_change_report.md), section "Review round 2 fixes".
+
+**Ruling L2 (the lane's; review m4).** A `user` record carrying `isCompactSummary: true` or
+`isSidechain: true` is written by Claude Code itself, not typed by a human. Both are classified
+non-human (like `isMeta`), are graded (they count in `graded <n> of <n> records`), never change
+the human-turn count, and never start an outside turn's attention interval under L1, so they
+cannot change `outside minutes`. The flags, like `isMeta`, must be booleans. Any other unknown
+`type` still exits 2; an unknown extra key on an otherwise known record does not make it
+unclassifiable. This replaces the review's suggested exit-2 treatment of these two kinds.
+
+**Ruling L3 (the lane's; review m6).** D3's `time saved total` is computed over the stages that
+have a baseline row only. The human hours of stages without one are printed on their own line,
+`human hours without a baseline: <h> (<stages>)`, and never subtracted.
+
+**Ruling L4 (the lane's; review m1).** D3's quantities reader refuses any line starting
+`quantity ` that does not match a fixed shape (`quantity_malformed`) instead of ignoring it.
+Values are stored and printed in canonical form, and a repeat is compared by canonical value.
+Other lines are still counted and ignored.
+
+**Ruling L5 (the lane's; review N2).** D4 refuses an empty `runs` list
+(`comparison_runs_empty`) and a repeated run number (`comparison_run_duplicate`).
+
+**D3's cost line, amended (review m3).** The cost line names the unmeasured compute separately
+from the unmetered compute, by backend:
+`cost: $<x> + unmetered compute (<backends>) + unmeasured compute (<backends>) + unmetered
+agent + unpriced liability`. A compute part that names no backend is left out.
+
+**Parser crashes are refusals (review m2).** A NUL byte, an oversized CSV field, or JSON nested
+past the parser's depth in any input exits 2 with a fixed code (`log_malformed line <n>`,
+`baseline_malformed`, `bench_malformed`, `inputs_not_json`, `table_malformed`,
+`table_unreadable`, `comparison_unreadable`, or `unclassifiable record line <n>`). It never
+produces a traceback, which would print host paths.
+
+**The determinism guard is exact (review M1).** `test_regenerated_byte_identical` pins hash seeds
+0 and 1. It first asserts that these seeds iterate the fixture's two stages in opposite orders,
+then asserts that the stage lines follow the vocabulary's order. The ordering fault is now red
+on every run.
+
+**Wording (review m5, N1).** The scripts are written for Python 3.6.8 and are syntax-checked
+under 3.6. They have not been executed on 3.6.8. In D7, "(the owner's record)" for 0142 and 0143
+means a record for the owner to write. It is not a decision the owner made.
+
+**Stated, not changed (review N3, N4).** A gene whose `padj` moves between `NA` and a value is
+not counted as a crossing; it shows only in `na_padj`. A refused sheet run leaves any earlier
+sheet in `--out` in place. Both are stated in `docs/pilot/README.md`.

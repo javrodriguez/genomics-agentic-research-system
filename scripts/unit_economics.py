@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Unit-economics sheet for pilot 1, generated from its inputs with no hand-entered cost cell.
 
-Row 13 step A (decision 0140, D3; R-193, R-190, R-153, §11.3, §16.4). Stdlib only; runs on
-Python 3.6.8.
+Row 13 step A (decision 0140, D3; R-193, R-190, R-153, §11.3, §16.4). Stdlib-only; written for
+Python 3.6.8 (syntax checked, not executed on 3.6.8).
 
     python3 scripts/unit_economics.py --log pilot1_log.csv --baseline pilot1_baseline.csv \
         --bench backend_bench.csv --inputs owner_inputs.json --quantities bring_home.txt \
@@ -17,7 +17,9 @@ What the sheet refuses (exit 2, `refused: <reason>` on stderr, nothing written):
   number is `liability_typed`), a price that is not null;
 - a bench row whose derived fields do not recompute: its cost must be `unmetered` under an
   `owned_hardware` or `institutional_allocation` basis; a number there is a hand-typed cost;
-- a quantity repeated with a different value.
+- a line starting `quantity ` that is not one of the fixed shapes (`quantity_malformed`), and a
+  quantity repeated with a different canonical value (`quantity_conflict`);
+- input that crashes a parser (a NUL byte, runaway nesting): a fixed code, never a traceback.
 
 What it never does: print a free-text field (the owner's strings, a path), compute a margin
 without a price, or correct the session cross-check -- a human turn outside every logged span
@@ -48,8 +50,9 @@ INPUT_KEYS = ("hourly_value_usd", "hourly_value_source", "project_definition", "
               "price_usd")
 NUMBER = re.compile(r"^[0-9]+(\.[0-9]+)?$")
 
-# The three bring-home line shapes this sheet grades (docs/pilot/README.md); every other line
-# is counted and ignored.
+# The three bring-home line shapes this sheet grades (docs/pilot/README.md); a line starting
+# `quantity ` must match one of the first two (ruling L4), every other line is counted and ignored.
+QUANTITY_PREFIX = "quantity "
 QUANTITY_SAMPLES = re.compile(r"^quantity samples_in_design ([0-9]+)$")
 QUANTITY_CPU = re.compile(r"^quantity cpu_hours (local|homelab|slurm) ([0-9]+(?:\.[0-9]+)?)$")
 SESSION_LINE = re.compile(
@@ -84,8 +87,23 @@ def ratio(numerator, denominator):
 def read_text(path, code):
     try:
         return Path(path).read_text()
-    except (OSError, UnicodeDecodeError):
+    except (OSError, UnicodeDecodeError, ValueError):
         raise Refused(code)
+
+
+def csv_rows(text, code):
+    """Every row of a CSV text; a parser error (a NUL byte, an oversized field) is `code`."""
+    try:
+        return list(csv.reader(io.StringIO(text)))
+    except csv.Error:
+        raise Refused(code)
+
+
+def canonical_decimal(text):
+    """A non-negative decimal's canonical text: no leading zeros, no trailing fractional zeros."""
+    whole, _, fraction = text.partition(".")
+    whole, fraction = whole.lstrip("0") or "0", fraction.rstrip("0")
+    return whole + "." + fraction if fraction else whole
 
 
 # ---------------------------------------------------------------------------------------------
@@ -99,12 +117,12 @@ def read_log(path, vocab=None):
         raise Refused("log_header_nonce")
     if len(lines) < 2:
         raise Refused("log_columns")
-    header = next(csv.reader([lines[1]]))
+    header = (csv_rows(lines[1], "log_columns") or [[]])[0]
     if header != vocab["columns"]:
         raise Refused("log_columns")
     rows = []
     for number, line in enumerate(lines[2:], start=3):
-        fields = next(csv.reader([line]), [])
+        fields = (csv_rows(line, "log_malformed line %d" % number) or [[]])[0]
         if len(fields) != len(header):
             raise Refused("log_row_shape line %d" % number)
         row = dict(zip(header, fields))
@@ -124,8 +142,7 @@ def read_log(path, vocab=None):
 # The other inputs.
 
 def read_baseline(path, vocab):
-    text = read_text(path, "baseline_unreadable")
-    reader = csv.reader(io.StringIO(text))
+    reader = iter(csv_rows(read_text(path, "baseline_unreadable"), "baseline_malformed"))
     header = next(reader, None)
     if header != vocab["baseline_columns"]:
         raise Refused("baseline_columns")
@@ -160,7 +177,7 @@ def read_inputs(path):
         data = json.loads(read_text(path, "inputs_unreadable"), parse_float=Decimal,
                           parse_int=Decimal, parse_constant=_no_constant,
                           object_pairs_hook=_no_duplicate)
-    except ValueError:
+    except (ValueError, RecursionError):
         raise Refused("inputs_not_json")
     if not isinstance(data, dict):
         raise Refused("inputs_not_object")
@@ -187,14 +204,17 @@ def read_inputs(path):
 
 def read_bench(path):
     """Row 8B's backend_bench.csv, read by header name only (the lane's binding to 8B's plan)."""
-    reader = csv.DictReader(io.StringIO(read_text(path, "bench_unreadable")))
-    missing = [c for c in BENCH_COLUMNS if c not in (reader.fieldnames or [])]
-    if missing:
+    rows = csv_rows(read_text(path, "bench_unreadable"), "bench_malformed")
+    header = rows[0] if rows else []
+    if any(c not in header for c in BENCH_COLUMNS):
         raise Refused("bench_missing_column")
     backends = {}
-    for number, row in enumerate(reader, start=2):
-        if None in row or any(v is None for v in row.values()):
+    for number, fields in enumerate(rows[1:], start=2):
+        if not fields:
+            continue  # csv.DictReader's rule: a blank line is no row
+        if len(fields) != len(header):
             raise Refused("bench_row_shape line %d" % number)
+        row = dict(zip(header, fields))
         if row["backend"] not in BACKENDS:
             raise Refused("bench_backend line %d" % number)
         if row["status"] != "COMPLETED":
@@ -211,7 +231,10 @@ def read_bench(path):
 
 
 def read_quantities(path):
-    """The fixed-format lines of a bring-home file; returns (quantities, graded, total)."""
+    """The fixed-format lines of a bring-home file; returns (quantities, graded, total).
+
+    Values are kept in canonical form (an int; a canonical decimal text), so a repeat is compared
+    by value, not spelling, and the sheet's text does not depend on line order (ruling L4)."""
     lines = read_text(path, "quantities_unreadable").splitlines()
     found = {}
     graded = 0
@@ -229,15 +252,17 @@ def read_quantities(path):
             continue
         m = QUANTITY_CPU.match(line)
         if m:
-            keep("cpu_hours " + m.group(1), Decimal(m.group(2)))
+            keep("cpu_hours " + m.group(1), canonical_decimal(m.group(2)))
             graded += 1
             continue
+        if line.startswith(QUANTITY_PREFIX):
+            raise Refused("quantity_malformed")
         m = SESSION_LINE.match(line)
         if m:
             turns, inside, outside = (int(m.group(i)) for i in (1, 2, 3))
             if inside + outside != turns:
                 raise Refused("quantity_session_inconsistent")
-            keep("session", (turns, inside, outside, m.group(4)))
+            keep("session", (turns, inside, outside, str(Decimal(m.group(4)))))
             graded += 1
     return found, graded, len(lines)
 
@@ -307,11 +332,17 @@ def sheet(log, baseline, bench, inputs, quantities):
 
     human_minutes = working_minutes + verify_minutes
     dollars = two(human_minutes * hourly / 60)
+    metered = [b for b in BACKENDS if b in backends]
+    unmeasured = [b for b in BACKENDS if b not in backends]
+    # The cost line names every part it does not price (§16.4): metered-but-unpriced compute
+    # and compute with no bench row at all are different claims, so each is named by backend.
+    compute = "".join(" + %s compute (%s)" % (label, ", ".join(names))
+                      for label, names in (("unmetered", metered), ("unmeasured", unmeasured))
+                      if names)
     add("cost", "total",
-        "$%s + unmetered compute + unmetered agent + unpriced liability" % dollars)
+        "$%s%s + unmetered agent + unpriced liability" % (dollars, compute))
     add("cost", "unmetered share", "compute %s; agent %s min; liability unpriced"
-        % (", ".join(b for b in BACKENDS if b in backends) or "none measured",
-           two(agent_minutes)))
+        % (", ".join(metered) or "none measured", two(agent_minutes)))
     if samples is None:
         add("cost", "per sample", "uncomputable (samples_in_design unmeasured)")
     elif samples == 0:
@@ -320,20 +351,26 @@ def sheet(log, baseline, bench, inputs, quantities):
         add("cost", "per sample", "$%s/%d = $%s" % (dollars, samples, two(dollars / samples)))
     add("margin", "margin", "uncomputable: no price (R-193)")
 
-    missing_base = []
+    # Ruling L3: the total is like for like, over the stages that have a baseline row only; the
+    # human hours of the other stages are printed on their own line and never subtracted.
+    missing_base, covered_minutes, uncovered_minutes = [], Decimal(0), Decimal(0)
     for stage in stages:
         human_stage = sum((r["minutes"] for r in human if r["stage"] == stage), Decimal(0))
         if stage not in base:
             missing_base.append(stage)
+            uncovered_minutes += human_stage
             add("time saved", stage, "unmeasured (no baseline row); human %s h"
                 % two(human_stage / 60))
             continue
+        covered_minutes += human_stage
         add("time saved", stage, "baseline %s h - human %s h = %s h"
             % (two(base[stage]), two(human_stage / 60), two(base[stage] - human_stage / 60)))
     base_total = sum(base.values(), Decimal(0))
-    add("time saved", "total", "baseline %s h - human %s h = %s h%s"
-        % (two(base_total), two(human_minutes / 60), two(base_total - human_minutes / 60),
-           "; stages without baseline: " + ", ".join(missing_base) if missing_base else ""))
+    add("time saved", "total", "baseline %s h - human %s h = %s h"
+        % (two(base_total), two(covered_minutes / 60), two(base_total - covered_minutes / 60)))
+    if missing_base:
+        add("human hours without a baseline", "human hours without a baseline", "%s (%s)"
+            % (two(uncovered_minutes / 60), ", ".join(missing_base)))
 
     for stage in stages:
         add("interventions", stage, sum(1 for r in human if r["stage"] == stage))
