@@ -262,9 +262,10 @@ FAULTS.extend([
      'tokens = list(dict.fromkeys(decoded))',
      'tokens = list(dict.fromkeys(decoded + re.findall(r"[^\\s\\\"\'`;|<>()\\[\\],=]+", text)))',
      'corpus','CorpusTests.test_honest_call_corpus'),
+    # Its corpus witness (a tr set) became data under decision 0127.
     ('item 22d word pieces become root tokens','run_reviews.py',
      'pieces = [candidate]', 'pieces = candidate.split()',
-     'corpus','CorpusTests.test_honest_call_corpus'),
+     'data','DataOperandTests.test_word_pieces_stay_whole'),
     ('item 22e separated shell options ignored','run_reviews.py',
      "if command in shells and re.fullmatch(r'-[a-zA-Z]*c', word):",
      "if command in shells and re.fullmatch(r'-[a-zA-Z]*c', word) and words[words.index(word) - 1] == command:",
@@ -293,6 +294,21 @@ FAULTS.extend([
     ('item 23 missing heredoc closer hides commands','run_reviews.py',
      '                end = cursor\n                break', '                break',
      'launch','LaunchTests.test_heredoc_removal_requires_delimiter'),
+])
+
+# Decision 0127: the tr data context, in both directions.
+FAULTS.extend([
+    ('0127 tr data context dropped','run_reviews.py',
+     "if command == 'tr' and not command_word and not option_value:", 'if False:',
+     'data','DataOperandTests.test_honest_tr_operands'),
+    ('0127 data context widened to cat operands','run_reviews.py',
+     "if command == 'tr' and not command_word and not option_value:",
+     "if command in ('tr', 'cat') and not command_word and not option_value:",
+     'data','DataOperandTests.test_outside_direction'),
+    ('0127 tr redirection target exempted','run_reviews.py',
+     "if command == 'tr' and not command_word and not option_value:",
+     "if command == 'tr' and not command_word:",
+     'data','DataOperandTests.test_redirections_stay_scanned'),
 ])
 
 # S1 carries R1's leak controls forward on item 15's committed surfaces.
