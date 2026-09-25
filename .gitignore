@@ -4,6 +4,7 @@ gars/projects/*/
 # The generated index is machine state, not source: the SessionStart hook rebuilds it every
 # boot, and a tracked copy would dirty the checkout on every session (decision 0033).
 gars/projects/_index.md
+gars/data_sources.tsv
 
 # Stage outputs and pipeline artifacts
 **/00_data/*/raw/*

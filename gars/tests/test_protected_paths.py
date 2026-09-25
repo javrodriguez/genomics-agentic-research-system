@@ -64,9 +64,12 @@ class ProtectedPathsTests(unittest.TestCase):
                         self.assertEqual(self.call(tool,data,root).returncode,2)
 
     def test_normal_project_edit_positive_control(self):
-        self.assertEqual(self.call('Edit',{'file_path':'projects/p/PLAN.md'}).returncode,0)
-        for tool in ('Read','Glob','Grep'):
-            self.assertEqual(self.call(tool,{'path':'.','pattern':'PLAN'}).returncode,0)
+        # A root with no projects/, so no closed project turns the control red (decision 0107).
+        with tempfile.TemporaryDirectory(prefix='positive-control-') as tmp:
+            root=Path(tmp)/'workspace'; root.mkdir()
+            self.assertEqual(self.call('Edit',{'file_path':'projects/p/PLAN.md'},root).returncode,0)
+            for tool in ('Read','Glob','Grep'):
+                self.assertEqual(self.call(tool,{'path':'.','pattern':'PLAN'},root).returncode,0)
 
 
 if __name__ == '__main__':
