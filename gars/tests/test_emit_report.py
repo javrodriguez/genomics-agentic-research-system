@@ -252,6 +252,30 @@ class EmitReportTests(unittest.TestCase):
                                 self.assertEqual(requests, [
                                     'https://api.crossref.org/works/' + quote(generator.REAL_DOI, safe='')])
 
+        # C1 F1: Unicode words stop both walks; numeric boundaries stay ASCII.
+        references = [
+            '\u738b. \u65b9\u6cd5. DOI:' + generator.REAL_DOI + '. \u8bbf\u95ee\u4e8e 10/03/2020.',
+            'DOI: ' + generator.REAL_DOI + ' (\u0434\u0430\u0442\u0430 \u043e\u0431\u0440\u0430\u0449\u0435\u043d\u0438\u044f: 10/03/2020).',
+            'doi:' + generator.REAL_DOI + ' \u95b2\u89a7\u65e5 10/03/2020',
+            'doi: ' + generator.REAL_DOI + ' \u03c3\u03b5\u03bb. 10.1-10.9']
+        # Move B1's three guards here under the lane's C1 acceptance ruling.
+        malformed = 'doi: ' + chr(233) + '10/abcfake'
+        references.extend((malformed + '; doi:' + generator.REAL_DOI,
+                           'doi:' + generator.REAL_DOI + '; ' + malformed,
+                           'doi:' + generator.REAL_DOI + '; ' + chr(233) + ' 10/abcfake'))
+        for reference in references:
+            with self.subTest(unicode_word=reference):
+                self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference
+                self.save()
+                requests = []
+                def recorded(url):
+                    requests.append(url)
+                    return replay(url)
+                self.assertEqual(self.emit(recorded), (0, ''))
+                self.assertTrue(self.out.is_file())
+                self.assertEqual(requests, [
+                    'https://api.crossref.org/works/' + quote(generator.REAL_DOI, safe='')])
+
         # Internal markers never existed in the base's residual reference.
         identifier = '10.1000/synthetic_doi:10/abcfake'
         for reference in (identifier, identifier + '; 10/fake', 'doi:' + identifier,
@@ -308,11 +332,6 @@ class EmitReportTests(unittest.TestCase):
         references.extend(('doi:' + generator.REAL_DOI + '; 10/abcfake',
                            'doi:' + generator.REAL_DOI + ', 10.123/fake',
                            'doi:' + generator.REAL_DOI + '; ' + generator.REAL_DOI + '; 10/abcfake'))
-        # F2: both walks treat non-ASCII letters as separators.
-        malformed = 'doi: ' + chr(233) + '10/abcfake'
-        references.extend((malformed + '; doi:' + generator.REAL_DOI,
-                           'doi:' + generator.REAL_DOI + '; ' + malformed,
-                           'doi:' + generator.REAL_DOI + '; ' + chr(233) + ' 10/abcfake'))
         for reference in references:
             with self.subTest(reference=reference):
                 self.snapshot['claims'][0]['evidence'][1]['source']['reference'] = reference

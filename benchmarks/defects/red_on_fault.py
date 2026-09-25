@@ -110,7 +110,7 @@ FAULTS = [
     ('chaining removed', DOI, 'number_start = cursor', 'break',
      'gars/tests/test_emit_report.py', REPORT_TEST + 'test_doi_fabricated_beside_verified'),
     ('separator walk crosses letters', DOI,
-     'not re.match(ASCII_ALNUM_PATTERN, reference[cursor])',
+     'not re.match(UNICODE_ALNUM_PATTERN, reference[cursor])',
      "not re.match(r'[0-9]', reference[cursor])",
      'gars/tests/test_emit_report.py', REPORT_TEST + 'test_doi_clean_reference_corpus'),
     ('new rule applied on the no-identifier path', DOI,
@@ -128,10 +128,10 @@ FAULTS = [
      'if start <= number_start < end), None)',
      'if start == number_start), None)',
      'gars/tests/test_emit_report.py', REPORT_TEST + 'test_doi_clean_reference_corpus'),
-    ('separator walks use Unicode alphanumerics', DOI,
-     'ASCII_ALNUM_PATTERN = r"[0-9A-Za-z]"',
-     'ASCII_ALNUM_PATTERN = r"[^\\W_]"',
-     'gars/tests/test_emit_report.py', REPORT_TEST + 'test_doi_fabricated_beside_verified'),
+    ('separator walks use ASCII alphanumerics', DOI,
+     'UNICODE_ALNUM_PATTERN = r"[^\\W_]"',
+     'UNICODE_ALNUM_PATTERN = r"[0-9A-Za-z]"',
+     'gars/tests/test_emit_report.py', REPORT_TEST + 'test_doi_clean_reference_corpus'),
 ]
 
 

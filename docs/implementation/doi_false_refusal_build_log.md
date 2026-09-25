@@ -340,3 +340,142 @@ Ruling 0134 and F2/F3 are fixed; F1/F4/F5 are closed by the requested no-change 
 ## Owner rulings needed
 
 None.
+
+
+## Review round C1 fixes
+
+2026-09-25. Producer build evidence continuing `40941de` on the DOI false-refusal
+branch. The C1 Unicode-walk ruling is Glitch's under the owner's standing delegation
+of 23 September 2026; no ruling sentence is the owner's. This section records
+implementation and verification only. Glitch writes decisions and the change report.
+
+Both walks now use `UNICODE_ALNUM_PATTERN = r"[^\W_]"`: Unicode letters and digits
+stop the separator walk after a marker's token and the chaining walk after a parsed
+identifier. The marker regex and numeric leading boundaries remain ASCII and
+byte-identical. The lane's ruling 0134 span-containment behavior is unchanged.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: yes/no, how) |
+|---|---|---|---|
+| F1: Unicode words must stop both walks | `gars/_system/resolve_citation.py`, `gars/tests/test_emit_report.py`, `benchmarks/defects/red_on_fault.py` | `EmitReportTests.test_doi_clean_reference_corpus`, `EmitReportTests.test_doi_fabricated_beside_verified` | Seven clean cases red at `40941de`, then both tests green. Red-on-fault seen: yes, `separator walks use ASCII alphanumerics` restores the ASCII class and turns the clean corpus red. The 392-form refusal guard and chained-list assertions remain. |
+| F2: campaign count | This appended build-log section | Complete mutation campaign | No behavior change for this note; red-on-fault seen: yes, 53/53 (43 + 10), including the replacement ASCII-walk fault. |
+| F3: historical expectation-table line numbers | This appended build-log section | Append-only byte comparison | No historical edit; red-on-fault seen: no, documentation disposition only. Tests are named below without shifting line references. |
+
+F2: No change; the campaign remains 43 + 10, with `separator walks use ASCII alphanumerics` replacing B1's Unicode fault alongside `bound number inside a parsed identifier counted`; Glitch's change report owns the count record.
+F3: No change; the append-only historical table retains its original line numbers, and Glitch's change report can cite `EmitReportTests.test_doi_reference_forms` by name.
+
+### Expectation changes
+
+Each row below moves a B1 case from `test_doi_fabricated_beside_verified` to
+`test_doi_clean_reference_corpus`. `REAL` denotes `generator.REAL_DOI`; `\u00e9`
+is the character built with the inherited `chr(233)` expression in these tests.
+
+| Reference | Old expectation | C1 expectation | Reason |
+|---|---|---|---|
+| `doi: \u00e910/abcfake; doi:REAL` | Refuse `citation_unverifiable` | Emit; exactly one recorded Crossref request for REAL | The Unicode letter stops the marker separator walk before the number. |
+| `doi:REAL; doi: \u00e910/abcfake` | Refuse `citation_unverifiable` | Emit; exactly one recorded Crossref request for REAL | The Unicode letter stops the marker separator walk in the reverse reference order. |
+| `doi:REAL; \u00e9 10/abcfake` | Refuse `citation_unverifiable` | Emit; exactly one recorded Crossref request for REAL | The Unicode letter stops chaining after the parsed DOI. |
+
+### Red-first and green evidence
+
+Before the production fix, the resolver was verified byte-identical to
+`git show 40941de:gars/_system/resolve_citation.py`. The four references named in
+B1 F1 (Chinese, Cyrillic, Japanese and Greek), written with Unicode escapes and
+the recorded real DOI, and the three moved cases all failed through emission:
+
+`python3 -u gars/tests/test_emit_report.py EmitReportTests.test_doi_clean_reference_corpus`
+```text
+Ran 1 test in 24.287s
+FAILED (failures=7)
+```
+All seven failed subtests are recorded in the job scratch folder's `c1/red-first.log`.
+After the fix:
+
+`python3 -u gars/tests/test_emit_report.py EmitReportTests.test_doi_clean_reference_corpus EmitReportTests.test_doi_fabricated_beside_verified`
+```text
+Ran 2 tests in 25.087s
+OK
+```
+Every new clean reference requires emission and exactly one recorded Crossref
+request for the real DOI. The existing internal-marker and ruling 0134 cases,
+including the malformed trailing-number refusal, are retained.
+
+### GATE
+
+All commands ran from the repository root, one suite at a time, with `TMPDIR`,
+`TEMP` and `TMP` set to the job's scratch folder. Complete logs are under `c1/`
+there. Replay fixtures and recording transports establish protocol behavior only.
+
+`GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py`
+(one suite at a time; database classes skipped, verified elsewhere).
+```text
+collected 283 tests from tests
+collected 253 tests from gars/tests
+Ran 536 tests in 386.994s
+OK (skipped=79)
+```
+
+`python3 tests/check_contracts.py`
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`
+```text
+suite: 536 tests, from unittest's loader
+enforced=3
+clean — every current claim matches the suite
+```
+
+`python3 -u tests/test_planted_defects.py DevelopmentCatalogueTests`
+```text
+planted-defects development (producer-authored, unsealed): 9/10 classes (placeholder 10 counted planted, not caught)
+false flags (producer-authored clean projects): 0/10
+graded 19 of 19 development projects seen
+Ran 13 tests in 4.380s
+OK
+```
+
+`TMPDIR=<the job's scratch folder> python3 -u benchmarks/defects/red_on_fault.py`
+```text
+red-on-fault: 53/53
+```
+
+The campaign remains **43 + 10 = 53**. Before creating its disposable twin, it
+printed all 28 DOI/EVIDENCE anchor counts and required exactly 1 for each; all
+were 1. The replacement fault changes the shared Unicode class to `[0-9A-Za-z]`
+and runs `EmitReportTests.test_doi_clean_reference_corpus`. The inherited
+separator-walk fault was re-anchored to the renamed constant, with no production
+change made to fit an anchor. All four required legacy faults still turn
+`EmitReportTests.test_doi_reference_forms` red.
+
+```text
+anchor count: separator walks use ASCII alphanumerics: 1
+RED: bound number inside a parsed identifier counted
+RED: separator walks use ASCII alphanumerics
+red-on-fault: 53/53
+```
+
+Structural checks preserve the inherited `mentions_doi` lines, their order and
+indentation, its single inserted early return, `resolve()`, the unique DOI regex
+and the unique legacy predicate. The protected files are byte-identical to the
+base. The no-identifier path, brace handling and residual-prose controls are
+unchanged. Three changed Python files parse with Python 3.6 syntax. The B1
+review remains untracked and unchanged, and the build log retains every earlier
+byte. Only the resolver, emission tests, mutation driver and this build log change.
+
+### Residual gaps still open
+
+No live network DOI resolution or capture, actual Python 3.6 execution, cluster
+execution or database execution was verified here. Database classes were skipped
+under the requested gate and are verified elsewhere. No spent sealed measurement
+was run or promoted. The known bare-date chaining refusal and broader short-DOI,
+PMID/literature, relevance, stage-03/pilot emission and public catch-rate residuals
+remain outside this lane. Independent C1 review, protected-change approval and
+merge remain outside this producer run. Glitch's decisions and change report
+remain Glitch's records; the producer has not written or approved them.
+
+F1 is closed by the supplied C1 ruling and verified fix; F2 and F3 are closed by the requested no-change responses; no findings wait on a ruling.
+
+## Owner rulings needed
+
+None.

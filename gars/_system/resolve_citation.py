@@ -11,7 +11,7 @@ from urllib.request import urlopen
 
 DOI_PATTERN = r"10\.[0-9]{4,9}(?:\.[0-9]+)*/[^\s<>\"']+"
 MARKER_PATTERN = r'(?<![0-9A-Za-z])doi(?=\b|_|10[./])'
-ASCII_ALNUM_PATTERN = r"[0-9A-Za-z]"
+UNICODE_ALNUM_PATTERN = r"[^\W_]"
 
 
 def parser():
@@ -51,7 +51,7 @@ def _has_unbound_doi_number(reference):
         tail = reference[marker.end():]
         token_end = re.match(r'\S*', tail).end()
         number = re.search(r'(?<![0-9A-Za-z])10[./]', tail)
-        if number is None or re.search(ASCII_ALNUM_PATTERN, tail[token_end:number.start()]):
+        if number is None or re.search(UNICODE_ALNUM_PATTERN, tail[token_end:number.start()]):
             continue
         number_start = marker.end() + number.start()
         while True:
@@ -61,7 +61,7 @@ def _has_unbound_doi_number(reference):
                 return True
             # Any number inside the identifier is satisfied; chain from its end.
             cursor = identifier_end
-            while cursor < len(reference) and not re.match(ASCII_ALNUM_PATTERN, reference[cursor]):
+            while cursor < len(reference) and not re.match(UNICODE_ALNUM_PATTERN, reference[cursor]):
                 cursor += 1
             if not re.match(r'10[./]', reference[cursor:]):
                 break
