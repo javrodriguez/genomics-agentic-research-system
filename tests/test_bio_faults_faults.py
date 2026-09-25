@@ -121,6 +121,10 @@ FAULTS = [
     ('float format dropped', 'evals/bio-faults/bio_generate_base.py', "format(value, '.12g')", 'str(value)', 'pipeline', 'BuildTests.test_base_fingerprints'),
     ('unstarted resume counted', 'evals/bio-faults/bio_score.py', "and phases[1].get('session_id') not in (None, '', 'not-started', 'missing-init')", 'and True', 'pipeline', 'ScoreTests.test_resume_id_differs_count'),
     ('ATAC peaks tiled', 'evals/bio-faults/bio_generate_base.py', "'chr%d:%d-%d' % (i // 80 + 1, position, end)", "'chr1:%d-%d' % (i * 100, i * 100 + 99)", 'pipeline', 'BuildTests.test_atac_peak_coordinates'),
+    ('second QC disposition restored', 'evals/bio-faults/bio_generate_base.py',
+     'Limitation: n = 3 per group limits precision and generalisation.',
+     'QC disposition WARN: n = 3 per group limits precision and generalisation.',
+     'pipeline', 'BuildTests.test_single_qc_disposition_matches_report'),
 ]
 
 

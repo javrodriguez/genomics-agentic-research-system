@@ -31,7 +31,7 @@ import bio_review_record as validator
 import bio_run_reviews as launcher
 import bio_score as scorer
 support = bio.load_row9('testing')
-BASE_HASHES = {'atac-a': '52a704ff3e389c8614756f7d80de46dbaa3b90406284d2f6bf2a257143eae9fb', 'rna-a': '42418064a7d2ede5a797cbb6792e48989c7e79266c83f0a2c1aeedf39d579f4e', 'rna-b': '890c7988af399fdf168bd916ed00f134e2fe901a65060ba8466426b9566eb9f7'}
+BASE_HASHES = {'atac-a': '91a844b99329c176a7c206bf311a7a81d12dcca0eb90f8e77ae5f71b5a7d4a12', 'rna-a': 'c6f3092d4287fe25910fab7006297d8c926e92a087771442a4a9b3fdf8f5c4ea', 'rna-b': '9aa55910efa9a81f5f3c38d7bc044c22edffc781127f32cec852deb55e842c0d'}
 
 
 def temporary(test):
@@ -228,6 +228,24 @@ class BuildTests(unittest.TestCase):
                     rows[1][3] = bio.sha256(library.read_bytes())
                     generator.table(base / 'files.csv', rows[0], rows[1:])
             self.assertFalse(gates.run_gates(base, 'rnaseq_bulk')[0]['catalogue_integrity'], mutation)
+
+    def test_single_qc_disposition_matches_report(self):
+        root = temporary(self)
+        builder.build(root / 'built')
+        projects = list((root / 'built/cases').glob('*/project'))
+        self.assertEqual(len(projects), 4)
+        for project in projects:
+            with self.subTest(case=project.parent.name):
+                qc = (project / '3-results/qc.md').read_text()
+                dispositions = [line.split(':', 1)[0].split()[-1]
+                                for line in qc.splitlines() if 'QC disposition' in line]
+                self.assertEqual(dispositions, ['DEGRADE'])
+                self.assertIn('Limitation: n = 3 per group limits precision and generalisation.', qc)
+                report = (project / '4-report/report.md').read_text().replace(chr(92), '')
+                summary = report.split('## QC summary\n', 1)[1].split('\n## ', 1)[0]
+                reported = [line.split(':', 1)[1].strip()
+                            for line in summary.splitlines() if line.startswith('- claim ')]
+                self.assertEqual(reported, dispositions)
 
     def test_base_fingerprints(self):
         hashes = BASE_HASHES

@@ -371,3 +371,48 @@ audit, protected approval or row exit is claimed. 0135 remains unchanged;
 0137, 0138 and 0139 are not written. Sealed slots, measurement, repeat, deployment
 sandbox and actual resume remain later work; the partial set never meets the
 full science threshold.
+
+## Addendum — 2026-09-25, review round T1
+
+The continuation-T ruling is glitch-09's ruling as coordinator, **Glitch under
+ the owner's standing delegation of 23 Sep 2026**, never the owner's words.
+This round is a continuation beyond the lane's stop rule of at most one continuation, ruled by glitch-09 to protect the clean half of the measurement.
+It answers review S1's NOTE F2 and nothing else: every base's qc.md now carries
+one QC disposition, DEGRADE, matching the rendered report. The n = 3 per group
+point is a limitation line. No data, analysis, claim, plan, approval, or
+provenance changes. P01, P02, C01 and C02 keep their flaws and rationales as
+recorded in the S1 change report; neither fixture patch needs a line adjustment.
+
+The existing S1 fingerprints passed on Linux with Python 3.13.5 before editing
+(Ran 1 test in 0.085s; OK). S1 NOTE F1 therefore requires no numerical change.
+Last-ulp libm sensitivity on other platforms remains a stated residual. Comparing
+all generated files against the pre-T1 generator found only qc.md changed in
+each base, exactly the replacement of the second disposition's label by
+Limitation. The sorted (relative file path, file SHA-256) compact-JSON tree
+hashes are re-pinned in test_base_fingerprints:
+
+| Base | SHA-256 |
+|---|---|
+| rna-a | c6f3092d4287fe25910fab7006297d8c926e92a087771442a4a9b3fdf8f5c4ea |
+| rna-b | 9aa55910efa9a81f5f3c38d7bc044c22edffc781127f32cec852deb55e842c0d |
+| atac-a | 91a844b99329c176a7c206bf311a7a81d12dcca0eb90f8e77ae5f71b5a7d4a12 |
+
+Tests: tests/test_bio_faults_pipeline.py adds
+BuildTests.test_single_qc_disposition_matches_report, building all four cases
+and checking exactly one DEGRADE line, the retained n = 3 limitation, and
+equality with the report's QC summary. tests/test_bio_faults_faults.py adds
+second QC disposition restored, reverting the label in a disposable copy
+and requiring that named test to fail after its unchanged control passes.
+Full command summaries and the mutation outcome are in the T1 change report.
+The decision index is regenerated; all prior record bytes are preserved.
+
+Invocation limitation: the first command mistakenly used a rooted null-device
+redirect. This breached the lane's command-path rule. Subsequent relative
+commands and passing tests cannot undo it; complete invocation compliance is
+not claimed. Scratch settings are runtime-resolved before child processes.
+
+The existing threat model, named residuals, schema projection and sweep rules
+remain unchanged. No model runs against a case, no prompt tuning occurs, and
+no protected approval, seal, measured run, repeat or row exit is claimed.
+0135 stays unchanged and 0137–0139 remain unwritten. The partial set cannot
+meet the full science threshold; deployment rehearsal remains later work.

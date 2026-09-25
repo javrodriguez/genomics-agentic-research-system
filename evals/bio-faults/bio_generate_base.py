@@ -203,7 +203,7 @@ def generate(destination, base_project, seed=None):
     write_text(root / 'qc.md', 'All six libraries retained. No outliers removed.\n' + assay_qc +
         'Count QC: 240 nonnegative integer features per library; library totals and checksums in files.csv.\n'
         'QC disposition DEGRADE: upstream read-level QC cannot be assessed; conclusions concern supplied counts only.\n'
-        'QC disposition WARN: n = 3 per group limits precision and generalisation.\n')
+        'Limitation: n = 3 per group limits precision and generalisation.\n')
     manifest = {'pipeline_commit': 'synthetic-v1', 'params': {'assay': assay,
                 'unit_of_replication': 'sample', 'formula': 'condition',
                 'execution_started_at': '2026-09-25T01:00:00Z', 'execution_finished_at': '2026-09-25T01:01:00Z',
