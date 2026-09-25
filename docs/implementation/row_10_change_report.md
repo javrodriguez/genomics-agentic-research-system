@@ -157,3 +157,166 @@ unverified. Science measurement, sealed slots and repeat remain later work.
    still swept; (b) revise the manifest field/path contract so the public
    manifest can avoid those tokens. Construction and the dependent case/base
    handoff are stopped; no exemption, encoding trick or weakened sweep is used.
+
+
+## Rulings round R1
+
+R1 and R2 are glitch-09's rulings, **Glitch under the owner's standing delegation
+of 23 Sep 2026**, never the owner's words. They settle the two questions in the
+preceding round-1 section. There is no review to answer. The surrounding work is
+implemented; the old stopped-work account above remains historical and unchanged.
+
+**Round invocation compliance: FAILED.** Three commands used literal rooted
+null-device redirects: the initial workspace check, a hook-location inspection,
+and the manual fixture-hook invocation. These breached the explicit relative-path
+command rule. Passing functional checks and later correct invocations cannot
+undo that breach. No command-path compliance is claimed for this round.
+
+| Head item | Changed files | Test | Result | Red-on-fault seen | How |
+|---|---|---|---|---|---|
+| 1, records | 0136 addendum, regenerated decision index, this appended report; allowed paths only | scope/prefix audit | pass | no | Existing decision bytes and this report's prior bytes retained |
+| 2, reuse | bio_common.py and the six added science modules | core same-object and both-order one-process tests; pipeline audit identity | pass | yes | Reimplemented ratio and a bare-name science module each turn the named control red |
+| 3, cases | classes unchanged; fixtures/P01, P02, C01, C02 | closed vocabulary; all four built cases | pass | no | Only the four authorized public ids exist; no reserved case is supplied |
+| 4, bases | bio_generate_base.py | bases and independently recomputed BH; deterministic construction | pass | no | Three ids/seeds, copied generator primitives with source-line citations; no benchmark import |
+| 5, handoff | INTERFACE.md, SEALS.md | sealed appendix byte inclusion; generated trees and layout inspection | pass | no | Appendix copied verbatim; complete classes, bases, map, gates, matching and fingerprint command; reserved slots empty |
+| 6, builder and R2 | bio_build_cases.py, bio_gates.py | every named gate refusal, quiet output, bytes/stats, all builder refusals, exact sweep exemptions | pass | yes | Answer entry, salt, mtime, refusal, omitted verify/token gates and substring exemption mutations all go red |
+| 7, adapter and R1 | bio_review_record.py, schema, README schema comment | schema drift, pure projection, three-way path check, envelope-fault drift and phase rules | pass | yes | Skipping science equality and accepting the code path each fail a named test |
+| 8, launch | bio_run_reviews.py | runtime two-phase stub, own session audits, uid/root refusal, usage limit, only, no overwrite | pass | yes | Narrative in A, ignored B hit, model envelope, missing uid check and wrong audit session each go red |
+| 9, oracle and score | bio_oracle.py, bio_score.py | any-of grid, prefix drift, invalid denominators, sealed 2/5, tampering, first-run/repeat and masked publication | pass | yes | Class/file/tolerance/severity, repo prefix, invalid caught, first-run, threshold and mask mutations all go red |
+| 10, instructions | existing science prompt unchanged | core prompt contract | pass | no | No model run or prompt tuning; first measured run remains later |
+| 11, release | reviewer_measurement in scripts/release_check.py; regenerated dod_current.md | code-output pin and science file reader | pass | yes, through scorer | Science remains development/partial and never completes the threshold; mutation printing met goes red |
+| 12, acceptance | test_bio_faults_core.py, test_bio_faults_pipeline.py, test_bio_faults_faults.py | direct modules and full suite | pass | yes | 25 separate mutations; each unchanged control green before its named red witness |
+| 13, usage/counts | README.md count only; DEVELOPMENT.md count and science paragraph | loader/check_counts and B/C runs | pass | no | 721 collected; 79 B skips, 106 C skips; no new science skips |
+
+### Statistical rationales — public producer cases only
+
+P01 changes only the processing-run assignments in provenance.csv: all three A
+libraries share one processing run and all three B libraries share another.
+The samples table still has six independent biological sources and balanced
+sequencing batches, and the fitted condition-only indicator matrix has full
+rank. The upstream processing effect is nevertheless inseparable from condition.
+A condition contrast cannot identify a biological condition effect separately
+from that processing effect; rank alone does not establish identifiability of
+the scientific contrast. The processing assignments, condition labels and
+analysis plan are all in the case. The design detector does not consume this
+separate library-origin table. No sample, result p-value, approval or report
+number is edited. This is one batch-confounded contrast, not a gate-breaking
+invalid matrix or a numerical reporting discrepancy.
+
+P02 changes only biological-source assignments in provenance.csv: three A
+libraries are aliquots of one donor, and three B libraries are aliquots of a
+second donor. Six library/sample rows therefore represent two biological units,
+with one unit per condition. The differential analysis treats those six rows as
+independent, permuting library observations across all 20 three-versus-three
+assignments. Technical aliquots do not supply independent biological replication;
+those permutations cannot support biological condition inference. The source
+mapping and independent-sample method are visible inside the case, while the
+stage-01 table has distinct library ids and lacks the repeated subject column
+that its detector consumes. The inferential error is pseudoreplication; the BH
+arithmetic and reported numerical results remain unchanged and internally
+consistent with the stated, inappropriate library-level analysis.
+
+These rationales occur only in this change report, never in copied case bytes.
+C01 is the unmodified RNA base; C02 is the unmodified ATAC base. They have six
+independent sources, balanced processing, no exclusions, exact two-sided
+permutation p-values, BH over the tested rows, matching evidence hashes and a
+qualified descriptive claim. ATAC consensus/blacklist/global-scaling assumptions
+and QC metadata are stated. Count summaries are explicitly illustrative; tiny
+FASTQs are integrity inputs, not claimed sources of those count summaries.
+The cases do not claim a real pipeline or experimental execution.
+
+### Gate and launch limits
+
+All nine named gates run on disposable copies. Stage 01, wrapper collectors,
+row-8 evidence emission and row-7 rendering are imported production functions.
+The group/replicate check reads the count matrix, differential-table sample
+columns and normalized table using wrapperlib's token function. Stage 03 runs
+its real verify against supplied historical approval data and a scratch
+protected store, at the recorded execution-finish time. Actor/path bindings and
+synthetic content-execution sidecars are local scaffold data; the original
+approval hash/timestamp/expiry are preserved. No approval command or real job
+runs. Missing/unreadable inputs yield named refusals and a private key/log.
+These checks establish content-gate behaviour, not production execution evidence.
+
+The launcher implements resume only. A is launch-owned; B's id is read from
+B's stream and used for B's audit. Session equality and narrative withholding
+are code-stamped. Runtime stubs exercise this path; actual Claude resume,
+sandbox enforcement and CP5.6 deployment rehearsal remain unverified. The
+oracle rejects leftover dot prefixes as well as repo prefixes so the imported
+normalizer cannot silently widen a science match.
+
+### Verification
+
+All temporary data and logs are in the scratch twin. B sets TMPDIR, TEMP and
+TMP to its runtime-resolved location. C unsets TMPDIR and leaves TEMP/TMP there.
+Full B/C suites started before the final narrow oracle/absent-input hardening;
+after those edits all science tests were rerun directly in B and together in C.
+No test count or non-science implementation changed in those final corrections.
+The full-run and final targeted summaries below are kept distinct.
+
+| Command | Verbatim summary |
+|---|---|
+| `python3 tests/run_tests.py (B)` | `FAILED COLLECT nfcore-atacseq-wrapper local: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-atacseq-wrapper slurm: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-chipseq-wrapper local: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-chipseq-wrapper slurm: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-cutandrun-wrapper local: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-cutandrun-wrapper slurm: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-methylseq-wrapper local: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-methylseq-wrapper slurm: group 15 present; prepare keys unchanged`; `FAILED COLLECT rnaseq-de local: group 15 present; prepare keys unchanged`; `FAILED COLLECT rnaseq-de slurm: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-rnaseq-wrapper local: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-rnaseq-wrapper slurm: group 15 present; prepare keys unchanged`; `FAILED COLLECT scrna-qc-cluster local: group 15 present; prepare keys unchanged`; `FAILED COLLECT scrna-qc-cluster slurm: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-scrnaseq-wrapper local: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-scrnaseq-wrapper slurm: group 15 present; prepare keys unchanged`; `FAILED COLLECT spatial-cluster-count local: group 15 present; prepare keys unchanged`; `FAILED COLLECT spatial-cluster-count slurm: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-spatialvi-wrapper local: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-spatialvi-wrapper slurm: group 15 present; prepare keys unchanged`; `Ran 721 tests in 515.475s`; `OK (skipped=79)` |
+| `python3 tests/run_tests.py (C)` | `FAILED COLLECT nfcore-atacseq-wrapper local: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-atacseq-wrapper slurm: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-chipseq-wrapper local: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-chipseq-wrapper slurm: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-cutandrun-wrapper local: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-cutandrun-wrapper slurm: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-methylseq-wrapper local: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-methylseq-wrapper slurm: group 15 present; prepare keys unchanged`; `FAILED COLLECT rnaseq-de local: group 15 present; prepare keys unchanged`; `FAILED COLLECT rnaseq-de slurm: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-rnaseq-wrapper local: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-rnaseq-wrapper slurm: group 15 present; prepare keys unchanged`; `FAILED COLLECT scrna-qc-cluster local: group 15 present; prepare keys unchanged`; `FAILED COLLECT scrna-qc-cluster slurm: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-scrnaseq-wrapper local: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-scrnaseq-wrapper slurm: group 15 present; prepare keys unchanged`; `FAILED COLLECT spatial-cluster-count local: group 15 present; prepare keys unchanged`; `FAILED COLLECT spatial-cluster-count slurm: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-spatialvi-wrapper local: group 15 present; prepare keys unchanged`; `FAILED COLLECT nfcore-spatialvi-wrapper slurm: group 15 present; prepare keys unchanged`; `Ran 721 tests in 516.305s`; `OK (skipped=106)` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/check_counts.py` | `suite: 721 tests, from unittest's loader`; `enforced=3`; `clean — every current claim matches the suite` |
+| `python3 evals/test_harness.py` | `Ran 44 tests in 39.109s`; `OK` |
+| `python3 evals/check_results.py --controls --lexicon` | `clean — graded=1` |
+| `python3 scripts/release_check.py` | `DoD cells regenerated: 13/13` |
+| `tests/test_bio_faults_core.py` | `Ran 12 tests in 0.122s`; `OK`; `wall time: 0.159 s; exit 0` |
+| `tests/test_bio_faults_faults.py` | `Ran 1 test in 14.806s`; `OK`; `wall time: 14.835 s; exit 0` |
+| `tests/test_bio_faults_pipeline.py` | `Ran 27 tests in 5.692s`; `OK`; `wall time: 5.761 s; exit 0` |
+| `grammar` | `Python feature_version=(3, 6): 11/11 Python files parse` |
+| `python3 -m unittest discover -s tests -p 'test_bio_faults_*.py' (final C)` | `Ran 40 tests in 20.536s`; `OK` |
+| `bio_build_cases.py (repository fixtures)` | `cases 4; sweep hits 0` |
+
+All three new test modules are under 120 seconds alone in mode B. The final
+fault module observed all 25 named mutations red, each after a green control.
+
+The build log reports the following private gate results; sweep hits are zero:
+
+```text
+C01: catalogue_evidence=pass, catalogue_integrity=pass, catalogue_probabilities=pass, count_matrix_header=pass, de_identifiers=pass, group_rep_presence=pass, render_report=pass, stage01_design=pass, stage03_verify=pass
+C02: catalogue_evidence=pass, catalogue_integrity=pass, catalogue_probabilities=pass, count_matrix_header=pass, de_identifiers=pass, group_rep_presence=pass, render_report=pass, stage01_design=pass, stage03_verify=pass
+P01: catalogue_evidence=pass, catalogue_integrity=pass, catalogue_probabilities=pass, count_matrix_header=pass, de_identifiers=pass, group_rep_presence=pass, render_report=pass, stage01_design=pass, stage03_verify=pass
+P02: catalogue_evidence=pass, catalogue_integrity=pass, catalogue_probabilities=pass, count_matrix_header=pass, de_identifiers=pass, group_rep_presence=pass, render_report=pass, stage01_design=pass, stage03_verify=pass
+```
+
+The generated reviewer row remains:
+
+```text
+| reviewer catch rate (code; science) | `evals/review-faults/`, `evals/bio-faults/` runners | ≥ 8/10 per set, ≤ 1/5 false alarms; first-run-at-sha reported (§21 Q3) | unmeasured |
+```
+
+The repository hook was run over the staged new fixtures:
+
+```text
+gitleaks: REFUSED (gitleaks absent from PATH)
+citations: 363/363 resolve
+pre-commit: REFUSED
+hook exit: 1
+```
+
+The secret scan is NOT verified: gitleaks is absent. No scanner was installed,
+substituted or bypassed. The manual hook remains refused. The README evidence
+row is unchanged; the release renderer leaves the reviewer cell unmeasured.
+The cold-clone Linux skip figure remains 106. The existing macOS figure of 75
+was not remeasured; no science test introduces a skip.
+
+Scope verification preserves every base decision record and 0135, checks 0136
+and this report as byte-prefix append-only, and permits only the lane's listed
+paths. The three command-path breaches above remain an explicit failure of
+invocation discipline despite that file-scope result. The index was regenerated.
+No reserved record was written, no model was run, and no network, push, remote,
+merge, pull request or self-approval operation was performed.
+
+Mode A needs Docker, which this account cannot reach. Native Python 3.6, macOS
+cold-clone execution, live scheduler/analysis execution, deployment sandbox and
+real resume, independent honesty audit, protected approval, sealed slots,
+measured first run and repeat, and merge-result CI remain unverified. The full
+science threshold is always NOT met for this partial set; row 10's exit is not
+claimed. Record 0137 belongs to Glitch's later delegated merge approval.
+
+## Owner rulings needed
+
+None.

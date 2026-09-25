@@ -11,6 +11,9 @@ def matching_copy(review):
             name = name[2:]
         if name.startswith('project/'):
             name = name[8:]
+        # Do not let row 9 remove another dot prefix (or expose a hidden repo/).
+        if name.startswith('./'):
+            continue
         if name.startswith('repo/'):
             continue
         findings.append(dict(finding, file=name))

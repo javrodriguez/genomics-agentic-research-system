@@ -124,3 +124,89 @@ review. This is not an approval, seal, measured run or row-exit claim.
 ## Date
 
 2026-09-25
+
+## Addendum — 2026-09-25, rulings round R1
+
+The following are glitch-09's rulings, **Glitch under the owner's standing
+delegation of 23 Sep 2026**, never the owner's words. They settle both questions
+recorded above. R1 chooses option (a): the science schema additionally pins
+`envelope.reviewer.prompt_path` to its science path. The adapter first checks
+record == manifest == that path; only then a pure function projects the path
+in copies of the record and manifest. It changes no hash or other field:
+**row 9's validator is reused by projecting the prompt path; the science-path equality is checked first and separately**.
+R2 chooses option (a): only the whole top-level `harness_commit` key and the
+whole science path string under `prompt_path` in the public manifest are exempt
+from the substring sweep. They carry no per-case information. A substring,
+another key or value, and the same bytes anywhere in a case remain refused.
+The scope-of-stop ruling applies only to R1/R2; surrounding work is built here.
+
+Three deterministic bases, the complete sealer interface, four public fixtures,
+the gate-driven builder, science adapter, two-phase launcher, scorer, release
+reader and acceptance/mutation tests now accompany the initial contracts.
+P01 and P02 carry the two authorized producer classes; C01 and C02 are clean.
+No other plant, clean case, seal, protected approval or measurement is supplied.
+The fixture rationales live only in the implementation change report.
+
+Stage 01 and catalogue integrity run through their real check entry point;
+wrapper collectors run with scratch execution scaffolds. The group/replicate
+tokens come from wrapperlib and are checked against the matrix and normalized
+result identifiers. Stage 03 now runs real verify: the supplied historical
+approval hash, timestamp and expiry are preserved; actor/path store bindings
+are mapped to the scratch process and the clock is one second after approval.
+Its real output, plan and executor-evidence checks run with synthetic content
+execution sidecars, as do the wrapper collectors. No real job, approval command,
+production approval or live scheduler is represented by these scaffolds.
+Row 7's evidence emitter and renderer process the snapshot and manifest.
+All scaffold mutations stay in scratch; none is copied into a case.
+
+Resume is the only phase-B mechanism implemented. Only the runtime stub has
+exercised it. No model has run against any case, and no fresh-session alternative
+is implemented. A's launch-owned session and B's stream init session are both
+recorded; B's equality boolean is code-stamped, and each phase's audit uses its
+own session. Session disagreement is INVALID. Model text cannot supply an
+envelope. First-run-at-sha evidence therefore remains available to the later
+first measured run; this branch contains no measured run file.
+
+The threat model stated above remains the acceptance contract. Construction
+now sweeps all public bytes and names, fixes modes/mtimes, and keeps answers
+private. Launch identity, phase ordering, static audit, path projection and
+strict field matching have stub/contract evidence. INVALID cases remain in all
+denominators; zero denominators, tampered inputs, prompt/model differences,
+first-run values and partial-set status remain visible. Publication uses row 9's
+masking object. The release science clause is always development evidence and
+cannot satisfy the full threshold. Code-half release text is pinned unchanged.
+
+The named residuals also remain unchanged: deployment enforces reads beyond the
+kit; 0072 items 20–23 and 0125 apply with the later session-placement rules.
+Case-style inference, common Codex context family for the non-reviewer roles,
+independent-context seals' development-only status, thin per-class samples,
+four eventual private hash-only outcomes, five unplanted classes and R-093's
+code half remain outside this evidence. Neither sandbox efficacy nor independent
+statistical honesty is established by producer tests.
+
+Tests include the two exact R1 failures, exact R2 exemptions and a widened
+exemption mutation, schema/import/oracle drift, both import orders in one
+interpreter, every gate refusal, construction bytes/stats, two-phase stubs,
+invalid denominators, masking, release rendering and repeat observations.
+Twenty-five isolated red-on-fault controls require a green unchanged control
+first. The dated change-report addendum carries exact verification summaries.
+Mode A, native Python 3.6, deployment, seals and measurement remain unverified.
+Record 0135 and all earlier decision bytes are unchanged. Records 0137, 0138
+and 0139 are reserved and unwritten; no approval or row exit is claimed.
+
+Historical-clock clarification for this addendum: verify evaluates approval expiry
+at the manifest's recorded execution finish, rather than one second after approval.
+Thus an approval expired before collection is refused. The hash, timestamp and
+expiry remain supplied data; the real verifier evaluates them.
+
+Final implementation checks also reject residual dot prefixes before delegating
+to row 9's oracle, so row 9 cannot strip a second prefix and expose `repo/`.
+Missing or unreadable gate inputs are recorded as named refusals, including a
+missing declared output, with a private key retained for the refused build.
+
+Invocation discipline failed this round: the initial workspace check, a hook
+location inspection and the manual fixture-hook invocation each used a literal
+rooted null-device redirect, contrary to the lane's command-path rule. Passing
+functional tests does not repair those three violations. The fixture hook also
+refused because gitleaks was absent; no secret-scan pass is claimed. These facts
+are separate from implementation acceptance and are recorded in the change report.

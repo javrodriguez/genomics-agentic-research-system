@@ -171,7 +171,7 @@
               "type": "string",
               "minLength": 1,
               "enum": [
-                "gars/_references/prompts/review_faults_code.md"
+                "gars/_references/prompts/review_faults_science.md"
               ]
             },
             "prompt_sha256": {
@@ -326,6 +326,9 @@
               "notes_sha256": {
                 "type": "string",
                 "pattern": "^[0-9a-f]{64}$"
+              },
+              "session_matches_phase_a": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -402,7 +405,8 @@
                 "finished_at",
                 "exit_code",
                 "ended_on_usage_limit",
-                "blindness"
+                "blindness",
+                "session_matches_phase_a"
               ],
               "properties": {
                 "name": {
@@ -446,6 +450,9 @@
                     }
                   },
                   "additionalProperties": false
+                },
+                "session_matches_phase_a": {
+                  "type": "boolean"
                 }
               },
               "additionalProperties": false

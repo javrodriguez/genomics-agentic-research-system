@@ -1,0 +1,29 @@
+{
+  "base_project": "rna-a",
+  "base_seed": 1001,
+  "base_sha": "a77908474f2fc463f481a55f2d0c2ceeee8be660",
+  "class": "batch-confounded-contrast",
+  "id": "P01",
+  "kind": "plant",
+  "mask_literals": [],
+  "match_any": [
+    {
+      "file": "2-data/provenance.csv",
+      "line_end": 7,
+      "line_start": 2,
+      "mode": "file_lines"
+    },
+    {
+      "file": "1-design/PLAN.md",
+      "line_end": 11,
+      "line_start": 7,
+      "mode": "file_lines"
+    }
+  ],
+  "min_severity": "MINOR",
+  "requirement_ids": [
+    "R-100",
+    "R-072"
+  ],
+  "seal_type": "unsealed"
+}

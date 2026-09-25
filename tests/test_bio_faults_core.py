@@ -93,11 +93,11 @@ sys.path.insert(0, str(root / 'evals/review-faults'))
 sys.path.insert(0, str(root / 'evals/bio-faults'))
 before = list(sys.path)
 if sys.argv[2] == 'science':
-    import bio_common, bio_oracle
+    import bio_common, bio_oracle, bio_generate_base, bio_build_cases, bio_gates, bio_review_record, bio_run_reviews, bio_score
     import common, oracle, score
 else:
     import common, oracle, score
-    import bio_common, bio_oracle
+    import bio_common, bio_oracle, bio_generate_base, bio_build_cases, bio_gates, bio_review_record, bio_run_reviews, bio_score
 assert sys.path == before
 assert len(common.CLASSES) == 10 and 'off-by-one' in common.CLASSES
 assert len(bio_common.CLASSES) == 10 and 'pseudoreplicated-de' in bio_common.CLASSES
@@ -132,16 +132,19 @@ assert not any((root / 'evals/bio-faults' / (name + '.py')).exists()
         self.assertEqual(env['properties'].pop('narrative_withheld_until_phase_b'), {'type': 'boolean'})
         env['required'].remove('phases')
         env['required'].remove('narrative_withheld_until_phase_b')
+        science_path = env['properties']['reviewer']['properties']['prompt_path']
+        self.assertEqual(science_path['enum'], [bio.PROMPT_PATH])
+        science_path['enum'] = [bio.rf_common.PROMPT_PATH]
         self.assertEqual(science, code)
 
-    def test_prompt_schema_conflict_witness(self):
-        # A blocker witness, not acceptance of an operational science validator.
+    def test_prompt_schema_pin(self):
+        # R1 authorizes precisely the science path in the science schema.
         schema = bio.read_json(bio.HERE / 'schema/review_record.schema.json')
         field = schema['properties']['envelope']['properties']['reviewer']['properties']['prompt_path']
-        self.assertEqual(bio.validate(bio.rf_common.PROMPT_PATH, field), [])
-        self.assertEqual(bio.validate(bio.PROMPT_PATH, field), ['record: outside vocabulary'])
+        self.assertEqual(bio.validate(bio.rf_common.PROMPT_PATH, field), ['record: outside vocabulary'])
+        self.assertEqual(bio.validate(bio.PROMPT_PATH, field), [])
 
-    def test_manifest_sweep_conflict_witness(self):
+    def test_manifest_tokens_require_explicit_exemptions(self):
         # Both required public fields are wholly added bytes, with no base exemption.
         manifest = json.dumps({'harness_commit': 'a' * 40, 'prompt_path': bio.PROMPT_PATH})
         self.assertIn('harness', manifest)
@@ -190,7 +193,8 @@ class OracleTests(unittest.TestCase):
                     self.assertEqual(review, original)
 
     def test_repo_never_matches(self):
-        for prefix in ('repo/', './repo/', 'project/repo/', './project/repo/'):
+        for prefix in ('repo/', './repo/', 'project/repo/', './project/repo/',
+                       '././repo/', 'project/./repo/', './project/./repo/', '././'):
             self.assertFalse(oracle.caught({'findings': [finding(file=prefix + finding()['file'])]}, answer()))
         review = {'findings': [finding(file='repo/' + finding()['file']), finding()]}
         self.assertTrue(oracle.caught(review, answer()))

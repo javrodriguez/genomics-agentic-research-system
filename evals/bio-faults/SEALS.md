@@ -1,8 +1,8 @@
 # Science sealed slots
 
 State: **unsealed**. Science score: **unmeasured**. Row 10 exit: **NOT met**.
-Construction and the sealer handoff are blocked by the unresolved contract
-questions in `docs/implementation/row_10_change_report.md`.
+The construction interface is ready for the later independent seal. No sealed
+source or outcome is supplied by this producer round.
 
 | Reserved slot | Class | seal_type | expected sha256 | diff sha256 | First-run outcome | Run file |
 |---|---|---|---|---|---|---|
