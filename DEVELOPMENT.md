@@ -23,10 +23,10 @@ its launch-bound actor; `rnaseq_de summary`; `scripts/bring_home.py`; four test 
 [change report](docs/implementation/row_13_change_report.md), section "Step B". Fixture-only: no
 pilot has run. The lane's ruling D-vii (0141's addendum) keeps 0107's session-cwd rule for doors
 and refuses a door's direct spelling whenever a closed project exists; three of
-`gars/tests/test_nonpublic_read_block.py`'s methods changed as it names. One method,
-`Q8Tests.test_q8_alone`, stays red (it asserts a door's direct spelling allowed on a closed
-project); the change report raises it for a ruling. Awaiting that ruling, the lane's whole-suite
-run and review.
+`gars/tests/test_nonpublic_read_block.py`'s methods changed as it names. The lane's ruling D-viii
+(0141's second addendum) moves `Q8Tests.test_q8_alone`'s allowed call to the dispatcher spelling
+and adds Q8's `public` refusal there; the module is green. Awaiting the lane's whole-suite run
+and review.
 
 **Row 13 step A, 2026-09-24: the pilot instruments.** `scripts/unit_economics.py`,
 `scripts/rerun_diff.py` and `scripts/session_turns.py`, the pilot-log vocabulary and templates

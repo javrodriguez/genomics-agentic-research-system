@@ -377,3 +377,35 @@ door's dispatcher call exempt from the cwd rule) and D-vii (b) removed (a door's
 judged by its paths only). Fault 5 (addition 1 removed) went green once D-vii (b) also refused its
 calls; `test_direct_spelling_refused_on_closed` now requires addition 1's own wording and catches
 it again.
+
+## Addendum — ruling round 2 (D-viii), 2026-09-25
+
+Every ruling in this addendum is **the lane's**, made on 25 Sep 2026 under the owner's standing
+delegation of 23 Sep 2026; none is the owner's ruling. The owner's words are only the two quoted
+in Context above. All earlier bytes of this record, the first addendum included, are unchanged;
+where this addendum differs from them, it governs. It answers the question raised under "Owner
+rulings needed" in the change report's "Step B ruling round" section; the evidence is in
+[the change report](../implementation/row_13_change_report.md), section "Step B ruling round 2".
+
+**Ruling D-viii (the lane's): `Q8Tests.test_q8_alone` changes in exactly this way.** The existing
+direct-spelling `--data-class public` refusal and its three message assertions are kept
+unchanged; the same `--data-class public` call is added in the dispatcher spelling, refused, with
+the same three message assertions; and the allowed `deidentified_under_agreement` call changes to
+the dispatcher spelling (its direct spelling is now refused by the door rule, D-ii and D-vii (b),
+which this test does not exercise). Nothing else in `gars/tests/test_nonpublic_read_block.py`
+changes. No code changes.
+
+### R-042, amended by this addendum
+
+- **"Not green: `Q8Tests.test_q8_alone`" (first addendum) is replaced.** A named expectation
+  change caused by D-ii and D-vii (b): the allowed call moves from the direct to the dispatcher
+  spelling, and a dispatcher-spelling `public` refusal is added. The method is red at `e1fbeff`
+  with its old body (`AssertionError: 2 != 0`, the allowed direct call refused by addition 1) and
+  green here. Its new dispatcher `public` assertion goes red with Q8 disabled for the dispatcher
+  spelling (`AssertionError: 0 != 2`), where the old body fails at its direct allowed call
+  whatever Q8 does and so cannot see that fault. No assertion was removed.
+
+### Test
+
+`python3 gars/tests/test_nonpublic_read_block.py` (`Ran 20 tests` / `OK`). One more planted fault
+goes red, 18 of 18 in all: Q8 disabled for the dispatcher spelling (`test_q8_alone`).

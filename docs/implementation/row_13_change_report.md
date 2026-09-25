@@ -964,3 +964,143 @@ this one method.
   parses under `feature_version=(3, 6)`, below); any cluster run.
 - **Review:** the fresh-context review of this round has not happened; 0142, 0143 and 0144 are
   not written by this producer.
+
+## Step B ruling round 2
+
+2026-09-25. Built on `e1fbeff` on `build/gars-row-13-pilot`. The lane answered the "Owner rulings
+needed" of the "Step B ruling round" section with **ruling D-viii**, the lane's under the owner's
+standing delegation of 23 Sep 2026; none of it is the owner's ruling. It is recorded in
+[0141](../decisions/0141-row-13-closed-project-doors.md)'s dated addendum "ruling round 2
+(D-viii)". The earlier sections of this report are unchanged. No push, remote, install, download,
+approval or merge was performed.
+
+### Ruling item → changed files → test → result
+
+| Ruling item | Changed files | Test | Result |
+|---|---|---|---|
+| D-viii: keep the direct-spelling `public` refusal and its three message assertions | none (unchanged lines) | `Q8Tests.test_q8_alone` | green |
+| D-viii: add the dispatcher-spelling `public` call, refused, with the same three assertions | `gars/tests/test_nonpublic_read_block.py` | `Q8Tests.test_q8_alone` | red with Q8 disabled for the dispatcher spelling (below); **green** here |
+| D-viii: the allowed `deidentified_under_agreement` call in the dispatcher spelling | same file | `Q8Tests.test_q8_alone` | the old direct call red at `e1fbeff` (below); **green** here |
+| 0141 addendum; R-042 amended | `docs/decisions/0141-…md` | `bash docs/decisions/build_index.sh` | index unchanged (frontmatter not edited) |
+| status | `DEVELOPMENT.md` (status paragraph) | `python3 tests/check_counts.py` | `clean — every current claim matches the suite` (the count is unchanged: no method added) |
+
+Nothing else in the module changed: the diff is the one method's body, 11 lines in, 3 out.
+
+**Red first.** A disposable clone of `e1fbeff` in the scratch folder with the new test file laid
+over it; the checkout was never modified, and each plant was restored byte-for-byte.
+
+With Q8's check disabled for the dispatcher spelling only (`message = None if dispatcher else
+first_public_classification(...)` in `closed_bash_refusal`), the new dispatcher `public`
+assertion goes red:
+
+```text
+  File "gars/tests/test_nonpublic_read_block.py", line 728, in test_q8_alone
+    err = self.refused(call(root, 'Bash', {'command': dispatch(
+  File "gars/tests/test_nonpublic_read_block.py", line 289, in refused
+    self.assertEqual(result.returncode, 2, err)
+AssertionError: 0 != 2 :
+Ran 1 test in 14.366s
+FAILED (failures=1)
+```
+
+With Q8 disabled entirely (`message = None`), the kept direct assertion goes red first, since the
+direct call is then refused by addition 1, whose message lacks Q8's wording:
+
+```text
+  File "gars/tests/test_nonpublic_read_block.py", line 725, in test_q8_alone
+AssertionError: "classifying data is the owner's" not found in 'Blocked: this call names project fresh, whose data is not public (decision 0107). …'
+FAILED (failures=1)
+```
+
+The old body, at `e1fbeff`'s code with no plant and again with the dispatcher-only plant, fails
+the same way both times, at its direct allowed call (`line 727, in test_q8_alone`,
+`AssertionError: 2 != 0 : Blocked: this call names project fresh, whose data is not public
+(decision 0107). … A door (decision 0141) is reached only through the dispatcher …`), so it
+could not see Q8 bypassed in the dispatcher spelling. The new body in the unplanted copy: `Ran 1
+test in 14.614s` / `OK`.
+
+### Red-on-fault
+
+The ruling-round driver with one plant added and its own baseline (the 0107 module's baseline is
+now green throughout, so no method is carried red):
+
+| Fault planted | Where |
+|---|---|
+| 18. Q8 disabled for the dispatcher spelling | `closed_bash_refusal`: `message = None if dispatcher else first_public_classification(...)` |
+
+Verbatim (Python 3.8.2), all 18 faults, three runs of the driver:
+
+```text
+baseline test_pilot_log: OK
+baseline test_closed_project_outputs: OK
+baseline test_bring_home: OK
+baseline test_pilot_doors: OK
+baseline test_nonpublic_read_block: OK
+1. the filter skipped for one tool: RED; test_closed_project_outputs FAILED (failures=2, errors=1) test_count_matrix_failure_keeps_code_loses_detail, test_marker_absent_from_every_tool, test_raw_link_target_is_the_closed_project
+2. a keep-list widened to a failure detail: RED; test_closed_project_outputs FAILED (failures=4) test_count_matrix_failure_keeps_code_loses_detail, test_filter_rules, test_marker_absent_from_every_tool
+3. a keep-list widened to history_entry: RED; test_closed_project_outputs FAILED (failures=2) test_collect_never_returns_history_entry, test_registry_keep_lists
+4. the outside-path refusal removed: RED; test_pilot_doors FAILED (failures=5) test_bare_outside_workspace_refused_by_addition_2, test_declared_source_is_not_outside, test_dispatcher_refuses_outside_paths | test_closed_project_outputs FAILED (failures=2) test_outside_paths_refused_with_named_codes
+5. a guard refusal removed (addition 1): RED; test_pilot_doors FAILED (failures=7) test_direct_spelling_refused_on_closed
+6. the READ_ONLY pilot line removed: RED; test_pilot_log FAILED (failures=11) test_guard_refuses_writes_and_the_direct_spelling, test_writer_is_outside_the_guard_and_settings_agree
+7. the actor taken from an input: RED; test_pilot_log FAILED (failures=1) test_actor_is_the_launch_token
+8. end allowed across actors: RED; test_pilot_log FAILED (failures=6) test_end_and_abort_across_actors_refused, test_through_the_dispatcher_the_actor_is_agent
+red-on-fault: 8/8 RED
+9. the nonce check removed: RED; test_pilot_log FAILED (failures=2) test_refusals
+10. bring_home passing a reason tail: RED; test_bring_home FAILED (failures=2) test_failing_wrapper_detail_stays_on_the_cluster, test_reason_prefixes_bound_to_rerun_check
+11. a door echoing file content (keep-list widened to raw stdout): RED; test_closed_project_outputs FAILED (failures=3, errors=1) test_count_matrix_failure_keeps_code_loses_detail, test_filter_rules, test_marker_absent_from_every_tool, test_raw_link_target_is_the_closed_project
+12. a door reached by its direct spelling (D-ii's check removed): RED; test_pilot_doors FAILED (failures=8) test_bare_outside_workspace_refused_by_addition_2, test_direct_spelling_refused_on_closed
+13. CLOSED_PROJECT_DOORS widened by one non-door tool: RED; test_pilot_doors FAILED (failures=2) test_doors_are_the_eleven_of_ruling_d_i, test_non_doors_refused_on_closed_in_both_spellings
+14. D-iv's exemption removed (a declared path refused): RED; test_pilot_doors FAILED (failures=1) test_declared_source_is_not_outside
+15. D-iv's exemption widened to any outside path: RED; test_pilot_doors FAILED (failures=5) test_bare_outside_workspace_refused_by_addition_2, test_declared_source_is_not_outside, test_dispatcher_refuses_outside_paths
+red-on-fault: 7/7 RED
+16. D-vii (a) removed: a door's dispatcher call exempt from 0107's cwd rule: RED; test_pilot_doors FAILED (failures=11) test_dispatcher_from_inside_the_closed_project_refused | test_nonpublic_read_block FAILED (failures=6) test_cwd_inside_closed_project
+17. D-vii (b) removed: a door's direct spelling judged by its paths only: RED; test_pilot_doors FAILED (failures=7) test_direct_spelling_refused_while_any_project_is_closed | test_nonpublic_read_block FAILED (failures=6) test_every_registered_tool
+18. Q8 disabled for the dispatcher spelling (D-viii): RED; test_nonpublic_read_block FAILED (failures=1) test_q8_alone
+red-on-fault: 3/3 RED
+```
+
+18 of 18 RED. With `test_q8_alone` green in the baseline, faults 16 and 17 no longer list it.
+
+### Commands and summary lines (verbatim)
+
+From the repo root, in the foreground, one module per call, `TMPDIR`, `TEMP` and `TMP` in the
+scratch folder, `GARS_TEST_NO_CONTAINER=1`; `python3` is CPython 3.8.2.
+
+| Command | Summary |
+|---|---|
+| `python3 gars/tests/test_pilot_log.py` | `Ran 15 tests in 5.303s` / `OK`; `EXIT pilot log (fixture): launch-bound actor` |
+| `python3 gars/tests/test_closed_project_outputs.py` | `Ran 11 tests in 17.542s` / `OK`; `EXIT closed outputs (fixture): marker absent from every tool` |
+| `python3 gars/tests/test_bring_home.py` | `Ran 9 tests in 9.522s` / `OK`; `EXIT bring home (fixture): detail withheld` |
+| `python3 gars/tests/test_pilot_doors.py` | `Ran 10 tests in 17.131s` / `OK`; `EXIT pilot doors (fixture): dispatcher allowed on closed` |
+| `python3 tests/test_session_turns.py` | `Ran 11 tests in 4.606s` / `OK`; `EXIT session turns (fixture): counts only` |
+| `python3 tests/test_unit_economics.py` | `Ran 18 tests in 6.372s` / `OK`; `EXIT unit economics (fixture): regenerated byte-identical` |
+| `python3 tests/test_rerun_diff.py` | `Ran 8 tests in 2.203s` / `OK`; `EXIT rerun diff (fixture): aggregates only` |
+| `python3 gars/tests/test_nonpublic_read_block.py` | `Ran 20 tests in 77.095s` / `OK` |
+| `python3 gars/tests/test_protected_paths.py` | `Ran 5 tests in 16.476s` / `OK` |
+| `python3 gars/tests/test_rerun_check.py` | `Ran 26 tests in 138.801s` / `OK`; `EXIT instrument self-test (fixture, stub slurm): reproduction 2/2` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/check_counts.py` | `clean — every current claim matches the suite` |
+| `bash docs/decisions/build_index.sh` | index unchanged |
+| the red-on-fault driver | `red-on-fault: 8/8 RED`, `7/7 RED`, `3/3 RED` (18 of 18) |
+
+**Not run by this producer: the whole suite (`tests/run_tests.py`) and Docker**, as the brief
+directs; the lane runs the suite on a separate host.
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps
+
+- **NOT met: row 13's exit.** No pilot has run; every number is a synthetic fixture.
+- **`test_q8_alone` no longer asserts any door's direct spelling**: a door's direct spelling on a
+  closed project is asserted refused by `test_pilot_doors` and
+  `EveryToolTests.test_every_registered_tool`, not here.
+- Carried from the Step B ruling round, unchanged: addition 1's overlap with D-vii (b) for doors;
+  a path-free door call unreachable end to end; D8's "not covered" list; the lexical-plus-existence
+  path rule; the `pilot_log.py end|abort|check` direct spelling refused by the transport's parse
+  before addition 3; the stage 01–03 contract prose; n3; n4.
+- **Not run here:** the whole suite; Python 3.13 and 3.6.8 for this round (the one changed test
+  file parses under `ast.parse(..., feature_version=(3, 6))`: `ast36 ok`); any cluster run.
+- **Review:** the fresh-context review of this round has not happened; 0142, 0143 and 0144 are
+  not written by this producer.

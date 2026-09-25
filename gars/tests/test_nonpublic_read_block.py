@@ -724,9 +724,17 @@ class Q8Tests(HookCase):
         self.assertIn('§21 Q4', err)
         self.assertIn("classifying data is the owner's", err)
         self.assertIn('data_sources.tsv', err)
-        self.allowed(call(root, 'Bash', {'command': stage00(
-            'finalize', '--project', 'projects/fresh', '--data-class',
-            'deidentified_under_agreement', '--purpose', 'fixture')}, hook=hook))
+        # 0141 D-viii: a door is the dispatcher spelling only, so Q8 is asserted there too.
+        err = self.refused(call(root, 'Bash', {'command': dispatch(
+            'stage00_register.finalize', {'project': 'projects/fresh', 'data-class': 'public',
+                                          'purpose': 'fixture'})}, hook=hook), root=root)
+        self.assertIn('§21 Q4', err)
+        self.assertIn("classifying data is the owner's", err)
+        self.assertIn('data_sources.tsv', err)
+        self.allowed(call(root, 'Bash', {'command': dispatch(
+            'stage00_register.finalize', {'project': 'projects/fresh',
+                                          'data-class': 'deidentified_under_agreement',
+                                          'purpose': 'fixture'})}, hook=hook))
 
 
 class ControlAndDriftTests(HookCase):
