@@ -40,6 +40,8 @@ class ManifestGroupsTests(unittest.TestCase):
         self.addCleanup(self.fixture.tearDownClass)
         f = self.fixture
         self.ws, self.project, self.stage = f.ws, f.project, f.de_substage
+        config = self.project / '_config/rnaseq_bulk.yaml'
+        config.write_text(config.read_text().replace('mem: 32G', 'mem: 2G'))
         for directory in ('00_initialize_project', '02_bioinformatics'):
             shutil.copytree(str(GARS / directory), str(f.ws / directory))
         for name in ('HISTORY.md', 'CONTEXT.md'):

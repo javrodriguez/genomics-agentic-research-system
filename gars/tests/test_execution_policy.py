@@ -10,7 +10,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from support import GARS
+from support import GARS, write_fixture_dataset
 import executorlib as ex
 import wrapperlib as wl
 from tools.execution import config_holds
@@ -43,6 +43,7 @@ class ExecutionPolicyTests(unittest.TestCase):
             module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
             with self.subTest(wrapper=source.stem), tempfile.TemporaryDirectory(prefix='direct-collect-') as tmp:
                 project=Path(tmp); (project/'_config').mkdir()
+                write_fixture_dataset(project)
                 cfg=project/'_config'/(module.ASSAY+'.yaml'); cfg.write_text('value: original\n')
                 substage=project/'02_bioinformatics'/module.ASSAY/module.SUBSTAGE
                 substage.mkdir(parents=True)

@@ -65,6 +65,16 @@ def completed_fixture_submission(project, stage):
     from unittest.mock import patch
     import executorlib as ex
     import wrapperlib as wl
+    sys.path.insert(0, str(GARS / 'tests'))
+    from support import write_fixture_dataset
+    write_fixture_dataset(project)
+    cfg = project / '_config' / (stage.relative_to(project).parts[1] + '.yaml')
+    text = cfg.read_text()
+    if re.search(r'^  mem:', text, re.M):
+        text = re.sub(r'^  mem:.*$', '  mem: 2G', text, flags=re.M)
+    else:
+        text += '\ncompute:\n  mem: 2G\n'
+    cfg.write_text(text)
     manifest_path = stage / 'reproducibility/manifest.json'
     manifest = json.loads(manifest_path.read_text())
     params = dict(manifest.get('params', {}))

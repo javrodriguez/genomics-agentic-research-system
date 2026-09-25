@@ -1,0 +1,4 @@
+data_class	permitted_backends	storage_venues	provider_exposure	backup_second_destination	retention_rule	expiry_rule	approval_rule
+public	local:fixture|homelab:fixture|homelab:internal|homelab:pilot_internal|slurm:fixture|slurm:internal|slurm:pilot_internal	any	yes	"permitted: an encrypted copy at a destination the owner configures (none configured; HARDWARE.md stays ""to be recorded"")"	per project; no deletion rule	none	none
+deidentified_under_agreement	slurm:internal|slurm:pilot_internal	institutional/HPC storage only; never local, never the homelab (R-136 not satisfied)	no	none off institutional storage	delete derived copies outside institutional storage at project close; the agreement's own terms govern the rest	the agreement's expiry, recorded as `expiry` on the dataset row; no expiry recorded = refused	any send to a third party
+identifiable	none	none	no	none	not held	—	would need one per run (R-074); no route exists in v0.1

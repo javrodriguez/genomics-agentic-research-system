@@ -10,7 +10,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from support import GARS
+from support import GARS, write_fixture_dataset
 import stage03_analysis as stage
 import executorlib as ex
 from test_policy_attacks import guard
@@ -37,6 +37,7 @@ class ApprovalForgeryTests(unittest.TestCase):
         self.workspace.mkdir()
         (self.workspace/'_references').symlink_to(GARS/'_references', target_is_directory=True)
         self.project=self.workspace/'projects/p'
+        write_fixture_dataset(self.project)
         self.adir=self.project/'03_custom_analysis/01_policy'
         (self.adir/'results').mkdir(parents=True)
         (self.adir/'results/table.tsv').write_text('a\tb\n1\t2\n')

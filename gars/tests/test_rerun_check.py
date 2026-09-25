@@ -62,6 +62,40 @@ class RerunCheckTests(unittest.TestCase):
         self.wrappers = self.ws / '_system/test-wrappers'
         shutil.move(str(self.ws / 'test-wrappers'), str(self.wrappers))
         self.wrapper = self.wrappers / 'rerun-fixture/rerun_fixture.py'
+        copied_executor = self.ws / '_system/executorlib.py'
+        copied_executor.write_text(copied_executor.read_text() +
+            '\nHOMELAB_MARKER = str(Path(__file__).resolve().parents[1] / "fixture-marker")\n')
+        marker = patch.object(ex, 'HOMELAB_MARKER', str(self.repo / 'fixture-marker'))
+        marker.start(); self.addCleanup(marker.stop)
+        commands = self.repo / 'bin'; commands.mkdir()
+        scheduler = """import json, subprocess, sys
+from pathlib import Path
+base = Path(__file__).resolve().parent
+if '--version' in sys.argv:
+    print('fixture scheduler'); sys.exit(0)
+if Path(__file__).name == 'sbatch':
+    count = base / 'count'
+    job = int(count.read_text()) + 1 if count.exists() else 100
+    count.write_text(str(job))
+    result = subprocess.run(['bash', sys.argv[-1]], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    (base / str(job)).write_text(str(result.returncode))
+    print('Submitted batch job ' + str(job))
+else:
+    fields = ' '.join(sys.argv)
+    if 'Elapsed,MaxRSS,AllocCPUS' in fields:
+        print('00:00:01|1024K|1|')
+    elif '--format=Start' in fields:
+        print('2026-09-25T00:00:00|')
+    else:
+        code = int((base / sys.argv[sys.argv.index('-j')+1]).read_text())
+        print(('COMPLETED|0:0' if code == 0 else 'FAILED|%d:0' % code))
+"""
+        for name in ('sbatch', 'sacct'):
+            command = commands / name
+            command.write_text('#!' + sys.executable + '\n' + scheduler)
+            command.chmod(0o755)
+        environment = patch.dict(os.environ, {'PATH': str(commands) + os.pathsep + os.environ['PATH']})
+        environment.start(); self.addCleanup(environment.stop)
         (self.repo / '.rerun-self-test').write_text('suite only\n')
         (self.repo / '.gitignore').write_text('__pycache__/\n*.pyc\n')
         (self.ws / '_system/gars-env.sh').write_text(':\n')
@@ -70,7 +104,7 @@ class RerunCheckTests(unittest.TestCase):
         self.commit()
         self.project = self.ws / 'projects/original'
         (self.project / '_config').mkdir(parents=True)
-        (self.project / '_config/executor.yaml').write_text('name: local\n')
+        (self.project / '_config/executor.yaml').write_text('name: slurm\n')
         (self.project / '_config/rerun-fixture.yaml').write_text('compute:\n  cpus: 1\n')
         (self.project / '01_samplesheets').mkdir()
         (self.project / '01_samplesheets/rerun-fixture_samplesheet.csv').write_text('sample\nfixture\n')
@@ -84,7 +118,8 @@ class RerunCheckTests(unittest.TestCase):
             (self.project / name).write_text('# fixture\n')
         checked([sys.executable, self.ws / '_system/stage00_register.py', 'finalize',
                  '--project', self.project, '--data-class', 'deidentified_under_agreement',
-                 '--purpose', 'internal', '--agreement-ref', 'fixture-agreement-01', '--model', 'none'])
+                 '--purpose', 'internal', '--agreement-ref', 'fixture-agreement-01',
+                 '--expiry', '2099-01-01', '--model', 'none'])
         checked([sys.executable, self.wrapper, 'prepare', '--project', self.project])
         self.stage = self.project / '02_bioinformatics/rerun-fixture/01_rerun-fixture'
         self.path = self.stage / 'reproducibility/manifest.json'
@@ -178,7 +213,7 @@ class RerunCheckTests(unittest.TestCase):
                     self.assertNotEqual(row['original_sha256'], row['replay_sha256'])
                     print('MEASURE instrument self-test run %d: max_absolute_error=%s; bytes differ' %
                           (run_result['run'], row['value']))
-        print('EXIT instrument self-test (fixture, local): reproduction 2/2')
+        print('EXIT instrument self-test (fixture, stub slurm): reproduction 2/2')
 
     def replay(self, expected=0):
         output = io.StringIO()

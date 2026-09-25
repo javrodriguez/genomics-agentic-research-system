@@ -152,6 +152,7 @@ def validate_manifest(manifest, stage):
                 'execution config drifted: ' + entry['path'])
     require(manifest.get('execution_config_resolved', {}).get('backend') == manifest['backend'],
             'execution config backend differs')
+    replay_dataset_values(manifest, stage.parents[2])
     wl.verify_output_manifest(stage)
     require(manifest['wrapper'] != 'scrna-qc-cluster' or 'samplesheet' in manifest['inputs'],
             'manifest lacks required samplesheet input: scrna-qc-cluster')
@@ -196,7 +197,33 @@ def run_wrapper(wrapper, verb, project, manifest, env):
             result.stdout.decode('utf-8', 'replace') + result.stderr.decode('utf-8', 'replace'))
 
 
+def replay_dataset_values(manifest, original_project=None):
+    """Compare recorded classification and route before constructing a replay."""
+    import venue_policy
+    values = {key: manifest.get(key) for key in ('data_class', 'purpose', 'agreement_ref',
+                                                'expiry', 'permitted_backends')}
+    # Old public manifests have no expiry requirement and use the class route.
+    if values['data_class'] == 'public':
+        if values['expiry'] is None:
+            values['expiry'] = 'none'
+        if values['permitted_backends'] is None:
+            values['permitted_backends'] = venue_policy.narrowed('public')
+    require(all(value is not None for value in values.values()),
+            'replay_dataset_mismatch: dataset route fields not recorded in manifest')
+    if original_project is not None:
+        registered = wl.dataset_record(original_project)
+        for key, value in values.items():
+            actual = registered.get(key)
+            if key == 'permitted_backends' and actual is None:
+                actual = venue_policy.narrowed(registered.get('data_class'))
+            if key == 'expiry' and actual is None and registered.get('data_class') == 'public':
+                actual = 'none'
+            require(actual == value, 'replay_dataset_mismatch: ' + key)
+    return values
+
+
 def bind_project(manifest, project, info, original_project=None):
+    dataset_values = replay_dataset_values(manifest, original_project)
     config = project / '_config'
     config.mkdir(parents=True)
     # Original inputs stay immutable and keep their resolved names and hashes.
@@ -236,9 +263,12 @@ def bind_project(manifest, project, info, original_project=None):
     result = subprocess.run([sys.executable, str(REPO / 'gars/_system/stage00_register.py'),
         'finalize', '--project', str(project), '--data-class', manifest['data_class'],
         '--purpose', manifest['purpose'], '--agreement-ref', manifest['agreement_ref'],
-        '--model', 'none'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        '--model', 'none', '--permitted-backends', dataset_values['permitted_backends']] +
+        (['--expiry', dataset_values['expiry']] if dataset_values['expiry'] != 'none' else []),
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     require(result.returncode == 0, 'dataset finalize failed: ' +
             result.stdout.decode('utf-8', 'replace') + result.stderr.decode('utf-8', 'replace'))
+    replay_dataset_values(dict(manifest, **dataset_values), project)
 
 
 def validate_preparation(original, replay, old_stage, new_stage):

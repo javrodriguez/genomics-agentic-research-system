@@ -2089,3 +2089,302 @@ Hours and metered dollars: unknown, not zero.
 ## Owner rulings needed
 
 None.
+
+
+## Step B: data route, venues, bench
+
+Starting hash, recorded before editing: `1cce53614843646fee0de32100c1117ff45d80ab`.
+Branch: `build/gars-row-8-venues`. Round 1; no supplied review. All brief rulings
+were decided under the owner's standing delegation (23 Sep 2026). Implementation
+record: `docs/decisions/0102-row-8-venue-policy-and-backend-bench.md`.
+Step A's existing report bytes and frozen files are preserved.
+
+**Status: implementation blocked on the replay writer boundary, not complete.**
+The route table, both submission doors, dataset additions and benchmark instrument
+are implemented. No benchmark job was measured and the CSV is header only.
+The private-data replay cannot pass because the explicitly permitted one-line
+wrapperlib edit does not record expiry/permitted_backends. The proposed two-line
+addition was tested only in a scratch copy: all 21 replay tests passed, with
+all existing assertions retained. It is not present in this branch.
+
+Producer effort: approximately 0.75 hours (estimate, not stopwatch evidence).
+Measured production or benchmark execution: zero hours.
+
+### Requirements and acceptance
+
+| Requirement | Changed files | Acceptance | Result and red-on-fault seen |
+|---|---|---|---|
+| R-060 remainder | gars/_system/stage00_register.py; gars/_system/tools/registry.json; gars/_references/data_policy.tsv | test_venue_policy route lock/migration, expiry and homelab tests; unchanged test_data_class_required | PASS; yes, widening and expiry faults killed; frozen 4-test module OK |
+| R-062 | gars/_system/venue_policy.py; gars/_system/executorlib.py; gars/tests/test_venue_policy.py | full 45-cell grid, exact FASTQ adversary, explicit descriptor, both doors and ordering | PASS; yes, removed gates, widened/case-folded exemption, suppressed reason and reordered checks killed |
+| R-063 / 0100 | gars/_references/data_policy.tsv; gars/tests/test_data_route.py | all three classes and every table cell bound to parsed 0100 | data route recorded: 3/3; yes, table drift killed |
+| R-064/R-065 | gars/_system/executorlib.py; gars/_system/venue_policy.py; gars/_system/wrapperlib.py | venue_of, 8 GiB/8.5 GiB, absent/unparseable memory, manifest versus executed venue | PASS; yes, all named resource/venue faults killed; existing check_executor_config unchanged |
+| R-136 | gars/_system/stage00_register.py | patched marker refuses non-public storage; public passes | PASS; marker override mutation killed |
+| R-193 input | scripts/backend_bench.py; tests/test_backend_bench.py; benchmarks/backend_bench.csv; benchmarks/backend_bench/README.md | prepared stage-02 submit, terminal-only collect, evidence regeneration, privacy, supersession and RSS units | PASS instrument; backend rows: 0/3 (); yes, missing evidence, privacy, edited wall, early evidence and FAILED append faults killed |
+| R-042 | executor, finalize, shared venue line, fixture builders, scripts/rerun_check.py, 0102 and contracts | refusal order and immutable bytes; replay with recorded route | policy changes PASS; private replay NOT met pending the writer scope ruling; scratch candidate 21 tests OK |
+
+### Preflight and protected scope
+
+All commands were launched from the repository root. TMPDIR, TEMP and TMP were
+set to the scratch twin for every command; logs and disposable trees stayed there.
+No network, remote, push, pull request, merge or approval action was used.
+`rg` was absent; Git grep, grep and Python were used instead. The base greps were
+repeated with HEAD as a separate revision argument, covering submit callers,
+local fixtures, memory, completed_fixture_submission and finalize flags.
+The frozen row-6 test's identifiable case is only an immutable-classification
+re-finalize, so its old refusal remains first and the lane does not edit it.
+
+Pre-list disposition:
+
+- approval_forgery, downstream_keys, execution_policy, lifecycle_executor and
+  stage03_execution gain shared fixture-dataset calls in their builders.
+- failure_classification, lifecycle_cancel and no_false_completion inherit the
+  call through lifecycle_executor.prepared. Their files remain unchanged.
+- lifecycle_faults copies and runs those same builders. Its file, pinned strings
+  and expectations remain unchanged.
+- executorlib_resume submits outside either allowed door and still expects
+  R-073; it remains unchanged.
+- manifest_groups already calls real public/fixture finalize; its fixture-only
+  32G config becomes 2G before preparation.
+- rerun_check gets the authorized expiry and Slurm stub fixture. Marker constants
+  are patched in the test process and disposable executor copy, never selected
+  through an environment override. The existing fixture exit label is corrected
+  to say stub slurm; every assertion is retained.
+- replay-baseline fixtures, templates and tests/test_planted_defects.py are
+  unchanged. The planted-defect runner inherits the one completed fixture helper.
+
+Protected files touched, one per line:
+
+- `gars/_system/executorlib.py`
+- `gars/_system/stage00_register.py`
+- `gars/_system/wrapperlib.py` (only the group-11 venue line)
+- `gars/_system/venue_policy.py`
+- `gars/_references/data_policy.tsv`
+- `gars/_system/tools/registry.json` (finalize only)
+- `gars/00_initialize_project/CONTEXT.md`
+- `gars/02_bioinformatics/CONTEXT.md`
+- `gars/03_custom_analysis/CONTEXT.md`
+
+The source audit prints `lifecycle fault anchors preserved: 45/45`,
+`validate byte-identical`, `registry scope: finalize only`,
+`executor pins and wrapperlib one-line boundary preserved`, and
+`frozen files byte-identical: 4/4`. BUILTINS and every existing local-name
+comparison are unchanged. No template or detector changed. Contracts describe
+every new literal fail code. The decision index was regenerated with
+`bash docs/decisions/build_index.sh`.
+
+### Expectation changes
+
+No existing assertion was changed or removed. These are the complete fixture
+and behavior changes; line references name the implementation after this step.
+
+| Test/helper | File and line | Old | New | Requirement |
+| fixture dataset helper | `gars/tests/support.py:65` | no dataset helper | idempotent finalize-equivalent 0444 public/fixture writer | R-060/R-062 |
+| completed_fixture_submission | `tests/run_tests.py:70` | unclassified submission possible | shared dataset row before real submit; all callers inherit | R-062 |
+| completed_fixture_submission memory | `tests/run_tests.py:71` | class/template memory 32G to 96G | 2G before write_reproducibility hashes config | R-064 |
+| lifecycle prepared builder | `gars/tests/test_lifecycle_executor.py:15` | unclassified fixtures | shared public/fixture row, inherited by failure/cancel/no-false-completion tests | R-062 |
+| approval fixture | `gars/tests/test_approval_forgery.py:40` | unclassified analysis | public/fixture dataset | R-062 |
+| stage03 fixture | `gars/tests/test_stage03_execution.py:29` | unclassified analysis | public/fixture dataset | R-062 |
+| downstream fixture | `gars/tests/test_downstream_keys.py:23` | unclassified prepared stage | public/fixture dataset | R-062 |
+| execution policy collect fixture | `gars/tests/test_execution_policy.py:46` | unclassified synthetic completion | public/fixture dataset | R-062 |
+| manifest groups setup | `gars/tests/test_manifest_groups.py:43` | 32G declared on local | 2G before prepare; existing real finalize retained | R-064 |
+| replay setup | `gars/tests/test_rerun_check.py:107` | local agreement dataset with no expiry | future expiry, Slurm stub and patched marker constants | R-060/R-062 |
+| replay fixture exit label | `gars/tests/test_rerun_check.py:216` | fixture, local | fixture, stub slurm (assertions unchanged) | R-042 |
+| replay reader | `scripts/rerun_check.py:200` | class/purpose/agreement only | recorded expiry/route passed and checked; missing private fields refused | R-042/R-060 |
+
+### Parent red and fault evidence
+
+A disposable archive of the starting HEAD received the new tests. The venue
+import failed naming `gars/_system/venue_policy.py`; the bench import failed
+naming `scripts/backend_bench.py`. A separate behavioral probe using the parent's
+real prepare and submit, with only scheduler execution stubbed, failed its refusal
+assertion: `AssertionError: deidentified_under_agreement submitted on local: 42`.
+Current ExecutedDescriptorTests is green on the same private/local route.
+
+`python3 gars/tests/test_venue_policy_faults.py` compiles each mutated source
+before invoking its behavioral witness in a fresh scratch tree. Import and syntax
+errors are not counted as policy kills. It prints the following observed controls;
+each is red-on-fault seen **yes**, restored source green:
+
+```text
+fault red: CSV row without evidence
+fault red: host name in evidence
+fault red: hand-edited wall_s
+fault red: evidence before terminal
+fault red: FAILED evidence appended
+fault red: route table drift
+fault red: stage02 skips policy
+fault red: stage03 skips policy
+fault red: FASTQ exemption widened
+fault red: class case insensitive
+fault red: purpose case insensitive
+fault red: FASTQ reason suppressed
+fault red: absent memory refused
+fault red: unparseable memory allowed
+fault red: 8.5 GiB accepted
+fault red: homelab without marker
+fault red: grade load instead of executed descriptor
+fault red: grade prepare-time group 11
+fault red: analysis submission venue missing
+fault red: submission venue missing
+fault red: widen permitted backends
+fault red: missing expiry accepted
+fault red: marker environment override
+fault red: identifiable accepted
+fault red: login-node graded after swap
+fault red: test-mode bypass
+fault red: policy after reservation
+fault red: policy after analysis launcher
+fault red: policy before config refusal
+fault red: policy before approval refusal
+```
+
+The reservation move is also the requested idempotency-reservation fault. The
+load-versus-executed and group-11 faults are tested separately. Both submission
+record venue keys have separate faults. Case folding of class and purpose has
+separate faults. The env-bypass control has a real submit witness. These are
+producer-visible controls, not sealed reviewer or catch-rate measurements.
+
+### Commands and measured summaries
+
+Commands below ran from the repository root with all three temp variables set
+to the scratch twin. The Python was **3.13.5**, including evals/test_harness.py
+(the required minimum is 3.9). Full suites ran one at a time. Database classes
+for rows 5 and 7 were skipped under GARS_TEST_NO_CONTAINER=1; Docker is unavailable.
+No row 8 threshold was changed.
+
+`GARS_TEST_NO_CONTAINER=1 python3 tests/run_tests.py`
+
+```text
+planted-defects development (producer-authored, unsealed): 9/10 classes (placeholder 10 counted planted, not caught)
+false flags (producer-authored clean projects): 0/10
+graded 19 of 19 development projects seen
+class 6: measured with --verify-integrity full; stage 01 default is none
+Ran 603 tests in 410.014s
+FAILED (failures=2, errors=5, skipped=79)
+```
+
+`python3 tests/check_contracts.py`
+
+```text
+14 contracts clean: sections, wait points, vocabulary.
+```
+
+`python3 tests/check_counts.py`
+
+```text
+suite: 603 tests, from unittest's loader
+clean — every current claim matches the suite
+```
+
+`python3 evals/test_harness.py`
+
+```text
+Ran 44 tests in 37.507s
+OK
+```
+
+`python3 evals/check_results.py --controls --lexicon`
+
+```text
+clean — graded=1
+```
+
+`python3 tests/test_planted_defects.py`
+
+```text
+Ran 18 tests in 4.810s
+OK (skipped=1)
+planted-defects development (producer-authored, unsealed): 9/10 classes (placeholder 10 counted planted, not caught)
+false flags (producer-authored clean projects): 0/10
+graded 19 of 19 development projects seen
+class 6: measured with --verify-integrity full; stage 01 default is none
+```
+
+`python3 gars/tests/test_venue_policy.py`
+
+```text
+Ran 15 tests in 1.192s
+OK
+```
+
+`python3 gars/tests/test_data_route.py`
+
+```text
+Ran 1 test in 0.000s
+OK
+data route recorded: 3/3
+```
+
+`python3 gars/tests/test_data_class_required.py`
+
+```text
+Ran 4 tests in 0.661s
+OK
+```
+
+`python3 tests/test_backend_bench.py`
+
+```text
+Ran 6 tests in 1.493s
+OK
+backend rows: 0/3 ()
+```
+
+`python3 gars/tests/test_venue_policy_faults.py`
+
+```text
+Ran 2 tests in 5.872s
+OK
+```
+
+`python3 gars/tests/test_rerun_check.py`
+
+```text
+Ran 21 tests in 19.888s
+FAILED (failures=2, errors=5)
+```
+
+The earlier full run, before the authorized replay fixture update, printed
+`Ran 593 tests in 423.121s` and `FAILED (failures=14, skipped=79)`. All 14
+were the agreement fixture lacking expiry. The latest run above is authoritative.
+
+Additional checks: Python 3.6 grammar parses for the six changed production
+Python modules; actual Python 3.6.8 is unavailable. `git diff --check` is clean.
+Repository-local configured Git identity was inspected and is used unchanged.
+Scratch probes used Python subprocesses to execute the archived parent and to
+run the two-line writer candidate; no candidate writer edit enters this commit.
+Source reads used cat/sed/grep and Python; scope checks used git status, git diff,
+git show, git ls-files and AST/JSON comparisons. New files and edits used Python
+and shell heredocs. Parent sources came from `git archive HEAD` into the scratch
+twin. No command changed directory before running. Git staging is path-limited;
+the commit message comes from a scratch file.
+
+### Residual gaps
+
+- **NOT met:** passing whole-suite gate and private-data replay, pending ruling 1.
+- **NOT met:** row 8's three measured backend rows; local, homelab and slurm are
+  all unmeasured. Instrument tests print 0/3 and no row exit is claimed.
+- **NOT met:** actual Python 3.6.8 execution, real Slurm accounting, live resource
+  normalization and live venue measurements. Synthetic tests are not those facts.
+- **NOT met:** R-193 priced unit economics; costs are unmetered inputs only.
+- **NOT met:** real FASTQ per-sample cost, row 13's sacct actuals; cloud routing.
+- **NOT met:** R-061 and hosted-prompt exposure enforcement; second backup
+  destination; any institutional agreement.
+- **NOT met:** OS isolation from privileged or unguarded writers; host attestation
+  beyond the marker; actual memory rather than declarations; FASTQ columns other
+  than fastq_1/fastq_2; truth of machine clock readings.
+- **NOT met:** Docker-backed rows 5/7 database verification on this host.
+- **NOT met:** independent review, protected approval, merge and row 8 exit.
+
+## Owner rulings needed
+
+1. **Record replay route fields at prepare.** The brief requires replay to pass
+   manifest-recorded expiry and permitted_backends but permits only the venue
+   derivation line in wrapperlib.py. The existing prepare_manifest_facts records
+   neither field. Options: authorize the two additional dictionary entries
+   `'expiry': dataset.get('expiry')` and
+   `'permitted_backends': dataset.get('permitted_backends')` in that function;
+   or keep the one-line boundary and leave private replay/step B stopped for a
+   separate writer change. The first option was tested only in the scratch twin:
+   `Ran 21 tests in 26.025s`, `OK`, with all existing assertions retained.
+   No unrecorded value is inferred for private replay and no policy is weakened.
