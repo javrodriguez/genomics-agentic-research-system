@@ -1377,3 +1377,7 @@ None.
 - **Not run here:** the whole suite; Python 3.6.8 execution (syntax only); any cluster run.
 - **Review:** the fresh-context review of this round has not happened; 0142, 0143 and 0144 are
   not written by this producer.
+
+## Landing
+
+2026-09-26. Row 13 steps A and B land as the merge `09a6e77` (first parent public main `abab89a`, second parent `67b3263`), carrying the `Review:`, `Bench:` and `Session:` trailers row 14's gate requires. The next commit holds the merge's smoke record (`evals/runs/smoke/smoke-20260926-row-13-doors.json`: one run of three `claude-opus-5-5` sessions, 3/3, `delta` `0/1`, `no change`), its retained outputs, the review stub and 0144, the lane's delegated approval of step B's protected changes, which carries the landing's evidence. Nothing under `gars/_system/` changes in that commit. Row 13's exit stays NOT met: no pilot has run.
