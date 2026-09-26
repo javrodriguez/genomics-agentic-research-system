@@ -561,3 +561,50 @@ removed from a base; the refusal-on-limit stop removed. Each turns its named tes
 red after a green control. The threat model, row-9 imports, the R1 path projection,
 the R2 exact sweep exemptions and the U-1 retry budget are unchanged. This round
 does not claim row 10's exit and does not certify statistical honesty.
+
+## Addendum, 26 Sep 2026 (round W1, review V1)
+
+This round is a further continuation beyond the lane's stop rule, ruled by
+glitch-09 under the owner's standing delegation of 23 Sep 2026 (ruling (D)).
+These are glitch-09's rulings, not the owner's words.
+
+**Producer.** Round W1 was produced by a headless Claude Opus 5.5 session,
+because every Codex route available to the lane was at its usage limit. The
+same-model cost: the bytes this round adds (the prompt pin test, its two
+red-on-fault entries, and INTERFACE.md's absent-report-value line) were written
+by the same model family as the measured reviewer. This round changes no prompt
+byte. The case analyses were written by Codex in earlier rounds and are unchanged.
+
+**The stopped first attempt.** A first attempt at this round was stopped when the
+Claude Code auto-mode permission classifier denied an edit narrowing the science
+prompt's scoping passage (reason given: "Instruction Poisoning"). Nothing was
+worked around. The narrowing was dropped by glitch-09's ruling (D), and ruling
+(c) stays as round V shipped it.
+
+**W-2 (V1's F1).** `ContractTests.test_prompt_pinned` pins the whole science
+prompt, byte for byte, to its bytes at round V's head
+`1eb60cf18ab765ffb99491b5e6a0a2b3fc793144`, sha256
+c4aebae5fc878c9b0b0401ad22efd47a7163036a67080d53c4cc85da2c9de04c. Any added or
+changed text turns it red, including a cap written in other words. Two
+red-on-fault entries cover that: a NOTE cap on the cost and limitations sections
+worded without "at most a NOTE", and a one-byte change to a heading.
+
+**W-3 (V1's F2).** The change report's new section ends with
+`## Owner rulings needed` reading exactly `None.`. Earlier sections are unedited.
+
+**W-4 (V1's F3).** INTERFACE.md now says, outside 0135's verbatim block, that a
+plant must not be expressed as an absent report value (a value the renderer
+would print as `UNKNOWN (owned by …)`). The flaw must be present in the case's
+own data, design, results or narrative text.
+
+**Named residual (V1's F3).** Round V's cap matches the literal
+`UNKNOWN (owned by …)` form. `render_report.py` writes that same form for any
+missing claim or manifest value, not only for its four hard-coded sections. So
+a plant expressed as an absent report value would be uncatchable at
+min_severity MINOR. W-4 forbids such plants to the sealer, and the lane's
+sealed-case audit checks each sealed plant for it explicitly.
+
+V1's F4 (the reused session id on retry) and F5 (the fault module's wall time on
+macOS) are the lane's. Nothing else changes: the threat model, the row 9 imports,
+the R1 projection, the R2 exemptions, the U-1 retry budget and the bases are as
+before. This round does not claim row 10's exit.

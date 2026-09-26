@@ -189,6 +189,16 @@ assert not any((root / 'evals/bio-faults' / (name + '.py')).exists()
             self.assertNotIn(word, passage.lower())
 
 
+    # Ruling (D), W-2: the whole prompt stays the bytes round V shipped (1eb60cf).
+    PROMPT_SHA256 = 'c4aebae5fc878c9b0b0401ad22efd47a7163036a67080d53c4cc85da2c9de04c'
+
+    def test_prompt_pinned(self):
+        import hashlib
+        data = (REPO / bio.PROMPT_PATH).read_bytes()
+        self.assertEqual(hashlib.sha256(data).hexdigest(), self.PROMPT_SHA256,
+                         'science prompt changed from its pinned bytes')
+
+
 class OracleTests(unittest.TestCase):
     def test_any_of_grid(self):
         expected = answer()

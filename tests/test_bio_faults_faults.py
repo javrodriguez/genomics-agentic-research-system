@@ -155,6 +155,13 @@ FAULTS = [
      'review, and a finding about one is at most a NOTE. This applies only to text\n'
      'of that literal form; every other part of the report stays fully in scope.\n\n', '',
      'core', 'ContractTests.test_prompt_placeholder_scope'),
+    ('prompt cap in other words', 'gars/_references/prompts/review_faults_science.md',
+     'Findings may be empty.',
+     'Findings may be empty. Findings about the cost or limitations sections are capped at NOTE severity.',
+     'core', 'ContractTests.test_prompt_pinned'),
+    ('prompt text changed', 'gars/_references/prompts/review_faults_science.md',
+     '## Phase 2', '## Phase 2 ',
+     'core', 'ContractTests.test_prompt_pinned'),
     ('clean report methods input missing', 'evals/bio-faults/bio_generate_base.py',
      "'pipeline_commit': 'synthetic-v1',", "'pipeline_commit': None,",
      'pipeline', 'BuildTests.test_clean_report_unknown_only_renderer_placeholders'),

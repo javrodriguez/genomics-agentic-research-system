@@ -1126,3 +1126,63 @@ protected approval (0137), the sealed slots and the measured runs. Row 10's exit
 is not claimed.
 
 Closed: ruling (c), F1, F3, F4. F2 waits on the lane's rehearsal. Nothing waits on the owner.
+
+## Review round W1 fixes
+
+Dated 26 Sep 2026. This round answers review V1 under glitch-09's ruling (D),
+given under the owner's standing delegation. It was produced by a headless
+Claude Opus 5.5 session because every Codex route was at its limit; 0136's
+addendum records the same-model cost and the stopped first attempt. The science
+prompt does not change in this round (sha256 stays c4aebae5…9de04c).
+
+| Finding | Changed files | Test | Result |
+|---|---|---|---|
+| V1 F1 (MINOR): the scope test missed a cap in other words (W-2) | `tests/test_bio_faults_core.py`, `tests/test_bio_faults_faults.py` | `ContractTests.test_prompt_pinned`: whole-prompt sha256 equals the bytes at `1eb60cf` | green; red-on-fault seen: yes. The fault module turned it red for `prompt cap in other words` (V1's own sentence, without "at most a NOTE") and `prompt text changed` (one byte added to a heading) |
+| V1 F2 (MINOR): the last `## Owner rulings needed` did not read exactly `None.` (W-3) | this file | none (document) | this section puts residuals and closure above its final heading, which reads exactly `None.`; earlier sections unedited |
+| V1 F3 (NOTE): a plant as an absent report value would be capped (W-4) | `evals/bio-faults/INTERFACE.md`, 0136 addendum | none (sealer rule; the lane's sealed-case audit checks it) | new rule outside 0135's verbatim block; named residual in 0136 |
+| V1 F4 (NOTE): reused session id on retry | none | none | the lane's deployment rehearsal |
+| V1 F5 (NOTE): fault module over 120 s on macOS | none | none | the lane's Linux mode-B measurement decides it (180.2 s here, two entries added) |
+
+`README.md` and `DEVELOPMENT.md` count lines move from 740 to 741 tests, the one
+new test; `tests/check_counts.py` is clean.
+
+### Verification (this host: macOS, Python 3.8.2)
+
+TMPDIR, TEMP and TMP were set to the scratch twin. Per the lane's whole-suite
+rule, I did NOT run `python3 tests/run_tests.py`; the lane runs it in modes B and
+C on its Linux host from a fresh clone of this commit. Mode A needs Docker,
+which this account cannot reach.
+
+| Command | Verbatim summary | Wall time |
+|---|---|---|
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` | <1 s |
+| `python3 tests/check_counts.py` | `enforced=3`; `clean — every current claim matches the suite` (741 tests) | <1 s |
+| `python3.13 evals/test_harness.py` | `Ran 44 tests in 144.337s`; `OK` | 145 s |
+| `python3 evals/check_results.py --controls --lexicon` | `clean — graded=1` | <1 s |
+| `python3 scripts/release_check.py` | `DoD cells regenerated: 13/13` (tree unchanged) | <1 s |
+| `python3 tests/test_bio_faults_core.py` | `Ran 14 tests in 0.521s`; `OK` | 0.70 s |
+| `python3 tests/test_bio_faults_pipeline.py` | `Ran 45 tests in 85.578s`; `OK` | 86 s |
+| `python3 tests/test_bio_faults_faults.py` | `Ran 1 test in 180.199s`; `OK`; 50 `science fault red` lines | 181 s, OVER the 120 s budget on this host |
+| Python 3.6 grammar | `Python feature_version=(3, 6): 11/11 Python files parse` | n/a |
+| `bio_build_cases.py`, repository fixtures | `cases 4; sweep hits 0`; P01, P02, C01, C02 each true on all nine gates | n/a |
+| pre-commit hook over this round's staged diff | `gitleaks: passed`; `citations: 365/365 resolve`; `pre-commit: passed`; exit 0 | n/a |
+| `gitleaks dir evals/bio-faults/fixtures` | `no leaks found` | n/a |
+
+The reviewer row as release_check renders it is unchanged:
+`| reviewer catch rate (code; science) | … | unmeasured |`.
+No fixture byte, prompt byte, 0135, reserved record, `gars/_system/`, row 9,
+`benchmarks/`, `.github/` or `docs/ledger.csv` changed.
+
+Residual gaps still open: the whole suite in modes B and C (the lane's run on
+Linux); mode A (Docker); the fault module's 120 s budget on macOS (F5); native
+Python 3.6 execution; the reused session id on retry and the real
+`model_refusal_no_fallback` event shape (F4, the lane's rehearsal); the row 7
+renderer defect (its own follow-up); the independent honesty audit, the protected
+approval (0137), the sealed slots and the measured runs. Row 10's exit is not
+claimed.
+
+Closed: V1 F1, F2, F3. F4 and F5 are the lane's. Nothing waits on the owner.
+
+## Owner rulings needed
+
+None.

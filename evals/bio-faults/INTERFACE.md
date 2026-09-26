@@ -124,6 +124,10 @@ file_lines interval is widened by exactly three at each end. Use `mode: file`
 for rendered files unless the sealer has seen the built copy through validate.
 Never widen an interval to cover unrelated content. MINOR is the default floor.
 
+A plant must not be expressed as an absent report value: a value the renderer
+would print as `UNKNOWN (owned by …)`. The flaw must be present in the case's
+own data, design, results or narrative text.
+
 ## Gate names
 
 stage01_design · catalogue_integrity · catalogue_probabilities ·
