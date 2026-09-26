@@ -608,3 +608,40 @@ V1's F4 (the reused session id on retry) and F5 (the fault module's wall time on
 macOS) are the lane's. Nothing else changes: the threat model, the row 9 imports,
 the R1 projection, the R2 exemptions, the U-1 retry budget and the bases are as
 before. This round does not claim row 10's exit.
+
+## Addendum, 26 Sep 2026 (merge preparation against 0151 main)
+
+This addendum was decided by glitch-09 under the owner's standing delegation of
+23 Sep 2026, not in the owner's words. It was produced by a headless Claude Opus
+5.5 session because every Codex route was at its usage limit.
+
+**The merge interaction with 0074.** Merge commit `1469ee17` joins public main
+`acb46dc` (after row 13's follow-up 0151) with this row's head `c1fb9cb`. Main's
+`scripts/release_check.py` carries record 0074's code-half reader (row 9's
+measured run). That reader needs `per_class`, `complete_set`, `overall.invalid`
+and `thresholds_met`, and it prints false alarms over valid clean reviews, the
+INVALID count and the threshold verdict. The merge kept that reader verbatim as
+the nested `code_measurement` and appended this row's science reader after it.
+This addendum does not change that resolution. Row 10's
+`test_release_reader_code_pin_and_science` still built its code-half run file in
+the older shape and pinned the older line, so on the merge it failed with
+`KeyError: 'per_class'`.
+
+**What changed.** Only that test. Its code-half fixture now has the shape
+`code_measurement` reads: `overall.invalid`, a `per_class` table, `complete_set`
+and `thresholds_met`. Its pin is now the exact line main's reader prints for
+that fixture:
+`unmeasured (public: needs external_human_seal); development, code: 7/10 catch,
+1/4 false alarms in valid clean reviews (1 of 5 clean cases without a valid
+review), invalid 1/15, thresholds not met, seals independent_context,
+first-run-at-sha true (evals/review-faults/runs/code.json); science: unmeasured`.
+The session checked that line byte for byte against `acb46dc`'s
+`scripts/release_check.py` run on its own. The test's purpose is unchanged: the
+code half is byte-identical to what main's reader prints, and the science part is
+appended to it. Every science assertion is as before. No entry in
+`tests/test_bio_faults_faults.py` names this test, so no fault anchor moved.
+
+**Same-model cost.** The model that wrote this row also wrote this adjustment,
+and the bytes it adds are one test's fixture and its pin. Main's reader, the
+science reader, the prompt and every fixture are untouched. An independent
+reviewer should confirm that the new fixture is a faithful 0074 run-file shape.

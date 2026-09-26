@@ -1186,3 +1186,44 @@ Closed: V1 F1, F2, F3. F4 and F5 are the lane's. Nothing waits on the owner.
 ## Owner rulings needed
 
 None.
+
+## Merge preparation (0151 main)
+
+Dated 26 Sep 2026. This commit was decided by glitch-09 under the owner's
+standing delegation of 23 Sep 2026. It was produced by a headless Claude Opus 5.5
+session because every Codex route was at its usage limit. It sits on merge
+commit `1469ee17`, which joins public main `acb46dc` with this row's head
+`c1fb9cb`. 0136's addendum of this date records the reasoning and the
+same-model cost.
+
+The only failing test on the merge was
+`PublicationTests.test_release_reader_code_pin_and_science`, with
+`KeyError: 'per_class'`. The merge kept main's 0074 code-half reader verbatim,
+and the test still built the older code-half run file. The change is in that one
+test. Its code fixture now carries `overall.invalid`, `per_class`,
+`complete_set` and `thresholds_met`. Its pin is now the line main's reader
+prints for that fixture, which the session checked byte for byte against
+`acb46dc`'s `scripts/release_check.py` run on its own. The science assertions
+are unchanged. No other file changed except 0136's appended addendum and this
+section. `build_index.sh` left `CONTEXT.md` unchanged.
+
+### Verification (this host: macOS, Python 3.8.2)
+
+TMPDIR, TEMP and TMP were set to the scratch twin. Per the lane's rule, I did
+NOT run `python3 tests/run_tests.py`.
+
+| Command | Verbatim summary |
+|---|---|
+| `python3 tests/test_bio_faults_pipeline.py` | `Ran 45 tests in 77.575s`; `OK` (before the change: `FAILED (errors=1)`) |
+| `python3 tests/test_bio_faults_core.py` | `Ran 14 tests in 0.506s`; `OK` |
+| `python3 tests/test_bio_faults_faults.py` | `Ran 1 test in 181.370s`; `OK`; 50 `science fault red` lines |
+| `python3 tests/check_counts.py` | `enforced=3`; `clean — every current claim matches the suite` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 scripts/release_check.py` | `DoD cells regenerated: 13/13` (tree unchanged) |
+
+Not verified here: the whole suite in its three modes (the lane's run), native
+Python 3.6 execution, and an independent review of the new fixture's shape.
+
+## Owner rulings needed
+
+None.

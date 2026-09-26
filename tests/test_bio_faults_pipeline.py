@@ -926,12 +926,17 @@ class PublicationTests(unittest.TestCase):
         root = temporary(self)
         self.assertEqual(release.reviewer_measurement(root), ('unmeasured', None, False))
         code_dir = root / 'evals/review-faults/runs'; code_dir.mkdir(parents=True)
+        # Record 0074's code-half shape, as main's code_measurement reads it.
+        classes = ('race', 'hardcoded-secret', 'weakened-criterion')
         code = {'created_at': '20000101T000000Z', 'overall': {'caught': {'n': 7, 'd': 10},
-            'false_alarms': {'n': 1, 'd': 5}}, 'sealed_slots': {cls: ['independent_context']
-            for cls in ('race', 'hardcoded-secret', 'weakened-criterion')}, 'first_run_at_sha': True}
+            'false_alarms': {'n': 1, 'd': 5}, 'invalid': {'n': 1, 'd': 15}},
+            'per_class': {cls: {'caught': {'n': 2, 'd': 3}, 'false_alarms': {'n': 1, 'd': 4}}
+            for cls in classes}, 'complete_set': True, 'thresholds_met': False,
+            'sealed_slots': {cls: ['independent_context'] for cls in classes}, 'first_run_at_sha': True}
         bio.write_json(code_dir / 'code.json', code)
         pinned = ('unmeasured (public: needs external_human_seal); development, code: 7/10 catch, '
-                  '1/5 false alarms, seals independent_context, first-run-at-sha true '
+                  '1/4 false alarms in valid clean reviews (1 of 5 clean cases without a valid review), '
+                  'invalid 1/15, thresholds not met, seals independent_context, first-run-at-sha true '
                   '(evals/review-faults/runs/code.json); science: unmeasured')
         self.assertEqual(release.reviewer_measurement(root)[0], pinned)
         science_dir = root / 'evals/bio-faults/runs'; science_dir.mkdir(parents=True)
