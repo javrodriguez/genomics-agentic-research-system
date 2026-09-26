@@ -33,6 +33,8 @@ STATE = {}
 UNPRINTABLE = ('tab\tname', 'nl\nx', 'nl\nopen1', 'trail\n')
 UNPRINTABLE_HEAD = '## (unprintable project name) — closed (unclassified)'
 UNPRINTABLE_ROW = '| (unprintable project name) | closed (unclassified) | — | — | — | — | — |'
+# A public-classed copy of open1 whose name the list cannot carry (review round 3 N-1).
+PUBLIC_UNPRINTABLE = 'pub\tname'
 
 
 def setUpModule():
@@ -246,11 +248,16 @@ class SessionStateClosedTests(unittest.TestCase):
         subprocess.run(['bash', str(ws / '_system/build_projects_index.sh'), str(ws)],
                        stdout=subprocess.PIPE, check=True)
         open1 = rows((ws / 'projects/_index.md').read_text())['open1']
+        open1_render = sections(hook_text(ws, ['python3', '_system/project_state.py']))['open1']
         # (F-1) closed projects whose names the list format cannot carry, one of them spelled to
         # rewrite open1's row if it were split at its newline.
         for name in UNPRINTABLE:
             shutil.copytree(str(ws / 'projects/pilot'), str(ws / 'projects' / name),
                             symlinks=True)
+        # (N-1) a public-classed unprintable name beside the closed ones: the label lookup
+        # must not index a name the guard did not report.
+        shutil.copytree(str(ws / 'projects/open1'), str(ws / 'projects' / PUBLIC_UNPRINTABLE),
+                        symlinks=True)
         guard = dict((name, label) for name, label, _ in guard_hook.closed_projects(str(ws)))
         self.assertEqual(guard, dict(CLOSED, sealed='unclassified',
                                      **dict((n, CLOSED['pilot']) for n in UNPRINTABLE)))
@@ -266,8 +273,14 @@ class SessionStateClosedTests(unittest.TestCase):
         self.assertEqual(closed_render, printable)
         # An unprintable project is its heading alone; nothing of its name reaches the render.
         blocks = render.rstrip('\n').split('\n\n')
-        self.assertEqual(blocks.count(UNPRINTABLE_HEAD), len(UNPRINTABLE))
-        self.assertEqual(render.count('## (unprintable'), len(UNPRINTABLE))
+        self.assertEqual(blocks.count(UNPRINTABLE_HEAD), len(UNPRINTABLE) + 1)
+        self.assertEqual(render.count('## (unprintable'), len(UNPRINTABLE) + 1)
+        self.assertEqual(sections(render)['open1'], open1_render)
+        self.assertEqual(set(sections(render)) - {'(unprintable'},
+                         {'open1', 'fresh', 'pilot', 'sealed'})
+        one = hook_text(ws, ['python3', '_system/project_state.py',
+                             '--project', str(ws / 'projects' / PUBLIC_UNPRINTABLE)])
+        self.assertEqual(one.split('\n\n', 1)[1], UNPRINTABLE_HEAD + '\n')
         self.assertNotIn('\t', render)
         for line in render.splitlines():
             self.assertFalse(line in ('x', 'name', 'open1') or line.startswith(('x ', 'open1 ')),
@@ -277,7 +290,7 @@ class SessionStateClosedTests(unittest.TestCase):
         index = table((ws / 'projects/_index.md').read_text())
         self.assertEqual(sorted(index), sorted(
             [open1] + [closed_row(n, l) for n, l in printable.items()]
-            + [UNPRINTABLE_ROW] * len(UNPRINTABLE)))
+            + [UNPRINTABLE_ROW] * (len(UNPRINTABLE) + 1)))
         self.assertIn('## open1 — template', render)
 
     def test_g_a_guard_that_cannot_judge_closes_everything(self):
@@ -321,6 +334,12 @@ class SessionStateClosedTests(unittest.TestCase):
             '02_bioinformatics/rnaseq_bulk/04_alias': 'COMPLETED',
             '02_bioinformatics/rnaseq_bulk/05_trailing': 'COMPLETE 2026-09-26T06:00:00Z extra',
             '02_bioinformatics/rnaseq_bulk/06_writer': 'COMPLETE 2026-09-26T06:00:00Z',
+            # (N-4) the writer adds a job id only after SUBMITTED or RUNNING, then a timestamp.
+            '02_bioinformatics/rnaseq_bulk/07_job_on_complete':
+                'COMPLETE 4242 2026-09-26T06:00:00Z',
+            '02_bioinformatics/rnaseq_bulk/08_running': 'RUNNING 4242 2026-09-26T06:00:00Z',
+            '02_bioinformatics/rnaseq_bulk/09_job_no_stamp': 'SUBMITTED 4242',
+            '02_bioinformatics/rnaseq_bulk/10_failed_stamp': 'FAILED:EXIT_1 2026-09-26T06:00:00Z',
         }
         for rel, line in written.items():
             (pilot / rel).mkdir(parents=True, exist_ok=True)
@@ -328,12 +347,16 @@ class SessionStateClosedTests(unittest.TestCase):
         render = hook_text(ws, ['python3', '_system/project_state.py'])
         self.assertEqual(sections(render)['pilot'], [
             '## pilot — closed (deidentified_under_agreement)',
-            '- 01_nfcore-rnaseq-wrapper: FAILED:EXIT_1 4242 2026-09-26T06:00:00Z',
+            '- 01_nfcore-rnaseq-wrapper: unrecognized',
             '- 02_rnaseq-de: unrecognized',
             '- 03_reason_on_complete: unrecognized',
             '- 04_alias: unrecognized',
             '- 05_trailing: unrecognized',
-            '- 06_writer: COMPLETE 2026-09-26T06:00:00Z'])
+            '- 06_writer: COMPLETE 2026-09-26T06:00:00Z',
+            '- 07_job_on_complete: unrecognized',
+            '- 08_running: RUNNING 4242 2026-09-26T06:00:00Z',
+            '- 09_job_no_stamp: unrecognized',
+            '- 10_failed_stamp: FAILED:EXIT_1 2026-09-26T06:00:00Z'])
         self.assertNotIn(fx.DESIGN_MARKER, '\n'.join(sections(render)['pilot']))
 
     def test_e_planted_history_header_never_appears(self):

@@ -37,6 +37,9 @@ else; public projects are byte-identical. See
 CHANGES) is answered in the report's "Follow-up 0151 review round 2 fixes": a project name with a
 control character is closed and never written, the fail-closed branches are tested, `--project`
 names a symlinked entry as the full render does, and a closed STATUS prints only a writer value.
+Its second review is answered in "Follow-up 0151 review round 3 fixes". A public-classed project
+with an unprintable name no longer crashes the render, and a job id is read only after `SUBMITTED`
+or `RUNNING`.
 
 **Row 13 follow-up 0150, 2026-09-26: real transcript record types.** `scripts/session_turns.py`
 refused every real Claude Code session, because a real transcript carries record types other than

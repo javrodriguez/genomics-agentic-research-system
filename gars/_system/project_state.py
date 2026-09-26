@@ -120,13 +120,17 @@ def closed_labels(ws):
 
 
 def _status_value_pattern():
-    """A STATUS first line wrapperlib's writer can produce: a state word, `:reason` only on
-    FAILED, then optionally a job id and the writer's UTC timestamp (decision 0151)."""
+    """A STATUS first line wrapperlib.write_status can produce: a state word (`:reason` only
+    on FAILED), then its UTC timestamp, with a job id between them only after SUBMITTED or
+    RUNNING; a bare state word is also read (decision 0151). The states and the named
+    reasons come from wrapperlib; EXIT_<n> and the two job-id states are literals inside
+    write_status, which exposes no name for them."""
     import wrapperlib
     states = "|".join(re.escape(s) for s in wrapperlib.STATUS_STATES)
     reasons = "|".join(re.escape(r) for r in wrapperlib.FAILURE_REASONS) + "|EXIT_[0-9]+"
-    return re.compile(r"(?:(?:%s)|FAILED:(?:%s))(?: [0-9]+)?(?: [0-9]{4}-[0-9]{2}-[0-9]{2}"
-                      r"T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?\Z" % (states, reasons))
+    stamp = r" [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z"
+    return re.compile(r"(?:(?:%s|FAILED:(?:%s))(?:%s)?|(?:SUBMITTED|RUNNING) [0-9]+%s)\Z"
+                      % (states, reasons, stamp, stamp))
 
 
 def _closed_status_line(project, sub):
@@ -279,7 +283,8 @@ def main():
 
     for p in projects:
         if closed is None or p.name in closed or not printable(p.name):
-            out.extend(render_closed(p, closed[p.name] if closed else "unclassified"))
+            # .get: an unprintable name the guard judged public is not in `closed` (0151).
+            out.extend(render_closed(p, (closed or {}).get(p.name, "unclassified")))
             out.append("")
             continue
         try:

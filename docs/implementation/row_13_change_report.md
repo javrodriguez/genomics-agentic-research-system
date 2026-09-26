@@ -1871,3 +1871,57 @@ None.
 - **Not run here:** the whole suite and the evals checks (the brief's rule); any Python but
   3.8.2; any bash but macOS's 3.2.57 (GNU awk, sed and a newer bash on Linux not run); the real
   hook inside a live Claude Code session.
+
+2026-09-26 — correction (review round 3, N-2): the F-1 row of "Follow-up 0151 review round 2 fixes" above says an unprintable name renders its heading alone "public-classed or not". That was not tested in that round, and the round-2 render crashed with `KeyError` on a public-classed unprintable name whenever a closed project existed. It is tested now in `test_d_render_index_and_guard_agree_on_the_closed_set`: a public-classed copy of `open1` named `pub<TAB>name` sits beside the closed `pilot`. The full render and `--project` print the unprintable heading for it, `open1`'s section is unchanged, and every other project renders. The round-2 section also cites the first review by a repository path (`docs/reviews/row_13_0151_review.md`) that is not in the repository; see N-3 below.
+
+## Follow-up 0151 review round 3 fixes
+
+2026-09-26. Answers the second fresh-context review of 0151 (round 2, reviewing `a2429b1`, APPROVE WITH CHANGES: N-1 and N-2 MINOR, N-3 and N-4 NOTE). The first review is round 1, reviewing `352e49f`. Both reviews stay outside the repository and are cited here by round and reviewed commit (N-3). **The lane's rulings for this round (26 Sep 2026, under the owner's standing delegation)** are recorded as the dated addendum "review round 3 rulings" to [0151](../decisions/0151-row-13-session-state-closed-projects.md). 0151's earlier bytes are unchanged, and so are this report's earlier sections (checked with `cmp` against copies taken before editing). Built on `a2429b1`. The lane says this is the last round for 0151.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: how) |
+|---|---|---|---|
+| **N-1 (MINOR)** a public-classed unprintable name crashed the render and `--project` with `KeyError` when any closed project existed | `gars/_system/project_state.py` (the label is `(closed or {}).get(p.name, "unclassified")`; the full render and `--project` share this one line) | `test_d_render_index_and_guard_agree_on_the_closed_set` gains `pub<TAB>name`, a public-classed copy of `open1`, beside the closed `pilot`. It asserts: 5 unprintable headings in the render, each alone; `open1`'s section byte-identical to its section rendered before any unprintable name existed; `{fresh, open1, pilot, sealed}` all rendered; `--project` on `pub<TAB>name` prints the header block and then exactly the unprintable heading; 5 unprintable index rows | **yes**: the test was written first and run at `a2429b1`'s `project_state.py`, giving `FAILED (failures=1)`, `KeyError: 'pub\tname'` (from `render_closed(p, closed[p.name] if closed else "unclassified")`). A scratch probe also ran `--project` on its own at `a2429b1`: `rc 1`, `KeyError: 'pub\tname'`; the fixed code gives `rc 0` and the heading. With the rest of the fix kept and only the lookup planted back: `FAILED (failures=1)`, test_d, the same `KeyError`. Green after. |
+| **N-2 (MINOR)** the record claimed a public-classed unprintable name was handled, untested | 0151 (addendum, N-2 bullet); this report (the dated correction line above this section) | as N-1 | n/a (documentation); the claim is now backed by N-1's test |
+| **N-3 (NOTE)** the first review was cited by a repository path that does not exist | this section and 0151's addendum (N-3 bullet); the round-2 section keeps its wording (append-only) | — | Partly done. The ruling asks for the reviews' review-kit folder names. This producer was not given them and may not read the review folders, so it cites each review by round and reviewed commit (round 1 of `352e49f`, round 2 of `a2429b1`). The folder names are a residual gap for the lane, as for 0140's n1 above |
+| **N-4 (NOTE)** the STATUS filter accepted a job id after any state and a job id without a timestamp | `project_state.py` (`_status_value_pattern()`: `<state or FAILED:reason>[ <timestamp>]`, or `(SUBMITTED\|RUNNING) <job id> <timestamp>`; states and named reasons from `wrapperlib.STATUS_STATES` / `FAILURE_REASONS`) | `test_i_closed_status_prints_only_a_writer_value`: `COMPLETE 4242 <ts>`, `FAILED:EXIT_1 4242 <ts>` (previously expected to print) and `SUBMITTED 4242` now print `unrecognized`; `RUNNING 4242 <ts>` and `FAILED:EXIT_1 <ts>` print | **yes**: at `a2429b1`'s `project_state.py` test_i `FAILED` (the job id after `FAILED` and after `COMPLETE` printed). Green after. |
+
+**Where `wrapperlib` does not expose a name (N-4).** `write_status` holds `EXIT_[0-9]+` and the pair `('SUBMITTED', 'RUNNING')` as literals inside the function. Exposing them would mean editing `wrapperlib.py`, which 0151 does not touch. So `project_state.py` keeps those two as literals, and says so in its docstring. The ruling said to take the reasons from `wrapperlib` "where it exposes them", so this is within it.
+
+**The one test expectation that changed.** Test_i's `FAILED:EXIT_1 4242 <ts>` line used to be expected to print. Under N-4 it prints `unrecognized`, because the writer never puts a job id after `FAILED`. This narrows what is accepted and does not weaken the test: the new expectation fails at the round-2 code.
+
+No test method was added, so the count stays at 878 (`check_counts.py` clean). `README.md` is unchanged. DEVELOPMENT.md's 0151 paragraph names this round. `docs/decisions/CONTEXT.md` was rebuilt with `bash docs/decisions/build_index.sh` and did not change, since 0151's frontmatter is unchanged.
+
+### Commands and summary lines, follow-up 0151 review round 3 (verbatim)
+
+| Command (from the repo root, Python 3.8.2, macOS bash 3.2.57, `TMPDIR`/`TEMP`/`TMP` in the scratch folder, stdin `/dev/null`) | Summary |
+|---|---|
+| test_d alone, new test at `a2429b1`'s code (red) | `Ran 1 test in 2.953s` / `FAILED (failures=1)`; `KeyError: 'pub\tname'` |
+| `python3 gars/tests/test_session_state_closed.py`, final test, `a2429b1`'s `project_state.py` (red) | `Ran 11 tests in 9.274s` / `FAILED (failures=2)` (d, i) |
+| the same, fixed code with only the lookup planted back | `Ran 11 tests in 9.597s` / `FAILED (failures=1)` (d) |
+| scratch probe: `--project projects/pub<TAB>name` at `a2429b1`, then fixed | `parent rc 1 … KeyError: 'pub\tname'`; `fixed rc 0 …## (unprintable project name) — closed (unclassified)` |
+| `python3 gars/tests/test_session_state_closed.py`, runs 1–3 | `Ran 11 tests in 9.264s` / `OK`; `Ran 11 tests in 9.244s` / `OK`; `Ran 11 tests in 9.419s` / `OK`; each with one line-start `EXIT session state (fixture): closed projects name and status only` |
+| `python3 -m unittest -v run_tests.ProjectStateTests` (from `tests/`) | `Ran 4 tests in 0.806s` / `OK` |
+| `python3 gars/tests/test_nonpublic_read_block.py` | `Ran 20 tests in 68.342s` / `OK` |
+| `python3 gars/tests/test_pilot_doors.py` | `Ran 17 tests in 23.544s` / `OK` |
+| `python3 tests/test_decision_links_resolve.py` | `Ran 3 tests in 1.452s` / `OK`; `citations: 424/424 resolve` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/check_counts.py` | `clean — every current claim matches the suite` |
+| `python3 gars/_system/tools/pins.py` | `R-099: workspace pins reviewed and intact` |
+| `ast.parse(..., feature_version=(3, 6))` on `project_state.py` and the test module | `parse ok` |
+| `bash docs/decisions/build_index.sh` | regenerated; no change |
+
+**Not run, per the lane's rule for this round:** the whole suite (`tests/run_tests.py`) and the evals checks.
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps
+
+- **The review-kit folder names (N-3).** This producer was not given them, so the reviews are cited by round and reviewed commit. The lane adds the names.
+- **Sub-stage directory names of a closed project are printed verbatim**, as rule 2 says. One holding a newline could add a forged line to the render. It needs a write inside the closed project, which the guard refuses to the agent, and these rulings cover project names only.
+- **Characters outside the ruling's set** (C1 controls, U+2028/U+2029, a `|` in a name) are written verbatim. None of them can split a `--closed-list` record.
+- **0151's `touches` list does not name `gars/CLAUDE.md`**. The addendum names it instead.
+- **When the guard raises, `--closed-list` prints its traceback to stderr**, which the hook discards.
+- **A bare STATUS state word, without the writer's timestamp, is still accepted** (round 2's reading, kept for the fixture's and older files). Like any value the writer could produce, a hand-written one still shows.
+- **Not run here:** the whole suite and the evals checks (the lane's rule); any Python but 3.8.2; any bash but macOS's 3.2.57; the real hook inside a live Claude Code session.
