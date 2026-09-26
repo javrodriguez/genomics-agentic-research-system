@@ -1018,3 +1018,111 @@ Row 10's exit and the full science threshold are not claimed.
    boundary in a subsequent round for that renderer/input contract. Neither
    option is implemented or presumed approved here; no rendered-byte rewrite
    or copied renderer bypasses the protected implementation.
+
+## Review round V1 fixes
+
+Dated 2026-09-26. Produced by Claude Opus 5.5 (a headless Claude Code session),
+because every Codex route was at its usage limit (glitch-09's ruling under the
+owner's standing delegation). The bytes this round adds were written by the same
+model family as the measured reviewer, and 0136's addendum states that cost. The
+round answers glitch-09's ruling (c) on round U1's owner ruling 1, and review U1.
+
+| Finding | Changed files | Test | Result | Red-on-fault seen |
+|---|---|---|---|---|
+| Ruling (c): scope the prompt, not the renderer | gars/_references/prompts/review_faults_science.md; tests/test_bio_faults_core.py; tests/test_bio_faults_faults.py | ContractTests.test_prompt_placeholder_scope | PASS | yes: three disposable mutations turn it red after a green control: the cap widened to "the claims or limitations", a NOTE cap added on the cost section, and the passage removed |
+| F1 (MINOR) UNKNOWN only in renderer placeholders | tests/test_bio_faults_pipeline.py; tests/test_bio_faults_faults.py | BuildTests.test_clean_report_unknown_only_renderer_placeholders (boundary witness in test_report_inputs_and_reproduction kept) | PASS | yes: with `pipeline_commit` set to None in the base, the methods line reads UNKNOWN and the test fails |
+| F2 (NOTE) reused session id on retry | none | none in the repository | The lane's: its deployment rehearsal checks the real client, and 0136 records the result when it arrives | n/a |
+| F3 (NOTE) `bio_analysis.py` visible to the reviewer | evals/bio-faults/bio_generate_base.py; evals/bio-faults/INTERFACE.md; tests/test_bio_faults_pipeline.py | BuildTests.test_base_fingerprints (re-pinned), test_report_inputs_and_reproduction | PASS; renamed to `3-results/analysis.py`, and no built case holds a `bio_` file name | existing fingerprint mutations still red |
+| F4 (NOTE) refusal plus usage limit retried at once | evals/bio-faults/bio_run_reviews.py; evals/bio-faults/README.md; tests/test_bio_faults_pipeline.py; tests/test_bio_faults_faults.py | LaunchTests.test_safeguard_refusal_on_usage_limit_awaits_only | PASS: one record, remaining ids printed, the case named as awaiting its one retry through `--only`; the later `--only` retry is VALID; a third launch is refused | yes: with the stop removed, the retry launches at once and the test fails |
+| Records | 0136 addendum; decision index regenerated (bytes unchanged); README.md and DEVELOPMENT.md counts 737 → 740 | check_counts | clean | n/a |
+
+The new prompt passage reads, in full:
+
+```text
+The report may contain the literal placeholder text `UNKNOWN (owned by ...)`,
+where ... stands for an owner name, exactly as the GARS report renderer writes
+it. Such a placeholder is a GARS process placeholder outside this science
+review, and a finding about one is at most a NOTE. This applies only to text
+of that literal form; every other part of the report stays fully in scope.
+```
+
+The contract test pins the passage and requires it inside Phase 2. It checks that
+the placeholder matches the imported renderer's `unknown('...')`, which is a drift
+test against render_report.py. It also checks four more things. "at most a NOTE"
+appears once in the prompt. No other capping NOTE sentence exists. No UNKNOWN
+appears outside the passage. The passage names no report section (claim,
+limitation, section, method, cost, qc, data, result). The prompt's sha256 is
+now c4aebae5fc878c9b0b0401ad22efd47a7163036a67080d53c4cc85da2c9de04c. No model
+ran on any case, so the first measured run is still first-run-at-sha.
+
+The F1 test uses the four renderer placeholders, each under its own heading:
+data and classification; methods (`Genome hashes, model/prompt/routing`);
+the manifest/`commands.sh` line; cost. Any other UNKNOWN line fails the test,
+and so does a missing or moved placeholder. The renderer gap is a row 7 product
+defect (`render_report.py` hard-codes four sections and ignores the supplied
+values), left for its own follow-up. The U-2 bases stay as built.
+
+The F3 rename re-pins the bases: atac-a bdf4bf80ead0…, rna-a be88dcba9955…,
+rna-b 5251e8491576… (full values in the test and in 0136). P01 and P02 are
+provenance-only patches, so they apply unchanged. No fixture byte changed, and
+their statistical rationales stand as recorded in S1 and U1.
+
+### Verification (this host: macOS, Python 3.8.2)
+
+TMPDIR, TEMP and TMP were set to the scratch twin for every command.
+Per the lane's whole-suite rule for this round, I did NOT run
+`python3 tests/run_tests.py`. The lane runs it in modes B and C on its Linux host
+from a fresh clone of this commit. Mode A needs Docker, which this account cannot reach.
+
+| Command | Verbatim summary | Wall time |
+|---|---|---|
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` | <1 s |
+| `python3 tests/check_counts.py` | `enforced=3`; `clean — every current claim matches the suite` (740 tests) | <1 s |
+| `python3 evals/test_harness.py` (3.8.2) | `FAILED (errors=13)` (`ast.unparse`, `str.removesuffix`: 3.9+ APIs in code this row does not touch) | 137 s |
+| `python3.13 evals/test_harness.py` | `Ran 44 tests in 138.318s`; `OK` | 138.5 s |
+| `python3 evals/check_results.py --controls --lexicon` | `clean — graded=1` | <1 s |
+| `python3 scripts/release_check.py` | `DoD cells regenerated: 13/13` (tree unchanged) | <1 s |
+| `python3 tests/test_bio_faults_core.py` | `Ran 13 tests in 0.491s`; `OK` | 0.65 s |
+| `python3 tests/test_bio_faults_pipeline.py` | `Ran 45 tests in 77.215s`; `OK` | 77.40 s |
+| `python3 tests/test_bio_faults_faults.py` | `Ran 1 test in 169.815s`; `OK`; 48 `science fault red` lines | 169.97 s, OVER the 120 s budget on this host (Linux measured 40.3 s in U1) |
+| Python 3.6 grammar | `Python feature_version=(3, 6): 11/11 Python files parse`; the four built `analysis.py` also parse | n/a |
+| `bio_build_cases.py`, repository fixtures | `cases 4; sweep hits 0` | n/a |
+| pre-commit hook (`gars/_system/hooks/pre-commit`, scratch index) | `gitleaks: passed`; `citations: 365/365 resolve`; `pre-commit: passed`; exit 0 | n/a |
+| `gitleaks dir evals/bio-faults/fixtures` and over the prompt (repository config, gitleaks 8.30.0) | `no leaks found` (both) | n/a |
+
+The hook's staged diff is taken against HEAD, so the unchanged fixtures were
+scanned directly with gitleaks as well. Gate log from the builder:
+
+```text
+C01: catalogue_evidence=pass, catalogue_integrity=pass, catalogue_probabilities=pass, count_matrix_header=pass, de_identifiers=pass, group_rep_presence=pass, render_report=pass, stage01_design=pass, stage03_verify=pass
+C02: catalogue_evidence=pass, catalogue_integrity=pass, catalogue_probabilities=pass, count_matrix_header=pass, de_identifiers=pass, group_rep_presence=pass, render_report=pass, stage01_design=pass, stage03_verify=pass
+P01: catalogue_evidence=pass, catalogue_integrity=pass, catalogue_probabilities=pass, count_matrix_header=pass, de_identifiers=pass, group_rep_presence=pass, render_report=pass, stage01_design=pass, stage03_verify=pass
+P02: catalogue_evidence=pass, catalogue_integrity=pass, catalogue_probabilities=pass, count_matrix_header=pass, de_identifiers=pass, group_rep_presence=pass, render_report=pass, stage01_design=pass, stage03_verify=pass
+sweep hits 0
+```
+
+Reviewer row as release_check renders it (README evidence row not edited):
+
+```text
+| reviewer catch rate (code; science) | `evals/review-faults/`, `evals/bio-faults/` runners | ≥ 8/10 per set, ≤ 1/5 false alarms; first-run-at-sha reported (§21 Q3) | unmeasured |
+```
+
+No new test skips, so the skip figures (B 79, C 106, macOS cold clone 75) are
+unchanged but were not re-measured here. Nothing under gars/_system/, row 9,
+benchmarks/, .github/ or docs/ledger.csv changed. No fixture byte, 0135 or
+reserved record changed. Only the one new prompt changed under gars/_references/.
+
+## Owner rulings needed
+
+None.
+
+Residual gaps still open: the whole suite in modes B and C (the lane's run on
+Linux); mode A (Docker); the fault module's 120 s budget on this macOS host
+(169.8 s here); native Python 3.6 execution; cross-platform fingerprints beyond
+Linux and macOS 3.8.2; the real client's handling of a reused session id on
+retry (F2, the lane's rehearsal); the real `model_refusal_no_fallback` event shape;
+the row 7 renderer defect (its own follow-up); the independent honesty audit, the
+protected approval (0137), the sealed slots and the measured runs. Row 10's exit
+is not claimed.
+
+Closed: ruling (c), F1, F3, F4. F2 waits on the lane's rehearsal. Nothing waits on the owner.

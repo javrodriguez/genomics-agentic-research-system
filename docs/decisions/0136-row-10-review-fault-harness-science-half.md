@@ -498,3 +498,66 @@ No fixture or prompt byte changes, seal, protected approval or reserved record
 is supplied. The existing threat model, row-9 imports, R1 path projection,
 R2 exact sweep exemptions and deployment-audit residuals remain unchanged.
 This round neither certifies statistical honesty nor claims row 10's exit.
+
+## Addendum — 2026-09-26, review round V1
+
+Round V1 is a further continuation beyond the lane's stop rule, ruled by
+glitch-09 under the owner's standing delegation of 23 Sep 2026. It answers the
+round U1 owner ruling and review U1. None of its rulings are the owner's words.
+
+**Producer.** Round V1 was produced by Claude Opus 5.5 (a headless Claude Code
+session), because every Codex route available to the lane was at its usage
+limit (glitch-09's ruling under the delegation, 26 Sep 2026). The same-model
+cost is stated. The bytes this round adds were written by the same model family
+as the measured reviewer: the prompt's scoping passage, the tests, the script
+rename and the usage-limit stop. Codex wrote the case analyses in earlier rounds,
+and they are unchanged apart from the rename.
+
+**Ruling (c) on the renderer placeholders** is glitch-09's under the delegation.
+The science prompt is scoped and the renderer is left alone. The prompt gains one
+passage in Phase 2. It names the renderer's literal placeholder `UNKNOWN (owned by ...)`,
+the form row 7's `render_report.py` `unknown()` writes. It calls such a placeholder
+a GARS process placeholder outside the science review, and it caps a finding
+about one at NOTE. The cap covers only text of that literal form, and every other
+part of the report stays fully in scope. The reason: this row measures scientific
+judgment, not how complete the renderer is. Nothing else in the prompt changed.
+The prompt's sha256 moves from cea64d1ce7b7d3719959b533a19e7606b6abfc0327135e6af6c1dd2544d251bf
+to c4aebae5fc878c9b0b0401ad22efd47a7163036a67080d53c4cc85da2c9de04c. No model has run
+against any case at either sha, so the first measured run stays first-run-at-sha.
+
+The renderer gap is a product defect of row 7's `gars/_system/claims/render_report.py`.
+Four sections are hard-coded UNKNOWN: data and classification, genome/model
+hashes in methods, the `commands.sh` reproduction line, and cost. The renderer
+ignores the values the bases supply for them. It is to be fixed in its own
+follow-up, not in this lane. The U-2 bases stay as built.
+
+**Review U1.** F1 (MINOR): a new test,
+`BuildTests.test_clean_report_unknown_only_renderer_placeholders`, asserts that
+every UNKNOWN line in each built clean report is one of the renderer's four
+hard-coded placeholders, each under its own section heading, and nothing else.
+The boundary witness in `test_report_inputs_and_reproduction` is kept.
+F3: the reviewer-visible `3-results/bio_analysis.py` is now `3-results/analysis.py`.
+F4: when a refused attempt also ended on a usage limit, the launcher now stops,
+prints the remaining ids, and names the case as awaiting its one retry through
+`--only`. It no longer spends the retry on the limit. F2 belongs to the lane. Its
+deployment rehearsal checks whether the real client accepts a reused session id
+from a new folder. That result has not reached this round, and a later addendum
+records it when the lane sends it.
+
+The rename re-pins the base fingerprints in test_base_fingerprints:
+
+| Base | SHA-256 |
+|---|---|
+| atac-a | bdf4bf80ead09c3c510f8f3f3db060a8e0f8cdc02d33788029c4300c11ca533e |
+| rna-a | be88dcba9955867adf823cb58b819b4a19c207b11e4bb533ffa160731e1389f1 |
+| rna-b | 5251e84915762f0c3485cd3a84f7f9c255a4cbc70734aa42245ca964c1e5bc89 |
+
+These hashes were measured under Python 3.8.2 on macOS. The previous pins
+(Linux) were also green on that interpreter in review U1. P01 and P02 are
+provenance-only patches, so they apply unchanged. No fixture byte changed.
+Red-on-fault entries: the placeholder scope widened to the claims and limitations;
+a cap added on a real report section; the passage removed; `pipeline_commit`
+removed from a base; the refusal-on-limit stop removed. Each turns its named test
+red after a green control. The threat model, row-9 imports, the R1 path projection,
+the R2 exact sweep exemptions and the U-1 retry budget are unchanged. This round
+does not claim row 10's exit and does not certify statistical honesty.

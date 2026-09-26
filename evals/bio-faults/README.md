@@ -23,6 +23,8 @@ roots for scoring. `--only` selects comma-separated neutral ids. Usage-limit
 attempts may resume into a fresh neutral kits root. U-1 additionally allows exactly
 one unchanged retry for a code-detected safeguard refusal before any tool call
 in that phase. It runs automatically, or with `--only` after interruption.
+A refused attempt that also ended on a usage limit stops the launch and prints
+the case as awaiting its one retry through `--only`.
 Both attempts and streams are retained; a refused retry or any retry failure is
 final, including a usage limit. Records are never overwritten.
 `--compare` names an earlier published run with the same prompt hash and model.

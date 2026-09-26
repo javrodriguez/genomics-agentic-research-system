@@ -31,7 +31,7 @@ import bio_review_record as validator
 import bio_run_reviews as launcher
 import bio_score as scorer
 support = bio.load_row9('testing')
-BASE_HASHES = {'rna-a': '1426c71a803af9c131f659e932242c290e02a76be6f015158082a53953d6dff5', 'rna-b': '8d7711776ff6f068361e11a595de4a4ed3929a96370ae8b3e9761cb3732f0500', 'atac-a': '4c04cfd75e2707adc365364bc320b15479b717246ba04918b1eb0cb123aa4f6f'}
+BASE_HASHES = {'rna-a': 'be88dcba9955867adf823cb58b819b4a19c207b11e4bb533ffa160731e1389f1', 'rna-b': '5251e84915762f0c3485cd3a84f7f9c255a4cbc70734aa42245ca964c1e5bc89', 'atac-a': 'bdf4bf80ead09c3c510f8f3f3db060a8e0f8cdc02d33788029c4300c11ca533e'}
 
 
 def temporary(test):
@@ -261,7 +261,7 @@ class BuildTests(unittest.TestCase):
             self.assertIn('data_class: public', next((project / '1-design/_config').glob('*.yaml')).read_text())
             self.assertIn('N/A:', manifest['cost'])
             self.assertIn('no metered execution', manifest['cost'])
-            for file, field in (('commands.sh', 'commands_sha256'), ('bio_analysis.py', 'analysis_sha256')):
+            for file, field in (('commands.sh', 'commands_sha256'), ('analysis.py', 'analysis_sha256')):
                 self.assertEqual(bio.sha256((project / '3-results' / file).read_bytes()), manifest[field])
             proc = subprocess.run(['bash', 'project/3-results/commands.sh', 'tmp/reproduced'],
                                   cwd=str(case), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -278,6 +278,31 @@ class BuildTests(unittest.TestCase):
             for heading in ('data and classification', 'cost'):
                 section = report.split('## ' + heading + '\n', 1)[1].split('\n## ', 1)[0]
                 self.assertIn('UNKNOWN', section)
+
+    # The renderer's four fixed placeholders (render_report.render ignores these inputs);
+    # every other section is suppliable by the base and must never read UNKNOWN.
+    RENDERER_PLACEHOLDERS = (
+        ('data and classification', 'UNKNOWN (owned by row 6: data_class, venue, purpose)'),
+        ('methods (workflow versions, parameters, reference release)',
+         'Genome hashes, model/prompt/routing: UNKNOWN (owned by row 6)'),
+        ('manifest reference and "reproduce this analysis" (`commands.sh`)',
+         'Reproduce this analysis (`commands.sh`): UNKNOWN (owned by row 6)'),
+        ('cost', 'UNKNOWN (owned by row 11: docs/ledger.csv has no per-run cost source)'))
+
+    def test_clean_report_unknown_only_renderer_placeholders(self):
+        root = temporary(self)
+        m, key = builder.build(root / 'built')
+        clean = [n for n, e in key['cases'].items() if e['kind'] == 'clean']
+        self.assertTrue(clean)
+        for neutral in clean:
+            report = (root / 'built/cases' / neutral / 'project/4-report/report.md').read_text().replace(chr(92), '')
+            heading, found = None, []
+            for line in report.splitlines():
+                if line.startswith('## '):
+                    heading = line[3:]
+                elif 'UNKNOWN' in line:
+                    found.append((heading, line))
+            self.assertEqual(sorted(found), sorted(self.RENDERER_PLACEHOLDERS), neutral)
 
     def test_base_fingerprints(self):
         hashes = BASE_HASHES
@@ -518,13 +543,14 @@ entries.append({'b': b, 'argv': sys.argv[1:], 'prompt': Path('BRIEF.md').read_te
                 'settings': Path('.claude/settings.json').read_text(),
                 'files': {p.as_posix(): p.read_text() for p in Path('project').rglob('*') if p.is_file()}})
 trace.write_text(json.dumps(entries))
-refusing = mode in ('refuse-a', 'refuse-b', 'refuse-twice', 'refuse-after', 'refuse-then-limit')
+refusing = mode in ('refuse-a', 'refuse-b', 'refuse-twice', 'refuse-after', 'refuse-then-limit', 'refuse-limit')
 phase = b if mode == 'refuse-b' else not b
 if refusing and phase and (attempt == 1 or mode == 'refuse-twice'):
     print(json.dumps(dict(type='system', subtype='init', model='stub-model', session_id=session)))
     if mode == 'refuse-after':
         print(json.dumps(dict(type='tool_use', name='Read', input={'file_path': 'BRIEF.md'})))
     print(json.dumps(dict(type='system', subtype='model_refusal_no_fallback')))
+    if mode == 'refuse-limit': print('Claude usage limit reached.')
     sys.exit(0)
 if mode == 'refuse-then-limit' and attempt == 2 and b:
     print('Claude usage limit reached.')
@@ -593,6 +619,29 @@ if not b and mode == 'made-report': Path('project/4-report').mkdir()
             self.assertFalse(launcher.safeguard_refusal([event, refusal]))
             self.assertFalse(launcher.safeguard_refusal([refusal, event]))
         self.assertFalse(launcher.safeguard_refusal([{'type': 'text', 'text': 'model_refusal_no_fallback'}]))
+
+    def test_safeguard_refusal_on_usage_limit_awaits_only(self):
+        root, args, m = self.setup_launch('refuse-limit')
+        first = m['cases'][0]
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output): self.assertEqual(launcher.run(args), 0)
+        paths = list((root / 'r').glob('*.record.json'))
+        self.assertEqual(len(paths), 1, 'no retry launched into the usage limit')
+        value = bio.read_json(paths[0])
+        self.assertTrue(value['envelope']['safeguard_refusal'])
+        self.assertTrue(value['envelope']['ended_on_usage_limit'])
+        self.assertIn('remaining: ' + ','.join(m['cases'][1:]), output.getvalue())
+        self.assertIn(first + ': safeguard refusal on a usage limit; awaiting its one retry through --only ' + first,
+                      output.getvalue())
+        self.assertNotIn('retrying once unchanged', output.getvalue())
+        args.only, args.kits_root = first, str(root / 'k2')
+        self.assertEqual(launcher.run(args), 0)
+        values = sorted((bio.read_json(p) for p in (root / 'r').glob('*.record.json')),
+                        key=lambda v: v['envelope']['reviewer']['attempt'])
+        self.assertEqual([v['envelope']['reviewer']['attempt'] for v in values], [1, 2])
+        self.assertEqual(validator.invalid_reasons(values[1], m), [])
+        args.kits_root = str(root / 'k3')
+        with self.assertRaises(ValueError): launcher.run(args)
 
     def test_safeguard_retry_final(self):
         for mode in ('refuse-twice', 'refuse-then-limit'):

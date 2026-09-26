@@ -19,7 +19,7 @@ LAYOUT = {'samples.csv': '1-design/samples.csv', 'config.yaml': '1-design/_confi
           'normalized_counts.csv': '3-results/normalized_counts.csv',
           'manifest.json': '3-results/manifest.json', 'qc.md': '3-results/qc.md',
           'snapshot.json': '4-report/snapshot.json',
-          'commands.sh': '3-results/commands.sh', 'bio_analysis.py': '3-results/bio_analysis.py'}
+          'commands.sh': '3-results/commands.sh', 'analysis.py': '3-results/analysis.py'}
 
 
 # Copied and adapted from benchmarks/defects/generate.py:16-17, 20-30,
@@ -177,9 +177,9 @@ def generate(destination, base_project, seed=None):
               'unit_of_replication: sample\nreference_release: synthetic-v1\n'
               'de:\n  formula: "' + chr(126) + ' condition"\n  contrast: "condition,B,A"\n')
     write_text(root / 'config.yaml', 'data_class: public\n' + config)
-    write_text(root / 'bio_analysis.py', reproduction_script())
+    write_text(root / 'analysis.py', reproduction_script())
     write_text(root / 'commands.sh', '# Run from the folder containing project; write to a separate output folder.\n'
-               'set -eu\npython3 project/3-results/bio_analysis.py project/2-data/counts.tsv "${1:?supply output folder}"\n')
+               'set -eu\npython3 project/3-results/analysis.py project/2-data/counts.tsv "${1:?supply output folder}"\n')
     features = []
     position = 10000
     for i in range(FEATURES):
@@ -234,7 +234,7 @@ def generate(destination, base_project, seed=None):
     manifest = {'data_class': 'public', 'reference_release': 'synthetic-v1',
                 'commands': 'bash project/3-results/commands.sh tmp/reproduced',
                 'commands_sha256': sha256((root / 'commands.sh').read_bytes()),
-                'analysis_sha256': sha256((root / 'bio_analysis.py').read_bytes()),
+                'analysis_sha256': sha256((root / 'analysis.py').read_bytes()),
                 'cost': 'N/A: no metered execution or billing record is supplied for this count analysis.',
                 'pipeline_commit': 'synthetic-v1', 'params': {'assay': assay, 'reference_release': 'synthetic-v1',
                 'unit_of_replication': 'sample', 'formula': 'condition',

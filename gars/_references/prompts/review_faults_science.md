@@ -26,6 +26,12 @@ contradictory evidence, limitations and causal wording. Claims need evidence
 links and separate biological support and process risk; a hypothesis must not
 be represented as an observation.
 
+The report may contain the literal placeholder text `UNKNOWN (owned by ...)`,
+where ... stands for an owner name, exactly as the GARS report renderer writes
+it. Such a placeholder is a GARS process placeholder outside this science
+review, and a finding about one is at most a NOTE. This applies only to text
+of that literal form; every other part of the report stays fully in scope.
+
 Write review.json as one object with exactly verdict and findings. Verdict is
 APPROVE, APPROVE_WITH_CHANGES or REJECT. Findings may be empty.
 

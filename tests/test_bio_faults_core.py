@@ -164,6 +164,30 @@ assert not any((root / 'evals/bio-faults' / (name + '.py')).exists()
         for word in ('plant', 'harness', 'catch rate', 'evaluation', 'measurement'):
             self.assertNotIn(word, text.lower())
 
+    # Ruling (c): the renderer's placeholder, and nothing else, is capped at NOTE.
+    PLACEHOLDER_PASSAGE = (
+        'The report may contain the literal placeholder text `UNKNOWN (owned by ...)`,\n'
+        'where ... stands for an owner name, exactly as the GARS report renderer writes\n'
+        'it. Such a placeholder is a GARS process placeholder outside this science\n'
+        'review, and a finding about one is at most a NOTE. This applies only to text\n'
+        'of that literal form; every other part of the report stays fully in scope.\n')
+
+    def test_prompt_placeholder_scope(self):
+        text = (REPO / bio.PROMPT_PATH).read_text()
+        passage = self.PLACEHOLDER_PASSAGE
+        self.assertEqual(text.count(passage), 1, 'placeholder passage present and pinned')
+        phase2 = text.split('## Phase 2\n', 1)[1].split('\n## ', 1)[0]
+        self.assertIn(passage, phase2)
+        import bio_gates
+        self.assertIn('`' + bio_gates.renderer.unknown('...') + '`', passage)
+        # The cap is stated once, inside the passage, and names no report section.
+        self.assertEqual(text.lower().count('at most a note'), 1)
+        self.assertEqual(text.lower().count('note.'), passage.lower().count('note.') + 1)
+        rest = text.replace(passage, '')
+        self.assertNotIn('UNKNOWN', rest)
+        for word in ('claim', 'limitation', 'section', 'method', 'cost', 'qc', 'data', 'result'):
+            self.assertNotIn(word, passage.lower())
+
 
 class OracleTests(unittest.TestCase):
     def test_any_of_grid(self):

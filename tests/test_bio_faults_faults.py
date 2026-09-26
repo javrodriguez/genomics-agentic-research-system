@@ -141,6 +141,26 @@ FAULTS = [
     ('safeguard attempt scored', 'evals/bio-faults/bio_review_record.py',
      "    if env.get('safeguard_refusal', False):", '    if False:',
      'pipeline', 'ScoreTests.test_safeguard_attempt_never_scored'),
+    ('placeholder scope widened to claims', 'gars/_references/prompts/review_faults_science.md',
+     'a finding about one is at most a NOTE.',
+     'a finding about one, or about the claims or limitations, is at most a NOTE.',
+     'core', 'ContractTests.test_prompt_placeholder_scope'),
+    ('placeholder cap added on a real section', 'gars/_references/prompts/review_faults_science.md',
+     'Findings may be empty.', 'Findings may be empty. A finding on the cost section is at most a NOTE.',
+     'core', 'ContractTests.test_prompt_placeholder_scope'),
+    ('placeholder passage removed', 'gars/_references/prompts/review_faults_science.md',
+     'The report may contain the literal placeholder text `UNKNOWN (owned by ...)`,\n'
+     'where ... stands for an owner name, exactly as the GARS report renderer writes\n'
+     'it. Such a placeholder is a GARS process placeholder outside this science\n'
+     'review, and a finding about one is at most a NOTE. This applies only to text\n'
+     'of that literal form; every other part of the report stays fully in scope.\n\n', '',
+     'core', 'ContractTests.test_prompt_placeholder_scope'),
+    ('clean report methods input missing', 'evals/bio-faults/bio_generate_base.py',
+     "'pipeline_commit': 'synthetic-v1',", "'pipeline_commit': None,",
+     'pipeline', 'BuildTests.test_clean_report_unknown_only_renderer_placeholders'),
+    ('refusal on usage limit retried at once', 'evals/bio-faults/bio_run_reviews.py',
+     "if refused_phase and refused is None and record['envelope']['ended_on_usage_limit']:", 'if False:',
+     'pipeline', 'LaunchTests.test_safeguard_refusal_on_usage_limit_awaits_only'),
 ]
 
 

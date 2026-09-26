@@ -112,7 +112,7 @@ Every target below is under the anonymous case's `project/` folder.
 | normalized_counts.csv | 3-results/normalized_counts.csv |
 | manifest.json | 3-results/manifest.json |
 | commands.sh | 3-results/commands.sh |
-| bio_analysis.py | 3-results/bio_analysis.py |
+| analysis.py | 3-results/analysis.py |
 | qc.md | 3-results/qc.md |
 | snapshot.json | 4-report/snapshot.json |
 | rendered from snapshot.json and manifest.json | 4-report/report.md |

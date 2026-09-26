@@ -187,6 +187,11 @@ def run(args):
         errors = invalid_reasons(record, manifest)
         status = 'UNSCORED: safeguard refusal' if refused_phase else ('INVALID: ' + '; '.join(errors) if errors else 'VALID')
         print(neutral + ': ' + status)
+        if refused_phase and refused is None and record['envelope']['ended_on_usage_limit']:
+            # A retry now would launch into the limit and spend the one retry.
+            print('remaining: ' + ','.join(selected[index + 1:]))
+            print(neutral + ': safeguard refusal on a usage limit; awaiting its one retry through --only ' + neutral)
+            return 0
         if refused_phase and refused is None:
             print(neutral + ': safeguard refusal; retrying once unchanged')
             selected.insert(index + 1, neutral)
