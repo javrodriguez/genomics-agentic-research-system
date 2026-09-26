@@ -321,7 +321,7 @@ the thresholds are not met, and the public reviewer catch rate stays `unmeasured
 [0072](docs/decisions/0072-row-9-review-fault-harness-code-half.md).
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(1051 tests collected after row 13 follow-up 0151 merged onto the row 3 follow-up's landing, itself on the 2026-09-26 landing of rows 13 and 14 and row 13 follow-up 0150; no cluster run is evidenced for these rows).
+(1111 tests collected after row 10's science harness merged onto row 13 follow-up 0151, itself on the row 3 follow-up's landing, itself on the 2026-09-26 landing of rows 13 and 14 and row 13 follow-up 0150; no cluster run is evidenced for these rows).
 The skip figures are that merge's runs of the 1040 tests: 14 environment skips on macOS, with Docker answering and row 5's scratch folder set as CI sets it; a macOS cold clone without it skips 76 (last measured at the rows 13 and 14 landing, on 771 tests), or 123 with `TMPDIR` also unset as on Linux (81 on Linux with `TMPDIR` set and no containers). <!-- not-the-suite-total -->
 Row 6 adds synthetic manifest coverage and the local instrument self-test; scrna-qc-cluster records its samplesheet and passes synthetic-worker replay; rnaseq-de now requires the canonical project design and passes synthetic-worker replay; legacy alternate-design manifests are refused. No real-cluster manifest or reproduction exit is claimed.
 Row 6 ruling-rd2 protects collect evidence throughout the bioinformatics run tree

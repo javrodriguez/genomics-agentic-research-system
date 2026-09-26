@@ -1,0 +1,255 @@
+"""Deterministic scoring and pre-registered publication masking; no model calls."""
+import argparse
+import datetime
+import hashlib
+import hmac
+import json
+import re
+import sys
+from pathlib import Path
+from bio_common import (CLASSES, load_cases, read_json, sha256, write_json,
+                        masked_copy, ratio, format_ratio, rf_review_record)
+read_ambiguous = rf_review_record.read_ambiguous
+from bio_oracle import caught, false_alarm
+from bio_review_record import invalid_reasons, check_history
+
+
+def earlier_run(runs, prompt_sha):
+    matches = []
+    for path in sorted(Path(runs).glob('*.json')):
+        record = read_json(path)
+        if record.get('prompt_sha256') == prompt_sha:
+            matches.append((record['created_at'], path.name, record))
+    return min(matches)[2] if matches else None
+
+
+def score(records, key, manifest, answers, runs, stamp=None):
+    cases = load_cases(answers)
+    if manifest.get('prompt_path') != 'gars/_references/prompts/review_faults_science.md':
+        raise ValueError('science manifest prompt path mismatch')
+    mapping = key['cases']
+    if set(mapping) != set(manifest['cases']) or len(mapping) != len(manifest['cases']):
+        raise ValueError('key and manifest case sets differ')
+    if not re.fullmatch('[0-9a-f]{32}', key['run_salt']):
+        raise ValueError('invalid private run salt')
+    used = set()
+    for neutral, entry in mapping.items():
+        cid = entry['id']
+        if cid in used or cid not in cases:
+            raise ValueError('answer missing or duplicated')
+        used.add(cid)
+        answer = cases[cid]
+        if any(entry[field] != answer[field] for field in ('expected_sha256', 'plant_sha256')):
+            raise ValueError('answer hash mismatch')
+        expected = answer['expected']
+        if any(entry[field] != expected[field] for field in ('class', 'kind', 'seal_type')):
+            raise ValueError('key metadata differs from hashed answer')
+        if entry['mask_literals'] != expected.get('mask_literals', []):
+            raise ValueError('key mask differs from hashed answer')
+        if sha256((key['run_salt'] + cid).encode('ascii'))[:12] != neutral:
+            raise ValueError('key neutral id mismatch')
+    histories = {n: [] for n in mapping}
+    model_ids = set()
+    settings_shas = set()
+    count = 0
+    total_ambiguous = 0
+    resume_differs = phase_b_started = 0
+    for path in sorted(Path(records).glob('*.record.json')):
+        record = read_json(path)
+        env = record.get('envelope', {})
+        settings_sha = env.get('sandbox_settings_sha256')
+        if not isinstance(settings_sha, str) or not re.fullmatch('[0-9a-f]{64}', settings_sha):
+            raise ValueError('sandbox settings hash missing or invalid')
+        settings_shas.add(settings_sha)
+        neutral = env.get('case')
+        if neutral not in mapping:
+            raise ValueError('record case not in manifest')
+        attempt = env.get('reviewer', {}).get('attempt')
+        if type(attempt) is not int or attempt < 1:
+            raise ValueError('record attempt invalid')
+        stem = neutral + ('.attempt%d' % attempt if attempt > 1 else '')
+        if path.name != stem + '.record.json':
+            raise ValueError('record filename and envelope differ')
+        errors = invalid_reasons(record, manifest)
+        phases = env.get('phases', [])
+        if (not env.get('safeguard_refusal', False) and len(phases) == 2 and all(isinstance(p, dict) for p in phases)
+                and phases[1].get('session_id') not in (None, '', 'not-started', 'missing-init')):
+            phase_b_started += 1
+            resume_differs += int(phases[0].get('session_id') != phases[1].get('session_id'))
+        # Decision 0128 round B: the ambiguous count stays visible per record.
+        judged, absent = read_ambiguous(record)
+        blindness = judged.get('envelope', {}).get('blindness')
+        count_ambiguous = blindness.get('ambiguous') if isinstance(blindness, dict) else None
+        count_ambiguous = count_ambiguous if type(count_ambiguous) is int and count_ambiguous >= 0 else 0
+        model = env.get('reviewer', {}).get('model_id')
+        if isinstance(model, str) and model != 'unknown':
+            model_ids.add(model)
+        histories[neutral].append({'attempt': attempt, 'file': path.name,
+                                   'invalid_reasons': errors, 'record': record,
+                                   'ambiguous': count_ambiguous, 'ambiguous_absent': absent})
+        total_ambiguous += count_ambiguous
+        count += int(not env.get('safeguard_refusal', False))
+    if len(settings_shas) > 1:
+        raise ValueError('mixed sandbox settings run')
+    if len(model_ids) > 1:
+        raise ValueError('mixed-model run')
+    model = next(iter(model_ids)) if model_ids else 'unknown'
+    if not re.fullmatch('[a-zA-Z0-9_.-]+', model):
+        raise ValueError('unsafe model id')
+    per_class = {c: {'caught': ratio(0, 0), 'false_alarms': ratio(0, 0)} for c in CLASSES}
+    invalid = total_caught = total_alarms = invalid_clean = 0
+    plants = sum(e['kind'] == 'plant' for e in mapping.values())
+    clean = len(mapping) - plants
+    for cls in CLASSES:
+        per_class[cls]['caught']['d'] = sum(e['class'] == cls for e in mapping.values())
+        per_class[cls]['false_alarms']['d'] = clean
+    outcomes = {}
+    for neutral in manifest['cases']:
+        history = sorted(histories[neutral], key=lambda x: x['attempt'])
+        refused = check_history([item['record'] for item in history])
+        valid = [item for item in history[-1:] if not item['invalid_reasons']]
+        cid = mapping[neutral]['id']
+        expected = cases[cid]['expected']
+        outcome = {'case_id': cid, 'seal_type': expected['seal_type'], 'attempts': history,
+                   'selected_attempt': None, 'status': 'INVALID'}
+        outcome['safeguard_refusals'] = sum(bool(item['record']['envelope'].get('safeguard_refusal')) for item in history)
+        outcome['retried'] = bool(refused and history[-1]['record'] is not refused)
+        outcome['retry_valid'] = bool(outcome['retried'] and valid)
+        outcomes[neutral] = outcome
+        if not valid:
+            invalid += 1
+            invalid_clean += int(expected['kind'] == 'clean')
+            continue
+        selected = valid[-1]
+        outcome['selected_attempt'] = selected['attempt']
+        review = selected['record']['review']
+        if expected['kind'] == 'plant':
+            hit = caught(review, expected)
+            rate = per_class[expected['class']]['caught']
+            rate['n'] += int(hit)
+            total_caught += int(hit)
+            outcome['status'] = 'CAUGHT' if hit else 'MISSED'
+        else:
+            alarm = false_alarm(review)
+            total_alarms += int(alarm)
+            outcome['status'] = 'FALSE_ALARM' if alarm else 'CLEAN'
+            for cls in CLASSES:
+                per_class[cls]['false_alarms']['n'] += int(false_alarm(review, cls))
+    previous = earlier_run(runs, manifest['prompt_sha256'])
+    first = previous is None
+    stamp = stamp or datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+    overall = {'caught': ratio(total_caught, plants), 'false_alarms': ratio(total_alarms, clean),
+               'invalid': ratio(invalid, len(mapping)), 'graded_against_seen': ratio(count, len(mapping))}
+    result = {'schema_version': 1, 'mask_version': 1, 'created_at': stamp,
+              'prompt_sha256': manifest['prompt_sha256'], 'model_id': model,
+              'harness_commit': manifest['harness_commit'], 'base_sha': manifest['base_sha'],
+              'per_class': per_class, 'overall': overall, 'first_run_at_sha': first,
+              'first_run_values': previous['overall'] if previous else overall,
+              'first_run_per_class': previous['per_class'] if previous else per_class,
+              'thresholds_met': False, 'complete_set': False, 'invalid_clean': invalid_clean,
+              'sealed': {'n': sum(e['kind'] == 'plant' and e['seal_type'] != 'unsealed' for e in mapping.values()),
+                         'd': plants, 'types': sorted({e['seal_type'] for e in mapping.values() if e['seal_type'] != 'unsealed'})},
+              'sealed_clean': ratio(sum(e['kind'] == 'clean' and e['seal_type'] != 'unsealed' for e in mapping.values()), clean),
+              'cases': outcomes, 'ambiguous': total_ambiguous,
+              'resume_id_differs': ratio(resume_differs, phase_b_started),
+              'safeguard_refusals': ratio(sum(o['safeguard_refusals'] for o in outcomes.values()),
+                                         sum(len(h) for h in histories.values()))}
+    literals = [s for entry in mapping.values() for s in entry['mask_literals']]
+    result = masked_copy(result, key['run_salt'], list(mapping), literals)
+    return result
+
+
+def print_score(result):
+    for cls in CLASSES:
+        row = result['per_class'][cls]
+        print('%s: caught %s, false alarms %s' %
+              (cls, format_ratio(row['caught']), format_ratio(row['false_alarms'])))
+        if not result['first_run_at_sha']:
+            first = result['first_run_per_class'][cls]
+            print('  first-run: caught %s, false alarms %s' %
+                  (format_ratio(first['caught']), format_ratio(first['false_alarms'])))
+    overall = result['overall']
+    print('overall catch %s, overall false alarms %s' %
+          (format_ratio(overall['caught']), format_ratio(overall['false_alarms'])))
+    print('false alarms %s (%d invalid, not clean)' % (format_ratio(overall['false_alarms']), result['invalid_clean']))
+    print('invalid ' + format_ratio(overall['invalid']))
+    print('resume id differs: ' + format_ratio(result['resume_id_differs']))
+    print('safeguard refusals: ' + format_ratio(result['safeguard_refusals']) + ' sessions')
+    for neutral, case in sorted(result['cases'].items()):
+        print('%s safeguard refusals %d; retried %s; retry valid %s' %
+              (neutral, case['safeguard_refusals'], str(case['retried']).lower(),
+               str(case['retry_valid']).lower()))
+    print('graded-against-seen ' + format_ratio(overall['graded_against_seen']))
+    print('first-run-at-sha: ' + str(result['first_run_at_sha']).lower())
+    if not result['first_run_at_sha']:
+        print('first-run values: ' + json.dumps(result['first_run_values'], sort_keys=True))
+    for neutral, case in sorted(result['cases'].items()):
+        for attempt in case['attempts']:
+            if attempt['record']['envelope'].get('safeguard_refusal', False):
+                print('%s attempt %d UNSCORED: safeguard refusal' % (neutral, attempt['attempt']))
+            elif attempt['invalid_reasons']:
+                print('%s attempt %d INVALID: %s' %
+                      (neutral, attempt['attempt'], '; '.join(attempt['invalid_reasons'])))
+    # Decision 0128 round B: outside the kit only if an && link failed.
+    print('ambiguous %d (every record read)' % result['ambiguous'])
+    for neutral, case in sorted(result['cases'].items()):
+        for attempt in case['attempts']:
+            print('%s attempt %d ambiguous %d%s' %
+                  (neutral, attempt['attempt'], attempt['ambiguous'],
+                   ' (written before the ambiguous field; read as 0)' if attempt['ambiguous_absent'] else ''))
+    print('sealed %s (%s)' % (format_ratio(result['sealed']), ','.join(result['sealed']['types']) or 'unsealed'))
+    print('sealed clean ' + format_ratio(result['sealed_clean']))
+    print('science reviewer ≥ 8/10, ≤ 1/5: NOT met (partial set: %d plants of 10 classes, %d clean of 5)' %
+          (overall['caught']['d'], overall['false_alarms']['d']))
+    if 'repeat' in result:
+        print('REPEAT: repeatability observation (not a metric)')
+        for kind, counts in result['repeat'].items():
+            print('%s: both %d, one %d, neither %d' % (kind, counts['both'], counts['one'], counts['neither']))
+
+
+def compare(current, earlier):
+    if any(current[k] != earlier[k] for k in ('prompt_sha256', 'model_id')):
+        raise ValueError('repeat prompt or model differs')
+    left = {v['case_id']: v for v in current['cases'].values()}
+    right = {v['case_id']: v for v in earlier['cases'].values()}
+    if set(left) != set(right):
+        raise ValueError('repeat cases differ')
+    result = {kind: dict(both=0, one=0, neither=0) for kind in ('caught', 'alarmed')}
+    for cid in left:
+        kind, status = ('caught', 'CAUGHT') if cid.startswith('P') else ('alarmed', 'FALSE_ALARM')
+        n = int(left[cid]['status'] == status) + int(right[cid]['status'] == status)
+        result[kind][('neither', 'one', 'both')[n]] += 1
+    return result
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    for name in ('records', 'key', 'manifest', 'answers', 'runs', 'out'):
+        parser.add_argument('--' + name, required=True)
+    parser.add_argument('--compare')
+    args = parser.parse_args(argv)
+    try:
+        result = score(args.records, read_json(args.key), read_json(args.manifest),
+                       args.answers.split(','), args.runs)
+        if args.compare:
+            result['repeat'] = compare(result, read_json(args.compare))
+        print_score(result)
+        runs = Path(args.runs)
+        runs.mkdir(parents=True, exist_ok=True)
+        filename = '%s-%s-%s.json' % (result['prompt_sha256'][:12], result['model_id'], result['created_at'])
+        destination = runs / filename
+        out = Path(args.out)
+        if destination.exists() or out.exists():
+            raise ValueError('refusing to overwrite published evidence')
+        write_json(destination, result)
+        if out.resolve() != destination.resolve():
+            write_json(out, result)
+        print('run file: ' + str(destination))
+        return 0
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        print('score: REFUSED (' + str(exc) + ')', file=sys.stderr)
+        return 2
+
+
+if __name__ == '__main__':
+    sys.exit(main())

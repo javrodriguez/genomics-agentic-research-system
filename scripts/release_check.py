@@ -237,41 +237,63 @@ def restore_measurement(root):
 
 
 def reviewer_measurement(root):
-    """Row 9 code evidence cannot establish the science half or public sealing."""
-    paths = list((root / 'evals/review-faults/runs').glob('*.json'))
-    if not paths:
-        return 'unmeasured', None, False
-    records = [(json.loads(p.read_text(encoding='utf-8')), p) for p in paths]
-    record, path = max(records, key=lambda pair: (pair[0]['created_at'], pair[1].name))
-    when = datetime.datetime.strptime(record['created_at'], '%Y%m%dT%H%M%SZ').date()
-    overall = record['overall']
-    slots = record['sealed_slots']
-    types = sorted({v for values in slots.values() for v in values})
-    external = (set(slots) == {'race', 'hardcoded-secret', 'weakened-criterion'} and
-                all(values == ['external_human_seal'] for values in slots.values()))
-    public = ('unmeasured (public: needs external_human_seal); ' if not external else
-              'public code seals external_human_seal; ')
-    # 0074: the scorer's overall false-alarm line uses a fixed denominator of 5
-    # (score.py:192), so the cell prints the per-class denominator instead, which counts
-    # only valid clean reviews. The clean cases left without a valid review are counted
-    # only for a complete set; a partial set says so. Then the INVALID count and the
-    # scorer's own threshold verdict.
-    clean_total = overall['false_alarms']['d']
-    clean_valid = max((rates['false_alarms']['d'] for rates in record['per_class'].values()), default=0)
-    missing = ('%s of %s clean cases without a valid review' % (clean_total - clean_valid, clean_total)
-               if record['complete_set'] else 'partial set')
-    value = (public + 'development, code: %s/%s catch, %s/%s false alarms in valid clean reviews '
-             '(%s), invalid %s/%s, thresholds %s, seals %s, '
-             'first-run-at-sha %s (%s); science: unmeasured') % (
-                 overall['caught']['n'], overall['caught']['d'],
-                 overall['false_alarms']['n'], clean_valid, missing,
-                 overall['invalid']['n'], overall['invalid']['d'],
-                 'met' if record['thresholds_met'] else 'not met',
-                 ','.join(types) or 'unsealed',
-                 str(record['first_run_at_sha']).lower(), path.relative_to(root).as_posix())
-    # This clause includes science; even external code seals cannot complete it.
-    return value, when, False
-
+    def code_measurement(root):
+        """Row 9 code evidence cannot establish the science half or public sealing."""
+        paths = list((root / 'evals/review-faults/runs').glob('*.json'))
+        if not paths:
+            return 'unmeasured', None, False
+        records = [(json.loads(p.read_text(encoding='utf-8')), p) for p in paths]
+        record, path = max(records, key=lambda pair: (pair[0]['created_at'], pair[1].name))
+        when = datetime.datetime.strptime(record['created_at'], '%Y%m%dT%H%M%SZ').date()
+        overall = record['overall']
+        slots = record['sealed_slots']
+        types = sorted({v for values in slots.values() for v in values})
+        external = (set(slots) == {'race', 'hardcoded-secret', 'weakened-criterion'} and
+                    all(values == ['external_human_seal'] for values in slots.values()))
+        public = ('unmeasured (public: needs external_human_seal); ' if not external else
+                  'public code seals external_human_seal; ')
+        # 0074: the scorer's overall false-alarm line uses a fixed denominator of 5
+        # (score.py:192), so the cell prints the per-class denominator instead, which counts
+        # only valid clean reviews. The clean cases left without a valid review are counted
+        # only for a complete set; a partial set says so. Then the INVALID count and the
+        # scorer's own threshold verdict.
+        clean_total = overall['false_alarms']['d']
+        clean_valid = max((rates['false_alarms']['d'] for rates in record['per_class'].values()), default=0)
+        missing = ('%s of %s clean cases without a valid review' % (clean_total - clean_valid, clean_total)
+                   if record['complete_set'] else 'partial set')
+        value = (public + 'development, code: %s/%s catch, %s/%s false alarms in valid clean reviews '
+                 '(%s), invalid %s/%s, thresholds %s, seals %s, '
+                 'first-run-at-sha %s (%s); science: unmeasured') % (
+                     overall['caught']['n'], overall['caught']['d'],
+                     overall['false_alarms']['n'], clean_valid, missing,
+                     overall['invalid']['n'], overall['invalid']['d'],
+                     'met' if record['thresholds_met'] else 'not met',
+                     ','.join(types) or 'unsealed',
+                     str(record['first_run_at_sha']).lower(), path.relative_to(root).as_posix())
+        # This clause includes science; even external code seals cannot complete it.
+        return value, when, False
+    value, when, met = code_measurement(root)
+    science_paths = list((root / 'evals/bio-faults/runs').glob('*.json'))
+    if not science_paths:
+        return value, when, met
+    science, science_path = max(
+        [(json.loads(p.read_text(encoding='utf-8')), p) for p in science_paths],
+        key=lambda pair: (pair[0]['created_at'], pair[1].name))
+    rates, sealed = science['overall'], science['sealed']
+    p, c = rates['caught']['d'], rates['false_alarms']['d']
+    text = ('science: development (sealed %s/%s %s, partial set %s plants + %s clean of 10 + 5): '
+            '%s/%s catch, %s/%s false alarms, invalid %s/%s, first-run-at-sha %s (%s)') % (
+        sealed['n'], sealed['d'], ','.join(sealed['types']) or 'unsealed', p, c,
+        rates['caught']['n'], p, rates['false_alarms']['n'], c,
+        rates['invalid']['n'], rates['invalid']['d'],
+        str(science['first_run_at_sha']).lower(), science_path.relative_to(root).as_posix())
+    if not science['first_run_at_sha']:
+        text += '; first-run values: ' + json.dumps(science['first_run_values'], sort_keys=True)
+    if value == 'unmeasured':
+        value = 'code: unmeasured; ' + text
+    else:
+        value = value.replace('science: unmeasured', text)
+    return value, datetime.datetime.strptime(science['created_at'], '%Y%m%dT%H%M%SZ').date(), False
 
 def measurements(root, rows):
     values = {row[0]: ('unmeasured', None, False) for row in rows}

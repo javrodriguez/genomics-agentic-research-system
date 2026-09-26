@@ -1,0 +1,15 @@
+--- a/provenance.csv
++++ b/provenance.csv
+@@ -1,7 +1,7 @@
+ sample_id,biological_source,processing_run
+ A_REP1,donor1,run1
+-A_REP2,donor2,run2
+-A_REP3,donor3,run3
+-B_REP1,donor4,run1
+-B_REP2,donor5,run2
+-B_REP3,donor6,run3
++A_REP2,donor1,run2
++A_REP3,donor1,run3
++B_REP1,donor2,run1
++B_REP2,donor2,run2
++B_REP3,donor2,run3
