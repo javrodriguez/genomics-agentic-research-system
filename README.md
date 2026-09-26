@@ -321,7 +321,7 @@ the thresholds are not met, and the public reviewer catch rate stays `unmeasured
 [0072](docs/decisions/0072-row-9-review-fault-harness-code-half.md).
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(867 tests collected after row 13 step B merged onto the 2026-09-26 landing of row 14 and row 13 follow-up 0150 (review round 2); no cluster run is evidenced for these rows).
+(1040 tests collected after row 13 step B merged onto the 2026-09-26 landing of row 14 and row 13 follow-up 0150 (review round 2); no cluster run is evidenced for these rows).
 The skip figures are that landing's runs of 771 tests: 14 environment skips on macOS, with Docker answering and row 5's scratch folder set as CI sets it; a macOS cold clone without it skips 76, or 121 with `TMPDIR` also unset as on Linux (81 on Linux with `TMPDIR` set and no containers). <!-- not-the-suite-total -->
 Row 6 adds synthetic manifest coverage and the local instrument self-test; scrna-qc-cluster records its samplesheet and passes synthetic-worker replay; rnaseq-de now requires the canonical project design and passes synthetic-worker replay; legacy alternate-design manifests are refused. No real-cluster manifest or reproduction exit is claimed.
 Row 6 ruling-rd2 protects collect evidence throughout the bioinformatics run tree
@@ -346,7 +346,7 @@ The expanded suite's cluster status is unverified; dated local runner
 results and skips are recorded in the [Row 2 report](docs/implementation/row_2_change_report.md#review-round-3-fixes).
 The [benchmark sealing interface](benchmarks/HOLDOUT.md) is maintained in place;
 Row 2 agent runs, independent nf-core references and held-out measurements remain unmeasured.
-Row 3: development evidence (independent_context seal): [evals/mutation-runs/2026-09-23-2a65dbf-first-run.json](evals/mutation-runs/2026-09-23-2a65dbf-first-run.json) — 5/10 mutants killed at `2a65dbf` at the first run, exit not met; public claim unmeasured.
+Row 3: development evidence (independent_context seals): [evals/mutation-runs/2026-09-26-8744978-run-2.json](evals/mutation-runs/2026-09-26-8744978-run-2.json) — second seal: 10/10 killed at `8744978`, one small draw concentrated in the parameter-mapping tests ([0089](docs/decisions/0089-row-3-second-sealed-run.md)); exit criterion met as development evidence (not a public pass); first run 5/10 at `2a65dbf` retained ([record](evals/mutation-runs/2026-09-23-2a65dbf-first-run.json)); public claim unmeasured.
 Row 9: development evidence (independent_context seals): [evals/review-faults/runs/29d9ab7fc987-claude-opus-5-5-20260925T170519Z.json](evals/review-faults/runs/29d9ab7fc987-claude-opus-5-5-20260925T170519Z.json) — 10/10 plants caught and 0 false alarms in 3 valid clean reviews at `a779084` at the first run; 2 of 5 clean cases INVALID (unmeasured), so thresholds not met; public claim unmeasured. See [0074](docs/decisions/0074-row-9-seal-and-first-measured-run.md).
 Live validation is per-assay. Agent behaviour is
 graded separately and published in [docs/EVALS.md](docs/EVALS.md), against a pre-registration

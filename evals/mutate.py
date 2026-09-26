@@ -15,6 +15,7 @@ import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
+SUITE_TIMEOUT = 1800  # whole-suite runs only; probes and git keep execute()'s 300 s (0110)
 
 
 def tree_hash(root):
@@ -47,8 +48,8 @@ def assert_unchanged(root, before):
 
 
 def copy_tree(source, target):
-    shutil.copytree(str(source), str(target), symlinks=True,
-                    ignore=lambda folder, names: ['.git'] if Path(folder) == source else [])
+    """Copy the tested tree with its repository (0110): tests may read history and HEAD."""
+    shutil.copytree(str(source), str(target), symlinks=True)
 
 
 def committed_tree(root, run_sha, target):
@@ -83,6 +84,50 @@ def committed_tree(root, run_sha, target):
             path.chmod(0o755 if mode == b'100755' else 0o644)
 
 
+def git_quiet(root, *args):
+    return subprocess.run(['git', '-C', str(root)] + list(args), stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE, check=True).stdout
+
+
+def attach_history(root, run_sha, snapshot):
+    """Give the materialized tree its repository (0110): the files stay exactly run_sha's
+    committed objects (committed_tree); only a .git cloned from the source is added, with HEAD
+    detached at run_sha and the index read from it, so the tree is clean at run_sha."""
+    history = snapshot.parent / 'history'
+    subprocess.run(['git', 'clone', '-q', '--no-local', '--no-checkout', str(root), str(history)],
+                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+    os.rename(str(history / '.git'), str(snapshot / '.git'))
+    history.rmdir()
+    git_quiet(snapshot, 'remote', 'remove', 'origin')
+    git_quiet(snapshot, 'update-ref', '--no-deref', 'HEAD', run_sha)
+    git_quiet(snapshot, 'read-tree', run_sha)
+    subprocess.run(['git', '-C', str(snapshot), 'update-index', '-q', '--refresh'],
+                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if git_quiet(snapshot, 'status', '--porcelain', '--untracked-files=all'):
+        raise RuntimeError('materialized tree differs from run_sha')
+
+
+MUTANT_IDENTITY = ['-c', 'user.name=GARS mutation runner', '-c', 'user.email=mutation-runner@invalid',
+                   '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null']
+
+
+def commit_mutant(target, mutant_id):
+    """Commit the applied mutant inside the throwaway tested tree (0110), so the suite sees a clean
+    checkout at a new HEAD: a test that reads git status or diffs the working tree cannot fail
+    merely because the tree is dirty. A tree without a repository is left as it is."""
+    if not (target / '.git').is_dir():
+        return
+    env_dates = ['env', 'GIT_AUTHOR_DATE=2000-01-01T00:00:00Z', 'GIT_COMMITTER_DATE=2000-01-01T00:00:00Z']
+    for argv in (['git', 'add', '-A'],
+                 env_dates + ['git'] + MUTANT_IDENTITY + ['commit', '-q', '--no-verify', '-m',
+                                                         'mutant ' + mutant_id]):
+        result = execute(argv, target)
+        if result['returncode']:
+            raise RuntimeError('mutant commit failed')
+    if execute(['git', 'status', '--porcelain', '--untracked-files=all'], target)['stdout']:
+        raise RuntimeError('tested tree not clean after the mutant commit')
+
+
 def restore_tree(snapshot, target):
     shutil.rmtree(str(target))
     copy_tree(snapshot, target)
@@ -100,7 +145,7 @@ def execute(argv, root, stdin='', timeout=300):
 
 
 def suite(root, log_path=None, binding=None):
-    result = execute([sys.executable, 'tests/run_tests.py'], root)
+    result = execute([sys.executable, 'tests/run_tests.py'], root, timeout=SUITE_TIMEOUT)
     if log_path is not None:
         evidence = dict(binding or {}, **result)
         log_path.write_text(json.dumps(evidence, sort_keys=True, indent=2) + '\n')
@@ -234,6 +279,7 @@ def measure_one(snapshot, target, mutant, run_sha, evidence_dir=None):
                    ('id', 'requirement', 'run_sha', 'snapshot_hash',
                     'mutant_diff_sha256', 'expected_sha256')}
         binding.update(stage='mutant', tested_tree_hash=changed)
+        commit_mutant(target, mutant.name)
         code, first = suite(target, log_path, binding)
         if log_path is not None:
             record['suite_log'] = str(log_path)
@@ -265,6 +311,7 @@ def measure(root, directory):
         with tempfile.TemporaryDirectory(prefix='gars-mutants-', dir=scratch) as temporary:
             snapshot, target = Path(temporary) / 'snapshot', Path(temporary) / 'tree'
             committed_tree(root, run_sha, snapshot)
+            attach_history(root, run_sha, snapshot)
             copy_tree(snapshot, target)
             baseline = tree_hash(target)
             code, first = suite(target, evidence_dir / 'baseline.json',

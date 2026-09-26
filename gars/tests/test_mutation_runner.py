@@ -146,6 +146,65 @@ class MutationRunnerTests(unittest.TestCase):
         self.assertEqual(again[0]['run_sha'], records[0]['run_sha'])
         self.assertEqual(again[0]['snapshot_hash'], records[0]['snapshot_hash'])
 
+    def history_fixture(self):
+        """A suite test that needs the tested tree to be a clean checkout with history (0110)."""
+        (self.snapshot / 'gars/_system/other.py').write_text('print(5)\n')
+        (self.snapshot / 'gars/tests/test_history.py').write_text(
+            'import subprocess, unittest\nfrom pathlib import Path\n'
+            'class History(unittest.TestCase):\n'
+            '    def test_clean_checkout_with_head(self):\n'
+            '        root = Path(__file__).resolve().parents[2]\n'
+            '        head = subprocess.run(["git", "-C", str(root), "cat-file", "-e", "HEAD^{commit}"])\n'
+            '        self.assertEqual(head.returncode, 0)\n'
+            '        status = subprocess.run(["git", "-C", str(root), "status", "--porcelain",\n'
+            '                                 "--untracked-files=all"], stdout=subprocess.PIPE)\n'
+            '        self.assertEqual((status.returncode, status.stdout), (0, b""))\n')
+        for argv in (['git', 'add', '--', 'tests', 'gars'],
+                     ['git', '-c', 'user.name=Fixture', '-c', 'user.email=fixture',
+                      'commit', '-q', '-m', 'Fixture']):
+            result = run(argv, self.snapshot)
+            self.assertEqual(result.returncode, 0, result.stderr)
+        return self.base / 'sealed-control'
+
+    def other_mutant(self, directory):
+        folder = directory / 'other'
+        folder.mkdir(parents=True)
+        name = 'gars/_system/other.py'
+        patch = ''.join(difflib.unified_diff(['print(5)\n'], ['print(6)\n'], 'a/' + name, 'b/' + name))
+        (folder / 'mutant.diff').write_text(patch)
+        (folder / 'expected.json').write_text(json.dumps({
+            'id': 'other', 'requirement': 'R-164', 'description': 'Untested public control',
+            'probe': {'argv': ['{python}', name], 'stdin': ''},
+            'before': {'returncode': 0, 'stdout': '5\n', 'stderr': ''},
+            'after': {'returncode': 0, 'stdout': '6\n', 'stderr': ''}}))
+
+    @needs_tmpdir
+    def test_tested_tree_carries_history_at_run_sha(self):
+        """0110: tests that read history or HEAD see a clean checkout at run_sha, so the baseline
+        is green; before 0110 the tested tree had no .git and this baseline was refused."""
+        directory = self.history_fixture()
+        directory.mkdir()
+        mutant = self.mutant('print(2)\n')
+        mutant.rename(directory / mutant.name)
+        records = mutate.measure(self.snapshot, directory)
+        self.assertEqual([r['status'] for r in records], ['killed'])
+        self.assertIn('test_value', records[0]['test'])
+        baseline = json.loads(Path(records[0]['baseline_log']).read_text())
+        self.assertEqual(baseline['returncode'], 0)
+        self.assertIn('test_clean_checkout_with_head', baseline['stderr'])
+
+    @needs_tmpdir
+    def test_a_dirty_tree_never_kills_an_untested_mutant(self):
+        """0110 control: the applied mutant is committed inside the throwaway tree, so a test that
+        reads git status cannot kill a mutant merely because the tree is dirty."""
+        directory = self.history_fixture()
+        self.other_mutant(directory)
+        before = mutate.tree_hash(self.snapshot)
+        records = mutate.measure(self.snapshot, directory)
+        self.assertEqual([r['status'] for r in records], ['survived'])
+        self.assertIsNone(records[0]['test'])
+        self.assertEqual(mutate.tree_hash(self.snapshot), before)
+
     def test_text_only_mutant_is_ineffective_never_killed(self):
         record = mutate.measure_one(self.snapshot, self.target,
                                    self.mutant('# changed words\nprint(1)\n'), 'toy-sha')
