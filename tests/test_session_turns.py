@@ -27,11 +27,9 @@ EXPECTED = ('human turns: 6; inside spans: 4; outside spans: 2; outside minutes:
 LINE = re.compile(r'^human turns: \d+; inside spans: \d+; outside spans: \d+; outside minutes: '
                   r'\d+\.\d\d; session wall minutes: \d+\.\d\d; agent active minutes: \d+\.\d\d; '
                   r'outside window: \d+; graded (\d+) of (\d+) records\n$')
-# The 15 record types of the sanitized inventory of 40 real local transcripts (ruling 0150).
-INVENTORY_TYPES = ('agent-name', 'ai-title', 'assistant', 'atis-latch', 'attachment',
-                   'bridge-session', 'cost-state', 'custom-title', 'file-history-delta',
-                   'file-history-snapshot', 'last-prompt', 'mode', 'queue-operation', 'system',
-                   'user')
+# The sanitized inventory of 40 real local transcripts (ruling 0150; type names, counts and key
+# names only): the real-type fixture must carry every record type it lists.
+INVENTORY = json.loads((FIXTURES / 'transcript_type_inventory.json').read_text(encoding='utf-8'))
 LOG_HEAD = ('# gars-pilot-log v1 nonce=0123456789abcdef0123456789abcdef\n'
             'ts,stage,actor,action,reason_code,minutes\n')
 
@@ -269,7 +267,8 @@ class SessionTurnsTests(unittest.TestCase):
         # number for every field of the line; each `graded` count is its own file's record count.
         real = (FIXTURES / 'session_real_types.jsonl').read_text()
         types = [json.loads(l)['type'] for l in real.splitlines()]
-        self.assertEqual(sorted(set(types)), sorted(INVENTORY_TYPES))
+        self.assertEqual(sorted(set(types)), sorted(INVENTORY['types']))
+        self.assertEqual(len(INVENTORY['types']), 15)
         stripped = ''.join(l + '\n' for l in real.splitlines()
                            if json.loads(l)['type'] in ('user', 'assistant'))
         self.assertEqual(stripped, (FIXTURES / 'session.jsonl').read_text())
@@ -306,6 +305,11 @@ class SessionTurnsTests(unittest.TestCase):
             {'type': 'mode', 'timestamp': 20260115, 'isMeta': 'yes', 'isSidechain': None},
             {'type': 'ai-title', 'message': 'not an object'},
         ]
+        # Review round 1, F2: the type comparison is exact. A record whose type differs from
+        # `user` or `assistant` only in case or by a space is a harness record, whatever it holds.
+        for kind in ('User', 'USER', 'user ', 'Assistant'):
+            records.append({'type': kind, 'timestamp': '2026-01-15T10:12:20Z',
+                            'message': {'role': 'user', 'content': 'is GENEFIX0003 filtered?'}})
         for where in (0, 8, 9, len(lines)):
             for record in records:
                 result = self.run_turns(self.write(
@@ -317,15 +321,164 @@ class SessionTurnsTests(unittest.TestCase):
         result = self.run_turns(self.write(
             'all.jsonl', lines[:8] + [json.dumps(r) for r in records] + lines[8:]))
         self.assertEqual((result.returncode, result.stdout, result.stderr),
-                         (0, EXPECTED.replace('graded 14 of 14', 'graded 21 of 21') + '\n', ''))
+                         (0, EXPECTED.replace('graded 14 of 14', 'graded 25 of 25') + '\n', ''))
         # Alone, they make no window: nothing inside, nothing outside, no minute.
         self.assertEqual(self.line(records, []),
                          'human turns: 0; inside spans: 0; outside spans: 0; outside minutes: '
                          '0.00; session wall minutes: 0.00; agent active minutes: 0.00; outside '
-                         'window: 0; graded 7 of 7 records\n')
+                         'window: 0; graded 11 of 11 records\n')
         self.assertEqual([st.classify(r) for r in records], ['harness_type'] * len(records))
         print('red-on-fault guard: a harness-type record is never a turn, a predecessor, agent '
               'activity or part of the window')
+
+    def test_records_split_on_newline_only(self):
+        # Review round 1, F1 (the lane's ruling): records are the file's "\n"-separated lines, a
+        # trailing "\r" stripped. JSON allows U+2028, U+2029 and U+0085 raw inside a string;
+        # str.splitlines() would cut a record there. A harness record carrying one is graded in
+        # full; a user record carrying one classifies as it would without it.
+        real = (FIXTURES / 'session_real_types.jsonl').read_text(encoding='utf-8').splitlines()
+        lines = (FIXTURES / 'session.jsonl').read_text(encoding='utf-8').splitlines()
+        for char in (' ', ' ', '\u0085'):
+            carried = []
+            for line in real:
+                record = json.loads(line)
+                if record['type'] == 'ai-title':
+                    record['aiTitle'] = 'a title%sover two lines' % char
+                elif record['type'] == 'last-prompt':
+                    record['lastPrompt'] = 'a prompt%sover two lines' % char
+                carried.append(json.dumps(record, ensure_ascii=False)
+                               if record['type'] in ('ai-title', 'last-prompt') else line)
+            text = ''.join(l + '\n' for l in carried)
+            self.assertEqual(text.count(char), len([l for l in real if json.loads(l)['type']
+                                                    in ('ai-title', 'last-prompt')]))
+            self.assertGreaterEqual(text.count(char), 2)
+            path = self.root / 'sep.jsonl'
+            path.write_bytes(text.encode('utf-8'))
+            result = self.run_turns(path)
+            self.assertEqual((result.returncode, result.stdout, result.stderr),
+                             (0, EXPECTED.replace('graded 14 of 14', 'graded 34 of 34') + '\n',
+                              ''), repr(char))
+            # The same character in a human turn and in a tool result changes no class.
+            touched = list(lines)
+            for index, old in ((6, 'approved'), (2, 'rows for SAMPLEFIX_A7')):
+                record = json.loads(touched[index])
+                touched[index] = json.dumps(record, ensure_ascii=False).replace(
+                    old, old[:4] + char + old[4:])
+                self.assertIn(char, touched[index])
+                self.assertEqual(st.classify(json.loads(touched[index])),
+                                 st.classify(record))
+            path.write_bytes(''.join(l + '\n' for l in touched).encode('utf-8'))
+            result = self.run_turns(path)
+            self.assertEqual((result.returncode, result.stdout, result.stderr),
+                             (0, EXPECTED + '\n', ''), repr(char))
+        # "\r\n" line ends: the trailing "\r" is stripped.
+        path = self.root / 'crlf.jsonl'
+        path.write_bytes(''.join(l + '\r\n' for l in real).encode('utf-8'))
+        result = self.run_turns(path)
+        self.assertEqual((result.returncode, result.stdout, result.stderr),
+                         (0, EXPECTED.replace('graded 14 of 14', 'graded 34 of 34') + '\n', ''))
+        print('red-on-fault guard: a record is one "\\n"-separated line, whatever its strings hold')
+
+    def test_queued_prompt_is_a_human_turn(self):
+        # Review round 1, F3 (the lane's ruling): a prompt the human types while the agent works is
+        # an `attachment` record whose `attachment` is a `queued_command`. With `humanTurn` true,
+        # or `commandMode` "prompt" and `isMeta` not true, it is a human turn timed by the
+        # record's own (outer) timestamp; every other attachment stays harness. The three
+        # combinations are the inventory's; only the last is a human turn.
+        def queued(ts, inner):
+            body = {'type': 'queued_command', 'prompt': 'typed while the agent works',
+                    'source_uuid': 'fixture-uuid-q', 'timestamp': '2026-01-15T10:03:30Z'}
+            body.update(inner)
+            return {'type': 'attachment', 'timestamp': ts, 'isSidechain': False,
+                    'parentUuid': 'fixture-uuid-p', 'uuid': 'fixture-uuid-a', 'attachment': body}
+        self.assertEqual(sorted(INVENTORY['queued_command']['by_commandMode_isMeta_humanTurn']),
+                         ['prompt|isMeta=False|humanTurn=True',
+                          'prompt|isMeta=True|humanTurn=False',
+                          'task-notification|isMeta=False|humanTurn=False'])
+        notification = {'commandMode': 'task-notification'}
+        meta_prompt = {'commandMode': 'prompt', 'isMeta': True, 'origin': {'kind': 'fixture'}}
+        typed = {'commandMode': 'prompt', 'humanTurn': True, 'origin': {'kind': 'fixture'}}
+        self.assertEqual([st.classify(queued('2026-01-15T10:25:00Z', c))
+                          for c in (notification, meta_prompt, typed)],
+                         ['harness_type', 'harness_type', 'human'])
+        # `commandMode` "prompt" without `isMeta` is a human turn too; any other attachment is not.
+        self.assertEqual(st.classify(queued('2026-01-15T10:25:00Z', {'commandMode': 'prompt'})),
+                         'human')
+        for other in ({'type': 'attachment', 'timestamp': '2026-01-15T10:25:00Z',
+                       'attachment': {'type': 'edited_text_file', 'commandMode': 'prompt',
+                                      'humanTurn': True}},
+                      {'type': 'attachment', 'attachment': 'queued_command', 'humanTurn': True},
+                      {'type': 'attachment', 'humanTurn': True, 'commandMode': 'prompt'},
+                      queued('2026-01-15T10:25:00Z', {'commandMode': 'prompt', 'isMeta': True,
+                                                      'humanTurn': 'yes'}),
+                      queued('not a time', notification)):
+            self.assertEqual(st.classify(other), 'harness_type', other)
+        lines = (FIXTURES / 'session.jsonl').read_text().splitlines()
+        # Spans 10:00-10:05, 10:09-10:11, 10:30-10:35, 10:40-10:49. A queued prompt at 10:03:30
+        # is inside a span. One at 10:25:00 is outside every span (its inner timestamp says
+        # 10:03:30; the outer one counts): a third outside turn, whose interval runs from the
+        # 10:21:00 agent record, 4.00 minutes, so outside minutes 1.50 + 4.00.
+        inside = json.dumps(queued('2026-01-15T10:03:30Z', typed))
+        outside = json.dumps(queued('2026-01-15T10:25:00Z', typed))
+        result = self.run_turns(self.write('q.jsonl', lines[:6] + [inside] + lines[6:10]
+                                           + [outside] + lines[10:]))
+        self.assertEqual((result.returncode, result.stdout, result.stderr),
+                         (0, 'human turns: 8; inside spans: 5; outside spans: 3; outside minutes: '
+                             '5.50; session wall minutes: 47.00; agent active minutes: 45.50; '
+                             'outside window: 0; graded 16 of 16 records\n', ''))
+        # The other two combinations, at the same places, move no number but `graded`.
+        for combo in (notification, meta_prompt):
+            records = [json.dumps(queued(ts, combo))
+                       for ts in ('2026-01-15T10:03:30Z', '2026-01-15T10:25:00Z')]
+            result = self.run_turns(self.write('n.jsonl', lines[:6] + records[:1] + lines[6:10]
+                                               + records[1:] + lines[10:]))
+            self.assertEqual((result.returncode, result.stdout, result.stderr),
+                             (0, EXPECTED.replace('graded 14 of 14', 'graded 16 of 16') + '\n',
+                              ''), combo)
+        # Like a user human turn it is main-thread: first in the file at 09:58:00 it opens the
+        # window (48.00 wall minutes) and is the 09:59:00 turn's predecessor (09:58-09:59, outside
+        # every span: 1.00 more outside minute); it has no predecessor itself.
+        early = json.dumps(queued('2026-01-15T09:58:00Z', typed))
+        result = self.run_turns(self.write('e.jsonl', [early] + lines))
+        self.assertEqual((result.returncode, result.stdout, result.stderr),
+                         (0, 'human turns: 7; inside spans: 4; outside spans: 3; outside minutes: '
+                             '2.50; session wall minutes: 48.00; agent active minutes: 45.50; '
+                             'outside window: 0; graded 15 of 15 records\n', ''))
+        # Like a user human turn it needs a timestamp.
+        for ts in ('not a time', None):
+            bad = queued(ts, typed)
+            if ts is None:
+                del bad['timestamp']
+            self.assertIsNone(st.classify(bad))
+            result = self.run_turns(self.write('t.jsonl', lines[:3] + [json.dumps(bad)]
+                                               + lines[3:]))
+            self.assertEqual((result.returncode, result.stdout, result.stderr),
+                             (2, '', 'refused: unclassifiable record line 4\n'))
+        print('red-on-fault guard: a queued prompt the human typed is a human turn; the outside '
+              'one is flagged')
+
+    def test_duplicate_type_key_exits_2(self):
+        # Review round 1, F5: json.loads keeps the last of a repeated key, so a record naming two
+        # types could hide a human turn. A repeated `type` key, in the record or in any object
+        # inside it, is refused with its own code.
+        lines = (FIXTURES / 'session.jsonl').read_text().splitlines()
+        human = lines[8]
+        self.assertTrue(human.endswith(', "type": "user"}'))
+        for bad in (human[:-1] + ', "type": "system"}',
+                    '{"type": "system", ' + human[1:],
+                    human.replace('"role": "user"', '"role": "user", "type": "a", "type": "b"'),
+                    '{"type": "attachment", "attachment": {"type": "queued_command", '
+                    '"type": "date", "commandMode": "prompt", "humanTurn": true}, '
+                    '"timestamp": "2026-01-15T10:25:00Z"}'):
+            result = self.run_turns(self.write('d.jsonl', lines[:8] + [bad] + lines[9:]))
+            self.assertEqual((result.returncode, result.stdout, result.stderr),
+                             (2, '', 'refused: duplicate_type_key line 9\n'), bad)
+        # Another repeated key is not this refusal: the record classifies as before.
+        twice = human[:-1] + ', "sessionId": "fixture-session"}'
+        result = self.run_turns(self.write('d.jsonl', lines[:8] + [twice] + lines[9:]))
+        self.assertEqual((result.returncode, result.stdout, result.stderr),
+                         (0, EXPECTED + '\n', ''))
+        print('red-on-fault guard: a record repeating its type key exits 2')
 
     def test_missing_or_non_string_type_exits_2(self):
         # Ruling 0150, test (c): only a non-empty string type can be a harness record.

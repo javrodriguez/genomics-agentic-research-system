@@ -7,14 +7,23 @@ written for Python 3.6.8 (syntax checked, not executed on 3.6.8).
     python3 scripts/session_turns.py --transcript <session.jsonl> --log <pilot1_log.csv> \
         --stage 02_02_de
 
-Every line of the transcript is one record and must classify. The type is checked first (ruling
-L7, narrowed by ruling 0150): a line that is not a JSON object, or a record whose `type` is
-missing, null, empty or not a string, is unclassifiable whatever its flags. Only `user` and
-`assistant` are message types. A record of any other type (a real session writes `attachment`,
-`system`, `queue-operation`, `ai-title` and more) is a harness-type record (ruling 0150): graded,
-never a human turn, never a predecessor, never agent activity and never part of the session's
-window; its content, flags and timestamp are not examined, so it needs no timestamp. A message
-record then classifies:
+Every line of the transcript is one record and must classify. A line is the text between two
+"\n" characters, a trailing "\r" stripped, never `str.splitlines()`: JSON allows U+2028, U+2029
+and U+0085 raw inside a string (review round 1, F1). A JSON object that repeats the `type` key,
+at any depth, is refused `duplicate_type_key line <n>` (F5). The type is checked first (ruling
+L7, narrowed by ruling 0150), and compared exactly: a line that is not a JSON object, or a
+record whose `type` is missing, null, empty or not a string, is unclassifiable whatever its
+flags. Only `user` and `assistant` are message types. An `attachment` record is a human turn
+(review round 1, F3, the lane's ruling) when its `attachment` object has `type` equal to
+`queued_command` and either `humanTurn` true, or `commandMode` equal to "prompt" and `isMeta`
+not true: a prompt the human typed while the agent worked. It is timed by the record's own
+(outer) `timestamp` and treated like a `user` human turn in the window and the intervals; its
+other keys, `isSidechain` among them, are not examined. This rule rests on the harness's
+current format and is a residual: a later format may record typed input otherwise. A record
+of any other type (a real session writes `attachment`, `system`, `queue-operation`, `ai-title`
+and more) is a harness-type record (ruling 0150): graded, never a human turn, never a
+predecessor, never agent activity and never part of the session's window; its content, flags
+and timestamp are not examined, so it needs no timestamp. A message record then classifies:
 - a `user` or `assistant` record with `isSidechain` true (ruling L6: subagent traffic the human
   does not see) or `isCompactSummary` true (ruling L2): harness-generated;
 - a `user` or `assistant` record with `isMeta` true: a meta record;
@@ -26,16 +35,17 @@ A harness or meta record is graded like every record but is never a human turn, 
 predecessor that starts an outside turn's attention interval (so it cannot change `outside
 minutes`) and never part of the agent-active span (ruling m2: either flag is enough). The
 content of a harness or meta record is not examined.
-The flags must be booleans. Each message record needs an ISO-8601 `timestamp` with `Z` or a
-numeric offset. Anything else -- a missing or unparseable timestamp, main-thread `user` content
-mixing `tool_result` with other blocks, a blank line, a JSON line nested past the parser's depth -- is
-unclassifiable and exits 2; no record is skipped. An extra key on an otherwise known record does
-not change its class, whatever Python reads it: integers are parsed as decimals, never through
-`int()` of their text, whose digits 3.11 and later cap. Every file is read as UTF-8 whatever the
-locale. Refusal codes are required to be the same on every Python from 3.6 to 3.13, tested by
-emulating both sides of each known split (tests/pilot_emulation.py); executed on CPython 3.8.2,
-3.8.19, 3.9.6, 3.9.21, 3.10.16, 3.12.9, 3.12.14, 3.13.2 and 3.14.7, not on 3.6, 3.7 or 3.11.
-A decimal signal is `value_out_of_range`, never a traceback.
+The flags must be booleans. Each message record (and each queued prompt) needs an ISO-8601
+`timestamp` with `Z` or a numeric offset. Anything else -- a missing or unparseable timestamp,
+main-thread `user` content mixing `tool_result` with other blocks, a blank line, a JSON line
+nested past the parser's depth -- is unclassifiable and exits 2; no record is skipped. An extra
+key on an otherwise known record does not change its class, whatever Python reads it: integers
+are parsed as decimals, never through `int()` of their text, whose digits 3.11 and later cap.
+Every file is read as UTF-8 whatever the locale. Refusal codes are required to be the same on
+every Python from 3.6 to 3.13, tested by emulating both sides of each known split
+(tests/pilot_emulation.py); executed on CPython 3.8.2, 3.8.19, 3.9.6, 3.9.21, 3.10.16, 3.12.9,
+3.12.14, 3.13.2 and 3.14.7, not on 3.6, 3.7 or 3.11. A decimal signal is `value_out_of_range`,
+never a traceback.
 
 The session's window (ruling L7) runs from the timestamp of the FIRST main-thread record in file
 order to that of the LAST, a main-thread record being a human turn, a tool result or an agent
@@ -45,7 +55,7 @@ in `session wall minutes` (the window's length), `agent active minutes`, `outsid
 predecessor; a human turn outside it is still counted as a turn, inside or outside the spans. A
 transcript with no main-thread record has an empty window: every message record lies outside
 it. A harness-type record is counted in `graded` and nowhere else, so graded = message records
-inside the window + `outside window` + harness-type (non-message) records.
+(queued prompts among them) inside the window + `outside window` + harness-type records.
 
 A human turn is inside when its timestamp falls within a `human` span (`ts` to `ts + minutes`)
 of the stage. `outside minutes` (ruling L1) is a LOWER BOUND on unlogged human attention: each
@@ -106,6 +116,27 @@ FLAGS = ("isSidechain", "isMeta", "isCompactSummary")
 MAIN_THREAD = ("human", "tool_result", "assistant")
 
 
+def queued_prompt(attachment):
+    """True for a `queued_command` attachment the human typed: `humanTurn` true, or
+    `commandMode` "prompt" and `isMeta` not true. Rests on the harness's current format."""
+    if not isinstance(attachment, dict) or attachment.get("type") != "queued_command":
+        return False
+    return attachment.get("humanTurn") is True or (
+        attachment.get("commandMode") == "prompt" and attachment.get("isMeta") is not True)
+
+
+class DuplicateTypeKey(Exception):
+    pass
+
+
+def unique_type(pairs):
+    """object_pairs_hook: json.loads keeps the last of a repeated key, so a JSON object naming
+    two types is refused (review round 1, F5)."""
+    if [key for key, _ in pairs].count("type") > 1:
+        raise DuplicateTypeKey()
+    return dict(pairs)
+
+
 def classify(record):
     """'human', 'tool_result', 'meta', 'harness', 'assistant' or 'harness_type'; None when
     unclassifiable."""
@@ -115,6 +146,10 @@ def classify(record):
     kind = record.get("type")
     if not isinstance(kind, str) or not kind:
         return None
+    if kind == "attachment" and queued_prompt(record.get("attachment")):
+        # Review round 1, F3 (the lane's ruling): a prompt typed while the agent works, timed
+        # by the record's own (outer) timestamp like any human turn.
+        return "human" if micros(record.get("timestamp")) is not None else None
     if kind not in MESSAGE_TYPES:
         # Ruling 0150: any other type is written by the harness; nothing else in it is read.
         return "harness_type"
@@ -192,17 +227,26 @@ def count(transcript, log, stage):
         if row["actor"] == "human" and row["stage"] == stage:
             start = micros(row["ts"])
             spans.append((start, start + int(row["minutes"] * MICROS_PER_MINUTE)))
+    # Review round 1, F1 (the lane's ruling): a record is one "\n"-separated line, a trailing
+    # "\r" stripped. Never str.splitlines(): JSON allows U+2028, U+2029 and U+0085 raw in a string.
     try:
-        lines = Path(transcript).read_text(encoding="utf-8").splitlines()
+        with open(transcript, encoding="utf-8", newline="") as handle:
+            text = handle.read()
     except (OSError, UnicodeDecodeError, ValueError):
         raise ue.Refused("transcript_unreadable")
+    lines = text.split("\n")
+    if lines[-1] == "":
+        lines.pop()
+    lines = [line[:-1] if line.endswith("\r") else line for line in lines]
     if not lines:
         raise ue.Refused("transcript_empty")
     records = []
     harness_types = 0
     for number, line in enumerate(lines, start=1):
         try:
-            record = json.loads(line, parse_int=Decimal)
+            record = json.loads(line, parse_int=Decimal, object_pairs_hook=unique_type)
+        except DuplicateTypeKey:
+            raise ue.Refused("duplicate_type_key line %d" % number)
         except (ValueError, RecursionError):
             record = None
         kind = classify(record)

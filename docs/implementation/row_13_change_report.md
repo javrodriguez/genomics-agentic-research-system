@@ -1506,3 +1506,118 @@ None.
 - **Not run here:** the whole suite (the lane runs it); execution on Python 3.6, 3.7 and 3.11;
   any interpreter but 3.8.2 this round.
 - **Review:** the fresh-context review of this follow-up has not happened in this report.
+
+## Follow-up 0150 review round 2 fixes
+
+2026-09-26. Round 2 of follow-up 0150 on `build/gars-row-13-0150`, built on `ae344be`, answering
+the fresh-context review of `ae344be` (round 1: APPROVE WITH CHANGES; F1 MAJOR, F2 and F3 MINOR,
+F4 to F6 NOTE). Every ruling applied here is **the lane's**, made on 26 Sep 2026 under the
+owner's standing delegation of 23 Sep 2026, and recorded in 0150's dated addendum; none is the
+owner's. Earlier sections of this report are unchanged. Produced by a headless Claude Code
+context (Claude Opus 5.5), Python 3.8.2 on macOS, `TMPDIR`/`TEMP`/`TMP` in the scratch folder.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: how) |
+|---|---|---|---|
+| F1 (MAJOR): read as UTF-8, split on `"\n"` only, a trailing `"\r"` stripped; never `str.splitlines()` | `scripts/session_turns.py` (`count`) | new `test_records_split_on_newline_only`: the real-type fixture with its `ai-title` and `last-prompt` records carrying raw U+2028, U+2029 or U+0085 gives the fixture's line with `graded 34 of 34`; a human turn and a tool result carrying one classify as without it; `\r\n` line ends | red at `ae344be` (`refused: unclassifiable record line 3`), green after; red-on-fault yes: "a transcript split at U+2028, U+2029 or U+0085" RED |
+| F3: a queued prompt (`attachment` / `queued_command` with `humanTurn` true, or `commandMode` "prompt" and `isMeta` not true) is a human turn, outer timestamp | `scripts/session_turns.py` (`queued_prompt`, `classify`), docstring, `docs/pilot/README.md`, 0150 addendum | new `test_queued_prompt_is_a_human_turn`: the inventory's three combinations, only `prompt`+`humanTurn` human; one inside a span (10:03:30), one outside (10:25:00, inner timestamp 10:03:30): `outside spans: 3`, `outside minutes: 5.50`; the other two combinations move only `graded`; first in file it opens the window; no timestamp exits 2 | red at `ae344be` (`['harness_type', 'harness_type', 'harness_type'] != [..., 'human']`), green after; red-on-fault yes: "a queued prompt graded as harness" RED |
+| F2: exact type comparison | `tests/test_session_turns.py` | `test_harness_type_never_timed` gains `User`, `USER`, `user ` and `Assistant` records with human-looking messages at 10:12:20: graded, never human, numbers unchanged (`graded 25 of 25`, alone `graded 11 of 11`) | green at `ae344be` (the parent compares exactly); red-on-fault yes: the reviewer's plant, "a record type compared case-insensitively", RED |
+| F4: the sanitized inventory committed | new `tests/fixtures/pilot/transcript_type_inventory.json` (SHA-256 `1ca39a8e306b396e9a2b6480b5f355f1bb1450201acb7d41964e4e91c0ea8191`), `tests/test_session_turns.py` | `test_real_record_types_graded_as_harness` asserts the fixture carries every type the file's `types` lists (15) | red-on-fault yes: "an inventory type missing from the real-type fixture" (a type added to the inventory copy) RED |
+| F5: a repeated `type` key refused, exit 2, `duplicate_type_key line <n>` | `scripts/session_turns.py` (`unique_type` as `object_pairs_hook`) | new `test_duplicate_type_key_exits_2`: repeated in the record (either order), in the message, in an `attachment`; a repeated `sessionId` still classifies | red at `ae344be` (the crafted line graded, `human turns: 5`), green after; red-on-fault yes: "a repeated type key accepted" RED |
+| F6: lines at most 100 characters | `scripts/session_turns.py` docstring, `docs/pilot/README.md` transcript section | `awk 'length>100'`: none in the script; the README's remaining long lines (11-14, 68, 74, 106) are tables, a command and verbatim printed lines older than 0150 | checked, no test |
+
+### Red first: the round's tests against `ae344be`'s script (Python 3.8.2)
+
+The new test module was run in the checkout while `scripts/session_turns.py` was still
+`ae344be`'s (`git status --short scripts` empty):
+
+```
+FAIL: test_duplicate_type_key_exits_2 (__main__.SessionTurnsTests)
++ (2, '', 'refused: duplicate_type_key line 9\n')
+-  'human turns: 5; inside spans: 4; outside spans: 1; outside minutes: 0.00; '
+FAIL: test_queued_prompt_is_a_human_turn (__main__.SessionTurnsTests)
+- ['harness_type', 'harness_type', 'harness_type']
++ ['harness_type', 'harness_type', 'human']
+FAIL: test_records_split_on_newline_only (__main__.SessionTurnsTests)
+- (2, '', 'refused: unclassifiable record line 3\n')
+Ran 17 tests in 7.120s
+FAILED (failures=3)
+```
+
+F2's and F4's new assertions pass at `ae344be`, whose behaviour they pin is already right there;
+their red is shown by the planted faults above.
+
+### Green after
+
+```
+python3 tests/test_session_turns.py
+Ran 17 tests in 8.530s
+OK
+EXIT session turns (fixture): counts only
+```
+
+### Red-on-fault, round 2
+
+Five faults added; two anchors repaired because the lines they matched changed ("a transcript
+read in the locale encoding" now plants on the `open(..., encoding="utf-8", newline="")` call; "a
+long transcript integer read through int()" on the `json.loads` call carrying
+`object_pairs_hook`), each fault unchanged. Verbatim:
+
+```
+baseline test_unit_economics: OK
+baseline test_rerun_diff: OK
+baseline test_session_turns: OK
+a long transcript integer read through int(): RED; FAILED (failures=1); test_refusal_codes_do_not_depend_on_the_interpreter
+a transcript read in the locale encoding: RED; FAILED (failures=1); test_refusal_codes_do_not_depend_on_the_interpreter
+a transcript split at U+2028, U+2029 or U+0085: RED; FAILED (failures=1); test_records_split_on_newline_only
+a record type compared case-insensitively: RED; FAILED (failures=1); test_harness_type_never_timed
+a queued prompt graded as harness: RED; FAILED (failures=1); test_queued_prompt_is_a_human_turn
+an inventory type missing from the real-type fixture: RED; FAILED (failures=1); test_real_record_types_graded_as_harness
+a repeated type key accepted: RED; FAILED (failures=1); test_duplicate_type_key_exits_2
+restored test_unit_economics: OK
+restored test_rerun_diff: OK
+restored test_session_turns: OK
+red-on-fault: 40/40 RED
+```
+
+The driver's count is 35 + 5 = 40; every other fault line also reads RED.
+
+### Commands and summary lines, round 2 (verbatim)
+
+| Command (from the repo root) | Summary |
+|---|---|
+| `python3 tests/test_session_turns.py` | `Ran 17 tests` / `OK`; `EXIT session turns (fixture): counts only` |
+| `python3 tests/test_unit_economics.py` | `Ran 18 tests` / `OK`; `EXIT unit economics (fixture): regenerated byte-identical` |
+| `python3 tests/test_rerun_diff.py` | `Ran 8 tests` / `OK`; `EXIT rerun diff (fixture): aggregates only` |
+| `python3 tests/pilot_red_on_fault.py` | `red-on-fault: 40/40 RED`, exit 0 |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/check_counts.py` | `clean — every current claim matches the suite` (867, from unittest's loader) |
+| `ast.parse(..., feature_version=(3, 6))` on the script, the test module and the driver | `ast36 ok` |
+| `bash docs/decisions/build_index.sh` | regenerated; no change (0150's frontmatter is unchanged) |
+| `git diff --check` | clean |
+
+**Not run by this producer: the whole suite (`tests/run_tests.py`)**, by the lane's rule. The
+count moves from 864 to 867 (three new methods in `test_session_turns`); `README.md` and
+`DEVELOPMENT.md` say so.
+
+NOTEs F4, F5 and F6 were cheap and are fixed above; none stays open.
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps
+
+- **The queued-prompt rule rests on the harness's current format (F3).** A later Claude Code
+  that records typed prompts otherwise would have them graded as harness and missed as human
+  turns, with no refusal to flag it. Only a fresh inventory of real transcripts would show it.
+  The rule reads only the `attachment` object's `type`, `humanTurn`, `commandMode` and `isMeta`
+  and the outer `timestamp`; a queued prompt carrying `isSidechain` true is not examined for it.
+- **A new message type would be missed.** Any other future non-empty string type is harness by
+  default and never refused.
+- **The inventory is keys and counts, not content**, from 40 sessions on one machine.
+- **Lower bound only:** `outside minutes` still misses a forgotten span with no human turn (L1).
+- **NOT met: row 13's exit.** No real session has been run through the cross-check, and no
+  pilot has run; the fixtures are synthetic.
+- **Not run here:** the whole suite (the lane runs it); Python 3.6, 3.7 and 3.11; any
+  interpreter but 3.8.2 this round.
+- **Review:** round 2 has not been reviewed in this report.

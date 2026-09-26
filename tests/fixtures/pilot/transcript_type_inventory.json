@@ -1,0 +1,163 @@
+{
+ "attachment_types": {
+  "agent_listing_delta": 41,
+  "auto_mode": 40,
+  "command_permissions": 6,
+  "compact_file_reference": 1,
+  "date": 45,
+  "deferred_tools_delta": 46,
+  "deferred_tools_record": 23,
+  "edited_text_file": 32,
+  "environment": 238,
+  "file": 2,
+  "hook_additional_context": 9,
+  "hook_success": 22,
+  "instructions": 23,
+  "mcp_instructions_delta": 16,
+  "model": 41,
+  "nested_memory": 13,
+  "output_style": 1010,
+  "output_style_instructions": 5,
+  "prompt_snapshot": 82,
+  "queued_command": 204,
+  "remote_session_change": 45,
+  "session_context": 41,
+  "silent_turn_reminder": 138,
+  "skill_listing": 44,
+  "task_status": 6,
+  "total_tokens_reminder": 2336
+ },
+ "files_read": 40,
+ "note": "sanitized: type names, counts and key names only; no content, no ids, no timestamps",
+ "queued_command": {
+  "by_commandMode_isMeta_humanTurn": {
+   "prompt|isMeta=False|humanTurn=True": 2,
+   "prompt|isMeta=True|humanTurn=False": 65,
+   "task-notification|isMeta=False|humanTurn=False": 137
+  },
+  "commandMode": {
+   "prompt": 67,
+   "task-notification": 137
+  },
+  "keys_present": {
+   "commandMode": 204,
+   "humanTurn": 2,
+   "isMeta": 65,
+   "origin": 67,
+   "prompt": 204,
+   "source_uuid": 204,
+   "timestamp": 204,
+   "type": 204,
+   "usage": 119
+  },
+  "records": 204
+ },
+ "records": 22694,
+ "types": {
+  "agent-name": {
+   "files": 1,
+   "keys_present": {},
+   "records": 405
+  },
+  "ai-title": {
+   "files": 16,
+   "keys_present": {},
+   "records": 738
+  },
+  "assistant": {
+   "files": 40,
+   "keys_present": {
+    "isSidechain": 6442,
+    "message": 6442,
+    "parentUuid": 6442,
+    "timestamp": 6442,
+    "uuid": 6442
+   },
+   "records": 6442
+  },
+  "atis-latch": {
+   "files": 40,
+   "keys_present": {},
+   "records": 1269
+  },
+  "attachment": {
+   "files": 40,
+   "keys_present": {
+    "isSidechain": 4708,
+    "parentUuid": 4708,
+    "timestamp": 4708,
+    "uuid": 4708
+   },
+   "records": 4708
+  },
+  "bridge-session": {
+   "files": 4,
+   "keys_present": {},
+   "records": 570
+  },
+  "cost-state": {
+   "files": 37,
+   "keys_present": {},
+   "records": 37
+  },
+  "custom-title": {
+   "files": 1,
+   "keys_present": {},
+   "records": 406
+  },
+  "file-history-delta": {
+   "files": 12,
+   "keys_present": {
+    "timestamp": 57
+   },
+   "records": 57
+  },
+  "file-history-snapshot": {
+   "files": 16,
+   "keys_present": {},
+   "records": 59
+  },
+  "last-prompt": {
+   "files": 40,
+   "keys_present": {},
+   "records": 1263
+  },
+  "mode": {
+   "files": 1,
+   "keys_present": {},
+   "records": 284
+  },
+  "queue-operation": {
+   "files": 40,
+   "keys_present": {
+    "timestamp": 2716
+   },
+   "records": 2716
+  },
+  "system": {
+   "files": 5,
+   "keys_present": {
+    "isMeta": 4,
+    "isSidechain": 25,
+    "parentUuid": 25,
+    "timestamp": 25,
+    "uuid": 25
+   },
+   "records": 25
+  },
+  "user": {
+   "files": 40,
+   "keys_present": {
+    "isCompactSummary": 1,
+    "isMeta": 568,
+    "isSidechain": 3715,
+    "message": 3715,
+    "parentUuid": 3715,
+    "timestamp": 3715,
+    "uuid": 3715
+   },
+   "records": 3715
+  }
+ },
+ "unparseable": 0
+}

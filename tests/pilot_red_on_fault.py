@@ -81,7 +81,8 @@ FAULTS = (
      'keep("samples_in_design", canonical_decimal(m.group(1)))',
      'keep("samples_in_design", str(int(m.group(1))))', 'test_unit_economics'),
     ('a long transcript integer read through int()', 'scripts/session_turns.py',
-     'json.loads(line, parse_int=Decimal)', 'json.loads(line)', 'test_session_turns'),
+     'json.loads(line, parse_int=Decimal, object_pairs_hook=unique_type)',
+     'json.loads(line, object_pairs_hook=unique_type)', 'test_session_turns'),
     ('a long comparison integer read through int()', 'scripts/rerun_diff.py',
      'parse_int=Decimal)', 'parse_int=lambda text: Decimal(int(text)))', 'test_rerun_diff'),
     ('a file read in the locale encoding', 'scripts/unit_economics.py',
@@ -116,7 +117,7 @@ FAULTS = (
      'comparison_path.read_text(encoding="utf-8")', 'comparison_path.read_text()',
      'test_rerun_diff'),
     ('a transcript read in the locale encoding', 'scripts/session_turns.py',
-     'Path(transcript).read_text(encoding="utf-8")', 'Path(transcript).read_text()',
+     'open(transcript, encoding="utf-8", newline="")', 'open(transcript, newline="")',
      'test_session_turns'),
     # Follow-up 0150 (the lane's ruling): a record of any other non-empty string type is a
     # harness record. It retires 'an unknown type classified by its flags' (R2), whose guard
@@ -135,6 +136,22 @@ FAULTS = (
      'test_session_turns'),
     ('a missing type accepted (non-message type)', 'scripts/session_turns.py',
      'if not isinstance(kind, str) or not kind:', 'if False:', 'test_session_turns'),
+    # Follow-up 0150, review round 2 (the lane's rulings on review round 1's findings).
+    ('a transcript split at U+2028, U+2029 or U+0085', 'scripts/session_turns.py',
+     'lines = text.split("\\n")', 'lines = text.splitlines() + [""]', 'test_session_turns'),
+    ('a record type compared case-insensitively', 'scripts/session_turns.py',
+     '    kind = record.get("type")\n',
+     '    kind = record.get("type")\n    kind = kind.lower() if isinstance(kind, str) else kind\n',
+     'test_session_turns'),
+    ('a queued prompt graded as harness', 'scripts/session_turns.py',
+     'if kind == "attachment" and queued_prompt(record.get("attachment")):', 'if False:',
+     'test_session_turns'),
+    ('an inventory type missing from the real-type fixture',
+     'tests/fixtures/pilot/transcript_type_inventory.json', '"types": {\n',
+     '"types": {\n  "fixture-new-type": {"files": 1, "keys_present": {}, "records": 1},\n',
+     'test_session_turns'),
+    ('a repeated type key accepted', 'scripts/session_turns.py',
+     'raise DuplicateTypeKey()', 'pass', 'test_session_turns'),
 )
 
 

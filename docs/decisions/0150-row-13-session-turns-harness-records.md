@@ -170,3 +170,78 @@ context review has not happened in this record, and nothing here is approved or 
 ## Date
 
 2026-09-26
+
+## Addendum 2026-09-26: review round 1's findings and the lane's rulings on them
+
+This addendum is appended after the record's last byte; the sections above stand as written.
+Every ruling in it is **the lane's**, made on 26 September 2026 under the owner's standing
+delegation of 23 September 2026; no sentence in it is the owner's. The fresh-context review of
+`ae344be` (round 1) returned APPROVE WITH CHANGES with one MAJOR (F1), two MINORs (F2, F3) and
+three NOTEs (F4 to F6). The lane ruled on all six; review round 2 implements them. Each new test
+was run against `ae344be`'s script first (red where the parent is wrong), then after the change.
+
+**F1 (MAJOR): records are the file's `"\n"`-separated lines.** `str.splitlines()` also breaks at
+U+2028, U+2029 and U+0085, which JSON allows raw inside a string, so a harness record whose
+content carried one cut itself in two and the session exited 2, against rule 2 above. The lane's
+ruling: the transcript is read as UTF-8 and split on `"\n"` only, a trailing `"\r"` stripped,
+never with `str.splitlines()`. The lane accepts the side effect the review named: a `user`
+record carrying one of these characters now classifies as it would without it, where the parent
+refused it, because the file's records are its `"\n"`-separated lines, as Claude Code writes
+them. A bare `"\r"` no longer separates records. Test: `test_records_split_on_newline_only`.
+
+**F3 (the real finding): a queued prompt is a human turn.** A prompt the human types while the
+agent is working is recorded as an `attachment` record whose `attachment` object has `type`
+`queued_command`; in a real sanitized inventory such a prompt never also appears as a `user`
+record. So rule 2 above (and the table's premise that only `user` carries typed input) missed
+human turns in real sessions today, not only in a future format. The lane's ruling: an
+`attachment` record whose `attachment` is an object with `type == "queued_command"` and either
+`humanTurn` true, or `commandMode == "prompt"` and `isMeta` not true, is a **human turn**, timed
+by the record's own (outer) `timestamp`, with the same window and interval treatment as a `user`
+human turn. Every other `attachment` record stays harness. The printed line keeps its shape. The
+inventory's three combinations are `task-notification` (137 records), `prompt` with `isMeta`
+true (65) and `prompt` with `humanTurn` true (2); only the last is a human turn. The producer
+read "the same treatment as a `user` human turn" to include its timestamp requirement: a queued
+prompt with a missing or unparseable outer timestamp is unclassifiable (exit 2), as a `user`
+human turn is; no real one lacks it (every `attachment` in the inventory carries `timestamp`).
+The rule does not examine the record's `isSidechain` or any other key. **Residual:** this rule
+rests on the harness's current format. If a later Claude Code records typed prompts otherwise,
+they would be graded as harness and missed, with no refusal to flag it; the docstring and
+`docs/pilot/README.md` say so. So "graded = message records inside the window + `outside
+window` + harness records" now counts a queued prompt among the message records. Test:
+`test_queued_prompt_is_a_human_turn`.
+
+**F2: the type comparison is exact.** `test_harness_type_never_timed` gains `User`, `USER`,
+`user ` and `Assistant` records, each with a human-looking message and an in-window timestamp:
+graded, never human, every other number unchanged. The parent already compares exactly, so this
+test is green at `ae344be`; its red is the reviewer's plant (the type case-folded), now the
+red-on-fault entry "a record type compared case-insensitively".
+
+**F4: the inventory is committed.** `tests/fixtures/pilot/transcript_type_inventory.json` holds
+type names, counts and key names only (no content, identifier or timestamp), SHA-256
+`1ca39a8e306b396e9a2b6480b5f355f1bb1450201acb7d41964e4e91c0ea8191`. Its `types` block is the
+table in Context above; its `attachment_types` and `queued_command` blocks are F3's evidence.
+`test_real_record_types_graded_as_harness` now asserts the real-type fixture carries every type
+the inventory lists (15), read from the file rather than from a copy of the list. This file is
+not in the frontmatter's `touches`, which this addendum does not edit.
+
+**F5: a repeated `type` key is refused.** `json.loads` keeps the last of a repeated key, so a
+crafted record naming two types could hide a human turn. A record in which any JSON object
+repeats the `type` key (the record itself, its `attachment`, its message or a content block:
+the three places `type` is read) exits 2 with the new code `duplicate_type_key line <n>`, through
+`object_pairs_hook`. Another repeated key is not refused. Test: `test_duplicate_type_key_exits_2`.
+
+**F6: rewrapped.** The script's docstring is at most 100 characters a line; the transcript
+section of `docs/pilot/README.md` is rewrapped likewise. The README's tables, its quoted
+command and its verbatim printed lines, all older than 0150, keep their long lines.
+
+**Red-on-fault.** Five faults are added, each RED: "a transcript split at U+2028, U+2029 or
+U+0085", "a record type compared case-insensitively", "a queued prompt graded as harness", "an
+inventory type missing from the real-type fixture" and "a repeated type key accepted". Two
+anchors are repaired because the lines they matched changed, with each fault unchanged: "a
+transcript read in the locale encoding" (now the `open(..., encoding="utf-8", newline="")`
+call) and "a long transcript integer read through int()" (now the `json.loads` call carrying
+`object_pairs_hook`). The driver reports `red-on-fault: 40/40 RED`.
+
+**Still not closed.** No real session has been run through the cross-check, and row 13's exit
+remains NOT met. The whole suite (`tests/run_tests.py`) is not run by this producer, by the
+lane's rule; nor are Python 3.6, 3.7 and 3.11.

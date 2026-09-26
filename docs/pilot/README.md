@@ -132,18 +132,34 @@ one table are counted, never printed.
 
 ### The session transcript (`--transcript`)
 
-A Claude Code session JSONL, one record per line. The type is checked first (ruling L7, narrowed
-by ruling 0150): a line that is not a JSON object, or a record whose `type` is missing, null,
-empty or not a string, is unclassifiable and exits 2 whatever its flags (`isSidechain`,
-`isMeta`, `isCompactSummary`). Only `user` and `assistant` are message types. A record of any
-other type is a harness record (ruling 0150, decision 0150): a real session writes many of them
-(`attachment`, `system`, `queue-operation`, `ai-title`, `file-history-snapshot` and more). It is
-graded, never a human turn, never the predecessor that starts an outside turn's attention
-interval, never agent activity and never part of the session's window; its content, flags and
-timestamp are not examined, so it needs no timestamp and an unparseable one does not refuse it.
-It is counted in `graded <n> of <n> records` and in nothing else, not in `outside window`. A
-message record classifies as a human turn (`type == "user"`, none of the three flags, content not
-all `tool_result`), a tool result, meta or harness record (non-human), or an assistant record
+A Claude Code session JSONL, one record per line. A line is the text between two `\n`
+characters, a trailing `\r` stripped; U+2028, U+2029 and U+0085, which JSON allows raw inside a
+string, never split a record (0150's review round 2, F1). A JSON object that repeats the `type`
+key, at any depth, is refused `duplicate_type_key line <n>` (F5). The type is checked first
+(ruling L7, narrowed by ruling 0150) and compared exactly: a line that is not a JSON object,
+or a record whose `type` is missing, null, empty or not a string, is unclassifiable and exits 2
+whatever its flags (`isSidechain`, `isMeta`, `isCompactSummary`). Only `user` and `assistant`
+are message types. A record of any other type, except the queued prompt below, is a harness
+record (ruling 0150, decision 0150): a real session writes many of them (`attachment`,
+`system`, `queue-operation`, `ai-title`, `file-history-snapshot` and more). It is graded,
+never a human turn, never the predecessor that starts an outside turn's attention interval,
+never agent activity and never part of the session's window; its content, flags and timestamp
+are not examined, so it needs no timestamp and an unparseable one does not refuse it. It is
+counted in `graded <n> of <n> records` and in nothing else, not in `outside window`.
+
+One `attachment` record is a human turn (0150's review round 2, F3, the lane's ruling): a prompt
+the human types while the agent is working is written as an `attachment` record whose
+`attachment` object has `type` `queued_command`, and a real inventory shows it never also
+appears as a `user` record. When that object has `humanTurn` true, or `commandMode` `"prompt"`
+and `isMeta` not true, the record is a human turn, timed by the record's own (outer)
+`timestamp`, with the same window and interval treatment as a `user` human turn; a missing or
+unparseable timestamp refuses it. Every other `attachment` record stays harness. **Residual:**
+this rule rests on the harness's current format. If a later Claude Code records typed prompts
+otherwise, they would be graded as harness and missed as human turns, with no refusal to flag
+it; only a fresh inventory of real transcripts would show it.
+
+A message record classifies as a human turn (`type == "user"`, none of the three flags, content
+not all `tool_result`), a tool result, meta or harness record (non-human), or an assistant record
 (`type == "assistant"`, none of the three flags). A record with `isCompactSummary` true is
 written by Claude Code itself (ruling L2), a record with `isSidechain` true is subagent traffic
 the human does not see (ruling L6), and a record with `isMeta` true is meta: each is graded but
@@ -152,17 +168,18 @@ change `outside minutes`) and is never part of the agent-active span; either fla
 (ruling m2). Their content is not examined.
 
 The session's window (ruling L7) runs from the timestamp of the first main-thread record in file
-order to that of the last, a main-thread record being a `user` or `assistant` record carrying
-none of the three flags; a start later than the end is refused `session_window_inverted`.
-`session wall minutes` is the window's length. A message record whose timestamp lies outside the
-window is graded, counted in `outside window: <k>`, and never used in session wall minutes,
-agent-active minutes, outside minutes or as a predecessor; a human turn outside it still counts
-as a turn. A transcript with no main-thread record has an empty window, and every message record
-lies outside it. So `graded` = message records inside the window + `outside window` +
-non-message (harness) records.
+order to that of the last, a main-thread record being a `user` or `assistant` record carrying none
+of the three flags, or a queued prompt; a start later than the end is refused
+`session_window_inverted`. `session wall minutes` is the window's length. A message record whose
+timestamp lies outside the window is graded, counted in `outside window: <k>`, and never used in
+session wall minutes, agent-active minutes, outside minutes or as a predecessor; a human turn
+outside it still counts as a turn. A transcript with no main-thread record has an empty window, and
+every message record lies outside it. So `graded` = message records (queued prompts among them)
+inside the window + `outside window` + non-message (harness) records.
 
 An extra key on an otherwise known record does not change its class; each message record needs
 an ISO-8601 `timestamp` with `Z` or a numeric offset. A message record with a missing or
-unparseable timestamp or with main-thread `user` content mixing `tool_result` with other blocks,
-and a blank line, are unclassifiable and exit 2. `outside minutes` follows ruling L1 (decision 0140) and is a lower
-bound on unlogged human attention; it never changes a logged minute.
+unparseable timestamp or with main-thread `user` content mixing `tool_result` with other
+blocks, and a blank line, are unclassifiable and exit 2. `outside minutes` follows ruling L1
+(decision 0140) and is a lower bound on unlogged human attention; it never changes a logged
+minute.
