@@ -1,5 +1,6 @@
 """Deterministic small bulk analyses; no benchmark imports or model execution."""
 import argparse
+import inspect
 import csv
 import json
 import statistics
@@ -17,7 +18,8 @@ LAYOUT = {'samples.csv': '1-design/samples.csv', 'config.yaml': '1-design/_confi
           'de_results.csv': '3-results/de_results.csv',
           'normalized_counts.csv': '3-results/normalized_counts.csv',
           'manifest.json': '3-results/manifest.json', 'qc.md': '3-results/qc.md',
-          'snapshot.json': '4-report/snapshot.json'}
+          'snapshot.json': '4-report/snapshot.json',
+          'commands.sh': '3-results/commands.sh', 'bio_analysis.py': '3-results/bio_analysis.py'}
 
 
 # Copied and adapted from benchmarks/defects/generate.py:16-17, 20-30,
@@ -134,6 +136,28 @@ def analyse(counts):
     return normalized, results
 
 
+def reproduction_script():
+    # Ship the exact numerical functions, with no generator metadata or seeds.
+    functions = (write_text, table, bh, beta_fraction, regularized_beta, student_p, analyse)
+    source = 'import csv, math, statistics, sys\nfrom pathlib import Path\n\n'
+    source += '\n\n'.join(inspect.getsource(function) for function in functions)
+    source += """
+with Path(sys.argv[1]).open(newline='', encoding='utf-8') as handle:
+    rows = list(csv.reader(handle, delimiter='\\t'))
+names = rows[0][1:]
+features = [row[0] for row in rows[1:]]
+counts = [[int(x) for x in row[1:]] for row in rows[1:]]
+normalized, results = analyse(counts)
+out = Path(sys.argv[2])
+out.mkdir(parents=True, exist_ok=True)
+table(out / 'normalized_counts.csv', ['gene'] + names,
+      [[features[i]] + row for i, row in enumerate(normalized)])
+table(out / 'de_results.csv', ['gene', 'baseMean', 'log2FoldChange', 'stat', 'pvalue', 'padj'] + names,
+      [[features[i]] + row + normalized[i] for i, row in enumerate(results)])
+"""
+    return source
+
+
 def generate(destination, base_project, seed=None):
     assay, fixed_seed = BASES[base_project]
     seed = fixed_seed if seed is None else seed
@@ -152,7 +176,10 @@ def generate(destination, base_project, seed=None):
     config = (('strandedness: auto\n' if assay == 'rnaseq_bulk' else '') +
               'unit_of_replication: sample\nreference_release: synthetic-v1\n'
               'de:\n  formula: "' + chr(126) + ' condition"\n  contrast: "condition,B,A"\n')
-    write_text(root / 'config.yaml', config)
+    write_text(root / 'config.yaml', 'data_class: public\n' + config)
+    write_text(root / 'bio_analysis.py', reproduction_script())
+    write_text(root / 'commands.sh', '# Run from the folder containing project; write to a separate output folder.\n'
+               'set -eu\npython3 project/3-results/bio_analysis.py project/2-data/counts.tsv "${1:?supply output folder}"\n')
     features = []
     position = 10000
     for i in range(FEATURES):
@@ -204,7 +231,12 @@ def generate(destination, base_project, seed=None):
         'Count QC: 240 nonnegative integer features per library; library totals and checksums in files.csv.\n'
         'QC disposition DEGRADE: upstream read-level QC cannot be assessed; conclusions concern supplied counts only.\n'
         'Limitation: n = 3 per group limits precision and generalisation.\n')
-    manifest = {'pipeline_commit': 'synthetic-v1', 'params': {'assay': assay,
+    manifest = {'data_class': 'public', 'reference_release': 'synthetic-v1',
+                'commands': 'bash project/3-results/commands.sh tmp/reproduced',
+                'commands_sha256': sha256((root / 'commands.sh').read_bytes()),
+                'analysis_sha256': sha256((root / 'bio_analysis.py').read_bytes()),
+                'cost': 'N/A: no metered execution or billing record is supplied for this count analysis.',
+                'pipeline_commit': 'synthetic-v1', 'params': {'assay': assay, 'reference_release': 'synthetic-v1',
                 'unit_of_replication': 'sample', 'formula': 'condition',
                 'execution_started_at': '2026-09-25T01:00:00Z', 'execution_finished_at': '2026-09-25T01:01:00Z',
                 'contrast': 'B versus A', 'normalisation': 'median-of-ratios',
@@ -222,7 +254,8 @@ def generate(destination, base_project, seed=None):
                         'effect_size': 'See differential table', 'orthogonal_assay': 'none', 'literature': 'not used'},
         'process_risk': {'data_quality': 'All libraries retained', 'confounding_risk': 'Processing balanced',
             'provenance_completeness': 'Library origins in provenance.csv', 'qc_disposition': 'DEGRADE',
-            'limitation': 'Upstream read-level QC unavailable; conclusions concern supplied counts only. n = 3 per group limits precision; associations do not establish causation. Global scaling assumes no global shift.'},
+            'limitation': 'Upstream read-level QC unavailable; conclusions concern supplied counts only. n = 3 per group limits precision; associations do not establish causation. Global scaling assumes no global shift.' +
+                (' Consensus-peak union and blacklist exclusion are declared choices, not verifiable from the supplied files.' if assay == 'atacseq_bulk' else '')},
         'reference_release': 'synthetic-v1', 'workflow_version': 'synthetic-v1', 'evidence': [evidence]}]})
     return root
 

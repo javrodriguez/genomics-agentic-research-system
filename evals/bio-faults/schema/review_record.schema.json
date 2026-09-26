@@ -461,6 +461,13 @@
         },
         "narrative_withheld_until_phase_b": {
           "type": "boolean"
+        },
+        "safeguard_refusal": {
+          "type": "boolean"
+        },
+        "retry_binding_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
         }
       },
       "additionalProperties": false

@@ -124,6 +124,9 @@ assert not any((root / 'evals/bio-faults' / (name + '.py')).exists()
         self.assertEqual(findings['properties']['class']['enum'], list(bio.CLASSES) + ['other'])
         findings['properties']['class']['enum'] = code['properties']['review']['properties']['findings']['items']['properties']['class']['enum']
         env = science['properties']['envelope']
+        self.assertEqual(env['properties'].pop('safeguard_refusal'), {'type': 'boolean'})
+        self.assertEqual(env['properties'].pop('retry_binding_sha256'),
+                         {'type': 'string', 'pattern': '^[0-9a-f]{64}$'})
         phases = env['properties'].pop('phases')
         self.assertEqual((phases['minItems'], phases['maxItems']), (2, 2))
         self.assertEqual([p['properties']['name']['enum'] for p in phases['prefixItems']], [['A'], ['B']])

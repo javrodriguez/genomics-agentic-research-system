@@ -11,7 +11,7 @@ from bio_common import (CLASSES, load_cases, read_json, sha256, write_json,
                         masked_copy, ratio, format_ratio, rf_review_record)
 read_ambiguous = rf_review_record.read_ambiguous
 from bio_oracle import caught, false_alarm
-from bio_review_record import invalid_reasons
+from bio_review_record import invalid_reasons, check_history
 
 
 def earlier_run(runs, prompt_sha):
@@ -72,7 +72,7 @@ def score(records, key, manifest, answers, runs, stamp=None):
             raise ValueError('record filename and envelope differ')
         errors = invalid_reasons(record, manifest)
         phases = env.get('phases', [])
-        if (len(phases) == 2 and all(isinstance(p, dict) for p in phases)
+        if (not env.get('safeguard_refusal', False) and len(phases) == 2 and all(isinstance(p, dict) for p in phases)
                 and phases[1].get('session_id') not in (None, '', 'not-started', 'missing-init')):
             phase_b_started += 1
             resume_differs += int(phases[0].get('session_id') != phases[1].get('session_id'))
@@ -88,7 +88,7 @@ def score(records, key, manifest, answers, runs, stamp=None):
                                    'invalid_reasons': errors, 'record': record,
                                    'ambiguous': count_ambiguous, 'ambiguous_absent': absent})
         total_ambiguous += count_ambiguous
-        count += 1
+        count += int(not env.get('safeguard_refusal', False))
     if len(settings_shas) > 1:
         raise ValueError('mixed sandbox settings run')
     if len(model_ids) > 1:
@@ -106,13 +106,15 @@ def score(records, key, manifest, answers, runs, stamp=None):
     outcomes = {}
     for neutral in manifest['cases']:
         history = sorted(histories[neutral], key=lambda x: x['attempt'])
-        if any(not item['record']['envelope']['ended_on_usage_limit'] for item in history[:-1]):
-            raise ValueError('only usage-limit attempts may be retried')
+        refused = check_history([item['record'] for item in history])
         valid = [item for item in history[-1:] if not item['invalid_reasons']]
         cid = mapping[neutral]['id']
         expected = cases[cid]['expected']
         outcome = {'case_id': cid, 'seal_type': expected['seal_type'], 'attempts': history,
                    'selected_attempt': None, 'status': 'INVALID'}
+        outcome['safeguard_refusals'] = sum(bool(item['record']['envelope'].get('safeguard_refusal')) for item in history)
+        outcome['retried'] = bool(refused and history[-1]['record'] is not refused)
+        outcome['retry_valid'] = bool(outcome['retried'] and valid)
         outcomes[neutral] = outcome
         if not valid:
             invalid += 1
@@ -149,7 +151,9 @@ def score(records, key, manifest, answers, runs, stamp=None):
                          'd': plants, 'types': sorted({e['seal_type'] for e in mapping.values() if e['seal_type'] != 'unsealed'})},
               'sealed_clean': ratio(sum(e['kind'] == 'clean' and e['seal_type'] != 'unsealed' for e in mapping.values()), clean),
               'cases': outcomes, 'ambiguous': total_ambiguous,
-              'resume_id_differs': ratio(resume_differs, phase_b_started)}
+              'resume_id_differs': ratio(resume_differs, phase_b_started),
+              'safeguard_refusals': ratio(sum(o['safeguard_refusals'] for o in outcomes.values()),
+                                         sum(len(h) for h in histories.values()))}
     literals = [s for entry in mapping.values() for s in entry['mask_literals']]
     result = masked_copy(result, key['run_salt'], list(mapping), literals)
     return result
@@ -170,13 +174,20 @@ def print_score(result):
     print('false alarms %s (%d invalid, not clean)' % (format_ratio(overall['false_alarms']), result['invalid_clean']))
     print('invalid ' + format_ratio(overall['invalid']))
     print('resume id differs: ' + format_ratio(result['resume_id_differs']))
+    print('safeguard refusals: ' + format_ratio(result['safeguard_refusals']) + ' sessions')
+    for neutral, case in sorted(result['cases'].items()):
+        print('%s safeguard refusals %d; retried %s; retry valid %s' %
+              (neutral, case['safeguard_refusals'], str(case['retried']).lower(),
+               str(case['retry_valid']).lower()))
     print('graded-against-seen ' + format_ratio(overall['graded_against_seen']))
     print('first-run-at-sha: ' + str(result['first_run_at_sha']).lower())
     if not result['first_run_at_sha']:
         print('first-run values: ' + json.dumps(result['first_run_values'], sort_keys=True))
     for neutral, case in sorted(result['cases'].items()):
         for attempt in case['attempts']:
-            if attempt['invalid_reasons']:
+            if attempt['record']['envelope'].get('safeguard_refusal', False):
+                print('%s attempt %d UNSCORED: safeguard refusal' % (neutral, attempt['attempt']))
+            elif attempt['invalid_reasons']:
                 print('%s attempt %d INVALID: %s' %
                       (neutral, attempt['attempt'], '; '.join(attempt['invalid_reasons'])))
     # Decision 0128 round B: outside the kit only if an && link failed.

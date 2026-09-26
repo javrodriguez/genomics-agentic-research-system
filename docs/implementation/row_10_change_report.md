@@ -807,3 +807,214 @@ waits on an owner ruling.
 ## Owner rulings needed
 
 None.
+
+## Review round U1 fixes
+
+2026-09-25. REVIEW is none; this continuation implements the supplied U-1/U-2
+rulings rather than answering a review file. They are **Glitch's rulings under
+the owner's standing delegation of 23 Sep 2026**, specifically glitch-09's,
+never the owner's words. This is the further continuation beyond the lane's
+stop rule authorized by that ruling. The prior record/report bytes are retained.
+
+## Rulings round U1
+
+| Head item | Changed files | Test | Result | Red-on-fault seen | How |
+|---|---|---|---|---|---|
+| U-1; items 7–9 | bio_run_reviews.py, bio_review_record.py, bio_score.py, schema and harness README; core/pipeline/fault tests | test_safeguard_retry_scored_and_unchanged; test_safeguard_after_tool_final; test_safeguard_retry_final; test_safeguard_later_only_and_changed_inputs; test_safeguard_attempt_never_scored; schema drift | Implemented; final command evidence below | See final mutation result below | Bounded retry, after-tool refusal, changed retry and scored refused attempt each have a disposable mutation with an unchanged green control |
+| U-2; items 4–6 | bio_generate_base.py, INTERFACE.md; pipeline/fault tests | test_report_inputs_and_reproduction; test_base_fingerprints; every gate and four-case build | Inputs supplied and reproducible; complete rendered-report acceptance STOPPED by the protected renderer boundary | See final mutation result below; no for the blocked no-UNKNOWN acceptance | Removing classification fails the input test; the renderer boundary witness confirms UNKNOWN remains despite supplied inputs |
+| Records; item 13 | append-only 0136 and this report, regenerated index; README/DEVELOPMENT counts | scope/prefix audit, check_counts, B/C suites | Evidence below; no reserved record or protected file edited | no | Hash/prefix checks and loader count; no new skip |
+
+### Safeguard exception and retained evidence
+
+0136 pre-registers the exception before any sealed case exists. Only the system
+`model_refusal_no_fallback` event qualifies, with no tool call in that phase;
+a textual mention or a refusal after a tool call cannot trigger a retry. Both
+phases' streams are retained and audited using their own session ids. The code
+stamps the refusal flag; model text cannot supply it. Refused attempts print
+UNSCORED, stay in the retained history, and contribute to the refusal count,
+not to caught, false-alarm, extra invalid observations, graded counts or resume rates. The case
+still occupies its original plant/clean/invalid denominator. Two refusals leave
+one INVALID case, never a clean pass or caught plant.
+
+Exactly one retry runs automatically in the same launch. If interrupted after
+the first durable record, --only can perform that same retry later; after the
+retry exists, a further launch refuses. A retry ending on a usage limit is
+INVALID and final, stops cleanly and prints remaining ids without inviting
+another retry. Other non-safeguard usage-limit attempts still use row 9's
+imported next_attempt. No row 9 implementation or validity rule was copied.
+
+The first kit is retained. The retry uses a new neutral kit, the identical
+launch-owned session argument, identical phase messages and argv, and identical
+prompt, project and settings bytes. A hash binds those inputs plus tool version
+before launch and across scoring history; tests compare the actual stub argv
+and bytes, not only their hash. The changed working directory preserves first
+attempt evidence. Actual Claude behavior for the identical session argument in
+a fresh kit still needs deployment rehearsal; this round runs no model. The
+lane's reported successful earlier resume rehearsal is not a producer test.
+
+Schema additions are the optional, code-stamped safeguard_refusal boolean and
+retry_binding_sha256 string, allowing old records to remain readable. The drift
+test lists both; the adapter removes them only from its row-9-shaped view.
+The science prompt-path equality check still precedes the pure path projection,
+and prompt hashes remain unprojected. The refusal total counts launched attempts,
+each intended as one two-phase session. Per-case refusal count, retried status
+and retry validity print beside the rates. No denominator is hard-coded.
+
+### U-2 inputs and unchanged statistical flaws
+
+Each base now records public classification, the same synthetic-v1 reference
+release in its execution manifest and config, and N/A cost with the reason that
+no metered execution or billing record is supplied. commands.sh and a standalone
+bio_analysis.py are layout-mapped into 3-results. Invoking the commands from the
+folder containing project writes to a separate output directory and exactly
+reproduces normalized_counts.csv and de_results.csv from the supplied counts,
+using the same standard-library numerical functions. It does not modify project.
+The manifest hashes both executable inputs. No real pipeline execution, genome
+resource or measured billing is invented.
+
+ATAC's rendered claim limitation explicitly says that the declared consensus-peak
+union and blacklist exclusion cannot be verified from the supplied files. Counts,
+normalization, t-test, BH, significant feature counts and statistical claims remain
+unchanged. All nine gates still run and pass on the four public cases. The new
+base fingerprints are pinned in the test and appended to 0136. They were measured
+on the current Linux/Python runtime; cross-platform libm equality remains unverified.
+
+P01 and P02 were re-derived with difflib against the U1 bases. Both provenance-only
+patches are byte-identical and their expected match lines remain correct: neither
+the plan method nor provenance lines moved. P01 still makes processing run fully
+confounded with condition, so the condition-only pooled t-test cannot distinguish
+the biological contrast from processing. P02 still treats three aliquots of each
+of two donors as three independent biological samples per arm: df = 4 and the
+aliquot-level pooled variance cannot support inference about the biological
+contrast with one donor per arm. No new flaw is intended or introduced by these
+patches; their S1 numerical rationales and all four fixture definitions remain unchanged.
+These rationales occur only here, never in copied case bytes.
+
+U-2 is not complete: row-7's render function unconditionally inserts UNKNOWN
+for classification, reproduction and cost, and a methods placeholder, even with
+all corresponding inputs present. Its render gate checks sections and claim
+shape, not missing-value completeness. The new boundary witness tests this fact;
+it is not the requested no-UNKNOWN acceptance test. That acceptance and its
+red-on-fault entry are stopped pending the ruling below. No post-render text
+replacement, copied renderer or monkeypatch conceals the limitation. Clean
+rendered-report status is not claimed.
+
+### Verification
+
+Every command sets runtime-resolved scratch settings before children run; C
+unsets TMPDIR only. No model, network, remote, push, merge or pull request runs.
+No review file is read or changed. The three pre-existing review files remain
+untracked. No fixture, prompt, base decision, reserved record or system file is
+changed. Prior 0136 and change-report bytes remain exact prefixes.
+
+The initial narrow probe printed `Ran 5 tests in 4.754s`; `OK`. The expanded
+pipeline probe printed `Ran 42 tests in 17.369s`; `OK`. An intermediate core
+probe printed `Ran 12 tests in 0.131s`; `OK`, and the intermediate 42-mutation
+probe printed `Ran 1 test in 39.132s`; `OK`.
+
+The first final-direct attempt printed `Ran 43 tests in 17.814s`;
+`FAILED (errors=1)`: the new score test used row 9's exclusive-create writer
+to replace its existing synthetic record. Only the test's replacement operation
+was corrected to write_text; the production no-overwrite helper is unchanged.
+That attempt's logs are retained. Final results below supersede it.
+
+| Command | Verbatim summary | Wall time |
+|---|---|---|
+| `python3 tests/run_tests.py (B)` | `Ran 737 tests in 597.013s`; `OK (skipped=79)` | 597.231 s; exit 0 |
+| `python3 tests/run_tests.py (C)` | `Ran 737 tests in 548.320s`; `OK (skipped=106)` | 548.534 s; exit 0 |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` | 0.018 s; exit 0 |
+| `python3 tests/check_counts.py` | `suite: 737 tests, from unittest's loader`; `enforced=3`; `clean — every current claim matches the suite` | 0.178 s; exit 0 |
+| `python3 evals/test_harness.py` | `Ran 44 tests in 39.361s`; `OK` | 39.395 s; exit 0 |
+| `python3 evals/check_results.py --controls --lexicon` | `clean — graded=1` | 0.212 s; exit 0 |
+| `python3 scripts/release_check.py` | `DoD cells regenerated: 13/13` | 0.022 s; exit 0 |
+| `python3 tests/test_bio_faults_core.py` | `Ran 12 tests in 0.123s`; `OK` | 0.160 s; exit 0 |
+| `python3 tests/test_bio_faults_pipeline.py` | `Ran 43 tests in 17.776s`; `OK` | 17.847 s; exit 0 |
+| `python3 tests/test_bio_faults_faults.py` | `Ran 1 test in 40.283s`; `OK` | 40.312 s; exit 0 |
+| Python 3.6 grammar | `Python feature_version=(3, 6): 11/11 Python files parse` | n/a |
+| bio_build_cases.py, repository fixtures | `cases 4; sweep hits 0` | n/a |
+
+All three science test modules ran individually in mode B, each under 120 seconds.
+All 43 isolated mutations went red after their unchanged controls passed. The
+five U1 additions cover second retry, after-tool refusal, changed retry command,
+scoring a refused attempt and missing clean-report input. No existing assertion,
+gate, imported validator or threshold was weakened. The requested no-UNKNOWN
+mutation is not among these: its acceptance remains blocked by the renderer.
+
+| Head item | Final result | Red-on-fault seen | How |
+|---|---|---|---|
+| U-1 | PASS for stub launch, retained history and scoring | yes | Four new U-1 mutations fail their named assertions after green controls |
+| U-2 supplied inputs and reproduction | PASS | yes | Removing classification fails test_report_inputs_and_reproduction |
+| U-2 clean rendering without UNKNOWN | STOPPED, not verified | no | Protected renderer ignores supplied inputs; boundary witness confirms the conflict |
+
+The builder's private gate log records:
+
+```text
+C01: catalogue_evidence=pass, catalogue_integrity=pass, catalogue_probabilities=pass, count_matrix_header=pass, de_identifiers=pass, group_rep_presence=pass, render_report=pass, stage01_design=pass, stage03_verify=pass
+C02: catalogue_evidence=pass, catalogue_integrity=pass, catalogue_probabilities=pass, count_matrix_header=pass, de_identifiers=pass, group_rep_presence=pass, render_report=pass, stage01_design=pass, stage03_verify=pass
+P01: catalogue_evidence=pass, catalogue_integrity=pass, catalogue_probabilities=pass, count_matrix_header=pass, de_identifiers=pass, group_rep_presence=pass, render_report=pass, stage01_design=pass, stage03_verify=pass
+P02: catalogue_evidence=pass, catalogue_integrity=pass, catalogue_probabilities=pass, count_matrix_header=pass, de_identifiers=pass, group_rep_presence=pass, render_report=pass, stage01_design=pass, stage03_verify=pass
+sweep hits 0
+```
+
+The generated analysis scripts in all four built cases also parse with Python
+3.6 grammar. Both plant patches were re-derived byte-identically; no expected
+match interval or fixture byte needs changing.
+
+The release renderer regenerated this reviewer row; the README evidence row
+was not edited:
+
+```text
+| reviewer catch rate (code; science) | `evals/review-faults/`, `evals/bio-faults/` runners | ≥ 8/10 per set, ≤ 1/5 false alarms; first-run-at-sha reported (§21 Q3) | unmeasured |
+```
+
+The repository pre-commit hook ran over a disposable scratch index based on
+the public pre-lane tree, explicitly staging the four public fixture additions.
+The real index and fixture bytes were not changed by that check:
+
+```text
+gitleaks: REFUSED (gitleaks absent from PATH)
+citations: 363/363 resolve
+pre-commit: REFUSED
+hook exit: 1
+```
+
+Gitleaks is absent: the hook refused and the fixture secret scan is unverified.
+No scanner was installed or substituted, and no hook veto was bypassed.
+The citations check passed. The suite/loader agree on 737 tests, and README.md
+and DEVELOPMENT.md match. Mode B has 79 skips and C has 106; no science test
+skips. Linux cold-clone skips remain 106; macOS's existing 75 is not remeasured.
+The decision index and DoD table were regenerated and their bytes are unchanged.
+
+Scope and prefix audits preserve every pre-existing decision, including 0135,
+and every prior byte of 0136 and this report. The science prompt and all four
+fixtures remain byte-identical. Nothing under gars/_system/, row 9, benchmarks,
+.github/ or the ledger changed. The one round commit stages only explicit
+allowed paths, uses the configured identity, and reads its message from scratch.
+No reserved record, seal, protected approval or self-approval is supplied.
+
+Not verified: mode A needs Docker, which this account cannot reach; the gitleaks
+secret scan; native Python 3.6 execution and cross-platform numerical fingerprints;
+macOS cold-clone execution; actual Claude handling of the unchanged session
+argument on retry; deployment sandbox enforcement; independent honesty audit;
+protected approval, sealed slots, measured first run/repeat and merge-result CI.
+No model or network runs here. The inherited renderer boundary remains open.
+Row 10's exit and the full science threshold are not claimed.
+
+## Owner rulings needed
+
+1. **U-2 clean rendered-report completeness versus the protected renderer.**
+   gars/_system/claims/render_report.py, render(), hard-codes UNKNOWN in the
+   data/classification and cost sections, the reproduction-command line, and
+   the genome/model methods line; it never reads the corresponding supplied
+   manifest values. The U1 bases now supply classification, reference, commands,
+   command/code hashes and justified N/A cost, yet the real renderer still
+   emits those placeholders. test_report_inputs_and_reproduction demonstrates
+   both the supplied data/reproduction and this boundary. The head forbids
+   changing gars/_system/ and requires stopping only that part. Complete
+   no-UNKNOWN acceptance and its mutation proof are therefore not claimed.
+   Options: (a) deliver a protected row-7 renderer follow-up in its own lane
+   that consumes the supplied structured inputs, then resume U-2 acceptance;
+   (b) explicitly authorize a narrowly scoped exception to this lane's path
+   boundary in a subsequent round for that renderer/input contract. Neither
+   option is implemented or presumed approved here; no rendered-byte rewrite
+   or copied renderer bypasses the protected implementation.

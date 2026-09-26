@@ -416,3 +416,85 @@ remain unchanged. No model runs against a case, no prompt tuning occurs, and
 no protected approval, seal, measured run, repeat or row exit is claimed.
 0135 stays unchanged and 0137–0139 remain unwritten. The partial set cannot
 meet the full science threshold; deployment rehearsal remains later work.
+
+## Addendum — 2026-09-25, rulings round U1
+
+U-1 and U-2 are glitch-09's rulings, **Glitch under the owner's standing
+delegation of 23 Sep 2026**, never the owner's words. This round is a further
+continuation beyond the lane's stop rule, ruled by glitch-09. The lane reports
+that deployment rehearsal drove phase-B resume with equal session ids and
+otherwise VALID records; this producer does not claim to have run that rehearsal.
+
+Pre-registration, before any sealed case exists: a phase ending on the system
+event with subtype `model_refusal_no_fallback` before its first tool call is
+recorded and never scored. That case receives EXACTLY ONE retry as a new
+attempt, with identical prompt, case, settings and command bytes, nothing
+reworded. A refusal after a tool call remains ordinary INVALID and final.
+A second refusal, or any other retry failure, is INVALID and final, including
+a usage limit on that retry. Every other INVALID remains final under R10-1;
+the existing non-safeguard usage-limit continuation rule remains unchanged.
+The code stamps `safeguard_refusal`; scoring excludes flagged attempts from
+rates, selects the retry for the case, retains both attempts, and reports
+per-case refusal/retry validity and safeguard refusals over sessions launched.
+The single-retry budget persists across invocations, including `--only`.
+
+U-2 requires supplied data classification, reference release in the execution
+manifest, reproducible commands from the counts, cost or a justified N/A,
+and an ATAC limitation naming the unverifiable consensus-peak and blacklist
+choices. Counts, inference and the two producer flaws remain unchanged.
+Base hashes will be re-pinned; fixture patches need changes only if their
+source lines move. The prompt stays unchanged and no model runs here.
+
+A newly found boundary stops only U-2's final rendering acceptance: the imported
+row-7 render_report.render hard-codes UNKNOWN for data/classification, commands,
+cost and genome/model methods fields, ignoring supplied values. Changing that
+function is prohibited by the head's gars/_system/ boundary. No renderer copy,
+post-render substitution or monkeypatch will hide this conflict. The change
+report records options for that part; the remaining U-1 and U-2 work proceeds.
+
+U-1 implementation retains both attempts, their streams and their separate kits.
+The retry preserves both phase argv lists, including the launch-owned session id;
+its fresh working directory differs, leaving the first kit untouched. A binding
+hash covers all source case files, prompt/settings bytes, both argv lists and tool
+version. The launch checks it before a retry; scoring checks the retained binding
+and history budget. `next_attempt` remains imported and handles non-safeguard
+attempts unchanged. The added schema properties are optional for historical
+records, code-stamped on new launches and removed only in the row-9 adapter view.
+Schema drift tests name both additions. A flagged attempt is unscored even if
+its review text has a valid finding shape; a twice-refused case remains INVALID
+in its original denominator. Safeguard-session totals count launched attempts,
+each intended as one two-phase session; per-phase streams remain available.
+
+Tests in tests/test_bio_faults_pipeline.py cover A/B refusal, ordered tool-call
+rejection, unchanged retry bytes/argv, automatic and later --only retry, changed
+input refusal, finality after refusal or usage limit, history tampering, rates
+and the count lines. Mutation controls require a green control before a second
+retry, after-tool exemption, changed retry, or scored refused attempt turns red.
+Actual Claude behavior for reusing a session argument in a fresh kit remains
+unverified here; only stubs run, with no prompt change or model measurement.
+
+U-2 supplies count-only reproduction code and commands, public classification,
+reference release in the execution manifest and config, and a justified N/A cost.
+Both numerical CSVs reproduce byte-identically. ATAC limitations name the
+consensus-peak union and blacklist exclusion as unverifiable from supplied files.
+The inherited renderer still hard-codes UNKNOWN: complete clean-render acceptance
+and its requested mutation proof remain stopped, not passed. The independent
+input/reproduction regression has a missing-classification mutation witness.
+The report records the required ruling options without changing protected code.
+
+The base fingerprints are re-pinned in test_base_fingerprints:
+
+| Base | SHA-256 |
+|---|---|
+| atac-a | 4c04cfd75e2707adc365364bc320b15479b717246ba04918b1eb0cb123aa4f6f |
+| rna-a | 1426c71a803af9c131f659e932242c290e02a76be6f015158082a53953d6dff5 |
+| rna-b | 8d7711776ff6f068361e11a595de4a4ed3929a96370ae8b3e9761cb3732f0500 |
+
+P01 and P02 were re-derived with difflib on these bases. Their provenance-only
+patches remain identical, and plan/provenance match lines did not move. Their
+flaws and the S1 statistical rationales remain unchanged. C01 and C02 have the
+same counts and inference; their rendered completeness is explicitly unresolved.
+No fixture or prompt byte changes, seal, protected approval or reserved record
+is supplied. The existing threat model, row-9 imports, R1 path projection,
+R2 exact sweep exemptions and deployment-audit residuals remain unchanged.
+This round neither certifies statistical honesty nor claims row 10's exit.

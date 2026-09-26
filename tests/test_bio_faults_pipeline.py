@@ -31,7 +31,7 @@ import bio_review_record as validator
 import bio_run_reviews as launcher
 import bio_score as scorer
 support = bio.load_row9('testing')
-BASE_HASHES = {'atac-a': '91a844b99329c176a7c206bf311a7a81d12dcca0eb90f8e77ae5f71b5a7d4a12', 'rna-a': 'c6f3092d4287fe25910fab7006297d8c926e92a087771442a4a9b3fdf8f5c4ea', 'rna-b': '9aa55910efa9a81f5f3c38d7bc044c22edffc781127f32cec852deb55e842c0d'}
+BASE_HASHES = {'rna-a': '1426c71a803af9c131f659e932242c290e02a76be6f015158082a53953d6dff5', 'rna-b': '8d7711776ff6f068361e11a595de4a4ed3929a96370ae8b3e9761cb3732f0500', 'atac-a': '4c04cfd75e2707adc365364bc320b15479b717246ba04918b1eb0cb123aa4f6f'}
 
 
 def temporary(test):
@@ -246,6 +246,38 @@ class BuildTests(unittest.TestCase):
                 reported = [line.split(':', 1)[1].strip()
                             for line in summary.splitlines() if line.startswith('- claim ')]
                 self.assertEqual(reported, dispositions)
+
+    def test_report_inputs_and_reproduction(self):
+        root = temporary(self)
+        m, key = builder.build(root / 'built')
+        for neutral, entry in key['cases'].items():
+            if entry['kind'] != 'clean': continue
+            case = root / 'built/cases' / neutral
+            project = case / 'project'
+            manifest = bio.read_json(project / '3-results/manifest.json')
+            self.assertEqual(manifest['data_class'], 'public')
+            self.assertEqual(manifest['reference_release'], 'synthetic-v1')
+            self.assertEqual(manifest['params']['reference_release'], 'synthetic-v1')
+            self.assertIn('data_class: public', next((project / '1-design/_config').glob('*.yaml')).read_text())
+            self.assertIn('N/A:', manifest['cost'])
+            self.assertIn('no metered execution', manifest['cost'])
+            for file, field in (('commands.sh', 'commands_sha256'), ('bio_analysis.py', 'analysis_sha256')):
+                self.assertEqual(bio.sha256((project / '3-results' / file).read_bytes()), manifest[field])
+            proc = subprocess.run(['bash', 'project/3-results/commands.sh', 'tmp/reproduced'],
+                                  cwd=str(case), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+            for file in ('de_results.csv', 'normalized_counts.csv'):
+                self.assertEqual((case / 'tmp/reproduced' / file).read_bytes(),
+                                 (project / '3-results' / file).read_bytes())
+            report = (project / '4-report/report.md').read_text().replace(chr(92), '')
+            if manifest['params']['assay'] == 'atacseq_bulk':
+                self.assertIn('Consensus-peak union and blacklist exclusion', report)
+                self.assertIn('not verifiable from the supplied files', report)
+            # Boundary witness, not acceptance of a clean rendered report:
+            # the protected row-7 function ignores these supplied inputs.
+            for heading in ('data and classification', 'cost'):
+                section = report.split('## ' + heading + '\n', 1)[1].split('\n## ', 1)[0]
+                self.assertIn('UNKNOWN', section)
 
     def test_base_fingerprints(self):
         hashes = BASE_HASHES
@@ -479,6 +511,23 @@ b = '--resume' in sys.argv
 assert Path('project/4-report').exists() == b
 session = sys.argv[-1]
 mode = MODE
+trace = Path(TRACE)
+entries = json.loads(trace.read_text()) if trace.exists() else []
+attempt = sum(not e['b'] for e in entries) + int(not b)
+entries.append({'b': b, 'argv': sys.argv[1:], 'prompt': Path('BRIEF.md').read_text(),
+                'settings': Path('.claude/settings.json').read_text(),
+                'files': {p.as_posix(): p.read_text() for p in Path('project').rglob('*') if p.is_file()}})
+trace.write_text(json.dumps(entries))
+refusing = mode in ('refuse-a', 'refuse-b', 'refuse-twice', 'refuse-after', 'refuse-then-limit')
+phase = b if mode == 'refuse-b' else not b
+if refusing and phase and (attempt == 1 or mode == 'refuse-twice'):
+    print(json.dumps(dict(type='system', subtype='init', model='stub-model', session_id=session)))
+    if mode == 'refuse-after':
+        print(json.dumps(dict(type='tool_use', name='Read', input={'file_path': 'BRIEF.md'})))
+    print(json.dumps(dict(type='system', subtype='model_refusal_no_fallback')))
+    sys.exit(0)
+if mode == 'refuse-then-limit' and attempt == 2 and b:
+    print('Claude usage limit reached.')
 if b and mode == 'different': session = 'different-session'
 print(json.dumps(dict(type='system', subtype='init', model='stub-model', session_id=session)))
 if (b and mode == 'hit-b') or (not b and mode == 'hit-a'):
@@ -490,7 +539,7 @@ value = {'verdict': 'APPROVE', 'findings': []} if b else {'findings': []}
 if b and mode == 'envelope': value['envelope'] = {'exit_code': 0, 'ended_on_usage_limit': False}
 Path('review.json' if b else 'notes.json').write_text(json.dumps(value))
 if not b and mode == 'made-report': Path('project/4-report').mkdir()
-'''.replace('MODE', repr(mode))
+'''.replace('MODE', repr(mode)).replace('TRACE', repr(str(root / 'trace.json')))
         (binary / 'claude').write_text(source); (binary / 'claude').chmod(0o755)
         # The executable is a runtime stub. It neither invokes nor emulates a model.
         identities = record()['envelope']
@@ -499,6 +548,94 @@ if not b and mode == 'made-report': Path('project/4-report').mkdir()
         env = dict(os.environ); env.pop('ANTHROPIC_API_KEY', None); env['PATH'] = str(binary) + os.pathsep + env.get('PATH', '')
         context = patch.dict(os.environ, env, clear=True); context.start(); self.addCleanup(context.stop)
         return root, args, m
+
+    def test_safeguard_retry_scored_and_unchanged(self):
+        for mode in ('refuse-a', 'refuse-b'):
+            root, args, m = self.setup_launch(mode); args.only = m['cases'][0]
+            self.assertEqual(launcher.run(args), 0)
+            paths = sorted((root / 'r').glob('*.record.json'))
+            self.assertEqual(len(paths), 2)
+            values = sorted((bio.read_json(p) for p in paths), key=lambda v: v['envelope']['reviewer']['attempt'])
+            first, retry = values
+            self.assertTrue(first['envelope']['safeguard_refusal'])
+            self.assertFalse(retry['envelope']['safeguard_refusal'])
+            self.assertEqual(validator.invalid_reasons(retry, m), [])
+            trace = bio.read_json(root / 'trace.json')
+            split = next(i for i in range(1, len(trace)) if not trace[i]['b'])
+            for before, after in zip(trace[:split], trace[split:]):
+                self.assertEqual(before, after, 'retry argv, prompt, case bytes and settings unchanged')
+            result = scorer.score(root / 'r', bio.read_json(root / 'input/private/key.json'), m,
+                                  [bio.HERE / 'fixtures'], root / 'runs')
+            self.assertEqual(result['safeguard_refusals'], {'n': 1, 'd': 2})
+            self.assertEqual(result['overall']['graded_against_seen'], {'n': 1, 'd': 4})
+            self.assertEqual(result['overall']['invalid']['n'], 3)
+            outcome = next(c for c in result['cases'].values() if c['retried'])
+            self.assertTrue(outcome['retry_valid'])
+            self.assertEqual(outcome['selected_attempt'], 2)
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output): scorer.print_score(result)
+            self.assertIn('safeguard refusals: 1/2 sessions', output.getvalue())
+            self.assertIn('safeguard refusals 1; retried true; retry valid true', output.getvalue())
+            args.kits_root = str(root / 'k2')
+            with self.assertRaises(ValueError): launcher.run(args)
+
+    def test_safeguard_after_tool_final(self):
+        root, args, m = self.setup_launch('refuse-after'); args.only = m['cases'][0]
+        launcher.run(args)
+        paths = list((root / 'r').glob('*.record.json'))
+        self.assertEqual(len(paths), 1)
+        value = bio.read_json(paths[0])
+        self.assertFalse(value['envelope']['safeguard_refusal'])
+        self.assertTrue(validator.invalid_reasons(value, m))
+        with self.assertRaises(ValueError): launcher.run(args)
+        for event in ({'type': 'tool_use'}, {'type': 'assistant', 'message': {'content': [{'type': 'tool_use'}]}}):
+            refusal = {'type': 'system', 'subtype': 'model_refusal_no_fallback'}
+            self.assertFalse(launcher.safeguard_refusal([event, refusal]))
+            self.assertFalse(launcher.safeguard_refusal([refusal, event]))
+        self.assertFalse(launcher.safeguard_refusal([{'type': 'text', 'text': 'model_refusal_no_fallback'}]))
+
+    def test_safeguard_retry_final(self):
+        for mode in ('refuse-twice', 'refuse-then-limit'):
+            root, args, m = self.setup_launch(mode); args.only = m['cases'][0]
+            launcher.run(args)
+            self.assertEqual(len(list((root / 'r').glob('*.record.json'))), 2)
+            result = scorer.score(root / 'r', bio.read_json(root / 'input/private/key.json'), m,
+                                  [bio.HERE / 'fixtures'], root / 'runs')
+            self.assertEqual(result['overall']['invalid']['n'], 4)
+            self.assertFalse(any(c['retry_valid'] for c in result['cases'].values()))
+            args.kits_root = str(root / 'k2')
+            with self.assertRaises(ValueError): launcher.run(args)
+            self.assertEqual(len(list((root / 'r').glob('*.record.json'))), 2)
+            # An externally added third attempt must also be refused by scoring.
+            value = bio.read_json(root / 'r' / (args.only + '.attempt2.record.json'))
+            value['envelope']['reviewer']['attempt'] = 3
+            bio.write_json(root / 'r' / (args.only + '.attempt3.record.json'), value)
+            with self.assertRaises(ValueError):
+                scorer.score(root / 'r', bio.read_json(root / 'input/private/key.json'), m,
+                             [bio.HERE / 'fixtures'], root / 'runs')
+
+    def test_safeguard_later_only_and_changed_inputs(self):
+        for change in ('none', 'case', 'settings', 'command'):
+            root, args, m = self.setup_launch('refuse-a'); args.only = m['cases'][0]
+            original = launcher.write_json
+            def stop_after_record(path, value):
+                original(path, value)
+                raise RuntimeError('interrupted after durable record')
+            with patch.object(launcher, 'write_json', side_effect=stop_after_record):
+                with self.assertRaises(RuntimeError): launcher.run(args)
+            args.kits_root = str(root / 'k2')
+            if change == 'case':
+                p = Path(args.cases) / args.only / 'project/3-results/qc.md'
+                p.write_text(p.read_text() + '\nchanged\n')
+            if change == 'settings': Path(args.settings).write_text('{"changed": true}')
+            original_command = launcher.command
+            def changed_command(*params):
+                return original_command(*params) + (['--changed'] if change == 'command' else [])
+            with patch.object(launcher, 'command', side_effect=changed_command):
+                if change == 'none': self.assertEqual(launcher.run(args), 0)
+                else:
+                    with self.assertRaises(ValueError): launcher.run(args)
+            self.assertEqual(len(list((root / 'r').glob('*.record.json'))), 2 if change == 'none' else 1)
 
     def test_two_phase_only_no_overwrite(self):
         root, args, m = self.setup_launch()
@@ -613,6 +750,31 @@ class ScoreTests(unittest.TestCase):
         self.assertEqual(second['repeat']['caught'], dict(both=1, one=0, neither=1))
         with contextlib.redirect_stdout(output): scorer.print_score(second)
         self.assertIn('repeatability observation (not a metric)', output.getvalue())
+
+    def test_safeguard_attempt_never_scored(self):
+        root, records, m, key, runs = self.setup_score()
+        neutral = next(n for n, e in key['cases'].items() if e['kind'] == 'plant')
+        path = records / (neutral + '.record.json')
+        value = bio.read_json(path)
+        value['envelope'].update(safeguard_refusal=True, retry_binding_sha256='a' * 64)
+        path.write_text(json.dumps(value))
+        result = scorer.score(records, key, m, [bio.HERE / 'fixtures'], runs)
+        self.assertEqual(result['overall']['caught'], {'n': 1, 'd': 2})
+        self.assertEqual(result['overall']['invalid'], {'n': 1, 'd': 4})
+        self.assertEqual(result['overall']['graded_against_seen'], {'n': 3, 'd': 4})
+        self.assertEqual(result['resume_id_differs'], {'n': 0, 'd': 3})
+        self.assertEqual(result['safeguard_refusals'], {'n': 1, 'd': 4})
+        value['envelope']['safeguard_refusal'] = False
+        value['envelope']['reviewer']['attempt'] = 2
+        retry = records / (neutral + '.attempt2.record.json')
+        bio.write_json(retry, value)
+        result = scorer.score(records, key, m, [bio.HERE / 'fixtures'], runs)
+        self.assertEqual(result['overall']['caught'], {'n': 2, 'd': 2})
+        self.assertEqual(result['overall']['invalid'], {'n': 0, 'd': 4})
+        self.assertEqual(result['overall']['graded_against_seen'], {'n': 4, 'd': 4})
+        value['envelope']['retry_binding_sha256'] = 'b' * 64
+        retry.write_text(json.dumps(value))
+        with self.assertRaises(ValueError): scorer.score(records, key, m, [bio.HERE / 'fixtures'], runs)
 
     def test_resume_id_differs_count(self):
         root, records, m, key, runs = self.setup_score()

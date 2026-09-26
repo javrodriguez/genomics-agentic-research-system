@@ -78,6 +78,14 @@ no mapping, strandedness, FRiP, TSS or fragment-periodicity measurement is
 invented. ATAC coordinates have seeded widths of 150–900 bases and gaps of
 500–25000 bases over three chromosomes. Numeric CSV values use twelve
 significant digits, floating sums use math.fsum, and all files use UTF-8/LF.
+The execution manifest supplies public data classification, reference release,
+command and analysis hashes, and a justified N/A cost. From the folder containing
+project, `bash project/3-results/commands.sh tmp/reproduced` recomputes both
+numerical CSVs using only the supplied counts and standard-library Python.
+The ATAC report limits interpretation because the declared consensus-peak union
+and blacklist exclusion cannot be verified from these files. The inherited
+renderer still emits UNKNOWN for hard-coded sections; that rendering boundary
+awaits a separate ruling and these inputs do not establish clean rendered reports.
 Base fingerprints use the sorted (relative path, SHA-256) JSON list and hash
 algorithm shown below for seals, applied to every file in a base tree.
 
@@ -103,6 +111,8 @@ Every target below is under the anonymous case's `project/` folder.
 | de_results.csv | 3-results/de_results.csv |
 | normalized_counts.csv | 3-results/normalized_counts.csv |
 | manifest.json | 3-results/manifest.json |
+| commands.sh | 3-results/commands.sh |
+| bio_analysis.py | 3-results/bio_analysis.py |
 | qc.md | 3-results/qc.md |
 | snapshot.json | 4-report/snapshot.json |
 | rendered from snapshot.json and manifest.json | 4-report/report.md |

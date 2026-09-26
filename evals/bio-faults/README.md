@@ -19,8 +19,12 @@ These are coordinator instructions, not commands to run a model during this
 producer round. A measured run requires a separate reviewing account and the
 sandbox deployment. Transfer only cases and the public manifest to that account.
 Use `GARS_SEALED_BIO_FAULTS_DIR` for sealed inputs and comma-separated `--answers`
-roots for scoring. `--only` selects comma-separated neutral ids. Only usage-limit
-attempts may resume into a fresh neutral kits root. Records are never overwritten.
+roots for scoring. `--only` selects comma-separated neutral ids. Usage-limit
+attempts may resume into a fresh neutral kits root. U-1 additionally allows exactly
+one unchanged retry for a code-detected safeguard refusal before any tool call
+in that phase. It runs automatically, or with `--only` after interruption.
+Both attempts and streams are retained; a refused retry or any retry failure is
+final, including a usage limit. Records are never overwritten.
 `--compare` names an earlier published run with the same prompt hash and model.
 
 Phase A has design, data and results; phase B adds the narrative only after A
@@ -35,6 +39,9 @@ each audit uses its own phase's id. There is no fresh-session fallback.
    session_matches_phase_a boolean.
 3. Envelope narrative_withheld_until_phase_b: required code-stamped boolean.
 4. envelope.reviewer.prompt_path enum: exactly the science repository-relative path.
+5. U-1 envelope.safeguard_refusal: code-stamped boolean, optional for old records.
+6. U-1 envelope.retry_binding_sha256: optional SHA-256 of case bytes, prompt,
+   settings, both phase argv lists (including session id), and tool version.
 Every other schema key, enum and required list is equal to row 9.
 -->
 
@@ -43,7 +50,9 @@ checks phase cardinality and prefixItems. It checks record == manifest == scienc
 prompt path before its pure projection changes only the path in copies of the
 record and manifest. Hash comparison remains row 9's. Science findings become
 `other` in the row 9 view, and phase blindness counts are summed. Phase failures,
-limits, hits, a false withholding flag or a changed resume session are INVALID.
+limits, hits or a false withholding flag are INVALID. A changed resume session
+is recorded, never itself INVALID. Safeguard-refused attempts are unscored; the
+case is judged by its single retry, or remains INVALID without a valid retry.
 
 Every row 9 shared primitive is imported under private aliases with canonical
 bare names bound only to row 9 objects. The two harnesses coexist in the suite's
@@ -76,3 +85,20 @@ copy to pass, then requires the named assertion to fail in an isolated copy.
 Read enforcement belongs to the deployment sandbox. Row 9's audit residuals in
 0072 items 20–23 and 0125 apply unchanged, with 0127/0128's later placement rules.
 See INTERFACE.md for the independent sealer handoff and SEALS.md for empty slots.
+
+U-1 counts safeguard refusals over launched attempts (one two-phase session per
+attempt), and reports refusal count, retried status and retry validity per case.
+Flagged attempts do not add observations to catch, alarm or invalid rates, and
+are excluded from graded and resume counts; the case keeps its denominator. A double refusal
+therefore leaves one INVALID case, never a clean pass. The retry uses a fresh kit
+with the same launch-owned session argument and identical input/command hashes;
+its working directory differs so retained first-attempt evidence is untouched.
+Actual tool handling of that identical session argument requires deployment
+rehearsal; only runtime stubs execute in producer tests.
+
+U-2 supplies classification, reference, reproduction commands and justified N/A
+cost in each base. Reproduction writes outside project and matches both result
+CSVs byte for byte. The ATAC claim names the unverifiable consensus-peak and
+blacklist choices. Clean rendered-report acceptance remains blocked: the imported
+row-7 renderer hard-codes UNKNOWN in sections regardless of supplied inputs.
+No protected renderer was changed or bypassed; see the U1 change-report ruling.

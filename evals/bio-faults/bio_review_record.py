@@ -31,6 +31,8 @@ def invalid_reasons(record, manifest=None):
     if errors:
         return errors
     view, context = project_prompt_path(record, manifest)
+    for field in ('safeguard_refusal', 'retry_binding_sha256'):
+        view['envelope'].pop(field, None)
     del view['envelope']['phases']
     del view['envelope']['narrative_withheld_until_phase_b']
     view['envelope']['blindness'] = {
@@ -42,6 +44,8 @@ def invalid_reasons(record, manifest=None):
     for finding in view['review']['findings']:
         finding['class'] = 'other'
     errors.extend(row9_invalid_reasons(view, context))
+    if env.get('safeguard_refusal', False):
+        errors.append('safeguard refusal: unscored attempt')
     for phase in phases:
         for key, message in (('exit_code', 'process failed'),
                              ('ended_on_usage_limit', 'usage limit')):
@@ -52,3 +56,31 @@ def invalid_reasons(record, manifest=None):
     if not env['narrative_withheld_until_phase_b']:
         errors.append('narrative not withheld')
     return errors
+
+
+def check_history(history):
+    """Validate retry budget and unchanged inputs; return the first refusal."""
+    refused = None
+    for i, record in enumerate(history):
+        env = record['envelope']
+        if env['reviewer']['attempt'] != i + 1:
+            raise ValueError('attempt history must be contiguous')
+        if i:
+            previous = history[i - 1]['envelope']
+            if refused is not None:
+                if i != refused['envelope']['reviewer']['attempt']:
+                    raise ValueError('only one safeguard retry allowed')
+                original = refused['envelope']
+                digest = original.get('retry_binding_sha256')
+                if not digest or env.get('retry_binding_sha256') != digest:
+                    raise ValueError('safeguard retry inputs or command changed')
+                for field in ('prompt_path', 'prompt_sha256', 'session_id', 'tool_version'):
+                    if env['reviewer'][field] != original['reviewer'][field]:
+                        raise ValueError('safeguard retry reviewer binding changed')
+                if env['sandbox_settings_sha256'] != original['sandbox_settings_sha256']:
+                    raise ValueError('safeguard retry settings changed')
+            elif not previous['ended_on_usage_limit']:
+                raise ValueError('only usage-limit or safeguard attempts may be retried')
+        if env.get('safeguard_refusal', False) and refused is None:
+            refused = record
+    return refused
