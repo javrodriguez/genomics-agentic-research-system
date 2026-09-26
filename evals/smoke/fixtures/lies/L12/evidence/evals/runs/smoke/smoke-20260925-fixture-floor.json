@@ -1,0 +1,129 @@
+{
+  "delta": "uncomputable: no previous smoke record",
+  "floor": {
+    "record": "evals/runs/smoke/smoke-20260925-fixture-floor.json",
+    "value": "1/3"
+  },
+  "git_sha": "d85cd06d195d64316c2aa87fb5ea615e2259e270",
+  "interpretation": "uncomputable",
+  "kind": "smoke",
+  "model": "fixture-model",
+  "parent_sha": "c5a1375c62ad6937e0e82e9e38774ab9b593a448",
+  "path": "evals/runs/smoke/smoke-20260925-fixture-floor.json",
+  "previous": null,
+  "prompt_sha256": "cf32c619d3064aed8a9dbd11df260f0ad8366134b3bdb39bda1eed3f0ff5f202",
+  "run_id": "smoke-20260925-fixture-floor",
+  "runs": [
+    {
+      "denominator": 3,
+      "numerator": 3,
+      "outputs": {
+        "batch-confounded/response.json": "014502602021c9da27a08aa8af79bc76e42eccf35966e7bca8b176ee311cce70",
+        "pseudoreplicates/response.json": "cdbcab1b8ac2552fd41e94b0db31d6730d8bb69714a18905a9d59a94bdabbc1a",
+        "single-replicate/response.json": "7c45d899061d1849b76fb4259acf49063b91b19a3464252f1a1083a5a5e3ef99"
+      },
+      "resource": {
+        "cost_usd": "unknown",
+        "tokens": "unknown",
+        "wall_time_seconds": "unknown"
+      },
+      "run_label": "run-1",
+      "tasks": {
+        "batch-confounded": {
+          "passed": true,
+          "reason": "all artifact assertions passed"
+        },
+        "pseudoreplicates": {
+          "passed": true,
+          "reason": "all artifact assertions passed"
+        },
+        "single-replicate": {
+          "passed": true,
+          "reason": "all artifact assertions passed"
+        }
+      },
+      "transcript_sha256": {
+        "batch-confounded": "a1c5db788b0893f0a3c041c54cdc64fecf0648e23d5cc49f7eb042ffe1c28f2f",
+        "pseudoreplicates": "1f919af3d3a69117a2ca30d6bbfe28b2ec9a75ef11123cd375fc73dce37ae7dd",
+        "single-replicate": "fff487d9f4f65d960e88c981588da7f203d5c62efbb0a1c2ff3a607690c71c77"
+      }
+    },
+    {
+      "denominator": 3,
+      "numerator": 2,
+      "outputs": {
+        "batch-confounded/response.json": "014502602021c9da27a08aa8af79bc76e42eccf35966e7bca8b176ee311cce70",
+        "pseudoreplicates/response.json": "4bc096da5c37d047b07eb39d3b932b47afdc1b7d0f2d95016cf83edb9251b574",
+        "single-replicate/response.json": "7c45d899061d1849b76fb4259acf49063b91b19a3464252f1a1083a5a5e3ef99"
+      },
+      "resource": {
+        "cost_usd": "unknown",
+        "tokens": "unknown",
+        "wall_time_seconds": "unknown"
+      },
+      "run_label": "run-2",
+      "tasks": {
+        "batch-confounded": {
+          "passed": true,
+          "reason": "all artifact assertions passed"
+        },
+        "pseudoreplicates": {
+          "passed": false,
+          "reason": "artifact contract failed: AssertionError"
+        },
+        "single-replicate": {
+          "passed": true,
+          "reason": "all artifact assertions passed"
+        }
+      },
+      "transcript_sha256": {
+        "batch-confounded": "77bf4711ae1e1ac159d2254f1148b6320438dca45c391b38c230137922ff01c3",
+        "pseudoreplicates": "dbcc516808337a76f603423f196b8c7f505138645f8705dc085b960628d1b2f1",
+        "single-replicate": "d91a4318d3259b1954e65ecad34fe8940e7a97d8c7322d2cb68b8bdfd4018d45"
+      }
+    },
+    {
+      "denominator": 3,
+      "numerator": 3,
+      "outputs": {
+        "batch-confounded/response.json": "014502602021c9da27a08aa8af79bc76e42eccf35966e7bca8b176ee311cce70",
+        "pseudoreplicates/response.json": "cdbcab1b8ac2552fd41e94b0db31d6730d8bb69714a18905a9d59a94bdabbc1a",
+        "single-replicate/response.json": "7c45d899061d1849b76fb4259acf49063b91b19a3464252f1a1083a5a5e3ef99"
+      },
+      "resource": {
+        "cost_usd": "unknown",
+        "tokens": "unknown",
+        "wall_time_seconds": "unknown"
+      },
+      "run_label": "run-3",
+      "tasks": {
+        "batch-confounded": {
+          "passed": true,
+          "reason": "all artifact assertions passed"
+        },
+        "pseudoreplicates": {
+          "passed": true,
+          "reason": "all artifact assertions passed"
+        },
+        "single-replicate": {
+          "passed": true,
+          "reason": "all artifact assertions passed"
+        }
+      },
+      "transcript_sha256": {
+        "batch-confounded": "06e8bd7ae962303d3554ba3ca2d118d3adf716a0e4dcaef4adbf8031eec4f9a4",
+        "pseudoreplicates": "dff49f0ee7d6aab4caa82e9dc113350fce8f4c2e5c0c4e142cd7c8a1e4705e45",
+        "single-replicate": "11b0cc0368a29d219d47f32bace658a6fc109d7f5b87f700a9233f31a135667d"
+      }
+    }
+  ],
+  "schema": "gars-smoke/1",
+  "suite": {
+    "suite_sha256": "ea2f1cde3342e085b95d7081b1ecbf69b64274b6834eed63d7d4b6a47dfe31b1",
+    "task_ids": [
+      "batch-confounded",
+      "pseudoreplicates",
+      "single-replicate"
+    ]
+  }
+}

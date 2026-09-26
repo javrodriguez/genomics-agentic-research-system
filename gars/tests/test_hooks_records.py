@@ -7,6 +7,12 @@ import sys
 import unittest
 from support import run
 from secret_support import checked, fixture, snapshot, standin
+from test_hooks_bench_smoke import seed, smoke_evidence
+
+# Row 14 (0120): Bench names a smoke record the evaluator accepts. Row 11's assertions below run
+# against valid smoke evidence; each amendment is named in docs/implementation/row_14_change_report.md.
+RUN_ID = 'smoke-20260922-row-eleven'
+BENCH = 'evals/runs/smoke/%s.json' % RUN_ID
 
 
 def decisions_fixture(root):
@@ -21,6 +27,7 @@ class RecordHookTests(unittest.TestCase):
         self.root, self.hooks, self.base = fixture(self)
         decisions_fixture(self.root)
         checked(['git', 'add', '--', 'gars/_system'], self.root)
+        seed(self.root)
         self.env = standin(self.root)
         self.push = runpy.run_path(str(self.hooks / 'pre-push'))
 
@@ -98,52 +105,78 @@ class RecordHookTests(unittest.TestCase):
         self.assertEqual(self.push['review_session']('session: reviewer\n', 'producer'), 'reviewer')
         print('red-on-fault: Review session equals Session -> REFUSED; differing id passes')
 
+    def smoke(self, commit, sha=None):
+        """Write and stage a smoke record bound to `sha` (default: the commit itself)."""
+        path, files = smoke_evidence(self.root, sha or commit, self.base, RUN_ID)
+        for name, data in files.items():
+            target = self.root / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+        checked(['git', 'add', '--'] + sorted(files), self.root)
+        return sorted(files)
+
     def test_bench_binding_and_na(self):
-        message = 'system change\n\nReview: review.md\nBench: evals/runs/run.json\nSession: producer\n'
+        message = 'system change\n\nReview: review.md\nBench: %s\nSession: producer\n' % BENCH
         commit = self.commit(message)
-        records = {'review.md': 'session: reviewer\n',
-                   'evals/runs/run.json': json.dumps({'git_sha': commit})}
-        self.push['validate_evidence'](self.root, commit, records.__getitem__)
-        records['evals/runs/run.json'] = json.dumps({'git_sha': self.base})
+        (self.root / 'review.md').write_text('session: reviewer\n')
+        checked(['git', 'add', '--', 'review.md'], self.root)
+        # Amended (row 14): committed smoke evidence replaces the {git_sha} stub and dict reader.
+        self.smoke(commit)
+        records = self.push['committed_reader'](self.root, commit, self.commit('records\n', commit))
+        self.push['validate_evidence'](self.root, commit, records, None)
+        self.smoke(commit, sha=self.base)
+        records = self.push['committed_reader'](self.root, commit, self.commit('records\n', commit))
+        with self.assertRaisesRegex(ValueError, 'BINDING_MISMATCH git_sha'):
+            self.push['validate_evidence'](self.root, commit, records, None)
+        commit = self.commit(message.replace(BENCH, 'n/a'))
         with self.assertRaises(ValueError):
-            self.push['validate_evidence'](self.root, commit, records.__getitem__)
-        commit = self.commit(message.replace('evals/runs/run.json', 'n/a'))
-        with self.assertRaises(ValueError):
-            self.push['validate_evidence'](self.root, commit, records.__getitem__)
-
-
+            self.push['validate_evidence'](self.root, commit, records, None)
 
     def test_activation_range_history_deletion_and_each_commit(self):
         record = self.root / self.push['ACTIVATION_RECORD']
+        record.parent.mkdir(parents=True, exist_ok=True)
         record.write_text('row activation fixture\n')
         checked(['git', 'add', '--', self.push['ACTIVATION_RECORD']], self.root)
         activation = self.commit('activation without trailers\n')
         subject = self.root / 'gars/_system/subject.py'
         subject.write_text('print(2)\n')
         checked(['git', 'add', '--', 'gars/_system/subject.py'], self.root)
-        message = 'system change\n\nReview: review.md\nBench: evals/runs/run.json\nSession: producer\n'
+        message = 'system change\n\nReview: review.md\nBench: %s\nSession: producer\n' % BENCH
         tip = self.commit(message, activation)
-        evidence = {'review.md': 'session: reviewer\n',
-                    'evals/runs/run.json': json.dumps({'git_sha': tip})}
+        (self.root / 'review.md').write_text('session: reviewer\n')
+        checked(['git', 'add', '--', 'review.md'], self.root)
+        self.smoke(tip)
+        evidence = self.push['committed_reader'](self.root, tip, self.commit('records\n', tip))
         def payload(local, remote):
             return ('refs/heads/test %s refs/heads/test %s\n' % (local, remote)).encode()
         self.assertEqual(self.push['pushed_commits'](self.root, payload(tip, activation)), [tip])
-        self.assertTrue(self.push['trailer_gate'](self.root, payload(tip, activation), evidence.__getitem__))
+        # Amended (row 14): the predecessor walk (previous_bench) reaches the activation commit
+        # even below remote..local, so its missing trailers now refuse this range as well.
+        self.assertFalse(self.push['trailer_gate'](self.root, payload(tip, activation), evidence))
         # Looking only at the tip would miss the activation commit's missing trailers.
-        self.assertFalse(self.push['trailer_gate'](self.root, payload(tip, self.base), evidence.__getitem__))
+        self.assertFalse(self.push['trailer_gate'](self.root, payload(tip, self.base), evidence))
         print('red-on-fault: earlier outgoing _system commit missing trailers -> range REFUSED')
         record.unlink()
         checked(['git', 'add', '--', self.push['ACTIVATION_RECORD']], self.root)
         deletion = self.commit('remove activation record\n', tip)
         self.assertIn(activation, self.push['pushed_commits'](self.root, payload(deletion, self.base)))
-        self.assertFalse(self.push['trailer_gate'](self.root, payload(deletion, self.base), evidence.__getitem__))
+        self.assertFalse(self.push['trailer_gate'](self.root, payload(deletion, self.base), evidence))
         # Deleting a remote ref sends no commits; a new ref includes every nonexempt ancestor.
         self.assertEqual(self.push['pushed_commits'](self.root, payload('0' * 40, tip)), [])
         self.assertIn(activation, self.push['pushed_commits'](self.root, payload(tip, '0' * 40)))
         for invalid in (b'bad\n', payload('f' * 40, self.base)):
-            self.assertFalse(self.push['trailer_gate'](self.root, invalid, evidence.__getitem__))
+            self.assertFalse(self.push['trailer_gate'](self.root, invalid, evidence))
+        # Amended (row 14): the positive range, with the activation carrying its own evidence.
+        record.write_text('row activation fixture\n')
+        checked(['git', 'add', '--', self.push['ACTIVATION_RECORD']], self.root)
+        landed = self.commit(message)
+        self.smoke(landed)
+        snapshot = self.commit('records\n', landed)
+        self.assertEqual(self.push['pushed_commits'](self.root, payload(snapshot, self.base)),
+                         [landed, snapshot])
+        self.assertTrue(self.push['trailer_gate'](self.root, payload(snapshot, self.base)))
 
-    def activate(self, review='review.md', bench='evals/runs/run.json'):
+    def activate(self, review='review.md', bench=BENCH):
         record = self.root / self.push['ACTIVATION_RECORD']
         record.write_text('row activation fixture\n')
         checked(['git', 'add', '--', self.push['ACTIVATION_RECORD']], self.root)
@@ -152,10 +185,9 @@ class RecordHookTests(unittest.TestCase):
 
     def evidence(self, commit, session='reviewer', sha=None):
         (self.root / 'review.md').write_text('session: ' + session + '\n')
-        folder = self.root / 'evals/runs'
-        folder.mkdir(parents=True, exist_ok=True)
-        (folder / 'run.json').write_text(json.dumps({'git_sha': sha or commit}))
-        checked(['git', 'add', '--', 'review.md', 'evals/runs/run.json'], self.root)
+        checked(['git', 'add', '--', 'review.md'], self.root)
+        # Amended (row 14): a smoke record bound to `sha` replaces evals/runs/run.json.
+        self.smoke(commit, sha=sha)
         return self.commit('record evidence\n', commit)
 
     def invoke_push(self, tip, remote=None, env=None):
@@ -185,7 +217,7 @@ class RecordHookTests(unittest.TestCase):
         result = self.invoke_push(tip)
         self.assertEqual(result.returncode, 0, result.stderr)
         (self.root / 'review.md').unlink()
-        (self.root / 'evals/runs/run.json').unlink()
+        (self.root / BENCH).unlink()
         result = self.invoke_push(tip)
         self.assertEqual(result.returncode, 0, result.stderr)
         print('red-on-fault: code tip and uncommitted evidence -> REFUSED; later committed snapshot passes')
@@ -194,7 +226,7 @@ class RecordHookTests(unittest.TestCase):
         commit = self.activate()
         for session, sha, reason in (
                 ('producer', commit, b'review session equals'),
-                ('reviewer', self.base, b'Bench git_sha does not match')):
+                ('reviewer', self.base, b'BINDING_MISMATCH git_sha')):
             tip = self.evidence(commit, session=session, sha=sha)
             self.evidence(commit)  # Good index/working bytes cannot repair the outgoing object.
             result = self.invoke_push(tip)
@@ -236,7 +268,7 @@ class RecordHookTests(unittest.TestCase):
         no_system_tree = checked(['git', 'write-tree'], self.root)
         header, message = original.split('\n\n', 1)
         valid_message = ('system change\n\nReview: review.md\n'
-                         'Bench: evals/runs/run.json\nSession: producer\n')
+                         'Bench: %s\nSession: producer\n' % BENCH)
         for case, target, content in (
                 ('activation', commit, 'tree ' + base_tree + '\n' + original.split('\n', 1)[1]),
                 ('paths', commit, 'tree ' + no_system_tree + '\n' + original.split('\n', 1)[1]),
@@ -281,7 +313,7 @@ class RecordHookTests(unittest.TestCase):
             with self.assertRaises((ValueError, subprocess.CalledProcessError)):
                 self.push['committed_reader'](self.root, commit, snapshot)
         reader = self.push['committed_reader'](self.root, commit, tip)
-        for name in ('../review.md', '/review.md', './review.md', 'evals//runs/run.json',
+        for name in ('../review.md', '/review.md', './review.md', 'evals//runs/smoke/x.json',
                      'HEAD:review.md', 'review.md/child', 'absent', 'evals/runs'):
             with self.assertRaises(ValueError):
                 reader(name)

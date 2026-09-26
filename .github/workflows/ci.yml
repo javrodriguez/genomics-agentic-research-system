@@ -45,6 +45,13 @@ jobs:
         # Thresholds unmoved since the freeze, every pinned file unchanged, every control
         # behaving opposite its positive, every hand-labelled grader suite still passing.
         run: python3 evals/check_results.py --controls --lexicon
+      - name: Bench trailers (R-165, row 14)
+        # Every _system/ commit on main's first-parent line since the 0120 activation carries a
+        # Review, a Session and a Bench smoke record the pinned evaluator accepts. Red by design at
+        # a pull request's synthetic merge ref that touches _system (evals/smoke/SMOKE.md).
+        env:
+          TMPDIR: ${{ runner.temp }}
+        run: python3 gars/_system/hooks/audit_trailers.py
 
   gap-study:
     # ---- the Gap Study (evals/gap-study), checked at the commit its final verifier checked ------
