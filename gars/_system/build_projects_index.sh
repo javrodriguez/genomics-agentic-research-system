@@ -5,6 +5,10 @@
 # that is itself the authority (a project's CONTEXT.md, a sub-stage's STATUS). A hand-curated
 # index drifts the moment a run finishes; a derived one cannot.
 #
+# A closed project (decision 0107) gets one row naming its class and nothing else (decision
+# 0151): the agent can read this file. The closed set comes from project_state.py, which asks
+# the guard, so the index and the session render cannot disagree about which projects are closed.
+#
 # Usage:  bash _system/build_projects_index.sh [workspace_root]
 set -euo pipefail
 
@@ -13,6 +17,13 @@ PROJECTS="$WS/projects"
 OUT="$PROJECTS/_index.md"
 
 [ -d "$PROJECTS" ] || { echo "no projects/ under $WS" >&2; exit 1; }
+
+# `<name>\t<label>` per closed project. If the guard cannot answer, every project is closed.
+# A name holding a control character (below 0x20, or 0x7f) cannot travel in that list, so it
+# is never written and never looked up: its row is decided here (decision 0151).
+CNTRL=$(printf '\001\002\003\004\005\006\007\010\011\012\013\014\015\016\017\020\021\022\023\024\025\026\027\030\031\032\033\034\035\036\037\177')
+closed_ok=1
+closed=$(python3 "$(dirname "${BASH_SOURCE[0]}")/project_state.py" --closed-list "$WS") || closed_ok=0
 
 {
     echo "# Projects"
@@ -29,9 +40,23 @@ OUT="$PROJECTS/_index.md"
     found=0
     for p in "$PROJECTS"/*/; do
         [ -d "$p" ] || continue
-        name=$(basename "$p")
+        name=${p%/}; name=${name##*/}    # not $(basename): it drops a trailing newline
         case "$name" in _*) continue ;; esac
         found=1
+
+        if [[ $name == *["$CNTRL"]* ]]; then
+            echo "| (unprintable project name) | closed (unclassified) | — | — | — | — | — |"
+            continue
+        fi
+
+        label="unclassified"
+        if [ "$closed_ok" = 1 ]; then
+            label=$(printf '%s\n' "$closed" | n="$name" awk -F'\t' '$1 == ENVIRON["n"] {print $2; exit}')
+        fi
+        if [ -n "$label" ]; then
+            echo "| $name | closed ($label) | — | — | — | — | — |"
+            continue
+        fi
 
         version=$(sed -n 's/^| Template version | \(.*\) |$/\1/p' "$p/CONTEXT.md" 2>/dev/null | head -1)
         # An unsubstituted {{placeholder}} means stage 00's finalize never completed. Show it as

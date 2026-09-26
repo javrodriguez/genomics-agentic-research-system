@@ -1621,3 +1621,307 @@ None.
 - **Not run here:** the whole suite (the lane runs it); Python 3.6, 3.7 and 3.11; any
   interpreter but 3.8.2 this round.
 - **Review:** round 2 has not been reviewed in this report.
+
+## Follow-up 0151
+
+2026-09-26. Built from public main `1a009a4` on `build/gars-row-13-0151`, under ruling 0151.
+Ruling 0151 is **the lane's**, made under the owner's standing delegation of 23 Sep 2026 and
+ruled by the lane's coordinator on 26 Sep 2026; it is not the owner's. See
+[0151](../decisions/0151-row-13-session-state-closed-projects.md). This change was produced by a
+headless Claude Code context (Claude Opus 5.5) and is reviewed by a separate, fresh Claude Opus
+5.5 context working from a blind kit. The two share a model family, so the review's independence
+rests on the fresh context and the blind kit (0009, 0013, 0014). 0152 is reserved for the lane's
+delegated approval of these protected changes and is not written here. Earlier sections of this
+report are unchanged.
+
+**The defect.** The SessionStart hook (`gars/_system/session_state.sh`, 0033) printed
+`project_state.py`'s render of every project into the session's context and rebuilt
+`projects/_index.md`; neither was closed-aware (0107). A closed project's sample count, unmade
+config keys, artifact types, created date and HISTORY headers reached the render, and its design,
+samplesheet and furthest sub-stage reached the index. On row 13's fixture, the closed `pilot`'s
+planted CODE marker printed as an artifact type, and a planted HISTORY header printed verbatim.
+
+| Requirement | Changed files | Test | Result |
+|---|---|---|---|
+| 0151 rule 1: closed exactly as 0107 decides, imported from the guard; unjudgeable is closed | `gars/_system/project_state.py` (`import guard_hook`; `closed_labels` over `guard_hook.closed_projects`; `--project` falls back to `project_is_public`; a raising guard closes every project) | (d) `test_d_render_index_and_guard_agree_on_the_closed_set`: `guard_hook.closed_projects`, `--closed-list`, the render's closed headings and the index's closed rows are the same `{name: label}`, with a public-classed project `sealed` whose `dataset.tsv` is mode 0 (closed `unclassified`) | **red first** against `1a009a4` (`--closed-list` unrecognised), green after |
+| 0151 rule 2: heading `## <name> — closed (<label>)` and one `- <sub-stage>: <STATUS or NOT_STARTED>` line per stage 02 sub-stage, nothing else; `--project` the same | `project_state.py` (`render_closed`, `_closed_status_line`) | (b) `test_b_closed_lines_are_the_rule_shape` for `pilot` (`deidentified_under_agreement`, two COMPLETE sub-stages) and `fresh` (`unclassified`, heading only), full render and `--project`; (a) `test_a_closed_detail_never_reaches_the_session` runs the real `session_state.sh` and finds none of the markers, `(4 samples)`, `fresh`'s six unmade config keys, `pilot`'s artifact types, `created `, or either project's HISTORY headers in their sections or rows, and no marker anywhere outside public `open1`; (e) `test_e_planted_history_header_never_appears` | **red first**, green after |
+| producer's application of rule 1: a closed STATUS read only as a regular file at its own path; anything else prints the heading alone, never an exception's text | `project_state.py` (`_closed_status_line` via `guard_hook._regular_text` and a realpath check) | (f) `test_f_closed_status_read_only_as_its_own_file`: `pilot`'s DE STATUS replaced by a symlink to its `samples.csv`; the old render printed the design's header line, the new prints the heading alone | **red first**, green after |
+| 0151 rule 3: one index row `\| <name> \| closed (<label>) \| — \| — \| — \| — \| — \|`; bash; closed set from `--closed-list` | `gars/_system/build_projects_index.sh` (reads `project_state.py --closed-list "$WS"` once; a failing list closes every row as `unclassified`) | (b) and (d) | **red first**, green after |
+| 0151 rule 4: public render and row, and everything with no closed project, byte-identical (R-042) | none | (c) `test_c_public_render_and_row_are_byte_identical` (`open1`'s full-render section, index row and `--project` output against `1a009a4`'s scripts from `git show`, on the same workspace) and `test_c_no_closed_project_changes_nothing` (a workspace with only `open1`: the whole render, and the whole index but `Last built:`) | green before and after, by design |
+| existing `ProjectStateTests` unchanged and green | none | `tests/run_tests.py` `ProjectStateTests`, run alone (public fixture) | green (4 tests) |
+
+### Red first: the final module against `1a009a4`'s scripts (Python 3.8.2)
+
+`gars/_system/project_state.py` and `build_projects_index.sh` stashed back to `1a009a4` (`git diff
+HEAD -- gars/_system` empty), the final test module run, the change restored:
+
+```
+test_a_closed_detail_never_reaches_the_session (__main__.SessionStateClosedTests) ... EXIT session state (fixture): closed projects name and status only
+FAIL
+test_b_closed_lines_are_the_rule_shape (__main__.SessionStateClosedTests) ... FAIL
+test_c_no_closed_project_changes_nothing (__main__.SessionStateClosedTests) ... ok
+test_c_public_render_and_row_are_byte_identical (__main__.SessionStateClosedTests) ... ok
+test_d_render_index_and_guard_agree_on_the_closed_set (__main__.SessionStateClosedTests) ... FAIL
+test_e_planted_history_header_never_appears (__main__.SessionStateClosedTests) ... FAIL
+test_f_closed_status_read_only_as_its_own_file (__main__.SessionStateClosedTests) ... FAIL
+AssertionError: Lists differ: [('pilot', 'render', 'zzmarker0141_code'),[827 chars]S4')] != []
+AssertionError: Lists differ: ['## pilot — template v0.10.0 — created 2026-09-26', '[347 chars]ted'] != ['## pilot — closed (deidentified_under_agreement)', '[61 chars]ETE']
+AssertionError: b'usage: project_state.py [-h] [--project PROJECT] [--last LAST]\nproject_state.py: error: unrecognized arguments: --closed-list\n'
+AssertionError: 'MARKER0151historyS4' unexpectedly found in 'R-099: workspace pins reviewed and intact\n# Project state — ...
+AssertionError: Lists differ: ['## pilot — template v0.10.0 — created 2026-09-26', '[310 chars]ted'] != ['## pilot — closed (deidentified_under_agreement)']
+Ran 7 tests in 3.531s
+FAILED (failures=5)
+```
+
+The old render of the fixture's `pilot`, which (a) turns into the forbidden list:
+
+```
+## pilot — template v0.10.0 — created 2026-09-26
+### rnaseq_bulk — design filled (4 samples) · samplesheet no
+- config: complete
+- 01_nfcore-rnaseq-wrapper: COMPLETE · artifacts: counts_gene, table, zzmarker0141_code, table
+- 02_rnaseq-de: COMPLETE
+### history — 2 entries, last 2:
+- 2026-09-26 — 00_initialize_project — project created
+- 2026-09-26 — MARKER0151historyS4 — planted
+```
+
+and the new:
+
+```
+## pilot — closed (deidentified_under_agreement)
+- 01_nfcore-rnaseq-wrapper: COMPLETE
+- 02_rnaseq-de: COMPLETE
+```
+
+### Green after
+
+```
+python3 gars/tests/test_session_state_closed.py
+EXIT session state (fixture): closed projects name and status only
+Ran 7 tests in 4.275s
+OK
+```
+
+### Commands and summary lines, follow-up 0151 (verbatim)
+
+| Command (from the repo root, Python 3.8.2, `TMPDIR`/`TEMP`/`TMP` in the scratch folder) | Summary |
+|---|---|
+| `python3 gars/tests/test_session_state_closed.py` | `Ran 7 tests` / `OK`; `EXIT session state (fixture): closed projects name and status only` |
+| `python3 -m unittest -v run_tests.ProjectStateTests` (from `tests/`; the class runs alone) | `Ran 4 tests` / `OK` |
+| `python3 gars/tests/test_nonpublic_read_block.py` | `Ran 20 tests in 62.661s` / `OK` |
+| `python3 gars/tests/test_pilot_doors.py` | `Ran 17 tests in 20.512s` / `OK` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/check_counts.py` | `clean — every current claim matches the suite` (874, from unittest's loader) |
+| `python3 tests/test_decision_links_resolve.py` (after staging) | `Ran 3 tests` / `OK`; `citations: 420/420 resolve` |
+| `ast.parse(..., feature_version=(3, 6))` on `project_state.py` and the test module | parse ok |
+| `bash docs/decisions/build_index.sh` | regenerated; one row added (0151) |
+
+**How the long runs were run.** The first two attempts at `test_nonpublic_read_block.py` ran past
+the tool's foreground limit; the harness moved them to the background, where the process group
+was stopped (state `T`), and one `guard_hook.py` subprocess hit the test's 120-second timeout
+(`ERROR: test_every_registered_tool`, `TimeoutExpired`). Those runs were killed by their own pid.
+Every command in the table was then run in the foreground in its own session
+(`subprocess.Popen(..., start_new_session=True)`, stdin from `/dev/null`), where the module takes
+about a minute and passes. `guard_hook.py` is not changed by this follow-up.
+
+**Not run by this producer: the whole suite (`tests/run_tests.py`)**, which the lane runs
+elsewhere. The count moves from 867 to 874 (seven methods in the new module), and `README.md`
+and `DEVELOPMENT.md` say so.
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps
+
+- **The transcript and anything a human types** are not covered: a human who pastes closed detail
+  into the session is not stopped.
+- **Visible by design:** a closed project's name, class label, stage 02 sub-stage names and the
+  first line of each STATUS. A STATUS a human wrote by hand carries whatever its first line says.
+- **Prose that describes the render.** `gars/CLAUDE.md`'s "State" section still describes the
+  catch-up as "how far each assay got, which decisions are unmade, the last HISTORY entries",
+  without the closed-project exception. This follow-up may not touch it.
+- **A stale index.** An `_index.md` written before this change keeps its detailed rows until the
+  hook next runs.
+- **Producer's choices under rule 1, for review:** a non-regular or symlinked STATUS, or any error
+  while rendering a closed project, prints the heading line alone; `--closed-list` takes an
+  optional workspace argument so the index asks about the workspace it was given.
+- **Not run here:** the whole suite (the lane runs it); Python 3.6, 3.7 and 3.11 (3.6 parsing is
+  checked by `ast`); any interpreter but 3.8.2.
+- **Review:** the fresh-context review of this follow-up has not happened in this report.
+
+## Review round 1 fixes — follow-up 0151, exit-line fix
+
+2026-09-26. **The lane's ruling (26 Sep 2026, under the owner's standing delegation):** the lane's
+gate reads a module's reserved `EXIT ` line only at the start of a line; `test_session_state_closed.py`
+must print it on its own line, from its `__main__` block, after the tests have run and only when
+all passed, exactly once; nothing else changes. Recorded as a dated addendum to
+[0151](../decisions/0151-row-13-session-state-closed-projects.md). Earlier sections of this report
+are unchanged.
+
+| Finding | Changed files | Test | Result |
+|---|---|---|---|
+| The `EXIT` line was printed inside test (a); under `verbosity=2` it landed after `... ` on the runner's line and the gate did not see it | `gars/tests/test_session_state_closed.py` (print moved to `__main__`: `unittest.main(verbosity=2, exit=False)`, `sys.stderr.flush()`, print only if `wasSuccessful()`, exit status unchanged in meaning); `docs/decisions/0151-…md` (addendum appended) | `python3 gars/tests/test_session_state_closed.py > out 2>&1`; `grep -c '^EXIT ' out` | Green: `Ran 7 tests` / `OK`, `^EXIT ` count 1, three runs. Red-on-fault seen: **yes** — (1) HEAD `7ef73bd`'s module: `^EXIT ` count 0, the line is at `test_a_… ... EXIT session state …`; (2) a scratch copy with test (e)'s `assertNotIn(HISTORY_MARKER, …render)` inverted: `FAILED (failures=1)`, exit 1, `EXIT` count 0 |
+
+**Why `sys.stderr.flush()`.** The first version printed after `unittest.main(exit=False)` without
+it, and the line still landed mid-line (after test f's `... `): Python 3.8 block-buffers a
+redirected stderr, so the runner's text had not reached the file when stdout's line was written.
+Flushing stderr first puts the line after `OK`.
+
+### Commands and summary lines, exit-line fix (verbatim)
+
+| Command | Summary line |
+|---|---|
+| `python3 gars/tests/test_session_state_closed.py` | `Ran 7 tests in 4.219s` / `OK` / `EXIT session state (fixture): closed projects name and status only` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/check_counts.py` | `clean — every current claim matches the suite` |
+| `python3 tests/test_decision_links_resolve.py` | `Ran 3 tests in 1.127s` / `OK`; `citations: 420/420 resolve` |
+| `ast.parse(..., feature_version=(3, 6))` on the test module | parse ok |
+
+**Not run, per the ruling:** the whole suite (`tests/run_tests.py`).
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps
+
+- The whole suite was not run by this producer (the ruling says not to); the test count is
+  unchanged (7 methods, 874 total per `check_counts.py`).
+- Only Python 3.8.2 was run; 3.6 parsing is checked by `ast`.
+- The residual gaps listed under Follow-up 0151 above are unchanged; the fresh-context review of
+  0151 has not happened in this report.
+
+2026-09-26 — correction (review round 2, F-4): the section above headed "Review round 1 fixes — follow-up 0151, exit-line fix" keeps its heading, but its source was the lane's gate, not a review round; the first fresh-context review of 0151 is the one answered below.
+
+## Follow-up 0151 review round 2 fixes
+
+2026-09-26. Answers the first fresh-context review of 0151 (`docs/reviews/row_13_0151_review.md`,
+APPROVE WITH CHANGES: F-1 MAJOR, F-2 to F-4 MINOR, F-5 and F-6 NOTE). **The lane's rulings for
+this round (26 Sep 2026, under the owner's standing delegation)** are recorded as the dated
+addendum "review round 2 rulings" to
+[0151](../decisions/0151-row-13-session-state-closed-projects.md); 0151's earlier bytes are
+unchanged, and so are this report's earlier sections. Built on `352e49f`. Every behaviour change
+was red first: the new tests were run against `352e49f`'s `project_state.py` and
+`build_projects_index.sh` and failed, then passed.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: how) |
+|---|---|---|---|
+| **F-1 (MAJOR)** a name with a tab or newline split the `--closed-list` record and the index wrote the closed project's full row, or rewrote another project's | `gars/_system/project_state.py` (`printable()`, `UNPRINTABLE`: such a project renders `## (unprintable project name) — closed (unclassified)` alone, public-classed or not; `--closed-list` skips it); `gars/_system/build_projects_index.sh` (`CNTRL`, the 31 characters 0x01–0x1f plus 0x7f; the row `\| (unprintable project name) \| closed (unclassified) \| — \| — \| — \| — \| — \|` is decided before and without the list; the name comes from `${p%/}`/`${name##*/}`, since `$(basename)` drops a trailing newline) | `test_d_render_index_and_guard_agree_on_the_closed_set`, now with closed copies named `tab<TAB>name`, `nl<LF>x`, `nl<LF>open1` and `trail<LF>`: the list has one tab per line and only printable names, the render has four unprintable headings each alone and no line `x`/`open1…`, and the index's rows are exactly `open1`'s row as built before the names existed, the printable closed rows and four unprintable rows | **yes**: at `352e49f` `FAILED` (`Lists differ: [1, 0, 1, 0, 1, 1, 1, 2, 0, 1] != [1, 1, 1]`, the list's records split). With the Python fix and `352e49f`'s bash: `FAILED`, the index's first row `open1 \| v0.10.0 \| rnaseq_bulk \| filled \| …` (a split `nl<LF>open1` record). With the fix but `name=$(basename "$p")` planted back: `FAILED`, three unprintable rows instead of four (first difference at sorted element 3: `\| fresh \| closed (unclassified) …` where `\| (unprintable project name) …` was expected), since `$(basename)` turns `trail<LF>` into the printable `trail`. Green after. |
+| **F-2** the fail-closed branches were untested | `gars/tests/test_session_state_closed.py` only | `test_g_a_guard_that_cannot_judge_closes_everything` (the fixture's `_system/guard_hook.py` copy gets a `closed_projects` that raises: every render section, every `--project` output for `fresh`, `open1`, `pilot`, and every index row is `closed (unclassified)`); `test_h_a_failing_closed_list_closes_every_row` (the fixture's `project_state.py` replaced by a stub that prints `fresh<TAB>unclassified` then exits 1: every row is `closed (unclassified)`) | **yes**: green at `352e49f` (the branches existed), so red was shown on the review's plant F7 over the fixed code (`closed = None` → `closed = {}` in both places, bash `label="unclassified"` → `label=""`): `FAILED (failures=2)`, tests g and h. Green after restoring. |
+| **F-3** `--project` resolved a symlinked entry and printed its target's name with `unclassified` | `project_state.py` (`Path(os.path.abspath(args.project))`: absolute, not resolved) | `test_b_project_is_named_and_judged_by_its_entry`: `projects/linked` → a closed copy outside the workspace; the full render and `--project` given `projects/linked`, its absolute path and `projects/linked/` all print `## linked — closed (deidentified_under_agreement)` and its STATUS lines | **yes**: at `352e49f` `{'outside_closed': ['## outside_closed — cl…']} != {'linked': ['## linked — closed (deidentifi…']}`; green after |
+| **F-4** the exit-line section's heading claimed a review round | this report (one dated correction line appended above; the heading unchanged) | — (documentation) | n/a |
+| **F-5 (NOTE, adopted)** the closed render printed any STATUS first line | `project_state.py` (`_status_value_pattern()`, built from `wrapperlib.STATUS_STATES` and `FAILURE_REASONS`, imported, not copied; anything else prints `unrecognized`) | `test_i_closed_status_prints_only_a_writer_value`: `FAILED:EXIT_1 4242 2026-09-26T06:00:00Z` and `COMPLETE 2026-09-26T06:00:00Z` print; a design row carrying a marker, `COMPLETE:TIMEOUT`, `COMPLETED` and a trailing extra word print `unrecognized` | **yes**: at `352e49f` `- 02_rnaseq-de: MARKER0141designS9,A` printed; green after |
+| **F-6 (NOTE)** `gars/CLAUDE.md`'s "State" section did not mention closed projects | `gars/CLAUDE.md` (one sentence in "State"; nothing else) | — (documentation) | n/a |
+
+Also changed: `README.md` and `DEVELOPMENT.md` counts 874 → 878 (four new test methods: b-entry,
+g, h, i), and DEVELOPMENT.md's 0151 paragraph names this round.
+`docs/decisions/CONTEXT.md` was rebuilt with `bash docs/decisions/build_index.sh` and did not
+change (0151's frontmatter is unchanged).
+
+**The producer's reading of F-5.** The ruling says the first line must be "a STATUS value the
+writer can produce". The writer (`wrapperlib`) writes `<value> [<job id> ]<UTC timestamp>`, so a
+line is accepted when it is a value alone or a value followed by the writer's job id and
+timestamp; anything else is `unrecognized`. Accepting the bare value keeps the fixture's
+`COMPLETE` files, and older hand-written ones, readable.
+
+### Commands and summary lines, follow-up 0151 review round 2 (verbatim)
+
+| Command (from the repo root, Python 3.8.2, GNU bash 3.2.57 on macOS, `TMPDIR`/`TEMP`/`TMP` in the scratch folder, stdin `/dev/null`, own session) | Summary |
+|---|---|
+| `python3 gars/tests/test_session_state_closed.py` against `352e49f`'s two scripts (red) | `Ran 11 tests in 8.123s` / `FAILED (failures=3)` (b-entry, d, i) |
+| the same on the fixed code with the review's plant F7 | `Ran 11 tests in 8.864s` / `FAILED (failures=2)` (g, h) |
+| `test_d` alone, fixed Python with `352e49f`'s bash; then with `$(basename)` planted | `Ran 1 test in 2.944s` / `FAILED (failures=1)`; `Ran 1 test in 2.788s` / `FAILED (failures=1)` |
+| `python3 gars/tests/test_session_state_closed.py`, runs 1–3 | `Ran 11 tests in 8.421s` / `OK`; `Ran 11 tests in 8.374s` / `OK`; `Ran 11 tests in 8.318s` / `OK`; each with exactly one line-start `EXIT session state (fixture): closed projects name and status only` |
+| `python3 -m unittest -v run_tests.ProjectStateTests` (from `tests/`) | `Ran 4 tests in 0.651s` / `OK` |
+| `python3 gars/tests/test_nonpublic_read_block.py` | `Ran 20 tests in 65.336s` / `OK` |
+| `python3 gars/tests/test_pilot_doors.py` | `Ran 17 tests in 23.831s` / `OK` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/check_counts.py` | `clean — every current claim matches the suite` |
+| `python3 gars/_system/tools/pins.py` | `R-099: workspace pins reviewed and intact` |
+| `ast.parse(..., feature_version=(3, 6))` on `project_state.py` and the test module; `bash -n build_projects_index.sh` | parse ok; ok |
+| the bash `CNTRL` test for every code point 1–127, under the default and `en_US.UTF-8` locales | matches exactly 1–31 and 127 in both; no match for `-`, `]`, `é` or U+0085 |
+| `bash docs/decisions/build_index.sh` | regenerated; no change |
+| `python3 tests/test_decision_links_resolve.py` | `Ran 3 tests in 1.286s` / `OK`; `citations: 424/424 resolve` |
+
+**Not run, per the brief's rule:** the whole suite (`tests/run_tests.py`) and the evals checks.
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps
+
+- **Sub-stage directory names of a closed project are printed verbatim**, as rule 2 says; one
+  holding a newline could add a forged line to the render. It carries no closed data of its own
+  and needs a write inside the closed project, which the guard refuses to the agent; the rulings
+  of this round cover project names only.
+- **Characters outside the ruling's set** (C1 controls U+0080–U+009F, U+2028/U+2029, a `|` in a
+  name) are written verbatim; none can split a `--closed-list` record, which is newline- and
+  tab-delimited.
+- **0151's `touches` list does not name `gars/CLAUDE.md`**: the record's bytes are append-only,
+  so the addendum names it instead, and the index's paths column cannot find it.
+- **When the guard raises, `--closed-list` prints its traceback to stderr** (workspace paths
+  only); the hook discards the index script's stderr.
+- **Visible by design**, unchanged: a closed project's name, class label, sub-stage names and
+  a STATUS line the writer could have produced (a human can still hand-write such a line).
+- **Unchanged from the earlier sections:** the transcript and anything a human types; an index
+  written before this change until the hook next runs.
+- **Not run here:** the whole suite and the evals checks (the brief's rule); any Python but
+  3.8.2; any bash but macOS's 3.2.57 (GNU awk, sed and a newer bash on Linux not run); the real
+  hook inside a live Claude Code session.
+
+2026-09-26 — correction (review round 3, N-2): the F-1 row of "Follow-up 0151 review round 2 fixes" above says an unprintable name renders its heading alone "public-classed or not". That was not tested in that round, and the round-2 render crashed with `KeyError` on a public-classed unprintable name whenever a closed project existed. It is tested now in `test_d_render_index_and_guard_agree_on_the_closed_set`: a public-classed copy of `open1` named `pub<TAB>name` sits beside the closed `pilot`. The full render and `--project` print the unprintable heading for it, `open1`'s section is unchanged, and every other project renders. The round-2 section also cites the first review by a repository path (`docs/reviews/row_13_0151_review.md`) that is not in the repository; see N-3 below.
+
+## Follow-up 0151 review round 3 fixes
+
+2026-09-26. Answers the second fresh-context review of 0151 (round 2, reviewing `a2429b1`, APPROVE WITH CHANGES: N-1 and N-2 MINOR, N-3 and N-4 NOTE). The first review is round 1, reviewing `352e49f`. Both reviews stay outside the repository and are cited here by round and reviewed commit (N-3). **The lane's rulings for this round (26 Sep 2026, under the owner's standing delegation)** are recorded as the dated addendum "review round 3 rulings" to [0151](../decisions/0151-row-13-session-state-closed-projects.md). 0151's earlier bytes are unchanged, and so are this report's earlier sections (checked with `cmp` against copies taken before editing). Built on `a2429b1`. The lane says this is the last round for 0151.
+
+| Finding | Changed files | Test | Result (red-on-fault seen: how) |
+|---|---|---|---|
+| **N-1 (MINOR)** a public-classed unprintable name crashed the render and `--project` with `KeyError` when any closed project existed | `gars/_system/project_state.py` (the label is `(closed or {}).get(p.name, "unclassified")`; the full render and `--project` share this one line) | `test_d_render_index_and_guard_agree_on_the_closed_set` gains `pub<TAB>name`, a public-classed copy of `open1`, beside the closed `pilot`. It asserts: 5 unprintable headings in the render, each alone; `open1`'s section byte-identical to its section rendered before any unprintable name existed; `{fresh, open1, pilot, sealed}` all rendered; `--project` on `pub<TAB>name` prints the header block and then exactly the unprintable heading; 5 unprintable index rows | **yes**: the test was written first and run at `a2429b1`'s `project_state.py`, giving `FAILED (failures=1)`, `KeyError: 'pub\tname'` (from `render_closed(p, closed[p.name] if closed else "unclassified")`). A scratch probe also ran `--project` on its own at `a2429b1`: `rc 1`, `KeyError: 'pub\tname'`; the fixed code gives `rc 0` and the heading. With the rest of the fix kept and only the lookup planted back: `FAILED (failures=1)`, test_d, the same `KeyError`. Green after. |
+| **N-2 (MINOR)** the record claimed a public-classed unprintable name was handled, untested | 0151 (addendum, N-2 bullet); this report (the dated correction line above this section) | as N-1 | n/a (documentation); the claim is now backed by N-1's test |
+| **N-3 (NOTE)** the first review was cited by a repository path that does not exist | this section and 0151's addendum (N-3 bullet); the round-2 section keeps its wording (append-only) | — | Partly done. The ruling asks for the reviews' review-kit folder names. This producer was not given them and may not read the review folders, so it cites each review by round and reviewed commit (round 1 of `352e49f`, round 2 of `a2429b1`). The folder names are a residual gap for the lane, as for 0140's n1 above |
+| **N-4 (NOTE)** the STATUS filter accepted a job id after any state and a job id without a timestamp | `project_state.py` (`_status_value_pattern()`: `<state or FAILED:reason>[ <timestamp>]`, or `(SUBMITTED\|RUNNING) <job id> <timestamp>`; states and named reasons from `wrapperlib.STATUS_STATES` / `FAILURE_REASONS`) | `test_i_closed_status_prints_only_a_writer_value`: `COMPLETE 4242 <ts>`, `FAILED:EXIT_1 4242 <ts>` (previously expected to print) and `SUBMITTED 4242` now print `unrecognized`; `RUNNING 4242 <ts>` and `FAILED:EXIT_1 <ts>` print | **yes**: at `a2429b1`'s `project_state.py` test_i `FAILED` (the job id after `FAILED` and after `COMPLETE` printed). Green after. |
+
+**Where `wrapperlib` does not expose a name (N-4).** `write_status` holds `EXIT_[0-9]+` and the pair `('SUBMITTED', 'RUNNING')` as literals inside the function. Exposing them would mean editing `wrapperlib.py`, which 0151 does not touch. So `project_state.py` keeps those two as literals, and says so in its docstring. The ruling said to take the reasons from `wrapperlib` "where it exposes them", so this is within it.
+
+**The one test expectation that changed.** Test_i's `FAILED:EXIT_1 4242 <ts>` line used to be expected to print. Under N-4 it prints `unrecognized`, because the writer never puts a job id after `FAILED`. This narrows what is accepted and does not weaken the test: the new expectation fails at the round-2 code.
+
+No test method was added, so the count stays at 878 (`check_counts.py` clean). `README.md` is unchanged. DEVELOPMENT.md's 0151 paragraph names this round. `docs/decisions/CONTEXT.md` was rebuilt with `bash docs/decisions/build_index.sh` and did not change, since 0151's frontmatter is unchanged.
+
+### Commands and summary lines, follow-up 0151 review round 3 (verbatim)
+
+| Command (from the repo root, Python 3.8.2, macOS bash 3.2.57, `TMPDIR`/`TEMP`/`TMP` in the scratch folder, stdin `/dev/null`) | Summary |
+|---|---|
+| test_d alone, new test at `a2429b1`'s code (red) | `Ran 1 test in 2.953s` / `FAILED (failures=1)`; `KeyError: 'pub\tname'` |
+| `python3 gars/tests/test_session_state_closed.py`, final test, `a2429b1`'s `project_state.py` (red) | `Ran 11 tests in 9.274s` / `FAILED (failures=2)` (d, i) |
+| the same, fixed code with only the lookup planted back | `Ran 11 tests in 9.597s` / `FAILED (failures=1)` (d) |
+| scratch probe: `--project projects/pub<TAB>name` at `a2429b1`, then fixed | `parent rc 1 … KeyError: 'pub\tname'`; `fixed rc 0 …## (unprintable project name) — closed (unclassified)` |
+| `python3 gars/tests/test_session_state_closed.py`, runs 1–3 | `Ran 11 tests in 9.264s` / `OK`; `Ran 11 tests in 9.244s` / `OK`; `Ran 11 tests in 9.419s` / `OK`; each with one line-start `EXIT session state (fixture): closed projects name and status only` |
+| `python3 -m unittest -v run_tests.ProjectStateTests` (from `tests/`) | `Ran 4 tests in 0.806s` / `OK` |
+| `python3 gars/tests/test_nonpublic_read_block.py` | `Ran 20 tests in 68.342s` / `OK` |
+| `python3 gars/tests/test_pilot_doors.py` | `Ran 17 tests in 23.544s` / `OK` |
+| `python3 tests/test_decision_links_resolve.py` | `Ran 3 tests in 1.452s` / `OK`; `citations: 424/424 resolve` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/check_counts.py` | `clean — every current claim matches the suite` |
+| `python3 gars/_system/tools/pins.py` | `R-099: workspace pins reviewed and intact` |
+| `ast.parse(..., feature_version=(3, 6))` on `project_state.py` and the test module | `parse ok` |
+| `bash docs/decisions/build_index.sh` | regenerated; no change |
+
+**Not run, per the lane's rule for this round:** the whole suite (`tests/run_tests.py`) and the evals checks.
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps
+
+- **The review-kit folder names (N-3).** This producer was not given them, so the reviews are cited by round and reviewed commit. The lane adds the names.
+- **Sub-stage directory names of a closed project are printed verbatim**, as rule 2 says. One holding a newline could add a forged line to the render. It needs a write inside the closed project, which the guard refuses to the agent, and these rulings cover project names only.
+- **Characters outside the ruling's set** (C1 controls, U+2028/U+2029, a `|` in a name) are written verbatim. None of them can split a `--closed-list` record.
+- **0151's `touches` list does not name `gars/CLAUDE.md`**. The addendum names it instead.
+- **When the guard raises, `--closed-list` prints its traceback to stderr**, which the hook discards.
+- **A bare STATUS state word, without the writer's timestamp, is still accepted** (round 2's reading, kept for the fixture's and older files). Like any value the writer could produce, a hand-written one still shows.
+- **Not run here:** the whole suite and the evals checks (the lane's rule); any Python but 3.8.2; any bash but macOS's 3.2.57; the real hook inside a live Claude Code session.

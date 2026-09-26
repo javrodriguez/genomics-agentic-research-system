@@ -68,7 +68,8 @@ helpers and the resolver need no conda environment; stage 02's skills do.
 There is no status file for the workspace. State is the filesystem — and every session boot
 renders it for you: the SessionStart hook rebuilds `projects/_index.md` and prints
 `_system/project_state.py`'s per-project catch-up (how far each assay got, which decisions
-are unmade, the last HISTORY entries). Run it any time; it is a render, never a record:
+are unmade, the last HISTORY entries). A closed project shows only its name, class label and
+sub-stage states (0151). Run it any time; it is a render, never a record:
 
 | Question | Answered by |
 |---|---|
