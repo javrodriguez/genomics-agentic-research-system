@@ -55,3 +55,14 @@ The Q9 ruling, quoted in 0120, stands: the smoke tasks' input generator names ea
 
 The first recorded session happens only after this record's commit is anchored in aegis; the anchor's commit time precedes every session record's `driver.start_utc`.
 The dummy drive (the driver's own `smoke-echo` task, in neither partition) ran end to end with this driver and wrapper at `a3216ae` on 25 Sep 2026, 21:48:25-21:49:00 (Mac): `{"state": "finished", "stop_reason": "export_complete", "turns": 1}`; session record: model `claude-opus-5-5` recorded in the transcript, permission mode `default`, the SessionStart hook seen, 0 background task calls, the token recorded as `set` only, a fresh config folder inside the scratch root; its echoed `response.json` scored as all three smoke tasks by `smoke.py score` (a floor record of three identical runs, in a throwaway root) gave `0/3` per run (`artifact contract failed` on each, as an echo of the dummy's object must), and `smoke.py check` returned `ok; 0 findings; graded 1 of 1 records seen; 9 tasks regraded; 9 outputs hashed`.
+
+## Status
+
+standing
+
+This record fixes the rules before the first recorded smoke session; it approves nothing by itself, and the protected changes it relies on are approved in 0122.
+The first commit of this record (`973d5ee`) omitted this section and the next, which the decision-links check requires of new records; they are appended here, and every earlier byte is unchanged.
+
+## Date
+
+2026-09-25
