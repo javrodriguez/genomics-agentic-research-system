@@ -1750,3 +1750,45 @@ None.
 - **Not run here:** the whole suite (the lane runs it); Python 3.6, 3.7 and 3.11 (3.6 parsing is
   checked by `ast`); any interpreter but 3.8.2.
 - **Review:** the fresh-context review of this follow-up has not happened in this report.
+
+## Review round 1 fixes — follow-up 0151, exit-line fix
+
+2026-09-26. **The lane's ruling (26 Sep 2026, under the owner's standing delegation):** the lane's
+gate reads a module's reserved `EXIT ` line only at the start of a line; `test_session_state_closed.py`
+must print it on its own line, from its `__main__` block, after the tests have run and only when
+all passed, exactly once; nothing else changes. Recorded as a dated addendum to
+[0151](../decisions/0151-row-13-session-state-closed-projects.md). Earlier sections of this report
+are unchanged.
+
+| Finding | Changed files | Test | Result |
+|---|---|---|---|
+| The `EXIT` line was printed inside test (a); under `verbosity=2` it landed after `... ` on the runner's line and the gate did not see it | `gars/tests/test_session_state_closed.py` (print moved to `__main__`: `unittest.main(verbosity=2, exit=False)`, `sys.stderr.flush()`, print only if `wasSuccessful()`, exit status unchanged in meaning); `docs/decisions/0151-…md` (addendum appended) | `python3 gars/tests/test_session_state_closed.py > out 2>&1`; `grep -c '^EXIT ' out` | Green: `Ran 7 tests` / `OK`, `^EXIT ` count 1, three runs. Red-on-fault seen: **yes** — (1) HEAD `7ef73bd`'s module: `^EXIT ` count 0, the line is at `test_a_… ... EXIT session state …`; (2) a scratch copy with test (e)'s `assertNotIn(HISTORY_MARKER, …render)` inverted: `FAILED (failures=1)`, exit 1, `EXIT` count 0 |
+
+**Why `sys.stderr.flush()`.** The first version printed after `unittest.main(exit=False)` without
+it, and the line still landed mid-line (after test f's `... `): Python 3.8 block-buffers a
+redirected stderr, so the runner's text had not reached the file when stdout's line was written.
+Flushing stderr first puts the line after `OK`.
+
+### Commands and summary lines, exit-line fix (verbatim)
+
+| Command | Summary line |
+|---|---|
+| `python3 gars/tests/test_session_state_closed.py` | `Ran 7 tests in 4.219s` / `OK` / `EXIT session state (fixture): closed projects name and status only` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/check_counts.py` | `clean — every current claim matches the suite` |
+| `python3 tests/test_decision_links_resolve.py` | `Ran 3 tests in 1.127s` / `OK`; `citations: 420/420 resolve` |
+| `ast.parse(..., feature_version=(3, 6))` on the test module | parse ok |
+
+**Not run, per the ruling:** the whole suite (`tests/run_tests.py`).
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps
+
+- The whole suite was not run by this producer (the ruling says not to); the test count is
+  unchanged (7 methods, 874 total per `check_counts.py`).
+- Only Python 3.8.2 was run; 3.6 parsing is checked by `ast`.
+- The residual gaps listed under Follow-up 0151 above are unchanged; the fresh-context review of
+  0151 has not happened in this report.

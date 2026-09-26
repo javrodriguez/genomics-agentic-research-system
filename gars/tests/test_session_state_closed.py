@@ -116,7 +116,6 @@ def statuses(project):
 
 class SessionStateClosedTests(unittest.TestCase):
     def test_a_closed_detail_never_reaches_the_session(self):
-        print('EXIT session state (fixture): closed projects name and status only', flush=True)
         self.assertEqual(STATE['hook'].returncode, 0, STATE['hook'].stderr)
         old = sections(STATE['old_render'])
         leaked = []
@@ -237,4 +236,8 @@ class SessionStateClosedTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(verbosity=2)
+    result = unittest.main(verbosity=2, exit=False).result
+    sys.stderr.flush()
+    if result.wasSuccessful():
+        print('EXIT session state (fixture): closed projects name and status only', flush=True)
+    sys.exit(not result.wasSuccessful())

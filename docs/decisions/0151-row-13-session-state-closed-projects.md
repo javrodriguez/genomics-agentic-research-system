@@ -128,3 +128,7 @@ lane's delegated approval, if given, is 0152.
 ## Date
 
 2026-09-26
+
+## Addendum, 2026-09-26: the exit line
+
+2026-09-26 — the lane's ruling, under the owner's standing delegation: the lane's gate reads a module's reserved `EXIT ` line only at the start of a line, so `test_session_state_closed.py` now prints `EXIT session state (fixture): closed projects name and status only` once, from its `__main__` block after the tests have run and only when all passed (stderr flushed first), instead of inside test (a), where the verbose runner put it after `... ` on the same line; nothing else changes.
