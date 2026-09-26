@@ -1621,3 +1621,132 @@ None.
 - **Not run here:** the whole suite (the lane runs it); Python 3.6, 3.7 and 3.11; any
   interpreter but 3.8.2 this round.
 - **Review:** round 2 has not been reviewed in this report.
+
+## Follow-up 0151
+
+2026-09-26. Built from public main `1a009a4` on `build/gars-row-13-0151`, under ruling 0151.
+Ruling 0151 is **the lane's**, made under the owner's standing delegation of 23 Sep 2026 and
+ruled by the lane's coordinator on 26 Sep 2026; it is not the owner's. See
+[0151](../decisions/0151-row-13-session-state-closed-projects.md). This change was produced by a
+headless Claude Code context (Claude Opus 5.5) and is reviewed by a separate, fresh Claude Opus
+5.5 context working from a blind kit. The two share a model family, so the review's independence
+rests on the fresh context and the blind kit (0009, 0013, 0014). 0152 is reserved for the lane's
+delegated approval of these protected changes and is not written here. Earlier sections of this
+report are unchanged.
+
+**The defect.** The SessionStart hook (`gars/_system/session_state.sh`, 0033) printed
+`project_state.py`'s render of every project into the session's context and rebuilt
+`projects/_index.md`; neither was closed-aware (0107). A closed project's sample count, unmade
+config keys, artifact types, created date and HISTORY headers reached the render, and its design,
+samplesheet and furthest sub-stage reached the index. On row 13's fixture, the closed `pilot`'s
+planted CODE marker printed as an artifact type, and a planted HISTORY header printed verbatim.
+
+| Requirement | Changed files | Test | Result |
+|---|---|---|---|
+| 0151 rule 1: closed exactly as 0107 decides, imported from the guard; unjudgeable is closed | `gars/_system/project_state.py` (`import guard_hook`; `closed_labels` over `guard_hook.closed_projects`; `--project` falls back to `project_is_public`; a raising guard closes every project) | (d) `test_d_render_index_and_guard_agree_on_the_closed_set`: `guard_hook.closed_projects`, `--closed-list`, the render's closed headings and the index's closed rows are the same `{name: label}`, with a public-classed project `sealed` whose `dataset.tsv` is mode 0 (closed `unclassified`) | **red first** against `1a009a4` (`--closed-list` unrecognised), green after |
+| 0151 rule 2: heading `## <name> — closed (<label>)` and one `- <sub-stage>: <STATUS or NOT_STARTED>` line per stage 02 sub-stage, nothing else; `--project` the same | `project_state.py` (`render_closed`, `_closed_status_line`) | (b) `test_b_closed_lines_are_the_rule_shape` for `pilot` (`deidentified_under_agreement`, two COMPLETE sub-stages) and `fresh` (`unclassified`, heading only), full render and `--project`; (a) `test_a_closed_detail_never_reaches_the_session` runs the real `session_state.sh` and finds none of the markers, `(4 samples)`, `fresh`'s six unmade config keys, `pilot`'s artifact types, `created `, or either project's HISTORY headers in their sections or rows, and no marker anywhere outside public `open1`; (e) `test_e_planted_history_header_never_appears` | **red first**, green after |
+| producer's application of rule 1: a closed STATUS read only as a regular file at its own path; anything else prints the heading alone, never an exception's text | `project_state.py` (`_closed_status_line` via `guard_hook._regular_text` and a realpath check) | (f) `test_f_closed_status_read_only_as_its_own_file`: `pilot`'s DE STATUS replaced by a symlink to its `samples.csv`; the old render printed the design's header line, the new prints the heading alone | **red first**, green after |
+| 0151 rule 3: one index row `\| <name> \| closed (<label>) \| — \| — \| — \| — \| — \|`; bash; closed set from `--closed-list` | `gars/_system/build_projects_index.sh` (reads `project_state.py --closed-list "$WS"` once; a failing list closes every row as `unclassified`) | (b) and (d) | **red first**, green after |
+| 0151 rule 4: public render and row, and everything with no closed project, byte-identical (R-042) | none | (c) `test_c_public_render_and_row_are_byte_identical` (`open1`'s full-render section, index row and `--project` output against `1a009a4`'s scripts from `git show`, on the same workspace) and `test_c_no_closed_project_changes_nothing` (a workspace with only `open1`: the whole render, and the whole index but `Last built:`) | green before and after, by design |
+| existing `ProjectStateTests` unchanged and green | none | `tests/run_tests.py` `ProjectStateTests`, run alone (public fixture) | green (4 tests) |
+
+### Red first: the final module against `1a009a4`'s scripts (Python 3.8.2)
+
+`gars/_system/project_state.py` and `build_projects_index.sh` stashed back to `1a009a4` (`git diff
+HEAD -- gars/_system` empty), the final test module run, the change restored:
+
+```
+test_a_closed_detail_never_reaches_the_session (__main__.SessionStateClosedTests) ... EXIT session state (fixture): closed projects name and status only
+FAIL
+test_b_closed_lines_are_the_rule_shape (__main__.SessionStateClosedTests) ... FAIL
+test_c_no_closed_project_changes_nothing (__main__.SessionStateClosedTests) ... ok
+test_c_public_render_and_row_are_byte_identical (__main__.SessionStateClosedTests) ... ok
+test_d_render_index_and_guard_agree_on_the_closed_set (__main__.SessionStateClosedTests) ... FAIL
+test_e_planted_history_header_never_appears (__main__.SessionStateClosedTests) ... FAIL
+test_f_closed_status_read_only_as_its_own_file (__main__.SessionStateClosedTests) ... FAIL
+AssertionError: Lists differ: [('pilot', 'render', 'zzmarker0141_code'),[827 chars]S4')] != []
+AssertionError: Lists differ: ['## pilot — template v0.10.0 — created 2026-09-26', '[347 chars]ted'] != ['## pilot — closed (deidentified_under_agreement)', '[61 chars]ETE']
+AssertionError: b'usage: project_state.py [-h] [--project PROJECT] [--last LAST]\nproject_state.py: error: unrecognized arguments: --closed-list\n'
+AssertionError: 'MARKER0151historyS4' unexpectedly found in 'R-099: workspace pins reviewed and intact\n# Project state — ...
+AssertionError: Lists differ: ['## pilot — template v0.10.0 — created 2026-09-26', '[310 chars]ted'] != ['## pilot — closed (deidentified_under_agreement)']
+Ran 7 tests in 3.531s
+FAILED (failures=5)
+```
+
+The old render of the fixture's `pilot`, which (a) turns into the forbidden list:
+
+```
+## pilot — template v0.10.0 — created 2026-09-26
+### rnaseq_bulk — design filled (4 samples) · samplesheet no
+- config: complete
+- 01_nfcore-rnaseq-wrapper: COMPLETE · artifacts: counts_gene, table, zzmarker0141_code, table
+- 02_rnaseq-de: COMPLETE
+### history — 2 entries, last 2:
+- 2026-09-26 — 00_initialize_project — project created
+- 2026-09-26 — MARKER0151historyS4 — planted
+```
+
+and the new:
+
+```
+## pilot — closed (deidentified_under_agreement)
+- 01_nfcore-rnaseq-wrapper: COMPLETE
+- 02_rnaseq-de: COMPLETE
+```
+
+### Green after
+
+```
+python3 gars/tests/test_session_state_closed.py
+EXIT session state (fixture): closed projects name and status only
+Ran 7 tests in 4.275s
+OK
+```
+
+### Commands and summary lines, follow-up 0151 (verbatim)
+
+| Command (from the repo root, Python 3.8.2, `TMPDIR`/`TEMP`/`TMP` in the scratch folder) | Summary |
+|---|---|
+| `python3 gars/tests/test_session_state_closed.py` | `Ran 7 tests` / `OK`; `EXIT session state (fixture): closed projects name and status only` |
+| `python3 -m unittest -v run_tests.ProjectStateTests` (from `tests/`; the class runs alone) | `Ran 4 tests` / `OK` |
+| `python3 gars/tests/test_nonpublic_read_block.py` | `Ran 20 tests in 62.661s` / `OK` |
+| `python3 gars/tests/test_pilot_doors.py` | `Ran 17 tests in 20.512s` / `OK` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/check_counts.py` | `clean — every current claim matches the suite` (874, from unittest's loader) |
+| `python3 tests/test_decision_links_resolve.py` (after staging) | `Ran 3 tests` / `OK`; `citations: 420/420 resolve` |
+| `ast.parse(..., feature_version=(3, 6))` on `project_state.py` and the test module | parse ok |
+| `bash docs/decisions/build_index.sh` | regenerated; one row added (0151) |
+
+**How the long runs were run.** The first two attempts at `test_nonpublic_read_block.py` ran past
+the tool's foreground limit; the harness moved them to the background, where the process group
+was stopped (state `T`), and one `guard_hook.py` subprocess hit the test's 120-second timeout
+(`ERROR: test_every_registered_tool`, `TimeoutExpired`). Those runs were killed by their own pid.
+Every command in the table was then run in the foreground in its own session
+(`subprocess.Popen(..., start_new_session=True)`, stdin from `/dev/null`), where the module takes
+about a minute and passes. `guard_hook.py` is not changed by this follow-up.
+
+**Not run by this producer: the whole suite (`tests/run_tests.py`)**, which the lane runs
+elsewhere. The count moves from 867 to 874 (seven methods in the new module), and `README.md`
+and `DEVELOPMENT.md` say so.
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps
+
+- **The transcript and anything a human types** are not covered: a human who pastes closed detail
+  into the session is not stopped.
+- **Visible by design:** a closed project's name, class label, stage 02 sub-stage names and the
+  first line of each STATUS. A STATUS a human wrote by hand carries whatever its first line says.
+- **Prose that describes the render.** `gars/CLAUDE.md`'s "State" section still describes the
+  catch-up as "how far each assay got, which decisions are unmade, the last HISTORY entries",
+  without the closed-project exception. This follow-up may not touch it.
+- **A stale index.** An `_index.md` written before this change keeps its detailed rows until the
+  hook next runs.
+- **Producer's choices under rule 1, for review:** a non-regular or symlinked STATUS, or any error
+  while rendering a closed project, prints the heading line alone; `--closed-list` takes an
+  optional workspace argument so the index asks about the workspace it was given.
+- **Not run here:** the whole suite (the lane runs it); Python 3.6, 3.7 and 3.11 (3.6 parsing is
+  checked by `ast`); any interpreter but 3.8.2.
+- **Review:** the fresh-context review of this follow-up has not happened in this report.
