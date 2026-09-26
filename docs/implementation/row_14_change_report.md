@@ -294,3 +294,15 @@ at run time.
 ## Owner rulings needed
 
 None.
+
+## Landing (the lane's, 2026-09-26)
+
+Written by the lane under the owner's standing delegation of 23 September 2026; none of it is the owner's words.
+
+- The merge `f3abe50` has main's previous tip `acd06bc` as its first parent and the branch head `0cee6df` as its second (a3216ae plus 0121 in two records commits: `973d5ee`, then `0cee6df`, which appends the Status and Date sections the decision-links check requires; the lane's own whole-suite run on its first candidate found the gap).
+- It resolves only count and index conflicts: the decision index is regenerated, README and DEVELOPMENT state 771 tests, and README's skip figures are the landing's measurements (below). The pinned files `evals/bench.py` and `evals/smoke/` are byte-identical between `452fe33` and `acd06bc`.
+- Evidence at the candidate `13138f8`, whose tree differs from `f3abe50` only in README's skip sentence: on a Linux host (Python 3.13.5, a fresh clone, the host running no other suite), `Ran 771 tests … OK (skipped=81)` with `TMPDIR` set and `OK (skipped=121)` with it unset; contracts, counts, the evaluation harness and the pre-registration checks clean; on macOS (Python 3.12), `OK (skipped=14)` with Docker answering, CI set and row 5's scratch folder named, and `OK (skipped=76)` as a cold clone.
+- The activation smoke record `evals/runs/smoke/smoke-20260926-row-14-activation.json`: a floor record, nine sessions (three runs of the three smoke tasks) at `f3abe50`'s tree, `claude-opus-5-5`, driven as 0121 fixes, 2026-09-26 00:14:57 to 00:19; every session exported its answer in one turn. Graded: `3/3` in each run, floor `0/1`, delta `uncomputable: no previous smoke record`. Per 0120 and 0121 this is a regression baseline on three synthetic refuse-and-flag tasks, never a measure of capability.
+- The ungated gap as of `acd06bc` (0120's two commands, from `4ddb06c^1` inclusive): 41 commits on every parent and 13 on the first-parent line (`0b132f3 19599ba 3b189bc bc5f98e 30f682c fbed6b9 dcd11a9 992e9d4 71654fe aeac1e7 68f8346 7a8f967 4ddb06c`). 0120's list, as of `452fe33`, stays as written.
+- 0122 approves the protected changes under the delegation; the review stub `docs/reviews/records/smoke-20260926-row-14-activation.md` binds the final review.
+- The row's exit is not claimed here: the sealed planted lie (0123) is still to come.
