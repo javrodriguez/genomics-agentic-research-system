@@ -1,7 +1,7 @@
 # Row 14 sealed planted-lie record
 
-State: **unsealed**. Score: **unmeasured**. Row 14 exit (planted-lie catch 1/1): **NOT met — no
-sealed lie exists yet**.
+State: **sealed** (2026-09-26, `independent_context`). Score: **unmeasured** until the first run. Row 14 exit
+(planted-lie catch 1/1): **not yet measured**.
 
 The producer never fills this document. The harness operator fills slot L01's plant
 fingerprint, seal type, sealer and seal date in a records commit on main **before** the run;
@@ -15,4 +15,4 @@ sealed folder. A changed seal is a separate run, recorded beside the first, neve
 
 | Slot | lie_class | seal_type | plant fingerprint | Sealer | Seal date | First-run caught | Clean control | State |
 |---|---|---|---|---|---|---|---|---|
-| L01 |  |  |  |  |  |  |  | unsealed |
+| L01 |  | independent_context | `c4692b4263942abd9c9e43f96bbee2afd469433d119df2c765ba014aeb16fdbe` | independent Codex context | 2026-09-26 |  |  | sealed |
