@@ -1,0 +1,568 @@
+---
+date: 2026-09-25
+status: standing
+kind: decision
+touches:
+  - gars/_system/tools/closed_output.py
+  - gars/_system/tool_call.py
+  - gars/_system/tools/registry.json
+  - gars/_system/guard_hook.py
+  - gars/.claude/settings.json
+  - gars/_system/pilot_log.py
+  - gars/_system/wrappers/rnaseq-de/rnaseq_de.py
+  - gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md
+  - scripts/bring_home.py
+  - scripts/unit_economics.py
+  - docs/pilot/README.md
+  - gars/tests/pilot_fixture.py
+  - gars/tests/test_pilot_log.py
+  - gars/tests/test_closed_project_outputs.py
+  - gars/tests/test_bring_home.py
+  - gars/tests/test_pilot_doors.py
+  - tests/test_session_turns.py
+  - tests/test_unit_economics.py
+  - tests/pilot_emulation.py
+  - docs/implementation/row_13_change_report.md
+symptoms:
+  - a sample name, a failure's detail or a path inside a non-public project in a typed call's output
+  - a door tool reached on a closed project by its direct spelling
+  - a typed call naming a file outside the workspace while a non-public project exists
+  - an agent-written pilot-log row labelled human, or a typed minutes value
+  - a re-run's failure text carried off the cluster in the bring-home paste
+---
+# Row 13 step B: the closed-project doors, the pilot-log writer and bring_home
+
+## Context
+
+Row 13's pilot 1 runs the DE stage of a non-public analysis. Under
+[0107](0107-pg-nonpublic-projects-closed-to-reads.md) a guarded agent session can run no typed
+tool on a closed project (`CLOSED_PROJECT_DOORS` was `()`), and 0107's item 11 names row 13 as
+the row that adds doors "with output filtering". Step A
+([0140](0140-row-13-pilot-instruments.md)) built the instruments that read the pilot's
+artifacts; this step builds what the pilot needs to run: the doors, the pilot log's writer, and
+the one path by which anything leaves the cluster.
+
+**The owner's words** (relayed by the lane and confirmed by the owner; nothing else here is the
+owner's): "§21 Q4: the spec default applies (`deidentified_under_agreement`; only `public`
+enters a hosted-model prompt)." and "… a guarded agent can't read non-public project files, so
+row 13 must run through typed calls that return only summaries (0107), unless [the owner]
+reclassifies in his own words."
+
+**Everything else in this record is the lane's specification** under the owner's standing
+delegation of 23 Sep 2026: the design D1 (the writer), D5 (the doors), D6 (bring_home) and D8
+(the threat model), and the lane's rulings D-i to D-vi, confirmed by the lane's coordinator on
+25 Sep 2026. None of it is the owner's ruling.
+
+**The producer and the review.** This step was produced by a headless Claude Code context
+(Claude Opus 5.5) because the lane's usual producer is unavailable, and it is reviewed by a
+separate fresh Claude Opus 5.5 context from a blind kit. Producer and reviewer are the same model
+family, so the review's independence rests on a fresh context and a blind kit, not on model
+diversity (the 0009/0013/0014 precedent).
+
+## Decision
+
+### D1 — the pilot log's writer (`gars/_system/pilot_log.py`)
+
+The only writer of `projects/<title>/pilot/pilot1_log.csv` (0140 D1's format: the §19 columns
+under one `# gars-pilot-log v1 nonce=<32 hex>` line, no free-text column).
+
+- `begin --log <path> --stage S --action A --reason R` creates the log (header, fresh nonce) and
+  its sidecar `<log>.open.json` (the same nonce, the open spans, the imported sub-stages) when
+  both are absent, records an open span with its launching actor and prints
+  `begin: span <16 hex>; actor <actor>`.
+- `end --log <path> <span>` appends one row: `ts` is the span's start, `minutes` the difference of
+  two readings of the clock, rounded half-up once to two decimals. No option types a minute.
+  `abort` appends nothing: a forgotten span is dropped, never back-filled; a break is `abort` of
+  every open span, then a new `begin`. Both are allowed only to the span's launching actor, else
+  `refused: actor_mismatch`.
+- `import-tool --log <path> --manifest <manifest.json>` (human only; no registry entry) appends
+  two `tool` rows from the executor's slurm record: `wait_queue` (Start − Submit) and `compute`
+  (sacct `Elapsed`), at the sub-stage the wrapper names (`rnaseq-de` → `02_02_de`,
+  `nfcore-rnaseq-wrapper` → `02_01_counts`), reason `other`. A submission (its
+  `idempotency_key`) is imported once.
+- `check --log <path>` prints `rows: <n>; human: <h>; agent: <a>; tool: <t>; open spans: <o>;
+  nonce: ok` and exits 1 while a span is open or a protocol stage (`02_02_de`, `rerun`) has no
+  row. Every verb first validates the whole log: header, columns, every row in the vocabulary, the
+  log and the sidecar present together and their nonces equal. A log or sidecar present without
+  the other is refused (`sidecar_missing`, `log_missing`), so neither can be pre-created by hand.
+- Every refusal is `refused: <code>` on stdout, exit 2, and quotes no input. The vocabulary is
+  embedded and bound to `docs/pilot/pilot_log_vocabulary.json` by a drift test.
+- **The actor is a launch-time fact.** Each `pilot_log.*` registry entry's argv carries the fixed
+  token `--launched-by-dispatcher`, absent from its `input_schema` (`additionalProperties:
+  false`) and its `cli` map, so a call's JSON can neither supply nor remove it. Token present:
+  `agent`; absent: `human`. Guard addition 3 refuses the direct spelling of `pilot_log.py` in an
+  agent session, which is what makes the binding hold. The `log` argument must match
+  `projects/<name>/pilot/pilot1_log.csv`.
+- **The log folder is machine-owned:** `READ_ONLY` gains `"projects/*/pilot/*"`, and
+  `settings.json` its `Edit(…)`/`Write(…)` pair. Only the writer, outside the guard's view,
+  writes there.
+
+### D5 — the closed-project doors (`gars/_system/tools/closed_output.py`)
+
+One module holds both halves, and the dispatcher and `scripts/bring_home.py` import it:
+
+- `closed(path_args, workspace, cwd)` judges a call with 0107's reader, imported from
+  `guard_hook.py` (`closed_projects`, `closed_hit`, `_bases`, `_forms`, `_inside`,
+  `declared_sources`, `inside_declared`, `_raw_entries`, `_strings`), never copied. Every string
+  of the call's JSON is judged, recursively (ruling D-v), on both bases (the session cwd and the
+  workspace root) and both forms (normalized and resolved). A string is a path when it holds a
+  separator or names something that exists on either base; a bare word that names nothing (an
+  assay, a type, a verb, a model id) is not. Fail-closed, while any non-public project exists:
+  a path inside a closed project, or onto the resolved target of one of its `00_data/*/raw`
+  links, makes the call that project's (filtered); a path outside the workspace is refused
+  `path_outside_workspace`; a closed project named with any path outside it (another project,
+  `_system/`, an ancestor, a second closed project) is refused `path_outside_closed_project`. A
+  path whose resolved form lies inside a source `declared_sources` validates is public data and
+  neither (ruling D-iv). A `~` path is refused. With no non-public project, nothing changes.
+- `filter_output(tool, stdout, stderr, exit_code)` applies the tool's registry `closed_output`
+  keep-list. Only listed keys survive, each through its rule; every other value becomes
+  `withheld: non-public project (0141)`; stdout that does not parse becomes
+  `{"withheld": true, "exit_code": <n>}`; stderr becomes its line count. A failure entry keeps its
+  code (`check`) and never its detail.
+- `tool_call.py` refuses before running when `closed` refuses, and filters after output
+  validation when the call is closed. A declared registration (0107's opening, judged by
+  `declared_registration`) is neither refused nor filtered.
+
+**Ruling D-i (the lane's): the doors.** `CLOSED_PROJECT_DOORS` is exactly these eleven, each
+justified by what its output may carry after `filter_output`:
+
+| Door | Keep-list: what the agent sees |
+|---|---|
+| `resolve_artifact` | `ok`; `missing` types (reasons withheld); per type its `substage` and a `resolved` path only in the fixed sub-stage layout |
+| `rnaseq_de.check` | `ok`; failure codes; `wrote` (fixed file names) |
+| `rnaseq_de.prepare` | `ok`; failure codes; `wrote` (fixed file names) |
+| `rnaseq_de.collect` | `ok`; failure codes; `outputs[].type/.role`; `template_version`; `model`; never `history_entry` |
+| `rnaseq_de.summary` | its aggregates: `genes_tested`, `padj_lt_0.05` up/down, `padj_lt_0.1`, `na_padj`, `samples_in_design`, `gate` codes, `status`, `ok`, failure codes |
+| `executor.submit` | `ok`, `job_id`, `state` (closed prefix), `terminal`, `refusal` codes |
+| `executor.status` | `ok`, `job_id`, `state` (closed prefix), `terminal`, `refusal` codes |
+| `pilot_log.begin` | its line in the closed pilot-log vocabulary (span id, actor) or a refusal code |
+| `pilot_log.end` | its line (span id, computed minutes) or a refusal code |
+| `pilot_log.abort` | its line (span id) or a refusal code |
+| `pilot_log.check` | its counts line and failed-check line, or a refusal code |
+
+`executor.cancel` (its keep-list is set, but it is not a door), every `configure.*`,
+`stage01_samplesheet`, `stage03_analysis.*` and every other tool stay refused on a closed
+project; the human runs them. Every other registered tool's keep-list is `[]`: fully withheld.
+
+**Ruling D-ii (the lane's): a door is the dispatcher spelling only.** Guard additions 1 to 3 run
+before 0107's door `return` in `closed_bash_refusal`, so a door tool's direct spelling on a
+closed project is refused. A door call through the dispatcher that names a path outside the
+workspace, or outside its closed project, passes the guard and is refused by `tool_call.py`.
+
+**Ruling D-iii (the lane's; the coordinator's condition): summaries only.** Every door's output
+passes `filter_output` and carries only codes, counts, fixed file names, fixed-layout `resolved`
+paths, the pilot-log vocabulary and the summary's aggregates.
+
+**Rulings D-iv and D-v** are stated in `closed` above.
+
+**Two implementation choices, named.** (1) D5 says `rnaseq_de.summary` keeps "all". Its
+keep-list names every key it prints, so a key the wrapper might grow later is withheld, not
+passed. (2) The `pilot_log.*` keep-list `*` ("all, closed vocabulary") keeps each stdout line
+that has one of the writer's fixed formats, and withholds and counts any other line.
+
+**Guard additions (exactly four) and the one changed line**, in `guard_hook.py`, beside 0107's
+closed-project check:
+
+1. the direct spelling of a registered helper (not a `fs.*` read) whose path argument is closed
+   under `closed()`, or run with the session cwd inside a closed project, is refused, naming 0107,
+   0141 and the dispatcher spelling;
+2. the direct spelling of a registered helper naming a path outside the workspace while a
+   non-public project exists is refused (`path_outside_workspace`); a declared registration is
+   judged by 0107 alone;
+3. the direct spelling of `pilot_log.py` is refused in every agent session;
+4. `READ_ONLY` gains `"projects/*/pilot/*"` (with the `settings.json` pair);
+
+and `CLOSED_PROJECT_DOORS` changes from `()` to the eleven names above.
+
+### D6 — bring_home (`scripts/bring_home.py`)
+
+Runs on the cluster, stdlib only. For each input it writes `== <kind> sha256=<hex of the raw
+file> ==` and only its keep-listed lines, from the line table in `closed_output.py`
+(`BRING_HOME`, `RERUN_REASONS`, `PATH_KINDS`, `pilot_lines`, `SUMMARY_KEYS`): the re-run console
+and `comparison.json` (reproduction, graded counts, each artifact's path-kind, mode, match,
+metric and value, each run's job and match, and its reason cut to its closed prefix, the text
+before the first `:`, which must be one of `rerun_check.py`'s own reasons (bound by a drift
+test), else `withheld`); `manifest_check`'s group lines (names from the manifest schema) and
+summary lines, with `ERROR` lines as `ERROR withheld`; the pilot log's rows and its `check`
+line (a value outside the vocabulary exits 2); `rerun_diff`'s and `session_turns`' fixed lines;
+the summary's aggregates and `quantity samples_in_design <n>`; row 8B's allowlisted evidence
+fields and `quantity cpu_hours <backend> <h>` from a `COMPLETED` record. Every other line is
+withheld and counted, and the file ends `bring-home: <k> sections; withheld lines: <w>`. A
+missing input exits 2 and writes nothing. The owner pastes only this file, after `sha256sum`
+of it; the raw files stay on the cluster.
+
+### D8 — the threat model (the lane's specification, verbatim)
+
+Covered — a producer agent session whose every tool call passes the guard must not be able to:
+- receive sample-level content of a non-public project through any registered tool's output (the filter, swept over every tool), or through a path outside the project (refused), or bypass either by a direct spelling (refused);
+- write, pre-create, alter, end or abort a `human` pilot-log span or row, type a `minutes` value, or put free text in the log;
+- cause any HPC output to reach Glitch except through `bring_home.py`'s keep-lists.
+Not covered (named in 0141/0143): a tool with no keep-list is fully withheld (safe, unhelpful); the SessionStart hook's prints (0107 residual 2; the runbook requires a generic title and HISTORY lines); anything the human types or pastes into the agent session; a human writing `agent` rows; closed data a human copies inside the workspace outside `projects/` (0107 residual 9, narrowed but not closed); a forgotten human span with no human turn in it (D4b); the truth of the baseline; the scientific adequacy of the summary thresholds.
+
+### Carried from step A (ruling D-vi, the lane's)
+
+- **n1:** a test pins that a human turn outside the session window gets no attention interval.
+- **n2:** `unit_economics.py` refuses a line starting `human turns:` that is not session_turns'
+  shape (`quantity_malformed`, exit 2), where it was counted and ignored.
+- **n5, the lane's rulings (the step A producer's three readings of L7, confirmed):** a human
+  turn outside the window counts as a turn and adds no minute; a transcript with no main-thread
+  record has an empty window and 0.00 minutes, printed with `human turns: 0`; `isMeta` and
+  `isCompactSummary` must be booleans on assistant records too.
+
+### R-042: behaviour that changes
+
+Each item names the test the new code passes and the code at `e589ce8` does not.
+
+1. **Eleven tools open on a closed project through the dispatcher**, with filtered output
+   (`test_pilot_doors.test_dispatcher_spelling_allowed_on_closed`,
+   `test_closed_project_outputs.test_door_keep_lists`). A door called through the dispatcher from
+   a session cwd inside a closed project is no longer refused by the guard; the dispatcher judges
+   its paths from that cwd too.
+2. **A door's direct spelling is refused with 0141's message** (it was refused by 0107's)
+   (`test_pilot_doors.test_direct_spelling_refused_on_closed`).
+3. **No path outside the workspace while a non-public project exists**, through the dispatcher
+   and by direct spelling, on any project, public ones included; a declared-public folder
+   excepted (`test_pilot_doors.test_dispatcher_refuses_outside_paths`,
+   `test_bare_outside_workspace_refused_by_addition_2`,
+   `test_declared_source_is_not_outside`,
+   `test_closed_project_outputs.test_outside_paths_refused_with_named_codes`).
+4. **A closed project named with a path outside it is refused**
+   (`path_outside_closed_project`; the same tests).
+5. **A raw link's target counts as its closed project**
+   (`test_closed_project_outputs.test_raw_link_target_is_the_closed_project`).
+6. **Every dispatcher call on a closed project is filtered**, non-doors fully withheld (as a
+   human running `tool_call.py` directly would see it too)
+   (`test_closed_project_outputs.test_marker_absent_from_every_tool`).
+7. **The pilot folder is machine-owned**: Write/Edit there is refused, on every project
+   (`test_pilot_log.test_guard_refuses_writes_and_the_direct_spelling`).
+8. **`pilot_log.py` exists and its direct spelling is refused**; four `pilot_log.*` entries and
+   `rnaseq_de.summary` join the registry (`test_pilot_log`, whole module).
+9. **`rnaseq_de.py summary`** is a new verb (`test_door_keep_lists`).
+10. **`unit_economics.py` refuses a malformed `human turns:` line** (n2;
+    `test_unit_economics.test_quantity_lines_canonical_or_refused`).
+11. **Unchanged:** with no non-public project in the workspace the dispatcher's output is
+    byte-identical to BASE's (`test_closed_project_outputs.test_public_output_byte_identical_to_base`,
+    which runs `e589ce8`'s `_system/` beside this one on the same workspace).
+12. **Follow-up, not changed here:** the stage 01–03 contracts still describe in-project agent
+    reads (0107 item 11: stage 02's config, OUTPUTS and STATUS routing, the `HISTORY.md` appends
+    after a Read). On a closed project those reads stay refused; the contracts' prose is a named
+    follow-up.
+13. **`test_nonpublic_read_block.py`** asserts 0107's empty door list; four of its methods go red
+    under ruling D-i and are raised for a ruling in the change report (that file is outside this
+    step's bounds).
+
+## What this does not close
+
+- **NOT met: the pilot.** No pilot has run; every number is a synthetic fixture with hourly
+  value 1. Row 13's exit ("human-touch minutes measured; re-run diff explained") is open.
+- **The D8 "not covered" list above**, each NOT met.
+- **The path rule is lexical plus existence.** A bare word that names nothing on either base is
+  not judged as a path; a tool that turns such a word into a path later (none of the eleven doors
+  does) would escape `closed()`. A file created between the judgement and the run is not seen.
+- **A human's direct run is unguarded.** The human runs `tool_call.py` or a helper in their own
+  terminal; the filter applies to a `tool_call.py` run on a closed project whoever runs it, and
+  not at all to a helper run directly.
+- **The token binds the actor only for agents.** A human can run the writer with the token and
+  write `agent` rows (trusted, the 0024 `--model` shape). The log's truth is the clock's and the
+  writer's; a clock set wrong is not detected.
+- **`import-tool` reads only slurm records**; a local run has no sacct record and is refused.
+- **The stage 01–03 contract prose** (R-042 item 12) and **`test_nonpublic_read_block.py`'s four
+  methods** (item 13).
+- **The doors' output was swept with planted markers on fixtures only.** A real wrapper message
+  of a shape not seen here reaches the agent only as a code, by construction of the keep-lists,
+  but that is not measured on real data.
+- **Not executed on Python 3.6.8**; the new code parses under `feature_version=(3, 6)` and ran
+  on 3.8.2 and 3.13.2.
+
+Records 0142 and 0143 are the owner's; 0144 is Glitch's delegated approval of this step's
+protected changes. This step writes none of them.
+
+## Test
+
+`python3 gars/tests/test_pilot_log.py` (`EXIT pilot log (fixture): launch-bound actor`),
+`python3 gars/tests/test_closed_project_outputs.py` (`EXIT closed outputs (fixture): marker absent
+from every tool`), `python3 gars/tests/test_bring_home.py` (`EXIT bring home (fixture): detail
+withheld`), `python3 gars/tests/test_pilot_doors.py` (`EXIT pilot doors (fixture): dispatcher
+allowed on closed`). They are red at `e589ce8` and at step A's `9220877` and green here. Fifteen
+planted faults go red (the change report, section "Step B"): the filter skipped for one tool; a
+keep-list widened to a failure detail; to `history_entry`; the outside-path refusal removed; a
+guard refusal removed; the `READ_ONLY` pilot line removed; the actor taken from an input; end
+allowed across actors; the nonce check removed; bring_home passing a reason tail; a door echoing
+raw stdout; a door reached by its direct spelling; the doors widened by one non-door tool; D-iv's
+exemption removed; D-iv's exemption widened to any outside path.
+
+## Status
+
+Standing. Implemented on `build/gars-row-13-pilot`; subject to the fresh-context review named
+above and to 0144's delegated approval of the protected changes. Not approved or merged by its
+producer. Row 13's exit is not met.
+
+## Date
+
+2026-09-25
+
+## Addendum — ruling round 1 (D-vii), 2026-09-25
+
+Every ruling in this addendum is **the lane's**, made on 25 Sep 2026 under the owner's standing
+delegation of 23 Sep 2026 and told to the lane's coordinator; none is the owner's ruling. The
+owner's words are only the two quoted in Context above. All earlier bytes of this record are
+unchanged; where this addendum differs from them, it governs. It answers the question raised
+under "Owner rulings needed" in the change report's "Step B" section; the evidence is in
+[the change report](../implementation/row_13_change_report.md), section "Step B ruling round".
+
+**Ruling D-vii (a) (the lane's): 0107's session-cwd rule holds for doors too.** In
+`closed_bash_refusal` a door call is admitted only after 0107's check that the session cwd is not
+inside a closed project. A door's dispatcher call from a cwd inside any closed project is refused
+with 0107's own message. `guard_hook.py`: 0107's cwd loop now precedes the door `return` (which
+moved below it); its text is unchanged.
+
+**Ruling D-vii (b) (the lane's): the door is the dispatcher spelling only, fail-closed.** While
+any closed project exists, the direct spelling of any tool in `CLOSED_PROJECT_DOORS` is refused
+whatever its arguments, not only when a path names a closed project, so no door's unfiltered
+output reaches a session by a path-free direct call. `guard_hook.py`: one check after additions
+1 and 2 (their more specific refusals still come first), naming 0141 and the dispatcher spelling.
+Every door's schema requires a project under `projects/`, so a door's direct spelling with no path
+at all is already refused by the transport (R-094) before this check; the check is what refuses
+a door's direct spelling on a public project.
+
+**Ruling D-vii (c) (the lane's): 0107's test module changes in exactly these places**, each an
+expectation change caused by ruling D-i (and, for one half, D-vii (b)):
+`DoorTests.test_door_mechanism` asserts `CLOSED_PROJECT_DOORS` equals D-i's eleven names in
+order; `Q8Tests`' `door_hook` helper matches the doors line by its `CLOSED_PROJECT_DOORS = `
+prefix, checks that line's value equals the constant, and still replaces it with the test's own
+doors; `EveryToolTests.test_every_registered_tool` expects a door's dispatcher spelling allowed on
+a closed project from a cwd outside it (where the same call on the public project passes the base
+hook), and every non-door tool and every door's direct spelling refused.
+`EveryToolTests.test_cwd_inside_closed_project` is not edited; the code change turns it green.
+
+**`gars/tests/pilot_fixture.py`** is accepted as the step B modules' shared fixture builder (not
+collected).
+
+**The `touches:` list, by this addendum** (the frontmatter above is not edited): add
+`gars/tests/test_nonpublic_read_block.py`; `gars/tests/pilot_fixture.py`,
+`gars/tests/test_pilot_doors.py` and `gars/_system/guard_hook.py` are already listed.
+
+### R-042, amended by this addendum
+
+- **Item 1 narrowed.** A door called through the dispatcher from a session cwd inside a closed
+  project is refused by the guard again, as 0107 refuses every call there
+  (`test_pilot_doors.test_dispatcher_from_inside_the_closed_project_refused`, new;
+  `test_nonpublic_read_block.EveryToolTests.test_cwd_inside_closed_project`, unedited). Both are
+  red on `1d4399a` (11 and 6 subtests) and green here.
+- **Item 14 (new): a door's direct spelling is refused while any closed project exists**, on a
+  public project too; with no closed project the same call is allowed
+  (`test_pilot_doors.test_direct_spelling_refused_while_any_project_is_closed`, new, red on
+  `1d4399a` in 7 subtests; `EveryToolTests.test_every_registered_tool`'s six door subtests in the
+  direct spelling on `projects/open1`, red on `1d4399a`).
+- **Item 13 replaced.** `test_nonpublic_read_block.py`'s named expectation changes, caused by
+  ruling D-i: `DoorTests.test_door_mechanism` (the eleven names; the old `()` assertion fails on
+  `1d4399a`, the new one fails on `e589ce8`); the `door_hook` helper (the old literal fails on
+  `1d4399a`); `EveryToolTests.test_every_registered_tool` (the door dispatcher spelling allowed on
+  a closed project: 12 subtests red with the old expectation on `1d4399a`; the door direct
+  spelling refused on a public project: 6 subtests red with the new expectation on `1d4399a`).
+  No assertion was removed.
+- **Not green: `Q8Tests.test_q8_alone`.** Its second assertion expects the direct spelling of
+  `stage00_register.finalize`, made the only door by `door_hook`, allowed on the closed project
+  `projects/fresh`. Guard addition 1 (ruling D-ii) refuses that call on `1d4399a` already, and
+  D-vii (b) refuses it too; the helper change alone cannot make it pass, and its body is outside
+  D-vii (c). It is raised under "Owner rulings needed" in the change report; neither the test nor
+  the guard is weakened.
+
+### Test
+
+`python3 gars/tests/test_pilot_doors.py` (`Ran 10 tests` / `OK`) and
+`python3 gars/tests/test_nonpublic_read_block.py` (`Ran 20 tests` / `FAILED (failures=1)`,
+`test_q8_alone` alone). Two more planted faults go red, 17 of 17 in all: D-vii (a) removed (a
+door's dispatcher call exempt from the cwd rule) and D-vii (b) removed (a door's direct spelling
+judged by its paths only). Fault 5 (addition 1 removed) went green once D-vii (b) also refused its
+calls; `test_direct_spelling_refused_on_closed` now requires addition 1's own wording and catches
+it again.
+
+## Addendum — ruling round 2 (D-viii), 2026-09-25
+
+Every ruling in this addendum is **the lane's**, made on 25 Sep 2026 under the owner's standing
+delegation of 23 Sep 2026; none is the owner's ruling. The owner's words are only the two quoted
+in Context above. All earlier bytes of this record, the first addendum included, are unchanged;
+where this addendum differs from them, it governs. It answers the question raised under "Owner
+rulings needed" in the change report's "Step B ruling round" section; the evidence is in
+[the change report](../implementation/row_13_change_report.md), section "Step B ruling round 2".
+
+**Ruling D-viii (the lane's): `Q8Tests.test_q8_alone` changes in exactly this way.** The existing
+direct-spelling `--data-class public` refusal and its three message assertions are kept
+unchanged; the same `--data-class public` call is added in the dispatcher spelling, refused, with
+the same three message assertions; and the allowed `deidentified_under_agreement` call changes to
+the dispatcher spelling (its direct spelling is now refused by the door rule, D-ii and D-vii (b),
+which this test does not exercise). Nothing else in `gars/tests/test_nonpublic_read_block.py`
+changes. No code changes.
+
+### R-042, amended by this addendum
+
+- **"Not green: `Q8Tests.test_q8_alone`" (first addendum) is replaced.** A named expectation
+  change caused by D-ii and D-vii (b): the allowed call moves from the direct to the dispatcher
+  spelling, and a dispatcher-spelling `public` refusal is added. The method is red at `e1fbeff`
+  with its old body (`AssertionError: 2 != 0`, the allowed direct call refused by addition 1) and
+  green here. Its new dispatcher `public` assertion goes red with Q8 disabled for the dispatcher
+  spelling (`AssertionError: 0 != 2`), where the old body fails at its direct allowed call
+  whatever Q8 does and so cannot see that fault. No assertion was removed.
+
+### Test
+
+`python3 gars/tests/test_nonpublic_read_block.py` (`Ran 20 tests` / `OK`). One more planted fault
+goes red, 18 of 18 in all: Q8 disabled for the dispatcher spelling (`test_q8_alone`).
+
+## Addendum — step B review round 2 fixes, 2026-09-25
+
+Every ruling in this addendum is **the lane's**, made on 25 Sep 2026 under the owner's standing
+delegation of 23 Sep 2026; none is the owner's ruling. The owner's words are only the two quoted
+in Context above. All earlier bytes of this record, both addenda included, are unchanged; where
+this addendum differs from them, it governs. It answers step B's fresh-context review, round 1
+(REJECT: one BLOCKER, F-2; two MAJOR, F-1 and F-3; three MINOR; three NOTE), and one finding of
+the lane's own whole-suite run; the evidence is in
+[the change report](../implementation/row_13_change_report.md), section "Step B review round 2
+fixes".
+
+### The lane's rulings
+
+- **F-2 and F-1 (one cause: an agent could Write inside a closed project).** 0107's
+  `closed_edit_refusal` in `gars/_system/guard_hook.py` now refuses `Write` too: any agent Write,
+  create or overwrite, of a path inside a closed project is refused, judged exactly as the Edit
+  family is (both bases, both forms, casefolded, at path boundaries), and the refusal adds a
+  sentence naming this decision. Only that function's body changed; `WRITE_TOOLS`, `EDIT_TOOLS`
+  and every other constant are byte-identical.
+- **F-1, defence in depth.** While a project is closed, the dispatcher
+  (`gars/_system/tools/closed_output.py`, `fixed_inputs`, called from `gars/_system/tool_call.py`)
+  accepts `rnaseq_de.check`'s and `rnaseq_de.prepare`'s `design` and `counts` only at their
+  fixed-layout, machine-owned paths: `01_samplesheets/rnaseq_bulk_design.csv`, and
+  `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/<aligner>/salmon.merged.gene_counts_length_scaled.tsv`
+  (the 02.01 counts file at its `LAYOUT` path under `run/`), judged on the resolved path from the
+  workspace root, where the tool runs. Any other path is refused `path_not_fixed_layout`
+  (`R-094`) before the wrapper runs, so no exit code or `ok` bit is produced. D-iv's
+  declared-public exemption still keeps such a path from being called "outside"; the DE doors
+  then refuse it as not their fixed layout.
+- **F-2, the remainder.** The generated `scripts/` are not bound into R-076's prepared key
+  (`executorlib`/`wrapperlib` are outside this step's bounds) and are not changed here. What
+  remains is named below and in the change report's Residual gaps.
+- **F-3.** Ruling D-viii (the second addendum) **is the lane's**: made on 25 Sep 2026 at 16:2x,
+  recorded in the lane's plan and told to its coordinator. The D-viii hunk of
+  `gars/tests/test_nonpublic_read_block.py` is unchanged.
+- **F-4.** `gars/tests/pilot_fixture.py` plants a lowercase snake_case marker, a valid `CODE`,
+  as a design column, a counts-header column and an OUTPUTS type and role; a test asserts it
+  absent from every door's output, `resolve_artifact`'s list mode included.
+- **F-5.** `scripts/unit_economics.py` refuses a `human turns:` line off session_turns' shape
+  case-insensitively after leading whitespace (`^\s*human turns:`, `re.I`), as its sibling
+  `quantity` rule does.
+- **F-6, `touches` corrected here (the frontmatter stays byte-identical).** This step also
+  changed `gars/tests/test_nonpublic_read_block.py` (under D-vii (c) and D-viii), which the
+  frontmatter omits; a future editor of 0107's test module should read this record. The
+  frontmatter lists `tests/pilot_emulation.py`, which this step did not change. Every file this
+  round changes is already listed, except the living `README.md` and `DEVELOPMENT.md`.
+- **The lane's whole-suite finding** (`test_status_writer.test_every_wrapper_uses_writer`, red on
+  the lane's Linux host under Python 3.13). The cause is not the interpreter or the host: step
+  B's new usage line in `rnaseq_de.py`'s module docstring named `STATUS`, and that test's plain
+  token sweep allows the word only in comments and in `wl.write_status(...)` calls. It is red on
+  macOS under 3.8.2 and 3.13.2 alike at `3e8f939`; step B's producer never ran that module. The
+  docstring now says "the lifecycle state".
+
+### D8, corrected by this addendum
+
+The covered list gains the class the review named. **What a door lets an agent infer or cause**
+— a producer agent session whose every tool call passes the guard must not be able to:
+
+- **infer a sample-level fact from a door's exit code or `ok` bit over a file it chose.**
+  - *Agent-placed probe files* (a design naming a guessed sample, a counts header, a config
+    whose formula or contrast names a guessed column): closed by the Write refusal above, the
+    Edit family's (0107), and the Bash write routes (`>`, `>>`, `tee`, `cp`, `mv`, `sed -i`),
+    which the guard already refused.
+  - *Files a human, or a process outside the agent session, placed elsewhere in the project*:
+    closed for the two DE doors' `design` and `counts` by `path_not_fixed_layout`.
+    `executor.submit` accepts only the stage's generated `submit.sh` (`executorlib.submit`,
+    unchanged). `resolve_artifact`, `rnaseq_de.collect` and `rnaseq_de.summary` read only fixed
+    places (OUTPUTS, STATUS, the DE table), and the `pilot_log.*` log path is fixed by schema.
+- **cause a closed project's job to run code it wrote.** `executor.submit` runs the generated
+  `submit.sh`, which runs `scripts/run_de.py`. Replacing that script is refused by Write (above),
+  by the Edit family, and on every Bash write route.
+
+The not-covered list gains:
+
+- **The generated script between `prepare` and job start.** A human, or a process outside the
+  agent session, can change a closed project's `scripts/run_de.py` after the `prepare` door
+  and before the job starts, including while a slurm job waits in the queue. The script is not
+  `READ_ONLY` and its hash is not in R-076's prepared key. Binding it into the key, or
+  verifying it at job start, is a named follow-up.
+- **The fixed-layout inputs themselves.** A door's answer over the machine-written design,
+  counts and config is the intended aggregate (a failure code, never its detail). A human who
+  edits those files by hand can still turn that answer into a question about a sample.
+- **Other doors' path arguments** are judged by `closed()` only (inside the one closed
+  project), not by a fixed layout. `executor.submit`'s script identity is `executorlib`'s own
+  check.
+
+### R-042, amended by this addendum
+
+14. **An agent's Write inside a closed project is refused**, where it was allowed
+    (`test_pilot_doors.ClosedWriteTests.test_agent_write_inside_closed_project_refused`,
+    `test_generated_script_written_after_prepare_refused`). The Edit family's refusal message is
+    unchanged. With no closed project, Write and Edit are judged exactly as `e589ce8`'s guard
+    judges them, exit code and message (`test_write_without_closed_project_unchanged`).
+15. **A DE door's design or counts outside the fixed layout is refused** on a closed project
+    (`FixedLayoutTests.test_probe_inputs_refused`). The fixed paths, spelled absolutely or
+    through a link that resolves to them, are accepted (`test_fixed_layout_accepted`). A public
+    project's door is unchanged (`test_public_project_unchanged`). Item 5's raw-link target,
+    named as a door's counts, is now refused `path_not_fixed_layout` after `closed()` judges it
+    the closed project's own path; `test_declared_source_is_not_outside` expects the same code
+    for a declared folder.
+16. **`unit_economics.py`** also refuses ` human turns: …` and `Human turns: …` off shape.
+
+### Test
+
+`python3 gars/tests/test_pilot_doors.py` (`Ran 17 tests` / `OK`) and
+`python3 gars/tests/test_closed_project_outputs.py` (`Ran 12 tests` / `OK`) are red at
+`3e8f939`'s code and green here. Seven more planted faults go red, 25 of 25 in all:
+
+- Write not refused inside a closed project;
+- Write refused with no closed project;
+- the fixed-layout rule removed;
+- the fixed counts widened to any sub-stage;
+- a CODE-judged field carrying project text;
+- `human turns:` matched case-sensitively at column 0;
+- a wrapper docstring naming `STATUS`.
+
+## Addendum — merge interaction: the bench binding test, 2026-09-26
+
+The ruling in this addendum is **the lane's**, made on 26 Sep 2026 under the owner's standing
+delegation of 23 Sep 2026 and accepted by its coordinator; it is not the owner's ruling. The
+owner's words are only the two quoted in Context above. All earlier bytes of this record, the
+three addenda included, are unchanged; where this addendum differs from them, it governs. It
+answers a merge-interaction finding, not a review finding; the evidence is in
+[the change report](../implementation/row_13_change_report.md), section "Step B review round 3
+fixes".
+
+**The finding.** The lane's run of this branch merged onto current public main is red in one
+test, `gars/tests/test_bring_home.py` `test_bench_binding_to_8b_real_header`, which asserted
+`unit_economics.read_bench(REPO / 'benchmarks/backend_bench.csv') == {}`. That held while the
+file was header-only. Public main has since committed row 8B's first real row (backend `local`,
+status `COMPLETED`, `cost_usd_per_sample` `unmetered`, `cost_basis` `owned_hardware`), so the
+merged tree reads `{'local': {'owned_hardware'}}`. Neither the sheet nor the data is wrong: the
+test pinned a data state.
+
+**Ruling (the lane's): the fix is test-only.** The test keeps its header assertion and its
+synthetic slurm-row case. The `== {}` line is replaced by an expectation re-derived from the
+real file by header name (every `COMPLETED` row's backend mapped to its `cost_basis`), and the
+sheet must read exactly that, so the test holds for a header-only file and for any rows row 8B
+appends. A case copies the real file and appends one real-shaped row whose (backend,
+cost_basis) pair the file does not yet carry: the re-derived expectation must change, and the
+sheet must read the new one. No production file changes.
+
+### R-042, amended by this addendum
+
+17. **`test_bench_binding_to_8b_real_header` no longer pins the bench file's rows.** A named
+    expectation change caused by row 8B's data, not by this step's code: `read_bench` is
+    unchanged. No assertion was removed; the constant `{}` became the file's own re-derived
+    content, and the appended-row case was added.
+
+### Test
+
+`python3 gars/tests/test_bring_home.py` (`Ran 9 tests` / `OK`). With public main's bench file
+in a disposable copy, the old test is red (`AssertionError: {'local': {'owned_hardware'}} !=
+{}`) and the new one green; the new one is green on this branch's header-only file; and with
+`read_bench` planted to ignore rows it is red on the header-only file through the appended-row
+case (`AssertionError: {} != {'local': {'owned_hardware'}}`).

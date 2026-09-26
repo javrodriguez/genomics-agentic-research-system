@@ -74,6 +74,7 @@ READ_ONLY = [
     "projects/*/.STATUS.lock",
     "projects/*/STATUS",  # R-151: only code writes lifecycle state (the owner, 13A).
     "projects/*/00_data/*/files.csv",
+    "projects/*/pilot/*",  # the pilot log and its sidecar: only pilot_log.py writes them (0141)
     "projects/*/00_data/dataset.tsv",
     "projects/*/01_samplesheets/*",
     # The stage 03 approval record: written only by `stage03_analysis.py approve` (0042).
@@ -113,7 +114,7 @@ DECLARATIONS = "data_sources.tsv"
 DECLARATIONS_HEADER = ["source", "data_class", "declared_by"]
 OPEN_IN_CLOSED_EXACT = (DATASET_ROW,)
 OPEN_IN_CLOSED_BASENAME = ("STATUS",)
-CLOSED_PROJECT_DOORS = ()                   # empty in this lane (0107)
+CLOSED_PROJECT_DOORS = ("resolve_artifact", "rnaseq_de.check", "rnaseq_de.prepare", "rnaseq_de.collect", "rnaseq_de.summary", "executor.submit", "executor.status", "pilot_log.begin", "pilot_log.end", "pilot_log.abort", "pilot_log.check")  # row 13, dispatcher spelling only, output filtered (0141)
 # What `stage00_register.py create` leaves in a project, project-relative; `{assay}` stands for
 # each assay directory under 00_data/. Bound to the real `create` by a drift test (0107).
 CREATE_STAMP = (
@@ -770,8 +771,11 @@ EDIT_TOOLS = ("Edit", "MultiEdit", "NotebookEdit")
 
 def closed_edit_refusal(tool, tool_input, root, cwd):
     """Edit, MultiEdit and NotebookEdit in a closed project: an edit's result echoes the file
-    around the change, so it is a read (0107, review round 1 F3; was residual 10)."""
-    if tool not in EDIT_TOOLS:
+    around the change, so it is a read (0107, review round 1 F3; was residual 10). Write too,
+    create or overwrite (0141, step B review round 1 F-1/F-2): a file an agent places in a closed
+    project is one a door may compare or run, so a door's exit code would become an oracle on
+    the project's data, or its job would run agent-authored code."""
+    if tool not in WRITE_TOOLS:
         return
     closed = closed_projects(root)
     if not closed:
@@ -781,7 +785,9 @@ def closed_edit_refusal(tool, tool_input, root, cwd):
         deny(UNREADABLE)
     hit = closed_hit(path, root, _bases(cwd, root), False, closed)
     if hit:
-        deny(closed_refusal(path, hit))
+        deny(closed_refusal(path, hit) + (
+            " An agent never writes inside a closed project either (decision 0141): a door may "
+            "compare or run what is there." if tool not in EDIT_TOOLS else ""))
 
 
 def closed_bash_refusal(tool, args, tokens, root, cwd):
@@ -816,9 +822,48 @@ def closed_bash_refusal(tool, args, tokens, root, cwd):
              "their own terminal, or to declare the source."
              % (name.split(".")[1], failed or "this call is not a declared registration",
                 CLOSED_WHY))
-    if name in CLOSED_PROJECT_DOORS or not closed:
+    # Row 13 (decision 0141), addition 3: an agent reaches the pilot log's writer only through
+    # the dispatcher, whose registry argv carries the launch token that makes the actor `agent`.
+    if not dispatcher and os.path.realpath(os.path.join(cwd, tokens[1])) == os.path.realpath(
+            os.path.join(root, "_system", "pilot_log.py")):
+        deny("Blocked: _system/pilot_log.py is the pilot log's writer. An agent session reaches it "
+             "only through the dispatcher, which binds the actor at launch (decision 0141): "
+             "python3 _system/tool_call.py pilot_log.<verb> '<json>'.")
+    # Row 13 (decision 0141), additions 1 and 2: a door is the dispatcher spelling only. A direct
+    # spelling is judged by the rule the dispatcher applies (tools/closed_output.py), before
+    # 0107's door below: (1) a closed project, its raw data, or the session cwd inside one is
+    # refused; (2) a path outside the workspace while a non-public project exists is refused.
+    if not dispatcher and closed and declared is None and not tool.get("filesystem"):
+        from tools.closed_output import ClosedRefusal, closed as closed_call
+        for form in _forms(cwd, (root,)):
+            for project, label, project_forms in closed:
+                if any(_inside(form, f) for f in project_forms):
+                    deny("Blocked: the session's working directory is in project %s, whose "
+                         "data_class is %s. %s A door (decision 0141) is reached only through the "
+                         "dispatcher, from outside the project: python3 _system/tool_call.py "
+                         "<tool> '<json>'." % (project, label, CLOSED_WHY))
+        try:
+            project = closed_call([t for _, w in words[1:] for t in _spellings(w)], root, cwd)
+        except ClosedRefusal as exc:
+            deny("Blocked: %s. While a non-public project exists, a direct call names only paths "
+                 "inside the workspace, and a closed project only with paths inside it (decisions "
+                 "0107, 0141). %s" % (exc.code, CLOSED_WHY))
+        if project is not None:
+            deny("Blocked: this call names project %s, whose data is not public (decision 0107). "
+                 "%s A door (decision 0141) is reached only through the dispatcher, which filters "
+                 "its output: python3 _system/tool_call.py %s '<json>'." % (project, CLOSED_WHY, name))
+    # Row 13 (decision 0141, ruling D-vii b): fail-closed, a door's direct spelling is refused
+    # whatever it names while any closed project exists, so no door's unfiltered output reaches
+    # a session by a path-free direct call.
+    if not dispatcher and closed and name in CLOSED_PROJECT_DOORS:
+        deny("Blocked: %s is a door (decision 0141), reached only through the dispatcher while a "
+             "non-public project exists, because only the dispatcher filters its output: "
+             "python3 _system/tool_call.py %s '<json>'. %s" % (name, name, CLOSED_WHY))
+    if not closed:
         return
     exempt = declared or ()
+    # 0107's cwd rule holds for doors too (decision 0141, ruling D-vii a): it precedes the door
+    # return, so a door's dispatcher call from inside a closed project is refused here.
     for form in _forms(cwd, (root,)):
         for project, label, project_forms in closed:
             if project not in exempt and any(_inside(form, f) for f in project_forms):
@@ -827,6 +872,8 @@ def closed_bash_refusal(tool, args, tokens, root, cwd):
                      "files, from outside the project. Ask the human to run the step, declare a "
                      "public source in data_sources.tsv, or work in a public project."
                      % (project, label, CLOSED_WHY))
+    if name in CLOSED_PROJECT_DOORS:
+        return
     recursive = _recursive(name, [w for _, w in words])
     readable = bool(tool.get("filesystem"))
     for key, word in words:

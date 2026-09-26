@@ -203,9 +203,13 @@ def door_hook(name, doors, extra_tool=None):
         registry = json.loads((system / 'tools/registry.json').read_text())
         registry['tools'].append(extra_tool)
         (system / 'tools/registry.json').write_text(json.dumps(registry))
+    import ast
     source = HOOK.read_text()
-    line = 'CLOSED_PROJECT_DOORS = ()                   # empty in this lane (0107)'
-    assert source.count(line) == 1
+    lines = [l for l in source.splitlines() if l.startswith('CLOSED_PROJECT_DOORS = ')]
+    assert len(lines) == 1
+    line = lines[0]
+    assert ast.literal_eval(line.split('#')[0].split('=', 1)[1].strip()) == \
+        guard_hook.CLOSED_PROJECT_DOORS
     (system / 'guard_hook.py').write_text(source.replace(
         line, 'CLOSED_PROJECT_DOORS = %r' % (tuple(doors),)))
     return system / 'guard_hook.py'
@@ -450,15 +454,24 @@ class EveryToolTests(HookCase):
                 reference = call(root, 'Bash', {'command': command('projects/open1')},
                                  hook=base)
                 ours = call(root, 'Bash', {'command': command('projects/open1')})
+                door = tool['name'] in guard_hook.CLOSED_PROJECT_DOORS    # 0141
                 with self.subTest(tool=tool['name'], spelling=spelling, project='open1'):
                     if tool['name'] in STAGE00_OPENING:
                         self.refused(ours, root=root)
+                    elif door and spelling == 'bare':
+                        err = self.refused(ours, 'Blocked:', root)    # ruling D-vii (b)
+                        if reference.returncode == 0:
+                            self.assertIn('0141', err)
                     else:
                         self.assertEqual(ours.returncode, reference.returncode, ours.stderr)
                         if ours.returncode:
                             self.assertEqual(ours.stderr, reference.stderr)
                 for project in ('projects/pilot', 'projects/fresh'):
                     with self.subTest(tool=tool['name'], spelling=spelling, project=project):
+                        if door and spelling == 'dispatch' and reference.returncode == 0:
+                            self.allowed(call(root, 'Bash', {'command': command(project)}))
+                            checked += 1
+                            continue
                         err = self.refused(call(root, 'Bash', {'command': command(project)}),
                                            'Blocked:', root)
                         if reference.returncode == 0 or tool['name'] in STAGE00_OPENING:
@@ -654,7 +667,10 @@ class Stage00Tests(HookCase):
 class DoorTests(HookCase):
     def test_door_mechanism(self):
         print('red-on-fault: doors', flush=True)
-        self.assertEqual(guard_hook.CLOSED_PROJECT_DOORS, ())
+        self.assertEqual(guard_hook.CLOSED_PROJECT_DOORS, (
+            'resolve_artifact', 'rnaseq_de.check', 'rnaseq_de.prepare', 'rnaseq_de.collect',
+            'rnaseq_de.summary', 'executor.submit', 'executor.status', 'pilot_log.begin',
+            'pilot_log.end', 'pilot_log.abort', 'pilot_log.check'))   # ruling D-i (0141)
         root = ROOTS['R0']
         dummy = {'name': 'dummy.door', 'argv': ['python3', '_system/dummy_door.py'],
                  'roles': {'producer': 'allow'}, 'timeout_seconds': 5,
@@ -708,9 +724,17 @@ class Q8Tests(HookCase):
         self.assertIn('§21 Q4', err)
         self.assertIn("classifying data is the owner's", err)
         self.assertIn('data_sources.tsv', err)
-        self.allowed(call(root, 'Bash', {'command': stage00(
-            'finalize', '--project', 'projects/fresh', '--data-class',
-            'deidentified_under_agreement', '--purpose', 'fixture')}, hook=hook))
+        # 0141 D-viii: a door is the dispatcher spelling only, so Q8 is asserted there too.
+        err = self.refused(call(root, 'Bash', {'command': dispatch(
+            'stage00_register.finalize', {'project': 'projects/fresh', 'data-class': 'public',
+                                          'purpose': 'fixture'})}, hook=hook), root=root)
+        self.assertIn('§21 Q4', err)
+        self.assertIn("classifying data is the owner's", err)
+        self.assertIn('data_sources.tsv', err)
+        self.allowed(call(root, 'Bash', {'command': dispatch(
+            'stage00_register.finalize', {'project': 'projects/fresh',
+                                          'data-class': 'deidentified_under_agreement',
+                                          'purpose': 'fixture'})}, hook=hook))
 
 
 class ControlAndDriftTests(HookCase):

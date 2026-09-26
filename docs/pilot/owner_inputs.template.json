@@ -1,0 +1,7 @@
+{
+  "hourly_value_usd": "<number, filled privately; never committed here>",
+  "hourly_value_source": "<string, filled privately>",
+  "project_definition": "<string, filled privately>",
+  "liability": "unpriced",
+  "price_usd": null
+}

@@ -1,0 +1,321 @@
+---
+date: 2026-09-24
+status: standing
+kind: decision
+touches:
+  - scripts/unit_economics.py
+  - scripts/rerun_diff.py
+  - scripts/session_turns.py
+  - docs/pilot/
+  - tests/test_unit_economics.py
+  - tests/test_rerun_diff.py
+  - tests/test_session_turns.py
+  - tests/pilot_red_on_fault.py
+  - tests/fixtures/pilot/
+  - README.md
+  - DEVELOPMENT.md
+  - docs/implementation/row_13_change_report.md
+symptoms:
+  - a cost typed into the pilot log or bench sheet
+  - verification minutes counted in a stage and again on their own line
+  - a margin printed with no price
+  - a gene id, sample name or path printed in a re-run diff
+  - a tool_result or isMeta record counted as a human turn
+  - a human turn outside every logged span silently absorbed
+---
+# Row 13 step A: the pilot instruments
+
+## Context
+
+§18 row 13 is a timed pilot 1 on the DE stage of the author's own analysis, one re-run of that
+stage from its manifest, and a generated unit-economics sheet; its exit is "human-touch minutes
+measured; re-run diff explained". The governing requirements are R-190 (pilot dimensions bound
+to log columns), R-193 (a sheet with no hand-entered cost cell, margin stated, no price before
+the pilot is timed), R-153 (human-touch events logged with timestamps and reason codes), §11.3
+(every ratio printed with numerator and denominator, `0/0` as `uncomputable`) and §16.4 (the
+unmetered share stated in every cost report).
+
+The row is split. **Step A** (this record) builds the instruments that read the pilot's
+artifacts and proves them on synthetic fixtures. **Step B** builds the closed-project doors,
+the pilot-log writer and `bring_home`; it is a separate brief and is not built here.
+
+Everything below — D1, D2, D3, D4, D4b, D7 and ruling L1 — is **the lane's specification,
+decided under the owner's standing delegation of 23 Sep 2026**. It is not the owner's ruling
+and is not attributed to the owner. Ruling L1 was answered by the lane on 24 Sep 2026 after the
+first producer pass raised it.
+
+**Deviation — the producer and the review.** This step was produced by a headless Claude Code
+context (Claude Opus 5.5) because the lane's usual producer was unavailable, and it is reviewed
+by a separate fresh Claude Code context on the same model. Producer and reviewer are therefore
+the same model family: the review's independence rests on a fresh context and a blind review
+kit, not on model diversity.
+
+## Decision
+
+**D1 — the pilot log's format** (the writer is step B). `pilot1_log.csv` has exactly the §19
+columns `ts,stage,actor,action,reason_code,minutes`, preceded by one header comment
+`# gars-pilot-log v1 nonce=<32 hex>` (lowercase hex). `ts` is UTC ISO-8601 to the second with
+`Z`; `minutes` has exactly two decimals and is computed by the writer from clock readings, never
+typed. The stage, actor, action and reason_code vocabularies and the column list are defined
+once, in [`docs/pilot/pilot_log_vocabulary.json`](../pilot/pilot_log_vocabulary.json), which
+both step-A readers load at run time; step B embeds it in the writer with a drift test.
+**The log has no free-text column**, so it cannot carry a sample name, a gene or a note; a
+seventh column is refused, because it would be a place to type a cost.
+
+**D2 — the baseline.** `pilot1_baseline.csv`, columns `stage,action,hours,basis`,
+`basis ∈ {measured_prior, estimate}`, the same vocabularies. Written by the owner before the
+session and kept privately.
+
+**D3 — `scripts/unit_economics.py`.** Inputs: the log, the baseline, row 8B's bench CSV, the
+private `owner_inputs.json` and the bring-home quantities file; outputs `unit_economics.csv`
+and `.md`, with each input's SHA-256 (by role, never by path) at the head. Identical inputs give
+byte-identical outputs.
+
+- `owner_inputs.json` is schema-closed: `hourly_value_usd` (number), `hourly_value_source`,
+  `project_definition` (strings, hashed, never printed), `liability` (only `unpriced`),
+  `price_usd` (only `null`). Fixtures use `hourly_value_usd = 1`.
+- Quantities are never typed. Only three bring-home line shapes are read (documented and tested
+  in [`docs/pilot/README.md`](../pilot/README.md)); every other line is counted and ignored, and
+  the sheet prints `quantities: graded <k> of <n> lines`. A conflicting repeat is refused; a
+  missing `samples_in_design` makes every per-sample figure `uncomputable`, never zero.
+- Hours by stage are human minutes excluding `review_output`/`verify_result`; verification hours
+  are those two actions on their own line. Each human minute lands in exactly one of the two.
+- Compute by backend comes from the bench row: every accepted row is `unmetered` under
+  `owned_hardware` or `institutional_allocation`, printed with its CPU-hour quantity; a backend
+  with no row is `unmeasured`. The agent is `unmetered (subscription)` with its minutes; the
+  liability is `unpriced`; the cost line is `cost: $<x> + unmetered compute + unmetered agent +
+  unpriced liability`; the unmetered share is its own line (§16.4); the margin is
+  `uncomputable: no price (R-193)`.
+- Time saved (baseline − human hours, per stage and total), interventions (human rows) and row
+  coverage per actor are printed; a stage with no baseline row is `unmeasured`.
+- The M4 cross-check line comes from the session_turns quantity; `o > 0` prints
+  `DISCREPANCY: <o> human turns outside any logged span`, and no minute changes.
+- Refused with a named reason, writing nothing: a seventh log column, an unknown or missing
+  inputs key, a typed liability, a non-null price, and a bench row whose derived fields do not
+  recompute (numeric cost, other basis, status not `COMPLETED`, non-numeric counts).
+- **The bench binding is to 8B's plan, not 8B's code.** `benchmarks/backend_bench.csv` does not
+  exist at this row's parent; the sheet reads it by header name only, and the binding is
+  re-checked when step B rebases onto 8B.
+
+**D4 — `scripts/rerun_diff.py`.** Reads row 6's `comparison.json` (its shape as the lane read
+it at row 6's build head; `scripts/rerun_check.py` does not exist at this row's parent), locates
+the original and each re-run stage folder, takes the one `de_results.csv` artifact per run,
+verifies both tables' SHA-256 against the record, and prints one block of aggregates per run in
+`runs` order. It never prints a gene identifier, a sample name, a path or `reason` text, and
+changes no tolerance (§8.4 needs a cause and a second re-run). **Substitution named:** the DE
+table has no Wald `stat` column, so D4's `spearman stat` is computed as Spearman's rank
+correlation of `log2FoldChange` over matched genes and printed as `spearman log2FoldChange`.
+`NA`/empty `padj` is counted as `na_padj`; genes in one table only are counted, never printed.
+
+**D4b — `scripts/session_turns.py` and ruling L1.** Counts human turns (`type == "user"`, not
+`isMeta`, content not all `tool_result`), the session wall span and the agent-active span, and
+whether each human turn falls inside a `human` span of the stage; prints numbers only. A record
+that does not classify — another type, a missing or unparseable timestamp, `tool_result` mixed
+with other content, a blank line — exits 2; none is skipped. Per **ruling L1 (the lane's)**,
+`outside minutes` is the union of each outside turn's attention interval — from the latest
+record strictly earlier in time to the turn, clipped to the part outside every human span of
+the stage — rounded half-up to two decimals once. It is a **lower bound** on unlogged human
+attention and is never added to or subtracted from any logged minute. Timestamps are parsed
+without `datetime.fromisoformat`.
+
+**D7 — where each result lives.**
+
+| Artifact | Where | Public? |
+|---|---|---|
+| code, fixtures, tests, 0140, 0141, 0144 | GARS | yes (on the owner's push word) |
+| 0142: baseline SHA-256, protocol, class/purpose/venue, "agreement ref recorded: yes/no", "expiry recorded: yes", the **salted** commitment `sha256(salt ‖ question file)` | GARS | yes (the owner's record) |
+| 0143: human minutes and interventions per stage, agent/tool minutes, the M4 cross-check numbers and any discrepancy, `reproduction: k/n`, `rerun_diff` aggregates, "sheet generated privately, sha …", "no price published (R-193)", NOT-met list | GARS | yes (the owner's record) |
+| `bring_home.txt`, `pilot1_baseline.csv`, `owner_inputs.json`, `contrast_salt.txt`, `unit_economics.*` | aegis `evidence/gars-pilot1/` | no |
+| data, counts, design, DE tables, raw console, `comparison.json`, transcript, report | the cluster only | never |
+
+Records 0141 to 0144 are reserved for this row's later steps; this step writes none of them.
+
+## What this does not close
+
+- **NOT met: the pilot.** No human-touch minute has been measured and no re-run diff has been
+  explained on real data; every number here is a synthetic fixture.
+- **NOT met: the writer and its actor binding** (`pilot_log.py`, the `--launched-by-dispatcher`
+  token, the guard refusal, the machine-owned log folder) — step B.
+- **NOT met: the closed-project doors** — step B.
+- **NOT met: `bring_home`** (step B). The quantities interface is fixed here; its emitter is not.
+- **NOT met: the real sheet** — generated privately after the pilot, never committed.
+- **NOT met: the report**, **R-192's engagement terms**, and **any price** (R-193).
+- **NOT met: a forgotten span with no human turn in it** (a manual step outside the agent
+  session) is invisible to the session cross-check.
+- **Unverified against the real producers:** the bench CSV binding (8B's plan) and the
+  comparison shape (row 6's build head); both are re-checked when step B rebases. Real session
+  transcripts may carry record kinds beyond `user` and `assistant`; they exit 2 until a later
+  recorded ruling widens the closed set.
+- Python 3.6.8 execution is not observed here: the scripts parse under
+  `ast.parse(feature_version=(3, 6))` and run on the machine's Python 3.8.2.
+
+## Test
+
+`python3 tests/test_unit_economics.py`, `python3 tests/test_rerun_diff.py`,
+`python3 tests/test_session_turns.py` (each prints its reserved `EXIT` line when green), and
+`python3 tests/pilot_red_on_fault.py`, which plants eight faults in a scratch copy and requires
+each to go red: a hand-typed cost accepted; verification counted twice; margin computed with no
+price; a gene id printed by `rerun_diff`; a `tool_result` record counted as a human turn; a
+discrepancy auto-corrected; a record silently skipped; a non-deterministic ordering. The three
+modules are red at the parent `ef5c8af` (`ModuleNotFoundError`, an `ImportError`, naming each
+script).
+
+## Status
+
+Standing. Implemented on `build/gars-row-13-pilot`; subject to the fresh-context review named
+above. Not approved or merged by its producer. Row 13's exit is not met.
+
+## Date
+
+2026-09-24
+
+## Addendum — review round 2, 2026-09-24
+
+Every ruling in this addendum is **the lane's**, made on 24 Sep 2026 under the owner's standing
+delegation of 23 Sep 2026; none is the owner's ruling. All earlier bytes of this record are
+unchanged. The fixes and their evidence are in
+[the change report](../implementation/row_13_change_report.md), section "Review round 2 fixes".
+
+**Ruling L2 (the lane's; review m4).** A `user` record carrying `isCompactSummary: true` or
+`isSidechain: true` is written by Claude Code itself, not typed by a human. Both are classified
+non-human (like `isMeta`), are graded (they count in `graded <n> of <n> records`), never change
+the human-turn count, and never start an outside turn's attention interval under L1, so they
+cannot change `outside minutes`. The flags, like `isMeta`, must be booleans. Any other unknown
+`type` still exits 2; an unknown extra key on an otherwise known record does not make it
+unclassifiable. This replaces the review's suggested exit-2 treatment of these two kinds.
+
+**Ruling L3 (the lane's; review m6).** D3's `time saved total` is computed over the stages that
+have a baseline row only. The human hours of stages without one are printed on their own line,
+`human hours without a baseline: <h> (<stages>)`, and never subtracted.
+
+**Ruling L4 (the lane's; review m1).** D3's quantities reader refuses any line starting
+`quantity ` that does not match a fixed shape (`quantity_malformed`) instead of ignoring it.
+Values are stored and printed in canonical form, and a repeat is compared by canonical value.
+Other lines are still counted and ignored.
+
+**Ruling L5 (the lane's; review N2).** D4 refuses an empty `runs` list
+(`comparison_runs_empty`) and a repeated run number (`comparison_run_duplicate`).
+
+**D3's cost line, amended (review m3).** The cost line names the unmeasured compute separately
+from the unmetered compute, by backend:
+`cost: $<x> + unmetered compute (<backends>) + unmeasured compute (<backends>) + unmetered
+agent + unpriced liability`. A compute part that names no backend is left out.
+
+**Parser crashes are refusals (review m2).** A NUL byte, an oversized CSV field, or JSON nested
+past the parser's depth in any input exits 2 with a fixed code (`log_malformed line <n>`,
+`baseline_malformed`, `bench_malformed`, `inputs_not_json`, `table_malformed`,
+`table_unreadable`, `comparison_unreadable`, or `unclassifiable record line <n>`). It never
+produces a traceback, which would print host paths.
+
+**The determinism guard is exact (review M1).** `test_regenerated_byte_identical` pins hash seeds
+0 and 1. It first asserts that these seeds iterate the fixture's two stages in opposite orders,
+then asserts that the stage lines follow the vocabulary's order. The ordering fault is now red
+on every run.
+
+**Wording (review m5, N1).** The scripts are written for Python 3.6.8 and are syntax-checked
+under 3.6. They have not been executed on 3.6.8. In D7, "(the owner's record)" for 0142 and 0143
+means a record for the owner to write. It is not a decision the owner made.
+
+**Stated, not changed (review N3, N4).** A gene whose `padj` moves between `NA` and a value is
+not counted as a crossing; it shows only in `na_padj`. A refused sheet run leaves any earlier
+sheet in `--out` in place. Both are stated in `docs/pilot/README.md`.
+
+## Addendum — review round 3, 2026-09-25
+
+Every ruling in this addendum is **the lane's**, made on 25 Sep 2026 under the owner's standing
+delegation of 23 Sep 2026; none is the owner's ruling. All earlier bytes of this record are
+unchanged. The fixes and their evidence are in
+[the change report](../implementation/row_13_change_report.md), section "Review round 3 fixes".
+The round answers the round-2 review (the independent review of `8764b01`) and the lane's own
+whole-suite verification of `8764b01` on Python 3.13.5.
+
+**Refusal codes do not depend on the Python version (the lane's verification finding).** Under
+Python 3.13 three refusal tests failed: a NUL byte in a log row gave `log_minutes line 3` where
+3.8 gave `log_malformed line 3`, and a NUL byte in a DE table gave `table_value` where 3.8 gave
+`table_malformed`. The cause is a change in the `csv` module: through 3.10 it raises
+`csv.Error` on a NUL byte, and from 3.11 it reads the byte as data, so the row reached a later
+check. Every refusal code is now required to be the same on every Python from 3.6 to 3.13. A
+NUL byte is refused before the `csv` module sees it, with the code the parser error had. Two
+further version splits of the same kind are closed in the same change: integers are never
+converted through `int()` of their text (from 3.11, and in the 3.8.14, 3.9.14 and 3.10.7
+backports, that conversion refuses more than 4300 digits, so a long count crashed or refused on
+one Python and passed on another), and every input is read as UTF-8 whatever the locale (a
+C-locale Python reads text as ASCII). The tests emulate both sides of each split in-process, so
+they go red on a regression whichever Python runs them.
+
+**Ruling r1 (the lane's).** A number too large for the sheet's decimal arithmetic (a
+`decimal.InvalidOperation`) is refused with the fixed code `value_out_of_range`; no route prints
+a traceback.
+
+**Ruling L6 (the lane's; widens L2; review r2).** A record of **any** type carrying
+`isSidechain: true` is subagent traffic the human does not see. It is graded (it counts in
+`graded <n> of <n> records`) but is never a human turn, never the predecessor that starts an
+outside turn's attention interval, and never part of the agent-active span. `isSidechain` must
+be a boolean on every record. A `user` record carrying `isCompactSummary: true` stays harness
+under L2. Harness records still count toward `session wall minutes`, which spans every record.
+
+**Ruling n2 (the lane's).** The quantities reader treats a line as a quantity line when it
+matches `^\s*quantity\b` case-insensitively, so a mistyped keyword (`Quantity`, a leading space,
+a tab, `QUANTITY`, a bare `quantity`) is refused as `quantity_malformed` instead of being
+ignored. A word that only begins with the keyword (`quantity_notes`) is another line shape.
+
+**Ruling n1 (the lane's).** The round-1 and round-2 reviews are cited by their review folder,
+never by a repository path: they are not files of this repository. The round-2 fixes section of
+the change report cites the round-1 review by a path that does not exist here; that section is
+append-only, so the correction is made here and in the round-3 section. The producer was not
+given the review folders' names and may not read those folders, so it cites each review by its
+round and the commit it reviewed (round 1: `76ebf7f`; round 2: `8764b01`) and leaves the folder
+names for the lane to record.
+
+## Addendum — review round 4, 2026-09-25
+
+Every ruling in this addendum is **the lane's**, made on 25 Sep 2026 under the owner's standing
+delegation of 23 Sep 2026 and ordered by the Row-orchestrator; none is the owner's ruling. All
+earlier bytes of this record, the round-2 and round-3 addenda included, are unchanged; where a
+ruling below narrows L6, this addendum governs. The fixes and their evidence are in
+[the change report](../implementation/row_13_change_report.md), section "Review round 4 fixes".
+The round answers the round-3 review (the independent review of `7c202a4`) and is the final fix
+round of step A.
+
+**Ruling L7 (the lane's; narrows L6; review m3).** (a) A transcript record's type is checked
+first. Only `user` and `assistant` are known types; a record with a missing, null or unknown
+`type` exits 2 whatever its flags (`isSidechain`, `isMeta`, `isCompactSummary`). L6's "a record
+of **any** type" now reads "a `user` or `assistant` record". (b) The session has its own time
+window. Its start is the timestamp of the first main-thread record in file order and its end the
+timestamp of the last main-thread record in file order, where a main-thread record is a `user` or
+`assistant` record carrying none of `isSidechain`, `isMeta` and `isCompactSummary`. A start later
+than the end is refused `session_window_inverted` (exit 2). Every record whose timestamp lies
+outside [start, end] is graded, counted and printed as `outside window: <k>`, inserted in
+session_turns' line just before `graded <n> of <n> records`, and is never used in session wall
+minutes, agent-active minutes, outside minutes or as a predecessor. The quantities shape in
+`unit_economics.py`, `docs/pilot/README.md` and the fixtures follow the new line; the fixture's
+numbers are unchanged apart from the new field (`outside window: 0`). The motivating record,
+`{"type":"banana","isSidechain":true,"timestamp":"2030-01-15T10:12:20Z"}`, moved the fixture's
+session wall minutes from 47.00 to 2103853.33 at `7c202a4`: a far-future record corrupted row
+13's own exit measure. It now exits 2; the same record typed `assistant` leaves every number as
+it was and prints `outside window: 1`.
+
+**Ruling m1 (the lane's; completes r1).** Every script's `main` catches
+`decimal.DecimalException`, `Overflow` included, and maps it to `value_out_of_range`; an
+exponent such as `hourly_value_usd: 1e999999` is refused, never a traceback or a host path.
+
+**Ruling m2 (the lane's).** A record carrying `isSidechain` or `isMeta` (either flag) is never a
+predecessor and never a human turn; a record carrying both is no different.
+
+**Ruling n3 (the lane's).** The C-locale case covers `rerun_diff.py`'s `comparison.json` read and
+`session_turns.py`'s transcript read, each with non-ASCII input, so dropping either
+`encoding="utf-8"` is red.
+
+**Ruling n4 (the lane's).** The version claim is worded as a requirement everywhere: refusal
+codes are required to be the same on every Python from 3.6 to 3.13, tested by emulating both
+sides of each known split, with the interpreters the tests were actually executed on named.
+
+**Ruling n5 (the lane's).** This record's frontmatter is not edited. `tests/pilot_emulation.py`
+is named in the change report for the `touches:` list of 0141 (step B's record).
+
+**Readings of L7 made in the code (the producer's, for the lane to confirm; not rulings).** A
+human turn outside the window still counts in `human turns` and in `inside spans` or `outside
+spans`, since L7 lists only the four quantities it never enters. A transcript with no
+main-thread record has an empty window, so every record is outside it and every minute is 0.00.
+`isMeta` and `isCompactSummary` are now read, and must be booleans, on `assistant` records too,
+since L7 defines main-thread by all three flags on either type.

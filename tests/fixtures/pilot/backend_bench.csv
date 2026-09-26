@@ -1,0 +1,3 @@
+backend,status,samples,cpu_s,wall_s,queue_wait_s,cost_usd_per_sample,cost_basis,workload_sha256,measured_at
+local,COMPLETED,6,720,300,0,unmetered,owned_hardware,1a3edb10f7501d24390a2406a80b23d379b630b22fca682ec072baa484c16970,2026-01-10T00:00:00Z
+slurm,COMPLETED,6,6300,900,120,unmetered,institutional_allocation,593b79796dbd7f552bd56285216525efb2bce192ba1c53c0a58bc250f3347b20,2026-01-10T00:00:00Z

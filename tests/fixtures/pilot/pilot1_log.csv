@@ -1,0 +1,14 @@
+# gars-pilot-log v1 nonce=5f1c0e9a7b3d42e8a6c1f0b9d8e7a6c5
+ts,stage,actor,action,reason_code,minutes
+2026-01-15T10:00:00Z,02_02_de,human,fill_config,data,5.00
+2026-01-15T10:05:00Z,02_02_de,agent,prepare,other,3.50
+2026-01-15T10:09:00Z,02_02_de,human,approve_plan,approval,2.00
+2026-01-15T10:11:00Z,02_02_de,tool,wait_queue,other,4.25
+2026-01-15T10:15:15Z,02_02_de,tool,compute,other,12.75
+2026-01-15T10:30:00Z,02_02_de,human,fix_input,fix,5.00
+2026-01-15T10:40:00Z,02_02_de,human,review_output,interpretation,9.00
+2026-01-15T10:50:00Z,02_02_de,agent,summarize,interpretation,2.25
+2026-01-15T11:00:00Z,rerun,human,rerun,rerun,6.00
+2026-01-15T11:06:00Z,rerun,agent,rerun,rerun,1.50
+2026-01-15T11:10:00Z,rerun,human,verify_result,other,3.00
+2026-01-15T11:13:00Z,rerun,tool,compute,rerun,8.00
