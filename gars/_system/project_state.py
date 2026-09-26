@@ -22,6 +22,7 @@ Stock python >=3.6, stdlib only, read-only.
 
 import argparse
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -30,6 +31,8 @@ import guard_hook  # noqa: E402  (0107's closed judgement: imported, never copie
 import workspace  # noqa: E402
 
 HISTORY_DEFAULT = 3
+# A project name the `<name>\t<label>` list cannot carry is never written (decision 0151).
+UNPRINTABLE = "(unprintable project name)"
 
 
 def _context_field(project, field):
@@ -104,16 +107,33 @@ def _history_entries(project):
     return len(headers), headers
 
 
+def printable(name):
+    """False for a name holding a control character (below 0x20, or 0x7f): such a name could
+    split a list record or a render line, so it is shown as UNPRINTABLE, closed (0151)."""
+    return not any(ord(c) < 0x20 or ord(c) == 0x7f for c in name)
+
+
 def closed_labels(ws):
     """{name: class label} for every project of `ws` the guard judges closed. The one function
     the render and `build_projects_index.sh` (through --closed-list) share (decision 0151)."""
     return dict((name, label) for name, label, _ in guard_hook.closed_projects(str(ws)))
 
 
+def _status_value_pattern():
+    """A STATUS first line wrapperlib's writer can produce: a state word, `:reason` only on
+    FAILED, then optionally a job id and the writer's UTC timestamp (decision 0151)."""
+    import wrapperlib
+    states = "|".join(re.escape(s) for s in wrapperlib.STATUS_STATES)
+    reasons = "|".join(re.escape(r) for r in wrapperlib.FAILURE_REASONS) + "|EXIT_[0-9]+"
+    return re.compile(r"(?:(?:%s)|FAILED:(?:%s))(?: [0-9]+)?(?: [0-9]{4}-[0-9]{2}-[0-9]{2}"
+                      r"T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?\Z" % (states, reasons))
+
+
 def _closed_status_line(project, sub):
     """A closed project's STATUS, read only as 0107 leaves it readable: a regular file at its
     own path, never through a symlink. Anything else raises, and the project renders its
-    heading alone."""
+    heading alone. A first line the STATUS writer could not have produced prints
+    `unrecognized`."""
     p = sub / "STATUS"
     if not os.path.lexists(str(p)):
         return "NOT_STARTED"
@@ -123,12 +143,15 @@ def _closed_status_line(project, sub):
         raise OSError("STATUS is not the sub-stage's own file")
     for line in guard_hook._regular_text(str(p)).splitlines():
         if line.strip():
-            return line.strip()
+            return line.strip() if _status_value_pattern().match(line.strip()) else "unrecognized"
     return "NOT_STARTED"
 
 
 def render_closed(project, label):
-    """A closed project: its name, its label, and one line per stage 02 sub-stage."""
+    """A closed project: its name, its label, and one line per stage 02 sub-stage. A name
+    that is not printable is its heading alone."""
+    if not printable(project.name):
+        return ["## %s — closed (unclassified)" % UNPRINTABLE]
     head = "## %s — closed (%s)" % (project.name, label)
     lines = []
     try:
@@ -218,7 +241,8 @@ def main():
     ws = workspace.workspace_root(__file__)
     if args.closed_list is not None:
         for name, label in sorted(closed_labels(args.closed_list or ws).items()):
-            print("%s\t%s" % (name, label))
+            if printable(name):  # the index closes an unprintable name itself
+                print("%s\t%s" % (name, label))
         return 0
 
     out = ["# Project state — derived from the filesystem, authority: STATUS + HISTORY.md",
@@ -226,7 +250,9 @@ def main():
            % workspace.template_version(ws), ""]
 
     if args.project:
-        projects = [Path(args.project).resolve()]
+        # Named and judged by its entry, unresolved, as the full render names it: a symlinked
+        # entry of projects/ is that entry (decision 0151).
+        projects = [Path(os.path.abspath(args.project))]
         if not projects[0].is_dir():
             print("no such project directory: %s" % args.project, file=sys.stderr)
             return 2
@@ -252,7 +278,7 @@ def main():
             closed = None  # the guard cannot judge: every project is closed
 
     for p in projects:
-        if closed is None or p.name in closed:
+        if closed is None or p.name in closed or not printable(p.name):
             out.extend(render_closed(p, closed[p.name] if closed else "unclassified"))
             out.append("")
             continue

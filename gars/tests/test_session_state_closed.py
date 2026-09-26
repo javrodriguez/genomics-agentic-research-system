@@ -11,6 +11,7 @@ dataset row cannot be read.
 """
 import os
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -28,6 +29,10 @@ HISTORY_MARKER = 'MARKER0151historyS4'
 CLOSED = {'pilot': 'deidentified_under_agreement', 'fresh': 'unclassified'}
 HEAD = re.compile(r'^## (\S+) ')
 STATE = {}
+# Names the `<name>\t<label>` list cannot carry (review round 2 F-1): never written verbatim.
+UNPRINTABLE = ('tab\tname', 'nl\nx', 'nl\nopen1', 'trail\n')
+UNPRINTABLE_HEAD = '## (unprintable project name) — closed (unclassified)'
+UNPRINTABLE_ROW = '| (unprintable project name) | closed (unclassified) | — | — | — | — | — |'
 
 
 def setUpModule():
@@ -105,6 +110,17 @@ def rows(index):
                 if line.startswith('| ') and not line.startswith('| Project'))
 
 
+def table(index):
+    """The index's project rows, in order."""
+    lines = index.split('\n')
+    start = lines.index('|---|---|---|---|---|---|---|') + 1
+    return [line for line in lines[start:] if line]
+
+
+def closed_row(name, label):
+    return '| %s | closed (%s) | — | — | — | — | — |' % (name, label)
+
+
 def statuses(project):
     lines = []
     for sub in sorted((project / '02_bioinformatics').glob('*/*')):
@@ -164,6 +180,20 @@ class SessionStateClosedTests(unittest.TestCase):
         self.assertEqual(render['pilot'][1:], ['- 01_nfcore-rnaseq-wrapper: COMPLETE',
                                                '- 02_rnaseq-de: COMPLETE'])
 
+    def test_b_project_is_named_and_judged_by_its_entry(self):
+        # (F-3) a symlinked entry of projects/: --project prints the full render's line for it.
+        ws = fx.build(STATE['top'] / 'symlinked')
+        outside = STATE['top'] / 'symlinked' / 'outside_closed'
+        shutil.copytree(str(ws / 'projects/pilot'), str(outside), symlinks=True)
+        (ws / 'projects/linked').symlink_to(outside)
+        expected = (['## linked — closed (deidentified_under_agreement)']
+                    + statuses(ws / 'projects/linked'))
+        render = hook_text(ws, ['python3', '_system/project_state.py'])
+        self.assertEqual(sections(render)['linked'], expected)
+        for entry in ('projects/linked', str(ws / 'projects/linked'), 'projects/linked/'):
+            one = hook_text(ws, ['python3', '_system/project_state.py', '--project', entry])
+            self.assertEqual(sections(one), {'linked': expected}, entry)
+
     def test_c_public_render_and_row_are_byte_identical(self):
         self.assertEqual(sections(STATE['render'])['open1'],
                          sections(STATE['old_render'])['open1'])
@@ -213,21 +243,98 @@ class SessionStateClosedTests(unittest.TestCase):
         row.chmod(0)
         if os.access(str(row), os.R_OK):
             self.skipTest('running as a user who reads a mode-0 file')
-        guard = dict((name, label) for name, label, _ in guard_hook.closed_projects(str(ws)))
-        self.assertEqual(guard, dict(CLOSED, sealed='unclassified'))
-        listed = hook_text(ws, ['python3', '_system/project_state.py', '--closed-list'])
-        self.assertEqual(dict(line.split('\t') for line in listed.splitlines()), guard)
-        render = hook_text(ws, ['python3', '_system/project_state.py'])
-        closed_render = dict(re.match(r'^## (\S+) — closed \((\w+)\)$', line).groups()
-                             for line in render.splitlines() if ' — closed (' in line)
         subprocess.run(['bash', str(ws / '_system/build_projects_index.sh'), str(ws)],
                        stdout=subprocess.PIPE, check=True)
-        closed_index = dict(re.match(r'^\| (\S+) \| closed \((\w+)\) \|', line).groups()
-                            for line in (ws / 'projects/_index.md').read_text().splitlines()
-                            if '| closed (' in line)
-        self.assertEqual(closed_render, guard)
-        self.assertEqual(closed_index, guard)
+        open1 = rows((ws / 'projects/_index.md').read_text())['open1']
+        # (F-1) closed projects whose names the list format cannot carry, one of them spelled to
+        # rewrite open1's row if it were split at its newline.
+        for name in UNPRINTABLE:
+            shutil.copytree(str(ws / 'projects/pilot'), str(ws / 'projects' / name),
+                            symlinks=True)
+        guard = dict((name, label) for name, label, _ in guard_hook.closed_projects(str(ws)))
+        self.assertEqual(guard, dict(CLOSED, sealed='unclassified',
+                                     **dict((n, CLOSED['pilot']) for n in UNPRINTABLE)))
+        printable = dict((n, l) for n, l in guard.items() if n not in UNPRINTABLE)
+        listed = hook_text(ws, ['python3', '_system/project_state.py', '--closed-list'])
+        self.assertEqual([line.count('\t') for line in listed.splitlines()],
+                         [1] * len(printable))
+        self.assertEqual(dict(line.split('\t') for line in listed.splitlines()), printable)
+        render = hook_text(ws, ['python3', '_system/project_state.py'])
+        closed_render = dict(re.match(r'^## (\S+) — closed \((\w+)\)$', line).groups()
+                             for line in render.splitlines()
+                             if ' — closed (' in line and line != UNPRINTABLE_HEAD)
+        self.assertEqual(closed_render, printable)
+        # An unprintable project is its heading alone; nothing of its name reaches the render.
+        blocks = render.rstrip('\n').split('\n\n')
+        self.assertEqual(blocks.count(UNPRINTABLE_HEAD), len(UNPRINTABLE))
+        self.assertEqual(render.count('## (unprintable'), len(UNPRINTABLE))
+        self.assertNotIn('\t', render)
+        for line in render.splitlines():
+            self.assertFalse(line in ('x', 'name', 'open1') or line.startswith(('x ', 'open1 ')),
+                             line)
+        subprocess.run(['bash', str(ws / '_system/build_projects_index.sh'), str(ws)],
+                       stdout=subprocess.PIPE, check=True)
+        index = table((ws / 'projects/_index.md').read_text())
+        self.assertEqual(sorted(index), sorted(
+            [open1] + [closed_row(n, l) for n, l in printable.items()]
+            + [UNPRINTABLE_ROW] * len(UNPRINTABLE)))
         self.assertIn('## open1 — template', render)
+
+    def test_g_a_guard_that_cannot_judge_closes_everything(self):
+        # (F-2) the workspace's guard raises in closed_projects: render, --project and index.
+        ws = fx.build(STATE['top'] / 'raises')
+        with (ws / '_system/guard_hook.py').open('a') as fh:
+            fh.write('\n\ndef closed_projects(root):\n'
+                     '    raise OSError("fixture: the guard cannot judge")\n')
+        names = ('fresh', 'open1', 'pilot')
+        expected = dict((n, ['## %s — closed (unclassified)' % n]
+                         + statuses(ws / 'projects' / n)) for n in names)
+        render = hook_text(ws, ['python3', '_system/project_state.py'])
+        self.assertEqual(sections(render), expected)
+        for name in names:
+            one = hook_text(ws, ['python3', '_system/project_state.py',
+                                 '--project', 'projects/' + name])
+            self.assertEqual(sections(one), {name: expected[name]})
+        subprocess.run(['bash', str(ws / '_system/build_projects_index.sh'), str(ws)],
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        self.assertEqual(table((ws / 'projects/_index.md').read_text()),
+                         [closed_row(n, 'unclassified') for n in names])
+
+    def test_h_a_failing_closed_list_closes_every_row(self):
+        # (F-2) --closed-list exits non-zero after a partial answer: no row trusts it.
+        ws = fx.build(STATE['top'] / 'listfails')
+        (ws / '_system/project_state.py').write_text(
+            'import sys\nprint("fresh\\tunclassified")\nsys.exit(1)\n')
+        subprocess.run(['bash', str(ws / '_system/build_projects_index.sh'), str(ws)],
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        self.assertEqual(table((ws / 'projects/_index.md').read_text()),
+                         [closed_row(n, 'unclassified') for n in ('fresh', 'open1', 'pilot')])
+
+    def test_i_closed_status_prints_only_a_writer_value(self):
+        # (F-5) a closed STATUS line prints only when it is a value wrapperlib's writer produces.
+        ws = fx.build(STATE['top'] / 'status')
+        pilot = ws / 'projects/pilot'
+        written = {
+            fx.COUNTS_STAGE: 'FAILED:EXIT_1 4242 2026-09-26T06:00:00Z',
+            fx.DE_STAGE: '%s,A' % fx.DESIGN_MARKER,
+            '02_bioinformatics/rnaseq_bulk/03_reason_on_complete': 'COMPLETE:TIMEOUT',
+            '02_bioinformatics/rnaseq_bulk/04_alias': 'COMPLETED',
+            '02_bioinformatics/rnaseq_bulk/05_trailing': 'COMPLETE 2026-09-26T06:00:00Z extra',
+            '02_bioinformatics/rnaseq_bulk/06_writer': 'COMPLETE 2026-09-26T06:00:00Z',
+        }
+        for rel, line in written.items():
+            (pilot / rel).mkdir(parents=True, exist_ok=True)
+            (pilot / rel / 'STATUS').write_text(line + '\n')
+        render = hook_text(ws, ['python3', '_system/project_state.py'])
+        self.assertEqual(sections(render)['pilot'], [
+            '## pilot — closed (deidentified_under_agreement)',
+            '- 01_nfcore-rnaseq-wrapper: FAILED:EXIT_1 4242 2026-09-26T06:00:00Z',
+            '- 02_rnaseq-de: unrecognized',
+            '- 03_reason_on_complete: unrecognized',
+            '- 04_alias: unrecognized',
+            '- 05_trailing: unrecognized',
+            '- 06_writer: COMPLETE 2026-09-26T06:00:00Z'])
+        self.assertNotIn(fx.DESIGN_MARKER, '\n'.join(sections(render)['pilot']))
 
     def test_e_planted_history_header_never_appears(self):
         self.assertIn(HISTORY_MARKER, STATE['old_render'])  # the plant is live at BASE_COMMIT
