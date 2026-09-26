@@ -1925,3 +1925,7 @@ None.
 - **When the guard raises, `--closed-list` prints its traceback to stderr**, which the hook discards.
 - **A bare STATUS state word, without the writer's timestamp, is still accepted** (round 2's reading, kept for the fixture's and older files). Like any value the writer could produce, a hand-written one still shows.
 - **Not run here:** the whole suite and the evals checks (the lane's rule); any Python but 3.8.2; any bash but macOS's 3.2.57; the real hook inside a live Claude Code session.
+
+## Landing of follow-up 0151
+
+2026-09-26. Follow-up 0151 lands as the merge `cb4242d` (first parent public main `757c66c`, second parent `51b0931`), carrying the `Review:`, `Bench:` and `Session:` trailers. The next commit holds its smoke record (`evals/runs/smoke/smoke-20260926-row-13-0151.json`: one run of three `claude-opus-5-5` sessions, 3/3, `delta` `0/1`, `no change`), its retained outputs, the review stub and 0152, the lane's delegated approval of 0151's protected changes, which carries the landing's evidence and names the review kits (`gars-row-13-0151-review-claude-2026-09-26`, `gars-row-13-0151-rereview2-claude-2026-09-26`, `gars-row-13-0151-rereview3-claude-2026-09-26`). Nothing under `gars/_system/` changes in that commit.
