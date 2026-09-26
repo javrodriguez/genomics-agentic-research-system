@@ -52,7 +52,8 @@ FAULTS = (
      'stages = list({r["stage"] for r in rows} | set(base))', 'test_unit_economics'),
     # Review round 2 (0140's addendum): one fault per new guard.
     ('a malformed quantity line ignored', 'scripts/unit_economics.py',
-     'raise Refused("quantity_malformed")', 'pass', 'test_unit_economics'),
+     'if QUANTITY_PREFIX.match(line):\n            raise Refused("quantity_malformed")',
+     'if QUANTITY_PREFIX.match(line):\n            pass', 'test_unit_economics'),
     ('an unmeasured backend called unmetered', 'scripts/unit_economics.py',
      '(("unmetered", metered), ("unmeasured", unmeasured))',
      '(("unmetered", metered + unmeasured),)', 'test_unit_economics'),
@@ -97,10 +98,6 @@ FAULTS = (
      'QUANTITY_PREFIX = re.compile(r"^\\s*quantity\\b", re.I)',
      'QUANTITY_PREFIX = re.compile(r"quantity ")', 'test_unit_economics'),
     # Review round 4 (0140's third addendum): L7, m1, m2, n3.
-    ('an unknown type classified by its flags', 'scripts/session_turns.py',
-     'if not isinstance(record, dict) or record.get("type") not in KNOWN_TYPES:',
-     'if not isinstance(record, dict) or (record.get("type") not in KNOWN_TYPES\n'
-     '            and not record.get("isSidechain")):', 'test_session_turns'),
     ('a record outside the window used as a predecessor', 'scripts/session_turns.py',
      'within = [(kind, t) for kind, t in records if start is not None and start <= t <= end]',
      'within = list(records)', 'test_session_turns'),
@@ -121,6 +118,23 @@ FAULTS = (
     ('a transcript read in the locale encoding', 'scripts/session_turns.py',
      'Path(transcript).read_text(encoding="utf-8")', 'Path(transcript).read_text()',
      'test_session_turns'),
+    # Follow-up 0150 (the lane's ruling): a record of any other non-empty string type is a
+    # harness record. It retires 'an unknown type classified by its flags' (R2), whose guard
+    # this ruling removes; the last two faults below replace it.
+    ('a harness record counted as a human turn (non-message type)', 'scripts/session_turns.py',
+     'return "harness_type"', 'return "human"', 'test_session_turns'),
+    ('a harness record starting an attention interval (non-message type)',
+     'scripts/session_turns.py',
+     'predecessors = [t for kind, t in within if kind in MAIN_THREAD]',
+     'predecessors = [t for kind, t in within if kind in MAIN_THREAD] + [\n'
+     '        micros(r.get("timestamp")) for r in (json.loads(l) for l in lines)\n'
+     '        if classify(r) == "harness_type" and micros(r.get("timestamp")) is not None]',
+     'test_session_turns'),
+    ('an unknown type skipped instead of graded (non-message type)', 'scripts/session_turns.py',
+     'len(records) + harness_types, len(lines)', 'len(records), len(lines)',
+     'test_session_turns'),
+    ('a missing type accepted (non-message type)', 'scripts/session_turns.py',
+     'if not isinstance(kind, str) or not kind:', 'if False:', 'test_session_turns'),
 )
 
 

@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 """Session cross-check (M4): human turns in an agent session against the logged human spans.
 
-Row 13 step A (decision 0140, D4b and rulings L1, L2, L6, L7). Stdlib-only; written for Python
-3.6.8 (syntax checked, not executed on 3.6.8).
+Row 13 step A (decision 0140, D4b and rulings L1, L2, L6, L7) and follow-up 0150. Stdlib-only;
+written for Python 3.6.8 (syntax checked, not executed on 3.6.8).
 
     python3 scripts/session_turns.py --transcript <session.jsonl> --log <pilot1_log.csv> \
         --stage 02_02_de
 
 Every line of the transcript is one record and must classify. The type is checked first (ruling
-L7): only `user` and `assistant` are known, and a record with a missing, null or unknown `type`
-is unclassifiable whatever its flags. Then:
+L7, narrowed by ruling 0150): a line that is not a JSON object, or a record whose `type` is
+missing, null, empty or not a string, is unclassifiable whatever its flags. Only `user` and
+`assistant` are message types. A record of any other type (a real session writes `attachment`,
+`system`, `queue-operation`, `ai-title` and more) is a harness-type record (ruling 0150): graded,
+never a human turn, never a predecessor, never agent activity and never part of the session's
+window; its content, flags and timestamp are not examined, so it needs no timestamp. A message
+record then classifies:
 - a `user` or `assistant` record with `isSidechain` true (ruling L6: subagent traffic the human
   does not see) or `isCompactSummary` true (ruling L2): harness-generated;
 - a `user` or `assistant` record with `isMeta` true: a meta record;
@@ -21,9 +26,9 @@ A harness or meta record is graded like every record but is never a human turn, 
 predecessor that starts an outside turn's attention interval (so it cannot change `outside
 minutes`) and never part of the agent-active span (ruling m2: either flag is enough). The
 content of a harness or meta record is not examined.
-The flags must be booleans. Each record needs an ISO-8601 `timestamp` with `Z` or a numeric
-offset. Anything else -- a missing or unparseable timestamp, main-thread `user` content mixing
-`tool_result` with other blocks, a blank line, a JSON line nested past the parser's depth -- is
+The flags must be booleans. Each message record needs an ISO-8601 `timestamp` with `Z` or a
+numeric offset. Anything else -- a missing or unparseable timestamp, main-thread `user` content
+mixing `tool_result` with other blocks, a blank line, a JSON line nested past the parser's depth -- is
 unclassifiable and exits 2; no record is skipped. An extra key on an otherwise known record does
 not change its class, whatever Python reads it: integers are parsed as decimals, never through
 `int()` of their text, whose digits 3.11 and later cap. Every file is read as UTF-8 whatever the
@@ -34,11 +39,13 @@ A decimal signal is `value_out_of_range`, never a traceback.
 
 The session's window (ruling L7) runs from the timestamp of the FIRST main-thread record in file
 order to that of the LAST, a main-thread record being a human turn, a tool result or an agent
-record; a start later than the end is refused `session_window_inverted`. A record whose timestamp
-lies outside the window is graded and counted as `outside window`, and is never used in `session
-wall minutes` (the window's length), `agent active minutes`, `outside minutes` or as a
+record; a start later than the end is refused `session_window_inverted`. A message record whose
+timestamp lies outside the window is graded and counted as `outside window`, and is never used
+in `session wall minutes` (the window's length), `agent active minutes`, `outside minutes` or as a
 predecessor; a human turn outside it is still counted as a turn, inside or outside the spans. A
-transcript with no main-thread record has an empty window: every record lies outside it.
+transcript with no main-thread record has an empty window: every message record lies outside
+it. A harness-type record is counted in `graded` and nowhere else, so graded = message records
+inside the window + `outside window` + harness-type (non-message) records.
 
 A human turn is inside when its timestamp falls within a `human` span (`ts` to `ts + minutes`)
 of the stage. `outside minutes` (ruling L1) is a LOWER BOUND on unlogged human attention: each
@@ -94,19 +101,25 @@ def micros(text):
     return seconds * 1000000 + sub
 
 
-KNOWN_TYPES = ("user", "assistant")
+MESSAGE_TYPES = ("user", "assistant")
 FLAGS = ("isSidechain", "isMeta", "isCompactSummary")
 MAIN_THREAD = ("human", "tool_result", "assistant")
 
 
 def classify(record):
-    """'human', 'tool_result', 'meta', 'harness' or 'assistant'; None when unclassifiable."""
-    # Ruling L7 (a): the type first, so no flag makes an unknown or missing type classifiable.
-    if not isinstance(record, dict) or record.get("type") not in KNOWN_TYPES:
+    """'human', 'tool_result', 'meta', 'harness', 'assistant' or 'harness_type'; None when
+    unclassifiable."""
+    # Ruling L7 (a): the type first, so no flag makes a missing or non-string type classifiable.
+    if not isinstance(record, dict):
         return None
+    kind = record.get("type")
+    if not isinstance(kind, str) or not kind:
+        return None
+    if kind not in MESSAGE_TYPES:
+        # Ruling 0150: any other type is written by the harness; nothing else in it is read.
+        return "harness_type"
     if micros(record.get("timestamp")) is None:
         return None
-    kind = record["type"]
     sidechain, meta, compact = (record.get(flag, False) for flag in FLAGS)
     if not all(isinstance(flag, bool) for flag in (sidechain, meta, compact)):
         return None
@@ -186,6 +199,7 @@ def count(transcript, log, stage):
     if not lines:
         raise ue.Refused("transcript_empty")
     records = []
+    harness_types = 0
     for number, line in enumerate(lines, start=1):
         try:
             record = json.loads(line, parse_int=Decimal)
@@ -194,11 +208,15 @@ def count(transcript, log, stage):
         kind = classify(record)
         if kind is None:
             raise ue.Refused("unclassifiable record line %d" % number)
+        if kind == "harness_type":
+            # Ruling 0150: graded, never timed; counted in `graded` and in nothing else.
+            harness_types += 1
+            continue
         records.append((kind, micros(record["timestamp"])))
 
     # Ruling L7 (b): the session's window runs from the first to the last main-thread record in
-    # file order; a record outside it is counted, never timed. Without a main-thread record the
-    # window is empty and every record lies outside it.
+    # file order; a message record outside it is counted, never timed. Without a main-thread
+    # record the window is empty and every message record lies outside it.
     main_thread = [t for kind, t in records if kind in MAIN_THREAD]
     if main_thread and main_thread[0] > main_thread[-1]:
         raise ue.Refused("session_window_inverted")
@@ -222,7 +240,7 @@ def count(transcript, log, stage):
             % (len(human), len(inside), len(outside), minutes(union_length(attention)),
                minutes(end - start if main_thread else 0),
                minutes(max(agent) - min(agent) if agent else 0),
-               len(records) - len(within), len(records), len(lines)))
+               len(records) - len(within), len(records) + harness_types, len(lines)))
 
 
 def main(argv=None):

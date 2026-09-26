@@ -1,0 +1,34 @@
+{"timestamp": "2026-01-15T09:58:00Z", "type": "queue-operation"}
+{"type": "atis-latch"}
+{"type": "last-prompt"}
+{"type": "cost-state"}
+{"message": {"content": "start the DE stage for SAMPLEFIX_A7 please", "role": "user"}, "sessionId": "fixture-session", "timestamp": "2026-01-15T09:59:00Z", "type": "user"}
+{"isSidechain": false, "parentUuid": null, "timestamp": "2026-01-15T10:00:10Z", "type": "attachment", "uuid": "fixture-uuid-1"}
+{"type": "ai-title"}
+{"type": "custom-title"}
+{"type": "agent-name"}
+{"type": "mode"}
+{"message": {"content": [{"text": "Reading the contract; GENEFIX0001 noted.", "type": "text"}], "role": "assistant"}, "timestamp": "2026-01-15T10:00:30Z", "type": "assistant"}
+{"message": {"content": [{"content": "rows for SAMPLEFIX_A7 and GENEFIX0003", "tool_use_id": "toolu_fixture_1", "type": "tool_result"}], "role": "user"}, "sessionId": "fixture-session", "timestamp": "2026-01-15T10:01:00Z", "type": "user"}
+{"message": {"content": [{"text": "use condition as the contrast, SAMPLEFIX_B2 is control", "type": "text"}], "role": "user"}, "sessionId": "fixture-session", "timestamp": "2026-01-15T10:02:00Z", "type": "user"}
+{"type": "file-history-snapshot"}
+{"type": "bridge-session"}
+{"isMeta": true, "message": {"content": "<command-name>/context</command-name> SAMPLEFIX_A7", "role": "user"}, "sessionId": "fixture-session", "timestamp": "2026-01-15T10:02:30Z", "type": "user"}
+{"message": {"content": [{"text": "Config filled.", "type": "text"}], "role": "assistant"}, "timestamp": "2026-01-15T10:03:00Z", "type": "assistant"}
+{"message": {"content": "approved", "role": "user"}, "sessionId": "fixture-session", "timestamp": "2026-01-15T10:10:00Z", "type": "user"}
+{"message": {"content": [{"text": "Submitting.", "type": "text"}], "role": "assistant"}, "timestamp": "2026-01-15T10:10:30Z", "type": "assistant"}
+{"isSidechain": false, "parentUuid": "fixture-uuid-2", "timestamp": "2026-01-15T10:12:20Z", "type": "system", "uuid": "fixture-uuid-3"}
+{"isSidechain": false, "parentUuid": "fixture-uuid-3", "timestamp": "2026-01-15T10:12:25Z", "type": "attachment", "uuid": "fixture-uuid-4"}
+{"timestamp": "2026-01-15T10:12:28Z", "type": "queue-operation"}
+{"timestamp": "2026-01-15T10:12:29Z", "type": "file-history-delta"}
+{"message": {"content": "wait, is GENEFIX0003 filtered?", "role": "user"}, "sessionId": "fixture-session", "timestamp": "2026-01-15T10:12:30Z", "type": "user"}
+{"message": {"content": [{"content": "rows for SAMPLEFIX_A7 and GENEFIX0003", "tool_use_id": "toolu_fixture_2", "type": "tool_result"}], "role": "user"}, "sessionId": "fixture-session", "timestamp": "2026-01-15T10:20:00Z", "type": "user"}
+{"message": {"content": [{"text": "Job finished.", "type": "text"}], "role": "assistant"}, "timestamp": "2026-01-15T11:21:00+01:00", "type": "assistant"}
+{"isMeta": false, "isSidechain": false, "parentUuid": "fixture-uuid-4", "timestamp": "2026-01-15T10:30:10Z", "type": "system", "uuid": "fixture-uuid-5"}
+{"isMeta": false, "message": {"content": "fix the design row for SAMPLEFIX_B2", "role": "user"}, "sessionId": "fixture-session", "timestamp": "2026-01-15T10:30:30Z", "type": "user"}
+{"message": {"content": "looks right; GENEFIX0005 is the top hit", "role": "user"}, "sessionId": "fixture-session", "timestamp": "2026-01-15T10:45:00.500Z", "type": "user"}
+{"message": {"content": [{"text": "Summary written.", "type": "text"}], "role": "assistant"}, "timestamp": "2026-01-15T10:46:00Z", "type": "assistant"}
+{"timestamp": "2030-01-15T10:12:20Z", "type": "file-history-delta"}
+{"type": "last-prompt"}
+{"type": "atis-latch"}
+{"type": "cost-state"}

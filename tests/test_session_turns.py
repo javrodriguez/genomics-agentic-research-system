@@ -1,4 +1,4 @@
-"""Row 13 step A: the session cross-check (decision 0140, D4b and rulings L1, L2, L6).
+"""Row 13 step A: the session cross-check (decision 0140, D4b and rulings L1, L2, L6; 0150).
 
 The transcript is synthetic: human turns, tool_result user records, isMeta records and
 assistant records, with two human turns outside every logged span. Every check drives the
@@ -27,6 +27,11 @@ EXPECTED = ('human turns: 6; inside spans: 4; outside spans: 2; outside minutes:
 LINE = re.compile(r'^human turns: \d+; inside spans: \d+; outside spans: \d+; outside minutes: '
                   r'\d+\.\d\d; session wall minutes: \d+\.\d\d; agent active minutes: \d+\.\d\d; '
                   r'outside window: \d+; graded (\d+) of (\d+) records\n$')
+# The 15 record types of the sanitized inventory of 40 real local transcripts (ruling 0150).
+INVENTORY_TYPES = ('agent-name', 'ai-title', 'assistant', 'atis-latch', 'attachment',
+                   'bridge-session', 'cost-state', 'custom-title', 'file-history-delta',
+                   'file-history-snapshot', 'last-prompt', 'mode', 'queue-operation', 'system',
+                   'user')
 LOG_HEAD = ('# gars-pilot-log v1 nonce=0123456789abcdef0123456789abcdef\n'
             'ts,stage,actor,action,reason_code,minutes\n')
 
@@ -210,8 +215,7 @@ class SessionTurnsTests(unittest.TestCase):
         good = assistant('2026-01-15T10:00:00Z')
         mixed = user('2026-01-15T10:01:00Z', [{'type': 'tool_result', 'content': 'x'},
                                               {'type': 'text', 'text': 'y'}])
-        for bad in ({'type': 'summary', 'timestamp': '2026-01-15T10:01:00Z'},
-                    user('2026-01-15 10:01:00', 'no T, no zone'),
+        for bad in (user('2026-01-15 10:01:00', 'no T, no zone'),
                     user('2026-01-15T10:01:00', 'no zone'),
                     user('2026-02-30T10:01:00Z', 'no such day'),
                     user('2026-01-15T24:01:00Z', 'no such hour'),
@@ -222,6 +226,13 @@ class SessionTurnsTests(unittest.TestCase):
                     # a parser crash is unclassifiable, never a traceback naming a host path
                     '[' * 100000):
             self.assert_unclassifiable([good, bad, good], 2)
+        # Ruling 0150 (R1, superseding L7 (a) for a non-empty string type): a `summary` record
+        # was unclassifiable here; it is now a harness record, graded and never timed.
+        self.assertEqual(self.line([good, {'type': 'summary', 'timestamp': '2026-01-15T10:01:00Z'},
+                                    good], []),
+                         'human turns: 0; inside spans: 0; outside spans: 0; outside minutes: '
+                         '0.00; session wall minutes: 0.00; agent active minutes: 0.00; outside '
+                         'window: 0; graded 3 of 3 records\n')
         nul_log = self.root / 'nul.csv'
         nul_log.write_text(LOG_HEAD + '2026-01-15T10:00:00Z,02_02_de,human,check,other,5.00\x00\n')
         result = self.run_turns(log=nul_log)
@@ -229,19 +240,104 @@ class SessionTurnsTests(unittest.TestCase):
         print('red-on-fault guard: every unclassifiable record exits 2; none skipped')
 
     def test_unknown_type_exits_2_whatever_its_flags(self):
-        # Ruling L7 (a), review round 3 m3: the type is checked first; only `user` and `assistant`
-        # are known, and no flag makes a missing, null or unknown type classifiable. The first
-        # record is the reviewer's, which moved session wall minutes to 2103853.33 at 7c202a4.
+        # Ruling L7 (a), review round 3 m3: the type is checked first, and no flag makes a missing
+        # or null type classifiable. Ruling 0150 (R1) supersedes L7 (a) for a non-empty string
+        # type other than `user` or `assistant`: it is a harness record, graded, and its flags
+        # and timestamp are not examined. The `banana` record is the reviewer's, which moved
+        # session wall minutes to 2103853.33 at 7c202a4; it now moves no number but `graded`.
         lines = (FIXTURES / 'session.jsonl').read_text().splitlines()
         for flag in ('isSidechain', 'isMeta', 'isCompactSummary'):
-            for record in ('{"type":"banana","%s":true,"timestamp":"2030-01-15T10:12:20Z"}' % flag,
-                           '{"type":null,"%s":true,"timestamp":"2026-01-15T10:12:20Z"}' % flag,
-                           '{"%s":true,"timestamp":"2026-01-15T10:12:20Z"}' % flag,
-                           '{"type":"system","%s":true,"timestamp":"2026-01-15T10:12:20Z"}' % flag):
+            for record in ('{"type":null,"%s":true,"timestamp":"2026-01-15T10:12:20Z"}' % flag,
+                           '{"%s":true,"timestamp":"2026-01-15T10:12:20Z"}' % flag):
                 result = self.run_turns(self.write('u.jsonl', lines + [record]))
                 self.assertEqual((result.returncode, result.stdout, result.stderr),
                                  (2, '', 'refused: unclassifiable record line 15\n'), record)
-        print('red-on-fault guard: an unknown record type exits 2 whatever its flags')
+            for record in ('{"type":"banana","%s":true,"timestamp":"2030-01-15T10:12:20Z"}' % flag,
+                           '{"type":"system","%s":true,"timestamp":"2026-01-15T10:12:20Z"}' % flag):
+                result = self.run_turns(self.write('u.jsonl', lines + [record]))
+                self.assertEqual((result.returncode, result.stdout, result.stderr),
+                                 (0, EXPECTED.replace('graded 14 of 14', 'graded 15 of 15')
+                                  + '\n', ''), record)
+        print('red-on-fault guard: a missing or null record type exits 2 whatever its flags; an '
+              'unknown one is a harness record whatever its flags')
+
+    def test_real_record_types_graded_as_harness(self):
+        # Ruling 0150, test (a): a transcript carrying one or more records of every type the
+        # sanitized inventory of 40 real sessions lists, each with only the keys the inventory
+        # found on that type, interleaved with the step A fixture. Stripped of every type but
+        # `user` and `assistant` it is the step A fixture byte for byte, and it yields the same
+        # number for every field of the line; each `graded` count is its own file's record count.
+        real = (FIXTURES / 'session_real_types.jsonl').read_text()
+        types = [json.loads(l)['type'] for l in real.splitlines()]
+        self.assertEqual(sorted(set(types)), sorted(INVENTORY_TYPES))
+        stripped = ''.join(l + '\n' for l in real.splitlines()
+                           if json.loads(l)['type'] in ('user', 'assistant'))
+        self.assertEqual(stripped, (FIXTURES / 'session.jsonl').read_text())
+        runs = [self.run_turns(FIXTURES / 'session_real_types.jsonl'),
+                self.run_turns(self.write('stripped.jsonl', stripped.splitlines()))]
+        self.assertEqual([(r.returncode, r.stderr) for r in runs], [(0, '')] * 2)
+        fields = [dict(re.findall(r'(?:^|; )([a-z ]+): ([0-9.]+)', r.stdout)) for r in runs]
+        self.assertEqual(sorted(fields[0]), ['agent active minutes', 'human turns',
+                                             'inside spans', 'outside minutes', 'outside spans',
+                                             'outside window', 'session wall minutes'])
+        for name in sorted(fields[0]):
+            self.assertEqual(fields[0][name], fields[1][name], name)
+        graded = [LINE.match(r.stdout).groups() for r in runs]
+        self.assertEqual(graded, [(str(len(types)),) * 2,
+                                  (str(types.count('user') + types.count('assistant')),) * 2])
+        self.assertEqual(runs[0].stdout,
+                         EXPECTED.replace('graded 14 of 14', 'graded 34 of 34') + '\n')
+        print('red-on-fault guard: every real record type is graded; none moves a number')
+
+    def test_harness_type_never_timed(self):
+        # Ruling 0150, test (b): a record of a non-message type is never a human turn, never the
+        # predecessor of an outside turn, never agent activity and never part of the window,
+        # whatever its timestamp (far future, before the window, unparseable or absent), flags or
+        # content. The fixture's outside turn at 10:12:30 has its predecessor at 10:10:30.
+        lines = (FIXTURES / 'session.jsonl').read_text().splitlines()
+        records = [
+            {'type': 'system', 'timestamp': '2026-01-15T10:12:20Z', 'isSidechain': False,
+             'isMeta': False, 'message': {'role': 'user', 'content': 'looks like a human turn'}},
+            {'type': 'attachment', 'timestamp': '2026-01-15T10:12:25Z',
+             'message': {'role': 'assistant', 'content': [{'type': 'text', 'text': 'ok'}]}},
+            {'type': 'queue-operation', 'timestamp': '2030-01-15T10:12:20Z'},
+            {'type': 'queue-operation', 'timestamp': '2026-01-15T09:00:00Z'},
+            {'type': 'file-history-delta', 'timestamp': 'not a time'},
+            {'type': 'mode', 'timestamp': 20260115, 'isMeta': 'yes', 'isSidechain': None},
+            {'type': 'ai-title', 'message': 'not an object'},
+        ]
+        for where in (0, 8, 9, len(lines)):
+            for record in records:
+                result = self.run_turns(self.write(
+                    'b.jsonl', lines[:where] + [json.dumps(record)] + lines[where:]))
+                self.assertEqual((result.returncode, result.stdout, result.stderr),
+                                 (0, EXPECTED.replace('graded 14 of 14', 'graded 15 of 15')
+                                  + '\n', ''), (where, record))
+        # Every one of them at once, just before the outside turn.
+        result = self.run_turns(self.write(
+            'all.jsonl', lines[:8] + [json.dumps(r) for r in records] + lines[8:]))
+        self.assertEqual((result.returncode, result.stdout, result.stderr),
+                         (0, EXPECTED.replace('graded 14 of 14', 'graded 21 of 21') + '\n', ''))
+        # Alone, they make no window: nothing inside, nothing outside, no minute.
+        self.assertEqual(self.line(records, []),
+                         'human turns: 0; inside spans: 0; outside spans: 0; outside minutes: '
+                         '0.00; session wall minutes: 0.00; agent active minutes: 0.00; outside '
+                         'window: 0; graded 7 of 7 records\n')
+        self.assertEqual([st.classify(r) for r in records], ['harness_type'] * len(records))
+        print('red-on-fault guard: a harness-type record is never a turn, a predecessor, agent '
+              'activity or part of the window')
+
+    def test_missing_or_non_string_type_exits_2(self):
+        # Ruling 0150, test (c): only a non-empty string type can be a harness record.
+        good = assistant('2026-01-15T10:00:00Z')
+        ts = '2026-01-15T10:01:00Z'
+        for bad in ({'timestamp': ts}, {'type': None, 'timestamp': ts},
+                    {'type': '', 'timestamp': ts}, {'type': 1, 'timestamp': ts},
+                    {'type': True, 'timestamp': ts}, {'type': ['system'], 'timestamp': ts},
+                    {'type': {'name': 'system'}, 'timestamp': ts},
+                    '"system"', '["system"]', '1', 'null', 'not json', ''):
+            self.assert_unclassifiable([good, bad, good], 2)
+        print('red-on-fault guard: a missing, null, empty or non-string type exits 2')
 
     def test_session_window_ruling_l7(self):
         # Ruling L7 (b): the window runs from the first to the last main-thread record in file

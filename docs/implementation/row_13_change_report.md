@@ -1381,3 +1381,128 @@ None.
 ## Landing
 
 2026-09-26. Row 13 steps A and B land as the merge `09a6e77` (first parent public main `abab89a`, second parent `67b3263`), carrying the `Review:`, `Bench:` and `Session:` trailers row 14's gate requires. The next commit holds the merge's smoke record (`evals/runs/smoke/smoke-20260926-row-13-doors.json`: one run of three `claude-opus-5-5` sessions, 3/3, `delta` `0/1`, `no change`), its retained outputs, the review stub and 0144, the lane's delegated approval of step B's protected changes, which carries the landing's evidence. Nothing under `gars/_system/` changes in that commit. Row 13's exit stays NOT met: no pilot has run.
+
+## Follow-up 0150
+
+2026-09-26. Built from public main `67c49e4` on `build/gars-row-13-0150`, under ruling 0150 and
+the lane's rulings R1–R4. These are **the lane's** rulings, made under the owner's standing
+delegation of 23 Sep 2026 and ruled by the lane's coordinator on 26 Sep 2026; none of them is
+the owner's. See [0150](../decisions/0150-row-13-session-turns-harness-records.md). This change
+was produced by a headless Claude Code context (Claude Opus 5.5) and is reviewed by a separate,
+fresh Claude Opus 5.5 context working from a blind kit. The two share a model family, so the
+review's independence rests on the fresh context and the blind kit (0009, 0013, 0014). Earlier
+sections of this report are unchanged.
+
+**The defect.** `scripts/session_turns.py` refused, with exit 2, any record whose `type` was not
+`user` or `assistant` (L7 (a)). A real Claude Code transcript carries 13 other types (a sanitized
+inventory of 40 local sessions, 22 694 records: see 0150's table), so the M4 cross-check refused
+every real session.
+
+| Requirement | Changed files | Test | Result |
+|---|---|---|---|
+| 0150 rule 2: any other non-empty string type is a harness record: graded, never a turn, predecessor, agent activity or window member; content, flags and timestamp not examined | `scripts/session_turns.py` (`classify` returns `harness_type` after the type check; `count` adds it to `graded` only) | (a) new `test_real_record_types_graded_as_harness` on the new `tests/fixtures/pilot/session_real_types.jsonl` (34 records, all 15 inventory types, each type with only its inventoried keys; stripped of non-message types it equals `session.jsonl` byte for byte). Every one of the seven non-`graded` numbers is equal between the two files; `graded 34 of 34` and `graded 14 of 14` | **red first** against `67c49e4`'s script (exit 2, quoted below), green after |
+| 0150 rule 2: never a predecessor, never the window, never a turn, whatever the timestamp | same | (b) new `test_harness_type_never_timed`: seven records (10:12:20 just before the outside turn, 10:12:25, 2030, 09:00, `not a time`, a numeric timestamp, no timestamp; non-boolean flags; a `message` that looks human) at four positions each, then all seven at once; alone they give every number 0 | **red first** (exit 2), green after |
+| 0150 rule 3: missing, null, empty or non-string type, and a non-object line, still exit 2 | same | (c) new `test_missing_or_non_string_type_exits_2`; the missing and null cases of `test_unknown_type_exits_2_whatever_its_flags` are kept | green before and after, `refused: unclassifiable record line 2` / `15` |
+| R1: the named expectation change | `tests/test_session_turns.py` | `summary` in `test_unclassifiable_records_exit_2` and `banana`/`system` in `test_unknown_type_exits_2_whatever_its_flags` were exit 2; now each is graded with every other number unchanged (`banana` is the round-3 far-future record: wall minutes stay 47.00, `outside window: 0`) | the only change to an existing assertion; red at `67c49e4` as expected |
+| R4: counted in `graded` only; graded = message records in the window + `outside window` + harness records | `scripts/session_turns.py` docstring, `docs/pilot/README.md`, 0150 | (a) and (b) assert `outside window: 0` with harness records before the window and in 2030 | green |
+| 0150 rule 4: the line's shape is unchanged | none | `test_fixture_counts_only` and the bring-home line are unchanged and green; `test_unit_economics` is green | green |
+| (d) the existing tests stay green | none | the 11 earlier methods of `test_session_turns` | green (14 in all) |
+
+### Red first: the final tests against `67c49e4`'s script (Python 3.8.2)
+
+The final test module and both fixtures were run in a scratch copy of the tree in which
+`scripts/` and `docs/pilot/` came from `67c49e4` (`git archive 67c49e4 scripts docs/pilot`):
+
+```
+FAIL: test_harness_type_never_timed (__main__.SessionTurnsTests)
+- (2, '', 'refused: unclassifiable record line 1\n')
+FAIL: test_real_record_types_graded_as_harness (__main__.SessionTurnsTests)
+- [(2, 'refused: unclassifiable record line 1\n'), (0, '')]
+FAIL: test_unclassifiable_records_exit_2 (__main__.SessionTurnsTests)
+FAIL: test_unknown_type_exits_2_whatever_its_flags (__main__.SessionTurnsTests)
+- (2, '', 'refused: unclassifiable record line 15\n')
+Ran 14 tests in 3.266s
+FAILED (failures=4)
+```
+
+In (a), the real-type fixture exits 2 on its first line (a `queue-operation` record), while the
+stripped copy passes. In (b), the first harness record (a `system` record at file position 0)
+exits 2.
+
+### Green after
+
+```
+python3 tests/test_session_turns.py
+Ran 14 tests in 5.949s
+OK
+EXIT session turns (fixture): counts only
+```
+
+### Red-on-fault, follow-up 0150
+
+| Fault | Plant | Result |
+|---|---|---|
+| a harness record counted as a human turn (non-message type) | `return "harness_type"` → `return "human"` | RED (4 failures) |
+| a harness record starting an attention interval (non-message type) | each timestamped harness record's time added to `predecessors` | RED (3 failures, 1 error) |
+| an unknown type skipped instead of graded (non-message type) | `graded` loses `+ harness_types` | RED (4 failures) |
+| a missing type accepted (non-message type) | the missing/non-string type check → `if False:` | RED (2 failures) |
+| **retired (R2):** an unknown type classified by its flags | its guard, the `KNOWN_TYPES` refusal, is removed by ruling 0150; the two faults above replace it | n/a |
+| **anchor repaired:** a malformed quantity line ignored | the anchor `raise Refused("quantity_malformed")` has matched twice since step B added a second raise for an off-shape session line, so the driver aborted with `anchor … found 2 times` before any summary; it now includes its `if QUANTITY_PREFIX.match(line):` line, the occurrence the fault targeted when written. The fault is unchanged; `scripts/unit_economics.py` is untouched | RED (1 failure) |
+
+The driver's summary lines, verbatim (3.8.2; every other fault line also reads RED):
+
+```
+baseline test_unit_economics: OK
+baseline test_rerun_diff: OK
+baseline test_session_turns: OK
+a malformed quantity line ignored: RED; FAILED (failures=1); test_quantity_lines_canonical_or_refused
+a harness record counted as a human turn (non-message type): RED; FAILED (failures=4); test_harness_type_never_timed, test_real_record_types_graded_as_harness, test_unclassifiable_records_exit_2, test_unknown_type_exits_2_whatever_its_flags
+a harness record starting an attention interval (non-message type): RED; FAILED (failures=3, errors=1); test_harness_type_never_timed, test_real_record_types_graded_as_harness, test_refusal_codes_do_not_depend_on_the_interpreter, test_unknown_type_exits_2_whatever_its_flags
+an unknown type skipped instead of graded (non-message type): RED; FAILED (failures=4); test_harness_type_never_timed, test_real_record_types_graded_as_harness, test_unclassifiable_records_exit_2, test_unknown_type_exits_2_whatever_its_flags
+a missing type accepted (non-message type): RED; FAILED (failures=2); test_missing_or_non_string_type_exits_2, test_unknown_type_exits_2_whatever_its_flags
+restored test_unit_economics: OK
+restored test_rerun_diff: OK
+restored test_session_turns: OK
+red-on-fault: 35/35 RED
+```
+
+The driver's count is 32 − 1 retired + 4 new = 35.
+
+### Commands and summary lines, follow-up 0150 (verbatim)
+
+| Command (from the repo root, Python 3.8.2, `TMPDIR`/`TEMP`/`TMP` in the scratch folder) | Summary |
+|---|---|
+| `python3 tests/test_session_turns.py` | `Ran 14 tests` / `OK`; `EXIT session turns (fixture): counts only` |
+| `python3 tests/test_unit_economics.py` | `Ran 18 tests` / `OK`; `EXIT unit economics (fixture): regenerated byte-identical` |
+| `python3 tests/test_rerun_diff.py` | `Ran 8 tests` / `OK`; `EXIT rerun diff (fixture): aggregates only` |
+| `python3 tests/pilot_red_on_fault.py` | `red-on-fault: 35/35 RED`, exit 0 |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `python3 tests/check_counts.py` | `clean — every current claim matches the suite` (864, from unittest's loader) |
+| `python3 tests/test_decision_links_resolve.py` (after staging) | `Ran 3 tests` / `OK`; `citations: 415/415 resolve` |
+| `ast.parse(..., feature_version=(3, 6))` on the script, the test module and the driver | `ast36 ok` |
+| `bash docs/decisions/build_index.sh` | regenerated; one row added (0150) |
+| `git diff --check` | clean |
+
+**Not run by this producer: the whole suite (`tests/run_tests.py`)**, which the lane runs
+elsewhere. The count moves from 861 to 864 (three new methods in `test_session_turns`), and
+`README.md` and `DEVELOPMENT.md` say so.
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps
+
+- **A new message type would be missed.** Any future non-empty string type is harness by
+  default. A new type that carries human input (anything other than `user`) would be graded,
+  never counted as a turn, and never refused. Only a fresh inventory of real transcripts would
+  show it.
+- **Lower bound only:** `outside minutes` still misses a forgotten span that has no human turn
+  in it (L1).
+- **Keys and counts, not content:** the inventory shows which types carry `message` (only `user`
+  and `assistant`). It does not show what any record says.
+- **NOT met: row 13's exit.** No real session has been run through the cross-check, and no pilot
+  has run. The new fixture is synthetic.
+- **Not run here:** the whole suite (the lane runs it); execution on Python 3.6, 3.7 and 3.11;
+  any interpreter but 3.8.2 this round.
+- **Review:** the fresh-context review of this follow-up has not happened in this report.
