@@ -12,3 +12,4 @@ The human-readable table is [mutants.md](../mutants.md).
 | File | Score | Kind | Row 3 exit |
 |---|---|---|---|
 | [2026-09-23-2a65dbf-first-run.json](2026-09-23-2a65dbf-first-run.json) | 5/10 killed | first run, development evidence | NOT met |
+| [2026-09-26-8744978-run-2.json](2026-09-26-8744978-run-2.json) | 10/10 killed | second seal's first run, development evidence (decisions 0088, 0089) | met as development evidence (not a public pass) |
