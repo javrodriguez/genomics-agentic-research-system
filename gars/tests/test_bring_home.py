@@ -5,6 +5,7 @@ count-matrix message, carrying a planted sample-ID marker, is replayed by the re
 `scripts/rerun_check.py` on test_rerun_check's stub scheduler. The marker is in the raw console
 and in `comparison.json`, and absent from `bring_home`'s output.
 """
+import csv
 import hashlib
 import json
 import os
@@ -304,7 +305,34 @@ class BringHomeTests(unittest.TestCase):
                                  'wall_s,cpu_s,max_rss_mb,queue_wait_s,python_version,'
                                  'gars_commit,measured_at,cost_usd_per_sample,cost_basis,'
                                  'evidence_sha256,supersedes')
-        self.assertEqual(unit_economics.read_bench(REPO / 'benchmarks/backend_bench.csv'), {})
+        # The expectation is re-derived from the file by header name, not pinned: row 8B
+        # appends real rows (the lane's ruling, 0141's fourth addendum).
+        def derived(path):
+            with open(str(path), newline='') as handle:
+                expected = {}
+                for bench_row in csv.DictReader(handle):
+                    if bench_row['status'] == 'COMPLETED':
+                        expected.setdefault(bench_row['backend'], set()).add(
+                            bench_row['cost_basis'])
+                return expected
+        real = derived(REPO / 'benchmarks/backend_bench.csv')
+        self.assertEqual(unit_economics.read_bench(REPO / 'benchmarks/backend_bench.csv'), real)
+        appended = self.tmp / 'backend_bench_appended.csv'
+        shutil.copyfile(str(REPO / 'benchmarks/backend_bench.csv'), str(appended))
+        # a (backend, cost_basis) pair the real file does not yet carry, so the row must show
+        backend, basis = next((b, c) for b in unit_economics.BACKENDS
+                              for c in unit_economics.UNMETERED_BASES
+                              if c not in real.get(b, set()))
+        if not appended.read_text().endswith('\n'):
+            with open(str(appended), 'a') as handle:
+                handle.write('\n')
+        with open(str(appended), 'a', newline='') as handle:
+            csv.writer(handle, lineterminator='\n').writerow(
+                [backend, backend, 'COMPLETED', 'W1', 'd' * 64, '24', '120.5', '7000.25',
+                 '18.5', '0', '3.8.2', 'e' * 40, '2026-09-26T00:00:00Z', 'unmetered', basis,
+                 'f' * 64, ''])
+        self.assertNotEqual(derived(appended), real)
+        self.assertEqual(unit_economics.read_bench(appended), derived(appended))
         evidence = {'backend': 'slurm', 'venue': 'slurm', 'status': 'COMPLETED',
                     'workload_id': 'W1', 'workload_sha256': 'a' * 64, 'samples': 24,
                     'wall_s': 100.0, 'cpu_s': 6300.0, 'max_rss_mb': 10.5,

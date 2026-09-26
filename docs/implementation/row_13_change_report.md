@@ -1272,3 +1272,108 @@ None.
 - **Not run here:** the whole suite; Python 3.6.8 execution (syntax only); any cluster run.
 - **Review:** the fresh-context review of this round has not happened; 0142, 0143 and 0144 are
   not written by this producer.
+
+## Step B review round 3 fixes
+
+2026-09-26. Built on `08fcdd5` on `build/gars-row-13-pilot`. It answers the lane's
+merge-interaction finding and step B's fresh-context review, round 2
+(`docs/reviews/row_13b_row_13_review_round2.md`, untracked and unchanged; APPROVE WITH CHANGES:
+one MINOR, three NOTEs). The ruling applied here is **the lane's**, made on 26 Sep 2026 under
+the owner's standing delegation of 23 Sep 2026 and accepted by its coordinator; it is not the
+owner's. It is recorded in [0141](../decisions/0141-row-13-closed-project-doors.md)'s fourth
+addendum, "merge interaction: the bench binding test". The earlier sections of this report and
+every earlier byte of 0140 and 0141 are unchanged (0141 checked as an exact byte prefix). No
+production file changed. No push, remote, install, download, approval or merge was performed.
+
+### Finding → changed files → test → result
+
+| Finding | Changed files | Test | Result (red-on-fault seen: how) |
+|---|---|---|---|
+| **The lane's merge-interaction finding**: `test_bench_binding_to_8b_real_header` pinned `read_bench(...) == {}`; public main's bench file now carries row 8B's first real row | `gars/tests/test_bring_home.py` (that method only, and `import csv`); `docs/decisions/0141-…md` (fourth addendum); `docs/decisions/CONTEXT.md` regenerated (unchanged: the frontmatter is not edited) | `test_bench_binding_to_8b_real_header`: the header assertion and the synthetic slurm-row case are kept; the expectation is re-derived from the real file by header name with `csv.DictReader` (every `COMPLETED` row's backend → its `cost_basis`) and the sheet must read exactly that; a copy of the real file gains one real-shaped row whose (backend, cost_basis) pair the file does not yet carry, the re-derived expectation must differ from the real file's, and the sheet must read the new one | **yes**, three ways, below: the old test red on main's file, the new green there and on this branch's file, and a planted "rows ignored" `read_bench` red on the header-only file through the appended-row case |
+| **Review round 2, finding 1** (MINOR, provenance): the round-2 rulings in 0141's third addendum, above all the widening of 0107's `closed_edit_refusal`, need the lane's confirmation | — | — | **Answered; the confirmation is not the producer's to give.** The required fix is an act of the lane's coordinator "in the record the lane keeps", or a fresh lane ruling; a producer who writes "confirmed" would be the unverifiable attribution the finding names. The review routes it to the lane, not the owner, so it is not under "Owner rulings needed"; it is held under Residual gaps until the lane records it. No code or record is changed for it |
+| **Review round 2, NOTE 2** (the lane's whole-suite run cited while the kit said it was not launched) | — | — | Answered, no change: the finding and its fix came to this producer as the lane's, in the round-2 brief; whether it was a partial run is the lane's to state. The review's list of modules for the lane's full run is carried to Residual gaps |
+| **Review round 2, NOTE 3** (`scripts/run_de.py` neither `READ_ONLY` nor keyed) | — | — | Stays: a new `READ_ONLY` entry is a guard change outside this round's bounds ("nothing else changes"). The one-line `READ_ONLY` option is added to the named follow-up under Residual gaps |
+| **Review round 2, NOTE 4** (the raw-link traceback check became unit-level) | — | — | Stays: the review requires no fix; the end-to-end stderr-withheld path is covered by other failing-door tests |
+
+### Red first (verbatim)
+
+A disposable copy of `08fcdd5` (`git archive`) in the scratch folder, with public main's bench
+file put at `benchmarks/backend_bench.csv`. The old test:
+
+```text
+FAIL: test_bench_binding_to_8b_real_header (__main__.BringHomeTests)
+  File "gars/tests/test_bring_home.py", line 307, in test_bench_binding_to_8b_real_header
+    self.assertEqual(unit_economics.read_bench(REPO / 'benchmarks/backend_bench.csv'), {})
+AssertionError: {'local': {'owned_hardware'}} != {}
+Ran 1 test in 0.028s
+FAILED (failures=1)
+```
+
+The new test in the same copy, on main's bench file:
+
+```text
+Step A's sheet reads row 8B's real bench header by name; bring_home carries 8B's ... ok
+Ran 1 test in 0.028s
+OK
+```
+
+The new test on this branch's own header-only file: `Ran 1 test in 0.020s` / `OK`.
+
+Mutation proof. In the same copy, with this branch's header-only file restored and `read_bench`
+planted to ignore every row (`backends.setdefault(...)` → `pass`, so the sheet reads a
+constant), the new test is red through the appended-row case; the file's bytes were restored
+afterwards:
+
+```text
+  File "gars/tests/test_bring_home.py", line 335, in test_bench_binding_to_8b_real_header
+AssertionError: {} != {'local': {'owned_hardware'}}
+Ran 1 test in 0.015s
+FAILED (failures=1)
+```
+
+### Commands and summary lines (verbatim)
+
+From the repo root, in the foreground, each under `timeout`; `TMPDIR`, `TEMP` and `TMP` in the
+scratch folder, `GARS_TEST_NO_CONTAINER=1`. `python3` is CPython 3.8.2, `python3.13` is 3.13.2.
+
+| Command | Summary |
+|---|---|
+| `python3 gars/tests/test_bring_home.py` | `Ran 9 tests in 9.983s` / `OK`; `EXIT bring home (fixture): detail withheld` |
+| `python3.13 gars/tests/test_bring_home.py` | `Ran 9 tests in 10.916s` / `OK` |
+| `ast.parse(..., feature_version=(3, 6))` on `test_bring_home.py` | `ast36 ok` |
+| `python3 tests/check_counts.py` | `clean — every current claim matches the suite` (no method added; 791 unchanged) |
+| `python3 tests/test_decision_links_resolve.py` | `Ran 3 tests` / `OK` |
+| `python3 tests/check_contracts.py` | `14 contracts clean: sections, wait points, vocabulary.` |
+| `bash docs/decisions/build_index.sh` | index unchanged |
+| `git diff --check` | clean |
+
+**Not run by this producer: the whole suite (`tests/run_tests.py`), `evals/`, and Docker**, as
+the brief directs; the lane runs the suite. No process was killed this round.
+
+## Owner rulings needed
+
+None.
+
+## Residual gaps
+
+- **The lane's confirmation of the round-2 rulings** (review round 2, finding 1): the Write
+  refusal in 0107's `closed_edit_refusal`, the DE doors' fixed layout, and the F-2 remainder
+  deferred. They are recorded in 0141's third addendum as the lane's; the lane's own record
+  must confirm them, or the lane rules afresh. A lane act, not an owner ruling.
+- **The lane's full run** should include, as review round 2's NOTE 2 lists,
+  `test_status_writer.py` and every module that drives `Write` through the guard
+  (`test_guard_hook`, `test_data_class_required`, `test_manifest_groups`,
+  `test_stage03_execution`, `test_hooks_records`, `test_review_faults_session`, and
+  `tests/run_tests.py` `GuardHookTests`).
+- **The generated script between `prepare` and job start** (carried): the named follow-up
+  (bind the script's hash into R-076's key, or verify it at job start) should also weigh the
+  one-line `READ_ONLY` entry `projects/*/02_bioinformatics/*/scripts/*` (review round 2,
+  NOTE 3), which also covers a project reclassified public between `prepare` and `submit`.
+- **NOT met: row 13's exit.** No pilot has run; every number is a synthetic fixture.
+- Carried, unchanged: the fixed-layout inputs themselves; other doors' path arguments judged by
+  `closed()` only; F-4's end-to-end red needs a route; addition 1's overlap with D-vii (b); a
+  path-free door call unreachable end to end; D8's earlier not-covered list; the
+  lexical-plus-existence path rule; the stage 01–03 contract prose; n3; n4.
+- **Not run here:** the whole suite; Python 3.6.8 execution (syntax only); any cluster run.
+- **Review:** the fresh-context review of this round has not happened; 0142, 0143 and 0144 are
+  not written by this producer.

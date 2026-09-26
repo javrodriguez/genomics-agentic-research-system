@@ -525,3 +525,44 @@ The not-covered list gains:
 - a CODE-judged field carrying project text;
 - `human turns:` matched case-sensitively at column 0;
 - a wrapper docstring naming `STATUS`.
+
+## Addendum — merge interaction: the bench binding test, 2026-09-26
+
+The ruling in this addendum is **the lane's**, made on 26 Sep 2026 under the owner's standing
+delegation of 23 Sep 2026 and accepted by its coordinator; it is not the owner's ruling. The
+owner's words are only the two quoted in Context above. All earlier bytes of this record, the
+three addenda included, are unchanged; where this addendum differs from them, it governs. It
+answers a merge-interaction finding, not a review finding; the evidence is in
+[the change report](../implementation/row_13_change_report.md), section "Step B review round 3
+fixes".
+
+**The finding.** The lane's run of this branch merged onto current public main is red in one
+test, `gars/tests/test_bring_home.py` `test_bench_binding_to_8b_real_header`, which asserted
+`unit_economics.read_bench(REPO / 'benchmarks/backend_bench.csv') == {}`. That held while the
+file was header-only. Public main has since committed row 8B's first real row (backend `local`,
+status `COMPLETED`, `cost_usd_per_sample` `unmetered`, `cost_basis` `owned_hardware`), so the
+merged tree reads `{'local': {'owned_hardware'}}`. Neither the sheet nor the data is wrong: the
+test pinned a data state.
+
+**Ruling (the lane's): the fix is test-only.** The test keeps its header assertion and its
+synthetic slurm-row case. The `== {}` line is replaced by an expectation re-derived from the
+real file by header name (every `COMPLETED` row's backend mapped to its `cost_basis`), and the
+sheet must read exactly that, so the test holds for a header-only file and for any rows row 8B
+appends. A case copies the real file and appends one real-shaped row whose (backend,
+cost_basis) pair the file does not yet carry: the re-derived expectation must change, and the
+sheet must read the new one. No production file changes.
+
+### R-042, amended by this addendum
+
+17. **`test_bench_binding_to_8b_real_header` no longer pins the bench file's rows.** A named
+    expectation change caused by row 8B's data, not by this step's code: `read_bench` is
+    unchanged. No assertion was removed; the constant `{}` became the file's own re-derived
+    content, and the appended-row case was added.
+
+### Test
+
+`python3 gars/tests/test_bring_home.py` (`Ran 9 tests` / `OK`). With public main's bench file
+in a disposable copy, the old test is red (`AssertionError: {'local': {'owned_hardware'}} !=
+{}`) and the new one green; the new one is green on this branch's header-only file; and with
+`read_bench` planted to ignore rows it is red on the header-only file through the appended-row
+case (`AssertionError: {} != {'local': {'owned_hardware'}}`).
