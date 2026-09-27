@@ -687,6 +687,16 @@ class Stage00Tests(HookCase):
             with self.subTest(reference=reference):
                 self.refused(self.bash(root, bare(tool, args)), root=root)
         tool = next(t for t in REGISTRY if t['name'] == 'stage01_samplesheet')
+        link = root / 'lnkp'
+        link.symlink_to(root / 'projects', target_is_directory=True)
+        try:
+            for model in ('projects', 'lnkp'):
+                args = dict(sample_args(tool, 'projects/open1'), model=model)
+                for command in (bare(tool, args), bare(tool, args).replace('--model ', '--model=')):
+                    with self.subTest(command=command):
+                        self.refused(self.bash(root, command), root=root)
+        finally:
+            link.unlink()
         for model in ('projects/.', 'projects/pilot/..', 'projects/x[1m]'):
             args = dict(sample_args(tool, 'projects/open1'), model=model)
             for command in (bare(tool, args), bare(tool, args).replace('--model ', '--model='),
