@@ -822,6 +822,10 @@ def closed_bash_refusal(tool, args, tokens, root, cwd):
             words.append((option[2:] if option in ("--project", "--model") and "=" in token
                           else key, token))
             key = option[2:] if token in ("--project", "--model") else None
+        # The parser defaults missing filesystem paths to '.', which needs every
+        # check a typed '.' gets, including recursive reads of a closed ancestor.
+        if tool.get("filesystem") and args["paths"] == ["."] and (None, ".") not in words:
+            words.append((None, "."))
     for _, word in [(None, t) for t in tokens] + words:
         if word in ("--pre", "--pre-glob") or word.startswith(("--pre=", "--pre-glob=")):
             deny("Blocked: rg --pre and --pre-glob run a program on every file searched, and "
