@@ -157,7 +157,7 @@ class ExecutionPolicyTests(unittest.TestCase):
             descriptor=dict(ex.SLURM);descriptor[key]=value
             self.assertTrue(ex.validate(descriptor),key)
         argv=ex.submit_argv(ex.SLURM,'submit.sh')
-        self.assertTrue(any(a.startswith('--export=PATH,') for a in argv))
+        self.assertIn('--export=' + ','.join(ex.EXPORT_NAMES), argv)
         self.assertNotIn('--export=ALL',argv)
         with patch.dict('os.environ', {'SYNTHETIC_SECRET':'canary'}):
             self.assertNotIn('SYNTHETIC_SECRET',ex.execution_env())

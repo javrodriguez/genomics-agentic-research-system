@@ -1567,7 +1567,8 @@ nextflow_config: nextflow.awsbatch.config
         sub, _ = self._submit_sh(project, "rnaseq_bulk")
         self.wl.write_reproducibility(sub, "rnaseq_bulk", sub, {}, [])
         commands = (sub / "reproducibility" / "commands.sh").read_text()
-        self.assertIn("sbatch --export=PATH,HOME,USER,LOGNAME,LANG,LC_ALL,TMPDIR,TEMP,TMP,GARS_ROOT,GARS_PIPELINES %s/submit.sh" % sub.resolve(), commands)
+        self.assertIn("sbatch --export=%s %s/submit.sh" %
+                      (','.join(self.ex.EXPORT_NAMES), sub.resolve()), commands)
 
     # -- the local backend: a real submit -> status walk with no cluster --------------------
 

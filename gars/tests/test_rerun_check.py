@@ -98,7 +98,11 @@ else:
         environment.start(); self.addCleanup(environment.stop)
         (self.repo / '.rerun-self-test').write_text('suite only\n')
         (self.repo / '.gitignore').write_text('__pycache__/\n*.pyc\n')
-        (self.ws / '_system/gars-env.sh').write_text(':\n')
+        # The executor reads its allow-list from this file (R-096).
+        names = ex.overridable_names((GARS / '_system/gars-env.sh').read_text())
+        env_stub = self.ws / '_system/gars-env.sh'
+        env_stub.write_text(''.join('%s="${%s:-}"\n' % (name, name) for name in names))
+        self.assertEqual(ex.overridable_names(env_stub.read_text()), names)
         checked(['git', 'init', '-q', self.repo])
         checked(['git', '-C', self.repo, 'add', 'gars', 'scripts', '.rerun-self-test', '.gitignore'])
         self.commit()
