@@ -26,6 +26,7 @@ Runs on stock python 3.6.8, stdlib only, like every `_system/` helper.
 import fnmatch
 import json
 import os
+import re
 import shlex
 import sys
 from tools.policy import Refusal, simple_tokens, parse_argv, authorize
@@ -125,6 +126,7 @@ CREATE_STAMP = (
 )
 RECURSIVE_FS = ("fs.search", "fs.inspect", "fs.find")
 SHELL_GLOB = set("*?[]{}()")
+MODEL_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:@-]{0,127}(\[[0-9]{1,4}[a-z]\])?\Z")
 KNOWN_CLASSES = ("public", "deidentified_under_agreement", "identifiable")
 INSPECT, LINK, FINALIZE = ("stage00_register.inspect", "stage00_register.link",
                            "stage00_register.finalize")
@@ -734,6 +736,20 @@ def _spellings(word):
     return [w for w in found if w]
 
 
+def _model_spellings(key, word, value):
+    """Literal spellings and siblings for this parsed model value; None off model shape."""
+    if (key != "model" or not isinstance(value, str) or not MODEL_ID.match(value)
+            or word not in (value, "--model=" + value)):
+        return None
+    found = []
+    for token in _spellings(word):
+        found.append(token)
+        if "[" in token:
+            head, suffix = token.split("[", 1)
+            found += [head + c for c in suffix[:-1]]
+    return found
+
+
 def _recursive(name, words):
     if name in RECURSIVE_FS:
         return True
@@ -802,13 +818,16 @@ def closed_bash_refusal(tool, args, tokens, root, cwd):
     else:
         words, key = [], None
         for token in tokens[1:]:
-            words.append(("project" if token.startswith("--project=") else key, token))
-            key = "project" if token == "--project" else None
+            option = token.split("=", 1)[0]
+            words.append((option[2:] if option in ("--project", "--model") and "=" in token
+                          else key, token))
+            key = option[2:] if token in ("--project", "--model") else None
     for _, word in [(None, t) for t in tokens] + words:
         if word in ("--pre", "--pre-glob") or word.startswith(("--pre=", "--pre-glob=")):
             deny("Blocked: rg --pre and --pre-glob run a program on every file searched, and "
                  "the typed surface runs no program it does not name (R-092; decision 0107).")
     bases = _bases(cwd, root)
+    recursive = _recursive(name, [w for _, w in words])
     closed = closed_projects(root)
     sources, failed = declared_sources(root)
     message = first_public_classification(tool, args, root, bases, closed, sources)
@@ -834,7 +853,8 @@ def closed_bash_refusal(tool, args, tokens, root, cwd):
     # 0107's door below: (1) a closed project, its raw data, or the session cwd inside one is
     # refused; (2) a path outside the workspace while a non-public project exists is refused.
     if not dispatcher and closed and declared is None and not tool.get("filesystem"):
-        from tools.closed_output import ClosedRefusal, closed as closed_call
+        from tools.closed_output import (ClosedRefusal, closed as closed_call,
+                                         closed_projects as output_projects)
         for form in _forms(cwd, (root,)):
             for project, label, project_forms in closed:
                 if any(_inside(form, f) for f in project_forms):
@@ -843,7 +863,26 @@ def closed_bash_refusal(tool, args, tokens, root, cwd):
                          "dispatcher, from outside the project: python3 _system/tool_call.py "
                          "<tool> '<json>'." % (project, label, CLOSED_WHY))
         try:
-            project = closed_call([t for _, w in words[1:] for t in _spellings(w)], root, cwd)
+            paths = []
+            model_closed = output_projects(root)
+            for key, word in words[1:]:
+                literals = _model_spellings(key, word, args.get("model"))
+                if literals is None:
+                    paths.extend(_spellings(word))
+                    continue
+                # Keep 0141's resolved/raw-target and outside-path checks, but never let
+                # an existing model-shaped name enter closed_call's recursive glob branch.
+                for token in literals:
+                    forms = _forms(token, bases)
+                    if sources and all(inside_declared(os.path.realpath(f), sources)
+                                       for f in forms):
+                        continue
+                    hit = _hit(token, bases, True, model_closed, False)
+                    if hit:
+                        deny(closed_refusal(token, hit))
+                    if any(not _inside(f, root) for f in forms):
+                        raise ClosedRefusal("path_outside_workspace")
+            project = closed_call(paths, root, cwd)
         except ClosedRefusal as exc:
             deny("Blocked: %s. While a non-public project exists, a direct call names only paths "
                  "inside the workspace, and a closed project only with paths inside it (decisions "
@@ -874,11 +913,12 @@ def closed_bash_refusal(tool, args, tokens, root, cwd):
                      % (project, label, CLOSED_WHY))
     if name in CLOSED_PROJECT_DOORS:
         return
-    recursive = _recursive(name, [w for _, w in words])
     readable = bool(tool.get("filesystem"))
     for key, word in words:
-        for token in _spellings(word):
-            hit = closed_hit(token, root, bases, recursive, closed, readable)
+        literals = _model_spellings(key, word, args.get("model"))
+        for token in literals if literals is not None else _spellings(word):
+            hit = (_hit(token, bases, recursive, closed, readable) if literals is not None
+                   else closed_hit(token, root, bases, recursive, closed, readable))
             if hit and not (key == "project" and hit[0] == "inside" and hit[1] in exempt):
                 deny(closed_refusal(token, hit))
 

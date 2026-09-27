@@ -603,6 +603,139 @@ class Stage00Tests(HookCase):
                 rule = 'R-092' if any(s in command for s in schema) else '0107'
                 self.refused(self.bash(root, command), rule, root)
 
+    def test_model_id_is_a_value(self):
+        root = ROOTS['R1']
+        model = 'claude-opus-5-5[1m]'
+        args = {'project': 'projects/ready', 'data-class': 'public', 'purpose': 'fixture'}
+        command = stage00('finalize', '--project', args['project'], '--data-class',
+                          args['data-class'], '--purpose', args['purpose'])
+        for spelling in (' --model ' + shlex.quote(model), ' --model=' + shlex.quote(model)):
+            with self.subTest(spelling=spelling):
+                self.allowed(self.bash(root, command + spelling))
+        self.allowed(self.bash(root, dispatch('stage00_register.finalize',
+                                             dict(args, model=model))))
+        for tool in REGISTRY:
+            if 'model' not in tool.get('cli', {}):
+                continue
+            args = sample_args(tool, 'projects/open1')
+            if tool['name'] == 'stage00_register.finalize':
+                args = {'project': 'projects/ready', 'data-class': 'public', 'purpose': 'fixture'}
+            args.pop('model', None)
+            for spelling in (bare, lambda t, a: dispatch(t['name'], a)):
+                command = spelling(tool, args)
+                if self.bash(root, command).returncode == 0:
+                    with self.subTest(tool=tool['name'], command=command):
+                        self.allowed(self.bash(root, spelling(tool, dict(args, model=model))))
+
+    def test_model_literal_existing_sibling(self):
+        root = ROOTS['R1']
+        tool = next(t for t in REGISTRY if t['name'] == 'stage01_samplesheet')
+        args = dict(sample_args(tool, 'projects/open1'), model='x[1m]')
+        commands = (bare(tool, args), bare(tool, args).replace('--model ', '--model='),
+                    dispatch(tool['name'], args))
+        for name in ('x[1m]', '--model=x[1m]', 'model=x[1m]'):
+            path = root / name
+            path.write_text('fixture\n')
+            try:
+                for command in commands:
+                    with self.subTest(name=name, command=command):
+                        self.allowed(self.bash(root, command))
+            finally:
+                path.unlink()
+        # Both literal and expanded spellings still reach resolved closed/outside targets.
+        for name in ('x[1m]', 'x1', '--model=x[1m]', '--model=x1', 'model=x1'):
+            for target in (root / 'projects/pilot', root.parent / 'seqrun'):
+                path = root / name
+                path.symlink_to(target, target_is_directory=True)
+                try:
+                    with self.subTest(name=name, target=str(target)):
+                        self.refused(self.bash(root, commands[1]), root=root)
+                finally:
+                    path.unlink()
+
+        # Unlike seqrun, this outside folder is not any project's raw-link target.
+        target = root.parent / 'model-outside'
+        target.mkdir()
+        path = root / 'xout'
+        path.symlink_to(target, target_is_directory=True)
+        try:
+            args = dict(sample_args(tool, 'projects/open1'), model='xout')
+            for command in (bare(tool, args), bare(tool, args).replace('--model ', '--model=')):
+                with self.subTest(command=command):
+                    err = self.refused(self.bash(root, command), root=root)
+                    self.assertIn('path_outside_workspace', err)
+        finally:
+            path.unlink()
+            target.rmdir()
+
+    def test_model_raw_target_still_judged(self):
+        root = ROOTS['R1']
+        store = root / 'rawstore'
+        store.mkdir()
+        link = root / P / '00_data' / ASSAY / 'raw/model-probe'
+        link.symlink_to(store, target_is_directory=True)
+        try:
+            tool = next(t for t in REGISTRY if t['name'] == 'stage01_samplesheet')
+            args = dict(sample_args(tool, 'projects/open1'), model='rawstore')
+            for command in (bare(tool, args), bare(tool, args).replace('--model ', '--model=')):
+                with self.subTest(command=command):
+                    self.refused(self.bash(root, command), root=root)
+        finally:
+            link.unlink()
+            store.rmdir()
+
+    def test_model_value_still_judged(self):
+        root = ROOTS['R1']
+        for model in ('projects/pilot/00_data/rnaseq_bulk', 'claude-[a-z]*', 'pil?t',
+                      '{pilot,x}', 'claude-opus-5-5[1m]/x', '~/x', 'x[1m][2k]',
+                      'x[1m]=safe', '--model=x[1m]'):
+            args = {'project': 'projects/ready', 'data-class': 'public',
+                    'purpose': 'fixture', 'model': model}
+            tool = next(t for t in REGISTRY if t['name'] == 'stage00_register.finalize')
+            for command in (bare(tool, args), bare(tool, args).replace('--model ', '--model='),
+                            dispatch(tool['name'], args)):
+                with self.subTest(command=command):
+                    self.refused(self.bash(root, command), root=root)
+        for reference in ('--model=x[1m]', '--model=projects/pil*'):
+            args = {'project': 'projects/ready', 'data-class': 'public',
+                    'purpose': 'fixture', 'agreement-ref': reference, 'model': 'safe'}
+            with self.subTest(reference=reference):
+                self.refused(self.bash(root, bare(tool, args)), root=root)
+        tool = next(t for t in REGISTRY if t['name'] == 'stage01_samplesheet')
+        link = root / 'lnkp'
+        link.symlink_to(root / 'projects', target_is_directory=True)
+        try:
+            for model in ('projects', 'lnkp'):
+                args = dict(sample_args(tool, 'projects/open1'), model=model)
+                for command in (bare(tool, args), bare(tool, args).replace('--model ', '--model=')):
+                    with self.subTest(command=command):
+                        self.refused(self.bash(root, command), root=root)
+        finally:
+            link.unlink()
+        for model in ('projects/.', 'projects/pilot/..', 'projects/x[1m]'):
+            args = dict(sample_args(tool, 'projects/open1'), model=model)
+            commands = [bare(tool, args), bare(tool, args).replace('--model ', '--model=')]
+            # Ancestor dispatch is allowed at base too (0141 filters output); assert direct forms only.
+            if model == 'projects/x[1m]':
+                commands.append(dispatch(tool['name'], args))
+            for command in commands:
+                with self.subTest(command=command):
+                    self.refused(self.bash(root, command), root=root)
+        project = root / 'projects/x1'
+        project.mkdir()
+        try:
+            tool = next(t for t in REGISTRY if t['name'] == 'stage01_samplesheet')
+            args = sample_args(tool, 'open1')
+            for model in ('x[1m]', 'x1'):
+                args['model'] = model
+                for command in (bare(tool, args, 'projects'),
+                                bare(tool, args, 'projects').replace('--model ', '--model='),
+                                dispatch(tool['name'], args, 'projects')):
+                    with self.subTest(command=command):
+                        self.refused(self.bash(root, command, 'projects'), root=root)
+        finally:
+            project.rmdir()
+
     def test_invalid_declarations(self):
         print('red-on-fault: invalid declarations', flush=True)
         root = ROOTS['R1']

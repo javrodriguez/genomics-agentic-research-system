@@ -7,6 +7,16 @@ import executorlib as ex
 import wrapperlib as wl
 
 
+def background_instructions(text):
+    found = []
+    for clause in re.split(r'[.!?:](?:\s|$)', text.lower()):
+        if re.search(r'\brun\b', clause):
+            unnegated = re.sub(r'\b(?:never|not)\b[^.]{0,20}\bin the background\b', '', clause)
+            if re.search(r'\bbackground\b', unnegated):
+                found.append(clause)
+    return found
+
+
 def strings(node):
     constant = getattr(ast, 'Constant', None)
     if constant is not None:
@@ -37,6 +47,38 @@ def written_states():
 
 
 class LifecycleContractTests(unittest.TestCase):
+    def test_finalize_runs_in_foreground(self):
+        text = (GARS / '00_initialize_project/CONTEXT.md').read_text()
+        step = re.search(r'^15\. .*?(?=^16\. )', text, re.M | re.S).group()
+        step = ' '.join(step.split())
+        self.assertIn('foreground', step)
+        self.assertIn('never in the background', step)
+        self.assertNotIn('run it in the background', step)
+        self.assertNotIn('in the background rather', step)
+
+    def test_contracts_never_send_steps_to_background(self):
+        """R-073 blocks the harness's background output file outside the workspace."""
+        contracts = [p for p in GARS.rglob('CONTEXT.md')
+                     if 'projects' not in p.relative_to(GARS).parts]
+        contracts += list((GARS / '_system/wrappers').rglob('SKILL.md'))
+        for path in contracts:
+            text = path.read_text().lower()
+            with self.subTest(contract=str(path.relative_to(GARS))):
+                self.assertNotIn('run_in_background', text)
+                self.assertNotIn('nohup', text)
+                self.assertEqual(background_instructions(text), [])
+
+    def test_background_instruction_phrases(self):
+        for sentence in ('so run it in the background: the file is not read here',
+                         'run it in the background if it has not finished',
+                         'never wait: run it in the background'):
+            with self.subTest(sentence=sentence):
+                self.assertTrue(background_instructions(sentence))
+        for sentence in ('never run it in the background', 'do not run it in the background',
+                         'a background output file is outside the workspace'):
+            with self.subTest(sentence=sentence):
+                self.assertEqual(background_instructions(sentence), [])
+
     def test_parent_status_paragraph_covers_derived_writer_states(self):
         derived = written_states()
         required = {'SUBMITTED', 'RUNNING', 'VALIDATING', 'ARTIFACT_MISSING', 'STALE',

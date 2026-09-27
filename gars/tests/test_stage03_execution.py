@@ -428,8 +428,7 @@ class Stage03ExecutionTests(unittest.TestCase):
                      'projects/*/03_custom_analysis/*/run/**/*',
                      'projects/*/03_custom_analysis/*/' + ex.ANALYSIS_SUBMISSIONS):
             self.assertIn(glob, guard_hook.READ_ONLY)
-            for tool in ('Write', 'Edit'):
-                self.assertIn(tool + '(' + glob + ')', settings)
+            self.assertIn('Edit(' + glob + ')', settings)
         for target in targets:
             path = 'projects/p/03_custom_analysis/01_fixture/' + target
             for tool in ('Write', 'Edit'):

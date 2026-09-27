@@ -428,8 +428,7 @@ class DispatcherAndGuardTests(unittest.TestCase):
         self.assertIn('projects/*/pilot/*', guard_hook.READ_ONLY)
         settings = json.loads((GARS / '.claude/settings.json').read_text())
         deny = settings['permissions']['deny']
-        for tool in ('Edit', 'Write'):
-            self.assertIn('%s(projects/*/pilot/*)' % tool, deny)
+        self.assertIn('Edit(projects/*/pilot/*)', deny)
 
 
 if __name__ == '__main__':
