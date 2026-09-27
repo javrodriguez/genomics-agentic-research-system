@@ -375,7 +375,7 @@ def config_root_for(path):
 
 # Read gars-env.sh's overridables rather than keep a second list: the old list
 # dropped GARS_BIO/GARS_NXF and broke jobs using non-default installations.
-# These values are paths the operator chose, not credentials. R-096 still admits
+# These values are paths (the operator's own, or gars-env.sh's exported defaults), not credentials. R-096 still admits
 # only process basics plus gars-env.sh's own overridables.
 BASE_NAMES = ('PATH', 'HOME', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'TMPDIR', 'TEMP', 'TMP')
 
@@ -1136,6 +1136,7 @@ def submit(config_root, script, descriptor=None):
     problems = validate(descriptor)
     if problems:
         return None, '; '.join(problems)
+    _require_env_source()
     directory = _records(config_root)
     directory.mkdir(exist_ok=True)
     with open(str(directory / '.lock'), 'a') as lock:
