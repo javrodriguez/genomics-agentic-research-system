@@ -843,7 +843,7 @@ def closed_bash_refusal(tool, args, tokens, root, cwd):
                 CLOSED_WHY))
     # Row 13 (decision 0141), addition 3: an agent reaches the pilot log's writer only through
     # the dispatcher, whose registry argv carries the launch token that makes the actor `agent`.
-    if not dispatcher and os.path.realpath(os.path.join(cwd, tokens[1])) == os.path.realpath(
+    if not dispatcher and len(tokens) > 1 and os.path.realpath(os.path.join(cwd, tokens[1])) == os.path.realpath(
             os.path.join(root, "_system", "pilot_log.py")):
         deny("Blocked: _system/pilot_log.py is the pilot log's writer. An agent session reaches it "
              "only through the dispatcher, which binds the actor at launch (decision 0141): "
