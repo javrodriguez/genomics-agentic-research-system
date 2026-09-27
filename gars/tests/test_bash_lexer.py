@@ -97,7 +97,8 @@ def static_regressions():
             for method in node.body:
                 if not isinstance(method, ast.FunctionDef):
                     continue
-                if node.name == 'ExtraSpellingsTests' and method.name != 'test_positive_controls':
+                if node.name == 'ExtraSpellingsTests' and method.name.startswith('test_') \
+                        and method.name != 'test_positive_controls':
                     for call in ast.walk(method):
                         if isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute) \
                                 and call.func.attr == 'denied' and isinstance(call.args[0], ast.Constant):
