@@ -184,13 +184,64 @@ def render(snapshot, manifest, template):
         methods.append('- ' + label + ': workflow_version=' +
                        display(claim.get('workflow_version'), 'row 7: claim writer') +
                        '; reference_release=' + display(claim.get('reference_release'), 'row 7: claim writer'))
+    def absent(key):
+        return 'not recorded (the manifest has no `%s`)' % key
+
+    def present(value):
+        return value is not None and value != [] and value != {} and not (
+            isinstance(value, str) and not value.strip())
+
+    def field(value, fallback='not recorded'):
+        return display(value, 'manifest') if present(value) else fallback
+
+    data = '; '.join(key + ': ' + field(manifest.get(key), absent(key))
+                     for key in ('data_class', 'venue', 'purpose'))
+    if present(manifest.get('agreement_ref')):
+        data += '; agreement_ref: ' + field(manifest['agreement_ref'])
+    reference = manifest.get('reference')
+    reference_text = absent('reference')
+    if isinstance(reference, dict):
+        reference_text = '; '.join(key + '=' + field(reference.get(key))
+                                   for key in ('build', 'annotation_release', 'fasta_sha256', 'gtf_sha256'))
+        if str(reference.get('comparison')) != 'matched':
+            reference_text += '; registry check: ' + field(reference.get('comparison')) + ' (' + field(reference.get('reason')) + ')'
+    agent = manifest.get('agent_model')
+    steps = manifest.get('model_steps')
+    model_text = absent('agent_model')
+    if agent == 'none':
+        model_text = 'no model-mediated step (agent_model: none)'
+    elif present(agent):
+        if isinstance(steps, list) and steps:
+            items = []
+            for step in steps:
+                if not isinstance(step, dict):
+                    items.append(field(step))
+                    continue
+                prompt = step.get('prompt_sha256')
+                if isinstance(prompt, dict):
+                    prompt = prompt.get('value')
+                items.append(' / '.join(field(value) for value in (
+                    step.get('model_id'), step.get('prompt_id'), prompt, step.get('routing_rule_id'))))
+            model_text = '; '.join(items)
+        else:
+            model_text = 'agent_model: ' + field(agent) + '; ' + absent('model_steps')
+    command = manifest.get('command')
+    command_text = absent('command')
+    if isinstance(command, dict):
+        command_text = '`' + field(command.get('path')) + '` (relative to the sub-stage folder), sha256 ' + field(command.get('sha256'))
+    cost = manifest.get('cost')
+    cost_text = (display(cost, 'manifest') if isinstance(cost, str) and cost.strip() else
+                 'Not recorded: GARS does not meter per-run cost yet, and this manifest has no cost field.')
+    resources = manifest.get('resources')
+    if isinstance(resources, dict) and resources and resources.get('applicability') != 'not applicable':
+        cost_text += '\n\nResources consumed (scheduler accounting): ' + display(resources, 'manifest')
     values = {
         'question': display(run.get('question'), 'row 7: run registrar'),
-        'data': unknown('row 6: data_class, venue, purpose'),
+        'data': data,
         'methods': 'pipeline_commit: ' + display(manifest.get('pipeline_commit'), 'row 6: manifest producer') +
                    '\n\nparams: ' + display(manifest.get('params'), 'row 6: manifest producer') + '\n\n' +
                    ('\n'.join(methods) or unknown('row 7: claim writer')) +
-                   '\n\nGenome hashes, model/prompt/routing: ' + unknown('row 6'),
+                   '\n\nReference: ' + reference_text + '\nModel steps: ' + model_text,
         'qc': '\n'.join(qc) or unknown('§14 QC dispositions'),
         'claims': '\n'.join(rows) if claims else unknown('row 7: claim writer'),
         'limitations': ('Limitations from process_risk.limitation appear directly under each affected claim above.'
@@ -198,8 +249,8 @@ def render(snapshot, manifest, template):
                         else unknown('row 7: claim writer')),
         'manifest': 'Manifest path: ' + display(run.get('manifest_path'), 'row 7: run registrar') +
                     '\n\nManifest sha256: ' + display(run.get('manifest_sha256'), 'row 7: run registrar') +
-                    '\n\nReproduce this analysis (`commands.sh`): ' + unknown('row 6'),
-        'cost': unknown('row 11: docs/ledger.csv has no per-run cost source'),
+                    '\n\nReproduce this analysis (`commands.sh`): ' + command_text,
+        'cost': cost_text,
     }
     result = template.format(**values)
     validate_sections(result)
