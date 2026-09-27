@@ -653,6 +653,22 @@ class Stage00Tests(HookCase):
                 finally:
                     path.unlink()
 
+    def test_model_raw_target_still_judged(self):
+        root = ROOTS['R1']
+        store = root / 'rawstore'
+        store.mkdir()
+        link = root / P / '00_data' / ASSAY / 'raw/model-probe'
+        link.symlink_to(store, target_is_directory=True)
+        try:
+            tool = next(t for t in REGISTRY if t['name'] == 'stage01_samplesheet')
+            args = dict(sample_args(tool, 'projects/open1'), model='rawstore')
+            for command in (bare(tool, args), bare(tool, args).replace('--model ', '--model=')):
+                with self.subTest(command=command):
+                    self.refused(self.bash(root, command), root=root)
+        finally:
+            link.unlink()
+            store.rmdir()
+
     def test_model_value_still_judged(self):
         root = ROOTS['R1']
         for model in ('projects/pilot/00_data/rnaseq_bulk', 'claude-[a-z]*', 'pil?t',
