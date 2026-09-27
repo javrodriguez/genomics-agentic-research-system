@@ -670,6 +670,13 @@ class Stage00Tests(HookCase):
                     'purpose': 'fixture', 'agreement-ref': reference, 'model': 'safe'}
             with self.subTest(reference=reference):
                 self.refused(self.bash(root, bare(tool, args)), root=root)
+        tool = next(t for t in REGISTRY if t['name'] == 'stage01_samplesheet')
+        for model in ('projects/.', 'projects/pilot/..', 'projects/x[1m]'):
+            args = dict(sample_args(tool, 'projects/open1'), model=model)
+            for command in (bare(tool, args), bare(tool, args).replace('--model ', '--model='),
+                            dispatch(tool['name'], args)):
+                with self.subTest(command=command):
+                    self.refused(self.bash(root, command), root=root)
         project = root / 'projects/x1'
         project.mkdir()
         try:
