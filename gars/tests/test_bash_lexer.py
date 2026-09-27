@@ -75,7 +75,15 @@ BRACES_TILDES = (
     ('grep -n "a{2}" CONTEXT.md', 0, None),
     (r'grep -n \{ CONTEXT.md', 0, None),
     (r'grep -n \~ CONTEXT.md', 0, None),
-    (r'grep -n a\{b,c} CONTEXT.md', 0, None),
+    (r'grep -n a\{b,c} CONTEXT.md', 2, OPERATOR_MESSAGE),
+    ('grep -n a} CONTEXT.md', 2, OPERATOR_MESSAGE),
+    ('ls x }', 2, OPERATOR_MESSAGE),
+    ('grep -n "a}" CONTEXT.md', 0, None),
+    ("grep -n '}' CONTEXT.md", 0, None),
+    ('grep -n "}" CONTEXT.md', 0, None),
+    (r'grep -n a\} CONTEXT.md', 0, None),
+    (r'grep -n a\{b,c\} CONTEXT.md', 0, None),
+    ('grep -n "a{b,c}" CONTEXT.md', 0, None),
 )
 
 
@@ -260,6 +268,15 @@ class BashLexerTests(unittest.TestCase):
                     self.assertIn(message.encode(), result.stderr)
                     self.assertIn(b'R-092', result.stderr)
                     self.assertNotIn(b'the guard failed while checking', result.stderr)
+
+    def test_escaped_closing_braces_match_quoted_spellings(self):
+        for escaped, quoted in ((r'a\}', '"a}"'), (r'a\{b,c\}', '"a{b,c}"')):
+            with self.subTest(escaped=escaped, quoted=quoted):
+                literal = guard('grep -n ' + escaped + ' CONTEXT.md')
+                reference = guard('grep -n ' + quoted + ' CONTEXT.md')
+                self.assertEqual(reference.returncode, 0, reference.stderr)
+                self.assertEqual(literal.returncode, reference.returncode, literal.stderr)
+                self.assertEqual(literal.stderr, reference.stderr)
 
     def test_helpers_and_dispatcher_stay_strict(self):
         self.check_rows(strict_rows())
