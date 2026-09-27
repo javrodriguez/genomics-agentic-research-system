@@ -1,10 +1,12 @@
 """Visible guard faults, each observed red in an isolated copy; no sealed score."""
+import hashlib
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+import time
 from pathlib import Path
 
 REPO=Path(__file__).resolve().parents[1]
@@ -347,66 +349,148 @@ GREEN_CONTROLS = [
 ]
 
 
+def build_layout(scratch, module):
+    root = scratch / 'source'
+    root.mkdir()
+    (scratch / 'runtime').mkdir()
+    target = root / 'evals/review-faults'
+    target.parent.mkdir(parents=True)
+    shutil.copytree(str(REPO / 'evals/review-faults'), str(target),
+                    ignore=shutil.ignore_patterns('__pycache__', 'runs'))
+    (root / '.git').symlink_to(REPO / '.git', target_is_directory=True)
+    prompt = root / 'gars/_references/prompts/review_faults_code.md'
+    prompt.parent.mkdir(parents=True)
+    shutil.copyfile(str(REPO / 'gars/_references/prompts/review_faults_code.md'), str(prompt))
+    (root / 'tests').mkdir()
+    if module == 'corpus':
+        shutil.copytree(str(REPO / 'tests/data'), str(root / 'tests/data'))
+    (root / 'scripts').mkdir()
+    shutil.copyfile(str(REPO / 'scripts/release_check.py'), str(root / 'scripts/release_check.py'))
+    name = 'test_review_faults_' + module + '.py'
+    shutil.copyfile(str(REPO / 'tests' / name), str(root / 'tests' / name))
+    return root
+
+
+def source_digest(root):
+    digest = hashlib.sha256()
+    # Hash links themselves, including .git; never traverse their targets.
+    # Length prefixes separate paths and contents without delimiter ambiguity.
+    for path in sorted(root.rglob('*')):
+        if path.is_symlink():
+            kind, data = b'link', os.fsencode(os.readlink(str(path)))
+        elif path.is_file():
+            kind, data = b'file', path.read_bytes()
+        else:
+            continue
+        for value in (kind, os.fsencode(path.relative_to(root).as_posix()), data):
+            digest.update(str(len(value)).encode('ascii') + b':' + value)
+    return digest.hexdigest()
+
+
+def execute(root, module, case, timeout):
+    env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
+    for key in ('TMPDIR', 'TEMP', 'TMP'):
+        env[key] = str(root.parent / 'runtime')
+    started = time.monotonic()
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(root / 'tests' / ('test_review_faults_' + module + '.py')), case],
+            cwd=str(REPO), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=timeout)
+        return dict(returncode=proc.returncode,
+                    output=(proc.stdout + proc.stderr).decode('utf-8', 'replace'),
+                    seconds=time.monotonic() - started, error=None)
+    except subprocess.TimeoutExpired:
+        return dict(seconds=time.monotonic() - started,
+                    error='timeout after %g s' % timeout)
+
+
+def run_control(module, case):
+    result = dict(error=None, seconds=0.0)
+    try:
+        with tempfile.TemporaryDirectory(prefix='t-') as temp:
+            root = build_layout(Path(temp).resolve(), module)
+            result['digest'] = source_digest(root)
+            result.update(execute(root, module, case, 600))
+    except Exception as exc:
+        result['error'] = '%s: %s' % (type(exc).__name__, exc)
+    return result
+
+
+def run_entry(entry, control):
+    label, relative, old, new, module, case = entry
+    result = dict(error=None)
+    try:
+        with tempfile.TemporaryDirectory(prefix='t-') as temp:
+            root = build_layout(Path(temp).resolve(), module)
+            result['digest'] = source_digest(root)
+            path = root / relative if relative.startswith('tests/') else root / 'evals/review-faults' / relative
+            original = path.read_text()
+            result.update(original=original, old_present=old in original)
+            if not result['old_present'] or control['error'] is not None:
+                return result
+            path.write_text(original.replace(old, new, 1))
+            timeout = max(180, 4 * control['seconds'])
+            result.update(execute(root, module, case, timeout))
+    except Exception as exc:
+        result['error'] = '%s: %s' % (type(exc).__name__, exc)
+    return result
+
+
+def control_key(entry):
+    return entry[4], entry[5]
+
+
+def run_all(entries):
+    # Serial skeleton: guards are exercised before adding the bounded pool.
+    controls = {}
+    results = []
+    for entry in entries:
+        key = control_key(entry)
+        if key not in controls:
+            controls[key] = run_control(entry[4], entry[5])
+        results.append(run_entry(entry, controls[key]))
+    return controls, results
+
+
 class FaultTests(unittest.TestCase):
     def test_every_guard_fault_is_red(self):
-        for label,relative,old,new,module,case in FAULTS + GREEN_CONTROLS:
-            with self.subTest(fault=label),tempfile.TemporaryDirectory(prefix='t-') as temp:
-                scratch=Path(temp).resolve()
-                root=scratch/'source'
-                root.mkdir()
-                runtime=scratch/'runtime'
-                runtime.mkdir()
-                target=root/'evals/review-faults'
-                target.parent.mkdir(parents=True)
-                shutil.copytree(str(REPO/'evals/review-faults'),str(target),
-                                ignore=shutil.ignore_patterns('__pycache__','runs'))
-                (root/'.git').symlink_to(REPO/'.git',target_is_directory=True)
-                prompt=root/'gars/_references/prompts/review_faults_code.md'
-                prompt.parent.mkdir(parents=True)
-                shutil.copyfile(str(REPO/'gars/_references/prompts/review_faults_code.md'),str(prompt))
-                (root/'tests').mkdir()
-                if module == 'corpus':
-                    shutil.copytree(str(REPO/'tests/data'), str(root/'tests/data'))
-                (root/'scripts').mkdir()
-                shutil.copyfile(str(REPO/'scripts/release_check.py'),str(root/'scripts/release_check.py'))
-                name='test_review_faults_'+module+'.py'
-                shutil.copyfile(str(REPO/'tests'/name),str(root/'tests'/name))
-                path=root/relative if relative.startswith('tests/') else target/relative
-                original=path.read_text()
-                self.assertIn(old,original,label)
-                env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
-                # Absolute scratch locations are built at runtime, never source literals.
-                for key in ('TMPDIR','TEMP','TMP'):
-                    env[key]=str(runtime)
-                def execute():
-                    proc=subprocess.run([sys.executable,str(root/'tests'/name),case],
-                                        cwd=str(REPO),env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
-                                        timeout=180)
-                    return proc, (proc.stdout+proc.stderr).decode('utf-8','replace')
-                baseline,baseline_output=execute()
-                self.assertEqual(baseline.returncode,0,'unfaulted control: '+label+'\n'+baseline_output)
-                self.assertIn('OK',baseline_output)
-                path.write_text(original.replace(old,new,1))
-                proc,output=execute()
-                self.assertIn(case.split('.')[1],output)
-                self.assertNotIn('ModuleNotFoundError',output)
-                if (label,relative,old,new,module,case) in GREEN_CONTROLS:
-                    self.assertEqual(proc.returncode,0,output)
-                    self.assertIn('OK',output)
-                    print('exemption green: '+label)
+        entries = FAULTS + GREEN_CONTROLS
+        controls, results = run_all(entries)
+        for entry, result in zip(entries, results):
+            label, relative, old, new, module, case = entry
+            with self.subTest(fault=label):
+                # Missing text must fail the original assertion without a child.
+                if 'original' in result:
+                    self.assertIn(old, result['original'], label)
+                control = controls[control_key(entry)]
+                self.assertIsNone(control['error'], 'unfaulted control: ' + label + ': ' + str(control['error']))
+                baseline_output = control['output']
+                self.assertEqual(control['returncode'], 0, 'unfaulted control: ' + label + '\n' + baseline_output)
+                self.assertIn('OK', baseline_output)
+                self.assertIn(case.split('.')[1], baseline_output, 'unfaulted control case: ' + label + '\n' + baseline_output)
+                self.assertIsNone(result['error'], label + ': ' + str(result['error']))
+                self.assertEqual(result['digest'], control['digest'], 'source digest mismatch: ' + label)
+                output = result['output']
+                self.assertIn(case.split('.')[1], output)
+                self.assertNotIn('ModuleNotFoundError', output)
+                if entry in GREEN_CONTROLS:
+                    self.assertEqual(result['returncode'], 0, output)
+                    self.assertIn('OK', output)
+                    print('exemption green: ' + label)
                 else:
-                    self.assertNotEqual(proc.returncode,0,output)
-                    self.assertIn('FAILED (',output)
+                    self.assertNotEqual(result['returncode'], 0, output)
+                    self.assertIn('FAILED (', output)
                     if label not in ('collision guard removed','settings copy altered','latest invalid attempt selected','settings missing at launch accepted'):
-                        self.assertNotIn('ERROR:',output)
-                    expected=EXPECTED_FAILURES.get(label, 'AssertionError')
-                    self.assertIn(expected,output, 'wrong failure for '+label+'\n'+output)
-                    print('fault red: '+label)
+                        self.assertNotIn('ERROR:', output)
+                    expected = EXPECTED_FAILURES.get(label, 'AssertionError')
+                    self.assertIn(expected, output, 'wrong failure for ' + label + '\n' + output)
+                    print('fault red: ' + label)
                     if module == 'corpus':
                         for line in output.splitlines():
                             if line.startswith('FAIL:'):
-                                print('corpus witness: '+line)
+                                print('corpus witness: ' + line)
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     unittest.main(verbosity=2)
