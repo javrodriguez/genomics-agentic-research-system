@@ -143,14 +143,48 @@ def argv_for(tool, args, root=WORKSPACE):
 def simple_tokens(command):
     if not isinstance(command, str) or not command.strip():
         raise Refusal('command', 'could not read a nonempty command')
-    # Shell syntax is forbidden even inside quoted arguments on the Bash transport.
-    # Rich text containing it can use the JSON dispatcher through a native tool caller.
-    if any(c in command for c in (';', '|', '&', '<', '>', '`', '$', '\n', '\r')):
-        raise Refusal('command', 'only one simple command; no shell operators or expansion')
+    # Bash treats quoted operators as literal bytes; only filesystem argv may use them.
+    # $ and backticks expand even in double quotes, so refuse them everywhere, as CR/LF.
+    operators = ';|&<>'
+    message = 'only one simple command; no shell operators or expansion'
+    if any(c in command for c in ('`', '$', '\n', '\r')):
+        raise Refusal('command', message)
+    quote, i, quoted_operator = None, 0, False
+    word_start = True
+    while i < len(command):
+        char = command[i]
+        if quote is None:
+            # An unquoted word-start # discards the rest in the shell, not shlex.
+            if char == '#' and word_start:
+                raise Refusal('command', message)
+            word_start = char in ' \t'
+            if char in ("'", '"'):
+                quote = char
+            elif char == '\\':
+                following = command[i + 1:i + 2]
+                if following and following in operators:
+                    raise Refusal('command', message)
+                i += 1
+            # Unquoted braces, tildes and parentheses can carry shell syntax.
+            elif char in operators + '{}~()':
+                raise Refusal('command', message)
+        elif char == quote:
+            quote = None
+        elif quote == '"' and char == '\\' and command[i + 1:i + 2] in ('"', '\\'):
+            i += 1
+        elif char in operators:
+            quoted_operator = True
+        i += 1
+    if quote is not None:
+        raise Refusal('command', 'could not read command quoting')
     try:
-        return shlex.split(command, posix=True)
+        tokens = shlex.split(command, posix=True)
     except ValueError:
         raise Refusal('command', 'could not read command quoting')
+    if quoted_operator and (not tokens or tokens[0] not in {
+            tool['argv'][0] for tool in registry() if tool.get('filesystem')}):
+        raise Refusal('command', 'only one simple command; no shell operators or expansion')
+    return tokens
 
 
 def parse_argv(tokens, root=WORKSPACE, cwd=None):

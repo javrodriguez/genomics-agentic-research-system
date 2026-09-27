@@ -1,11 +1,92 @@
 """R-164: execute the shipped hook, including its known bypass-switch gap."""
 import json
+import shlex
+import shutil
 import sys
+import tempfile
 import unittest
+from pathlib import Path
 from support import GARS, run
+from tools import policy
 
 
 class GuardHookTests(unittest.TestCase):
+    def test_filesystem_default_path_matches_explicit_dot(self):
+        commands = []
+        for tool in policy.registry():
+            if tool.get('filesystem'):
+                words = list(tool['argv'])
+                if 'pattern' in tool['input_schema']['properties']:
+                    words.append('x')
+                commands.append(' '.join(shlex.quote(word) for word in words))
+        commands += ['grep -r x', 'rg --files', 'rg -n x']
+        self.assertTrue(commands)
+        with tempfile.TemporaryDirectory(prefix='guard-default-path-') as tmp:
+            root = Path(tmp)
+            shutil.copytree(str(GARS / '_system'), str(root / '_system'),
+                            ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
+            for closed in (False, True):
+                if closed:
+                    data = root / 'projects/closed/00_data'
+                    data.mkdir(parents=True)
+                    (data / 'dataset.tsv').write_text(
+                        'data_class\tpurpose\tagreement_ref\tinput_data_location\n'
+                        'deidentified_under_agreement\tfixture\tnone\t[]\n')
+                for command in commands:
+                    with self.subTest(command=command, closed=closed):
+                        results = []
+                        for spelling in (command, command + ' .'):
+                            payload = json.dumps({'hook_event_name': 'PreToolUse',
+                                                  'tool_name': 'Bash',
+                                                  'tool_input': {'command': spelling},
+                                                  'cwd': str(root)})
+                            result = run([sys.executable, root / '_system/guard_hook.py'],
+                                         root, payload, {'CLAUDE_PROJECT_DIR': str(root)})
+                            self.assertNotIn(b'the guard failed while checking', result.stderr)
+                            results.append(result)
+                        bare, explicit = results
+                        self.assertEqual(bare.returncode, explicit.returncode, bare.stderr)
+                        # Compare the whole reason, including its rule, not just exit 2.
+                        self.assertEqual(bare.stderr, explicit.stderr)
+                        if not closed:
+                            self.assertEqual(bare.returncode, 0, bare.stderr)
+                        elif command in ('find', 'grep -r x', 'grep x', 'rg x',
+                                         'rg --files', 'rg -n x'):
+                            self.assertEqual(bare.returncode, 2, bare.stderr)
+
+    def test_bare_registered_commands_never_crash(self):
+        commands = []
+        for tool in policy.registry():
+            argv = tool['argv']
+            words = argv[:1] if tool.get('filesystem') else ['python3'] + argv[1:3]
+            commands.append((tool['name'], ' '.join(shlex.quote(w) for w in words)))
+        commands.append(('dispatcher', 'python3 _system/tool_call.py'))
+        with tempfile.TemporaryDirectory(prefix='guard-bare-') as tmp:
+            root = Path(tmp)
+            shutil.copytree(str(GARS / '_system'), str(root / '_system'),
+                            ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
+            for closed in (False, True):
+                if closed:
+                    data = root / 'projects/closed/00_data'
+                    data.mkdir(parents=True)
+                    (data / 'dataset.tsv').write_text(
+                        'data_class\tpurpose\tagreement_ref\tinput_data_location\n'
+                        'deidentified_under_agreement\tfixture\tnone\t[]\n')
+                for name, command in commands:
+                    with self.subTest(tool=name, command=command, closed=closed):
+                        payload = json.dumps({'hook_event_name': 'PreToolUse',
+                                              'tool_name': 'Bash',
+                                              'tool_input': {'command': command},
+                                              'cwd': str(root)})
+                        result = run([sys.executable, root / '_system/guard_hook.py'],
+                                     root, payload, {'CLAUDE_PROJECT_DIR': str(root)})
+                        self.assertIn(result.returncode, (0, 2), result.stderr)
+                        self.assertNotIn(b'the guard failed while checking', result.stderr)
+
+    def test_bare_ls_lists(self):
+        result = self.call('Bash', {'command': 'ls'})
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def call(self, tool=None, data=None, raw=None):
         payload = raw if raw is not None else json.dumps(
             {'tool_name': tool, 'tool_input': data, 'cwd': str(GARS)})

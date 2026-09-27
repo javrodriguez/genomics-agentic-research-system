@@ -822,6 +822,10 @@ def closed_bash_refusal(tool, args, tokens, root, cwd):
             words.append((option[2:] if option in ("--project", "--model") and "=" in token
                           else key, token))
             key = option[2:] if token in ("--project", "--model") else None
+        # The parser defaults missing filesystem paths to '.', which needs every
+        # check a typed '.' gets, including recursive reads of a closed ancestor.
+        if tool.get("filesystem") and args["paths"] == ["."] and (None, ".") not in words:
+            words.append((None, "."))
     for _, word in [(None, t) for t in tokens] + words:
         if word in ("--pre", "--pre-glob") or word.startswith(("--pre=", "--pre-glob=")):
             deny("Blocked: rg --pre and --pre-glob run a program on every file searched, and "
@@ -843,7 +847,7 @@ def closed_bash_refusal(tool, args, tokens, root, cwd):
                 CLOSED_WHY))
     # Row 13 (decision 0141), addition 3: an agent reaches the pilot log's writer only through
     # the dispatcher, whose registry argv carries the launch token that makes the actor `agent`.
-    if not dispatcher and os.path.realpath(os.path.join(cwd, tokens[1])) == os.path.realpath(
+    if not dispatcher and len(tokens) > 1 and os.path.realpath(os.path.join(cwd, tokens[1])) == os.path.realpath(
             os.path.join(root, "_system", "pilot_log.py")):
         deny("Blocked: _system/pilot_log.py is the pilot log's writer. An agent session reaches it "
              "only through the dispatcher, which binds the actor at launch (decision 0141): "
