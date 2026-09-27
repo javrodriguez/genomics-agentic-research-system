@@ -164,7 +164,7 @@ FAULTS = [
      'core', 'ContractTests.test_prompt_pinned'),
     ('clean report methods input missing', 'evals/bio-faults/bio_generate_base.py',
      "'pipeline_commit': 'synthetic-v1',", "'pipeline_commit': None,",
-     'pipeline', 'BuildTests.test_clean_report_unknown_only_renderer_placeholders'),
+     'pipeline', 'BuildTests.test_clean_report_has_no_unknown'),
     ('refusal on usage limit retried at once', 'evals/bio-faults/bio_run_reviews.py',
      "if refused_phase and refused is None and record['envelope']['ended_on_usage_limit']:", 'if False:',
      'pipeline', 'LaunchTests.test_safeguard_refusal_on_usage_limit_awaits_only'),

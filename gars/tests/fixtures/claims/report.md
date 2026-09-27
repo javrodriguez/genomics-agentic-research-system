@@ -6,7 +6,7 @@ How do the synthetic groups differ?
 
 ## data and classification
 
-UNKNOWN (owned by row 6: data_class, venue, purpose)
+data_class: not recorded (the manifest has no `data_class`); venue: not recorded (the manifest has no `venue`); purpose: not recorded (the manifest has no `purpose`)
 
 ## methods (workflow versions, parameters, reference release)
 
@@ -19,7 +19,9 @@ params: \{"contrast": "treated,control"\}
 - claim 3: workflow_version=workflow\-v1; reference_release=release\-B
 - claim 4: workflow_version=workflow\-v1; reference_release=release\-B
 
-Genome hashes, model/prompt/routing: UNKNOWN (owned by row 6)
+Reference: not recorded (the manifest has no `reference`)
+
+Model steps: not recorded (the manifest has no `agent_model`)
 
 ## QC summary
 
@@ -51,8 +53,8 @@ Manifest path: gars/tests/fixtures/claims/manifest\.json
 
 Manifest sha256: 25b6987c30b06e80f47d04caf0c860359d1c687ad91d4e7ab2efd635c1871008
 
-Reproduce this analysis (`commands.sh`): UNKNOWN (owned by row 6)
+Reproduce this analysis (`commands.sh`): not recorded (the manifest has no `command`)
 
 ## cost
 
-UNKNOWN (owned by row 11: docs/ledger.csv has no per-run cost source)
+Not recorded: GARS does not meter per-run cost yet, and this manifest has no cost field.

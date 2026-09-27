@@ -193,10 +193,115 @@ class RenderReportTests(unittest.TestCase):
         self.assertEqual(self.invoke().returncode, 0)
         report = self.out.read_text()
         self.assertEqual(renderer.display(' \t\n', 'row 7: run registrar'), 'UNKNOWN (owned by row 7: run registrar)')
-        for owner in ('row 7: run registrar', 'row 6: data_class, venue, purpose',
-                      'row 6', '§14 QC dispositions', 'row 7: claim writer', 'row 6: manifest producer',
-                      'row 11: docs/ledger.csv has no per-run cost source'):
+        for owner in ('row 7: run registrar', '§14 QC dispositions',
+                      'row 7: claim writer', 'row 6: manifest producer'):
             self.assertIn('UNKNOWN (owned by %s)' % owner, report)
+        for key in ('data_class', 'venue', 'purpose', 'reference', 'agent_model', 'command'):
+            self.assertIn('not recorded (the manifest has no `%s`)' % key, report)
+        self.assertIn('Not recorded: GARS does not meter per-run cost yet, and this manifest has no cost field.', report)
+
+    def render_manifest(self, manifest):
+        # Keep existing methods populated so any row-6 UNKNOWN is a new-field regression.
+        manifest = dict({'pipeline_commit': 'fixture', 'params': {}}, **manifest)
+        return renderer.render(self.snapshot, manifest, (CLAIMS / 'report_template.md').read_text())
+
+    def test_manifest_values_rendered(self):
+        manifest = {
+            'data_class': 'public', 'venue': 'home_lab', 'purpose': 'fixture & review',
+            'agreement_ref': 'agreement[1]',
+            'reference': {'build': 'GRCh38', 'annotation_release': 'GENCODE 44',
+                          'fasta_sha256': 'a' * 64, 'gtf_sha256': 'b' * 64, 'comparison': 'matched'},
+            'command': {'path': 'reproducibility/commands.sh', 'sha256': 'c' * 64},
+            'agent_model': 'claude-opus-5-5',
+            'model_steps': [
+                {'model_id': 'claude-opus-5-5', 'prompt_id': 'wrapper/CONTEXT.md',
+                 'prompt_sha256': {'algorithm': 'git-sha1', 'value': 'd' * 40}, 'routing_rule_id': 'none'},
+                {'model_id': 'model_two', 'prompt_id': 'prompt[2]',
+                 'prompt_sha256': 'hash*2', 'routing_rule_id': 'route|2'}],
+            'cost': 'N/A: fixture-only.',
+            'resources': {'AllocCPUS': '8', 'Elapsed': '01:02:03', 'MaxRSS': '12G'},
+        }
+        report = self.render_manifest(manifest)
+        for expected in (
+                r'data_class: public; venue: home\_lab; purpose: fixture &amp; review; agreement_ref: agreement\[1\]',
+                'Reference: build=GRCh38; annotation_release=GENCODE 44; fasta_sha256=' + 'a' * 64 + '; gtf_sha256=' + 'b' * 64,
+                r'Model steps: claude\-opus\-5\-5 / wrapper/CONTEXT\.md / ' + 'd' * 40 + r' / none; model\_two / prompt\[2\] / hash\*2 / route\|2',
+                r'Reproduce this analysis (`commands.sh`): reproducibility/commands\.sh (relative to the sub-stage folder), sha256 ' + 'c' * 64,
+                r'N/A: fixture\-only\.',
+                r'Resources consumed (scheduler accounting): \{"AllocCPUS": "8", "Elapsed": "01:02:03", "MaxRSS": "12G"\}'):
+            self.assertIn(expected, report)
+        self.assertNotIn('registry check:', report)
+        self.assertIn('b' * 64 + '\n\nModel steps:', report)
+        self.assertNotIn('owned by row 6', report)
+        self.assertNotIn('owned by row 11', report)
+
+    def test_no_model_mediated_step(self):
+        report = self.render_manifest({'agent_model': 'none', 'model_steps': [{'model_id': 'ignored'}]})
+        self.assertIn('Model steps: no model-mediated step (agent_model: none)', report)
+        self.assertNotIn('ignored', report)
+
+    def test_reference_registry_comparison(self):
+        for comparison, reason in (('missing', 'FASTA hash missing'), ('mismatch', '<wrong>|hash'),
+                                   (None, None), ('matched ', None), ([], [])):
+            with self.subTest(comparison=comparison):
+                report = self.render_manifest({'reference': {'comparison': comparison, 'reason': reason}})
+                self.assertIn('Reference: build=not recorded; annotation_release=not recorded; '
+                              'fasta_sha256=not recorded; gtf_sha256=not recorded', report)
+                self.assertIn('registry check: ' + (renderer.display(comparison, 'manifest') if comparison else 'not recorded') +
+                              ' (' + (renderer.display(reason, 'manifest') if reason else 'not recorded') + ')', report)
+
+    def test_hostile_manifest_values_cannot_add_sections(self):
+        hostile = '\n## invented\n<script>|row|`'
+        report = self.render_manifest({
+            'data_class': hostile, 'venue': hostile, 'purpose': hostile, 'agreement_ref': hostile,
+            'reference': dict((key, hostile) for key in
+                              ('build', 'annotation_release', 'fasta_sha256', 'gtf_sha256', 'comparison', 'reason')),
+            'command': {'path': hostile, 'sha256': hostile}, 'agent_model': hostile,
+            'model_steps': [dict((key, hostile) for key in
+                                 ('model_id', 'prompt_id', 'prompt_sha256', 'routing_rule_id')), hostile],
+            'cost': hostile, 'resources': {'Elapsed': hostile},
+        })
+        self.assertEqual(re.findall(r'^## (.+)$', report, re.M), [s[0] for s in renderer.SECTIONS])
+        self.assertNotIn('<script>', report)
+        self.assertNotIn('|row|', report)
+        self.assertIn(r'data_class:  \#\# invented &lt;script&gt;\|row\|\`', report)
+        self.assertIn(r'Reproduce this analysis (`commands.sh`):  \#\# invented &lt;script&gt;\|row\|\` (relative to the sub-stage folder)', report)
+
+    def test_missing_and_empty_manifest_values(self):
+        for empty in (None, [], '', ' \t\n', {}):
+            with self.subTest(empty=empty):
+                report = self.render_manifest(dict((key, empty) for key in
+                    ('data_class', 'venue', 'purpose', 'agreement_ref', 'agent_model')))
+                for key in ('data_class', 'venue', 'purpose', 'agent_model'):
+                    self.assertIn('not recorded (the manifest has no `%s`)' % key, report)
+                self.assertNotIn('agreement_ref:', report)
+                report = self.render_manifest({
+                    'reference': dict((key, empty) for key in
+                                      ('build', 'annotation_release', 'fasta_sha256', 'gtf_sha256')),
+                    'command': {'path': empty, 'sha256': empty}, 'agent_model': 'model_name',
+                    'model_steps': [{'model_id': empty, 'prompt_id': empty,
+                                     'prompt_sha256': {'value': empty}, 'routing_rule_id': empty}, empty],
+                })
+                self.assertIn('Model steps: not recorded / not recorded / not recorded / not recorded; ', report)
+                self.assertIn('not recorded (relative to the sub-stage folder), sha256 not recorded', report)
+                self.assertNotIn('UNKNOWN (owned by manifest)', report)
+                self.assertNotIn('owned by row 6', report)
+                self.assertNotIn('owned by row 11', report)
+                report = self.render_manifest({'agent_model': 'model_name', 'model_steps': empty})
+                self.assertIn(r'Model steps: agent_model: model\_name; not recorded (the manifest has no `model_steps`)', report)
+        report = self.render_manifest({'reference': 'not an object', 'command': ['not an object'],
+                                       'agent_model': 'model', 'model_steps': [{}]})
+        self.assertIn('Reference: not recorded (the manifest has no `reference`)', report)
+        self.assertIn('not recorded (the manifest has no `command`)', report)
+        self.assertIn('Model steps: not recorded / not recorded / not recorded / not recorded', report)
+
+    def test_cost_and_resources_absence(self):
+        for cost in (None, '', ' \n', [], {}, 0, False):
+            for resources in (None, [], 'local', {}, {'applicability': 'not applicable', 'Elapsed': 'ignored'}):
+                with self.subTest(cost=cost, resources=resources):
+                    report = self.render_manifest({'cost': cost, 'resources': resources})
+                    self.assertIn('Not recorded: GARS does not meter per-run cost yet, and this manifest has no cost field.', report)
+                    self.assertNotIn('Resources consumed', report)
 
     def test_absent_limitations_and_malformed_manifest(self):
         for claim in self.snapshot['claims']:

@@ -273,36 +273,27 @@ class BuildTests(unittest.TestCase):
             if manifest['params']['assay'] == 'atacseq_bulk':
                 self.assertIn('Consensus-peak union and blacklist exclusion', report)
                 self.assertIn('not verifiable from the supplied files', report)
-            # Boundary witness, not acceptance of a clean rendered report:
-            # the protected row-7 function ignores these supplied inputs.
-            for heading in ('data and classification', 'cost'):
+            # The renderer consumes the supplied classification and cost. The base's
+            # legacy `commands` key is not the manifest schema's `command` object.
+            for heading, expected in (
+                    ('data and classification', 'data_class: public; venue: not recorded (the manifest has no `venue`); '
+                     'purpose: not recorded (the manifest has no `purpose`)'),
+                    ('cost', manifest['cost'])):
                 section = report.split('## ' + heading + '\n', 1)[1].split('\n## ', 1)[0]
-                self.assertIn('UNKNOWN', section)
+                self.assertEqual(section.strip(), expected)
+            self.assertIn('Reproduce this analysis (`commands.sh`): not recorded (the manifest has no `command`)', report)
+            self.assertNotIn('UNKNOWN', report)
 
-    # The renderer's four fixed placeholders (render_report.render ignores these inputs);
-    # every other section is suppliable by the base and must never read UNKNOWN.
-    RENDERER_PLACEHOLDERS = (
-        ('data and classification', 'UNKNOWN (owned by row 6: data_class, venue, purpose)'),
-        ('methods (workflow versions, parameters, reference release)',
-         'Genome hashes, model/prompt/routing: UNKNOWN (owned by row 6)'),
-        ('manifest reference and "reproduce this analysis" (`commands.sh`)',
-         'Reproduce this analysis (`commands.sh`): UNKNOWN (owned by row 6)'),
-        ('cost', 'UNKNOWN (owned by row 11: docs/ledger.csv has no per-run cost source)'))
-
-    def test_clean_report_unknown_only_renderer_placeholders(self):
+    def test_clean_report_has_no_unknown(self):
         root = temporary(self)
         m, key = builder.build(root / 'built')
         clean = [n for n, e in key['cases'].items() if e['kind'] == 'clean']
         self.assertTrue(clean)
         for neutral in clean:
             report = (root / 'built/cases' / neutral / 'project/4-report/report.md').read_text().replace(chr(92), '')
-            heading, found = None, []
-            for line in report.splitlines():
-                if line.startswith('## '):
-                    heading = line[3:]
-                elif 'UNKNOWN' in line:
-                    found.append((heading, line))
-            self.assertEqual(sorted(found), sorted(self.RENDERER_PLACEHOLDERS), neutral)
+            self.assertNotIn('UNKNOWN', report, neutral)
+            self.assertIn('Reference: not recorded (the manifest has no `reference`)', report)
+            self.assertIn('Model steps: not recorded (the manifest has no `agent_model`)', report)
 
     def test_base_fingerprints(self):
         hashes = BASE_HASHES
