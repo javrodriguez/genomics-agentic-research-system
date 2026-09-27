@@ -150,9 +150,14 @@ def simple_tokens(command):
     if any(c in command for c in ('`', '$', '\n', '\r')):
         raise Refusal('command', message)
     quote, i, quoted_operator = None, 0, False
+    word_start = True
     while i < len(command):
         char = command[i]
         if quote is None:
+            # An unquoted word-start # discards the rest in the shell, not shlex.
+            if char == '#' and word_start:
+                raise Refusal('command', message)
+            word_start = char in ' \t'
             if char in ("'", '"'):
                 quote = char
             elif char == '\\':
