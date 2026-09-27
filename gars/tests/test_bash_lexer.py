@@ -49,6 +49,34 @@ COMMENTS = (
     (r'grep -n a\ #x CONTEXT.md', 0, None),
     (r"ls \#'|'", 0, None),
 )
+BRACES_TILDES = (
+    ('ls {..,"|"}', 2, OPERATOR_MESSAGE),
+    ('cat {/etc/hosts,"|"}', 2, OPERATOR_MESSAGE),
+    ('ls ~/"|"', 2, OPERATOR_MESSAGE),
+    ('cat {../projects/closed/00_data/rnaseq_bulk/raw/s.txt,x}', 2, OPERATOR_MESSAGE),
+    ('ls ~', 2, OPERATOR_MESSAGE),
+    ('cat ~/x', 2, OPERATOR_MESSAGE),
+    ('ls x=~/y', 2, OPERATOR_MESSAGE),
+    ('ls ~+', 2, OPERATOR_MESSAGE),
+    ('ls a~', 2, OPERATOR_MESSAGE),
+    ('ls {a,b}', 2, OPERATOR_MESSAGE),
+    ('grep -n a{2} f', 2, OPERATOR_MESSAGE),
+    ('ls x:~/y', 2, OPERATOR_MESSAGE),
+    ('ls "a"~', 2, OPERATOR_MESSAGE),
+    ('ls "a"{b,c}', 2, OPERATOR_MESSAGE),
+    ('python3 _system/stage00_register.py create --title a~ --assays rnaseq_bulk',
+     2, OPERATOR_MESSAGE),
+    ('python3 _system/stage00_register.py create --title a{b,c} --assays rnaseq_bulk',
+     2, OPERATOR_MESSAGE),
+    ('grep -n "{" CONTEXT.md', 0, None),
+    ("grep -n '{' CONTEXT.md", 0, None),
+    ("grep -n '~' CONTEXT.md", 0, None),
+    ('grep -n "~" CONTEXT.md', 0, None),
+    ('grep -n "a{2}" CONTEXT.md', 0, None),
+    (r'grep -n \{ CONTEXT.md', 0, None),
+    (r'grep -n \~ CONTEXT.md', 0, None),
+    (r'grep -n a\{b,c} CONTEXT.md', 0, None),
+)
 
 
 def operator_rows():
@@ -80,6 +108,7 @@ def strict_rows():
 def lexical_rows():
     """Finite scan corpus shared by the guard tests and the real-shell differential."""
     rows = list(REPORTED) + list(BOUNDARIES) + list(COMMENTS) + list(operator_rows())
+    rows += list(BRACES_TILDES)
     rows += list(expansion_rows()) + list(strict_rows())
     # Adjacent quote regions, empty words, escaped quote/space, and a literal backslash.
     rows += [(command, 0, None) for command in (
@@ -200,6 +229,33 @@ class BashLexerTests(unittest.TestCase):
                 'data_class\tpurpose\tagreement_ref\tinput_data_location\n'
                 'deidentified_under_agreement\tfixture\tnone\t[]\n')
             self.check_rows(COMMENTS, root)
+
+    def test_brace_and_tilde_expansions_and_literals(self):
+        self.check_rows(BRACES_TILDES)
+        with tempfile.TemporaryDirectory(prefix='lexer-brace-tilde-') as tmp:
+            root = Path(tmp)
+            shutil.copytree(str(GARS / '_system'), str(root / '_system'),
+                            ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
+            raw = root / 'projects/closed/00_data/rnaseq_bulk/raw'
+            raw.mkdir(parents=True)
+            (raw / 's.txt').write_text('synthetic closed fixture\n')
+            (root / 'projects/closed/00_data/dataset.tsv').write_text(
+                'data_class\tpurpose\tagreement_ref\tinput_data_location\n'
+                'deidentified_under_agreement\tfixture\tnone\t[]\n')
+            pub = root / 'pub'
+            pub.mkdir()
+            for command, expected, message in BRACES_TILDES:
+                if expected != 2:
+                    continue  # Existing closed-project literal-path rules remain unchanged.
+                with self.subTest(command=command, cwd='pub', closed=True):
+                    payload = json.dumps({'hook_event_name': 'PreToolUse', 'tool_name': 'Bash',
+                                          'tool_input': {'command': command}, 'cwd': str(pub)})
+                    result = run([sys.executable, root / '_system/guard_hook.py'], root,
+                                 payload, {'CLAUDE_PROJECT_DIR': str(root)})
+                    self.assertEqual(result.returncode, expected, result.stderr)
+                    self.assertIn(message.encode(), result.stderr)
+                    self.assertIn(b'R-092', result.stderr)
+                    self.assertNotIn(b'the guard failed while checking', result.stderr)
 
     def test_helpers_and_dispatcher_stay_strict(self):
         self.check_rows(strict_rows())
