@@ -653,6 +653,21 @@ class Stage00Tests(HookCase):
                 finally:
                     path.unlink()
 
+        # Unlike seqrun, this outside folder is not any project's raw-link target.
+        target = root.parent / 'model-outside'
+        target.mkdir()
+        path = root / 'xout'
+        path.symlink_to(target, target_is_directory=True)
+        try:
+            args = dict(sample_args(tool, 'projects/open1'), model='xout')
+            for command in (bare(tool, args), bare(tool, args).replace('--model ', '--model=')):
+                with self.subTest(command=command):
+                    err = self.refused(self.bash(root, command), root=root)
+                    self.assertIn('path_outside_workspace', err)
+        finally:
+            path.unlink()
+            target.rmdir()
+
     def test_model_raw_target_still_judged(self):
         root = ROOTS['R1']
         store = root / 'rawstore'
