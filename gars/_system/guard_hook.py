@@ -877,7 +877,7 @@ def closed_bash_refusal(tool, args, tokens, root, cwd):
                     if sources and all(inside_declared(os.path.realpath(f), sources)
                                        for f in forms):
                         continue
-                    hit = _hit(token, bases, recursive, model_closed, False)
+                    hit = _hit(token, bases, True, model_closed, False)
                     if hit:
                         deny(closed_refusal(token, hit))
                     if any(not _inside(f, root) for f in forms):
