@@ -665,10 +665,10 @@ class Stage00Tests(HookCase):
                             dispatch(tool['name'], args)):
                 with self.subTest(command=command):
                     self.refused(self.bash(root, command), root=root)
-        for purpose in ('--model=x[1m]', '--model=projects/pil*'):
+        for reference in ('--model=x[1m]', '--model=projects/pil*'):
             args = {'project': 'projects/ready', 'data-class': 'public',
-                    'purpose': purpose, 'model': 'safe'}
-            with self.subTest(purpose=purpose):
+                    'purpose': 'fixture', 'agreement-ref': reference, 'model': 'safe'}
+            with self.subTest(reference=reference):
                 self.refused(self.bash(root, bare(tool, args)), root=root)
         project = root / 'projects/x1'
         project.mkdir()
