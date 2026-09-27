@@ -603,6 +603,56 @@ class Stage00Tests(HookCase):
                 rule = 'R-092' if any(s in command for s in schema) else '0107'
                 self.refused(self.bash(root, command), rule, root)
 
+    def test_model_id_is_a_value(self):
+        root = ROOTS['R1']
+        model = 'claude-opus-5-5[1m]'
+        args = {'project': 'projects/ready', 'data-class': 'public', 'purpose': 'fixture'}
+        command = stage00('finalize', '--project', args['project'], '--data-class',
+                          args['data-class'], '--purpose', args['purpose'])
+        for spelling in (' --model ' + shlex.quote(model), ' --model=' + shlex.quote(model)):
+            with self.subTest(spelling=spelling):
+                self.allowed(self.bash(root, command + spelling))
+        self.allowed(self.bash(root, dispatch('stage00_register.finalize',
+                                             dict(args, model=model))))
+        for tool in REGISTRY:
+            if 'model' not in tool.get('cli', {}):
+                continue
+            args = sample_args(tool, 'projects/open1')
+            if tool['name'] == 'stage00_register.finalize':
+                args = {'project': 'projects/ready', 'data-class': 'public', 'purpose': 'fixture'}
+            args.pop('model', None)
+            for spelling in (bare, lambda t, a: dispatch(t['name'], a)):
+                command = spelling(tool, args)
+                if self.bash(root, command).returncode == 0:
+                    with self.subTest(tool=tool['name'], command=command):
+                        self.allowed(self.bash(root, spelling(tool, dict(args, model=model))))
+
+    def test_model_value_still_judged(self):
+        root = ROOTS['R1']
+        for model in ('projects/pilot/00_data/rnaseq_bulk', 'claude-[a-z]*', 'pil?t',
+                      '{pilot,x}', 'claude-opus-5-5[1m]/x', '~/x', 'x[1m][2k]'):
+            args = {'project': 'projects/ready', 'data-class': 'public',
+                    'purpose': 'fixture', 'model': model}
+            tool = next(t for t in REGISTRY if t['name'] == 'stage00_register.finalize')
+            for command in (bare(tool, args), bare(tool, args).replace('--model ', '--model='),
+                            dispatch(tool['name'], args)):
+                with self.subTest(command=command):
+                    self.refused(self.bash(root, command), root=root)
+        project = root / 'projects/x1'
+        project.mkdir()
+        try:
+            tool = next(t for t in REGISTRY if t['name'] == 'stage01_samplesheet')
+            args = sample_args(tool, 'open1')
+            for model in ('x[1m]', 'x1'):
+                args['model'] = model
+                for command in (bare(tool, args, 'projects'),
+                                bare(tool, args, 'projects').replace('--model ', '--model='),
+                                dispatch(tool['name'], args, 'projects')):
+                    with self.subTest(command=command):
+                        self.refused(self.bash(root, command, 'projects'), root=root)
+        finally:
+            project.rmdir()
+
     def test_invalid_declarations(self):
         print('red-on-fault: invalid declarations', flush=True)
         root = ROOTS['R1']
