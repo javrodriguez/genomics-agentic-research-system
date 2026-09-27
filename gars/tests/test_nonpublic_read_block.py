@@ -378,7 +378,7 @@ EXPANSION = [
     ('glob', 'Bash', 'cat projects/pil*/00_data/rnaseq_bulk/samples.csv', '', 'block'),
     ('brace', 'Bash', 'cat projects/{pilot,open1}/CONTEXT.md', '', 'base'),
     ('bracket', 'Bash', 'cat projects/pilo[t]/CONTEXT.md', '', 'block'),
-    ('qualifier', 'Bash', 'ls projects/*(/)', '', 'block'),
+    ('qualifier', 'Bash', 'ls projects/*(/)', '', 'base'),
     ('tilde', 'Bash', 'cat ~/x', '', 'base'),
     ('tilde', 'Bash', 'ls ~', '', 'base'),
     ('tilde', 'Bash', dispatch('fs.read', {'paths': ['~/x']}), '', 'block'),

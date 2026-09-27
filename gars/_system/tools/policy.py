@@ -165,8 +165,8 @@ def simple_tokens(command):
                 if following and following in operators:
                     raise Refusal('command', message)
                 i += 1
-            # Unquoted braces and tildes have shell syntax or expansion semantics.
-            elif char in operators + '{}~':
+            # Unquoted braces, tildes and parentheses can carry shell syntax.
+            elif char in operators + '{}~()':
                 raise Refusal('command', message)
         elif char == quote:
             quote = None
