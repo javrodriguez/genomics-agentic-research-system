@@ -1,4 +1,5 @@
 """Visible guard faults, each observed red in an isolated copy; no sealed score."""
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import os
 import shutil
@@ -441,22 +442,47 @@ def control_key(entry):
     return entry[4], entry[5]
 
 
-def run_all(entries):
-    # Serial skeleton: guards are exercised before adding the bounded pool.
-    controls = {}
-    results = []
-    for entry in entries:
-        key = control_key(entry)
-        if key not in controls:
-            controls[key] = run_control(entry[4], entry[5])
-        results.append(run_entry(entry, controls[key]))
-    return controls, results
+def worker_count():
+    value = os.environ.get('GARS_FAULT_WORKERS')
+    if value is None:
+        return max(1, min(4, (os.cpu_count() or 1) // 4))
+    try:
+        workers = int(value)
+    except ValueError:
+        raise ValueError('GARS_FAULT_WORKERS must be an integer >= 1: %r' % value)
+    if workers < 1:
+        raise ValueError('GARS_FAULT_WORKERS must be an integer >= 1: %r' % value)
+    return workers
+
+
+def run_after_control(entry, control_future):
+    return run_entry(entry, control_future.result())
+
+
+def run_all(entries, workers):
+    # Submit every control before any dependent work, so even one worker
+    # cannot deadlock waiting for a queued control. Prioritize heavy builds.
+    ordered = sorted(entries, key=lambda entry: entry[4] != 'build')
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        controls = {}
+        for entry in ordered:
+            key = control_key(entry)
+            if key not in controls:
+                controls[key] = pool.submit(run_control, entry[4], entry[5])
+        results = {}
+        for index in sorted(range(len(entries)), key=lambda i: entries[i][4] != 'build'):
+            entry = entries[index]
+            results[index] = pool.submit(run_after_control, entry, controls[control_key(entry)])
+        return ({key: future.result() for key, future in controls.items()},
+                [results[index].result() for index in range(len(entries))])
 
 
 class FaultTests(unittest.TestCase):
     def test_every_guard_fault_is_red(self):
+        started = time.monotonic()
+        workers = worker_count()
         entries = FAULTS + GREEN_CONTROLS
-        controls, results = run_all(entries)
+        controls, results = run_all(entries, workers)
         for entry, result in zip(entries, results):
             label, relative, old, new, module, case = entry
             with self.subTest(fault=label):
@@ -490,6 +516,11 @@ class FaultTests(unittest.TestCase):
                         for line in output.splitlines():
                             if line.startswith('FAIL:'):
                                 print('corpus witness: ' + line)
+
+        slowest = max(controls, key=lambda key: controls[key]['seconds'])
+        print('faults: %d entries, %d controls, workers %d, wall %.1f s, slowest control %s %.1f s' % (
+            len(entries), len(controls), workers, time.monotonic() - started,
+            slowest[1], controls[slowest]['seconds']))
 
 
 if __name__ == '__main__':
