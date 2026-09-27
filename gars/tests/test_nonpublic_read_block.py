@@ -656,7 +656,8 @@ class Stage00Tests(HookCase):
     def test_model_value_still_judged(self):
         root = ROOTS['R1']
         for model in ('projects/pilot/00_data/rnaseq_bulk', 'claude-[a-z]*', 'pil?t',
-                      '{pilot,x}', 'claude-opus-5-5[1m]/x', '~/x', 'x[1m][2k]'):
+                      '{pilot,x}', 'claude-opus-5-5[1m]/x', '~/x', 'x[1m][2k]',
+                      'x[1m]=safe', '--model=x[1m]'):
             args = {'project': 'projects/ready', 'data-class': 'public',
                     'purpose': 'fixture', 'model': model}
             tool = next(t for t in REGISTRY if t['name'] == 'stage00_register.finalize')
