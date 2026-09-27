@@ -74,8 +74,7 @@ class DataClassRequiredTests(unittest.TestCase):
                    env={'CLAUDE_PROJECT_DIR':str(GARS)})
         self.assertEqual(result.returncode,0,result.stderr.decode())
         settings=json.loads((GARS/'.claude/settings.json').read_text())['permissions']['deny']
-        for tool in ('Edit','Write'):
-            self.assertEqual(settings.count(tool+'(projects/*/00_data/dataset.tsv)'),1)
+        self.assertEqual(settings.count('Edit(projects/*/00_data/dataset.tsv)'),1)
 
 
 if __name__=='__main__':

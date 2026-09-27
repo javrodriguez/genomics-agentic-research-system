@@ -35,6 +35,14 @@ class ProtectedPathsTests(unittest.TestCase):
                 with self.subTest(target=target,spelling=spelling):
                     self.assertEqual(self.call('Bash',{'command':spelling.format(p=target)}).returncode,2)
 
+    def test_every_guard_pattern_every_write_tool(self):
+        for pattern in guard_hook.READ_ONLY:
+            target=pattern.replace('repo:','../').replace('*','x')
+            for tool in ('Write','Edit','MultiEdit','NotebookEdit'):
+                with self.subTest(pattern=pattern,target=target,tool=tool):
+                    result=self.call(tool,{'file_path':target})
+                    self.assertEqual(result.returncode,2,result.stderr.decode())
+
     def test_resolved_symlink_escape(self):
         with tempfile.TemporaryDirectory(prefix='protected-path-') as tmp:
             root=Path(tmp)/'workspace'; root.mkdir()
@@ -47,9 +55,11 @@ class ProtectedPathsTests(unittest.TestCase):
 
     def test_settings_equal_guard_patterns(self):
         settings=json.loads((GARS/'.claude/settings.json').read_text())
-        actual={s for s in settings['permissions']['deny'] if s.startswith(('Edit(','Write('))}
-        expected={tool+'('+p.replace('repo:','../')+')' for p in guard_hook.READ_ONLY for tool in ('Edit','Write')}
+        deny=settings['permissions']['deny']
+        actual={s for s in deny if '(' in s}
+        expected={'Edit('+p.replace('repo:','../')+')' for p in guard_hook.READ_ONLY}
         self.assertEqual(actual,expected)
+        self.assertFalse(any(s.startswith(('Write(','MultiEdit(','NotebookEdit(')) for s in deny))
 
     def test_approval_store_read_and_symlink_refuse(self):
         with tempfile.TemporaryDirectory(prefix='store-guard-') as tmp:
