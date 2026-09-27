@@ -373,16 +373,51 @@ def config_root_for(path):
     return here
 
 
-# Explicit exported names; no arbitrary inherited credentials (R-096, executor half).
-EXPORT_NAMES = ('PATH', 'HOME', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'TMPDIR', 'TEMP',
-                'TMP', 'GARS_ROOT', 'GARS_PIPELINES')
+# Read gars-env.sh's overridables rather than keep a second list: the old list
+# dropped GARS_BIO/GARS_NXF and broke jobs using non-default installations.
+# These values are paths the operator chose, not credentials. R-096 still admits
+# only process basics plus gars-env.sh's own overridables.
+BASE_NAMES = ('PATH', 'HOME', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'TMPDIR', 'TEMP', 'TMP')
+
+
+def overridable_names(text):
+    """Read same-name :- / :? assignments; defaults may contain nested shell code."""
+    return tuple(sorted(set(re.findall(
+        r'^(?:export )?([A-Za-z_][A-Za-z0-9_]*)="\$\{\1:[-?]', text, re.M))))
+
+
+class ExecutionEnvError(RuntimeError):
+    """The executor cannot determine its allowed environment names (R-096)."""
+
+
+_ENV_SOURCE_ERROR = None
+try:
+    _OVERRIDABLE_NAMES = overridable_names(
+        Path(__file__).with_name('gars-env.sh').read_text(encoding='utf-8'))
+    if not _OVERRIDABLE_NAMES:
+        raise ValueError('no overridable names found')
+except (OSError, UnicodeError, ValueError) as exc:
+    # Partial test fixtures may import this module; only execution needs the list.
+    _OVERRIDABLE_NAMES = ()
+    _ENV_SOURCE_ERROR = exc
+
+EXPORT_NAMES = tuple(sorted(set(BASE_NAMES + _OVERRIDABLE_NAMES)))
+
+
+def _require_env_source():
+    if _ENV_SOURCE_ERROR is not None:
+        raise ExecutionEnvError(
+            'gars-env.sh could not be read, so the executor cannot tell which '
+            'variables it may pass (R-096)') from _ENV_SOURCE_ERROR
 
 
 def execution_env():
+    _require_env_source()
     return {key: value for key, value in os.environ.items() if key in EXPORT_NAMES}
 
 
 def submit_argv(descriptor, script):
+    _require_env_source()
     problems = validate(descriptor)
     if problems:
         raise ValueError('; '.join(problems))
