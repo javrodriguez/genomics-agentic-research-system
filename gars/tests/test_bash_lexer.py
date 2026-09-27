@@ -85,6 +85,27 @@ BRACES_TILDES = (
     (r'grep -n a\{b,c\} CONTEXT.md', 0, None),
     ('grep -n "a{b,c}" CONTEXT.md', 0, None),
 )
+# Guard-only payloads: never put executable zsh qualifiers or =(...) in a shell corpus.
+PARENTHESIS_REFUSALS = (
+    ("ls *(e:'touch a;touch b':)", 2, OPERATOR_MESSAGE),
+    ("cat =(eval 'touch e;touch g')", 2, OPERATOR_MESSAGE),
+    ("ls _system/*(e:'touch a|sh':)", 2, OPERATOR_MESSAGE),
+    ('ls =(touch e)', 2, OPERATOR_MESSAGE),
+    ("ls *(e:'touch a':)", 2, OPERATOR_MESSAGE),
+    ('ls a(b', 2, OPERATOR_MESSAGE),
+    ('ls a)b', 2, OPERATOR_MESSAGE),
+)
+CLOSED_QUALIFIER = "ls _system/*(e:'cat projects/closed/00_data/rnaseq_bulk/raw/s.txt':)"
+PARENTHESIS_LITERALS = (
+    ('grep -n "(a|b)" CONTEXT.md', 0, None),
+    ("grep -n '(x)' CONTEXT.md", 0, None),
+    (r'grep -n \(x\) CONTEXT.md', 0, None),
+)
+UNMATCHED_OPEN_BRACES = (
+    ('ls a{b', 2, OPERATOR_MESSAGE),
+    ('grep -n x{ CONTEXT.md', 2, OPERATOR_MESSAGE),
+    ('grep -n "x{" CONTEXT.md', 0, None),
+)
 
 
 def operator_rows():
@@ -117,6 +138,7 @@ def lexical_rows():
     """Finite scan corpus shared by the guard tests and the real-shell differential."""
     rows = list(REPORTED) + list(BOUNDARIES) + list(COMMENTS) + list(operator_rows())
     rows += list(BRACES_TILDES)
+    rows += list(PARENTHESIS_LITERALS) + list(UNMATCHED_OPEN_BRACES)
     rows += list(expansion_rows()) + list(strict_rows())
     # Adjacent quote regions, empty words, escaped quote/space, and a literal backslash.
     rows += [(command, 0, None) for command in (
@@ -277,6 +299,26 @@ class BashLexerTests(unittest.TestCase):
                 self.assertEqual(reference.returncode, 0, reference.stderr)
                 self.assertEqual(literal.returncode, reference.returncode, literal.stderr)
                 self.assertEqual(literal.stderr, reference.stderr)
+
+    def test_unquoted_parentheses_refused(self):
+        with tempfile.TemporaryDirectory(prefix='lexer-parentheses-') as tmp:
+            root = Path(tmp)
+            shutil.copytree(str(GARS / '_system'), str(root / '_system'),
+                            ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
+            self.check_rows(PARENTHESIS_REFUSALS, root)
+            raw = root / 'projects/closed/00_data/rnaseq_bulk/raw'
+            raw.mkdir(parents=True)
+            (raw / 's.txt').write_text('synthetic closed fixture\n')
+            (root / 'projects/closed/00_data/dataset.tsv').write_text(
+                'data_class\tpurpose\tagreement_ref\tinput_data_location\n'
+                'deidentified_under_agreement\tfixture\tnone\t[]\n')
+            self.check_rows([(CLOSED_QUALIFIER, 2, OPERATOR_MESSAGE)], root)
+
+    def test_parenthesis_literals(self):
+        self.check_rows(PARENTHESIS_LITERALS)
+
+    def test_unmatched_opening_brace_witnesses(self):
+        self.check_rows(UNMATCHED_OPEN_BRACES)
 
     def test_helpers_and_dispatcher_stay_strict(self):
         self.check_rows(strict_rows())
