@@ -736,9 +736,9 @@ def _spellings(word):
     return [w for w in found if w]
 
 
-def _model_spellings(key, word):
+def _model_spellings(key, word, value):
     """Literal spellings and each sibling a model suffix can name; None off model shape."""
-    if key != "model" or not MODEL_ID.match(word.split("=", 1)[-1]):
+    if key != "model" or not isinstance(value, str) or not MODEL_ID.match(value):
         return None
     found = []
     for token in _spellings(word):
@@ -865,7 +865,7 @@ def closed_bash_refusal(tool, args, tokens, root, cwd):
             paths = []
             model_closed = output_projects(root)
             for key, word in words[1:]:
-                literals = _model_spellings(key, word)
+                literals = _model_spellings(key, word, args.get("model"))
                 if literals is None:
                     paths.extend(_spellings(word))
                     continue
@@ -914,7 +914,7 @@ def closed_bash_refusal(tool, args, tokens, root, cwd):
         return
     readable = bool(tool.get("filesystem"))
     for key, word in words:
-        literals = _model_spellings(key, word)
+        literals = _model_spellings(key, word, args.get("model"))
         for token in literals if literals is not None else _spellings(word):
             hit = (_hit(token, bases, recursive, closed, readable) if literals is not None
                    else closed_hit(token, root, bases, recursive, closed, readable))
