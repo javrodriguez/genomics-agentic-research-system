@@ -737,8 +737,9 @@ def _spellings(word):
 
 
 def _model_spellings(key, word, value):
-    """Literal spellings and each sibling a model suffix can name; None off model shape."""
-    if key != "model" or not isinstance(value, str) or not MODEL_ID.match(value):
+    """Literal spellings and siblings for this parsed model value; None off model shape."""
+    if (key != "model" or not isinstance(value, str) or not MODEL_ID.match(value)
+            or word not in (value, "--model=" + value)):
         return None
     found = []
     for token in _spellings(word):
