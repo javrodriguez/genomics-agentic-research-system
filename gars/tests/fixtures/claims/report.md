@@ -20,6 +20,7 @@ params: \{"contrast": "treated,control"\}
 - claim 4: workflow_version=workflow\-v1; reference_release=release\-B
 
 Reference: not recorded (the manifest has no `reference`)
+
 Model steps: not recorded (the manifest has no `agent_model`)
 
 ## QC summary

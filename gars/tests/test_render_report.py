@@ -226,11 +226,12 @@ class RenderReportTests(unittest.TestCase):
                 r'data_class: public; venue: home\_lab; purpose: fixture &amp; review; agreement_ref: agreement\[1\]',
                 'Reference: build=GRCh38; annotation_release=GENCODE 44; fasta_sha256=' + 'a' * 64 + '; gtf_sha256=' + 'b' * 64,
                 r'Model steps: claude\-opus\-5\-5 / wrapper/CONTEXT\.md / ' + 'd' * 40 + r' / none; model\_two / prompt\[2\] / hash\*2 / route\|2',
-                r'Reproduce this analysis (`commands.sh`): `reproducibility/commands\.sh` (relative to the sub-stage folder), sha256 ' + 'c' * 64,
+                r'Reproduce this analysis (`commands.sh`): reproducibility/commands\.sh (relative to the sub-stage folder), sha256 ' + 'c' * 64,
                 r'N/A: fixture\-only\.',
                 r'Resources consumed (scheduler accounting): \{"AllocCPUS": "8", "Elapsed": "01:02:03", "MaxRSS": "12G"\}'):
             self.assertIn(expected, report)
         self.assertNotIn('registry check:', report)
+        self.assertIn('b' * 64 + '\n\nModel steps:', report)
         self.assertNotIn('owned by row 6', report)
         self.assertNotIn('owned by row 11', report)
 
@@ -264,7 +265,7 @@ class RenderReportTests(unittest.TestCase):
         self.assertNotIn('<script>', report)
         self.assertNotIn('|row|', report)
         self.assertIn(r'data_class:  \#\# invented &lt;script&gt;\|row\|\`', report)
-        self.assertIn(r'Reproduce this analysis (`commands.sh`): ` \#\# invented &lt;script&gt;\|row\|\``', report)
+        self.assertIn(r'Reproduce this analysis (`commands.sh`):  \#\# invented &lt;script&gt;\|row\|\` (relative to the sub-stage folder)', report)
 
     def test_missing_and_empty_manifest_values(self):
         for empty in (None, [], '', ' \t\n', {}):
@@ -282,7 +283,7 @@ class RenderReportTests(unittest.TestCase):
                                      'prompt_sha256': {'value': empty}, 'routing_rule_id': empty}, empty],
                 })
                 self.assertIn('Model steps: not recorded / not recorded / not recorded / not recorded; ', report)
-                self.assertIn('`not recorded` (relative to the sub-stage folder), sha256 not recorded', report)
+                self.assertIn('not recorded (relative to the sub-stage folder), sha256 not recorded', report)
                 self.assertNotIn('UNKNOWN (owned by manifest)', report)
                 self.assertNotIn('owned by row 6', report)
                 self.assertNotIn('owned by row 11', report)

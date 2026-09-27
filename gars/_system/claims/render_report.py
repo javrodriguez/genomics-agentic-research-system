@@ -228,7 +228,7 @@ def render(snapshot, manifest, template):
     command = manifest.get('command')
     command_text = absent('command')
     if isinstance(command, dict):
-        command_text = '`' + field(command.get('path')) + '` (relative to the sub-stage folder), sha256 ' + field(command.get('sha256'))
+        command_text = field(command.get('path')) + ' (relative to the sub-stage folder), sha256 ' + field(command.get('sha256'))
     cost = manifest.get('cost')
     cost_text = (display(cost, 'manifest') if isinstance(cost, str) and cost.strip() else
                  'Not recorded: GARS does not meter per-run cost yet, and this manifest has no cost field.')
@@ -241,7 +241,7 @@ def render(snapshot, manifest, template):
         'methods': 'pipeline_commit: ' + display(manifest.get('pipeline_commit'), 'row 6: manifest producer') +
                    '\n\nparams: ' + display(manifest.get('params'), 'row 6: manifest producer') + '\n\n' +
                    ('\n'.join(methods) or unknown('row 7: claim writer')) +
-                   '\n\nReference: ' + reference_text + '\nModel steps: ' + model_text,
+                   '\n\nReference: ' + reference_text + '\n\nModel steps: ' + model_text,
         'qc': '\n'.join(qc) or unknown('§14 QC dispositions'),
         'claims': '\n'.join(rows) if claims else unknown('row 7: claim writer'),
         'limitations': ('Limitations from process_risk.limitation appear directly under each affected claim above.'
