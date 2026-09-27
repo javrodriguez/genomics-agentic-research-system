@@ -14,6 +14,7 @@ from support import GARS
 import executorlib as ex
 
 SOURCE = GARS / '_system/gars-env.sh'
+BASE = {'PATH', 'HOME', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'TMPDIR', 'TEMP', 'TMP'}
 FAILURE = ('gars-env.sh could not be read, so the executor cannot tell which '
            'variables it may pass (R-096)')
 
@@ -46,6 +47,13 @@ class ExecutorEnvTests(unittest.TestCase):
         bio, nxf = self.root / 'own-envs/bio', self.root / 'own-envs/nxf'
         for directory in (root / 'install', bio / 'bin', nxf / 'bin'):
             directory.mkdir(parents=True)
+        commands = self.root / 'bin'
+        commands.mkdir()
+        for name in ('nextflow', 'apptainer'):
+            command = commands / name
+            command.write_text('#!/bin/sh\nexit 0\n')
+            command.chmod(0o755)
+        os.environ['PATH'] = str(commands) + os.pathsep + os.environ.get('PATH', os.defpath)
         os.environ.update(GARS_ROOT=str(root), GARS_BIO=str(bio), GARS_NXF=str(nxf))
         project = self.root / 'project'
         (project / '_config').mkdir(parents=True)
@@ -101,7 +109,8 @@ class ExecutorEnvTests(unittest.TestCase):
         for name in names:
             self.assertEqual(child[name], os.environ[name])
         self.assertIsInstance(ex.EXPORT_NAMES, tuple)
-        self.assertEqual(ex.EXPORT_NAMES, tuple(sorted(set(ex.BASE_NAMES) | names)))
+        self.assertEqual(set(ex.BASE_NAMES), BASE)
+        self.assertEqual(ex.EXPORT_NAMES, tuple(sorted(BASE | names)))
 
     def test_the_list_is_read_not_kept(self):
         text = SOURCE.read_text()
@@ -124,8 +133,8 @@ class ExecutorEnvTests(unittest.TestCase):
     def test_nothing_else_passes(self):
         with patch.dict(os.environ, {'SYNTHETIC_SECRET': 'secret',
                                      'GARS_SOMETHING': 'unlisted'}):
-            allowed = set(ex.BASE_NAMES) | expansion_names(SOURCE.read_text()) if hasattr(
-                ex, 'BASE_NAMES') else set(ex.EXPORT_NAMES)
+            self.assertEqual(set(ex.BASE_NAMES), BASE)
+            allowed = BASE | expansion_names(SOURCE.read_text())
             self.assertLessEqual(set(ex.execution_env()), allowed)
             self.assertEqual(slurm_names(), allowed)
             for name in ('SYNTHETIC_SECRET', 'GARS_SOMETHING'):
@@ -156,6 +165,22 @@ class ExecutorEnvTests(unittest.TestCase):
                         with self.assertRaisesRegex(RuntimeError, re.escape(FAILURE)) as caught:
                             call()
                         self.assertEqual(type(caught.exception).__name__, 'ExecutionEnvError')
+
+    def test_unreadable_source_leaves_no_submission_reservation(self):
+        from test_lifecycle_executor import prepared
+
+        fresh = self.load_with_source(self.root / 'missing.sh')
+        for descriptor in (fresh.SLURM, fresh.LOCAL):
+            with self.subTest(backend=descriptor['name']):
+                project = self.root / descriptor['name']
+                project.mkdir()
+                stage, _, _ = prepared(project)
+                # Real preparation supplies the dataset, config hashes and R-076 key.
+                self.assertTrue(fresh.prepared_key(project, stage))
+                with self.assertRaisesRegex(fresh.ExecutionEnvError, re.escape(FAILURE)):
+                    fresh.submit(project, stage / 'submit.sh', descriptor)
+                self.assertEqual(list(fresh._records(project).glob('*.json')), [],
+                                 'environment refusal stranded a submission reservation')
 
 
 if __name__ == '__main__':
