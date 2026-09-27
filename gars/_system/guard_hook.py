@@ -26,6 +26,7 @@ Runs on stock python 3.6.8, stdlib only, like every `_system/` helper.
 import fnmatch
 import json
 import os
+import re
 import shlex
 import sys
 from tools.policy import Refusal, simple_tokens, parse_argv, authorize
@@ -125,6 +126,7 @@ CREATE_STAMP = (
 )
 RECURSIVE_FS = ("fs.search", "fs.inspect", "fs.find")
 SHELL_GLOB = set("*?[]{}()")
+MODEL_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:@-]{0,127}(\[[0-9]{1,4}[a-z]\])?\Z")
 KNOWN_CLASSES = ("public", "deidentified_under_agreement", "identifiable")
 INSPECT, LINK, FINALIZE = ("stage00_register.inspect", "stage00_register.link",
                            "stage00_register.finalize")
@@ -802,8 +804,10 @@ def closed_bash_refusal(tool, args, tokens, root, cwd):
     else:
         words, key = [], None
         for token in tokens[1:]:
-            words.append(("project" if token.startswith("--project=") else key, token))
-            key = "project" if token == "--project" else None
+            option = token.split("=", 1)[0]
+            words.append((option[2:] if option in ("--project", "--model") and "=" in token
+                          else key, token))
+            key = option[2:] if token in ("--project", "--model") else None
     for _, word in [(None, t) for t in tokens] + words:
         if word in ("--pre", "--pre-glob") or word.startswith(("--pre=", "--pre-glob=")):
             deny("Blocked: rg --pre and --pre-glob run a program on every file searched, and "
@@ -877,8 +881,19 @@ def closed_bash_refusal(tool, args, tokens, root, cwd):
     recursive = _recursive(name, [w for _, w in words])
     readable = bool(tool.get("filesystem"))
     for key, word in words:
+        model = key == "model" and MODEL_ID.match(word.split("=", 1)[-1])
         for token in _spellings(word):
-            hit = closed_hit(token, root, bases, recursive, closed, readable)
+            if model:
+                # A model suffix is one bracket class: judge the literal and every sibling
+                # it can name, without the glob branch's recursive scan of the whole cwd.
+                candidates = [token]
+                if "[" in token:
+                    head, suffix = token.split("[", 1)
+                    candidates += [head + c for c in suffix[:-1]]
+                hit = next((h for h in (_hit(t, bases, recursive, closed, readable)
+                                       for t in candidates) if h), None)
+            else:
+                hit = closed_hit(token, root, bases, recursive, closed, readable)
             if hit and not (key == "project" and hit[0] == "inside" and hit[1] in exempt):
                 deny(closed_refusal(token, hit))
 
