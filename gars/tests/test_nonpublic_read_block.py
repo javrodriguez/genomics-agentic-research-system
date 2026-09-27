@@ -627,6 +627,32 @@ class Stage00Tests(HookCase):
                     with self.subTest(tool=tool['name'], command=command):
                         self.allowed(self.bash(root, spelling(tool, dict(args, model=model))))
 
+    def test_model_literal_existing_sibling(self):
+        root = ROOTS['R1']
+        tool = next(t for t in REGISTRY if t['name'] == 'stage01_samplesheet')
+        args = dict(sample_args(tool, 'projects/open1'), model='x[1m]')
+        commands = (bare(tool, args), bare(tool, args).replace('--model ', '--model='),
+                    dispatch(tool['name'], args))
+        for name in ('x[1m]', '--model=x[1m]', 'model=x[1m]'):
+            path = root / name
+            path.write_text('fixture\n')
+            try:
+                for command in commands:
+                    with self.subTest(name=name, command=command):
+                        self.allowed(self.bash(root, command))
+            finally:
+                path.unlink()
+        # Both literal and expanded spellings still reach resolved closed/outside targets.
+        for name in ('x[1m]', 'x1', '--model=x[1m]', '--model=x1', 'model=x1'):
+            for target in (root / 'projects/pilot', root.parent / 'seqrun'):
+                path = root / name
+                path.symlink_to(target, target_is_directory=True)
+                try:
+                    with self.subTest(name=name, target=str(target)):
+                        self.refused(self.bash(root, commands[1]), root=root)
+                finally:
+                    path.unlink()
+
     def test_model_value_still_judged(self):
         root = ROOTS['R1']
         for model in ('projects/pilot/00_data/rnaseq_bulk', 'claude-[a-z]*', 'pil?t',
