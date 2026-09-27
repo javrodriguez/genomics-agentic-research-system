@@ -177,16 +177,20 @@ def guard(command, root=GARS):
                {'CLAUDE_PROJECT_DIR': str(root)})
 
 
-def differential_rows(bash, cwd):
-    """Only scan-accepted corpus rows reach bash; swap the executable for printf."""
+def differential_rows(shell, cwd, zsh=False):
+    """Only scan-accepted corpus rows reach the shell; replace the executable with printf."""
     for command, _, _ in lexical_rows():
         try:
             tokens = policy.simple_tokens(command)
         except policy.Refusal:
             continue
+        # zsh's =cmd expansion is out of scope, including future corpus additions.
+        if zsh and any(word.startswith('=') for word in tokens[1:]):
+            continue
         rest = command.split(None, 1)[1] if len(command.split(None, 1)) == 2 else ''
-        result = subprocess.run([bash, '--noprofile', '--norc', '-c', 'printf "<%s>" ' + rest],
-                                cwd=str(cwd), env={'PATH': str(Path(bash).parent), 'LC_ALL': 'C'},
+        options = ['-f'] if zsh else ['--noprofile', '--norc']
+        result = subprocess.run([shell] + options + ['-c', 'printf "<%s>" ' + rest],
+                                cwd=str(cwd), env={'PATH': str(Path(shell).parent), 'LC_ALL': 'C'},
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=5)
         expected = ''.join('<%s>' % word for word in shlex.split(command, posix=True)[1:]).encode()
         yield command, tokens[1:], result, expected
@@ -295,15 +299,22 @@ class BashLexerTests(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which('bash'), 'bash is absent')
     def test_real_shell_differential(self):
+        self.check_shell_differential(shutil.which('bash'))
+
+    @unittest.skipUnless(shutil.which('zsh'), 'zsh is absent')
+    def test_zsh_differential_excluding_equals_command_expansion(self):
+        self.check_shell_differential(shutil.which('zsh'), zsh=True)
+
+    def check_shell_differential(self, shell, zsh=False):
         count = 0
         with tempfile.TemporaryDirectory(prefix='lexer-differential-') as tmp:
-            for command, argv, result, expected in differential_rows(shutil.which('bash'), tmp):
+            for command, argv, result, expected in differential_rows(shell, tmp, zsh):
                 count += 1
                 with self.subTest(command=command, argv=argv):
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertEqual(result.stdout, expected)
         self.assertGreater(count, 0)
-        print('real-shell differential: %d accepted rows' % count, flush=True)
+        print('%s differential: %d accepted rows' % (Path(shell).name, count), flush=True)
 
 
 if __name__ == '__main__':
