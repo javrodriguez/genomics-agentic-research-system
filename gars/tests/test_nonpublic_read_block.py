@@ -699,8 +699,11 @@ class Stage00Tests(HookCase):
             link.unlink()
         for model in ('projects/.', 'projects/pilot/..', 'projects/x[1m]'):
             args = dict(sample_args(tool, 'projects/open1'), model=model)
-            for command in (bare(tool, args), bare(tool, args).replace('--model ', '--model='),
-                            dispatch(tool['name'], args)):
+            commands = [bare(tool, args), bare(tool, args).replace('--model ', '--model=')]
+            # Ancestor dispatch is allowed at base too (0141 filters output); assert direct forms only.
+            if model == 'projects/x[1m]':
+                commands.append(dispatch(tool['name'], args))
+            for command in commands:
                 with self.subTest(command=command):
                     self.refused(self.bash(root, command), root=root)
         project = root / 'projects/x1'
