@@ -37,6 +37,26 @@ def written_states():
 
 
 class LifecycleContractTests(unittest.TestCase):
+    def test_finalize_runs_in_foreground(self):
+        text = (GARS / '00_initialize_project/CONTEXT.md').read_text()
+        step = re.search(r'^15\. .*?(?=^16\. )', text, re.M | re.S).group()
+        self.assertIn('foreground', step)
+
+    def test_contracts_never_send_steps_to_background(self):
+        """R-073 blocks the harness's background output file outside the workspace."""
+        contracts = [p for p in GARS.rglob('CONTEXT.md')
+                     if 'projects' not in p.relative_to(GARS).parts]
+        contracts += list((GARS / '_system/wrappers').rglob('SKILL.md'))
+        for path in contracts:
+            text = path.read_text().lower()
+            with self.subTest(contract=str(path.relative_to(GARS))):
+                self.assertNotIn('run_in_background', text)
+                self.assertNotIn('nohup', text)
+            for sentence in re.split(r'[.!?](?:\s|$)', text):
+                if 'background' in sentence:
+                    with self.subTest(contract=str(path.relative_to(GARS)), sentence=sentence):
+                        self.assertRegex(sentence, r'\b(?:never|not)\b')
+
     def test_parent_status_paragraph_covers_derived_writer_states(self):
         derived = written_states()
         required = {'SUBMITTED', 'RUNNING', 'VALIDATING', 'ARTIFACT_MISSING', 'STALE',
