@@ -253,9 +253,12 @@ All columns are optional `samples.csv` columns under the open schema (decision 0
     populated and narrowing an existing project is not this stage's to do.
 13. Exit 0 → reply T4b with its `linked` count.
 14. Repeat steps 9-13 for each remaining assay.
-15. When every assay is linked, finalize. **This is the slow step** — minutes on a real cohort —
-    so run it in the background rather than in a foreground call that a command timeout will
-    kill, and tell the user it is running:
+15. When every assay is linked, finalize. Run it as an ordinary foreground call, with the
+    longest command timeout your harness allows, never in the background: a background task's
+    output file lies outside the workspace, where this workspace's guard does not let a session
+    read (R-073), so you would never see the result. At the default `--integrity quick` it
+    takes seconds even on a large cohort. If a timeout ever kills it, it is deterministic and
+    re-runnable: re-run it once in the foreground.
 
     ```bash
     python3 _system/stage00_register.py finalize --project projects/<title> --data-class <class> --purpose <purpose> --agreement-ref none --model "<model id>"
