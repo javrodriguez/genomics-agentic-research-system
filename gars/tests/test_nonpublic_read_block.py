@@ -376,11 +376,11 @@ READS = [
 
 EXPANSION = [
     ('glob', 'Bash', 'cat projects/pil*/00_data/rnaseq_bulk/samples.csv', '', 'block'),
-    ('brace', 'Bash', 'cat projects/{pilot,open1}/CONTEXT.md', '', 'block'),
+    ('brace', 'Bash', 'cat projects/{pilot,open1}/CONTEXT.md', '', 'base'),
     ('bracket', 'Bash', 'cat projects/pilo[t]/CONTEXT.md', '', 'block'),
     ('qualifier', 'Bash', 'ls projects/*(/)', '', 'block'),
-    ('tilde', 'Bash', 'cat ~/x', '', 'block'),
-    ('tilde', 'Bash', 'ls ~', '', 'block'),
+    ('tilde', 'Bash', 'cat ~/x', '', 'base'),
+    ('tilde', 'Bash', 'ls ~', '', 'base'),
     ('tilde', 'Bash', dispatch('fs.read', {'paths': ['~/x']}), '', 'block'),
     ('pattern-slot', 'Bash', 'grep pil* CONTEXT.md', '', 'block'),
     ('raw', 'Bash', 'ls projects/pilot/00_data/rnaseq_bulk/raw/*', '', 'block'),

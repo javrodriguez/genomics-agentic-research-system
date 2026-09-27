@@ -165,7 +165,8 @@ def simple_tokens(command):
                 if following and following in operators:
                     raise Refusal('command', message)
                 i += 1
-            elif char in operators:
+            # Braces and tildes can expand even beside quoted literal text.
+            elif char in operators + '{~':
                 raise Refusal('command', message)
         elif char == quote:
             quote = None
