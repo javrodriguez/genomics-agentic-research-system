@@ -612,6 +612,16 @@ class RealWrapperReplayTests(unittest.TestCase):
             with self.subTest(marker_present=present):
                 self.check_rnaseq_replay(relative=False, marker_present=present)
 
+    def assert_same_prepared_job(self, stage, replay, original):
+        """A replay prepares the same job at a new location (0205). downstream-v2 binds the
+        generated scripts/, whose bytes name their own project and stage, so the replay's key
+        is its own; the relocation-invariant part (inputs and params, downstream-v1) is equal."""
+        self.assertEqual((replay['key_formula'], original['key_formula']),
+                         ('downstream-v2', 'downstream-v2'))
+        self.assertEqual(replay['idempotency_key'], wl.input_key(stage, replay))
+        legacy = lambda m: wl.input_key(stage, dict(m, key_formula='downstream-v1'))
+        self.assertEqual(legacy(replay), legacy(original))
+
     def check_rnaseq_replay(self, relative, legacy_route=False, marker_present=None):
         import test_manifest_groups as fixtures
         # A separate canonical original uses the new code; no terminal stage reset.
@@ -682,7 +692,7 @@ class RealWrapperReplayTests(unittest.TestCase):
                 self.assertEqual(design.resolve(), canonical.resolve())
                 stage = project / '02_bioinformatics' / case.assay / case.info['substage']
                 replay = json.loads((stage / 'reproducibility/manifest.json').read_text())
-                self.assertEqual(replay['idempotency_key'], original['idempotency_key'])
+                self.assert_same_prepared_job(stage, replay, original)
                 self.assertEqual(replay['design_sha256'], original['design_sha256'])
                 self.assertTrue(mc.grade(replay)['ok'])
                 if marker_present is not None:
@@ -763,7 +773,7 @@ class RealWrapperReplayTests(unittest.TestCase):
                 self.assertEqual(replay_sheet.resolve(), sheet.resolve())
                 stage = project / '02_bioinformatics' / case.assay / case.info['substage']
                 replay = json.loads((stage / 'reproducibility/manifest.json').read_text())
-                self.assertEqual(replay['idempotency_key'], original['idempotency_key'])
+                self.assert_same_prepared_job(stage, replay, original)
                 self.assertEqual(replay['samplesheet_sha256'], original['samplesheet_sha256'])
                 self.assertTrue(mc.grade(replay)['ok'])
                 self.assertTrue(all(row['match'] for row in comparisons['runs'][number-1]['artifacts']))

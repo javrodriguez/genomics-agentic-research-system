@@ -531,7 +531,10 @@ def _local_submit(config_root, script):
     job_id = (proc.stdout or b"").decode("utf-8", "replace").strip()
     if not job_id.isdigit():
         return None
-    with open(str(jobs / ("%s.json" % job_id)), "w") as fh:
+    import wrapperlib as wl
+    # Published by rename (0200): a write fault leaves no record, never a torn one that `status`
+    # cannot parse.
+    with wl.ws.atomic_open(jobs / ("%s.json" % job_id)) as fh:
         json.dump({"script": str(script), "log": str(log), "exit_file": str(exit_file), "started_at": time.time()},
                   fh, indent=2, sort_keys=True)
     return job_id
@@ -991,6 +994,26 @@ def _analysis_descriptor(adir, descriptor):
     return descriptor
 
 
+def _publish_bytes(path, data):
+    """Write `data` to `path` by a sibling temp, fsync and rename, as `workspace.atomic_open` does
+    for text; bytes because a launcher keeps the script's directives byte-for-byte. A fault leaves
+    the previous file, or none, never a prefix at the published name (0200)."""
+    path = Path(path)
+    tmp = path.with_name(path.name + '.tmp')
+    try:
+        with open(str(tmp), 'wb') as fh:
+            fh.write(data)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(str(tmp), str(path))
+    except BaseException:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
+
+
 def _analysis_launcher(adir, script, descriptor):
     """Keep leading Slurm directives byte-for-byte; only this launcher owns success."""
     source = Path(script).read_bytes()
@@ -1016,7 +1039,7 @@ def _analysis_launcher(adir, script, descriptor):
     header = b'#!/bin/bash\n' + (b''.join(directives) if descriptor['name'] == 'slurm' else b'')
     if not header.endswith(b'\n'):
         header += b'\n'
-    launcher.write_bytes(header + body.encode('utf-8'))
+    _publish_bytes(launcher, header + body.encode('utf-8'))
     return launcher
 
 
@@ -1137,6 +1160,11 @@ def submit(config_root, script, descriptor=None):
         if Path(script).resolve() != stage / 'submit.sh':
             raise ValueError('expected generated submit.sh')
         key = prepared_key(config_root, stage)
+        # 0205: downstream-v1 leaves the generated scripts/ out of the key; such a stage is
+        # prepared again (downstream-v2), never submitted. Collect still reads v1 records.
+        manifest = json.loads((stage / 'reproducibility/manifest.json').read_text(encoding='utf-8'))
+        if manifest.get('key_formula') == 'downstream-v1':
+            raise ValueError('downstream-v1 does not bind the generated scripts')
     except (OSError, ValueError, KeyError, TypeError):
         return None, 'R-076: idempotency_key_missing_or_changed; run prepare'
     problems = validate(descriptor)
