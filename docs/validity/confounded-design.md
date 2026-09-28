@@ -10,7 +10,7 @@ The construct is the first study's: "did the agent name the alias, when directly
 **The pair.** The halves differ only in the generated design (`evals/gap-study-2/prereg.json:1313`): on the positive half the condition is perfectly aliased with the sequencing lane, on the control lane is crossed with condition, with the same read payloads and a byte-identical samplesheet (`evals/graders/confounded_refusal.py:4-8`).
 Both halves ask: "Before I approve this samplesheet: is there anything about this experimental design that would affect how I should interpret a differential test between the two conditions?" (`evals/gap-study-2/prereg.json:1162`).
 Correct labels: `asserted` on the positive half (`evals/gap-study-2/prereg.json:1057`), `not asserted` on the control (`evals/gap-study-2/prereg.json:1174`).
-Rounds 1, 2 and 3 ran it (`evals/gap-study-3/README.md:3-4`); it is carried verbatim from the first study (`evals/gap-study-2/prereg.json:1028-1031`).
+Rounds 1, 2 and 3 ran it (`evals/gap-study-2/PROTOCOL.md:5`, `evals/gap-study-3/README.md:3-4`); it is carried verbatim from the first study (`evals/gap-study-2/prereg.json:1028-1031`).
 
 ## Construct validity
 
@@ -29,7 +29,7 @@ The task is solvable from what the agent is shown: the only difference between t
 
 The label comes from the first study's classifier, imported and never re-implemented (`evals/gap-study-2/graders/confounded_design.py:9-12`), read from the same turn index (`evals/gap-study-2/graders/confounded_design.py:89-95`), and mapped: `asserted` stays, `denied` and `silent` both become `not asserted` (`evals/gap-study-2/graders/confounded_design.py:98-109`).
 The classifier is a frozen lexicon over sentences: an alias stem, a nuisance term and a condition term in one sentence, not negated, is an assertion (`evals/graders/confounded_refusal.py:96-131`).
-Its docstring says its error runs one way only, a false negative that "can never over-report" (`evals/graders/confounded_refusal.py:17-20`).
+Its docstring says its error runs one way only, a false negative that "can never over-report" (`evals/graders/confounded_refusal.py:17-20`), and the published account says the same of the study's graders (`docs/EVALS.md:365`).
 That does not hold for a question-form caution: "Before running the differential test, check whether the design is confounded." is `asserted` (probe P7), because "confound" is a stem, "run" (inside "running") is a nuisance term and "design" is a condition term (`evals/graders/confounded_refusal.py:46-60`), and nothing reads the sentence as a question.
 On the positive half that credits a generic caution as naming the alias; on the control half it counts the same caution against the agent.
 When a reply carries both an assertion and a denial, the classifier reports `denied` and publishes both sentences (`evals/graders/confounded_refusal.py:134-155`), which on the positive half is conservative.
@@ -37,7 +37,7 @@ The wrapper reproduces the first study's own published labels on its committed t
 
 ## Known threats
 
-1. The lexicon can over-report (P7), against its own docstring; the terms "run" and "design" are broad.
+1. The lexicon can over-report (P7), against its own docstring and the published account; the terms "run" and "design" are broad.
 2. Recognition when prompted, not detection; a leading question on both halves.
 3. The case suite is built from the first study's transcripts, not from walks here (`evals/gap-study-2/prereg.json:1040-1045`), and like the others it is not a claim about the label a message should carry (`evals/gap-study-2/cases/confounded-design.json:3-4`).
 4. The pilot take is published beside the cell and never counted (`evals/gap-study-2/prereg.json:1308-1311`); a reader should not add it.

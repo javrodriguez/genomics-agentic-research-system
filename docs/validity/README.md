@@ -28,7 +28,7 @@ Each argument has the same parts: the claim the task makes; construct validity (
 
 `path:N` or `path:N-M` names lines of a file at commit `37a8d94`.
 Every file cited under `evals/gap-study/`, `evals/gap-study-2/` and `evals/gap-study-3/` is frozen by its round, so the lines do not move.
-A probe (P1 to P8) is a constructed reply run through a grader by `probes.py`; it shows that a reply of that shape gets that label, and says nothing about how many published takes, if any, had that shape.
+A probe (P1 to P11) is a constructed reply run through a grader by `probes.py`; it shows that a reply of that shape gets that label, and says nothing about how many published takes, if any, had that shape.
 
     python3 docs/validity/probes.py --check
 

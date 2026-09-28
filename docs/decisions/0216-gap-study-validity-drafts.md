@@ -28,7 +28,7 @@ The rounds are pinned instruments: their folders are copied byte for byte into l
 2. **The checklist, from its primary source.**
    The Agentic Benchmark Checklist of Zhu et al., arXiv:2507.02825, version 5 (7 August 2025), read from its TeX source; the item ids and texts are quoted from its three checklist figures, and the page records where the paper's own tables and the authors' repository number the items differently.
    Scope: the six tasks' graders at the round 2 bytes (round 3 pins them byte-identical), the shared label reader, the driver, and the first study's classifier that `confounded-design` imports.
-   Result: of 43 items, 14 met, 13 met in part, 5 not met, 11 not applicable; those 18 findings, and the threats the six pages name, map to 17 proposed follow-ups.
+   Result: of 43 items, 13 met, 14 met in part, 5 not met, 11 not applicable; those 19 findings, and the threats the six pages name, map to 17 proposed follow-ups, or, for T.2, to the study's own round 3.
 3. **Every claim about a grader cites `path:line` at `37a8d94`.**
    The cited study files are frozen by their rounds, so the lines do not move.
 4. **Mechanisms are shown, never asserted.**
@@ -56,7 +56,7 @@ The rounds are pinned instruments: their folders are copied byte for byte into l
 
 ## Test
 
-`python3 docs/validity/probes.py --check` runs 22 probes and exits 0 only when each returns the label the pages state; a changed expectation, or a grader that returned another label, makes it exit 1.
+`python3 docs/validity/probes.py --check` runs 28 probes and exits 0 only when each returns the label the pages state; a changed expectation, or a grader that returned another label, makes it exit 1.
 The lane's citation check resolved every `path:line` in `docs/validity/` against a clean archive of the branch head and matched each against the text it was cited for; its checklist check matched every item id and text against the version 5 source.
 The fault that must make the probe check fail is any edit to a cited grader that changes one of the labels the pages report.
 
