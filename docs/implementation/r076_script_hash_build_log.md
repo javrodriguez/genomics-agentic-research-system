@@ -31,3 +31,12 @@ The whole suite, the contract and count checks and the other hosts are the evide
 
 Each mutation edits the imported file through a substring that occurs exactly once, runs the one module, and is restored from a byte backup verified by SHA-256.
 `7 of 7 killed by the named test`: (i) v2 skips the walk, (ii) files framed without their digest, (iii) links followed, (iv) folders not framed, (v) prepare writes v1, (vi) submit accepts v1, (vii) a linked `scripts/` folder is walked.
+
+## Lane review r1 and its fix round
+
+Review r1 (a fresh Claude Code context on Opus 5.5, a separate checkout with no remote, the plan's sections and a stated threat model as its brief) read `VERDICT: CHANGES`, BLOCKER 1, MAJOR 2, NOTE 2, reproduced by the reviewer on all three wrappers.
+F-1 a `scripts/` already linked at prepare framed a constant, so an edit behind the link submitted; F-2 a module added after prepare was bound into the key by the re-prepare the refusal asked for; F-3 a folder the walk could not list was framed as empty.
+Fix commit `d10fc08` (`wrapperlib.py` and the test module only): a linked or non-folder `scripts/` raises, prepare refuses unless `scripts/` holds exactly the scripts `submit.sh` runs, and the walk raises on any folder it cannot list.
+New tests C6, C7 and G4 (G3 now expects the linked folder to raise); the module reads `Ran 12 tests`, OK, on Python 3.13.2 and 3.9.6.
+At `d10fc08`, one at a time on Python 3.13.2, these 16 modules read OK: test_r076_script_binding, test_downstream_keys, test_r164_exact_bytes, test_r164_writer_recovery, test_r164_params_mapping, test_r164_keyed_lookups, test_r164_failure_recovery, test_wrapper_contract, test_wrapperlib_prepare, test_bring_home, test_tool_schema_refusal, test_planted_defects (skipped=1), test_bio_faults_core, test_manifest_groups, test_pilot_doors, test_rerun_check.
+Mutations: `10 of 10 killed by the named test`, adding (viii) prepare binds whatever `scripts/` holds, (ix) the walk skips a folder it cannot list and (x) prepare accepts a linked `scripts/` folder.
