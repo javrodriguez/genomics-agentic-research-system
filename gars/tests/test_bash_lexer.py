@@ -12,8 +12,8 @@ from pathlib import Path
 from support import GARS, run
 from tools import policy
 
-OPERATOR_MESSAGE = 'only one simple command; no shell operators or expansion'
-VOCABULARY_MESSAGE = 'value is outside the declared vocabulary'
+OPERATOR_MESSAGE = 'one command per call: run each step as its own call'
+VOCABULARY_MESSAGE = 'allowed values:'
 OPERATORS = ('|', '||', '&&', '&', ';', '>', '>>', '>|', '<', '<<', '<<<', '<(x)', '2>&1')
 REPORTED = (
     ('grep -n "sanitiz\\|add_argument" _system/stage00_register.py', 0, None),

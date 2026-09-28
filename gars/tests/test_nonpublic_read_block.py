@@ -17,6 +17,7 @@ import unittest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from support import GARS, REPO, run
+from build_refusal_corpus import decision
 import guard_hook
 import wrapperlib
 
@@ -465,7 +466,9 @@ class EveryToolTests(HookCase):
                     else:
                         self.assertEqual(ours.returncode, reference.returncode, ours.stderr)
                         if ours.returncode:
-                            self.assertEqual(ours.stderr, reference.stderr)
+                            self.assertEqual(decision(ours.returncode, ours.stderr.decode()),
+                                             decision(reference.returncode, reference.stderr.decode()))
+                            self.assertIn(b'Next: ', ours.stderr)
                 for project in ('projects/pilot', 'projects/fresh'):
                     with self.subTest(tool=tool['name'], spelling=spelling, project=project):
                         if door and spelling == 'dispatch' and reference.returncode == 0:
@@ -884,10 +887,10 @@ class ControlAndDriftTests(HookCase):
         print('red-on-fault: class flip', flush=True)
         root = ROOTS['R0']
         for tool in ('Write', 'Edit'):
-            err = self.refused(call(root, tool, {'file_path': DATASET}), 'R-092', root)
-            self.assertIn('part of the GARS template', err)
+            err = self.refused(call(root, tool, {'file_path': DATASET}), 'R-094', root)
+            self.assertIn('protected template or machine-owned state', err)
         err = self.refused(call(root, 'Bash', {'command': 'tee ' + DATASET}), 'R-092', root)
-        self.assertIn('unregistered helper', err)
+        self.assertIn('this helper, interpreter or executable is not registered', err)
 
     def test_edit_family_refused_in_closed_project(self):
         # Review round 1, F3: an edit echoes the file around it, so residual 10 is closed here.

@@ -69,7 +69,7 @@ class ExtraSpellingsTests(unittest.TestCase):
     def denied(self, command):
         p = guard(command)
         self.assertEqual(p.returncode,2,p.stderr)
-        for word in (b'Rule', b'spec', b'typed call'):
+        for word in (b'R-', b'decision', b'Next: '):
             self.assertIn(word,p.stderr)
     def test_clobber_redirect(self): self.denied('echo x >| _system/x')
     def test_cd_separator(self): self.denied('cd _system && echo x > guard_hook.py')
@@ -81,10 +81,10 @@ class ExtraSpellingsTests(unittest.TestCase):
     def test_no_verify(self): self.denied('git push --no-verify')
     def test_no_verify_equals(self):
         self.denied('git push --no-verify=true')
-        self.assertIn(b'R-096 forbids --no-verify',guard('git push --no-verify=true').stderr)
+        self.assertIn(b'this command contains --no-verify, which can disable the required secret scan',guard('git push --no-verify=true').stderr)
     def test_gitleaks_false(self):
         self.denied('git config hooks.gitleaks false')
-        self.assertIn(b'R-096 forbids git config',guard('git config hooks.gitleaks false').stderr)
+        self.assertIn(b'this command contains hooks.gitleaks and false, a combination that can disable the required secret scan',guard('git config hooks.gitleaks false').stderr)
     def test_unregistered_helper(self): self.denied('python3 _system/unregistered.py')
     def test_separator_after_registered_call(self): self.denied('python3 _system/stage00_register.py assays; cat CONTEXT.md')
     def test_stdin_substitution_and_interpreters(self):

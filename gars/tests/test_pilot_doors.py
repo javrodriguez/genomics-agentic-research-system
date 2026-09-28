@@ -21,6 +21,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from support import GARS, REPO  # noqa: E402
 import pilot_fixture as fx  # noqa: E402
+from build_refusal_corpus import decision
 import guard_hook  # noqa: E402
 from tools import closed_output as co  # noqa: E402
 
@@ -348,8 +349,11 @@ class ClosedWriteTests(unittest.TestCase):
             with self.subTest(tool=tool, data=data, cwd=cwd):
                 ours = fx.hook_call(ws, tool, data, cwd)
                 theirs = fx.hook_call(ws, tool, data, cwd, hook=hook)
-                self.assertEqual((ours.returncode, ours.stderr), (theirs.returncode,
-                                                                  theirs.stderr))
+                self.assertEqual(decision(ours.returncode, ours.stderr.decode()),
+                                 decision(theirs.returncode, theirs.stderr.decode()))
+                if ours.returncode == 2:
+                    self.assertIn(b'Next: ', ours.stderr)
+                    self.assertIn(b'R-094', ours.stderr)
                 allowed += ours.returncode == 0
         self.assertEqual(allowed, 5)
 

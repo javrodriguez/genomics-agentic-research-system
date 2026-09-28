@@ -19,12 +19,12 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     try:
         if len(argv) != 2:
-            raise Refusal('args', 'expected tool name and JSON arguments')
+            raise Refusal('args', ('expected tool name and JSON arguments') + ' (R-092; decision 0058).', alternative="Next: use python3 _system/tool_call.py <tool> '<json-object>' with a registered tool and its declared arguments.")
         tool = named(argv[0])
         try:
             args = json.loads(argv[1])
         except ValueError:
-            raise Refusal('args', 'could not read JSON arguments')
+            raise Refusal('args', ('could not read JSON arguments') + ' (R-092; decision 0058).', alternative="Next: pass one valid JSON object, for example python3 _system/tool_call.py stage00_register.assays '{}'.")
         authorize(tool, args, launch_role())
         try:
             project = None if registration(tool, args, WORKSPACE, os.getcwd()) else \
@@ -33,12 +33,12 @@ def main(argv=None):
                 fixed_inputs(tool['name'], args, WORKSPACE, project)
         except ClosedRefusal as exc:
             if exc.code == 'path_not_fixed_layout':
-                raise Refusal('args', exc.code + ': on a non-public project this door reads its '
+                raise Refusal('args', (exc.code + ': on a non-public project this door reads its '
                               'design and counts only at their fixed, machine-written paths '
-                              '(decision 0141)', 'R-094')
-            raise Refusal('args', exc.code + ': a non-public project exists, so a call may name '
+                              '(decision 0141)') + ' (R-094; decision 0058).', 'R-094', alternative='Next: resolve the machine-written design and counts with the resolve_artifact typed call, then pass those fixed paths to this door.')
+            raise Refusal('args', (exc.code + ': a non-public project exists, so a call may name '
                           'only paths inside the workspace and inside the one closed project it '
-                          'names (decision 0141)', 'R-094')
+                          'names (decision 0141)') + ' (R-094; decision 0058).', 'R-094', alternative='Next: name only workspace paths within the one closed project, or ask the human to run the step in their own terminal.')
         proc = subprocess.run(argv_for(tool, args), cwd=str(WORKSPACE),
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                               timeout=tool['timeout_seconds'])
@@ -55,7 +55,7 @@ def main(argv=None):
         print(json.dumps(exc.record(), sort_keys=True))
         return 2
     except (OSError, subprocess.TimeoutExpired) as exc:
-        print(json.dumps(Refusal('execution', type(exc).__name__).record(), sort_keys=True))
+        print(json.dumps(Refusal('execution', (type(exc).__name__) + ' (R-092; decision 0058).', alternative='Next: check the tool installation and timeout with the workspace maintainer before retrying; stop and report repeated execution failures.').record(), sort_keys=True))
         return 2
 
 
