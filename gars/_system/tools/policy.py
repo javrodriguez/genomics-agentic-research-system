@@ -93,7 +93,16 @@ def validate_args(tool, args, root=WORKSPACE, cwd=None):
             if p.startswith('-') or p in ('-',) or '\n' in p:
                 raise Refusal('args.paths', 'paths cannot be options or stdin')
         if tool['name'] == 'fs.find' and len(args['paths']) != 1:
-            raise Refusal('args.paths', 'find accepts one path and no expressions')
+            raise Refusal('args.paths', 'find accepts one path and only the declared predicates')
+        # Each predicate takes exactly one value, which must fullmatch its declared pattern.
+        predicates = tool.get('predicates', {})
+        expression = args.get('expression', [])
+        for i in range(0, len(expression), 2):
+            word = expression[i]
+            if word not in predicates or i + 1 >= len(expression) \
+                    or not re.fullmatch(predicates[word], expression[i + 1]):
+                raise Refusal('args.expression[%d]' % i, 'find accepts only these predicates, '
+                              'each with one valid value: ' + ', '.join(sorted(predicates)))
 
 
 def authorize(tool, args, role, root=WORKSPACE, cwd=None):
@@ -126,6 +135,8 @@ def argv_for(tool, args, root=WORKSPACE):
             argv += ['256']
         if 'pattern' in args:
             argv += ['--', args['pattern']]
+        if 'predicates' in tool:
+            return argv + args['paths'] + args.get('expression', [])
         return argv + args['paths']
     argv = list(tool['argv'])
     argv[1] = str(Path(root) / argv[1])
@@ -149,7 +160,7 @@ def simple_tokens(command):
     message = 'only one simple command; no shell operators or expansion'
     if any(c in command for c in ('`', '$', '\n', '\r')):
         raise Refusal('command', message)
-    quote, i, quoted_operator = None, 0, False
+    quote, i, quoted_operator, glob = None, 0, False, False
     word_start = True
     while i < len(command):
         char = command[i]
@@ -168,6 +179,8 @@ def simple_tokens(command):
             # Unquoted braces, tildes and parentheses can carry shell syntax.
             elif char in operators + '{}~()':
                 raise Refusal('command', message)
+            elif char in '*?[':
+                glob = True
         elif char == quote:
             quote = None
         elif quote == '"' and char == '\\' and command[i + 1:i + 2] in ('"', '\\'):
@@ -181,6 +194,10 @@ def simple_tokens(command):
         tokens = shlex.split(command, posix=True)
     except ValueError:
         raise Refusal('command', 'could not read command quoting')
+    # The guard judges the unexpanded word; bash expands an unquoted glob into find's operands.
+    if glob and tokens and tokens[0] == 'find':
+        raise Refusal('command', "quote find's pattern, as in find . -name '*.py': the shell "
+                      "would expand an unquoted one before find reads it")
     if quoted_operator and (not tokens or tokens[0] not in {
             tool['argv'][0] for tool in registry() if tool.get('filesystem')}):
         raise Refusal('command', 'only one simple command; no shell operators or expansion')
@@ -249,6 +266,11 @@ def parse_argv(tokens, root=WORKSPACE, cwd=None):
             if 'pattern' in tool['input_schema']['properties'] and '--files' not in args['flags']:
                 if not rest: raise Refusal('args.pattern', 'missing search pattern')
                 args['pattern'] = rest.pop(0)
+            if 'predicates' in tool:
+                cut = next((i for i, w in enumerate(rest) if w.startswith('-')), len(rest))
+                rest, expression = rest[:cut], rest[cut:]
+                if expression:
+                    args['expression'] = expression
             args['paths'] = rest or ['.']
             return tool, args
     raise Refusal('command', 'unregistered helper, interpreter or executable')
