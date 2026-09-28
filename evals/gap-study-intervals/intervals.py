@@ -46,7 +46,8 @@ ROUNDS = (
 ROUND_NOTES = {
     "1": ("Round 1's counts as its own instrument graded them. `docs/EVALS.md` also prints round 1's "
           "takes regraded by round 2's instrument; those regraded counts are not used here."),
-    "2": "Round 2's counts as graded, including its one incomplete half.",
+    "2": ("Round 2's counts as graded, including its one incomplete half, whose pair this page marks "
+          "incomplete where the predictions table in `docs/EVALS.md` writes not run."),
     "3": "Round 3's counts as graded.",
 }
 OUT = "evals/gap-study-intervals"
@@ -387,7 +388,8 @@ def render_md(data):
             w("Between %s, the most extreme split possible (every take correct in one, none in the other) "
               "gives a two-sided Fisher exact p of %s." % (what, s["smallest_p"]))
         if sizes and not any(s["could_reach_0.05"] for s in sizes):
-            w("So no two halves of this round could differ at the 0.05 level, whatever their counts.")
+            w("So no two halves of this round could differ at the 0.05 level by a two-sided Fisher exact test, "
+              "whatever their counts.")
         w("No test between actual halves is computed.")
         w("")
     holds = data["holds"]
@@ -407,11 +409,12 @@ def render_md(data):
     w("")
     w("## Sizing a later round")
     w("")
-    w("For two halves of n takes each; exact, from the same arithmetic.")
+    w("For two halves of n takes each, from the same exact arithmetic; the widest interval is the printed one, "
+      "with its bounds rounded outward.")
     w("The last column is the smallest difference between two per-take probabilities centred on 0.5, "
       "on a 0.02 grid, that a two-sided Fisher exact test at 0.05 finds with power 0.80.")
     w("")
-    w("| Takes per half | Widest 0.95 interval | Lower bound when every take is correct | Smallest attainable Fisher p | Difference found with power 0.80 |")
+    w("| Takes per half | Widest printed 0.95 interval | Lower bound when every take is correct | Smallest attainable Fisher p | Difference found with power 0.80 |")
     w("|---|---|---|---|---|")
     for row in data["sample_size"]:
         diff = row["centred_difference_at_power_0.80"]

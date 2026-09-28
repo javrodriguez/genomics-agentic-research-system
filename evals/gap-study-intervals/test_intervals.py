@@ -307,6 +307,34 @@ class Witness(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertTrue(any("scope-read.json" in ln for ln in lines), lines)
 
+    def test_a_consistent_forgery_fails_against_real_git(self):
+        """No injected reader: the done commit is a real commit, the forgery lives only in the tree."""
+        git = ["git", "-C", str(self.root), "-c", "user.name=witness",
+               "-c", "user.email=witness@users.noreply.github.com",
+               "-c", "maintenance.auto=false", "-c", "gc.auto=0"]
+        subprocess.run(git + ["init", "-q"], check=True)
+        subprocess.run(git + ["add", "-A"], check=True)
+        subprocess.run(git + ["commit", "-q", "-m", "done"], check=True)
+        head = subprocess.run(git + ["rev-parse", "HEAD"], check=True,
+                              stdout=subprocess.PIPE).stdout.decode().strip()
+        saved = self.m.ROUNDS
+        self.m.ROUNDS = tuple((rnd, folder, head) for rnd, folder, _ in saved)
+        try:
+            self.m.write(self.root)      # the page names its done commits, here the witness commit
+            code, lines = self.m.check(self.root)
+            self.assertEqual(code, 0, lines)
+            path = self.root / "evals/gap-study-3/results/scope-read.json"
+            data = json.loads(path.read_text(encoding="utf-8"))
+            data["cells"]["claude-haiku-4-5-20251001"]["control"]["labels"][0]["verdict"] = "correct"
+            path.write_text(json.dumps(data), encoding="utf-8")
+            self.m.write(self.root)
+            self.assertEqual(self.check()[0], 0)
+            code, lines = self.m.check(self.root)
+            self.assertEqual(code, 1, lines)
+            self.assertTrue(any("scope-read.json" in ln and "done commit" in ln for ln in lines), lines)
+        finally:
+            self.m.ROUNDS = saved
+
     def test_history_binding_refuses_outside_git(self):
         code, _ = self.m.check(self.root, verify_history=True)
         self.assertEqual(code, 2)

@@ -68,13 +68,13 @@ Not run, so no interval: `llama3.1:8b`, `qwen2:7b` (24 halves). The results file
 
 **Sensitivity (post hoc, not pre-registered).** 36 halves graded.
 Between two halves of 3 takes, the most extreme split possible (every take correct in one, none in the other) gives a two-sided Fisher exact p of 0.100.
-So no two halves of this round could differ at the 0.05 level, whatever their counts.
+So no two halves of this round could differ at the 0.05 level by a two-sided Fisher exact test, whatever their counts.
 No test between actual halves is computed.
 
 ## Round 2
 
 Results files: `evals/gap-study-2/results/`, as committed; `--check` also verifies each is byte-identical to its blob at the round's done commit `bf065fe`, the commit this round's CI job pins.
-Round 2's counts as graded, including its one incomplete half.
+Round 2's counts as graded, including its one incomplete half, whose pair this page marks incomplete where the predictions table in `docs/EVALS.md` writes not run.
 
 | Task | Model | Positive | 0.95 interval | Control | 0.95 interval | 6 of 6 |
 |---|---|---|---|---|---|---|
@@ -102,7 +102,7 @@ Incomplete: `template-adherence`, `claude-sonnet-5`, control half, 1 of its take
 **Sensitivity (post hoc, not pre-registered).** 36 halves graded.
 Between a half of 1 take and a half of 3 takes, the most extreme split possible (every take correct in one, none in the other) gives a two-sided Fisher exact p of 0.250.
 Between two halves of 3 takes, the most extreme split possible (every take correct in one, none in the other) gives a two-sided Fisher exact p of 0.100.
-So no two halves of this round could differ at the 0.05 level, whatever their counts.
+So no two halves of this round could differ at the 0.05 level by a two-sided Fisher exact test, whatever their counts.
 No test between actual halves is computed.
 
 ## Round 3
@@ -124,7 +124,7 @@ Round 3's counts as graded.
 
 **Sensitivity (post hoc, not pre-registered).** 18 halves graded.
 Between two halves of 3 takes, the most extreme split possible (every take correct in one, none in the other) gives a two-sided Fisher exact p of 0.100.
-So no two halves of this round could differ at the 0.05 level, whatever their counts.
+So no two halves of this round could differ at the 0.05 level by a two-sided Fisher exact test, whatever their counts.
 No test between actual halves is computed.
 
 ## What a hold means
@@ -145,10 +145,10 @@ A hold is consistent with a per-take probability as low as 0.292 on each half (t
 
 ## Sizing a later round
 
-For two halves of n takes each; exact, from the same arithmetic.
+For two halves of n takes each, from the same exact arithmetic; the widest interval is the printed one, with its bounds rounded outward.
 The last column is the smallest difference between two per-take probabilities centred on 0.5, on a 0.02 grid, that a two-sided Fisher exact test at 0.05 finds with power 0.80.
 
-| Takes per half | Widest 0.95 interval | Lower bound when every take is correct | Smallest attainable Fisher p | Difference found with power 0.80 |
+| Takes per half | Widest printed 0.95 interval | Lower bound when every take is correct | Smallest attainable Fisher p | Difference found with power 0.80 |
 |---|---|---|---|---|
 | 3 | 0.898 | 0.292 | 0.100 | none |
 | 5 | 0.802 | 0.478 | 0.008 | 0.840 (0.080 vs 0.920) |

@@ -19,7 +19,7 @@ That approval chose two things this record follows: the page is linked from `doc
 ## Context
 
 The three Gap Study rounds publish, per half (one task, one model, one half), the correct takes out of three, and call a task held when all three takes are correct on both halves.
-No published figure says how uncertain a count of three is, and nothing says that two halves of three takes can never be told apart at the 0.05 level, whatever their counts.
+No published figure says how uncertain a count of three is, and nothing says that two halves of three takes can never be told apart at the 0.05 level by a two-sided Fisher exact test, whatever their counts.
 Round 2 has one half whose results file carries `n: 3` over a single graded label (0068), so any figure read from `n` would overstate what was graded.
 The rounds are pinned instruments: their folders are copied byte for byte into later rounds' manifests, their results publish exactly as graded, and a flaw is fixed only in a pre-registered follow-up.
 
@@ -40,13 +40,13 @@ The rounds are pinned instruments: their folders are copied byte for byte into l
 4. **Beside the intervals, three post-hoc readings, each labelled so.**
    Per round, the smallest two-sided Fisher exact p that any two halves of the sizes graded could reach (every take correct in one, none in the other); it is a property of the design, and no test between actual halves is computed or published.
    A hold read as six correct takes of six, with the chance of a hold under a per-take probability p.
-   A sizing table for any later round: the widest interval, the lower bound when every take is correct, the smallest attainable Fisher p, and the smallest difference between two per-take probabilities centred on 0.5 that the test finds with power 0.80.
+   A sizing table for any later round: the widest printed interval, the lower bound when every take is correct, the smallest attainable Fisher p, and the smallest difference between two per-take probabilities centred on 0.5 that the test finds with power 0.80.
 5. **`--check`, run by CI at every push in a new job.**
    It re-derives the page and the data and requires both byte-identical to the committed files; it names any results file added, removed or changed since the page was generated.
    It binds every results file to its blob at its round's done commit (`b735229`, `bf065fe`, `e2979b3`, the refs the three study jobs pin, asserted equal by a test), so a results file and a page rewritten together still fail.
    It refuses, exit 2, in a shallow clone or outside git, rather than passing on a binding it could not read; the job checks out full history.
    It prints graded against seen, and a check that saw no graded half fails.
-6. **The mutation witness**, the job's second step: a flipped label, a changed interval digit in the page, a changed count in the data, a changed `n` field (which moves no figure but changes the bound bytes), a removed results file, an empty input set, and a consistent forgery of results and page each make the check fail; an unplanted copy passes, so the witness is not vacuous.
+6. **The mutation witness**, the job's second step: a flipped label, a changed interval digit in the page, a changed count in the data, a changed `n` field (which moves no figure but changes the bound bytes), a removed results file, an empty input set, and a consistent forgery of results and page (against a real git commit, and against injected readers) each make the check fail; a changed `k` field moves no figure, an unknown verdict stops the script, and an input set with no graded half fails even with a regenerated page; an unplanted copy passes, so the witness is not vacuous.
 7. **The link.** One dated paragraph after the two opening lines of `docs/EVALS.md`, before every generated block, names the page, says it is a secondary analysis per half and never pooled, and cites this record; every table on that page stays byte-identical.
    The page and that paragraph carry no percentage and no comparative word, which a test enforces.
 
@@ -68,7 +68,7 @@ The rounds are pinned instruments: their folders are copied byte for byte into l
 
 ## Test
 
-`python3 evals/gap-study-intervals/test_intervals.py`: 25 tests, red at `ef6250d` (`FAILED (failures=1, errors=24)`, the script absent), green at this record's commit.
+`python3 evals/gap-study-intervals/test_intervals.py`: 25 tests written first, red at `ef6250d` (`FAILED (failures=1, errors=24)`, the script absent); five more added from the lane's mutation run and review; all 30 green at the branch head.
 They bind the known bounds at one and three takes, outward rounding against the closed forms for zero and all correct up to fifty takes, the Fisher p and power against an independent floating-point version, Clopper-Pearson's coverage at or above 0.95 and Wilson's under it at three takes, the round 2 half graded from its one label, the done commits equal to the pinned refs, and the witness plants above; the fault that must make CI fail is any planted change to a label, count, interval or input.
 `python3 evals/gap-study-intervals/intervals.py --check` prints `graded against seen: 3 rounds, 15 results files, 114 halves seen, 90 graded, 24 not run`, both files `exactly what the script derives`, `done-commit binding: 15 of 15 results files equal their blobs`, and exits 0.
 The lane's mutation run on `intervals.py` and the review are recorded in 0211.
