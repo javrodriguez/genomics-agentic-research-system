@@ -194,12 +194,14 @@ def simple_tokens(command):
         tokens = shlex.split(command, posix=True)
     except ValueError:
         raise Refusal('command', 'could not read command quoting')
-    # The guard judges the unexpanded word; bash expands an unquoted glob into find's operands.
-    if glob and tokens and tokens[0] == 'find':
-        raise Refusal('command', "quote find's pattern, as in find . -name '*.py': the shell "
-                      "would expand an unquoted one before find reads it")
-    if quoted_operator and (not tokens or tokens[0] not in {
-            tool['argv'][0] for tool in registry() if tool.get('filesystem')}):
+    filesystem = {tool['argv'][0] for tool in registry() if tool.get('filesystem')}
+    # The guard judges the unexpanded word; bash expands an unquoted glob into the operands,
+    # where a planted '--pre=x' or '-delete' becomes an option and '..*' can reach '..'.
+    if glob and tokens and tokens[0] in filesystem:
+        raise Refusal('command', 'an unquoted *, ? or [ is expanded by the shell before the '
+                      'guard\'s check applies; quote the pattern (grep -n "x*" FILE), or for '
+                      'file names use find DIR -name "*.py"')
+    if quoted_operator and (not tokens or tokens[0] not in filesystem):
         raise Refusal('command', 'only one simple command; no shell operators or expansion')
     return tokens
 
