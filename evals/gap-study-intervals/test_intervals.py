@@ -308,10 +308,11 @@ class Witness(unittest.TestCase):
         self.assertTrue(any("scope-read.json" in ln for ln in lines), lines)
 
     def test_a_consistent_forgery_fails_against_real_git(self):
-        """No injected reader: the done commit is a real commit, the forgery lives only in the tree."""
+        """No injected reader: the done commit is a real commit and the forgery is committed on top."""
         git = ["git", "-C", str(self.root), "-c", "user.name=witness",
                "-c", "user.email=witness@users.noreply.github.com",
-               "-c", "maintenance.auto=false", "-c", "gc.auto=0"]
+               "-c", "maintenance.auto=false", "-c", "gc.auto=0",
+               "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null"]
         subprocess.run(git + ["init", "-q"], check=True)
         subprocess.run(git + ["add", "-A"], check=True)
         subprocess.run(git + ["commit", "-q", "-m", "done"], check=True)
@@ -328,6 +329,8 @@ class Witness(unittest.TestCase):
             data["cells"]["claude-haiku-4-5-20251001"]["control"]["labels"][0]["verdict"] = "correct"
             path.write_text(json.dumps(data), encoding="utf-8")
             self.m.write(self.root)
+            subprocess.run(git + ["add", "-A"], check=True)
+            subprocess.run(git + ["commit", "-q", "-m", "forged"], check=True)
             self.assertEqual(self.check()[0], 0)
             code, lines = self.m.check(self.root)
             self.assertEqual(code, 1, lines)
@@ -340,7 +343,8 @@ class Witness(unittest.TestCase):
         at the done commit still names it."""
         git = ["git", "-C", str(self.root), "-c", "user.name=witness",
                "-c", "user.email=witness@users.noreply.github.com",
-               "-c", "maintenance.auto=false", "-c", "gc.auto=0"]
+               "-c", "maintenance.auto=false", "-c", "gc.auto=0",
+               "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null"]
         subprocess.run(git + ["init", "-q"], check=True)
         subprocess.run(git + ["add", "-A"], check=True)
         subprocess.run(git + ["commit", "-q", "-m", "done"], check=True)
