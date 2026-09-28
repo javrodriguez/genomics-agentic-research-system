@@ -1,4 +1,8 @@
 """Fault controls for the implemented contracts, each in a disposable copy."""
+from concurrent.futures import ThreadPoolExecutor
+import hashlib
+import os
+import time
 import shutil
 import subprocess
 import sys
@@ -171,56 +175,189 @@ FAULTS = [
 ]
 
 
+
+def build_layout(root):
+    for directory in ('evals/review-faults', 'evals/bio-faults', 'gars/_system', 'gars/_references'):
+        shutil.copytree(str(REPO / directory), str(root / directory),
+                        ignore=shutil.ignore_patterns('__pycache__', '*.pyc', 'runs'))
+    for relative_file in ('tests/test_bio_faults_core.py', 'tests/test_bio_faults_pipeline.py',
+                          'scripts/release_check.py',
+                          'docs/specs/GARS_Unified_Master_Guideline_v1.0.1_FINAL.md',
+                          'gars/_references/prompts/review_faults_science.md'):
+        target = root / relative_file
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(str(REPO / relative_file), str(target))
+    # A minimal local object store binds provenance to this disposable copy.
+    # Copy only the HEAD commit object; no remote, config or identity changes.
+    subprocess.check_call(['git', 'init', '--quiet', str(root)])
+    commit = subprocess.check_output(['git', '-C', str(REPO), 'cat-file', 'commit', 'HEAD'])
+    head = subprocess.check_output(['git', '-C', str(root), 'hash-object', '-t', 'commit', '-w', '--stdin'], input=commit).decode().strip()
+    subprocess.check_call(['git', '-C', str(root), 'update-ref', 'HEAD', head])
+    return root
+
+
+def source_digest(root):
+    digest = hashlib.sha256()
+    head = subprocess.check_output(['git', '-C', str(root), 'rev-parse', 'HEAD']).strip()
+    digest.update(b'HEAD:' + head + b'\n')
+    # Do not follow symlinks. Frame each path and payload to avoid ambiguity.
+    for folder, directories, files in os.walk(str(root), followlinks=False):
+        if Path(folder) == root:
+            directories[:] = [name for name in directories if name != '.git']
+        for name in sorted(directories + files):
+            path = Path(folder) / name
+            if path.is_symlink():
+                kind, data = b'link', os.fsencode(os.readlink(str(path)))
+            elif path.is_file():
+                kind, data = b'file', path.read_bytes()
+            else:
+                continue
+            for value in (kind, os.fsencode(path.relative_to(root).as_posix()), data):
+                digest.update(str(len(value)).encode('ascii') + b':' + value)
+        directories.sort()
+    return digest.hexdigest()
+
+
+def execute(root, module, name, timeout):
+    started = time.monotonic()
+    try:
+        proc = subprocess.run(
+            [sys.executable, '-B', str(root / ('tests/test_bio_faults_' + module + '.py')), name],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=timeout)
+        return dict(returncode=proc.returncode, output=proc.stdout.decode(),
+                    seconds=time.monotonic() - started, error=None)
+    except subprocess.TimeoutExpired:
+        return dict(seconds=time.monotonic() - started,
+                    error='timeout after %g s' % timeout)
+
+
+def run_control(module, name):
+    result = dict(error=None, seconds=0.0)
+    try:
+        with tempfile.TemporaryDirectory() as folder:
+            root = build_layout(Path(folder))
+            result['digest'] = source_digest(root)
+            result.update(execute(root, module, name, 120))
+    except Exception as exc:
+        result['error'] = '%s: %s' % (type(exc).__name__, exc)
+    return result
+
+
+def fault_timeout(control):
+    return max(20, 4 * control['seconds'])
+
+
+def run_entry(entry, control):
+    result = dict(error=None, applied=False)
+    try:
+        label, relative, old, new, module, name = entry
+        with tempfile.TemporaryDirectory() as folder:
+            root = build_layout(Path(folder))
+            result['digest'] = source_digest(root)
+            path = root / relative
+            if old is not None:
+                source = path.read_text()
+                result['old_count'] = source.count(old)
+                if result['old_count'] != 1:
+                    return result
+            if control['error'] is not None or control['returncode'] != 0:
+                return result
+            if old is None:
+                path.rename(str(root / new))
+                # Keep importers live while loading the science implementation
+                # under the prohibited bare name. The named test must run.
+                path.write_text('import importlib.util, sys\nfrom pathlib import Path\n'
+                    'p = Path(__file__).with_name("oracle.py")\n'
+                    'spec = importlib.util.spec_from_file_location("oracle", str(p))\n'
+                    'module = importlib.util.module_from_spec(spec)\n'
+                    'sys.modules["oracle"] = module\n'
+                    'spec.loader.exec_module(module)\n'
+                    'globals().update({k: v for k, v in vars(module).items() if not k.startswith("__")})\n')
+            else:
+                path.write_text(source.replace(old, new))
+            result['applied'] = True
+            result.update(execute(root, module, name, fault_timeout(control)))
+    except Exception as exc:
+        result['error'] = '%s: %s' % (type(exc).__name__, exc)
+    return result
+
+
+def control_key(entry):
+    return entry[4], entry[5]
+
+
+def worker_count():
+    value = os.environ.get('GARS_FAULT_WORKERS')
+    if value is None:
+        return max(1, min(4, (os.cpu_count() or 1) // 4))
+    try:
+        workers = int(value)
+    except ValueError:
+        raise ValueError('GARS_FAULT_WORKERS must be an integer >= 1: %r' % value)
+    if workers < 1:
+        raise ValueError('GARS_FAULT_WORKERS must be an integer >= 1: %r' % value)
+    return workers
+
+
+def run_after_control(entry, control_future):
+    try:
+        return run_entry(entry, control_future.result())
+    except Exception as exc:
+        return dict(error='%s: %s' % (type(exc).__name__, exc))
+
+
+def run_all(entries, workers):
+    # Queue every control before its dependents, including with one worker.
+    # Full pipeline builds and launches are usually the most expensive pairs.
+    order = sorted(range(len(entries)), key=lambda i: not (
+        entries[i][4] == 'pipeline' and entries[i][5].startswith(('BuildTests.', 'LaunchTests.'))))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        controls = {}
+        for index in order:
+            entry = entries[index]
+            key = control_key(entry)
+            if key not in controls:
+                controls[key] = pool.submit(run_control, entry[4], entry[5])
+        results = {}
+        for index in order:
+            entry = entries[index]
+            results[index] = pool.submit(run_after_control, entry, controls[control_key(entry)])
+        return ({key: future.result() for key, future in controls.items()},
+                [results[index].result() for index in range(len(entries))])
+
+
 class FaultTests(unittest.TestCase):
     def test_faults(self):
-        for label, relative, old, new, module, name in FAULTS:
-            with self.subTest(fault=label), tempfile.TemporaryDirectory() as folder:
-                root = Path(folder)
-                for directory in ('evals/review-faults', 'evals/bio-faults', 'gars/_system', 'gars/_references'):
-                    shutil.copytree(str(REPO / directory), str(root / directory),
-                                    ignore=shutil.ignore_patterns('__pycache__', '*.pyc', 'runs'))
-                for relative_file in ('tests/test_bio_faults_core.py', 'tests/test_bio_faults_pipeline.py',
-                                      'scripts/release_check.py',
-                                      'docs/specs/GARS_Unified_Master_Guideline_v1.0.1_FINAL.md',
-                                      'gars/_references/prompts/review_faults_science.md'):
-                    target = root / relative_file
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copyfile(str(REPO / relative_file), str(target))
-                # A minimal local object store binds provenance to this disposable copy.
-                # Copy only the HEAD commit object; no remote, config or identity changes.
-                subprocess.check_call(['git', 'init', '--quiet', str(root)])
-                commit = subprocess.check_output(['git', '-C', str(REPO), 'cat-file', 'commit', 'HEAD'])
-                head = subprocess.check_output(['git', '-C', str(root), 'hash-object', '-t', 'commit', '-w', '--stdin'], input=commit).decode().strip()
-                subprocess.check_call(['git', '-C', str(root), 'update-ref', 'HEAD', head])
-                script = root / ('tests/test_bio_faults_' + module + '.py')
-                argv = [sys.executable, '-B', str(script), name]
-                control = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=20)
-                self.assertEqual(control.returncode, 0, control.stdout.decode())
-                path = root / relative
-                if old is None:
-                    path.rename(str(root / new))
-                    # Keep importers live while loading the science implementation
-                    # under the prohibited bare name. The named test must run.
-                    path.write_text('import importlib.util, sys\nfrom pathlib import Path\n'
-                        'p = Path(__file__).with_name("oracle.py")\n'
-                        'spec = importlib.util.spec_from_file_location("oracle", str(p))\n'
-                        'module = importlib.util.module_from_spec(spec)\n'
-                        'sys.modules["oracle"] = module\n'
-                        'spec.loader.exec_module(module)\n'
-                        'globals().update({k: v for k, v in vars(module).items() if not k.startswith("__")})\n')
-                else:
-                    source = path.read_text()
-                    self.assertEqual(source.count(old), 1)
-                    path.write_text(source.replace(old, new))
-                failed = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=20)
-                self.assertNotEqual(failed.returncode, 0, label)
-                evidence = failed.stdout.decode()
+        started = time.monotonic()
+        workers = worker_count()
+        controls, results = run_all(FAULTS, workers)
+        for entry, result in zip(FAULTS, results):
+            label, relative, old, new, module, name = entry
+            with self.subTest(fault=label):
+                if old is not None and 'old_count' in result:
+                    self.assertEqual(result['old_count'], 1)
+                control = controls[control_key(entry)]
+                self.assertIsNone(control['error'], 'unfaulted control: ' + label + ': ' + str(control['error']))
+                self.assertEqual(control['returncode'], 0, control['output'])
+                self.assertTrue(any(line.startswith(name.split('.')[-1] + ' (') and line.endswith(' ... ok')
+                                    for line in control['output'].splitlines()),
+                                'unfaulted control case: ' + label + '\n' + control['output'])
+                self.assertIsNone(result['error'], label + ': ' + str(result['error']))
+                self.assertEqual(result['digest'], control['digest'], 'source digest mismatch: ' + label)
+                self.assertTrue(result['applied'], label)
+                self.assertNotEqual(result['returncode'], 0, label)
+                evidence = result['output']
                 if label == 'envelope from stub text':
                     self.assertIn('FAIL: ', evidence)
                 else:
                     self.assertIn('FAIL: ' + name.split('.')[-1], evidence)
                     self.assertNotIn('ERROR:', evidence)
                 print('science fault red: ' + label)
+
+        slowest = max(controls, key=lambda key: controls[key]['seconds'])
+        print('science faults: %d entries, %d controls, workers %d, wall %.1f s, slowest control %s %.1f s' % (
+            len(FAULTS), len(controls), workers, time.monotonic() - started,
+            slowest[1], controls[slowest]['seconds']))
 
 
 if __name__ == '__main__':
