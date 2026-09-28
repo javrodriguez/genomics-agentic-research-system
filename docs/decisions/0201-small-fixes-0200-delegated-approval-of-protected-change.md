@@ -56,3 +56,11 @@ Standing.
 ## Date
 
 2026-09-28
+
+## Test
+
+Appended 28 September 2026 after the landing: the record reached main without this section, which the decision-link check requires of a new record; the bytes above are unchanged, and nothing here is new evidence.
+
+- The tests that bind 0200: the two rows `executorlib._local_submit` and `executorlib._analysis_launcher` in `gars/tests/test_r164_writer_recovery.py`, red at `0d9954c` (`FAILED (failures=8)`) and green at the fix; the affected modules `test_lifecycle_executor`, `test_lifecycle_cancel`, `test_local_exit_record`, `test_executor_env`, `test_status_writer`, `test_venue_policy`, `test_stage03_execution`, `test_execution_policy` and `test_r164_writer_recovery` OK one at a time at the branch head and at the landing merge.
+- The mutation proof on `executorlib.py`: five mutants (the job record back to a plain `open`; the launcher back to `write_bytes`; `_publish_bytes` without its fsync, keeping its temp on failure, or writing the published name directly), 5 of 5 killed on this Mac at the branch head and 5 of 5 on the build node from a clean copy of the landing merge `cdd7d99`.
+- The suite at the landing merge `cdd7d99`, 1208 tests, in the three modes named in Evidence: macOS mode A `OK (skipped=14)`, Linux with `TMPDIR` set `OK (skipped=82)`, Linux with it unset `OK (skipped=124)`; the fresh-clone gate `ok: 124 skips` against the records commit's README.

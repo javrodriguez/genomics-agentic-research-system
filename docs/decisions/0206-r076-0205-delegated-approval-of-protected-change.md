@@ -65,3 +65,11 @@ Standing.
 ## Date
 
 2026-09-28
+
+## Test
+
+Appended 28 September 2026 after the landing: the record reached main without this section, which the decision-link check requires of a new record; the bytes above are unchanged, and nothing here is new evidence.
+
+- The tests that bind 0205: `gars/tests/test_r076_script_binding.py` (14 tests), red at base and green at the fix; the changed assertions in `gars/tests/test_downstream_keys.py` and `gars/tests/test_rerun_check.py`; the affected modules `test_r076_script_binding`, `test_downstream_keys`, `test_r164_exact_bytes`, `test_r164_writer_recovery`, `test_r164_params_mapping`, `test_wrapper_contract`, `test_wrapperlib_prepare`, `test_bring_home`, `test_planted_defects`, `test_manifest_groups`, `test_pilot_doors` and `test_rerun_check` OK one at a time at the branch head and at the landing merge.
+- The mutation proof on `wrapperlib.py` and `executorlib.py`: twelve mutants, each killed by its named test, 12 of 12 on this Mac at the branch head and 12 of 12 on the build node from a clean copy of the landing merge `cdd7d99`.
+- The suite at the landing merge `cdd7d99`, 1208 tests, in the three modes named in Evidence: macOS mode A `OK (skipped=14)`, Linux with `TMPDIR` set `OK (skipped=82)`, Linux with it unset `OK (skipped=124)`; the fresh-clone gate `ok: 124 skips` against the records commit's README.
