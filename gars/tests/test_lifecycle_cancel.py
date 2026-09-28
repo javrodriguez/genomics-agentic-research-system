@@ -188,7 +188,7 @@ class LifecycleCancelTests(unittest.TestCase):
             self.assertEqual(before, (path.read_bytes(), (stage / 'STATUS').read_bytes()))
 
     def test_local_exit_file_and_dead_pid_are_terminal(self):
-        for code in ('0', '3', None):
+        for code in ('0', '3', '', None):
             with self.subTest(code=code), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp); stage, path, record = self.fixture(root, 'local')
                 jobs = ex._local_jobs_dir(root); jobs.mkdir()
@@ -202,7 +202,7 @@ class LifecycleCancelTests(unittest.TestCase):
                     ok, why = ex.cancel(root, '42')
                     self.assertFalse(ok)
                     self.assertIn('recorded state', why)
-                    if code is None:
+                    if not code:        # no record, or an empty one (0195): the pid decides
                         kill.assert_called_once_with(42, 0)
                     else:
                         kill.assert_not_called()
