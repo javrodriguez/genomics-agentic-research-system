@@ -40,3 +40,12 @@ Fix commit `d10fc08` (`wrapperlib.py` and the test module only): a linked or non
 New tests C6, C7 and G4 (G3 now expects the linked folder to raise); the module reads `Ran 12 tests`, OK, on Python 3.13.2 and 3.9.6.
 At `d10fc08`, one at a time on Python 3.13.2, these 16 modules read OK: test_r076_script_binding, test_downstream_keys, test_r164_exact_bytes, test_r164_writer_recovery, test_r164_params_mapping, test_r164_keyed_lookups, test_r164_failure_recovery, test_wrapper_contract, test_wrapperlib_prepare, test_bring_home, test_tool_schema_refusal, test_planted_defects (skipped=1), test_bio_faults_core, test_manifest_groups, test_pilot_doors, test_rerun_check.
 Mutations: `10 of 10 killed by the named test`, adding (viii) prepare binds whatever `scripts/` holds, (ix) the walk skips a folder it cannot list and (x) prepare accepts a linked `scripts/` folder.
+
+## Lane review r2 and its fix round
+
+Re-review r2 (a fresh context on the fix range, with r1's findings) read `VERDICT: CHANGES`, MAJOR 1, MINOR 1, NOTE 1, and closed F-1, F-3 and F-4.
+F-6 the allow-list came from `submit.sh`'s text, which carries rnaseq-de's `--counts` path, so a counts path inside `scripts/` allowed a planted module (reproduced by the reviewer); F-7 the refusal was a traceback; F-8 (NOTE) a window between the allow-list check and the walk, now named in R4.
+Fix commit `70dbfe0` (`wrapperlib.py` and the test module only): `GENERATED_SCRIPTS` keyed by wrapper name, and a JSON prepare refusal with `EXIT_REFUSED`.
+New tests C6b and C8; the module reads `Ran 14 tests`, OK, on Python 3.13.2 and 3.9.6.
+At `70dbfe0`, one at a time on Python 3.13.2, these 12 modules read OK: test_r076_script_binding, test_downstream_keys, test_r164_exact_bytes, test_r164_writer_recovery, test_r164_params_mapping, test_wrapper_contract, test_wrapperlib_prepare, test_bring_home, test_planted_defects (skipped=1), test_manifest_groups, test_pilot_doors, test_rerun_check.
+Mutations: `12 of 12 killed by the named test`, adding (xi) the allow-list read from `submit.sh` text and (xii) the refusal raised raw.

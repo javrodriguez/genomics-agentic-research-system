@@ -44,7 +44,9 @@ Row 13's fix round 2 (0141) already refuses an agent's Write in a closed project
    Python can import from a folder it cannot list, so such a folder is never framed as empty (lane review r1 F-3).
    `downstream-v1` and `stage01-v1` are unchanged byte for byte.
 2. **A downstream prepare records `downstream-v2`, and binds only what it generated.** Stage 01 keeps `stage01-v1`.
-   Before computing the key, `write_reproducibility` requires `scripts/` to be a real folder holding exactly the scripts its `submit.sh` runs, each a regular file (`require_generated_scripts_only`); anything else refuses the prepare with a count, never a name, and asks for the extra entries to be removed.
+   Before computing the key, `write_reproducibility` requires `scripts/` to be a real folder holding exactly the wrapper's own generated scripts (`GENERATED_SCRIPTS`, keyed by the wrapper name it receives), each a regular file (`require_generated_scripts_only`).
+   The allow-list is never read from `submit.sh`, whose text also carries caller-supplied input paths (lane review r2 F-6: an rnaseq-de `--counts` inside `scripts/` would have allowed a planted module).
+   Anything else refuses the prepare as a JSON refusal with `EXIT_REFUSED`, naming counts, never file names, and asking for the extra entries to be removed; `submit.sh` is then left without a key line, so nothing submits or collects until a clean prepare (r2 F-7).
    So a module added after prepare is refused at submit, the re-prepare that refusal asks for refuses too, and the module is never folded into a new key (lane review r1 F-2); a `scripts/` already linked elsewhere when prepare runs is refused the same way (F-1).
 3. **Submit refuses a `downstream-v1` stage** with the existing `R-076: idempotency_key_missing_or_changed; run prepare`: a stage prepared before this landing is prepared again, never submitted with an unbound script.
    `stage_record` still accepts `downstream-v1`, so a job submitted before the landing still collects.
@@ -70,7 +72,7 @@ Row 13's fix round 2 (0141) already refuses an agent's Write in a closed project
 - **R1 The queue wait.** A script changed after submit and before the scheduler starts the job still runs; collect and the COMPLETE gate then refuse its output, but the compute is spent.
 - **R2 Other executed code.** `submit.sh`'s own body (read-only to the agent since row 12), `_system/` code and the job's environment are not in the key.
 - **R3 Jobs already submitted under `downstream-v1`** keep their unbound script until they are prepared again.
-- **R4 A check-then-use window** between the key's recomputation at submit and the scheduler reading the script (milliseconds on the local executor).
+- **R4 Check-then-use windows**: between the key's recomputation at submit and the scheduler reading the script (milliseconds on the local executor), and between prepare's allow-list check and its walk of `scripts/` (lane review r2 F-8).
 
 ## Test
 
@@ -81,11 +83,12 @@ Row 13's fix round 2 (0141) already refuses an agent's Write in a closed project
 - C3 the prepared script submits once, and a later change makes `stage_record` raise;
 - C4 re-running prepare restores the script and the key (the green control);
 - C5 a coherent `downstream-v1` stage is refused at submit and a v1 record still binds collect;
-- C6 an added module is refused at submit, the re-prepare refuses and leaves it in place, and only its removal lets the stage prepare and submit;
+- C6 an added module is refused at submit, the re-prepare refuses (a named JSON refusal, exit 2, no key line left) and leaves it in place, and only its removal lets the stage prepare and submit; C6b an input path named inside `scripts/` gives no allowance;
 - C7 a `scripts/` folder linked elsewhere before prepare fails the prepare, and an edit behind the link is refused at submit;
+- C8 `GENERATED_SCRIPTS` names exactly each wrapper's generated script, and a wrapper with none may hold no scripts;
 - G1-G4 every tree difference changes the key (content, rename, add, folder, nested file, link), the same tree gives the same key, v1 ignores `scripts/`, a missing `scripts/` differs from the real one and a linked one has no key, and a folder the walk cannot list raises.
 
-Mutations, each killed by the named test: (i) v2 skips the walk (C1); (ii) files framed without their digest (C1); (iii) links followed (C2b); (iv) folders not framed (G1); (v) prepare writes v1 (C3); (vi) submit accepts v1 (C5); (vii) a linked `scripts/` folder is walked (G3); (viii) prepare binds whatever `scripts/` holds (C6); (ix) the walk skips a folder it cannot list (G4); (x) prepare accepts a linked `scripts/` folder (C7).
+Mutations, each killed by the named test: (i) v2 skips the walk (C1); (ii) files framed without their digest (C1); (iii) links followed (C2b); (iv) folders not framed (G1); (v) prepare writes v1 (C3); (vi) submit accepts v1 (C5); (vii) a linked `scripts/` folder is walked (G3); (viii) prepare binds whatever `scripts/` holds (C6); (ix) the walk skips a folder it cannot list (G4); (x) prepare accepts a linked `scripts/` folder (C7); (xi) the allow-list is read from `submit.sh` text (C6b); (xii) the refusal is a raw traceback (C6).
 
 ## Status
 
