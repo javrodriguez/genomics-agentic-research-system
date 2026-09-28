@@ -281,6 +281,41 @@ def submission_record(test, tmp):
                                         {'job_id': '1', 'state': 'PENDING'})
 
 
+def local_job_record(test, tmp):
+    """The local backend's job record (0200): the detach is answered in-process with a fixed pid,
+    so no job starts and the record is the only file the call writes."""
+    (tmp / 'stage').mkdir()
+    (tmp / 'stage/submit.sh').write_text('exit 0\n')
+
+    def detach(argv, *args, **kwargs):
+        return ex.subprocess.CompletedProcess(argv, 0, b'4242\n', b'')
+
+    def call():
+        with patch.object(ex.subprocess, 'run', detach), \
+                patch.object(ex, 'execution_env', return_value={}):
+            return ex._local_submit(tmp, tmp / 'stage/submit.sh')
+    return tmp, call
+
+
+class _FixedUuid(object):
+    hex = 'f' * 32
+
+
+def analysis_launcher(test, tmp):
+    """Stage 03's launcher (0200), named by a pinned uuid so the destination is known."""
+    adir = tmp / 'analysis'
+    (adir / 'run').mkdir(parents=True)
+    script = tmp / 'script.sh'
+    # A directive the launcher keeps byte-for-byte carries a byte that is not UTF-8.
+    script.write_bytes(b'#!/bin/bash\n#SBATCH --time=1\n#SBATCH --comment=\xff\necho ok\n')
+
+    def call():
+        with patch.object(ex.uuid, 'uuid4', return_value=_FixedUuid()):
+            ex._analysis_launcher(adir, script, {'name': 'slurm'})
+            return 'written'
+    return tmp, call
+
+
 def failure_record(test, tmp):
     stage = stage_in(tmp)
     return tmp, lambda: ex.record_failure(stage, {'job_id': '7'}, 'FAILED:EXIT_1', 'detail')
@@ -527,6 +562,10 @@ def rows():
         Writer('wrapperlib.harvest_cache', harvest, ['cache/PROVENANCE'], success='populated'),
         Writer('executorlib._save_record', submission_record,
                ['.gars_submissions/' + 'a' * 64 + '.json']),
+        Writer('executorlib._local_submit', local_job_record, ['.gars_local_jobs/4242.json'],
+               success='4242'),
+        Writer('executorlib._analysis_launcher', analysis_launcher,
+               ['analysis/run/launch-' + 'f' * 32 + '.sh'], success='written'),
         Writer('executorlib.record_failure', failure_record,
                ['stage/logs/failure-7.log', 'stage/logs/failure-7.class']),
         Writer('stage00_register.write_dataset_record', dataset_record, ['00_data/dataset.tsv'],
