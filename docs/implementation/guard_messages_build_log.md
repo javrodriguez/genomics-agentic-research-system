@@ -415,6 +415,105 @@ Not verified in this round: the whole suite, a Linux-host rerun, execution on a 
 The prior refusal mutations and full baseline-versus-head payload comparison were not repeated in this fixture-only round; both omitted-file baseline comparisons and the full current decision pin are green.
 No network access, push, remote addition, pull request, approval, merge, history rewrite, system-code change, or gitleaks-configuration change was performed.
 
+
+## Round 7
+
+Work stayed on build/gars-guard-messages-r7, completing the supplied merge of public main 868a1b2019e8b5824c8aa0874dd292c53691160c with the published lane head 35aeee4.
+Merge commit f8d56b5 retains public main's checks and ordering, adds next steps to the 0185 refusals, and takes public main's README and DEVELOPMENT line shapes with the loader-derived total of 1187.
+The resolution retained find's one-path and declared-predicate meaning, renders predicate names from the registry, preserves the required unquoted-glob substring, and adds glob characters to the literal-quoting advice.
+`baseline control-flow comparison: 6 functions; checks, order, fields and rules unchanged; OK`.
+`baseline advice probes: 4 json.dumps payloads; exit 0 each; OK`.
+`baseline refusal-site probes: 8 json.dumps payloads; expected exit 2, fields and R-092; OK`.
+The first scratch advice probe lacked the workspace environment binding and refused its outside-root path; rerunning with the explicit workspace binding produced the four allowed results above.
+At f8d56b5, `python3 -u gars/tests/test_refusal_messages.py`: `Ran 15 tests in 80.049s`; `FAILED (failures=1)`.
+The static next-step check passed at that merge commit; the single failure was the old decision pin at test_nonpublic_read_block-1016, the first accepted 0185 change.
+The builder and fixture were copied into a disposable copy in the job's scratch folder at 868a1b2019e8b5824c8aa0874dd292c53691160c, and the builder was invoked from the repository root against that copy's unchanged system tree.
+The builder entry point is `gars/tests/build_refusal_corpus.py`; the baseline system diff was empty before and after harvesting.
+The existing fixture supplies row names keyed by source and portable payload so newly inserted calls do not renumber old rows.
+The builder retains Round 6's omission of the two unused pilot output files, excluding their cache-key text before any snapshot serialization.
+Builder and fixture commit f950965 pins public main 868a1b2, including test_fs_vocabulary and a valid and invalid value for every registry predicate plus an undeclared predicate.
+`harvested 2606 payloads in 69 contexts`.
+Baseline harvest module summaries, in source order:
+
+`test_policy_attacks`: `Ran 19 tests in 0.276s`; `OK`.
+`test_guard_hook`: `Ran 7 tests in 1.657s`; `OK`.
+`test_policy_faults`: `Ran 10 tests in 0.891s`; `OK`.
+`test_nonpublic_read_block`: `Ran 24 tests in 231.247s`; `OK`.
+`test_pilot_doors`: `Ran 17 tests in 19.475s`; `OK`.
+`test_tool_schema_refusal`: `Ran 8 tests in 0.285s`; `OK`.
+`test_bash_lexer`: `Ran 17 tests in 2.842s`; `OK`.
+`test_fs_vocabulary`: `Ran 21 tests in 2.275s`; `OK`.
+
+Shared decisions against 35aeee4, including every dispatcher decision:
+
+`shared decision change: fs.find-expression: {"new": {"dispatcher": {"exit": 0, "field": null, "rule": null, "type": null}, "exit": 0, "field": null, "rule": null, "type": null}, "old": {"dispatcher": {"exit": 2, "field": "args.paths", "rule": "R-092", "type": "tool_refusal"}, "exit": 2, "field": "args.paths", "rule": "R-092", "type": "tool_refusal"}}`.
+`shared decision change: test_nonpublic_read_block-1016: {"new": {"dispatcher": {"exit": 2, "field": "command", "rule": "R-092", "type": "tool_refusal"}, "exit": 2, "field": "command", "rule": "R-092", "type": "tool_refusal"}, "old": {"dispatcher": {"exit": 0, "field": null, "rule": null, "type": null}, "exit": 2, "field": null, "rule": null, "type": null}}`.
+`shared decision change: test_nonpublic_read_block-1018: {"new": {"dispatcher": {"exit": 2, "field": "command", "rule": "R-092", "type": "tool_refusal"}, "exit": 2, "field": "command", "rule": "R-092", "type": "tool_refusal"}, "old": {"dispatcher": {"exit": 0, "field": null, "rule": null, "type": null}, "exit": 2, "field": null, "rule": null, "type": null}}`.
+`shared decision change: test_nonpublic_read_block-1023: {"new": {"dispatcher": {"exit": 2, "field": "command", "rule": "R-092", "type": "tool_refusal"}, "exit": 2, "field": "command", "rule": "R-092", "type": "tool_refusal"}, "old": {"dispatcher": {"exit": 0, "field": null, "rule": null, "type": null}, "exit": 2, "field": null, "rule": null, "type": null}}`.
+`shared decision change: test_nonpublic_read_block-1024: {"new": {"dispatcher": {"exit": 2, "field": "command", "rule": "R-092", "type": "tool_refusal"}, "exit": 2, "field": "command", "rule": "R-092", "type": "tool_refusal"}, "old": {"dispatcher": {"exit": 0, "field": null, "rule": null, "type": null}, "exit": 2, "field": null, "rule": null, "type": null}}`.
+`shared rows: 2179; changed: 5 accepted; identical: 2174; unexpected decision diff length=0`.
+`added rows: registry: 16`.
+`added rows: test_bash_lexer: 18`.
+`added rows: test_fs_vocabulary: 393`.
+`new corpus: 2606 rows; 1995 refused, 611 allowed`.
+All other sources added zero rows, and every one of the 2179 prior row names remains present.
+Both baseline replay and head replay report the following identical source counts and totals:
+
+`corpus test_policy_attacks: 31 rows`.
+`corpus test_guard_hook: 204 rows`.
+`corpus test_policy_faults: 3 rows`.
+`corpus test_nonpublic_read_block: 1054 rows`.
+`corpus test_pilot_doors: 238 rows`.
+`corpus test_tool_schema_refusal: 8 rows`.
+`corpus test_bash_lexer: 300 rows`.
+`corpus test_fs_vocabulary: 393 rows`.
+`corpus registry: 360 rows`.
+`corpus reported: 15 rows`.
+`decision pin: 1995 refused, 611 allowed; OK`.
+The baseline builder's `--check` replay and the head decision-pin test compare every exit, type, field, rule and dispatcher decision exactly; both pass.
+
+No assertion in test_fs_vocabulary needed moving: its predicate-name, operator, glob-substring, exit, field and rule assertions all pass unchanged.
+The existing registry-advice test now also checks registry-derived find predicates and the new refusal alternatives without adding a test method.
+Moved-assertions table:
+
+| Test | File and line | Old | New | Reason |
+|---|---|---|---|---|
+| FixturePrivacyTests.test_fixture_is_readable_and_portable | gars/tests/test_refusal_messages.py:336 | self.assertEqual(count, 2175) | self.assertEqual(count, 2602) | The 427 added payloads are JSON objects; all prior key-shape, malformed-payload and privacy assertions remain. |
+
+Pre-commit privacy gate, `python3 -u gars/tests/test_refusal_messages.py FixturePrivacyTests`: `Ran 2 tests in 38.981s`; `OK`.
+`privacy scan: strings=8466 decoded_blobs=244 zlib_blobs=0 elapsed=37.768s`.
+Every Python invocation used TMPDIR, TEMP and TMP bound to the job's scratch folder.
+
+Final targeted GATE summaries:
+
+`python3 -u gars/tests/test_refusal_messages.py`: `Ran 15 tests in 123.138s`; `OK`.
+`python3 -u gars/tests/test_fs_vocabulary.py`: `Ran 21 tests in 32.419s`; `OK`.
+`python3 -u gars/tests/test_bash_lexer.py`: `Ran 17 tests in 26.805s`; `OK`.
+`python3 -u gars/tests/test_secret_containment.py`: `Ran 4 tests in 14.939s`; `OK`.
+`python3 -u gars/tests/test_protected_paths.py`: `Ran 6 tests in 34.901s`; `OK`.
+`python3 -u gars/tests/test_guard_hook.py`: `Ran 7 tests in 16.328s`; `OK`.
+`python3 -u gars/tests/test_policy_attacks.py`: `Ran 19 tests in 2.166s`; `OK`.
+`python3 -u gars/tests/test_policy_faults.py`: `Ran 10 tests in 0.827s`; `OK`.
+`python3 -u gars/tests/test_nonpublic_read_block.py`: `Ran 24 tests in 103.614s`; `OK`.
+`python3 -u gars/tests/test_pilot_doors.py`: `Ran 17 tests in 28.506s`; `OK`.
+`python3 -u gars/tests/test_tool_schema_refusal.py`: `Ran 8 tests in 0.290s`; `OK`.
+`python3 -u gars/tests/test_pilot_log.py`: `Ran 15 tests in 5.942s`; `OK`.
+`privacy scan: strings=8466 decoded_blobs=244 zlib_blobs=0 elapsed=59.909s`.
+`decision pin: 1995 refused, 611 allowed; OK`.
+The real committed-tree scan after f950965 reports `committed-tree gitleaks: 0 findings`; the whole secret-containment module also reports `canary: 0/9`.
+
+`python3 -c "import ast,sys; [ast.parse(open(p).read(), feature_version=(3, 6)) for p in sys.argv[1:]]; print('parsed', len(sys.argv) - 1)" gars/_system/guard_hook.py gars/_system/tool_call.py gars/_system/tools/policy.py gars/tests/build_refusal_corpus.py gars/tests/test_bash_lexer.py gars/tests/test_nonpublic_read_block.py gars/tests/test_pilot_doors.py gars/tests/test_pilot_log.py gars/tests/test_policy_attacks.py gars/tests/test_protected_paths.py gars/tests/test_refusal_messages.py gars/tests/test_fs_vocabulary.py`: `parsed 12`.
+`python3 tests/check_counts.py`: `suite: 1187 tests, from unittest's loader`; `enforced=3`; `clean — every current claim matches the suite`.
+The initial totals check reported three claims at 1172 against the collected 1187; only those current counts were updated, retaining the historical skip-count sentence.
+`git diff 868a1b2019e8b5824c8aa0874dd292c53691160c -- gars/_system/tools/registry.json .github evals docs/decisions .claude gars/.claude` shows only the inherited lane record docs/decisions/0175-guard-messages.md and its single added index row in docs/decisions/CONTEXT.md.
+Registry, workflow, evaluation and settings bytes match public main; no decision record was authored or edited in this round.
+`git diff 868a1b2019e8b5824c8aa0874dd292c53691160c --name-only -- gars/_system` prints only gars/_system/guard_hook.py, gars/_system/tool_call.py and gars/_system/tools/policy.py.
+`git diff --check` printed nothing.
+The added code, inventory and fixture lines were read for private content, including a full added-line runtime-identity and owner-token digest check; the new fixture's whole-file recursive privacy scan also passed.
+The final evidence text was read before committing for the same private-content constraints.
+Not verified in this round: the whole suite, a Linux-host rerun, execution on a Python 3.6 interpreter, contracts/evidence-of-record/evaluation runs, live agent or scheduler behavior, or another run of the earlier mutation plants.
+No network access, push, remote addition, pull request, approval, history rewrite or other-branch change was performed.
+
 ## Owner rulings needed
 
 None.

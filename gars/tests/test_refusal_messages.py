@@ -196,6 +196,26 @@ class RefusalMessagesTests(unittest.TestCase):
         self.assertEqual(ctx.exception.field, 'command')
         self.assertEqual(ctx.exception.rule, 'R-092')
 
+        find = dict(policy.named('fs.find'), predicates={'-fixture-predicate': '^x$'})
+        with self.assertRaises(policy.Refusal) as ctx:
+            policy.validate_args(find, {'paths': ['.'], 'expression': ['-unknown', 'x']}, GARS, GARS)
+        self.assertEqual(ctx.exception.field, 'args.expression[0]')
+        self.assertEqual(ctx.exception.rule, 'R-092')
+        self.assertIn('-fixture-predicate', str(ctx.exception))
+        self.assertIn('Next: ', ctx.exception.alternative)
+        for args, phrase in (
+                ({'paths': ['!']}, 'name the folder first'),
+                ({'paths': ['_system', '_references']}, 'once per workspace folder'),
+                ({'paths': ['.'], 'expression': ['-unknown', 'x']}, 'choose a listed predicate')):
+            with self.subTest(args=args):
+                with self.assertRaises(policy.Refusal) as ctx:
+                    policy.validate_args(policy.named('fs.find'), args, GARS, GARS)
+                self.assertEqual(ctx.exception.rule, 'R-092')
+                self.assertIn(phrase, ctx.exception.alternative)
+                result, text = corpus.judge(json.dumps({'tool_name': 'Bash',
+                    'tool_input': {'command': 'find . -name x'}, 'cwd': str(GARS)}), GARS)
+                self.assertEqual(result['exit'], 0, text)
+
     def test_08_execution_wrapper(self):
         output = io.StringIO()
         with patch.object(tool_call.subprocess, 'run', side_effect=OSError('fixture')), \
@@ -313,7 +333,7 @@ class FixturePrivacyTests(unittest.TestCase):
             self.assertIsInstance(after, dict)
             self.assertEqual(set(before), set(after), row['name'])
             count += 1
-        self.assertEqual(count, 2175)
+        self.assertEqual(count, 2602)
 
 
     def test_whole_fixture_recursive_privacy(self):
