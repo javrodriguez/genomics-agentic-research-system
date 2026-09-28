@@ -14,7 +14,7 @@ import test_bash_lexer
 
 OUTSIDE = '<outside>'
 EXPRESSION, PATHS, FLAGS, COMMAND = 'args.expression', 'args.paths', 'args.flags', 'command'
-GLOB_MESSAGE = "quote find's pattern"
+GLOB_MESSAGE = test_bash_lexer.GLOB_MESSAGE
 OPERATOR_MESSAGE = 'only one simple command; no shell operators or expansion'
 
 NEWLY_ALLOWED = (
@@ -207,6 +207,28 @@ class FsVocabularyTests(unittest.TestCase):
         for command, _, _ in REFUSED['glob']:
             with self.subTest(command=command):
                 self.assertIn(GLOB_MESSAGE.encode(), guard(command, self.root).stderr)
+
+    def test_glob_rule_on_every_filesystem_command(self):
+        # Round 2: the rule covers every registry filesystem executable, not only find.
+        for command, expected, message in test_bash_lexer.GLOBS:
+            with self.subTest(command=command):
+                result = guard(command, self.root)
+                self.assertEqual(result.returncode, expected, result.stderr)
+                if message:
+                    self.assertEqual(record(result).get('field'), COMMAND, result.stderr)
+                    self.assertIn(message.encode(), result.stderr)
+                    self.assertNotIn(b'rg -g', result.stderr)
+        executables = sorted({t['argv'][0] for t in policy.registry() if t.get('filesystem')})
+        self.assertTrue(executables)
+        for executable in executables:
+            for word in ('*', '..?', '[ab]', '.*'):
+                with self.subTest(executable=executable, word=word):
+                    result = guard(executable + ' ' + word, self.root)
+                    self.assertEqual(result.returncode, 2, result.stderr)
+                    self.assertIn(GLOB_MESSAGE.encode(), result.stderr)
+                    for literal in (shlex.quote(word), re.sub(r'([*?[])', r'\\\1', word)):
+                        literal_result = guard(executable + ' ' + literal, self.root)
+                        self.assertNotIn(GLOB_MESSAGE.encode(), literal_result.stderr)
 
     def test_grep_still_refused(self):
         self.refused(REFUSED['grep'])

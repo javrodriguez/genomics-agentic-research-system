@@ -375,15 +375,16 @@ READS = [
 ]
 
 EXPANSION = [
-    ('glob', 'Bash', 'cat projects/pil*/00_data/rnaseq_bulk/samples.csv', '', 'block'),
+    # An unquoted *, ? or [ on a filesystem command is refused before 0107's rule (R-092).
+    ('glob', 'Bash', 'cat projects/pil*/00_data/rnaseq_bulk/samples.csv', '', 'base'),
     ('brace', 'Bash', 'cat projects/{pilot,open1}/CONTEXT.md', '', 'base'),
-    ('bracket', 'Bash', 'cat projects/pilo[t]/CONTEXT.md', '', 'block'),
+    ('bracket', 'Bash', 'cat projects/pilo[t]/CONTEXT.md', '', 'base'),
     ('qualifier', 'Bash', 'ls projects/*(/)', '', 'base'),
     ('tilde', 'Bash', 'cat ~/x', '', 'base'),
     ('tilde', 'Bash', 'ls ~', '', 'base'),
     ('tilde', 'Bash', dispatch('fs.read', {'paths': ['~/x']}), '', 'block'),
-    ('pattern-slot', 'Bash', 'grep pil* CONTEXT.md', '', 'block'),
-    ('raw', 'Bash', 'ls projects/pilot/00_data/rnaseq_bulk/raw/*', '', 'block'),
+    ('pattern-slot', 'Bash', 'grep pil* CONTEXT.md', '', 'base'),
+    ('raw', 'Bash', 'ls projects/pilot/00_data/rnaseq_bulk/raw/*', '', 'base'),
     ('cost', 'Bash', "grep 'a.*b' STATUS", '', 'block'),
     ('cost', 'Bash', "grep 'a.*b' STATUS", '_system', 'allow'),
     ('cost', 'Bash', dispatch('fs.search', {'pattern': 'a.*b', 'paths': ['STATUS']}), '',

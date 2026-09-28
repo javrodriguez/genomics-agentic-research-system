@@ -101,6 +101,29 @@ PARENTHESIS_LITERALS = (
     ("grep -n '(x)' CONTEXT.md", 0, None),
     (r'grep -n \(x\) CONTEXT.md', 0, None),
 )
+GLOB_MESSAGE = 'an unquoted *, ? or [ is expanded by the shell'
+# The guard judges the unexpanded word, so a filesystem command's unquoted glob is refused;
+# quoted and escaped spellings stay literal, which the shell differential checks.
+GLOBS = (
+    ('cat ..*/CLAUDE.md', 2, GLOB_MESSAGE),
+    ('ls ..*', 2, GLOB_MESSAGE),
+    ('grep -r x .*', 2, GLOB_MESSAGE),
+    ('rg -n x *', 2, GLOB_MESSAGE),
+    ('find *', 2, GLOB_MESSAGE),
+    ('head *.md', 2, GLOB_MESSAGE),
+    ('wc -l ?.txt', 2, GLOB_MESSAGE),
+    ('ls [ab]', 2, GLOB_MESSAGE),
+    ('shasum *', 2, GLOB_MESSAGE),
+    ('stat *', 2, GLOB_MESSAGE),
+    ('tail *', 2, GLOB_MESSAGE),
+    ('rg -n "a|b" CONTEXT.md', 0, None),
+    ('find . -name "*.py"', 0, None),
+    ('grep -n "x*" CONTEXT.md', 0, None),
+    ("grep -n 'a?' CONTEXT.md", 0, None),
+    (r'grep -n x\* CONTEXT.md', 0, None),
+    ('ls _system', 0, None),
+    ('cat CONTEXT.md', 0, None),
+)
 UNMATCHED_OPEN_BRACES = (
     ('ls a{b', 2, OPERATOR_MESSAGE),
     ('grep -n x{ CONTEXT.md', 2, OPERATOR_MESSAGE),
@@ -138,7 +161,7 @@ def lexical_rows():
     """Finite scan corpus shared by the guard tests and the real-shell differential."""
     rows = list(REPORTED) + list(BOUNDARIES) + list(COMMENTS) + list(operator_rows())
     rows += list(BRACES_TILDES)
-    rows += list(PARENTHESIS_LITERALS) + list(UNMATCHED_OPEN_BRACES)
+    rows += list(PARENTHESIS_LITERALS) + list(UNMATCHED_OPEN_BRACES) + list(GLOBS)
     rows += list(expansion_rows()) + list(strict_rows())
     # Adjacent quote regions, empty words, escaped quote/space, and a literal backslash.
     rows += [(command, 0, None) for command in (
@@ -316,6 +339,9 @@ class BashLexerTests(unittest.TestCase):
 
     def test_parenthesis_literals(self):
         self.check_rows(PARENTHESIS_LITERALS)
+
+    def test_unquoted_globs_on_filesystem_commands(self):
+        self.check_rows(GLOBS)
 
     def test_unmatched_opening_brace_witnesses(self):
         self.check_rows(UNMATCHED_OPEN_BRACES)
