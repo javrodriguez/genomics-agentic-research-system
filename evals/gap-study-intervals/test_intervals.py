@@ -219,7 +219,7 @@ class Witness(unittest.TestCase):
         self.assertTrue(any("scope-read.json" in ln for ln in lines), lines)
 
     def test_a_planted_interval_digit_in_the_page_fails(self):
-        self.edit("evals/gap-study-intervals/INTERVALS.md", "0.975", "0.976")
+        self.edit("evals/gap-study-intervals/INTERVALS.md", "0 of 1 | 0.000 to 0.975", "0 of 1 | 0.000 to 0.976")
         self.assertEqual(self.check()[0], 1)
 
     def test_a_planted_count_in_the_data_fails(self):

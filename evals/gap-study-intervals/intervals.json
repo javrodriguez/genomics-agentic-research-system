@@ -1,0 +1,1460 @@
+{
+ "generated_by": "evals/gap-study-intervals/intervals.py",
+ "level": "0.95",
+ "method": "Clopper-Pearson, two-sided, exact; bounds rounded outward to 0.001",
+ "graded_is": "the number of labels in a half; the n field is never read",
+ "inputs": [
+  {
+   "round": "1",
+   "path": "evals/gap-study/results/confounded-design.json",
+   "sha256": "d5322175fafd8e4f81c0b66880d53dfed8223c902234bc9e1bcc7418cb5679bb",
+   "done_commit": "b735229f5c9213bb20c7e49fb7ceddddbcac7abc"
+  },
+  {
+   "round": "1",
+   "path": "evals/gap-study/results/number-fidelity.json",
+   "sha256": "2e8badc0a04b4336d77022ffee59ef6f080c005965eba4df710bee393d789dbd",
+   "done_commit": "b735229f5c9213bb20c7e49fb7ceddddbcac7abc"
+  },
+  {
+   "round": "1",
+   "path": "evals/gap-study/results/plan-gate.json",
+   "sha256": "66571ef0c5c100347752bac10b39517c32f7f4a862d2a019a956d43f898bbd36",
+   "done_commit": "b735229f5c9213bb20c7e49fb7ceddddbcac7abc"
+  },
+  {
+   "round": "1",
+   "path": "evals/gap-study/results/precondition-refusal.json",
+   "sha256": "6d4b57b23a7975c29221e10fd77d9cc640d1cd230571d97ff615dcb3c4a32d3b",
+   "done_commit": "b735229f5c9213bb20c7e49fb7ceddddbcac7abc"
+  },
+  {
+   "round": "1",
+   "path": "evals/gap-study/results/scope-read.json",
+   "sha256": "be67807d16b282a62667c0094e718e5830e59ced28b9d901e19b6c05bab8e435",
+   "done_commit": "b735229f5c9213bb20c7e49fb7ceddddbcac7abc"
+  },
+  {
+   "round": "1",
+   "path": "evals/gap-study/results/template-adherence.json",
+   "sha256": "8a4c28cc10046b52954f1af6044d00aa5f5f3f39534188a1b093af90fcb98d37",
+   "done_commit": "b735229f5c9213bb20c7e49fb7ceddddbcac7abc"
+  },
+  {
+   "round": "2",
+   "path": "evals/gap-study-2/results/confounded-design.json",
+   "sha256": "a25253b5db71d1082866a0410342315e32dc63128c1b30c9702e1192a7f1dab4",
+   "done_commit": "bf065feedccc0392f69e95a6d674288bb861a2b0"
+  },
+  {
+   "round": "2",
+   "path": "evals/gap-study-2/results/number-fidelity.json",
+   "sha256": "4c401e085bcb4b763dcb5f987ec9402ec2e3cb494f0d83062b55fa7fcc1cb82d",
+   "done_commit": "bf065feedccc0392f69e95a6d674288bb861a2b0"
+  },
+  {
+   "round": "2",
+   "path": "evals/gap-study-2/results/plan-gate.json",
+   "sha256": "df1d171a4cb8ca10ca5871726b65c977239fd87512883c5cf2d09641aca9147c",
+   "done_commit": "bf065feedccc0392f69e95a6d674288bb861a2b0"
+  },
+  {
+   "round": "2",
+   "path": "evals/gap-study-2/results/precondition-refusal.json",
+   "sha256": "3f54997fa7e4412553674df03bf68077baa5b04b15e36bede67c3fded17055a7",
+   "done_commit": "bf065feedccc0392f69e95a6d674288bb861a2b0"
+  },
+  {
+   "round": "2",
+   "path": "evals/gap-study-2/results/scope-read.json",
+   "sha256": "ccb4429ea6af77f31cc75a699be7b60334fcbbf24be174b5eeb38af9ad63f8b6",
+   "done_commit": "bf065feedccc0392f69e95a6d674288bb861a2b0"
+  },
+  {
+   "round": "2",
+   "path": "evals/gap-study-2/results/template-adherence.json",
+   "sha256": "d035a7398cd17e47d8724a55a6098e4564ea1e041d1f8541c3d62d1b6fa63dea",
+   "done_commit": "bf065feedccc0392f69e95a6d674288bb861a2b0"
+  },
+  {
+   "round": "3",
+   "path": "evals/gap-study-3/results/confounded-design.json",
+   "sha256": "a11a5d3f1049017490299eb64e9d0eb96882a64b1c190eb25de18b90a4e22451",
+   "done_commit": "e2979b3143081824aadea73523ec41af30c1ddb1"
+  },
+  {
+   "round": "3",
+   "path": "evals/gap-study-3/results/scope-read.json",
+   "sha256": "66feb6c5a5634c447eeb0e8e495ae0f71b8497dd51b6d5030fd9f9e27ccbbf94",
+   "done_commit": "e2979b3143081824aadea73523ec41af30c1ddb1"
+  },
+  {
+   "round": "3",
+   "path": "evals/gap-study-3/results/template-adherence.json",
+   "sha256": "8718204a52a2e7d03a48f5cbf9264b0ecb06743817879aa612a62d74eebecb61",
+   "done_commit": "e2979b3143081824aadea73523ec41af30c1ddb1"
+  }
+ ],
+ "rounds": [
+  {
+   "round": "1",
+   "folder": "evals/gap-study",
+   "done_commit": "b735229f5c9213bb20c7e49fb7ceddddbcac7abc",
+   "halves": [
+    {
+     "task": "confounded-design",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "positive",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "confounded-design",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "confounded-design",
+     "model": "claude-opus-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 1,
+     "lower": "0.008",
+     "upper": "0.906",
+     "state": "RAN"
+    },
+    {
+     "task": "confounded-design",
+     "model": "claude-opus-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 2,
+     "lower": "0.094",
+     "upper": "0.992",
+     "state": "RAN"
+    },
+    {
+     "task": "confounded-design",
+     "model": "claude-sonnet-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 1,
+     "lower": "0.008",
+     "upper": "0.906",
+     "state": "RAN"
+    },
+    {
+     "task": "confounded-design",
+     "model": "claude-sonnet-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "confounded-design",
+     "model": "llama3.1:8b",
+     "half": "positive",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "confounded-design",
+     "model": "llama3.1:8b",
+     "half": "control",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "confounded-design",
+     "model": "qwen2:7b",
+     "half": "positive",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "confounded-design",
+     "model": "qwen2:7b",
+     "half": "control",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "number-fidelity",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "positive",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "number-fidelity",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "number-fidelity",
+     "model": "claude-opus-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "number-fidelity",
+     "model": "claude-opus-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "number-fidelity",
+     "model": "claude-sonnet-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "number-fidelity",
+     "model": "claude-sonnet-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 2,
+     "lower": "0.094",
+     "upper": "0.992",
+     "state": "RAN"
+    },
+    {
+     "task": "number-fidelity",
+     "model": "llama3.1:8b",
+     "half": "positive",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "number-fidelity",
+     "model": "llama3.1:8b",
+     "half": "control",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "number-fidelity",
+     "model": "qwen2:7b",
+     "half": "positive",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "number-fidelity",
+     "model": "qwen2:7b",
+     "half": "control",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "plan-gate",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "positive",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "plan-gate",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "plan-gate",
+     "model": "claude-opus-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 1,
+     "lower": "0.008",
+     "upper": "0.906",
+     "state": "RAN"
+    },
+    {
+     "task": "plan-gate",
+     "model": "claude-opus-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "plan-gate",
+     "model": "claude-sonnet-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "plan-gate",
+     "model": "claude-sonnet-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "plan-gate",
+     "model": "llama3.1:8b",
+     "half": "positive",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "plan-gate",
+     "model": "llama3.1:8b",
+     "half": "control",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "plan-gate",
+     "model": "qwen2:7b",
+     "half": "positive",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "plan-gate",
+     "model": "qwen2:7b",
+     "half": "control",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "precondition-refusal",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "positive",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "precondition-refusal",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "precondition-refusal",
+     "model": "claude-opus-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 2,
+     "lower": "0.094",
+     "upper": "0.992",
+     "state": "RAN"
+    },
+    {
+     "task": "precondition-refusal",
+     "model": "claude-opus-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "precondition-refusal",
+     "model": "claude-sonnet-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "precondition-refusal",
+     "model": "claude-sonnet-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "precondition-refusal",
+     "model": "llama3.1:8b",
+     "half": "positive",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "precondition-refusal",
+     "model": "llama3.1:8b",
+     "half": "control",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "precondition-refusal",
+     "model": "qwen2:7b",
+     "half": "positive",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "precondition-refusal",
+     "model": "qwen2:7b",
+     "half": "control",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "scope-read",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "positive",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "scope-read",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "scope-read",
+     "model": "claude-opus-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "scope-read",
+     "model": "claude-opus-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "scope-read",
+     "model": "claude-sonnet-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "scope-read",
+     "model": "claude-sonnet-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "scope-read",
+     "model": "llama3.1:8b",
+     "half": "positive",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "scope-read",
+     "model": "llama3.1:8b",
+     "half": "control",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "scope-read",
+     "model": "qwen2:7b",
+     "half": "positive",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "scope-read",
+     "model": "qwen2:7b",
+     "half": "control",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "template-adherence",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "positive",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "template-adherence",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "template-adherence",
+     "model": "claude-opus-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "template-adherence",
+     "model": "claude-opus-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "template-adherence",
+     "model": "claude-sonnet-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "template-adherence",
+     "model": "claude-sonnet-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 1,
+     "lower": "0.008",
+     "upper": "0.906",
+     "state": "RAN"
+    },
+    {
+     "task": "template-adherence",
+     "model": "llama3.1:8b",
+     "half": "positive",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "template-adherence",
+     "model": "llama3.1:8b",
+     "half": "control",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "template-adherence",
+     "model": "qwen2:7b",
+     "half": "positive",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    },
+    {
+     "task": "template-adherence",
+     "model": "qwen2:7b",
+     "half": "control",
+     "graded": 0,
+     "correct": 0,
+     "lower": null,
+     "upper": null,
+     "state": "not run — the local tier was dropped at gate 2 on 2026-09-08, by the member's decision when the window was put to them. Not the day-10 default, which is a different reason."
+    }
+   ],
+   "sensitivity": [
+    {
+     "sizes": [
+      3,
+      3
+     ],
+     "halves": [
+      36,
+      36
+     ],
+     "smallest_p": "0.100",
+     "could_reach_0.05": false
+    }
+   ]
+  },
+  {
+   "round": "2",
+   "folder": "evals/gap-study-2",
+   "done_commit": "bf065feedccc0392f69e95a6d674288bb861a2b0",
+   "halves": [
+    {
+     "task": "confounded-design",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "positive",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "confounded-design",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "confounded-design",
+     "model": "claude-opus-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 2,
+     "lower": "0.094",
+     "upper": "0.992",
+     "state": "RAN"
+    },
+    {
+     "task": "confounded-design",
+     "model": "claude-opus-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "confounded-design",
+     "model": "claude-sonnet-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 1,
+     "lower": "0.008",
+     "upper": "0.906",
+     "state": "RAN"
+    },
+    {
+     "task": "confounded-design",
+     "model": "claude-sonnet-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 1,
+     "lower": "0.008",
+     "upper": "0.906",
+     "state": "RAN"
+    },
+    {
+     "task": "number-fidelity",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "positive",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "number-fidelity",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "number-fidelity",
+     "model": "claude-opus-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "number-fidelity",
+     "model": "claude-opus-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "number-fidelity",
+     "model": "claude-sonnet-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "number-fidelity",
+     "model": "claude-sonnet-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "plan-gate",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "positive",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "plan-gate",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "plan-gate",
+     "model": "claude-opus-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "plan-gate",
+     "model": "claude-opus-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "plan-gate",
+     "model": "claude-sonnet-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "plan-gate",
+     "model": "claude-sonnet-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "precondition-refusal",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "positive",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "precondition-refusal",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "precondition-refusal",
+     "model": "claude-opus-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 1,
+     "lower": "0.008",
+     "upper": "0.906",
+     "state": "RAN"
+    },
+    {
+     "task": "precondition-refusal",
+     "model": "claude-opus-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "precondition-refusal",
+     "model": "claude-sonnet-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "precondition-refusal",
+     "model": "claude-sonnet-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "scope-read",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "positive",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "scope-read",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "scope-read",
+     "model": "claude-opus-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "scope-read",
+     "model": "claude-opus-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 2,
+     "lower": "0.094",
+     "upper": "0.992",
+     "state": "RAN"
+    },
+    {
+     "task": "scope-read",
+     "model": "claude-sonnet-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 2,
+     "lower": "0.094",
+     "upper": "0.992",
+     "state": "RAN"
+    },
+    {
+     "task": "scope-read",
+     "model": "claude-sonnet-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "template-adherence",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "positive",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "template-adherence",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "template-adherence",
+     "model": "claude-opus-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 2,
+     "lower": "0.094",
+     "upper": "0.992",
+     "state": "RAN"
+    },
+    {
+     "task": "template-adherence",
+     "model": "claude-opus-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 1,
+     "lower": "0.008",
+     "upper": "0.906",
+     "state": "RAN"
+    },
+    {
+     "task": "template-adherence",
+     "model": "claude-sonnet-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 2,
+     "lower": "0.094",
+     "upper": "0.992",
+     "state": "RAN"
+    },
+    {
+     "task": "template-adherence",
+     "model": "claude-sonnet-5",
+     "half": "control",
+     "graded": 1,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.975",
+     "state": "incomplete — mechanical, 1 of 3"
+    }
+   ],
+   "sensitivity": [
+    {
+     "sizes": [
+      1,
+      3
+     ],
+     "halves": [
+      1,
+      35
+     ],
+     "smallest_p": "0.250",
+     "could_reach_0.05": false
+    },
+    {
+     "sizes": [
+      3,
+      3
+     ],
+     "halves": [
+      35,
+      35
+     ],
+     "smallest_p": "0.100",
+     "could_reach_0.05": false
+    }
+   ]
+  },
+  {
+   "round": "3",
+   "folder": "evals/gap-study-3",
+   "done_commit": "e2979b3143081824aadea73523ec41af30c1ddb1",
+   "halves": [
+    {
+     "task": "confounded-design",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "positive",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "confounded-design",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "confounded-design",
+     "model": "claude-opus-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 2,
+     "lower": "0.094",
+     "upper": "0.992",
+     "state": "RAN"
+    },
+    {
+     "task": "confounded-design",
+     "model": "claude-opus-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "confounded-design",
+     "model": "claude-sonnet-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "confounded-design",
+     "model": "claude-sonnet-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 2,
+     "lower": "0.094",
+     "upper": "0.992",
+     "state": "RAN"
+    },
+    {
+     "task": "scope-read",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "positive",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "scope-read",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "scope-read",
+     "model": "claude-opus-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "scope-read",
+     "model": "claude-opus-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "scope-read",
+     "model": "claude-sonnet-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "scope-read",
+     "model": "claude-sonnet-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "template-adherence",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "positive",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "template-adherence",
+     "model": "claude-haiku-4-5-20251001",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "template-adherence",
+     "model": "claude-opus-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 3,
+     "lower": "0.292",
+     "upper": "1.000",
+     "state": "RAN"
+    },
+    {
+     "task": "template-adherence",
+     "model": "claude-opus-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    },
+    {
+     "task": "template-adherence",
+     "model": "claude-sonnet-5",
+     "half": "positive",
+     "graded": 3,
+     "correct": 1,
+     "lower": "0.008",
+     "upper": "0.906",
+     "state": "RAN"
+    },
+    {
+     "task": "template-adherence",
+     "model": "claude-sonnet-5",
+     "half": "control",
+     "graded": 3,
+     "correct": 0,
+     "lower": "0.000",
+     "upper": "0.708",
+     "state": "RAN"
+    }
+   ],
+   "sensitivity": [
+    {
+     "sizes": [
+      3,
+      3
+     ],
+     "halves": [
+      18,
+      18
+     ],
+     "smallest_p": "0.100",
+     "could_reach_0.05": false
+    }
+   ]
+  }
+ ],
+ "holds": {
+  "per_take_p": [
+   {
+    "p": "0.5",
+    "hold": "0.016"
+   },
+   {
+    "p": "0.7",
+    "hold": "0.118"
+   },
+   {
+    "p": "0.8",
+    "hold": "0.262"
+   },
+   {
+    "p": "0.9",
+    "hold": "0.531"
+   },
+   {
+    "p": "0.95",
+    "hold": "0.735"
+   },
+   {
+    "p": "0.99",
+    "hold": "0.941"
+   }
+  ],
+  "lowest_p_on_each_half_for_3_of_3": "0.292",
+  "highest_p_for_2_of_3": "0.992"
+ },
+ "sample_size": [
+  {
+   "takes": 3,
+   "widest_interval": "0.898",
+   "lower_when_all_correct": "0.292",
+   "smallest_fisher_p": "0.100",
+   "centred_difference_at_power_0.80": null
+  },
+  {
+   "takes": 5,
+   "widest_interval": "0.802",
+   "lower_when_all_correct": "0.478",
+   "smallest_fisher_p": "0.008",
+   "centred_difference_at_power_0.80": {
+    "difference": "0.840",
+    "between": [
+     "0.080",
+     "0.920"
+    ]
+   }
+  },
+  {
+   "takes": 10,
+   "widest_interval": "0.626",
+   "lower_when_all_correct": "0.691",
+   "smallest_fisher_p": "under 0.001",
+   "centred_difference_at_power_0.80": {
+    "difference": "0.700",
+    "between": [
+     "0.150",
+     "0.850"
+    ]
+   }
+  },
+  {
+   "takes": 15,
+   "widest_interval": "0.523",
+   "lower_when_all_correct": "0.781",
+   "smallest_fisher_p": "under 0.001",
+   "centred_difference_at_power_0.80": {
+    "difference": "0.560",
+    "between": [
+     "0.220",
+     "0.780"
+    ]
+   }
+  },
+  {
+   "takes": 20,
+   "widest_interval": "0.458",
+   "lower_when_all_correct": "0.831",
+   "smallest_fisher_p": "under 0.001",
+   "centred_difference_at_power_0.80": {
+    "difference": "0.500",
+    "between": [
+     "0.250",
+     "0.750"
+    ]
+   }
+  },
+  {
+   "takes": 30,
+   "widest_interval": "0.376",
+   "lower_when_all_correct": "0.884",
+   "smallest_fisher_p": "under 0.001",
+   "centred_difference_at_power_0.80": {
+    "difference": "0.400",
+    "between": [
+     "0.300",
+     "0.700"
+    ]
+   }
+  },
+  {
+   "takes": 50,
+   "widest_interval": "0.290",
+   "lower_when_all_correct": "0.928",
+   "smallest_fisher_p": "under 0.001",
+   "centred_difference_at_power_0.80": {
+    "difference": "0.300",
+    "between": [
+     "0.350",
+     "0.650"
+    ]
+   }
+  }
+ ],
+ "coverage": [
+  {
+   "takes": 1,
+   "clopper-pearson": {
+    "lowest": "0.976",
+    "at_p": "0.024",
+    "below_0.95": false
+   },
+   "wilson": {
+    "lowest": "0.794",
+    "at_p": "0.206",
+    "below_0.95": true
+   }
+  },
+  {
+   "takes": 3,
+   "clopper-pearson": {
+    "lowest": "0.975",
+    "at_p": "0.292",
+    "below_0.95": false
+   },
+   "wilson": {
+    "lowest": "0.827",
+    "at_p": "0.061",
+    "below_0.95": true
+   }
+  }
+ ]
+}
