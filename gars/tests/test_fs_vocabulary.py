@@ -1,4 +1,10 @@
-"""grep -E/-F/-w/-l/-c and find's declared predicates, through the guard and the dispatcher."""
+"""grep -E/-F/-w/-l/-c and find's declared predicates, through the guard and the dispatcher.
+
+The agent's Bash `find` is Claude Code's bundled bfs (a shell function), which has GNU
+semantics; the dispatcher execs /usr/bin/find (BSD on the Mac). The same argv therefore runs
+under two programs, and find's operand/expression boundary is judged by the GNU rule: the
+expression starts at the first `-`-led word or at a lone `!`, `(`, `)` or `,`.
+"""
 import json
 import re
 import shlex
@@ -79,7 +85,7 @@ REFUSED = {
     'not_in_table': (
         ('find . -o -name x', EXPRESSION, 'R-092'),
         ('find . -not -name x', EXPRESSION, 'R-092'),
-        ('find . "!" -name x', PATHS, 'R-092'),  # a second path breaks the one-path rule
+        ('find . "!" -name x', EXPRESSION, 'R-092'),  # a lone ! starts find's expression
         ('find . -print', EXPRESSION, 'R-092'),
         ('find . -print0', EXPRESSION, 'R-092'),
         ('find . -ls', EXPRESSION, 'R-092'),
@@ -100,6 +106,12 @@ REFUSED = {
         ('grep -E a ' + OUTSIDE, PATHS, 'R-094'),
     ),
 }
+# GNU find and bfs start the expression at these words, so the default path '.' is walked.
+FIND_OPERATOR_ROWS = ('find , -maxdepth 9', 'find "!" -name nomatch',
+                      "find '!' -iname nomatch -type f", 'find "(" -name x', 'find ")" -name x',
+                      'find ,', 'find "!"')
+FIND_OPERATOR_CALLS = ({'paths': ['!'], 'expression': ['-name', 'nomatch']}, {'paths': [',']},
+                       {'paths': ['(']})
 # Predicates that run a program, write, read an unjudged file operand, or combine expressions.
 FORBIDDEN = ('-exec', '-execdir', '-ok', '-okdir', '-delete', '-fprint', '-fprint0', '-fprintf',
              '-fls', '-newer', '-anewer', '-cnewer', '-newermt', '-samefile', '-o', '-or', '-a',
@@ -230,6 +242,29 @@ class FsVocabularyTests(unittest.TestCase):
                         literal_result = guard(executable + ' ' + literal, self.root)
                         self.assertNotIn(GLOB_MESSAGE.encode(), literal_result.stderr)
 
+    def test_find_operator_words_are_not_paths(self):
+        with tempfile.TemporaryDirectory(prefix='fs-vocabulary-closed-') as tmp:
+            for root in (self.root, workspace(tmp, closed=True)):
+                for command in FIND_OPERATOR_ROWS:
+                    with self.subTest(command=command, root=root.name):
+                        result = guard(command, root)
+                        self.assertEqual(result.returncode, 2, result.stderr)
+                        found = record(result)
+                        # The Bash split matches find's own: the word is an expression word.
+                        self.assertTrue(found.get('field', '').startswith(EXPRESSION),
+                                        result.stderr)
+                        self.assertEqual(found.get('rule'), 'R-092', result.stderr)
+                for call in FIND_OPERATOR_CALLS:
+                    with self.subTest(call=call, root=root.name):
+                        with self.assertRaises(policy.Refusal) as caught:
+                            policy.validate_args(find_tool(), call, root, root)
+                        self.assertEqual(caught.exception.field, 'args.paths')
+                        self.assertEqual(caught.exception.rule, 'R-092')
+                        self.assertIn('operator', str(caught.exception))
+                        result = guard('python3 _system/tool_call.py fs.find ' +
+                                       shlex.quote(json.dumps(call)), root)
+                        self.assertEqual(result.returncode, 2, result.stderr)
+
     def test_grep_still_refused(self):
         self.refused(REFUSED['grep'])
 
@@ -270,6 +305,13 @@ class FsVocabularyTests(unittest.TestCase):
                     self.assertEqual(expected.returncode, exit_code, expected.stderr)
                     self.assertEqual(result.returncode, expected.returncode, result.stderr)
                     self.assertEqual(result.stderr, expected.stderr)
+            # 0107's static-prefix judgement of the -name value: "*.py" reads as a glob whose
+            # prefix '.' is an ancestor of the closed project. The same known cost as the
+            # quoted-glob "cost" rows in test_nonpublic_read_block; pinned so a change is deliberate.
+            result = guard('find _system -name "*.py"', root)
+            self.assertEqual(result.returncode, 2, result.stderr)
+            self.assertIn(b'0107', result.stderr)
+            self.assertIn(b'ancestor of project closed', result.stderr)
 
     def test_dispatcher_new_find_forms(self):
         forms = [c for c in NEWLY_ALLOWED if c.startswith('find ')]
@@ -327,6 +369,11 @@ class FsVocabularyTests(unittest.TestCase):
         self.assertNotIn('_system/tools/policy.py', listed)
 
     def test_harvested_grep_and_find_refusals(self):
+        """The grep and find refusals of test_bash_lexer and test_policy_attacks stay refused.
+
+        Only rows naming grep or find are harvested; the other rows are covered by
+        test_bash_lexer's own run of its full table.
+        """
         names = re.compile(r'(^|[\s;|&(])(grep|find)(\s|$)')
         lexer = [c for c, expected, _ in list(test_bash_lexer.lexical_rows()) +
                  list(test_bash_lexer.PARENTHESIS_REFUSALS) if expected == 2 and names.search(c)]
