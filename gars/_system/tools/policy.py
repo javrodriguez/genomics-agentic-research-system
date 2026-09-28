@@ -7,6 +7,9 @@ from pathlib import Path
 
 WORKSPACE = Path(__file__).resolve().parents[2]
 REGISTRY = Path(__file__).with_name('registry.json')
+# GNU find and bfs (the agent's Bash find) start the expression at these words as well as at
+# a '-'-led one; as a path, each would leave find walking its default '.'.
+FIND_OPERATORS = ('!', '(', ')', ',')
 
 
 class Refusal(ValueError):
@@ -55,7 +58,7 @@ def allowed_calls():
 def literal_next():
     tools = registry()
     return ('Next: one command per call: run each step as its own call; quote literal #, braces, '
-            'tildes or parentheses in arguments, and quote literal ; | & < > only in arguments '
+            'tildes, parentheses, *, ? or [ in arguments, and quote literal ; | & < > only in arguments '
             'of file tools (' + ' '.join(t['argv'][0] for t in tools if t.get('filesystem')) + ').')
 
 
@@ -126,8 +129,24 @@ def validate_args(tool, args, root=WORKSPACE, cwd=None):
                 raise Refusal('args.paths', '%s is outside the workspace (%s); a session reads only inside it (R-073 (recorded as R-094)).' % (p, root), 'R-094', alternative="Next: if it is a command's background output, run that command in the foreground and read its result directly (decision 0160).")
             if p.startswith('-') or p in ('-',) or '\n' in p:
                 raise Refusal('args.paths', 'paths cannot be options or stdin (R-092; decision 0058).', alternative='Next: pass a workspace-relative file path without line breaks, prefixed with ./ if its name starts with a dash.')
+        if tool['name'] == 'fs.find' and any(p in FIND_OPERATORS for p in args['paths']):
+            raise Refusal('args.paths', 'find reads a lone !, (, ) or , as an operator, not a '
+                          'path (R-092; decision 0185).',
+                          alternative='Next: name the folder first, as in find . -name x.')
         if tool['name'] == 'fs.find' and len(args['paths']) != 1:
-            raise Refusal('args.paths', 'find accepts one path and no expressions (R-092; decision 0058).', alternative='Next: run find once per workspace folder, for example find _system.')
+            raise Refusal('args.paths', 'find accepts one path and only the declared predicates (R-092; decision 0185).',
+                          alternative='Next: run find once per workspace folder, as in find . -name x.')
+        # Each predicate takes exactly one value, which must fullmatch its declared pattern.
+        predicates = tool.get('predicates', {})
+        expression = args.get('expression', [])
+        for i in range(0, len(expression), 2):
+            word = expression[i]
+            if word not in predicates or i + 1 >= len(expression) \
+                    or not re.fullmatch(predicates[word], expression[i + 1]):
+                raise Refusal('args.expression[%d]' % i, 'find accepts only these predicates, '
+                              'each with one valid value: ' + ', '.join(sorted(predicates)) +
+                              ' (R-092; decision 0185).',
+                              alternative='Next: choose a listed predicate and a value matching its pattern in _system/tools/registry.json, as in find . -name x.')
 
 
 def authorize(tool, args, role, root=WORKSPACE, cwd=None):
@@ -160,6 +179,8 @@ def argv_for(tool, args, root=WORKSPACE):
             argv += ['256']
         if 'pattern' in args:
             argv += ['--', args['pattern']]
+        if 'predicates' in tool:
+            return argv + args['paths'] + args.get('expression', [])
         return argv + args['paths']
     argv = list(tool['argv'])
     argv[1] = str(Path(root) / argv[1])
@@ -182,7 +203,7 @@ def simple_tokens(command):
     operators = ';|&<>'
     if any(c in command for c in ('`', '$', '\n', '\r')):
         raise Refusal('command', 'dollar signs, backticks and line breaks are refused even inside quotes (R-092; decision 0165).', alternative='Next: one command per call: run each step as its own call; use literal argument values without dollar signs, backticks or line breaks.')
-    quote, i, quoted_operator = None, 0, False
+    quote, i, quoted_operator, glob = None, 0, False, False
     word_start = True
     while i < len(command):
         char = command[i]
@@ -201,6 +222,8 @@ def simple_tokens(command):
             # Unquoted braces, tildes and parentheses can carry shell syntax.
             elif char in operators + '{}~()':
                 raise Refusal('command', 'unquoted operators, braces, tildes and parentheses are refused (R-092; decision 0165).', alternative=literal_next())
+            elif char in '*?[':
+                glob = True
         elif char == quote:
             quote = None
         elif quote == '"' and char == '\\' and command[i + 1:i + 2] in ('"', '\\'):
@@ -214,8 +237,13 @@ def simple_tokens(command):
         tokens = shlex.split(command, posix=True)
     except ValueError:
         raise Refusal('command', 'could not read command quoting (R-092; decision 0165).', alternative='Next: close each argument with its matching quote and submit one command.')
-    if quoted_operator and (not tokens or tokens[0] not in {
-            tool['argv'][0] for tool in registry() if tool.get('filesystem')}):
+    filesystem = {tool['argv'][0] for tool in registry() if tool.get('filesystem')}
+    # The guard judges the unexpanded word; bash expands an unquoted glob into the operands,
+    # where a planted '--pre=x' or '-delete' becomes an option and '..*' can reach '..'.
+    if glob and tokens and tokens[0] in filesystem:
+        raise Refusal('command', 'an unquoted *, ? or [ is expanded by the shell; the guard judges the unexpanded argument (R-092; decision 0185).',
+                      alternative='Next: quote the pattern, as in grep -n "x*" FILE, or name a workspace folder first, as in find DIR -name "*.py".')
+    if quoted_operator and (not tokens or tokens[0] not in filesystem):
         raise Refusal('command', 'a quoted operator is allowed only in a file tool argument (R-092; decision 0165).', alternative='Next: one command per call: run each step as its own call; send a search pattern with | directly to grep or rg, for example grep -n "a|b" FILE.')
     return tokens
 
@@ -284,6 +312,12 @@ def parse_argv(tokens, root=WORKSPACE, cwd=None):
             if 'pattern' in tool['input_schema']['properties'] and '--files' not in args['flags']:
                 if not rest: raise Refusal('args.pattern', 'missing search pattern (R-092; decision 0058).', alternative='Next: ' + usage(tool))
                 args['pattern'] = rest.pop(0)
+            if 'predicates' in tool:
+                cut = next((i for i, w in enumerate(rest)
+                            if w.startswith('-') or w in FIND_OPERATORS), len(rest))
+                rest, expression = rest[:cut], rest[cut:]
+                if expression:
+                    args['expression'] = expression
             args['paths'] = rest or ['.']
             return tool, args
     raise Refusal('command', 'this helper, interpreter or executable is not registered (R-092; decision 0058).', alternative=allowed_calls())

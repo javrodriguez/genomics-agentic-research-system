@@ -4488,7 +4488,12 @@
                 "-n",
                 "-i",
                 "-r",
-                "-R"
+                "-R",
+                "-E",
+                "-F",
+                "-w",
+                "-l",
+                "-c"
               ],
               "type": "string"
             },
@@ -4625,6 +4630,13 @@
       "input_schema": {
         "additionalProperties": false,
         "properties": {
+          "expression": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
           "flags": {
             "items": {
               "enum": [],
@@ -4667,6 +4679,13 @@
           "stderr"
         ],
         "type": "object"
+      },
+      "predicates": {
+        "-iname": "^[^-/\n][^/\n]*$",
+        "-maxdepth": "^(0|[1-9][0-9]{0,2})$",
+        "-mindepth": "^(0|[1-9][0-9]{0,2})$",
+        "-name": "^[^-/\n][^/\n]*$",
+        "-type": "^[fd]$"
       },
       "roles": {
         "human": "allow",
