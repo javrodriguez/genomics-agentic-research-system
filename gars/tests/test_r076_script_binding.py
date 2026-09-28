@@ -83,8 +83,11 @@ class ScriptBindingTests(unittest.TestCase):
     def test_script_changed_after_prepare_is_refused_at_submit(self):
         """C1: one changed byte in the generated script, then submit: refused, nothing run."""
         def check(case):
-            self.assertTrue(case.script.is_file())
-            case.script.write_bytes(case.script.read_bytes() + b'# changed by hand\n')
+            body = case.script.read_bytes()
+            changed = body.replace(b'import', b'imp0rt', 1)
+            self.assertEqual(len(changed), len(body))
+            self.assertNotEqual(changed, body)
+            case.script.write_bytes(changed)  # same size: only the bytes differ
             result, calls = case.submit()
             self.assertEqual(result, (None, REFUSAL))
             self.assertEqual(calls, 0)
@@ -197,11 +200,18 @@ class ScriptFormulaTests(unittest.TestCase):
         self.assertEqual(wl.input_key(self.stage, legacy), before)
         self.assertNotEqual(self.key(), first)
 
-    def test_missing_scripts_folder_is_its_own_state(self):
-        """G3: no scripts/ folder hashes differently from an empty one, and never raises."""
-        empty = self.key()
+    def test_missing_or_linked_scripts_folder_is_its_own_state(self):
+        """G3: no scripts/ folder, or a link to an identical folder, differs from the real one."""
+        (self.stage / 'scripts/run.py').write_bytes(b'print(1)\n')
+        real = self.key()
+        copy = self.root / 'copy'
+        copy.mkdir()
+        (copy / 'run.py').write_bytes(b'print(1)\n')
+        (self.stage / 'scripts/run.py').unlink()
         (self.stage / 'scripts').rmdir()
-        self.assertNotEqual(self.key(), empty)
+        absent = self.key()
+        os.symlink(str(copy), str(self.stage / 'scripts'))
+        self.assertEqual(len({real, absent, self.key()}), 3)
 
 
 if __name__ == '__main__':

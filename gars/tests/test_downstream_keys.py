@@ -38,7 +38,7 @@ class DownstreamKeyTests(unittest.TestCase):
                 self.assertEqual(module.cmd_prepare(args), 0)
             key = ex.prepared_key(root, stage)
             manifest = json.loads((stage / 'reproducibility/manifest.json').read_text())
-            self.assertEqual(manifest['key_formula'], 'downstream-v1')
+            self.assertEqual(manifest['key_formula'], 'downstream-v2')
             self.assertFalse((stage / 'params.yaml').exists())
             # Insertion order is irrelevant, and unrelated stage-01 rewrites do not participate.
             reversed_manifest = dict(manifest); reversed_manifest['inputs'] = dict(reversed(list(manifest['inputs'].items())))
