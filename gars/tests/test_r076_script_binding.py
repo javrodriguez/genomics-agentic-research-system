@@ -75,6 +75,18 @@ class Prepared:
 
 
 class ScriptBindingTests(unittest.TestCase):
+    def assertRefusedPrepare(self, case, message):
+        """A refused prepare is a named JSON refusal with EXIT_REFUSED, never a traceback."""
+        out = io.StringIO()
+        with patch.object(case.module, 'run_checks', return_value=([], case.cfg, case.paths)), \
+                contextlib.redirect_stdout(out), self.assertRaises(SystemExit) as caught:
+            case.module.cmd_prepare(case.args)
+        self.assertEqual(caught.exception.code, wl.EXIT_REFUSED)
+        result = json.loads(out.getvalue())
+        self.assertEqual((result['command'], result['ok']), ('prepare', False))
+        self.assertIn(message, result['error'])
+        self.assertNotIn('# idempotency_key=', (case.stage / 'submit.sh').read_text())
+
     def each_wrapper(self, check):
         for name in WRAPPERS:
             with self.subTest(wrapper=name), tempfile.TemporaryDirectory() as tmp:
@@ -143,14 +155,26 @@ class ScriptBindingTests(unittest.TestCase):
             added = case.script.parent / 'pandas.py'
             added.write_text('raise SystemExit(0)\n')
             self.assertEqual(case.submit(), ((None, REFUSAL), 0))
-            with self.assertRaisesRegex(ValueError, 'prepare refused: scripts/ holds 1 entries'), \
-                    contextlib.redirect_stdout(io.StringIO()):
-                case.prepare()
+            self.assertRefusedPrepare(case, 'prepare refused: scripts/ holds 1 entries')
             self.assertTrue(added.exists())
             self.assertEqual(case.submit(), ((None, REFUSAL), 0))
             added.unlink()
             case.prepare()
             self.assertEqual(case.submit(), (('42', None), 1))
+        self.each_wrapper(check)
+
+    def test_an_input_named_inside_scripts_is_not_an_allowance(self):
+        """C6b (review r2 F-6): a caller-supplied input path inside scripts/ appears in
+        submit.sh's text; the allow-list is the wrapper's own, so prepare still refuses."""
+        def check(case):
+            added = case.script.parent / 'pandas.py'
+            added.write_text('raise SystemExit(0)\n')
+            self.assertEqual(case.submit(), ((None, REFUSAL), 0))
+            case.args.counts = case.args.h5ad = str(added)
+            self.assertRefusedPrepare(case, 'prepare refused: scripts/ holds 1 entries')
+            if case.module.ASSAY == 'rnaseq_bulk':  # the route review r2 reproduced
+                self.assertIn('"%s"' % added.resolve(), (case.stage / 'submit.sh').read_text())
+            self.assertEqual(case.submit(), ((None, REFUSAL), 0))
         self.each_wrapper(check)
 
     def test_scripts_folder_linked_before_prepare_is_refused(self):
@@ -160,13 +184,9 @@ class ScriptBindingTests(unittest.TestCase):
             elsewhere = case.root / 'elsewhere'
             case.script.parent.rename(elsewhere)
             os.symlink(str(elsewhere), str(case.stage / 'scripts'))
-            with self.assertRaisesRegex(ValueError, 'not a real folder'), \
-                    contextlib.redirect_stdout(io.StringIO()):
-                case.prepare()
+            self.assertRefusedPrepare(case, 'prepare refused: scripts/ is not a real folder')
             (elsewhere / case.script.name).write_text('raise SystemExit(0)\n')
             self.assertEqual(case.submit(), ((None, REFUSAL), 0))
-            with self.assertRaisesRegex(ValueError, 'prepare refused: scripts/ is not a real folder'):
-                wl.require_generated_scripts_only(case.stage)
         self.each_wrapper(check)
 
     def test_legacy_formula_is_refused_at_submit_but_still_collects(self):
@@ -192,6 +212,30 @@ class ScriptBindingTests(unittest.TestCase):
                 'state': 'COMPLETED', 'executor': 'local', 'job_id': '7'}))
             self.assertEqual(ex.stage_record(case.root, case.stage)['job_id'], '7')
         self.each_wrapper(check)
+
+
+class AllowListTests(unittest.TestCase):
+    def test_the_allow_list_is_each_wrappers_generated_script(self):
+        """C8: GENERATED_SCRIPTS names exactly what each downstream prepare writes (C4 would
+        refuse otherwise); an unknown wrapper may hold no scripts."""
+        self.assertEqual({k: set(v) for k, v in wl.GENERATED_SCRIPTS.items()},
+                         {k: {v} for k, v in WRAPPERS.items()})
+        with tempfile.TemporaryDirectory() as tmp:
+            stage = Path(tmp)
+            wl.require_generated_scripts_only(stage, 'another-wrapper')
+            (stage / 'scripts').mkdir()
+            wl.require_generated_scripts_only(stage, 'another-wrapper')
+            (stage / 'scripts/run_de.py').write_text('')
+            with self.assertRaisesRegex(ValueError, 'holds 1 entries'):
+                wl.require_generated_scripts_only(stage, 'another-wrapper')
+            wl.require_generated_scripts_only(stage, 'rnaseq-de')
+            elsewhere = stage / 'real'
+            elsewhere.mkdir()
+            (stage / 'scripts/run_de.py').unlink()
+            (stage / 'scripts').rmdir()
+            os.symlink(str(elsewhere), str(stage / 'scripts'))
+            with self.assertRaisesRegex(ValueError, 'prepare refused: scripts/ is not a real folder'):
+                wl.require_generated_scripts_only(stage, 'another-wrapper')
 
 
 class ScriptFormulaTests(unittest.TestCase):

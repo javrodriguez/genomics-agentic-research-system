@@ -656,17 +656,23 @@ def scripts_tree_digest(stage, digest):
     digest.update(b'end\0')
 
 
-def require_generated_scripts_only(substage):
+# 0205: the scripts each downstream wrapper's prepare generates under scripts/, by the wrapper
+# name it passes to write_reproducibility. The allow-list is the wrapper's, never read from
+# submit.sh, whose text also carries caller-supplied paths (lane review r2 F-6).
+GENERATED_SCRIPTS = {'rnaseq-de': ('run_de.py',), 'scrna-qc-cluster': ('run_scrna.py',),
+                     'spatial-cluster-count': ('count_clusters.py',)}
+
+
+def require_generated_scripts_only(substage, wrapper):
     """0205: the key binds scripts/ as prepare leaves it, so prepare refuses to bind anything it
-    did not generate: scripts/ must be a real folder holding exactly the scripts submit.sh runs,
-    each a regular file. A file added there is removed by a human, never folded into a key."""
-    substage = Path(substage)
-    body = (substage / 'submit.sh').read_text(encoding='utf-8')
-    named = set(re.findall('"' + re.escape(str(substage.resolve())) + r'/scripts/([^"/]+)"', body))
-    top = substage / 'scripts'
+    did not generate: scripts/ must be a real folder holding exactly the wrapper's generated
+    scripts, each a regular file. A file added there is removed by a human, never folded into
+    a key. A wrapper with no generated script may have no scripts/ folder, or an empty one."""
+    named = set(GENERATED_SCRIPTS.get(wrapper, ()))
+    top = Path(substage) / 'scripts'
     if not os.path.lexists(str(top)):
         if named:
-            raise ValueError('prepare refused: submit.sh runs a script that scripts/ does not hold')
+            raise ValueError('prepare refused: scripts/ does not hold the generated script')
         return
     if top.is_symlink() or not top.is_dir():
         raise ValueError('prepare refused: scripts/ is not a real folder; remove it and prepare again')
@@ -728,7 +734,13 @@ def write_reproducibility(substage, assay, checkout, inputs, params):
     manifest['key_formula'] = ('stage01-v1' if (substage / 'params.yaml').is_file()
                                and 'samplesheet' in inputs and 'config' in inputs else 'downstream-v2')
     if manifest['key_formula'] == 'downstream-v2':
-        require_generated_scripts_only(substage)
+        try:
+            require_generated_scripts_only(substage, assay)
+        except (OSError, ValueError) as exc:
+            # A named refusal, not a traceback (lane review r2 F-7). The script and submit.sh are
+            # already rewritten, but submit.sh carries no key line, so nothing submits or collects.
+            raise SystemExit(emit({'command': 'prepare', 'ok': False, 'wrapper': assay,
+                                   'error': str(exc)}, EXIT_REFUSED))
     manifest['idempotency_key'] = input_key(substage, manifest)
     manifest.update(prepare_manifest_facts(substage, assay, inputs))
     evidence = _PREPARE_EXECUTION.pop(str(Path(substage).resolve()), None)
