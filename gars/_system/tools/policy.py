@@ -7,6 +7,9 @@ from pathlib import Path
 
 WORKSPACE = Path(__file__).resolve().parents[2]
 REGISTRY = Path(__file__).with_name('registry.json')
+# GNU find and bfs (the agent's Bash find) start the expression at these words as well as at
+# a '-'-led one; as a path, each would leave find walking its default '.'.
+FIND_OPERATORS = ('!', '(', ')', ',')
 
 
 class Refusal(ValueError):
@@ -92,6 +95,10 @@ def validate_args(tool, args, root=WORKSPACE, cwd=None):
                 raise Refusal('args.paths', 'R-073: filesystem reads stay inside the workspace; human approval store is protected', 'R-094')
             if p.startswith('-') or p in ('-',) or '\n' in p:
                 raise Refusal('args.paths', 'paths cannot be options or stdin')
+        if tool['name'] == 'fs.find' and any(p in FIND_OPERATORS for p in args['paths']):
+            raise Refusal('args.paths', 'find reads a lone !, (, ) or , as an operator, not a '
+                          'path, and would search its default . instead; name the folder first, '
+                          'as in find . -name x')
         if tool['name'] == 'fs.find' and len(args['paths']) != 1:
             raise Refusal('args.paths', 'find accepts one path and only the declared predicates')
         # Each predicate takes exactly one value, which must fullmatch its declared pattern.
@@ -269,7 +276,8 @@ def parse_argv(tokens, root=WORKSPACE, cwd=None):
                 if not rest: raise Refusal('args.pattern', 'missing search pattern')
                 args['pattern'] = rest.pop(0)
             if 'predicates' in tool:
-                cut = next((i for i, w in enumerate(rest) if w.startswith('-')), len(rest))
+                cut = next((i for i, w in enumerate(rest)
+                            if w.startswith('-') or w in FIND_OPERATORS), len(rest))
                 rest, expression = rest[:cut], rest[cut:]
                 if expression:
                     args['expression'] = expression
