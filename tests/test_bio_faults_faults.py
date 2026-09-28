@@ -1,4 +1,5 @@
 """Fault controls for the implemented contracts, each in a disposable copy."""
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import os
 import time
@@ -285,20 +286,51 @@ def control_key(entry):
     return entry[4], entry[5]
 
 
-def run_all(entries):
-    controls = {}
-    results = []
-    for entry in entries:
-        key = control_key(entry)
-        if key not in controls:
-            controls[key] = run_control(entry[4], entry[5])
-        results.append(run_entry(entry, controls[key]))
-    return controls, results
+def worker_count():
+    value = os.environ.get('GARS_FAULT_WORKERS')
+    if value is None:
+        return max(1, min(4, (os.cpu_count() or 1) // 4))
+    try:
+        workers = int(value)
+    except ValueError:
+        raise ValueError('GARS_FAULT_WORKERS must be an integer >= 1: %r' % value)
+    if workers < 1:
+        raise ValueError('GARS_FAULT_WORKERS must be an integer >= 1: %r' % value)
+    return workers
+
+
+def run_after_control(entry, control_future):
+    try:
+        return run_entry(entry, control_future.result())
+    except Exception as exc:
+        return dict(error='%s: %s' % (type(exc).__name__, exc))
+
+
+def run_all(entries, workers):
+    # Queue every control before its dependents, including with one worker.
+    # Full pipeline builds and launches are usually the most expensive pairs.
+    order = sorted(range(len(entries)), key=lambda i: not (
+        entries[i][4] == 'pipeline' and entries[i][5].startswith(('BuildTests.', 'LaunchTests.'))))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        controls = {}
+        for index in order:
+            entry = entries[index]
+            key = control_key(entry)
+            if key not in controls:
+                controls[key] = pool.submit(run_control, entry[4], entry[5])
+        results = {}
+        for index in order:
+            entry = entries[index]
+            results[index] = pool.submit(run_after_control, entry, controls[control_key(entry)])
+        return ({key: future.result() for key, future in controls.items()},
+                [results[index].result() for index in range(len(entries))])
 
 
 class FaultTests(unittest.TestCase):
     def test_faults(self):
-        controls, results = run_all(FAULTS)
+        started = time.monotonic()
+        workers = worker_count()
+        controls, results = run_all(FAULTS, workers)
         for entry, result in zip(FAULTS, results):
             label, relative, old, new, module, name = entry
             with self.subTest(fault=label):
@@ -321,6 +353,11 @@ class FaultTests(unittest.TestCase):
                     self.assertIn('FAIL: ' + name.split('.')[-1], evidence)
                     self.assertNotIn('ERROR:', evidence)
                 print('science fault red: ' + label)
+
+        slowest = max(controls, key=lambda key: controls[key]['seconds'])
+        print('science faults: %d entries, %d controls, workers %d, wall %.1f s, slowest control %s %.1f s' % (
+            len(FAULTS), len(controls), workers, time.monotonic() - started,
+            slowest[1], controls[slowest]['seconds']))
 
 
 if __name__ == '__main__':
