@@ -499,9 +499,12 @@ def _local_jobs_dir(config_root):
 #: The GROUP's own descriptors go to /dev/null, not just each command's: a backgrounded job
 #: inherits the caller's stdout pipe, and a pipe that stays open is a submit that blocks
 #: until the job finishes -- which is exactly the thing a scheduler must never do.
+#: The exit record is published by rename (a mktemp sibling in the same directory, then
+#: `mv -f`), so a poll never reads it created but not yet written (0195).
 LOCAL_RUNNER = ("{ trap 'kill -TERM \"$worker\" 2>/dev/null; wait \"$worker\"; "
-                "echo 143 > \"$3\"; exit 143' TERM; "
-                'bash "$1" >> "$2" 2>&1 & worker=$!; wait "$worker"; echo $? > "$3"; } '
+                "t=$(mktemp \"$3.XXXXXX\") && echo 143 > \"$t\" && mv -f \"$t\" \"$3\"; exit 143' TERM; "
+                'bash "$1" >> "$2" 2>&1 & worker=$!; wait "$worker"; code=$?; '
+                't=$(mktemp "$3.XXXXXX") && echo "$code" > "$t" && mv -f "$t" "$3"; } '
                 '</dev/null >/dev/null 2>&1 &\necho $!\n')
 
 
@@ -541,7 +544,10 @@ def _local_status(config_root, job_id):
     exit_file = Path(json.loads(record.read_text(encoding="utf-8"))["exit_file"])
     if exit_file.is_file():
         code = exit_file.read_text(encoding="utf-8").strip()
-        return "COMPLETED" if code == "0" else ('FAILED:EXIT_' + code if code.isdigit() else 'FAILED')
+        if code:
+            return "COMPLETED" if code == "0" else ('FAILED:EXIT_' + code if code.isdigit() else 'FAILED')
+        # Empty: a runner started before 0195 was caught between creating the record and
+        # writing it. Not a verdict; the pid below decides, as for an absent record.
     try:
         os.kill(int(job_id), 0)
         return "RUNNING"
