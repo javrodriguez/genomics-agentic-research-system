@@ -378,3 +378,25 @@ jobs:
           else
             echo "not applicable — not frozen; nothing here has graded a cell"
           fi
+
+  gap-study-intervals:
+    # ---- Gap Study intervals (evals/gap-study-intervals), a secondary analysis, at every pushed commit ----
+    # Decision 0210. Exact per-half intervals for rounds 1-3, re-derived from the three rounds' committed
+    # results files. The first step re-derives INTERVALS.md and intervals.json byte for byte and binds each
+    # results file to its blob at the round's done commit (the refs the three jobs above pin), so it needs
+    # full history and refuses in a shallow clone rather than passing. The second is the mutation witness:
+    # a planted label, count, interval or input change must make the first step's check fail.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Gap Study intervals, re-derived and bound
+        run: python3 evals/gap-study-intervals/intervals.py --check
+      - name: Gap Study intervals, tests and mutation witness
+        env:
+          TMPDIR: ${{ runner.temp }}
+        run: python3 evals/gap-study-intervals/test_intervals.py

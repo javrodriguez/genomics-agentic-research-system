@@ -1,6 +1,8 @@
 This table grades agent behaviour on 3 pre-registered tasks. It is not the reproduction campaign, which scores pipeline output and lives in docs/RESULTS.md.
 That first sentence describes Layer B, the first study, further down this page; the Gap Study, directly below, grades six task pairs on three Claude models.
 
+**Intervals, 28 September 2026.** Exact two-sided 0.95 intervals (Clopper-Pearson) on the per-take probability of every graded half of Gap Study rounds 1 to 3 are in [`evals/gap-study-intervals/INTERVALS.md`](../evals/gap-study-intervals/INTERVALS.md), with how little two halves of three takes can tell apart. It is a secondary analysis written after grading, per half only and never pooled across rounds; every table on this page stays as published, and CI re-derives each figure from the committed results files ([decision 0210](decisions/0210-gap-study-intervals.md)).
+
 # The Gap Study, round 2
 
 <!-- gap-study-2:summary -->
