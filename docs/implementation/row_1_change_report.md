@@ -48,7 +48,7 @@ Logs: `2a-final-suite.log`, `2a-final-contracts.log`, `2a-final-counts.log`, and
 The earlier cold-session claim did not retain a sufficiently precise process record,
 so it was replaced with this run: the producer spawned a fresh collaboration agent
 `/root/cold_session_2a` with `fork_turns: none`, starting in
-`/Users/javrodher/aegis-builds/gars-row-1/gars`. Its task supplied only
+`<scratch>/gars`. Its task supplied only
 `gars/CLAUDE.md` and `gars/AGENTS.md` as entry-file paths and the question
 “what runs the tests?”. It was instructed to read only those files and perform no
 edits or test execution. Its first read used a login shell whose startup attempted
@@ -56,14 +56,14 @@ Conda initialization; that attempt is not claimed as isolated. It repeated the r
 using `exec_command(login:false)` in the same directory with this exact command:
 
 ```bash
-TMPDIR=/Users/javrodher/aegis-builds/gars-row-1-scratch TEMP=/Users/javrodher/aegis-builds/gars-row-1-scratch TMP=/Users/javrodher/aegis-builds/gars-row-1-scratch /bin/cat CLAUDE.md AGENTS.md
+TMPDIR=<scratch> TEMP=<scratch> TMP=<scratch> /bin/cat CLAUDE.md AGENTS.md
 ```
 
 The clean read exited 0. The agent answered `cd ..`, then
 `python3 tests/run_tests.py` and `python3 tests/check_contracts.py`, plus
 `python3 tests/test_stage01_design.py` for Row 1 and the absent-seal skip caveat.
 The producer, not the cold agent, executed these commands from
-`/Users/javrodher/aegis-builds/gars-row-1`; final exits are recorded above.
+`<scratch>`; final exits are recorded above.
 No claim is made that the cold agent itself ran the suite.
 
 Suite skips: seven pinned-pipeline environment checks; one missing GRCh38 reference;
@@ -360,3 +360,5 @@ R2-N1 remains an owner publication/archive follow-up with the two options record
   GitHub results, historical cold-session/mutation transcripts, time/cost totals and
   session-registry totals were not verified.
 - No push, remote access, merge, pull request, protected-tree edit or self-approval.
+
+_28 Sep 2026: lines 51, 59 and 66 carried a local scratch path; it is masked in place as `<scratch>`, a privacy exception to the append-only rule for change reports, on the owner's word. No line was deleted._
