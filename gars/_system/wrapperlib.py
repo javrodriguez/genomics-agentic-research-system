@@ -620,19 +620,23 @@ def write_params_yaml(substage, assay, params):
             fh.write("%s: %s\n" % (key, json.dumps(value) if " " in str(value) else value))
 
 
+def _walk_error(exc):
+    raise exc
+
+
 def scripts_tree_digest(stage, digest):
     """0205: frame every entry under <stage>/scripts/ into the key, by lstat, never following
     a link. submit.sh runs the generated script with scripts/ first on Python's import path,
-    so a file added beside it is code the job runs, and counts like a changed byte."""
+    so a file added beside it is code the job runs, and counts like a changed byte.
+    A linked or non-folder scripts/, or a folder the walk cannot list, has no key at all."""
     top = os.path.join(str(stage), 'scripts')
     if not os.path.lexists(top):
         digest.update(b'scripts absent\0')
         return
     if os.path.islink(top) or not os.path.isdir(top):
-        digest.update(b'scripts not a folder\0')
-        return
+        raise ValueError('scripts/ is not a real folder')
     entries = []
-    for folder, dirs, files in os.walk(top, followlinks=False):
+    for folder, dirs, files in os.walk(top, onerror=_walk_error, followlinks=False):
         for name in dirs + files:
             path = os.path.join(folder, name)
             entries.append((os.fsencode(os.path.relpath(path, top)), path))
@@ -650,6 +654,29 @@ def scripts_tree_digest(stage, digest):
         else:
             digest.update(b'o' + rel + b'\0')
     digest.update(b'end\0')
+
+
+def require_generated_scripts_only(substage):
+    """0205: the key binds scripts/ as prepare leaves it, so prepare refuses to bind anything it
+    did not generate: scripts/ must be a real folder holding exactly the scripts submit.sh runs,
+    each a regular file. A file added there is removed by a human, never folded into a key."""
+    substage = Path(substage)
+    body = (substage / 'submit.sh').read_text(encoding='utf-8')
+    named = set(re.findall('"' + re.escape(str(substage.resolve())) + r'/scripts/([^"/]+)"', body))
+    top = substage / 'scripts'
+    if not os.path.lexists(str(top)):
+        if named:
+            raise ValueError('prepare refused: submit.sh runs a script that scripts/ does not hold')
+        return
+    if top.is_symlink() or not top.is_dir():
+        raise ValueError('prepare refused: scripts/ is not a real folder; remove it and prepare again')
+    found = set(os.listdir(str(top)))
+    extra, missing = found - named, named - found
+    irregular = [name for name in found & named if not stat.S_ISREG(os.lstat(str(top / name)).st_mode)]
+    if extra or missing or irregular:
+        raise ValueError('prepare refused: scripts/ holds %d entries prepare did not write, %d '
+                         'generated scripts that are not regular files, and misses %d; remove the '
+                         'extra entries and prepare again' % (len(extra), len(irregular), len(missing)))
 
 
 def input_key(stage, manifest):
@@ -700,6 +727,8 @@ def write_reproducibility(substage, assay, checkout, inputs, params):
     manifest['inputs'] = {label: str(Path(path).resolve()) for label, path in inputs.items()}
     manifest['key_formula'] = ('stage01-v1' if (substage / 'params.yaml').is_file()
                                and 'samplesheet' in inputs and 'config' in inputs else 'downstream-v2')
+    if manifest['key_formula'] == 'downstream-v2':
+        require_generated_scripts_only(substage)
     manifest['idempotency_key'] = input_key(substage, manifest)
     manifest.update(prepare_manifest_facts(substage, assay, inputs))
     evidence = _PREPARE_EXECUTION.pop(str(Path(substage).resolve()), None)

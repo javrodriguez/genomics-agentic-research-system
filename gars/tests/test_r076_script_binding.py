@@ -136,6 +136,39 @@ class ScriptBindingTests(unittest.TestCase):
             self.assertEqual(case.submit(), (('42', None), 1))
         self.each_wrapper(check)
 
+    def test_added_file_is_never_folded_into_a_new_key(self):
+        """C6 (review r1 F-2): the refusal says "run prepare"; prepare then refuses to bind the
+        added module, and only its removal lets the stage prepare and submit."""
+        def check(case):
+            added = case.script.parent / 'pandas.py'
+            added.write_text('raise SystemExit(0)\n')
+            self.assertEqual(case.submit(), ((None, REFUSAL), 0))
+            with self.assertRaisesRegex(ValueError, 'prepare refused: scripts/ holds 1 entries'), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                case.prepare()
+            self.assertTrue(added.exists())
+            self.assertEqual(case.submit(), ((None, REFUSAL), 0))
+            added.unlink()
+            case.prepare()
+            self.assertEqual(case.submit(), (('42', None), 1))
+        self.each_wrapper(check)
+
+    def test_scripts_folder_linked_before_prepare_is_refused(self):
+        """C7 (review r1 F-1): a scripts/ that is a link when prepare runs never gets a key,
+        so an edit behind the link cannot submit."""
+        def check(case):
+            elsewhere = case.root / 'elsewhere'
+            case.script.parent.rename(elsewhere)
+            os.symlink(str(elsewhere), str(case.stage / 'scripts'))
+            with self.assertRaisesRegex(ValueError, 'not a real folder'), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                case.prepare()
+            (elsewhere / case.script.name).write_text('raise SystemExit(0)\n')
+            self.assertEqual(case.submit(), ((None, REFUSAL), 0))
+            with self.assertRaisesRegex(ValueError, 'prepare refused: scripts/ is not a real folder'):
+                wl.require_generated_scripts_only(case.stage)
+        self.each_wrapper(check)
+
     def test_legacy_formula_is_refused_at_submit_but_still_collects(self):
         """C5: a stage prepared before 0205 (downstream-v1) is re-prepared, not submitted;
         a job already submitted under it still binds at collect."""
@@ -201,7 +234,8 @@ class ScriptFormulaTests(unittest.TestCase):
         self.assertNotEqual(self.key(), first)
 
     def test_missing_or_linked_scripts_folder_is_its_own_state(self):
-        """G3: no scripts/ folder, or a link to an identical folder, differs from the real one."""
+        """G3: no scripts/ folder differs from the real one; a link to an identical folder has
+        no key at all (review r1 F-1)."""
         (self.stage / 'scripts/run.py').write_bytes(b'print(1)\n')
         real = self.key()
         copy = self.root / 'copy'
@@ -209,9 +243,22 @@ class ScriptFormulaTests(unittest.TestCase):
         (copy / 'run.py').write_bytes(b'print(1)\n')
         (self.stage / 'scripts/run.py').unlink()
         (self.stage / 'scripts').rmdir()
-        absent = self.key()
+        self.assertNotEqual(self.key(), real)
         os.symlink(str(copy), str(self.stage / 'scripts'))
-        self.assertEqual(len({real, absent, self.key()}), 3)
+        with self.assertRaisesRegex(ValueError, 'scripts/ is not a real folder'):
+            self.key()
+
+    @unittest.skipIf(os.geteuid() == 0, 'root lists every folder')
+    def test_a_folder_the_walk_cannot_list_has_no_key(self):
+        """G4 (review r1 F-3): Python can import from a folder it cannot list, so the walk
+        raises rather than frame such a folder as empty."""
+        package = self.stage / 'scripts/pandas'
+        package.mkdir()
+        (package / '__init__.py').write_bytes(b'')
+        os.chmod(str(package), 0o311)
+        self.addCleanup(os.chmod, str(package), 0o755)
+        with self.assertRaises(PermissionError):
+            self.key()
 
 
 if __name__ == '__main__':
