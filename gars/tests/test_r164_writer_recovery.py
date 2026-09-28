@@ -311,7 +311,9 @@ def analysis_launcher(test, tmp):
 
     def call():
         with patch.object(ex.uuid, 'uuid4', return_value=_FixedUuid()):
-            ex._analysis_launcher(adir, script, {'name': 'slurm'})
+            launcher = ex._analysis_launcher(adir, script, {'name': 'slurm'})
+            test.assertTrue(launcher.read_bytes().startswith(
+                b'#!/bin/bash\n#SBATCH --time=1\n#SBATCH --comment=\xff\n'))
             return 'written'
     return tmp, call
 

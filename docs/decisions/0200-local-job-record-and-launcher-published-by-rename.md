@@ -7,7 +7,7 @@ touches:
   - gars/tests/test_r164_writer_recovery.py
 symptoms:
   - a write fault while the local backend records a started job leaves a torn job record, and status then fails to parse it
-  - a write fault while stage 03 writes its launcher leaves a truncated run/launch-*.sh, and the run is later refused with R-135
+  - a write fault while stage 03 writes its launcher leaves a truncated run/launch-*.sh behind, unrecorded, while that submission is refused with R-135
 ---
 # The local job record and the stage-03 launcher are published by rename
 
@@ -21,7 +21,7 @@ Every ruling here is **the lane's**, made under the owner's standing delegation 
 This record closes the first two, the two a scratch probe observed:
 
 1. **`executorlib._local_submit`'s job record** (`<project>/.gars_local_jobs/<pid>.json`) was written with a plain `open(..., "w")` after the job had been detached. A fault part-way through left a torn record at the published name, and `_local_status` then raised on `json.loads` for that job.
-2. **`executorlib._analysis_launcher`'s launcher** (`run/launch-<uuid>.sh`) was written with `Path.write_bytes`. A fault part-way through left a truncated launcher at the published name, which 0087 observed refused later with R-135.
+2. **`executorlib._analysis_launcher`'s launcher** (`run/launch-<uuid>.sh`) was written with `Path.write_bytes`. A fault part-way through left a truncated launcher at the published name: `_submit_analysis` catches the error and refuses that submission at once with R-135, and the torn file stays in `run/` unrecorded.
 
 **Reproduction.** The two new rows in the writer-recovery table drive each writer through the table's injector, which matches a fault by destination file: a refused open, a write that lands half its data and then fails, a refused fsync, a refused rename, and the same write fault on a first write.
 The job-record row answers the detach in-process with a fixed pid, so no job starts and the record is the only file written; the launcher row pins the uuid so the destination has a known name, and its script carries a kept `#SBATCH` directive with a byte that is not UTF-8.

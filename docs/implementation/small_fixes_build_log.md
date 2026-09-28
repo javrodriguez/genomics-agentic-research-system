@@ -36,3 +36,11 @@ Development Mac, 09:35, all five killed:
 (iii) `_publish_bytes` without its fsync, killed by the launcher row (fsync);
 (iv) `_publish_bytes` keeping its temp on failure, killed by the launcher row (write);
 (v) `_publish_bytes` writing the published name directly, killed by the launcher row (open, first-write).
+
+## Review round 1 fixes
+
+Review r1 (a fresh Claude Code context, Opus 5.5, no-remote checkout) read APPROVE WITH CHANGES: one MINOR, four NOTE.
+F-1 MINOR: 0200 said the truncated launcher was "later" refused with R-135, as 0087 observed; 0087 never names R-135, and `_submit_analysis` catches the write error and refuses that same submission at once. Both passages are reworded.
+F-2 NOTE, taken: the launcher row's clean run now asserts the kept directives, including the byte that is not UTF-8, survive byte-for-byte.
+F-3 to F-5 NOTE, no change: the shared fixture lets a leaked temp mask later steps (the table's existing shape; mutation (iv) is still killed); the index row and 0201 are written at landing; temps left by a SIGKILL are harmless and inside the guard's protected paths.
+After the fixes: `test_r164_writer_recovery` `Ran 51 tests`, `OK`; the mutation proof re-run killed 5 of 5.
