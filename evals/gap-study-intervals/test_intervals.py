@@ -240,6 +240,45 @@ class Witness(unittest.TestCase):
         self.assertEqual(before["rounds"], after["rounds"])
         self.assertEqual(self.check()[0], 1)
 
+    def test_the_k_field_is_never_read(self):
+        rel = "evals/gap-study-2/results/template-adherence.json"
+        before = self.m.derive(self.root)
+        path = self.root / rel
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["cells"]["claude-sonnet-5"]["control"]["k"] = 3
+        path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        self.assertEqual(before["rounds"], self.m.derive(self.root)["rounds"])
+
+    def test_an_unknown_verdict_stops_the_script(self):
+        path = self.root / "evals/gap-study-3/results/scope-read.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["cells"]["claude-opus-5"]["positive"]["labels"][0]["verdict"] = "partly"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        with self.assertRaises(ValueError):
+            self.m.derive(self.root)
+        self.assertEqual(self.check()[0], 1)
+
+    def test_no_graded_half_fails_even_with_a_regenerated_page(self):
+        for _, folder, _ in self.m.ROUNDS:
+            shutil.rmtree(str(self.root / folder / "results"))
+            (self.root / folder / "results").mkdir()
+        self.m.write(self.root)
+        code, lines = self.check()
+        self.assertEqual(code, 1, lines)
+
+    def test_a_removed_file_with_a_regenerated_page_is_caught_by_the_listing(self):
+        original = self.original
+        (self.root / "evals/gap-study-3/results/scope-read.json").unlink()
+        self.m.write(self.root)
+        self.assertEqual(self.check()[0], 0)
+
+        def listing(root, commit, folder):
+            return sorted(p.name for p in original if p.parent == root / folder / "results")
+        code, lines = self.m.check(self.root, verify_history=True,
+                                   blob=lambda root, commit, rel: original[root / rel],
+                                   listing=listing)
+        self.assertEqual(code, 1, lines)
+
     def test_a_removed_input_file_fails(self):
         (self.root / "evals/gap-study-3/results/scope-read.json").unlink()
         self.assertEqual(self.check()[0], 1)
