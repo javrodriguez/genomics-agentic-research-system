@@ -1,10 +1,11 @@
-"""Harvest a80df2d's direct guard calls and replay their decisions without running tools.
+"""Harvest public main 868a1b2's direct guard calls and replay their decisions without running tools.
 
 Payloads retain json.dumps formatting with explicit portable path placeholders.
 Snapshots and shared file text are plain JSON; replay binds placeholders at runtime.
 Gzip fixture inputs are stored as readable decompressed text and rebuilt on replay.
 """
 import gzip
+from collections import defaultdict, deque
 import getpass
 import contextlib
 import hashlib
@@ -28,7 +29,7 @@ import guard_hook
 
 SOURCES = ('test_policy_attacks', 'test_guard_hook', 'test_policy_faults',
            'test_nonpublic_read_block', 'test_pilot_doors', 'test_tool_schema_refusal',
-           'test_bash_lexer')
+           'test_bash_lexer', 'test_fs_vocabulary')
 FIXTURE = Path(__file__).parent / 'fixtures/refusal_decisions.jsonl'
 KEYS = ('exit', 'type', 'field', 'rule')
 
@@ -84,6 +85,11 @@ def snapshot(root):
         for p in sorted(folder.iterdir()):
             rel = str(p.relative_to(top))
             if p.name in ('__pycache__', '.git') or p.suffix == '.pyc':
+                continue
+            # Round 6 proved these captured pilot outputs do not affect guard decisions.
+            # Exclude the files themselves so cache hashes never enter the public fixture.
+            pilot_output = 'prepared/gars/projects/pilot/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/'
+            if rel in (pilot_output + 'submit.sh', pilot_output + 'reproducibility/manifest.json'):
                 continue
             if p.is_symlink():
                 entries.append([rel, 'link', os.readlink(str(p))])
@@ -216,9 +222,17 @@ def pin():
 
 
 def build():
-    # This check permits the inventory-only commit, whose system tree is still a80df2d.
-    diff = subprocess.check_output(['git', '-C', str(REPO), 'diff', 'a80df2d', '--', 'gars/_system'])
-    assert not diff, 'generate only against the unchanged a80df2d system'
+    # Generate only from the pinned public system tree, with the current capture code.
+    diff = subprocess.check_output(['git', '-C', str(REPO), 'diff', '868a1b2019e8b5824c8aa0874dd292c53691160c', '--', 'gars/_system'])
+    assert not diff, 'generate only against the unchanged 868a1b2 system'
+    # Retain row identities when a source inserts new calls between existing ones.
+    prior_names = defaultdict(deque)
+    reserved_names = set()
+    if FIXTURE.exists():
+        for line in FIXTURE.read_text().splitlines():
+            row = json.loads(line)
+            prior_names[(row['source'], row['payload'])].append(row['name'])
+            reserved_names.add(row['name'])
     real_run = subprocess.run
     real_validate = policy.validate_args
     seen = set()
@@ -233,6 +247,11 @@ def build():
         try:
             state = snapshot(root)
             state, template = portable(state, payload)
+            previous = prior_names[(source[0], template)]
+            if previous:
+                name = previous.popleft()
+            elif name in reserved_names:
+                name = '%s-added-%d' % (source[0], len(output))
             new_texts = {}
             for entry in state['entries']:
                 if entry[1] in ('file', 'gzip'):
@@ -320,6 +339,17 @@ def build():
             bash(prefix + pattern + ' _system _references', tool['name'] + '-two-paths')
             if tool['argv'][0] == 'find':
                 bash(prefix + ' _system -name CONTEXT.md', tool['name'] + '-expression')
+    for tool in policy.registry():
+        predicates = tool.get('predicates', {})
+        for predicate, pattern in sorted(predicates.items()):
+            good = next(value for value in ('1', 'f', 'x') if re.fullmatch(pattern, value))
+            bad = next(value for value in ('-delete', 'a/b', '-1', 'l')
+                       if not re.fullmatch(pattern, value))
+            for label, value in (('valid', good), ('invalid', bad)):
+                bash(tool['argv'][0] + ' . ' + predicate + ' ' + shlex.quote(value),
+                     tool['name'] + '-predicate-' + predicate + '-' + label)
+        if predicates:
+            bash(tool['argv'][0] + ' . --undeclared x', tool['name'] + '-predicate-undeclared')
     source[0] = 'reported'
     bash("python3 _system/tool_call.py fs.nosuch '{}'", 'unknown-typed-tool')
     bash('grep -n hooks.gitleaks false.txt', 'read-gitleaks-false')
