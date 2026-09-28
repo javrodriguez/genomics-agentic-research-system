@@ -1160,6 +1160,11 @@ def submit(config_root, script, descriptor=None):
         if Path(script).resolve() != stage / 'submit.sh':
             raise ValueError('expected generated submit.sh')
         key = prepared_key(config_root, stage)
+        # 0205: downstream-v1 leaves the generated scripts/ out of the key; such a stage is
+        # prepared again (downstream-v2), never submitted. Collect still reads v1 records.
+        manifest = json.loads((stage / 'reproducibility/manifest.json').read_text(encoding='utf-8'))
+        if manifest.get('key_formula') == 'downstream-v1':
+            raise ValueError('downstream-v1 does not bind the generated scripts')
     except (OSError, ValueError, KeyError, TypeError):
         return None, 'R-076: idempotency_key_missing_or_changed; run prepare'
     problems = validate(descriptor)

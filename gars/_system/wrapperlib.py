@@ -18,6 +18,7 @@ import os
 import re
 import shutil
 import shlex
+import stat
 import subprocess
 import sys
 import tempfile
@@ -619,18 +620,86 @@ def write_params_yaml(substage, assay, params):
             fh.write("%s: %s\n" % (key, json.dumps(value) if " " in str(value) else value))
 
 
+def _walk_error(exc):
+    raise exc
+
+
+def scripts_tree_digest(stage, digest):
+    """0205: frame every entry under <stage>/scripts/ into the key, by lstat, never following
+    a link. submit.sh runs the generated script with scripts/ first on Python's import path,
+    so a file added beside it is code the job runs, and counts like a changed byte.
+    A linked or non-folder scripts/, or a folder the walk cannot list, has no key at all."""
+    top = os.path.join(str(stage), 'scripts')
+    if not os.path.lexists(top):
+        digest.update(b'scripts absent\0')
+        return
+    if os.path.islink(top) or not os.path.isdir(top):
+        raise ValueError('scripts/ is not a real folder')
+    entries = []
+    for folder, dirs, files in os.walk(top, onerror=_walk_error, followlinks=False):
+        for name in dirs + files:
+            path = os.path.join(folder, name)
+            entries.append((os.fsencode(os.path.relpath(path, top)), path))
+    digest.update(b'scripts\0')
+    for rel, path in sorted(entries):
+        info = os.lstat(path)
+        mode = info.st_mode
+        if stat.S_ISLNK(mode):
+            digest.update(b'l' + rel + b'\0' + os.fsencode(os.readlink(path)) + b'\0')
+        elif stat.S_ISDIR(mode):
+            digest.update(b'd' + rel + b'\0')
+        elif stat.S_ISREG(mode):
+            digest.update(b'f' + rel + b'\0' + str(info.st_size).encode('ascii')
+                          + b'\0' + bytes.fromhex(sha256(path)))
+        else:
+            digest.update(b'o' + rel + b'\0')
+    digest.update(b'end\0')
+
+
+# 0205: the scripts each downstream wrapper's prepare generates under scripts/, by the wrapper
+# name it passes to write_reproducibility. The allow-list is the wrapper's, never read from
+# submit.sh, whose text also carries caller-supplied paths (lane review r2 F-6).
+GENERATED_SCRIPTS = {'rnaseq-de': ('run_de.py',), 'scrna-qc-cluster': ('run_scrna.py',),
+                     'spatial-cluster-count': ('count_clusters.py',)}
+
+
+def require_generated_scripts_only(substage, wrapper):
+    """0205: the key binds scripts/ as prepare leaves it, so prepare refuses to bind anything it
+    did not generate: scripts/ must be a real folder holding exactly the wrapper's generated
+    scripts, each a regular file. A file added there is removed by a human, never folded into
+    a key. A wrapper with no generated script may have no scripts/ folder, or an empty one."""
+    named = set(GENERATED_SCRIPTS.get(wrapper, ()))
+    top = Path(substage) / 'scripts'
+    if not os.path.lexists(str(top)):
+        if named:
+            raise ValueError('prepare refused: scripts/ does not hold the generated script')
+        return
+    if top.is_symlink() or not top.is_dir():
+        raise ValueError('prepare refused: scripts/ is not a real folder; remove it and prepare again')
+    found = set(os.listdir(str(top)))
+    extra, missing = found - named, named - found
+    irregular = [name for name in found & named if not stat.S_ISREG(os.lstat(str(top / name)).st_mode)]
+    if extra or missing or irregular:
+        raise ValueError('prepare refused: scripts/ holds %d entries prepare did not write, %d '
+                         'generated scripts that are not regular files, and misses %d; remove the '
+                         'extra entries and prepare again' % (len(extra), len(irregular), len(missing)))
+
+
 def input_key(stage, manifest):
-    """0063 provisional formula: fixed-order bytes, independently framed downstream."""
+    """0063 provisional formula: fixed-order bytes, independently framed downstream.
+    downstream-v2 (0205) also binds the generated scripts/ tree."""
     inputs = manifest['inputs']
     digest = hashlib.sha256()
-    if manifest['key_formula'] == 'stage01-v1':
+    formula = manifest['key_formula']
+    if formula == 'stage01-v1':
         sources = [stage / 'params.yaml', Path(inputs['samplesheet']), Path(inputs['config'])]
         for source in sources:
             with source.open('rb') as fh:
                 for chunk in iter(lambda: fh.read(1 << 20), b''):
                     digest.update(chunk)
-    elif manifest['key_formula'] == 'downstream-v1':
-        digest.update(b'GARS downstream v1\0')
+    elif formula in ('downstream-v1', 'downstream-v2'):
+        digest.update(b'GARS downstream v1\0' if formula == 'downstream-v1'
+                      else b'GARS downstream v2\0')
         for label in sorted(inputs):
             source = Path(inputs[label])
             digest.update(label.encode('utf-8') + b'\0')
@@ -638,6 +707,9 @@ def input_key(stage, manifest):
             digest.update(bytes.fromhex(sha256(source)))
         digest.update(json.dumps(manifest['params'], sort_keys=True,
                                  separators=(',', ':'), ensure_ascii=True).encode('ascii'))
+        if formula == 'downstream-v2':
+            digest.update(b'\0')
+            scripts_tree_digest(stage, digest)
     else:
         raise ValueError('unknown key formula')
     return digest.hexdigest()
@@ -660,7 +732,15 @@ def write_reproducibility(substage, assay, checkout, inputs, params):
         manifest["%s_sha256" % label] = sha256(path)
     manifest['inputs'] = {label: str(Path(path).resolve()) for label, path in inputs.items()}
     manifest['key_formula'] = ('stage01-v1' if (substage / 'params.yaml').is_file()
-                               and 'samplesheet' in inputs and 'config' in inputs else 'downstream-v1')
+                               and 'samplesheet' in inputs and 'config' in inputs else 'downstream-v2')
+    if manifest['key_formula'] == 'downstream-v2':
+        try:
+            require_generated_scripts_only(substage, assay)
+        except (OSError, ValueError) as exc:
+            # A named refusal, not a traceback (lane review r2 F-7). The script and submit.sh are
+            # already rewritten, but submit.sh carries no key line, so nothing submits or collects.
+            raise SystemExit(emit({'command': 'prepare', 'ok': False, 'wrapper': assay,
+                                   'error': str(exc)}, EXIT_REFUSED))
     manifest['idempotency_key'] = input_key(substage, manifest)
     manifest.update(prepare_manifest_facts(substage, assay, inputs))
     evidence = _PREPARE_EXECUTION.pop(str(Path(substage).resolve()), None)
