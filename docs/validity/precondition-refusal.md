@@ -50,5 +50,5 @@ Cannot read: whether a samplesheet exists at the end (the end state), whether th
 
 ## Follow-ups
 
-F-07 (after-reach reading and the flag substring), F-09, F-10, F-14.
+F-07 (after-reach reading and the flag substring), F-09, F-10, F-14, F-18 (round 2's permission condition).
 Each is proposed in `docs/validity/follow-ups.md`, to be pre-registered before it runs; none edits the frozen grader.

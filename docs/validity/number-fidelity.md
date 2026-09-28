@@ -52,5 +52,5 @@ Cannot read: tool results (`evals/gap-study-2/prereg.json:1936`), meaning beyond
 
 ## Follow-ups
 
-F-01 (affirmation substrings), F-09 (grader agreement on graded takes), F-10 (trivial and oracle baselines).
+F-01 (affirmation substrings), F-09 (grader agreement on graded takes), F-10 (trivial and oracle baselines), F-18 (round 2's permission condition).
 Each is proposed in `docs/validity/follow-ups.md`, to be pre-registered before it runs; none edits the frozen grader.
