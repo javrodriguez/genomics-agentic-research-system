@@ -50,8 +50,8 @@ class ProtectedPathsTests(unittest.TestCase):
             (root/'link').symlink_to(outside, target_is_directory=True)
             result=self.call('Write',{'file_path':'link/record'},root)
             self.assertEqual(result.returncode,2)
-            self.assertIn(b'outside the workspace',result.stderr)
-            self.assertIn(b'Row 15',result.stderr)
+            self.assertIn(b'inside the workspace root',result.stderr)
+            self.assertIn(b'R-094',result.stderr)
 
     def test_settings_equal_guard_patterns(self):
         settings=json.loads((GARS/'.claude/settings.json').read_text())

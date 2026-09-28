@@ -409,7 +409,7 @@ class DispatcherAndGuardTests(unittest.TestCase):
         # The READ_ONLY line refuses Write on a public project's pilot folder by itself.
         result = fx.hook_call(ws, 'Write', {'file_path': 'projects/open1/pilot/x.csv',
                                             'content': 'x'})
-        self.assertIn(b'part of the GARS template', result.stderr)
+        self.assertIn(b'protected template or machine-owned state', result.stderr)
         # Addition 3 names itself on the one direct spelling that parses.
         result = fx.hook_call(ws, 'Bash', {'command': 'python3 _system/pilot_log.py begin '
                                                       '--launched-by-dispatcher --log projects/'
