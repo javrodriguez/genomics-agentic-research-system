@@ -335,6 +335,31 @@ class Witness(unittest.TestCase):
         finally:
             self.m.ROUNDS = saved
 
+    def test_a_removed_and_committed_file_fails_against_real_git(self):
+        """A results file removed and committed after the done commit, page regenerated: the listing
+        at the done commit still names it."""
+        git = ["git", "-C", str(self.root), "-c", "user.name=witness",
+               "-c", "user.email=witness@users.noreply.github.com",
+               "-c", "maintenance.auto=false", "-c", "gc.auto=0"]
+        subprocess.run(git + ["init", "-q"], check=True)
+        subprocess.run(git + ["add", "-A"], check=True)
+        subprocess.run(git + ["commit", "-q", "-m", "done"], check=True)
+        head = subprocess.run(git + ["rev-parse", "HEAD"], check=True,
+                              stdout=subprocess.PIPE).stdout.decode().strip()
+        saved = self.m.ROUNDS
+        self.m.ROUNDS = tuple((rnd, folder, head) for rnd, folder, _ in saved)
+        try:
+            subprocess.run(git + ["rm", "-q", "evals/gap-study-3/results/scope-read.json"], check=True)
+            self.m.write(self.root)
+            subprocess.run(git + ["add", "-A"], check=True)
+            subprocess.run(git + ["commit", "-q", "-m", "forged"], check=True)
+            self.assertEqual(self.check()[0], 0)
+            code, lines = self.m.check(self.root)
+            self.assertEqual(code, 1, lines)
+            self.assertTrue(any("differ from the done commit" in ln for ln in lines), lines)
+        finally:
+            self.m.ROUNDS = saved
+
     def test_history_binding_refuses_outside_git(self):
         code, _ = self.m.check(self.root, verify_history=True)
         self.assertEqual(code, 2)
