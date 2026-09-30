@@ -349,6 +349,13 @@ def check_executor_config(exec_cfg, fails):
     if not wanted:
         return                      # a backend that pairs with no nextflow config demands none
     path = Path(exec_cfg)
+    # The file checked must be the file the wrapper passes with -c, directly in the project's
+    # _config/ (0251): a name like `sub/x` or `../x` once let preflight read another file.
+    if path.parent.resolve() != (project / "_config").resolve():
+        fails.append(fail("executor_config",
+                          "R-098/§9.6: %s is not a file directly in the project's _config/; "
+                          "use the seeded executor config" % path.name))
+        return
     if path.name != wanted:
         path = path.parent / wanted
     if not path.is_file():
@@ -359,14 +366,34 @@ def check_executor_config(exec_cfg, fails):
                           "settings are the permitted use -- pipeline parameters go through "
                           "params.yaml so the audited surface cannot be bypassed" % wanted))
     else:
-        check_groovy(path, fails)
+        check_groovy(path, fails, wanted)
 
 
-def check_groovy(path, fails):
+#: One protected Nextflow executor template per descriptor `nextflow_config` name (0251).
+EXECUTOR_TEMPLATES = Path(__file__).resolve().parents[1] / '_templates' / 'config'
+EXECUTOR_TEMPLATE_NAME = re.compile(r'nextflow\.[a-z0-9]+\.config')
+
+
+def executor_template(name):
+    """The protected template a descriptor's `nextflow_config` name selects (0251).
+
+    Only a bare `nextflow.<venue>.config` name selects, and only a regular file sitting in
+    `_templates/config/` itself: never a path, a symlink, a folder reached through a symlink,
+    or a template of another kind. Anything else raises ValueError.
+    """
+    template = EXECUTOR_TEMPLATES / str(name)
+    if (not EXECUTOR_TEMPLATE_NAME.fullmatch(str(name)) or template.is_symlink()
+            or not template.is_file() or template.resolve().parent != EXECUTOR_TEMPLATES):
+        raise ValueError('%s names no protected executor template' % name)
+    return template
+
+
+def check_groovy(path, fails, template_name='nextflow.slurm.config'):
     """Only the shipped executor grammar, with safe scalar substitutions, is admitted.
 
     No Groovy parser is shipped. An unfamiliar construct is refused under ruling 3A,
     including beforeScript, interpolation, includeConfig, and executable expressions.
+    The grammar is the protected template the descriptor names (0251), Slurm's by default.
     """
     def shape(text):
         text = re.sub(r'//[^\n]*', '', text)
@@ -375,8 +402,8 @@ def check_groovy(path, fails):
             return "'VALUE'"
         text = re.sub(r"'([^']*)'", literal, text)
         return re.sub(r'\s+', '', text)
-    template = Path(__file__).resolve().parents[1] / '_templates/config/nextflow.slurm.config'
     try:
+        template = executor_template(template_name)
         if shape(Path(path).read_text(encoding='utf-8')) != shape(template.read_text(encoding='utf-8')):
             raise ValueError('unregistered Groovy grammar')
     except (OSError, ValueError) as exc:
