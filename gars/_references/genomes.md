@@ -10,12 +10,15 @@ decision the user makes twice.
 pipe-prefixed line once accepted a skill name as an assay and created `00_data/(unpinned)/`. Add
 columns here, never a second table.
 
-**Paths are site-specific.** They are correct for this cluster. A different site edits this file;
-nothing else needs to change.
+**Paths are site-specific.** They name two sites: the GRCh38 row's paths are correct for the HPC
+cluster, and the R64-1-1 row's are correct for the launch pad, whose GARS clone is
+`/home/ubuntu/genomics-agentic-research-system` and keeps its references in the clone's
+self-ignoring `install/refs/`. A different site edits this file; nothing else needs to change.
 
 | ID | Species | Build | Source | FASTA | GTF | Derived cache root | Mito contig | MACS gsize |
 |---|---|---|---|---|---|---|---|---|
 | GRCh38 | Homo sapiens | GRCh38 | Ensembl release 116 | /gpfs/data/abl/home/rodrij92/install/refs/ensembl-GRCh38-116/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz | /gpfs/data/abl/home/rodrij92/install/refs/ensembl-GRCh38-116/Homo_sapiens.GRCh38.116.gtf.gz | /gpfs/data/abl/home/rodrij92/install/refs/ensembl-GRCh38-116/derived | MT | 2701495761 |
+| R64-1-1 | Saccharomyces cerevisiae | R64-1-1 | nf-core/test-datasets atacseq branch, pinned by sha256 | /home/ubuntu/genomics-agentic-research-system/install/refs/R64-1-1/genome.fa | /home/ubuntu/genomics-agentic-research-system/install/refs/R64-1-1/genes.gtf | /home/ubuntu/genomics-agentic-research-system/install/refs/R64-1-1/derived | MT | 11624332 |
 
 **Derived cache root, not path.** The cell names the *root*; `configure.py` appends the assay's
 pinned pipeline key from `workspace.PIPELINES` (`nf-core-rnaseq-3.26.0`,
@@ -58,6 +61,12 @@ One row. Requirements before adding it:
 3. Both paths are readable by everyone who will run the pipeline.
 4. The derived cache, if given, was built by the pipeline version named in its path.
 
+**R64-1-1 against requirement 2.** Its GTF carries `gene_biotype` on every record (34,945 of
+34,945 lines of the pinned file, read from its bytes), so featureCounts would not fail on it for
+want of the attribute, and requirement 2 bars no assay from it. The row is registered for the
+launch pad's ATAC-seq and ChIP-seq fixtures, which use the GTF for annotation, not for counting;
+an RNA-seq run on it is not part of that registration.
+
 Mouse is the obvious next one. `/gpfs/data/sequence/references/iGenomes/Mus_musculus/Ensembl/`
 exists on this cluster but has not been verified against a run, and an unverified row is worse
 than an absent one — the registry's value is that everything in it is known to work.
@@ -72,3 +81,4 @@ they live before a run can satisfy manifest group 6.
 | ID | Annotation release | fasta_sha256 | gtf_sha256 |
 |---|---|---|---|
 | GRCh38 | Ensembl release 116 | UNKNOWN | UNKNOWN |
+| R64-1-1 | test-datasets atacseq branch, fetched 2026-09-30 | c0b7305c230b550c3d8ccc692df52338afc7a297b43d965868c285b98aa64ae1 | 3a1e64b8f290127562612b47d6014bc6e4c130399da3e06ad062b268fd6d08fb |
