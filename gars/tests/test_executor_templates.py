@@ -399,6 +399,55 @@ class ExecutorTemplateTests(unittest.TestCase):
         self.assertEqual(execution, {'start': '2026-10-05 08:00:00.000',
                                      'complete': '2026-10-05 08:05:00.000'})
 
+    # -- review r2 ------------------------------------------------------------------------------
+
+    def test_15_word_and_line_boundaries_are_compared(self):
+        """L5-R2-1: outside strings the shape made every character its own token and dropped
+        every newline and comment, so an identifier split in two, or two statements joined on one
+        line, had the template's shape. Groovy reads an identifier or a number as one token and a
+        newline or a `//` comment as a line end; so does the shape now. Only space, tab, CR and LF
+        are whitespace; CR and U+FFFF end a comment as in Groovy. Each case is refused; comments
+        and blank lines stay free (the controls)."""
+        text = AWSBATCH.read_text(encoding='utf-8')
+        self.assertEqual(self.check(self.project(), text), [])
+        free = text.replace('    maxRetries    = 3\n', '    maxRetries = 3   // a comment\n\n\n')
+        self.assertEqual(self.check(self.project(), free), [])
+        cases = {
+            'an identifier split by a space': ('maxRetries    = 3', 'max Retries    = 3'),
+            'an identifier split by a newline': ('resourceLabels = [', 'resource\nLabels = ['),
+            'an identifier split by a comment': ('maxRetries    = 3', 'max// c\nRetries    = 3'),
+            'a number split by a space': ('queueSize       = 20', 'queueSize       = 2 0'),
+            'two statements joined on one line': ('"finish" }\n    maxRetries', '"finish" }    maxRetries'),
+            'a no-break space inside an identifier': ('maxRetries    = 3', 'max\u00a0Retries    = 3'),
+            'CR ends a comment': ('// Both outcomes are fixed, never site values.\n',
+                                  '// Both outcomes are fixed, never site values.\rprocess.maxRetries = 3\n'),
+            'U+FFFF ends a comment': ('// Both outcomes are fixed, never site values.\n',
+                                      '// Both outcomes are fixed, never site values.\uffffprocess.maxRetries = 3\n'),
+        }
+        for label, (old, new) in cases.items():
+            with self.subTest(case=label):
+                self.assertEqual(text.count(old), 1, label)
+                self.assertEqual(self.check(self.project(), text.replace(old, new)), [REFUSED])
+        slurm = SLURM.read_text(encoding='utf-8')
+        self.assertEqual(self.check(self.project('name: slurm\n'),
+                                    slurm.replace('queueSize       = 20', 'queue Size       = 20')),
+                         [REFUSED])
+
+    def test_16_a_descriptor_naming_no_config_still_has_the_passed_file_checked(self):
+        """L5-R2-2: with no config named (`name: local`, or `name: slurm` blanked), preflight
+        returned early while the wrappers pass their fallback `_config/nextflow.slurm.config`
+        with -c. The file passed is now checked against the slurm template; an explicitly blank
+        name on a backend that pairs with a config is refused by the descriptor's validation."""
+        slurm = SLURM.read_text(encoding='utf-8')
+        extra = slurm + '\nprocess.maxRetries = 3\n'
+        blank = '_config/executor.yaml: R-075: nextflow_config may not be blank for this backend'
+        for descriptor, problems in (('name: local\n', []),
+                                     ("name: slurm\nnextflow_config: ''\n", [blank])):
+            with self.subTest(descriptor=descriptor):
+                self.assertEqual(self.check(self.project(descriptor)), problems)  # none present
+                self.assertEqual(self.check(self.project(descriptor), slurm), problems)
+                self.assertEqual(self.check(self.project(descriptor), extra), problems + [REFUSED])
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
