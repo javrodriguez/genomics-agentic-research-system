@@ -364,10 +364,22 @@ def check_executor_config(exec_cfg, fails):
     if path.name != wanted:
         path = path.parent / wanted
     if path.is_symlink():
-        # The file passed must be a regular file, not a link to one elsewhere (0251, review r3).
-        fails.append(fail("executor_config",
-                          "R-098/§9.6: %s is a symlink; use the seeded executor config" % path.name))
-        return
+        # A link is admitted only as scripts/rerun_check.py's replay binds one: its final realpath
+        # has the same name and lies inside this workspace's projects (0251; the rulings of
+        # 30 Sep 2026). The bytes checked below are the target's, the bytes Nextflow reads.
+        target = path.resolve()
+        if target.name != wanted:
+            fails.append(fail("executor_config",
+                              "R-098/§9.6: %s resolves to a different config name (%s); "
+                              "use the seeded executor config" % (path.name, target.name)))
+            return
+        try:
+            target.relative_to(EXECUTOR_PROJECTS.resolve())
+        except ValueError:
+            fails.append(fail("executor_config",
+                              "R-098/§9.6: %s resolves outside this workspace's projects; "
+                              "use the seeded executor config" % path.name))
+            return
     if not path.is_file():
         fails.append(fail("preconditions", "no _config/%s -- stage 00 seeds it" % wanted))
     elif re.search(r"^\s*params\s*[{.]", path.read_text(encoding="utf-8"), re.M):
@@ -381,6 +393,9 @@ def check_executor_config(exec_cfg, fails):
 
 #: One protected Nextflow executor template per descriptor `nextflow_config` name (0251).
 EXECUTOR_TEMPLATES = Path(__file__).resolve().parents[1] / '_templates' / 'config'
+#: The workspace's projects (stage 00 registers each at `<workspace>/projects/<title>`), where a
+#: replay's linked config must resolve (0251).
+EXECUTOR_PROJECTS = Path(__file__).resolve().parents[1] / 'projects'
 EXECUTOR_TEMPLATE_NAME = re.compile(r'nextflow\.[a-z0-9]+\.config')
 
 
@@ -691,17 +706,21 @@ def execution_evidence(substage, descriptor, body):
     entries = [dict(role=role, path=os.path.relpath(str(path.resolve()), str(repo)),
                     sha256=sha256(path)) for role, path in paths if path.is_file()]
     evidence = {'execution_config': entries, 'execution_config_resolved': resolved}
-    # A rendered template's config: the slot values and the rendering's sha256 as well (0251).
+    # A rendered template's config: the slot values and the rendering's sha256 as well, keyed on
+    # the DESCRIPTOR's name, so a rendered name always gets its record or a refusal (0251).
+    name = descriptor.get('nextflow_config') or ''
     config = dict(paths).get('nextflow_config')
-    if config is not None and config.name in EXECUTOR_RENDER_SLOTS and config.is_file():
-        template = executor_template(config.name)
+    if name in EXECUTOR_RENDER_SLOTS and config is not None:
+        if config.name != name or not config.is_file():
+            raise ValueError("the -c config %s is not the descriptor's %s" % (config.name, name))
+        template = executor_template(name)
         text = config.read_bytes().decode('utf-8')
-        values = rendered_slots(config.name, template.read_bytes().decode('utf-8'), text)
+        values = rendered_slots(name, template.read_bytes().decode('utf-8'), text)
         if values is None:
             # Never a silent gap in the record: prepare stops (0251, review r3).
-            raise ValueError('%s is not a rendering of its template' % config.name)
+            raise ValueError('%s is not a rendering of its template' % name)
         evidence['execution_config_rendered'] = {
-            'template': config.name, 'template_sha256': sha256(template), 'slots': values,
+            'template': name, 'template_sha256': sha256(template), 'slots': values,
             'rendered_sha256': hashlib.sha256(text.encode('utf-8')).hexdigest()}
     return evidence
 
