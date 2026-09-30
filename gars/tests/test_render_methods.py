@@ -892,15 +892,23 @@ class RenderMethodsTests(unittest.TestCase):
         self.assertFalse(self.out.exists())
         self.path('HISTORY.md').write_bytes((FIXTURE / 'HISTORY.md').read_bytes())
         for index, role in ((1, 'manifest 1'), (3, 'plan'), (5, 'approval record'), (7, 'history')):
-            with self.subTest(overwrite=role):
-                target = Path(argv[index])
-                before = target.read_bytes()
-                onto = argv[:-1] + [str(self.inputs / '.' / target.name)]   # the same file, spelled apart
-                err = io.StringIO()
-                with contextlib.redirect_stderr(err):
-                    self.assertEqual(renderer.main(onto), 1)
-                self.assertIn('methods refused: the output would overwrite ' + role, err.getvalue())
-                self.assertEqual(target.read_bytes(), before)
+            target = Path(argv[index])
+            linked = self.root / ('linked-' + target.name)
+            os.link(str(target), str(linked))
+            # The same file spelled apart: a dot segment, a hard link, and a case variant, which on a
+            # case-insensitive filesystem (the macOS default) names the input itself (review r2 F-1).
+            spellings = [self.inputs / '.' / target.name, linked]
+            upper = target.with_name(target.name.upper())
+            if upper.exists():
+                spellings.append(upper)
+            for spelling in spellings:
+                with self.subTest(overwrite=role, spelling=spelling.name):
+                    before = target.read_bytes()
+                    err = io.StringIO()
+                    with contextlib.redirect_stderr(err):
+                        self.assertEqual(renderer.main(argv[:-1] + [str(spelling)]), 1)
+                    self.assertIn('methods refused: the output would overwrite ' + role, err.getvalue())
+                    self.assertEqual(target.read_bytes(), before)
 
     def test_only_named_inputs_are_opened(self):
         approval = self.load('approval.json')
