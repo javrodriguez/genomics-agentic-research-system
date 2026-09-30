@@ -688,27 +688,33 @@ def addendum_failures(text, counts, context=""):
         return ["no addendum block"]
     flat = " ".join(block.split())
     failures = []
-    # Line 73's figures may appear only as quotations of line 73: its deposit-side pair
-    # "(DKO1 x vs HCT116 y)", DKO1's figure as the comparator "DKO1's x", and its pipeline-side pair
-    # "(123 M vs 45.6 M peak bp)". Those spans are removed; every decimal left must be the bound B4
-    # figure or a public-metadata figure the report prints.
+    # Line 73's figures may appear only as quotations of line 73, each exactly once: its deposit-side
+    # pair as "line 73 (DKO1 x vs HCT116 y)", DKO1's figure once more as the comparator "DKO1's x",
+    # and its pipeline-side pair "(123 M vs 45.6 M peak bp)". Those spans are removed; every decimal
+    # left must be the bound B4 figure, or a public-metadata figure the report prints, in its own
+    # "<figure> M" form (review r4, F-3).
     line73 = next((l for l in text.split("\n") if QUOTES["C1"] in l), "")
     q = re.search(r"fraction (\d+\.\d+) vs (\d+\.\d+)", line73)
     pipe = re.search(r"\(?(\d+ M vs \d+\.\d+ M) mean peak bp\)?", line73)
     rest = flat
     if q:
-        rest = rest.replace("(DKO1 %s vs HCT116 %s)" % q.groups(), " ")
-        rest = rest.replace("DKO1's %s" % q.group(1), " ")
+        spans = ["line 73 (DKO1 %s vs HCT116 %s)" % q.groups(), "DKO1's %s" % q.group(1)]
+        for span in spans:
+            n = rest.count(span)
+            if n != 1:
+                failures.append("the addendum holds %r %d times; line 73's figures may appear once, "
+                                "as that quotation" % (span, n))
+            rest = rest.replace(span, " ")
     if pipe:
-        rest = re.sub(r"\(%s peak bp\)" % re.escape(pipe.group(1)), " ", rest)
-    bound = re.search(r"healthy HCT116 deposit scores (\d+\.\d+)", flat)
-    allowed = set(re.findall(r"\d+\.\d+", context))
+        rest = re.sub(r"\(%s peak bp\)" % re.escape(pipe.group(1)), " ", rest, count=1)
+    bound = re.search(r"healthy HCT116 deposit scores (\d+\.\d+)", rest)
     if bound:
-        allowed.add(bound.group(1))
+        rest = rest.replace(bound.group(0), " ", 1)
+    for figure in set(re.findall(r"\d+\.\d+", context)):
+        rest = rest.replace("%s M" % figure, " ", 1)
     for figure in re.findall(r"\d+\.\d+", rest):
-        if figure not in allowed:
-            failures.append("the addendum's %s is neither the bound B4 figure, a quotation of line 73, "
-                            "nor a metadata figure the report prints" % figure)
+        failures.append("the addendum's %s is neither the bound B4 figure, a quotation of line 73, "
+                        "nor a metadata figure the report prints in its own form" % figure)
     # The addendum must itself state the reversal, not merely be consistent with it.
     stated = re.search(r"healthy HCT116 deposit scores (\d+\.\d+) against DKO1's (\d+\.\d+)", flat)
     if not (stated and Fraction(stated.group(1)) > Fraction(stated.group(2))

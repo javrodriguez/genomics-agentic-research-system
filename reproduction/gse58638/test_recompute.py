@@ -780,6 +780,14 @@ class AddendumLogicTests(unittest.TestCase):
         self.assertNotEqual(moved, ADDENDUM)
         self.assertNotEqual(self.failures(moved), [])
 
+    def test_line_73_figures_restated_as_recompute_outputs_fail(self):
+        # Review r4, F-3: the three wordings that bound green before.
+        for extra in ("The recompute reproduces DKO1's 0.067 on exact tiles.",
+                      "The recompute gives (DKO1 0.067 vs HCT116 0.045) exactly.",
+                      "GSM1420155's z>1 fraction is 38.0 times lower."):
+            moved = ADDENDUM + " " + extra
+            self.assertNotEqual(self.failures(moved), [], extra)
+
     def test_addendum_found_whatever_its_heading(self):
         for head in ("Addendum, 30 Sep 2026.", "**Addendum (1 Oct 2026).**"):
             body = ADDENDUM.replace("Addendum (30 Sep 2026).", head)

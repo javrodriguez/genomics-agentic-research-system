@@ -119,7 +119,7 @@ PREREG-2 R4's B4 ratio range "44-108×" is step 1's 43.5 rounded a second time; 
 ## Test
 
 `python3 reproduction/gse58638/test_recompute.py` and `python3 reproduction/gse58638/recompute.py --check-published` (CI job `geo-recompute-binding`, ubuntu, macOS and Windows).
-The fault that must make them fail: a changed deposit byte or size, a short read, a zero-record file, a moved or duplicated quotation, a planted change to `expected.txt`, a script edit without a re-run, or `MATCH` under IN KIND. The mutation witness above (the plan's M1-M15, three more from review, and three plants in the published files) is the evidence each named test can fail.
+The fault that must make them fail: a changed deposit byte or size, a short read, a zero-record file, a moved or duplicated quotation, a planted change to `expected.txt` (counts, metadata or rendering), a script edit that `expected.txt` does not name, or `MATCH` under IN KIND. Whether a real re-run happened is confirmed only by the regrade workflow or a stranger's run, never on push. The mutation witness above (the plan's M1-M15, three more from review, and three plants in the published files) is the evidence each named test can fail.
 
 ## Status
 
