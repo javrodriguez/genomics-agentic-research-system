@@ -358,13 +358,16 @@ def check_executor_config(exec_cfg, fails):
     wanted = descriptor.get("nextflow_config") or ""
     if not wanted:
         # A backend that pairs with no nextflow config demands none, but the wrapper still passes
-        # its fallback (this very path) with -c when the file is there, so it is checked like
-        # any other against the template its name selects (0251, review r2).
-        if not path.is_file():
-            return
+        # its fallback (this very path) with -c, so it is checked like any other against the
+        # template its name selects, and refused when absent (0251, reviews r2 and r3).
         wanted = path.name
     if path.name != wanted:
         path = path.parent / wanted
+    if path.is_symlink():
+        # The file passed must be a regular file, not a link to one elsewhere (0251, review r3).
+        fails.append(fail("executor_config",
+                          "R-098/§9.6: %s is a symlink; use the seeded executor config" % path.name))
+        return
     if not path.is_file():
         fails.append(fail("preconditions", "no _config/%s -- stage 00 seeds it" % wanted))
     elif re.search(r"^\s*params\s*[{.]", path.read_text(encoding="utf-8"), re.M):
@@ -694,10 +697,12 @@ def execution_evidence(substage, descriptor, body):
         template = executor_template(config.name)
         text = config.read_bytes().decode('utf-8')
         values = rendered_slots(config.name, template.read_bytes().decode('utf-8'), text)
-        if values is not None:
-            evidence['execution_config_rendered'] = {
-                'template': config.name, 'template_sha256': sha256(template), 'slots': values,
-                'rendered_sha256': hashlib.sha256(text.encode('utf-8')).hexdigest()}
+        if values is None:
+            # Never a silent gap in the record: prepare stops (0251, review r3).
+            raise ValueError('%s is not a rendering of its template' % config.name)
+        evidence['execution_config_rendered'] = {
+            'template': config.name, 'template_sha256': sha256(template), 'slots': values,
+            'rendered_sha256': hashlib.sha256(text.encode('utf-8')).hexdigest()}
     return evidence
 
 
