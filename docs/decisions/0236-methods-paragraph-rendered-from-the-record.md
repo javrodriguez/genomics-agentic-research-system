@@ -34,7 +34,7 @@ So the paragraph can say what ran, with what, and when the plan was approved; it
 1. **A new command, `gars/_system/claims/render_methods.py`** (Python 3.6, standard library only, no model, no network, no subprocess), run by a person after the run:
    `python3 _system/claims/render_methods.py --manifest <sub-stage>/reproducibility/manifest.json [--manifest ...] [--plan <analysis>/PLAN.md --approval <approval record> [--history HISTORY.md]] --out methods.md`.
    It opens only the files named on its command line, validates every one before writing, and writes the output atomically; a refusal exits 1 with `methods refused: <reason>` and leaves an earlier output byte-identical; a usage error exits 2.
-   An `--out` that is one of the inputs is refused, so a record is never replaced by the page rendered from it.
+   An `--out` that is one of the inputs is refused, so a record is never replaced by the page rendered from it: the same resolved path, or the same file under another spelling (a case variant on a case-insensitive filesystem, a hard link).
    The page keeps the mode of the output it replaces, or takes the umask's for a new one, since it is written to be shared.
    `--plan` and `--approval` come together, and `--history` needs them.
 2. **The output is a closed vocabulary of 33 line kinds.**

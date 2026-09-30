@@ -512,6 +512,11 @@ def main(argv=None):
         for role, path in named:   # a record is never replaced by the page rendered from it
             if os.path.realpath(str(path)) == os.path.realpath(str(args.out)):
                 raise Refusal('the output would overwrite ' + role)
+            # The same file under another spelling: a case variant on a case-insensitive
+            # filesystem, a Unicode-normalization variant, or a hard link (device and inode).
+            if os.path.exists(str(args.out)) and os.path.exists(str(path)) and \
+                    os.path.samefile(str(path), str(args.out)):
+                raise Refusal('the output would overwrite ' + role)
         data = render(args.manifest, args.plan, args.approval, args.history).encode('utf-8')
         with tempfile.NamedTemporaryFile(mode='wb', prefix='.methods-', dir=str(args.out.parent),
                                          delete=False) as fh:
