@@ -520,10 +520,9 @@ def main(argv=None):
     temporary = None
     try:
         for role, path in named:   # a record is never replaced by the page rendered from it
-            if os.path.realpath(str(path)) == os.path.realpath(str(args.out)):
-                raise Refusal('the output would overwrite ' + role)
-            # The same file under another spelling: a case variant on a case-insensitive
-            # filesystem, a Unicode-normalization variant, or a hard link (device and inode).
+            # The same file under any spelling: the same path, a symlink, a case variant on a
+            # case-insensitive filesystem, a normalization variant, a hard link (device and inode).
+            # An input that does not exist cannot be replaced, and is refused when it is read.
             if os.path.exists(str(args.out)) and os.path.exists(str(path)) and \
                     os.path.samefile(str(path), str(args.out)):
                 raise Refusal('the output would overwrite ' + role)
