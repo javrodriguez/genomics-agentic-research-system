@@ -547,6 +547,15 @@ class RenderMethodsTests(unittest.TestCase):
                 if label == 'registry mismatch':
                     self.assertIn('Its reference registry check reads `mismatch`, reason '
                                   '`reference_hash_mismatch`.', text)
+        # The producers write sorted keys; a record whose file order is not sorted must still be
+        # rendered, and cited, in sorted-key order.
+        unsorted = copy.deepcopy(m)
+        unsorted['params'] = dict(reversed(sorted(m['params'].items())))
+        unsorted['software_versions'][0]['versions'] = {'z-tool': '2', 'a-tool': '1'}
+        self.path('variant.json').write_text(json.dumps(unsorted, indent=2), encoding='utf-8')
+        text = self.traced(('variant.json',))
+        self.assertLess(text.index('parameter `aligner`'), text.index('parameter `outdir`'))
+        self.assertLess(text.index('`a-tool`: `1`.'), text.index('`z-tool`: `2`.'))
 
     # ---- 4: the mutation proof ------------------------------------------------------------------
 
@@ -734,6 +743,9 @@ class RenderMethodsTests(unittest.TestCase):
             'recorded twice': (history + again, ['claude-opus-5-5', 'second-model'], []),
             'not recorded': (HEADER, [], []),
             'no model line': (history.replace('Model: claude-opus-5-5\nPlan:', 'Plan:'), [], []),
+            'two model lines': (history.replace('Model: claude-opus-5-5\nPlan:',
+                                                'Model: claude-opus-5-5\nModel: second-line-model\nPlan:'),
+                                ['claude-opus-5-5'], ['second-line-model']),
         }
         for label, (text, shown, hidden) in cases.items():
             with self.subTest(case=label):
