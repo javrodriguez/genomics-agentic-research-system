@@ -733,7 +733,7 @@ class RenderMethodsTests(unittest.TestCase):
                       'https://depot.galaxyproject.org/singularity/fastqc', 'pipeline_info/fixture.sif',
                       'N/A', 'sha256:' + 'a' * 64, 's3://bucket/key', 'quay.io:443/biocontainers/fastqc',
                       './relative/x', '../relative/x', '$HOME/x', 'a\\b', 'fixture/tool@sha256:' + 'b' * 64,
-                      '\u212a:\\x', 'zero 0e-400'):
+                      '\u212a:\\x', 'zero 0e-400', 'f\u0130le:x'):
             with self.subTest(shown=value):
                 self.dump('variant.json', dict(m, params={'p': value}))
                 self.assertIn('parameter `p`: `%s`.' % value, self.traced(('variant.json',), stage03=False))

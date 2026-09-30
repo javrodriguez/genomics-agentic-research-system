@@ -31,7 +31,7 @@ NO_APPROVER = 'with no approver named in its approval record'
 PATH_START = re.compile(r'''(?=(/|\\|~[^\s/"']*/|[A-Za-z]:[\\/]))''')
 # A path start preceded by one of these is part of a relative path, a word or a URL (a/b, ./b, a\b).
 IN_WORD = frozenset('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._~/:\\-')
-FILE_SCHEME = re.compile(r'(?<![A-Za-z0-9])file:', re.I)
+FILE_SCHEME = re.compile(r'(?<![A-Za-z0-9])[Ff][Ii][Ll][Ee]:')   # ASCII only, no re.I folding
 FLATTENED = ('Cc', 'Cf', 'Cs', 'Zl', 'Zp')  # control, format, surrogate, line and paragraph separators
 DIGEST = re.compile(r'[0-9a-f]{64}\Z')
 UTC = re.compile(r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\Z')
@@ -46,7 +46,8 @@ KINDS = {
     'failure': (PARAGRAPH, 'Its failure class is {}.'),
     'reference': (PARAGRAPH, 'Its reference genome: build {}; annotation release {}; '
                              'FASTA sha256 {}; GTF sha256 {}.'),
-    'reference-check': (PARAGRAPH, 'Its reference registry check reads {}, reason {}.'),
+    'reference-check': (PARAGRAPH, 'Its reference registry check reads {}, reason {}; the run '
+                                   'observed FASTA sha256 {} and GTF sha256 {}.'),
     'reference-absent': (PARAGRAPH, 'Its reference genome is not recorded.'),
     'config': (PARAGRAPH, 'Its configuration sha256 is {}.'),
     'threads': (PARAGRAPH, 'Its thread count is {}.'),
@@ -54,7 +55,7 @@ KINDS = {
     'command-absent': (PARAGRAPH, 'Its exact submission is not recorded.'),
     'agent': (PARAGRAPH, 'Its agent model is {}.'),
     'model-step': (PARAGRAPH, 'It records a model-mediated step: model {}; provider {}; '
-                              'contract {}; git blob {}.'),
+                              'contract {}; contract hash {} (algorithm {}).'),
     'model-steps-absent': (PARAGRAPH, 'Its model-mediated steps are not recorded.'),
     'approval': (PARAGRAPH, 'The analysis plan with sha256 {} was approved at {} {}.'),
     'history': (PARAGRAPH, "The project's history records {} as {} on {}, with model {} and template "
@@ -120,7 +121,8 @@ def strings(value):
 def path_like(text):
     """True when `text` holds an absolute path, which names a machine, not a method: a path start
     with nothing, or anything but a letter, digit or one of . _ ~ / : \\ - before it; a single slash
-    right after a colon (host:/x, not https://x); or a file: scheme."""
+    right after a colon (host:/x, not https://x); three (a URL with no host, https:///x); or a file:
+    scheme."""
     if FILE_SCHEME.search(text):
         return True
     for start in PATH_START.finditer(text):
@@ -128,7 +130,7 @@ def path_like(text):
         before = text[at - 1] if at else None
         if before is None or before not in IN_WORD:
             return True
-        if before == ':' and text[at] == '/' and text[at + 1:at + 2] != '/':
+        if before == ':' and text[at] == '/' and (text[at + 1:at + 2] != '/' or text[at:at + 3] == '///'):
             return True
     return False
 
@@ -196,6 +198,8 @@ def load(data, role):
         value = float(text)   # 1e400 overflows to infinity: a value no record holds
         if value != value or value in (float('inf'), float('-inf')):
             raise Refusal(role + ' holds a non-finite number')
+        if value == 0.0 and re.search('[1-9]', re.split('[eE]', text)[0]):   # 1e-400 is not zero
+            raise Refusal(role + ' holds a number that rounds to zero')
         return value
 
     try:
@@ -371,7 +375,9 @@ def manifest_lines(page, m, k):
         page.add('reference', v('reference', 'build'), v('reference', 'annotation_release'),
                  v('reference', 'fasta_sha256'), v('reference', 'gtf_sha256'))
         if reference.get('comparison') != 'matched':
-            page.add('reference-check', v('reference', 'comparison'), v('reference', 'reason'))
+            # the registry's hashes print above; the hashes of the files the run used print here
+            page.add('reference-check', v('reference', 'comparison'), v('reference', 'reason'),
+                     v('reference', 'observed', 'fasta_sha256'), v('reference', 'observed', 'gtf_sha256'))
     page.add('config', v('config_sha256'))
     page.add('threads', v('threads'))
     if absent(get(m, 'command')):
@@ -389,7 +395,8 @@ def manifest_lines(page, m, k):
             if isinstance(step.get('prompt_sha256'), dict):
                 prompt = v('model_steps', i, 'prompt_sha256', 'value')
             page.add('model-step', v('model_steps', i, 'model_id'), v('model_steps', i, 'provider'),
-                     v('model_steps', i, 'prompt_id'), prompt)
+                     v('model_steps', i, 'prompt_id'), prompt,
+                     v('model_steps', i, 'prompt_sha256', 'algorithm'))   # read, never assumed
 
     label = ('v', M + '/workflow_name', name)
     params = get(m, 'params')

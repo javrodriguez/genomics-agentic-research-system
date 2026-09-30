@@ -6,14 +6,14 @@ Its configuration sha256 is `57fc7ebe7584cba1a50e195979f889f43f973f4e8726fc512d8
 Its thread count is `4`.
 Its exact submission: `reproducibility/commands.sh`, sha256 `c7941ece64f3fe877e99ddb38c537e0acb0acdcbc0ca69dd948de39e9a4d8783`.
 Its agent model is `claude-opus-5-5`.
-It records a model-mediated step: model `claude-opus-5-5`; provider `anthropic`; contract `gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md`; git blob `69b7a0d66c1ecf9822481b2d99b83b9f43c0cf73`.
+It records a model-mediated step: model `claude-opus-5-5`; provider `anthropic`; contract `gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md`; contract hash `69b7a0d66c1ecf9822481b2d99b83b9f43c0cf73` (algorithm `git-sha1`).
 The run manifest of workflow `rnaseq-de` records: version `v0.10.0`; pipeline commit `c54a71584b1347937e4315cbbeb3f27371655228`; GARS wrapper `rnaseq-de`; GARS commit `c54a71584b1347937e4315cbbeb3f27371655228`; template version `v0.10.0`; status `COMPLETE`.
 Its reference genome: build `fixture-build`; annotation release `fixture-release`; FASTA sha256 `99724deab54039707cfdd57d24710a39412ecbd8ed85fb8a5d4c1f70706d637b`; GTF sha256 `aac372d27c1a6c729d38fa73dac6febfa75a76a57bc42613a33fd7b3f0fb960f`.
 Its configuration sha256 is `d2b847628a098cb3dbd60aedd0477fdc640f17c47183bc47c873842d7625be4d`.
 Its thread count is `4`.
 Its exact submission: `reproducibility/commands.sh`, sha256 `f27f37e1575b2494fb3e98ac6a09e31b2faf7f67222e6ab0bc4b90b279da2a8d`.
 Its agent model is `claude-opus-5-5`.
-It records a model-mediated step: model `claude-opus-5-5`; provider `anthropic`; contract `gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md`; git blob `a8ce7d799e79733b8e1d41a26c9e8c597f773987`.
+It records a model-mediated step: model `claude-opus-5-5`; provider `anthropic`; contract `gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md`; contract hash `a8ce7d799e79733b8e1d41a26c9e8c597f773987` (algorithm `git-sha1`).
 The analysis plan with sha256 `b2fad3e6dd46adfbb19ab0ec2ee525ecc04cfa72a74758d1dc8439602c0e04c6` was approved at `2026-09-29T18:04:05Z` by the approver the run recorded.
 The project's history records `03_custom_analysis/01_fixture-followup` as `analysis complete` on `2026-09-29`, with model `claude-opus-5-5` and template version `v0.10.0`.
 Each workflow's parameters, random seeds, software versions and container images are listed below.
@@ -69,14 +69,14 @@ Cite GARS at commit `c54a71584b1347937e4315cbbeb3f27371655228`; the GARS reposit
 - line 6: threads: `manifest1:/threads`.
 - line 7: command: `manifest1:/command/path manifest1:/command/sha256`.
 - line 8: agent: `manifest1:/agent_model`.
-- line 9: model-step: `manifest1:/model_steps/0/model_id manifest1:/model_steps/0/provider manifest1:/model_steps/0/prompt_id manifest1:/model_steps/0/prompt_sha256/value`.
+- line 9: model-step: `manifest1:/model_steps/0/model_id manifest1:/model_steps/0/provider manifest1:/model_steps/0/prompt_id manifest1:/model_steps/0/prompt_sha256/value manifest1:/model_steps/0/prompt_sha256/algorithm`.
 - line 10: workflow: `manifest2:/workflow_name manifest2:/workflow_version manifest2:/pipeline_commit manifest2:/wrapper manifest2:/gars_commit manifest2:/template_version manifest2:/predicate_facts/status`.
 - line 11: reference: `manifest2:/reference/build manifest2:/reference/annotation_release manifest2:/reference/fasta_sha256 manifest2:/reference/gtf_sha256`.
 - line 12: config: `manifest2:/config_sha256`.
 - line 13: threads: `manifest2:/threads`.
 - line 14: command: `manifest2:/command/path manifest2:/command/sha256`.
 - line 15: agent: `manifest2:/agent_model`.
-- line 16: model-step: `manifest2:/model_steps/0/model_id manifest2:/model_steps/0/provider manifest2:/model_steps/0/prompt_id manifest2:/model_steps/0/prompt_sha256/value`.
+- line 16: model-step: `manifest2:/model_steps/0/model_id manifest2:/model_steps/0/provider manifest2:/model_steps/0/prompt_id manifest2:/model_steps/0/prompt_sha256/value manifest2:/model_steps/0/prompt_sha256/algorithm`.
 - line 17: approval: `approval:/plan_sha256 approval:/timestamp approval:/actor?`.
 - line 18: history: `history:#3/stage history:#3/outcome history:#3/date history:#3/model history:#3/template_version`.
 - line 19: pointer.
