@@ -11,6 +11,7 @@ touches:
 symptoms:
   - an AWS Batch venue's _config/nextflow.awsbatch.config is refused with "R-098/§9.6 unregistered Groovy grammar; use the seeded executor config" whatever it holds
   - a descriptor whose nextflow_config names sub/x or ../x makes preflight check one file while the wrapper passes another with -c
+  - text after a // inside a double-quoted string of an executor config left preflight's shape, and a nested _config/_config/executor.yaml changed the project preflight read (review r1)
 ---
 # One protected executor template per descriptor config name: the AWS Batch template
 
@@ -47,13 +48,25 @@ A slurm-shaped decoy at the checked path let a config with `process.beforeScript
 2. **The check** (`gars/_system/wrapperlib.py`).
    `check_executor_config` hands the descriptor's name to `check_groovy`, which compares with `executor_template(name)`.
    `executor_template` is the one door from a name to a template: the name must fully match `nextflow\.[a-z0-9]+\.config`, and the template must be a regular file, not a symlink, directly in `_templates/config/` as reached without a symlink (its resolved parent equals the folder's path); anything else is refused as "R-098/§9.6: <name> names no protected executor template; use the seeded executor config".
-   The shape function, the R-075 literal check and the refusal text for a grammar mismatch are unchanged, and `check_groovy` called with no name still compares with the slurm template.
+   The R-075 literal check and the refusal text for a grammar mismatch are unchanged, and `check_groovy` called with no name still compares with the slurm template.
+   The shape function changed after review r1 (item 4).
 3. **The file checked is the file passed.**
-   `check_executor_config` refuses a config that does not sit directly in its project's `_config/` ("R-098/§9.6: <file> is not a file directly in the project's _config/; use the seeded executor config"), and `executorlib.validate` refuses a descriptor whose `nextflow_config` contains `/` or is `.` or `..` ("R-075: nextflow_config must be a bare file name in _config/").
+   `check_executor_config` refuses a config that does not sit directly in a `_config/` folder ("R-098/§9.6: <file> is not a file directly in the project's _config/; use the seeded executor config"), and `executorlib.validate` refuses a descriptor whose `nextflow_config` contains `/` or is `.` or `..` ("R-075: nextflow_config must be a bare file name in _config/").
    The second rule also reaches an absolute name that lands in another project's `_config/`, where preflight reads that other project's descriptor: `write_submit_sh` validates the requesting project's descriptor and raises before `submit.sh` is written, as it already does for a backend outside the enum.
+   The project whose descriptor preflight reads is the parent of the passed file's `_config/` folder, never found by walking up, and the fence runs before the descriptor is read (item 4).
+4. **Review r1's findings (fixed in this change).**
+   - **L5-R1-1 (MAJOR), a `//` inside a double-quoted string.** The shape stripped `//[^\n]*` before it read any string, as it had since `6c4b631`, but in Groovy a `//` inside a string literal is string text, not a comment.
+     So string text after a `//` left the shape while staying in the file, and a later line that shaped to the missing closing quote made the comparison equal again; the R-075 check never saw the hidden text, because it ran only on single-quoted spans that survived the strip.
+     The reviewer's probes were admitted in the trace `file` string, `submitRateLimit` and the slurm template's own `fields` string, so the defect was already in the slurm grammar at `37a8d94`; the Batch template's six double-quoted strings would have multiplied the places it could sit.
+     `shape` now reads the text left to right: a quoted string is read whole before any comment is considered, each single-quoted literal passes R-075 and becomes one site-value token, each double-quoted string is one token kept byte for byte, whitespace included, and only outside strings are `//` comments and whitespace dropped; token lists, not joined text, are compared (`wrapperlib.py:400-425`).
+     An unterminated quote is refused.
+   - **L5-R1-2 (MINOR), whitespace inside a double-quoted string** was dropped before comparison; the same change keeps it, so `"aws batch"` no longer has the shape of `"awsbatch"`.
+   - **L5-R1-3 (MINOR, from before this change), a nested `_config/`.** Preflight found its project with `config_root_for(<the config's folder>)`, which walks up to the nearest folder holding a `_config/`.
+     A `<project>/_config/_config/executor.yaml` made that walk stop at `<project>/_config`, so preflight read that descriptor (`name: local`, no config demanded) and returned early, while the wrapper still passed the project's own `_config/nextflow.awsbatch.config` with `-c`, unchecked.
+     The project is now the passed file's `_config/` folder's parent (`wrapperlib.py:349-354`), which is the project the wrapper built the path from; closed.
 
-Slurm is unchanged for every descriptor whose name is the seeded `nextflow.slurm.config`, including no descriptor at all: the same verdicts and the same refusal texts (ExecutorSeamTests, `test_09` untouched, and the trace-grammar test of `test_manifest_groups.py`).
-What changes on a slurm workspace is only the refusals above, of names that were never seeded.
+Slurm is unchanged for every descriptor whose name is the seeded `nextflow.slurm.config`, including no descriptor at all, for every config the seeded template admits: the same verdicts and the same refusal texts (ExecutorSeamTests, `test_09` untouched, and the trace-grammar test of `test_manifest_groups.py`).
+What changes on a slurm workspace is only the refusals above, of names that were never seeded, and, since review r1, of a config whose `fields` string differs from the template's byte for byte (a `//` or whitespace inside it).
 
 Rejected alternatives: a union of both grammars under any name (a slurm workspace would admit the Batch grammar under its own name); admitting any file in `_templates/config/` (the assay YAML templates live there); a site value for the clamp or the retry outcomes (no site needs one, and each would widen what an agent-written file can change); `$NXF_HOME` or an `includeConfig` for the missing options (ruled out: a road around the audited surface).
 
@@ -61,27 +74,30 @@ Rejected alternatives: a union of both grammars under any name (a slurm workspac
 
 The widening lets a second grammar through, selected by a name in an agent-writable file (`_config/executor.yaml`), so these are the properties it must keep, each with its code and test:
 
-- **No config outside the two templates is admitted.** Admission is equality with `shape(template)` (`wrapperlib.py:407`), the template comes only from `executor_template` (`:406`), which admits only a bare `nextflow.<venue>.config` regular file directly in `_templates/config/` (`:373-388`); today that is two files. Tests 04 and 05 refuse eight additions (one line or one block each) and fourteen changes of fixed tokens; test 09 refuses each grammar under the other's name.
-- **A name cannot escape `_templates/config/`.** The name pattern has no separator and no dot-dot (`:374`, `:385`), the resolved parent must equal the folder (`:386`), and the descriptor may not name a path (`executorlib.py:266-268`). Test 06 (a missing template, a case-folded name, a `.bak` name, an assay YAML template) and test 07.
-- **A template cannot be a file the agent wrote.** `_templates/` is a protected prefix the guard refuses writes to (`guard_hook.py:106`), and a symlink or a folder reached through one is refused (`wrapperlib.py:385-386`). Test 08, with a control proving a regular file of the same bytes selects, so it is the link that refuses.
-- **The file checked is the file passed with -c.** `wrapperlib.py:354` and `executorlib.py:266-268`. Test 07 plants the evil config at the wrapper's path and a clean decoy where `37a8d94`'s check read, for a subdirectory, a dot-dot and two absolute names, each refused.
-- **The manifest still records the config bytes.** `execution_evidence` hashes the path the submit body passes after `-c` (`wrapperlib.py:573-579`), unchanged. Test 10 asserts the recorded sha256 equals the fixture's bytes and the path equals the `-c` token of the generated `submit.sh`.
-- **Site values stay values.** Each single-quoted literal passes R-075's charset or the config is refused (`wrapperlib.py:401`). Test 03.
+- **No config outside the two templates is admitted.** Admission is equality with `shape(template)` (`wrapperlib.py:428`), the template comes only from `executor_template` (`:427`), which admits only a bare `nextflow.<venue>.config` regular file directly in `_templates/config/` (`:379-390`); today that is two files. Tests 04 and 05 refuse eight additions (one line or one block each) and fourteen changes of fixed tokens; test 09 refuses each grammar under the other's name.
+- **Nothing hides inside a fixed string.** `shape` reads strings before comments and keeps each double-quoted string byte for byte (`wrapperlib.py:400-425`). Test 12 refuses, in each double-quoted string of both templates, a `//` followed by an extra statement and one added space.
+- **A name cannot escape `_templates/config/`.** The name pattern has no separator and no dot-dot (`:376`, `:387`), the resolved parent must equal the folder (`:388`), and the descriptor may not name a path (`executorlib.py:266-268`). Test 06 (a missing template, a case-folded name, a `.bak` name, an assay YAML template) and test 07.
+- **A template cannot be a file the agent wrote.** `_templates/` is a protected prefix the guard refuses writes to (`guard_hook.py:106`), and a symlink or a folder reached through one is refused (`wrapperlib.py:387-388`). Test 08, with a control proving a regular file of the same bytes selects, so it is the link that refuses.
+- **The file checked is the file passed with -c.** `wrapperlib.py:349-354` and `executorlib.py:266-268`. Test 07 plants the evil config at the wrapper's path and a clean decoy where `37a8d94`'s check read, for a subdirectory, a dot-dot and two absolute names, each refused. Test 13 refuses an extra statement behind a nested `_config/_config/executor.yaml`.
+- **The manifest still records the config bytes.** `execution_evidence` hashes the path the submit body passes after `-c` (`wrapperlib.py:594-600`), unchanged. Test 10 asserts the recorded sha256 equals the fixture's bytes and the path equals the `-c` token of the generated `submit.sh`.
+- **Site values stay values.** Each single-quoted literal passes R-075's charset or the config is refused (`wrapperlib.py:416`). Test 03.
 
 ## What this does not close
 
 - **R1 (found, not in the ruling).** A descriptor with `name: local` and no `nextflow_config` demands no config, yet the nf-core wrappers then pass `_config/nextflow.slurm.config` with `-c` (their `paths_for` fallback), which preflight never checks; at `37a8d94` and here a `beforeScript` in it passes `check_executor_config`. The local venue is fixture-only under [0100](0100-row-8-data-handling.md)'s route policy, which bounds it but does not close it. Raised with the lane's coordinator.
 - **R2.** The Batch grammar is selectable by name on any workspace, including a slurm one (`name: slurm` with `nextflow_config: nextflow.awsbatch.config` validates). On a host holding AWS credentials, task files would then move through S3 under a slurm venue's route. Pairing the template with the `local` backend is a one-line rule the coordinator may rule on; it is not in this change.
 - **R3.** The bytes are checked at prepare and hashed into the manifest; a rewrite of the config between prepare and the job's start is visible in the manifest's hash, not refused (unchanged from row 6's R9).
-- **R4.** Whitespace is removed everywhere before comparison, inside double-quoted strings too, so `"aws batch"` has the shape of `"awsbatch"`; such a change can only produce a config Nextflow rejects (unchanged from 0058's grammar).
+- **R4 (amended after review r1).** Whitespace outside strings is still removed before comparison, so the check does not see a token split by whitespace (for example a number broken by a space or a line break); the lane has not proved that every such split is a config Nextflow rejects, and none was parsed here (R5). Whitespace inside a double-quoted string is no longer free (item 4).
+  This item first said that whitespace inside double-quoted strings was free and that such a change "can only produce a config Nextflow rejects"; the second half was never measured and is withdrawn.
 - **R5.** No Nextflow parsed this template in this lane (no Nextflow on the build Mac, and no AWS use); the first parse is the launch pad's.
 - The demo's generator (`gen_executor_config.sh`) is matched to this template by its own lane, not here; until it is, the pad's generated config is still refused.
 
 ## Test
 
-`gars/tests/test_executor_templates.py` is new, 11 tests, with the fixture `gars/tests/fixtures/executor/nextflow.awsbatch.d-generator.config`, the shape the demo's generator must write.
+`gars/tests/test_executor_templates.py` is new, 13 tests, with the fixture `gars/tests/fixtures/executor/nextflow.awsbatch.d-generator.config`, the shape the demo's generator must write.
 At `37a8d94`'s code they fail in tests 01 to 10 (19 failures and 1 error, each for the missing selection, the missing name gate, the missing seam or the slurm grammar admitted under the Batch name); test 11 pins the template's own content.
-They must fail when `check_groovy` compares with slurm only, when either grammar passes under either name, when the name pattern, the symlink check or the resolved-folder check is dropped, when the `_config/` fence or the bare-name rule is dropped, when the manifest hashes anything but the `-c` file, when the literal check is dropped, and when the template's outcomes become site values or its tag gains a key.
+Tests 12 and 13 answer review r1: at `2a144e1`'s code they fail with 15 failures (fourteen admitted cases of test 12, one of test 13), each an admission where a refusal is due.
+They must fail when `check_groovy` compares with slurm only, when either grammar passes under either name, when the name pattern, the symlink check or the resolved-folder check is dropped, when the `_config/` fence or the bare-name rule is dropped, when the manifest hashes anything but the `-c` file, when the literal check is dropped, when `shape` strips comments before it reads strings or drops whitespace inside them, when preflight walks up for its project, and when the template's outcomes become site values or its tag gains a key.
 The landing's evidence is recorded in 0252.
 
 ## Status

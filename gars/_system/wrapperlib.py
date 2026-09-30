@@ -341,21 +341,23 @@ def check_executor_config(exec_cfg, fails):
     is not asked for a file named after Slurm. With no descriptor present the answer is
     `nextflow.slurm.config`, exactly as before the seam existed.
     """
-    project = ex.config_root_for(Path(exec_cfg).parent)
+    path = Path(exec_cfg)
+    # The file checked must be the file the wrapper passes with -c, directly in the project's
+    # _config/ (0251): a name like `sub/x` or `../x` once let preflight read another file. The
+    # project is that folder's parent, never found by walking up, so a nested `_config/_config/`
+    # cannot hand preflight another descriptor (0251, review r1).
+    if path.parent.name != "_config":
+        fails.append(fail("executor_config",
+                          "R-098/§9.6: %s is not a file directly in the project's _config/; "
+                          "use the seeded executor config" % path.name))
+        return
+    project = path.parent.parent
     descriptor = ex.load(project)
     for problem in ex.validate(descriptor):
         fails.append(fail("executor_config", "_config/%s: %s" % (ex.DESCRIPTOR_NAME, problem)))
     wanted = descriptor.get("nextflow_config") or ""
     if not wanted:
         return                      # a backend that pairs with no nextflow config demands none
-    path = Path(exec_cfg)
-    # The file checked must be the file the wrapper passes with -c, directly in the project's
-    # _config/ (0251): a name like `sub/x` or `../x` once let preflight read another file.
-    if path.parent.resolve() != (project / "_config").resolve():
-        fails.append(fail("executor_config",
-                          "R-098/§9.6: %s is not a file directly in the project's _config/; "
-                          "use the seeded executor config" % path.name))
-        return
     if path.name != wanted:
         path = path.parent / wanted
     if not path.is_file():
@@ -396,12 +398,31 @@ def check_groovy(path, fails, template_name='nextflow.slurm.config'):
     The grammar is the protected template the descriptor names (0251), Slurm's by default.
     """
     def shape(text):
-        text = re.sub(r'//[^\n]*', '', text)
-        def literal(match):
-            shell_value(match.group(1), 'Groovy literal')
-            return "'VALUE'"
-        text = re.sub(r"'([^']*)'", literal, text)
-        return re.sub(r'\s+', '', text)
+        # Strings are read before comments (0251, review r1): in Groovy a `//` inside a string
+        # is string text, not a comment. A double-quoted string is grammar, kept byte for byte,
+        # whitespace included; a single-quoted one is a site value under R-075. Outside strings,
+        # `//` comments and whitespace are dropped. Tokens, not joined text, are compared.
+        tokens, i = [], 0
+        while i < len(text):
+            char = text[i]
+            if text.startswith('//', i):
+                end = text.find('\n', i)
+                i = len(text) if end < 0 else end
+            elif char in '\'"':
+                end = text.find(char, i + 1)
+                if end < 0:
+                    raise ValueError('unterminated string')
+                if char == "'":
+                    shell_value(text[i + 1:end], 'Groovy literal')
+                    tokens.append("'VALUE'")
+                else:
+                    tokens.append(text[i:end + 1])
+                i = end + 1
+            else:
+                if not char.isspace():
+                    tokens.append(char)
+                i += 1
+        return tokens
     try:
         template = executor_template(template_name)
         if shape(Path(path).read_text(encoding='utf-8')) != shape(template.read_text(encoding='utf-8')):
