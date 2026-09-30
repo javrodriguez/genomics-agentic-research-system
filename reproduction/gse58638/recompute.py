@@ -102,7 +102,8 @@ STEP1_B1_RATIOS = (("4.17", "4.42", "4.56"), ("21.4", "19.2", "21.5"))
 # The one step-1 figure the exact recompute does not equal at its printed precision, measured by the
 # lane on 30 Sep 2026 and raised to the orchestrator: GSM1420155's B1 z>2 fraction is
 # 620682/309564635 = 0.0020050..., which is 0.00201 at three figures under any rounding; step 1
-# printed 0.00200. libBigWig counts the same bases. The binding holds this cell to the recompute's
+# printed 0.00200. libBigWig counts the same bases. Step 1's figure is the same count rounded twice:
+# to four figures (0.002005), then half-even to three (review r3). The binding holds this cell to the recompute's
 # own figure and the report prints the difference; every other step-1 figure is bound as printed.
 # PENDING a PREREG-3: PREREG-2 R3 binds step 1's printed value, and only the orchestrator can change
 # that (R6). Asked in the lane session on 30 Sep, the orchestrator chose to keep this named exception,
@@ -118,6 +119,11 @@ PREREG2_R4 = {
 # The public-metadata section of expected.txt, pinned so a hand edit to it fails the binding on push
 # (the monthly regrade re-fetches it; a change there exits 3). Update only from a real run.
 METADATA_SHA256 = "bad7aff4a590190399f06969744b8108892494194b757b2610cd628974599b58"
+# The exact counts and the four sha256 as the real run recorded them (the "Exact counts" block through
+# the "sha256:" lines of expected.txt), pinned so that a planted expected.txt re-rendered from changed
+# counts fails on push; the push-time binding otherwise re-renders from the counts it is given.
+# Update only from a real run.
+COUNTS_SHA256 = "4e989d44c8748edff43380d926397a5a512aed7bae431df8ed4bd7f222b1fedd"
 # docs/RESULTS.md at 37a8d94 (LF), the base this was built on: while no row 3a addendum is found, the
 # binding requires RESULTS.md unchanged, so an addendum that lands in a form find_addendum() misses
 # fails rather than leaving PREREG-2 R5 skipped for good.
@@ -881,6 +887,13 @@ def parse_counts(report):
     return counts
 
 
+def counts_block(report):
+    """The report's "Exact counts" line through its last sha256 line, LF."""
+    text = report.replace("\r\n", "\n")
+    m = re.search(r"^Exact counts .*?^sha256:\n(?:  GSM\d+ [0-9a-f]{64}\n)+", text, re.M | re.S)
+    return m.group(0) if m else ""
+
+
 def parse_pins(report):
     text = report.replace("\r\n", "\n")
     sizes = {m.group(1): int(m.group(2)) for m in re.finditer(r"^  (GSM\d+) bytes=(\d+) ", text, re.M)}
@@ -1056,6 +1069,9 @@ def check_published(config, out, err):
     if ("git blob %s" % blob) not in expected:
         failures.append("expected.txt does not name this script's blob %s: re-run the command" % blob)
     sci, meta = split_report(expected)
+    if hashlib.sha256(counts_block(expected).encode("utf-8")).hexdigest() != COUNTS_SHA256:
+        failures.append("the exact counts and sha256 in expected.txt are not the pinned ones "
+                        "(COUNTS_SHA256); they are written only by a real run")
     if hashlib.sha256(meta.encode("utf-8")).hexdigest() != METADATA_SHA256:
         failures.append("the public-metadata section of expected.txt is not the pinned one "
                         "(METADATA_SHA256); it is written only by a real run")

@@ -690,6 +690,21 @@ class PublishedBindingTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("public-metadata section", err)
 
+    def test_consistent_forgery_of_the_counts_fails(self):
+        # Review r3, F-1: counts changed and the report re-rendered by the script's own renderer,
+        # metadata kept, so the forgery is internally consistent; the counts pin still catches it.
+        counts = dict(self.counts)
+        c = counts["GSM1415877"]
+        counts["GSM1415877"] = dataclasses.replace(c, tiles_above2=c.tiles_above2 + 1)
+        sizes, digests = recompute.parse_pins(self.expected)
+        meta = recompute.split_report(self.expected)[1]
+        forged = recompute.render_science(counts, sizes, digests, recompute.script_blob()) + meta
+        self.assertNotEqual(forged, self.expected)
+        code, out, err = self.check_copy(expected=forged)
+        self.assertEqual(code, 1)
+        self.assertIn("COUNTS_SHA256", err)
+        self.assertNotIn("not what this script renders", err)
+
     def test_changed_results_md_without_addendum_fails(self):
         # Review r1, F-5: an addendum the detector misses must not leave R5 skipped for good.
         text = (ROOT / "docs" / "RESULTS.md").read_text(encoding="utf-8")

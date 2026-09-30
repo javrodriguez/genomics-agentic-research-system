@@ -39,7 +39,7 @@ The verdict is therefore **IN KIND, adopted basis B1** (10-bp bins, base-weighte
 4. **The report** prints B1 (adopted) and B4 (the nearest exact basis, PREREG-2 R4) per deposit, the exact counts, the four sha256, graded against seen, and against RESULTS.md: `IN KIND`, never `MATCH` (PREREG-2 R1); P6 stated with its measured ratios and said plainly not to be met under B1 (R2); line 73 on B4 as context, never a gate (R4); and what is not recomputed.
    Ratios print at three significant figures, step 1's precision, not rounded again to whole numbers.
 5. **The binding** (`--check-published`, run by CI on every push, and `PublishedBindingTests`): `expected.txt` names the committed script's git blob and is exactly what that script renders from the counts it records; the three quotations (T1, T2, C1) are each found in RESULTS.md exactly once, read as UTF-8; the relation printed is `IN KIND`; and PREREG-2 R3: GSM1420155 alone is lowest at z>1 and z>2 under B1, and the B1 fractions and ratios equal step 1's at their printed precision, with one named exception (below).
-   The public-metadata section of `expected.txt` is pinned by sha256 (`METADATA_SHA256`), so a hand edit to it fails on push.
+   The exact counts and the four sha256 in `expected.txt` (`COUNTS_SHA256`) and its public-metadata section (`METADATA_SHA256`) are pinned in the script, so a hand edit to either, even one re-rendered consistently, fails on push.
    R5 (the addendum binding) finds the addendum by its dated heading or by its content, requires it to state the reversal itself (the healthy HCT116 figure above DKO1's, the direction holding only when GSM1420155 is counted), accepts line 73's figures only inside their quotations, and requires every other decimal in it to be the bound B4 figure or a metadata figure the report prints; until it is found the test skips with its reason, and only while RESULTS.md is byte-identical to 37a8d94 (`RESULTS_MD_SHA256`): any other RESULTS.md without a detected addendum fails. Its logic runs now on a temporary copy carrying the approved wording.
 6. **The regrade**: a new workflow `.github/workflows/geo-recompute.yml` (manual dispatch and a monthly schedule, 90-minute limit) runs the command exactly as printed and writes the report, exit code and wall time to the job summary.
 7. **The README** gains one sub-bullet under the RESULTS.md evidence bullet, with no test count. RESULTS.md itself is not edited (lane brief, ruling 5): the plan's "Recompute the deposited half yourself" block is left for the orchestrator.
@@ -62,9 +62,9 @@ No tile mean lies within 1e-6 of 1 or 2 in libBigWig's computation.
 
 **Against UCSC's own reader: not done here.** The build machine's egress policy refused hgdownload.soe.ucsc.edu, so threat-model property (e), "the reader equals UCSC's reference reader on the fixtures and on the four real files", is **open**: the reader equals an independent C reader (libBigWig), and its merged-run counts reproduce UCSC's record counts, but no UCSC run was compared with it.
 
-**Against step 1's printed figures**, two cells differ:
-- **GSM1420155's B1 z>2 fraction** is 620,682 / 309,564,635 bins = 0.0020050…, which is 0.00201 at three figures under any rounding rule; step 1 printed 0.00200 (which needs at most 620,677 bins). libBigWig counts the same bases, and no GSM1420155 bin lies in (2, 2.00005], so `%g` rounding of UCSC's text does not explain it. **Unexplained.** PREREG-2 R3 binds step 1's printed figures; this one cell is held to the recompute's own figure (`STEP1_B1_DIFFERS`), printed in the report as a difference, and **awaits a PREREG-3**: asked in the lane session, the orchestrator chose this named exception over a binding that fails until PREREG-3 exists. It is not a ruling under R6.
-- **GSM1415877's B4 z>2 fraction** is 6,060 / 309,579 tiles = 0.01957; step 1 printed 0.01958 (6,061 tiles). libBigWig's exact tile mean gives 6,060. B4 is not bound to step 1's table.
+**Against step 1's printed figures**, two cells differ, and both are step 1's printing, not its counts (found by review r3): each is the exact count rounded twice, first to one more figure, then half-even.
+- **GSM1420155's B1 z>2 fraction** is 620,682 / 309,564,635 bins = 0.0020050159, which is 0.00201 at three figures under a single rounding; step 1 printed 0.00200, which is 0.002005 rounded half-even. libBigWig counts the same bases, and no GSM1420155 bin lies in (2, 2.00005]. PREREG-2 R3 binds step 1's printed figures; this one cell is held to the recompute's own figure (`STEP1_B1_DIFFERS`), printed in the report as a difference, and **awaits a PREREG-3**: asked in the lane session, the orchestrator chose this named exception over a binding that fails until PREREG-3 exists. It is not a ruling under R6.
+- **GSM1415877's B4 z>2 fraction** is 6,060 / 309,579 tiles = 0.0195750, which is 0.01957 under a single rounding; step 1 printed 0.01958, which is 0.019575 rounded again. libBigWig's exact tile mean also gives 6,060. B4 is not bound to step 1's table.
 
 PREREG-2 R4's B4 ratio range "44-108×" is step 1's 43.5 rounded a second time; the exact lower ratio is 2,435 / 56 = 43.48. The report prints 43.5–108×.
 
@@ -94,8 +94,9 @@ PREREG-2 R4's B4 ratio range "44-108×" is step 1's 43.5 rounded a second time; 
 | E1 one count digit changed in `expected.txt` | `PublishedBindingTests.test_results_md_figures_equal_the_recompute` |
 | E2 RESULTS.md's 0.0073 changed | the same |
 | E3 a metadata line changed in `expected.txt` | the same |
+| M18 the counts pin disabled (a consistent re-rendered forgery then passes) | `PublishedBindingTests.test_consistent_forgery_of_the_counts_fails` |
 
-20 of 20 killed.
+21 of 21 killed.
 
 ## Rejected alternatives
 
@@ -109,16 +110,16 @@ PREREG-2 R4's B4 ratio range "44-108×" is step 1's 43.5 rounded a second time; 
 - **The per-library half** (FRiP 0.032, peaks per read, 28.8 M filtered reads, 2.6% duplication, Spearman 0.464) stays quoted; its outputs are not public.
 - **The cause of the deposit's outlier**: the command cannot separate a failed IP from GEO's recorded ENCODE input (GSM945855) or the GAIIx 36-bp platform; it prints both as context.
 - **Agreement with UCSC's reader** (threat-model property (e)): the fixtures were written by pyBigWig, and the real files were compared with libBigWig, because the cloud build machine's egress policy refused hgdownload.soe.ucsc.edu. Running `bigWigToBedGraph` on the four files, and regenerating the fixtures with `bedGraphToBigWig`/`wigToBigWig` from the committed text sources, is open for the orchestrator.
-- **The one step-1 cell that differs** (GSM1420155's B1 z>2, 0.00200 against 0.0020050) is unexplained and awaits a PREREG-3.
+- **The one step-1 cell that differs** (GSM1420155's B1 z>2: step 1 printed 0.00200, the same count rounded twice) is bound to the recompute's own figure and awaits a PREREG-3.
 - **The approved addendum's wording mixes bases**: "0.083 against DKO1's 0.067" sets the B4 figure against line 73's B6 figure (B4's DKO1 mean is 0.068). The binding accepts 0.067 there as a line-73 figure, as R5 reads it; the sentence is the owner's to revisit.
 - **R5** runs on the real RESULTS.md only once the addendum lands.
-- **The counts in `expected.txt` are bound to the deposit bytes only by the regrade.** The push-time binding pins the rendering (the report is exactly what the committed script renders from the counts it records, and names that script) and the quotations, not the counts themselves: a changed reader with a hand-re-rendered `expected.txt` would pass on push, and only `geo-recompute.yml` (or any stranger's run) re-derives the counts from the bytes.
+- **The counts are bound to the deposit bytes only by a real run.** On push, the counts are pinned in the script (`COUNTS_SHA256`), so they cannot change without a script edit; but a changed reader that left the pinned counts in place would pass on push, and only `geo-recompute.yml` (or any stranger's run) re-derives the counts from the bytes.
 - **NCBI's continued service** and GitHub's 60-day schedule limit.
 
 ## Test
 
 `python3 reproduction/gse58638/test_recompute.py` and `python3 reproduction/gse58638/recompute.py --check-published` (CI job `geo-recompute-binding`, ubuntu, macOS and Windows).
-The fault that must make them fail: a changed deposit byte or size, a short read, a zero-record file, a moved or duplicated quotation, a planted change to `expected.txt`, a script edit without a re-run, or `MATCH` under IN KIND. The mutation witness above (the plan's M1-M15, two more from review, and three plants in the published files) is the evidence each named test can fail.
+The fault that must make them fail: a changed deposit byte or size, a short read, a zero-record file, a moved or duplicated quotation, a planted change to `expected.txt`, a script edit without a re-run, or `MATCH` under IN KIND. The mutation witness above (the plan's M1-M15, three more from review, and three plants in the published files) is the evidence each named test can fail.
 
 ## Status
 
