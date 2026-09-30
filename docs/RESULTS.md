@@ -105,6 +105,30 @@ pairing the wrong samples.
 
 A re-measurement from the authors' deposited z-score tracks (GEO GSE58638, 10-kb tile means) finds that the deposit-side direction on line 73 (DKO1 0.067 vs HCT116 0.045) holds only when GSM1420155 is counted; without it, the healthy HCT116 deposit scores 0.083 against DKO1's 0.067. The pipeline-side direction (123 M vs 45.6 M mean peak bp) is not affected. By public SRA read counts, GSM1420155 is the second-deepest of the four libraries (38.0 M raw reads), not the deepest (this corrects lines 89-90). A one-command recompute of the deposit-side figures will follow.
 
+### Recompute the deposited half yourself
+
+The deposit side of this finding can be re-derived from the authors' own GEO deposit with one
+command, run from a clone of this repository:
+
+```
+python3 reproduction/gse58638/recompute.py
+```
+
+It streams the four H3K27me3 z-score tracks of GSE58638 from NCBI (8.8 GB, nothing stored;
+standard-library Python), counts the bins above z>1 and z>2 in each, and prints a report: the
+recomputed fractions, how they stand against the figures quoted above, and whether the whole
+report is identical to the committed `reproduction/gse58638/expected.txt`.
+The quoted figures reproduce in kind: the z>2 range and the other libraries' z>1 range reproduce
+under exact 10-kb tile means, while the failed library's z>1 fraction matches exactly only under
+an approximate tile mean the command does not implement.
+On the command's own 10-bp bins, the failed library still has the lowest fractions of the four,
+by a smaller margin (4.17–4.56× at z>1 and 19.2–21.5× at z>2).
+The report says which figure reproduces under which basis.
+It re-derives the deposit side only: the per-library figures (FRiP, peaks per read, filtered
+reads, duplication, Spearman) come from our pipeline's outputs, which are not public, and stay
+quoted. What it binds, and what it cannot, is in
+[decision 0241](decisions/0241-gse58638-deposit-recompute.md).
+
 ---
 
 ## How the scoring was designed
