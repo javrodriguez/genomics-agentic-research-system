@@ -1,0 +1,60 @@
+GARS recompute: the deposited-track half of the failed-replicate finding (docs/RESULTS.md, 3a)
+Source: GEO GSE58638, the authors' four H3K27me3 z-score tracks (hg19, 10-bp bins), from NCBI
+Script: reproduction/gse58638/recompute.py, git blob 110ae0d59db9ef018cda3232b27771df12e525a2
+Pre-registration: PREREG.md sha256 1f1a9d59132e16c815449e7752d29bf1141c2165e87543acf1c3583232eadb12
+                  PREREG-2.md sha256 ff779cf98f4084f885559cbe931cd97dfd92992aeda93a70d9867a85c56f28cc
+Verdict recorded at step 1 (VERDICT-step1.md, sha256 059ac970be4d70cb846120b5f2e7df58735c6a5074366b7c0ad2e16e9695daf3): IN KIND, adopted basis B1
+
+B1, the adopted basis: 10-bp bins with data, base-weighted, strictly above the threshold
+sample      cell    bins with data  bins z>1    bins z>2    z>1 fraction  z>2 fraction
+GSM1415877  HCT116  309564635       33009095    13277454    0.1066        0.04289
+GSM1420155  HCT116  309564635       7911639     620682      0.02556       0.002005
+GSM1415885  DKO1    309564635       34967382    11887241    0.1130        0.03840
+GSM1420162  DKO1    309564635       36070990    13371427    0.1165        0.04319
+B4, the nearest exact basis (PREREG-2 R4): 10-kb tiles from each chromosome start, exact mean over bases with data
+sample      cell    tiles with data tiles z>1   tiles z>2   z>1 fraction  z>2 fraction
+GSM1415877  HCT116  309579          25575       6060        0.08261       0.01957
+GSM1420155  HCT116  309579          2299        56          0.007426      0.0001809
+GSM1415885  DKO1    309579          16409       2435        0.05300       0.007866
+GSM1420162  DKO1    309579          25510       5660        0.08240       0.01828
+Exact counts (bases; one bin is 10 bases):
+  GSM1415877 bytes=2171032113 records=309564635 bases=3095646350 above1=330090950 above2=132774540 nan_records=0 nan_bases=0 pos_inf=0 neg_inf=0 exact1=0 exact2=0 not_mult10=0 tiles=309579 tiles_above1=25575 tiles_above2=6060 tiles_nan=0
+  GSM1420155 bytes=2261546285 records=309564635 bases=3095646350 above1=79116390 above2=6206820 nan_records=0 nan_bases=0 pos_inf=0 neg_inf=0 exact1=0 exact2=0 not_mult10=0 tiles=309579 tiles_above1=2299 tiles_above2=56 tiles_nan=0
+  GSM1415885 bytes=2174430755 records=309564635 bases=3095646350 above1=349673820 above2=118872410 nan_records=0 nan_bases=0 pos_inf=0 neg_inf=0 exact1=0 exact2=0 not_mult10=0 tiles=309579 tiles_above1=16409 tiles_above2=2435 tiles_nan=0
+  GSM1420162 bytes=2220232372 records=309564635 bases=3095646350 above1=360709900 above2=133714270 nan_records=0 nan_bases=0 pos_inf=0 neg_inf=0 exact1=0 exact2=0 not_mult10=0 tiles=309579 tiles_above1=25510 tiles_above2=5660 tiles_nan=0
+sha256:
+  GSM1415877 9b95fc99b01822e2a824ef6898f0dcdb241c68c4c1d96bfc6d5018b422e86978
+  GSM1420155 1aa3f5403aafd8796936db3aaa5403b10ec8e7e0361a50a3fda9c06be68213ba
+  GSM1415885 1de24e332e4563b83af699406c4ca9ec41fa713c9ae09dbe45a75ec9797cb04f
+  GSM1420162 d0b1e64f28a12d077b893b898abb9b0be34435cff2317d5db72b3c2490ce112e
+Graded against seen: 4 files, 8827241525 of 8827241525 bytes, 1238258540 records, 0 NaN, 0 +inf, 0 -inf, 0 records exactly 1.0, 0 exactly 2.0, 0 spans not a multiple of 10, 0 refused
+
+Against docs/RESULTS.md (each quotation found exactly once; the relation step 1 recorded: IN KIND, never a match):
+  "0.0073 of bins above z>1 against 0.053–0.083 for the others"
+    IN KIND  B1: 0.026 against 0.11–0.12   B4: 0.0074 against 0.053–0.083
+  "**40–100× below them at z>2**"
+    IN KIND  B1: 19.2–21.5×   B4: 43.5–108×
+  Both printed figures come from pyBigWig's approximate 10-kb tile mean (B6, measured at step 1);
+  this script does not implement B6 (PREREG.md P4).
+  Under B1, GSM1420155 has the lowest z>1 and the lowest z>2 fraction of the four: yes
+  Against step 1's B1 figures (step1.md, PREREG-2 R3): 13 of 14 equal at step 1's printed precision; differs:
+    GSM1420155 z>2 fraction: step 1 printed 0.00200, the exact recompute is 0.00201 (0.0020050159)
+
+P6 (PREREG.md), stated, never asserted (PREREG-2 R2): IN KIND asked every other/GSM1420155 ratio
+  to be at least 5 at z>1 and at least 20 at z>2 under B1. Measured (GSM1415877 / GSM1415885 / GSM1420162):
+  z>1 4.17 / 4.42 / 4.56; z>2 21.4 / 19.2 / 21.5. P6's thresholds are not met under B1.
+
+Line 73, context, never a gate (PREREG.md P8; PREREG-2 R4): "theirs (z>1 fraction 0.067 vs 0.045)"
+  B4: DKO1 mean 0.068; HCT116 mean 0.045 with GSM1420155, 0.083 without it.
+  Without GSM1420155 the deposit-side direction reverses on B4 (HCT116 0.083 against DKO1 0.068).
+  Quoted from step 1, not recomputed: line 73's figures reproduce only under B6, and the direction
+  reverses without GSM1420155 under every tile basis step 1 measured (B4-B7).
+
+Not recomputed (our pipeline's per-library outputs, not public): FRiP 0.032, peaks per million reads,
+28.8 M filtered reads, 2.6% duplication, binned Spearman 0.464. Quoted from docs/RESULTS.md.
+
+Public metadata (context, not recomputed science):
+  raw reads, SRA run info: GSM1420162 46.1 M, GSM1420155 38.0 M, GSM1415877 24.4 M, GSM1415885 22.2 M (GSM1420155 second of four)
+  instruments, SRA run info: GSM1420155 Illumina Genome Analyzer IIx (36-bp reads); GSM1415877, GSM1415885, GSM1420162 Illumina HiSeq 2000 (50-bp reads)
+  GEO titles: GSM1415877 "HCT116-H3K27me3"; GSM1420155 "HCT116-H3K27me3 Rep2" (its file name says rep1); GSM1415885 "DKO1-H3K27me3"; GSM1420162 "DKO1-H3K27me3 Rep2"
+  GEO, GSM1420155 data processing: "The ENCODE HCT116 input sample GSM945855 was used in the analysis of all HCT116 Rep2 ChIP-seq experiments."

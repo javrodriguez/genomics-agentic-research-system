@@ -39,7 +39,7 @@ import recompute  # noqa: E402  (red until recompute.py exists)
 FIXPINS = {
     "bedgraph": (11047, "0bb1e859f599da6098e72bb2c2855ea4720dda7bcc3995c711a33c7309d92ab9"),
     "fixedstep": (937, "cbb0887c881f3d7cc2d6be37b388867bc81945ffebee7a82e622d8a465068bb4"),
-    "empty": (224, "b8d67f3068dc405eeaf6e35babd84227502769477c6ca8ee64519240980adb7c"),
+    "empty": (224, "0de65bc244862849a50b215b9f7d832586a62fa11090e59a854b82f9aefac14a"),
 }
 
 # The frozen inputs that ship beside the script, pinned by the lane brief and the step-1 record.
@@ -146,7 +146,7 @@ class Workspace(object):
                 body = mutate[gsm](body)
             (self.data / filename).write_bytes(body)
             self.deposits.append(recompute.Deposit(
-                gsm=gsm, cell=cell, srx="SRX0", path="files/" + filename,
+                gsm=gsm, cell=cell, srx="SRX0", path="",
                 filename=filename, size=size, sha256=sha))
         self.expected = self.dir / "expected.txt"
 
@@ -592,17 +592,27 @@ class PublishedBindingTests(unittest.TestCase):
             self.assertEqual(sum(1 for g in f if f[g][z] == f[low][z]), 1)
 
     def test_b1_equals_step1_at_its_printed_precision(self):
-        # PREREG-2 R3, second half: step1.md §5's B1 row and the VERDICT's ratios.
+        # PREREG-2 R3, second half: step1.md §5's B1 row and the VERDICT's ratios. One cell is held
+        # to the recompute's own figure and named (STEP1_B1_DIFFERS): step 1 printed 0.00200 for a
+        # value of 0.0020050; the report prints that difference, and this test requires it printed.
+        self.assertEqual(recompute.STEP1_B1_DIFFERS, {("GSM1420155", 1): "0.00201"})
         for gsm, printed in recompute.STEP1_B1.items():
             got = recompute.b1_fractions(self.counts[gsm])
-            for value, want in zip(got, printed):
+            for z, (value, want) in enumerate(zip(got, printed)):
+                want = recompute.STEP1_B1_DIFFERS.get((gsm, z), want)
                 self.assertEqual(recompute.round_sig(value, recompute.sig_figs(want)), want, gsm)
+        self.assertIn("13 of 14 equal at step 1's printed precision; differs:", self.expected)
+        self.assertIn("GSM1420155 z>2 fraction: step 1 printed 0.00200, the exact recompute is 0.00201",
+                      self.expected)
         ratios = recompute.b1_ratios(self.counts)
         for z, printed in ((0, recompute.STEP1_B1_RATIOS[0]), (1, recompute.STEP1_B1_RATIOS[1])):
             for value, want in zip(ratios[z], printed):
                 self.assertEqual(recompute.round_sig(value, recompute.sig_figs(want)), want)
 
     def test_b4_equals_prereg2_r4(self):
+        # PREREG-2 R4's B4 figures at their printed precision. Its z>2 ratio range "44-108x" is
+        # step 1's 43.5 rounded a second time; the exact ratio is 2435/56 = 43.48, so the lower
+        # end is bound at step 1's three figures (43.5) and never at a twice-rounded 44.
         want = recompute.PREREG2_R4
         f = {g: recompute.b4_fractions(c) for g, c in self.counts.items()}
         others = [g for g in f if g != "GSM1420155"]
@@ -610,8 +620,9 @@ class PublishedBindingTests(unittest.TestCase):
         self.assertEqual(recompute.round_sig(min(f[g][0] for g in others), 2), want["others_z1"][0])
         self.assertEqual(recompute.round_sig(max(f[g][0] for g in others), 2), want["others_z1"][1])
         r = [f[g][1] / f["GSM1420155"][1] for g in others]
-        self.assertEqual(recompute.round_sig(min(r), 2), want["ratios_z2"][0])
+        self.assertEqual(recompute.round_sig(min(r), 3), "43.5")
         self.assertEqual(recompute.round_sig(max(r), 3), want["ratios_z2"][1])
+        self.assertIn("B4: 43.5\u2013108\u00d7", self.expected)
         c1 = recompute.c1_on_b4(self.counts)
         self.assertEqual(recompute.round_sig(c1["dko1_mean"], 2), want["c1_dko1"])
         self.assertEqual(recompute.round_sig(c1["hct116_with"], 2), want["c1_hct116_with"])
