@@ -266,6 +266,8 @@ def validate(descriptor):
     config_name = descriptor.get('nextflow_config')
     if config_name and ('/' in str(config_name) or config_name in ('.', '..')):
         problems.append('R-075: nextflow_config must be a bare file name in _config/')
+    if name in BUILTINS and BUILTINS[name]['nextflow_config'] and not config_name:
+        problems.append('R-075: nextflow_config may not be blank for this backend')
     # Free-form directive templates would be a second executable language.
     if name in BUILTINS and descriptor.get('directives') != BUILTINS[name]['directives']:
         problems.append('R-075: directives must match the registered backend')

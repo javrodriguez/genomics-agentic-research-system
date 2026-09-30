@@ -357,7 +357,12 @@ def check_executor_config(exec_cfg, fails):
         fails.append(fail("executor_config", "_config/%s: %s" % (ex.DESCRIPTOR_NAME, problem)))
     wanted = descriptor.get("nextflow_config") or ""
     if not wanted:
-        return                      # a backend that pairs with no nextflow config demands none
+        # A backend that pairs with no nextflow config demands none, but the wrapper still passes
+        # its fallback (this very path) with -c when the file is there, so it is checked like
+        # any other against the template its name selects (0251, review r2).
+        if not path.is_file():
+            return
+        wanted = path.name
     if path.name != wanted:
         path = path.parent / wanted
     if not path.is_file():
@@ -390,6 +395,17 @@ def executor_template(name):
     return template
 
 
+#: Groovy's own token classes, as the shape compares them (0251, review r2): an identifier, a
+#: number (a dot only when a digit follows, so `130..145` is three tokens), or a multi-character
+#: operator, longest first.
+GROOVY_TOKEN = re.compile(
+    r"[A-Za-z_$][A-Za-z0-9_$]*"
+    r"|[0-9](?:[0-9A-Za-z_]|\.(?=[0-9]))*"
+    r"|>>>=|<=>|===|!==|==~|\*\*=|>>=|<<=|>>>|\.\.<|\?\.|\*\.|\.@|\.&|::|\?:|==|!=|<=|>=|&&|\|\|"
+    r"|\+\+|--|\+=|-=|\*=|/=|%=|&=|\|=|\^=|\*\*|<<|>>|->|=~|\.\.")
+GROOVY_COMMENT_END = re.compile('[\r\n\uffff]')
+
+
 def check_groovy(path, fails, template_name='nextflow.slurm.config'):
     """Only the shipped executor grammar, with safe scalar substitutions, is admitted.
 
@@ -398,16 +414,25 @@ def check_groovy(path, fails, template_name='nextflow.slurm.config'):
     The grammar is the protected template the descriptor names (0251), Slurm's by default.
     """
     def shape(text):
-        # Strings are read before comments (0251, review r1): in Groovy a `//` inside a string
-        # is string text, not a comment. A double-quoted string is grammar, kept byte for byte,
-        # whitespace included; a single-quoted one is a site value under R-075. Outside strings,
-        # `//` comments and whitespace are dropped. Tokens, not joined text, are compared.
+        # A lexer as strict as Groovy's (0251, reviews r1 and r2). Strings are read whole before
+        # comments: a double-quoted string is grammar, one token kept byte for byte; a
+        # single-quoted one is a site value under R-075. An identifier or a number is one token,
+        # a multi-character operator one token, any other character its own token. A line end
+        # (LF, CR or CRLF) is a token, and a `//` comment, which ends at CR, LF or U+FFFF, stands
+        # for the line end after it; runs of line ends collapse to one. Only space and tab are
+        # skipped. Token lists, not joined text, are compared.
         tokens, i = [], 0
         while i < len(text):
             char = text[i]
-            if text.startswith('//', i):
-                end = text.find('\n', i)
-                i = len(text) if end < 0 else end
+            if char in ' \t':
+                i += 1
+            elif char in '\r\n':
+                i += 2 if text.startswith('\r\n', i) else 1
+                if tokens and tokens[-1] != '\n':
+                    tokens.append('\n')
+            elif text.startswith('//', i):
+                match = GROOVY_COMMENT_END.search(text, i)
+                i = match.start() if match else len(text)
             elif char in '\'"':
                 end = text.find(char, i + 1)
                 if end < 0:
@@ -419,13 +444,17 @@ def check_groovy(path, fails, template_name='nextflow.slurm.config'):
                     tokens.append(text[i:end + 1])
                 i = end + 1
             else:
-                if not char.isspace():
-                    tokens.append(char)
-                i += 1
+                match = GROOVY_TOKEN.match(text, i)
+                tokens.append(match.group(0) if match else char)
+                i += len(tokens[-1])
+        while tokens and tokens[-1] == '\n':
+            tokens.pop()
         return tokens
     try:
         template = executor_template(template_name)
-        if shape(Path(path).read_text(encoding='utf-8')) != shape(template.read_text(encoding='utf-8')):
+        # Bytes, not read_text: universal newlines would turn a lone CR into LF unseen.
+        if (shape(Path(path).read_bytes().decode('utf-8'))
+                != shape(template.read_bytes().decode('utf-8'))):
             raise ValueError('unregistered Groovy grammar')
     except (OSError, ValueError) as exc:
         fails.append(fail('executor_config', 'R-098/§9.6: %s; use the seeded executor config' % exc))
