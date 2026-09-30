@@ -1,0 +1,45 @@
+# The GSE58638 deposit recompute, re-derived from the authors' bytes (decision 0241).
+#
+# Runs the README's command exactly as printed: it streams the four deposited z-score tracks from
+# NCBI (8.8 GB, nothing stored), recomputes every figure, and exits non-zero on any difference from
+# the committed expected.txt (1 science, 2 refused, 3 public-metadata context only). The job summary
+# records the report, the exit code, wall time and throughput.
+#
+# The schedule's honest limit: GitHub disables a scheduled workflow after 60 days without repository
+# activity, so a page quoting this job shows the date of a pinned run, never a standing promise.
+name: GEO recompute (GSE58638)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 3 * *"
+
+jobs:
+  regrade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Recompute from the authors' deposits
+        run: |
+          start=$(date +%s)
+          set +e
+          python3 reproduction/gse58638/recompute.py > "$RUNNER_TEMP/report.txt" 2> "$RUNNER_TEMP/timing.txt"
+          code=$?
+          set -e
+          end=$(date +%s)
+          cat "$RUNNER_TEMP/report.txt"
+          cat "$RUNNER_TEMP/timing.txt"
+          {
+            echo "exit $code, wall time $((end - start)) s"
+            echo '```'
+            cat "$RUNNER_TEMP/report.txt"
+            echo '```'
+            echo '```'
+            cat "$RUNNER_TEMP/timing.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$code"

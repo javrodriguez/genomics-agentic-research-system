@@ -22,6 +22,11 @@ system, follows the Interpretable Context Methodology (ICM) — Van Clief &amp; 
 - [docs/RESULTS.md](docs/RESULTS.md) — the reproduction campaign scored against what the original
   authors deposited, including a failed immunoprecipitation in published data that the paper's own
   depth-only QC could not have seen.
+  - [reproduction/gse58638/](reproduction/gse58638/) — the deposited-track half of that finding,
+    recomputed from the authors' own GEO deposit by one standard-library command,
+    `python3 reproduction/gse58638/recompute.py` (streams 8.8 GB from NCBI, stores nothing). It
+    reproduces the published figures in kind, not exactly, under a pre-registration fixed before
+    any deposit byte was read; the per-library half (FRiP, peaks per read) stays quoted.
 - [docs/reproduction-campaign.md](docs/reproduction-campaign.md) — the campaign's design: accessions,
   run order, and what gets compared.
 - [docs/EVALS.md](docs/EVALS.md) — a separate question: how the **agent** behaved on three

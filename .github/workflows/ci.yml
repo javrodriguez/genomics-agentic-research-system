@@ -404,3 +404,27 @@ jobs:
         env:
           TMPDIR: ${{ runner.temp }}
         run: python3 evals/gap-study-intervals/test_intervals.py
+
+  geo-recompute-binding:
+    # ---- the GSE58638 deposit recompute (reproduction/gse58638), bound at every push, no network ----
+    # Decision 0241. The recompute's own tests (the reader against committed fixtures written by an
+    # independent writer, the thresholds, the weighting, the stream, the pins, the exit codes), then
+    # the prose binding: expected.txt must name the committed script's blob and be exactly what that
+    # script renders from the counts it records, each RESULTS.md quotation it discusses must be found
+    # exactly once, and PREREG-2's relation must hold. The full 8.8 GB re-derivation from NCBI is the
+    # separate geo-recompute.yml workflow. Three operating systems, because the report's bytes must
+    # not depend on one: `python`, the name setup-python provides on all three.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: GEO recompute, tests
+        run: python reproduction/gse58638/test_recompute.py
+      - name: GEO recompute, the published binding
+        run: python reproduction/gse58638/recompute.py --check-published
