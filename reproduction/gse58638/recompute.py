@@ -438,13 +438,11 @@ class BigWigCounter(object):
 
 
 def grade_against_seen(c, label):
-    """Every base the header says the file covers was counted (NaN bases counted by either
-    writer's convention), and every chromosome's bases add up to the total."""
+    """Every base the header's total summary says the file covers was counted (NaN bases counted by
+    either writer's convention). The header is the only independent count the file carries."""
     if c.header_bases_covered not in (c.bases, c.bases + c.nan_bases):
         raise Refused("%s: graded %d bases (+%d NaN) but the header covers %d"
                       % (label, c.bases, c.nan_bases, c.header_bases_covered))
-    if sum(x.bases for x in c.per_chrom.values()) != c.bases:
-        raise Refused("%s: per-chromosome bases do not add up" % label)
 
 
 def count_path(path, sink=None):
@@ -684,15 +682,33 @@ def addendum_failures(text, counts, context=""):
         return ["no addendum block"]
     flat = " ".join(block.split())
     failures = []
+    # Line 73's figures may appear only as quotations of line 73: its deposit-side pair
+    # "(DKO1 x vs HCT116 y)", DKO1's figure as the comparator "DKO1's x", and its pipeline-side pair
+    # "(123 M vs 45.6 M peak bp)". Those spans are removed; every decimal left must be the bound B4
+    # figure or a public-metadata figure the report prints.
     line73 = next((l for l in text.split("\n") if QUOTES["C1"] in l), "")
-    allowed = set(re.findall(r"\d+\.\d+", line73)) | set(re.findall(r"\d+\.\d+", context))
+    q = re.search(r"fraction (\d+\.\d+) vs (\d+\.\d+)", line73)
+    pipe = re.search(r"\(?(\d+ M vs \d+\.\d+ M) mean peak bp\)?", line73)
+    rest = flat
+    if q:
+        rest = rest.replace("(DKO1 %s vs HCT116 %s)" % q.groups(), " ")
+        rest = rest.replace("DKO1's %s" % q.group(1), " ")
+    if pipe:
+        rest = re.sub(r"\(%s peak bp\)" % re.escape(pipe.group(1)), " ", rest)
     bound = re.search(r"healthy HCT116 deposit scores (\d+\.\d+)", flat)
+    allowed = set(re.findall(r"\d+\.\d+", context))
     if bound:
         allowed.add(bound.group(1))
-    for figure in re.findall(r"\d+\.\d+", flat):
+    for figure in re.findall(r"\d+\.\d+", rest):
         if figure not in allowed:
-            failures.append("the addendum's %s is neither the bound B4 figure, nor line 73's, nor a "
-                            "metadata figure the report prints" % figure)
+            failures.append("the addendum's %s is neither the bound B4 figure, a quotation of line 73, "
+                            "nor a metadata figure the report prints" % figure)
+    # The addendum must itself state the reversal, not merely be consistent with it.
+    stated = re.search(r"healthy HCT116 deposit scores (\d+\.\d+) against DKO1's (\d+\.\d+)", flat)
+    if not (stated and Fraction(stated.group(1)) > Fraction(stated.group(2))
+            and "only when GSM1420155 is counted" in flat):
+        failures.append("the addendum does not state the reversal (healthy HCT116 above DKO1, the "
+                        "direction holding only when GSM1420155 is counted)")
     c1 = c1_on_b4(counts)
     m = re.search(r"healthy HCT116 deposit scores (\d+\.\d+)", flat)
     if not m:
@@ -797,10 +813,10 @@ def render_science(counts, sizes, digests, blob, deposits=DEPOSITS):
     defined = all(r is not None for r in r4[1])
     lo1 = round_sig(min(r4[1]), 1) if defined else "inf"
     hi1 = round_sig(max(r4[1]), 1) if defined else "inf"
+    L.append("  Recomputed: T2's range %s under B4 at its printed precision (%s\u2013%s\u00d7 at one figure)." % (
+        "reproduces" if (lo1, hi1) == ("40", "100") else "does not reproduce", lo1, hi1))
     L.append("  Quoted from step 1, not recomputed: T1's figures reproduce exactly only under pyBigWig's")
     L.append("  approximate 10-kb tile mean (B6), which this script does not implement (PREREG.md P4).")
-    L.append("  T2's range %s under B4 at its printed precision (%s\u2013%s\u00d7 at one figure)." % (
-        "reproduces" if (lo1, hi1) == ("40", "100") else "does not reproduce", lo1, hi1))
     lowest = all(min(order, key=lambda g: b1[g][z]) == FAILED and
                  sum(1 for g in order if b1[g][z] == b1[FAILED][z]) == 1 for z in (0, 1))
     L.append("  Under B1, %s has the lowest z>1 and the lowest z>2 fraction of the four: %s" % (FAILED, "yes" if lowest else "NO"))

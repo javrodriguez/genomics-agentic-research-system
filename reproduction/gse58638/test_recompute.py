@@ -748,6 +748,23 @@ class AddendumLogicTests(unittest.TestCase):
         moved = ADDENDUM.replace("against DKO1's 0.067", "against DKO1's 0.099")
         self.assertNotEqual(self.failures(moved), [])
 
+    def test_addendum_denying_the_reversal_fails(self):
+        # Review r2, F-3: the addendum must state the reversal, not merely coexist with it.
+        moved = ADDENDUM.replace(
+            "holds only when GSM1420155 is counted; without it the healthy HCT116 deposit scores 0.083 "
+            "against DKO1's 0.067",
+            "holds with or without GSM1420155; without it the healthy HCT116 deposit scores 0.083, "
+            "still below DKO1")
+        self.assertNotEqual(moved, ADDENDUM)
+        self.assertNotEqual(self.failures(moved), [])
+
+    def test_line_73_figure_as_a_recompute_output_fails(self):
+        # Review r2, F-4: 0.067 and 0.045 only as quotations of line 73, never as recompute outputs.
+        moved = ADDENDUM.replace("against DKO1's 0.067.",
+                                 "against DKO1's 0.067, and the recompute reproduces line 73's 0.067 exactly.")
+        self.assertNotEqual(moved, ADDENDUM)
+        self.assertNotEqual(self.failures(moved), [])
+
     def test_addendum_found_whatever_its_heading(self):
         for head in ("Addendum, 30 Sep 2026.", "**Addendum (1 Oct 2026).**"):
             body = ADDENDUM.replace("Addendum (30 Sep 2026).", head)

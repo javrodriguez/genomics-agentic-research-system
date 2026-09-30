@@ -22,7 +22,8 @@ Its shape follows [0211](0211-gap-study-intervals-0210-delegated-approval-of-pro
 Producer commits, red first: `4c4d7e9` (the tests and fixtures, red: `ModuleNotFoundError: No module named 'recompute'`), then the script, the records and the jobs, the mutation findings and the review findings, as listed in the lane report `lane-reports/geo-recompute.md`.
 Reviews, each a fresh `claude -p --model claude-opus-5-5` over its own `--no-local` clone of the candidate with no remote, briefed with the plan's sections 2-5, PREREG-2, the brief's rulings 4, 5, 7 and 8, and the threat model, with a fail-closed verdict reader (only a final `VERDICT: CLEAN` ends the loop):
 `r1` on `1b3ded4`, CHANGES (two MAJOR, six MINOR, two NOTE): F-1 MAJOR the metadata section of `expected.txt` was unbound on push, now pinned; F-2 MAJOR the fixtures README implied agreement with UCSC's reader that was never run, reworded, and 0241 records property (e) as open; F-3 the one step-1 cell held to the recompute, kept on the orchestrator's answer and labelled as awaiting PREREG-3; F-4 "both figures come from B6" overclaimed, reworded (T2 also reproduces under B4); F-5 the addendum was found only by one literal heading, now also by content, and a changed RESULTS.md without a detected addendum fails; F-6 an unbound figure in the addendum passed, now every decimal must be accounted for; F-7 the records cited evidence not in the repository, now in 0241; F-8 two refusals had no functional test, added; F-9 the regrade now fails without `expected.txt`; F-10 no change.
-Later rounds are listed in the lane report.
+`r2` on `9301a33`, CHANGES (one MAJOR, four MINOR, four NOTE): F-1 MAJOR property (e) does not hold, no run of UCSC's reader exists: **not fixable on the cloud machine** (egress policy), left open for the orchestrator; F-2 the named step-1 exception has no dated PREREG-3: **left open**, the orchestrator's to write; F-3 an addendum denying the reversal bound green, now it must state it; F-4 a line-73 figure called a recompute output passed, now line 73's figures count only inside their quotations; F-5 the lane report lacked this run, appended; F-6 a tautological per-chromosome check removed; F-7 the derived T2 sentence now reads "Recomputed:" and comes first; F-8 0241 says the counts are bound to the bytes only by the regrade; F-9 no change.
+Because r2's F-1 and F-2 cannot be closed by the lane, the review loop cannot reach CLEAN on this machine; the lane report lists every round and what stays open.
 
 ## Decision
 
@@ -36,7 +37,7 @@ The public push waits for the owner's own typed word.
 
 ## Test
 
-`python3 reproduction/gse58638/test_recompute.py` (58 tests) passes at the branch head with one test skipped by name (`test_addendum_binding`, until the row 3a addendum is in RESULTS.md) and, on Windows, `test_results_md_read_as_utf8` skipped by name (the C locale is a POSIX device); `python3 reproduction/gse58638/recompute.py --check-published` exits 0.
+`python3 reproduction/gse58638/test_recompute.py` (60 tests) passes at the branch head with one test skipped by name (`test_addendum_binding`, until the row 3a addendum is in RESULTS.md) and, on Windows, `test_results_md_read_as_utf8` skipped by name (the C locale is a POSIX device); `python3 reproduction/gse58638/recompute.py --check-published` exits 0.
 A change that removes the job leaves `expected.txt`, the script and RESULTS.md's quotations unbound on push; the job's tests plant a changed deposit byte, a short read, a zero-record file, a duplicated or moved quotation, a changed report line and a metadata-only change, and require the named exit code; 0241's mutation witness (20 of 20 killed) shows each named test can fail.
 
 ## Status
