@@ -35,6 +35,20 @@ def details(fails):
     return [f['detail'] for f in fails]
 
 
+def double_quoted_spans(text):
+    """(start, end) of each double-quoted string on a code line (a `//` line is a comment)."""
+    spans, offset = [], 0
+    for line in text.splitlines(keepends=True):
+        if not line.lstrip().startswith('//'):
+            start = line.find('"')
+            while start >= 0:
+                end = line.index('"', start + 1) + 1
+                spans.append((offset + start, offset + end))
+                start = line.find('"', end)
+        offset += len(line)
+    return spans
+
+
 class ExecutorTemplateTests(unittest.TestCase):
 
     def setUp(self):
@@ -323,6 +337,38 @@ class ExecutorTemplateTests(unittest.TestCase):
         self.assertIn('fields    = %s' % slurm_fields, text)
         for absent in ('params', 'apptainer', 'beforeScript', 'includeConfig', '$', 'workDir'):
             self.assertNotIn(absent, text)
+
+    # -- review r1 ------------------------------------------------------------------------------
+
+    def test_12_a_double_quoted_string_is_compared_byte_for_byte(self):
+        """L5-R1-1 and L5-R1-2: the shape stripped `//` comments before it read any string, so
+        string text after a `//` left the shape, and whitespace inside a string was dropped.
+        For every double-quoted string of both templates: a `//` and one extra statement inside
+        it (the string closed on the next line), and one added space inside it, are refused."""
+        extra = '// process.maxRetries = 3\n'
+        for template, descriptor, count in ((SLURM, 'name: slurm\n', 1), (AWSBATCH, RIG, 6)):
+            text = template.read_text(encoding='utf-8')
+            spans = double_quoted_spans(text)
+            self.assertEqual(len(spans), count, [text[a:b] for a, b in spans])
+            self.assertEqual(self.check(self.project(descriptor), text), [])    # the control
+            for start, end in spans:
+                for label, inside in (('a // and an extra statement', extra), ('a space', ' ')):
+                    with self.subTest(template=template.name, string=text[start:end], case=label):
+                        changed = text[:end - 1] + inside + text[end - 1:]
+                        self.assertEqual(self.check(self.project(descriptor), changed), [REFUSED])
+
+    def test_13_a_nested_config_folder_never_changes_the_project_checked(self):
+        """L5-R1-3: preflight found its project by walking up from the config's folder, so a
+        `_config/_config/executor.yaml` made it read that descriptor (`name: local`, no config
+        demanded) and return early, while the wrapper still passes the project's own
+        `_config/nextflow.awsbatch.config` with -c."""
+        project = self.project()
+        nested = project / '_config' / '_config'
+        nested.mkdir()
+        (nested / 'executor.yaml').write_text('name: local\n', encoding='utf-8')
+        template = AWSBATCH.read_text(encoding='utf-8')
+        self.assertEqual(self.check(project, template + '\nprocess.maxRetries = 3\n'), [REFUSED])
+        self.assertEqual(self.check(project, template), [])
 
 
 if __name__ == '__main__':
