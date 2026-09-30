@@ -68,6 +68,8 @@ No tile mean lies within 1e-6 of 1 or 2 in libBigWig's computation.
 
 PREREG-2 R4's B4 ratio range "44-108×" is step 1's 43.5 rounded a second time; the exact lower ratio is 2,435 / 56 = 43.48. The report prints 43.5–108×.
 
+**The run behind the committed `expected.txt`** (review r5, F-3): `expected.txt` was deleted and re-written by `python3 reproduction/gse58638/recompute.py --from lane-work/data` at the script blob it names, `88584b1260f40d755ca071457532555a80505845` (commit `1e4b817`), 30 Sep 18:30-18:42 UTC, stderr `total 723.8 s`; every earlier review round likewise re-wrote it by a full run, so between rounds only its blob line changed, because the counts did not. Then the README's command, `python3 reproduction/gse58638/recompute.py`, ran in a fresh `--no-local` clone of `1e4b817`, streaming the four deposits from NCBI (757.3 s), and printed `Identical to reproduction/gse58638/expected.txt: yes` (exit 0).
+
 **Run times** (4 vCPU cloud machine, Python 3.11): `--from` 727-797 s for the four files; the streamed run 755 s (8,827,241,525 bytes; about 11.7 MB/s, parse-bound). The fixture tests also pass under Python 3.9.23.
 
 **The mutation witness** (lane-only harness; each mutant a fresh copy whose `expected.txt` names the mutant's own blob, so only behaviour can kill it; the unplanted copy passes every named test):
