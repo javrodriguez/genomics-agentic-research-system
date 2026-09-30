@@ -87,7 +87,9 @@ class ExecutorTemplateTests(unittest.TestCase):
         """Failed while check_groovy compared every config with the slurm template; since the
         render ruling, the template's own bytes (its slots unfilled) are not a rendering."""
         self.assertEqual(self.check(self.project(), FIXTURE.read_text(encoding='utf-8')), [])
-        self.assertEqual(self.check(self.project(), AWSBATCH.read_text(encoding='utf-8')), [REFUSED])
+        refused = self.check(self.project(), AWSBATCH.read_text(encoding='utf-8'))
+        self.assertEqual(len(refused), 1, refused)
+        self.assertIn('slot must match', refused[0])      # its first unfilled slot is named
 
     def test_02_the_generator_shape_is_admitted_for_a_take_and_a_rehearsal(self):
         """The D generator's output (a rendering) passes, and a rehearsal differs from the take
@@ -282,12 +284,12 @@ class ExecutorTemplateTests(unittest.TestCase):
                 self.assertEqual(self.check(self.project(descriptor), slurm + EVIL_LINE),
                                  [REFUSED])
                 self.assertEqual(self.check(self.project(descriptor),
-                                            AWSBATCH.read_text(encoding='utf-8')), [REFUSED])
+                                            FIXTURE.read_text(encoding='utf-8')), [REFUSED])
         # and the slurm grammar under the awsbatch name
         self.assertEqual(self.check(self.project(), slurm), [REFUSED])
         # the direct call keeps its contract: no template named means the slurm one
         path = self.tmp / 'executor.config'
-        for text, verdict in ((slurm, []), (AWSBATCH.read_text(encoding='utf-8'), [REFUSED])):
+        for text, verdict in ((slurm, []), (FIXTURE.read_text(encoding='utf-8'), [REFUSED])):
             path.write_text(text)
             fails = []
             wl.check_groovy(path, fails)

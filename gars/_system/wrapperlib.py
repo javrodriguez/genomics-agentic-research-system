@@ -395,6 +395,61 @@ def executor_template(name):
     return template
 
 
+#: The slots of each RENDERED executor template, each with its validator (0251; glitch-14's
+#: render ruling of 30 Sep 2026). A config under one of these names is admitted only as the
+#: template's bytes with every `{{slot}}` replaced by a value its validator fully matches: no
+#: quote, backslash, newline, `$`, brace or space can be one. Each slot is a value the demo's
+#: generator (`scripts/gen_executor_config.sh`) fills per site or per run; the cliPath is not a
+#: slot, since the demo's terraform defines one install path for every host.
+EXECUTOR_RENDER_SLOTS = {
+    'nextflow.awsbatch.config': {
+        'queue': r'[A-Za-z0-9_-]{1,128}',      # terraform batch_job_queue: an AWS Batch queue name
+        'goal': r'[A-Za-z0-9._-]{1,128}',      # --job-tag goal=VALUE's allow-list, bounded
+        'region': r'[a-z]{2}(?:-[a-z]{1,12}){1,3}-[0-9]{1,2}',   # an AWS region name
+    },
+}
+EXECUTOR_SLOT = re.compile(r'\{\{([a-z]+)\}\}')
+
+
+def rendered_slots(name, template_text, text):
+    """The slot values with which `text` is exactly the template rendered, or None.
+
+    The template is split at its slots, the fixed parts escaped and each slot replaced by its
+    validator, and the whole file must match; the values found are rendered back and the
+    rendering must equal `text` byte for byte. A template that does not declare each of its
+    slots exactly once raises ValueError.
+    """
+    slots = EXECUTOR_RENDER_SLOTS[name]
+    parts = EXECUTOR_SLOT.split(template_text)
+    names = parts[1::2]
+    if sorted(names) != sorted(slots):
+        raise ValueError('%s does not declare each of its slots once' % name)
+    pattern = ''.join(re.escape(part) if k % 2 == 0 else '(?P<%s>%s)' % (part, slots[part])
+                      for k, part in enumerate(parts))
+    match = re.fullmatch(pattern, text)
+    if not match:
+        return None
+    values = match.groupdict()
+    rendered = ''.join(part if k % 2 == 0 else values[part] for k, part in enumerate(parts))
+    return values if rendered == text else None
+
+
+def check_rendering(name, template_text, text):
+    """Refuse (ValueError) a config that is not an exact rendering of its template."""
+    if rendered_slots(name, template_text, text) is not None:
+        return
+    # Only to name the slot in the refusal: the same fixed parts around any one-line value.
+    parts = EXECUTOR_SLOT.split(template_text)
+    loose = re.fullmatch(''.join(re.escape(part) if k % 2 == 0 else "(?P<%s>[^'\\n]*)" % part
+                                 for k, part in enumerate(parts)), text)
+    if loose:
+        for slot, value in sorted(loose.groupdict().items()):
+            if not re.fullmatch(EXECUTOR_RENDER_SLOTS[name][slot], value):
+                raise ValueError('R-075 the %s slot must match %s' % (
+                    slot, EXECUTOR_RENDER_SLOTS[name][slot]))
+    raise ValueError('unregistered Groovy grammar')
+
+
 #: Groovy's own token classes, as the shape compares them (0251, review r2): an identifier, a
 #: number (a dot only when a digit follows, so `130..145` is three tokens), or a multi-character
 #: operator, longest first.
@@ -452,6 +507,11 @@ def check_groovy(path, fails, template_name='nextflow.slurm.config'):
         return tokens
     try:
         template = executor_template(template_name)
+        if template_name in EXECUTOR_RENDER_SLOTS:
+            # A rendered template: exact bytes, no lexer (glitch-14's render ruling, 0251).
+            check_rendering(template_name, template.read_bytes().decode('utf-8'),
+                            Path(path).read_bytes().decode('utf-8'))
+            return
         # Bytes, not read_text: universal newlines would turn a lone CR into LF unseen.
         if (shape(Path(path).read_bytes().decode('utf-8'))
                 != shape(template.read_bytes().decode('utf-8'))):
@@ -627,7 +687,18 @@ def execution_evidence(substage, descriptor, body):
                         if '-profile' in tokens else '')
     entries = [dict(role=role, path=os.path.relpath(str(path.resolve()), str(repo)),
                     sha256=sha256(path)) for role, path in paths if path.is_file()]
-    return {'execution_config': entries, 'execution_config_resolved': resolved}
+    evidence = {'execution_config': entries, 'execution_config_resolved': resolved}
+    # A rendered template's config: the slot values and the rendering's sha256 as well (0251).
+    config = dict(paths).get('nextflow_config')
+    if config is not None and config.name in EXECUTOR_RENDER_SLOTS and config.is_file():
+        template = executor_template(config.name)
+        text = config.read_bytes().decode('utf-8')
+        values = rendered_slots(config.name, template.read_bytes().decode('utf-8'), text)
+        if values is not None:
+            evidence['execution_config_rendered'] = {
+                'template': config.name, 'template_sha256': sha256(template), 'slots': values,
+                'rendered_sha256': hashlib.sha256(text.encode('utf-8')).hexdigest()}
+    return evidence
 
 
 def write_submit_sh(substage, workspace_root, cfg, project_name, assay, body):
