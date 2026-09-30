@@ -89,7 +89,7 @@ class ExecutorTemplateTests(unittest.TestCase):
         self.assertEqual(self.check(self.project(), FIXTURE.read_text(encoding='utf-8')), [])
         refused = self.check(self.project(), AWSBATCH.read_text(encoding='utf-8'))
         self.assertEqual(len(refused), 1, refused)
-        self.assertIn('slot must match', refused[0])      # its first unfilled slot is named
+        self.assertIn('slot must match', refused[0])      # names the alphabetically first unfilled slot
 
     def test_02_the_generator_shape_is_admitted_for_a_take_and_a_rehearsal(self):
         """The D generator's output (a rendering) passes, and a rehearsal differs from the take
@@ -431,8 +431,9 @@ class ExecutorTemplateTests(unittest.TestCase):
         line, had the template's shape. Groovy reads an identifier or a number as one token and a
         newline or a `//` comment as a line end; so does the shape now. Only space, tab, CR and LF
         are whitespace; CR and U+FFFF end a comment as in Groovy. Each case is refused under both
-        names. Comments and blank lines stay free for slurm's shape check (the control) and not
-        for a Batch rendering, whose every byte is fixed."""
+        names, the table run on a Batch rendering and again on the slurm template, so the slurm
+        lexer stays pinned (review r3, R3-1). Comments and blank lines stay free for slurm's shape
+        check (the control) and not for a Batch rendering, whose every byte is fixed."""
         text = FIXTURE.read_text(encoding='utf-8')
         self.assertEqual(self.check(self.project(), text), [])
         free = text.replace('    maxRetries    = 3\n', '    maxRetries = 3   // a comment\n\n\n')
@@ -457,9 +458,24 @@ class ExecutorTemplateTests(unittest.TestCase):
                 self.assertEqual(text.count(old), 1, label)
                 self.assertEqual(self.check(self.project(), text.replace(old, new)), [REFUSED])
         slurm = SLURM.read_text(encoding='utf-8')
-        self.assertEqual(self.check(self.project('name: slurm\n'),
-                                    slurm.replace('queueSize       = 20', 'queue Size       = 20')),
-                         [REFUSED])
+        comment = '    // 130..145 covers the SIGTERM/SIGKILL family; 104 is a common transient.\n'
+        slurm_cases = {
+            'an identifier split by a space': ('maxRetries    = 3', 'max Retries    = 3'),
+            'an identifier split by a newline': ('errorStrategy = {', 'error\nStrategy = {'),
+            'an identifier split by a comment': ('maxRetries    = 3', 'max// c\nRetries    = 3'),
+            'a number split by a space': ('queueSize       = 20', 'queueSize       = 2 0'),
+            'a name split by a space': ('queueSize       = 20', 'queue Size       = 20'),
+            'two statements joined on one line': ("'finish' }\n    maxRetries", "'finish' }    maxRetries"),
+            'a no-break space inside an identifier': ('maxRetries    = 3', 'max\u00a0Retries    = 3'),
+            'a no-break space between two tokens': ('maxRetries    = 3', 'maxRetries\u00a0   = 3'),
+            'CR ends a comment': (comment, comment[:-1] + '\rprocess.maxRetries = 3\n'),
+            'U+FFFF ends a comment': (comment, comment[:-1] + '\uffffprocess.maxRetries = 3\n'),
+        }
+        for label, (old, new) in slurm_cases.items():
+            with self.subTest(template='slurm', case=label):
+                self.assertEqual(slurm.count(old), 1, label)
+                self.assertEqual(self.check(self.project('name: slurm\n'), slurm.replace(old, new)),
+                                 [REFUSED])
 
     def test_16_a_descriptor_naming_no_config_still_has_the_passed_file_checked(self):
         """L5-R2-2: with no config named (`name: local`, or `name: slurm` blanked), preflight
@@ -469,10 +485,12 @@ class ExecutorTemplateTests(unittest.TestCase):
         slurm = SLURM.read_text(encoding='utf-8')
         extra = slurm + '\nprocess.maxRetries = 3\n'
         blank = '_config/executor.yaml: R-075: nextflow_config may not be blank for this backend'
+        missing = 'no _config/nextflow.slurm.config -- stage 00 seeds it'
         for descriptor, problems in (('name: local\n', []),
                                      ("name: slurm\nnextflow_config: ''\n", [blank])):
             with self.subTest(descriptor=descriptor):
-                self.assertEqual(self.check(self.project(descriptor)), problems)  # none present
+                # none present: the wrapper would still pass it with -c (review r3, R3-2)
+                self.assertEqual(self.check(self.project(descriptor)), problems + [missing])
                 self.assertEqual(self.check(self.project(descriptor), slurm), problems)
                 self.assertEqual(self.check(self.project(descriptor), extra), problems + [REFUSED])
 
@@ -508,6 +526,33 @@ class ExecutorTemplateTests(unittest.TestCase):
             with self.subTest(case=label):
                 self.assertNotEqual(text, take)
                 self.assertEqual(self.check(self.project(), text), [REFUSED])
+
+    def test_18_a_symlinked_config_is_refused_and_prepare_needs_a_rendering(self):
+        """Review r3, R3-3: the file passed with -c must be a regular file, not a link to one, and
+        prepare records the slot values of a rendered template's config only because it refuses
+        (ValueError, before submit.sh is written) a config under that name that is not a
+        rendering, rather than leaving the record out."""
+        take = FIXTURE.read_text(encoding='utf-8')
+        elsewhere = self.tmp / 'elsewhere.config'
+        elsewhere.write_text(take, encoding='utf-8')
+        project = self.project()
+        passed = wl.ex.nextflow_config_path(project)
+        passed.symlink_to(elsewhere)
+        refused = self.check(project)
+        self.assertEqual(len(refused), 1, refused)
+        self.assertIn('is a symlink', refused[0])
+        project = self.project()
+        passed = wl.ex.nextflow_config_path(project)
+        passed.write_text(take + '\nprocess.maxRetries = 3\n', encoding='utf-8')
+        sub = project / '02_bioinformatics' / 'atacseq_bulk' / '01_nfcore-atacseq-wrapper'
+        sub.mkdir(parents=True)
+        body = 'nextflow run "x" \\\n    -c "%s" \\\n    -params-file "%s/params.yaml"' % (
+            wl.shell_value(passed.resolve(), 'executor_config'), sub.resolve())
+        cfg = {'compute.partition': 'p', 'compute.time': '1:00:00', 'compute.cpus': '1',
+               'compute.mem': '1G'}
+        with self.assertRaisesRegex(ValueError, 'is not a rendering of its template'):
+            wl.write_submit_sh(sub, project, cfg, 'proj', 'atacseq_bulk', body)
+        self.assertFalse((sub / 'submit.sh').exists())
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
