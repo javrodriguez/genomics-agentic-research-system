@@ -38,7 +38,10 @@ T_NOT = 'not recorded'
 T_WITHHELD = 'a path-like value, withheld'
 T_BY = 'by the approver the run recorded'
 T_NOBY = 'with no approver named in its approval record'
-PATH_LIKE = re.compile(r'''(?:^|[\s"'=,;(\[{<])(?:/|~[^\s/"']*/|\\|[A-Za-z]:[\\/]|file:)''', re.I)
+# An absolute path starts where no letter, digit or one of . _ ~ / : \ - comes before it (so a/b and
+# ./b are relative), or right after a colon when one slash follows (host:/x, not https://x).
+PATH_LIKE = re.compile(r'''(?<![A-Za-z0-9._~/:\\-])(?:/|~[^\s/"']*/|\\|[A-Za-z]:[\\/])|(?<=:)/(?!/)'''
+                       r'''|(?<![A-Za-z0-9])file:''', re.I)
 HEADINGS = ('# Methods', '## Parameters', '## Software used', '## Citation', '## Records read', '## Sources')
 PARA, PARAM, SOFT, CITE, READ = HEADINGS[:5]
 # kind: (section heading, fixed text, slot types) -- v value, p approver phrase, a absent, x unprinted
@@ -137,17 +140,20 @@ def o_cell(value):
 
 
 def o_history(text):
-    """Entries outside fenced blocks: `## <date> — <stage> — <outcome>`, then Model/Template lines."""
+    """Entries outside fenced blocks: `## <date> — <stage> — <outcome>`, then Model/Template lines.
+    Fences as CommonMark has them: up to three spaces, three or more backticks or tildes (a backtick
+    fence's info string holds no backtick), closed only by a run of the same character at least as
+    long, with nothing after it but spaces or tabs; an unclosed fence runs to the end."""
     entries, fence, current = [], None, None
     for line in text.split('\n'):
         line = line[:-1] if line.endswith('\r') else line
-        stripped = line.lstrip(' ')
-        if fence is None and (stripped.startswith('```') or stripped.startswith('~~~')):
-            fence = stripped[0]
-            current = None
-            continue
-        if fence is not None:
-            if stripped.startswith(fence * 3):
+        if fence is None:
+            opening = re.match(r' {0,3}(`{3,}|~{3,})(.*)\Z', line)
+            if opening and not (opening.group(1)[0] == '`' and '`' in opening.group(2)):
+                fence, current = opening.group(1), None
+                continue
+        else:
+            if re.match(r' {0,3}%s{%d,}[ \t]*\Z' % (re.escape(fence[0]), len(fence)), line):
                 fence = None
             continue
         match = re.match(r'## (.+?) \u2014 (.+?) \u2014 (.+?)\s*\Z', line)
@@ -224,11 +230,13 @@ def o_matches(entry, approval):
 
 
 def o_expected(rec):
-    """The lines a set of records must produce, as (kind, references), in no particular order."""
-    lines = collections.Counter()
+    """The lines a set of records must produce, as (kind, references), in document order: within
+    each section, manifests in argument order and each manifest's lines in the specification's order,
+    so an "Its …" line and an indented version line stay under the line they belong to."""
+    sections = collections.OrderedDict((heading, []) for heading in HEADINGS[:5])
 
     def add(kind, *refs):
-        lines[(kind, refs)] += 1
+        sections[KINDS[kind][0]].append((kind, refs))
 
     for k in range(1, rec.n + 1):
         m, M = rec.json['manifest%d' % k], 'manifest%d:' % k
@@ -303,6 +311,15 @@ def o_expected(rec):
                 P = '%s/containers/%d' % (M, i)
                 add('container', M + '/workflow_name', P + '/process', P + '/image', P + '/digest',
                     P + '/image_sha256')
+    if rec.plan:   # after every workflow's sentences; the pointer closes the paragraph
+        add('approval', 'approval:/plan_sha256', 'approval:/timestamp', 'approval:/actor?')
+        if rec.history:
+            matches = [e for e, entry in enumerate(rec.entries) if o_matches(entry, rec.approval)]
+            for e in matches:
+                add('history', *('history:#%d/%s' % (e, f) for f in
+                                 ('stage', 'outcome', 'date', 'model', 'template_version')))
+            if not matches:
+                add('history-absent', 'history:entries', 'approval:/plan_path?')
     add('pointer')
     cited = []
     for k in range(1, rec.n + 1):
@@ -313,19 +330,10 @@ def o_expected(rec):
         elif o_cell(commit) not in cited:
             cited.append(o_cell(commit))
             add('citation', M + '/gars_commit')
-    if rec.plan:
-        add('approval', 'approval:/plan_sha256', 'approval:/timestamp', 'approval:/actor?')
-        if rec.history:
-            matches = [e for e, entry in enumerate(rec.entries) if o_matches(entry, rec.approval)]
-            for e in matches:
-                add('history', *('history:#%d/%s' % (e, f) for f in
-                                 ('stage', 'outcome', 'date', 'model', 'template_version')))
-            if not matches:
-                add('history-absent', 'history:entries', 'approval:/plan_path?')
     for name in ['manifest%d' % k for k in range(1, rec.n + 1)] + ['plan', 'approval', 'history']:
         if name in rec.raw:
             add('record', name + ':bytes')
-    return lines
+    return [line for heading in sections for line in sections[heading]]
 
 
 def o_line(kind, refs, rec):
@@ -371,7 +379,6 @@ def verify(text, rec):
         for offset, line in enumerate(content):
             body[start + 3 + offset] = (lines[start], line)   # 1-based: heading, blank, then content
     sources = {n: body.pop(n) for n in list(body) if body[n][0] == HEADINGS[-1]}
-    seen = collections.Counter()
     cited = {}
     for n, (_, line) in sorted(sources.items()):
         match = SOURCE.match(line)
@@ -382,14 +389,16 @@ def verify(text, rec):
         if number in cited:
             raise TraceError('line %d is cited twice' % number)
         cited[number] = (kind, refs)
-        seen[(kind, refs)] += 1
     if set(cited) != set(body):
         raise TraceError('uncited lines %s; citations of no line %s' % (
             sorted(set(body) - set(cited)), sorted(set(cited) - set(body))))
+    listed = [cited[n] for n in sorted(cited)]   # the lines' own order, whatever order Sources used
     expected = o_expected(rec)
-    if seen != expected:
-        raise TraceError('the records call for %s and the output lists %s' % (
-            sorted(expected - seen), sorted(seen - expected)))
+    if listed != expected:
+        at = next((i for i, (a, b) in enumerate(zip(listed, expected)) if a != b), min(len(listed), len(expected)))
+        raise TraceError('traced line %d of %d: the output has %r where the records call for %r' % (
+            at + 1, len(expected), listed[at] if at < len(listed) else None,
+            expected[at] if at < len(expected) else None))
     for number, (kind, refs) in cited.items():
         section, line = body[number]
         if section != KINDS[kind][0]:
@@ -594,6 +603,25 @@ class RenderMethodsTests(unittest.TestCase):
                               'approval:/plan_sha256 approval:/expiry approval:/actor?')
         with self.assertRaises(TraceError):
             verify(moved, rec)
+        # (g) two workflows' "Its configuration sha256" lines swapped, each still citing its own
+        # field, so every line alone is right and only its place is wrong (review r1 F-3)
+        def swap(a, b, kind):
+            out = list(lines)
+            out[a], out[b] = lines[b], lines[a]
+            numbers = {'- line %d: %s:' % (a + 1, kind): '- line %d: %s:' % (b + 1, kind),
+                       '- line %d: %s:' % (b + 1, kind): '- line %d: %s:' % (a + 1, kind)}
+            out = [next((l.replace(o, n) for o, n in numbers.items() if l.startswith(o)), l) for l in out]
+            self.assertEqual(sum(1 for x, y in zip(out, lines) if x != y), 4)   # two lines, two citations
+            return '\n'.join(out)
+
+        a, b = [i for i, l in enumerate(lines) if l.startswith('Its configuration sha256 is ')]
+        with self.assertRaises(TraceError):
+            verify(swap(a, b, 'config'), rec)
+        # ... and a tool version moved under the other workflow's versions file
+        a = lines.index('  - `FIXTURE_PROCESS/fixture-tool`: `1.0.0`.')
+        b = lines.index('  - `pandas`: `fixture-1`.')
+        with self.assertRaises(TraceError):
+            verify(swap(a, b, 'version'), rec)
         # (f) the renderer itself mutated: a guessed default, then an invented version
         argv = self.argv(('prepare-manifest.json',), stage03=False)
         guessed = self.in_process(argv, [('NOT_RECORDED', 'GRCh38')])
@@ -666,7 +694,9 @@ class RenderMethodsTests(unittest.TestCase):
         m = self.load('local-manifest.json')
         hostile = ['/abs/secret', '~/home-secret', '~someone/secret', '\\\\server\\share', 'C:\\data\\x',
                    'd:/data/x', 'file:///etc/x', 'FILE:x', '--outdir=/abs/secret', 'a /abs/secret',
-                   '"/quoted/abs"', '{"nested": "/abs/secret"}', 'x;/abs', '(/abs)', 'line\n/abs']
+                   '"/quoted/abs"', '{"nested": "/abs/secret"}', 'x;/abs', '(/abs)', 'line\n/abs',
+                   'user@host:/abs/secret', 'cat x >/abs/secret', 'a|/abs/secret', 'key:/abs/secret',
+                   'x&/abs/secret', 'a+/abs/secret', 'tab\t/abs/secret']
         for value in hostile:
             with self.subTest(value=value):
                 changed = dict(m, params={'p': value, value: 'key-side', 'nested': {'deep': [value]}},
@@ -683,7 +713,8 @@ class RenderMethodsTests(unittest.TestCase):
                 self.assertIn('parameter a path-like value, withheld: `key-side`.', text)
         for value in ('~ condition', 'condition,MT,WT', 'quay.io/biocontainers/fastqc:0.12.1',
                       'https://depot.galaxyproject.org/singularity/fastqc', 'pipeline_info/fixture.sif',
-                      'N/A', 'sha256:' + 'a' * 64):
+                      'N/A', 'sha256:' + 'a' * 64, 's3://bucket/key', 'quay.io:443/biocontainers/fastqc',
+                      './relative/x', '../relative/x', '$HOME/x', 'a\\b', 'fixture/tool@sha256:' + 'b' * 64):
             with self.subTest(shown=value):
                 self.dump('variant.json', dict(m, params={'p': value}))
                 self.assertIn('parameter `p`: `%s`.' % value, self.traced(('variant.json',), stage03=False))
@@ -736,7 +767,19 @@ class RenderMethodsTests(unittest.TestCase):
         failed = ('\n## 2026-09-30 \u2014 03_custom_analysis/01_fixture-followup \u2014 analysis failed\n\n'
                   'Model: failed-model\n')
         again = '\n## 2026-10-01 \u2014 03_custom_analysis/' + entry.replace('claude-opus-5-5', 'second-model')
+        inside = ('## 2026-10-02 \u2014 03_custom_analysis/01_fixture-followup \u2014 analysis complete\n'
+                  'Template version: v0.10.0\nModel: %s\n')
         cases = {
+            'a four-backtick fence': (history + '\n````\n```\n' + inside % 'inside-four' + '```\n````\n',
+                                      ['claude-opus-5-5'], ['inside-four']),
+            'a tilde fence': (history + '\n~~~~\n' + inside % 'inside-tilde' + '~~~~~\n',
+                              ['claude-opus-5-5'], ['inside-tilde']),
+            'an info string does not close': (history + '\n```\n```python\n' + inside % 'inside-info' + '```\n',
+                                              ['claude-opus-5-5'], ['inside-info']),
+            'an unclosed fence': (history + '\n  ```text\n' + inside % 'inside-unclosed',
+                                  ['claude-opus-5-5'], ['inside-unclosed']),
+            'a four-space line is not a fence': (history + '\n    ```\n' + inside % 'after-indented' + '    ```\n',
+                                                 ['claude-opus-5-5', 'after-indented'], []),
             'as recorded': (history, ['claude-opus-5-5'], []),
             'a fenced look-alike': (history + '\n' + fenced, ['claude-opus-5-5'], ['fenced-model']),
             'another analysis': (history + other + failed, ['claude-opus-5-5'], ['other-model', 'failed-model']),
@@ -800,6 +843,10 @@ class RenderMethodsTests(unittest.TestCase):
                                 (b'{"a": 1, "a": 2}', 'manifest 1 repeats the key'),
                                 (b'{"a": NaN}', 'manifest 1 holds a non-finite number'),
                                 (b'{"a": Infinity}', 'manifest 1 holds a non-finite number'),
+                                (b'{"threads": 1e400}', 'manifest 1 holds a non-finite number'),
+                                (b'{"params": {"x": [-1E999]}}', 'manifest 1 holds a non-finite number'),
+                                (b'{"params": {"p": ' + b'[' * 3000 + b']' * 3000 + b'}}',
+                                 'manifest 1 is nested too deeply'),
                                 (b'[]', 'manifest 1 is not a JSON object'),
                                 (b'"text"', 'manifest 1 is not a JSON object')):
             with self.subTest(payload=payload):
@@ -998,6 +1045,15 @@ class RenderMethodsTests(unittest.TestCase):
         self.assertEqual(p.returncode, 2)
         p = run([sys.executable, CLAIMS / 'render_methods.py'] + base)
         self.assertEqual(p.returncode, 0, p.stderr.decode())
+        # The page is written to be shared: a new page takes the umask's mode, not a temp file's
+        # 0600, and a re-render keeps the mode the owner gave it (review r1 F-8).
+        umask = os.umask(0)
+        os.umask(umask)
+        self.assertEqual(self.out.stat().st_mode & 0o777, 0o666 & ~umask)
+        self.out.chmod(0o640)
+        p = run([sys.executable, CLAIMS / 'render_methods.py'] + base)
+        self.assertEqual(p.returncode, 0, p.stderr.decode())
+        self.assertEqual(self.out.stat().st_mode & 0o777, 0o640)
 
     def test_stdlib_only_and_python36_parseable(self):
         source = (CLAIMS / 'render_methods.py').read_text(encoding='utf-8')
