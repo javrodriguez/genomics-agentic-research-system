@@ -575,32 +575,82 @@ class ExecutorTemplateTests(unittest.TestCase):
                 self.assertNotEqual(text, take)
                 self.assertEqual(self.check(self.project(), text), [REFUSED])
 
-    def test_18_a_symlinked_config_is_refused_and_prepare_needs_a_rendering(self):
-        """Review r3, R3-3: the file passed with -c must be a regular file, not a link to one, and
-        prepare records the slot values of a rendered template's config only because it refuses
-        (ValueError, before submit.sh is written) a config under that name that is not a
-        rendering, rather than leaving the record out."""
+    def test_18_a_config_link_is_admitted_only_as_a_replay_binds_it(self):
+        """Review r3 (R3-3) and the rulings of 30 Sep 2026 (option A, and glitch-14's containment
+        rule): scripts/rerun_check.py binds a replay's `_config/<name>` as a link into the original
+        project, so a link is admitted only when its final realpath has the same name and lies
+        inside this workspace's projects; its target's bytes are what is checked. Prepare keys the
+        rendering check and the render record on the descriptor's name, and refuses (before
+        submit.sh is written) a `-c` config of another name or one that is not a rendering."""
         take = FIXTURE.read_text(encoding='utf-8')
-        elsewhere = self.tmp / 'elsewhere.config'
-        elsewhere.write_text(take, encoding='utf-8')
-        project = self.project()
-        passed = wl.ex.nextflow_config_path(project)
-        passed.symlink_to(elsewhere)
-        refused = self.check(project)
-        self.assertEqual(len(refused), 1, refused)
-        self.assertIn('is a symlink', refused[0])
-        project = self.project()
-        passed = wl.ex.nextflow_config_path(project)
-        passed.write_text(take + '\nprocess.maxRetries = 3\n', encoding='utf-8')
-        sub = project / '02_bioinformatics' / 'atacseq_bulk' / '01_nfcore-atacseq-wrapper'
-        sub.mkdir(parents=True)
-        body = 'nextflow run "x" \\\n    -c "%s" \\\n    -params-file "%s/params.yaml"' % (
-            wl.shell_value(passed.resolve(), 'executor_config'), sub.resolve())
-        cfg = {'compute.partition': 'p', 'compute.time': '1:00:00', 'compute.cpus': '1',
-               'compute.mem': '1G'}
-        with self.assertRaisesRegex(ValueError, 'is not a rendering of its template'):
-            wl.write_submit_sh(sub, project, cfg, 'proj', 'atacseq_bulk', body)
-        self.assertFalse((sub / 'submit.sh').exists())
+        name = AWSBATCH.name
+        root = self.tmp / 'projects-root'
+        inside = root / 'original' / '_config'
+        inside.mkdir(parents=True)
+        (inside / name).write_text(take, encoding='utf-8')
+        (inside / 'other.config').write_text(take, encoding='utf-8')
+        bad = root / 'original-2' / '_config'
+        bad.mkdir(parents=True)
+        (bad / name).write_text(take + '\nprocess.maxRetries = 3\n', encoding='utf-8')
+        outside = self.tmp / 'elsewhere' / '_config'
+        outside.mkdir(parents=True)
+        (outside / name).write_text(take, encoding='utf-8')
+        hop_out = self.tmp / 'hop-outside'
+        hop_out.mkdir()
+        (hop_out / 'hop.config').symlink_to(inside / name)          # a chain that ends inside
+        (inside / 'hop-back.config').symlink_to(outside / name)      # a chain that ends outside
+        OUTSIDE = "resolves outside this workspace's projects"
+        OTHER = 'resolves to a different config name'
+        cases = [
+            ('same name, inside', inside / name, None),
+            ('same name, outside', outside / name, OUTSIDE),
+            ('another name, inside', inside / 'other.config', OTHER),
+            ('same name, inside, not a rendering', bad / name, 'unregistered Groovy grammar'),
+            ('a chain ending inside', hop_out / 'hop.config', None),
+            ('a chain ending outside', inside / 'hop-back.config', OUTSIDE),
+        ]
+        with patch.object(wl, 'EXECUTOR_PROJECTS', root):
+            for label, target, refusal in cases:
+                with self.subTest(case=label):
+                    project = self.project()
+                    wl.ex.nextflow_config_path(project).symlink_to(target)
+                    refused = self.check(project)
+                    if refusal is None:
+                        self.assertEqual(refused, [])
+                    else:
+                        self.assertEqual(len(refused), 1, refused)
+                        self.assertIn(refusal, refused[0])
+            cfg = {'compute.partition': 'p', 'compute.time': '1:00:00', 'compute.cpus': '1',
+                   'compute.mem': '1G'}
+
+            def prepare(project, passed):
+                sub = project / '02_bioinformatics' / 'atacseq_bulk' / '01_nfcore-atacseq-wrapper'
+                sub.mkdir(parents=True)
+                body = 'nextflow run "x" \\\n    -c "%s" \\\n    -params-file "%s/params.yaml"' % (
+                    wl.shell_value(passed.resolve(), 'executor_config'), sub.resolve())
+                wl.write_submit_sh(sub, project, cfg, 'proj', 'atacseq_bulk', body)
+                return sub
+
+            # a replay-bound link: the record is written, keyed on the descriptor's name
+            project = self.project()
+            passed = wl.ex.nextflow_config_path(project)
+            passed.symlink_to(inside / name)
+            sub = prepare(project, passed)
+            wl.write_reproducibility(sub, 'atacseq_bulk', sub, {}, [])
+            import json
+            manifest = json.loads((sub / 'reproducibility' / 'manifest.json').read_text())
+            self.assertEqual(manifest['execution_config_rendered']['template'], name)
+            self.assertEqual(manifest['execution_config_rendered']['slots'], SLOTS)
+            # -c of another name under a rendered descriptor name, or a non-rendering: refused
+            for label, target, message in (
+                    ('another name', inside / 'other.config', "is not the descriptor's"),
+                    ('not a rendering', bad / name, 'is not a rendering of its template')):
+                with self.subTest(prepare=label):
+                    project = self.project()
+                    sub = project / '02_bioinformatics' / 'atacseq_bulk' / '01_nfcore-atacseq-wrapper'
+                    with self.assertRaisesRegex(ValueError, message):
+                        prepare(project, target)
+                    self.assertFalse((sub / 'submit.sh').exists())
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
