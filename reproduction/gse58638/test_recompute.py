@@ -607,6 +607,8 @@ class PublishedBindingTests(unittest.TestCase):
         # renders from its own counts, and the relation printed is IN KIND (PREREG-2 R1, R3).
         code, out, err = run(recompute.default_config(), "--check-published")
         self.assertEqual(code, 0, err + out)
+        # Review r5, F-2: the exception is named in the binding's own line, never folded into "holds".
+        self.assertIn("PREREG-2 R3 holds except 1 named cell awaiting a PREREG-3 (GSM1420155 z>2)", out)
         self.assertIn("IN KIND", self.expected)
         self.assertNotIn("MATCH", self.expected)
 

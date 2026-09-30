@@ -1117,9 +1117,12 @@ def check_published(config, out, err):
         err.write("".join("BINDING FAILED: %s\n" % f for f in failures))
         return 1
     out.write(("binding: expected.txt names blob %s and is exactly what it renders from its counts; "
-               "quotations T1, T2, C1 found once each (lines %d, %d, %d); relation %s; PREREG-2 R3 holds "
+               "quotations T1, T2, C1 found once each (lines %d, %d, %d); relation %s; PREREG-2 R3 holds%s "
                "(graded 4 deposits, %d records); R5 %s\n"
                % (blob, quote_lines["T1"], quote_lines["T2"], quote_lines["C1"], VERDICT,
+                  "" if not STEP1_B1_DIFFERS else " except %d named cell%s awaiting a PREREG-3 (%s)" % (
+                      len(STEP1_B1_DIFFERS), "" if len(STEP1_B1_DIFFERS) == 1 else "s",
+                      ", ".join("%s z>%d" % (g, z + 1) for g, z in sorted(STEP1_B1_DIFFERS))),
                   sum(c.records for c in counts.values()), r5)).encode("utf-8"))
     return 0
 
