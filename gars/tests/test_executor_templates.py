@@ -114,6 +114,12 @@ class ExecutorTemplateTests(unittest.TestCase):
                 self.assertEqual(len(refused), 1, refused)
                 self.assertTrue(refused[0].startswith('R-098/§9.6: '), refused)
                 self.assertIn('queue', refused[0])
+        # Under the slurm name a single-quoted literal is still held to R-075's charset.
+        slurm = SLURM.read_text(encoding='utf-8')
+        self.assertEqual(slurm.count("'cpu_long'"), 1)
+        refused = self.check(self.project('name: slurm\n'), slurm.replace("'cpu_long'", "'cpu;long'"))
+        self.assertEqual(len(refused), 1, refused)
+        self.assertIn('R-075 Groovy literal must match', refused[0])
 
     # -- one line more, or one fixed token changed, is refused -------------------------------
 
@@ -245,6 +251,11 @@ class ExecutorTemplateTests(unittest.TestCase):
                     else:
                         self.assertTrue(refused, 'admitted: %s with a %s config' % (label, (
                             'evil' if text is evil else 'clean')))
+        # `.` and `..` name no file in _config/ either (0251 item 3).
+        for name in ('.', '..'):
+            with self.subTest(name=name):
+                project = self.project('name: slurm\nnextflow_config: %s\n' % name)
+                self.assertIn(BARE, wl.ex.validate(wl.ex.load(project)))
 
     def test_08_a_symlinked_template_or_template_folder_is_refused(self):
         """A template the agent could point at its own file must never select: a symlink in
@@ -269,10 +280,33 @@ class ExecutorTemplateTests(unittest.TestCase):
             self.assertEqual(len(refused), 1, refused)
             self.assertIn(NO_TEMPLATE, refused[0])
             self.assertEqual(self.check(self.project(), FIXTURE.read_text()), [])
+            # A link that stays inside the folder is still a link; a regular file whose name only
+            # starts like a template name, or carries upper case, names no template.
+            (real / 'nextflow.inner.config').symlink_to(real / 'nextflow.copied.config')
+            (real / 'nextflow.copied.config.bak').write_text(evil)
+            (real / 'nextflow.Upper.config').write_text(evil)
+            for name in ('nextflow.inner.config', 'nextflow.copied.config.bak',
+                         'nextflow.Upper.config'):
+                with self.subTest(name=name):
+                    project = self.project('name: local\nnextflow_config: %s\n' % name)
+                    refused = self.check(project, evil)
+                    self.assertEqual(len(refused), 1, refused)
+                    self.assertIn(NO_TEMPLATE, refused[0])
         with patch.object(wl, 'EXECUTOR_TEMPLATES', linked_dir):
             refused = self.check(self.project(), FIXTURE.read_text())
             self.assertEqual(len(refused), 1, refused)
             self.assertIn(NO_TEMPLATE, refused[0])
+        # A rendered template that does not declare each of its slots once is refused, never
+        # compiled (a slot twice would be a regular-expression error, not a refusal).
+        malformed = self.tmp / 'malformed'
+        malformed.mkdir()
+        shutil.copyfile(str(SLURM), str(malformed / SLURM.name))
+        (malformed / AWSBATCH.name).write_text(
+            AWSBATCH.read_text(encoding='utf-8').replace('{{region}}', '{{queue}}'), encoding='utf-8')
+        with patch.object(wl, 'EXECUTOR_TEMPLATES', malformed):
+            refused = self.check(self.project(), FIXTURE.read_text())
+            self.assertEqual(len(refused), 1, refused)
+            self.assertIn('does not declare each of its slots once', refused[0])
 
     # -- what must not move --------------------------------------------------------------------
 
@@ -391,6 +425,15 @@ class ExecutorTemplateTests(unittest.TestCase):
         template = FIXTURE.read_text(encoding='utf-8')
         self.assertEqual(self.check(project, template + '\nprocess.maxRetries = 3\n'), [REFUSED])
         self.assertEqual(self.check(project, template), [])
+        # and when the nested descriptor names another config, its clean sibling is not what
+        # gets checked in place of the file passed
+        project = self.project()
+        nested = project / '_config' / '_config'
+        nested.mkdir()
+        (nested / 'executor.yaml').write_text('name: slurm\n', encoding='utf-8')
+        (project / '_config' / 'nextflow.slurm.config').write_text(
+            SLURM.read_text(encoding='utf-8'), encoding='utf-8')
+        self.assertEqual(self.check(project, template + '\nprocess.maxRetries = 3\n'), [REFUSED])
 
     def test_14_the_trace_carries_what_the_launch_pad_reads(self):
         """F-L3-3: a -c config's trace scope replaces nf-core's own, so these fields are the only
@@ -470,12 +513,17 @@ class ExecutorTemplateTests(unittest.TestCase):
             'a no-break space between two tokens': ('maxRetries    = 3', 'maxRetries\u00a0   = 3'),
             'CR ends a comment': (comment, comment[:-1] + '\rprocess.maxRetries = 3\n'),
             'U+FFFF ends a comment': (comment, comment[:-1] + '\uffffprocess.maxRetries = 3\n'),
+            'an operator split by a space': ('(130..145)', '(130. .145)'),
         }
         for label, (old, new) in slurm_cases.items():
             with self.subTest(template='slurm', case=label):
                 self.assertEqual(slurm.count(old), 1, label)
                 self.assertEqual(self.check(self.project('name: slurm\n'), slurm.replace(old, new)),
                                  [REFUSED])
+        # A quote left open at the end of the file is refused, never read as the end of the text.
+        refused = self.check(self.project('name: slurm\n'), slurm + "'process.maxRetries = 3\n")
+        self.assertEqual(len(refused), 1, refused)
+        self.assertIn('unterminated string', refused[0])
 
     def test_16_a_descriptor_naming_no_config_still_has_the_passed_file_checked(self):
         """L5-R2-2: with no config named (`name: local`, or `name: slurm` blanked), preflight
