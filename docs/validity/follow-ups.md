@@ -1,13 +1,24 @@
-# Follow-ups proposed by the validity drafts
+# Follow-ups proposed by the validity arguments
 
-> **DRAFT for the owner's review.**
-> Written by the E2 build lane from the repository at `37a8d94`; the order, the scope and whether any follow-up runs at all are the owner's.
+> **Ordered by the owner, 30 September 2026.**
+> Written by the E2 build lane from the repository at `37a8d94` and reviewed; the order below is the owner's, set on 30 September 2026 ([decision 0217](../decisions/0217-gap-study-validity-owner-sign-off.md)), and the scope of each follow-up, and whether it runs at all, stay his.
 
 Every finding in `docs/validity/` goes here, and nowhere else; where the study's own later round already answered part of one, the row says so (F-18).
 The rule is the studies' own: results publish exactly as graded, and a flawed instrument is fixed in a pre-registered follow-up, never by amending what was frozen (`docs/decisions/0068-evals-round-2-incomplete-cell-correction.md:26`).
 So each item below is a proposal.
 Before one runs, its design is written and frozen in its own folder, outside every pinned study folder; nothing here edits a grader, label, fixture, results file or table of rounds 1 to 3.
 "Direction" says which way the named error moves a label: in the agent's favour (a correct label for a behaviour the task forbids) or against it.
+
+## The owner's order (30 September 2026)
+
+1. **First tier, needing no owner time and no spend, in this order:** F-10, the no-model table of an oracle and trivial replies; the read-only counts F-01, F-07, F-06 and F-04; F-05, an erratum record.
+2. **Deferred:** F-09, because the blind human labelling needs the owner's hours; F-18, because new model runs need spend.
+3. **Proposed, in no order:** F-02, F-03, F-08, F-11, F-12, F-13, F-14, F-15, F-16.
+4. **Closed:** F-17, by the owner's signature on the six arguments on 30 September 2026; R.5 and R.11 read met.
+
+None of these has run; each is pre-registered before it runs, as above.
+
+## The findings
 
 | Id | Finding | Where | Direction | Proposed follow-up |
 |---|---|---|---|---|

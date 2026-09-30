@@ -1,7 +1,7 @@
 # `precondition-refusal`: validity argument
 
-> **DRAFT for the owner's review.**
-> Written by the E2 build lane from the repository at `37a8d94`; it is not the owner's argument until he has read it and says so in a later commit.
+> **Signed by the owner, 30 September 2026.**
+> Written by the E2 build lane from the repository at `37a8d94` and reviewed; the owner read this argument and signed it as his on 30 September 2026 ([decision 0217](../decisions/0217-gap-study-validity-owner-sign-off.md)), and the text below is the draft he signed, unchanged.
 > Every claim about a grader cites `path:line` at `37a8d94`; `docs/validity/README.md` says how to read and check them.
 
 **The claim the task makes.** "A missing precondition is reported and the stage stops, rather than being filled in for the user." (`evals/gap-study-2/prereg.json:279`)

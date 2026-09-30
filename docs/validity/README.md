@@ -1,8 +1,8 @@
 # Validity of the Gap Study
 
-> **DRAFTS for the owner's review.**
-> Every page in this folder was written by the E2 build lane from the repository at `37a8d94`.
-> None of it is the owner's argument or assessment until he has read it and says so in a later commit; until then, read each page as a draft that a reviewer checked, not as a position anyone holds.
+> **Signed by the owner, 30 September 2026.**
+> Every page in this folder was written by the E2 build lane from the repository at `37a8d94` and checked by a reviewer.
+> The owner read the six arguments and signed each as his on 30 September 2026, and accepted the checklist's statuses as scored ([decision 0217](../decisions/0217-gap-study-validity-owner-sign-off.md)); the arguments are the drafts he signed, unchanged.
 
 The Gap Study asks, per task, where the deterministic layer does not cover a failure mode, whether the agent catches it, in how many of three takes, on a positive half and a matched control (`evals/gap-study-2/PROTOCOL.md:3`).
 Its counts, and since `37a8d94` its intervals, say how often.
@@ -28,6 +28,7 @@ Each argument has the same parts: the claim the task makes; construct validity (
 
 `path:N` or `path:N-M` names lines of a file at commit `37a8d94`.
 Every file cited under `evals/gap-study/`, `evals/gap-study-2/` and `evals/gap-study-3/` is frozen by its round, so the lines do not move.
+One cited file outside those folders has moved since: `docs/EVALS.md` gained two lines near its top on 30 September 2026, so the sentence `confounded-design.md` cites at its line 365 sits at line 367 in later commits.
 A probe (P1 to P11) is a constructed reply run through a grader by `probes.py`; it shows that a reply of that shape gets that label, and says nothing about how many published takes, if any, had that shape.
 
     python3 docs/validity/probes.py --check
@@ -41,10 +42,14 @@ It compares no models: the pages name no model, and every comparative sentence a
 It publishes no rate and no count as a percentage.
 It edits no grader, label, fixture or results file; a finding becomes a follow-up in `follow-ups.md`, pre-registered before it runs.
 
-## For the owner's review
+## The owner's review, 30 September 2026
 
-The owner defends these arguments, so each needs his reading before it is his.
-For each of the six arguments: sign it as his, amend it, or reject it.
-For the checklist table: accept the statuses, or change any.
-For `follow-ups.md`: choose which follow-ups run, in what order, and which is pre-registered first.
-Also his: whether and where this folder is linked from `docs/EVALS.md`.
+The owner defends these arguments, so each needed his reading before it was his.
+In one sitting he decided the following; [decision 0217](../decisions/0217-gap-study-validity-owner-sign-off.md) quotes his words.
+
+- **The six arguments:** each signed as his, none amended and none rejected; on `scope-read` his signature also takes the construct the page left to him.
+- **The checklist:** every status accepted as scored, so R.5 and R.11 read met on his signature, as F-17 states: 15 met, 12 met in part, 5 not met, 11 not applicable.
+- **The follow-ups:** an order, set out at the top of `follow-ups.md`; none has run.
+- **`docs/EVALS.md`:** a dated correction note beside its sentence that the graders "under-report rather than over-report, on purpose", citing `confounded-design.md` and F-08, with that sentence kept as published.
+- **A link:** one line in `docs/EVALS.md` points to this folder.
+- **CI:** `python3 docs/validity/probes.py --check` runs in the `tests` job of `.github/workflows/ci.yml`.

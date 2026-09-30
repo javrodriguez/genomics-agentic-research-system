@@ -3,6 +3,8 @@ That first sentence describes Layer B, the first study, further down this page; 
 
 **Intervals, 28 September 2026.** Exact two-sided 0.95 intervals (Clopper-Pearson) on the per-take probability of every graded half of Gap Study rounds 1 to 3 are in [`evals/gap-study-intervals/INTERVALS.md`](../evals/gap-study-intervals/INTERVALS.md), with how little two halves of three takes can tell apart. It is a secondary analysis written after grading, per half only and never pooled across rounds; every table on this page stays as published, and CI re-derives each figure from the committed results files ([decision 0210](decisions/0210-gap-study-intervals.md)).
 
+**Validity, 30 September 2026.** Whether each of the Gap Study's six tasks measures what it says, and how its graders read against the Agentic Benchmark Checklist (Zhu et al. 2025), is argued task by task in [`docs/validity/`](validity/README.md), written by the build lane and signed by the owner ([decision 0217](decisions/0217-gap-study-validity-owner-sign-off.md)); no table on this page is regraded.
+
 # The Gap Study, round 2
 
 <!-- gap-study-2:summary -->
@@ -367,6 +369,15 @@ readers: they read sentences, not meaning. A conclusion phrased outside the froz
 as unreadable and costs the agent a verdict, rather than being guessed at. Every sentence a
 grader considered is written into the results file, matched or not, so a reader can audit each
 call and disagree in public.
+
+**Correction, 30 September 2026.** The paragraph above is kept as published, and it does not
+hold for every sentence. The validity argument for the Gap Study's `confounded-design` task
+([`docs/validity/confounded-design.md`](validity/confounded-design.md), probe P7) found that the
+first study's classifier, `evals/graders/confounded_refusal.py`, which grades
+`confounded-refusal` in the table above, can over-report: a question-form caution such as
+"Before running the differential test, check whether the design is confounded." is read as
+`asserted`. Follow-up F-08 in [`docs/validity/follow-ups.md`](validity/follow-ups.md) proposes
+the reading that would measure how often; no result on this page is regraded.
 
 **With three tasks there is no rate.** This table reports outcomes. A percentage over three tasks
 would suggest a precision that three tasks cannot carry.

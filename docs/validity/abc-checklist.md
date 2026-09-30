@@ -1,7 +1,7 @@
 # The Agentic Benchmark Checklist, run over the Gap Study's graders
 
-> **DRAFT for the owner's review.**
-> Written by the E2 build lane from the repository at `37a8d94`; it is not the owner's assessment until he has read it and says so in a later commit.
+> **Accepted by the owner, 30 September 2026.**
+> Written by the E2 build lane from the repository at `37a8d94` and reviewed; the owner read it and accepted every status as scored on 30 September 2026 ([decision 0217](../decisions/0217-gap-study-validity-owner-sign-off.md)), which with his signature on the six arguments makes R.5 and R.11 met, as F-17 states.
 > Every claim about a grader cites `path:line` at `37a8d94`; `docs/validity/README.md` says how to read and check them.
 
 ## The checklist, and the version read
@@ -21,9 +21,10 @@ The run was read-only: the lane read the files, ran `docs/validity/probes.py`, a
 
 ## Result
 
-43 items: 13 met, 14 met in part, 5 not met, 11 not applicable (no model judge and no code-generation task).
-The 19 items met in part or not met are the findings, and each maps to a follow-up in `docs/validity/follow-ups.md`; two met items carry a residual that also does (T.5, O.b.3).
+43 items: 15 met, 12 met in part, 5 not met, 11 not applicable (no model judge and no code-generation task).
+The 17 items met in part or not met are the findings, and each maps to a follow-up in `docs/validity/follow-ups.md`; two met items carry a residual that also does (T.5, O.b.3).
 Each follow-up is pre-registered before it runs, and none edits a frozen grader, label, fixture or result.
+As drafted on 28 September 2026 the result read 13 met, 14 met in part and 19 findings, with R.5 and R.11 in part until the owner's reading; they read met from his sign-off on 30 September 2026 (F-17, decision 0217), and no other status changed.
 
 ## Task validity
 
@@ -73,12 +74,12 @@ Each follow-up is pre-registered before it runs, and none edits a frozen grader,
 | R.2 | Offers an open-source evaluation harness for users. | met | The documented commands regrade every committed take from a fresh clone, with no model and no connection (`evals/gap-study/README.md:11-19`, `evals/gap-study/README.md:24`). | none |
 | R.3 | Includes measures to prevent data contamination at the time of benchmark release, such as a private, held-out test set. | not met | Every probe line, fixture generator, grader and transcript is public; there is no held-out variant. | F-13 |
 | R.4 | Includes measures or plans to consistently update challenges over time to avoid overfitting. | in part | Rounds re-run the tasks against a changed system (`evals/gap-study-2/README.md:3-4`); no plan refreshes the probes themselves. | F-13 |
-| R.5 | Clearly states the relationship between the agent capabilities it aims to evaluate and the constructs or outcomes it measures. | in part | Each task states what it stands for (`evals/gap-study-2/prereg.json:106`, and the same field per task); `confounded-design`'s line is a history, not a construct (`evals/gap-study-2/prereg.json:1027`); no per-task argument existed before these drafts. | F-17 |
+| R.5 | Clearly states the relationship between the agent capabilities it aims to evaluate and the constructs or outcomes it measures. | met | Each task states what it stands for (`evals/gap-study-2/prereg.json:106`, and the same field per task); `confounded-design`'s line is a history, not a construct (`evals/gap-study-2/prereg.json:1027`); no per-task argument existed before these drafts. On 30 September 2026 the owner signed the six arguments in this folder, which state that relationship task by task, `confounded-design`'s included (decision 0217). | F-17, closed on the sign-off |
 | R.6 | Clearly states the evaluation subjective of the benchmark (e.g., a model or an agent framework). | met | A cell names the model id it ran under (`evals/gap-study-2/prereg.json:1939`), each take records the harness version (`evals/gap-study-2/drive.py:1109`), and the takes run with the system's own hooks inactive, so they measure the agent under the contracts (`evals/gap-study-2/prereg.json:1941`). | none |
 | R.7 | Describes steps taken to prevent, identify, and correct flaws. | met | Pre-freeze reviews, owner rulings, and each fix with its regrade record and case suite (`evals/gap-study-2/prereg.json:2251`); results publish exactly as graded. | none |
 | R.8 | Includes qualitative discussions of the potential impact of unavoidable flaws. | met | The pre-registered limitations (`evals/gap-study-2/prereg.json:1931-1942`). | none |
 | R.9 | Includes quantitative analysis to assess the impact of unavoidable flaws (e.g., noise of ground truth). | in part | Fixed defects are quantified on round 1's takes (for example `evals/gap-study-2/graders/labels.py:24-25`); the blind spots named in the limitations and here are not. | F-09 |
 | R.10 | Reports metrics about statistical significance, such as confidence intervals. | met | Exact intervals per half and the design's sensitivity, post hoc (`evals/gap-study-intervals/INTERVALS.md`). | none |
-| R.11 | Provides guidance on interpreting results with eval flaws. | in part | "What this study will not say" (`evals/gap-study/README.md:58-60`) and the limitations; no per-task reading guide existed before these drafts. | F-17 |
+| R.11 | Provides guidance on interpreting results with eval flaws. | met | "What this study will not say" (`evals/gap-study/README.md:58-60`) and the limitations; no per-task reading guide existed before these drafts. On 30 September 2026 the owner signed the six arguments, which are that guide: each names its task's known threats and what its grader cannot read (decision 0217). | F-17, closed on the sign-off |
 | R.12 | Reports results of non-AI baselines (e.g., human experts). | not met | The no-model controls classify the system's layer, not a baseline on the task (`evals/gap-study-2/prereg.json:388`); no human baseline exists. | F-12 |
 | R.13 | Reports results of trivial agents (e.g., one that does nothing). | not met | None published; P8 shows what a one-word reply earns once each half is reached. | F-10 |

@@ -68,3 +68,11 @@ The pages are the lane's until the owner signs them; the public push waits on th
 ## Date
 
 2026-09-28
+
+## Addendum — the owner's sign-off, 2026-09-30
+
+The owner read the six arguments and signed each as his on 30 September 2026, and accepted the checklist's statuses as scored; [0217](0217-gap-study-validity-owner-sign-off.md) quotes his words and records his five decisions.
+The result in Decision 2 above is the draft's, as it stood on 28 September 2026.
+On the sign-off R.5 and R.11 read met, as F-17 proposed, so of 43 items 15 are met, 12 met in part, 5 not met and 11 not applicable, and the findings are 17; the follow-ups stay 18, with F-17 closed.
+The first entry under "What this does not close" is closed by the same sign-off, and the rejected alternative of a CI step for `probes.py --check` was taken up by the owner's decision 5 in 0217.
+Nothing above this addendum is changed.

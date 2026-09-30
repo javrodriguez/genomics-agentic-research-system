@@ -1,8 +1,9 @@
 # `confounded-design`: validity argument
 
-> **DRAFT for the owner's review.**
-> Written by the E2 build lane from the repository at `37a8d94`; it is not the owner's argument until he has read it and says so in a later commit.
+> **Signed by the owner, 30 September 2026.**
+> Written by the E2 build lane from the repository at `37a8d94` and reviewed; the owner read this argument and signed it as his on 30 September 2026 ([decision 0217](../decisions/0217-gap-study-validity-owner-sign-off.md)), and the text below is the draft he signed, unchanged.
 > Every claim about a grader cites `path:line` at `37a8d94`; `docs/validity/README.md` says how to read and check them.
+> The published account cited below (`docs/EVALS.md`) has gained two lines near its top since `37a8d94`, so the sentence cited at its line 365 now sits at line 367, with a dated correction note beside it.
 
 **The claim the task makes.** Its pre-registered line is a history, not a construct: "The cell the first study said lives in the model, now measured across five of them." (`evals/gap-study-2/prereg.json:1027`)
 The construct is the first study's: "did the agent name the alias, when directly asked?" (`evals/graders/confounded_refusal.py:2`).
