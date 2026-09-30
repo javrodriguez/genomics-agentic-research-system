@@ -132,6 +132,8 @@ def path_like(text):
             return True
         if before == ':' and text[at] == '/' and (text[at + 1:at + 2] != '/' or text[at:at + 3] == '///'):
             return True
+        if before == ':' and text[at] != '/' and text[at] != '\\':   # host:~user/x, x:C:\x
+            return True
     return False
 
 

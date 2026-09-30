@@ -42,7 +42,8 @@ T_NOBY = 'with no approver named in its approval record'
 # ./b are relative), or right after a colon when one slash follows (host:/x, not https://x).
 # A URL with an empty authority (x:///etc) names a local path too. No re.I: with it, [A-Za-z]
 # would also match letters that case-fold to ASCII (the Kelvin sign), and this rule is ASCII.
-PATH_LIKE = re.compile(r'''(?<![A-Za-z0-9._~/:\\-])(?:/|~[^\s/"']*/|\\|[A-Za-z]:[\\/])|(?<=:)(?:/(?!/)|///)'''
+PATH_LIKE = re.compile(r'''(?<![A-Za-z0-9._~/:\\-])(?:/|~[^\s/"']*/|\\|[A-Za-z]:[\\/])'''
+                       r'''|(?<=:)(?:/(?!/)|///|~[^\s/"']*/|[A-Za-z]:[\\/])'''
                        r'''|(?<![A-Za-z0-9])[Ff][Ii][Ll][Ee]:''')
 HEADINGS = ('# Methods', '## Parameters', '## Software used', '## Citation', '## Records read', '## Sources')
 PARA, PARAM, SOFT, CITE, READ = HEADINGS[:5]
