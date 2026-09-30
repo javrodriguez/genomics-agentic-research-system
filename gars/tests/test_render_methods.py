@@ -40,6 +40,8 @@ T_BY = 'by the approver the run recorded'
 T_NOBY = 'with no approver named in its approval record'
 # An absolute path starts where no letter, digit or one of . _ ~ / : \ - comes before it (so a/b and
 # ./b are relative), or right after a colon when one slash follows (host:/x, not https://x).
+# Right after a colon, ~/, ~user/ (user@host:~user/x) and a drive letter (x:C:\x) start a path as a
+# lone slash does; a lone backslash there does not (pattern:\d+ is shown).
 # A URL with an empty authority (x:///etc) names a local path too. No re.I: with it, [A-Za-z]
 # would also match letters that case-fold to ASCII (the Kelvin sign), and this rule is ASCII.
 PATH_LIKE = re.compile(r'''(?<![A-Za-z0-9._~/:\\-])(?:/|~[^\s/"']*/|\\|[A-Za-z]:[\\/])'''
@@ -735,7 +737,7 @@ class RenderMethodsTests(unittest.TestCase):
                       'https://depot.galaxyproject.org/singularity/fastqc', 'pipeline_info/fixture.sif',
                       'N/A', 'sha256:' + 'a' * 64, 's3://bucket/key', 'quay.io:443/biocontainers/fastqc',
                       './relative/x', '../relative/x', '$HOME/x', 'a\\b', 'fixture/tool@sha256:' + 'b' * 64,
-                      '\u212a:\\x', 'zero 0e-400', 'f\u0130le:x'):
+                      '\u212a:\\x', 'zero 0e-400', 'f\u0130le:x', 'pattern:\\d+'):
             with self.subTest(shown=value):
                 self.dump('variant.json', dict(m, params={'p': value}))
                 self.assertIn('parameter `p`: `%s`.' % value, self.traced(('variant.json',), stage03=False))

@@ -120,8 +120,9 @@ def strings(value):
 
 def path_like(text):
     """True when `text` holds an absolute path, which names a machine, not a method: a path start
-    with nothing, or anything but a letter, digit or one of . _ ~ / : \\ - before it; a single slash
-    right after a colon (host:/x, not https://x); three (a URL with no host, https:///x); or a file:
+    with nothing, or anything but a letter, digit or one of . _ ~ / : \\ - before it; right after a
+    colon, a single slash (host:/x, not https://x), three (a URL with no host, https:///x), ~/ or
+    ~user/ (user@host:~user/x) or a drive letter (x:C:\\x), but not a lone backslash; or a file:
     scheme."""
     if FILE_SCHEME.search(text):
         return True
