@@ -301,6 +301,44 @@ class CountTests(unittest.TestCase):
             recompute.grade_against_seen(dropped, "fixture")
 
 
+class RefusalTests(unittest.TestCase):
+    """Refusals that only a malformed file can reach, driven directly (review r1, F-8)."""
+
+    def counter(self):
+        c = recompute.BigWigCounter("synthetic")
+        c.chroms = {0: ("chrA", 100), 1: ("chrB", 50)}
+        return c
+
+    def test_header_bases_covered_mismatch_refuses(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "b.bw"
+            p.write_bytes(fixture_bytes("bedgraph"))
+            c = recompute.count_path(p)
+        recompute.grade_against_seen(c, "fixture")          # consistent: passes
+        off = dataclasses.replace(c, header_bases_covered=c.header_bases_covered + 10)
+        with self.assertRaises(recompute.Refused):
+            recompute.grade_against_seen(off, "fixture")     # per-chromosome sum still consistent
+
+    def test_out_of_order_record_refuses(self):
+        with self.assertRaises(recompute.Refused):
+            self.counter()._records(0, [(0, 10, 1.0), (5, 15, 1.0)])
+
+    def test_record_past_chromosome_end_refuses(self):
+        with self.assertRaises(recompute.Refused):
+            self.counter()._records(0, [(90, 110, 1.0)])
+
+    def test_empty_record_refuses(self):
+        with self.assertRaises(recompute.Refused):
+            self.counter()._records(0, [(10, 10, 1.0)])
+
+    def test_chromosome_revisited_refuses(self):
+        c = self.counter()
+        c._records(0, [(0, 10, 1.0)])
+        c._records(1, [(0, 10, 1.0)])
+        with self.assertRaises(recompute.Refused):
+            c._records(0, [(20, 30, 1.0)])
+
+
 class RoundingTests(unittest.TestCase):
 
     def test_round_half_up_on_exact_rational_boundary(self):
@@ -628,6 +666,37 @@ class PublishedBindingTests(unittest.TestCase):
         self.assertEqual(recompute.round_sig(c1["hct116_with"], 2), want["c1_hct116_with"])
         self.assertEqual(recompute.round_sig(c1["hct116_without"], 2), want["c1_hct116_without"])
 
+    def check_copy(self, expected=None, results=None):
+        d = Path(tempfile.mkdtemp(prefix="gse58638-bind-"))
+        try:
+            e, r = d / "expected.txt", d / "RESULTS.md"
+            e.write_bytes((expected if expected is not None else self.expected).encode("utf-8"))
+            r.write_bytes((results if results is not None else
+                           (ROOT / "docs" / "RESULTS.md").read_text(encoding="utf-8")).encode("utf-8"))
+            return run(dataclasses.replace(recompute.default_config(), expected=e, results_md=r),
+                       "--check-published")
+        finally:
+            shutil.rmtree(str(d), ignore_errors=True)
+
+    def test_unplanted_copy_binds(self):
+        code, out, err = self.check_copy()
+        self.assertEqual(code, 0, err)
+
+    def test_planted_metadata_line_fails(self):
+        # Review r1, F-1: the metadata section is pinned too.
+        moved = self.expected.replace("GSM1420155 38.0 M", "GSM1420155 99.9 M")
+        self.assertNotEqual(moved, self.expected)
+        code, out, err = self.check_copy(expected=moved)
+        self.assertEqual(code, 1)
+        self.assertIn("public-metadata section", err)
+
+    def test_changed_results_md_without_addendum_fails(self):
+        # Review r1, F-5: an addendum the detector misses must not leave R5 skipped for good.
+        text = (ROOT / "docs" / "RESULTS.md").read_text(encoding="utf-8")
+        code, out, err = self.check_copy(results=text + "\nAn unrelated added line.\n")
+        self.assertEqual(code, 1)
+        self.assertIn("RESULTS_MD_SHA256", err)
+
     def test_p6_is_printed_not_asserted(self):
         # PREREG-2 R2: stated, with the measured ratios, and said plainly not to be met.
         self.assertIn("P6", self.expected)
@@ -638,9 +707,13 @@ class PublishedBindingTests(unittest.TestCase):
         # is in the base; the logic itself runs now in AddendumLogicTests.
         text = (ROOT / "docs" / "RESULTS.md").read_text(encoding="utf-8")
         if recompute.find_addendum(text) is None:
+            # Skips only while RESULTS.md is exactly as at 37a8d94; any other RESULTS.md without a
+            # detected addendum fails the binding (test_changed_results_md_without_addendum_fails).
+            self.assertEqual(recompute.results_md_sha(text), recompute.RESULTS_MD_SHA256)
             self.skipTest("PREREG-2 R5: the row 3a addendum (37b7543) is not in docs/RESULTS.md at "
                           "this base (37a8d94); the orchestrator rebases onto it at home")
-        self.assertEqual(recompute.addendum_failures(text, self.counts), [])
+        meta = recompute.split_report(self.expected)[1]
+        self.assertEqual(recompute.addendum_failures(text, self.counts, meta), [])
 
 
 class AddendumLogicTests(unittest.TestCase):
@@ -648,22 +721,38 @@ class AddendumLogicTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.text = (ROOT / "docs" / "RESULTS.md").read_text(encoding="utf-8")
-        cls.counts = recompute.parse_counts((HERE / "expected.txt").read_text(encoding="utf-8"))
+        expected = (HERE / "expected.txt").read_text(encoding="utf-8")
+        cls.counts = recompute.parse_counts(expected)
+        cls.meta = recompute.split_report(expected)[1]
+
+    def failures(self, addendum, counts=None):
+        return recompute.addendum_failures(self.with_addendum(addendum), counts or self.counts, self.meta)
 
     def with_addendum(self, addendum):
         lines = self.text.split("\n")
         return "\n".join(lines[:94] + ["", addendum, ""] + lines[94:])
 
     def test_addendum_as_approved_binds(self):
-        self.assertEqual(recompute.addendum_failures(self.with_addendum(ADDENDUM), self.counts), [])
+        self.assertEqual(self.failures(ADDENDUM), [])
 
     def test_addendum_with_a_moved_figure_fails(self):
         moved = ADDENDUM.replace("scores 0.083", "scores 0.084")
-        self.assertNotEqual(recompute.addendum_failures(self.with_addendum(moved), self.counts), [])
+        self.assertNotEqual(self.failures(moved), [])
 
     def test_addendum_quoting_other_than_line_73_fails(self):
         moved = ADDENDUM.replace("(DKO1 0.067 vs HCT116 0.045)", "(DKO1 0.068 vs HCT116 0.045)")
-        self.assertNotEqual(recompute.addendum_failures(self.with_addendum(moved), self.counts), [])
+        self.assertNotEqual(self.failures(moved), [])
+
+    def test_addendum_with_an_unbound_figure_fails(self):
+        # Review r1, F-6: every decimal is the bound B4 figure, line 73's, or printed metadata.
+        moved = ADDENDUM.replace("against DKO1's 0.067", "against DKO1's 0.099")
+        self.assertNotEqual(self.failures(moved), [])
+
+    def test_addendum_found_whatever_its_heading(self):
+        for head in ("Addendum, 30 Sep 2026.", "**Addendum (1 Oct 2026).**"):
+            body = ADDENDUM.replace("Addendum (30 Sep 2026).", head)
+            self.assertIsNotNone(recompute.find_addendum(self.with_addendum(body)), head)
+        self.assertIsNone(recompute.find_addendum(self.text))
 
     def test_addendum_reversal_must_hold_on_b4(self):
         # DKO1's mean raised above the healthy HCT116 deposit; the addendum's 0.083 still equals
@@ -671,7 +760,7 @@ class AddendumLogicTests(unittest.TestCase):
         c = dict(self.counts)
         dko = c["GSM1415885"]
         c["GSM1415885"] = dataclasses.replace(dko, tiles_above1=dko.tiles // 5)
-        self.assertNotEqual(recompute.addendum_failures(self.with_addendum(ADDENDUM), c), [])
+        self.assertNotEqual(self.failures(ADDENDUM, c), [])
 
 
 if __name__ == "__main__":

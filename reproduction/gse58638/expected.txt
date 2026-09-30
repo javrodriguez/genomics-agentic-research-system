@@ -1,6 +1,6 @@
 GARS recompute: the deposited-track half of the failed-replicate finding (docs/RESULTS.md, 3a)
 Source: GEO GSE58638, the authors' four H3K27me3 z-score tracks (hg19, 10-bp bins), from NCBI
-Script: reproduction/gse58638/recompute.py, git blob 110ae0d59db9ef018cda3232b27771df12e525a2
+Script: reproduction/gse58638/recompute.py, git blob bd8222b05bd76d04067166eb48c0ac38e89e5149
 Pre-registration: PREREG.md sha256 1f1a9d59132e16c815449e7752d29bf1141c2165e87543acf1c3583232eadb12
                   PREREG-2.md sha256 ff779cf98f4084f885559cbe931cd97dfd92992aeda93a70d9867a85c56f28cc
 Verdict recorded at step 1 (VERDICT-step1.md, sha256 059ac970be4d70cb846120b5f2e7df58735c6a5074366b7c0ad2e16e9695daf3): IN KIND, adopted basis B1
@@ -34,8 +34,9 @@ Against docs/RESULTS.md (each quotation found exactly once; the relation step 1 
     IN KIND  B1: 0.026 against 0.11–0.12   B4: 0.0074 against 0.053–0.083
   "**40–100× below them at z>2**"
     IN KIND  B1: 19.2–21.5×   B4: 43.5–108×
-  Both printed figures come from pyBigWig's approximate 10-kb tile mean (B6, measured at step 1);
-  this script does not implement B6 (PREREG.md P4).
+  Quoted from step 1, not recomputed: T1's figures reproduce exactly only under pyBigWig's
+  approximate 10-kb tile mean (B6), which this script does not implement (PREREG.md P4).
+  T2's range reproduces under B4 at its printed precision (40–100× at one figure).
   Under B1, GSM1420155 has the lowest z>1 and the lowest z>2 fraction of the four: yes
   Against step 1's B1 figures (step1.md, PREREG-2 R3): 13 of 14 equal at step 1's printed precision; differs:
     GSM1420155 z>2 fraction: step 1 printed 0.00200, the exact recompute is 0.00201 (0.0020050159)

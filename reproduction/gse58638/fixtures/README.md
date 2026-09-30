@@ -22,8 +22,10 @@ records (bedGraph) or one fixedStep run per chromosome.
 
 The plan asked for fixtures made by UCSC's own tools (`bedGraphToBigWig`, `wigToBigWig`). The
 cloud machine that built them could not reach hgdownload.soe.ucsc.edu (egress policy), so an
-independent writer was used instead; the reader's agreement with UCSC's reference reader on the
-four real deposits is recorded separately (decision 0241). Regenerating them with UCSC's tools
-from the same text sources should leave every test green; only `FIXPINS` in the test changes.
+independent writer was used instead. For the same reason the reader was compared on the four real
+deposits with libBigWig (pyBigWig 0.3.26), not with UCSC's `bigWigToBedGraph`: agreement with
+UCSC's own reader, on these fixtures and on the real files, is not yet recorded (decision 0241
+lists it as open). Regenerating these fixtures with UCSC's tools from the same text sources
+should leave every test green; only `FIXPINS` in the test changes.
 
 Why hex: the repository's pre-commit gate refuses binary content it cannot scan completely.

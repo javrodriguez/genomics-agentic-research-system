@@ -104,6 +104,9 @@ STEP1_B1_RATIOS = (("4.17", "4.42", "4.56"), ("21.4", "19.2", "21.5"))
 # 620682/309564635 = 0.0020050..., which is 0.00201 at three figures under any rounding; step 1
 # printed 0.00200. libBigWig counts the same bases. The binding holds this cell to the recompute's
 # own figure and the report prints the difference; every other step-1 figure is bound as printed.
+# PENDING a PREREG-3: PREREG-2 R3 binds step 1's printed value, and only the orchestrator can change
+# that (R6). Asked in the lane session on 30 Sep, the orchestrator chose to keep this named exception,
+# visible in the report and in decision 0241, over a binding that fails until PREREG-3 exists.
 STEP1_B1_DIFFERS = {("GSM1420155", 1): "0.00201"}
 # PREREG-2 R4: the figures it states for B4, as it states them. Its "44" is step 1's 43.5 rounded a
 # second time (the exact ratio is 2435/56 = 43.48); the report prints ratios at step 1's three
@@ -112,6 +115,13 @@ PREREG2_R4 = {
     "failed_z1": "0.0074", "others_z1": ("0.053", "0.083"), "ratios_z2": ("44", "108"),
     "c1_dko1": "0.068", "c1_hct116_with": "0.045", "c1_hct116_without": "0.083",
 }
+# The public-metadata section of expected.txt, pinned so a hand edit to it fails the binding on push
+# (the monthly regrade re-fetches it; a change there exits 3). Update only from a real run.
+METADATA_SHA256 = "bad7aff4a590190399f06969744b8108892494194b757b2610cd628974599b58"
+# docs/RESULTS.md at 37a8d94 (LF), the base this was built on: while no row 3a addendum is found, the
+# binding requires RESULTS.md unchanged, so an addendum that lands in a form find_addendum() misses
+# fails rather than leaving PREREG-2 R5 skipped for good.
+RESULTS_MD_SHA256 = "81d517aeb4a9d9f3d91db60c57db7e4f0793da42b42a55b888e152b854ba77ae"
 # PREREG.md P6's thresholds, printed and never asserted (PREREG-2 R2).
 P6_Z1, P6_Z2 = 5, 20
 
@@ -648,18 +658,41 @@ ADDENDUM_RE = re.compile(r"Addendum \(30 Sep 2026\)[^\n]*(?:\n(?!\s*\n)[^\n]*)*"
 
 
 def find_addendum(text):
+    """The row 3a addendum: by its dated heading, or by its content (a paragraph that says the
+    deposit-side direction holds only when GSM1420155 is counted), whatever its heading."""
     m = ADDENDUM_RE.search(text)
-    return m.group(0) if m else None
+    if m:
+        return m.group(0)
+    for paragraph in re.split(r"\n[ \t]*\n", text.replace("\r\n", "\n")):
+        flat = " ".join(paragraph.split())
+        if "line 73" in flat and "GSM1420155" in flat and re.search(r"\b0\.0\d\d\b", flat):
+            return paragraph
+    return None
 
 
-def addendum_failures(text, counts):
+def results_md_sha(text):
+    return hashlib.sha256(text.replace("\r\n", "\n").encode("utf-8")).hexdigest()
+
+
+def addendum_failures(text, counts, context=""):
     """PREREG-2 R5: the addendum's 0.083 equals the B4 recompute at that precision, the reversal it
-    states holds on B4, and its 0.067 and 0.045 are quotations of line 73, never recompute outputs."""
+    states holds on B4, and its 0.067 and 0.045 are quotations of line 73, never recompute outputs.
+    Every other decimal in it must be line 73's or a public-metadata figure the report prints
+    (`context`), so no figure enters the addendum unbound."""
     block = find_addendum(text)
     if block is None:
         return ["no addendum block"]
     flat = " ".join(block.split())
     failures = []
+    line73 = next((l for l in text.split("\n") if QUOTES["C1"] in l), "")
+    allowed = set(re.findall(r"\d+\.\d+", line73)) | set(re.findall(r"\d+\.\d+", context))
+    bound = re.search(r"healthy HCT116 deposit scores (\d+\.\d+)", flat)
+    if bound:
+        allowed.add(bound.group(1))
+    for figure in re.findall(r"\d+\.\d+", flat):
+        if figure not in allowed:
+            failures.append("the addendum's %s is neither the bound B4 figure, nor line 73's, nor a "
+                            "metadata figure the report prints" % figure)
     c1 = c1_on_b4(counts)
     m = re.search(r"healthy HCT116 deposit scores (\d+\.\d+)", flat)
     if not m:
@@ -761,8 +794,13 @@ def render_science(counts, sizes, digests, blob, deposits=DEPOSITS):
     L.append("  \"%s\"" % QUOTES["T2"])
     L.append("    %s  B1: %s–%s×   B4: %s–%s×" % (
         VERDICT, span_lo(r1[1]), span_hi(r1[1]), span_lo(r4[1]), span_hi(r4[1])))
-    L.append("  Both printed figures come from pyBigWig's approximate 10-kb tile mean (B6, measured at step 1);")
-    L.append("  this script does not implement B6 (PREREG.md P4).")
+    defined = all(r is not None for r in r4[1])
+    lo1 = round_sig(min(r4[1]), 1) if defined else "inf"
+    hi1 = round_sig(max(r4[1]), 1) if defined else "inf"
+    L.append("  Quoted from step 1, not recomputed: T1's figures reproduce exactly only under pyBigWig's")
+    L.append("  approximate 10-kb tile mean (B6), which this script does not implement (PREREG.md P4).")
+    L.append("  T2's range %s under B4 at its printed precision (%s\u2013%s\u00d7 at one figure)." % (
+        "reproduces" if (lo1, hi1) == ("40", "100") else "does not reproduce", lo1, hi1))
     lowest = all(min(order, key=lambda g: b1[g][z]) == FAILED and
                  sum(1 for g in order if b1[g][z] == b1[FAILED][z]) == 1 for z in (0, 1))
     L.append("  Under B1, %s has the lowest z>1 and the lowest z>2 fraction of the four: %s" % (FAILED, "yes" if lowest else "NO"))
@@ -1002,6 +1040,9 @@ def check_published(config, out, err):
     if ("git blob %s" % blob) not in expected:
         failures.append("expected.txt does not name this script's blob %s: re-run the command" % blob)
     sci, meta = split_report(expected)
+    if hashlib.sha256(meta.encode("utf-8")).hexdigest() != METADATA_SHA256:
+        failures.append("the public-metadata section of expected.txt is not the pinned one "
+                        "(METADATA_SHA256); it is written only by a real run")
     rendered = render_science(counts, sizes, digests, blob, tuple(config.deposits))
     if sci != rendered:
         a, b = rendered.split("\n"), sci.split("\n")
@@ -1026,10 +1067,14 @@ def check_published(config, out, err):
                 failures.append("R3: a B1 ratio at z>%d is not step 1's %s" % (z + 1, want))
     text = read_utf8(config.results_md)
     if find_addendum(text) is not None:
-        failures += ["R5: " + f for f in addendum_failures(text, counts)]
+        failures += ["R5: " + f for f in addendum_failures(text, counts, meta)]
         r5 = "bound"
+    elif results_md_sha(text) == RESULTS_MD_SHA256:
+        r5 = "not applicable: docs/RESULTS.md is as at 37a8d94, before the row 3a addendum"
     else:
-        r5 = "not applicable: the row 3a addendum is not in docs/RESULTS.md yet"
+        failures.append("R5: docs/RESULTS.md changed since 37a8d94 and no row 3a addendum was found; "
+                        "bind the addendum (find_addendum) or, if it has not landed, re-pin RESULTS_MD_SHA256")
+        r5 = "unbound"
     if failures:
         err.write("".join("BINDING FAILED: %s\n" % f for f in failures))
         return 1
