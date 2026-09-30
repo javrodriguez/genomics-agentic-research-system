@@ -22,7 +22,7 @@ Every ruling here is **the lane's**, made under the owner's standing delegation 
 
 `check_groovy` (added on 21 Sep 2026 in `6c4b631`, row 4) admits an executor config only when, with comments stripped, each single-quoted literal replaced after an R-075 charset check, and whitespace removed, it equals the shape of `_templates/config/nextflow.slurm.config`.
 It compared with that one file whatever the descriptor's `nextflow_config` named, so the launch pad's `nextflow.awsbatch.config` (written by the demo's `gen_executor_config.sh --head local`) was refused at `a80df2d` and at `37a8d94` with "R-098/§9.6: unregistered Groovy grammar; use the seeded executor config".
-The slurm grammar cannot say what the only config ever run on Batch (the demo's run of 3 Sep 2026) needed: `aws.region`, `aws.batch.cliPath`, `aws.batch.maxSpotAttempts`, the transfer settings, `process.resourceLimits`, `process.resourceLabels`, and the null-exit arm of `errorStrategy`.
+The slurm grammar cannot say what the config of the demo's run on Batch of 3 Sep 2026 carried: `aws.region`, `aws.batch.cliPath`, `aws.batch.maxSpotAttempts`, the transfer settings, `process.resourceLimits`, `process.resourceLabels`, and the null-exit arm of `errorStrategy`.
 The lane's coordinator ruled option (b) on 30 Sep 2026: one fixed protected template per descriptor config name, a missing template refused, slurm unchanged, the shape lock and the literal check kept.
 
 Reading the code for the widening found a defect at `37a8d94`, reproduced without a model.
