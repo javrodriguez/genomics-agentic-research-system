@@ -247,6 +247,16 @@ class BigWigCounter(object):
     # -- feeding ---------------------------------------------------------------------------------
 
     def feed(self, data):
+        """Every malformed-structure error surfaces as a refusal naming the file, never as a
+        traceback (review r6, F-2)."""
+        try:
+            self._feed(data)
+        except Refused:
+            raise
+        except (struct.error, UnicodeDecodeError, IndexError, KeyError, ValueError, OverflowError) as exc:
+            raise Refused("%s: malformed bigWig (%s: %s)" % (self.label, exc.__class__.__name__, exc))
+
+    def _feed(self, data):
         if self.state == "head":
             need = None
             self.head += data
@@ -266,7 +276,7 @@ class BigWigCounter(object):
             self.state = "data"
             self.inflater = zlib.decompressobj()
             if rest:
-                self.feed(rest)
+                self._feed(rest)
             return
         if self.state == "data":
             limit = self.index_off - self.pos
@@ -480,20 +490,30 @@ def read_local(dep, folder, err):
     if size > dep.size:
         raise ScienceDifference("%s: %s is %d bytes, pinned %d: the deposit changed"
                                 % (dep.gsm, dep.filename, size, dep.size))
-    counter, h = BigWigCounter(dep.filename), hashlib.sha256()
+    counter, h, parse_error = BigWigCounter(dep.filename), hashlib.sha256(), None
     with open(str(p), "rb") as f:
         while True:
             data = f.read(CHUNK)
             if not data:
                 break
             h.update(data)
-            counter.feed(data)
-    return finish_deposit(dep, counter, h, size)
+            parse_error = parse_error or feed_guarded(counter, data)
+    return finish_deposit(dep, counter, h, size, parse_error)
+
+
+def feed_guarded(counter, data):
+    """Feed the parser; a refusal is kept, not raised, so every byte is still hashed and a changed
+    deposit is named as changed (exit 1) before any parse error is reported (exit 2)."""
+    try:
+        counter.feed(data)
+    except Refused as exc:
+        return exc
+    return None
 
 
 def read_stream(dep, url_base, err, retry_wait=5.0, opener=urllib.request.urlopen):
     url = "%s/%s%s" % (url_base.rstrip("/"), dep.path, dep.filename)
-    counter, h, got = BigWigCounter(dep.filename), hashlib.sha256(), 0
+    counter, h, got, parse_error = BigWigCounter(dep.filename), hashlib.sha256(), 0, None
     failures = []
     for attempt in range(ATTEMPTS):
         headers = {"User-Agent": USER_AGENT}
@@ -524,26 +544,28 @@ def read_stream(dep, url_base, err, retry_wait=5.0, opener=urllib.request.urlope
                     if not data:
                         break
                     h.update(data)
-                    counter.feed(data)
                     got += len(data)
+                    parse_error = parse_error or feed_guarded(counter, data)
             except (OSError, ValueError, http.client.HTTPException) as exc:  # IncompleteRead, resets
                 failures.append("dropped at byte %d (%s)" % (got, exc.__class__.__name__))
             if got >= dep.size:
                 if resp.read(1):
                     raise ScienceDifference("%s: %s is longer than its pinned %d bytes"
                                             % (dep.gsm, dep.filename, dep.size))
-                return finish_deposit(dep, counter, h, got)
+                return finish_deposit(dep, counter, h, got, parse_error)
         err.write("  %s: connection ended at byte %d of %d; resuming\n" % (dep.gsm, got, dep.size))
         time.sleep(retry_wait)
     raise Refused("%s: short read, %d of %d bytes after %d attempts (%s)"
                   % (dep.gsm, got, dep.size, ATTEMPTS, "; ".join(failures[-3:])))
 
 
-def finish_deposit(dep, counter, h, nbytes):
+def finish_deposit(dep, counter, h, nbytes, parse_error=None):
     digest = h.hexdigest()
     if digest != dep.sha256:
         raise ScienceDifference("%s: %s sha256 %s, pinned %s: the deposit changed"
                                 % (dep.gsm, dep.filename, digest, dep.sha256))
+    if parse_error is not None:
+        raise parse_error
     c = counter.finish()
     grade_against_seen(c, dep.filename)
     return c, nbytes, digest

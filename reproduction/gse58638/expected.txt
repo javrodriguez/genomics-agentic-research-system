@@ -1,6 +1,6 @@
 GARS recompute: the deposited-track half of the failed-replicate finding (docs/RESULTS.md, 3a)
 Source: GEO GSE58638, the authors' four H3K27me3 z-score tracks (hg19, 10-bp bins), from NCBI
-Script: reproduction/gse58638/recompute.py, git blob 88584b1260f40d755ca071457532555a80505845
+Script: reproduction/gse58638/recompute.py, git blob 38eb04763a18f0d19dbd8bd46e457e1000d48fd6
 Pre-registration: PREREG.md sha256 1f1a9d59132e16c815449e7752d29bf1141c2165e87543acf1c3583232eadb12
                   PREREG-2.md sha256 ff779cf98f4084f885559cbe931cd97dfd92992aeda93a70d9867a85c56f28cc
 Verdict recorded at step 1 (VERDICT-step1.md, sha256 059ac970be4d70cb846120b5f2e7df58735c6a5074366b7c0ad2e16e9695daf3): IN KIND, adopted basis B1

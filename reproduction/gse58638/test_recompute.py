@@ -133,7 +133,7 @@ class Oracle(object):
 class Workspace(object):
     """A temporary directory holding four fixture deposits under the real GSM names."""
 
-    def __init__(self, names=("bedgraph", "fixedstep", "bedgraph", "fixedstep"), mutate=None):
+    def __init__(self, names=("bedgraph", "fixedstep", "bedgraph", "fixedstep"), mutate=None, repin=()):
         self.dir = Path(tempfile.mkdtemp(prefix="gse58638-test-"))
         self.data = self.dir / "data"
         self.data.mkdir()
@@ -144,6 +144,10 @@ class Workspace(object):
             body = fixture_bytes(name)
             if mutate and gsm in mutate:
                 body = mutate[gsm](body)
+            if gsm in repin:
+                # The pin is the mutated bytes: a pinned file that is itself malformed, so the
+                # parse refusal (exit 2) is what is left to report.
+                size, sha = len(body), hashlib.sha256(body).hexdigest()
             (self.data / filename).write_bytes(body)
             self.deposits.append(recompute.Deposit(
                 gsm=gsm, cell=cell, srx="SRX0", path="",
@@ -217,7 +221,7 @@ class ReaderTests(unittest.TestCase):
         self.assertIn("GSM1420155", err)
 
     def test_bad_magic_refuses_exit_2(self):
-        ws = Workspace(mutate={"GSM1415885": lambda b: b"\0\0\0\0" + b[4:]})
+        ws = Workspace(mutate={"GSM1415885": lambda b: b"\0\0\0\0" + b[4:]}, repin=("GSM1415885",))
         try:
             code, out, err = run(ws.config(), "--from", str(ws.data))
         finally:
@@ -450,6 +454,41 @@ class StreamTests(unittest.TestCase):
             ws.close()
         self.assertEqual(code, 1, err)
         self.assertIn("GSM1415877_bedgraph.fixture.bw", err)
+        self.assertIn("sha256", err)
+
+    def test_changed_data_byte_exits_1_naming_file(self):
+        # Review r6, F-2: a same-size change inside the data section breaks the parse, but the
+        # deposit changed, so exit 1 naming it, never a parse refusal (exit 2).
+        body = fixture_bytes("bedgraph")
+        data_off, index_off = struct.unpack_from("<QQ", body, 16)
+        mid = (data_off + 8 + index_off) // 2
+
+        def flip(b):
+            return b[:mid] + bytes([b[mid] ^ 0xFF]) + b[mid + 1:]
+        ws = Workspace(mutate={"GSM1415877": flip})
+        try:
+            code, out, err = run(ws.config(), "--from", str(ws.data))
+        finally:
+            ws.close()
+        self.assertEqual(code, 1, err)
+        self.assertIn("GSM1415877_bedgraph.fixture.bw", err)
+        self.assertIn("sha256", err)
+
+    def test_malformed_chromosome_tree_is_a_refusal_not_a_traceback(self):
+        body = bytearray(fixture_bytes("bedgraph"))
+        tree_off = struct.unpack_from("<Q", body, 8)[0]
+        body[tree_off + 32 + 4] = 0xFF          # the first chromosome name's first byte
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "b.bw"
+            p.write_bytes(bytes(body))
+            with self.assertRaises(recompute.Refused):
+                recompute.count_path(p)
+        ws = Workspace(mutate={"GSM1415877": lambda b: bytes(body)})
+        try:
+            code, out, err = run(ws.config(), "--from", str(ws.data))
+        finally:
+            ws.close()
+        self.assertEqual(code, 1, err)
         self.assertIn("sha256", err)
 
     def test_changed_size_exits_1(self):
