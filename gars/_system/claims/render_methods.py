@@ -27,9 +27,11 @@ NOT_RECORDED = 'not recorded'
 WITHHELD = 'a path-like value, withheld'
 BY_APPROVER = 'by the approver the run recorded'
 NO_APPROVER = 'with no approver named in its approval record'
-# An absolute path at the start of a value or after whitespace, a quote, =, comma, semicolon or an
-# opening bracket: /x, ~/x, ~user/x, \x, C:\x, C:/x, file:. It names a machine, not a method.
-PATH_LIKE = re.compile(r'''(?:^|[\s"'=,;(\[{<])(?:/|~[^\s/"']*/|\\|[A-Za-z]:[\\/]|file:)''', re.I)
+# Where an absolute path can begin (/x, \x, ~/x, ~user/x, C:\x, C:/x); every position is tried.
+PATH_START = re.compile(r'''(?=(/|\\|~[^\s/"']*/|[A-Za-z]:[\\/]))''')
+# A path start preceded by one of these is part of a relative path, a word or a URL (a/b, ./b, a\b).
+IN_WORD = frozenset('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._~/:\\-')
+FILE_SCHEME = re.compile(r'(?<![A-Za-z0-9])file:', re.I)
 FLATTENED = ('Cc', 'Cf', 'Cs', 'Zl', 'Zp')  # control, format, surrogate, line and paragraph separators
 DIGEST = re.compile(r'[0-9a-f]{64}\Z')
 UTC = re.compile(r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\Z')
@@ -115,6 +117,22 @@ def strings(value):
                 yield text
 
 
+def path_like(text):
+    """True when `text` holds an absolute path, which names a machine, not a method: a path start
+    with nothing, or anything but a letter, digit or one of . _ ~ / : \\ - before it; a single slash
+    right after a colon (host:/x, not https://x); or a file: scheme."""
+    if FILE_SCHEME.search(text):
+        return True
+    for start in PATH_START.finditer(text):
+        at = start.start()
+        before = text[at - 1] if at else None
+        if before is None or before not in IN_WORD:
+            return True
+        if before == ':' and text[at] == '/' and text[at + 1:at + 2] != '/':
+            return True
+    return False
+
+
 def span(text):
     """A CommonMark code span that shows `text` exactly: no record text can close it early."""
     runs = [len(run) for run in re.findall('`+', text)]
@@ -128,7 +146,7 @@ def cell(value):
     """The words a slot shows for one record value."""
     if absent(value):
         return NOT_RECORDED
-    if any(PATH_LIKE.search(flatten(text)) for text in strings(value)):
+    if any(path_like(flatten(text)) for text in strings(value)):
         return WITHHELD
     if not isinstance(value, str):
         value = json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
@@ -174,9 +192,18 @@ def load(data, role):
     def constant(name):
         raise Refusal(role + ' holds a non-finite number')
 
+    def number(text):
+        value = float(text)   # 1e400 overflows to infinity: a value no record holds
+        if value != value or value in (float('inf'), float('-inf')):
+            raise Refusal(role + ' holds a non-finite number')
+        return value
+
     try:
-        value = json.loads(decode(data, role), object_pairs_hook=pairs, parse_constant=constant)
-    except (ValueError, RecursionError):
+        value = json.loads(decode(data, role), object_pairs_hook=pairs, parse_constant=constant,
+                           parse_float=number)
+    except RecursionError:
+        raise Refusal(role + ' is nested too deeply')
+    except ValueError:
         raise Refusal(role + ' is not valid JSON')
     if not isinstance(value, dict):
         raise Refusal(role + ' is not a JSON object')
@@ -231,20 +258,42 @@ def check_approval(approval, plan_bytes):
         raise Refusal('approval record actor is not a string')
 
 
+def fence_opening(line):
+    """The fence a line opens, as CommonMark reads it, or None: at most three spaces of indent, then
+    three or more backticks or tildes; a backtick fence's info string may hold no backtick."""
+    bare = line.lstrip(' ')
+    if len(line) - len(bare) > 3 or bare[:3] not in ('```', '~~~'):
+        return None
+    run = len(bare) - len(bare.lstrip(bare[0]))
+    if bare[0] == '`' and '`' in bare[run:]:
+        return None
+    return bare[:run]
+
+
+def closes(line, fence):
+    """A closing fence: at most three spaces, a run of the same character at least as long, then
+    only spaces or tabs."""
+    bare = line.lstrip(' ')
+    body = bare.rstrip(' \t')
+    return (len(line) - len(bare) <= 3 and len(body) >= len(fence) and
+            body == fence[0] * len(body))
+
+
 def history_entries(text):
     """`## <date> — <stage> — <outcome>` entries outside fenced blocks, with their Model and
-    Template version lines. HISTORY.md's own header shows the entry format inside a fence."""
+    Template version lines. HISTORY.md's own header shows the entry format inside a fence, and an
+    unclosed fence runs to the end, as in CommonMark."""
     entries, fence, current = [], None, None
     for line in text.split('\n'):
         if line.endswith('\r'):
             line = line[:-1]
-        bare = line.lstrip(' ')
-        if fence is None and bare[:3] in ('```', '~~~'):
-            fence, current = bare[:3], None
-            continue
         if fence is not None:
-            if bare.startswith(fence):
+            if closes(line, fence):
                 fence = None
+            continue
+        fence = fence_opening(line)
+        if fence is not None:
+            current = None
             continue
         match = ENTRY.match(line)
         if match:
@@ -411,7 +460,10 @@ def render(manifests, plan=None, approval=None, history=None):
 
     page = Page()
     for k, manifest in enumerate(loaded, 1):
-        manifest_lines(page, manifest, k)
+        try:
+            manifest_lines(page, manifest, k)
+        except RecursionError:   # a value nested deeper than a JSON reader of this Python parses
+            raise Refusal('manifest %d is nested too deeply' % k)
     if approved is not None:
         page.add('approval', ('v', 'approval:/plan_sha256', approved.get('plan_sha256', MISSING)),
                  ('v', 'approval:/timestamp', approved.get('timestamp', MISSING)),
@@ -465,6 +517,13 @@ def main(argv=None):
                                          delete=False) as fh:
             temporary = fh.name
             fh.write(data)
+        try:   # the page is written to be shared: keep the output's mode, or the umask's for a new one
+            mode = os.stat(str(args.out)).st_mode & 0o777
+        except OSError:
+            umask = os.umask(0)
+            os.umask(umask)
+            mode = 0o666 & ~umask
+        os.chmod(temporary, mode)
         os.replace(temporary, str(args.out))
         temporary = None
     except Refusal as exc:

@@ -780,6 +780,8 @@ class RenderMethodsTests(unittest.TestCase):
                                   ['claude-opus-5-5'], ['inside-unclosed']),
             'a four-space line is not a fence': (history + '\n    ```\n' + inside % 'after-indented' + '    ```\n',
                                                  ['claude-opus-5-5', 'after-indented'], []),
+            'a backtick in the info string opens no fence': (history + '\n```not`a fence\n' + inside % 'after-info',
+                                                             ['claude-opus-5-5', 'after-info'], []),
             'as recorded': (history, ['claude-opus-5-5'], []),
             'a fenced look-alike': (history + '\n' + fenced, ['claude-opus-5-5'], ['fenced-model']),
             'another analysis': (history + other + failed, ['claude-opus-5-5'], ['other-model', 'failed-model']),
