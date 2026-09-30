@@ -101,6 +101,10 @@ by GSM accession, confirmed two independent ways (ENA run→sample resolution, a
 depth matching). Anyone comparing against this series by replicate label risks silently
 pairing the wrong samples.
 
+### Addendum (30 Sep 2026)
+
+A re-measurement from the authors' deposited z-score tracks (GEO GSE58638, 10-kb tile means) finds that the deposit-side direction on line 73 (DKO1 0.067 vs HCT116 0.045) holds only when GSM1420155 is counted; without it, the healthy HCT116 deposit scores 0.083 against DKO1's 0.067. The pipeline-side direction (123 M vs 45.6 M mean peak bp) is not affected. By public SRA read counts, GSM1420155 is the second-deepest of the four libraries (38.0 M raw reads), not the deepest (this corrects lines 89-90). A one-command recompute of the deposit-side figures will follow.
+
 ---
 
 ## How the scoring was designed
