@@ -11,9 +11,9 @@ touches:
 symptoms:
   - an AWS Batch venue's _config/nextflow.awsbatch.config is refused with "R-098/§9.6 unregistered Groovy grammar; use the seeded executor config" whatever it holds
   - a descriptor whose nextflow_config names sub/x or ../x makes preflight check one file while the wrapper passes another with -c
-  - text after a // inside a double-quoted string of an executor config left preflight's shape, and a nested _config/_config/executor.yaml changed the project preflight read (review r1)
+  - text after a // inside a double-quoted string of an executor config left preflight's shape (security fix, present on public main since row 6's landing), and a nested _config/_config/executor.yaml changed the project preflight read (review r1)
 ---
-# One protected executor template per descriptor config name: the AWS Batch template
+# Security fix and the AWS Batch executor template: strings read before comments in the executor-config check, and one protected template per descriptor config name
 
 Follow-up to [0039](0039-the-executor-is-a-workspace-setting.md) (the executor seam) and to row 4's typed policy surface ([0058](0058-row-4-typed-surface-and-attack-list.md), ruling 3A), whose bytes are unchanged.
 Every ruling here is **the lane's**, made under the owner's standing delegation of 23 September 2026 and ruled by the lane's coordinator on 30 September 2026; no sentence in this record is the owner's.
@@ -31,6 +31,18 @@ The nf-core wrappers pass `ex.nextflow_config_path(project)` with `-c`, which is
 For a descriptor naming `sub/nextflow.slurm.config`, preflight read `_config/sub/sub/nextflow.slurm.config` while the wrapper passed `_config/sub/nextflow.slurm.config`; for `../nextflow.slurm.config`, preflight read a file two levels up and the wrapper one level up.
 A slurm-shaped decoy at the checked path let a config with `process.beforeScript` through (both names printed ADMITTED with the evil file at the wrapper's path).
 
+## Disclosed pre-existing finding: the security fix in this change
+
+This change is a security fix as well as a widening, so that an approval of it is an approval of the fix, knowingly (the coordinator's ruling of 30 Sep 2026, under the owner's delegation).
+- **What.** `check_groovy`'s shape stripped `//` comments before it read any string, so text after a `//` inside a double-quoted string left the shape while staying in the file, and whitespace inside a double-quoted string was dropped; the R-075 check never saw the hidden text (item 4, L5-R1-1 and L5-R1-2).
+- **When it entered.** The comment strip came with `check_groovy` itself, in `6c4b631` (21 Sep 2026, row 4), landed on main by `9b76e3f` (22 Sep 2026).
+  At `6c4b631` the slurm template held no double-quoted string outside its comments, so, by the lane's reading of those bytes (not probed at that commit), there was no string to hide text in yet.
+- **The ways in.** The slurm template's `fields` string, added by `94249c5` (row 6) and landed by `bc5f98e` (24 Sep 2026), is on public main `37a8d94`.
+  Measured by the lane at `37a8d94`'s own code (`check_groovy` on the seeded slurm template with one inert change in `fields`): a `//` followed by a second `process.maxRetries` statement, the string closed on the next line, was ADMITTED, and so was one added space; at this change both are refused.
+  The AWS Batch template adds five more double-quoted strings (`"awsbatch"`, `"retry"`, `"finish"`, `"10/1min"` and the trace file), besides its own `fields`, so without the fix the widening would have multiplied the places the defect could sit.
+  The review's probes (in the trace `file` string, `submitRateLimit` and slurm's `fields`) were admitted too; whether Nextflow would run hidden text was not measured here (R5).
+- **The fix.** Item 4: `shape` reads strings before comments and keeps each double-quoted string byte for byte; test 12 refuses both changes in every double-quoted string of both templates.
+
 ## Decision
 
 **Ruling 0251 (the lane's).**
@@ -43,7 +55,9 @@ A slurm-shaped decoy at the checked path let a config with `process.beforeScript
    - The clamp values are fixed grammar, not site values: both Batch compute environments the demo defines use the same instance types, largest `m5.xlarge`, so no known site needs another value, and a site that does changes a protected template with its own record.
    - `resourceLabels = [ goal: '…' ]` is always present with exactly one key, so a job's cost-allocation tag can never be forgotten; a rehearsal and a take differ only in the value. The 3 Sep config's second key (`project`) is not admitted.
    - The `errorStrategy` outcomes are double-quoted, which departs from the 3 Sep form (`'retry' : 'finish'`): as single-quoted literals they would be site values, and `'retry' : 'retry'` or `'ignore'` would pass (the investigation's candidate showed the first passes under the slurm grammar). The closure is the 3 Sep closure otherwise, token for token.
-   - The `trace` block is the slurm template's, with its file double-quoted: collect's manifest reads `run/pipeline_info/gars_trace.txt` for each process's container, start and complete (`trace_evidence`), and the 3 Sep config had no trace block. `report`, `timeline` and `apptainer.pullTimeout` are left out: nothing in the manifest reads the first two, and Batch supplies each container itself.
+   - The `trace` block is the slurm template's, with its file double-quoted and two fields added: collect's manifest reads `run/pipeline_info/gars_trace.txt` for each process's container, start and complete (`trace_evidence`), and the 3 Sep config had no trace block.
+     The added fields are `native_id` (the launch pad's `jobs` finds the Batch job ids there; D `scripts/launchpad.sh:893` in the demo workspace, `:940` in the pad lane's worktree requires it with `task_id` and `name`) and `exit` (the pad's smoke verdict stops without it, D `scripts/batch_smoke.sh:124-128`); the rest keep the slurm order (F-L3-3, the lane executor's in-spec ruling of 30 Sep 2026, open to the coordinator's review).
+     That a `-c` config's trace scope replaces nf-core's own is the pad lane's inference, not measured here (R5); `trace_evidence` reads columns by header name (`wrapperlib.py:1024`), so the added columns are read past (test 14). `report`, `timeline` and `apptainer.pullTimeout` are left out: nothing in the manifest reads the first two, and Batch supplies each container itself.
    - No `params`, `workDir`, `beforeScript`, `includeConfig` or `$` appears in it (a test pins this).
 2. **The check** (`gars/_system/wrapperlib.py`).
    `check_executor_config` hands the descriptor's name to `check_groovy`, which compares with `executor_template(name)`.
@@ -94,9 +108,10 @@ The widening lets a second grammar through, selected by a name in an agent-writa
 
 ## Test
 
-`gars/tests/test_executor_templates.py` is new, 13 tests, with the fixture `gars/tests/fixtures/executor/nextflow.awsbatch.d-generator.config`, the shape the demo's generator must write.
+`gars/tests/test_executor_templates.py` is new, 14 tests, with the fixture `gars/tests/fixtures/executor/nextflow.awsbatch.d-generator.config`, the shape the demo's generator must write.
 At `37a8d94`'s code they fail in tests 01 to 10 (19 failures and 1 error, each for the missing selection, the missing name gate, the missing seam or the slurm grammar admitted under the Batch name); test 11 pins the template's own content.
 Tests 12 and 13 answer review r1: at `2a144e1`'s code they fail with 15 failures (fourteen admitted cases of test 12, one of test 13), each an admission where a refusal is due.
+Test 14 pins the Batch trace fields (F-L3-3) and that `trace_evidence` reads a trace carrying them; at `a36c96e` it fails on the pin alone.
 They must fail when `check_groovy` compares with slurm only, when either grammar passes under either name, when the name pattern, the symlink check or the resolved-folder check is dropped, when the `_config/` fence or the bare-name rule is dropped, when the manifest hashes anything but the `-c` file, when the literal check is dropped, when `shape` strips comments before it reads strings or drops whitespace inside them, when preflight walks up for its project, and when the template's outcomes become site values or its tag gains a key.
 The landing's evidence is recorded in 0252.
 

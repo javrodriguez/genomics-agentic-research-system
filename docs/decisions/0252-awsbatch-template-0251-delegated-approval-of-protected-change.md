@@ -9,7 +9,7 @@ touches:
 symptoms:
   - follow-up 0251 changes gars/_system/ and adds a file under gars/_templates/ with no owner approval record
 ---
-# AWS Batch executor template 0251: approval of its protected change, under the owner's delegation
+# Security fix and AWS Batch executor template 0251: approval of its protected change, under the owner's delegation
 
 Addendum to [0251](0251-awsbatch-executor-template.md), which stays byte-identical.
 The files this record approves are protected (`gars/_system/` and `gars/_templates/`; §9.3, R-094), so the change needs an owner-approval record.
@@ -29,17 +29,17 @@ Until the slot is filled, nothing in this record is the owner's approval, and th
 
 ## Context
 
-Follow-up 0251 lets `check_groovy` compare a project's executor config with the protected template its descriptor names, adds the AWS Batch template, and fences the name so the file checked is the file passed with `-c`.
+Follow-up 0251 is a security fix (the disclosed pre-existing finding in 0251: text hidden after a `//` inside a double-quoted string passed the executor-config check on public main since row 6's landing), and it lets `check_groovy` compare a project's executor config with the protected template its descriptor names, adds the AWS Batch template, and fences the name so the file checked is the file passed with `-c`.
 The lane's coordinator (glitch-14, writing under the owner's standing delegation and not in the owner's words) ruled option (b) on 30 Sep 2026 at 01:45 EDT, reserved records 0251 to 0255 for this lane, and put the smoke ceremony after Wave 1's priority on the build Mac ends, Thu 1 Oct 2026 16:00.
 It was built on branch `gars-awsbatch-template` from public main `37a8d94` in a `--no-local` lane clone with no remote, under the repository's noreply identity, red-first:
-`8b2c0cf` (the template, the fixture and the new test module, red at `37a8d94`'s code), `1fee9e6` (the fix), the records commit that adds 0251, this record, the index and the counts, a wording fix to 0251, and the answer to review r1 (CHANGES, 1 MAJOR, 3 MINOR: tests 12 and 13 red first, then the fix, recorded in 0251 item 4).
+`8b2c0cf` (the template, the fixture and the new test module, red at `37a8d94`'s code), `1fee9e6` (the fix), the records commit that adds 0251, this record, the index and the counts, a wording fix to 0251, and the answer to review r1 (CHANGES, 1 MAJOR, 3 MINOR: tests 12 and 13 red first, then the fix, recorded in 0251 item 4), and the trace fields `native_id` and `exit` (test 14 red first, F-L3-3).
 Review: a fresh-context reviewer grades the branch; its verdict and the review file's sha256 are recorded at the landing, below, and the review itself stays outside the repository.
 
 ## Decision
 
 The following protected changes are approved under the owner's 23 September 2026 delegation, as they stand at the branch head, subject to the owner's yes in the slot above.
 
-1. **`gars/_templates/config/nextflow.awsbatch.config`** (new): the grammar 0251 item 1 describes; four single-quoted site values (`queue`, the `goal` job-tag value, `aws.region`, `aws.batch.cliPath`); sha256 `e096d48f3b804eba42b240ab8c9ba5d25627fbf19629c2545b43786f267b8506`.
+1. **`gars/_templates/config/nextflow.awsbatch.config`** (new): the grammar 0251 item 1 describes; four single-quoted site values (`queue`, the `goal` job-tag value, `aws.region`, `aws.batch.cliPath`); sha256 `95422dcf7f4c88ade8f3b382f9fef664a484eded7273d93d91337e7fdc1b144f` (its trace fields carry `native_id` and `exit`, F-L3-3).
 2. **`gars/_system/wrapperlib.py`**: `check_executor_config`'s `_config/` fence, moved before the descriptor is read, the project bound to the passed file's `_config/` parent instead of a walk up (review r1, L5-R1-3), and its passing of the descriptor's name; `EXECUTOR_TEMPLATES`, `EXECUTOR_TEMPLATE_NAME` and `executor_template()`; `check_groovy`'s `template_name` parameter (default the slurm template) and its use of `executor_template`; `check_groovy`'s `shape`, rewritten after review r1 to read strings before comments and keep each double-quoted string byte for byte (L5-R1-1, L5-R1-2); the comments and the docstring sentence. Every other line is as at `37a8d94`.
 3. **`gars/_system/executorlib.py`**: in `validate`, the bare-file-name rule for `nextflow_config` and its comment. Every other line is as at `37a8d94`.
 
@@ -61,8 +61,9 @@ On the branch (macOS, Python 3.13.2, `TMPDIR` in the lane's folder):
 
 - `gars/tests/test_executor_templates.py`: at `37a8d94`'s code with the template in place, `FAILED (failures=19, errors=1)` over tests 01 to 10; at `1fee9e6`, `Ran 11 tests`, `OK`.
 - Review r1: tests 12 and 13 at `2a144e1`'s code, `Ran 13 tests`, `FAILED (failures=15)`, each an admission where a refusal is due; after the fix, `Ran 13 tests`, `OK`; `test_policy_attacks.py` `Ran 19 tests`, `OK`; the slurm trace-grammar test `OK`.
+- F-L3-3: test 14 at `a36c96e`, `Ran 14 tests`, `FAILED (failures=1)` on the fields pin; with the fields added, `Ran 14 tests`, `OK`; ExecutorSeamTests `Ran 22 tests`, `OK`; the slurm trace-grammar test `OK`.
 - `tests/run_tests.py ExecutorSeamTests`: `Ran 22 tests`, `OK` (`test_09` unchanged).
-- `tests/check_counts.py`: 1208 clean at `37a8d94`, 1221 clean with this change's documents (1219 before review r1's two tests).
+- `tests/check_counts.py`: 1208 clean at `37a8d94`, 1222 clean with this change's documents (1219 before review r1's two tests, 1221 before test 14).
 - `tests/check_contracts.py`: 14 contracts clean.
 - The full suite and the mutation proof: recorded at the landing (below).
 
