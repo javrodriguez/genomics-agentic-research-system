@@ -40,8 +40,10 @@ T_BY = 'by the approver the run recorded'
 T_NOBY = 'with no approver named in its approval record'
 # An absolute path starts where no letter, digit or one of . _ ~ / : \ - comes before it (so a/b and
 # ./b are relative), or right after a colon when one slash follows (host:/x, not https://x).
-PATH_LIKE = re.compile(r'''(?<![A-Za-z0-9._~/:\\-])(?:/|~[^\s/"']*/|\\|[A-Za-z]:[\\/])|(?<=:)/(?!/)'''
-                       r'''|(?<![A-Za-z0-9])file:''', re.I)
+# A URL with an empty authority (x:///etc) names a local path too. No re.I: with it, [A-Za-z]
+# would also match letters that case-fold to ASCII (the Kelvin sign), and this rule is ASCII.
+PATH_LIKE = re.compile(r'''(?<![A-Za-z0-9._~/:\\-])(?:/|~[^\s/"']*/|\\|[A-Za-z]:[\\/])|(?<=:)(?:/(?!/)|///)'''
+                       r'''|(?<![A-Za-z0-9])[Ff][Ii][Ll][Ee]:''')
 HEADINGS = ('# Methods', '## Parameters', '## Software used', '## Citation', '## Records read', '## Sources')
 PARA, PARAM, SOFT, CITE, READ = HEADINGS[:5]
 # kind: (section heading, fixed text, slot types) -- v value, p approver phrase, a absent, x unprinted
@@ -51,7 +53,8 @@ KINDS = {
     'failure': (PARA, 'Its failure class is {}.', 'v'),
     'reference': (PARA, 'Its reference genome: build {}; annotation release {}; '
                         'FASTA sha256 {}; GTF sha256 {}.', 'vvvv'),
-    'reference-check': (PARA, 'Its reference registry check reads {}, reason {}.', 'vv'),
+    'reference-check': (PARA, 'Its reference registry check reads {}, reason {}; the run observed '
+                              'FASTA sha256 {} and GTF sha256 {}.', 'vvvv'),
     'reference-absent': (PARA, 'Its reference genome is not recorded.', 'a'),
     'config': (PARA, 'Its configuration sha256 is {}.', 'v'),
     'threads': (PARA, 'Its thread count is {}.', 'v'),
@@ -59,7 +62,7 @@ KINDS = {
     'command-absent': (PARA, 'Its exact submission is not recorded.', 'a'),
     'agent': (PARA, 'Its agent model is {}.', 'v'),
     'model-step': (PARA, 'It records a model-mediated step: model {}; provider {}; contract {}; '
-                         'git blob {}.', 'vvvv'),
+                         'contract hash {} (algorithm {}).', 'vvvvv'),
     'model-steps-absent': (PARA, 'Its model-mediated steps are not recorded.', 'a'),
     'pointer': (PARA, "Each workflow's parameters, random seeds, software versions and container "
                       "images are listed below.", ''),
@@ -252,7 +255,8 @@ def o_expected(rec):
             add('reference', *(M + '/reference/' + p for p in ('build', 'annotation_release',
                                                                   'fasta_sha256', 'gtf_sha256')))
             if reference.get('comparison') != 'matched':
-                add('reference-check', M + '/reference/comparison', M + '/reference/reason')
+                add('reference-check', M + '/reference/comparison', M + '/reference/reason',
+                    M + '/reference/observed/fasta_sha256', M + '/reference/observed/gtf_sha256')
         add('config', M + '/config_sha256')
         add('threads', M + '/threads')
         if o_absent(m.get('command', MISSING)):
@@ -268,7 +272,8 @@ def o_expected(rec):
             for i, step in enumerate(steps):
                 P = '%s/model_steps/%d' % (M, i)
                 prompt = '/prompt_sha256/value' if isinstance(step.get('prompt_sha256'), dict) else '/prompt_sha256'
-                add('model-step', P + '/model_id', P + '/provider', P + '/prompt_id', P + prompt)
+                add('model-step', P + '/model_id', P + '/provider', P + '/prompt_id', P + prompt,
+                    P + '/prompt_sha256/algorithm')
         params = m.get('params', MISSING)
         if o_absent(params):
             add('params-absent', M + '/workflow_name', M + '/params')
@@ -534,7 +539,10 @@ class RenderMethodsTests(unittest.TestCase):
             'failed run': dict(m, predicate_facts=dict(m['predicate_facts'], status='FAILED'),
                                failure_class='workflow'),
             'registry mismatch': dict(m, reference=dict(m['reference'], comparison='mismatch',
-                                                        reason='reference_hash_mismatch')),
+                                                        reason='reference_hash_mismatch',
+                                                        observed={'fasta_sha256': '1' * 64, 'gtf_sha256': '2' * 64})),
+            'an sha256 prompt hash': dict(m, model_steps=[dict(m['model_steps'][0],
+                                                               prompt_sha256={'algorithm': 'sha256', 'value': 'e' * 64})]),
             'registry check without reason': dict(m, reference={'build': 'fixture-build', 'comparison': None}),
             'no model-mediated step': dict(m, agent_model='none', model_steps=[]),
             'a mutable tag': dict(m, containers=m['containers'] + [{'process': 'MUTABLE',
@@ -553,9 +561,14 @@ class RenderMethodsTests(unittest.TestCase):
                                   'not recorded, image file sha256 not recorded.', text)
                 if label == 'no model-mediated step':
                     self.assertIn('Its agent model is `none`.', text)
-                if label == 'registry mismatch':
+                if label == 'registry mismatch':   # the hash the run saw, not only the registry's (r3 F-2)
                     self.assertIn('Its reference registry check reads `mismatch`, reason '
-                                  '`reference_hash_mismatch`.', text)
+                                  '`reference_hash_mismatch`; the run observed FASTA sha256 `%s` and GTF '
+                                  'sha256 `%s`.' % ('1' * 64, '2' * 64), text)
+                if label == 'an sha256 prompt hash':   # the hash kind is read, never assumed (r3 F-3)
+                    self.assertIn('contract hash `%s` (algorithm `sha256`).' % ('e' * 64), text)
+                if label == 'a string prompt hash':
+                    self.assertIn('contract hash `%s` (algorithm not recorded).' % ('d' * 40), text)
         # The producers write sorted keys; a record whose file order is not sorted must still be
         # rendered, and cited, in sorted-key order.
         unsorted = copy.deepcopy(m)
@@ -565,6 +578,10 @@ class RenderMethodsTests(unittest.TestCase):
         text = self.traced(('variant.json',))
         self.assertLess(text.index('parameter `aligner`'), text.index('parameter `outdir`'))
         self.assertLess(text.index('`a-tool`: `1`.'), text.index('`z-tool`: `2`.'))
+        # A zero written with an exponent is a zero, not an underflow (r3 F-1's refusal stays narrow).
+        zero = json.dumps(dict(m, params={'z': 'ZERO'})).replace('"ZERO"', '0.0e-400')
+        self.path('variant.json').write_text(zero, encoding='utf-8')
+        self.assertIn('parameter `z`: `0.0`.', self.traced(('variant.json',)))
 
     # ---- 4: the mutation proof ------------------------------------------------------------------
 
@@ -696,7 +713,8 @@ class RenderMethodsTests(unittest.TestCase):
                    'd:/data/x', 'file:///etc/x', 'FILE:x', '--outdir=/abs/secret', 'a /abs/secret',
                    '"/quoted/abs"', '{"nested": "/abs/secret"}', 'x;/abs', '(/abs)', 'line\n/abs',
                    'user@host:/abs/secret', 'cat x >/abs/secret', 'a|/abs/secret', 'key:/abs/secret',
-                   'x&/abs/secret', 'a+/abs/secret', 'tab\t/abs/secret']
+                   'x&/abs/secret', 'a+/abs/secret', 'tab\t/abs/secret', 'https:///etc/secret',
+                   'sftp:///abs/secret', 'K/abs/secret']
         for value in hostile:
             with self.subTest(value=value):
                 changed = dict(m, params={'p': value, value: 'key-side', 'nested': {'deep': [value]}},
@@ -714,7 +732,8 @@ class RenderMethodsTests(unittest.TestCase):
         for value in ('~ condition', 'condition,MT,WT', 'quay.io/biocontainers/fastqc:0.12.1',
                       'https://depot.galaxyproject.org/singularity/fastqc', 'pipeline_info/fixture.sif',
                       'N/A', 'sha256:' + 'a' * 64, 's3://bucket/key', 'quay.io:443/biocontainers/fastqc',
-                      './relative/x', '../relative/x', '$HOME/x', 'a\\b', 'fixture/tool@sha256:' + 'b' * 64):
+                      './relative/x', '../relative/x', '$HOME/x', 'a\\b', 'fixture/tool@sha256:' + 'b' * 64,
+                      '\u212a:\\x', 'zero 0e-400'):
             with self.subTest(shown=value):
                 self.dump('variant.json', dict(m, params={'p': value}))
                 self.assertIn('parameter `p`: `%s`.' % value, self.traced(('variant.json',), stage03=False))
@@ -846,6 +865,8 @@ class RenderMethodsTests(unittest.TestCase):
                                 (b'{"a": NaN}', 'manifest 1 holds a non-finite number'),
                                 (b'{"a": Infinity}', 'manifest 1 holds a non-finite number'),
                                 (b'{"threads": 1e400}', 'manifest 1 holds a non-finite number'),
+                                (b'{"params": {"x": 1e-400}}', 'manifest 1 holds a number that rounds to zero'),
+                                (b'{"params": {"x": [-1E-999]}}', 'manifest 1 holds a number that rounds to zero'),
                                 (b'{"params": {"x": [-1E999]}}', 'manifest 1 holds a non-finite number'),
                                 (b'{"params": {"p": ' + b'[' * 3000 + b']' * 3000 + b'}}',
                                  'manifest 1 is nested too deeply'),
