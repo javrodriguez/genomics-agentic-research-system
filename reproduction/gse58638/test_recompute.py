@@ -845,6 +845,18 @@ class AddendumLogicTests(unittest.TestCase):
         self.assertTrue(block.startswith(self.HEADING), block)
         self.assertTrue(block.endswith(self.para), block)
 
+    def test_a_second_paragraph_under_the_heading_is_bound(self):
+        # Home review, F-1: a figure planted in a later paragraph under the same heading is checked.
+        planted = self.text.replace(
+            self.para + "\n\n",
+            self.para + "\n\nThe recompute reproduces DKO1's 0.067 exactly, and GSM1420155 is 0.0073 "
+            "of bins on 10-bp bins.\n\n", 1)
+        self.assertNotEqual(planted, self.text)
+        self.assertIn("0.0073 of bins on 10-bp bins", recompute.find_addendum(planted))
+        self.assertNotEqual(recompute.addendum_failures(planted, self.counts, self.meta), [])
+        # and the block stops at the rule after the addendum
+        self.assertNotIn("How the scoring was designed", recompute.find_addendum(self.text))
+
     def test_heading_with_no_paragraph_binds_nothing(self):
         text = self.with_block(self.HEADING + "\n\n### Another heading")
         self.assertNotEqual(recompute.addendum_failures(text, self.counts, self.meta), [])

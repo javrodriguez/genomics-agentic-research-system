@@ -687,23 +687,25 @@ def check_quotes(results_md):
     return {k: find_once(text, q) for k, q in QUOTES.items()}
 
 
-# The addendum as it landed (68ec902): a Markdown heading naming it, a blank line, then its
-# paragraph. The block bound is the heading and the whole paragraph under it.
+# The addendum as it landed (68ec902): a Markdown heading naming it, then its text. The block bound
+# is the heading and everything under it up to the next heading or `---` rule, every paragraph of
+# it, so no figure can enter the addendum in a later paragraph unbound (home review, F-1).
 ADDENDUM_HEADING_RE = re.compile(
-    r"^#{1,6}[ \t]+[^\n]*Addendum \(30 Sep 2026\)[^\n]*\n(?:[ \t]*\n)+((?:(?![ \t]*#)[^\n]*\S[^\n]*(?:\n|$))+)",
+    r"^#{1,6}[ \t]+[^\n]*Addendum \(30 Sep 2026\)[^\n]*\n"
+    r"((?:(?![ \t]*#{1,6}[ \t])(?![ \t]*---[ \t]*(?:\n|$))[^\n]*(?:\n|$))*)",
     re.M)
 # Or a paragraph that opens with the dated label itself.
 ADDENDUM_RE = re.compile(r"Addendum \(30 Sep 2026\)[^\n]*(?:\n(?!\s*\n)[^\n]*)*")
 
 
 def find_addendum(text):
-    """The row 3a addendum: a heading naming it together with the paragraph under it, a paragraph
+    """The row 3a addendum: a heading naming it together with all the text under it, a paragraph
     that opens with its dated label, or, whatever its heading, a paragraph that says the
     deposit-side direction holds only when GSM1420155 is counted. None if there is none."""
     text = text.replace("\r\n", "\n")
     m = ADDENDUM_HEADING_RE.search(text)
-    if m:
-        return m.group(0).rstrip("\n")
+    if m and m.group(1).strip():
+        return m.group(0).rstrip()
     m = ADDENDUM_RE.search(text)
     if m:
         return m.group(0)
