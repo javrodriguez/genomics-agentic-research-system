@@ -6,6 +6,9 @@ descriptor named, so an AWS Batch venue could not pass preflight (the launch pad
 That WIDENS a guard, so most of this module is about what must still be refused: any other
 grammar, any name that is not a bare template name, a symlinked template, and a config the
 check reads that is not the one the wrapper passes with -c.
+Since glitch-14's ruling of 30 Sep 2026 (exact render equality), a Batch config is admitted only
+as the template's bytes with its three slots filled by values their validators admit; the slurm
+config keeps the shape check. FIXTURE is such a rendering, the shape the demo's generator writes.
 """
 import hashlib
 import os
@@ -28,6 +31,8 @@ NOT_IN_CONFIG = "is not a file directly in the project's _config/"
 BARE = 'R-075: nextflow_config must be a bare file name in _config/'
 # The recording rig's descriptor, as the pad's generator writes it with --head local.
 RIG = 'name: local\nnextflow_config: nextflow.awsbatch.config\nnextflow_profile: ""\n'
+# The FIXTURE's slot values: placeholders, never a real queue or region.
+SLOTS = {'queue': 'placeholder-launchpad-queue', 'goal': 'gars-launch-pad', 'region': 'zz-test-1'}
 EVIL_LINE = '\nprocess.beforeScript = "touch _system/x"\n'
 
 
@@ -78,13 +83,15 @@ class ExecutorTemplateTests(unittest.TestCase):
 
     # -- admitted --------------------------------------------------------------------------
 
-    def test_01_the_template_itself_is_admitted(self):
-        """Fails while check_groovy compares every config with the slurm template."""
-        self.assertEqual(self.check(self.project(), AWSBATCH.read_text(encoding='utf-8')), [])
+    def test_01_a_rendering_is_admitted_and_the_raw_template_is_not(self):
+        """Failed while check_groovy compared every config with the slurm template; since the
+        render ruling, the template's own bytes (its slots unfilled) are not a rendering."""
+        self.assertEqual(self.check(self.project(), FIXTURE.read_text(encoding='utf-8')), [])
+        self.assertEqual(self.check(self.project(), AWSBATCH.read_text(encoding='utf-8')), [REFUSED])
 
     def test_02_the_generator_shape_is_admitted_for_a_take_and_a_rehearsal(self):
-        """The D generator's shape (other comments, spacing and site values) passes, and a
-        rehearsal differs from the take only in the one job-tag value."""
+        """The D generator's output (a rendering) passes, and a rehearsal differs from the take
+        only in the one job-tag value."""
         take = FIXTURE.read_text(encoding='utf-8')
         rehearsal = take.replace("goal: 'gars-launch-pad'", "goal: 'gars-launch-pad-rehearsal'")
         changed = [(a, b) for a, b in zip(take.splitlines(), rehearsal.splitlines()) if a != b]
@@ -93,7 +100,7 @@ class ExecutorTemplateTests(unittest.TestCase):
             self.assertEqual(self.check(self.project(), text), [])
 
     def test_03_a_new_site_value_passes_and_an_unsafe_one_is_refused(self):
-        """Single-quoted values are site values under R-075's charset, nothing more."""
+        """A slot holds a value its validator admits, nothing more."""
         take = FIXTURE.read_text(encoding='utf-8')
         self.assertEqual(self.check(self.project(),
                                     take.replace("'placeholder-launchpad-queue'",
@@ -103,7 +110,8 @@ class ExecutorTemplateTests(unittest.TestCase):
                 refused = self.check(self.project(),
                                      take.replace("'placeholder-launchpad-queue'", value))
                 self.assertEqual(len(refused), 1, refused)
-                self.assertIn('R-098/§9.6: R-075 Groovy literal must match', refused[0])
+                self.assertTrue(refused[0].startswith('R-098/§9.6: '), refused)
+                self.assertIn('queue', refused[0])
 
     # -- one line more, or one fixed token changed, is refused -------------------------------
 
@@ -132,7 +140,7 @@ class ExecutorTemplateTests(unittest.TestCase):
                     self.assertEqual(refused, [REFUSED])
 
     def test_05_fixed_tokens_are_not_site_values(self):
-        """Only queue, region, cliPath and the goal value vary; everything else is grammar."""
+        """Only the queue, the region and the goal value vary; everything else is fixed."""
         take = FIXTURE.read_text(encoding='utf-8')
         self.assertEqual(self.check(self.project(), take), [])
         swaps = {
@@ -144,10 +152,11 @@ class ExecutorTemplateTests(unittest.TestCase):
                             'task.exitStatus in ((130..145) + 104)'),
             'a bigger clamp': ('cpus: 4,', 'cpus: 64,'),
             'more retries': ('maxRetries    = 3', 'maxRetries    = 30'),
-            'no job tag': ("    resourceLabels = [goal: 'gars-launch-pad']\n", ''),
-            'the 3 Sep two-key tag': ("[goal: 'gars-launch-pad']",
-                                      "[goal: 'gars-launch-pad', project: 'epigenome-a']"),
-            'another tag key': ("[goal: 'gars-launch-pad']", "[team: 'gars-launch-pad']"),
+            'no job tag': ("    resourceLabels = [ goal: 'gars-launch-pad' ]\n", ''),
+            'the 3 Sep two-key tag': ("[ goal: 'gars-launch-pad' ]",
+                                      "[ goal: 'gars-launch-pad', project: 'epigenome-a' ]"),
+            'another tag key': ("[ goal: 'gars-launch-pad' ]", "[ team: 'gars-launch-pad' ]"),
+            'the cliPath as a slot': ("cliPath = '/opt/nf-tools/bin/aws'", "cliPath = '/usr/local/bin/aws'"),
             'another trace file': ('"pipeline_info/gars_trace.txt"',
                                    '"pipeline_info/other_trace.txt"'),
             'the trace path as a literal': ('"pipeline_info/gars_trace.txt"',
@@ -257,9 +266,9 @@ class ExecutorTemplateTests(unittest.TestCase):
             refused = self.check(project, evil)
             self.assertEqual(len(refused), 1, refused)
             self.assertIn(NO_TEMPLATE, refused[0])
-            self.assertEqual(self.check(self.project(), AWSBATCH.read_text()), [])
+            self.assertEqual(self.check(self.project(), FIXTURE.read_text()), [])
         with patch.object(wl, 'EXECUTOR_TEMPLATES', linked_dir):
-            refused = self.check(self.project(), AWSBATCH.read_text())
+            refused = self.check(self.project(), FIXTURE.read_text())
             self.assertEqual(len(refused), 1, refused)
             self.assertIn(NO_TEMPLATE, refused[0])
 
@@ -317,16 +326,29 @@ class ExecutorTemplateTests(unittest.TestCase):
         script = (sub / 'submit.sh').read_text()
         tokens = shlex.split(script.split('nextflow run', 1)[1].replace('\\\n', ' '))
         self.assertEqual(Path(tokens[tokens.index('-c') + 1]), passed.resolve())
+        # The render ruling: the manifest also records the slot values and the rendering's hash.
+        self.assertEqual(manifest['execution_config_rendered'], {
+            'template': 'nextflow.awsbatch.config',
+            'template_sha256': hashlib.sha256(AWSBATCH.read_bytes()).hexdigest(),
+            'slots': SLOTS,
+            'rendered_sha256': hashlib.sha256(FIXTURE.read_bytes()).hexdigest()})
 
     def test_11_the_template_carries_what_the_ruling_names(self):
-        """The template's own content: four site values, one job-tag key, the trace the
-        manifest reads, and nothing the slurm cluster needed and Batch does not."""
+        """The template's own content: exactly three slots (queue, goal, region), each once and
+        inside single quotes; one job-tag key; the fixed cliPath; the trace the manifest reads;
+        and nothing the slurm cluster needed and Batch does not."""
         import re
-        text = re.sub(r'//[^\n]*', '', AWSBATCH.read_text(encoding='utf-8'))
-        sites = re.findall(r"(\w+)\s*(?:=|:)\s*'[^']*'", text)
-        self.assertEqual(sites, ['queue', 'goal', 'region', 'cliPath'])
+        raw = AWSBATCH.read_text(encoding='utf-8')
+        self.assertEqual(re.findall(r"\{\{([a-z]+)\}\}", raw), ['queue', 'goal', 'region'])
+        self.assertEqual((raw.count('{{'), raw.count('}}')), (3, 3))
+        for slot in ('queue', 'goal', 'region'):
+            self.assertIn("'{{%s}}'" % slot, raw)
+        self.assertEqual(sorted(wl.EXECUTOR_RENDER_SLOTS['nextflow.awsbatch.config']),
+                         ['goal', 'queue', 'region'])
+        text = re.sub(r'//[^\n]*', '', raw)
         self.assertEqual(re.findall(r'resourceLabels\s*=\s*\[([^\]]*)\]', text),
-                         [" goal: 'untagged' "])
+                         [" goal: '{{goal}}' "])
+        self.assertIn("cliPath = '/opt/nf-tools/bin/aws'", text)
         self.assertIn('executor = "awsbatch"', text)
         self.assertIn('? "retry" : "finish"', text)
         self.assertIn('task.exitStatus == null', text)
@@ -344,7 +366,7 @@ class ExecutorTemplateTests(unittest.TestCase):
         For every double-quoted string of both templates: a `//` and one extra statement inside
         it (the string closed on the next line), and one added space inside it, are refused."""
         extra = '// process.maxRetries = 3\n'
-        for template, descriptor, count in ((SLURM, 'name: slurm\n', 1), (AWSBATCH, RIG, 6)):
+        for template, descriptor, count in ((SLURM, 'name: slurm\n', 1), (FIXTURE, RIG, 6)):
             text = template.read_text(encoding='utf-8')
             spans = double_quoted_spans(text)
             self.assertEqual(len(spans), count, [text[a:b] for a, b in spans])
@@ -364,7 +386,7 @@ class ExecutorTemplateTests(unittest.TestCase):
         nested = project / '_config' / '_config'
         nested.mkdir()
         (nested / 'executor.yaml').write_text('name: local\n', encoding='utf-8')
-        template = AWSBATCH.read_text(encoding='utf-8')
+        template = FIXTURE.read_text(encoding='utf-8')
         self.assertEqual(self.check(project, template + '\nprocess.maxRetries = 3\n'), [REFUSED])
         self.assertEqual(self.check(project, template), [])
 
@@ -406,12 +428,16 @@ class ExecutorTemplateTests(unittest.TestCase):
         every newline and comment, so an identifier split in two, or two statements joined on one
         line, had the template's shape. Groovy reads an identifier or a number as one token and a
         newline or a `//` comment as a line end; so does the shape now. Only space, tab, CR and LF
-        are whitespace; CR and U+FFFF end a comment as in Groovy. Each case is refused; comments
-        and blank lines stay free (the controls)."""
-        text = AWSBATCH.read_text(encoding='utf-8')
+        are whitespace; CR and U+FFFF end a comment as in Groovy. Each case is refused under both
+        names. Comments and blank lines stay free for slurm's shape check (the control) and not
+        for a Batch rendering, whose every byte is fixed."""
+        text = FIXTURE.read_text(encoding='utf-8')
         self.assertEqual(self.check(self.project(), text), [])
         free = text.replace('    maxRetries    = 3\n', '    maxRetries = 3   // a comment\n\n\n')
-        self.assertEqual(self.check(self.project(), free), [])
+        self.assertEqual(self.check(self.project(), free), [REFUSED])
+        slurm_free = SLURM.read_text(encoding='utf-8').replace(
+            '    maxRetries    = 3\n', '    maxRetries = 3   // a comment\n\n\n')
+        self.assertEqual(self.check(self.project('name: slurm\n'), slurm_free), [])
         cases = {
             'an identifier split by a space': ('maxRetries    = 3', 'max Retries    = 3'),
             'an identifier split by a newline': ('resourceLabels = [', 'resource\nLabels = ['),
@@ -419,10 +445,10 @@ class ExecutorTemplateTests(unittest.TestCase):
             'a number split by a space': ('queueSize       = 20', 'queueSize       = 2 0'),
             'two statements joined on one line': ('"finish" }\n    maxRetries', '"finish" }    maxRetries'),
             'a no-break space inside an identifier': ('maxRetries    = 3', 'max\u00a0Retries    = 3'),
-            'CR ends a comment': ('// Both outcomes are fixed, never site values.\n',
-                                  '// Both outcomes are fixed, never site values.\rprocess.maxRetries = 3\n'),
-            'U+FFFF ends a comment': ('// Both outcomes are fixed, never site values.\n',
-                                      '// Both outcomes are fixed, never site values.\uffffprocess.maxRetries = 3\n'),
+            'CR ends a comment': ('// Both outcomes are fixed, never slots.\n',
+                                  '// Both outcomes are fixed, never slots.\rprocess.maxRetries = 3\n'),
+            'U+FFFF ends a comment': ('// Both outcomes are fixed, never slots.\n',
+                                      '// Both outcomes are fixed, never slots.\uffffprocess.maxRetries = 3\n'),
         }
         for label, (old, new) in cases.items():
             with self.subTest(case=label):
@@ -448,6 +474,38 @@ class ExecutorTemplateTests(unittest.TestCase):
                 self.assertEqual(self.check(self.project(descriptor), slurm), problems)
                 self.assertEqual(self.check(self.project(descriptor), extra), problems + [REFUSED])
 
+
+    # -- glitch-14's render ruling (30 Sep 2026) ------------------------------------------------
+
+    def test_17_only_an_exact_rendering_is_admitted(self):
+        """A Batch config is the template's bytes with each slot replaced by a value its validator
+        admits: no quote, backslash, newline, `$`, brace or space, not empty, not over-long.
+        Comments, spacing, line ends and the final newline are the template's; an expression in a
+        value's place, or any other byte, is refused."""
+        take = FIXTURE.read_text(encoding='utf-8')
+        self.assertEqual(self.check(self.project(), take), [])
+        injected = ["x'y", 'x\ny', '${HOME}', 'x\\y', 'x y', 'x{1}', 'x$y', 'x"y', '', 'a' * 129]
+        for slot, value in SLOTS.items():
+            self.assertEqual(take.count("'%s'" % value), 1, slot)
+            for bad in injected + (['US-EAST-1', 'us-east-1a'] if slot == 'region' else []):
+                with self.subTest(slot=slot, value=bad):
+                    refused = self.check(self.project(), take.replace("'%s'" % value, "'%s'" % bad))
+                    self.assertEqual(len(refused), 1, refused)
+                    self.assertTrue(refused[0].startswith('R-098/§9.6: '), refused)
+        others = {
+            'a comment reworded': take.replace('never slots.', 'never slot values.'),
+            'spacing changed': take.replace('maxRetries    = 3', 'maxRetries = 3'),
+            'a trailing comment added': take.replace('    maxRetries    = 3\n',
+                                                     '    maxRetries    = 3 // x\n'),
+            'a blank line added': take.replace('process {\n', 'process {\n\n'),
+            'the final newline dropped': take.rstrip('\n'),
+            'CRLF line ends': take.replace('\n', '\r\n'),
+            'an expression as the tag value': take.replace("goal: 'gars-launch-pad'", 'goal: task.name'),
+        }
+        for label, text in others.items():
+            with self.subTest(case=label):
+                self.assertNotEqual(text, take)
+                self.assertEqual(self.check(self.project(), text), [REFUSED])
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
