@@ -81,7 +81,10 @@ class R64RegistryTests(unittest.TestCase):
         # ATAC and ChIP pin different pipelines, so neither reuses the other's index.
         self.assertEqual(len(set(derived.values())), 2, derived)
 
-    def test_menu_numbers_keep_grch38_first(self):
+    def test_menu_numbers_follow_id_order(self):
+        # configure.py numbers the menu by ID, not by file position, so GRCh38 stays 01 (the
+        # suite's test_10 reads entry 0); the row's place after GRCh38 in the file is bound by
+        # the file-order assertion in test_hash_table_is_parsed_separately.
         code, res, err = menu('atacseq_bulk')
         self.assertEqual(code, 0, err)
         self.assertEqual([(g['n'], g['id']) for g in res['genomes']],

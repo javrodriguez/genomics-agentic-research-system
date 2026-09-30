@@ -7,7 +7,7 @@ touches:
   - tests/test_genome_registry_r64.py
 symptoms:
   - the launch pad's yeast fixtures (R64-1-1) are not in the genome registry, so no peak-assay menu offers them
-  - mito_name Mito passed for a FASTA whose mitochondrial contig is MT; the mito filter is skipped with no error
+  - mito_name Mito passed for a FASTA whose mitochondrial contig is MT; the mito filter runs, removes nothing, and raises no error
   - a MACS gsize that is the whole-assembly length where the registry states the 50-bp effective size
 ---
 # R64-1-1 in the genome registry: the launch pad's yeast reference, with its hash row
@@ -43,6 +43,7 @@ nf-core/atacseq 2.1.2 (tag commit `1a1dbe52ffbd82256c941a032b0e22abbd925b8a`) sa
 The FASTA's summed sequence length is 12157105 (`awk '!/^>/{gsub(/[ \t\r]/,""); total+=length($0)}END{print total}' genome.fa`), the whole assembly with `MT`'s 85779 bases included; that is the figure the demo used.
 It is not the registry's figure: genomes.md states that the GRCh38 value is the deeptools 50-bp unique-mappability effective size, the value nf-core/atacseq's own iGenomes config uses at the default read length.
 For R64-1-1 that config gives 11624332 at read length 50 (`conf/igenomes.config:365-371`), and the fixtures' own test profile runs at read length 50 (`conf/test.config:24`).
+The ChIP-seq pipeline agrees for the same fixture: nf-core/chipseq 2.1.0 (tag commit `76e2382b6d443db4dc2396e6831d1243256d80b0`) gives R64-1-1 `mito_name = "MT"` and `"50" : 11624332` (`conf/igenomes.config:364-366`), and its test profile runs these same two test-datasets files at read length 50 (`conf/test.config:24, 27-28`).
 11624332 is nf-core's precomputed effective size for the iGenomes Ensembl R64-1-1 FASTA; it applies to this fixture **by inference**, because the fixture is the same R64-1-1 assembly under Ensembl contig names, and not by a measurement on the fixture.
 No effective-size tool (khmer or another) was run on the fixture, and whether the iGenomes FASTA's bytes equal the fixture's was not checked.
 
@@ -53,7 +54,7 @@ The lane's commands and their full outputs, and a second builder's independent r
 
 ## Decision
 
-1. **One identity row, after GRCh38**, so GRCh38 stays menu 01 and R64-1-1 is 02 (the suite's fixtures cut the registry at `| GRCh38 |`):
+1. **One identity row, after GRCh38**, because the suite's fixtures replace the registry's rows by cutting the file at `| GRCh38 |`, so a row above it would survive into their synthetic registries (the menu itself numbers rows in ID order, GRCh38 01 and R64-1-1 02, wherever they sit in the file):
    `| R64-1-1 | Saccharomyces cerevisiae | R64-1-1 | nf-core/test-datasets atacseq branch, pinned by sha256 | /home/ubuntu/genomics-agentic-research-system/install/refs/R64-1-1/genome.fa | …/genes.gtf | …/derived | MT | 11624332 |`.
    The paths sit in the pad clone's self-ignoring `install/refs/`, so the clone stays clean.
    The derived cache root is given before any index is built; the wrappers pass `--save-reference` on the first run and harvest into the keyed directory, as the registry's cache paragraph says.
@@ -90,7 +91,7 @@ glitch-14 opens that as its own lane; this record changes nothing in the demo.
 
 `tests/test_genome_registry_r64.py`, three tests, written first and red on the base registry at `37a8d94` (`Ran 3 tests … FAILED (failures=5)`: R64-1-1 absent from both menus, from the identity parse and from the numbering), then green with the row (`Ran 3 tests … OK`):
 the `atacseq_bulk` and `chipseq_bulk` menus, through `configure.py`'s real command line, list R64-1-1 once with every identity and hash field, `MT` and `11624332`, and a cache key equal to the root plus the assay's pinned pipeline, the two keys different; `--select R64-1-1` resolves it; the menu numbers stay GRCh38 01, R64-1-1 02; the identity parse returns exactly the two identity rows, each table's body is counted from the file, and a planted hash-only row never becomes a genome.
-Planted faults, each restored from a byte backup: `Mito` with 12157105, and `Mito` alone, each turn the test red (`AssertionError: 'Mito' != 'MT'`).
+Planted faults, each restored byte for byte: `Mito` with 12157105 turns the test red on the gsize first, the fields being checked in sorted key order (`AssertionError: '12157105' != '11624332'`), and `Mito` alone turns it red on the name (`AssertionError: 'Mito' != 'MT'`); a row moved above GRCh38 is caught by the file-order assertion in `test_hash_table_is_parsed_separately`, not by the menu numbering.
 `python3 tests/check_contracts.py`: `14 contracts clean`; `python3 tests/check_counts.py`: `suite: 1211 tests`, `enforced=3`, clean (1208 at `37a8d94`).
 
 ## Status
