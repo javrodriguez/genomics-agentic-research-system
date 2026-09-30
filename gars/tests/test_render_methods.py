@@ -813,10 +813,12 @@ class RenderMethodsTests(unittest.TestCase):
                 self.dump('local-manifest.json', dict(m, **change))
                 self.refuse(argv, reason)
         manifest.write_bytes(good)
+        approval = self.path('approval.json').read_bytes()
         self.path('approval.json').write_bytes(b'[]')
         self.refuse(argv, 'approval record is not a JSON object')
         self.path('approval.json').write_bytes(b'{"actor": 1, "actor": 2}')
         self.refuse(argv, 'approval record repeats the key')
+        self.path('approval.json').write_bytes(approval)
         self.path('HISTORY.md').write_bytes(b'\xff')
         self.refuse(argv, 'history is not UTF-8')
         missing = self.argv(('absent-manifest.json',), stage03=False)
@@ -869,7 +871,8 @@ class RenderMethodsTests(unittest.TestCase):
         import manifest_check
         for name in ('nfcore-manifest.json', 'local-manifest.json'):
             self.assertTrue(manifest_check.grade(self.load(name))['ok'], name)
-        self.assertFalse(manifest_check.grade(self.load('prepare-manifest.json'))['ok'])
+        with self.assertRaisesRegex(ValueError, 'predicate_facts'):   # prepare-only: collect never ran
+            manifest_check.grade(self.load('prepare-manifest.json'))
         source = (GARS / '_system/stage03_analysis.py').read_text(encoding='utf-8')
         tree = ast.parse(source)
         functions = {n.name: n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)}
