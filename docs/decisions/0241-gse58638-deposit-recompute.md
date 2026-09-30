@@ -131,3 +131,56 @@ The implementation and this record are the lane's; the merge and every public pu
 ## Date
 
 2026-09-30
+
+## Addition, 30 Sep 2026 (the merge at home)
+
+Written by glitch-14's merge lane on the Mac (Intel i9-9880H, macOS), under the same delegation; no sentence here is the owner's.
+The lane's commits were replayed onto public main `68ec902`, which carries the row 3a addendum, together with the mirror's review-r6 commit (pushed after the lane's report, and reviewed at home).
+What changed, and why:
+
+**PREREG-2 R5 now binds the landed addendum.** On `68ec902` the binding failed: it had been written against the plan's draft of the addendum, an inline paragraph, while the addendum landed as a `### Addendum (30 Sep 2026)` heading with its paragraph after a blank line.
+Its detector returned the heading line alone, so none of the addendum's figures were checked; and it removed line 73's pipeline-side pair only in the draft's paraphrase, "(… peak bp)", while line 73 and the landed addendum both say "(123 M vs 45.6 M mean peak bp)".
+Now a heading naming the addendum binds together with the paragraph under it; the pipeline pair is removed only as line 73's verbatim span, so a paraphrase leaves its 45.6 unbound and fails; and with the addendum in the base, a RESULTS.md without one fails R5 (the "not applicable" state, and `RESULTS_MD_SHA256`, are gone).
+The tests read the landed addendum from RESULTS.md and derive the text without it by removing exactly its heading, paragraph and blank lines; `test_draft_wording_now_fails` shows that the draft, which bound green before, now fails on its paraphrased pair and on nothing else.
+The addendum's wording is unchanged: it is the owner's, and it satisfies R5 as written.
+
+**PREREG-3** (`PREREG-3.md`, the orchestrator's dated rule, byte-identical to its lane-folder copy, sha256 `e36dc10f…134d`) replaces the "awaiting a PREREG-3" exception above.
+Q1: GSM1420155's B1 z>2 cell is bound on exact counts, equal to step 1's own (6,206,820 bases above 2 of 3,095,646,350, from UCSC's `bigWigToBedGraph` through step 1's counter), and named with its reason, the exact count rounded twice; the step-1 printed digit is never asserted (`STEP1_EXACT`).
+Q2: PREREG-2 R4's B4 ratio range reads 43.5-108×, as the report already printed it.
+
+**Threat-model property (e): closed.** The reader was compared with UCSC's own reader on the four real deposits and on the fixtures.
+- The four deposits in the lane folder were read by this candidate's reader (script blob `38ad39396004812cb8c3b7062e22c3c0dde95dcc`) with every byte hashed: each sha256 equals its pin.
+  Its per-chromosome counts were compared with step 1's outputs from UCSC's `bigWigToBedGraph` (macOSX.x86_64, Last-Modified 11 Sep 2026, sha256 `bd4f420e…e724`) through step 1's counter: records on the basis step 1 counted (UCSC's text merges abutting items of identical value, so the reader's runs are merged the same way), bases with data, and bases strictly above 1 and above 2, on each of 24 chromosomes and in total.
+  Step 1 compared thresholds on UCSC's `%g` text and recorded no value printed as exactly 1 or 2, so the printing cannot move a value across a threshold.
+
+| Deposit | sha256 = pin | Comparisons | Differ | Records (reader) | Merged runs (reader) = UCSC records | Bases with data | Bases >1 | Bases >2 |
+|---|---|---|---|---|---|---|---|---|
+| GSM1415877 | yes | 100 | 0 | 309,564,635 | 172,425,988 | 3,095,646,350 | 330,090,950 | 132,774,540 |
+| GSM1420155 | yes | 100 | 0 | 309,564,635 | 203,452,785 | 3,095,646,350 | 79,116,390 | 6,206,820 |
+| GSM1415885 | yes | 100 | 0 | 309,564,635 | 170,336,815 | 3,095,646,350 | 349,673,820 | 118,872,410 |
+| GSM1420162 | yes | 100 | 0 | 309,564,635 | 189,358,563 | 3,095,646,350 | 360,709,900 | 133,714,270 |
+
+- On the fixtures, `bigWigToBedGraph` returns exactly the text source for `bedgraph` (2,915 records) and `fixedstep` (1,250), coordinates exact and values as UCSC prints them, as the reader does; both refuse `empty`.
+- The `bedgraph` fixture is now written by UCSC's `bedGraphToBigWig` (v2.10, sha256 `ba47840e…ca5a`): four zlib blocks of section type 1, and every test passes on it unchanged but for its pin.
+- `fixedstep` and `empty` stay as pyBigWig wrote them, because UCSC's writers cannot make them faithfully.
+  `wigToBigWig` (sha256 `ae626a62…ec75`) writes the fixedStep records correctly but its header's `basesCovered` says 12,390 where the file holds 12,250, 140 too many, all on chrA's 10-bp run and with or without its NaN steps; the reader refuses that file ("graded 10750 bases (+1500 NaN) but the header covers 12390"), which is the correct behaviour: the header is the only independent count a file carries, and a file whose header disagrees with its records is not graded.
+  Neither UCSC writer can write a zero-record file (both exit 255 on empty input).
+  `fixtures/README.md` says the same.
+- Tile counts (B4) were not in step 1's UCSC outputs as exact tile means and are not part of this comparison; they stand on the libBigWig comparison above.
+
+**The run behind the committed `expected.txt`, as merged.** `expected.txt` was moved aside and re-written by `python3 reproduction/gse58638/recompute.py --from <the lane folder's four deposits>` (Python 3.9.6) at the script blob it names, `38ad39396004812cb8c3b7062e22c3c0dde95dcc`, 30 Sep 16:09-17:03 EDT, stderr `total 3261.1 s` (it shared the machine with the four comparison readers for its first half); output `Identical to reproduction/gse58638/expected.txt: written by this run`, exit 0.
+Against the lane's copy, only three things moved: the blob line, a new `PREREG-3.md sha256` line, and the step-1 lines Q1 rewords; every count, sha256 and metadata line is unchanged.
+
+**Tests and witness on the merged candidate.** `python3 reproduction/gse58638/test_recompute.py`: `Ran 71 tests`, `OK`, none skipped on macOS (on Windows CI, `test_results_md_read_as_utf8` still skips by name).
+The mutation witness was rebuilt at home (the lane's harness stayed in the cloud), with the same rule: each mutant a fresh copy whose `expected.txt` names the mutant's own blob.
+The unplanted copy passes all 23 named tests, and 25 of 25 mutants are killed: the 21 in the table above, each by the same named test, plus four for this merge.
+
+| Plant | Killed by |
+|---|---|
+| H1 the addendum's heading bound alone (the defect found at the merge) | `PublishedBindingTests.test_addendum_binding` |
+| H2 a paraphrased pipeline pair accepted as line 73's | `AddendumLogicTests.test_draft_wording_now_fails` |
+| H3 PREREG-3 Q1's exact-count check off | `PublishedBindingTests.test_changed_step1_cell_count_fails` |
+| H4 R5 silent when RESULTS.md holds no addendum | `PublishedBindingTests.test_changed_results_md_without_addendum_fails` |
+
+**Superseded by this addition:** the statements above that property (e) is open, that one step-1 cell awaits a PREREG-3 (`STEP1_B1_DIFFERS`), that R5 skips until the addendum lands or while RESULTS.md equals 37a8d94 (`RESULTS_MD_SHA256`), that PREREG-2 R4 reads "44-108×", and that the fixtures were all written by pyBigWig.
+Still not closed, as above: the per-library half, the cause of the deposit's outlier, the mixed bases in the addendum's "0.083 against DKO1's 0.067" (the owner's sentence), and the binding of counts to bytes, which only a real run gives.

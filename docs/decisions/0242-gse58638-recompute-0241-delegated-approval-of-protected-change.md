@@ -51,3 +51,12 @@ Standing.
 ## Date
 
 2026-09-30
+
+## Addition, 30 Sep 2026 (the merge at home)
+
+Written by glitch-14's merge lane on the Mac, under the same delegation; no sentence here is the owner's.
+The lane's commits were replayed onto public main `68ec902`, where the row 3a addendum is in RESULTS.md, together with the mirror's review-r6 commit, which the cloud lane pushed after its report.
+The lane report named above (`lane-reports/geo-recompute.md`) stays in the private mirror; lane reports do not land in this repository.
+Nothing in the approved protected change moved: on `68ec902` the `ci.yml` diff is the one appended job (24 lines added, none removed), and `geo-recompute.yml` is as the lane wrote it.
+The Test section above describes the lane's candidate and is superseded here: with the addendum in the base, `test_addendum_binding` runs and never skips, and the test count, the binding's output line and the mutation witness on the merged candidate are recorded in 0241's addition of the same date.
+The home review (a fresh `claude -p --model claude-opus-5-5` in a no-remote `--no-local` clone of the merged candidate, briefed with the plan's sections 2-5, PREREG-2, PREREG-3 and the threat model, and asked to cover the r6 commit explicitly) is recorded in 0241's addition.

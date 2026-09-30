@@ -11,8 +11,9 @@ z>2 (base-weighted, strictly greater, on the stored float32) and the 10-kb tiles
 above them. It prints the report, compares it with the committed expected.txt, and checks each
 quotation of RESULTS.md it discusses is found there exactly once.
 
-What it reports and binds is fixed by two files beside it: PREREG.md (frozen before any deposit
-byte was read) and PREREG-2.md (the dated rule for the binding under the recorded IN KIND verdict).
+What it reports and binds is fixed by three files beside it: PREREG.md (frozen before any deposit
+byte was read), PREREG-2.md (the dated rule for the binding under the recorded IN KIND verdict) and
+PREREG-3.md (the dated rule that binds two twice-rounded step-1 figures at one rounding).
 
 Exit codes: 0 identical and matching; 1 a science difference (a deposit's size or sha256 changed, a
 quotation moved, the report differs), named; 2 refused (short read, bad format, zero records, the
@@ -99,21 +100,18 @@ STEP1_B1 = {
     "GSM1420162": ("0.1165", "0.0432"),
 }
 STEP1_B1_RATIOS = (("4.17", "4.42", "4.56"), ("21.4", "19.2", "21.5"))
-# The one step-1 figure the exact recompute does not equal at its printed precision, measured by the
-# lane on 30 Sep 2026 and raised to the orchestrator: GSM1420155's B1 z>2 fraction is
-# 620682/309564635 = 0.0020050..., which is 0.00201 at three figures under any rounding; step 1
-# printed 0.00200. libBigWig counts the same bases. Step 1's figure is the same count rounded twice:
-# to four figures (0.002005), then half-even to three (review r3). The binding holds this cell to the recompute's
-# own figure and the report prints the difference; every other step-1 figure is bound as printed.
-# PENDING a PREREG-3: PREREG-2 R3 binds step 1's printed value, and only the orchestrator can change
-# that (R6). Asked in the lane session on 30 Sep, the orchestrator chose to keep this named exception,
-# visible in the report and in decision 0241, over a binding that fails until PREREG-3 exists.
-STEP1_B1_DIFFERS = {("GSM1420155", 1): "0.00201"}
-# PREREG-2 R4: the figures it states for B4, as it states them. Its "44" is step 1's 43.5 rounded a
-# second time (the exact ratio is 2435/56 = 43.48); the report prints ratios at step 1's three
-# significant figures, so it reads 43.5, and the test binds that (test_b4_equals_prereg2_r4).
+# PREREG-3 Q1: R3's comparison with step 1 is made on the exact counts, and each printed figure is
+# rounded once, half-up, from the exact rational. One step-1 printed figure differs from that single
+# rounding: GSM1420155's B1 z>2 fraction, which step 1 printed as 0.00200, the exact count rounded
+# twice (to 0.002005, then half-even to three figures). For that cell the binding asserts that the
+# exact counts equal step 1's own (UCSC bigWigToBedGraph through step 1's counter: bases above 2 and
+# bases with data, 30 Sep 2026) and names the cell and the reason; it never asserts the printed digit.
+STEP1_EXACT = {("GSM1420155", 1): (6206820, 3095646350, "the exact count rounded twice")}
+# PREREG-2 R4: the figures it states for B4. Its z>2 ratio range reads "43.5-108" by PREREG-3 Q2, at
+# step 1's three significant figures (the exact lower ratio is 2435/56 = 43.48; R4's "44" was that
+# figure rounded a second time).
 PREREG2_R4 = {
-    "failed_z1": "0.0074", "others_z1": ("0.053", "0.083"), "ratios_z2": ("44", "108"),
+    "failed_z1": "0.0074", "others_z1": ("0.053", "0.083"), "ratios_z2": ("43.5", "108"),
     "c1_dko1": "0.068", "c1_hct116_with": "0.045", "c1_hct116_without": "0.083",
 }
 # The public-metadata section of expected.txt, pinned so a hand edit to it fails the binding on push
@@ -124,10 +122,8 @@ METADATA_SHA256 = "bad7aff4a590190399f06969744b8108892494194b757b2610cd628974599
 # counts fails on push; the push-time binding otherwise re-renders from the counts it is given.
 # Update only from a real run.
 COUNTS_SHA256 = "4e989d44c8748edff43380d926397a5a512aed7bae431df8ed4bd7f222b1fedd"
-# docs/RESULTS.md at 37a8d94 (LF), the base this was built on: while no row 3a addendum is found, the
-# binding requires RESULTS.md unchanged, so an addendum that lands in a form find_addendum() misses
-# fails rather than leaving PREREG-2 R5 skipped for good.
-RESULTS_MD_SHA256 = "81d517aeb4a9d9f3d91db60c57db7e4f0793da42b42a55b888e152b854ba77ae"
+# PREREG-2 R5 binds the row 3a addendum, which is in docs/RESULTS.md since 68ec902: a RESULTS.md in
+# which find_addendum() finds none fails the binding (there is no "not applicable" state any more).
 # PREREG.md P6's thresholds, printed and never asserted (PREREG-2 R2).
 P6_Z1, P6_Z2 = 5, 20
 
@@ -628,21 +624,32 @@ def b1_ratios(counts):
 
 
 def step1_differences(counts):
-    """Each B1 figure step 1 printed (8 fractions, 6 ratios) that the recompute does not equal at
-    that precision, as a sentence."""
-    out = []
+    """Step 1's printed B1 figures (8 fractions, 6 ratios) against the recompute rounded once
+    (PREREG-3 Q1). Returns (named, differs): each cell PREREG-3 binds on exact counts instead, as a
+    sentence saying whether its exact counts equal step 1's; and every other figure that differs."""
+    named, differs = [], []
     for g, printed in STEP1_B1.items():
         for z, want in enumerate(printed):
-            got = round_sig(b1_fractions(counts[g])[z], sig_figs(want))
-            if got != want:
-                out.append("%s z>%d fraction: step 1 printed %s, the exact recompute is %s (%s)"
-                           % (g, z + 1, want, got, exact_decimal(b1_fractions(counts[g])[z], 8)))
+            value = b1_fractions(counts[g])[z]
+            got = round_sig(value, sig_figs(want))
+            if (g, z) in STEP1_EXACT:
+                above, bases, reason = STEP1_EXACT[(g, z)]
+                c = counts[g]
+                mine = (c.above1, c.above2)[z]
+                named.append("%s z>%d fraction: step 1 printed %s, %s; its exact counts %s step 1's (%s of %s "
+                             "bins above; %s, %s at one rounding)" % (
+                                 g, z + 1, want, reason,
+                                 "equal" if (mine, c.bases) == (above, bases) else "DO NOT EQUAL",
+                                 bins(mine), bins(c.bases), exact_decimal(value, 8), got))
+            elif got != want:
+                differs.append("%s z>%d fraction: step 1 printed %s, the exact recompute is %s (%s)"
+                               % (g, z + 1, want, got, exact_decimal(value, 8)))
     for z in (0, 1):
         for value, want in zip(b1_ratios(counts)[z], STEP1_B1_RATIOS[z]):
             got = "inf" if value is None else round_sig(value, sig_figs(want))
             if got != want:
-                out.append("a z>%d ratio: step 1 printed %s, the exact recompute is %s" % (z + 1, want, got))
-    return out
+                differs.append("a z>%d ratio: step 1 printed %s, the exact recompute is %s" % (z + 1, want, got))
+    return named, differs
 
 
 def exact_decimal(x, n):
@@ -680,12 +687,23 @@ def check_quotes(results_md):
     return {k: find_once(text, q) for k, q in QUOTES.items()}
 
 
+# The addendum as it landed (68ec902): a Markdown heading naming it, a blank line, then its
+# paragraph. The block bound is the heading and the whole paragraph under it.
+ADDENDUM_HEADING_RE = re.compile(
+    r"^#{1,6}[ \t]+[^\n]*Addendum \(30 Sep 2026\)[^\n]*\n(?:[ \t]*\n)+((?:(?![ \t]*#)[^\n]*\S[^\n]*(?:\n|$))+)",
+    re.M)
+# Or a paragraph that opens with the dated label itself.
 ADDENDUM_RE = re.compile(r"Addendum \(30 Sep 2026\)[^\n]*(?:\n(?!\s*\n)[^\n]*)*")
 
 
 def find_addendum(text):
-    """The row 3a addendum: by its dated heading, or by its content (a paragraph that says the
-    deposit-side direction holds only when GSM1420155 is counted), whatever its heading."""
+    """The row 3a addendum: a heading naming it together with the paragraph under it, a paragraph
+    that opens with its dated label, or, whatever its heading, a paragraph that says the
+    deposit-side direction holds only when GSM1420155 is counted. None if there is none."""
+    text = text.replace("\r\n", "\n")
+    m = ADDENDUM_HEADING_RE.search(text)
+    if m:
+        return m.group(0).rstrip("\n")
     m = ADDENDUM_RE.search(text)
     if m:
         return m.group(0)
@@ -694,10 +712,6 @@ def find_addendum(text):
         if "line 73" in flat and "GSM1420155" in flat and re.search(r"\b0\.0\d\d\b", flat):
             return paragraph
     return None
-
-
-def results_md_sha(text):
-    return hashlib.sha256(text.replace("\r\n", "\n").encode("utf-8")).hexdigest()
 
 
 def addendum_failures(text, counts, context=""):
@@ -712,12 +726,13 @@ def addendum_failures(text, counts, context=""):
     failures = []
     # Line 73's figures may appear only as quotations of line 73, each exactly once: its deposit-side
     # pair as "line 73 (DKO1 x vs HCT116 y)", DKO1's figure once more as the comparator "DKO1's x",
-    # and its pipeline-side pair "(123 M vs 45.6 M peak bp)". Those spans are removed; every decimal
-    # left must be the bound B4 figure, or a public-metadata figure the report prints, in its own
-    # "<figure> M" form (review r4, F-3).
+    # and its pipeline-side pair verbatim as line 73 has it, "(123 M vs 45.6 M mean peak bp)". Those
+    # spans are removed; every decimal left must be the bound B4 figure, or a public-metadata figure
+    # the report prints, in its own "<figure> M" form (review r4, F-3). A paraphrase of line 73's
+    # pipeline pair ("(123 M vs 45.6 M peak bp)") is not a quotation, so its 45.6 stays unbound.
     line73 = next((l for l in text.split("\n") if QUOTES["C1"] in l), "")
     q = re.search(r"fraction (\d+\.\d+) vs (\d+\.\d+)", line73)
-    pipe = re.search(r"\(?(\d+ M vs \d+\.\d+ M) mean peak bp\)?", line73)
+    pipe = re.search(r"\((\d+ M vs \d+\.\d+ M mean peak bp)\)", line73)
     rest = flat
     if q:
         spans = ["line 73 (DKO1 %s vs HCT116 %s)" % q.groups(), "DKO1's %s" % q.group(1)]
@@ -728,7 +743,7 @@ def addendum_failures(text, counts, context=""):
                                 "as that quotation" % (span, n))
             rest = rest.replace(span, " ")
     if pipe:
-        rest = re.sub(r"\(%s peak bp\)" % re.escape(pipe.group(1)), " ", rest, count=1)
+        rest = rest.replace("(%s)" % pipe.group(1), " ", 1)
     bound = re.search(r"healthy HCT116 deposit scores (\d+\.\d+)", rest)
     if bound:
         rest = rest.replace(bound.group(0), " ", 1)
@@ -800,6 +815,7 @@ def render_science(counts, sizes, digests, blob, deposits=DEPOSITS):
     L.append("Script: reproduction/gse58638/recompute.py, git blob %s" % blob)
     L.append("Pre-registration: PREREG.md sha256 %s" % file_sha("PREREG.md"))
     L.append("                  PREREG-2.md sha256 %s" % file_sha("PREREG-2.md"))
+    L.append("                  PREREG-3.md sha256 %s" % file_sha("PREREG-3.md"))
     L.append("Verdict recorded at step 1 (VERDICT-step1.md, sha256 %s): %s, adopted basis %s"
              % (file_sha("VERDICT-step1.md"), VERDICT, ADOPTED))
     L.append("")
@@ -854,11 +870,16 @@ def render_science(counts, sizes, digests, blob, deposits=DEPOSITS):
     lowest = all(min(order, key=lambda g: b1[g][z]) == FAILED and
                  sum(1 for g in order if b1[g][z] == b1[FAILED][z]) == 1 for z in (0, 1))
     L.append("  Under B1, %s has the lowest z>1 and the lowest z>2 fraction of the four: %s" % (FAILED, "yes" if lowest else "NO"))
-    diffs = step1_differences(counts)
-    L.append("  Against step 1's B1 figures (step1.md, PREREG-2 R3): %d of %d equal at step 1's printed precision%s"
-             % (14 - len(diffs), 14, "" if not diffs else "; differs:"))
-    for d in diffs:
+    named, diffs = step1_differences(counts)
+    L.append("  Against step 1's B1 figures (step1.md; PREREG-2 R3 as PREREG-3 Q1 reads it): %d of %d equal at one"
+             % (14 - len(named) - len(diffs), 14))
+    L.append("  rounding; %d bound on exact counts instead%s" % (len(named), ":" if named else ""))
+    for d in named:
         L.append("    %s" % d)
+    if diffs:
+        L.append("  Differs:")
+        for d in diffs:
+            L.append("    %s" % d)
     L.append("")
     met = all(r is not None and r >= P6_Z1 for r in r1[0]) and all(r is None or r >= P6_Z2 for r in r1[1])
     L.append("P6 (PREREG.md), stated, never asserted (PREREG-2 R2): IN KIND asked every other/%s ratio" % FAILED)
@@ -1070,7 +1091,7 @@ def main(argv=None, config=None):
 def check_published(config, out, err):
     """The network-free binding: expected.txt is exactly what this committed script renders from the
     counts it records, it names this script's blob, each quotation is in RESULTS.md exactly once, and
-    PREREG-2 R1-R4 hold; R5 once the addendum is in RESULTS.md."""
+    PREREG-2 R1-R5 hold, R3 as PREREG-3 Q1 reads it."""
     failures = []
     try:
         expected = Path(config.expected).read_bytes().decode("utf-8").replace("\r\n", "\n")
@@ -1118,34 +1139,36 @@ def check_published(config, out, err):
             failures.append("R3: %s is not alone lowest at z>%d under B1" % (FAILED, z + 1))
     for g, printed in STEP1_B1.items():
         for z, (value, want) in enumerate(zip(b1[g], printed)):
-            want = STEP1_B1_DIFFERS.get((g, z), want)
-            if round_sig(value, sig_figs(want)) != want:
+            if (g, z) in STEP1_EXACT:
+                # PREREG-3 Q1: exact-count equality with step 1, never the twice-rounded digit.
+                above, bases, _ = STEP1_EXACT[(g, z)]
+                mine = (counts[g].above1, counts[g].above2)[z]
+                if (mine, counts[g].bases) != (above, bases):
+                    failures.append("R3/Q1: %s z>%d exact counts %d of %d bases, step 1 counted %d of %d"
+                                    % (g, z + 1, mine, counts[g].bases, above, bases))
+            elif round_sig(value, sig_figs(want)) != want:
                 failures.append("R3: %s B1 %s != %s" % (g, round_sig(value, sig_figs(want)), want))
     for z in (0, 1):
         for value, want in zip(b1_ratios(counts)[z], STEP1_B1_RATIOS[z]):
             if value is None or round_sig(value, sig_figs(want)) != want:
                 failures.append("R3: a B1 ratio at z>%d is not step 1's %s" % (z + 1, want))
     text = read_utf8(config.results_md)
-    if find_addendum(text) is not None:
-        failures += ["R5: " + f for f in addendum_failures(text, counts, meta)]
-        r5 = "bound"
-    elif results_md_sha(text) == RESULTS_MD_SHA256:
-        r5 = "not applicable: docs/RESULTS.md is as at 37a8d94, before the row 3a addendum"
+    if find_addendum(text) is None:
+        failures.append("R5: no row 3a addendum was found in docs/RESULTS.md; it has been in the base since "
+                        "68ec902, so a RESULTS.md without it fails")
     else:
-        failures.append("R5: docs/RESULTS.md changed since 37a8d94 and no row 3a addendum was found; "
-                        "bind the addendum (find_addendum) or, if it has not landed, re-pin RESULTS_MD_SHA256")
-        r5 = "unbound"
+        failures += ["R5: " + f for f in addendum_failures(text, counts, meta)]
     if failures:
         err.write("".join("BINDING FAILED: %s\n" % f for f in failures))
         return 1
     out.write(("binding: expected.txt names blob %s and is exactly what it renders from its counts; "
-               "quotations T1, T2, C1 found once each (lines %d, %d, %d); relation %s; PREREG-2 R3 holds%s "
-               "(graded 4 deposits, %d records); R5 %s\n"
+               "quotations T1, T2, C1 found once each (lines %d, %d, %d); relation %s; PREREG-2 R3 holds as "
+               "PREREG-3 Q1 reads it, %d cell%s bound on exact counts (%s: step 1 printed it rounded twice) "
+               "(graded 4 deposits, %d records); R5 bound on the row 3a addendum\n"
                % (blob, quote_lines["T1"], quote_lines["T2"], quote_lines["C1"], VERDICT,
-                  "" if not STEP1_B1_DIFFERS else " except %d named cell%s awaiting a PREREG-3 (%s)" % (
-                      len(STEP1_B1_DIFFERS), "" if len(STEP1_B1_DIFFERS) == 1 else "s",
-                      ", ".join("%s z>%d" % (g, z + 1) for g, z in sorted(STEP1_B1_DIFFERS))),
-                  sum(c.records for c in counts.values()), r5)).encode("utf-8"))
+                  len(STEP1_EXACT), "" if len(STEP1_EXACT) == 1 else "s",
+                  ", ".join("%s z>%d" % (g, z + 1) for g, z in sorted(STEP1_EXACT)),
+                  sum(c.records for c in counts.values()))).encode("utf-8"))
     return 0
 
 

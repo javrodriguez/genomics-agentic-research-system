@@ -5,9 +5,10 @@ Standard library only. Run from anywhere: `python3 reproduction/gse58638/test_re
 Nothing here touches the network: the stream tests serve the committed fixtures from a local
 HTTP server, and the metadata fetcher is replaced by a function returning fixed lines.
 
-The fixtures are tiny bigWigs written by an independent writer (pyBigWig 0.3.26, libBigWig) from
-the committed text sources beside them, and committed as hex text (fixtures/README.md). The text
-source is the truth: the reader must return it exactly.
+The fixtures are tiny bigWigs written from the committed text sources beside them by writers other
+than this reader: `bedgraph` by UCSC's bedGraphToBigWig, `fixedstep` and `empty` by pyBigWig 0.3.26
+(libBigWig), and committed as hex text (fixtures/README.md says why). The text source is the truth:
+the reader must return it exactly.
 """
 import contextlib
 import dataclasses
@@ -37,7 +38,7 @@ import recompute  # noqa: E402  (red until recompute.py exists)
 
 # The fixtures' own pins: size and sha256 of the decoded bytes, taken when they were written.
 FIXPINS = {
-    "bedgraph": (11047, "0bb1e859f599da6098e72bb2c2855ea4720dda7bcc3995c711a33c7309d92ab9"),
+    "bedgraph": (49564, "be93c0c9ba876cc40c58b65b23682f5a13f059c1fb5b4af82a52dda90367781b"),
     "fixedstep": (937, "cbb0887c881f3d7cc2d6be37b388867bc81945ffebee7a82e622d8a465068bb4"),
     "empty": (224, "0de65bc244862849a50b215b9f7d832586a62fa11090e59a854b82f9aefac14a"),
 }
@@ -46,10 +47,12 @@ FIXPINS = {
 PREREG_SHA256 = "1f1a9d59132e16c815449e7752d29bf1141c2165e87543acf1c3583232eadb12"
 PREREG2_SHA256 = "ff779cf98f4084f885559cbe931cd97dfd92992aeda93a70d9867a85c56f28cc"
 VERDICT_SHA256 = "059ac970be4d70cb846120b5f2e7df58735c6a5074366b7c0ad2e16e9695daf3"
+PREREG3_SHA256 = "e36dc10f0526cf68ce3c937f5b52b36f5909586770de808e41dca675156d134d"
 
-# The row 3a addendum as glitch-14's plan quotes the approved wording (commit 37b7543, not yet in
-# this base). Used only on a temporary copy of RESULTS.md, to exercise PREREG-2 R5's logic now.
-ADDENDUM = (
+# The DRAFT of the row 3a addendum, as the plan quoted it before it landed. It is not the landed
+# text (37b7543, in the base since 68ec902): it paraphrases line 73's pipeline-side pair ("peak bp",
+# without line 73's "mean"), so the binding must refuse it (test_draft_wording_now_fails).
+DRAFT_ADDENDUM = (
     "Addendum (30 Sep 2026). Re-measured from the deposited z-score tracks (GEO GSE58638) with a "
     "one-command recompute: the deposit-side direction on line 73 (DKO1 0.067 vs HCT116 0.045) "
     "holds only when GSM1420155 is counted; without it the healthy HCT116 deposit scores 0.083 "
@@ -620,6 +623,9 @@ class FrozenInputTests(unittest.TestCase):
     def test_step1_verdict_is_the_frozen_record(self):
         self.assertEqual(self.sha("VERDICT-step1.md"), VERDICT_SHA256)
 
+    def test_prereg3_is_the_dated_rule(self):
+        self.assertEqual(self.sha("PREREG-3.md"), PREREG3_SHA256)
+
     def test_fixture_pins(self):
         for name, (size, sha) in FIXPINS.items():
             b = fixture_bytes(name)
@@ -647,7 +653,9 @@ class PublishedBindingTests(unittest.TestCase):
         code, out, err = run(recompute.default_config(), "--check-published")
         self.assertEqual(code, 0, err + out)
         # Review r5, F-2: the exception is named in the binding's own line, never folded into "holds".
-        self.assertIn("PREREG-2 R3 holds except 1 named cell awaiting a PREREG-3 (GSM1420155 z>2)", out)
+        self.assertIn("PREREG-2 R3 holds as PREREG-3 Q1 reads it, 1 cell bound on exact counts "
+                      "(GSM1420155 z>2: step 1 printed it rounded twice)", out)
+        self.assertIn("R5 bound on the row 3a addendum", out)
         self.assertIn("IN KIND", self.expected)
         self.assertNotIn("MATCH", self.expected)
 
@@ -671,35 +679,54 @@ class PublishedBindingTests(unittest.TestCase):
             self.assertEqual(sum(1 for g in f if f[g][z] == f[low][z]), 1)
 
     def test_b1_equals_step1_at_its_printed_precision(self):
-        # PREREG-2 R3, second half: step1.md §5's B1 row and the VERDICT's ratios. One cell is held
-        # to the recompute's own figure and named (STEP1_B1_DIFFERS): step 1 printed 0.00200 for a
-        # value of 0.0020050; the report prints that difference, and this test requires it printed.
-        self.assertEqual(recompute.STEP1_B1_DIFFERS, {("GSM1420155", 1): "0.00201"})
+        # PREREG-2 R3, second half, as PREREG-3 Q1 reads it: each step-1 figure against the recompute
+        # rounded once; the one twice-rounded cell is bound on exact counts, named, with its reason.
+        self.assertEqual(recompute.STEP1_EXACT,
+                         {("GSM1420155", 1): (6206820, 3095646350, "the exact count rounded twice")})
         for gsm, printed in recompute.STEP1_B1.items():
             got = recompute.b1_fractions(self.counts[gsm])
             for z, (value, want) in enumerate(zip(got, printed)):
-                want = recompute.STEP1_B1_DIFFERS.get((gsm, z), want)
-                self.assertEqual(recompute.round_sig(value, recompute.sig_figs(want)), want, gsm)
-        self.assertIn("13 of 14 equal at step 1's printed precision; differs:", self.expected)
-        self.assertIn("GSM1420155 z>2 fraction: step 1 printed 0.00200, the exact recompute is 0.00201",
-                      self.expected)
+                if (gsm, z) in recompute.STEP1_EXACT:
+                    above, bases, _ = recompute.STEP1_EXACT[(gsm, z)]
+                    c = self.counts[gsm]
+                    self.assertEqual(((c.above1, c.above2)[z], c.bases), (above, bases), gsm)
+                    # the reason holds: one rounding gives another digit than step 1 printed
+                    self.assertNotEqual(recompute.round_sig(value, recompute.sig_figs(want)), want)
+                else:
+                    self.assertEqual(recompute.round_sig(value, recompute.sig_figs(want)), want, gsm)
+        self.assertIn("13 of 14 equal at one\n  rounding; 1 bound on exact counts instead:", self.expected)
+        self.assertIn("GSM1420155 z>2 fraction: step 1 printed 0.00200, the exact count rounded twice; its "
+                      "exact counts equal step 1's (620682 of 309564635 bins above; 0.0020050159, 0.00201 at "
+                      "one rounding)", self.expected)
+        self.assertNotIn("Differs:", self.expected)
         ratios = recompute.b1_ratios(self.counts)
         for z, printed in ((0, recompute.STEP1_B1_RATIOS[0]), (1, recompute.STEP1_B1_RATIOS[1])):
             for value, want in zip(ratios[z], printed):
                 self.assertEqual(recompute.round_sig(value, recompute.sig_figs(want)), want)
 
+    def test_changed_step1_cell_count_fails(self):
+        # PREREG-3 Q1 binds the named cell on exact counts: one base off in step 1's pinned count fails.
+        saved = recompute.STEP1_EXACT
+        try:
+            recompute.STEP1_EXACT = {("GSM1420155", 1): (6206821, 3095646350, "the exact count rounded twice")}
+            code, out, err = self.check_copy()
+        finally:
+            recompute.STEP1_EXACT = saved
+        self.assertEqual(code, 1)
+        self.assertIn("R3/Q1: GSM1420155 z>2 exact counts", err)
+
     def test_b4_equals_prereg2_r4(self):
-        # PREREG-2 R4's B4 figures at their printed precision. Its z>2 ratio range "44-108x" is
-        # step 1's 43.5 rounded a second time; the exact ratio is 2435/56 = 43.48, so the lower
-        # end is bound at step 1's three figures (43.5) and never at a twice-rounded 44.
+        # PREREG-2 R4's B4 figures at their printed precision; its z>2 ratio range reads
+        # "43.5-108" by PREREG-3 Q2 (the exact lower ratio is 2435/56 = 43.48), never a twice-rounded 44.
         want = recompute.PREREG2_R4
+        self.assertEqual(want["ratios_z2"], ("43.5", "108"))
         f = {g: recompute.b4_fractions(c) for g, c in self.counts.items()}
         others = [g for g in f if g != "GSM1420155"]
         self.assertEqual(recompute.round_sig(f["GSM1420155"][0], 2), want["failed_z1"])
         self.assertEqual(recompute.round_sig(min(f[g][0] for g in others), 2), want["others_z1"][0])
         self.assertEqual(recompute.round_sig(max(f[g][0] for g in others), 2), want["others_z1"][1])
         r = [f[g][1] / f["GSM1420155"][1] for g in others]
-        self.assertEqual(recompute.round_sig(min(r), 3), "43.5")
+        self.assertEqual(recompute.round_sig(min(r), 3), want["ratios_z2"][0])
         self.assertEqual(recompute.round_sig(max(r), 3), want["ratios_z2"][1])
         self.assertIn("B4: 43.5\u2013108\u00d7", self.expected)
         c1 = recompute.c1_on_b4(self.counts)
@@ -747,11 +774,11 @@ class PublishedBindingTests(unittest.TestCase):
         self.assertNotIn("not what this script renders", err)
 
     def test_changed_results_md_without_addendum_fails(self):
-        # Review r1, F-5: an addendum the detector misses must not leave R5 skipped for good.
-        text = (ROOT / "docs" / "RESULTS.md").read_text(encoding="utf-8")
-        code, out, err = self.check_copy(results=text + "\nAn unrelated added line.\n")
+        # The addendum is in the base: RESULTS.md with it removed (exactly the 37a8d94 text) fails R5.
+        bare = AddendumLogicTests.split_landed()[0]
+        code, out, err = self.check_copy(results=bare)
         self.assertEqual(code, 1)
-        self.assertIn("RESULTS_MD_SHA256", err)
+        self.assertIn("R5: no row 3a addendum was found", err)
 
     def test_p6_is_printed_not_asserted(self):
         # PREREG-2 R2: stated, with the measured ratios, and said plainly not to be met.
@@ -759,66 +786,117 @@ class PublishedBindingTests(unittest.TestCase):
         self.assertIn("not met under B1", self.expected)
 
     def test_addendum_binding(self):
-        # PREREG-2 R5 on the real RESULTS.md. Skips, with its reason, only until the addendum
-        # is in the base; the logic itself runs now in AddendumLogicTests.
+        # PREREG-2 R5 on the real RESULTS.md, where the row 3a addendum has been since 68ec902.
+        # Never skips.
         text = (ROOT / "docs" / "RESULTS.md").read_text(encoding="utf-8")
-        if recompute.find_addendum(text) is None:
-            # Skips only while RESULTS.md is exactly as at 37a8d94; any other RESULTS.md without a
-            # detected addendum fails the binding (test_changed_results_md_without_addendum_fails).
-            self.assertEqual(recompute.results_md_sha(text), recompute.RESULTS_MD_SHA256)
-            self.skipTest("PREREG-2 R5: the row 3a addendum (37b7543) is not in docs/RESULTS.md at "
-                          "this base (37a8d94); the orchestrator rebases onto it at home")
+        block = recompute.find_addendum(text)
+        self.assertIsNotNone(block)
+        self.assertIn("healthy HCT116 deposit scores 0.083 against DKO1's 0.067", " ".join(block.split()))
         meta = recompute.split_report(self.expected)[1]
         self.assertEqual(recompute.addendum_failures(text, self.counts, meta), [])
 
 
 class AddendumLogicTests(unittest.TestCase):
+    """PREREG-2 R5's logic, on the landed addendum and on planted variants of its paragraph."""
+
+    HEADING = "### Addendum (30 Sep 2026)"
+
+    @classmethod
+    def split_landed(cls):
+        """(RESULTS.md without the addendum, the addendum's paragraph, RESULTS.md as landed): the
+        heading, a blank line, the paragraph and the blank line after it are removed as one span."""
+        text = (ROOT / "docs" / "RESULTS.md").read_text(encoding="utf-8").replace("\r\n", "\n")
+        assert text.count(cls.HEADING) == 1
+        head = text.index(cls.HEADING)
+        start = head + len(cls.HEADING) + 2
+        end = text.index("\n\n", start)
+        return text[:head] + text[end + 2:], text[start:end], text
 
     @classmethod
     def setUpClass(cls):
-        cls.text = (ROOT / "docs" / "RESULTS.md").read_text(encoding="utf-8")
+        cls.bare, cls.para, cls.text = cls.split_landed()
         expected = (HERE / "expected.txt").read_text(encoding="utf-8")
         cls.counts = recompute.parse_counts(expected)
         cls.meta = recompute.split_report(expected)[1]
 
-    def failures(self, addendum, counts=None):
-        return recompute.addendum_failures(self.with_addendum(addendum), counts or self.counts, self.meta)
+    def failures(self, para, counts=None):
+        """R5 on the real RESULTS.md with the addendum's paragraph replaced by `para`."""
+        return recompute.addendum_failures(self.text.replace(self.para, para), counts or self.counts, self.meta)
 
-    def with_addendum(self, addendum):
-        lines = self.text.split("\n")
-        return "\n".join(lines[:94] + ["", addendum, ""] + lines[94:])
+    def with_block(self, block):
+        """RESULTS.md without the addendum, `block` inserted where the addendum stands."""
+        i = self.text.index(self.HEADING)
+        return self.bare[:i] + block + "\n\n" + self.bare[i:]
 
-    def test_addendum_as_approved_binds(self):
-        self.assertEqual(self.failures(ADDENDUM), [])
+    def test_removal_takes_the_addendum_and_nothing_else(self):
+        # The "no addendum" text is the real RESULTS.md less exactly the heading, its paragraph and
+        # their blank lines; every quotation the binding reads is still there once.
+        self.assertEqual(len(self.text) - len(self.bare), len(self.HEADING) + 2 + len(self.para) + 2)
+        self.assertNotIn("Addendum (30 Sep 2026)", self.bare)
+        for q in recompute.QUOTES.values():
+            self.assertEqual(self.bare.count(q), 1, q)
+
+    def test_landed_addendum_binds(self):
+        self.assertEqual(self.failures(self.para), [])
+
+    def test_heading_form_binds_the_paragraph_under_it(self):
+        # The detector once returned the heading line alone, so no figure of the addendum was bound.
+        block = recompute.find_addendum(self.text)
+        self.assertTrue(block.startswith(self.HEADING), block)
+        self.assertTrue(block.endswith(self.para), block)
+
+    def test_heading_with_no_paragraph_binds_nothing(self):
+        text = self.with_block(self.HEADING + "\n\n### Another heading")
+        self.assertNotEqual(recompute.addendum_failures(text, self.counts, self.meta), [])
+
+    def test_draft_wording_now_fails(self):
+        # The draft bound green under the binding as the lane wrote it, which removed line 73's
+        # pipeline pair in a paraphrased form. The binding now accepts only line 73's own span, so
+        # the draft's "(123 M vs 45.6 M peak bp)" leaves its 45.6 unbound. Everything else in the
+        # draft binds: this failure, and only it, is what the stricter check adds.
+        failures = recompute.addendum_failures(self.with_block(DRAFT_ADDENDUM), self.counts, self.meta)
+        self.assertEqual(failures, ["the addendum's 45.6 is neither the bound B4 figure, a quotation of "
+                                    "line 73, nor a metadata figure the report prints in its own form"])
+        fixed = DRAFT_ADDENDUM.replace("(123 M vs 45.6 M peak bp)", "(123 M vs 45.6 M mean peak bp)")
+        self.assertNotEqual(fixed, DRAFT_ADDENDUM)
+        self.assertEqual(recompute.addendum_failures(self.with_block(fixed), self.counts, self.meta), [])
+
+    def test_pipeline_pair_other_than_line_73_fails(self):
+        moved = self.para.replace("(123 M vs 45.6 M mean peak bp)", "(123 M vs 46.6 M mean peak bp)")
+        self.assertNotEqual(moved, self.para)
+        self.assertNotEqual(self.failures(moved), [])
 
     def test_addendum_with_a_moved_figure_fails(self):
-        moved = ADDENDUM.replace("scores 0.083", "scores 0.084")
+        moved = self.para.replace("scores 0.083", "scores 0.084")
+        self.assertNotEqual(moved, self.para)
         self.assertNotEqual(self.failures(moved), [])
 
     def test_addendum_quoting_other_than_line_73_fails(self):
-        moved = ADDENDUM.replace("(DKO1 0.067 vs HCT116 0.045)", "(DKO1 0.068 vs HCT116 0.045)")
+        moved = self.para.replace("(DKO1 0.067 vs HCT116 0.045)", "(DKO1 0.068 vs HCT116 0.045)")
+        self.assertNotEqual(moved, self.para)
         self.assertNotEqual(self.failures(moved), [])
 
     def test_addendum_with_an_unbound_figure_fails(self):
         # Review r1, F-6: every decimal is the bound B4 figure, line 73's, or printed metadata.
-        moved = ADDENDUM.replace("against DKO1's 0.067", "against DKO1's 0.099")
+        moved = self.para.replace("against DKO1's 0.067", "against DKO1's 0.099")
+        self.assertNotEqual(moved, self.para)
         self.assertNotEqual(self.failures(moved), [])
 
     def test_addendum_denying_the_reversal_fails(self):
         # Review r2, F-3: the addendum must state the reversal, not merely coexist with it.
-        moved = ADDENDUM.replace(
-            "holds only when GSM1420155 is counted; without it the healthy HCT116 deposit scores 0.083 "
+        moved = self.para.replace(
+            "holds only when GSM1420155 is counted; without it, the healthy HCT116 deposit scores 0.083 "
             "against DKO1's 0.067",
-            "holds with or without GSM1420155; without it the healthy HCT116 deposit scores 0.083, "
+            "holds with or without GSM1420155; without it, the healthy HCT116 deposit scores 0.083, "
             "still below DKO1")
-        self.assertNotEqual(moved, ADDENDUM)
+        self.assertNotEqual(moved, self.para)
         self.assertNotEqual(self.failures(moved), [])
 
     def test_line_73_figure_as_a_recompute_output_fails(self):
         # Review r2, F-4: 0.067 and 0.045 only as quotations of line 73, never as recompute outputs.
-        moved = ADDENDUM.replace("against DKO1's 0.067.",
-                                 "against DKO1's 0.067, and the recompute reproduces line 73's 0.067 exactly.")
-        self.assertNotEqual(moved, ADDENDUM)
+        moved = self.para.replace("against DKO1's 0.067.",
+                                  "against DKO1's 0.067, and the recompute reproduces line 73's 0.067 exactly.")
+        self.assertNotEqual(moved, self.para)
         self.assertNotEqual(self.failures(moved), [])
 
     def test_line_73_figures_restated_as_recompute_outputs_fail(self):
@@ -826,14 +904,15 @@ class AddendumLogicTests(unittest.TestCase):
         for extra in ("The recompute reproduces DKO1's 0.067 on exact tiles.",
                       "The recompute gives (DKO1 0.067 vs HCT116 0.045) exactly.",
                       "GSM1420155's z>1 fraction is 38.0 times lower."):
-            moved = ADDENDUM + " " + extra
+            moved = self.para + " " + extra
             self.assertNotEqual(self.failures(moved), [], extra)
 
     def test_addendum_found_whatever_its_heading(self):
-        for head in ("Addendum, 30 Sep 2026.", "**Addendum (1 Oct 2026).**"):
-            body = ADDENDUM.replace("Addendum (30 Sep 2026).", head)
-            self.assertIsNotNone(recompute.find_addendum(self.with_addendum(body)), head)
-        self.assertIsNone(recompute.find_addendum(self.text))
+        body = " ".join(self.para.split())
+        for block in ("Addendum, 30 Sep 2026. " + body, "**Addendum (1 Oct 2026).** " + body,
+                      "#### A note on row 3a\n\n" + body):
+            self.assertIsNotNone(recompute.find_addendum(self.with_block(block)), block[:30])
+        self.assertIsNone(recompute.find_addendum(self.bare))
 
     def test_addendum_reversal_must_hold_on_b4(self):
         # DKO1's mean raised above the healthy HCT116 deposit; the addendum's 0.083 still equals
@@ -841,7 +920,7 @@ class AddendumLogicTests(unittest.TestCase):
         c = dict(self.counts)
         dko = c["GSM1415885"]
         c["GSM1415885"] = dataclasses.replace(dko, tiles_above1=dko.tiles // 5)
-        self.assertNotEqual(self.failures(ADDENDUM, c), [])
+        self.assertNotEqual(self.failures(self.para, c), [])
 
 
 if __name__ == "__main__":

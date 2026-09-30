@@ -1,8 +1,9 @@
 GARS recompute: the deposited-track half of the failed-replicate finding (docs/RESULTS.md, 3a)
 Source: GEO GSE58638, the authors' four H3K27me3 z-score tracks (hg19, 10-bp bins), from NCBI
-Script: reproduction/gse58638/recompute.py, git blob 38eb04763a18f0d19dbd8bd46e457e1000d48fd6
+Script: reproduction/gse58638/recompute.py, git blob 38ad39396004812cb8c3b7062e22c3c0dde95dcc
 Pre-registration: PREREG.md sha256 1f1a9d59132e16c815449e7752d29bf1141c2165e87543acf1c3583232eadb12
                   PREREG-2.md sha256 ff779cf98f4084f885559cbe931cd97dfd92992aeda93a70d9867a85c56f28cc
+                  PREREG-3.md sha256 e36dc10f0526cf68ce3c937f5b52b36f5909586770de808e41dca675156d134d
 Verdict recorded at step 1 (VERDICT-step1.md, sha256 059ac970be4d70cb846120b5f2e7df58735c6a5074366b7c0ad2e16e9695daf3): IN KIND, adopted basis B1
 
 B1, the adopted basis: 10-bp bins with data, base-weighted, strictly above the threshold
@@ -38,8 +39,9 @@ Against docs/RESULTS.md (each quotation found exactly once; the relation step 1 
   Quoted from step 1, not recomputed: T1's figures reproduce exactly only under pyBigWig's
   approximate 10-kb tile mean (B6), which this script does not implement (PREREG.md P4).
   Under B1, GSM1420155 has the lowest z>1 and the lowest z>2 fraction of the four: yes
-  Against step 1's B1 figures (step1.md, PREREG-2 R3): 13 of 14 equal at step 1's printed precision; differs:
-    GSM1420155 z>2 fraction: step 1 printed 0.00200, the exact recompute is 0.00201 (0.0020050159)
+  Against step 1's B1 figures (step1.md; PREREG-2 R3 as PREREG-3 Q1 reads it): 13 of 14 equal at one
+  rounding; 1 bound on exact counts instead:
+    GSM1420155 z>2 fraction: step 1 printed 0.00200, the exact count rounded twice; its exact counts equal step 1's (620682 of 309564635 bins above; 0.0020050159, 0.00201 at one rounding)
 
 P6 (PREREG.md), stated, never asserted (PREREG-2 R2): IN KIND asked every other/GSM1420155 ratio
   to be at least 5 at z>1 and at least 20 at z>2 under B1. Measured (GSM1415877 / GSM1415885 / GSM1420162):
