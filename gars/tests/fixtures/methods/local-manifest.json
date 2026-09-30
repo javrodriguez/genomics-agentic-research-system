@@ -1,0 +1,157 @@
+{
+  "agent_model": "claude-opus-5-5",
+  "agreement_ref": "none",
+  "approvals": [],
+  "artifact_destination": "gars/projects/rna-test/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/run",
+  "backend": "local",
+  "checkout": "/fixture-workspace/gars",
+  "command": {
+    "path": "reproducibility/commands.sh",
+    "sha256": "f27f37e1575b2494fb3e98ac6a09e31b2faf7f67222e6ab0bc4b90b279da2a8d"
+  },
+  "config_sha256": "d2b847628a098cb3dbd60aedd0477fdc640f17c47183bc47c873842d7625be4d",
+  "containers": [],
+  "counts_sha256": "cadae1c598aae12e49a6ab3b6b5543850087aa8a3eb324fedf0d8a949a8aca9b",
+  "data_class": "public",
+  "design_check": {
+    "path": "01_samplesheets/rnaseq_bulk_design_check.json",
+    "sha256": "218589323cbe80b7ed077e3ee36f1663e7cb5f8f4e4ad02c938ad8a5c2c5a6b9"
+  },
+  "design_sha256": "df0c2f806f7611f883f925265b482666661f1e0d65df7e00446398bf79fce488",
+  "execution": {
+    "complete": "2026-09-30T03:49:14Z",
+    "start": "2026-09-30T03:49:13Z"
+  },
+  "execution_config": [
+    {
+      "path": "gars/projects/rna-test/_config/executor.yaml",
+      "role": "executor_descriptor",
+      "sha256": "b78d09c868f292dd581ded18f922dfa661d7e636b0c7e522ee355cfb7d4b8f42"
+    }
+  ],
+  "execution_config_resolved": {
+    "backend": "local"
+  },
+  "expiry": "none",
+  "failure_class": null,
+  "gars_commit": "c54a71584b1347937e4315cbbeb3f27371655228",
+  "idempotency_key": "0000000000000000000000000000000000000000000000000000000000000000",
+  "input_data_location": {
+    "config": "/fixture-workspace/gars/projects/rna-test/_config/rnaseq_bulk.yaml",
+    "counts": "/fixture-workspace/salmon.merged.gene_counts_length_scaled.tsv",
+    "dataset": "[\"/fixture-workspace/S1_S1_L001_R1_001.fastq.gz\",\"/fixture-workspace/S1_S1_L001_R2_001.fastq.gz\",\"/fixture-workspace/S2_S2_L001_R1_001.fastq.gz\",\"/fixture-workspace/S2_S2_L001_R2_001.fastq.gz\",\"/fixture-workspace/S3_S3_L001_R1_001.fastq.gz\",\"/fixture-workspace/S3_S3_L001_R2_001.fastq.gz\",\"/fixture-workspace/S4_S4_L001_R1_001.fastq.gz\",\"/fixture-workspace/S4_S4_L001_R2_001.fastq.gz\"]",
+    "design": "/fixture-workspace/gars/projects/rna-test/01_samplesheets/rnaseq_bulk_design.csv"
+  },
+  "inputs": {
+    "config": "/fixture-workspace/gars/projects/rna-test/_config/rnaseq_bulk.yaml",
+    "counts": "/fixture-workspace/salmon.merged.gene_counts_length_scaled.tsv",
+    "design": "/fixture-workspace/gars/projects/rna-test/01_samplesheets/rnaseq_bulk_design.csv"
+  },
+  "key_formula": "downstream-v2",
+  "model_steps": [
+    {
+      "input_context": {
+        "path": "HISTORY.md",
+        "sha256": "3b8c901548db8181dcf1b3b6de9ca69050b96bb045864855654e26d2a6fde292"
+      },
+      "model_id": "claude-opus-5-5",
+      "model_version": "claude-opus-5-5",
+      "prompt_id": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md",
+      "prompt_sha256": {
+        "algorithm": "git-sha1",
+        "value": "a8ce7d799e79733b8e1d41a26c9e8c597f773987"
+      },
+      "provider": "anthropic",
+      "routing_rule_id": "none",
+      "sampling_parameters": "not-exposed-by-harness"
+    }
+  ],
+  "outputs": [
+    {
+      "artifact_class": "durable",
+      "path": "run/tables/de_results.csv",
+      "role": "native",
+      "sha256": "72d9ae6c81802cb0743c3cf12d5485497f5cf2be818c7e78f2dffc44b5c618cd",
+      "type": "de_results"
+    },
+    {
+      "artifact_class": "durable",
+      "path": "adapted/counts_gene.tsv",
+      "role": "adapted",
+      "sha256": "a38c483ed952a338c206a3bae0a95ba207f990c6e7e908e0fffdc5aeecfae17b",
+      "type": "counts_gene"
+    },
+    {
+      "artifact_class": "durable",
+      "path": "adapted/gene_id_to_name.tsv",
+      "role": "native",
+      "sha256": "d49c4daa5a602331640e8417fe158cc988baa0358c0c3ca7b649af995ef4d349",
+      "type": "gene_id_map"
+    }
+  ],
+  "params": {
+    "contrast": "condition,MT,WT",
+    "counts": "/fixture-workspace/salmon.merged.gene_counts_length_scaled.tsv",
+    "design": "/fixture-workspace/gars/projects/rna-test/01_samplesheets/rnaseq_bulk_design.csv",
+    "formula": "~ condition"
+  },
+  "permitted_backends": "local:fixture|homelab:fixture|homelab:internal|homelab:pilot_internal|slurm:fixture|slurm:internal|slurm:pilot_internal",
+  "pipeline_commit": "c54a71584b1347937e4315cbbeb3f27371655228",
+  "predicate_facts": {
+    "approval_gated": false,
+    "backend": "local",
+    "design_record": true,
+    "model_step": true,
+    "reference_named": true,
+    "status": "COMPLETE",
+    "wrapper_kind": "local"
+  },
+  "purpose": "fixture",
+  "random_seeds": [
+    {
+      "call": "sklearn.decomposition.PCA",
+      "seed": 0
+    },
+    {
+      "call": "pydeseq2.dds.DeseqDataSet.deseq2",
+      "determinism": "unknown",
+      "seed_supported": false
+    },
+    {
+      "call": "pydeseq2.ds.DeseqStats.summary",
+      "determinism": "unknown",
+      "seed_supported": false
+    }
+  ],
+  "reference": {
+    "annotation_release": "fixture-release",
+    "build": "fixture-build",
+    "comparison": "matched",
+    "fasta_sha256": "99724deab54039707cfdd57d24710a39412ecbd8ed85fb8a5d4c1f70706d637b",
+    "gtf_sha256": "aac372d27c1a6c729d38fa73dac6febfa75a76a57bc42613a33fd7b3f0fb960f",
+    "id": "FIXTURE",
+    "observed": {
+      "fasta_sha256": "99724deab54039707cfdd57d24710a39412ecbd8ed85fb8a5d4c1f70706d637b",
+      "gtf_sha256": "aac372d27c1a6c729d38fa73dac6febfa75a76a57bc42613a33fd7b3f0fb960f"
+    }
+  },
+  "resources": {
+    "applicability": "not applicable"
+  },
+  "software_versions": [
+    {
+      "path": "run/versions.json",
+      "sha256": "d487470fda47c20c1a6249644de0d15d52fb5e818fc03faa35ebcadd3fdf451d",
+      "versions": {
+        "pandas": "fixture-1",
+        "python": "3.9.0"
+      }
+    }
+  ],
+  "template_version": "v0.10.0",
+  "threads": 4,
+  "venue": "local",
+  "workflow_name": "rnaseq-de",
+  "workflow_version": "v0.10.0",
+  "wrapper": "rnaseq-de"
+}

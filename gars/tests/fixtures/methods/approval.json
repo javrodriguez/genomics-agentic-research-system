@@ -1,0 +1,7 @@
+{
+  "actor": "fixture-operator",
+  "expiry": "2026-09-30T18:04:05Z",
+  "plan_path": "/fixture-workspace/gars/projects/rna-test/03_custom_analysis/01_fixture-followup/PLAN.md",
+  "plan_sha256": "b2fad3e6dd46adfbb19ab0ec2ee525ecc04cfa72a74758d1dc8439602c0e04c6",
+  "timestamp": "2026-09-29T18:04:05Z"
+}
