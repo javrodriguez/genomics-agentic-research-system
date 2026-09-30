@@ -52,6 +52,10 @@ jobs:
         env:
           TMPDIR: ${{ runner.temp }}
         run: python3 gars/_system/hooks/audit_trailers.py
+      - name: Gap Study validity probes (decision 0217)
+        # Each probe runs one constructed reply through a committed Gap Study grader and fails unless
+        # it returns the label the signed docs/validity/ pages state. Stdlib; writes nothing.
+        run: python3 docs/validity/probes.py --check
 
   gap-study:
     # ---- the Gap Study (evals/gap-study), checked at the commit its final verifier checked ------
