@@ -714,7 +714,8 @@ class RenderMethodsTests(unittest.TestCase):
                    '"/quoted/abs"', '{"nested": "/abs/secret"}', 'x;/abs', '(/abs)', 'line\n/abs',
                    'user@host:/abs/secret', 'cat x >/abs/secret', 'a|/abs/secret', 'key:/abs/secret',
                    'x&/abs/secret', 'a+/abs/secret', 'tab\t/abs/secret', 'https:///etc/secret',
-                   'sftp:///abs/secret', 'K/abs/secret']
+                   'sftp:///abs/secret', '\u212a/abs/secret', 'user@host:~jdoe/secret', 'host:~/secret',
+                   'x:C:\\secret\\abs']
         for value in hostile:
             with self.subTest(value=value):
                 changed = dict(m, params={'p': value, value: 'key-side', 'nested': {'deep': [value]}},
