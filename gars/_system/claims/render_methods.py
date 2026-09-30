@@ -39,20 +39,20 @@ PARAGRAPH, PARAMETERS, SOFTWARE, CITATION, RECORDS, SOURCES = (
     '# Methods', '## Parameters', '## Software used', '## Citation', '## Records read', '## Sources')
 # The closed vocabulary: each kind of line, its section and its fixed words ({} is one slot).
 KINDS = {
-    'workflow': (PARAGRAPH, 'The run manifest of workflow {} records version {}, pipeline commit {}, '
-                            'GARS wrapper {}, GARS commit {}, template version {} and status {}.'),
-    'failure': (PARAGRAPH, 'It records the failure class {}.'),
-    'reference': (PARAGRAPH, 'It records reference genome build {}, annotation release {}, '
-                             'FASTA sha256 {} and GTF sha256 {}.'),
+    'workflow': (PARAGRAPH, 'The run manifest of workflow {} records: version {}; pipeline commit {}; '
+                            'GARS wrapper {}; GARS commit {}; template version {}; status {}.'),
+    'failure': (PARAGRAPH, 'Its failure class is {}.'),
+    'reference': (PARAGRAPH, 'Its reference genome: build {}; annotation release {}; '
+                             'FASTA sha256 {}; GTF sha256 {}.'),
     'reference-check': (PARAGRAPH, 'Its reference registry check reads {}, reason {}.'),
     'reference-absent': (PARAGRAPH, 'Its reference genome is not recorded.'),
-    'config': (PARAGRAPH, 'It records configuration sha256 {}.'),
-    'threads': (PARAGRAPH, 'It records the thread count {}.'),
-    'command': (PARAGRAPH, 'It records the exact submission in {}, sha256 {}.'),
+    'config': (PARAGRAPH, 'Its configuration sha256 is {}.'),
+    'threads': (PARAGRAPH, 'Its thread count is {}.'),
+    'command': (PARAGRAPH, 'Its exact submission: {}, sha256 {}.'),
     'command-absent': (PARAGRAPH, 'Its exact submission is not recorded.'),
-    'agent': (PARAGRAPH, 'It records the agent model {}.'),
-    'model-step': (PARAGRAPH, 'It records a model-mediated step by {} from provider {}, under '
-                              'contract {}, git blob {}.'),
+    'agent': (PARAGRAPH, 'Its agent model is {}.'),
+    'model-step': (PARAGRAPH, 'It records a model-mediated step: model {}; provider {}; '
+                              'contract {}; git blob {}.'),
     'model-steps-absent': (PARAGRAPH, 'Its model-mediated steps are not recorded.'),
     'approval': (PARAGRAPH, 'The analysis plan with sha256 {} was approved at {} {}.'),
     'history': (PARAGRAPH, "The project's history records {} as {} on {}, with model {} and template "
@@ -70,7 +70,7 @@ KINDS = {
     'seeds-absent': (PARAMETERS, '- {}: random seeds are not recorded.'),
     'gars': (SOFTWARE, '- GARS commit {}, template version {} (workflow {}).'),
     'workflow-version': (SOFTWARE, '- Workflow {} version {}, pipeline commit {}.'),
-    'versions-file': (SOFTWARE, '- {} software versions recorded in {}, sha256 {}:'),
+    'versions-file': (SOFTWARE, '- {} software versions (file {}, sha256 {}):'),
     'version': (SOFTWARE, '  - {}: {}.'),
     'version-absent': (SOFTWARE, '  - versions not recorded.'),
     'versions-absent': (SOFTWARE, '- {}: software versions are not recorded.'),
@@ -452,8 +452,14 @@ def main(argv=None):
         parser.error('--plan and --approval come together')
     if args.history is not None and args.approval is None:
         parser.error('--history needs --plan and --approval')
+    named = [('manifest %d' % k, path) for k, path in enumerate(args.manifest, 1)]
+    named += [(role, path) for role, path in (('plan', args.plan), ('approval record', args.approval),
+                                              ('history', args.history)) if path is not None]
     temporary = None
     try:
+        for role, path in named:   # a record is never replaced by the page rendered from it
+            if os.path.realpath(str(path)) == os.path.realpath(str(args.out)):
+                raise Refusal('the output would overwrite ' + role)
         data = render(args.manifest, args.plan, args.approval, args.history).encode('utf-8')
         with tempfile.NamedTemporaryFile(mode='wb', prefix='.methods-', dir=str(args.out.parent),
                                          delete=False) as fh:

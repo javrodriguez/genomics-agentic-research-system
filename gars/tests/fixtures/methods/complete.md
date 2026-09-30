@@ -1,19 +1,19 @@
 # Methods
 
-The run manifest of workflow `nfcore-rnaseq-wrapper` records version `3.26.0`, pipeline commit `72c5d4006f3610a00223bd368f28ed650d649a54`, GARS wrapper `rnaseq_bulk`, GARS commit `c54a71584b1347937e4315cbbeb3f27371655228`, template version `v0.10.0` and status `COMPLETE`.
-It records reference genome build `fixture-build`, annotation release `fixture-release`, FASTA sha256 `99724deab54039707cfdd57d24710a39412ecbd8ed85fb8a5d4c1f70706d637b` and GTF sha256 `aac372d27c1a6c729d38fa73dac6febfa75a76a57bc42613a33fd7b3f0fb960f`.
-It records configuration sha256 `57fc7ebe7584cba1a50e195979f889f43f973f4e8726fc512d8dd92abd4abd4a`.
-It records the thread count `4`.
-It records the exact submission in `reproducibility/commands.sh`, sha256 `c7941ece64f3fe877e99ddb38c537e0acb0acdcbc0ca69dd948de39e9a4d8783`.
-It records the agent model `claude-opus-5-5`.
-It records a model-mediated step by `claude-opus-5-5` from provider `anthropic`, under contract `gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md`, git blob `69b7a0d66c1ecf9822481b2d99b83b9f43c0cf73`.
-The run manifest of workflow `rnaseq-de` records version `v0.10.0`, pipeline commit `c54a71584b1347937e4315cbbeb3f27371655228`, GARS wrapper `rnaseq-de`, GARS commit `c54a71584b1347937e4315cbbeb3f27371655228`, template version `v0.10.0` and status `COMPLETE`.
-It records reference genome build `fixture-build`, annotation release `fixture-release`, FASTA sha256 `99724deab54039707cfdd57d24710a39412ecbd8ed85fb8a5d4c1f70706d637b` and GTF sha256 `aac372d27c1a6c729d38fa73dac6febfa75a76a57bc42613a33fd7b3f0fb960f`.
-It records configuration sha256 `d2b847628a098cb3dbd60aedd0477fdc640f17c47183bc47c873842d7625be4d`.
-It records the thread count `4`.
-It records the exact submission in `reproducibility/commands.sh`, sha256 `f27f37e1575b2494fb3e98ac6a09e31b2faf7f67222e6ab0bc4b90b279da2a8d`.
-It records the agent model `claude-opus-5-5`.
-It records a model-mediated step by `claude-opus-5-5` from provider `anthropic`, under contract `gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md`, git blob `a8ce7d799e79733b8e1d41a26c9e8c597f773987`.
+The run manifest of workflow `nfcore-rnaseq-wrapper` records: version `3.26.0`; pipeline commit `72c5d4006f3610a00223bd368f28ed650d649a54`; GARS wrapper `rnaseq_bulk`; GARS commit `c54a71584b1347937e4315cbbeb3f27371655228`; template version `v0.10.0`; status `COMPLETE`.
+Its reference genome: build `fixture-build`; annotation release `fixture-release`; FASTA sha256 `99724deab54039707cfdd57d24710a39412ecbd8ed85fb8a5d4c1f70706d637b`; GTF sha256 `aac372d27c1a6c729d38fa73dac6febfa75a76a57bc42613a33fd7b3f0fb960f`.
+Its configuration sha256 is `57fc7ebe7584cba1a50e195979f889f43f973f4e8726fc512d8dd92abd4abd4a`.
+Its thread count is `4`.
+Its exact submission: `reproducibility/commands.sh`, sha256 `c7941ece64f3fe877e99ddb38c537e0acb0acdcbc0ca69dd948de39e9a4d8783`.
+Its agent model is `claude-opus-5-5`.
+It records a model-mediated step: model `claude-opus-5-5`; provider `anthropic`; contract `gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md`; git blob `69b7a0d66c1ecf9822481b2d99b83b9f43c0cf73`.
+The run manifest of workflow `rnaseq-de` records: version `v0.10.0`; pipeline commit `c54a71584b1347937e4315cbbeb3f27371655228`; GARS wrapper `rnaseq-de`; GARS commit `c54a71584b1347937e4315cbbeb3f27371655228`; template version `v0.10.0`; status `COMPLETE`.
+Its reference genome: build `fixture-build`; annotation release `fixture-release`; FASTA sha256 `99724deab54039707cfdd57d24710a39412ecbd8ed85fb8a5d4c1f70706d637b`; GTF sha256 `aac372d27c1a6c729d38fa73dac6febfa75a76a57bc42613a33fd7b3f0fb960f`.
+Its configuration sha256 is `d2b847628a098cb3dbd60aedd0477fdc640f17c47183bc47c873842d7625be4d`.
+Its thread count is `4`.
+Its exact submission: `reproducibility/commands.sh`, sha256 `f27f37e1575b2494fb3e98ac6a09e31b2faf7f67222e6ab0bc4b90b279da2a8d`.
+Its agent model is `claude-opus-5-5`.
+It records a model-mediated step: model `claude-opus-5-5`; provider `anthropic`; contract `gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md`; git blob `a8ce7d799e79733b8e1d41a26c9e8c597f773987`.
 The analysis plan with sha256 `b2fad3e6dd46adfbb19ab0ec2ee525ecc04cfa72a74758d1dc8439602c0e04c6` was approved at `2026-09-29T18:04:05Z` by the approver the run recorded.
 The project's history records `03_custom_analysis/01_fixture-followup` as `analysis complete` on `2026-09-29`, with model `claude-opus-5-5` and template version `v0.10.0`.
 Each workflow's parameters, random seeds, software versions and container images are listed below.
@@ -38,13 +38,13 @@ Each workflow's parameters, random seeds, software versions and container images
 
 - GARS commit `c54a71584b1347937e4315cbbeb3f27371655228`, template version `v0.10.0` (workflow `nfcore-rnaseq-wrapper`).
 - Workflow `nfcore-rnaseq-wrapper` version `3.26.0`, pipeline commit `72c5d4006f3610a00223bd368f28ed650d649a54`.
-- `nfcore-rnaseq-wrapper` software versions recorded in `run/results/pipeline_info/software_versions.yml`, sha256 `63dd8ca50d35f240082f303872ab4452dfcb6a37f7fd0d71240c754df58f393f`:
+- `nfcore-rnaseq-wrapper` software versions (file `run/results/pipeline_info/software_versions.yml`, sha256 `63dd8ca50d35f240082f303872ab4452dfcb6a37f7fd0d71240c754df58f393f`):
   - `FIXTURE_PROCESS/fixture-tool`: `1.0.0`.
 - `nfcore-rnaseq-wrapper` container for process `DIGEST`: image `fixture/tool@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`, digest `sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`, image file sha256 not recorded.
 - `nfcore-rnaseq-wrapper` container for process `LOCAL_IMAGE`: image `pipeline_info/fixture.sif`, digest not recorded, image file sha256 `e06238fb1730648111061cff3969740304d8f8359883f6ce261f44a880731071`.
 - GARS commit `c54a71584b1347937e4315cbbeb3f27371655228`, template version `v0.10.0` (workflow `rnaseq-de`).
 - Workflow `rnaseq-de` version `v0.10.0`, pipeline commit `c54a71584b1347937e4315cbbeb3f27371655228`.
-- `rnaseq-de` software versions recorded in `run/versions.json`, sha256 `d487470fda47c20c1a6249644de0d15d52fb5e818fc03faa35ebcadd3fdf451d`:
+- `rnaseq-de` software versions (file `run/versions.json`, sha256 `d487470fda47c20c1a6249644de0d15d52fb5e818fc03faa35ebcadd3fdf451d`):
   - `pandas`: `fixture-1`.
   - `python`: `3.9.0`.
 - `rnaseq-de`: container images are not recorded.

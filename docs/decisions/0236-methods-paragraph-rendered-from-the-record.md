@@ -34,6 +34,7 @@ So the paragraph can say what ran, with what, and when the plan was approved; it
 1. **A new command, `gars/_system/claims/render_methods.py`** (Python 3.6, standard library only, no model, no network, no subprocess), run by a person after the run:
    `python3 _system/claims/render_methods.py --manifest <sub-stage>/reproducibility/manifest.json [--manifest ...] [--plan <analysis>/PLAN.md --approval <approval record> [--history HISTORY.md]] --out methods.md`.
    It opens only the files named on its command line, validates every one before writing, and writes the output atomically; a refusal exits 1 with `methods refused: <reason>` and leaves an earlier output byte-identical; a usage error exits 2.
+   An `--out` that is one of the inputs is refused, so a record is never replaced by the page rendered from it.
    `--plan` and `--approval` come together, and `--history` needs them.
 2. **The output is a closed vocabulary of 33 line kinds.**
    `# Methods` holds the paragraph, one sentence per physical line (Markdown joins them): per manifest, the workflow and its version, pipeline commit, GARS wrapper, GARS commit, template version and status; the failure class when one is recorded; the reference build, annotation release and FASTA and GTF sha256 (with the registry check when it is not `matched`); the configuration sha256; the thread count; the `commands.sh` path and sha256; the agent model and each model-mediated step (model, provider, contract, git blob).
@@ -72,12 +73,13 @@ Tests move with the change: `gars/tests/test_render_methods.py` adds 16 tests, a
 - **D6** The wording is the lane's; the owner judges the paragraph before any public use.
 - **D7** A container pulled by tag on a backend that records no digest reads "digest not recorded"; the renderer says so and adds nothing.
 - **D8** Any process running as the same operating-system user can still write an approval record (the residual [0042](0042-a-call-the-guard-cannot-judge-is-refused.md) names); the renderer binds the record to the plan's bytes, not to a person.
+- **D9** The approved analysis is found by splitting the record's `plan_path` on `/`; the approval store is POSIX-only today (`stage03_analysis.py` imports `pwd`), and a path written with backslashes would read as not recorded.
 
 ## Test
 
 `python3 -m unittest discover -s gars/tests -p test_render_methods.py` (16 tests) is the acceptance, on Python 3.8 and 3.12.
 Its oracle is the test's own restatement of the 33 line kinds, independent of the renderer's code: it derives from the input files which lines a set of records must produce, rebuilds every line from the fields its Sources entry cites, and requires byte equality.
-It must fail when a rendered value differs from its field, when `not recorded` is replaced by a plausible value, when a line is added, uncited or cited from the wrong field, when the renderer is changed in-process to guess a default or invent a version (the mutation proof in `test_an_invented_value_is_caught`), when a path-like value or the actor is printed, when the approval is not bound to the plan, when a fenced or another analysis's history entry is rendered, when record text adds structure, when a malformed input is rendered instead of refused, or when a file other than the named inputs is opened.
+It must fail when a rendered value differs from its field, when `not recorded` is replaced by a plausible value, when a line is added, uncited or cited from the wrong field, when the renderer is changed in-process to guess a default or invent a version (the mutation proof in `test_an_invented_value_is_caught`), when a path-like value or the actor is printed, when the approval is not bound to the plan, when a fenced or another analysis's history entry is rendered, when record text adds structure, when a malformed input is rendered instead of refused, when the output would replace an input, or when a file other than the named inputs is opened.
 Two tests render records written at test time by the real `prepare`/`collect` and the real `cmd_approve`/`cmd_verify`.
 
 ## Status

@@ -43,19 +43,19 @@ HEADINGS = ('# Methods', '## Parameters', '## Software used', '## Citation', '##
 PARA, PARAM, SOFT, CITE, READ = HEADINGS[:5]
 # kind: (section heading, fixed text, slot types) -- v value, p approver phrase, a absent, x unprinted
 KINDS = {
-    'workflow': (PARA, 'The run manifest of workflow {} records version {}, pipeline commit {}, '
-                       'GARS wrapper {}, GARS commit {}, template version {} and status {}.', 'vvvvvvv'),
-    'failure': (PARA, 'It records the failure class {}.', 'v'),
-    'reference': (PARA, 'It records reference genome build {}, annotation release {}, '
-                        'FASTA sha256 {} and GTF sha256 {}.', 'vvvv'),
+    'workflow': (PARA, 'The run manifest of workflow {} records: version {}; pipeline commit {}; '
+                       'GARS wrapper {}; GARS commit {}; template version {}; status {}.', 'vvvvvvv'),
+    'failure': (PARA, 'Its failure class is {}.', 'v'),
+    'reference': (PARA, 'Its reference genome: build {}; annotation release {}; '
+                        'FASTA sha256 {}; GTF sha256 {}.', 'vvvv'),
     'reference-check': (PARA, 'Its reference registry check reads {}, reason {}.', 'vv'),
     'reference-absent': (PARA, 'Its reference genome is not recorded.', 'a'),
-    'config': (PARA, 'It records configuration sha256 {}.', 'v'),
-    'threads': (PARA, 'It records the thread count {}.', 'v'),
-    'command': (PARA, 'It records the exact submission in {}, sha256 {}.', 'vv'),
+    'config': (PARA, 'Its configuration sha256 is {}.', 'v'),
+    'threads': (PARA, 'Its thread count is {}.', 'v'),
+    'command': (PARA, 'Its exact submission: {}, sha256 {}.', 'vv'),
     'command-absent': (PARA, 'Its exact submission is not recorded.', 'a'),
-    'agent': (PARA, 'It records the agent model {}.', 'v'),
-    'model-step': (PARA, 'It records a model-mediated step by {} from provider {}, under contract {}, '
+    'agent': (PARA, 'Its agent model is {}.', 'v'),
+    'model-step': (PARA, 'It records a model-mediated step: model {}; provider {}; contract {}; '
                          'git blob {}.', 'vvvv'),
     'model-steps-absent': (PARA, 'Its model-mediated steps are not recorded.', 'a'),
     'pointer': (PARA, "Each workflow's parameters, random seeds, software versions and container "
@@ -74,7 +74,7 @@ KINDS = {
     'seeds-absent': (PARAM, '- {}: random seeds are not recorded.', 'va'),
     'gars': (SOFT, '- GARS commit {}, template version {} (workflow {}).', 'vvv'),
     'workflow-version': (SOFT, '- Workflow {} version {}, pipeline commit {}.', 'vvv'),
-    'versions-file': (SOFT, '- {} software versions recorded in {}, sha256 {}:', 'vvv'),
+    'versions-file': (SOFT, '- {} software versions (file {}, sha256 {}):', 'vvv'),
     'version': (SOFT, '  - {}: {}.', 'vv'),
     'version-absent': (SOFT, '  - versions not recorded.', 'a'),
     'versions-absent': (SOFT, '- {}: software versions are not recorded.', 'va'),
@@ -510,9 +510,9 @@ class RenderMethodsTests(unittest.TestCase):
         self.assertEqual(self.out.read_bytes(), golden)
         text = golden.decode('utf-8')
         verify(text, self.records(('prepare-manifest.json',), stage03=False))
-        self.assertIn('template version `v0.10.0` and status not recorded.', text)
+        self.assertIn('template version `v0.10.0`; status not recorded.', text)
         self.assertIn('Its reference genome is not recorded.', text)
-        self.assertIn('It records the agent model not recorded.', text)
+        self.assertIn('Its agent model is not recorded.', text)
         self.assertNotIn('UNKNOWN', text)
         self.assertNotIn('approv', text)
 
@@ -543,7 +543,7 @@ class RenderMethodsTests(unittest.TestCase):
                     self.assertIn('container for process `MUTABLE`: image `fixture/tool:latest`, digest '
                                   'not recorded, image file sha256 not recorded.', text)
                 if label == 'no model-mediated step':
-                    self.assertIn('It records the agent model `none`.', text)
+                    self.assertIn('Its agent model is `none`.', text)
                 if label == 'registry mismatch':
                     self.assertIn('Its reference registry check reads `mismatch`, reason '
                                   '`reference_hash_mismatch`.', text)
@@ -570,11 +570,11 @@ class RenderMethodsTests(unittest.TestCase):
             return text.replace(old, new)
 
         with self.assertRaises(TraceError):   # (a) a record value changed
-            verify(plant('records version `3.26.0`,', 'records version `3.27.0`,'), rec)
+            verify(plant('records: version `3.26.0`;', 'records: version `3.27.0`;'), rec)
         sparse = self.render(('prepare-manifest.json',), stage03=False)
         sparse_rec = self.records(('prepare-manifest.json',), stage03=False)
         with self.assertRaises(TraceError):   # (b) "not recorded" replaced by a plausible value
-            verify(plant('and status not recorded.', 'and status `COMPLETE`.', sparse), sparse_rec)
+            verify(plant('; status not recorded.', '; status `COMPLETE`.', sparse), sparse_rec)
         # (c) a free sentence, with the Sources renumbered as a careful forger would
         at = lines.index('## Parameters') - 1
         forged = lines[:at] + ['All samples passed quality control.'] + lines[at:]
@@ -841,6 +841,17 @@ class RenderMethodsTests(unittest.TestCase):
         self.assertEqual(p.returncode, 1, p.stderr.decode())
         self.assertIn('methods refused: cannot read manifest 1', p.stderr.decode())
         self.assertFalse(self.out.exists())
+        self.path('HISTORY.md').write_bytes((FIXTURE / 'HISTORY.md').read_bytes())
+        for index, role in ((1, 'manifest 1'), (3, 'plan'), (5, 'approval record'), (7, 'history')):
+            with self.subTest(overwrite=role):
+                target = Path(argv[index])
+                before = target.read_bytes()
+                onto = argv[:-1] + [str(self.inputs / '.' / target.name)]   # the same file, spelled apart
+                err = io.StringIO()
+                with contextlib.redirect_stderr(err):
+                    self.assertEqual(renderer.main(onto), 1)
+                self.assertIn('methods refused: the output would overwrite ' + role, err.getvalue())
+                self.assertEqual(target.read_bytes(), before)
 
     def test_only_named_inputs_are_opened(self):
         approval = self.load('approval.json')
@@ -922,7 +933,7 @@ class RenderMethodsTests(unittest.TestCase):
         text = self.traced(('live.json',), stage03=False)
         self.assertNotIn(str(case.fixture.tmp), text)
         self.assertNotIn(str(Path(tempfile.gettempdir())), text)
-        self.assertIn('It records the agent model `claude-opus-5-5`.', text)
+        self.assertIn('Its agent model is `claude-opus-5-5`.', text)
         self.assertIn('random seed for `sklearn.decomposition.PCA`: `0`.', text)
 
     def test_real_approval_and_history_render_traced(self):
