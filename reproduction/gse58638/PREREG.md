@@ -1,0 +1,46 @@
+## 5. Pre-registration (copied verbatim into `reproduction/gse58638/PREREG.md`; written before any deposit byte was read)
+
+- **P0. What was seen before writing.** The planner read HEAD responses, the GEO file listings, GEO's brief records and the SRA run-info listing, and no byte of the four deposits. The 29 Aug analysis that produced the targets is unrecorded (§1).
+- **P1. Targets,** verbatim from docs/RESULTS.md at `37a8d94`:
+  - T1 (line 86): `0.0073 of bins above z>1 against 0.053–0.083 for the others` (U+2013 en dash).
+  - T2 (line 87): `**40–100× below them at z>2**` (U+2013, U+00D7).
+  - Context C1 (line 73): `theirs (z>1 fraction 0.067 vs 0.045)`.
+- **P2. Inputs:** the four files of §2.1 at the listed sizes. Each sha256 is recorded at first read and pinned in the script thereafter.
+- **P3. Definitions:**
+  - "Above z>1" is strictly greater than 1.0 on the stored float32; likewise z>2.
+  - A bin is 10 bp, and counts are base-weighted: a record contributes its span in bases ÷ 10.
+  - A record whose span is not a multiple of 10 is still counted by its bases (an exact rational number of bins), and the number of such records is printed.
+  - NaN is excluded from numerator and denominator and counted; +inf counts as above and is counted.
+  - "The others" are GSM1415877, GSM1415885 and GSM1420162.
+  - If GSM1420155's z>2 fraction is 0, its ratios are undefined ("∞"): T2 cannot be EXACT, and the IN KIND ratio condition at z>2 holds when the others' fractions are above 0.
+- **P4. Candidate bases, in this order:**
+  - B1: 10-bp bins with data, every chromosome in the file.
+  - B2: B1 on chr1-22, chrX and chrY only.
+  - B3: B1's numerator over every 10-bp bin of the file's own chromosome sizes (no data counts as not above).
+  - B4: 10-kb tiles from each chromosome's start (last partial tile kept), tile value the mean over bases with data, tiles without data excluded.
+  - B5: B4 with the tile value the mean over all tile bases (no data counts as 0).
+  - B6, diagnostic only, run in step 1 when B1-B5 all miss: pyBigWig `stats(type="mean", exact=False)` on B4's tiles, the zoom-level approximation a default pyBigWig call makes.
+  - B7, diagnostic only, always run in step 1:
+    - GRCh38 10-kb tiles lifted to hg19 with UCSC's `liftOver` and the public hg38ToHg19 chain.
+    - Each tile's value is the deposit's mean over the lifted interval; the fraction of tiles above 1 and 2 is counted.
+    - It approximates the lifted bins behind RESULTS.md:71-72; reproduction-campaign.md:51-54 says comparisons lift the deposits.
+    - The exact 274,679-bin set also needed the join with our per-library tracks, so B7 is near, not identical.
+  - B6 and B7 are never adopted: they live only in the lane folder, and the stdlib instrument never implements them.
+- **P5. EXACT,** under a basis:
+  - GSM1420155's z>1 fraction rounds (2 significant figures, half-up on the exact rational) to 0.0073, that is, lies in [0.00725, 0.00735).
+  - The minimum and maximum of the others' z>1 fractions round to 0.053 and 0.083.
+  - The minimum and maximum of the three others'/GSM1420155 ratios at z>2 round (1 significant figure) to 40 and 100, that is, lie in [35, 45) and [95, 150).
+  - The adopted basis is the first of B1-B5 that is EXACT; any other that is EXACT is printed as agreeing.
+  - If only B6 or B7 is EXACT, the verdict is IN KIND (under B1), and 0241 records that RESULTS.md's figures came from an approximate or lifted binning.
+- **P6. IN KIND:** no basis is EXACT, but under B1 GSM1420155 has the lowest z>1 and the lowest z>2 fraction of the four, every other/GSM1420155 ratio is at least 5 at z>1 and at least 20 at z>2, and B1 is adopted. (Thresholds are the planner's, about half the published minima of 7.3× and 40×.)
+- **P7. FAIL:** neither. The lane stops; nothing ships; 0243 records it for Javier.
+- **P8. C1, context, never a gate:** under **every** basis step 1 computes (B1-B5 and B7 always, B6 when it runs), compute each condition's mean (and the pooled fraction) of per-deposit z>1 fractions.
+  - With GSM1420155 included: does it give 0.067 and 0.045 at 2 significant figures?
+  - Without it: which condition is higher?
+  - Report which bases, if any, reproduce C1. If none does, line 73 used a basis this plan cannot reach, and §6.1 stays an inference.
+  - Report to glitch-14; never print it as a claim.
+- **P9. Frozen at step 0.** This text is frozen by the sha256 recorded in step 0, before any deposit byte is read. The verdict is decided by the first computation that reads deposit bytes (step 1), and every basis's numbers go into the lane's evidence and 0241. A later rule is only a new dated pre-registration beside this one, and it never changes the verdict step 1 recorded.
+- **P10. What each verdict ships.** The verdict and its basis are appended to `PREREG.md` in a dated section at step 1 (append-only), and the binding asserts that recorded relation.
+  - **EXACT:** the report prints `MATCH` for T1 and T2, and the binding asserts the rounded recompute equals RESULTS.md's figures.
+  - **IN KIND:** the report prints `IN KIND` for T1 and T2 (never `MATCH`), and the binding asserts the P6 relation against the frozen verdict. Shipping waits for Javier's dated addendum to RESULTS.md 3a in his words, which gives the recomputed figures; the binding then also asserts the addendum's figures equal the recompute exactly. The site's claim sentence and ledger row A use the recompute's own numbers.
+  - **FAIL:** nothing ships (P7).
