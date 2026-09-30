@@ -152,7 +152,7 @@ class ExecutorTemplateTests(unittest.TestCase):
                                    '"pipeline_info/other_trace.txt"'),
             'the trace path as a literal': ('"pipeline_info/gars_trace.txt"',
                                             "'pipeline_info/gars_trace.txt'"),
-            'fewer trace fields': ('task_id,hash,process', 'task_id,process'),
+            'fewer trace fields': ('"task_id,hash,', '"task_id,'),
             'no trace block': ('\ntrace {', '\ntrace_disabled {'),
         }
         for label, (old, new) in swaps.items():
@@ -333,8 +333,6 @@ class ExecutorTemplateTests(unittest.TestCase):
         trace_file = re.search(r'file\s*=\s*"([^"]+)"', text).group(1)
         self.assertIn("'run/%s'" % trace_file,
                       (GARS / '_system' / 'wrapperlib.py').read_text(encoding='utf-8'))
-        slurm_fields = re.search(r'fields = ("[^"]+")', SLURM.read_text(encoding='utf-8')).group(1)
-        self.assertIn('fields    = %s' % slurm_fields, text)
         for absent in ('params', 'apptainer', 'beforeScript', 'includeConfig', '$', 'workDir'):
             self.assertNotIn(absent, text)
 
@@ -369,6 +367,37 @@ class ExecutorTemplateTests(unittest.TestCase):
         template = AWSBATCH.read_text(encoding='utf-8')
         self.assertEqual(self.check(project, template + '\nprocess.maxRetries = 3\n'), [REFUSED])
         self.assertEqual(self.check(project, template), [])
+
+    def test_14_the_trace_carries_what_the_launch_pad_reads(self):
+        """F-L3-3: a -c config's trace scope replaces nf-core's own, so these fields are the only
+        trace a Batch run writes. The launch pad's `jobs` finds the Batch job ids in `native_id`
+        (with `task_id` and `name`), and its smoke verdict reads `exit`; the slurm template's
+        fields stay, in order. collect's `trace_evidence` reads columns by header name, so it
+        still reads a trace carrying the two added ones."""
+        import re
+        def fields(path):
+            return re.search(r'fields\s*=\s*"([^"]+)"', path.read_text(encoding='utf-8')).group(1).split(',')
+        batch = fields(AWSBATCH)
+        self.assertEqual(batch, ['task_id', 'hash', 'native_id', 'process', 'name', 'status', 'exit',
+                                 'container', 'start', 'complete', 'realtime', '%cpu', 'rss',
+                                 'cpus'])
+        self.assertEqual([f for f in batch if f not in ('native_id', 'exit')], fields(SLURM))
+        self.assertEqual(fields(FIXTURE), batch)
+        stage = self.tmp / 'stage'
+        (stage / 'run' / 'pipeline_info').mkdir(parents=True)
+        image = 'quay.io/biocontainers/x@sha256:' + 'a' * 64
+        row = {'task_id': '1', 'hash': 'ab/cdef12', 'native_id': '0f8fad5b-d9cb-469f-a165-70867728950e',
+               'process': 'NFCORE:FASTQC', 'name': 'FASTQC (1)', 'status': 'COMPLETED', 'exit': '0',
+               'container': image, 'start': '2026-10-05 08:00:00.000',
+               'complete': '2026-10-05 08:05:00.000', 'realtime': '5m', '%cpu': '99.0%',
+               'rss': '1 GB', 'cpus': '1'}
+        (stage / 'run' / 'pipeline_info' / 'gars_trace.txt').write_text(
+            '\t'.join(batch) + '\n' + '\t'.join(row[f] for f in batch) + '\n', encoding='utf-8')
+        containers, execution = wl.trace_evidence(stage)
+        self.assertEqual(containers, [{'process': 'NFCORE:FASTQC', 'image': image,
+                                       'digest': 'sha256:' + 'a' * 64}])
+        self.assertEqual(execution, {'start': '2026-10-05 08:00:00.000',
+                                     'complete': '2026-10-05 08:05:00.000'})
 
 
 if __name__ == '__main__':
