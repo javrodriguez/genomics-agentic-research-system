@@ -30,9 +30,9 @@ Outside the protected prefixes, recorded for completeness: `tests/test_genome_re
 
 ### The owner's word (slot: filled only with Javier's own typed message)
 
-- Owner's message, verbatim: _(empty until the owner types it)_
-- Typed at (date and time, America/New_York, from the window it was typed in): _(empty)_
-- Candidate sha the message names: _(empty)_
+- Owner's message, verbatim: "recompute wording ok · approve R64 genome row 522852c · push GARS to public main now"
+- Typed at (date and time, America/New_York, from the window it was typed in): 2026-09-30, 20:13 EDT (clock read when it arrived), in the Row-orchestrator window (glitch-14)
+- Candidate sha the message names: `522852c74d9177c8f3e39ebe22c1b3d88f4b17fd`
 
 Until all three lines are filled from the owner's own message, this record approves nothing, and the change does not land.
 
@@ -48,3 +48,7 @@ Standing as a record; the approval it carries takes effect only when the owner's
 ## Date
 
 2026-09-30
+
+## Landing note (30 Sep 2026)
+
+Reviews at the candidate: r1 and r2, fresh Claude Code reviewers (Opus 5.5), 0 MAJOR each. Full suite on 522852c: 1211 tests, no failures or errors (76 environment skips, named in the lane record). It lands together with 0241/0242 (the GSE58638 recompute) on top of it, in one push on the same message.
