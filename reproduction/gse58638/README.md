@@ -5,7 +5,7 @@ The per-library figures (FRiP, peaks per read) come from pipeline outputs that a
 
 **The command**, from the root of a clone: `python3 reproduction/gse58638/recompute.py`.
 It streams 8.8 GB from NCBI and stores nothing; it took about 17 minutes on GitHub's runner; it needs standard-library Python 3.9 or later.
-`--from DIR` reads local copies of the four files instead (size and sha256 checked), and `--check-published` is the network-free binding CI runs on every push.
+`--from DIR` reads local copies of the four files instead (size and sha256 checked), and `--check-published` is the network-free binding CI runs on every push to main and every pull request.
 
 **Exit codes** (from `recompute.py`): 0, the report is identical to `expected.txt`; 1, a science difference, named (a deposit's size or sha256 changed, a quotation moved, or the report differs); 2, refused (a short read, a bad format, zero records, or the network failing on the deposits); 3, only a public-metadata context line changed or could not be fetched.
 
