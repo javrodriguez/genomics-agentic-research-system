@@ -106,7 +106,7 @@ def derive_counts(fid: str, columns: tuple, primary: str, per_take) -> dict:
 
 def render_counts(data: dict, names: dict) -> str:
     cols = data["columns"]
-    head = ["Round", "Half", "Published label", "Published (M)", "Read (N)", "No transcript",
+    head = ["Round", "Half", "Published label", "Published (M)", "Read (N)", "Not read (no transcript, or no published hash)",
             "Probe not found"] + [names[c] for c in cols]
     lines = ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
     for r in data["rows"]:

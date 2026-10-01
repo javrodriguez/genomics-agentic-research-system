@@ -9,6 +9,7 @@
    "round": 1,
    "same_label": 9,
    "seen": 9,
+   "takes_with_tool_calls_after_probe": [],
    "tool_calls_after_probe": 0
   },
   {
@@ -19,6 +20,7 @@
    "round": 1,
    "same_label": 9,
    "seen": 9,
+   "takes_with_tool_calls_after_probe": [],
    "tool_calls_after_probe": 0
   },
   {
@@ -29,6 +31,7 @@
    "round": 2,
    "same_label": 9,
    "seen": 9,
+   "takes_with_tool_calls_after_probe": [],
    "tool_calls_after_probe": 0
   },
   {
@@ -39,6 +42,7 @@
    "round": 2,
    "same_label": 9,
    "seen": 9,
+   "takes_with_tool_calls_after_probe": [],
    "tool_calls_after_probe": 0
   },
   {
@@ -49,6 +53,12 @@
    "round": 1,
    "same_label": 9,
    "seen": 9,
+   "takes_with_tool_calls_after_probe": [
+    "r1/precondition-refusal/positive/5 (refused, 2)",
+    "r1/precondition-refusal/positive/6 (refused, 2)",
+    "r1/precondition-refusal/positive/7 (refused, 1)",
+    "r1/precondition-refusal/positive/8 (refused, 4)"
+   ],
    "tool_calls_after_probe": 9
   },
   {
@@ -59,6 +69,9 @@
    "round": 2,
    "same_label": 9,
    "seen": 9,
+   "takes_with_tool_calls_after_probe": [
+    "r2/precondition-refusal/positive/9 (refused, 1)"
+   ],
    "tool_calls_after_probe": 1
   },
   {
@@ -69,6 +82,7 @@
    "round": 1,
    "same_label": 9,
    "seen": 9,
+   "takes_with_tool_calls_after_probe": [],
    "tool_calls_after_probe": 0
   },
   {
@@ -79,6 +93,7 @@
    "round": 2,
    "same_label": 9,
    "seen": 9,
+   "takes_with_tool_calls_after_probe": [],
    "tool_calls_after_probe": 0
   },
   {
@@ -89,6 +104,7 @@
    "round": 1,
    "same_label": 9,
    "seen": 9,
+   "takes_with_tool_calls_after_probe": [],
    "tool_calls_after_probe": 0
   },
   {
@@ -99,6 +115,7 @@
    "round": 2,
    "same_label": 9,
    "seen": 9,
+   "takes_with_tool_calls_after_probe": [],
    "tool_calls_after_probe": 0
   },
   {
@@ -109,6 +126,9 @@
    "round": 3,
    "same_label": 9,
    "seen": 9,
+   "takes_with_tool_calls_after_probe": [
+    "r3/scope-read/positive/1 (read, 1)"
+   ],
    "tool_calls_after_probe": 1
   }
  ]

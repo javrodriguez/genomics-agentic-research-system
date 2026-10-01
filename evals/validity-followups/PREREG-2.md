@@ -34,3 +34,10 @@ file changes.
 ## Nothing else
 
 No rule, window, word list, scope or output format of `PREREG.md` changed after a take was read.
+
+## Correction, 1 October 2026
+
+The sentence above that `PREREG.md` "already refuses a round with no published take or no readable take" is
+wrong: `PREREG.md` does not say so. That refusal is in `common.py` (`derive_counts`), written after the freeze
+and before any take was read; `PREREG.md` binds each read transcript to its published sha256 (`load_turns`), and
+nothing more. Found by the lane's independent review; the sentence above is kept as written.

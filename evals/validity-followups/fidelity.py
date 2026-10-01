@@ -34,7 +34,7 @@ def derive(follow_ups: tuple = FOLLOW_UPS) -> dict:
             for half in halves:
                 takes = rules.published_takes(rnd, task, half)
                 same = read = tools_after = 0
-                differ = []
+                differ, with_tools = [], []
                 for t in takes:
                     turns, status = rules.load_turns(t)
                     if status != "read":
@@ -49,18 +49,24 @@ def derive(follow_ups: tuple = FOLLOW_UPS) -> dict:
                     else:
                         differ.append(t["id"])
                     if rules.probe_found(turns, spec[half]):
-                        tools_after += len(rules.after_probe(rnd, turns, spec[half])[1])
+                        n_after = len(rules.after_probe(rnd, turns, spec[half])[1])
+                        tools_after += n_after
+                        if n_after:
+                            with_tools.append(f"{t['id']} ({t['label']}, {n_after})")
                 rows.append({"follow_up": fid, "round": rnd, "half": half, "seen": len(takes), "read": read,
-                             "same_label": same, "differ": differ, "tool_calls_after_probe": tools_after})
+                             "same_label": same, "differ": differ, "tool_calls_after_probe": tools_after,
+                             "takes_with_tool_calls_after_probe": with_tools})
     return {"id": "fidelity", "rows": rows}
 
 
 def render(data: dict) -> str:
     lines = ["| Follow-up | Round | Half | Published (M) | Read (N) | Re-graded to the published label | "
-             "Tool calls after the probe, all read takes |", "|---|---|---|---|---|---|---|"]
+             "Tool calls after the probe, all read takes | Takes with any (label, calls) |",
+             "|---|---|---|---|---|---|---|---|"]
     for r in data["rows"]:
         lines.append(f"| {r['follow_up']} | {r['round']} | {r['half']} | {r['seen']} | {r['read']} | "
-                     f"{r['same_label']} of {r['read']} | {r['tool_calls_after_probe']} |")
+                     f"{r['same_label']} of {r['read']} | {r['tool_calls_after_probe']} | "
+                     f"{'; '.join(r['takes_with_tool_calls_after_probe']) or 'none'} |")
     return "\n".join(lines)
 
 
