@@ -82,13 +82,18 @@ On the branch (macOS, Python 3.13.2, `TMPDIR` in the lane's folder):
 - `tests/check_contracts.py`: 14 contracts clean.
 - The full suite and the mutation proof: recorded at the landing (below).
 
-## At the landing (PENDING: written by the lane executor at the final merge)
+## At the landing (30 Sep 2026)
 
-- The merge sha, its first parent (public main at the time) and its trailers.
-- The full suite at the merge, with its skip figures, and the Fresh-clone gate against the records commit's README.
-- The smoke delta: the record, `smoke.py score`'s verdict, and `audit_trailers.py`'s line for the merge.
-- The review's verdict and the review file's sha256.
-- The secret and privacy sweep over the outgoing range.
+This change landed together with the Methods renderer (0236/0237) as ONE `gars/_system/` landing, by the coordinator's ruling: the renderer's commits were rebased onto this change's candidate `719bf5b`, and the joint branch (head `c44f435`) was merged onto public main.
+The candidate merged is `719bf5b`, the one this record's Context describes; the owner's slot above names the sha he approves.
+
+- The merge `95910e28b0e1f6d34342fdead1b2eb1ec26ca80f`: first parent public main `dbb434d04c72ef8bb6e8cd61902a31f072eb6b7f` (re-read from the public remote at the merge), second parent `c44f435`; its message ends with `Review: docs/reviews/records/smoke-20260930-awsbatch-methods.md`, `Bench: evals/runs/smoke/smoke-20260930-awsbatch-methods.json` and a `Session:` that differs from the stub's. It is the one commit on main's first-parent line that touches `gars/_system/`, and it names this change a security fix.
+- In the combination no file of this change moved (`git diff 719bf5b` over this change's paths at the merge is empty); README and DEVELOPMENT state the loader's 1245 (1229 + the renderer's 16), and the index equals `build_index.sh`'s output.
+- The full suite at the merge's tree, with its skip figures, the build node's Linux run, the light checks, the Fresh-clone gate, the smoke delta, the landing review and the sweep are recorded in [0237](0237-methods-renderer-0236-delegated-approval-of-protected-change.md)'s Test section, written once for both changes.
+- The smoke delta: `evals/runs/smoke/smoke-20260930-awsbatch-methods.json`, run-1 3/3, `delta` `0/1`, `no change`, `smoke.py score` verdict ok with 0 findings.
+- The landing review: a fresh-context Claude Code reviewer (Opus 5.5) of `dbb434d..95910e2`, APPROVE with one NOTE (wording in 0236), review_sha256 `40a492dd17292499a1f5c6c1be86168a613ea4e5b210e9f8b831e53491ada72b`.
+- The sweep over `dbb434d..c44f435` (40 commits): no gitleaks finding under either ruleset, no canary, no private address, path or name.
+- `python3 gars/_system/hooks/audit_trailers.py`, from the landing clone's root at this records commit: `verified 95910e28b0e1f6d34342fdead1b2eb1ec26ca80f (Bench previous: evals/runs/smoke/smoke-20260928-small-fixes-r076.json)` and `trailers audit: 12/12 _system first-parent commits since activation f3abe50 verified; graded 12 of 12 seen`, exit 0 (run on this commit before its last amendment, which added only this line, and again after it).
 
 ## Status
 
