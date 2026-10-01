@@ -10,14 +10,15 @@ decision the user makes twice.
 pipe-prefixed line once accepted a skill name as an assay and created `00_data/(unpinned)/`. Add
 columns here, never a second table.
 
-**Paths are site-specific.** They name two sites: the GRCh38 row's paths are correct for the HPC
-cluster, and the R64-1-1 row's are correct for the launch pad, whose GARS clone is
+**Paths are site-specific.** They name two sites. The GRCh38 row's paths begin with a placeholder,
+`/path/to/group-work-area`, for the HPC cluster's group work area, under which the references sit in
+`install/refs/`; a site using that row replaces it. The R64-1-1 row's are correct for the launch pad, whose GARS clone is
 `/home/ubuntu/genomics-agentic-research-system` and keeps its references in the clone's
 self-ignoring `install/refs/`. A different site edits this file; nothing else needs to change.
 
 | ID | Species | Build | Source | FASTA | GTF | Derived cache root | Mito contig | MACS gsize |
 |---|---|---|---|---|---|---|---|---|
-| GRCh38 | Homo sapiens | GRCh38 | Ensembl release 116 | /gpfs/data/abl/home/rodrij92/install/refs/ensembl-GRCh38-116/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz | /gpfs/data/abl/home/rodrij92/install/refs/ensembl-GRCh38-116/Homo_sapiens.GRCh38.116.gtf.gz | /gpfs/data/abl/home/rodrij92/install/refs/ensembl-GRCh38-116/derived | MT | 2701495761 |
+| GRCh38 | Homo sapiens | GRCh38 | Ensembl release 116 | /path/to/group-work-area/install/refs/ensembl-GRCh38-116/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz | /path/to/group-work-area/install/refs/ensembl-GRCh38-116/Homo_sapiens.GRCh38.116.gtf.gz | /path/to/group-work-area/install/refs/ensembl-GRCh38-116/derived | MT | 2701495761 |
 | R64-1-1 | Saccharomyces cerevisiae | R64-1-1 | nf-core/test-datasets atacseq branch, pinned by sha256 | /home/ubuntu/genomics-agentic-research-system/install/refs/R64-1-1/genome.fa | /home/ubuntu/genomics-agentic-research-system/install/refs/R64-1-1/genes.gtf | /home/ubuntu/genomics-agentic-research-system/install/refs/R64-1-1/derived | MT | 11624332 |
 
 **Derived cache root, not path.** The cell names the *root*; `configure.py` appends the assay's
