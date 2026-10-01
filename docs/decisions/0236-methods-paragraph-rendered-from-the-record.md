@@ -52,7 +52,7 @@ So the paragraph can say what ran, with what, and when the plan was approved; it
 10. **Fixtures.** `gars/tests/fixtures/methods/` holds an nf-core collect manifest, a local-wrapper collect manifest and a prepare-only manifest, each written by the real `prepare` and `collect` through `test_manifest_groups`' own fixture machinery and then scrubbed: the run's temporary root is replaced by `/fixture-workspace`, and the `idempotency_key` by the 64-zero digest (a real key under a field named `*_key` reads to the secret scanner as a credential); both collect manifests still grade complete under `manifest_check.py`.
     The plan is `approved-plan.md` (the repository ignores every file named `PLAN.md`), the approval record has `cmd_approve`'s five keys with the actor `fixture-operator`, and the history carries `cmd_verify`'s stage 03 entry; `complete.md` and `sparse.md` are the renderer's goldens.
 
-Tests move with the change: `gars/tests/test_render_methods.py` adds 16 tests, and the suite total moves from 1208 to 1224.
+Tests move with the change: `gars/tests/test_render_methods.py` adds 16 tests, and the suite total moves from 1229 to 1245.
 
 ## Rejected alternatives
 
