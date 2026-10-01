@@ -30,9 +30,11 @@ passes `--save-reference` on the first run and harvests the built indices into i
 UCSC. ATAC-seq pipelines filter mitochondrial reads by this name; a wrong one silently filters
 nothing.
 
-**MACS gsize** is the effective genome size MACS2 uses for peak calling. The GRCh38 value is the
-deeptools 50-bp unique-mappability figure (2,701,495,761), the same value nf-core/atacseq's own
-iGenomes config uses for GRCh38 at the default read length. It is a property of the assembly,
+**MACS gsize** is the effective genome size MACS2 uses for peak calling. The GRCh38 value is
+deepTools' 50-bp unique-mappability figure (2,701,495,761) as printed in the deepTools
+documentation of every release from 3.4.0 to 3.5.4 (3.5.5 and 3.5.6 print 2,701,495,711); it is
+not nf-core's figure: nf-core/atacseq 2.1.2's iGenomes config lists 2,701,262,066 for its NCBI
+GRCh38 at read length 50 (corrected in decision 0256). It is a property of the assembly,
 recorded here so it is chosen once, with the genome — never typed per project.
 
 ## Why Ensembl and not iGenomes
