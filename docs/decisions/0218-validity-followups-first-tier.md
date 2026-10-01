@@ -23,7 +23,7 @@ The rule of the studies binds all of it: results publish exactly as graded, and 
 ## Decision
 
 1. **One new folder, `evals/validity-followups/`.** Nothing under `evals/gap-study/`, `evals/gap-study-2/`, `evals/gap-study-3/` or `evals/gap-study-intervals/` is written; graders, specs, results files and transcripts are read from their committed paths, with bytecode writing off.
-2. **Pre-registration first, as code.** `PREREG.md` was written from the graders, the rounds' specs and `run.py`, `docs/validity/` and decisions 0068, 0216 and 0217, before any take, transcript or results file was opened, and committed alone (`7f361a6`, sha256 `0f34b2d0d9525c9fa92ef798c42028b5f37e0c4a1ee2428568f288d9b61551c3`, recorded in `PREREG.sha256` by `0092669`). It quotes `rules.py`, the matching rules, byte for byte; every script refuses to run unless `rules.py` is still that text and `PREREG.md` still hashes to the recorded sha256.
+2. **Pre-registration first, as code.** `PREREG.md` was written from the graders, the rounds' specs and `run.py`, `docs/validity/` and decisions 0068, 0216 and 0217, before any take, transcript or results file was opened, and committed alone (`8d28572`, sha256 `0f34b2d0d9525c9fa92ef798c42028b5f37e0c4a1ee2428568f288d9b61551c3`, recorded in `PREREG.sha256` by `8e0c66d`). It quotes `rules.py`, the matching rules, byte for byte; every script refuses to run unless `rules.py` is still that text and `PREREG.md` still hashes to the recorded sha256.
 3. **Seen and read, never a bare number.** A count is printed as k of N takes read, beside M published, per round, half and published label, so reserved labels stay in the table and zeros are printed. A transcript that does not hash to its published sha256 stops the run; a round in scope that publishes no take, or none readable, is refused rather than printed as zero.
 4. **No model names, comparisons or percentages.** A take is named by round, task, half and position; the owner words any comparative sentence.
 5. **A second pre-registration part, dated, rather than an edit.** After the first run printed zeros, `PREREG-2.md` added `fidelity.py`: every read take re-graded by its round's own grader from the turns the counts read, against its published label, and the tool calls after the probe counted. It changes no rule and no count; `PREREG.md` is unchanged.
@@ -46,12 +46,14 @@ The rule of the studies binds all of it: results publish exactly as graded, and 
 
 Each script's `--check` re-derives its table and fails on any difference from `results/<id>.json` or from its block in `evals/validity-followups/RESULTS.md`: `f10_no_model.py`, `f01_affirmations.py`, `f07_refusal_text.py`, `f06_plan_status.py`, `f04_indirect_reads.py`, `fidelity.py`; `f05_check.py --check` binds the erratum's quotations.
 `python3 evals/validity-followups/test_followups.py` builds synthetic rounds from the pinned graders and specs and must pass; it fails if `rules.py` drifts from the frozen block, if a hash mismatch does not stop a count, if an empty round is not refused, or if a changed figure passes `--check`.
-`git diff 7f361a6^ -- evals/gap-study evals/gap-study-2 evals/gap-study-3 evals/gap-study-intervals` is empty.
+`git diff 8d28572^ -- evals/gap-study evals/gap-study-2 evals/gap-study-3 evals/gap-study-intervals` is empty.
 
 ## Replay onto public main
 
 The lane built on a private mirror, where the freeze was `6ac70d8` and the hash record `2ef75ae`.
-Its six code commits were replayed onto public main `dbb434d` in the same order, without the lane's brief and report commits; there the freeze is `7f361a6` and the hash record `0092669`, and the shas above are those.
+Its six code commits were replayed onto public main `dbb434d` in the same order, without the lane's brief and report commits, on a lane branch that was never published.
+On 1 October 2026 the integration lane (glitch-14's) replayed that branch's eight commits onto the joint landing `d06e248` through the armed pre-commit hook; there the freeze is `8d28572` and the hash record `8e0c66d`, and the shas above are those.
+The scripts, the first run and this record's first version, three commits on the lane branch, landed there as one commit, `6d16680`, because apart the first two cannot pass the hook's decision-links gate: `rules.py`, frozen with `PREREG.md`, cites this record before it exists. No file's content changed in the replay; only the commit boundaries between those three moved.
 The replay changed no file of this folder; `PREREG.md` hashes to the same sha256 at every commit from the freeze on.
 The orchestrator's home review found that the records still cited the mirror's shas, which resolve nowhere in this history, and that `f05_check.py` matched each quoted text as a substring of its line while saying "byte for byte"; both were fixed at the merge, and `RESULTS.md` no longer says that every figure in its prose is re-derived.
 A second home review found that `f05_check.py` alone skipped the frozen-file checks this record and `PREREG.md` say every script runs first; it now runs them and refuses on a drifted `rules.py` or `PREREG.md`, as the others do.

@@ -16,7 +16,7 @@ symptoms:
 # Erratum: `scope-read`'s `declined` docstring and a frozen pre-registration sentence disagree with the code that graded
 
 Follow-up F-05 of `docs/validity/follow-ups.md`, in the owner's first tier (30 September 2026, [0217](0217-gap-study-validity-owner-sign-off.md)).
-Pre-registered in `evals/validity-followups/PREREG.md` (section F-05, frozen at `7f361a6`).
+Pre-registered in `evals/validity-followups/PREREG.md` (section F-05, frozen at `8d28572`).
 Every ruling here is **the lane's**; no sentence is the owner's.
 
 ## Context
