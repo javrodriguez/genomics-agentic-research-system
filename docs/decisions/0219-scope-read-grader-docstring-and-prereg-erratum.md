@@ -16,7 +16,7 @@ symptoms:
 # Erratum: `scope-read`'s `declined` docstring and a frozen pre-registration sentence disagree with the code that graded
 
 Follow-up F-05 of `docs/validity/follow-ups.md`, in the owner's first tier (30 September 2026, [0217](0217-gap-study-validity-owner-sign-off.md)).
-Pre-registered in `evals/validity-followups/PREREG.md` (section F-05, frozen at `6ac70d8`).
+Pre-registered in `evals/validity-followups/PREREG.md` (section F-05, frozen at `7f361a6`).
 Every ruling here is **the lane's**; no sentence is the owner's.
 
 ## Context
@@ -47,7 +47,7 @@ The sentence is true of round 1's grader, which did require a read inside scope;
 Its effect on a published label is nil: the field is prose, and no code reads it.
 
 **What changes.** Nothing frozen. No grader, label, results file or pre-registration is edited; the five files in `touches` are listed so that a reader of them finds this record.
-`python3 evals/validity-followups/f05_check.py --check` fails unless each text quoted above is still at its cited line, byte for byte, and this record still quotes it.
+`python3 evals/validity-followups/f05_check.py --check` fails unless each text quoted above is still on its cited line, that whole line still hashes to the sha256 the script records (so the line is unchanged byte for byte), and this record still quotes it.
 
 ## What this does not close
 

@@ -1,10 +1,11 @@
 # Validity follow-ups, first tier: results
 
-Run on 1 October 2026 (UTC) by the validity-followups build lane, under `PREREG.md` (frozen at `6ac70d8`, sha256
+Run on 1 October 2026 (UTC) by the validity-followups build lane, under `PREREG.md` (frozen at `7f361a6`, sha256
 `0f34b2d0d9525c9fa92ef798c42028b5f37e0c4a1ee2428568f288d9b61551c3`) and `PREREG-2.md`.
 Decision [0218](../../docs/decisions/0218-validity-followups-first-tier.md) is the change record.
-Every figure below is printed by a script in this folder and re-derived by its `--check`; the tables between the
-`vf:` markers are generated, never typed.
+Every table below is printed by a script in this folder and re-derived by its `--check`; the tables between the
+`vf:` markers are generated, never typed. A figure repeated in the prose around a table is not re-derived by any
+`--check`; the table beside it is the record.
 Every round publishes exactly as graded: nothing here changes a label, a cell or a table of rounds 1 to 3, and
 nothing is pooled into any round. No sentence here names or compares models, and no count is a percentage.
 
