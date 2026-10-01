@@ -129,6 +129,10 @@ reads, duplication, Spearman) come from our pipeline's outputs, which are not pu
 quoted. What it binds, and what it cannot, is in
 [decision 0241](decisions/0241-gse58638-deposit-recompute.md).
 
+### Addendum (1 Oct 2026)
+
+Row 3a's "spreading direction confirmed" (line 23) and line 73 are to be read with the 30 Sep addendum above: the deposit-side direction holds only when the failed replicate is counted. Rows 3b, 4 and 5 (lines 24-26) have not been scored as of 1 Oct 2026; their status notes date from 7 Sep.
+
 ---
 
 ## How the scoring was designed
