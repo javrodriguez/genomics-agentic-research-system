@@ -685,6 +685,31 @@ class ExecutorTemplateTests(unittest.TestCase):
         forms.append(('a rendered -c name under a descriptor that names slurm',
                       (project, passed, project / '02_bioinformatics' / 'atacseq_bulk' / '01_w'),
                       "is not the descriptor's"))
+        # The review of the fix (L5-F-1): one config file is not yet one descriptor. A planted
+        # folder holding its own executor.yaml (and the project's config, or a link to it) must
+        # not become the project prepare reads, whichever way the -c file is reached.
+        other = "name: slurm\nnextflow_config: nextflow.awsbatch.config\n"
+        DEPTH = "is not the substage's project"
+
+        def planted_descriptor(where):
+            project = self.project()
+            real = project / '_config' / name
+            sub = project / '02_bioinformatics' / 'atacseq_bulk' / '01_nfcore-atacseq-wrapper'
+            folder = (sub.parent if where == 'assay' else sub) / '_config'
+            folder.mkdir(parents=True)
+            (folder / 'executor.yaml').write_text(other, encoding='utf-8')
+            return project, real, sub, folder
+
+        project, real, sub, folder = planted_descriptor('assay')         # T1c+
+        real.write_text(take, encoding='utf-8')
+        (folder / name).symlink_to(real)
+        forms.append(('T1c+: a planted _config/ linking to the project config', (project, real, sub), DEPTH))
+        for where, label in (('assay', 'T2a'), ('substage', 'T2b')):
+            project, real, sub, folder = planted_descriptor(where)
+            (folder / name).write_text(take, encoding='utf-8')
+            real.symlink_to(folder / name)
+            forms.append(('%s: the project link into a planted %s _config/' % (label, where),
+                          (project, real, sub), DEPTH))
         for label, (project, passed, sub), message in forms:
             with self.subTest(prepare=label):
                 sub.mkdir(parents=True, exist_ok=True)
