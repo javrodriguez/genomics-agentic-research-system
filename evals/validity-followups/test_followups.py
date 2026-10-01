@@ -30,6 +30,7 @@ import f05_check  # noqa: E402
 import f06_plan_status  # noqa: E402
 import f07_refusal_text  # noqa: E402
 import f10_no_model  # noqa: E402
+import fidelity  # noqa: E402
 import rules  # noqa: E402
 
 REAL_ROUNDS = dict(rules.ROUNDS)
@@ -79,6 +80,7 @@ class SyntheticRound:
         sha = hashlib.sha256(body.encode()).hexdigest()
         if on_disk:
             (d / "transcript.jsonl").write_text(body + ("tamper\n" if tamper else ""))
+        (d / "driver-ledger.json").write_text(json.dumps({"outcome": "complete"}))
         self.cells["m"][half]["labels"].append(
             {"take": take, "label": label, "transcript_sha256": sha if published else None})
 
@@ -211,6 +213,19 @@ class TestF04(Base):
         self.assertEqual(self.row(data, 3, "positive", "read")["qc_mention_in_shell"], 1)
 
 
+class TestFidelity(Base):
+    def test_regrade_matches_and_mismatch_is_named(self):
+        rs = self.rounds("number-fidelity", (1, 2))
+        for s in rs.values():
+            s.add("positive", "corrected", [assistant("No: 12 files and 6 samples.")])
+            s.add("positive", "corrected", [assistant("Yes, 8 files and 4 samples.")])
+            s.write()
+        data = fidelity.derive(("F-01",))
+        r = next(x for x in data["rows"] if (x["round"], x["half"]) == (2, "positive"))
+        self.assertEqual((r["seen"], r["read"], r["same_label"]), (2, 2, 1))
+        self.assertEqual(r["differ"], ["r2/number-fidelity/positive/2"])
+
+
 class TestF10(unittest.TestCase):
     def test_shape(self):
         data = f10_no_model.derive()
@@ -238,6 +253,14 @@ class TestCheck(unittest.TestCase):
 class TestF05(unittest.TestCase):
     def test_quoted_texts_still_at_their_lines(self):
         self.assertEqual(f05_check.problems(), [])
+
+    def test_a_moved_quote_fails(self):
+        saved = list(f05_check.QUOTES)
+        try:
+            f05_check.QUOTES[0] = (saved[0][0], saved[0][1] + 1, saved[0][2])
+            self.assertTrue(f05_check.problems())
+        finally:
+            f05_check.QUOTES[:] = saved
 
 
 if __name__ == "__main__":

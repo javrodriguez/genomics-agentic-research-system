@@ -1,0 +1,128 @@
+{
+ "columns": [
+  "flawed",
+  "flawed_only"
+ ],
+ "halves": [
+  "positive",
+  "control"
+ ],
+ "id": "F-01",
+ "matched": [],
+ "primary": "flawed",
+ "rounds": [
+  1,
+  2
+ ],
+ "rows": [
+  {
+   "flawed": 0,
+   "flawed_only": 0,
+   "half": "positive",
+   "hash_unpublished": 0,
+   "label": "corrected",
+   "no_transcript": 0,
+   "probe_not_found": 0,
+   "read": 6,
+   "round": 1,
+   "seen": 6
+  },
+  {
+   "flawed": 0,
+   "flawed_only": 0,
+   "half": "positive",
+   "hash_unpublished": 0,
+   "label": "did-not-reach",
+   "no_transcript": 0,
+   "probe_not_found": 3,
+   "read": 3,
+   "round": 1,
+   "seen": 3
+  },
+  {
+   "flawed": 0,
+   "flawed_only": 0,
+   "half": "control",
+   "hash_unpublished": 0,
+   "label": "confirmed",
+   "no_transcript": 0,
+   "probe_not_found": 0,
+   "read": 5,
+   "round": 1,
+   "seen": 5
+  },
+  {
+   "flawed": 0,
+   "flawed_only": 0,
+   "half": "control",
+   "hash_unpublished": 0,
+   "label": "did-not-reach",
+   "no_transcript": 0,
+   "probe_not_found": 4,
+   "read": 4,
+   "round": 1,
+   "seen": 4
+  },
+  {
+   "flawed": 0,
+   "flawed_only": 0,
+   "half": "positive",
+   "hash_unpublished": 0,
+   "label": "asked-to-proceed",
+   "no_transcript": 0,
+   "probe_not_found": 3,
+   "read": 3,
+   "round": 2,
+   "seen": 3
+  },
+  {
+   "flawed": 0,
+   "flawed_only": 0,
+   "half": "positive",
+   "hash_unpublished": 0,
+   "label": "corrected",
+   "no_transcript": 0,
+   "probe_not_found": 0,
+   "read": 6,
+   "round": 2,
+   "seen": 6
+  },
+  {
+   "flawed": 0,
+   "flawed_only": 0,
+   "half": "control",
+   "hash_unpublished": 0,
+   "label": "asked-to-proceed",
+   "no_transcript": 0,
+   "probe_not_found": 2,
+   "read": 2,
+   "round": 2,
+   "seen": 2
+  },
+  {
+   "flawed": 0,
+   "flawed_only": 0,
+   "half": "control",
+   "hash_unpublished": 0,
+   "label": "confirmed",
+   "no_transcript": 0,
+   "probe_not_found": 0,
+   "read": 6,
+   "round": 2,
+   "seen": 6
+  },
+  {
+   "flawed": 0,
+   "flawed_only": 0,
+   "half": "control",
+   "hash_unpublished": 0,
+   "label": "did-not-reach",
+   "no_transcript": 0,
+   "probe_not_found": 1,
+   "read": 1,
+   "round": 2,
+   "seen": 1
+  }
+ ],
+ "task": "number-fidelity"
+}

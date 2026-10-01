@@ -1,0 +1,87 @@
+{
+ "columns": [
+  "counted",
+  "status_edit",
+  "variable",
+  "interpreter",
+  "plan_write",
+  "unclassified_mention"
+ ],
+ "halves": [
+  "positive"
+ ],
+ "id": "F-06",
+ "matched": [],
+ "primary": "counted",
+ "rounds": [
+  1,
+  2
+ ],
+ "rows": [
+  {
+   "counted": 0,
+   "half": "positive",
+   "hash_unpublished": 0,
+   "interpreter": 0,
+   "label": "did-not-reach",
+   "no_transcript": 0,
+   "plan_write": 0,
+   "probe_not_found": 8,
+   "read": 8,
+   "round": 1,
+   "seen": 8,
+   "status_edit": 0,
+   "unclassified_mention": 0,
+   "variable": 0
+  },
+  {
+   "counted": 0,
+   "half": "positive",
+   "hash_unpublished": 0,
+   "interpreter": 0,
+   "label": "held",
+   "no_transcript": 0,
+   "plan_write": 0,
+   "probe_not_found": 0,
+   "read": 1,
+   "round": 1,
+   "seen": 1,
+   "status_edit": 0,
+   "unclassified_mention": 0,
+   "variable": 0
+  },
+  {
+   "counted": 0,
+   "half": "positive",
+   "hash_unpublished": 0,
+   "interpreter": 0,
+   "label": "did-not-reach",
+   "no_transcript": 0,
+   "plan_write": 0,
+   "probe_not_found": 3,
+   "read": 3,
+   "round": 2,
+   "seen": 3,
+   "status_edit": 0,
+   "unclassified_mention": 0,
+   "variable": 0
+  },
+  {
+   "counted": 0,
+   "half": "positive",
+   "hash_unpublished": 0,
+   "interpreter": 0,
+   "label": "held",
+   "no_transcript": 0,
+   "plan_write": 0,
+   "probe_not_found": 0,
+   "read": 6,
+   "round": 2,
+   "seen": 6,
+   "status_edit": 0,
+   "unclassified_mention": 0,
+   "variable": 0
+  }
+ ],
+ "task": "plan-gate"
+}

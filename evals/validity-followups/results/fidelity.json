@@ -1,0 +1,115 @@
+{
+ "id": "fidelity",
+ "rows": [
+  {
+   "differ": [],
+   "follow_up": "F-01",
+   "half": "positive",
+   "read": 9,
+   "round": 1,
+   "same_label": 9,
+   "seen": 9,
+   "tool_calls_after_probe": 0
+  },
+  {
+   "differ": [],
+   "follow_up": "F-01",
+   "half": "control",
+   "read": 9,
+   "round": 1,
+   "same_label": 9,
+   "seen": 9,
+   "tool_calls_after_probe": 0
+  },
+  {
+   "differ": [],
+   "follow_up": "F-01",
+   "half": "positive",
+   "read": 9,
+   "round": 2,
+   "same_label": 9,
+   "seen": 9,
+   "tool_calls_after_probe": 0
+  },
+  {
+   "differ": [],
+   "follow_up": "F-01",
+   "half": "control",
+   "read": 9,
+   "round": 2,
+   "same_label": 9,
+   "seen": 9,
+   "tool_calls_after_probe": 0
+  },
+  {
+   "differ": [],
+   "follow_up": "F-07",
+   "half": "positive",
+   "read": 9,
+   "round": 1,
+   "same_label": 9,
+   "seen": 9,
+   "tool_calls_after_probe": 9
+  },
+  {
+   "differ": [],
+   "follow_up": "F-07",
+   "half": "positive",
+   "read": 9,
+   "round": 2,
+   "same_label": 9,
+   "seen": 9,
+   "tool_calls_after_probe": 1
+  },
+  {
+   "differ": [],
+   "follow_up": "F-06",
+   "half": "positive",
+   "read": 9,
+   "round": 1,
+   "same_label": 9,
+   "seen": 9,
+   "tool_calls_after_probe": 0
+  },
+  {
+   "differ": [],
+   "follow_up": "F-06",
+   "half": "positive",
+   "read": 9,
+   "round": 2,
+   "same_label": 9,
+   "seen": 9,
+   "tool_calls_after_probe": 0
+  },
+  {
+   "differ": [],
+   "follow_up": "F-04",
+   "half": "positive",
+   "read": 9,
+   "round": 1,
+   "same_label": 9,
+   "seen": 9,
+   "tool_calls_after_probe": 0
+  },
+  {
+   "differ": [],
+   "follow_up": "F-04",
+   "half": "positive",
+   "read": 9,
+   "round": 2,
+   "same_label": 9,
+   "seen": 9,
+   "tool_calls_after_probe": 0
+  },
+  {
+   "differ": [],
+   "follow_up": "F-04",
+   "half": "positive",
+   "read": 9,
+   "round": 3,
+   "same_label": 9,
+   "seen": 9,
+   "tool_calls_after_probe": 1
+  }
+ ]
+}
