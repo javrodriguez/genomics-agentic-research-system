@@ -710,7 +710,13 @@ def execution_evidence(substage, descriptor, body):
     # the DESCRIPTOR's name, so a rendered name always gets its record or a refusal (0251).
     name = descriptor.get('nextflow_config') or ''
     config = dict(paths).get('nextflow_config')
-    if name in EXECUTOR_RENDER_SLOTS and config is not None:
+    # One project for preflight, the record, the directives and the submit command: the -c file
+    # must be this project's own _config/<its name> (or the target of that link, as a replay
+    # binds it), so a _config/ folder planted lower down cannot swap the descriptor (0251).
+    if config is not None and (root / '_config' / config.name).resolve() != config.resolve():
+        raise ValueError('the -c config %s is not _config/%s of the project prepare reads (%s)'
+                         % (config, config.name, root))
+    if config is not None and (name in EXECUTOR_RENDER_SLOTS or config.name in EXECUTOR_RENDER_SLOTS):
         if config.name != name or not config.is_file():
             raise ValueError("the -c config %s is not the descriptor's %s" % (config.name, name))
         template = executor_template(name)

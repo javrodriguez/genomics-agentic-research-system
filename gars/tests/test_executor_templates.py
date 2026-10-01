@@ -653,8 +653,10 @@ class ExecutorTemplateTests(unittest.TestCase):
                 with self.subTest(prepare=label):
                     project = self.project()
                     sub = project / '02_bioinformatics' / 'atacseq_bulk' / '01_nfcore-atacseq-wrapper'
+                    linked = project / '_config' / target.name     # bound as a replay binds it
+                    linked.symlink_to(target)
                     with self.assertRaisesRegex(ValueError, message):
-                        prepare(project, target)
+                        prepare(project, linked)
                     self.assertFalse((sub / 'submit.sh').exists())
 
         # Review of the link ruling, L5-L-1: preflight, the record and the submit command use
