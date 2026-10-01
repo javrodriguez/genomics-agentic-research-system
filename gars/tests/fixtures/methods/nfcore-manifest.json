@@ -1,0 +1,191 @@
+{
+  "agent_model": "claude-opus-5-5",
+  "agreement_ref": "none",
+  "approvals": [],
+  "artifact_destination": "gars/projects/nfcore-rnaseq-wrapper-local/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run",
+  "backend": "local",
+  "checkout": "/fixture-workspace/pipelines/rnaseq-3.26.0",
+  "command": {
+    "path": "reproducibility/commands.sh",
+    "sha256": "c7941ece64f3fe877e99ddb38c537e0acb0acdcbc0ca69dd948de39e9a4d8783"
+  },
+  "config_sha256": "57fc7ebe7584cba1a50e195979f889f43f973f4e8726fc512d8dd92abd4abd4a",
+  "containers": [
+    {
+      "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "image": "fixture/tool@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "process": "DIGEST"
+    },
+    {
+      "image": "pipeline_info/fixture.sif",
+      "image_path": "/fixture-workspace/gars/projects/nfcore-rnaseq-wrapper-local/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/pipeline_info/fixture.sif",
+      "image_sha256": "e06238fb1730648111061cff3969740304d8f8359883f6ce261f44a880731071",
+      "process": "LOCAL_IMAGE"
+    }
+  ],
+  "data_class": "public",
+  "design_check": {
+    "path": "01_samplesheets/rnaseq_bulk_design_check.json",
+    "sha256": "218589323cbe80b7ed077e3ee36f1663e7cb5f8f4e4ad02c938ad8a5c2c5a6b9"
+  },
+  "execution": {
+    "complete": "2026-09-23T12:01:00",
+    "start": "2026-09-23T12:00:00"
+  },
+  "execution_config": [
+    {
+      "path": "gars/projects/nfcore-rnaseq-wrapper-local/_config/executor.yaml",
+      "role": "executor_descriptor",
+      "sha256": "b78d09c868f292dd581ded18f922dfa661d7e636b0c7e522ee355cfb7d4b8f42"
+    },
+    {
+      "path": "gars/projects/nfcore-rnaseq-wrapper-local/_config/nextflow.slurm.config",
+      "role": "nextflow_config",
+      "sha256": "5233afebdf8823c5377a4362e792abef52a9b9182302f171ca416dd61d13314d"
+    }
+  ],
+  "execution_config_resolved": {
+    "backend": "local",
+    "nextflow_config": "nextflow.slurm.config",
+    "nextflow_profile": ""
+  },
+  "expiry": "none",
+  "failure_class": null,
+  "gars_commit": "c54a71584b1347937e4315cbbeb3f27371655228",
+  "idempotency_key": "0000000000000000000000000000000000000000000000000000000000000000",
+  "input_data_location": {
+    "config": "/fixture-workspace/gars/projects/nfcore-rnaseq-wrapper-local/_config/rnaseq_bulk.yaml",
+    "dataset": "[\"/fixture-workspace/S1_S1_L001_R1_001.fastq.gz\",\"/fixture-workspace/S1_S1_L001_R2_001.fastq.gz\",\"/fixture-workspace/S2_S2_L001_R1_001.fastq.gz\",\"/fixture-workspace/S2_S2_L001_R2_001.fastq.gz\",\"/fixture-workspace/S3_S3_L001_R1_001.fastq.gz\",\"/fixture-workspace/S3_S3_L001_R2_001.fastq.gz\",\"/fixture-workspace/S4_S4_L001_R1_001.fastq.gz\",\"/fixture-workspace/S4_S4_L001_R2_001.fastq.gz\"]",
+    "samplesheet": "/fixture-workspace/gars/projects/nfcore-rnaseq-wrapper-local/01_samplesheets/rnaseq_bulk_samplesheet.csv"
+  },
+  "inputs": {
+    "config": "/fixture-workspace/gars/projects/nfcore-rnaseq-wrapper-local/_config/rnaseq_bulk.yaml",
+    "samplesheet": "/fixture-workspace/gars/projects/nfcore-rnaseq-wrapper-local/01_samplesheets/rnaseq_bulk_samplesheet.csv"
+  },
+  "key_formula": "stage01-v1",
+  "model_steps": [
+    {
+      "input_context": {
+        "path": "HISTORY.md",
+        "sha256": "3b8c901548db8181dcf1b3b6de9ca69050b96bb045864855654e26d2a6fde292"
+      },
+      "model_id": "claude-opus-5-5",
+      "model_version": "claude-opus-5-5",
+      "prompt_id": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md",
+      "prompt_sha256": {
+        "algorithm": "git-sha1",
+        "value": "69b7a0d66c1ecf9822481b2d99b83b9f43c0cf73"
+      },
+      "provider": "anthropic",
+      "routing_rule_id": "none",
+      "sampling_parameters": "not-exposed-by-harness"
+    }
+  ],
+  "outputs": [
+    {
+      "artifact_class": "durable",
+      "path": "run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv",
+      "role": "native",
+      "sha256": "cadae1c598aae12e49a6ab3b6b5543850087aa8a3eb324fedf0d8a949a8aca9b",
+      "type": "counts_gene"
+    },
+    {
+      "artifact_class": "durable",
+      "path": "run/results/star_salmon/salmon.merged.transcript_counts.tsv",
+      "role": "native",
+      "sha256": "fc9f41185a7d4fbaffbc844a0f4e2318633514ce93f9a0739853735280cb80b7",
+      "type": "counts_transcript"
+    },
+    {
+      "artifact_class": "durable",
+      "path": "run/results/star_salmon/salmon.merged.gene_tpm.tsv",
+      "role": "native",
+      "sha256": "14956e277fd654106b54d25111d76e053eb1d69afe0cf76a94f34b67736cfc45",
+      "type": "tpm_gene"
+    },
+    {
+      "artifact_class": "durable",
+      "members": [
+        {
+          "path": "S1.markdup.sorted.bam",
+          "sha256": "f16d05ec6b29248d2c61adb1e9263f78e4f7bace1b955014a2d17872cfe4064d"
+        },
+        {
+          "path": "salmon.merged.gene_counts_length_scaled.tsv",
+          "sha256": "cadae1c598aae12e49a6ab3b6b5543850087aa8a3eb324fedf0d8a949a8aca9b"
+        },
+        {
+          "path": "salmon.merged.gene_tpm.tsv",
+          "sha256": "14956e277fd654106b54d25111d76e053eb1d69afe0cf76a94f34b67736cfc45"
+        },
+        {
+          "path": "salmon.merged.transcript_counts.tsv",
+          "sha256": "fc9f41185a7d4fbaffbc844a0f4e2318633514ce93f9a0739853735280cb80b7"
+        }
+      ],
+      "path": "run/results/star_salmon",
+      "role": "native",
+      "sha256": "sha256-tree:792b973b183a9f1fc635f21077fe22235085979d08b84abe2d7cf54e78b0ce60",
+      "symlinks": [],
+      "type": "bam_genome"
+    },
+    {
+      "artifact_class": "durable",
+      "path": "run/results/multiqc/star_salmon/multiqc_report.html",
+      "role": "native",
+      "sha256": "3ec85d118c49f07362673b7837c60410d3f39e6fa73414a7c6fcd58094f87eb4",
+      "type": "qc_multiqc"
+    }
+  ],
+  "params": {
+    "aligner": "star_salmon",
+    "fasta": "/fixture-workspace/refs/genome.fa.gz",
+    "gtf": "/fixture-workspace/refs/genome.gtf.gz",
+    "input": "/fixture-workspace/gars/projects/nfcore-rnaseq-wrapper-local/01_samplesheets/rnaseq_bulk_samplesheet.csv",
+    "outdir": "/fixture-workspace/gars/projects/nfcore-rnaseq-wrapper-local/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results"
+  },
+  "permitted_backends": "local:fixture|homelab:fixture|homelab:internal|homelab:pilot_internal|slurm:fixture|slurm:internal|slurm:pilot_internal",
+  "pipeline_commit": "72c5d4006f3610a00223bd368f28ed650d649a54",
+  "predicate_facts": {
+    "approval_gated": false,
+    "backend": "local",
+    "design_record": true,
+    "model_step": true,
+    "reference_named": true,
+    "status": "COMPLETE",
+    "wrapper_kind": "nextflow"
+  },
+  "purpose": "fixture",
+  "random_seeds": "no-rng-in-code-path",
+  "reference": {
+    "annotation_release": "fixture-release",
+    "build": "fixture-build",
+    "comparison": "matched",
+    "fasta_sha256": "99724deab54039707cfdd57d24710a39412ecbd8ed85fb8a5d4c1f70706d637b",
+    "gtf_sha256": "aac372d27c1a6c729d38fa73dac6febfa75a76a57bc42613a33fd7b3f0fb960f",
+    "id": "FIXTURE",
+    "observed": {
+      "fasta_sha256": "99724deab54039707cfdd57d24710a39412ecbd8ed85fb8a5d4c1f70706d637b",
+      "gtf_sha256": "aac372d27c1a6c729d38fa73dac6febfa75a76a57bc42613a33fd7b3f0fb960f"
+    }
+  },
+  "resources": {
+    "applicability": "not applicable"
+  },
+  "samplesheet_sha256": "1e349c62635aeac3f1deb49c85729bd6c25f6567d99d73ce023056fd5c5daef0",
+  "software_versions": [
+    {
+      "path": "run/results/pipeline_info/software_versions.yml",
+      "sha256": "63dd8ca50d35f240082f303872ab4452dfcb6a37f7fd0d71240c754df58f393f",
+      "versions": {
+        "FIXTURE_PROCESS/fixture-tool": "1.0.0"
+      }
+    }
+  ],
+  "template_version": "v0.10.0",
+  "threads": 4,
+  "venue": "local",
+  "workflow_name": "nfcore-rnaseq-wrapper",
+  "workflow_version": "3.26.0",
+  "wrapper": "rnaseq_bulk"
+}

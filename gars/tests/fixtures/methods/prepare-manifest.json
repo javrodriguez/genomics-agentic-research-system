@@ -1,0 +1,66 @@
+{
+  "agreement_ref": "none",
+  "artifact_destination": "gars/projects/rna-test/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/run",
+  "backend": "local",
+  "checkout": "/fixture-workspace/gars",
+  "config_sha256": "d2b847628a098cb3dbd60aedd0477fdc640f17c47183bc47c873842d7625be4d",
+  "counts_sha256": "cadae1c598aae12e49a6ab3b6b5543850087aa8a3eb324fedf0d8a949a8aca9b",
+  "data_class": "public",
+  "design_sha256": "df0c2f806f7611f883f925265b482666661f1e0d65df7e00446398bf79fce488",
+  "execution_config": [
+    {
+      "path": "gars/projects/rna-test/_config/executor.yaml",
+      "role": "executor_descriptor",
+      "sha256": "b78d09c868f292dd581ded18f922dfa661d7e636b0c7e522ee355cfb7d4b8f42"
+    }
+  ],
+  "execution_config_resolved": {
+    "backend": "local"
+  },
+  "expiry": "none",
+  "gars_commit": "c54a71584b1347937e4315cbbeb3f27371655228",
+  "idempotency_key": "0000000000000000000000000000000000000000000000000000000000000000",
+  "input_data_location": {
+    "config": "/fixture-workspace/gars/projects/rna-test/_config/rnaseq_bulk.yaml",
+    "counts": "/fixture-workspace/salmon.merged.gene_counts_length_scaled.tsv",
+    "dataset": "[\"/fixture-workspace/S1_S1_L001_R1_001.fastq.gz\",\"/fixture-workspace/S1_S1_L001_R2_001.fastq.gz\",\"/fixture-workspace/S2_S2_L001_R1_001.fastq.gz\",\"/fixture-workspace/S2_S2_L001_R2_001.fastq.gz\",\"/fixture-workspace/S3_S3_L001_R1_001.fastq.gz\",\"/fixture-workspace/S3_S3_L001_R2_001.fastq.gz\",\"/fixture-workspace/S4_S4_L001_R1_001.fastq.gz\",\"/fixture-workspace/S4_S4_L001_R2_001.fastq.gz\"]",
+    "design": "/fixture-workspace/gars/projects/rna-test/01_samplesheets/rnaseq_bulk_design.csv"
+  },
+  "inputs": {
+    "config": "/fixture-workspace/gars/projects/rna-test/_config/rnaseq_bulk.yaml",
+    "counts": "/fixture-workspace/salmon.merged.gene_counts_length_scaled.tsv",
+    "design": "/fixture-workspace/gars/projects/rna-test/01_samplesheets/rnaseq_bulk_design.csv"
+  },
+  "key_formula": "downstream-v2",
+  "params": {
+    "contrast": "condition,MT,WT",
+    "counts": "/fixture-workspace/salmon.merged.gene_counts_length_scaled.tsv",
+    "design": "/fixture-workspace/gars/projects/rna-test/01_samplesheets/rnaseq_bulk_design.csv",
+    "formula": "~ condition"
+  },
+  "permitted_backends": "local:fixture|homelab:fixture|homelab:internal|homelab:pilot_internal|slurm:fixture|slurm:internal|slurm:pilot_internal",
+  "pipeline_commit": "c54a71584b1347937e4315cbbeb3f27371655228",
+  "purpose": "fixture",
+  "random_seeds": [
+    {
+      "call": "sklearn.decomposition.PCA",
+      "seed": 0
+    },
+    {
+      "call": "pydeseq2.dds.DeseqDataSet.deseq2",
+      "determinism": "unknown",
+      "seed_supported": false
+    },
+    {
+      "call": "pydeseq2.ds.DeseqStats.summary",
+      "determinism": "unknown",
+      "seed_supported": false
+    }
+  ],
+  "template_version": "v0.10.0",
+  "threads": 4,
+  "venue": "local",
+  "workflow_name": "rnaseq-de",
+  "workflow_version": "v0.10.0",
+  "wrapper": "rnaseq-de"
+}

@@ -341,16 +341,45 @@ def check_executor_config(exec_cfg, fails):
     is not asked for a file named after Slurm. With no descriptor present the answer is
     `nextflow.slurm.config`, exactly as before the seam existed.
     """
-    project = ex.config_root_for(Path(exec_cfg).parent)
+    path = Path(exec_cfg)
+    # The file checked must be the file the wrapper passes with -c, directly in the project's
+    # _config/ (0251): a name like `sub/x` or `../x` once let preflight read another file. The
+    # project is that folder's parent, never found by walking up, so a nested `_config/_config/`
+    # cannot hand preflight another descriptor (0251, review r1).
+    if path.parent.name != "_config":
+        fails.append(fail("executor_config",
+                          "R-098/§9.6: %s is not a file directly in the project's _config/; "
+                          "use the seeded executor config" % path.name))
+        return
+    project = path.parent.parent
     descriptor = ex.load(project)
     for problem in ex.validate(descriptor):
         fails.append(fail("executor_config", "_config/%s: %s" % (ex.DESCRIPTOR_NAME, problem)))
     wanted = descriptor.get("nextflow_config") or ""
     if not wanted:
-        return                      # a backend that pairs with no nextflow config demands none
-    path = Path(exec_cfg)
+        # A backend that pairs with no nextflow config demands none, but the wrapper still passes
+        # its fallback (this very path) with -c, so it is checked like any other against the
+        # template its name selects, and refused when absent (0251, reviews r2 and r3).
+        wanted = path.name
     if path.name != wanted:
         path = path.parent / wanted
+    if path.is_symlink():
+        # A link is admitted only as scripts/rerun_check.py's replay binds one: its final realpath
+        # has the same name and lies inside this workspace's projects (0251; the rulings of
+        # 30 Sep 2026). The bytes checked below are the target's, the bytes Nextflow reads.
+        target = path.resolve()
+        if target.name != wanted:
+            fails.append(fail("executor_config",
+                              "R-098/§9.6: %s resolves to a different config name (%s); "
+                              "use the seeded executor config" % (path.name, target.name)))
+            return
+        try:
+            target.relative_to(EXECUTOR_PROJECTS.resolve())
+        except ValueError:
+            fails.append(fail("executor_config",
+                              "R-098/§9.6: %s resolves outside this workspace's projects; "
+                              "use the seeded executor config" % path.name))
+            return
     if not path.is_file():
         fails.append(fail("preconditions", "no _config/%s -- stage 00 seeds it" % wanted))
     elif re.search(r"^\s*params\s*[{.]", path.read_text(encoding="utf-8"), re.M):
@@ -359,25 +388,151 @@ def check_executor_config(exec_cfg, fails):
                           "settings are the permitted use -- pipeline parameters go through "
                           "params.yaml so the audited surface cannot be bypassed" % wanted))
     else:
-        check_groovy(path, fails)
+        check_groovy(path, fails, wanted)
 
 
-def check_groovy(path, fails):
+#: One protected Nextflow executor template per descriptor `nextflow_config` name (0251).
+EXECUTOR_TEMPLATES = Path(__file__).resolve().parents[1] / '_templates' / 'config'
+#: The workspace's projects (stage 00 registers each at `<workspace>/projects/<title>`), where a
+#: replay's linked config must resolve (0251).
+EXECUTOR_PROJECTS = Path(__file__).resolve().parents[1] / 'projects'
+EXECUTOR_TEMPLATE_NAME = re.compile(r'nextflow\.[a-z0-9]+\.config')
+
+
+def executor_template(name):
+    """The protected template a descriptor's `nextflow_config` name selects (0251).
+
+    Only a bare `nextflow.<venue>.config` name selects, and only a regular file sitting in
+    `_templates/config/` itself: never a path, a symlink, a folder reached through a symlink,
+    or a template of another kind. Anything else raises ValueError.
+    """
+    template = EXECUTOR_TEMPLATES / str(name)
+    if (not EXECUTOR_TEMPLATE_NAME.fullmatch(str(name)) or template.is_symlink()
+            or not template.is_file() or template.resolve().parent != EXECUTOR_TEMPLATES):
+        raise ValueError('%s names no protected executor template' % name)
+    return template
+
+
+#: The slots of each RENDERED executor template, each with its validator (0251; glitch-14's
+#: render ruling of 30 Sep 2026). A config under one of these names is admitted only as the
+#: template's bytes with every `{{slot}}` replaced by a value its validator fully matches: no
+#: quote, backslash, newline, `$`, brace or space can be one. Each slot is a value the demo's
+#: generator (`scripts/gen_executor_config.sh`) fills per site or per run; the cliPath is not a
+#: slot, since the demo's terraform defines one install path for every host.
+EXECUTOR_RENDER_SLOTS = {
+    'nextflow.awsbatch.config': {
+        'queue': r'[A-Za-z0-9_-]{1,128}',      # terraform batch_job_queue: an AWS Batch queue name
+        'goal': r'[A-Za-z0-9._-]{1,128}',      # --job-tag goal=VALUE's allow-list, bounded
+        'region': r'[a-z]{2}(?:-[a-z]{1,12}){1,3}-[0-9]{1,2}',   # an AWS region name
+    },
+}
+EXECUTOR_SLOT = re.compile(r'\{\{([a-z]+)\}\}')
+
+
+def rendered_slots(name, template_text, text):
+    """The slot values with which `text` is exactly the template rendered, or None.
+
+    The template is split at its slots, the fixed parts escaped and each slot replaced by its
+    validator, and the whole file must match; the values found are rendered back and the
+    rendering must equal `text` byte for byte. A template that does not declare each of its
+    slots exactly once raises ValueError.
+    """
+    slots = EXECUTOR_RENDER_SLOTS[name]
+    parts = EXECUTOR_SLOT.split(template_text)
+    names = parts[1::2]
+    if sorted(names) != sorted(slots):
+        raise ValueError('%s does not declare each of its slots once' % name)
+    pattern = ''.join(re.escape(part) if k % 2 == 0 else '(?P<%s>%s)' % (part, slots[part])
+                      for k, part in enumerate(parts))
+    match = re.fullmatch(pattern, text)
+    if not match:
+        return None
+    values = match.groupdict()
+    rendered = ''.join(part if k % 2 == 0 else values[part] for k, part in enumerate(parts))
+    return values if rendered == text else None
+
+
+def check_rendering(name, template_text, text):
+    """Refuse (ValueError) a config that is not an exact rendering of its template."""
+    if rendered_slots(name, template_text, text) is not None:
+        return
+    # Only to name the slot in the refusal: the same fixed parts around any one-line value.
+    parts = EXECUTOR_SLOT.split(template_text)
+    loose = re.fullmatch(''.join(re.escape(part) if k % 2 == 0 else "(?P<%s>[^'\\n]*)" % part
+                                 for k, part in enumerate(parts)), text)
+    if loose:
+        for slot, value in sorted(loose.groupdict().items()):
+            if not re.fullmatch(EXECUTOR_RENDER_SLOTS[name][slot], value):
+                raise ValueError('R-075 the %s slot must match %s' % (
+                    slot, EXECUTOR_RENDER_SLOTS[name][slot]))
+    raise ValueError('unregistered Groovy grammar')
+
+
+#: Groovy's own token classes, as the shape compares them (0251, review r2): an identifier, a
+#: number (a dot only when a digit follows, so `130..145` is three tokens), or a multi-character
+#: operator, longest first.
+GROOVY_TOKEN = re.compile(
+    r"[A-Za-z_$][A-Za-z0-9_$]*"
+    r"|[0-9](?:[0-9A-Za-z_]|\.(?=[0-9]))*"
+    r"|>>>=|<=>|===|!==|==~|\*\*=|>>=|<<=|>>>|\.\.<|\?\.|\*\.|\.@|\.&|::|\?:|==|!=|<=|>=|&&|\|\|"
+    r"|\+\+|--|\+=|-=|\*=|/=|%=|&=|\|=|\^=|\*\*|<<|>>|->|=~|\.\.")
+GROOVY_COMMENT_END = re.compile('[\r\n\uffff]')
+
+
+def check_groovy(path, fails, template_name='nextflow.slurm.config'):
     """Only the shipped executor grammar, with safe scalar substitutions, is admitted.
 
     No Groovy parser is shipped. An unfamiliar construct is refused under ruling 3A,
     including beforeScript, interpolation, includeConfig, and executable expressions.
+    The grammar is the protected template the descriptor names (0251), Slurm's by default.
     """
     def shape(text):
-        text = re.sub(r'//[^\n]*', '', text)
-        def literal(match):
-            shell_value(match.group(1), 'Groovy literal')
-            return "'VALUE'"
-        text = re.sub(r"'([^']*)'", literal, text)
-        return re.sub(r'\s+', '', text)
-    template = Path(__file__).resolve().parents[1] / '_templates/config/nextflow.slurm.config'
+        # A lexer as strict as Groovy's (0251, reviews r1 and r2). Strings are read whole before
+        # comments: a double-quoted string is grammar, one token kept byte for byte; a
+        # single-quoted one is a site value under R-075. An identifier or a number is one token,
+        # a multi-character operator one token, any other character its own token. A line end
+        # (LF, CR or CRLF) is a token, and a `//` comment, which ends at CR, LF or U+FFFF, stands
+        # for the line end after it; runs of line ends collapse to one. Only space and tab are
+        # skipped. Token lists, not joined text, are compared.
+        tokens, i = [], 0
+        while i < len(text):
+            char = text[i]
+            if char in ' \t':
+                i += 1
+            elif char in '\r\n':
+                i += 2 if text.startswith('\r\n', i) else 1
+                if tokens and tokens[-1] != '\n':
+                    tokens.append('\n')
+            elif text.startswith('//', i):
+                match = GROOVY_COMMENT_END.search(text, i)
+                i = match.start() if match else len(text)
+            elif char in '\'"':
+                end = text.find(char, i + 1)
+                if end < 0:
+                    raise ValueError('unterminated string')
+                if char == "'":
+                    shell_value(text[i + 1:end], 'Groovy literal')
+                    tokens.append("'VALUE'")
+                else:
+                    tokens.append(text[i:end + 1])
+                i = end + 1
+            else:
+                match = GROOVY_TOKEN.match(text, i)
+                tokens.append(match.group(0) if match else char)
+                i += len(tokens[-1])
+        while tokens and tokens[-1] == '\n':
+            tokens.pop()
+        return tokens
     try:
-        if shape(Path(path).read_text(encoding='utf-8')) != shape(template.read_text(encoding='utf-8')):
+        template = executor_template(template_name)
+        if template_name in EXECUTOR_RENDER_SLOTS:
+            # A rendered template: exact bytes, no lexer (glitch-14's render ruling, 0251).
+            check_rendering(template_name, template.read_bytes().decode('utf-8'),
+                            Path(path).read_bytes().decode('utf-8'))
+            return
+        # Bytes, not read_text: universal newlines would turn a lone CR into LF unseen.
+        if (shape(Path(path).read_bytes().decode('utf-8'))
+                != shape(template.read_bytes().decode('utf-8'))):
             raise ValueError('unregistered Groovy grammar')
     except (OSError, ValueError) as exc:
         fails.append(fail('executor_config', 'R-098/§9.6: %s; use the seeded executor config' % exc))
@@ -550,7 +705,35 @@ def execution_evidence(substage, descriptor, body):
                         if '-profile' in tokens else '')
     entries = [dict(role=role, path=os.path.relpath(str(path.resolve()), str(repo)),
                     sha256=sha256(path)) for role, path in paths if path.is_file()]
-    return {'execution_config': entries, 'execution_config_resolved': resolved}
+    evidence = {'execution_config': entries, 'execution_config_resolved': resolved}
+    # A rendered template's config: the slot values and the rendering's sha256 as well, keyed on
+    # the DESCRIPTOR's name, so a rendered name always gets its record or a refusal (0251).
+    name = descriptor.get('nextflow_config') or ''
+    config = dict(paths).get('nextflow_config')
+    # One project for preflight, the record, the directives and the submit command: the -c file
+    # must be this project's own _config/<its name> (or the target of that link, as a replay
+    # binds it), so a _config/ folder planted lower down cannot swap the descriptor (0251).
+    # and one descriptor: a stage-02 substage sits at <project>/02_bioinformatics/<assay>/<sub>,
+    # so a _config/ folder planted lower down (with its own executor.yaml) is refused (0251).
+    if config is not None and root != Path(substage).resolve().parents[2]:
+        raise ValueError("the -c config's project %s is not the substage's project %s"
+                         % (root, Path(substage).resolve().parents[2]))
+    if config is not None and (root / '_config' / config.name).resolve() != config.resolve():
+        raise ValueError('the -c config %s is not _config/%s of the project prepare reads (%s)'
+                         % (config, config.name, root))
+    if config is not None and (name in EXECUTOR_RENDER_SLOTS or config.name in EXECUTOR_RENDER_SLOTS):
+        if config.name != name or not config.is_file():
+            raise ValueError("the -c config %s is not the descriptor's %s" % (config.name, name))
+        template = executor_template(name)
+        text = config.read_bytes().decode('utf-8')
+        values = rendered_slots(name, template.read_bytes().decode('utf-8'), text)
+        if values is None:
+            # Never a silent gap in the record: prepare stops (0251, review r3).
+            raise ValueError('%s is not a rendering of its template' % name)
+        evidence['execution_config_rendered'] = {
+            'template': name, 'template_sha256': sha256(template), 'slots': values,
+            'rendered_sha256': hashlib.sha256(text.encode('utf-8')).hexdigest()}
+    return evidence
 
 
 def write_submit_sh(substage, workspace_root, cfg, project_name, assay, body):
