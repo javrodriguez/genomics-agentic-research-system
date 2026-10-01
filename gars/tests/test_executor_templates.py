@@ -675,10 +675,17 @@ class ExecutorTemplateTests(unittest.TestCase):
         slurm = SLURM.read_text(encoding='utf-8')
         forms = [
             ("the review's probe: the Batch rendering behind a planted _config/",
-             planted(RIG, name, take), "is not the descriptor's|of the project prepare reads"),
+             planted(RIG, name, take), "is not the descriptor's|of the project prepare reads|is not the substage's project"),
             ('a slurm config behind a planted _config/',
-             planted('name: slurm\n', SLURM.name, slurm), 'of the project prepare reads'),
+             planted('name: slurm\n', SLURM.name, slurm), "of the project prepare reads|is not the substage's project"),
         ]
+        project = self.project()                                  # the right depth, -c elsewhere
+        elsewhere_project = self.project()
+        foreign = elsewhere_project / '_config' / name
+        foreign.write_text(take, encoding='utf-8')
+        forms.append(("a -c file in another project's _config/",
+                      (project, foreign, project / '02_bioinformatics' / 'atacseq_bulk' / '01_w'),
+                      'of the project prepare reads'))
         project = self.project('name: slurm\n')                  # no planted folder
         passed = project / '_config' / name
         passed.write_text(take, encoding='utf-8')

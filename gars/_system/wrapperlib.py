@@ -713,6 +713,11 @@ def execution_evidence(substage, descriptor, body):
     # One project for preflight, the record, the directives and the submit command: the -c file
     # must be this project's own _config/<its name> (or the target of that link, as a replay
     # binds it), so a _config/ folder planted lower down cannot swap the descriptor (0251).
+    # and one descriptor: a stage-02 substage sits at <project>/02_bioinformatics/<assay>/<sub>,
+    # so a _config/ folder planted lower down (with its own executor.yaml) is refused (0251).
+    if config is not None and root != Path(substage).resolve().parents[2]:
+        raise ValueError("the -c config's project %s is not the substage's project %s"
+                         % (root, Path(substage).resolve().parents[2]))
     if config is not None and (root / '_config' / config.name).resolve() != config.resolve():
         raise ValueError('the -c config %s is not _config/%s of the project prepare reads (%s)'
                          % (config, config.name, root))
