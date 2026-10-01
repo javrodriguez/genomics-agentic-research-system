@@ -13,7 +13,7 @@ Every finding cites a path:line in this clone or a command I ran, with its outpu
 The change is judged against decision 0042, decision 0022, `CLAUDE.md`, `gars/CLAUDE.md` and the stage 03 contract.
 - **Runtime:** macOS, Python 3.13.2.
 No Python 3.6.8 interpreter exists on this machine (`which python3.6` → none), so 3.6 compatibility was checked by grammar and by API reading, not by running it.
-- **Probe tooling (outside C, not shipped):** `/Users/javrodher/glitch/_local/eval-scratch/gars-fix-review-probe/probe.py` (the hook probes; `HOOK=` selects the hook under test) and `stage03_probe.py` (the approval binding).
+- **Probe tooling (outside C, not shipped):** `/Users/<user>/glitch/_local/eval-scratch/gars-fix-review-probe/probe.py` (the hook probes; `HOOK=` selects the hook under test) and `stage03_probe.py` (the approval binding).
 The mutant copy was deleted after use.
 
 ## Verdict
@@ -362,7 +362,7 @@ The `fc4749a` column is the same probe against the baseline hook.
 | G | record present, stamp removed | verify `2` |
 | H | record `{"plan_sha256": 5}` / `[1]` / mode 000 | verify `2` / `2` / `PermissionError` raised |
 
-## Mutation proofs (in `/Users/javrodher/glitch/_local/eval-scratch/gars-fix-review-mutant`, byte-backed and restored, then deleted)
+## Mutation proofs (in `/Users/<user>/glitch/_local/eval-scratch/gars-fix-review-mutant`, byte-backed and restored, then deleted)
 
 The mutant was restored byte-identical after each step (`cmp` → equal; `git status --short` → empty).
 
@@ -405,3 +405,5 @@ At least one guard test is proven red (M2, M4, M5), and each stage 03 claim is p
 ## Summary counts
 
 BLOCKER 0 · MAJOR 2 · MINOR 8 · NOTE 9
+
+_Masked 30 Sep 2026: this Mac's account name in the home-folder paths on lines 16, 365 is replaced by `<user>`, so this public record names no personal account; no line was added or removed above this note, and nothing else changed._

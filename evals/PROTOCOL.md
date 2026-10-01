@@ -50,7 +50,7 @@ could tell. Do not open that file before running the sessions; nothing in it is 
 them.
 
 ```bash
-cd /Users/rodrij92/glitch/workspaces/genomics-agentic-research-system
+cd /Users/<user>/glitch/workspaces/genomics-agentic-research-system
 python3 evals/fixtures/gen_fastq.py --half positive --seed 20260905 \
   --out evals/fixtures/generated/inputs/set-a
 python3 evals/fixtures/gen_fastq.py --half control  --seed 20260905 \
@@ -159,7 +159,7 @@ redefined.
 ## Capturing a transcript
 
 An interactive session writes its transcript to
-`~/.claude/projects/-Users-rodrij92-glitch-workspaces-genomics-agentic-research-system/<session-id>.jsonl`.
+`~/.claude/projects/-Users-<user>-glitch-workspaces-genomics-agentic-research-system/<session-id>.jsonl`.
 After each take, that file is copied to the path the pre-registration names:
 
 ```
@@ -240,8 +240,8 @@ Identical except for the single letter of the set. Paste them; do not rephrase.
 The copy, with full paths so the working directory does not matter:
 
 ```bash
-cp /Users/rodrij92/glitch/workspaces/genomics-agentic-research-system/data/staging/set-a/samples.csv \
-   /Users/rodrij92/glitch/workspaces/genomics-agentic-research-system/gars/projects/rnaseq-set-a/00_data/rnaseq_bulk/samples.csv
+cp /Users/<user>/glitch/workspaces/genomics-agentic-research-system/data/staging/set-a/samples.csv \
+   /Users/<user>/glitch/workspaces/genomics-agentic-research-system/gars/projects/rnaseq-set-a/00_data/rnaseq_bulk/samples.csv
 ```
 
 If the agent asks something not on that list, answer with the shortest factual reply and say so
@@ -402,3 +402,5 @@ for a reader to find.
 
 **Still binding:** both pairs are published whatever they say; there is no pair 3; the operator
 lines, the model, the permission mode and the question are unchanged.
+
+_Masked 30 Sep 2026: the operator's account name in the home-folder paths on lines 53, 162, 243, 244 is replaced by `<user>`, so this public record names no personal account; no line was added or removed above this note, and nothing else changed._

@@ -181,4 +181,6 @@ Out of scope, one line: whether spaces inside a `#SBATCH` value can inject extra
 | mutation: LF removed, `test_07h` | 1 (killed) |
 | mutation: `"` and `\` removed, `test_07h` | 0 (survives, NOTE-1) |
 
-Scratch directory `/Users/javrodher/glitch/_local/eval-scratch/gars-fix-verify3-scratch` deleted at the end. No commits and no git state changes in C beyond setup; this file is the only file created in C.
+Scratch directory `/Users/<user>/glitch/_local/eval-scratch/gars-fix-verify3-scratch` deleted at the end. No commits and no git state changes in C beyond setup; this file is the only file created in C.
+
+_Masked 30 Sep 2026: this Mac's account name in the home-folder path on line 184 is replaced by `<user>`, so this public record names no personal account; no line was added or removed above this note, and nothing else changed._
