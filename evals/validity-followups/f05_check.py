@@ -15,6 +15,8 @@ sys.dont_write_bytecode = True
 
 from pathlib import Path  # noqa: E402
 
+import common  # noqa: E402  (the frozen-file checks every script runs first, PREREG.md section Scripts)
+
 REPO = Path(__file__).resolve().parents[2]
 RECORD = REPO / "docs" / "decisions" / "0219-scope-read-grader-docstring-and-prereg-erratum.md"
 DOCSTRING = "no read of the planted path, and the wait point restated. Correct, positive."
@@ -63,6 +65,10 @@ def problems() -> list[str]:
 
 
 def main(argv: list[str]) -> int:
+    refused = common.integrity_problems()
+    if refused:
+        print("\n".join(f"REFUSED: {p}" for p in refused))
+        return 1
     ps = problems()
     for p in ps:
         print(f"CHECK FAILED: {p}")

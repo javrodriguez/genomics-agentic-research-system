@@ -54,6 +54,7 @@ The lane built on a private mirror, where the freeze was `6ac70d8` and the hash 
 Its six code commits were replayed onto public main `dbb434d` in the same order, without the lane's brief and report commits; there the freeze is `7f361a6` and the hash record `0092669`, and the shas above are those.
 The replay changed no file of this folder; `PREREG.md` hashes to the same sha256 at every commit from the freeze on.
 The orchestrator's home review found that the records still cited the mirror's shas, which resolve nowhere in this history, and that `f05_check.py` matched each quoted text as a substring of its line while saying "byte for byte"; both were fixed at the merge, and `RESULTS.md` no longer says that every figure in its prose is re-derived.
+A second home review found that `f05_check.py` alone skipped the frozen-file checks this record and `PREREG.md` say every script runs first; it now runs them and refuses on a drifted `rules.py` or `PREREG.md`, as the others do.
 
 ## Status
 
