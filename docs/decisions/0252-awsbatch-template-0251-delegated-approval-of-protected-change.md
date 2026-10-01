@@ -21,9 +21,9 @@ The lane's coordinator also asked for a slot for the owner's own yes, recorded b
 
 > OWNER'S WORDS: NOT YET GIVEN. This slot is filled only with the owner's own typed words, quoted verbatim, never paraphrased and never written by the lane.
 >
-> - Words (verbatim): _(empty)_
-> - Typed at (from `date`, with timezone): _(empty)_
-> - Candidate sha he approved: _(empty)_
+> - Words (verbatim): "approve 0252 0256 0261 and the record masks at 947cc70 · push GARS to public main now"
+> - Typed at (from `date`, with timezone): 2026-10-01, 07:03 EDT (clock read when it arrived), typed in the Row-orchestrator window (glitch-14)
+> - Candidate sha he approved: `947cc700f68e0a129819fb009700f7d85cc65cfd`
 
 Until the slot is filled, nothing in this record is the owner's approval, and the candidate is not pushed; every public GARS push is the owner's own hands (the coordinator's ruling R1 of 30 Sep 2026).
 

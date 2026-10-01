@@ -33,9 +33,9 @@ Outside the protected prefixes, recorded for completeness: this record and the d
 
 ### The owner's word (slot: filled only with Javier's own typed message)
 
-- Owner's message, verbatim:
-- Typed at (date and time, America/New_York, from the window it was typed in):
-- Candidate sha the message names:
+- Owner's message, verbatim: "approve 0252 0256 0261 and the record masks at 947cc70 · push GARS to public main now" (it also accepts the record masks of four review and protocol files on this candidate)
+- Typed at (date and time, America/New_York, from the window it was typed in): 2026-10-01, 07:03 EDT (clock read when it arrived), typed in the Row-orchestrator window (glitch-14)
+- Candidate sha the message names: `947cc700f68e0a129819fb009700f7d85cc65cfd`
 
 Until all three lines are filled from the owner's own message, this record approves nothing, and the change does not land.
 
