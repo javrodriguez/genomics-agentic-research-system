@@ -54,7 +54,8 @@ The lane built on a private mirror, where the freeze was `6ac70d8` and the hash 
 Its six code commits were replayed onto public main `dbb434d` in the same order, without the lane's brief and report commits, on a lane branch that was never published.
 On 1 October 2026 the integration lane (glitch-14's) replayed that branch's eight commits onto the joint landing `d06e248` through the armed pre-commit hook; there the freeze is `8d28572` and the hash record `8e0c66d`, and the shas above are those.
 The scripts, the first run and this record's first version, three commits on the lane branch, landed there as one commit, `6d16680`, because apart the first two cannot pass the hook's decision-links gate: `rules.py`, frozen with `PREREG.md`, cites this record before it exists. No file's content changed in the replay; only the commit boundaries between those three moved.
-The replay changed no file of this folder; `PREREG.md` hashes to the same sha256 at every commit from the freeze on.
+After it, a separate commit re-pointed the shas in this record, in 0219 and in `RESULTS.md`'s header to these; nothing else in this folder changed.
+Neither replay changed a file of this folder; `PREREG.md` hashes to the same sha256 at every commit from the freeze on.
 The orchestrator's home review found that the records still cited the mirror's shas, which resolve nowhere in this history, and that `f05_check.py` matched each quoted text as a substring of its line while saying "byte for byte"; both were fixed at the merge, and `RESULTS.md` no longer says that every figure in its prose is re-derived.
 A second home review found that `f05_check.py` alone skipped the frozen-file checks this record and `PREREG.md` say every script runs first; it now runs them and refuses on a drifted `rules.py` or `PREREG.md`, as the others do.
 
