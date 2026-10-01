@@ -300,7 +300,7 @@ artifact each stage produces.
 
 ## Status
 
-- **1211 tests** in `tests/run_tests.py`, green in [CI on main at `dbb434d`](https://github.com/javrodriguez/genomics-agentic-research-system/actions/runs/36795195833).
+- **1247 tests** in `tests/run_tests.py`; the last green [CI run on main](https://github.com/javrodriguez/genomics-agentic-research-system/actions/runs/36795195833) predates the 1 Oct landing (it ran at `dbb434d`).
 - **Seven assays are wired; most are proven live** — the table below.
 - **Build log:** the row-by-row status and its dated evidence are in
   [DEVELOPMENT.md](DEVELOPMENT.md#status-moved-from-the-readme-30-sep-2026); the definition-of-done

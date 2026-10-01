@@ -275,6 +275,9 @@ These passages stood in README.md until 30 Sep 2026, when the README was cut to 
 page. They are kept here as they stood at `dbb434d`, in their README order: the evidence-list
 note on row 15, the Status section's row-by-row paragraphs, and the opening paragraph of the
 "v1.0.1 evidence (R-117)" section (the generated §17 table is [docs/implementation/dod_current.md](docs/implementation/dod_current.md)).
+One sentence differs from `dbb434d`: the suite-total sentence under "Seven assays are wired" carries
+the current total and its chain, as the joint landing of 1 Oct 2026 updated it, because
+`tests/check_counts.py` enforces it.
 
 #### From the evidence list
 
@@ -314,7 +317,7 @@ the thresholds are not met, and the public reviewer catch rate stays `unmeasured
 [0072](docs/decisions/0072-row-9-review-fault-harness-code-half.md).
 
 **Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(1211 tests collected after the R64-1-1 genome row (0246), itself on the joint landing of the small-fixes bundle (0200) and the R-076 script-hash follow-up (0205), itself on the local exit-record follow-up (0195), itself on the guard messages follow-up (0175), itself on the filesystem-tool vocabulary follow-up (0185), itself on the executor env allow-list follow-up (0170), itself on the guard-lexer follow-up (0165), itself on the front-door defects follow-up (0160), itself on the row 7 report-values follow-up (0155), itself on row 10's science harness merged onto row 13 follow-up 0151, itself on the row 3 follow-up's landing, itself on the 2026-09-26 landing of rows 13 and 14 and row 13 follow-up 0150; no cluster run is evidenced for these rows).
+(1247 tests collected after the GRCh38 gsize sentence correction (0256), itself on the Methods renderer (0236), itself on the AWS Batch executor template follow-up (0251), itself on the R64-1-1 genome row (0246), itself on the joint landing of the small-fixes bundle (0200) and the R-076 script-hash follow-up (0205), itself on the local exit-record follow-up (0195), itself on the guard messages follow-up (0175), itself on the filesystem-tool vocabulary follow-up (0185), itself on the executor env allow-list follow-up (0170), itself on the guard-lexer follow-up (0165), itself on the front-door defects follow-up (0160), itself on the row 7 report-values follow-up (0155), itself on row 10's science harness merged onto row 13 follow-up 0151, itself on the row 3 follow-up's landing, itself on the 2026-09-26 landing of rows 13 and 14 and row 13 follow-up 0150; no cluster run is evidenced for these rows).
 The skip figures are the joint landing's (0200 and 0205) merge runs of that landing's 1208 tests: 14 environment skips on macOS, with Docker answering and row 5's scratch folder set as CI sets it; a macOS cold clone without it skips 76 (last measured at the rows 13 and 14 landing, on 771 tests), or 124 with `TMPDIR` also unset as on Linux (82 on Linux with `TMPDIR` set and no containers). <!-- not-the-suite-total -->
 Row 6 adds synthetic manifest coverage and the local instrument self-test; scrna-qc-cluster records its samplesheet and passes synthetic-worker replay; rnaseq-de now requires the canonical project design and passes synthetic-worker replay; legacy alternate-design manifests are refused. No real-cluster manifest or reproduction exit is claimed.
 Row 6 ruling-rd2 protects collect evidence throughout the bioinformatics run tree
