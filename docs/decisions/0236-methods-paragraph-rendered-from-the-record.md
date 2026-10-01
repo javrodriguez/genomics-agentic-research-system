@@ -63,7 +63,7 @@ Tests move with the change: `gars/tests/test_render_methods.py` adds 16 tests, a
 
 - **A model writes the paragraph from the record.** Fluent, and the one thing this renderer exists to rule out: nothing would bind its sentences to the fields.
 - **Naming the approver.** The record holds an operating-system user, not a person; printing it would also publish a login name.
-- **A parsed `CITATION.cff` citation.** Its `version` field reads `v0.10.0`, the tag 1,201 commits before this record's base commit `37a8d94`, so a citation parsed from it would not identify the code a run used; the citation line names the run's own GARS commit instead.
+- **A parsed `CITATION.cff` citation.** Its `version` field reads `v0.10.0`, the tag 1,226 commits before this record's base commit `dbb434d`, so a citation parsed from it would not identify the code a run used; the citation line names the run's own GARS commit instead.
 - **Quoting the plan's Method section.** It is intent, approved but not executed; stating it as what ran would say more than the record binds.
 - **Extending `render_report.py`.** Its methods block and golden are a pinned coupling for another row's instrument (0155 D1); a separate command leaves them untouched.
 
