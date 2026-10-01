@@ -423,7 +423,7 @@ number.
 
 ## Author & status
 
-Built and maintained by [Javier Rodriguez Hernaez](https://github.com/javrodriguez) as a
+Built and maintained by [Javier Rodríguez Hernáez](https://github.com/javrodriguez) as a
 single-maintainer research system. Issues and questions are welcome; the design is documented
 end to end in the decision log, so a "why is it like this?" usually has a written answer.
 
