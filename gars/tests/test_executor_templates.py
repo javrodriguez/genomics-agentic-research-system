@@ -598,6 +598,9 @@ class ExecutorTemplateTests(unittest.TestCase):
         hop_out = self.tmp / 'hop-outside'
         hop_out.mkdir()
         (hop_out / 'hop.config').symlink_to(inside / name)          # a chain that ends inside
+        evil = self.tmp / 'projects-root-evil' / 'original' / '_config'  # shares the root's prefix
+        evil.mkdir(parents=True)
+        (evil / name).write_text(take, encoding='utf-8')
         (inside / 'hop-back.config').symlink_to(outside / name)      # a chain that ends outside
         OUTSIDE = "resolves outside this workspace's projects"
         OTHER = 'resolves to a different config name'
@@ -608,6 +611,8 @@ class ExecutorTemplateTests(unittest.TestCase):
             ('same name, inside, not a rendering', bad / name, 'unregistered Groovy grammar'),
             ('a chain ending inside', hop_out / 'hop.config', None),
             ('a chain ending outside', inside / 'hop-back.config', OUTSIDE),
+            ('a sibling folder sharing the root as a string prefix', evil / name, OUTSIDE),
+            ('a dangling link inside', inside / 'missing' / name, 'stage 00 seeds it'),
         ]
         with patch.object(wl, 'EXECUTOR_PROJECTS', root):
             for label, target, refusal in cases:
@@ -651,6 +656,41 @@ class ExecutorTemplateTests(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, message):
                         prepare(project, target)
                     self.assertFalse((sub / 'submit.sh').exists())
+
+        # Review of the link ruling, L5-L-1: preflight, the record and the submit command use
+        # one project. An empty, agent-writable `_config/` folder planted between the project and
+        # the substage made prepare read the built-in slurm descriptor while passing the Batch
+        # rendering with -c, writing submit.sh with no render record. Each form is refused
+        # before submit.sh is written.
+        def planted(descriptor, config_name, text):
+            project = self.project(descriptor)
+            passed = project / '_config' / config_name
+            passed.write_text(text, encoding='utf-8')
+            sub = project / '02_bioinformatics' / 'atacseq_bulk' / '01_nfcore-atacseq-wrapper'
+            (sub.parent / '_config').mkdir(parents=True)
+            return project, passed, sub
+
+        slurm = SLURM.read_text(encoding='utf-8')
+        forms = [
+            ("the review's probe: the Batch rendering behind a planted _config/",
+             planted(RIG, name, take), "is not the descriptor's|of the project prepare reads"),
+            ('a slurm config behind a planted _config/',
+             planted('name: slurm\n', SLURM.name, slurm), 'of the project prepare reads'),
+        ]
+        project = self.project('name: slurm\n')                  # no planted folder
+        passed = project / '_config' / name
+        passed.write_text(take, encoding='utf-8')
+        forms.append(('a rendered -c name under a descriptor that names slurm',
+                      (project, passed, project / '02_bioinformatics' / 'atacseq_bulk' / '01_w'),
+                      "is not the descriptor's"))
+        for label, (project, passed, sub), message in forms:
+            with self.subTest(prepare=label):
+                sub.mkdir(parents=True, exist_ok=True)
+                with self.assertRaisesRegex(ValueError, message):
+                    wl.write_submit_sh(sub, project, cfg, 'proj', 'atacseq_bulk',
+                                       'nextflow run "x" \\\n    -c "%s" \\\n    -params-file "%s/params.yaml"' % (
+                                           wl.shell_value(passed.resolve(), 'executor_config'), sub.resolve()))
+                self.assertFalse((sub / 'submit.sh').exists())
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
