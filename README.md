@@ -27,6 +27,8 @@ system, follows the Interpretable Context Methodology (ICM) — Van Clief &amp; 
     `python3 reproduction/gse58638/recompute.py` (streams 8.8 GB from NCBI, stores nothing). It
     reproduces the published figures in kind, not exactly, under a pre-registration fixed before
     any deposit byte was read; the per-library half (FRiP, peaks per read) stays quoted.
+    GitHub's runner re-ran that command against NCBI and matched the committed report, in
+    [GEO recompute run 36795272678](https://github.com/javrodriguez/genomics-agentic-research-system/actions/runs/36795272678) at `dbb434d`.
 - [docs/reproduction-campaign.md](docs/reproduction-campaign.md) — the campaign's design: accessions,
   run order, and what gets compared.
 - [docs/EVALS.md](docs/EVALS.md) — a separate question: how the **agent** behaved on three
@@ -36,14 +38,14 @@ system, follows the Interpretable Context Methodology (ICM) — Van Clief &amp; 
   is recorded in advance as expected to fail.
 - The Gap Study — [docs/EVALS.md](docs/EVALS.md#the-gap-study)
 - The Gap Study, round 2 — [docs/EVALS.md](docs/EVALS.md#the-gap-study-round-2)
+- [docs/validity/](docs/validity/README.md) — the question before any Gap Study count: does each
+  task measure what it says it measures? One signed validity argument per task, and the graders
+  run read-only through the Agentic Benchmark Checklist.
 - Defects found in the upstream pipeline tooling, reported and closed:
   [ClawBio#333](https://github.com/ClawBio/ClawBio/issues/333) ·
   [ClawBio#365](https://github.com/ClawBio/ClawBio/issues/365).
 - `python3 tests/run_tests.py` and `python3 tests/check_contracts.py` run green from a cold clone
   with no setup, and in CI on every push.
-  Row 15 validation (2026-09-22): the authorised pre-push fixture repair passes
-  the full suite on macOS / Python 3.8.2, `OK (skipped=50)`; see the dated report
-  below for executed checks and remaining containment limits.
 - [PeerPanel](https://github.com/javrodriguez/peerpanel) — a separate demonstration system that
   evaluates its own multi-agent review pipeline against single-agent baselines and publishes the
   result the record shows: on planted defects, no arm asserted one.
@@ -198,7 +200,7 @@ A refusal, then, is a template — here is stage 00's, verbatim from the contrac
 
 ---
 
-## The decision log (40 records)
+## The decision log
 
 Every design choice in this system is recorded in [docs/decisions/](docs/decisions/CONTEXT.md) —
 one file per decision, append-only, each carrying the failure that motivated it and the
@@ -283,7 +285,7 @@ python3 tests/check_contracts.py   # contract lint: sections, wait points, scrip
 ```
 
 (Tests that need a pinned nf-core checkout skip cleanly as environment failures off-cluster.)
-Row 5's backup tests also skip until you name a scratch folder outside the repository, because they
+The backup tests also skip until you name a scratch folder outside the repository, because they
 never write to the system temp folder. To run them too, as CI does:
 
 ```bash
@@ -291,68 +293,20 @@ mkdir -p ../gars-scratch
 GARS_ROW5_SCRATCH="$PWD/../gars-scratch" TMPDIR="$PWD/../gars-scratch" python3 tests/run_tests.py
 ```
 
+A skip is not a failure. Without the scratch folder a cold clone skips more: a macOS cold clone without it skips 76 (last measured on a smaller suite), or 124 with `TMPDIR` also unset as on Linux; the [Fresh clone](https://github.com/javrodriguez/genomics-agentic-research-system/actions/workflows/fresh-clone.yml) workflow fails any push whose plain Linux run skips more than that.
+
 Then read [`examples/demo-project/`](examples/demo-project/) — a synthetic project showing every
 artifact each stage produces.
 
 ## Status
 
-Row 11 current collection: **274 tests**. Decision-link and generated DoD checks <!-- not-the-suite-total -->
-are described in the [row report](docs/implementation/row_11_change_report.md).
-The [generated §17 table](docs/implementation/dod_current.md) preserves missing
-evidence as `unmeasured`; `python3 scripts/release_check.py --check` detects cell drift
-and `--tag` refuses incomplete or stale release evidence. Pre-push reads Review
-and Bench from a later committed snapshot: code commit, evidence commit, then push.
-Review round 2 corrected local Git replacement bypasses: citation and trailer
-readers now ignore replacement objects. Restore rows retain terminal corrections
-with equal timestamps; venue/canary evidence remains unmeasured. See the
-[corrective record](docs/decisions/0062-row-11-raw-git-and-terminal-restore-addendum.md).
+- **1211 tests** in `tests/run_tests.py`, green in [CI on main at `dbb434d`](https://github.com/javrodriguez/genomics-agentic-research-system/actions/runs/36795195833).
+- **Seven assays are wired; most are proven live** — the table below.
+- **Build log:** the row-by-row status and its dated evidence are in
+  [DEVELOPMENT.md](DEVELOPMENT.md#status-moved-from-the-readme-30-sep-2026); the definition-of-done
+  evidence is the generated [docs/implementation/dod_current.md](docs/implementation/dod_current.md),
+  where no clause yet carries the external seal a public claim requires.
 
-Row 7 review round 2 (2026-09-23) makes evidence links immutable to the writer,
-refuses snapshot claims without evidence, and checks all text in HYPOTHESIS
-rows and their limitations for observation verbs. Registration remains split
-between exploratory writer runs and owner-only claim-eligible runs. Claims and
-reports are validated only against disposable local PostgreSQL; deployment and
-pilot-1 measurement remain unverified. See the
-[row-7 review response](docs/implementation/row_7_change_report.md#review-round-2-fixes).
-
-Row 9 adds the review fault harness, code half: anonymous history-free cases, a JSON review record
-whose envelope the launcher writes rather than the model, and a deterministic oracle that counts a
-catch only on the right class, file, lines and severity. The launcher refuses a review run from the
-OS account that produced the code under review. The three sealed slots were sealed by a fresh
-Codex context (`independent_context`) and the first measured run is recorded in
-[0074](docs/decisions/0074-row-9-seal-and-first-measured-run.md): 2 of 15 records are INVALID, so
-the thresholds are not met, and the public reviewer catch rate stays `unmeasured`. See the
-[row-9 change report](docs/implementation/row_9_change_report.md) and
-[0072](docs/decisions/0072-row-9-review-fault-harness-code-half.md).
-
-**Seven assays are wired; most are proven live.** All mechanical layers are offline-tested
-(1247 tests collected after the GRCh38 gsize sentence correction (0256), itself on the Methods renderer (0236), itself on the AWS Batch executor template follow-up (0251), itself on the R64-1-1 genome row (0246), itself on the joint landing of the small-fixes bundle (0200) and the R-076 script-hash follow-up (0205), itself on the local exit-record follow-up (0195), itself on the guard messages follow-up (0175), itself on the filesystem-tool vocabulary follow-up (0185), itself on the executor env allow-list follow-up (0170), itself on the guard-lexer follow-up (0165), itself on the front-door defects follow-up (0160), itself on the row 7 report-values follow-up (0155), itself on row 10's science harness merged onto row 13 follow-up 0151, itself on the row 3 follow-up's landing, itself on the 2026-09-26 landing of rows 13 and 14 and row 13 follow-up 0150; no cluster run is evidenced for these rows).
-The skip figures are the joint landing's (0200 and 0205) merge runs of that landing's 1208 tests: 14 environment skips on macOS, with Docker answering and row 5's scratch folder set as CI sets it; a macOS cold clone without it skips 76 (last measured at the rows 13 and 14 landing, on 771 tests), or 124 with `TMPDIR` also unset as on Linux (82 on Linux with `TMPDIR` set and no containers). <!-- not-the-suite-total -->
-Row 6 adds synthetic manifest coverage and the local instrument self-test; scrna-qc-cluster records its samplesheet and passes synthetic-worker replay; rnaseq-de now requires the canonical project design and passes synthetic-worker replay; legacy alternate-design manifests are refused. No real-cluster manifest or reproduction exit is claimed.
-Row 6 ruling-rd2 protects collect evidence throughout the bioinformatics run tree
-and routes replay dataset registration through finalize, retaining the recorded
-agreement reference. Older manifests without it refuse replay; see the
-[change report](docs/implementation/row_6_change_report.md#ruling-answered-fix-round-2).
-Round 3 removes the replay tests' dependence on cached bytecode and refuses
-uncommitted reference-file changes during replay; see the
-[round-3 verification](docs/implementation/row_6_change_report.md#review-round-3-fixes).
-
-Row 15 review round 4 (2026-09-22), macOS / Python 3.8.2: 252 tests, <!-- not-the-suite-total -->
-`OK (skipped=50)`; no tests from row 15 skipped. R15-03's narrow fixture repair
-is authorised by the owner, **confirmed on 22 September 2026** ([0067](docs/decisions/0067-owner-confirms-rows-15-and-4-provisional-rulings.md)).
-D-17 sinks 7–9 are the generated job script (`submit.sh` / `commands.sh`),
-reproducibility manifest and Git index, confirmed by the owner on
-22 September 2026 ([0067](docs/decisions/0067-owner-confirms-rows-15-and-4-provisional-rulings.md)). See the
-[decision addendum](docs/decisions/0057-row-15-provisional-owner-rulings.md) and
-[Row 15 report](docs/implementation/row_15_change_report.md#review-round-4-fixes).
-The repository-side canary scan is not full R-096 agent containment; live
-exfiltration-task and job-runtime containment remain unverified.
-The expanded suite's cluster status is unverified; dated local runner
-results and skips are recorded in the [Row 2 report](docs/implementation/row_2_change_report.md#review-round-3-fixes).
-The [benchmark sealing interface](benchmarks/HOLDOUT.md) is maintained in place;
-Row 2 agent runs, independent nf-core references and held-out measurements remain unmeasured.
-Row 3: development evidence (independent_context seals): [evals/mutation-runs/2026-09-26-8744978-run-2.json](evals/mutation-runs/2026-09-26-8744978-run-2.json) — second seal: 10/10 killed at `8744978`, one small draw concentrated in the parameter-mapping tests ([0089](docs/decisions/0089-row-3-second-sealed-run.md)); exit criterion met as development evidence (not a public pass); first run 5/10 at `2a65dbf` retained ([record](evals/mutation-runs/2026-09-23-2a65dbf-first-run.json)); public claim unmeasured.
-Row 9: development evidence (independent_context seals): [evals/review-faults/runs/29d9ab7fc987-claude-opus-5-5-20260925T170519Z.json](evals/review-faults/runs/29d9ab7fc987-claude-opus-5-5-20260925T170519Z.json) — 10/10 plants caught and 0 false alarms in 3 valid clean reviews at `a779084` at the first run; 2 of 5 clean cases INVALID (unmeasured), so thresholds not met; public claim unmeasured. See [0074](docs/decisions/0074-row-9-seal-and-first-measured-run.md).
 Live validation is per-assay. Agent behaviour is
 graded separately and published in [docs/EVALS.md](docs/EVALS.md), against a pre-registration
 frozen before the first run:
@@ -381,6 +335,21 @@ next reader does not undo it. Four more were defects in an upstream dependency �
 silent — found by numerical validation and reported at
 [ClawBio#333](https://github.com/ClawBio/ClawBio/issues/333) and
 [ClawBio#365](https://github.com/ClawBio/ClawBio/issues/365).
+
+<details>
+<summary>The public evidence table: seven fixed rows, all <code>unmeasured</code> so far</summary>
+
+| Metric | Number | Test path | Date |
+|---|---|---|---|
+| Design-defect catch rate | unmeasured | tests/test_planted_defects.py | unmeasured |
+| Reviewer catch rate (code, science) | unmeasured | none | unmeasured |
+| Manifest completeness and re-run diff | unmeasured | none | unmeasured |
+| Orphan claims | unmeasured | `gars/tests/test_claim_constraints.py` | unmeasured |
+| Policy bypass rate | unmeasured | none | unmeasured |
+| Restore-drill minutes and age | unmeasured | none | unmeasured |
+| Hours per verified capability | unmeasured | none | unmeasured |
+
+</details>
 
 ---
 
@@ -461,19 +430,3 @@ end to end in the decision log, so a "why is it like this?" usually has a writte
 ## License
 
 MIT — see [LICENSE](LICENSE).
-
-## v1.0.1 evidence (R-117)
-
-Row 1 initializes this table only. Values and dates remain unmeasured; unsealed
-development fixtures never count as design recall. Public claims require three
-external-human seals (§21 Q9). No benchmark or evidence regeneration is implemented here.
-
-| Metric | Number | Test path | Date |
-|---|---|---|---|
-| Design-defect catch rate | unmeasured | tests/test_planted_defects.py | unmeasured |
-| Reviewer catch rate (code, science) | unmeasured | none | unmeasured |
-| Manifest completeness and re-run diff | unmeasured | none | unmeasured |
-| Orphan claims | unmeasured | `gars/tests/test_claim_constraints.py` | unmeasured |
-| Policy bypass rate | unmeasured | none | unmeasured |
-| Restore-drill minutes and age | unmeasured | none | unmeasured |
-| Hours per verified capability | unmeasured | none | unmeasured |
