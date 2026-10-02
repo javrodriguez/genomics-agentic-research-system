@@ -25,9 +25,9 @@ Its shape follows [0252](0252-awsbatch-template-0251-delegated-approval-of-prote
 
 > OWNER'S WORDS: NOT YET GIVEN. This slot is filled only with the owner's own typed words, quoted verbatim, never paraphrased and never written by the lane.
 >
-> - Words (verbatim):
-> - Typed at (from `date`, with timezone), and the window:
-> - Candidate sha he approved:
+> - Words (verbatim): "approve 0267 · push GARS to public main now"
+> - Typed at (from `date`, with timezone), and the window: 2026-10-02, 08:22 EDT (clock read when it arrived), typed in the Row-orchestrator window (glitch-4a)
+> - Candidate sha he approved: `c11bef94313ba28ae2785f81abf4a8a8a6328b88`
 
 Until the slot is filled, nothing in this record is the owner's approval, and the candidate is not pushed; the public push waits for the owner's own words, typed in the Row-orchestrator's window.
 
