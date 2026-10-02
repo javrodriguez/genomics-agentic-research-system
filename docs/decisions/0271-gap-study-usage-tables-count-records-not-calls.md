@@ -73,6 +73,7 @@ What can and cannot be changed:
 `python3 tests/test_gap_study_costs_by_call.py` runs 17 tests OK, and `python3 evals/gap-study-costs-by-call/costs_by_call.py --check` exits 0.
 Red first: the test was committed alone at `8c4cece` and failed there (`Ran 11 tests`, `FAILED (errors=10)`; the one passing test is the pinned reader overcounting the fixture).
 The three binders added after review round 1 (this record's figures, the row counts, the citation sweep) were committed red at `40929da` (`Ran 16 tests`, `FAILED (errors=3)`, each a missing function; that the tests catch the faults is shown by their own planted faults). The binding of this record's row figures, added after review round 2, was committed red at `3cd81ce` as an assertion that a changed figure went unnoticed (`Ran 17 tests`, `FAILED (failures=1)`).
+The binding of that row's name, added after review round 3, was committed red at `e12bd2c` the same way (`Ran 17 tests`, `FAILED (failures=1)`).
 The fixture `tests/data/costs_by_call_duplicate_records.jsonl` holds one call written as three records and one written as one; the pinned round 1 reader sums four records' worth and the corrected reader counts two calls.
 Faults that must fail: two records of one call with different usage (raises), a record missing half its key merged (counted apart), a changed figure on the page, a changed figure in a round's `COSTS.md`, a row planted in a round's table, a changed figure in `docs/EVALS.md` or in this record, a tracked line quoting a figure that the list does not carry, and a cited line that moved.
 

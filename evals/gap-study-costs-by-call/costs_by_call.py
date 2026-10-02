@@ -367,7 +367,8 @@ def decision_figures(got):
            "none of the %d committed take and walk transcripts" % len(everything)]
     row = next(r for r in got["gap-study-2"]["takes"]
                if r["slot"] == ("number-fidelity", "control", "claude-opus-5", "1"))
-    out += ["the transcript holds %d usage records and %d distinct calls" % (row["call"]["records"], row["call"]["calls"]),
+    out += ["(round 2, `%s`, %s, `%s`, take %s), the transcript holds %d usage records and %d distinct calls"
+            % (row["slot"] + (row["call"]["records"], row["call"]["calls"])),
             "the published %s (input / cache read / cache write / output); counted once per call the figures are %s"
             % (" / ".join(_n(row["pub"][k]) for k in ORDER), " / ".join(_n(row["call"][k]) for k in ORDER))]
     return out
