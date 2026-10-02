@@ -154,7 +154,8 @@ class ThePage(unittest.TestCase):
         got = self.m.collect()
         text = self.m.DECISION.read_text()
         for a, b in (("437,281", "437,282"), ("286,108", "999,999"), ("16 usage records", "17 usage records"),
-                     ("10 distinct calls", "11 distinct calls"), ("4,494", "4,495"), ("2,820", "2,821")):
+                     ("10 distinct calls", "11 distinct calls"), ("4,494", "4,495"), ("2,820", "2,821"),
+                     ("take 1)", "take 2)"), ("`number-fidelity`, control", "`number-fidelity`, positive")):
             self.assertIn(a, text)
             self.assertNotEqual(self.m.decision_problems(got, text.replace(a, b)), [], a)
 
