@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import os,sys\nm='pre-tool-use'\ntry:\n d=os.getcwd()\n while 1:\n  g=os.path.join(d,'.git')\n  if os.path.exists(g) and (not os.path.isdir(g) or os.path.exists(os.path.join(g,'HEAD'))):break\n  p=os.path.dirname(d)\n  if p==d:raise OSError('no git root above '+os.getcwd())\n  d=p\n a=os.path.join(d,'gars','_system','codex_hook.py')\n if not os.path.isfile(a):raise OSError('no adapter at '+a)\n os.execv(sys.executable,[sys.executable,a,m])\nexcept BaseException as e:\n if m=='session-start':sys.exit(0)\n print('Blocked: the GARS guard could not start (%s), so it cannot judge this call (R-098; decision 0266). Next: start Codex inside a GARS clone, then retry the call.'%e,file=sys.stderr);sys.exit(2)\n\"",
+            "statusMessage": "GARS guard"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import os,sys\nm='session-start'\ntry:\n d=os.getcwd()\n while 1:\n  g=os.path.join(d,'.git')\n  if os.path.exists(g) and (not os.path.isdir(g) or os.path.exists(os.path.join(g,'HEAD'))):break\n  p=os.path.dirname(d)\n  if p==d:raise OSError('no git root above '+os.getcwd())\n  d=p\n a=os.path.join(d,'gars','_system','codex_hook.py')\n if not os.path.isfile(a):raise OSError('no adapter at '+a)\n os.execv(sys.executable,[sys.executable,a,m])\nexcept BaseException as e:\n if m=='session-start':sys.exit(0)\n print('Blocked: the GARS guard could not start (%s), so it cannot judge this call (R-098; decision 0266). Next: start Codex inside a GARS clone, then retry the call.'%e,file=sys.stderr);sys.exit(2)\n\"",
+            "statusMessage": "GARS state"
+          }
+        ]
+      }
+    ]
+  }
+}
