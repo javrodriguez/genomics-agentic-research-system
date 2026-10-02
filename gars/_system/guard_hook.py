@@ -2,7 +2,8 @@
 """PreToolUse guard for a GARS workspace: the Scope Boundaries that CAN be mechanical, made so.
 
 Wired by `.claude/settings.json`, which the agent harness loads when a session starts in the
-workspace root (`gars/`). The harness sends one JSON object on stdin per tool call:
+workspace root (`gars/`). Claude Code runs this script; Codex calls `decide` through `codex_hook.py`.
+The harness sends one JSON object on stdin per tool call:
 
     {"tool_name": "...", "tool_input": {...}, "cwd": "..."}
 
@@ -41,6 +42,16 @@ READ_ONLY = [
     "_references/*", "_references/**/*",
     "_templates/*", "_templates/**/*",
     ".claude/*", ".claude/**/*",
+    # Codex's own config and instruction layers: every `.codex/config.toml` from the git root
+    # down to the cwd loads under the root's trust, and `AGENTS.override.md` beats `AGENTS.md`
+    # in each folder; a planted `.git`, at the root or nested, moves the git root Codex walks
+    # from, and its hooks would run on a human's git commands (0266).
+    ".codex/*", ".codex/**/*", "*/.codex/*",
+    "AGENTS.override.md", "*/AGENTS.override.md",
+    ".git", ".git/*", "*/.git", "*/.git/*",
+    # Codex loads repository skills from `.agents/skills/` (decision 0266).
+    ".agents/*", ".agents/**/*", "*/.agents/*",
+    "repo:.codex/*", "repo:AGENTS.override.md", "repo:.agents/*",
     "AGENTS.md",
     "CLAUDE.md",
     "CONTEXT.md",
@@ -103,7 +114,7 @@ INSTALL_PATTERNS = (
 # Directories a Bash command must not use as a write target (redirection, tee, rm, mv, cp,
 # sed -i). Checked against resolved targets, not the whole command line, so reading from or
 # executing scripts in these directories stays allowed.
-PROTECTED_PREFIXES = ("_system/", "_references/", "_templates/", ".claude/")
+PROTECTED_PREFIXES = ("_system/", "_references/", "_templates/", ".claude/", ".codex/")
 
 # Non-public projects are closed (decision 0107): only data_class `public` may enter a
 # hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074). A project is open only when its
@@ -139,6 +150,18 @@ def workspace_root():
     return os.path.realpath(root)
 
 
+def expand_tilde(path):
+    """A tool's file path as Claude Code itself resolves it: exactly "~" and a leading "~/" name
+    the home directory (`~user` and `~foo` do not), so the root check below judges the real
+    target rather than a `<cwd>/~/...` that is never written (R-073, R-094; decision 0266)."""
+    if path != "~" and not path.startswith("~/"):
+        return path
+    home = os.path.expanduser("~")
+    if not os.path.isabs(home):
+        raise ValueError("the home directory a ~ path names could not be resolved")
+    return home if path == "~" else os.path.join(home, path[2:])
+
+
 def rel_to_root(path, root, cwd):
     """A path from tool input, made relative to the workspace root; None if outside it."""
     if not os.path.isabs(path):
@@ -159,7 +182,7 @@ def check_write_tool(tool_input, root, cwd):
     path = tool_input.get("file_path") or tool_input.get("notebook_path") or ""
     if not isinstance(path, str) or not path:
         deny("Blocked: could not read write target (R-098; decision 0042). Next: supply file_path or notebook_path and retry; if this keeps happening, stop and report it.")
-    rel = rel_to_root(path, root, cwd)
+    rel = rel_to_root(expand_tilde(path), root, cwd)
     if rel is None:
         deny("Blocked: resolved write target must name a file inside the workspace root (R-094; decision 0058). Next: choose an agent-writable project file inside the workspace.")
     for pat in READ_ONLY:
@@ -913,26 +936,29 @@ def check_bash(tool_input, root, cwd, depth=0):
         deny("Blocked: " + json.dumps(exc.record(), sort_keys=True))
 
 
-def main():
-    # Everything that can raise sits inside the try -- reading stdin, a payload nested deep
-    # enough to exhaust the JSON parser, a working directory that no longer exists -- because
-    # the harness treats any exit other than 2 as "allow" (decision 0042).
+def guard_failed(exc):
+    deny("Blocked: the guard failed while checking this call (%s: %s), so it cannot tell whether the call is safe (R-098; decision 0042). Next: retry the call; if this keeps happening, stop and report the defect in _system/guard_hook.py." % (type(exc).__name__, str(exc)[:200]))
+
+
+def decide(payload, root=None):
+    """main()'s decision on a parsed payload: deny() (exit 2) or return None (allow).
+    root=None keeps workspace_root(); the Codex adapter passes its own gars/ folder."""
+    # Everything that can raise sits inside the try -- a working directory that no longer
+    # exists, a malformed field -- because the harness treats any exit other than 2 as
+    # "allow" (decision 0042).
     try:
-        try:
-            payload = json.loads(sys.stdin.read())
-        except ValueError:
-            payload = None
         if not isinstance(payload, dict) \
                 or not isinstance(payload.get("tool_input") or {}, dict):
             deny(UNREADABLE)
         tool = payload.get("tool_name") or ""
         tool_input = payload.get("tool_input") or {}
         cwd = payload.get("cwd") or ""
-        root = workspace_root()
+        root = os.path.realpath(root) if root else workspace_root()
         if tool in ('Read', 'Glob', 'Grep'):
             target = tool_input.get('file_path') or tool_input.get('path') or cwd or root
-            read_path = os.path.realpath(os.path.join(cwd or root, target))
-            if read_path != os.path.realpath(root) and rel_to_root(target, root, cwd) is None:
+            resolved = expand_tilde(target) if isinstance(target, str) else target
+            read_path = os.path.realpath(os.path.join(cwd or root, resolved))
+            if read_path != os.path.realpath(root) and rel_to_root(resolved, root, cwd) is None:
                 deny("%s is outside the workspace (%s); a session reads only inside it (R-073). Next: if it is a command's background output, run that command in the foreground and read its result directly (decision 0160)." % (target, root))
             closed_read_refusal(tool, tool_input, root, cwd)
         if tool in WRITE_TOOLS:
@@ -941,7 +967,24 @@ def main():
         elif tool == "Bash":
             check_bash(tool_input, root, cwd)
     except Exception as exc:  # deny() raises SystemExit, which is not an Exception
-        deny("Blocked: the guard failed while checking this call (%s: %s), so it cannot tell whether the call is safe (R-098; decision 0042). Next: retry the call; if this keeps happening, stop and report the defect in _system/guard_hook.py." % (type(exc).__name__, str(exc)[:200]))
+        guard_failed(exc)
+    return None
+
+
+def main():
+    # Reading stdin and a payload nested deep enough to exhaust the JSON parser can raise too;
+    # the same refusal covers them (decision 0042).
+    try:
+        try:
+            payload = json.loads(sys.stdin.read())
+        except ValueError:
+            payload = None
+        if not isinstance(payload, dict) \
+                or not isinstance(payload.get("tool_input") or {}, dict):
+            deny(UNREADABLE)
+        decide(payload)
+    except Exception as exc:  # deny() raises SystemExit, which is not an Exception
+        guard_failed(exc)
     sys.exit(0)
 
 

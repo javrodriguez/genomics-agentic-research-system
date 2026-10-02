@@ -68,6 +68,18 @@
       "path": "_system/wrappers/spatial-cluster-count/SKILL.md",
       "sha256": "133cc026cceb678e39612adaa7669cc5ef4a0befa45a9a06906acc76e0ce5a2a",
       "review_status": "reviewed"
+    },
+    {
+      "kind": "harness_config",
+      "path": ".codex/config.toml",
+      "sha256": "0b03c7a230c4746378fb8ec636e0567de9546b181e599d02e795fb98e8d43a2d",
+      "review_status": "reviewed"
+    },
+    {
+      "kind": "harness_config",
+      "path": ".codex/hooks.json",
+      "sha256": "1496ac91345f50c1b91dd58683a029090be47de0bee34c5e39b266877dfbd3f1",
+      "review_status": "reviewed"
     }
   ]
 }

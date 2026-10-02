@@ -80,7 +80,7 @@ class RefusalMessagesTests(unittest.TestCase):
         print('decision pin: %d refused, %d allowed; OK' % (refused, allowed), flush=True)
 
     def test_02_static_next_steps(self):
-        for relative in ('guard_hook.py', 'tools/policy.py', 'tool_call.py'):
+        for relative in ('guard_hook.py', 'tools/policy.py', 'tool_call.py', 'codex_hook.py'):
             tree = ast.parse((GARS / '_system' / relative).read_text())
             assignments = {}
             functions = {n.name: n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)}

@@ -1,5 +1,6 @@
 ## mission
-Run genomics analyses through explicit human decisions; follow `CONTEXT.md`.
+Run genomics analyses through explicit human decisions. Then read `CLAUDE.md` (the workspace orientation),
+`CONTEXT.md` and the stage contract the request maps to; execute it literally: Scope Boundaries bind, Response Format only, stop and ask before any deviation.
 ## architecture
 Build specification: `../docs/specs/GARS_Unified_Master_Guideline_v1.0.1_FINAL.md`.
 Workspace stage map: `CONTEXT.md`; helpers compute, contracts orchestrate.
@@ -7,7 +8,8 @@ Workspace stage map: `CONTEXT.md`; helpers compute, contracts orchestrate.
 `../CLAUDE.md`: preserve correct behavior; stdlib Python core; tests accompany changes.
 ## security policy
 Specification §9 in `../docs/specs/GARS_Unified_Master_Guideline_v1.0.1_FINAL.md`;
-current enforcement: `.claude/settings.json` and `_system/guard_hook.py`.
+current enforcement: `.claude/settings.json` (Claude Code), `.codex/hooks.json` (Codex) and `_system/guard_hook.py`; per-agent support: README "Runs on".
+No "# Project state" render at session start means the guard is not loaded, and a render alone does not prove it is: approve both hooks, or stop and ask the human.
 ## testing policy
 From the repository root: `python3 tests/run_tests.py` and
 `python3 tests/check_contracts.py`. From `gars/`, first `cd ..`.

@@ -105,7 +105,8 @@ def build(top, closed=True, declare=True):
     ws = top / 'gars'
     ws.mkdir(parents=True)
     ignore = shutil.ignore_patterns('__pycache__')
-    for folder in ('_system', '_references', '_templates'):
+    # .codex ships pinned in _references/tool_pins.json, so a copied workspace carries it too (0266).
+    for folder in ('_system', '_references', '_templates', '.codex'):
         shutil.copytree(str(GARS / folder), str(ws / folder), ignore=ignore)
     for folder in ('.claude', 'projects'):
         (ws / folder).mkdir()

@@ -1,0 +1,6 @@
+# GARS's project layer for Codex (decision 0266). Protected and pinned, like .claude/ (R-094, R-099).
+# Web search is a hosted tool that never reaches the PreToolUse guard, so it is off here:
+# the counterpart of the WebSearch/WebFetch deny in .claude/settings.json.
+# A project layer may set this key; Codex drops only the keys it lists as redirecting credentials
+# or running local commands (codex-rs/config/src/loader/mod.rs:75-88, rust-v0.154.0).
+web_search = "disabled"
