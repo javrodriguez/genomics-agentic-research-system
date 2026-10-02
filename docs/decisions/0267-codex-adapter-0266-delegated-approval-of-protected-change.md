@@ -51,13 +51,13 @@ The following protected changes are approved under the owner's 23 September 2026
 Outside the protected prefixes, recorded for completeness: the root `AGENTS.md`, `gars/tests/test_codex_adapter.py`, `gars/tests/test_refusal_messages.py`, `gars/tests/pilot_fixture.py`, 0266, this record, the index, `docs/architecture.md`, and the README and DEVELOPMENT texts and counts.
 
 ## What this does not close
-- 0266's "What this does not close", items 1 to 14.
+- 0266's "What this does not close", items 1 to 16.
 - The live Codex session: pending: Javier's CP3 run.
 - The smoke ceremony (row 14) for this `_system/` landing is not yet run; it runs at the final merge.
 
 ## Test
 - Claude Code's decisions, before and after: `build_refusal_corpus.py --check` prints `decision pin: 1995 refused, 611 allowed; OK` at `c9fe683` and at the branch head.
-- `test_guard_hook.py` `Ran 7`, `test_protected_paths.py` `Ran 6`, `test_refusal_messages.py` `Ran 15`, each `OK`, inside the whole suite at `a4b3efc` (`ran 1282, passed 1200, failures 0, errors 0, skipped 82`) and, after review round 1, at `c3a7b61` (`ran 1284, passed 1202, failures 0, errors 0, skipped 82`).
+- `test_guard_hook.py` `Ran 7`, `test_protected_paths.py` `Ran 6`, `test_refusal_messages.py` `Ran 15`, each `OK`, inside the whole suite at `a4b3efc` (`ran 1282, passed 1200, failures 0, errors 0, skipped 82`) and, after review round 1, at `c3a7b61` (`ran 1284, passed 1202, failures 0, errors 0, skipped 82`), and after review round 2, at `6de9ae3` (`ran 1285, passed 1203, failures 0, errors 0, skipped 82`).
 - 0266's Test section holds the red-first counts, the parity line and the mutation proof.
 
 ## Status

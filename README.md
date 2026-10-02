@@ -95,7 +95,7 @@ system refuses to guess is something it will stop and ask you for.
 | Agent | What you get |
 |---|---|
 | **Claude Code** | The contracts, the session-start state, and the guard on Read, Glob, Grep, Edit, Write, MultiEdit, NotebookEdit and Bash (`gars/.claude/`). |
-| **Codex 0.154 (verified); 0.144 source-checked for the same hook, updatedInput and parser semantics; earlier untested** | The contracts, the session-start state, and the same guard decisions on shell commands and `apply_patch` edits, once you trust the folder and approve **both** hooks under `/hooks` (`gars/.codex/`); the state render alone proves only the session-start hook, not the guard. Other Codex tools are refused unless [decision 0266](docs/decisions/0266-codex-adapter-one-guard-two-harnesses.md) lists them. (Live-session check pending; decision 0266.) Limits include: input typed into a command that is already running is not checked; the shell a command runs under is the model's choice; a command's `environment_id` is not seen by the guard; and login-profile text on the hook's output loses the folder pin (full list: decision 0266). |
+| **Codex 0.154 (verified); 0.144 source-checked for the same hook, updatedInput and parser semantics; earlier untested** | The contracts, the session-start state, and the same guard decisions on shell commands and `apply_patch` edits (refused as well where Codex resolves a path through a link differently; decision 0266), once you trust the folder and approve **both** hooks under `/hooks` (`gars/.codex/`); the state render alone proves only the session-start hook, not the guard. Other Codex tools are refused unless [decision 0266](docs/decisions/0266-codex-adapter-one-guard-two-harnesses.md) lists them. (Live-session check pending; decision 0266.) Limits include: input typed into a command that is already running is not checked; the shell a command runs under is the model's choice; a command's `environment_id` is not seen by the guard; and login-profile text on the hook's output loses the folder pin (full list: decision 0266). |
 | **Another agent that reads `AGENTS.md`** | The contracts, the gitleaks and trailer git hooks, and read-only files only. **No live guard.** |
 
 Start the agent inside `gars/`: a session at the repository root is unguarded ([decision 0042](docs/decisions/0042-a-call-the-guard-cannot-judge-is-refused.md)).
@@ -310,7 +310,7 @@ artifact each stage produces.
 
 ## Status
 
-- **1285 tests** in `tests/run_tests.py`; CI was green on main at `dbb434d` ([run 36795195833](https://github.com/javrodriguez/genomics-agentic-research-system/actions/runs/36795195833)), before the 1 Oct landing.
+- **1286 tests** in `tests/run_tests.py`; CI was green on main at `dbb434d` ([run 36795195833](https://github.com/javrodriguez/genomics-agentic-research-system/actions/runs/36795195833)), before the 1 Oct landing.
 - **Seven assays are wired; most are proven live** — the table below.
 - **Build log:** the row-by-row status and its dated evidence are in
   [DEVELOPMENT.md](DEVELOPMENT.md#status-moved-from-the-readme-30-sep-2026); the definition-of-done
