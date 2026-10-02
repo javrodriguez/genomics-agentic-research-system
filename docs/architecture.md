@@ -126,8 +126,8 @@ far has been under Slurm.
 
 ### 6. Scope boundaries the harness can enforce, the harness enforces
 
-The workspace ships its own harness configuration: `.claude/settings.json` arms
-`_system/guard_hook.py` on every session started in `gars/`, and a forbidden write — to the
+The workspace ships its own harness configuration: `.claude/settings.json` (Claude Code) and
+`.codex/hooks.json` (Codex, through `_system/codex_hook.py`) arm `_system/guard_hook.py` on every session started in `gars/`, and a forbidden write — to the
 template, to a machine-owned file, an ad-hoc `pip install` — **fails at the moment it is
 attempted**, with a message naming the rule. Every deny is an action no contract instructs, so
 a false positive cannot block a legitimate step. Prose boundaries remain for what cannot be
@@ -151,6 +151,7 @@ script↔contract vocabulary drift. Run both before committing anything under `g
 | Path | Holds |
 |---|---|
 | `gars/CLAUDE.md` | L0 — orientation, always loaded |
+| `gars/AGENTS.md` | L0 — the entry for agents that read AGENTS.md; points to `CLAUDE.md` |
 | `gars/CONTEXT.md` | L1 — stage map, how stages connect, directory ownership |
 | `gars/<stage>/CONTEXT.md` | L2 — the contract; the control surface of the whole system |
 | `gars/_references/` | L3 — assay map, genome registry, artifact vocabulary, config schema, contract standard, runtime + lockfiles |

@@ -80,15 +80,25 @@ Your projects live in `gars/projects/`, which is gitignored — real data never 
 repository. Updating is `git pull`; pinning to a release is `git checkout v0.10.0`; seeing what
 changed is `git log` and `git diff`.
 
-Then open it with an agent (Claude Code or equivalent) and say what you want:
+Then open it with an agent (Claude Code, Codex, or another that reads `AGENTS.md`) and say what you want:
 
 > *Start a new project called Macrophage Polarization, bulk RNA-seq, data in /path/to/fastqs.*
 
-The agent reads `CLAUDE.md`, routes to the stage that owns your request, and executes that stage's
-contract. **You do not run the scripts under `_system/` yourself** — they are the agent's tools.
+The agent reads `AGENTS.md` (Codex) or `CLAUDE.md` (Claude Code); both lead to the workspace orientation,
+which routes to the stage that owns your request, and the agent executes that stage's contract. **You do not run the scripts under `_system/` yourself** — they are the agent's tools.
 Your part is the decisions: the project title and assay, confirming the derived sample IDs before
 anything is linked, filling in the experimental design, and writing `_config/`. Everything the
 system refuses to guess is something it will stop and ask you for.
+
+### Runs on
+
+| Agent | What you get |
+|---|---|
+| **Claude Code** | The contracts, the session-start state, and the guard on Read, Glob, Grep, Edit, Write, MultiEdit, NotebookEdit and Bash (`gars/.claude/`). |
+| **Codex 0.144+** | The contracts, the session-start state, and the same guard decisions on shell commands and `apply_patch` edits, once you trust the folder and approve the two hooks under `/hooks` (`gars/.codex/`). Other Codex tools are refused unless [decision 0266](docs/decisions/0266-codex-adapter-one-guard-two-harnesses.md) lists them. Named limits: input typed into a command that is already running is not checked, and the shell a command runs under is the model's choice. |
+| **Another agent that reads `AGENTS.md`** | The contracts, the gitleaks and trailer git hooks, and read-only files only. **No live guard.** |
+
+Start the agent inside `gars/`: a session at the repository root is unguarded ([decision 0042](docs/decisions/0042-a-call-the-guard-cannot-judge-is-refused.md)).
 
 **Work in the clone; do not copy `gars/` somewhere else.** An earlier design made the workspace a
 detached copy, on the theory that freezing the contracts protected reproducibility. It did the
@@ -108,7 +118,7 @@ Context is layered, so an agent loads only what the current task needs:
 
 | Layer | File | Role |
 |---|---|---|
-| **L0** | `CLAUDE.md` | Orientation. Always loaded. Workspace map and entry rules. |
+| **L0** | `AGENTS.md`, `CLAUDE.md` | Orientation. Always loaded. Workspace map and entry rules. |
 | **L1** | `CONTEXT.md` | Routing. Stage map, how stages connect, where reference material lives. |
 | **L2** | `<stage>/CONTEXT.md` | The stage contract. Loaded per task. |
 | **L3** | `_references/`, `_templates/`, `_system/`, a project's `_config/` | Domain knowledge, stamps, runtime and settings. Loaded selectively. |
@@ -300,7 +310,7 @@ artifact each stage produces.
 
 ## Status
 
-- **1247 tests** in `tests/run_tests.py`; CI was green on main at `dbb434d` ([run 36795195833](https://github.com/javrodriguez/genomics-agentic-research-system/actions/runs/36795195833)), before the 1 Oct landing.
+- **1282 tests** in `tests/run_tests.py`; CI was green on main at `dbb434d` ([run 36795195833](https://github.com/javrodriguez/genomics-agentic-research-system/actions/runs/36795195833)), before the 1 Oct landing.
 - **Seven assays are wired; most are proven live** — the table below.
 - **Build log:** the row-by-row status and its dated evidence are in
   [DEVELOPMENT.md](DEVELOPMENT.md#status-moved-from-the-readme-30-sep-2026); the definition-of-done
