@@ -150,6 +150,14 @@ class ThePage(unittest.TestCase):
             self.assertIn(figure, text)
             self.assertNotEqual(self.m.decision_problems(got, text.replace(figure, "x")), [], figure)
 
+    def test_decision_0271s_row_figures_are_bound(self):
+        got = self.m.collect()
+        text = self.m.DECISION.read_text()
+        for a, b in (("437,281", "437,282"), ("286,108", "999,999"), ("16 usage records", "17 usage records"),
+                     ("10 distinct calls", "11 distinct calls"), ("4,494", "4,495"), ("2,820", "2,821")):
+            self.assertIn(a, text)
+            self.assertNotEqual(self.m.decision_problems(got, text.replace(a, b)), [], a)
+
     def test_a_costs_md_row_the_page_does_not_carry_fails(self):
         got = self.m.collect()
         costs = {s: (REPO / "evals" / s / "COSTS.md").read_text() for s in self.m.STUDIES}
