@@ -44,8 +44,8 @@ What can and cannot be changed:
    A record missing either half of the key is never merged with another; it counts as a call of its own and is reported (none in the committed transcripts).
    The published column comes from importing each round's own pinned `read_one`, unmodified.
 2. **The correction page.** `--write` writes `evals/gap-study-costs-by-call/CORRECTION-2026-10-02.md`: what was wrong, its size overall and per round, what is wrong in each table (per take, pre-freeze walks, per model; the recorded pauses carry no token figure), every take and walk counted once per call beside its published cells, round 1's two prose ranges re-derived, and every line in the repository that quotes or describes the figures, as `path:line`.
-   That list is complete as of a sweep of every tracked file at `a272d95`: `git grep -w -F` for each distinct comma-grouped figure in the three tables, and `git grep -i "one hundred"` read line by line.
-   The first sweep is re-run by the tests, which fail on any hit the list does not carry; the second is not re-run.
+   That list is complete as of a sweep of every tracked file at `a272d95`: `git grep -w -F` for each distinct comma-grouped figure in the three tables, and `git grep -i "one hundred"` and `git grep -i "six-figure"` read line by line.
+   The first sweep is re-run by the tests, which fail on any hit the list does not carry; the two phrase sweeps are not re-run, so lines that describe a figure without its digits are complete only for those phrases.
 3. **Bound, not typed.** `--check` exits 1 unless the page is exactly what the reader writes, every published figure on it is found in that round's `COSTS.md` (each per-take, walk and per-model row, and round 1's two prose ranges), every cited line still carries the text it is cited for, each round's per-take, walk and per-model tables hold exactly as many rows as the page carries, and the figures quoted in `docs/EVALS.md` and in this record are the ones the reader derives.
 4. **Nothing published is edited.** The three `COSTS.md` files, the pinned `costs.py` files, the verifier reports, the allowlists and `prereg.json` stay as they are.
    The lines that quote the figures are inside the three study folders, plus one copy of round 2's lint comment in `evals/haiku-prestudy/`; no `README.md`, `docs/` or `DEVELOPMENT.md` page quoted them.
@@ -70,9 +70,9 @@ What can and cannot be changed:
 
 ## Test
 
-`python3 tests/test_gap_study_costs_by_call.py` runs 16 tests OK, and `python3 evals/gap-study-costs-by-call/costs_by_call.py --check` exits 0.
+`python3 tests/test_gap_study_costs_by_call.py` runs 17 tests OK, and `python3 evals/gap-study-costs-by-call/costs_by_call.py --check` exits 0.
 Red first: the test was committed alone at `8c4cece` and failed there (`Ran 11 tests`, `FAILED (errors=10)`; the one passing test is the pinned reader overcounting the fixture).
-The three binders added after review round 1 (this record's figures, the row counts, the citation sweep) were committed red at `40929da` (`Ran 16 tests`, `FAILED (errors=3)`).
+The three binders added after review round 1 (this record's figures, the row counts, the citation sweep) were committed red at `40929da` (`Ran 16 tests`, `FAILED (errors=3)`, each a missing function; that the tests catch the faults is shown by their own planted faults). The binding of this record's row figures, added after review round 2, was committed red at `3cd81ce` as an assertion that a changed figure went unnoticed (`Ran 17 tests`, `FAILED (failures=1)`).
 The fixture `tests/data/costs_by_call_duplicate_records.jsonl` holds one call written as three records and one written as one; the pinned round 1 reader sums four records' worth and the corrected reader counts two calls.
 Faults that must fail: two records of one call with different usage (raises), a record missing half its key merged (counted apart), a changed figure on the page, a changed figure in a round's `COSTS.md`, a row planted in a round's table, a changed figure in `docs/EVALS.md` or in this record, a tracked line quoting a figure that the list does not carry, and a cited line that moved.
 

@@ -62,8 +62,8 @@ PROSE = (
 # Every line in the repository that quotes a published token figure, describes one, or names the tables as the token
 # record. Complete as of a sweep of every tracked file at a272d95 (public main when this was written): `git grep -w -F`
 # for each distinct comma-grouped figure in the three COSTS.md tables, plus `git grep -i "one hundred"` read line by
-# line. `figure_hits` re-runs the first sweep and a test fails on any hit not listed here; the "one hundred" lines were
-# read by hand and are not re-swept. `--check` fails if a listed line no longer carries its text. None is edited: each
+# line, and `git grep -i "six-figure"` for lines that describe a cell without its digits. `figure_hits` re-runs the first sweep and a test fails on any hit not listed here; the "one hundred" lines were
+# and "six-figure" lines were read by hand and are not re-swept. `--check` fails if a listed line no longer carries its text. None is edited: each
 # sits inside a finished study's folder, which is a record, and rounds 1 and 2 are also bound byte for byte by the copy
 # checks of rounds 2 and 3 (`copy_manifest.py --check`).
 QUOTES_ROW = "a verifier report quoting a published row"
@@ -98,6 +98,8 @@ CITED = (
     ("evals/gap-study-2/test_harness.py", 2222, "| 100,147 | 22,624 |", "a test quoting two published cells"),
     ("evals/gap-study-2/PROTOCOL.md", 1656, "first six-figure token count", "describes the same cell, no number"),
     ("evals/gap-study-2/prereg.json", 3699, "first six-figure token count", "describes the same cell, no number"),
+    ("evals/gap-study-2/lint_language.py", 68, "first six-figure count", "describes the same cell, no number"),
+    ("evals/gap-study-2/verification/verifier-2.md", 27, "first six-figure count", "describes the same cell, no number"),
     ("evals/gap-study-2/verification/verifier-1.md", 375, "| 134 | 391,738 | 52,652 | 5,330 |", QUOTES_ROW),
     ("evals/gap-study-2/verification/verifier-1.md", 379, "| 23,665,927 | 260,712 |", QUOTES_ROW),
     ("evals/gap-study-2/verification/verifier-1.md", 380, "| 25,801,507 | 314,786 |", QUOTES_ROW),
@@ -110,6 +112,7 @@ CITED = (
     ("evals/gap-study-3/COSTS.md", 70, "## Pre-freeze walks", "the walks table"),
     ("evals/gap-study-3/COSTS.md", 83, "## Per model", "the per-model table"),
     ("evals/gap-study-3/lint_language.py", 67, "so 100,147 is a", LINT_ROW),
+    ("evals/gap-study-3/lint_language.py", 68, "first six-figure count", "describes the same cell, no number"),
     ("evals/gap-study-3/language-allowlist.json", 14, "| 100 | 2,006,990 | 102,010 | 20,625 |", "an excusal quoting a published row"),
     ("evals/gap-study-3/language-allowlist.json", 16, "The hit is a token count, not a rate", SAME_CELL),
     ("evals/gap-study-3/prereg.json", 2616, "exactly one hundred input tokens", SAME_CELL),
@@ -122,6 +125,7 @@ CITED = (
     ("evals/gap-study-3/verification/verify-3.md", 211, "line 27 of `COSTS.md", SAME_CELL),
     ("evals/gap-study-3/verification/verify-3.md", 217, "pattern `hundred`", SAME_CELL),
     ("evals/haiku-prestudy/lint_language.py", 67, "so 100,147 is a", LINT_ROW + " (round 2's copy)"),
+    ("evals/haiku-prestudy/lint_language.py", 68, "first six-figure count", "describes the same cell, no number (round 2's copy)"),
 )
 
 # Files the figure sweep does not read: the tables themselves, the raw transcripts, this correction's own files,
@@ -323,8 +327,8 @@ def render(got, quoted):
             " and ".join(_n(x) for x in q["call"])))
     L += ["", "## Where the published figures are cited", "",
           "Each line below quotes or describes a published token figure, or names the tables as the token record.",
-          "None is edited: each sits inside a finished study's folder (the three rounds, and the pre-study whose "
-          "lint file round 2 copied), which is a record, and rounds 1 and 2 are also bound byte for byte by the "
+          "None is edited: each sits inside a finished study's folder (the three rounds, and the pre-study, whose "
+          "lint file is a copy of round 2's), which is a record, and rounds 1 and 2 are also bound byte for byte by the "
           "copy checks of rounds 2 and 3.",
           "The input cell quoted as one hundred is the published figure for `confounded-design`, positive, "
           "`claude-opus-5`, take 1, in round 1 and again in round 3; counted once per call it is %s and %s." % tuple(
@@ -335,7 +339,8 @@ def render(got, quoted):
           "`docs/EVALS.md` now points here.",
           "The list is complete as of a sweep of every tracked file at `a272d95`: `git grep -w -F` for each distinct "
           "comma-grouped figure in the three tables (re-run by this correction's tests, which fail on any hit not "
-          "listed), and `git grep -i \"one hundred\"`, read line by line.", "",
+          "listed), and `git grep -i \"one hundred\"` and `git grep -i \"six-figure\"`, read line by line (those two "
+          "are not re-run; the lines that describe a figure without its digits are complete only for those phrases).", "",
           "| where | what it quotes |", "|---|---|"]
     L += ["| `%s:%d` | %s |" % (path, line, what) for path, line, _, what in CITED]
     L.append("")
@@ -360,6 +365,11 @@ def decision_figures(got):
            evals_sentence(got),
            "(per class: " + ", ".join("%s %s" % (LABEL[k], _ratio(p[k], c[k])) for k in ORDER) + ")",
            "none of the %d committed take and walk transcripts" % len(everything)]
+    row = next(r for r in got["gap-study-2"]["takes"]
+               if r["slot"] == ("number-fidelity", "control", "claude-opus-5", "1"))
+    out += ["the transcript holds %d usage records and %d distinct calls" % (row["call"]["records"], row["call"]["calls"]),
+            "the published %s (input / cache read / cache write / output); counted once per call the figures are %s"
+            % (" / ".join(_n(row["pub"][k]) for k in ORDER), " / ".join(_n(row["call"][k]) for k in ORDER))]
     return out
 
 

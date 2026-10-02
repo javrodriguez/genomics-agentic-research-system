@@ -481,10 +481,10 @@ Published cells first, then the same cells counted once per call.
 ## Where the published figures are cited
 
 Each line below quotes or describes a published token figure, or names the tables as the token record.
-None is edited: each sits inside a finished study's folder (the three rounds, and the pre-study whose lint file round 2 copied), which is a record, and rounds 1 and 2 are also bound byte for byte by the copy checks of rounds 2 and 3.
+None is edited: each sits inside a finished study's folder (the three rounds, and the pre-study, whose lint file is a copy of round 2's), which is a record, and rounds 1 and 2 are also bound byte for byte by the copy checks of rounds 2 and 3.
 The input cell quoted as one hundred is the published figure for `confounded-design`, positive, `claude-opus-5`, take 1, in round 1 and again in round 3; counted once per call it is 56 and 58.
 Outside the three study folders, one copy of round 2's lint comment lives in `evals/haiku-prestudy/`; no `README.md`, `docs/` or `DEVELOPMENT.md` page quoted these figures before this correction, and `docs/EVALS.md` now points here.
-The list is complete as of a sweep of every tracked file at `a272d95`: `git grep -w -F` for each distinct comma-grouped figure in the three tables (re-run by this correction's tests, which fail on any hit not listed), and `git grep -i "one hundred"`, read line by line.
+The list is complete as of a sweep of every tracked file at `a272d95`: `git grep -w -F` for each distinct comma-grouped figure in the three tables (re-run by this correction's tests, which fail on any hit not listed), and `git grep -i "one hundred"` and `git grep -i "six-figure"`, read line by line (those two are not re-run; the lines that describe a figure without its digits are complete only for those phrases).
 
 | where | what it quotes |
 |---|---|
@@ -516,6 +516,8 @@ The list is complete as of a sweep of every tracked file at `a272d95`: `git grep
 | `evals/gap-study-2/test_harness.py:2222` | a test quoting two published cells |
 | `evals/gap-study-2/PROTOCOL.md:1656` | describes the same cell, no number |
 | `evals/gap-study-2/prereg.json:3699` | describes the same cell, no number |
+| `evals/gap-study-2/lint_language.py:68` | describes the same cell, no number |
+| `evals/gap-study-2/verification/verifier-2.md:27` | describes the same cell, no number |
 | `evals/gap-study-2/verification/verifier-1.md:375` | a verifier report quoting a published row |
 | `evals/gap-study-2/verification/verifier-1.md:379` | a verifier report quoting a published row |
 | `evals/gap-study-2/verification/verifier-1.md:380` | a verifier report quoting a published row |
@@ -528,6 +530,7 @@ The list is complete as of a sweep of every tracked file at `a272d95`: `git grep
 | `evals/gap-study-3/COSTS.md:70` | the walks table |
 | `evals/gap-study-3/COSTS.md:83` | the per-model table |
 | `evals/gap-study-3/lint_language.py:67` | a lint comment quoting a published cache-write cell |
+| `evals/gap-study-3/lint_language.py:68` | describes the same cell, no number |
 | `evals/gap-study-3/language-allowlist.json:14` | an excusal quoting a published row |
 | `evals/gap-study-3/language-allowlist.json:16` | the input cell published as one hundred |
 | `evals/gap-study-3/prereg.json:2616` | the input cell published as one hundred |
@@ -540,3 +543,4 @@ The list is complete as of a sweep of every tracked file at `a272d95`: `git grep
 | `evals/gap-study-3/verification/verify-3.md:211` | the input cell published as one hundred |
 | `evals/gap-study-3/verification/verify-3.md:217` | the input cell published as one hundred |
 | `evals/haiku-prestudy/lint_language.py:67` | a lint comment quoting a published cache-write cell (round 2's copy) |
+| `evals/haiku-prestudy/lint_language.py:68` | describes the same cell, no number (round 2's copy) |
