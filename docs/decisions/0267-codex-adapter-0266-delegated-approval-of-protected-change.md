@@ -57,7 +57,7 @@ Outside the protected prefixes, recorded for completeness: the root `AGENTS.md`,
 
 ## Test
 - Claude Code's decisions, before and after: `build_refusal_corpus.py --check` prints `decision pin: 1995 refused, 611 allowed; OK` at `c9fe683` and at the branch head.
-- `test_guard_hook.py` `Ran 7`, `test_protected_paths.py` `Ran 6`, `test_refusal_messages.py` `Ran 15`, each `OK`, inside the whole suite at `a4b3efc` (`ran 1282, passed 1200, failures 0, errors 0, skipped 82`) and, after review round 1, at `c3a7b61` (`ran 1284, passed 1202, failures 0, errors 0, skipped 82`), and after review round 2, at `6de9ae3` (`ran 1285, passed 1203, failures 0, errors 0, skipped 82`).
+- `test_guard_hook.py` `Ran 7`, `test_protected_paths.py` `Ran 6`, `test_refusal_messages.py` `Ran 15`, each `OK`, inside the whole suite at `a4b3efc` (`ran 1282, passed 1200, failures 0, errors 0, skipped 82`) and, after review round 1, at `c3a7b61` (`ran 1284, passed 1202, failures 0, errors 0, skipped 82`), after review round 2, at `6de9ae3` (`ran 1285, passed 1203, failures 0, errors 0, skipped 82`), and after review round 3, at `9a21b23` (`ran 1286, passed 1204, failures 0, errors 0, skipped 82`).
 - 0266's Test section holds the red-first counts, the parity line and the mutation proof.
 
 ## Status
