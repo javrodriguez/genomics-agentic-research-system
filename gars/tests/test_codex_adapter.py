@@ -952,6 +952,8 @@ class Group10NoReplicaTests(unittest.TestCase):
             with self.subTest(replica=label):
                 self.assertIsNone(re.search(pattern, source, re.M), label)
         self.assertRegex(source, r'\bdecide\s*\(')
+        # The unreadable-call text is the guard's own, byte for byte (review r1, R1-2/F3).
+        self.assertEqual(adapter().UNREADABLE, guard_hook.UNREADABLE)
         self.assertRegex(source, re.compile(r'^\s*from guard_hook import (\([^)]*|[^\n(]*)\bdecide\b', re.M),
                          'decide comes from the guard')
 

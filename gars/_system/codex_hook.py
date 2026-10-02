@@ -31,11 +31,18 @@ import shlex
 import subprocess
 import sys
 try:  # inside the fail-closed net: a guard that cannot import refuses in main() (decision 0266)
-    from guard_hook import decide, deny, UNREADABLE
+    from guard_hook import decide, deny
     IMPORT_FAILURE = None
 except BaseException as exc:  # SystemExit and KeyboardInterrupt included: nothing may exit 1
     IMPORT_FAILURE = "%s: %s" % (type(exc).__name__, str(exc)[:200])
 
+# The guard's own text for a call it cannot read, byte for byte (guard_hook.UNREADABLE; bound
+# by test_codex_adapter group 2 and group 10), so a malformed envelope is refused with the same
+# first line under both harnesses. Spelled here, not imported, so the static Next: scan of
+# test_refusal_messages can read it and so it is defined even when the guard fails to import.
+UNREADABLE = ("Blocked: the guard could not read this tool call, so it cannot tell whether the "
+              "call is safe (R-098; decision 0042). Next: retry the call; if this keeps "
+              "happening, stop and report it.")
 GARS_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
 # Codex 0.154 built-in tools that touch no file, allowed as they are. Verified at tag
