@@ -142,6 +142,34 @@ class ThePage(unittest.TestCase):
         self.assertIn(self.m.evals_sentence(got), evals)
         self.assertNotEqual(self.m.binding_problems(got, costs, evals.replace("195,353,721", "195,353,722")), [])
 
+    def test_decision_0271_carries_the_figures_the_reader_derives(self):
+        got = self.m.collect()
+        text = self.m.DECISION.read_text()
+        self.assertEqual(self.m.decision_problems(got, text), [])
+        for figure in self.m.decision_figures(got):
+            self.assertIn(figure, text)
+            self.assertNotEqual(self.m.decision_problems(got, text.replace(figure, "x")), [], figure)
+
+    def test_a_costs_md_row_the_page_does_not_carry_fails(self):
+        got = self.m.collect()
+        costs = {s: (REPO / "evals" / s / "COSTS.md").read_text() for s in self.m.STUDIES}
+        self.assertEqual(self.m.row_count_problems(got, costs), [])
+        for heading in ("## Per take", "## Pre-freeze walks", "## Per model"):
+            text = costs["gap-study-3"]
+            h = text.index(heading)
+            i = text.index("\n|---", h)
+            j = text.index("\n", i + 1)
+            planted = dict(costs, **{"gap-study-3": text[:j + 1] + "| `planted` | row |\n" + text[j + 1:]})
+            self.assertNotEqual(self.m.row_count_problems(got, planted), [], heading)
+
+    def test_every_tracked_line_quoting_a_published_figure_is_cited(self):
+        got = self.m.collect()
+        hits = self.m.figure_hits(got)
+        self.assertTrue(hits, "the sweep found nothing, so it measured nothing")
+        self.assertEqual(self.m.uncited(hits), [])
+        planted = hits + [("docs/EVALS.md", 9999, "100,147")]
+        self.assertEqual(self.m.uncited(planted), [("docs/EVALS.md", 9999, "100,147")])
+
     def test_a_cited_line_that_moved_fails(self):
         got = self.m.collect()
         costs = {s: (REPO / "evals" / s / "COSTS.md").read_text() for s in self.m.STUDIES}
