@@ -15,14 +15,14 @@ it constrains — template, menu, preflight, or decision — never parked here (
 
 ## Current Status
 
-**Codex adapter, 2026-10-01 (decisions 0266 and 0267; a build branch, not yet landed):** GARS runs under
+**Codex adapter, 2026-10-01 (decisions 0266 and 0267; landed as the merge `f814518`):** GARS runs under
 Codex 0.154 (verified); 0.144 source-checked for the same hook, updatedInput and parser semantics; earlier untested, with the same guard decisions. `_system/codex_hook.py` translates Codex's shell and `apply_patch`
 calls into the guard's own shape and calls `guard_hook.decide`, the one decision core; `gars/.codex/` wires it
 and is pinned; `AGENTS.md` is the front door and both `CLAUDE.md` files are unchanged. A pre-existing hole
 on main is closed: a `~/` path was judged inside the workspace while Claude Code resolves it under the home
 directory. Not closed: input typed into a running command, the model-chosen shell, Codex sessions without
 trusted hooks, sessions at the repository root, and other agents (see 0266, "What this does not close").
-The live Codex session is pending the owner's own run. Next: the demo website slice; Gemini later.
+The owner's live Codex 0.154 session ran on 2026-10-02 (0266's dated follow-up). Next: the demo website slice; Gemini later.
 
 **Row 14, landed 2026-09-25 (as a merge on main; decisions 0120 and 0121):** every
 `_system/` landing on main's first-parent line now needs a `Bench:` smoke record that the pinned
