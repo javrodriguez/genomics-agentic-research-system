@@ -12,6 +12,11 @@ def inventory(root):
     paths = set(root.rglob('SKILL.md'))
     paths.update(root.rglob('.mcp.json'))
     paths.update(root.rglob('mcp.json'))
+    # Decision 0266: every file in any `.codex` folder (any depth, nested sub-folders included)
+    # is pinned whole, so no TOML spelling of [features] or [mcp_servers] escapes review.
+    for folder in root.rglob('.codex'):
+        if folder.is_dir():
+            paths.update(p for p in folder.rglob('*') if p.is_file())
     return sorted(paths)
 
 
