@@ -279,11 +279,42 @@ def patch_calls(command):
     return calls
 
 
+def codex_path(path, cwd):
+    """The file Codex 0.154 acts on for an apply_patch or view_image path: joined to the session
+    folder lexically, never through a link ('' and '.' dropped, '..' popped, stopping at /;
+    an absolute path replaces the folder and is normalised the same way). Source:
+    utils/path-uri/src/lib.rs 445-531 (PathUri::join) and absolute_path_normalization.rs,
+    used by apply-patch/src/parser.rs 85-91 (Hunk::resolve_path), rust-v0.154.0. The guard's
+    realpath follows a link BEFORE the '..' after it, so a path that crosses a directory link
+    and climbs would be judged at one file and written at another (review r2, R2-1)."""
+    parts = [] if path.startswith("/") else [p for p in cwd.split("/") if p not in ("", ".")]
+    for part in path.split("/"):
+        if part in ("", "."):
+            continue
+        if part == "..":
+            if parts:
+                parts.pop()
+            continue
+        parts.append(part)
+    return "/" + "/".join(parts)
+
+
+def judged_paths(path, cwd):
+    """The spellings an entry is judged under: as written (Claude Code's own verdict and text,
+    so parity holds), and as Codex resolves it. A "~" spelling stays as written only: the
+    guard expands it to the home directory and refuses it, which over-refuses Codex's literal
+    folder named "~" (decision 0266, item 14)."""
+    if path == "~" or path.startswith("~/"):
+        return [path]
+    lexical = codex_path(path, cwd)
+    return [path] if lexical == path else [path, lexical]
+
+
 def refuse_link(path, cwd):
     """Delete File and a Move's source remove the path itself, while the guard judges the file a
     symlink points to (it resolves every path), so a link there is refused: judged by its
     target, a link at a machine-owned place would pass (review r1, R1-4; decision 0266)."""
-    if os.path.islink(os.path.join(cwd, os.path.expanduser(path) if path.startswith("~/") else path)):
+    if os.path.islink(codex_path(os.path.expanduser(path) if path.startswith("~/") else path, cwd)):
         deny("Blocked: %s is a symbolic link; the guard judges the file it points to, but deleting or moving it acts on the link itself, so it cannot judge this entry (R-098; decision 0266). Next: leave the link in place and ask the human if it must be removed." % path)
 
 
@@ -383,7 +414,9 @@ def run(payload, root):
             if tool == "Unlink":
                 refuse_link(guard_input, cwd)
                 continue
-            decide({"tool_name": tool, "tool_input": guard_input, "cwd": cwd}, root)
+            for path in judged_paths(guard_input["file_path"], cwd):
+                decide({"tool_name": tool, "tool_input": dict(guard_input, file_path=path),
+                        "cwd": cwd}, root)
         return None
     if name == "view_image":
         path = tool_input.get("path")
@@ -391,7 +424,8 @@ def run(payload, root):
             deny(UNREADABLE)
         if tool_input.get("environment_id"):  # view_image.rs:58-63: another executor's files
             deny("Blocked: this view_image names another environment's filesystem, which the guard cannot see (R-098; decision 0266). Next: view the image from this session's own workspace, without environment_id.")
-        decide({"tool_name": "Read", "tool_input": {"file_path": path}, "cwd": cwd}, root)
+        for spelling in judged_paths(path, cwd):
+            decide({"tool_name": "Read", "tool_input": {"file_path": spelling}, "cwd": cwd}, root)
         return None
     if name in PASS_TOOLS:
         return None
@@ -424,7 +458,7 @@ def main():
     if IMPORT_FAILURE is not None:
         text = ("Blocked: the GARS guard could not be loaded (%s), so it cannot tell whether the "
                 "call is safe (R-098; decision 0266). Next: stop and ask the human to restore "
-                "_system/guard_hook.py from the repository." % IMPORT_FAILURE)
+                "_system/ from the repository; the error above names the module that failed." % IMPORT_FAILURE)
         if mode == "session-start":
             print(json.dumps({"continue": False, "stopReason": text}))
             sys.exit(0)

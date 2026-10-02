@@ -507,9 +507,63 @@ class Group03ApplyPatchGrammarTests(WorkspaceCase):
                 verdict = self.codex(patch_text(entry))
                 self.assertEqual(verdict.code, 2, verdict)
                 self.assertIn('Next:', verdict.err)
+        # Spellings Codex's lexical join reduces to the link itself (review r2, R2-2).
+        absolute = str(self.ws.gars / rel)
+        for label, entry in (('Delete, trailing /', delete(rel + '/')), ('Delete, trailing /.', delete(rel + '/.')),
+                             ('Delete, absolute with trailing /', delete(absolute + '/')),
+                             ('Move source, trailing /', update(rel + '/', move='projects/p/m.md')),
+                             ('Move source, trailing /.', update(rel + '/.', move='projects/p/m.md')),
+                             ('Move source, absolute with trailing /', update(absolute + '/', move='projects/p/m.md'))):
+            with self.subTest(entry=label):
+                verdict = self.codex(patch_text(entry))
+                self.assertEqual(verdict.code, 2, verdict)
+                self.assertIn('Next:', verdict.err)
         # Writing through the link judges its target, as Claude's Write does.
         self.same(self.codex(patch_text(update(rel, ['a'], ['b']))),
                   self.decide('Edit', {'file_path': rel, 'old_string': 'a', 'new_string': 'b'}), 0)
+
+    def test_directory_link_then_dotdot_judged_where_codex_writes(self):
+        # Codex joins an entry's path to the session folder lexically (utils/path-uri/src/lib.rs
+        # 445-531, apply-patch/src/parser.rs 85-91: '' and '.' dropped, '..' popped, no link
+        # followed), while realpath follows a link before the '..' after it (review r2, R2-1).
+        gars = self.ws.gars
+        # The stage 00 sample_dir shape: raw/<sample> -> a folder in an external source.
+        raw = gars / 'projects/p/00_data/a/raw'
+        raw.mkdir(parents=True, exist_ok=True)
+        depth = len(Path(str(raw / 's1')).parts) - 1  # the link's own depth below /
+        # A target one level shallower than the link, so the same '..' run reaches / by realpath
+        # and stops one level short of / lexically.
+        external = self.ws.outside / 'pub'
+        while len(external.parts) - 1 < depth - 1:
+            external = external / 'd'
+        external.mkdir(parents=True, exist_ok=True)
+        if not os.path.lexists(str(raw / 's1')):
+            os.symlink(str(external), str(raw / 's1'))
+        # By realpath: up to / and down to <gars>/projects/p/esc.md, a free file. By Codex's
+        # lexical join: up to the top folder, then the same path again below it, outside gars.
+        escape = ('projects/p/00_data/a/raw/s1/' + '../' * (depth - 1)
+                  + str(gars / 'projects/p/esc.md').lstrip('/'))
+        realpath = os.path.realpath(os.path.join(str(gars), escape))
+        self.assertEqual(realpath, str(gars / 'projects/p/esc.md'))
+        lexical = os.path.normpath(os.path.join(str(gars), escape))
+        self.assertFalse(lexical.startswith(str(gars) + os.sep), lexical)
+        # An in-workspace directory link: deep -> a/b, then up to _system/.
+        (gars / 'projects/p/a/b').mkdir(parents=True, exist_ok=True)
+        if not os.path.lexists(str(gars / 'projects/p/deep')):
+            os.symlink('a/b', str(gars / 'projects/p/deep'))
+        planted = 'projects/p/deep/../../../_system/planted.py'
+        for label, entry in (('Add, outward link', add(escape, ['x'])),
+                             ('Add, in-workspace link', add(planted, ['x'])),
+                             ('Update, in-workspace link', update(planted)),
+                             ('Move destination, in-workspace link', update(FREE, move=planted)),
+                             ('Add, absolute spelling', add(str(gars / planted), ['x']))):
+            with self.subTest(entry=label):
+                verdict = self.codex(patch_text(entry))
+                self.assertEqual(verdict.code, 2, verdict)
+                self.assertIn('Next:', verdict.err)
+        with self.subTest(entry='view_image, in-workspace link'):
+            verdict = codex_run(codex_payload('view_image', {'path': 'projects/p/deep/../../c/notes.md'}, gars), gars)
+            self.assertEqual(verdict.code, 2, verdict)
 
     def test_two_entries_only_the_second_protected(self):
         cases = [(add(FREE), add(PROTECTED[0]), ('Write', PROTECTED[0])),
