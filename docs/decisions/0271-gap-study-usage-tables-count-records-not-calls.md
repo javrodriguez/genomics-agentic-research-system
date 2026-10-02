@@ -7,6 +7,8 @@ touches:
   - tests/test_gap_study_costs_by_call.py
   - tests/data/costs_by_call_duplicate_records.jsonl
   - docs/EVALS.md
+  - README.md
+  - DEVELOPMENT.md
 symptoms:
   - the Gap Study token tables count each model call about twice
   - costs.py sums message.usage over every transcript record, and one API call is written as several records
@@ -26,7 +28,7 @@ So the tables count usage records, not model calls, and a reply with three block
 The error was found by the GARS face v3 token-cost research lane on 2 October 2026 and reproduced independently by the lane that built this correction, on public main `a272d95`.
 On the row it was found on (round 2, `number-fidelity`, control, `claude-opus-5`, take 1), the transcript holds 16 usage records and 10 distinct calls.
 The pinned reader returns the published 32 / 437,281 / 48,901 / 4,494 (input / cache read / cache write / output); counted once per call the figures are 20 / 286,108 / 26,023 / 2,820.
-Across the three rounds, 8,399 usage records hold 4,136 calls, and the tables published 386,064,019 tokens, 1.98 times the 195,353,721 the calls used (per class: input 2.25, cache read 1.95, cache write 2.35, output 2.17).
+Across the three rounds, 8,399 usage records hold 4,136 calls, and the tables published 386,064,019 tokens (cache reads included), 1.98 times the 195,353,721 the calls used (per class: input 2.25, cache read 1.95, cache write 2.35, output 2.17).
 Every record of one call carries the same usage as the others of that call, and `message.id` and `requestId` are one to one in every committed transcript, so counting each call once is unambiguous.
 
 What can and cannot be changed:
@@ -41,10 +43,13 @@ What can and cannot be changed:
    Two records of one key with different usage raise `Disagreement` rather than one being picked.
    A record missing either half of the key is never merged with another; it counts as a call of its own and is reported (none in the committed transcripts).
    The published column comes from importing each round's own pinned `read_one`, unmodified.
-2. **The correction page.** `--write` writes `evals/gap-study-costs-by-call/CORRECTION-2026-10-02.md`: what was wrong, its size overall and per round, what is wrong in each table (per take, pre-freeze walks, per model; the recorded pauses carry no token figure), every take and walk counted once per call beside its published cells, round 1's two prose ranges re-derived, and every line in the repository that quotes the figures, as `path:line`.
-3. **Bound, not typed.** `--check` exits 1 unless the page is exactly what the reader writes, every published figure on it is found in that round's `COSTS.md` (each per-take, walk and per-model row, and round 1's two prose ranges), and every cited line still carries the text it is cited for.
+2. **The correction page.** `--write` writes `evals/gap-study-costs-by-call/CORRECTION-2026-10-02.md`: what was wrong, its size overall and per round, what is wrong in each table (per take, pre-freeze walks, per model; the recorded pauses carry no token figure), every take and walk counted once per call beside its published cells, round 1's two prose ranges re-derived, and every line in the repository that quotes or describes the figures, as `path:line`.
+   That list is complete as of a sweep of every tracked file at `a272d95`: `git grep -w -F` for each distinct comma-grouped figure in the three tables, and `git grep -i "one hundred"` read line by line.
+   The first sweep is re-run by the tests, which fail on any hit the list does not carry; the second is not re-run.
+3. **Bound, not typed.** `--check` exits 1 unless the page is exactly what the reader writes, every published figure on it is found in that round's `COSTS.md` (each per-take, walk and per-model row, and round 1's two prose ranges), every cited line still carries the text it is cited for, each round's per-take, walk and per-model tables hold exactly as many rows as the page carries, and the figures quoted in `docs/EVALS.md` and in this record are the ones the reader derives.
 4. **Nothing published is edited.** The three `COSTS.md` files, the pinned `costs.py` files, the verifier reports, the allowlists and `prereg.json` stay as they are.
-   The lines that quote the figures are all inside the study folders; they are listed on the correction page rather than annotated, because those folders are records and rounds 1 and 2 are bound by the later rounds' copy checks.
+   The lines that quote the figures are inside the three study folders, plus one copy of round 2's lint comment in `evals/haiku-prestudy/`; no `README.md`, `docs/` or `DEVELOPMENT.md` page quoted them.
+   They are listed on the correction page rather than annotated, because those folders are records and rounds 1 and 2 are bound by the later rounds' copy checks.
    The public pointer is a dated paragraph at the top of `docs/EVALS.md`, beside the 28 September intervals paragraph.
 5. **No graded result depends on it.** Verified on `a272d95`: no grader, label, count, interval, analysis or result reads usage.
    `grep` over each round's `analyse.py`, `check_results.py`, `graders/`, `observations.py`, `takes.py`, `evals/transcript.py` and `evals/gap-study-intervals/` finds no read of `usage`, `tokens` or `costs`; the shared transcript parser keeps what the agent said and ran and discards usage, by design (`costs.py`'s own docstring).
@@ -65,10 +70,11 @@ What can and cannot be changed:
 
 ## Test
 
-`python3 tests/test_gap_study_costs_by_call.py` runs 12 tests OK, and `python3 evals/gap-study-costs-by-call/costs_by_call.py --check` exits 0.
+`python3 tests/test_gap_study_costs_by_call.py` runs 16 tests OK, and `python3 evals/gap-study-costs-by-call/costs_by_call.py --check` exits 0.
 Red first: the test was committed alone at `8c4cece` and failed there (`Ran 11 tests`, `FAILED (errors=10)`; the one passing test is the pinned reader overcounting the fixture).
+The three binders added after review round 1 (this record's figures, the row counts, the citation sweep) were committed red at `40929da` (`Ran 16 tests`, `FAILED (errors=3)`).
 The fixture `tests/data/costs_by_call_duplicate_records.jsonl` holds one call written as three records and one written as one; the pinned round 1 reader sums four records' worth and the corrected reader counts two calls.
-Faults that must fail: two records of one call with different usage (raises), a record missing half its key merged (counted apart), a changed figure on the page, a changed figure in a round's `COSTS.md`, and a cited line that moved.
+Faults that must fail: two records of one call with different usage (raises), a record missing half its key merged (counted apart), a changed figure on the page, a changed figure in a round's `COSTS.md`, a row planted in a round's table, a changed figure in `docs/EVALS.md` or in this record, a tracked line quoting a figure that the list does not carry, and a cited line that moved.
 
 ## Status
 

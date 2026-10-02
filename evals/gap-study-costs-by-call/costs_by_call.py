@@ -30,6 +30,8 @@ usage, so no graded result moves.
 import argparse
 import importlib.util
 import json
+import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -57,10 +59,16 @@ PROSE = (
 )
 
 
-# Every line in the repository that quotes a published token figure, or the tables as a token source, as of this
-# correction. `--check` fails if a listed line no longer carries its text, so a moved line is noticed. None is
-# edited: each sits inside a finished round's folder, which is a record, and rounds 1 and 2 are also bound byte for
-# byte by the copy checks of rounds 2 and 3 (`copy_manifest.py --check`).
+# Every line in the repository that quotes a published token figure, describes one, or names the tables as the token
+# record. Complete as of a sweep of every tracked file at a272d95 (public main when this was written): `git grep -w -F`
+# for each distinct comma-grouped figure in the three COSTS.md tables, plus `git grep -i "one hundred"` read line by
+# line. `figure_hits` re-runs the first sweep and a test fails on any hit not listed here; the "one hundred" lines were
+# read by hand and are not re-swept. `--check` fails if a listed line no longer carries its text. None is edited: each
+# sits inside a finished study's folder, which is a record, and rounds 1 and 2 are also bound byte for byte by the copy
+# checks of rounds 2 and 3 (`copy_manifest.py --check`).
+QUOTES_ROW = "a verifier report quoting a published row"
+SAME_CELL = "the input cell published as one hundred"
+LINT_ROW = "a lint comment quoting a published cache-write cell"
 CITED = (
     ("evals/gap-study/COSTS.md", 21, "## Per take", "the per-take table"),
     ("evals/gap-study/COSTS.md", 137, "## Pre-freeze walks", "the walks table"),
@@ -69,39 +77,59 @@ CITED = (
     ("evals/gap-study/COSTS.md", 168, "## Per model", "the per-model table"),
     ("evals/gap-study/COSTS.md", 201, "5.5 to 6.4 M context tokens", "prose: the same Layer B take"),
     ("evals/gap-study/README.md", 43, "| `COSTS.md` | tokens by class", "names COSTS.md as the token record"),
-    ("evals/gap-study/language-allowlist.json", 23, "The 100 is the number of input tokens for one take",
-     "quotes one published input cell"),
-    ("evals/gap-study/verification/2026-09-12-95c4923.md", 945, "| input | cache read | cache write | output |",
-     "a verifier report quoting per-take rows"),
-    ("evals/gap-study/verification/2026-09-12-95c4923.md", 956, "| context tokens | output tokens |",
-     "a verifier report quoting the per-model rows"),
-    ("evals/gap-study/verification/2026-09-12-a463ed5.md", 946, "| input | cache read | cache write | output |",
-     "a verifier report quoting per-take rows"),
-    ("evals/gap-study/verification/2026-09-12-a463ed5.md", 959, "| context tokens | output tokens |",
-     "a verifier report quoting the per-model rows"),
+    ("evals/gap-study/language-allowlist.json", 21, "| 100 | 2,744,670 | 86,170 | 17,574 |", "an excusal quoting a published row"),
+    ("evals/gap-study/language-allowlist.json", 23, "The 100 is the number of input tokens for one take", SAME_CELL),
+    ("evals/gap-study/language-allowlist.json", 28, "| 46 | 1,197,017 | 52,472 | 7,890 |", "an excusal quoting a published row"),
+    ("evals/gap-study/verification/2026-09-12-95c4923.md", 947, "| 208 | 947,608 | 66,429 | 8,748 |", QUOTES_ROW),
+    ("evals/gap-study/verification/2026-09-12-95c4923.md", 948, "| 142 | 621,216 | 60,279 | 6,569 |", QUOTES_ROW),
+    ("evals/gap-study/verification/2026-09-12-95c4923.md", 958, "| 39,073,306 | 335,618 |", QUOTES_ROW),
+    ("evals/gap-study/verification/2026-09-12-95c4923.md", 959, "| 52,490,593 | 512,781 |", QUOTES_ROW),
+    ("evals/gap-study/verification/2026-09-12-95c4923.md", 960, "| 65,818,638 | 497,150 |", QUOTES_ROW),
+    ("evals/gap-study/verification/2026-09-12-a463ed5.md", 948, "| 208 | 947,608 | 66,429 | 8,748 |", QUOTES_ROW),
+    ("evals/gap-study/verification/2026-09-12-a463ed5.md", 949, "| 142 | 621,216 | 60,279 | 6,569 |", QUOTES_ROW),
+    ("evals/gap-study/verification/2026-09-12-a463ed5.md", 961, "| 39,073,306 | 335,618 |", QUOTES_ROW),
+    ("evals/gap-study/verification/2026-09-12-a463ed5.md", 962, "| 52,490,593 | 512,781 |", QUOTES_ROW),
+    ("evals/gap-study/verification/2026-09-12-a463ed5.md", 963, "| 65,818,638 | 497,150 |", QUOTES_ROW),
     ("evals/gap-study-2/COSTS.md", 11, "## Per take", "the per-take table"),
     ("evals/gap-study-2/COSTS.md", 122, "## Pre-freeze walks", "the walks table"),
     ("evals/gap-study-2/COSTS.md", 133, "## Per model", "the per-model table"),
-    ("evals/gap-study-2/verification/verifier-1.md", 374, "| input | cache read | cache write | output |",
-     "a verifier report quoting a per-take row"),
-    ("evals/gap-study-2/verification/verifier-1.md", 379, "| 23,665,927 | 260,712 |",
-     "a verifier report quoting the per-model rows"),
-    ("evals/gap-study-2/verification/verifier-2.md", 447, "| input | cache read | cache write | output |",
-     "a verifier report quoting a per-take row"),
-    ("evals/gap-study-2/verification/verifier-2.md", 451, "| context tokens | output tokens |",
-     "a verifier report quoting the per-model rows"),
+    ("evals/gap-study-2/lint_language.py", 67, "so 100,147 is a", LINT_ROW),
+    ("evals/gap-study-2/test_harness.py", 2216, "100,147 tokens is a count", "a test docstring quoting the same cell"),
+    ("evals/gap-study-2/test_harness.py", 2222, "| 100,147 | 22,624 |", "a test quoting two published cells"),
+    ("evals/gap-study-2/PROTOCOL.md", 1656, "first six-figure token count", "describes the same cell, no number"),
+    ("evals/gap-study-2/prereg.json", 3699, "first six-figure token count", "describes the same cell, no number"),
+    ("evals/gap-study-2/verification/verifier-1.md", 375, "| 134 | 391,738 | 52,652 | 5,330 |", QUOTES_ROW),
+    ("evals/gap-study-2/verification/verifier-1.md", 379, "| 23,665,927 | 260,712 |", QUOTES_ROW),
+    ("evals/gap-study-2/verification/verifier-1.md", 380, "| 25,801,507 | 314,786 |", QUOTES_ROW),
+    ("evals/gap-study-2/verification/verifier-1.md", 381, "| 63,932,641 | 620,333 |", QUOTES_ROW),
+    ("evals/gap-study-2/verification/verifier-2.md", 448, "| 134 | 391,738 | 52,652 | 5,330 |", QUOTES_ROW),
+    ("evals/gap-study-2/verification/verifier-2.md", 452, "| 23,665,927 | 260,712 |", QUOTES_ROW),
+    ("evals/gap-study-2/verification/verifier-2.md", 453, "| 25,801,507 | 314,786 |", QUOTES_ROW),
+    ("evals/gap-study-2/verification/verifier-2.md", 454, "| 63,932,641 | 620,333 |", QUOTES_ROW),
     ("evals/gap-study-3/COSTS.md", 11, "## Per take", "the per-take table"),
     ("evals/gap-study-3/COSTS.md", 70, "## Pre-freeze walks", "the walks table"),
     ("evals/gap-study-3/COSTS.md", 83, "## Per model", "the per-model table"),
-    ("evals/gap-study-3/language-allowlist.json", 16, "The hit is a token count, not a rate",
-     "quotes one published input cell"),
-    ("evals/gap-study-3/prereg.json", 2616, "exactly one hundred input tokens", "amendment 1 quotes the same cell"),
-    ("evals/gap-study-3/verification/verify-1.md", 210, "pattern `hundred`", "a verifier report on the same cell"),
-    ("evals/gap-study-3/verification/verify-2.md", 198, "exactly one hundred input", "a verifier report on the same cell"),
-    ("evals/gap-study-3/verification/verify-2.md", 204, "input column reads one hundre", "a verifier report on the same cell"),
-    ("evals/gap-study-3/verification/verify-3.md", 211, "line 27 of `COSTS.md", "a verifier report on the same cell"),
-    ("evals/gap-study-3/verification/verify-3.md", 217, "pattern `hundred`", "a verifier report on the same cell"),
+    ("evals/gap-study-3/lint_language.py", 67, "so 100,147 is a", LINT_ROW),
+    ("evals/gap-study-3/language-allowlist.json", 14, "| 100 | 2,006,990 | 102,010 | 20,625 |", "an excusal quoting a published row"),
+    ("evals/gap-study-3/language-allowlist.json", 16, "The hit is a token count, not a rate", SAME_CELL),
+    ("evals/gap-study-3/prereg.json", 2616, "exactly one hundred input tokens", SAME_CELL),
+    ("evals/gap-study-3/RESULT.md", 206, "exactly one hundred input tokens", SAME_CELL),
+    ("evals/gap-study-3/PROGRESS.md", 42, "input column reads exactly one hundred tokens", SAME_CELL),
+    ("evals/gap-study-3/verification/verify-1.md", 205, "reads exactly one hundred tokens", SAME_CELL),
+    ("evals/gap-study-3/verification/verify-1.md", 210, "pattern `hundred`", SAME_CELL),
+    ("evals/gap-study-3/verification/verify-2.md", 198, "exactly one hundred input", SAME_CELL),
+    ("evals/gap-study-3/verification/verify-2.md", 204, "input column reads one hundre", SAME_CELL),
+    ("evals/gap-study-3/verification/verify-3.md", 211, "line 27 of `COSTS.md", SAME_CELL),
+    ("evals/gap-study-3/verification/verify-3.md", 217, "pattern `hundred`", SAME_CELL),
+    ("evals/haiku-prestudy/lint_language.py", 67, "so 100,147 is a", LINT_ROW + " (round 2's copy)"),
 )
+
+# Files the figure sweep does not read: the tables themselves, the raw transcripts, this correction's own files,
+# and comma-separated data where a digit run is a column boundary, not a figure.
+SWEEP_EXCLUDE = (":!*.jsonl", ":!*.csv", ":!evals/gap-study/COSTS.md", ":!evals/gap-study-2/COSTS.md",
+                 ":!evals/gap-study-3/COSTS.md", ":!evals/gap-study-costs-by-call/*",
+                 ":!tests/test_gap_study_costs_by_call.py", ":!docs/decisions/0271-*", ":!docs/EVALS.md")
+DECISION = next((REPO / "docs" / "decisions").glob("0271-*.md"), REPO / "docs" / "decisions" / "0271-missing.md")
 
 
 class Disagreement(ValueError):
@@ -228,7 +256,7 @@ def render(got, quoted):
          "`evals/gap-study-3/COSTS.md` add up usage over transcript records, not over model calls.",
          "Claude Code writes one record per content block of a model reply (thinking, text, tool use), and each "
          "of those records carries the whole reply's usage, so a reply with three blocks was counted three times.",
-         "Across the three rounds, %s usage records hold %s calls, and the tables published %s tokens, %s times "
+         "Across the three rounds, %s usage records hold %s calls, and the tables published %s tokens (cache reads included), %s times "
          "the %s the calls used." % (_n(records), _n(calls), _n(tp), _ratio(tp, tc), _n(tc)),
          "Every duplicate record carries the same usage as the others of its call, so counting each call once is "
          "unambiguous.", "",
@@ -294,15 +322,20 @@ def render(got, quoted):
             q["where"], q["quote"], " and ".join(_n(x) for x in q["pub"]), _m(min(q["call"])), _m(max(q["call"])),
             " and ".join(_n(x) for x in q["call"])))
     L += ["", "## Where the published figures are cited", "",
-          "Each line below quotes a published token figure, or names the tables as the token record.",
-          "None is edited: each sits inside a finished round's folder, which is a record, and rounds 1 and 2 are "
-          "also bound byte for byte by the copy checks of rounds 2 and 3.",
+          "Each line below quotes or describes a published token figure, or names the tables as the token record.",
+          "None is edited: each sits inside a finished study's folder (the three rounds, and the pre-study whose "
+          "lint file round 2 copied), which is a record, and rounds 1 and 2 are also bound byte for byte by the "
+          "copy checks of rounds 2 and 3.",
           "The input cell quoted as one hundred is the published figure for `confounded-design`, positive, "
           "`claude-opus-5`, take 1, in round 1 and again in round 3; counted once per call it is %s and %s." % tuple(
               _n(r["call"]["input_tokens"]) for study in ("gap-study", "gap-study-3") for r in got[study]["takes"]
               if r["slot"] == ("confounded-design", "positive", "claude-opus-5", "1")),
-          "No page outside the three study folders (the README, `docs/`, `DEVELOPMENT.md`, the demonstration site) "
-          "quoted these figures before this correction; `docs/EVALS.md` now points here.", "",
+          "Outside the three study folders, one copy of round 2's lint comment lives in `evals/haiku-prestudy/`; "
+          "no `README.md`, `docs/` or `DEVELOPMENT.md` page quoted these figures before this correction, and "
+          "`docs/EVALS.md` now points here.",
+          "The list is complete as of a sweep of every tracked file at `a272d95`: `git grep -w -F` for each distinct "
+          "comma-grouped figure in the three tables (re-run by this correction's tests, which fail on any hit not "
+          "listed), and `git grep -i \"one hundred\"`, read line by line.", "",
           "| where | what it quotes |", "|---|---|"]
     L += ["| `%s:%d` | %s |" % (path, line, what) for path, line, _, what in CITED]
     L.append("")
@@ -313,7 +346,74 @@ def evals_sentence(got):
     """The figures docs/EVALS.md quotes, as the reader derives them; --check finds them there verbatim."""
     everything = [r for st in got.values() for r in st["takes"] + st["walks"]]
     tp, tc = sum(_sum(everything, "pub").values()), sum(_sum(everything, "call").values())
-    return "published %s tokens, %s times the %s the calls used" % (_n(tp), _ratio(tp, tc), _n(tc))
+    return "published %s tokens (cache reads included), %s times the %s the calls used" % (
+        _n(tp), _ratio(tp, tc), _n(tc))
+
+
+def decision_figures(got):
+    """The figures decision 0271 quotes, as the reader derives them."""
+    everything = [r for st in got.values() for r in st["takes"] + st["walks"]]
+    p, c = _sum(everything, "pub"), _sum(everything, "call")
+    tp, tc = sum(p.values()), sum(c.values())
+    out = ["%s usage records hold %s calls" % (_n(sum(r["call"]["records"] for r in everything)),
+                                              _n(sum(r["call"]["calls"] for r in everything))),
+           evals_sentence(got),
+           "(per class: " + ", ".join("%s %s" % (LABEL[k], _ratio(p[k], c[k])) for k in ORDER) + ")",
+           "none of the %d committed take and walk transcripts" % len(everything)]
+    return out
+
+
+def decision_problems(got, text):
+    flat = " ".join(text.split())
+    return ["decision 0271 does not quote %r" % f for f in decision_figures(got) if f not in flat]
+
+
+def _table_rows(text, heading):
+    lines = text.split("\n")
+    h = lines.index(heading)
+    i = h + 1
+    while i < len(lines) and not lines[i].startswith("|"):
+        i += 1
+    j = i
+    while j < len(lines) and lines[j].startswith("|"):
+        j += 1
+    return [l for l in lines[i + 2:j] if not l.startswith("| _(")]
+
+
+def row_count_problems(got, costs):
+    """Each round's tables hold exactly as many rows as the page carries: no published row is left out."""
+    out = []
+    for study, s in got.items():
+        for heading, want in (("## Per take", len(s["takes"])), ("## Pre-freeze walks", len(s["walks"])),
+                              ("## Per model", len(s["models"]))):
+            have = len(_table_rows(costs[study], heading))
+            if have != want:
+                out.append("%s COSTS.md %s holds %d rows; the page carries %d" % (study, heading, have, want))
+    return out
+
+
+def figure_hits(got):
+    """Every tracked line, outside the excluded files, holding a comma-grouped figure from the three tables."""
+    figs = set()
+    for study in STUDIES:
+        for line in (REPO / "evals" / study / "COSTS.md").read_text().splitlines():
+            if line.startswith("| `"):
+                figs.update(re.findall(r"\b\d{1,3}(?:,\d{3})+\b", line))
+    res = subprocess.run(["git", "-C", str(REPO), "grep", "-n", "-I", "-w", "-F"]
+                         + [x for f in sorted(figs) for x in ("-e", f)] + ["--", "."] + list(SWEEP_EXCLUDE),
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    if res.returncode not in (0, 1):
+        raise RuntimeError("git grep failed: %s" % res.stderr.strip())
+    hits = []
+    for line in res.stdout.splitlines():
+        path, n, rest = line.split(":", 2)
+        hits.append((path, int(n), rest))
+    return hits
+
+
+def uncited(hits):
+    cited = {(path, line) for path, line, _, _ in CITED}
+    return [h for h in hits if (h[0], h[1]) not in cited]
 
 
 def binding_problems(got, costs, evals=None):
@@ -337,6 +437,8 @@ def binding_problems(got, costs, evals=None):
                 out.append("%s COSTS.md has no per-model row %s" % (study, row))
     if evals is None:
         evals = (REPO / "docs" / "EVALS.md").read_text()
+    out += row_count_problems(got, costs)
+    out += decision_problems(got, DECISION.read_text())
     if evals_sentence(got) not in evals:
         out.append("docs/EVALS.md does not quote %r" % evals_sentence(got))
     for path, line, needle, _ in CITED:

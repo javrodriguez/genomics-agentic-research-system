@@ -6,7 +6,7 @@ _Written by `evals/gap-study-costs-by-call/costs_by_call.py --write`; never edit
 
 The token tables in `evals/gap-study/COSTS.md`, `evals/gap-study-2/COSTS.md` and `evals/gap-study-3/COSTS.md` add up usage over transcript records, not over model calls.
 Claude Code writes one record per content block of a model reply (thinking, text, tool use), and each of those records carries the whole reply's usage, so a reply with three blocks was counted three times.
-Across the three rounds, 8,399 usage records hold 4,136 calls, and the tables published 386,064,019 tokens, 1.98 times the 195,353,721 the calls used.
+Across the three rounds, 8,399 usage records hold 4,136 calls, and the tables published 386,064,019 tokens (cache reads included), 1.98 times the 195,353,721 the calls used.
 Every duplicate record carries the same usage as the others of its call, so counting each call once is unambiguous.
 
 The published tables stand as published and are not edited; this page gives the figures counted once per call beside them.
@@ -480,10 +480,11 @@ Published cells first, then the same cells counted once per call.
 
 ## Where the published figures are cited
 
-Each line below quotes a published token figure, or names the tables as the token record.
-None is edited: each sits inside a finished round's folder, which is a record, and rounds 1 and 2 are also bound byte for byte by the copy checks of rounds 2 and 3.
+Each line below quotes or describes a published token figure, or names the tables as the token record.
+None is edited: each sits inside a finished study's folder (the three rounds, and the pre-study whose lint file round 2 copied), which is a record, and rounds 1 and 2 are also bound byte for byte by the copy checks of rounds 2 and 3.
 The input cell quoted as one hundred is the published figure for `confounded-design`, positive, `claude-opus-5`, take 1, in round 1 and again in round 3; counted once per call it is 56 and 58.
-No page outside the three study folders (the README, `docs/`, `DEVELOPMENT.md`, the demonstration site) quoted these figures before this correction; `docs/EVALS.md` now points here.
+Outside the three study folders, one copy of round 2's lint comment lives in `evals/haiku-prestudy/`; no `README.md`, `docs/` or `DEVELOPMENT.md` page quoted these figures before this correction, and `docs/EVALS.md` now points here.
+The list is complete as of a sweep of every tracked file at `a272d95`: `git grep -w -F` for each distinct comma-grouped figure in the three tables (re-run by this correction's tests, which fail on any hit not listed), and `git grep -i "one hundred"`, read line by line.
 
 | where | what it quotes |
 |---|---|
@@ -494,25 +495,48 @@ No page outside the three study folders (the README, `docs/`, `DEVELOPMENT.md`, 
 | `evals/gap-study/COSTS.md:168` | the per-model table |
 | `evals/gap-study/COSTS.md:201` | prose: the same Layer B take |
 | `evals/gap-study/README.md:43` | names COSTS.md as the token record |
-| `evals/gap-study/language-allowlist.json:23` | quotes one published input cell |
-| `evals/gap-study/verification/2026-09-12-95c4923.md:945` | a verifier report quoting per-take rows |
-| `evals/gap-study/verification/2026-09-12-95c4923.md:956` | a verifier report quoting the per-model rows |
-| `evals/gap-study/verification/2026-09-12-a463ed5.md:946` | a verifier report quoting per-take rows |
-| `evals/gap-study/verification/2026-09-12-a463ed5.md:959` | a verifier report quoting the per-model rows |
+| `evals/gap-study/language-allowlist.json:21` | an excusal quoting a published row |
+| `evals/gap-study/language-allowlist.json:23` | the input cell published as one hundred |
+| `evals/gap-study/language-allowlist.json:28` | an excusal quoting a published row |
+| `evals/gap-study/verification/2026-09-12-95c4923.md:947` | a verifier report quoting a published row |
+| `evals/gap-study/verification/2026-09-12-95c4923.md:948` | a verifier report quoting a published row |
+| `evals/gap-study/verification/2026-09-12-95c4923.md:958` | a verifier report quoting a published row |
+| `evals/gap-study/verification/2026-09-12-95c4923.md:959` | a verifier report quoting a published row |
+| `evals/gap-study/verification/2026-09-12-95c4923.md:960` | a verifier report quoting a published row |
+| `evals/gap-study/verification/2026-09-12-a463ed5.md:948` | a verifier report quoting a published row |
+| `evals/gap-study/verification/2026-09-12-a463ed5.md:949` | a verifier report quoting a published row |
+| `evals/gap-study/verification/2026-09-12-a463ed5.md:961` | a verifier report quoting a published row |
+| `evals/gap-study/verification/2026-09-12-a463ed5.md:962` | a verifier report quoting a published row |
+| `evals/gap-study/verification/2026-09-12-a463ed5.md:963` | a verifier report quoting a published row |
 | `evals/gap-study-2/COSTS.md:11` | the per-take table |
 | `evals/gap-study-2/COSTS.md:122` | the walks table |
 | `evals/gap-study-2/COSTS.md:133` | the per-model table |
-| `evals/gap-study-2/verification/verifier-1.md:374` | a verifier report quoting a per-take row |
-| `evals/gap-study-2/verification/verifier-1.md:379` | a verifier report quoting the per-model rows |
-| `evals/gap-study-2/verification/verifier-2.md:447` | a verifier report quoting a per-take row |
-| `evals/gap-study-2/verification/verifier-2.md:451` | a verifier report quoting the per-model rows |
+| `evals/gap-study-2/lint_language.py:67` | a lint comment quoting a published cache-write cell |
+| `evals/gap-study-2/test_harness.py:2216` | a test docstring quoting the same cell |
+| `evals/gap-study-2/test_harness.py:2222` | a test quoting two published cells |
+| `evals/gap-study-2/PROTOCOL.md:1656` | describes the same cell, no number |
+| `evals/gap-study-2/prereg.json:3699` | describes the same cell, no number |
+| `evals/gap-study-2/verification/verifier-1.md:375` | a verifier report quoting a published row |
+| `evals/gap-study-2/verification/verifier-1.md:379` | a verifier report quoting a published row |
+| `evals/gap-study-2/verification/verifier-1.md:380` | a verifier report quoting a published row |
+| `evals/gap-study-2/verification/verifier-1.md:381` | a verifier report quoting a published row |
+| `evals/gap-study-2/verification/verifier-2.md:448` | a verifier report quoting a published row |
+| `evals/gap-study-2/verification/verifier-2.md:452` | a verifier report quoting a published row |
+| `evals/gap-study-2/verification/verifier-2.md:453` | a verifier report quoting a published row |
+| `evals/gap-study-2/verification/verifier-2.md:454` | a verifier report quoting a published row |
 | `evals/gap-study-3/COSTS.md:11` | the per-take table |
 | `evals/gap-study-3/COSTS.md:70` | the walks table |
 | `evals/gap-study-3/COSTS.md:83` | the per-model table |
-| `evals/gap-study-3/language-allowlist.json:16` | quotes one published input cell |
-| `evals/gap-study-3/prereg.json:2616` | amendment 1 quotes the same cell |
-| `evals/gap-study-3/verification/verify-1.md:210` | a verifier report on the same cell |
-| `evals/gap-study-3/verification/verify-2.md:198` | a verifier report on the same cell |
-| `evals/gap-study-3/verification/verify-2.md:204` | a verifier report on the same cell |
-| `evals/gap-study-3/verification/verify-3.md:211` | a verifier report on the same cell |
-| `evals/gap-study-3/verification/verify-3.md:217` | a verifier report on the same cell |
+| `evals/gap-study-3/lint_language.py:67` | a lint comment quoting a published cache-write cell |
+| `evals/gap-study-3/language-allowlist.json:14` | an excusal quoting a published row |
+| `evals/gap-study-3/language-allowlist.json:16` | the input cell published as one hundred |
+| `evals/gap-study-3/prereg.json:2616` | the input cell published as one hundred |
+| `evals/gap-study-3/RESULT.md:206` | the input cell published as one hundred |
+| `evals/gap-study-3/PROGRESS.md:42` | the input cell published as one hundred |
+| `evals/gap-study-3/verification/verify-1.md:205` | the input cell published as one hundred |
+| `evals/gap-study-3/verification/verify-1.md:210` | the input cell published as one hundred |
+| `evals/gap-study-3/verification/verify-2.md:198` | the input cell published as one hundred |
+| `evals/gap-study-3/verification/verify-2.md:204` | the input cell published as one hundred |
+| `evals/gap-study-3/verification/verify-3.md:211` | the input cell published as one hundred |
+| `evals/gap-study-3/verification/verify-3.md:217` | the input cell published as one hundred |
+| `evals/haiku-prestudy/lint_language.py:67` | a lint comment quoting a published cache-write cell (round 2's copy) |
