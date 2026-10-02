@@ -375,10 +375,12 @@ class Group02ParityReplayTests(unittest.TestCase):
                     claude_first = claude_text.split('\n', 1)[0]
                     if cls == 'malformed':
                         codex = codex_main(malformed_stdin(text, value))
+                        # Exit and first line bound to Claude's live verdict (review r1, R1-2/F3).
+                        self.assertEqual((codex.code, codex.first), (expected['exit'], claude_first),
+                                         'Claude %r' % claude_text)
                         self.assertEqual(codex.code, 2, codex)
-                        self.assertTrue(codex.err.strip())
                         self.assertIn('Next:', codex.err)
-                        tallies[cls, 2] = tallies.get((cls, 2), 0) + 1
+                        tallies[cls, codex.code] = tallies.get((cls, codex.code), 0) + 1
                         continue
                     cwd = value.get('cwd')
                     data = value['tool_input']
@@ -489,6 +491,25 @@ class Group03ApplyPatchGrammarTests(WorkspaceCase):
                 self.assertEqual(codex.code, 2, codex)
                 refused = [v.first for v in (source, target) if v.code == 2]
                 self.assertIn(codex.first, refused)
+
+    def test_link_at_a_protected_place_is_not_deleted_or_moved(self):
+        # Delete File and a Move's source act on the link itself, while the guard judges the file
+        # it points to (review r1, R1-4): a link at a machine-owned place pointing at a free file.
+        run = self.ws.gars / 'projects/p/02_bioinformatics/r/run'
+        run.mkdir(parents=True, exist_ok=True)
+        link = run / 'out.txt'
+        if not os.path.lexists(str(link)):
+            os.symlink('../../../notes.md', str(link))
+        rel = 'projects/p/02_bioinformatics/r/run/out.txt'
+        for label, entry in (('Delete', delete(rel)), ('Move source', update(rel, move='projects/p/m.md')),
+                             ('Delete, absolute', delete(str(self.ws.gars / rel)))):
+            with self.subTest(entry=label):
+                verdict = self.codex(patch_text(entry))
+                self.assertEqual(verdict.code, 2, verdict)
+                self.assertIn('Next:', verdict.err)
+        # Writing through the link judges its target, as Claude's Write does.
+        self.same(self.codex(patch_text(update(rel, ['a'], ['b']))),
+                  self.decide('Edit', {'file_path': rel, 'old_string': 'a', 'new_string': 'b'}), 0)
 
     def test_two_entries_only_the_second_protected(self):
         cases = [(add(FREE), add(PROTECTED[0]), ('Write', PROTECTED[0])),
@@ -705,6 +726,29 @@ class Group07FailClosedTests(WorkspaceCase):
                 verdict = codex_main(data, home=self.ws.home)
                 self.assertEqual(verdict.code, 2, verdict)
 
+    def test_guard_import_failure_refuses(self):
+        # The import of guard_hook sits inside the adapter's fail-closed net (review r1, R1-3/F2).
+        for label, broken in (('guard_hook raises', 'raise RuntimeError("broken guard")\n'),
+                              ('guard_hook syntax error', 'def (\n')):
+            with tempfile.TemporaryDirectory(prefix='codex-import-') as tmp:
+                system = Path(tmp) / '_system'
+                system.mkdir()
+                shutil.copy2(str(self.ws.adapter), str(system / 'codex_hook.py'))
+                (system / 'guard_hook.py').write_text(broken)
+                for mode in ('pre-tool-use', 'session-start'):
+                    with self.subTest(case=label, mode=mode):
+                        result = run_process([sys.executable, system / 'codex_hook.py', mode], self.ws.gars,
+                                             as_bytes(codex_payload('Bash', {'command': 'ls'}, self.ws.gars)),
+                                             self.ws.home, 'adapter with a broken guard')
+                        if mode == 'pre-tool-use':
+                            self.assertEqual(result.code, 2, result)
+                            self.assertIn('Next:', result.err)
+                        else:
+                            self.assertEqual(result.code, 0, result)
+                            stop = json.loads(result.out)
+                            self.assertIs(stop['continue'], False)
+                            self.assertIn('Next:', stop['stopReason'])
+
     def test_injected_crash_in_decide(self):
         hook = adapter()
         stdin = as_bytes(codex_payload('Bash', {'command': 'ls'}, GARS))
@@ -908,7 +952,7 @@ class Group10NoReplicaTests(unittest.TestCase):
             with self.subTest(replica=label):
                 self.assertIsNone(re.search(pattern, source, re.M), label)
         self.assertRegex(source, r'\bdecide\s*\(')
-        self.assertRegex(source, re.compile(r'^from guard_hook import (\([^)]*|[^\n(]*)\bdecide\b', re.M),
+        self.assertRegex(source, re.compile(r'^\s*from guard_hook import (\([^)]*|[^\n(]*)\bdecide\b', re.M),
                          'decide comes from the guard')
 
 
@@ -916,7 +960,10 @@ class Group10NoReplicaTests(unittest.TestCase):
 
 CODEX_READ = ('.codex/hooks.json', '.codex/config.toml', 'projects/p/.codex/config.toml',
               'AGENTS.override.md', 'projects/p/AGENTS.override.md', '../.codex/config.toml',
-              '../AGENTS.override.md', 'projects/p/.git/HEAD', 'projects/p/.git')
+              '../AGENTS.override.md', 'projects/p/.git/HEAD', 'projects/p/.git',
+              # Codex loads repo skills from .agents/skills/ (review r1, F1).
+              '.agents/skills/x/SKILL.md', '.agents/skills/x/agents/openai.yaml',
+              'projects/p/.agents/skills/x/SKILL.md', '../.agents/skills/x/SKILL.md')
 
 
 class Group11ProtectionTests(WorkspaceCase):

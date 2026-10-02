@@ -15,7 +15,7 @@ walks from, and runs it with one mode argument (decision 0266):
 Codex blocks a call on exit 2 with a non-empty stderr, the convention the guard already uses.
 Everything else fails OPEN under Codex (an empty stderr, a crash, any other exit), so the only
 exits here are 0 and 2-with-text: anything that cannot be judged is refused (R-098; owner
-ruling 3A). This file holds no protected-path list and no shell rule of its own: every decision
+ruling 3A, decision 0058). That includes a guard that fails to import. This file holds no protected-path list and no shell rule of its own: every decision
 is `decide`'s, so the two harnesses cannot drift apart.
 
 Codex runs a shell command in a `workdir` it never tells the hook, so an allowed `Bash` call is
@@ -30,7 +30,11 @@ import re
 import shlex
 import subprocess
 import sys
-from guard_hook import decide, deny
+try:  # inside the fail-closed net: a guard that cannot import refuses in main() (decision 0266)
+    from guard_hook import decide, deny, UNREADABLE
+    IMPORT_FAILURE = None
+except BaseException as exc:  # SystemExit and KeyboardInterrupt included: nothing may exit 1
+    IMPORT_FAILURE = "%s: %s" % (type(exc).__name__, str(exc)[:200])
 
 GARS_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
@@ -54,9 +58,6 @@ PASS_TOOLS = (
     "wait_agent",                  # multi_agents_v2/wait.rs:24: waits for a sub-agent
 )
 
-UNREADABLE_CODEX = ("Blocked: the guard could not read this Codex tool call, so it cannot tell "
-                    "whether the call is safe (R-098; decision 0042). Next: retry the call; if "
-                    "this keeps happening, stop and report it.")
 PATCH_UNJUDGED = ("Blocked: the guard cannot judge this apply_patch call (%s), so it refuses it "
                   "(R-098; decisions 0042, 0266). Next: send one apply_patch call with "
                   "*** Begin Patch, Add/Update/Delete File entries naming workspace paths, and "
@@ -257,15 +258,26 @@ def patch_calls(command):
             calls.append(("Write", {"file_path": path,
                                     "content": "".join(l + "\n" for l in hunk["contents"])}))
         elif hunk["kind"] == "delete":
+            calls.append(("Unlink", path))
             calls.append(("Write", {"file_path": path, "content": ""}))
         else:
             old = "\n".join(l for c in hunk["chunks"] for l in c["old"])
             new = "\n".join(l for c in hunk["chunks"] for l in c["new"])
+            if hunk["move_path"] is not None:
+                calls.append(("Unlink", path))
             calls.append(("Edit", {"file_path": path, "old_string": old, "new_string": new}))
             if hunk["move_path"] is not None:
                 calls.append(("Write", {"file_path": check_path(hunk["move_path"]),
                                         "content": new}))
     return calls
+
+
+def refuse_link(path, cwd):
+    """Delete File and a Move's source remove the path itself, while the guard judges the file a
+    symlink points to (it resolves every path), so a link there is refused: judged by its
+    target, a link at a machine-owned place would pass (review r1, R1-4; decision 0266)."""
+    if os.path.islink(os.path.join(cwd, os.path.expanduser(path) if path.startswith("~/") else path)):
+        deny("Blocked: %s is a symbolic link; the guard judges the file it points to, but deleting or moving it acts on the link itself, so it cannot judge this entry (R-098; decision 0266). Next: leave the link in place and ask the human if it must be removed." % path)
 
 
 def guard_text(payload, root):
@@ -329,7 +341,7 @@ def run_bash(tool_input, cwd, root):
     else:
         decide(call, root)
     if not isinstance(command, str):
-        deny(UNREADABLE_CODEX)
+        deny(UNREADABLE)
     return {"hookSpecificOutput": {"hookEventName": "PreToolUse",
                                    "permissionDecision": "allow",
                                    "updatedInput": {"command": prefix + command}}}
@@ -338,35 +350,38 @@ def run_bash(tool_input, cwd, root):
 def run(payload, root):
     """Deny (exit 2), or return None (allow) or a dict (allow + the rewrite JSON to print)."""
     if not isinstance(payload, dict):
-        deny(UNREADABLE_CODEX)
+        deny(UNREADABLE)
     name = payload.get("tool_name")
     tool_input = payload.get("tool_input")
     cwd = payload.get("cwd")
     if not isinstance(name, str) or not name or not isinstance(tool_input, dict) \
             or not isinstance(cwd, str) or not os.path.isabs(cwd):
-        deny(UNREADABLE_CODEX)
+        deny(UNREADABLE)
     workdir = tool_input.get("workdir")  # not forwarded by Codex 0.154; joined if it ever is
     if workdir is not None:
         if not isinstance(workdir, str):
-            deny(UNREADABLE_CODEX)
+            deny(UNREADABLE)
         cwd = os.path.join(cwd, workdir) if workdir else cwd
     if name == "Bash":
         return run_bash(tool_input, cwd, root)
     if name == "apply_patch":
         command = tool_input.get("command")
         if not isinstance(command, str):
-            deny(UNREADABLE_CODEX)
+            deny(UNREADABLE)
         try:
             calls = patch_calls(command)
         except PatchError as exc:
             deny(PATCH_UNJUDGED % exc)
         for tool, guard_input in calls:
+            if tool == "Unlink":
+                refuse_link(guard_input, cwd)
+                continue
             decide({"tool_name": tool, "tool_input": guard_input, "cwd": cwd}, root)
         return None
     if name == "view_image":
         path = tool_input.get("path")
         if not isinstance(path, str) or not path:
-            deny(UNREADABLE_CODEX)
+            deny(UNREADABLE)
         if tool_input.get("environment_id"):  # view_image.rs:58-63: another executor's files
             deny("Blocked: this view_image names another environment's filesystem, which the guard cannot see (R-098; decision 0266). Next: view the image from this session's own workspace, without environment_id.")
         decide({"tool_name": "Read", "tool_input": {"file_path": path}, "cwd": cwd}, root)
@@ -399,6 +414,15 @@ def session_start():
 
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else ""
+    if IMPORT_FAILURE is not None:
+        text = ("Blocked: the GARS guard could not be loaded (%s), so it cannot tell whether the "
+                "call is safe (R-098; decision 0266). Next: stop and ask the human to restore "
+                "_system/guard_hook.py from the repository." % IMPORT_FAILURE)
+        if mode == "session-start":
+            print(json.dumps({"continue": False, "stopReason": text}))
+            sys.exit(0)
+        sys.stderr.write(text + "\n")
+        sys.exit(2)
     if mode == "session-start":
         session_start()
     try:
@@ -407,7 +431,7 @@ def main():
         try:
             payload = json.loads(sys.stdin.buffer.read().decode("utf-8"))
         except ValueError:  # includes UnicodeDecodeError
-            deny(UNREADABLE_CODEX)
+            deny(UNREADABLE)
         out = run(payload, GARS_ROOT)
         if out is not None:
             print(json.dumps(out))

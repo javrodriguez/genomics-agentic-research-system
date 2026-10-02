@@ -49,7 +49,9 @@ READ_ONLY = [
     ".codex/*", ".codex/**/*", "*/.codex/*",
     "AGENTS.override.md", "*/AGENTS.override.md",
     ".git", ".git/*", "*/.git", "*/.git/*",
-    "repo:.codex/*", "repo:AGENTS.override.md",
+    # Codex loads repository skills from `.agents/skills/` (decision 0266).
+    ".agents/*", ".agents/**/*", "*/.agents/*",
+    "repo:.codex/*", "repo:AGENTS.override.md", "repo:.agents/*",
     "AGENTS.md",
     "CLAUDE.md",
     "CONTEXT.md",
