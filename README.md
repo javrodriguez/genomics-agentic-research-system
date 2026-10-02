@@ -10,12 +10,12 @@ GARS lets an AI agent run real genomics pipelines inside a folder of written rul
 
 Built by Javier Rodríguez Hernáez, formerly Senior Bioinformatics Programmer at NYU Langone (2018–2026), now open to contract and full-time work in AI for science and genomics · [LinkedIn](https://www.linkedin.com/in/jrodriguezhernaez/) · [GitHub](https://github.com/javrodriguez)
 
-**[▶ Watch a recorded run](https://gars.javrodriguez.dev/demo/)** · [Check it in 5 minutes](#check-it-in-five-minutes) · [Try to break the rules](https://gars.javrodriguez.dev/try/) · [Evidence and limits](https://gars.javrodriguez.dev/evidence/) · [Install](https://gars.javrodriguez.dev/install/) · [Docs](docs/) · [Cite](CITATION.cff) · MIT
+**[▶ Watch a recorded session](https://gars.javrodriguez.dev/demo/)** (set-up on synthetic data) · [Check it yourself](#check-it-yourself) · [Try to break the rules](https://gars.javrodriguez.dev/try/) · [Evidence and limits](https://gars.javrodriguez.dev/evidence/) · [Install](https://gars.javrodriguez.dev/install/) · [Docs](docs/) · [Cite](CITATION.cff) · MIT
 
 ## The agent guides. Tested code computes. You decide.
 
-- **Code computes, not the model.** Pinned nf-core pipelines and GARS's tested scripts do the computing. A step completes only when code has checked what came back: a differential-expression table with its gene column missing fails, and the failure is recorded. Under Claude Code, in a session opened in the `gars/` folder, a guard checks every file and shell call the agent makes: the shell runs only GARS's registered tools and read-only commands, writes to the system's own files and machine-owned records are refused, and a call the guard cannot judge is refused. A project not declared public is closed to the guarded agent.
-- **You decide, on the record.** GARS never picks your reference or comparison; it offers menus built from your design, asks you to confirm exclusions, and stops on a design it can show is confounded. A custom analysis runs from a written plan bound to its exact bytes: the approval is recorded, and editing the plan afterwards voids it. Every stage adds a dated entry to the project's `HISTORY.md`, append-only by written rule and naming the model when the agent reports it; every output is recorded with its checksum, and a Methods paragraph is rendered from the run's own records, every line naming its source and "not recorded" written instead of a guess.
+- **Code computes, not the model.** Pinned nf-core pipelines and GARS's tested scripts do the computing; in a custom analysis, the agent's scripts run only from an approved plan and are bound to their bytes at submit. A step completes only when code has checked what came back: a differential-expression table with its gene column missing fails, and the failure is recorded. Under Claude Code, in a session opened in the `gars/` folder, a guard checks every file and shell call the agent makes: the shell runs only GARS's registered tools and read-only commands, writes to the system's own files and machine-owned records are refused, and a call the guard cannot judge is refused. A project not declared public is closed to the guarded agent.
+- **You decide, on the record.** GARS never picks your reference or comparison; it offers menus built by code (contrasts from your own design), asks you to confirm exclusions, and stops on a design it can show is confounded. A custom analysis runs from a written plan bound to its exact bytes: the approval is recorded, and editing the plan afterwards voids it. Every stage adds a dated entry to the project's `HISTORY.md`, append-only by written rule and naming the model when the agent reports it; every pipeline-stage output is recorded with its checksum, and a Methods paragraph is rendered from the run's own records, every line naming its source and "not recorded" written instead of a guess.
 - **Checked against the real world.** Outputs are scored against the authors' own deposits, and a failed replicate the paper's QC could not see was flagged. A silent fold-change error in an upstream library was found and reported. The agent itself is graded in pre-registered studies, published exactly as graded, misses included, with dated corrections beside the tables.
 
 ```mermaid
@@ -25,7 +25,7 @@ flowchart TB
     subgraph gov["Written rules · tested code · a guard on every file and shell call (Claude Code)"]
         direction LR
         s00["00 · register the data<br/><i>scripts; you confirm sample IDs</i>"] --> s01["01 · describe the design<br/><i>you write it; code checks it</i>"]
-        s01 --> s02["02 · run the pipelines<br/><i>you pick reference and contrast;<br/>a GARS wrapper runs nf-core</i>"]
+        s01 --> s02["02 · run the pipelines<br/><i>you pick reference and contrast;<br/>a GARS wrapper runs nf#8209;core</i>"]
         s02 -.-> s03["03 · plan, approve, analyse<br/><i>a written plan, approval bound to its bytes</i>"]
     end
     gov -->|"every stage appends"| files
@@ -37,17 +37,17 @@ flowchart TB
     end
 ```
 
-## Check it in five minutes
+## Check it yourself
 
-1. **Read what the agent may not do** (30 s): [the rules folder](https://gars.javrodriguez.dev/system/).
-2. **Try to break a rule** (60 s): [play the agent](https://gars.javrodriguez.dev/try/); GARS's real guard, at a pinned commit, answers allowed or denied in your browser, with no AI in the verdict.
-3. **Watch code refuse a confounded design** (60 s): the design check on [the same page](https://gars.javrodriguez.dev/try/).
-4. **Watch a person hold the science** (about 6 min from the start): [a recorded agent session](https://gars.javrodriguez.dev/replay/?scenario=03-human-gate&step=1) stops at the exclusion confirmation and waits.
-5. **Follow the failed replicate** (90 s): [a failed immunoprecipitation in GSE58638](docs/RESULTS.md#the-finding-a-failed-immunoprecipitation-in-the-published-data) that the paper's depth-only QC could not see; one command re-derives the deposit side from GEO, and [GitHub's runner re-ran it](https://github.com/javrodriguez/genomics-agentic-research-system/actions/runs/36795272678).
+1. **Read what the agent may not do**: [the rules folder](https://gars.javrodriguez.dev/system/).
+2. **Try to break a rule**: [play the agent](https://gars.javrodriguez.dev/try/); GARS's real guard, at a pinned commit, answers allowed or denied in your browser, with no AI in the verdict.
+3. **Watch code refuse a confounded design**: the design check on [the same page](https://gars.javrodriguez.dev/try/).
+4. **Watch the agent stop for a person** (opens at the gate): [a recorded agent session](https://gars.javrodriguez.dev/replay/?scenario=03-human-gate&step=6) stops at the exclusion confirmation and cannot go on without it.
+5. **Follow the failed replicate**: [a failed immunoprecipitation in GSE58638](docs/RESULTS.md#the-finding-a-failed-immunoprecipitation-in-the-published-data) that the paper's depth-only QC could not see; one command re-derives the deposit side from GEO, and [GitHub's runner re-ran it](https://github.com/javrodriguez/genomics-agentic-research-system/actions/runs/36795272678).
 
-**Where it's going.** AI agents can now run a genomics analysis fast; checking their work has not kept up, and GARS is built for the checking. Next, and not claimed until shown: the same rules navigated by other agents and models, with the outputs compared; analysis plans that record their assumptions and what would prove them wrong.
+**Where it's going.** AI agents can now run a genomics analysis fast; checking their work has not kept up, and GARS is built for the checking. Next, and not claimed until shown: other models on the same rules, with the outputs compared (a second agent, Codex, is in progress: [decision 0266](docs/decisions/0266-codex-adapter-one-guard-two-harnesses.md)); analysis plans that record their assumptions and what would prove them wrong.
 
-**Where code enforces, and where written rules govern.** Code enforces the completion gates, the design refusals, the guard on file and shell calls, and the byte binding of an approved plan. In stage 03 the agent writes the analysis scripts the approved plan names, and GARS checks the declared outputs exist. Written rules govern the rest: the plan approval, for one, is a rule the agent follows, not yet a lock it cannot reach ([decision 0042](docs/decisions/0042-a-call-the-guard-cannot-judge-is-refused.md)). GARS publishes where its own rules stop: [the Gap Study](docs/EVALS.md) measures how often each model still does the right thing where the rules are silent.
+**Where code enforces, and where written rules govern.** Code enforces the completion gates, the design refusals, the guard on file and shell calls, and the byte binding of an approved plan. In stage 03 the agent writes the analysis scripts the approved plan names, and GARS checks the declared outputs exist. Written rules govern the rest: the plan approval, for one, is a rule the agent follows, not yet a lock it cannot reach ([decision 0042](docs/decisions/0042-a-call-the-guard-cannot-judge-is-refused.md)). GARS publishes where its own rules stop: [the Gap Study](docs/EVALS.md) measures how often three Claude models still do the right thing where the rules are silent.
 
 **Scope, plainly.** GARS is a research prototype from one maintainer. Six of its seven assays have run live; methylation awaits its first live run. Three of six reproduction comparisons are scored so far. The scheduler is a setting (Slurm built in, plus a local mode); the published environment for the pipeline stage is Linux-only. See [Runs on](#runs-on) for what each agent gets. Checks and gates reduce risk; they do not make a result scientifically right, and the design and the interpretation stay with you. All the evidence is [below](#the-evidence-in-full).
 
@@ -69,8 +69,7 @@ through fixed message templates, and stops rather than improvising when inputs a
 
 ## The design premise
 
-A filesystem-native architecture for running reproducible bioinformatics workflows through an
-LLM agent, on HPC.
+A filesystem-native architecture for running bioinformatics workflows through an LLM agent, on an HPC cluster (Slurm) or locally.
 
 The premise: **the filesystem is the state machine, the LLM is the navigator.** Directory
 structure encodes workflow state, each stage is a written contract the agent executes literally,
@@ -84,7 +83,7 @@ system, follows the Interpretable Context Methodology (ICM) — Van Clief &amp; 
 
 **Evidence, if you want it before the design:**
 
-- **▶ [Try the interactive demo](https://gars.javrodriguez.dev/)** — step through recordings of real GARS runs (the contract-enforced refusal, the playable human gate) in your browser; no install.
+- **▶ [Try the interactive demo](https://gars.javrodriguez.dev/)** — step through recorded agent sessions on real GARS code with small synthetic data and no pipeline execution (the contract-enforced refusal, the playable human gate) in your browser; no install.
 - [docs/RESULTS.md](docs/RESULTS.md) — the reproduction campaign scored against what the original
   authors deposited, including a failed immunoprecipitation in published data that the paper's own
   depth-only QC could not have seen.
