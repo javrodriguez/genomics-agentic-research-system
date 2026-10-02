@@ -9,7 +9,7 @@ Workspace stage map: `CONTEXT.md`; helpers compute, contracts orchestrate.
 ## security policy
 Specification §9 in `../docs/specs/GARS_Unified_Master_Guideline_v1.0.1_FINAL.md`;
 current enforcement: `.claude/settings.json` (Claude Code), `.codex/hooks.json` (Codex) and `_system/guard_hook.py`; per-agent support: README "Runs on".
-No "# Project state" render in your context at session start means the guard is not loaded: stop and ask the human.
+No "# Project state" render at session start means the guard is not loaded, and a render alone does not prove it is: approve both hooks, or stop and ask the human.
 ## testing policy
 From the repository root: `python3 tests/run_tests.py` and
 `python3 tests/check_contracts.py`. From `gars/`, first `cd ..`.

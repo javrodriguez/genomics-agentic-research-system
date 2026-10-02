@@ -40,18 +40,18 @@ Review: a fresh-context reviewer grades the branch; its verdict and the review f
 ## Decision
 The following protected changes are approved under the owner's 23 September 2026 delegation, as they stand at the branch head, subject to the owner's yes in the slot above.
 
-1. **`gars/_system/guard_hook.py`**: `decide()` extracted with every check, its order and every message as at `c9fe683`, and `main()` reading stdin and calling it; the one guard-failed message held in `guard_failed()`; READ_ONLY gains `.codex/*`, `.codex/**/*`, `*/.codex/*`, `AGENTS.override.md`, `*/AGENTS.override.md`, `.git`, `.git/*`, `*/.git`, `*/.git/*`, `repo:.codex/*` and `repo:AGENTS.override.md`; PROTECTED_PREFIXES gains `.codex/`; `expand_tilde()`, applied to write targets and to the Read, Glob and Grep target before the existing inside-the-root checks (0266, item 5: a pre-existing hole on public main, closed here); one docstring sentence. Every other line is as at `c9fe683`.
-2. **`gars/_system/codex_hook.py`** (new): the Codex envelope 0266 items 2 and 3 describe; it defines no protected path and no shell rule, and every refusal carries one `Next:`.
+1. **`gars/_system/guard_hook.py`**: `decide()` extracted with every check, its order and every message as at `c9fe683`, and `main()` reading stdin and calling it; the one guard-failed message held in `guard_failed()`; READ_ONLY gains `.codex/*`, `.codex/**/*`, `*/.codex/*`, `AGENTS.override.md`, `*/AGENTS.override.md`, `.git`, `.git/*`, `*/.git`, `*/.git/*`, `.agents/*`, `.agents/**/*`, `*/.agents/*`, `repo:.codex/*`, `repo:AGENTS.override.md` and `repo:.agents/*`; PROTECTED_PREFIXES gains `.codex/`; `expand_tilde()`, applied to write targets and to the Read, Glob and Grep target before the existing inside-the-root checks (0266, item 5: a pre-existing hole on public main, closed here); one docstring sentence. Every other line is as at `c9fe683`.
+2. **`gars/_system/codex_hook.py`** (new): the Codex envelope 0266 items 2 and 3 describe, including its guard import inside the fail-closed net, the guard's own `UNREADABLE` text, and the refusal of a symbolic link at a Delete or a Move's source; it defines no protected path and no shell rule, and every refusal carries one `Next:`.
 3. **`gars/_system/tools/pins.py`**: `inventory()` adds every regular file under any `.codex` folder. Every other line is as at `c9fe683`.
 4. **`gars/_references/tool_pins.json`**: two entries of kind `harness_config`, `.codex/config.toml` sha256 `0b03c7a230c4746378fb8ec636e0567de9546b181e599d02e795fb98e8d43a2d` and `.codex/hooks.json` sha256 `1496ac91345f50c1b91dd58683a029090be47de0bee34c5e39b266877dfbd3f1`, both `reviewed`.
 5. **`gars/.claude/settings.json`**: the deny list mirrors each new READ_ONLY entry in its `Edit(...)` form (`repo:` as `../`).
 6. **`gars/.codex/hooks.json`** (new) and **`gars/.codex/config.toml`** (new): 0266 item 3.
-7. **`gars/AGENTS.md`**: the mission line names the binding rule and points to `CLAUDE.md`; the security policy names both harnesses' wiring and the no-render signal; ten headings, 32 lines.
+7. **`gars/AGENTS.md`**: the mission line names the binding rule and points to `CLAUDE.md`; the security policy names both harnesses' wiring and the render signal, including that a render alone does not prove the guard is loaded; ten headings, 32 lines.
 
 Outside the protected prefixes, recorded for completeness: the root `AGENTS.md`, `gars/tests/test_codex_adapter.py`, `gars/tests/test_refusal_messages.py`, `gars/tests/pilot_fixture.py`, 0266, this record, the index, `docs/architecture.md`, and the README and DEVELOPMENT texts and counts.
 
 ## What this does not close
-- 0266's "What this does not close", items 1 to 12.
+- 0266's "What this does not close", items 1 to 14.
 - The live Codex session: pending: Javier's CP3 run.
 - The smoke ceremony (row 14) for this `_system/` landing is not yet run; it runs at the final merge.
 
