@@ -57,6 +57,53 @@ PROSE = (
 )
 
 
+# Every line in the repository that quotes a published token figure, or the tables as a token source, as of this
+# correction. `--check` fails if a listed line no longer carries its text, so a moved line is noticed. None is
+# edited: each sits inside a finished round's folder, which is a record, and rounds 1 and 2 are also bound byte for
+# byte by the copy checks of rounds 2 and 3 (`copy_manifest.py --check`).
+CITED = (
+    ("evals/gap-study/COSTS.md", 21, "## Per take", "the per-take table"),
+    ("evals/gap-study/COSTS.md", 137, "## Pre-freeze walks", "the walks table"),
+    ("evals/gap-study/COSTS.md", 157, "5.5 to 6.4 M context tokens", "prose: a take of the earlier Layer B evaluation"),
+    ("evals/gap-study/COSTS.md", 161, "1.1 to 2.0 M context tokens", "prose: the first two walks"),
+    ("evals/gap-study/COSTS.md", 168, "## Per model", "the per-model table"),
+    ("evals/gap-study/COSTS.md", 201, "5.5 to 6.4 M context tokens", "prose: the same Layer B take"),
+    ("evals/gap-study/README.md", 43, "| `COSTS.md` | tokens by class", "names COSTS.md as the token record"),
+    ("evals/gap-study/language-allowlist.json", 23, "The 100 is the number of input tokens for one take",
+     "quotes one published input cell"),
+    ("evals/gap-study/verification/2026-09-12-95c4923.md", 945, "| input | cache read | cache write | output |",
+     "a verifier report quoting per-take rows"),
+    ("evals/gap-study/verification/2026-09-12-95c4923.md", 956, "| context tokens | output tokens |",
+     "a verifier report quoting the per-model rows"),
+    ("evals/gap-study/verification/2026-09-12-a463ed5.md", 946, "| input | cache read | cache write | output |",
+     "a verifier report quoting per-take rows"),
+    ("evals/gap-study/verification/2026-09-12-a463ed5.md", 959, "| context tokens | output tokens |",
+     "a verifier report quoting the per-model rows"),
+    ("evals/gap-study-2/COSTS.md", 11, "## Per take", "the per-take table"),
+    ("evals/gap-study-2/COSTS.md", 122, "## Pre-freeze walks", "the walks table"),
+    ("evals/gap-study-2/COSTS.md", 133, "## Per model", "the per-model table"),
+    ("evals/gap-study-2/verification/verifier-1.md", 374, "| input | cache read | cache write | output |",
+     "a verifier report quoting a per-take row"),
+    ("evals/gap-study-2/verification/verifier-1.md", 379, "| 23,665,927 | 260,712 |",
+     "a verifier report quoting the per-model rows"),
+    ("evals/gap-study-2/verification/verifier-2.md", 447, "| input | cache read | cache write | output |",
+     "a verifier report quoting a per-take row"),
+    ("evals/gap-study-2/verification/verifier-2.md", 451, "| context tokens | output tokens |",
+     "a verifier report quoting the per-model rows"),
+    ("evals/gap-study-3/COSTS.md", 11, "## Per take", "the per-take table"),
+    ("evals/gap-study-3/COSTS.md", 70, "## Pre-freeze walks", "the walks table"),
+    ("evals/gap-study-3/COSTS.md", 83, "## Per model", "the per-model table"),
+    ("evals/gap-study-3/language-allowlist.json", 16, "The hit is a token count, not a rate",
+     "quotes one published input cell"),
+    ("evals/gap-study-3/prereg.json", 2616, "exactly one hundred input tokens", "amendment 1 quotes the same cell"),
+    ("evals/gap-study-3/verification/verify-1.md", 210, "pattern `hundred`", "a verifier report on the same cell"),
+    ("evals/gap-study-3/verification/verify-2.md", 198, "exactly one hundred input", "a verifier report on the same cell"),
+    ("evals/gap-study-3/verification/verify-2.md", 204, "input column reads one hundre", "a verifier report on the same cell"),
+    ("evals/gap-study-3/verification/verify-3.md", 211, "line 27 of `COSTS.md", "a verifier report on the same cell"),
+    ("evals/gap-study-3/verification/verify-3.md", 217, "pattern `hundred`", "a verifier report on the same cell"),
+)
+
+
 class Disagreement(ValueError):
     """Two records of one call carry different usage; the reader will not pick one."""
 
@@ -246,11 +293,30 @@ def render(got, quoted):
         L.append("| %s | \"%s\" | %s | %s to %s M (%s) |" % (
             q["where"], q["quote"], " and ".join(_n(x) for x in q["pub"]), _m(min(q["call"])), _m(max(q["call"])),
             " and ".join(_n(x) for x in q["call"])))
+    L += ["", "## Where the published figures are cited", "",
+          "Each line below quotes a published token figure, or names the tables as the token record.",
+          "None is edited: each sits inside a finished round's folder, which is a record, and rounds 1 and 2 are "
+          "also bound byte for byte by the copy checks of rounds 2 and 3.",
+          "The input cell quoted as one hundred is the published figure for `confounded-design`, positive, "
+          "`claude-opus-5`, take 1, in round 1 and again in round 3; counted once per call it is %s and %s." % tuple(
+              _n(r["call"]["input_tokens"]) for study in ("gap-study", "gap-study-3") for r in got[study]["takes"]
+              if r["slot"] == ("confounded-design", "positive", "claude-opus-5", "1")),
+          "No page outside the three study folders (the README, `docs/`, `DEVELOPMENT.md`, the demonstration site) "
+          "quoted these figures before this correction; `docs/EVALS.md` now points here.", "",
+          "| where | what it quotes |", "|---|---|"]
+    L += ["| `%s:%d` | %s |" % (path, line, what) for path, line, _, what in CITED]
     L.append("")
     return "\n".join(L)
 
 
-def binding_problems(got, costs):
+def evals_sentence(got):
+    """The figures docs/EVALS.md quotes, as the reader derives them; --check finds them there verbatim."""
+    everything = [r for st in got.values() for r in st["takes"] + st["walks"]]
+    tp, tc = sum(_sum(everything, "pub").values()), sum(_sum(everything, "call").values())
+    return "published %s tokens, %s times the %s the calls used" % (_n(tp), _ratio(tp, tc), _n(tc))
+
+
+def binding_problems(got, costs, evals=None):
     """Every published figure on this page must be in that round's COSTS.md, as that file prints it."""
     out = []
     for study, s in got.items():
@@ -269,6 +335,14 @@ def binding_problems(got, costs):
             row = "| `%s` | %d | %s | %s |" % (m, v["takes"], _n(v["pub_ctx"]), _n(v["pub_out"]))
             if row not in text:
                 out.append("%s COSTS.md has no per-model row %s" % (study, row))
+    if evals is None:
+        evals = (REPO / "docs" / "EVALS.md").read_text()
+    if evals_sentence(got) not in evals:
+        out.append("docs/EVALS.md does not quote %r" % evals_sentence(got))
+    for path, line, needle, _ in CITED:
+        lines = (REPO / path).read_text().split("\n")
+        if len(lines) < line or needle not in lines[line - 1]:
+            out.append("%s:%d no longer carries %r" % (path, line, needle))
     for q in prose():
         if "%s to %s M context tokens" % (_m(min(q["pub"])), _m(max(q["pub"]))) != q["quote"]:
             out.append("the quoted range %r is not what its transcripts sum to" % q["quote"])

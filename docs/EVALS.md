@@ -5,6 +5,8 @@ That first sentence describes Layer B, the first study, further down this page; 
 
 **Validity, 30 September 2026.** Whether each of the Gap Study's six tasks measures what it says, and how its graders read against the Agentic Benchmark Checklist (Zhu et al. 2025), is argued task by task in [`docs/validity/`](validity/README.md), written by the build lane and signed by the owner ([decision 0217](decisions/0217-gap-study-validity-owner-sign-off.md)); no table on this page is regraded.
 
+**Token tables corrected, 2 October 2026.** The token tables in each Gap Study round's `COSTS.md` count usage records, not model calls: a reply written as several records (thinking, text, tool use) was counted once per record, so the three rounds' tables published 386,064,019 tokens, 1.98 times the 195,353,721 the calls used. The tables stand as published; each figure counted once per call, what is wrong in each table and every line that quotes them are in [`evals/gap-study-costs-by-call/CORRECTION-2026-10-02.md`](../evals/gap-study-costs-by-call/CORRECTION-2026-10-02.md) ([decision 0271](decisions/0271-gap-study-usage-tables-count-records-not-calls.md)). No grader, label, count, interval or result reads token usage, so no table on this page moves.
+
 # The Gap Study, round 2
 
 <!-- gap-study-2:summary -->

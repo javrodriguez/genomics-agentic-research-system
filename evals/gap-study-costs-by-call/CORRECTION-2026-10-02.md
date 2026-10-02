@@ -477,3 +477,42 @@ Published cells first, then the same cells counted once per call.
 |---|---|---|---|
 | evals/gap-study/COSTS.md, the walks note and the notes recorded before any take | "5.5 to 6.4 M context tokens" | 5,463,264 and 6,439,228 | 2.5 to 2.9 M (2,472,062 and 2,925,308) |
 | evals/gap-study/COSTS.md, the walks note | "1.1 to 2.0 M context tokens" | 1,079,829 and 2,029,550 | 0.4 to 0.8 M (425,129 and 773,958) |
+
+## Where the published figures are cited
+
+Each line below quotes a published token figure, or names the tables as the token record.
+None is edited: each sits inside a finished round's folder, which is a record, and rounds 1 and 2 are also bound byte for byte by the copy checks of rounds 2 and 3.
+The input cell quoted as one hundred is the published figure for `confounded-design`, positive, `claude-opus-5`, take 1, in round 1 and again in round 3; counted once per call it is 56 and 58.
+No page outside the three study folders (the README, `docs/`, `DEVELOPMENT.md`, the demonstration site) quoted these figures before this correction; `docs/EVALS.md` now points here.
+
+| where | what it quotes |
+|---|---|
+| `evals/gap-study/COSTS.md:21` | the per-take table |
+| `evals/gap-study/COSTS.md:137` | the walks table |
+| `evals/gap-study/COSTS.md:157` | prose: a take of the earlier Layer B evaluation |
+| `evals/gap-study/COSTS.md:161` | prose: the first two walks |
+| `evals/gap-study/COSTS.md:168` | the per-model table |
+| `evals/gap-study/COSTS.md:201` | prose: the same Layer B take |
+| `evals/gap-study/README.md:43` | names COSTS.md as the token record |
+| `evals/gap-study/language-allowlist.json:23` | quotes one published input cell |
+| `evals/gap-study/verification/2026-09-12-95c4923.md:945` | a verifier report quoting per-take rows |
+| `evals/gap-study/verification/2026-09-12-95c4923.md:956` | a verifier report quoting the per-model rows |
+| `evals/gap-study/verification/2026-09-12-a463ed5.md:946` | a verifier report quoting per-take rows |
+| `evals/gap-study/verification/2026-09-12-a463ed5.md:959` | a verifier report quoting the per-model rows |
+| `evals/gap-study-2/COSTS.md:11` | the per-take table |
+| `evals/gap-study-2/COSTS.md:122` | the walks table |
+| `evals/gap-study-2/COSTS.md:133` | the per-model table |
+| `evals/gap-study-2/verification/verifier-1.md:374` | a verifier report quoting a per-take row |
+| `evals/gap-study-2/verification/verifier-1.md:379` | a verifier report quoting the per-model rows |
+| `evals/gap-study-2/verification/verifier-2.md:447` | a verifier report quoting a per-take row |
+| `evals/gap-study-2/verification/verifier-2.md:451` | a verifier report quoting the per-model rows |
+| `evals/gap-study-3/COSTS.md:11` | the per-take table |
+| `evals/gap-study-3/COSTS.md:70` | the walks table |
+| `evals/gap-study-3/COSTS.md:83` | the per-model table |
+| `evals/gap-study-3/language-allowlist.json:16` | quotes one published input cell |
+| `evals/gap-study-3/prereg.json:2616` | amendment 1 quotes the same cell |
+| `evals/gap-study-3/verification/verify-1.md:210` | a verifier report on the same cell |
+| `evals/gap-study-3/verification/verify-2.md:198` | a verifier report on the same cell |
+| `evals/gap-study-3/verification/verify-2.md:204` | a verifier report on the same cell |
+| `evals/gap-study-3/verification/verify-3.md:211` | a verifier report on the same cell |
+| `evals/gap-study-3/verification/verify-3.md:217` | a verifier report on the same cell |

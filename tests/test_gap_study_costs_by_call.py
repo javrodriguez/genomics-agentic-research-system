@@ -135,6 +135,24 @@ class ThePage(unittest.TestCase):
         costs["gap-study-2"] = costs["gap-study-2"].replace("| 437,281 |", "| 437,282 |", 1)
         self.assertNotEqual(self.m.binding_problems(got, costs), [])
 
+    def test_the_figures_docs_evals_quotes_are_the_readers(self):
+        got = self.m.collect()
+        costs = {s: (REPO / "evals" / s / "COSTS.md").read_text() for s in self.m.STUDIES}
+        evals = (REPO / "docs" / "EVALS.md").read_text()
+        self.assertIn(self.m.evals_sentence(got), evals)
+        self.assertNotEqual(self.m.binding_problems(got, costs, evals.replace("195,353,721", "195,353,722")), [])
+
+    def test_a_cited_line_that_moved_fails(self):
+        got = self.m.collect()
+        costs = {s: (REPO / "evals" / s / "COSTS.md").read_text() for s in self.m.STUDIES}
+        path, line, needle, what = self.m.CITED[0]
+        saved = self.m.CITED
+        try:
+            self.m.CITED = ((path, line + 1, needle, what),) + saved[1:]
+            self.assertNotEqual(self.m.binding_problems(got, costs), [])
+        finally:
+            self.m.CITED = saved
+
     def test_every_round_and_every_table_is_covered(self):
         got = self.m.collect()
         self.assertEqual(sorted(got), sorted(self.m.STUDIES))
