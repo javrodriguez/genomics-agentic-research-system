@@ -301,11 +301,9 @@ def codex_path(path, cwd):
 
 def judged_paths(path, cwd):
     """The spellings an entry is judged under: as written (Claude Code's own verdict and text,
-    so parity holds), and as Codex resolves it. A "~" spelling stays as written only: the
-    guard expands it to the home directory and refuses it, which over-refuses Codex's literal
-    folder named "~" (decision 0266, item 14)."""
-    if path == "~" or path.startswith("~/"):
-        return [path]
+    so parity holds), and as Codex resolves it; refused if either is. A "~" spelling is judged
+    both ways too: as written the guard expands it to the home directory, and as Codex keeps
+    it, a literal folder named "~" (decision 0266, item 14; review r3, R3-1)."""
     lexical = codex_path(path, cwd)
     return [path] if lexical == path else [path, lexical]
 
@@ -314,7 +312,7 @@ def refuse_link(path, cwd):
     """Delete File and a Move's source remove the path itself, while the guard judges the file a
     symlink points to (it resolves every path), so a link there is refused: judged by its
     target, a link at a machine-owned place would pass (review r1, R1-4; decision 0266)."""
-    if os.path.islink(codex_path(os.path.expanduser(path) if path.startswith("~/") else path, cwd)):
+    if os.path.islink(codex_path(path, cwd)):
         deny("Blocked: %s is a symbolic link; the guard judges the file it points to, but deleting or moving it acts on the link itself, so it cannot judge this entry (R-098; decision 0266). Next: leave the link in place and ask the human if it must be removed." % path)
 
 

@@ -1070,6 +1070,16 @@ class Group11ProtectionTests(WorkspaceCase):
                     self.assertIn('inside the workspace root', verdict.first)
             self.assertFalse((ws.home / '.codex').exists())
 
+    def test_tilde_judged_where_codex_writes_it(self):
+        # Codex keeps "~" literal (utils/path-uri/src/lib.rs 442-444): with HOME inside the
+        # workspace the guard's home expansion alone would judge the wrong file (review r3, R3-1).
+        gars = self.ws.gars
+        home = gars / 'projects/p/h'
+        home.mkdir(parents=True, exist_ok=True)
+        verdict = codex_run(apply_patch(patch_text(add('~/../_system/x.py', ['x'])), gars), gars, home=home)
+        self.assertEqual(verdict.code, 2, verdict)
+        self.assertIn('Next:', verdict.err)
+
     def test_tilde_read_refused_both_envelopes(self):
         gars, home = self.ws.gars, self.ws.home
         for label, call in (
