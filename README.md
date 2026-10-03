@@ -10,7 +10,7 @@ GARS lets an AI agent run real genomics pipelines inside a folder of written rul
 
 Built by Javier Rodríguez Hernáez, formerly Senior Bioinformatics Programmer at NYU Langone (2018–2026), now open to contract and full-time work in AI for science and genomics · [LinkedIn](https://www.linkedin.com/in/jrodriguezhernaez/) · [GitHub](https://github.com/javrodriguez)
 
-**[▶ Watch a recorded session](https://gars.javrodriguez.dev/demo/)** (set-up on synthetic data) · [Check it yourself](#check-it-yourself) · [Try to break the rules](https://gars.javrodriguez.dev/try/) · [Evidence and limits](https://gars.javrodriguez.dev/evidence/) · [Install](https://gars.javrodriguez.dev/install/) · [Docs](docs/) · [Cite](CITATION.cff) · MIT
+**[▶ Watch a recorded session](https://gars.javrodriguez.dev/demo/)** (set-up on synthetic data) · [Check it yourself](#check-it-yourself) · [Try to break the rules](https://gars.javrodriguez.dev/try/) · [Evidence and limits](https://gars.javrodriguez.dev/evidence/) · [Install](https://gars.javrodriguez.dev/install/) · [Docs](docs/) · [Credits](#credits) · [Cite](CITATION.cff) · MIT
 
 ## The agent guides. Tested code computes. You decide.
 
@@ -76,6 +76,42 @@ structure encodes workflow state, each stage is a written contract the agent exe
 and scientific decisions stay with the human. That premise, carried through every layer of the
 system, follows the Interpretable Context Methodology (ICM) — Van Clief &amp; McDermott,
 [arXiv:2603.16021](https://arxiv.org/abs/2603.16021).
+
+---
+
+## Credits
+
+Two pieces of other people's work shaped GARS's design. (Its analysis also runs on
+other projects' tools, among them nf-core pipelines, Nextflow and PyDESeq2; see
+[Dependencies](#dependencies).)
+
+**The architecture: Interpretable Context Methodology (ICM).** Jake Van Clief and David McDermott,
+*Interpretable Context Methodology: Folder Structure as Agentic Architecture*,
+[arXiv:2603.16021](https://arxiv.org/abs/2603.16021) (2026). GARS takes its premise from ICM
+and the Model Workspace Protocol it presents, folder structure as agentic architecture, which
+GARS states as: the filesystem is the state
+machine and the LLM is the navigator. It carries that premise through every layer: numbered
+stage folders encode where a run stands, each stage is a written contract the agent executes
+literally, context is [layered](#architecture) so an agent loads only what the current task
+needs, and mechanical work goes to deterministic scripts, not the model
+([decision 0011](docs/decisions/0011-deterministic-artifacts-in-stages-00-01.md)).
+
+**The wrapper layer: [ClawBio](https://github.com/ClawBio/ClawBio).** ClawBio's open
+bioinformatics skills were GARS's first analysis layer: at launch GARS delegated its
+analysis to them, and its first RNA-seq runs on real data went through ClawBio's nf-core and
+differential-expression skills. GARS's own nf-core wrappers in `gars/_system/wrappers/` are
+modelled on ClawBio's. They carry over its wrappers' behavioural contract (preflight before
+submission, audited parameters, structured failure codes) in a smaller, single-file form
+([decision 0028](docs/decisions/0028-wrappers-are-thin-system-helpers.md)), and the
+differential-expression wrapper keeps the retired skill's output columns and its low-count
+filter ([decision 0029](docs/decisions/0029-the-clawbio-path-is-deprecated.md)). All of GARS's
+wrappers are its own code: they replaced ClawBio's skills in both RNA-seq sub-stages, and every
+sub-stage now runs on them. Running ClawBio's skills on real data also surfaced defects, which
+were reported upstream, and ClawBio fixed them, keeping only a rerun guard the report itself
+called defensible: [ClawBio#333](https://github.com/ClawBio/ClawBio/issues/333) ·
+[ClawBio#365](https://github.com/ClawBio/ClawBio/issues/365).
+
+To cite either, see the `references` in [CITATION.cff](CITATION.cff).
 
 ---
 

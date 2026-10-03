@@ -10,3 +10,24 @@ version: v0.10.0
 date-released: 2026-09-01
 repository-code: "https://github.com/javrodriguez/genomics-agentic-research-system"
 license: MIT
+references:
+  - type: article
+    title: "Interpretable Context Methodology: Folder Structure as Agentic Architecture"
+    authors:
+      - family-names: "Van Clief"
+        given-names: "Jake"
+      - family-names: "McDermott"
+        given-names: "David"
+    year: 2026
+    doi: "10.48550/arXiv.2603.16021"
+    url: "https://arxiv.org/abs/2603.16021"
+  - type: software
+    title: "ClawBio: Bioinformatics-Native AI Agent Skill Library"
+    authors:
+      - family-names: "Corpas"
+        given-names: "Manuel"
+        orcid: "https://orcid.org/0000-0002-4417-1018"
+    doi: "10.5281/zenodo.19420648"
+    url: "https://clawbio.ai"
+    repository-code: "https://github.com/ClawBio/ClawBio"
+    license: MIT
