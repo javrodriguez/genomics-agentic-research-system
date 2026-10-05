@@ -195,9 +195,12 @@ def plain(text):
     return bool(PLAIN.match(text)) and not text[:4].lower() == 'www.'
 
 
-def holds_path(texts):
+def holds_path(texts, role):
     """True when any text holds a path-like value, a storage URI among them."""
-    return any(path_like(flatten(text)) for text in texts)
+    try:
+        return any(path_like(flatten(text)) for text in texts)
+    except RecursionError:   # a value nested deeper than a JSON reader of this Python parses
+        raise Refusal(role + ' is nested too deeply')
 
 
 def get(node, *path):
@@ -694,7 +697,7 @@ def render(manifests, plan=None, approval=None, history=None):
         data = read(path, 'manifest %d' % k)
         manifest = load(data, 'manifest %d' % k)
         check_manifest(manifest, 'manifest %d' % k)
-        records.append(('manifest%d' % k, 'manifest %d' % k, data, holds_path(strings(manifest))))
+        records.append(('manifest%d' % k, 'manifest %d' % k, data, holds_path(strings(manifest), 'manifest %d' % k)))
         loaded.append(manifest)
     approved, entries = None, None
     if plan is not None:
@@ -706,12 +709,12 @@ def render(manifests, plan=None, approval=None, history=None):
         records += [('plan', 'plan', plan_bytes, False),
                     ('approval', 'approval record', approval_bytes,
                      not absent(approved.get('actor', MISSING)) or not absent(approved.get('plan_path', MISSING))
-                     or holds_path(strings(approved)))]
+                     or holds_path(strings(approved), 'approval record'))]
         if history is not None:
             history_bytes = read(history, 'history')
             history_text = decode(history_bytes, 'history')
             entries = history_entries(history_text)
-            records.append(('history', 'history', history_bytes, holds_path([history_text])))
+            records.append(('history', 'history', history_bytes, holds_path([history_text], 'history')))
 
     page = Page()
     for k, manifest in enumerate(loaded, 1):
