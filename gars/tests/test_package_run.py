@@ -492,6 +492,20 @@ class HarvestAndRender(PackageCase):
         self.assertNotIn(__import__('getpass').getuser(), record['secrets']['users'] if '/Users/' not in str(w.root)
                          and '/home/' not in str(w.root) else [])
 
+    def test_h3_8_a_user_name_the_records_carry_never_ships(self):
+        """The run's records name a home folder (not a shipped field); a lane note naming that user as a
+        word must refuse the render."""
+        w = self.world()
+        manifest = json.loads(w.manifest_path.read_text())
+        manifest['input_data_location']['dataset'] = '/home/fixture-q9/seqrun/atacseq'
+        w.manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
+        write(w.tolerances, json.dumps({'entries': [{
+            'stage': STAGE, 'members': ['run/results/multiqc/narrow_peak/multiqc_report.html'], 'mode': 'presence',
+            'origin': 'pass-1', 'cause': 'the report embeds its run time', 'evidence': 'read by fixture-q9'}]}))
+        self.assertEqual(w.harvest().returncode, 0)
+        self.assertIn('fixture-q9', json.loads((w.root / 'harvest/HARVEST.json').read_text())['secrets']['users'])
+        self.refused(w.render(), "a user name the run's records carry")
+
     def first_script_failed(self, w):
         adir = w.plan.parent
         qc = write(adir / 'qc.sh', 'exit 1\n')
