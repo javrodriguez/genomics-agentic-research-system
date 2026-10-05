@@ -1,0 +1,7 @@
+field	value	source
+repository	https://github.com/javrodriguez/genomics-agentic-research-system	supplied at packaging from genomics-agentic-research-system@<GARS_COMMIT>:CITATION.cff
+gars_commit	<GARS_COMMIT>	recorded at run: manifest field gars_commit
+template_version	v0.10.0	recorded at run: manifest field template_version
+package_run_commit	ffffffffffffffffffffffffffffffffffffffff	computed at harvest: the package_run.py checkout that ran harvest
+package_run_sha256	<PACKAGE_RUN_SHA256>	computed at harvest: sha256 of that package_run.py
+gars_clone_status	clean (git status --porcelain: 0 lines)	computed at harvest: git status of the GARS clone that ran

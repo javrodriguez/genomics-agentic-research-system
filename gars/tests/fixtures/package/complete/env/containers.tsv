@@ -1,0 +1,3 @@
+stage	process	image	image_source	digest	digest_source
+atacseq_bulk.01_nfcore-atacseq-wrapper	NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BWA_MEM	quay.io/biocontainers/bwa:0.7.17--hed695b0_7	recorded at run: manifest field containers[0].image	not recorded	recorded at run: manifest field containers[0].digest (absent)
+atacseq_bulk.01_nfcore-atacseq-wrapper	NFCORE_ATACSEQ:ATACSEQ:MULTIQC	quay.io/biocontainers/multiqc:1.13--pyhdfd78af_0	recorded at run: manifest field containers[1].image	not recorded	recorded at run: manifest field containers[1].digest (absent)
