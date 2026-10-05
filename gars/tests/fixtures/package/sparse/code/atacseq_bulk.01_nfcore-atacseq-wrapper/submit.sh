@@ -1,5 +1,5 @@
-# Masked copy written by package_run.py render: absolute paths, buckets and account ids are replaced (PROVENANCE.md);
-# the sha256 the run recorded is of the unmasked file and is not checkable from this package.
+# Masked copy written by package_run.py render: absolute paths, buckets and account ids are replaced (PROVENANCE.md).
+# The run recorded no sha256 of this file; harvest bound it by its input-key line, which the executor checks at submit.
 #!/bin/bash
 set -euo pipefail
 WS="<WORKSPACE>/gars"
@@ -11,3 +11,4 @@ nextflow run "<SCRATCH>/<TEST_ROOT>/w0/pipelines/atacseq-2.1.2" \
     -params-file "<WORKSPACE>/gars/projects/yeast/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/params.yaml" \
     -work-dir "s3://<BUCKET>/work/yeast-atacseq_bulk" \
     $RESUME
+# idempotency_key=<withheld: PROVENANCE.md, hash oracle>

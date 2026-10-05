@@ -79,11 +79,12 @@ class World(object):
             shutil.copytree(str(GARS / name), str(self.clone / 'gars' / name),
                             ignore=shutil.ignore_patterns('__pycache__'))
         shutil.copyfile(str(REPO / 'CITATION.cff'), str(self.clone / 'CITATION.cff'))
-        write(self.clone / '.gitignore', 'gars/projects/*/\n__pycache__/\n.gars-approvals/\n')
+        shutil.copyfile(str(REPO / '.gitignore'), str(self.clone / '.gitignore'))   # the repository's own (h1 H10)
         git(self.clone, 'init', '-q')
         git(self.clone, 'add', '-A')
         git(self.clone, 'commit', '-q', '-m', 'fixture clone')
         self.commit = git(self.clone, 'rev-parse', 'HEAD')
+        self.lane = None
         checkout = root / 'pipelines' / 'atacseq-2.1.2'
         write(checkout / 'main.nf', 'workflow {}\n')
         git(checkout, 'init', '-q')
@@ -196,6 +197,8 @@ class World(object):
             'template_version': 'v0.10.0', 'threads': 4, 'venue': 'local',
             'workflow_name': 'nfcore-atacseq-wrapper', 'workflow_version': '2.1.2', 'wrapper': 'atacseq_bulk'}
         manifest['idempotency_key'] = wl.input_key(self.stage, manifest)
+        with submit.open('a') as handle:   # as wrapperlib.write_reproducibility leaves it
+            handle.write('# idempotency_key=' + manifest['idempotency_key'] + '\n')
         self.manifest_path = write(self.stage / 'reproducibility' / 'manifest.json',
                                    json.dumps(manifest, indent=2, sort_keys=True))
         if stage03:
@@ -216,7 +219,7 @@ class World(object):
         write(adir / '.gars_submissions.jsonl', json.dumps({
             'script': str(script), 'script_sha256': sha(script.read_bytes()),
             'launcher': str(launcher), 'launcher_sha256': sha(launcher.read_bytes()),
-            'job_id': '4242', 'executor': 'local'}) + '\n')
+            'job_id': '4242', 'executor': 'local', 'submitted_at': 1791550800.0}) + '\n')   # 2026-10-09T13:00Z
         store = self.clone / '.gars-approvals'
         store.mkdir(mode=0o700)
         identity = str(plan.resolve())
@@ -239,7 +242,8 @@ class World(object):
 
     def harvest(self, out='harvest', extra=()):
         return run([sys.executable, TOOL, 'harvest', '--gars', self.clone, '--project', self.project,
-                    '--lane-commit', LANE, '--out', self.root / out] + list(extra), env=self.env)
+                    '--lane-commit', self.lane or self.commit, '--out', self.root / out] + list(extra),
+                   env=self.env)
 
     def render(self, harvest='harvest', out='package', env=None):
         return run([sys.executable, TOOL, 'render', '--harvest', self.root / harvest, '--gars-repo', self.clone,
@@ -324,6 +328,113 @@ class HarvestAndRender(PackageCase):
                 damage(w)
                 self.refused(w.harvest(), words)
                 self.assertFalse((w.root / 'harvest').exists())
+
+    def test_review_h1_harvest_refusals(self):
+        """Each case is one finding of the harvest-only review r1, reproduced as the reviewer did."""
+        cases = {
+            'H1 commands.sh edited': ('commands.sh is not the file the run recorded', {}, lambda w: write(
+                w.stage / 'reproducibility/commands.sh',
+                (w.stage / 'reproducibility/commands.sh').read_text() + 'echo NOT-WHAT-RAN\n')),
+            'H1 submit.sh edited': ('exactly the recorded input-key line', {}, self.edit_submit),
+            'H2 a linked folder': ('linked folder', {}, self.link_a_folder),
+            'H3 re-approved after the run': ('not in force when', {'stage03': True}, self.reapprove),
+            'H4 an output link to an absolute path': ('a link to an absolute path', {}, self.absolute_link),
+            'H5 the samplesheet shifted into the config': ('samplesheet_sha256 differs', {}, self.shift_row),
+            'H6 a skip-worktree edit in GARS': ('skip-worktree', {}, self.skip_worktree),
+            'H6 an untracked file in the pipeline': ('patched at run', {}, lambda w: write(
+                w.checkout / 'bin' / 'samtools', '#!/bin/sh\n')),
+            'H7 scripts/ under stage01-v1': ('bound by no input key', {}, lambda w: write(
+                w.stage / 'scripts' / 'helper.py', 'print(1)\n')),
+            'H8 a controlled stage 03 project': ('not public', {'stage03': True}, self.controlled_dataset),
+        }
+        for name, (words, options, damage) in sorted(cases.items()):
+            with self.subTest(name):
+                w = self.world(**options)
+                damage(w)
+                self.refused(w.harvest(), words)
+                self.assertFalse((w.root / 'harvest').exists())
+
+    def test_a_replay_linked_config_is_harvested_by_its_bytes(self):
+        w = self.world()
+        config = w.project / '_config' / 'nextflow.awsbatch.config'
+        elsewhere = write(w.root / 'replayed' / 'nextflow.awsbatch.config', config.read_bytes())
+        config.unlink()
+        os.symlink(str(elsewhere), str(config))
+        self.assertEqual(w.harvest().returncode, 0)
+        record = json.loads((w.root / 'harvest/HARVEST.json').read_text())
+        self.assertEqual([l['path'] for l in record['links']], ['_config/nextflow.awsbatch.config'])
+        self.assertEqual(w.render().returncode, 0)
+
+    def test_h9_a_lane_commit_that_did_not_run_is_refused_at_render(self):
+        w = self.world()
+        w.lane = 'e' * 40
+        self.assertEqual(w.harvest().returncode, 0)
+        self.refused(w.render(), 'is not in the GARS repository')
+        w.lane = w.commit
+        git(w.clone, 'checkout', '-q', '-b', 'other-lane')   # a lane commit off to the side; HEAD comes back
+        write(w.clone / 'gars/_system/claims/package_run.py', '# another file\n')
+        git(w.clone, 'commit', '-q', '-am', 'another package_run')
+        w.lane = git(w.clone, 'rev-parse', 'HEAD')
+        git(w.clone, 'checkout', '-q', w.commit)
+        self.assertEqual(w.harvest(out='h2').returncode, 0)
+        self.refused(w.render(harvest='h2'), 'is not the file at the lane commit')
+
+    @staticmethod
+    def edit_submit(w):
+        path = w.stage / 'submit.sh'
+        write(path, path.read_text().replace('    $RESUME', '    --skip_trimming true $RESUME'))
+        lines = [l for l in path.read_text().splitlines() if not l.startswith('# idempotency_key=')]
+        write(path, '\n'.join(lines) + '\n')
+
+    @staticmethod
+    def link_a_folder(w):
+        target = write(w.root / 'elsewhere' / 'x.csv', 'x\n').parent
+        os.symlink(str(target), str(w.project / '01_samplesheets' / 'linked'))
+
+    @staticmethod
+    def reapprove(w):
+        write(w.plan, '# Plan\n\nAnother plan.\n')
+        store = w.clone / '.gars-approvals'
+        for old in store.iterdir():
+            old.unlink()
+        identity = str(w.plan.resolve())
+        write(store / (sha(identity.encode('utf-8')) + '.json'), json.dumps({
+            'actor': ACTOR, 'expiry': '2026-10-13T12:00:00Z', 'plan_path': identity,
+            'plan_sha256': sha(w.plan.read_bytes()), 'timestamp': '2026-10-12T12:00:00Z'}, sort_keys=True))
+
+    @staticmethod
+    def absolute_link(w):
+        peaks = w.stage / 'run/results/bwa/merged_library/macs2/narrow_peak'
+        os.symlink('/opt/private-lab/refs/genome.fa', str(peaks / 'genome.fa'))
+        manifest = json.loads(w.manifest_path.read_text())
+        rows = [{k: r[k] for k in ('type', 'role', 'path')} for r in __import__('resolve_artifact').read_outputs(
+            w.stage / 'OUTPUTS.tsv')[0]]
+        write(w.stage / 'OUTPUTS.tsv', '# type\trole\tpath\n' + ''.join('%s\t%s\t%s\n' % (r['type'], r['role'], r['path'])
+                                                                       for r in rows))
+        manifest['outputs'] = wl.complete_output_index(w.stage)
+        w.manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
+
+    @staticmethod
+    def shift_row(w):
+        sheet = w.project / '01_samplesheets/atacseq_bulk_samplesheet.csv'
+        config = w.project / '_config/atacseq_bulk.yaml'
+        lines = sheet.read_text().splitlines(True)
+        write(sheet, ''.join(lines[:-1]))
+        write(config, lines[-1] + config.read_text())
+
+    @staticmethod
+    def skip_worktree(w):
+        path = w.clone / 'gars/_system/wrapperlib.py'
+        write(path, path.read_text() + '\n# edited\n')
+        git(w.clone, 'update-index', '--skip-worktree', 'gars/_system/wrapperlib.py')
+
+    @staticmethod
+    def controlled_dataset(w):
+        write(w.project / '00_data' / 'dataset.tsv', 'purpose\tdata_class\nfixture\tcontrolled\n')
+        manifest = json.loads(w.manifest_path.read_text())
+        manifest['data_class'] = 'public'
+        w.manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
+        shutil.rmtree(str(w.project / '02_bioinformatics'))
 
     @staticmethod
     def edit_params(w):

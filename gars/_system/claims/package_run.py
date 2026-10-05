@@ -153,15 +153,28 @@ def copy_file(source, target):
     shutil.copyfile(str(source), str(target))
 
 
-def copy_tree(source, target):
-    if source.is_symlink() or not source.is_dir():
+def copy_tree(source, target, links=None):
+    """Regular files under `source`. With `links` (a list), a linked FILE is copied by its target's
+    bytes and noted there, as a replay links _config/ and 01_samplesheets/ (0251); without it a link
+    is refused, never skipped in silence (review h1 H2). A linked folder is always refused."""
+    if source.is_symlink():
+        raise Refusal('%s is a link; harvest copies real folders only' % source.name)
+    if not source.is_dir():
         return
     for folder, dirs, files in os.walk(str(source), followlinks=False):
-        dirs[:] = sorted(d for d in dirs if not os.path.islink(os.path.join(folder, d)))
+        for d in dirs:
+            if os.path.islink(os.path.join(folder, d)):
+                raise Refusal('%s holds a linked folder (%s)' % (source.name, d))
+        dirs.sort()
         for name in sorted(files):
             path = Path(folder) / name
-            if not path.is_symlink() and path.is_file():
-                copy_file(path, target / path.relative_to(source))
+            rel = path.relative_to(source)
+            if path.is_symlink():
+                if links is None or not path.is_file():
+                    raise Refusal('%s holds a link (%s) harvest will not follow' % (source.name, rel.as_posix()))
+                links.append((source.name + '/' + rel.as_posix(), os.readlink(str(path))))
+            if path.is_file():
+                copy_file(path, target / rel)
 
 
 def params_yaml_values(path):
@@ -198,9 +211,55 @@ def checkout_unpatched(manifest, role):
     head = git(checkout, 'rev-parse', 'HEAD').decode('ascii').strip()
     if head != manifest.get('pipeline_commit'):
         raise Refusal('%s: the pipeline checkout is not at the recorded commit' % role)
-    if git(checkout, 'status', '--porcelain', '--untracked-files=no').strip():
+    if git(checkout, 'status', '--porcelain', '--untracked-files=all').strip() or hidden_edits(checkout):
         raise Refusal('%s: the pipeline checkout was patched at run; -r <commit> would not be the '
                       'code that ran' % role)
+
+
+def hidden_edits(repo):
+    """Files git status cannot see changed: skip-worktree (S) or assume-unchanged (a lowercase tag)."""
+    for line in git(repo, 'ls-files', '-v').decode('utf-8', 'replace').splitlines():
+        if line[:1] == 'S' or line[:1].islower():
+            return True
+    return False
+
+
+KEY_LINE = re.compile(r'^# idempotency_key=([0-9a-f]+)$', re.M)
+
+
+def check_commands(stage, manifest, role):
+    """The run's command files are shipped as the code that ran, so each is bound first (review h1
+    H1): commands.sh by its recorded sha256, submit.sh by the one input-key line prepare writes and
+    the executor checks at submit (executorlib.prepared_key)."""
+    command = manifest.get('command') or {}
+    path = stage / 'reproducibility' / 'commands.sh'
+    if not path.is_file() or sha256_file(path) != command.get('sha256'):
+        raise Refusal('%s: reproducibility/commands.sh is not the file the run recorded (sha256 differs)' % role)
+    submit = stage / 'submit.sh'
+    if not submit.is_file() or submit.is_symlink():
+        raise Refusal('%s: submit.sh is missing' % role)
+    keys = KEY_LINE.findall(submit.read_text(encoding='utf-8'))
+    if keys != [manifest.get('idempotency_key')]:
+        raise Refusal('%s: submit.sh does not carry exactly the recorded input-key line' % role)
+
+
+def check_project_inputs(project, target, manifest, role):
+    """The harvested copies render ships, re-hashed against the run's record (review h1 H2, H5): the
+    samplesheet and the assay config by their recorded sha256, the executor config by its
+    execution_config entry. The input key alone does not frame the samplesheet from the config."""
+    inputs = manifest.get('inputs') or {}
+    for label, folder in (('samplesheet', '01_samplesheets'), ('config', '_config')):
+        if label not in inputs:
+            continue
+        copy = target / folder / Path(inputs[label]).name
+        if not copy.is_file() or sha256_file(copy) != manifest.get(label + '_sha256'):
+            raise Refusal('%s: the project\'s %s is not the one the run recorded (%s_sha256 differs)'
+                          % (role, label, label))
+    for entry in manifest.get('execution_config') or []:
+        if entry.get('role') == 'nextflow_config':
+            copy = target / '_config' / Path(entry['path']).name
+            if not copy.is_file() or sha256_file(copy) != entry.get('sha256'):
+                raise Refusal('%s: the project\'s executor config is not the one the run recorded' % role)
 
 
 def samplesheet_inputs(sheet, stage_id):
@@ -209,6 +268,8 @@ def samplesheet_inputs(sheet, stage_id):
     found = []
     for r, row in enumerate(rows[1:], 1):
         for c, value in enumerate(row):
+            if c >= len(rows[0]):
+                raise Refusal('samplesheet row %d is longer than its header' % r)
             if value.startswith('/') and Path(value).is_file():
                 found.append({'stage': stage_id, 'row': r, 'column': rows[0][c], 'file': Path(value).name,
                               'path': value, 'sha256': sha256_file(value), 'size': Path(value).stat().st_size})
@@ -242,15 +303,20 @@ def harvest(args):
     if porcelain.strip():
         raise Refusal('the GARS clone is not clean (git status --porcelain: %d lines)'
                       % len(porcelain.strip().splitlines()))
+    if hidden_edits(gars):
+        raise Refusal('the GARS clone is not clean (a file is flagged skip-worktree or assume-unchanged)')
     stages, members, inputs, texts = [], [], [], []
     temp = Path(tempfile.mkdtemp(prefix='.harvest-', dir=str(out.parent if out.parent.is_dir() else '.')))
     try:
         target = temp / 'project'
+        links = []
         for rel in PROJECT_COPY:
             source = project / rel
             if source.is_dir():
-                copy_tree(source, target / rel)
+                copy_tree(source, target / rel, links)
             elif source.is_file():
+                if source.is_symlink():
+                    links.append((rel, os.readlink(str(source))))
                 copy_file(source, target / rel)
         for manifest_path in sorted(project.glob('02_bioinformatics/*/*/reproducibility/manifest.json')):
             stage = manifest_path.parent.parent
@@ -273,12 +339,25 @@ def harvest(args):
             if (stage / 'params.yaml').is_file() and params_yaml_values(stage / 'params.yaml') != manifest.get('params'):
                 raise Refusal('%s: params.yaml does not hold the recorded params' % role)
             checkout_unpatched(manifest, role)
+            check_commands(stage, manifest, role)
+            check_project_inputs(project, target, manifest, role)
             for name in STAGE_COPY:
                 if (stage / name).is_file():
                     copy_file(stage / name, target / rel / name)
             for tree in STAGE_TREES:
+                if tree == 'scripts' and os.path.lexists(str(stage / 'scripts')) and \
+                        manifest.get('key_formula') != 'downstream-v2':
+                    if (stage / 'scripts').is_dir() and not (stage / 'scripts').is_symlink() and \
+                            not os.listdir(str(stage / 'scripts')):
+                        continue
+                    raise Refusal('%s: scripts/ is bound by no input key under %s; it cannot ship as the '
+                                  'code that ran' % (role, manifest.get('key_formula')))
                 copy_tree(stage / tree, target / rel / tree)
             for output in manifest.get('outputs') or []:
+                for link in output.get('symlinks') or []:
+                    if os.path.isabs(str(link.get('target'))):
+                        raise Refusal('%s: output %s holds a link to an absolute path, which the record would '
+                                      'publish' % (role, output['path']))
                 listed = ([('.', output['sha256'])] if output.get('members') is None else
                           [(m['path'], m['sha256']) for m in output['members']])
                 for member, digest in listed:
@@ -295,7 +374,13 @@ def harvest(args):
                 inputs += samplesheet_inputs(Path(sheet), rel)
             stages.append({'kind': '02', 'rel': rel, 'group4_absent': g4})
         actors = set()
-        for plan in sorted(project.glob('03_custom_analysis/*/PLAN.md')):
+        plans = sorted(project.glob('03_custom_analysis/*/PLAN.md'))
+        if plans:
+            dataset = wl.dataset_record(project)
+            if dataset.get('data_class') != 'public':
+                raise Refusal('the project\'s dataset record names data_class %r, not public'
+                              % dataset.get('data_class'))
+        for plan in plans:
             stage, actor = harvest_analysis(plan, project, gars, target, render_methods)
             stages.append(stage)
             if isinstance(actor, str) and actor.strip():
@@ -316,6 +401,7 @@ def harvest(args):
             'format': HARVEST_FORMAT, 'project': project.name, 'gars_commit': gars_commit,
             'gars_clean': True, 'package_run': {'commit': args.lane_commit,
                                                 'sha256': sha256_file(Path(__file__).resolve())},
+            'links': [{'path': p, 'target_masked_at_render': True} for p, _ in sorted(links)],
             'stages': stages, 'members': members, 'inputs': inputs, 'prefixes': prefixes,
             'secrets': {'buckets': buckets, 'accounts': accounts, 'actors': sorted(actors),
                         'users': [getpass.getuser()]}}
@@ -330,6 +416,12 @@ def harvest(args):
     print('harvest: %d stages, %d output members (%d copied), %d input files -> %s'
           % (len(stages), len(members), sum(1 for m in members if m['copied']), len(inputs), out))
     return 0
+
+
+def utc_epoch(text):
+    import datetime
+    stamp = datetime.datetime.strptime(str(text), '%Y-%m-%dT%H:%M:%SZ')
+    return (stamp - datetime.datetime(1970, 1, 1)).total_seconds()
 
 
 def harvest_analysis(plan, project, gars, target, render_methods):
@@ -348,17 +440,27 @@ def harvest_analysis(plan, project, gars, target, render_methods):
         render_methods.check_approval(approval, plan.read_bytes())
     except render_methods.Refusal as exc:
         raise Refusal('%s: %s (R-073)' % (rel, exc))
-    entries = executorlib._analysis_entries(adir)
-    if not entries:
-        raise Refusal('%s: no submission record' % rel)
-    scripts = []
-    for entry in executorlib._analysis_latest(entries).values():
-        for kind in ('script', 'launcher'):
-            path = Path(entry[kind]).resolve()
-            path.relative_to(adir.resolve())
-            if executorlib._sha256(path) != entry[kind + '_sha256']:
-                raise Refusal('%s: %s sha256 changed since submit' % (rel, kind))
-            scripts.append(path.relative_to(adir.resolve()).as_posix())
+    try:
+        approved_at = utc_epoch(approval.get('timestamp'))
+        expires_at = utc_epoch(approval.get('expiry'))
+        entries = executorlib._analysis_entries(adir)
+        if not entries:
+            raise Refusal('%s: no submission record' % rel)
+        scripts = []
+        for entry in executorlib._analysis_latest(entries).values():
+            submitted = entry.get('submitted_at')
+            # The approval must have been in force when the script ran, not only now (review h1 H3).
+            if type(submitted) not in (int, float) or not approved_at <= submitted < expires_at:
+                raise Refusal('%s: the approval record in the store was not in force when %s was submitted'
+                              % (rel, Path(str(entry.get('script'))).name))
+            for kind in ('script', 'launcher'):
+                path = Path(entry[kind]).resolve()
+                path.relative_to(adir.resolve())
+                if executorlib._sha256(path) != entry[kind + '_sha256']:
+                    raise Refusal('%s: %s sha256 changed since submit' % (rel, kind))
+                scripts.append(path.relative_to(adir.resolve()).as_posix())
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise Refusal('%s: the submission record cannot be checked (%s)' % (rel, type(exc).__name__))
     for name in sorted(set(scripts)) + ['PLAN.md', 'OUTPUTS.tsv', executorlib.ANALYSIS_SUBMISSIONS]:
         if (adir / name).is_file():
             copy_file(adir / name, target / rel / name)
@@ -539,12 +641,19 @@ class Render(object):
             {'field': 'gars_commit', 'value': self.commit, 'source': run_label('gars_commit')},
             {'field': 'template_version', 'value': self.gars_values(stages02), 'source': run_label('template_version')},
             {'field': 'package_run_commit', 'value': self.record['package_run']['commit'],
-             'source': HARVEST + ': the package_run.py checkout that ran harvest'},
+             'source': HARVEST + ': named at harvest; the sha256 below equals that commit\'s package_run.py'},
             {'field': 'package_run_sha256', 'value': self.record['package_run']['sha256'],
              'source': HARVEST + ': sha256 of that package_run.py'},
             {'field': 'gars_clone_status', 'value': 'clean (git status --porcelain: 0 lines)',
              'source': HARVEST + ': git status of the GARS clone that ran'},
         ]
+        lane = self.record['package_run']
+        try:
+            ran = sha256_bytes(git(self.repo, 'show', '%s:gars/_system/claims/package_run.py' % lane['commit']))
+        except Refusal:
+            raise Refusal('the lane commit harvest named (%s) is not in the GARS repository' % lane['commit'][:12])
+        if ran != lane['sha256']:
+            raise Refusal('the package_run.py that ran harvest is not the file at the lane commit it named')
         self.pkg.add('code/GARS.txt', tsv(('field', 'value', 'source'), rows))
         workspace = self.show('gars/_system/workspace.py').decode('utf-8')
         legacy = re.search(r'^NEXTFLOW_LEGACY_PARSER = \{([^}]*)\}', workspace, re.M)
@@ -586,8 +695,14 @@ class Render(object):
                     text = path.read_text(encoding='utf-8')
                     self.mark_oracle(text)
                     note = ('# Masked copy written by package_run.py render: absolute paths, buckets and '
-                            'account ids are replaced (PROVENANCE.md);\n# the sha256 the run recorded is of '
-                            'the unmasked file and is not checkable from this package.\n')
+                            'account ids are replaced (PROVENANCE.md).\n' +
+                            ('# The sha256 the run recorded is of the unmasked file and is not checkable '
+                             'from this package.\n' if name.endswith('commands.sh') else
+                             '# The run recorded no sha256 of this file; harvest bound it by its input-key '
+                             'line, which the executor checks at submit.\n'))
+                    # The input-key line prepare appends is an oracle (it hashes files holding masked
+                    # values), so it ships withheld, like the key itself in records/.
+                    text = KEY_LINE.sub('# idempotency_key=<withheld: PROVENANCE.md, hash oracle>', text)
                     self.pkg.add('code/%s/%s' % (s['id'], Path(name).name), note + self.masked(text, name))
             scripts = self.project / s['rel'] / 'scripts'
             for path in sorted(scripts.rglob('*')) if scripts.is_dir() else []:
