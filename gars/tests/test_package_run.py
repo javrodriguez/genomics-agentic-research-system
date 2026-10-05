@@ -582,15 +582,39 @@ class Verify(PackageCase):
                 self.assertIn(words, proc.stdout.decode())
 
     def test_a_changed_cross_link_fails_even_with_resummed_files(self):
-        w, package = self.built()
-        path = package / 'code/pipelines.tsv'
-        write(path, path.read_text().replace(w.pipeline_commit, 'a' * 40))
-        sums = ''.join('%s  %s\n' % (sha(p.read_bytes()), p.relative_to(package).as_posix())
-                       for p in sorted(package.rglob('*')) if p.is_file() and p.name != 'SHA256SUMS')
-        write(package / 'SHA256SUMS', sums)
-        proc = run([sys.executable, package / 'verify.py'])
-        self.assertEqual(proc.returncode, 1)
-        self.assertIn('does not carry the pipeline commit', proc.stdout.decode())
+        def edit(rel, old, new, count=1):
+            def apply(w, package):
+                path = package / rel
+                text = path.read_text()
+                self.assertIn(old, text)
+                write(path, text.replace(old, new, count))
+            return apply
+        small = 'outputs/small/%s/bwa/merged_library/macs2/narrow_peak/consensus/consensus_peaks.mLb.clN.saf' % STAGE
+        cases = {
+            'the GARS commit': ('gars_commit differs', lambda w, p: edit(
+                'code/GARS.txt', 'gars_commit\t' + w.commit, 'gars_commit\t' + 'a' * 40)(w, p)),
+            'the pipeline commit': ('does not carry the pipeline commit',
+                                    lambda w, p: edit('code/pipelines.tsv', w.pipeline_commit, 'a' * 40)(w, p)),
+            'the release': ('does not carry the pipeline commit', edit('code/pipelines.tsv', '\t2.1.2\t', '\t2.1.3\t')),
+            'the executor config': ('not the executor config', edit('env/run-executor.config', 'maxRetries    = 3',
+                                                                    'maxRetries    = 4')),
+            'an output hash': ('does not list exactly the members', lambda w, p: edit(
+                'outputs/outputs.tsv', sha((w.stage / 'run/results/multiqc/narrow_peak/multiqc_report.html').read_bytes()),
+                'b' * 64)(w, p)),
+            'a small table': ('is not a recorded member', edit(small, 'peak1', 'peak2')),
+            'the Methods citation': ('METHODS.md does not cite', lambda w, p: edit(
+                'METHODS.md', w.commit, 'c' * 40, -1)(w, p)),
+        }
+        for name, (words, damage) in sorted(cases.items()):
+            with self.subTest(name):
+                w, package = self.built()
+                damage(w, package)
+                sums = ''.join('%s  %s\n' % (sha(p.read_bytes()), p.relative_to(package).as_posix())
+                               for p in sorted(package.rglob('*')) if p.is_file() and p.name != 'SHA256SUMS')
+                write(package / 'SHA256SUMS', sums)
+                proc = run([sys.executable, package / 'verify.py'])
+                self.assertEqual(proc.returncode, 1, proc.stdout.decode())
+                self.assertIn(words, proc.stdout.decode())
 
     def test_a_landing_readme_for_this_package_passes(self):
         w, package = self.built()
@@ -599,6 +623,74 @@ class Verify(PackageCase):
         proc = run([sys.executable, package / 'verify.py'])
         self.assertEqual(proc.returncode, 0, proc.stdout.decode())
         self.assertIn('the landing README names this package', proc.stdout.decode())
+
+
+class Rerun(PackageCase):
+    """rerun.sh with stand-ins for docker, java, curl and nextflow on PATH: the stand-ins log every call,
+    so a test can show what ran and, after a refusal, that no pipeline started."""
+
+    def setUp(self):
+        super(Rerun, self).setUp()
+        self.w, self.package = self.built()
+        self.downloads = self.root / 'downloads'
+        for name, (original, path) in self.w.fastqs.items():
+            write(self.downloads / original, path.read_bytes())
+        for name, path in self.w.refs.items():
+            write(self.downloads / name, path.read_bytes())
+        self.bin = self.root / 'fakebin'
+        self.nf_log = self.root / 'nextflow.log'
+        fakes = {
+            'docker': '#!/bin/sh\n[ "$1" = info ] && echo "${FAKE_NCPU:-4} ${FAKE_MEM:-16500000000}"\n',
+            'java': '#!/bin/sh\nexit 0\n',
+            'curl': '#!/bin/sh\nwhile [ "$#" -gt 1 ]; do [ "$1" = -o ] && dest="$2"; shift; done\n'
+                    'cp "%s/$(basename "$1")" "$dest"\n' % self.downloads,
+            'nextflow': '#!/bin/sh\necho "NXF_VER=$NXF_VER NXF_SYNTAX_PARSER=${NXF_SYNTAX_PARSER:-} $*" >> "%s"\n'
+                        % self.nf_log,
+        }
+        for name, text in fakes.items():
+            write(self.bin / name, text)
+            os.chmod(str(self.bin / name), 0o755)
+
+    def rerun(self, out='out', **env):
+        settings = {'PATH': '%s:/usr/bin:/bin' % self.bin}
+        settings.update(env)
+        return run(['bash', self.package / 'rerun.sh', '--out', self.root / out], env=settings)
+
+    def test_a_rerun_runs_each_pipeline_pinned_by_commit(self):
+        proc = self.rerun()
+        self.assertEqual(proc.returncode, 0, proc.stdout.decode() + proc.stderr.decode())
+        out = self.root / 'out'
+        logged = self.nf_log.read_text()
+        self.assertIn('NXF_VER=%s NXF_SYNTAX_PARSER=v1 run nf-core/atacseq -r %s -params-file %s/params/%s.params.json '
+                      '-c %s/env/rerun.config -profile docker -work-dir %s/work/%s'
+                      % (nextflow_pin(), self.w.pipeline_commit, out, STAGE, self.package, out, STAGE), logged)
+        params = json.loads((out / 'params' / (STAGE + '.params.json')).read_text())
+        self.assertEqual(params['outdir'], '%s/results/%s' % (out, STAGE))
+        self.assertEqual(params['fasta'], '%s/refs/genome.fa' % out)
+        self.assertIn('%s/inputs/atac-a-r1_S1_L001_R1_001.fastq.gz' % out,
+                      (out / 'inputs' / (STAGE + '.samplesheet.csv')).read_text())
+
+    def test_a_checksum_mismatch_refuses_before_any_pipeline(self):
+        original = sorted(self.w.fastqs.values())[0][0]
+        write(self.downloads / original, b'other bytes\n')
+        proc = self.rerun()
+        self.assertEqual(proc.returncode, 2, proc.stdout.decode() + proc.stderr.decode())
+        self.assertIn('computed at harvest', proc.stderr.decode())
+        self.assertIn('no pipeline was started', proc.stderr.decode())
+        self.assertFalse(self.nf_log.exists())
+
+    def test_a_small_machine_or_a_used_folder_is_refused(self):
+        for env, words in (({'FAKE_NCPU': '2'}, 'Docker has 2 CPUs'),
+                           ({'FAKE_MEM': '8000000000'}, 'about 16 GB')):
+            with self.subTest(words):
+                proc = self.rerun(out='small-' + words.split()[-1], **env)
+                self.assertEqual(proc.returncode, 2, proc.stderr.decode())
+                self.assertIn(words, proc.stderr.decode())
+        write(self.root / 'used' / 'x', 'x')
+        proc = self.rerun(out='used')
+        self.assertEqual(proc.returncode, 2)
+        self.assertIn('is not empty', proc.stderr.decode())
+        self.assertFalse(self.nf_log.exists())
 
 
 class Goldens(PackageCase):
