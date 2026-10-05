@@ -228,12 +228,12 @@ class World(object):
     def lane_sources(self):
         lines = ['kind\tname\turl\tsha256\tsource']
         for name, (original, path) in sorted(self.fastqs.items()):
-            lines.append('input\t%s\thttps://raw.githubusercontent.com/nf-core/test-datasets/%s/atacseq/testdata/%s\t%s\t'
-                         'nf-core/test-datasets@%s:atacseq/testdata/%s'
+            lines.append('input\t%s\thttps://raw.githubusercontent.com/nf-core/test-datasets/%s/testdata/%s\t%s\t'
+                         'nf-core/test-datasets@%s:testdata/%s'
                          % (name, TEST_DATASETS, original, sha(path.read_bytes()), TEST_DATASETS, original))
         for name, path in sorted(self.refs.items()):
-            lines.append('reference\t%s\thttps://raw.githubusercontent.com/nf-core/test-datasets/%s/atacseq/reference/%s\t%s\t'
-                         'nf-core/test-datasets@%s:atacseq/reference/%s'
+            lines.append('reference\t%s\thttps://raw.githubusercontent.com/nf-core/test-datasets/%s/reference/%s\t%s\t'
+                         'nf-core/test-datasets@%s:reference/%s'
                          % (name, TEST_DATASETS, name, sha(path.read_bytes()), TEST_DATASETS, name))
         return '\n'.join(lines) + '\n'
 
@@ -340,7 +340,7 @@ class HarvestAndRender(PackageCase):
             'a private registry image': ('a stranger cannot pull', {'private_image': True}, None),
             'a Nextflow version off the lock': ('gars-nxf lock', {'nextflow': '23.10.1'}, None),
             'a branch URL': ('not pinned to a commit', {}, lambda w: write(w.sources, w.sources.read_text().replace(
-                '/%s/atacseq/testdata' % TEST_DATASETS, '/atacseq/atacseq/testdata', 1))),
+                '/%s/testdata' % TEST_DATASETS, '/atacseq/testdata', 1))),
             'an input checksum off its pin': ('differs from the pinned source', {}, lambda w: write(
                 w.sources, re.sub(r'\t[0-9a-f]{64}\t', '\t' + 'a' * 64 + '\t', w.sources.read_text(), count=1))),
             'a tolerance entry with no cause': ('lacks a declared mode', {}, lambda w: write(w.tolerances, json.dumps(
