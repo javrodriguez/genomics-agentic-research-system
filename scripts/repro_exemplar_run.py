@@ -5,8 +5,14 @@ then harvest, render and verify, all on the machine that ran it, before teardown
   python3 scripts/repro_exemplar_run.py --gars <public GARS clone> --expect-commit <40-hex>
       --fixtures <folder holding the 8 yeast ATAC FASTQs> --gen-executor <gen_executor_config.sh>
       --package-run <package_run.py> --lane-commit <40-hex> --gars-repo <git repo holding both commits>
-      --sources <lane-sources.tsv> --tolerances <package-tolerances.json> --out <empty folder>
+      --sources <lane-sources.tsv> --tolerances <package-tolerances.json>
+      --private-out <empty folder> --public-out <empty folder> --harvest-copy <empty folder>
       [--title yeast-atac] [--poll-seconds 60] [--max-wait-minutes 180]
+
+Private and public material never share a folder (review h3-8): --private-out gets run.log and the
+harvest, which hold the run's unmasked records; --public-out gets only the rendered package. The
+harvest is copied to --harvest-copy (the operator's sync folder) the moment it exists, before render,
+so a stop at any later step still leaves it to be carried off the machine (review h3-7).
 
 Each step is the documented helper call the stage contracts name (stage00_register.py, stage01_samplesheet.py,
 configure.py, the ATAC wrapper's check, prepare and collect, executorlib.py submit and status), with the answers
@@ -22,6 +28,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -37,6 +44,9 @@ STAGE01_LINES = (('unit_of_replication', 'sample'), ('reference_release', 'R64-1
 GENOME, PEAKS = 'R64-1-1', 'narrow'
 MEMORY = ('  mem: 64G\n', '  mem: 8G\n')   # the local venue's memory rule (take card, step 4b)
 TERMINAL = ('COMPLETED', 'FAILED', 'CANCELLED', 'ARTIFACT_MISSING')
+# package_run.py's CLONE_IGNORED_OK, checked here before stage 00 so a clone harvest would refuse is
+# refused before the paid run, not after it (a test holds the two equal).
+CLONE_IGNORED_OK = ('gars/projects/', 'gars/data_sources.tsv', '.gars-approvals/')
 
 
 class Stop(Exception):
@@ -48,7 +58,9 @@ class Stop(Exception):
 class Run(object):
     def __init__(self, args):
         self.args = args
-        self.out = Path(args.out).resolve()
+        self.private = Path(args.private_out).resolve()
+        self.public = Path(args.public_out).resolve()
+        self.harvest_copy = Path(args.harvest_copy).resolve()
         self.gars = Path(args.gars).resolve() / 'gars'
         self.project_rel = 'projects/' + args.title
         self.project = self.gars / self.project_rel
@@ -89,15 +101,23 @@ class Run(object):
         args = self.args
         if not re.match(r'[0-9a-f]{40}\Z', args.expect_commit) or not re.match(r'[0-9a-f]{40}\Z', args.lane_commit):
             raise Stop('--expect-commit and --lane-commit are full 40-hex commits', 3)
-        if self.out.exists() and any(self.out.iterdir()):
-            raise Stop('%s is not empty' % self.out, 2)
-        self.out.mkdir(parents=True, exist_ok=True)
-        self.log = self.out / 'run.log'
+        folders = (self.private, self.public, self.harvest_copy)
+        if len(set(folders)) != 3 or any(a in b.parents for a in folders for b in folders):
+            raise Stop('the private, public and copy folders must be three separate folders', 3)
+        for folder in folders:
+            if folder.exists() and any(folder.iterdir()):
+                raise Stop('%s is not empty' % folder, 2)
+        for folder in folders:
+            folder.mkdir(parents=True, exist_ok=True)
+        self.log = self.private / 'run.log'
         head = self.git('rev-parse', 'HEAD')
         if head != args.expect_commit:
             raise Stop('the GARS clone is at %s, not %s' % (head[:12], args.expect_commit[:12]), 2)
-        if self.git('status', '--porcelain', '--untracked-files=all'):
-            raise Stop('the GARS clone is not clean', 2)
+        for line in self.git('status', '--porcelain', '--untracked-files=all', '--ignored').splitlines():
+            path = line[3:].strip('"')
+            if line[:2] == '!!' and (path.startswith(CLONE_IGNORED_OK) or '__pycache__/' in '/' + path):
+                continue
+            raise Stop('the GARS clone is not clean (%s), and harvest would refuse it after the run' % line, 2)
         if self.project.exists():
             raise Stop('%s already exists; the exemplar starts from no project' % self.project_rel, 2)
         sources = self.gars / 'data_sources.tsv'
@@ -198,19 +218,21 @@ class Run(object):
 
     def package(self):
         py, args = sys.executable, self.args
-        harvest, package = self.out / 'harvest', self.out / 'package'
+        harvest, package = self.private / 'harvest', self.public / 'package'
         self.call('pkg.harvest', [py, args.package_run, 'harvest', '--gars', self.gars.parent, '--project', self.project,
                                   '--lane-commit', args.lane_commit, '--out', harvest, '--copy-large'])
+        shutil.copytree(str(harvest), str(self.harvest_copy / 'harvest'), symlinks=True)
+        self.note('step pkg.harvest-copy: the harvest copied to %s before render' % self.harvest_copy)
         self.call('pkg.render', [py, args.package_run, 'render', '--harvest', harvest, '--gars-repo', args.gars_repo,
                                  '--sources', args.sources, '--tolerances', args.tolerances, '--out', package])
-        self.call('pkg.verify', [py, package / 'verify.py'], cwd=self.out)
+        self.call('pkg.verify', [py, package / 'verify.py'], cwd=self.public)
         self.note('done: package %s verified on this machine; copy the harvest off before down' % package)
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     for name in ('--gars', '--expect-commit', '--fixtures', '--gen-executor', '--package-run', '--lane-commit',
-                 '--gars-repo', '--sources', '--tolerances', '--out'):
+                 '--gars-repo', '--sources', '--tolerances', '--private-out', '--public-out', '--harvest-copy'):
         parser.add_argument(name, required=True)
     parser.add_argument('--title', default='yeast-atac')
     parser.add_argument('--poll-seconds', type=int, default=60)

@@ -155,11 +155,16 @@ class World(object):
         write(self.stage / 'OUTPUTS.tsv', '# type\trole\tpath\n' + ''.join('%s\tnative\t%s\n' % r for r in rows))
         outputs = wl.complete_output_index(self.stage)
         write(self.stage / 'STATUS', 'COMPLETE\n')
+        self.nextflow_log = True
         submit = write(self.stage / 'submit.sh',
                        '#!/bin/bash\nset -euo pipefail\nWS="%s"\nsource "$WS/_system/gars-env.sh"\n'
                        'export NXF_SYNTAX_PARSER=v1\ncd "%s"\nnextflow run "%s" \\\n    -c "%s" \\\n'
                        '    -params-file "%s/params.yaml" \\\n    -work-dir "s3://%s/work/yeast-atacseq_bulk" \\\n'
                        '    $RESUME\n' % (self.clone / 'gars', self.stage, checkout, executor_config, self.stage, BUCKET))
+        # Nextflow's own log names the launch line (h3-5); a real launch line is an S2b acceptance item.
+        write(self.stage / 'run' / '.nextflow.log',
+              'Oct-09 10:00:00.000 [main] DEBUG nextflow.cli.Launcher - $> nextflow run %s -c %s -params-file %s/params.yaml '
+              '-work-dir s3://%s/work/yeast-atacseq_bulk\n' % (checkout, executor_config, self.stage, BUCKET))
         commands = write(self.stage / 'reproducibility' / 'commands.sh',
                          '# The exact submission this sub-stage makes:\nbash %s\n' % submit)
         inputs = {'samplesheet': str(sheet), 'config': str(config)}
@@ -215,15 +220,8 @@ class World(object):
     def add_analysis(self):
         adir = self.project / '03_custom_analysis' / '01_followup'
         plan = write(adir / 'PLAN.md', '# Plan\n\nCount peaks per sample.\n')
-        script = write(adir / 'analysis.py', 'print("peaks")\n')
-        # the shape executorlib._analysis_launcher writes: it cds into the analysis by absolute path
-        launcher = write(adir / 'launch.sh', '#!/bin/sh\ncd "%s"\npython3 analysis.py && date > run/.gars_run_complete\n'
-                         % adir)
-        write(adir / 'run' / '.gars_run_complete', '2026-10-09T13:05:00+0000\n')
-        write(adir / '.gars_submissions.jsonl', json.dumps({
-            'script': str(script), 'script_sha256': sha(script.read_bytes()),
-            'launcher': str(launcher), 'launcher_sha256': sha(launcher.read_bytes()),
-            'job_id': '4242', 'executor': 'local', 'submitted_at': 1791550800.0}) + '\n')   # 2026-10-09T13:00Z
+        script = write(adir / 'analysis.sh', 'echo peaks\n')
+        self.submit_analysis(adir, script, '4242', 1791550800.0)   # 2026-10-09T13:00Z
         store = self.clone / '.gars-approvals'
         store.mkdir(mode=0o700)
         identity = str(plan.resolve())
@@ -231,6 +229,24 @@ class World(object):
             'actor': ACTOR, 'expiry': '2026-10-10T12:00:00Z', 'plan_path': identity,
             'plan_sha256': sha(plan.read_bytes()), 'timestamp': '2026-10-09T12:00:00Z'}, sort_keys=True))
         self.plan = plan
+
+    def submit_analysis(self, adir, script, job, at, append=False):
+        """As executorlib's local submit leaves it (review h3-1): GARS's own launcher, which removes the
+        marker first and writes it only on exit 0, run for real; the local job record naming that
+        launcher with its exit file; and the submission entry."""
+        import executorlib
+        (adir / 'run').mkdir(exist_ok=True)   # GARS's submit makes it before it writes the launcher
+        launcher = executorlib._analysis_launcher(adir, script, {'name': 'local'})
+        code = subprocess.run(['bash', str(launcher)], stdout=subprocess.DEVNULL).returncode
+        jobs = self.project / executorlib.LOCAL_JOBS_DIR
+        exit_file = write(jobs / ('%s.exit' % job), '%d\n' % code)
+        write(jobs / ('%s.json' % job), json.dumps({'script': str(launcher), 'exit_file': str(exit_file)}))
+        entry = json.dumps({'script': str(script), 'script_sha256': sha(script.read_bytes()),
+                            'launcher': str(launcher), 'launcher_sha256': sha(launcher.read_bytes()),
+                            'job_id': job, 'executor': 'local', 'submitted_at': at}) + '\n'
+        record = adir / '.gars_submissions.jsonl'
+        write(record, (record.read_text() if append and record.exists() else '') + entry)
+        return launcher, code
 
     def lane_sources(self):
         lines = ['kind\tname\turl\tsha256\tsource']
@@ -366,10 +382,11 @@ class HarvestAndRender(PackageCase):
 
     def test_a_real_shaped_stage_03_launcher_ships_masked(self):
         w, package = self.built(stage03=True)
-        launcher = (package / 'code/custom.01_followup/scripts/launch.sh').read_text()
-        self.assertIn('Masked copy', launcher)
-        self.assertIn('cd "<WORKSPACE>/gars/projects/yeast/03_custom_analysis/01_followup"', launcher)
-        self.assertIn('custom.01_followup/launch.sh: shipped masked', (package / 'PROVENANCE.md').read_text())
+        [launcher] = list((package / 'code/custom.01_followup/scripts/run').glob('launch-*.sh'))
+        text = launcher.read_text()
+        self.assertIn('Masked copy', text)
+        self.assertIn('cd <WORKSPACE>/gars/projects/yeast/03_custom_analysis/01_followup', text)
+        self.assertIn('custom.01_followup/run/%s: shipped masked' % launcher.name, (package / 'PROVENANCE.md').read_text())
 
     def test_params_ship_typed_as_the_runs_yaml_read_them(self):
         w, package = self.built()
@@ -394,7 +411,8 @@ class HarvestAndRender(PackageCase):
 
     def test_a_masked_launchers_submit_hash_never_prints(self):
         w = self.world(stage03=True)
-        launcher = sha((w.project / '03_custom_analysis/01_followup/launch.sh').read_bytes())
+        [path] = list((w.project / '03_custom_analysis/01_followup/run').glob('launch-*.sh'))
+        launcher = sha(path.read_bytes())
         write(w.tolerances, json.dumps({'entries': [{
             'stage': STAGE, 'members': ['run/results/multiqc/narrow_peak/multiqc_report.html'], 'mode': 'presence',
             'origin': 'pass-1', 'cause': 'the report embeds its run time', 'evidence': 'launcher ' + launcher}]}))
@@ -426,6 +444,97 @@ class HarvestAndRender(PackageCase):
     def ignored_in_pipeline(w):
         write(w.checkout / 'bin' / 'samtools', '#!/bin/sh\n')
         write(w.checkout / '.git' / 'info' / 'exclude', 'bin/samtools\n')
+
+    def test_review_h3_harvest_refusals(self):
+        """Each case is one finding of the harvest-only review r3, reproduced as the reviewer did."""
+        cases = {
+            'h3-1 a first script that failed': ('FAILED', {'stage03': True}, self.first_script_failed),
+            'h3-1 a resubmission that never started': ('R-135', {'stage03': True}, self.resubmitted_never_started),
+            'h3-3 a samplesheet path that is gone': ('not a regular file at harvest', {}, self.sheet_path_gone),
+            'h3-4 a script naming a private data path': ('an absolute path', {'stage03': True}, self.private_data_path),
+            'h3-5 a launch line that differs': ("logged launch line is not", {}, lambda w: write(
+                w.stage / 'run/.nextflow.log', (w.stage / 'run/.nextflow.log').read_text().replace(
+                    '-work-dir', '--skip_trimming true -work-dir'))),
+            'h3-6 an edit hidden by stat settings': ('differ from HEAD by content', {}, self.stat_only_edit),
+            'h3-6 an unexpected ignored file': ('git status: !!', {}, lambda w: write(
+                w.clone / 'gars/_system/claims/notes.pyc', b'x')),
+        }
+        for name, (words, options, damage) in sorted(cases.items()):
+            with self.subTest(name):
+                w = self.world(**options)
+                damage(w)
+                proc = w.harvest()
+                if proc.returncode == 0:
+                    proc = w.render()
+                self.refused(proc, words)
+                self.assertFalse((w.root / 'package').exists())
+
+    def test_h3_2_an_in_tree_output_link_harvests_and_copies_to_the_right_place(self):
+        w = self.world()
+        peaks = w.stage / 'run/results/bwa/merged_library/macs2/narrow_peak'
+        os.symlink('atac-a.mLb.clN_peaks.narrowPeak', str(peaks / 'latest.narrowPeak'))
+        manifest = json.loads(w.manifest_path.read_text())
+        manifest['outputs'] = wl.complete_output_index(w.stage)
+        w.manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
+        proc = w.harvest()
+        self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+        self.assertTrue((w.root / 'harvest/project' / STAGE_REL / 'run/results/multiqc/narrow_peak/multiqc_report.html').is_file())
+        self.assertEqual(w.render().returncode, 0)
+
+    def test_h3_8_users_come_from_the_records_and_a_tool_image_is_not_a_user(self):
+        tool = module(TOOL, 'package_run_users')
+        self.assertEqual(tool.record_users(['/home/ubuntu/x', '"/Users/jdoe/y"', '/home/conda/z']), ['jdoe', 'ubuntu'])
+        self.assertFalse(tool.user_named('container nf-core/ubuntu:20.04', 'ubuntu'))
+        self.assertTrue(tool.user_named('ran as ubuntu on the box', 'ubuntu'))
+        self.assertTrue(tool.user_named('/home/ubuntu/run', 'ubuntu'))
+        w, package = self.built()
+        record = json.loads((w.root / 'harvest/HARVEST.json').read_text())
+        self.assertNotIn(__import__('getpass').getuser(), record['secrets']['users'] if '/Users/' not in str(w.root)
+                         and '/home/' not in str(w.root) else [])
+
+    def first_script_failed(self, w):
+        adir = w.plan.parent
+        qc = write(adir / 'qc.sh', 'exit 1\n')
+        w.submit_analysis(adir, qc, '5001', 1791550900.0, append=True)
+        plot = write(adir / 'plot.sh', 'echo plot\n')
+        w.submit_analysis(adir, plot, '5002', 1791551000.0, append=True)
+
+    def resubmitted_never_started(self, w):
+        adir = w.plan.parent
+        script = adir / 'analysis.sh'
+        write(script, 'echo v2 -- never ran\n')
+        import executorlib
+        launcher = executorlib._analysis_launcher(adir, script, {'name': 'local'})
+        record = adir / '.gars_submissions.jsonl'
+        write(record, record.read_text() + json.dumps({
+            'script': str(script), 'script_sha256': sha(script.read_bytes()), 'launcher': str(launcher),
+            'launcher_sha256': sha(launcher.read_bytes()), 'job_id': '6002', 'executor': 'local',
+            'submitted_at': 1791551000.0}) + '\n')
+
+    @staticmethod
+    def sheet_path_gone(w):
+        name, (original, path) = sorted(w.fastqs.items())[0]
+        path.unlink()
+
+    def private_data_path(self, w):
+        adir = w.plan.parent
+        write(adir / 'analysis.sh', 'echo reads /data/lab-private/fixtures/counts.tsv\n')
+        w.submit_analysis(adir, adir / 'analysis.sh', '7001', 1791551100.0, append=True)
+
+    @staticmethod
+    def stat_only_edit(w):
+        git(w.clone, 'config', 'core.trustctime', 'false')
+        git(w.clone, 'config', 'core.checkStat', 'minimal')
+        lib = w.clone / 'gars/_system/wrapperlib.py'
+        older = lib.stat().st_mtime_ns - 100 * 10 ** 9
+        os.utime(str(lib), ns=(older, older))
+        git(w.clone, 'update-index', '--refresh')
+        info = lib.stat()
+        old = "raise ValueError('output_hash: OUTPUTS.tsv, manifest and artifact bytes disagree')"
+        new = "pass; ValueError('output_hash: OUTPUTS.tsv, manifest and artifact bytes disagree')"
+        lib.write_text(lib.read_text().replace(old, new + ' ' * (len(old) - len(new))))
+        os.utime(str(lib), ns=(info.st_atime_ns, info.st_mtime_ns))
+        git(w.clone, 'status', '--porcelain')   # a lax status between edit and harvest, as a shell prompt runs
 
     def test_review_h1_harvest_refusals(self):
         """Each case is one finding of the harvest-only review r1, reproduced as the reviewer did."""

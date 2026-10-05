@@ -173,8 +173,36 @@ def run(args):
         print('%s: exit %d, %.0f s, %s bytes on disk after' % (label, code, wall, disk), flush=True)
         if code != 0:
             return 1
-    return compare(argparse.Namespace(a=str(out / 'run1' / 'results'), b=str(out / 'run2' / 'results'),
+    code = compare(argparse.Namespace(a=str(out / 'run1' / 'results'), b=str(out / 'run2' / 'results'),
                                       out=str(out / 'compare')))
+    # The S2b acceptance item of review h3-7: where a real run's outputs (MultiQC's report, the trace, the
+    # tables) name the box's user, the launch folder or a bucket, before render meets them in the paid S3.
+    import getpass
+    scan(out / 'run1', [getpass.getuser(), str(out / 'run1'), 's3://'], out / 'compare' / 'names.tsv')
+    return code
+
+
+def scan(top, needles, dest):
+    """Per file under `top`, how many times each needle occurs (plain bytes; a .gz member is not opened,
+    and is listed so)."""
+    rows = []
+    for folder, dirs, names in os.walk(str(top), followlinks=False):
+        dirs[:] = sorted(d for d in dirs if d != 'work')
+        for name in sorted(names):
+            path = Path(folder) / name
+            if path.is_symlink() or not path.is_file():
+                continue
+            data = path.read_bytes()
+            counts = [data.count(n.encode('utf-8')) for n in needles]
+            if any(counts) or name.endswith('.gz'):
+                rows.append((path.relative_to(top).as_posix(), counts, name.endswith('.gz')))
+    with io.open(str(dest), 'w', encoding='utf-8', newline='\n') as handle:
+        handle.write('path\t' + '\t'.join('count:%s' % n for n in needles) + '\tcompressed\n')
+        for rel, counts, gz in rows:
+            handle.write('%s\t%s\t%s\n' % (rel, '\t'.join(str(c) for c in counts), 'yes, not opened' if gz else 'no'))
+    print('names: %d files name the user, the launch folder or a bucket (%s)' % (
+        sum(1 for _, c, _ in rows if any(c)), dest))
+    return rows
 
 
 def main(argv=None):

@@ -21,7 +21,6 @@ Standard library only, Python 3.6 or later.
 """
 import argparse
 import csv
-import getpass
 import hashlib
 import importlib.util
 import io
@@ -29,6 +28,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -218,6 +218,40 @@ def checkout_unpatched(manifest, role):
                       'code that ran' % role)
 
 
+# Ignored paths a GARS clone holds by design while a run is harvested: the projects, the human-written
+# data_sources.tsv, the human-owned approval store, and the bytecode Python writes when GARS's own
+# modules are imported. Anything else ignored is a file git status would not show (review h3-6).
+CLONE_IGNORED_OK = ('gars/projects/', 'gars/data_sources.tsv', '.gars-approvals/')
+
+
+def clean_clone(repo):
+    """The clone is HEAD, read by content: no change, untracked or unexpected ignored file in git status;
+    no hidden-edit flag; and a fresh index built from HEAD, refreshed by hashing every file, reports no
+    difference, so no stat setting or cached index entry can hide an edit (review h3-6)."""
+    porcelain = git(repo, 'status', '--porcelain', '--untracked-files=all', '--ignored').decode('utf-8')
+    for line in porcelain.splitlines():
+        code, path = line[:2], line[3:].strip('"')
+        if code == '!!' and (path.startswith(CLONE_IGNORED_OK) or '__pycache__/' in '/' + path):
+            continue
+        raise Refusal('the GARS clone is not clean (git status: %s %s)' % (code, path))
+    if hidden_edits(repo):
+        raise Refusal('the GARS clone is not clean (a file is flagged skip-worktree or assume-unchanged)')
+    handle, index = tempfile.mkstemp(prefix='.harvest-index-')
+    os.close(handle)
+    os.unlink(index)
+    env = dict(os.environ, GIT_INDEX_FILE=index)
+    base = ['git', '--no-replace-objects', '-c', 'core.trustctime=true', '-c', 'core.checkStat=default',
+            '-c', 'core.fsmonitor=false', '-C', str(repo)]
+    try:
+        for args in (['read-tree', 'HEAD'], ['update-index', '-q', '--refresh'], ['diff-files', '--quiet']):
+            proc = subprocess.run(base + args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if proc.returncode != 0:
+                raise Refusal('the GARS clone is not clean (its files differ from HEAD by content)')
+    finally:
+        if os.path.exists(index):
+            os.unlink(index)
+
+
 def hidden_edits(repo):
     """Files git status cannot see changed: skip-worktree (S) or assume-unchanged (a lowercase tag)."""
     for line in git(repo, 'ls-files', '-v').decode('utf-8', 'replace').splitlines():
@@ -250,6 +284,39 @@ def check_commands(stage, manifest, role):
     keys = KEY_LINE.findall(submit.read_text(encoding='utf-8'))
     if keys != [manifest.get('idempotency_key')]:
         raise Refusal('%s: submit.sh does not carry exactly the recorded input-key line' % role)
+
+
+LAUNCH = re.compile(r'DEBUG nextflow\.cli\.Launcher - \$> (.+)$', re.M)
+
+
+def submit_launch(text):
+    """The `nextflow run` line prepare wrote into submit.sh, as tokens, without the resume slot."""
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if line.startswith('nextflow run '):
+            joined = line
+            while joined.endswith('\\') and i + 1 < len(lines):
+                i += 1
+                joined = joined[:-1] + ' ' + lines[i]
+            return [t for t in shlex.split(joined) if t != '$RESUME']
+    return None
+
+
+def check_launch(stage, role):
+    """No run record binds submit.sh's bytes, so what Nextflow itself logged as its launch line is
+    compared with the line prepare wrote (review h3-5); a run resumed once logs `-resume` last."""
+    log = stage / 'run' / '.nextflow.log'
+    if not log.is_file():
+        raise Refusal('%s: run/.nextflow.log is absent; the launch line cannot be checked' % role)
+    match = LAUNCH.search(log.read_text(encoding='utf-8', errors='replace'))
+    expected = submit_launch((stage / 'submit.sh').read_text(encoding='utf-8'))
+    if not match or expected is None:
+        raise Refusal('%s: no launch line in run/.nextflow.log or submit.sh' % role)
+    launched = shlex.split(match.group(1))
+    if launched[-1:] == ['-resume']:
+        launched = launched[:-1]
+    if launched != expected:
+        raise Refusal('%s: Nextflow\'s logged launch line is not the one prepare wrote in submit.sh' % role)
 
 
 def check_project_inputs(project, target, manifest, role):
@@ -320,7 +387,11 @@ def samplesheet_inputs(sheet, stage_id):
         for c, value in enumerate(row):
             if c >= len(rows[0]):
                 raise Refusal('samplesheet row %d is longer than its header' % r)
-            if value.startswith('/') and Path(value).is_file():
+            if value.startswith('/') and (not Path(value).is_file() or Path(value).is_symlink() and
+                                          not Path(value).resolve().is_file()):
+                raise Refusal('samplesheet row %d names %s, which is not a regular file at harvest (h3-3)'
+                              % (r, Path(value).name))
+            if value.startswith('/'):
                 found.append({'stage': stage_id, 'row': r, 'column': rows[0][c], 'file': Path(value).name,
                               'path': value, 'sha256': sha256_file(value), 'size': Path(value).stat().st_size})
     return found
@@ -336,6 +407,27 @@ def scan_secrets(texts):
     return sorted(buckets), sorted(accounts)
 
 
+def user_named(text, user):
+    """True when `text` names `user` as a word, not as a container image's repository (registry/name:tag),
+    which is a public tool name such as nf-core/ubuntu:20.04."""
+    for match in re.finditer(r'(?<![A-Za-z0-9_.-])%s(?![A-Za-z0-9_-])' % re.escape(user), text):
+        before, after = text[match.start() - 1:match.start()], text[match.end():match.end() + 1]
+        if before == '/' and after == ':':
+            continue
+        return True
+    return False
+
+
+def record_users(texts):
+    """The user names the run's own records carry in home paths (h3-8): read from what was harvested,
+    never from the account harvest itself runs as."""
+    found = set()
+    for text in texts:
+        found.update(re.findall(r'/(?:home|Users)/([A-Za-z0-9_][A-Za-z0-9_.-]*)', text))
+    found.discard('conda')
+    return sorted(found)
+
+
 def stage_id_of(rel):
     return rel.replace('/', '.').replace('02_bioinformatics.', '').replace('03_custom_analysis.', 'custom.')
 
@@ -348,12 +440,7 @@ def harvest(args):
     if out.exists() and any(out.iterdir()):
         raise Refusal('the harvest folder is not empty')
     gars_commit = git(gars, 'rev-parse', 'HEAD').decode('ascii').strip()
-    porcelain = git(gars, 'status', '--porcelain', '--untracked-files=all').decode('utf-8')
-    if porcelain.strip():
-        raise Refusal('the GARS clone is not clean (git status --porcelain: %d lines)'
-                      % len(porcelain.strip().splitlines()))
-    if hidden_edits(gars):
-        raise Refusal('the GARS clone is not clean (a file is flagged skip-worktree or assume-unchanged)')
+    clean_clone(gars)
     wl, manifest_check, render_methods = gars_modules(gars)   # imported only once the clone is vetted
     dataset = wl.dataset_record(project)
     if dataset.get('data_class') != 'public':   # every harvest, not only a stage 03 one (review h2 m4)
@@ -397,6 +484,7 @@ def harvest(args):
                 raise Refusal('%s: params.yaml does not hold the recorded params' % role)
             checkout_unpatched(manifest, role)
             check_commands(stage, manifest, role)
+            check_launch(stage, role)
             check_project_inputs(project, target, manifest, role)
             check_evidence(wl, gars, project, stage, manifest, role)
             for name in STAGE_COPY:
@@ -414,9 +502,10 @@ def harvest(args):
             for output in manifest.get('outputs') or []:
                 top = os.path.normpath(str(stage / output['path']))
                 for link in output.get('symlinks') or []:
-                    target = str(link.get('target'))
-                    where = os.path.normpath(os.path.join(os.path.dirname(os.path.join(top, link['path'])), target))
-                    if os.path.isabs(target) or not where.startswith(top + os.sep):
+                    link_target = str(link.get('target'))   # never `target`, the harvest folder (h3-2)
+                    where = os.path.normpath(os.path.join(os.path.dirname(os.path.join(top, link['path'])),
+                                                          link_target))
+                    if os.path.isabs(link_target) or not where.startswith(top + os.sep):
                         raise Refusal('%s: output %s holds a link to a path outside it, which the record would '
                                       'publish' % (role, output['path']))
                 listed = ([('.', output['sha256'])] if output.get('members') is None else
@@ -459,7 +548,7 @@ def harvest(args):
             'links': [{'path': p, 'target_masked_at_render': True} for p, _ in sorted(links)],
             'stages': stages, 'members': members, 'inputs': inputs, 'prefixes': prefixes,
             'secrets': {'buckets': buckets, 'accounts': accounts, 'actors': sorted(actors),
-                        'users': [getpass.getuser()]}}
+                        'users': record_users(texts)}}
         (temp / 'HARVEST.json').write_text(dump_json(record), encoding='utf-8')
         if out.exists():
             out.rmdir()
@@ -521,6 +610,11 @@ def harvest_analysis(plan, project, gars, target, render_methods):
         raise Refusal('%s: the submission record cannot be checked (%s)' % (rel, type(exc).__name__))
     if not (adir / 'run' / '.gars_run_complete').is_file():   # the launcher writes it on exit 0 only
         raise Refusal('%s: run/.gars_run_complete is absent; the analysis did not finish' % rel)
+    # GARS's own reading of a stage 03 run (R-135): every script's latest job, its bytes and its
+    # finished state. One message from it is a refusal (review h3-1).
+    problem = executorlib.analysis_execution_evidence(project, adir)
+    if problem:
+        raise Refusal('%s: %s' % (rel, problem))
     for name in sorted(set(scripts)) + ['PLAN.md', 'OUTPUTS.tsv', executorlib.ANALYSIS_SUBMISSIONS]:
         if (adir / name).is_file():
             copy_file(adir / name, target / rel / name)
@@ -1001,7 +1095,7 @@ class Render(object):
         return ([('a run bucket name', b) for b in record['buckets']] +
                 [('an account id', a) for a in record['accounts']] +
                 [('the approver the run recorded', a) for a in record.get('actors', [])] +
-                [('the user name that ran harvest', u) for u in record.get('users', [])])
+                [('a user name the run\'s records carry', u) for u in record.get('users', [])])
 
     def oracle_member(self, s, full, harvested):
         """A recorded output's sha256 is printed for comparison, so an output holding a bucket, account
@@ -1013,8 +1107,10 @@ class Render(object):
                 self.unread.append(rel)
             return
         data = (self.project / s['rel'] / full).read_bytes()
+        text = data.decode('utf-8', 'replace')
         for what, value in self.sensitive():
-            if value and value.encode('utf-8') in data:
+            hit = user_named(text, value) if what.startswith('a user name') else value.encode('utf-8') in data
+            if value and hit:
                 raise Refusal('output member %s holds %s; its recorded sha256 would confirm that value offline'
                               % (rel, what))
 
@@ -1207,7 +1303,10 @@ class Render(object):
                   'holding a bucket, account id, approver or user name, and a result table holding a path is '
                   'named under "Result tables not shipped".',
                   'submit.sh is not shipped: no run record binds its bytes. code/<stage>/commands.sh, the recorded '
-                  'submission line, is.', '']
+                  'submission line, is.',
+                  'Limit: GARS records no sha256 of submit.sh. On the run\'s machine, harvest compared the launch line '
+                  'Nextflow itself logged (run/.nextflow.log) with the nextflow run line in submit.sh and refused on '
+                  'any difference; the rest of submit.sh (its environment lines) is bound by nothing.', '']
         for rel in self.masked_scripts:
             lines.append('- %s: shipped masked; its sha256 bound at submit is of the unmasked file, not printed.' % rel)
         for stage, field, reason in self.withheld:
@@ -1261,7 +1360,6 @@ class Render(object):
         literal = [('a run bucket name', b) for b in self.masker.buckets] + \
                   [('an account id', a) for a in self.masker.accounts] + \
                   [('the approver the run recorded', a) for a in self.record['secrets'].get('actors', [])] + \
-                  [('the user name that ran harvest', u) for u in self.record['secrets'].get('users', [])] + \
                   [('an original path prefix', p) for p, _ in self.masker.prefixes]
         for rel in sorted(self.pkg.files):
             text = self.pkg.files[rel].decode('utf-8', 'replace')
@@ -1273,8 +1371,13 @@ class Render(object):
             for what, value in literal:
                 if value and value in text:
                     hits.append(what)
+            for user in self.record['secrets'].get('users', []):
+                if user_named(text, user):
+                    hits.append('a user name the run\'s records carry')
             if BOUNDED_12.search(text):
                 hits.append('a 12-digit id')
+            if SURVIVOR.search(text):   # every shipped text, not only the masked files (h3-4)
+                hits.append('an absolute path (%s)' % SURVIVOR.search(text).group(0))
             for digest in self.oracle:
                 if digest in text:
                     hits.append('the sha256 of a file holding a masked value')

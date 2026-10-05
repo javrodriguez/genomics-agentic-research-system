@@ -20,6 +20,7 @@ Absolute paths, storage buckets and account ids are replaced; the originals are 
 A sha256 of a run record holding a masked value would let anyone confirm a guessed user name, path or bucket, so this package prints no such hash; the fields below are cited by name only and are not checkable from the package.
 Output sha256 values are printed, since the comparison needs them; render refuses an output holding a bucket, account id, approver or user name, and a result table holding a path is named under "Result tables not shipped".
 submit.sh is not shipped: no run record binds its bytes. code/<stage>/commands.sh, the recorded submission line, is.
+Limit: GARS records no sha256 of submit.sh. On the run's machine, harvest compared the launch line Nextflow itself logged (run/.nextflow.log) with the nextflow run line in submit.sh and refused on any difference; the rest of submit.sh (its environment lines) is bound by nothing.
 
 - atacseq_bulk.01_nfcore-atacseq-wrapper: `command.sha256`, not printed: it hashes a file holding values the package masks.
 - atacseq_bulk.01_nfcore-atacseq-wrapper: `config_sha256`, not printed: it hashes a file holding values the package masks.

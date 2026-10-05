@@ -42,6 +42,17 @@ class ProbeCompareTests(unittest.TestCase):
         self.assertEqual((self.root / 'cmp/differing/b/multiqc/report.html').read_bytes(), b'<html>b</html>')
         self.assertFalse((self.root / 'cmp/differing/a/bwa/x.narrowPeak').exists())
 
+    def test_scan_counts_each_name_per_file(self):
+        spec = importlib.util.spec_from_file_location('probe', str(PROBE))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        write(self.root / 'r/results/multiqc/report.html', b'<p>/home/ubuntu/run1 by ubuntu</p>')
+        write(self.root / 'r/results/x.bed.gz', b'\x1f\x8b')
+        write(self.root / 'r/work/ab/cd/.command.log', b'ubuntu')
+        rows = probe.scan(self.root / 'r', ['ubuntu', '/home/ubuntu/run1', 's3://'], self.root / 'names.tsv')
+        self.assertEqual([(r, c) for r, c, _ in rows], [('results/multiqc/report.html', [2, 1, 0]),
+                                                      ('results/x.bed.gz', [0, 0, 0])])
+
     def test_a_used_out_folder_is_refused(self):
         write(self.root / 'a' / 'x', b'1')
         write(self.root / 'b' / 'x', b'1')

@@ -53,6 +53,9 @@ if name == 'executorlib.py' and args[0] == 'status':
     print(json.dumps({'command': 'status', 'job_id': args[-1], 'state': states[min(n, len(states) - 1)]}))
 if name == 'gen_executor_config.sh':
     (Path(args[0]) / '_config' / 'executor.yaml').write_text('name: local\n')
+if name == 'package_run.py' and args[0] == 'harvest':
+    out = Path(args[args.index('--out') + 1]); out.mkdir(parents=True)
+    (out / 'HARVEST.json').write_text('{}')
 if name == 'package_run.py' and args[0] == 'render':
     out = Path(args[args.index('--out') + 1]); out.mkdir(parents=True)
     (out / 'verify.py').write_text('import sys\nprint("package verified")\n')
@@ -109,7 +112,8 @@ class Stub(object):
                 '--fixtures', str(self.fixtures), '--gen-executor', str(self.tools / 'gen_executor_config.sh'),
                 '--package-run', str(self.tools / 'package_run.py'), '--lane-commit', 'a' * 40,
                 '--gars-repo', str(self.clone), '--sources', str(self.tools / 'lane-sources.tsv'),
-                '--tolerances', str(self.tools / 'package-tolerances.json'), '--out', str(self.root / 'out'),
+                '--tolerances', str(self.tools / 'package-tolerances.json'), '--private-out', str(self.root / 'out'),
+                '--public-out', str(self.root / 'public'), '--harvest-copy', str(self.root / 'copy'),
                 '--poll-seconds', '0'] + list(extra)
         return subprocess.run(argv, env=settings, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=120)
 
@@ -187,7 +191,8 @@ class DriverTests(unittest.TestCase):
         args = {'--gars': str(s.clone), '--expect-commit': s.commit, '--fixtures': str(s.fixtures),
                 '--gen-executor': str(s.tools / 'gen_executor_config.sh'), '--package-run': str(s.tools / 'package_run.py'),
                 '--lane-commit': 'a' * 40, '--gars-repo': str(s.clone), '--sources': str(s.tools / 'lane-sources.tsv'),
-                '--tolerances': str(s.tools / 'package-tolerances.json'), '--out': str(s.root / 'out')}
+                '--tolerances': str(s.tools / 'package-tolerances.json'), '--private-out': str(s.root / 'out'),
+                '--public-out': str(s.root / 'public'), '--harvest-copy': str(s.root / 'copy')}
         args[override[0]] = override[1]
         return [x for pair in args.items() for x in pair] + ['--poll-seconds', '0']
 
@@ -228,6 +233,41 @@ class DriverTests(unittest.TestCase):
                 name, verb = failing.split(':')
                 self.assertEqual(self.stub.steps()[-1], (name, verb))
                 self.assertIn('STOP: step', (self.stub.root / 'out' / 'run.log').read_text())
+
+    def test_the_harvest_is_copied_off_before_render_so_a_render_stop_keeps_it(self):
+        proc = self.stub.run(STUB_FAIL='package_run.py:render')
+        self.assertEqual(proc.returncode, 1, proc.stdout.decode())
+        self.assertTrue((self.stub.root / 'copy' / 'harvest' / 'HARVEST.json').is_file())
+        self.assertTrue((self.stub.root / 'out' / 'harvest' / 'HARVEST.json').is_file())
+        self.assertEqual(list((self.stub.root / 'public').iterdir()), [])   # nothing private in public
+
+    def test_private_and_public_never_share_a_folder(self):
+        proc = subprocess.run([sys.executable, str(DRIVER)] + self.full_args(['--public-out', str(self.stub.root / 'out')]),
+                              env=dict(os.environ, **self.stub.env), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        self.assertEqual(proc.returncode, 3)
+        self.assertIn('three separate folders', proc.stdout.decode())
+        proc = subprocess.run([sys.executable, str(DRIVER)] + self.full_args(['--public-out', str(self.stub.root / 'out/pub')]),
+                              env=dict(os.environ, **self.stub.env), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        self.assertEqual(proc.returncode, 3)
+
+    def test_the_driver_allows_exactly_the_ignored_paths_harvest_allows(self):
+        import importlib.util, re as _re
+        text = (REPO / 'gars/_system/claims/package_run.py').read_text()
+        harvest_list = _re.search(r'^CLONE_IGNORED_OK = (\(.*?\))$', text, _re.M).group(1)
+        driver_list = _re.search(r'^CLONE_IGNORED_OK = (\(.*?\))$', DRIVER.read_text(), _re.M).group(1)
+        self.assertEqual(harvest_list, driver_list)
+
+    def test_an_unexpected_ignored_file_in_the_clone_refuses_before_any_stage(self):
+        (self.stub.clone / 'gars' / 'data_sources.tsv').write_text(
+            (self.stub.clone / 'gars' / 'data_sources.tsv').read_text())
+        (self.stub.clone / '.gitignore').write_text((self.stub.clone / '.gitignore').read_text() + 'notes.txt\n')
+        git(self.stub.clone, 'commit', '-qam', 'ignore notes')
+        self.stub.commit = git(self.stub.clone, 'rev-parse', 'HEAD')
+        (self.stub.clone / 'notes.txt').write_text('x')
+        proc = self.stub.run()
+        self.assertEqual(proc.returncode, 2, proc.stdout.decode())
+        self.assertIn('not clean', proc.stdout.decode())
+        self.assertEqual(self.stub.calls(), [])
 
     def test_a_seeded_design_that_differs_stops(self):
         proc = self.stub.run(STUB_SAMPLES='atac-a-r1 atac-a-r2 atac-b-r1 other')
