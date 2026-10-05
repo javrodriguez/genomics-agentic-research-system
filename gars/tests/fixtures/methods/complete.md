@@ -1,5 +1,14 @@
 # Methods
 
+nfcore-rnaseq-wrapper 3.26.0 was run against the fixture-build reference genome (annotation release fixture-release) with the star_salmon aligner.
+rnaseq-de v0.10.0 was run against the fixture-build reference genome (annotation release fixture-release) with the design formula `~ condition` and the contrast MT versus WT (factor condition).
+Every workflow records the agent model claude-opus-5-5.
+The analysis plan was approved on 29 September 2026 at 18:04:05 UTC by the approver the run recorded, and its approval record is bound to the plan's exact text.
+The project's history records the approved analysis as complete on 2026-09-29, with the agent model claude-opus-5-5.
+Parameters, software versions and container images are listed below; every value traces to the run's records (Provenance).
+
+## Provenance
+
 The run manifest of workflow `nfcore-rnaseq-wrapper` records: version `3.26.0`; pipeline commit `72c5d4006f3610a00223bd368f28ed650d649a54`; GARS wrapper `rnaseq_bulk`; GARS commit `c54a71584b1347937e4315cbbeb3f27371655228`; template version `v0.10.0`; status `COMPLETE`.
 Its reference genome: build `fixture-build`; annotation release `fixture-release`; FASTA sha256 `99724deab54039707cfdd57d24710a39412ecbd8ed85fb8a5d4c1f70706d637b`; GTF sha256 `aac372d27c1a6c729d38fa73dac6febfa75a76a57bc42613a33fd7b3f0fb960f`.
 Its configuration sha256 is `57fc7ebe7584cba1a50e195979f889f43f973f4e8726fc512d8dd92abd4abd4a`.
@@ -18,7 +27,7 @@ The analysis plan with sha256 `b2fad3e6dd46adfbb19ab0ec2ee525ecc04cfa72a74758d1d
 The project's history records `03_custom_analysis/01_fixture-followup` as `analysis complete` on `2026-09-29`, with model `claude-opus-5-5` and template version `v0.10.0`.
 Each workflow's parameters, random seeds, software versions and container images are listed below.
 
-## Parameters
+### Parameters
 
 - `nfcore-rnaseq-wrapper` parameter `aligner`: `star_salmon`.
 - `nfcore-rnaseq-wrapper` parameter `fasta`: a path-like value, withheld.
@@ -34,7 +43,7 @@ Each workflow's parameters, random seeds, software versions and container images
 - `rnaseq-de` random seed for `pydeseq2.dds.DeseqDataSet.deseq2`: not recorded; seed supported `false`, determinism `unknown`.
 - `rnaseq-de` random seed for `pydeseq2.ds.DeseqStats.summary`: not recorded; seed supported `false`, determinism `unknown`.
 
-## Software used
+### Software used
 
 - GARS commit `c54a71584b1347937e4315cbbeb3f27371655228`, template version `v0.10.0` (workflow `nfcore-rnaseq-wrapper`).
 - Workflow `nfcore-rnaseq-wrapper` version `3.26.0`, pipeline commit `72c5d4006f3610a00223bd368f28ed650d649a54`.
@@ -49,11 +58,11 @@ Each workflow's parameters, random seeds, software versions and container images
   - `python`: `3.9.0`.
 - `rnaseq-de`: container images are not recorded.
 
-## Citation
+### Citation
 
 Cite GARS at commit `c54a71584b1347937e4315cbbeb3f27371655228`; the GARS repository's CITATION.cff file gives the preferred citation.
 
-## Records read
+### Records read
 
 - manifest 1: sha256 `2f062673be291f9ef5c247bfb0d76bdf381f9f02d1b5e4e0a904999b3b19bff3`.
 - manifest 2: sha256 `1dcbf73179636cfead6ca263d2a3ab5293f911785226891059f52897a37c0970`.
@@ -61,53 +70,59 @@ Cite GARS at commit `c54a71584b1347937e4315cbbeb3f27371655228`; the GARS reposit
 - approval record: sha256 `f667db231c6b3c8e01fd333beb8e0989d0f83fa9bb82946b0abdb388be67aa42`.
 - history: sha256 `e104223b599ce04059e4e30e66e2c78e0b98289ffadc870db02860e763cc7d83`.
 
-## Sources
+### Sources
 
-- line 3: workflow: `manifest1:/workflow_name manifest1:/workflow_version manifest1:/pipeline_commit manifest1:/wrapper manifest1:/gars_commit manifest1:/template_version manifest1:/predicate_facts/status`.
-- line 4: reference: `manifest1:/reference/build manifest1:/reference/annotation_release manifest1:/reference/fasta_sha256 manifest1:/reference/gtf_sha256`.
-- line 5: config: `manifest1:/config_sha256`.
-- line 6: threads: `manifest1:/threads`.
-- line 7: command: `manifest1:/command/path manifest1:/command/sha256`.
-- line 8: agent: `manifest1:/agent_model`.
-- line 9: model-step: `manifest1:/model_steps/0/model_id manifest1:/model_steps/0/provider manifest1:/model_steps/0/prompt_id manifest1:/model_steps/0/prompt_sha256/value manifest1:/model_steps/0/prompt_sha256/algorithm`.
-- line 10: workflow: `manifest2:/workflow_name manifest2:/workflow_version manifest2:/pipeline_commit manifest2:/wrapper manifest2:/gars_commit manifest2:/template_version manifest2:/predicate_facts/status`.
-- line 11: reference: `manifest2:/reference/build manifest2:/reference/annotation_release manifest2:/reference/fasta_sha256 manifest2:/reference/gtf_sha256`.
-- line 12: config: `manifest2:/config_sha256`.
-- line 13: threads: `manifest2:/threads`.
-- line 14: command: `manifest2:/command/path manifest2:/command/sha256`.
-- line 15: agent: `manifest2:/agent_model`.
-- line 16: model-step: `manifest2:/model_steps/0/model_id manifest2:/model_steps/0/provider manifest2:/model_steps/0/prompt_id manifest2:/model_steps/0/prompt_sha256/value manifest2:/model_steps/0/prompt_sha256/algorithm`.
-- line 17: approval: `approval:/plan_sha256 approval:/timestamp approval:/actor?`.
-- line 18: history: `history:#3/stage history:#3/outcome history:#3/date history:#3/model history:#3/template_version`.
-- line 19: pointer.
-- line 23: param: `manifest1:/workflow_name manifest1:/params#0.key manifest1:/params#0.value`.
-- line 24: param: `manifest1:/workflow_name manifest1:/params#1.key manifest1:/params#1.value`.
-- line 25: param: `manifest1:/workflow_name manifest1:/params#2.key manifest1:/params#2.value`.
-- line 26: param: `manifest1:/workflow_name manifest1:/params#3.key manifest1:/params#3.value`.
-- line 27: param: `manifest1:/workflow_name manifest1:/params#4.key manifest1:/params#4.value`.
-- line 28: seeds-text: `manifest1:/workflow_name manifest1:/random_seeds`.
-- line 29: param: `manifest2:/workflow_name manifest2:/params#0.key manifest2:/params#0.value`.
-- line 30: param: `manifest2:/workflow_name manifest2:/params#1.key manifest2:/params#1.value`.
-- line 31: param: `manifest2:/workflow_name manifest2:/params#2.key manifest2:/params#2.value`.
-- line 32: param: `manifest2:/workflow_name manifest2:/params#3.key manifest2:/params#3.value`.
-- line 33: seed: `manifest2:/workflow_name manifest2:/random_seeds/0/call manifest2:/random_seeds/0/seed`.
-- line 34: seed-unset: `manifest2:/workflow_name manifest2:/random_seeds/1/call manifest2:/random_seeds/1/seed_supported manifest2:/random_seeds/1/determinism manifest2:/random_seeds/1/seed`.
-- line 35: seed-unset: `manifest2:/workflow_name manifest2:/random_seeds/2/call manifest2:/random_seeds/2/seed_supported manifest2:/random_seeds/2/determinism manifest2:/random_seeds/2/seed`.
-- line 39: gars: `manifest1:/gars_commit manifest1:/template_version manifest1:/workflow_name`.
-- line 40: workflow-version: `manifest1:/workflow_name manifest1:/workflow_version manifest1:/pipeline_commit`.
-- line 41: versions-file: `manifest1:/workflow_name manifest1:/software_versions/0/path manifest1:/software_versions/0/sha256`.
-- line 42: version: `manifest1:/software_versions/0/versions#0.key manifest1:/software_versions/0/versions#0.value`.
-- line 43: container: `manifest1:/workflow_name manifest1:/containers/0/process manifest1:/containers/0/image manifest1:/containers/0/digest manifest1:/containers/0/image_sha256`.
-- line 44: container: `manifest1:/workflow_name manifest1:/containers/1/process manifest1:/containers/1/image manifest1:/containers/1/digest manifest1:/containers/1/image_sha256`.
-- line 45: gars: `manifest2:/gars_commit manifest2:/template_version manifest2:/workflow_name`.
-- line 46: workflow-version: `manifest2:/workflow_name manifest2:/workflow_version manifest2:/pipeline_commit`.
-- line 47: versions-file: `manifest2:/workflow_name manifest2:/software_versions/0/path manifest2:/software_versions/0/sha256`.
-- line 48: version: `manifest2:/software_versions/0/versions#0.key manifest2:/software_versions/0/versions#0.value`.
-- line 49: version: `manifest2:/software_versions/0/versions#1.key manifest2:/software_versions/0/versions#1.value`.
-- line 50: containers-absent: `manifest2:/workflow_name manifest2:/containers`.
-- line 54: citation: `manifest1:/gars_commit`.
-- line 58: record: `manifest1:bytes`.
-- line 59: record: `manifest2:bytes`.
-- line 60: record: `plan:bytes`.
-- line 61: record: `approval:bytes`.
-- line 62: record: `history:bytes`.
+- line 3: prose-run: `manifest1:/workflow_name manifest1:/workflow_version manifest1:/predicate_facts/status manifest1:/reference/comparison manifest1:/reference/build manifest1:/reference/annotation_release manifest1:/params/aligner`.
+- line 4: prose-run: `manifest2:/workflow_name manifest2:/workflow_version manifest2:/predicate_facts/status manifest2:/reference/comparison manifest2:/reference/build manifest2:/reference/annotation_release manifest2:/params/formula manifest2:/params/contrast`.
+- line 5: prose-agent-all: `manifest1:/agent_model manifest2:/agent_model`.
+- line 6: prose-approval: `approval:/plan_sha256 approval:/timestamp approval:/actor?`.
+- line 7: prose-history: `history:#3/stage history:#3/outcome history:#3/date history:#3/model`.
+- line 8: prose-closing.
+- line 12: workflow: `manifest1:/workflow_name manifest1:/workflow_version manifest1:/pipeline_commit manifest1:/wrapper manifest1:/gars_commit manifest1:/template_version manifest1:/predicate_facts/status`.
+- line 13: reference: `manifest1:/reference/build manifest1:/reference/annotation_release manifest1:/reference/fasta_sha256 manifest1:/reference/gtf_sha256`.
+- line 14: config: `manifest1:/config_sha256`.
+- line 15: threads: `manifest1:/threads`.
+- line 16: command: `manifest1:/command/path manifest1:/command/sha256`.
+- line 17: agent: `manifest1:/agent_model`.
+- line 18: model-step: `manifest1:/model_steps/0/model_id manifest1:/model_steps/0/provider manifest1:/model_steps/0/prompt_id manifest1:/model_steps/0/prompt_sha256/value manifest1:/model_steps/0/prompt_sha256/algorithm`.
+- line 19: workflow: `manifest2:/workflow_name manifest2:/workflow_version manifest2:/pipeline_commit manifest2:/wrapper manifest2:/gars_commit manifest2:/template_version manifest2:/predicate_facts/status`.
+- line 20: reference: `manifest2:/reference/build manifest2:/reference/annotation_release manifest2:/reference/fasta_sha256 manifest2:/reference/gtf_sha256`.
+- line 21: config: `manifest2:/config_sha256`.
+- line 22: threads: `manifest2:/threads`.
+- line 23: command: `manifest2:/command/path manifest2:/command/sha256`.
+- line 24: agent: `manifest2:/agent_model`.
+- line 25: model-step: `manifest2:/model_steps/0/model_id manifest2:/model_steps/0/provider manifest2:/model_steps/0/prompt_id manifest2:/model_steps/0/prompt_sha256/value manifest2:/model_steps/0/prompt_sha256/algorithm`.
+- line 26: approval: `approval:/plan_sha256 approval:/timestamp approval:/actor?`.
+- line 27: history: `history:#3/stage history:#3/outcome history:#3/date history:#3/model history:#3/template_version`.
+- line 28: pointer.
+- line 32: param: `manifest1:/workflow_name manifest1:/params#0.key manifest1:/params#0.value`.
+- line 33: param: `manifest1:/workflow_name manifest1:/params#1.key manifest1:/params#1.value`.
+- line 34: param: `manifest1:/workflow_name manifest1:/params#2.key manifest1:/params#2.value`.
+- line 35: param: `manifest1:/workflow_name manifest1:/params#3.key manifest1:/params#3.value`.
+- line 36: param: `manifest1:/workflow_name manifest1:/params#4.key manifest1:/params#4.value`.
+- line 37: seeds-text: `manifest1:/workflow_name manifest1:/random_seeds`.
+- line 38: param: `manifest2:/workflow_name manifest2:/params#0.key manifest2:/params#0.value`.
+- line 39: param: `manifest2:/workflow_name manifest2:/params#1.key manifest2:/params#1.value`.
+- line 40: param: `manifest2:/workflow_name manifest2:/params#2.key manifest2:/params#2.value`.
+- line 41: param: `manifest2:/workflow_name manifest2:/params#3.key manifest2:/params#3.value`.
+- line 42: seed: `manifest2:/workflow_name manifest2:/random_seeds/0/call manifest2:/random_seeds/0/seed`.
+- line 43: seed-unset: `manifest2:/workflow_name manifest2:/random_seeds/1/call manifest2:/random_seeds/1/seed_supported manifest2:/random_seeds/1/determinism manifest2:/random_seeds/1/seed`.
+- line 44: seed-unset: `manifest2:/workflow_name manifest2:/random_seeds/2/call manifest2:/random_seeds/2/seed_supported manifest2:/random_seeds/2/determinism manifest2:/random_seeds/2/seed`.
+- line 48: gars: `manifest1:/gars_commit manifest1:/template_version manifest1:/workflow_name`.
+- line 49: workflow-version: `manifest1:/workflow_name manifest1:/workflow_version manifest1:/pipeline_commit`.
+- line 50: versions-file: `manifest1:/workflow_name manifest1:/software_versions/0/path manifest1:/software_versions/0/sha256`.
+- line 51: version: `manifest1:/software_versions/0/versions#0.key manifest1:/software_versions/0/versions#0.value`.
+- line 52: container: `manifest1:/workflow_name manifest1:/containers/0/process manifest1:/containers/0/image manifest1:/containers/0/digest manifest1:/containers/0/image_sha256`.
+- line 53: container: `manifest1:/workflow_name manifest1:/containers/1/process manifest1:/containers/1/image manifest1:/containers/1/digest manifest1:/containers/1/image_sha256`.
+- line 54: gars: `manifest2:/gars_commit manifest2:/template_version manifest2:/workflow_name`.
+- line 55: workflow-version: `manifest2:/workflow_name manifest2:/workflow_version manifest2:/pipeline_commit`.
+- line 56: versions-file: `manifest2:/workflow_name manifest2:/software_versions/0/path manifest2:/software_versions/0/sha256`.
+- line 57: version: `manifest2:/software_versions/0/versions#0.key manifest2:/software_versions/0/versions#0.value`.
+- line 58: version: `manifest2:/software_versions/0/versions#1.key manifest2:/software_versions/0/versions#1.value`.
+- line 59: containers-absent: `manifest2:/workflow_name manifest2:/containers`.
+- line 63: citation: `manifest1:/gars_commit`.
+- line 67: record: `manifest1:bytes`.
+- line 68: record: `manifest2:bytes`.
+- line 69: record: `plan:bytes`.
+- line 70: record: `approval:bytes`.
+- line 71: record: `history:bytes`.
