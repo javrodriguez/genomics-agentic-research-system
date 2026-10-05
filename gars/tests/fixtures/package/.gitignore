@@ -1,2 +1,0 @@
-# The golden packages ship a submit.sh, which the repository ignores everywhere else.
-!submit.sh

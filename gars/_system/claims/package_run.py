@@ -101,7 +101,9 @@ def load_module(path, name):
 
 
 def git(repo, *args):
-    proc = subprocess.run(['git', '--no-replace-objects', '-C', str(repo)] + list(args),
+    # Status reads the bytes, never trusted stat data or a filesystem monitor (review h2 m7).
+    proc = subprocess.run(['git', '--no-replace-objects', '-c', 'core.trustctime=true', '-c', 'core.checkStat=default',
+                           '-c', 'core.fsmonitor=false', '-C', str(repo)] + list(args),
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if proc.returncode != 0:
         raise Refusal('git %s failed in %s' % (args[0], repo))
@@ -211,7 +213,7 @@ def checkout_unpatched(manifest, role):
     head = git(checkout, 'rev-parse', 'HEAD').decode('ascii').strip()
     if head != manifest.get('pipeline_commit'):
         raise Refusal('%s: the pipeline checkout is not at the recorded commit' % role)
-    if git(checkout, 'status', '--porcelain', '--untracked-files=all').strip() or hidden_edits(checkout):
+    if git(checkout, 'status', '--porcelain', '--untracked-files=all', '--ignored').strip() or hidden_edits(checkout):
         raise Refusal('%s: the pipeline checkout was patched at run; -r <commit> would not be the '
                       'code that ran' % role)
 
@@ -225,6 +227,13 @@ def hidden_edits(repo):
 
 
 KEY_LINE = re.compile(r'^# idempotency_key=([0-9a-f]+)$', re.M)
+YAML_SCALAR = re.compile(r'(true|false|-?[0-9]+|-?[0-9]+\.[0-9]+)\Z')
+
+
+def yaml_scalar(text):
+    if text in ('true', 'false'):
+        return text == 'true'
+    return float(text) if '.' in text else int(text)
 
 
 def check_commands(stage, manifest, role):
@@ -262,6 +271,47 @@ def check_project_inputs(project, target, manifest, role):
                 raise Refusal('%s: the project\'s executor config is not the one the run recorded' % role)
 
 
+def check_status(wl, stage, manifest, role):
+    """Only a run that completed is packaged (review h2 m5)."""
+    facts = manifest.get('predicate_facts') or {}
+    if facts.get('status') != 'COMPLETE' or manifest.get('failure_class') is not None:
+        raise Refusal('%s: the run is recorded as %s, not COMPLETE' % (role, facts.get('status')))
+    if (stage / 'STATUS').exists() and wl.read_status(stage) != 'COMPLETE':
+        raise Refusal('%s: the stage STATUS is not COMPLETE' % role)
+
+
+def check_evidence(wl, gars, project, stage, manifest, role):
+    """The fields render prints are re-derived from the files with GARS's own collect functions, so
+    every recorded hash among them is re-checked too (review h2 M3): the container per process from
+    the trace, the software versions files and their sha256, the design check, the executor config
+    and descriptor, and the reference files the run hashed."""
+    kind = (manifest.get('predicate_facts') or {}).get('wrapper_kind')
+    try:
+        containers = wl.trace_evidence(stage)[0]
+        versions = wl.software_evidence(stage, kind)
+    except (OSError, ValueError, KeyError) as exc:
+        raise Refusal('%s: the trace or versions files cannot be read (%s)' % (role, type(exc).__name__))
+    if containers != manifest.get('containers'):
+        raise Refusal('%s: the recorded containers are not the ones the trace names' % role)
+    if versions != manifest.get('software_versions'):
+        raise Refusal('%s: the recorded software versions are not the versions files on disk' % role)
+    design = manifest.get('design_check')
+    if isinstance(design, dict):
+        path = project / str(design.get('path'))
+        if not path.is_file() or sha256_file(path) != design.get('sha256'):
+            raise Refusal('%s: the design check is not the file the run recorded' % role)
+    for entry in manifest.get('execution_config') or []:
+        path = Path(gars) / str(entry.get('path'))
+        if not path.is_file() or sha256_file(path) != entry.get('sha256'):
+            raise Refusal('%s: the %s is not the file the run recorded' % (role, entry.get('role')))
+    observed = (manifest.get('reference') or {}).get('observed') or {}
+    for param, field in (('fasta', 'fasta_sha256'), ('gtf', 'gtf_sha256')):
+        value = (manifest.get('params') or {}).get(param)
+        if field in observed and value:
+            if not Path(value).is_file() or sha256_file(value) != observed[field]:
+                raise Refusal('%s: the reference %s is not the file the run hashed' % (role, param))
+
+
 def samplesheet_inputs(sheet, stage_id):
     """Every samplesheet cell naming an existing file: its name and its sha256, computed here."""
     rows = list(csv.reader(io.StringIO(sheet.read_text(encoding='utf-8'))))
@@ -297,7 +347,6 @@ def harvest(args):
         raise Refusal('--lane-commit must be a full 40-hex commit')
     if out.exists() and any(out.iterdir()):
         raise Refusal('the harvest folder is not empty')
-    wl, manifest_check, render_methods = gars_modules(gars)
     gars_commit = git(gars, 'rev-parse', 'HEAD').decode('ascii').strip()
     porcelain = git(gars, 'status', '--porcelain', '--untracked-files=all').decode('utf-8')
     if porcelain.strip():
@@ -305,6 +354,10 @@ def harvest(args):
                       % len(porcelain.strip().splitlines()))
     if hidden_edits(gars):
         raise Refusal('the GARS clone is not clean (a file is flagged skip-worktree or assume-unchanged)')
+    wl, manifest_check, render_methods = gars_modules(gars)   # imported only once the clone is vetted
+    dataset = wl.dataset_record(project)
+    if dataset.get('data_class') != 'public':   # every harvest, not only a stage 03 one (review h2 m4)
+        raise Refusal('the project\'s dataset record names data_class %r, not public' % dataset.get('data_class'))
     stages, members, inputs, texts = [], [], [], []
     temp = Path(tempfile.mkdtemp(prefix='.harvest-', dir=str(out.parent if out.parent.is_dir() else '.')))
     try:
@@ -325,6 +378,10 @@ def harvest(args):
             manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
             if manifest.get('data_class') != 'public':
                 raise Refusal('%s: data_class is %r, not public' % (role, manifest.get('data_class')))
+            if manifest.get('gars_commit') != gars_commit:   # while the box can still be checked out (h2 m8)
+                raise Refusal('%s: the run recorded GARS commit %s, but the clone is at %s'
+                              % (role, str(manifest.get('gars_commit'))[:12], gars_commit[:12]))
+            check_status(wl, stage, manifest, role)
             g4 = grade_complete(manifest_check, manifest, role)
             try:
                 wl.verify_output_manifest(stage)
@@ -341,6 +398,7 @@ def harvest(args):
             checkout_unpatched(manifest, role)
             check_commands(stage, manifest, role)
             check_project_inputs(project, target, manifest, role)
+            check_evidence(wl, gars, project, stage, manifest, role)
             for name in STAGE_COPY:
                 if (stage / name).is_file():
                     copy_file(stage / name, target / rel / name)
@@ -354,9 +412,12 @@ def harvest(args):
                                   'code that ran' % (role, manifest.get('key_formula')))
                 copy_tree(stage / tree, target / rel / tree)
             for output in manifest.get('outputs') or []:
+                top = os.path.normpath(str(stage / output['path']))
                 for link in output.get('symlinks') or []:
-                    if os.path.isabs(str(link.get('target'))):
-                        raise Refusal('%s: output %s holds a link to an absolute path, which the record would '
+                    target = str(link.get('target'))
+                    where = os.path.normpath(os.path.join(os.path.dirname(os.path.join(top, link['path'])), target))
+                    if os.path.isabs(target) or not where.startswith(top + os.sep):
+                        raise Refusal('%s: output %s holds a link to a path outside it, which the record would '
                                       'publish' % (role, output['path']))
                 listed = ([('.', output['sha256'])] if output.get('members') is None else
                           [(m['path'], m['sha256']) for m in output['members']])
@@ -374,13 +435,7 @@ def harvest(args):
                 inputs += samplesheet_inputs(Path(sheet), rel)
             stages.append({'kind': '02', 'rel': rel, 'group4_absent': g4})
         actors = set()
-        plans = sorted(project.glob('03_custom_analysis/*/PLAN.md'))
-        if plans:
-            dataset = wl.dataset_record(project)
-            if dataset.get('data_class') != 'public':
-                raise Refusal('the project\'s dataset record names data_class %r, not public'
-                              % dataset.get('data_class'))
-        for plan in plans:
+        for plan in sorted(project.glob('03_custom_analysis/*/PLAN.md')):
             stage, actor = harvest_analysis(plan, project, gars, target, render_methods)
             stages.append(stage)
             if isinstance(actor, str) and actor.strip():
@@ -448,6 +503,9 @@ def harvest_analysis(plan, project, gars, target, render_methods):
             raise Refusal('%s: no submission record' % rel)
         scripts = []
         for entry in executorlib._analysis_latest(entries).values():
+            if not entry.get('job_id') or entry.get('error'):
+                raise Refusal('%s: the latest submission of %s has no job, or records an error'
+                              % (rel, Path(str(entry.get('script'))).name))
             submitted = entry.get('submitted_at')
             # The approval must have been in force when the script ran, not only now (review h1 H3).
             if type(submitted) not in (int, float) or not approved_at <= submitted < expires_at:
@@ -461,6 +519,8 @@ def harvest_analysis(plan, project, gars, target, render_methods):
                 scripts.append(path.relative_to(adir.resolve()).as_posix())
     except (OSError, ValueError, KeyError, TypeError) as exc:
         raise Refusal('%s: the submission record cannot be checked (%s)' % (rel, type(exc).__name__))
+    if not (adir / 'run' / '.gars_run_complete').is_file():   # the launcher writes it on exit 0 only
+        raise Refusal('%s: run/.gars_run_complete is absent; the analysis did not finish' % rel)
     for name in sorted(set(scripts)) + ['PLAN.md', 'OUTPUTS.tsv', executorlib.ANALYSIS_SUBMISSIONS]:
         if (adir / name).is_file():
             copy_file(adir / name, target / rel / name)
@@ -546,6 +606,7 @@ class Render(object):
         self.tolerance_bytes, self.tolerances = self.read_tolerances(Path(args.tolerances))
         self.pkg = Package()
         self.not_recorded, self.withheld, self.left_out, self.unread = [], [], [], []
+        self.masked_scripts = []
         self.oracle = set()
         self.project = self.harvest / 'project'
         self.stages = []
@@ -689,21 +750,15 @@ class Render(object):
                                                             'gars/_system/workspace.py') + ' (NEXTFLOW_LEGACY_PARSER)'})
             if not COMMIT.match(str(m.get('pipeline_commit'))):
                 raise Refusal('%s records no full pipeline commit' % s['rel'])
-            for name in ('submit.sh', 'reproducibility/commands.sh'):
-                path = self.project / s['rel'] / name
-                if path.is_file():
-                    text = path.read_text(encoding='utf-8')
-                    self.mark_oracle(text)
-                    note = ('# Masked copy written by package_run.py render: absolute paths, buckets and '
-                            'account ids are replaced (PROVENANCE.md).\n' +
-                            ('# The sha256 the run recorded is of the unmasked file and is not checkable '
-                             'from this package.\n' if name.endswith('commands.sh') else
-                             '# The run recorded no sha256 of this file; harvest bound it by its input-key '
-                             'line, which the executor checks at submit.\n'))
-                    # The input-key line prepare appends is an oracle (it hashes files holding masked
-                    # values), so it ships withheld, like the key itself in records/.
-                    text = KEY_LINE.sub('# idempotency_key=<withheld: PROVENANCE.md, hash oracle>', text)
-                    self.pkg.add('code/%s/%s' % (s['id'], Path(name).name), note + self.masked(text, name))
+            # commands.sh is the run's bound submission record (its sha256 is recorded). submit.sh is
+            # not shipped: no run record binds its bytes, only its input-key line (review h2 M1).
+            path = self.project / s['rel'] / 'reproducibility' / 'commands.sh'
+            text = path.read_text(encoding='utf-8')
+            self.mark_oracle(text)
+            note = ('# Masked copy written by package_run.py render: absolute paths, buckets and account ids '
+                    'are replaced (PROVENANCE.md).\n# The sha256 the run recorded is of the unmasked file and '
+                    'is not checkable from this package.\n')
+            self.pkg.add('code/%s/commands.sh' % s['id'], note + self.masked(text, 'commands.sh'))
             scripts = self.project / s['rel'] / 'scripts'
             for path in sorted(scripts.rglob('*')) if scripts.is_dir() else []:
                 if path.is_file():
@@ -885,6 +940,10 @@ class Render(object):
                     else:
                         raise Refusal('%s: parameter %s holds a path the package cannot ship' % (s['rel'], key))
                     label += ', the path replaced by the re-run\'s own folder'
+                if isinstance(value, str) and YAML_SCALAR.match(value):
+                    # params.yaml wrote it bare, so Nextflow's YAML reader saw a boolean or a number.
+                    value = yaml_scalar(value)
+                    label += ', typed as the run\'s params.yaml was read'
                 shipped[key] = value
                 rows.append({'stage': s['id'], 'key': key, 'value': json.dumps(value), 'value_source': label})
             self.pkg.add('params/%s.params.json' % s['id'], dump_json(shipped))
@@ -1057,7 +1116,12 @@ class Render(object):
             for name in s.get('scripts', []):
                 text = (adir / name).read_text(encoding='utf-8')
                 if self.masker.holds(text):
-                    raise Refusal('%s: the analysis script %s holds a masked value' % (s['rel'], name))
+                    # A real launcher cds into the analysis folder by absolute path: shipped masked,
+                    # and its submit-time sha256 (an oracle then) is never printed (review h2 n10).
+                    self.mark_oracle(text)
+                    self.masked_scripts.append('%s/%s' % (s['id'], name))
+                    text = ('# Masked copy written by package_run.py render (PROVENANCE.md); the sha256 bound '
+                            'at submit is of the unmasked file.\n' + self.masked(text, name))
                 self.pkg.add('code/%s/scripts/%s' % (s['id'], name), text)
             self.note_not_recorded('%s: output sha256 and the analysis environment (G2)' % s['id'])
         if rows:
@@ -1136,9 +1200,16 @@ class Render(object):
         for name in sorted(self.masker.counts):
             lines.append('| `%s` | %d |' % (name, self.masker.counts[name]))
         lines += ['', '## Hash oracle', '',
-                  'A sha256 of a file holding a masked value would let anyone confirm a guessed user name, path or '
-                  'bucket, so this package prints no such hash; the fields below are cited by name only and are '
-                  'not checkable from the package.', '']
+                  'A sha256 of a run record holding a masked value would let anyone confirm a guessed user name, '
+                  'path or bucket, so this package prints no such hash; the fields below are cited by name only '
+                  'and are not checkable from the package.',
+                  'Output sha256 values are printed, since the comparison needs them; render refuses an output '
+                  'holding a bucket, account id, approver or user name, and a result table holding a path is '
+                  'named under "Result tables not shipped".',
+                  'submit.sh is not shipped: no run record binds its bytes. code/<stage>/commands.sh, the recorded '
+                  'submission line, is.', '']
+        for rel in self.masked_scripts:
+            lines.append('- %s: shipped masked; its sha256 bound at submit is of the unmasked file, not printed.' % rel)
         for stage, field, reason in self.withheld:
             lines.append('- %s: `%s`, not printed: %s.' % (stage, field, reason))
         for rel in sorted(self.unread):

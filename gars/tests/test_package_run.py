@@ -154,6 +154,7 @@ class World(object):
                      ('qc_multiqc', 'run/results/multiqc/narrow_peak/multiqc_report.html')]
         write(self.stage / 'OUTPUTS.tsv', '# type\trole\tpath\n' + ''.join('%s\tnative\t%s\n' % r for r in rows))
         outputs = wl.complete_output_index(self.stage)
+        write(self.stage / 'STATUS', 'COMPLETE\n')
         submit = write(self.stage / 'submit.sh',
                        '#!/bin/bash\nset -euo pipefail\nWS="%s"\nsource "$WS/_system/gars-env.sh"\n'
                        'export NXF_SYNTAX_PARSER=v1\ncd "%s"\nnextflow run "%s" \\\n    -c "%s" \\\n'
@@ -215,7 +216,10 @@ class World(object):
         adir = self.project / '03_custom_analysis' / '01_followup'
         plan = write(adir / 'PLAN.md', '# Plan\n\nCount peaks per sample.\n')
         script = write(adir / 'analysis.py', 'print("peaks")\n')
-        launcher = write(adir / 'launch.sh', '#!/bin/sh\npython3 analysis.py\n')
+        # the shape executorlib._analysis_launcher writes: it cds into the analysis by absolute path
+        launcher = write(adir / 'launch.sh', '#!/bin/sh\ncd "%s"\npython3 analysis.py && date > run/.gars_run_complete\n'
+                         % adir)
+        write(adir / 'run' / '.gars_run_complete', '2026-10-09T13:05:00+0000\n')
         write(adir / '.gars_submissions.jsonl', json.dumps({
             'script': str(script), 'script_sha256': sha(script.read_bytes()),
             'launcher': str(launcher), 'launcher_sha256': sha(launcher.read_bytes()),
@@ -329,6 +333,100 @@ class HarvestAndRender(PackageCase):
                 self.refused(w.harvest(), words)
                 self.assertFalse((w.root / 'harvest').exists())
 
+    def test_review_h2_harvest_refusals(self):
+        """Each case is one finding of the harvest-only review r2, reproduced as the reviewer did."""
+        cases = {
+            'M2 a relative link that climbs out': ('a link to a path outside it', {}, self.relative_link_out),
+            'M3 a versions file changed': ('not the versions files on disk', {}, lambda w: write(
+                w.stage / 'run/results/pipeline_info/software_versions.yml',
+                (w.stage / 'run/results/pipeline_info/software_versions.yml').read_text() + '# edited\n')),
+            'M3 the recorded images edited': ('not the ones the trace names', {}, self.edit_images),
+            'M3 the executor descriptor changed': ('executor_descriptor is not the file', {}, lambda w: write(
+                w.project / '_config/executor.yaml', 'name: local\n')),
+            'M3 the reference changed': ('reference fasta is not the file', {}, lambda w: write(
+                w.refs['genome.fa'], '>I\nTTTT\n')),
+            'm4 the dataset is now controlled': ('not public', {}, lambda w: write(
+                w.project / '00_data/dataset.tsv', 'purpose\tdata_class\nfixture\tcontrolled\n')),
+            'm5 a failed stage': ('not COMPLETE', {}, lambda w: write(w.stage / 'STATUS', 'FAILED\n')),
+            'm5 a manifest recording FAILED': ('recorded as FAILED', {}, self.record_failed),
+            'a manifest naming a non-public data class': ('data_class is', {}, self.manifest_controlled),
+            'm6 a stage 03 that never finished': ('did not finish', {'stage03': True}, lambda w: (
+                w.project / '03_custom_analysis/01_followup/run/.gars_run_complete').unlink()),
+            'm6 a stage 03 submission with an error': ('records an error', {'stage03': True}, self.submission_error),
+            'm7 an ignored file in the pipeline': ('patched at run', {}, self.ignored_in_pipeline),
+            'm8 the clone moved after the run': ('the clone is at', {}, lambda w: git(
+                w.clone, 'commit', '--allow-empty', '-q', '-m', 'moved')),
+        }
+        for name, (words, options, damage) in sorted(cases.items()):
+            with self.subTest(name):
+                w = self.world(**options)
+                damage(w)
+                self.refused(w.harvest(), words)
+                self.assertFalse((w.root / 'harvest').exists())
+
+    def test_a_real_shaped_stage_03_launcher_ships_masked(self):
+        w, package = self.built(stage03=True)
+        launcher = (package / 'code/custom.01_followup/scripts/launch.sh').read_text()
+        self.assertIn('Masked copy', launcher)
+        self.assertIn('cd "<WORKSPACE>/gars/projects/yeast/03_custom_analysis/01_followup"', launcher)
+        self.assertIn('custom.01_followup/launch.sh: shipped masked', (package / 'PROVENANCE.md').read_text())
+
+    def test_params_ship_typed_as_the_runs_yaml_read_them(self):
+        w, package = self.built()
+        params = json.loads((package / ('params/%s.params.json' % STAGE)).read_text())
+        self.assertIs(params['narrow_peak'], True)
+        self.assertIs(params['save_reference'], True)
+        self.assertEqual(params['macs_gsize'], 11624332)
+        self.assertEqual(params['aligner'], 'bwa')
+
+    @staticmethod
+    def manifest_controlled(w):
+        """The dataset record says public, the run's manifest does not: the manifest's own check refuses."""
+        manifest = json.loads(w.manifest_path.read_text())
+        manifest['data_class'] = 'controlled'
+        w.manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
+
+    @staticmethod
+    def record_failed(w):
+        manifest = json.loads(w.manifest_path.read_text())
+        manifest['predicate_facts']['status'] = 'FAILED'
+        w.manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
+
+    def test_a_masked_launchers_submit_hash_never_prints(self):
+        w = self.world(stage03=True)
+        launcher = sha((w.project / '03_custom_analysis/01_followup/launch.sh').read_bytes())
+        write(w.tolerances, json.dumps({'entries': [{
+            'stage': STAGE, 'members': ['run/results/multiqc/narrow_peak/multiqc_report.html'], 'mode': 'presence',
+            'origin': 'pass-1', 'cause': 'the report embeds its run time', 'evidence': 'launcher ' + launcher}]}))
+        self.assertEqual(w.harvest().returncode, 0)
+        self.refused(w.render(), 'the sha256 of a file holding a masked value')
+
+    @staticmethod
+    def relative_link_out(w):
+        peaks = w.stage / 'run/results/bwa/merged_library/macs2/narrow_peak'
+        os.symlink('../' * 23 + 'opt/private-lab/refs/genome.fa', str(peaks / 'genome.fa'))
+        manifest = json.loads(w.manifest_path.read_text())
+        manifest['outputs'] = wl.complete_output_index(w.stage)
+        w.manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
+
+    @staticmethod
+    def edit_images(w):
+        manifest = json.loads(w.manifest_path.read_text())
+        manifest['containers'][0]['image'] = 'quay.io/biocontainers/bwa:9.9.9--edited'
+        w.manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
+
+    @staticmethod
+    def submission_error(w):
+        path = w.project / '03_custom_analysis/01_followup/.gars_submissions.jsonl'
+        entry = json.loads(path.read_text())
+        entry['job_id'], entry['error'] = None, 'local submission unresolved'
+        write(path, json.dumps(entry) + '\n')
+
+    @staticmethod
+    def ignored_in_pipeline(w):
+        write(w.checkout / 'bin' / 'samtools', '#!/bin/sh\n')
+        write(w.checkout / '.git' / 'info' / 'exclude', 'bin/samtools\n')
+
     def test_review_h1_harvest_refusals(self):
         """Each case is one finding of the harvest-only review r1, reproduced as the reviewer did."""
         cases = {
@@ -338,7 +436,7 @@ class HarvestAndRender(PackageCase):
             'H1 submit.sh edited': ('exactly the recorded input-key line', {}, self.edit_submit),
             'H2 a linked folder': ('linked folder', {}, self.link_a_folder),
             'H3 re-approved after the run': ('not in force when', {'stage03': True}, self.reapprove),
-            'H4 an output link to an absolute path': ('a link to an absolute path', {}, self.absolute_link),
+            'H4 an output link to an absolute path': ('a link to a path outside it', {}, self.absolute_link),
             'H5 the samplesheet shifted into the config': ('samplesheet_sha256 differs', {}, self.shift_row),
             'H6 a skip-worktree edit in GARS': ('skip-worktree', {}, self.skip_worktree),
             'H6 an untracked file in the pipeline': ('patched at run', {}, lambda w: write(
@@ -517,9 +615,17 @@ class HarvestAndRender(PackageCase):
 class Privacy(PackageCase):
     def test_no_path_bucket_uri_or_account_id_survives(self):
         w, package = self.built()
-        submit = (package / 'code' / STAGE / 'submit.sh').read_text()
-        self.assertIn('s3://<BUCKET>/work/yeast-atacseq_bulk', submit)
-        self.assertIn('<WORKSPACE>', submit)
+        self.assertFalse((package / 'code' / STAGE / 'submit.sh').exists())   # unbound by any record (h2 M1)
+        # The masker itself, on the harvested submit.sh, which holds the S3 work folder and its account id.
+        tool = module(TOOL, 'package_run_masker')
+        record = json.loads((w.root / 'harvest/HARVEST.json').read_text())
+        self.assertIn(BUCKET, record['secrets']['buckets'])
+        self.assertIn(ACCOUNT, record['secrets']['accounts'])
+        masked = tool.Masker(record).mask((w.root / 'harvest/project' / STAGE_REL / 'submit.sh').read_text())
+        self.assertIn('s3://<BUCKET>/work/yeast-atacseq_bulk', masked)
+        self.assertIn('<WORKSPACE>', masked)
+        self.assertNotIn(ACCOUNT, masked)
+        self.assertNotIn(str(w.root), masked)
         for rel, data in package_files(package).items():
             text = data.decode('utf-8', 'replace')
             for value in (ACCOUNT, BUCKET, str(w.root), '/Users/'):
@@ -527,8 +633,6 @@ class Privacy(PackageCase):
             self.assertIsNone(re.search(r'/home/(?!conda/)', text), rel)   # conda's build prefix, in the pip lock
             self.assertIsNone(re.search(r'(?i)s3://(?!<BUCKET>)', text), rel)
             self.assertIsNone(re.search(r'(?<![0-9A-Fa-f])[0-9]{12}(?![0-9A-Fa-f])', text), rel)
-        provenance = (package / 'PROVENANCE.md').read_text()
-        self.assertRegex(provenance, r'\| `<BUCKET>` \| [1-9][0-9]* \|')
 
     def test_no_sha256_of_a_file_holding_a_masked_value_is_printed(self):
         w, package = self.built()

@@ -1,2 +1,0 @@
-# The package ships its submit.sh, which the repository ignores everywhere else.
-!submit.sh
