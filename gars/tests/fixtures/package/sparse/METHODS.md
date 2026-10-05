@@ -48,7 +48,7 @@ Cite GARS at commit `<GARS_COMMIT>`; the GARS repository's CITATION.cff file giv
 
 ### Sources
 
-- line 3: prose-run: `manifest1:/predicate_facts/wrapper_kind manifest1:/software_versions/0/versions#2.key manifest1:/software_versions/0/versions#2.value manifest1:/predicate_facts/status manifest1:/workflow_name manifest1:/reference/comparison manifest1:/reference/build manifest1:/reference/annotation_release manifest1:/params/aligner`.
+- line 3: prose-run: `manifest1:/predicate_facts/wrapper_kind manifest1:/software_versions/0/versions#2.key manifest1:/software_versions/0/versions#2.value manifest1:/predicate_facts/status manifest1:/workflow_name manifest1:/reference/comparison manifest1:/reference/build manifest1:/params/gtf? manifest1:/reference/annotation_release manifest1:/params/aligner`.
 - line 4: prose-agent-none: `manifest1:/predicate_facts/wrapper_kind manifest1:/software_versions/0/versions#2.key manifest1:/agent_model manifest1:/model_steps`.
 - line 5: prose-closing.
 - line 9: workflow: `manifest1:/workflow_name manifest1:/workflow_version manifest1:/pipeline_commit manifest1:/wrapper manifest1:/gars_commit manifest1:/template_version manifest1:/predicate_facts/status`.
