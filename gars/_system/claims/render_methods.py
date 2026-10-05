@@ -6,14 +6,14 @@
 
 The page opens with a short journal-style Methods paragraph (decision 0276): each sentence is one
 fixed frame filled only from record fields, and a clause whose field is missing or withheld is
-dropped, never filled. Below it, a Provenance section holds every hash, record fingerprint,
+dropped, never filled. Below it, a Provenance section holds every hash it can publish, record fingerprint,
 withheld-path note, parameter, software version and citation, and the Sources map.
 Every line is fixed words plus values read from the named records, and the Sources section lists,
 for every line, the record fields its values came from (decision 0236). A missing or empty field
 reads "not recorded"; a value holding a local path is withheld; nothing is guessed, no model and no
 network is involved, and no file other than the named ones is opened. The approval line needs an
 approval record whose plan_sha256 is the plan's sha256, and it names "the approver the run
-recorded", never the record's actor. Exit 0 written; 1 refused, with the reason on stderr and any
+recorded" (in the paragraph, "the approver named in its approval record"), never the record's actor. Exit 0 written; 1 refused, with the reason on stderr and any
 earlier output left as it was; 2 usage.
 """
 import argparse
@@ -46,8 +46,6 @@ STORAGE_SCHEME = re.compile(r'(?<![A-Za-z0-9+.-])(?:[Ss]3[AaNn]?|[Gg][Ss]|[Gg][C
                             r'[Ww][Aa][Ss][Bb][Ss]?|[Ff][Ii][Ll][Ee])://')
 FLATTENED = ('Cc', 'Cf', 'Cs', 'Zl', 'Zp')  # control, format, surrogate, line and paragraph separators
 PLAIN = re.compile(r'[A-Za-z0-9]+(?:[._+:/-][A-Za-z0-9]+)*\Z')   # ASCII only, no re.I folding
-MONTHS = ('January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September',
-          'October', 'November', 'December')
 DIGEST = re.compile(r'[0-9a-f]{64}\Z')
 UTC = re.compile(r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\Z')
 ENTRY = re.compile('## (.+?) \u2014 (.+?) \u2014 (.+?)\\s*\\Z')
@@ -189,7 +187,7 @@ def words(value):
     if absent(value) or any(path_like(flatten(text)) for text in strings(value)):
         return None
     if not isinstance(value, str):   # a number or a boolean is data, not a word
-        return span(json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False))
+        return span(flatten(json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False)))
     return value if plain(value) else span(flatten(value))
 
 
@@ -521,7 +519,6 @@ PROSE_KINDS = ('prose-run', 'prose-configured', 'prose-agent-all', 'prose-agent'
                'prose-approval', 'prose-history', 'prose-closing')
 CLOSING = ("Parameters, software versions and container images are listed below, or marked not recorded; "
            "every value traces to the run's records (Provenance).")
-ISO_DATE = re.compile(r'[0-9]{4}-[0-9]{2}-[0-9]{2}\Z')
 
 
 def capital(text):
@@ -574,11 +571,6 @@ def contrast_words(value):
     return shown
 
 
-def day(date):
-    """YYYY-MM-DD, already a real date, as `29 September 2026`."""
-    return '%d %s %s' % (int(date[8:10]), MONTHS[int(date[5:7]) - 1], date[:4])
-
-
 def prose_workflow(page, m, k):
     M = 'manifest%d:' % k
     refs = []
@@ -612,8 +604,10 @@ def prose_workflow(page, m, k):
             refs += [M + '/reference/comparison', M + '/reference/build']
             text += ' against the %s reference genome' % build
             release = words(reference.get('annotation_release', MISSING))
-            if release is not None:
-                refs.append(M + '/reference/annotation_release')
+            params_given = get(m, 'params')
+            if release is not None and isinstance(params_given, dict) and 'gtf' in params_given:
+                # only a run that passed an annotation used one (methylseq names the FASTA alone)
+                refs += [M + '/params/gtf?', M + '/reference/annotation_release']
                 text += ' (annotation release %s)' % release
     params = get(m, 'params')
     params = params if isinstance(params, dict) else {}
@@ -672,10 +666,8 @@ def prose_approval(page, approved):
         text = 'A separate custom analysis was planned, and its plan was approved'
     else:
         text = 'An analysis plan was approved'
-    stamp = approved.get('timestamp', MISSING)
-    if not absent(stamp):
-        refs.append('approval:/timestamp')
-        text += ' on ' + day(stamp[:10])
+    # No date: the approval's is a UTC instant and the history's the agent's local day, so two dates
+    # side by side could read as completion before approval. Both stay in Provenance (0276).
     refs.append('approval:/actor?')
     text += ' %s.' % (NO_APPROVER if absent(approved.get('actor', MISSING)) else NAMED_APPROVER)
     page.sentence('prose-approval', text, refs)
@@ -685,14 +677,7 @@ def prose_history(page, e, entry):
     """An entry already matched to the approved custom analysis, with the outcome `analysis complete`."""
     H = 'history:#%d/' % e
     refs, text = [H + 'stage', H + 'outcome'], "The project's history records that custom analysis as complete"
-    date, model = entry['date'], words(entry['model'])
-    if isinstance(date, str) and ISO_DATE.match(date):
-        try:
-            datetime.datetime.strptime(date, '%Y-%m-%d')
-            refs.append(H + 'date')
-            text += ' on ' + day(date)
-        except ValueError:
-            pass
+    model = words(entry['model'])   # no date, as in prose_approval
     if model is not None:
         refs.append(H + 'model')
         text += ', with the agent model ' + model
