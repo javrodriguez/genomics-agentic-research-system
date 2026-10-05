@@ -64,9 +64,9 @@ KINDS = {
     'reference-check': (PARA, 'Its reference registry check reads {}, reason {}; the run observed '
                               'FASTA sha256 {} and GTF sha256 {}.', 'vvvv'),
     'reference-absent': (PARA, 'Its reference genome is not recorded.', 'a'),
-    'config': (PARA, 'Its configuration sha256 is {}.', 'v'),
+    'config': (PARA, 'Its configuration sha256 is {}.', 'h'),
     'threads': (PARA, 'Its thread count is {}.', 'v'),
-    'command': (PARA, 'Its exact submission: {}, sha256 {}.', 'vv'),
+    'command': (PARA, 'Its exact submission: {}, sha256 {}.', 'vh'),
     'command-absent': (PARA, 'Its exact submission is not recorded.', 'a'),
     'agent': (PARA, 'Its agent model is {}.', 'v'),
     'model-step': (PARA, 'It records a model-mediated step: model {}; provider {}; contract {}; '
@@ -413,7 +413,7 @@ def o_date(text):
         when = datetime.date(int(text[:4]), int(text[5:7]), int(text[8:10]))
     except ValueError:
         return None
-    return '%d %s %d' % (when.day, P_MONTHS[when.month - 1], when.year)
+    return '%d %s %s' % (when.day, P_MONTHS[when.month - 1], text[:4])
 
 
 def o_pipeline(m, M):
@@ -457,8 +457,10 @@ def o_prose_expected(rec):
         if pipe and o_words(m.get('workflow_name', MISSING)) is not None:
             refs.append(M + '/workflow_name')
         reference = m.get('reference', MISSING)
-        if (isinstance(reference, dict) and reference.get('comparison') == 'matched' and
-                o_words(reference.get('build', MISSING)) is not None):
+        if (o_dig(m, 'predicate_facts', 'wrapper_kind') == 'nextflow' and isinstance(reference, dict) and
+                reference.get('comparison') == 'matched' and o_words(reference.get('build', MISSING)) is not None):
+            if not pipe:
+                refs.append(M + '/predicate_facts/wrapper_kind')
             refs += [M + '/reference/comparison', M + '/reference/build']
             if o_words(reference.get('annotation_release', MISSING)) is not None:
                 refs.append(M + '/reference/annotation_release')
@@ -468,7 +470,8 @@ def o_prose_expected(rec):
         complete = o_dig(m, 'predicate_facts', 'status') == 'COMPLETE'
         out.append(('prose-run' if complete else 'prose-configured', tuple(refs)))
     models = [rec.json['manifest%d' % k].get('agent_model', MISSING) for k in range(1, rec.n + 1)]
-    if rec.n >= 2 and models.count(models[0]) == rec.n and models[0] != 'none' and o_words(models[0]) is not None:
+    if (rec.n >= 2 and all(isinstance(x, str) and x == models[0] for x in models) and models[0] != 'none'
+            and o_words(models[0]) is not None):
         out.append(('prose-agent-all', tuple('manifest%d:/agent_model' % k for k in range(1, rec.n + 1))))
     else:
         for k, model in enumerate(models, 1):
@@ -567,6 +570,8 @@ def o_prose_line(kind, refs, rec):
         if keys and '/workflow_name' in shown:
             text += ' through the GARS workflow ' + shown['/workflow_name'][1]
         if '/reference/build' in shown:
+            if '/predicate_facts/wrapper_kind' not in tail:
+                raise TraceError('a reference genome named for a step that is not an aligning pipeline')
             if '/reference/comparison' not in tail:
                 raise TraceError('the reference clause does not cite the registry check')
             text += ' against the %s reference genome' % shown['/reference/build'][1]
@@ -613,7 +618,7 @@ def o_prose_line(kind, refs, rec):
         if 'approval:/timestamp' in refs:
             text += ' on ' + o_date(o_resolve(rec, 'approval:/timestamp')[:10])
         actor = o_resolve(rec, 'approval:/actor?')
-        return text + ' %s; the approval record binds the plan\'s exact text.' % (T_NOBY if o_absent(actor) else T_BY)
+        return text + ' %s.' % (T_NOBY if o_absent(actor) else 'by the approver named in its approval record')
     if kind == 'prose-history':
         e = int(re.match(r'history:#(\d+)/', refs[0]).group(1))
         if not o_matches(rec.entries[e], rec.approval):
@@ -667,6 +672,8 @@ def o_line(kind, refs, rec):
             texts.append(o_cell(value))
         elif slot == 'p':
             texts.append(T_NOBY if o_absent(value) else T_BY)
+        elif slot == 'h':   # a hash of a file that names local paths: an oracle, never printed (0276)
+            texts.append(T_NOT if o_absent(value) else 'not published, since the file names local paths')
         elif not o_absent(value):
             raise TraceError('%s says %s is not recorded, and the record holds it' % (kind, ref))
     return template.format(*texts)
@@ -730,10 +737,10 @@ def paragraph(text):
     return lines[2:lines.index('## Provenance') - 1]
 
 
-DE_RUN = ('rnaseq-de (workflow version v0.10.0) was run against the fixture-build reference genome (annotation release '
-          'fixture-release) with the design formula `~ condition` and the contrast MT versus WT (factor condition).')
+DE_RUN = ('rnaseq-de (workflow version v0.10.0) was run with the design formula `~ condition` and the contrast MT '
+          'versus WT (factor condition).')
 APPROVED = ('A separate custom analysis was planned, and its plan was approved on 29 September 2026 by the approver '
-            "the run recorded; the approval record binds the plan's exact text.")
+            "named in its approval record.")
 COMPLETED = ("The project's history records that custom analysis as complete on 29 September 2026, with the agent "
              "model claude-opus-5-5.")
 
@@ -951,7 +958,7 @@ class RenderMethodsTests(unittest.TestCase):
                               'approval:/plan_sha256 approval:/expiry approval:/actor?')
         with self.assertRaises(TraceError):
             verify(moved, rec)
-        # (g) two workflows' "Its configuration sha256" lines swapped, each still citing its own
+        # (g) two workflows' model-step lines swapped, each still citing its own
         # field, so every line alone is right and only its place is wrong (review r1 F-3)
         def swap(a, b, kind):
             out = list(lines)
@@ -962,9 +969,9 @@ class RenderMethodsTests(unittest.TestCase):
             self.assertEqual(sum(1 for x, y in zip(out, lines) if x != y), 4)   # two lines, two citations
             return '\n'.join(out)
 
-        a, b = [i for i, l in enumerate(lines) if l.startswith('Its configuration sha256 is ')]
-        with self.assertRaises(TraceError):
-            verify(swap(a, b, 'config'), rec)
+        a, b = [i for i, l in enumerate(lines) if l.startswith('It records a model-mediated step: ')]
+        with self.assertRaises(TraceError):   # (the configuration lines now read alike: their hashes are withheld)
+            verify(swap(a, b, 'model-step'), rec)
         # ... and a tool version moved under the other workflow's versions file
         a = lines.index('  - `FIXTURE_PROCESS/fixture-tool`: `1.0.0`.')
         b = lines.index('  - `pandas`: `fixture-1`.')
@@ -981,7 +988,8 @@ class RenderMethodsTests(unittest.TestCase):
                  'the contrast MT versus WT (factor condition).', sparse, sparse_rec),
                 ('rnaseq-de (workflow version v0.10.0) was configured', 'rnaseq-de (workflow version v0.10.0) was run', sparse, sparse_rec),
                 ('the contrast MT versus WT', 'the contrast WT versus MT', complete, rec),
-                ('by the approver the run recorded;', 'by fixture-operator;', complete, rec),
+                ('by the approver named in its approval record.', 'by fixture-operator.', complete, rec),
+                ('by the approver named in its approval record.', 'by the approver the run recorded.', complete, rec),
                 ('records that custom analysis as complete on 29 September 2026,',
                  'records that custom analysis as complete on 30 September 2026,', complete, rec),
                 ('A separate custom analysis was planned, and its plan', 'The workflows\' plan', complete, rec),
@@ -1069,8 +1077,8 @@ class RenderMethodsTests(unittest.TestCase):
                 self.dump('approval.json', changed)
                 text = self.traced(('local-manifest.json',))
                 self.assertIn('was approved at not recorded by the approver the run recorded.', text)
-                self.assertIn('A separate custom analysis was planned, and its plan was approved by the approver the '
-                              "run recorded; the approval record binds the plan's exact text.", paragraph(text))
+                self.assertIn('A separate custom analysis was planned, and its plan was approved by the approver '
+                              "named in its approval record.", paragraph(text))
         self.dump('approval.json', approval)
         self.paragraph_drops_clauses()
 
@@ -1097,20 +1105,20 @@ class RenderMethodsTests(unittest.TestCase):
         agent = 'The agent model recorded for rnaseq-de was claude-opus-5-5.'
         cases = [
             ('name missing', edit(de, (('workflow_name',), 'delete')),
-             ['A workflow whose name is not recorded (workflow version v0.10.0) was run' + reference + design + '.',
+             ['A workflow whose name is not recorded (workflow version v0.10.0) was run' + design + '.',
               'The agent model recorded for a workflow whose name is not recorded was claude-opus-5-5.']),
             ('name path-like', edit(de, (('workflow_name',), '/abs/name')),
-             ['A workflow whose recorded name is withheld (workflow version v0.10.0) was run' + reference + design + '.',
+             ['A workflow whose recorded name is withheld (workflow version v0.10.0) was run' + design + '.',
               'The agent model recorded for a workflow whose recorded name is withheld was claude-opus-5-5.']),
-            ('version missing', edit(de, (('workflow_version',), '')), ['rnaseq-de was run' + reference + design + '.', agent]),
+            ('version missing', edit(de, (('workflow_version',), '')), ['rnaseq-de was run' + design + '.', agent]),
             ('status missing', edit(de, (('predicate_facts', 'status'), 'delete')),
-             ['rnaseq-de (workflow version v0.10.0) was configured' + reference + design + '; its run status is not recorded.', agent]),
+             ['rnaseq-de (workflow version v0.10.0) was configured' + design + '; its run status is not recorded.', agent]),
             ('status failed', edit(de, (('predicate_facts', 'status'), 'FAILED')),
-             ['rnaseq-de (workflow version v0.10.0) was configured' + reference + design + '; its run status is FAILED.', agent]),
+             ['rnaseq-de (workflow version v0.10.0) was configured' + design + '; its run status is FAILED.', agent]),
             ('status path-like', edit(de, (('predicate_facts', 'status'), '/abs/status')),
-             ['rnaseq-de (workflow version v0.10.0) was configured' + reference + design + '.', agent]),
+             ['rnaseq-de (workflow version v0.10.0) was configured' + design + '.', agent]),
             ('predicate facts missing', edit(de, (('predicate_facts',), 'delete')),
-             ['rnaseq-de (workflow version v0.10.0) was configured' + reference + design + '; its run status is not recorded.', agent]),
+             ['rnaseq-de (workflow version v0.10.0) was configured' + design + '; its run status is not recorded.', agent]),
             ('reference missing', edit(de, (('reference',), 'delete')), ['rnaseq-de (workflow version v0.10.0) was run' + design + '.', agent]),
             ('registry mismatch', edit(de, (('reference', 'comparison'), 'mismatch')),
              ['rnaseq-de (workflow version v0.10.0) was run' + design + '.', agent]),
@@ -1118,20 +1126,20 @@ class RenderMethodsTests(unittest.TestCase):
              ['rnaseq-de (workflow version v0.10.0) was run' + design + '.', agent]),
             ('build missing', edit(de, (('reference', 'build'), None)), ['rnaseq-de (workflow version v0.10.0) was run' + design + '.', agent]),
             ('release missing', edit(de, (('reference', 'annotation_release'), '  ')),
-             ['rnaseq-de (workflow version v0.10.0) was run against the fixture-build reference genome' + design + '.', agent]),
+             ['rnaseq-de (workflow version v0.10.0) was run' + design + '.', agent]),
             ('formula missing', edit(de, (('params', 'formula'), 'delete')),
-             ['rnaseq-de (workflow version v0.10.0) was run' + reference + ' with the contrast MT versus WT (factor condition).', agent]),
+             ['rnaseq-de (workflow version v0.10.0) was run' + ' with the contrast MT versus WT (factor condition).', agent]),
             ('formula path-like', edit(de, (('params', 'formula'), '~ /abs/batch')),
-             ['rnaseq-de (workflow version v0.10.0) was run' + reference + ' with the contrast MT versus WT (factor condition).', agent]),
+             ['rnaseq-de (workflow version v0.10.0) was run' + ' with the contrast MT versus WT (factor condition).', agent]),
             ('contrast missing', edit(de, (('params', 'contrast'), [])),
-             ['rnaseq-de (workflow version v0.10.0) was run' + reference + ' with the design formula `~ condition`.', agent]),
+             ['rnaseq-de (workflow version v0.10.0) was run' + ' with the design formula `~ condition`.', agent]),
             ('contrast of two parts', edit(de, (('params', 'contrast'), 'condition,MT')),
-             ['rnaseq-de (workflow version v0.10.0) was run' + reference + ' with the design formula `~ condition` and the contrast '
+             ['rnaseq-de (workflow version v0.10.0) was run' + ' with the design formula `~ condition` and the contrast '
               '`condition,MT`.', agent]),
-            ('params missing', edit(de, (('params',), 'delete')), ['rnaseq-de (workflow version v0.10.0) was run' + reference + '.', agent]),
-            ('agent model missing', edit(de, (('agent_model',), 'delete')), ['rnaseq-de (workflow version v0.10.0) was run' + reference + design + '.']),
+            ('params missing', edit(de, (('params',), 'delete')), ['rnaseq-de (workflow version v0.10.0) was run' + '.', agent]),
+            ('agent model missing', edit(de, (('agent_model',), 'delete')), ['rnaseq-de (workflow version v0.10.0) was run' + design + '.']),
             ('agent model none', edit(de, (('agent_model',), 'none'), (('model_steps',), [])),
-             ['rnaseq-de (workflow version v0.10.0) was run' + reference + design + '.', 'The record for rnaseq-de names no agent model.']),
+             ['rnaseq-de (workflow version v0.10.0) was run' + design + '.', 'The record for rnaseq-de names no agent model.']),
             ('aligner missing', edit(nf, (('params', 'aligner'), 'delete')),
              ['nfcore-rnaseq-wrapper (workflow version 3.26.0) was run' + reference + '.',
               'The agent model recorded for nfcore-rnaseq-wrapper was claude-opus-5-5.']),
@@ -1160,7 +1168,7 @@ class RenderMethodsTests(unittest.TestCase):
               'The agent model recorded for nf-core/rnaseq was claude-opus-5-5.']),
             # review r1 F-2: a path-like value driven into each clause on its own
             ('release path-like', edit(de, (('reference', 'annotation_release'), '/abs/gencode.v44.gtf')),
-             ['rnaseq-de (workflow version v0.10.0) was run against the fixture-build reference genome' + design + '.', agent]),
+             ['rnaseq-de (workflow version v0.10.0) was run' + design + '.', agent]),
             ('pipeline name path-like', edit(nf, (('software_versions', 0, 'versions'), {'Workflow//abs/pipeline': 'v1'})),
              ['nfcore-rnaseq-wrapper (workflow version 3.26.0) was run' + reference + ' with the star_salmon aligner.',
               'The agent model recorded for nfcore-rnaseq-wrapper was claude-opus-5-5.']),
@@ -1181,24 +1189,24 @@ class RenderMethodsTests(unittest.TestCase):
              [DE_RUN, agent]),
             # review r1 F-3: a three-part contrast is read in parts only when every part is plain
             ('contrast with Markdown in a part', edit(de, (('params', 'contrast'), 'condition,*MT*,[WT](http://x)')),
-             ['rnaseq-de (workflow version v0.10.0) was run' + reference + ' with the design formula `~ condition` and '
+             ['rnaseq-de (workflow version v0.10.0) was run' + ' with the design formula `~ condition` and '
               'the contrast `condition,*MT*,[WT](http://x)`.', agent]),
             ('contrast with spaces', edit(de, (('params', 'contrast'), 'condition, MT, WT')),
-             ['rnaseq-de (workflow version v0.10.0) was run' + reference + ' with the design formula `~ condition` and '
+             ['rnaseq-de (workflow version v0.10.0) was run' + ' with the design formula `~ condition` and '
               'the contrast `condition, MT, WT`.', agent]),
             ('contrast part starting www.', edit(de, (('params', 'contrast'), 'condition,www.x.com,WT')),
-             ['rnaseq-de (workflow version v0.10.0) was run' + reference + ' with the design formula `~ condition` and '
+             ['rnaseq-de (workflow version v0.10.0) was run' + ' with the design formula `~ condition` and '
               'the contrast `condition,www.x.com,WT`.', agent]),
             # review r1 F-9 and F-12: a GitHub autolink and a non-string value stay in code spans
             ('aligner starting www.', edit(nf, (('params', 'aligner'), 'WWW.example.com')),
              ['nfcore-rnaseq-wrapper (workflow version 3.26.0) was run' + reference + ' with the `WWW.example.com` aligner.',
               'The agent model recorded for nfcore-rnaseq-wrapper was claude-opus-5-5.']),
             ('numbers and booleans', edit(de, (('params', 'formula'), True), (('params', 'contrast'), 3)),
-             ['rnaseq-de (workflow version v0.10.0) was run' + reference + ' with the design formula `true` and the '
+             ['rnaseq-de (workflow version v0.10.0) was run' + ' with the design formula `true` and the '
               'contrast `3`.', agent]),
             # review r1 F-13: `none` beside a recorded model step is a contradiction, stated in Provenance only
             ('agent model none beside a model step', edit(de, (('agent_model',), 'none')),
-             ['rnaseq-de (workflow version v0.10.0) was run' + reference + design + '.']),
+             ['rnaseq-de (workflow version v0.10.0) was run' + design + '.']),
         ]
         for label, manifest, expected in cases:
             with self.subTest(clause=label):
@@ -1221,13 +1229,18 @@ class RenderMethodsTests(unittest.TestCase):
             sentences = paragraph(self.traced(('variant2.json', 'variant.json'), stage03=False))
             self.assertEqual(len(sentences), 3, sentences)
             self.assertNotIn('agent model', '\n'.join(sentences))
+        self.dump('variant.json', dict(de, agent_model=1))   # review r2 F-7: only identical strings fold
+        self.dump('variant2.json', dict(nf, agent_model=True))
+        sentences = paragraph(self.traced(('variant2.json', 'variant.json'), stage03=False))
+        self.assertEqual(sentences[2:4], ['The agent model recorded for nfcore-rnaseq-wrapper was `true`.',
+                                          'The agent model recorded for rnaseq-de was `1`.'])
         self.dump('variant.json', dict(de, agent_model=None))   # ... and an absent one is never folded in
         self.assertNotIn('Every workflow', '\n'.join(paragraph(self.traced(('nfcore-manifest.json', 'variant.json')))))
         # The approval and the history drop their clauses the same way.
         approval = self.load('approval.json')
         self.dump('approval.json', dict(approval, actor=''))
         self.assertIn('A separate custom analysis was planned, and its plan was approved on 29 September 2026 with no '
-                      "approver named in its approval record; the approval record binds the plan's exact text.",
+                      "approver named in its approval record.",
                       paragraph(self.traced(('local-manifest.json',))))
         self.dump('approval.json', approval)
         history = self.path('HISTORY.md').read_text(encoding='utf-8')
@@ -1349,6 +1362,16 @@ class RenderMethodsTests(unittest.TestCase):
         self.assertIn('- approval record: sha256 not published, since the record holds values this page does not '
                       'print.', text)
         self.assertIn('- plan: sha256 `%s`.' % approval['plan_sha256'], text)   # the binding stays published
+        # review r2 F-1: commands.sh and the assay config are templated files holding the home path, so
+        # their recorded hashes are oracles too; neither is printed, for any manifest
+        for name in ('nfcore-manifest.json', 'local-manifest.json'):
+            m = self.load(name)
+            page = self.traced((name,))
+            for digest in (m['command']['sha256'], m['config_sha256']):
+                self.assertNotIn(digest, page, name)
+            self.assertIn('Its configuration sha256 is not published, since the file names local paths.', page)
+            self.assertIn('Its exact submission: `reproducibility/commands.sh`, sha256 not published, since the file '
+                          'names local paths.', page)
         for changed, published in ((dict(approval, actor=None, plan_path=None), True),
                                    (dict(approval, actor=None), False), (dict(approval, plan_path=''), False),
                                    (dict(approval, actor=None, plan_path='projects/rna-test/03_custom_analysis/'
@@ -1454,7 +1477,7 @@ class RenderMethodsTests(unittest.TestCase):
                 text = self.traced(('variant.json',))
                 self.assertEqual([l for l in text.split('\n') if l.startswith('#')], list(HEADINGS))
                 for sentence in paragraph(text):   # one physical line per sentence (0276)
-                    self.assertTrue(sentence.endswith('.') and sentence[:1].isupper() or sentence[:1] == '`', sentence)
+                    self.assertTrue(sentence.endswith('.') and (sentence[:1].isupper() or sentence[:1] == '`'), sentence)
                 for character in ('\r', '\x85', '\u2028', '\u2029', '\u202e', '\u200b', '\x00'):
                     self.assertNotIn(character, text)
 

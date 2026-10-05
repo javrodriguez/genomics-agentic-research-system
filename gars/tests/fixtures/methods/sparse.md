@@ -7,7 +7,7 @@ Parameters, software versions and container images are listed below, or marked n
 
 The run manifest of workflow `rnaseq-de` records: version `v0.10.0`; pipeline commit `c54a71584b1347937e4315cbbeb3f27371655228`; GARS wrapper `rnaseq-de`; GARS commit `c54a71584b1347937e4315cbbeb3f27371655228`; template version `v0.10.0`; status not recorded.
 Its reference genome is not recorded.
-Its configuration sha256 is `d2b847628a098cb3dbd60aedd0477fdc640f17c47183bc47c873842d7625be4d`.
+Its configuration sha256 is not published, since the file names local paths.
 Its thread count is `4`.
 Its exact submission is not recorded.
 Its agent model is not recorded.

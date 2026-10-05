@@ -31,6 +31,10 @@ NOT_RECORDED = 'not recorded'
 WITHHELD = 'a path-like value, withheld'
 BY_APPROVER = 'by the approver the run recorded'
 NO_APPROVER = 'with no approver named in its approval record'
+NAMED_APPROVER = 'by the approver named in its approval record'   # the paragraph's phrase (0276)
+# The producer writes local paths into these files (commands.sh's submit line, the config's
+# work_dir), and their bytes are templated, so a printed hash would confirm a guessed home path.
+UNPUBLISHED = 'not published, since the file names local paths'
 # Where an absolute path can begin (/x, \x, ~/x, ~user/x, C:\x, C:/x); every position is tried.
 PATH_START = re.compile(r'''(?=(/|\\|~[^\s/"']*/|[A-Za-z]:[\\/]))''')
 # A path start preceded by one of these is part of a relative path, a word or a URL (a/b, ./b, a\b).
@@ -378,7 +382,8 @@ class Page(object):
 
     def add(self, kind, *slots):
         """slots: (v, ref, value) a record value; (p, ref, actor) the approver phrase;
-        (a, ref) a field stated as not recorded; (x, ref) consulted, never printed."""
+        (a, ref) a field stated as not recorded; (x, ref) consulted, never printed; (h, ref, value)
+        a hash of a file that names local paths: never printed (0276)."""
         words, refs = [], []
         for slot in slots:
             refs.append(slot[1])
@@ -386,6 +391,8 @@ class Page(object):
                 words.append(cell(slot[2]))
             elif slot[0] == 'p':
                 words.append(NO_APPROVER if absent(slot[2]) else BY_APPROVER)
+            elif slot[0] == 'h':
+                words.append(NOT_RECORDED if absent(slot[2]) else UNPUBLISHED)
         section, text = KINDS[kind]
         self.lines[section].append((text.format(*words), kind, refs))
 
@@ -437,12 +444,12 @@ def manifest_lines(page, m, k):
             # the registry's hashes print above; the hashes of the files the run used print here
             page.add('reference-check', v('reference', 'comparison'), v('reference', 'reason'),
                      v('reference', 'observed', 'fasta_sha256'), v('reference', 'observed', 'gtf_sha256'))
-    page.add('config', v('config_sha256'))
+    page.add('config', ('h',) + v('config_sha256')[1:])
     page.add('threads', v('threads'))
     if absent(get(m, 'command')):
         page.add('command-absent', ('a', M + '/command'))
     else:
-        page.add('command', v('command', 'path'), v('command', 'sha256'))
+        page.add('command', v('command', 'path'), ('h',) + v('command', 'sha256')[1:])
     page.add('agent', v('agent_model'))
     steps = get(m, 'model_steps')
     if absent(steps):
@@ -596,9 +603,12 @@ def prose_workflow(page, m, k):
             refs.append(M + '/workflow_name')
             text += ' through the GARS workflow ' + wrapper
     reference = get(m, 'reference')
-    if isinstance(reference, dict) and reference.get('comparison') == 'matched':
+    aligning = get(m, 'predicate_facts', 'wrapper_kind') == 'nextflow'   # a counts-based step reads no genome
+    if aligning and isinstance(reference, dict) and reference.get('comparison') == 'matched':
         build = words(reference.get('build', MISSING))
-        if build is not None:   # the registry's build, which the run's own files matched
+        if build is not None:   # the registry's build, which the pipeline's own files matched
+            if M + '/predicate_facts/wrapper_kind' not in refs:
+                refs.append(M + '/predicate_facts/wrapper_kind')
             refs += [M + '/reference/comparison', M + '/reference/build']
             text += ' against the %s reference genome' % build
             release = words(reference.get('annotation_release', MISSING))
@@ -636,7 +646,7 @@ def prose_agents(page, manifests):
     models = [get(m, 'agent_model') for m in manifests]
     shown = words(models[0])
     if len(models) > 1 and shown is not None and models[0] != 'none' and \
-            all(model == models[0] for model in models):
+            all(isinstance(model, str) and model == models[0] for model in models):
         page.sentence('prose-agent-all', 'The agent model recorded for every workflow was %s.' % shown,
                       ['manifest%d:/agent_model' % k for k in range(1, len(models) + 1)])
         return
@@ -667,8 +677,7 @@ def prose_approval(page, approved):
         refs.append('approval:/timestamp')
         text += ' on ' + day(stamp[:10])
     refs.append('approval:/actor?')
-    text += ' %s; the approval record binds the plan\'s exact text.' % (
-        NO_APPROVER if absent(approved.get('actor', MISSING)) else BY_APPROVER)
+    text += ' %s.' % (NO_APPROVER if absent(approved.get('actor', MISSING)) else NAMED_APPROVER)
     page.sentence('prose-approval', text, refs)
 
 

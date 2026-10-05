@@ -1,9 +1,9 @@
 # Methods
 
 nfcore-rnaseq-wrapper (workflow version 3.26.0) was run against the fixture-build reference genome (annotation release fixture-release) with the star_salmon aligner.
-rnaseq-de (workflow version v0.10.0) was run against the fixture-build reference genome (annotation release fixture-release) with the design formula `~ condition` and the contrast MT versus WT (factor condition).
+rnaseq-de (workflow version v0.10.0) was run with the design formula `~ condition` and the contrast MT versus WT (factor condition).
 The agent model recorded for every workflow was claude-opus-5-5.
-A separate custom analysis was planned, and its plan was approved on 29 September 2026 by the approver the run recorded; the approval record binds the plan's exact text.
+A separate custom analysis was planned, and its plan was approved on 29 September 2026 by the approver named in its approval record.
 The project's history records that custom analysis as complete on 29 September 2026, with the agent model claude-opus-5-5.
 Parameters, software versions and container images are listed below, or marked not recorded; every value traces to the run's records (Provenance).
 
@@ -11,16 +11,16 @@ Parameters, software versions and container images are listed below, or marked n
 
 The run manifest of workflow `nfcore-rnaseq-wrapper` records: version `3.26.0`; pipeline commit `72c5d4006f3610a00223bd368f28ed650d649a54`; GARS wrapper `rnaseq_bulk`; GARS commit `c54a71584b1347937e4315cbbeb3f27371655228`; template version `v0.10.0`; status `COMPLETE`.
 Its reference genome: build `fixture-build`; annotation release `fixture-release`; FASTA sha256 `99724deab54039707cfdd57d24710a39412ecbd8ed85fb8a5d4c1f70706d637b`; GTF sha256 `aac372d27c1a6c729d38fa73dac6febfa75a76a57bc42613a33fd7b3f0fb960f`.
-Its configuration sha256 is `57fc7ebe7584cba1a50e195979f889f43f973f4e8726fc512d8dd92abd4abd4a`.
+Its configuration sha256 is not published, since the file names local paths.
 Its thread count is `4`.
-Its exact submission: `reproducibility/commands.sh`, sha256 `c7941ece64f3fe877e99ddb38c537e0acb0acdcbc0ca69dd948de39e9a4d8783`.
+Its exact submission: `reproducibility/commands.sh`, sha256 not published, since the file names local paths.
 Its agent model is `claude-opus-5-5`.
 It records a model-mediated step: model `claude-opus-5-5`; provider `anthropic`; contract `gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md`; contract hash `69b7a0d66c1ecf9822481b2d99b83b9f43c0cf73` (algorithm `git-sha1`).
 The run manifest of workflow `rnaseq-de` records: version `v0.10.0`; pipeline commit `c54a71584b1347937e4315cbbeb3f27371655228`; GARS wrapper `rnaseq-de`; GARS commit `c54a71584b1347937e4315cbbeb3f27371655228`; template version `v0.10.0`; status `COMPLETE`.
 Its reference genome: build `fixture-build`; annotation release `fixture-release`; FASTA sha256 `99724deab54039707cfdd57d24710a39412ecbd8ed85fb8a5d4c1f70706d637b`; GTF sha256 `aac372d27c1a6c729d38fa73dac6febfa75a76a57bc42613a33fd7b3f0fb960f`.
-Its configuration sha256 is `d2b847628a098cb3dbd60aedd0477fdc640f17c47183bc47c873842d7625be4d`.
+Its configuration sha256 is not published, since the file names local paths.
 Its thread count is `4`.
-Its exact submission: `reproducibility/commands.sh`, sha256 `f27f37e1575b2494fb3e98ac6a09e31b2faf7f67222e6ab0bc4b90b279da2a8d`.
+Its exact submission: `reproducibility/commands.sh`, sha256 not published, since the file names local paths.
 Its agent model is `claude-opus-5-5`.
 It records a model-mediated step: model `claude-opus-5-5`; provider `anthropic`; contract `gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md`; contract hash `a8ce7d799e79733b8e1d41a26c9e8c597f773987` (algorithm `git-sha1`).
 The analysis plan with sha256 `b2fad3e6dd46adfbb19ab0ec2ee525ecc04cfa72a74758d1dc8439602c0e04c6` was approved at `2026-09-29T18:04:05Z` by the approver the run recorded.
@@ -72,8 +72,8 @@ Cite GARS at commit `c54a71584b1347937e4315cbbeb3f27371655228`; the GARS reposit
 
 ### Sources
 
-- line 3: prose-run: `manifest1:/workflow_name manifest1:/workflow_version manifest1:/predicate_facts/status manifest1:/reference/comparison manifest1:/reference/build manifest1:/reference/annotation_release manifest1:/params/aligner`.
-- line 4: prose-run: `manifest2:/workflow_name manifest2:/workflow_version manifest2:/predicate_facts/status manifest2:/reference/comparison manifest2:/reference/build manifest2:/reference/annotation_release manifest2:/params/formula manifest2:/params/contrast`.
+- line 3: prose-run: `manifest1:/workflow_name manifest1:/workflow_version manifest1:/predicate_facts/status manifest1:/predicate_facts/wrapper_kind manifest1:/reference/comparison manifest1:/reference/build manifest1:/reference/annotation_release manifest1:/params/aligner`.
+- line 4: prose-run: `manifest2:/workflow_name manifest2:/workflow_version manifest2:/predicate_facts/status manifest2:/params/formula manifest2:/params/contrast`.
 - line 5: prose-agent-all: `manifest1:/agent_model manifest2:/agent_model`.
 - line 6: prose-approval: `approval:/plan_sha256 approval:/plan_path? approval:/timestamp approval:/actor?`.
 - line 7: prose-history: `history:#3/stage history:#3/outcome history:#3/date history:#3/model`.
