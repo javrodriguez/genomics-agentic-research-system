@@ -1090,6 +1090,11 @@ class RenderMethodsTests(unittest.TestCase):
         sentences = paragraph(self.traced(('nfcore-manifest.json', 'variant.json'), stage03=False))
         self.assertEqual(sentences[2:], ['nfcore-rnaseq-wrapper records the agent model claude-opus-5-5.',
                                          'rnaseq-de records the agent model other-model.', P_CLOSING])
+        self.dump('variant.json', dict(de, agent_model='none', model_steps=[]))   # `none` is never an agent model
+        self.dump('variant2.json', dict(nf, agent_model='none', model_steps=[]))
+        sentences = paragraph(self.traced(('variant2.json', 'variant.json'), stage03=False))
+        self.assertEqual(sentences[2:], ['nfcore-rnaseq-wrapper records no agent model.',
+                                         'rnaseq-de records no agent model.', P_CLOSING])
         self.dump('variant.json', dict(de, agent_model=None))   # ... and an absent one is never folded in
         self.assertNotIn('Every workflow', '\n'.join(paragraph(self.traced(('nfcore-manifest.json', 'variant.json')))))
         # The approval and the history drop their clauses the same way.
