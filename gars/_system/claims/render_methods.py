@@ -6,8 +6,8 @@
 
 The page opens with a short journal-style Methods paragraph (decision 0276): each sentence is one
 fixed frame filled only from record fields, and a clause whose field is missing or withheld is
-dropped, never filled. Below it, a Provenance section holds every hash it can publish, record fingerprint,
-withheld-path note, parameter, software version and citation, and the Sources map.
+dropped, never filled. Below it, a Provenance section holds every hash it can publish, record
+fingerprint, withheld-path note, parameter, software version and citation, and the Sources map.
 Every line is fixed words plus values read from the named records, and the Sources section lists,
 for every line, the record fields its values came from (decision 0236). A missing or empty field
 reads "not recorded"; a value holding a local path is withheld; nothing is guessed, no model and no

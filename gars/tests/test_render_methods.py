@@ -368,8 +368,6 @@ P_NO_NAME = 'a workflow whose name is not recorded'
 P_HIDDEN_NAME = 'a workflow whose recorded name is withheld'
 P_CLOSING = ("Parameters, software versions and container images are listed below, or marked not recorded; "
              "every value traces to the run's records (Provenance).")
-P_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
-            'November', 'December']
 P_PLAIN = r'[A-Za-z0-9]+(?:[._+:/-][A-Za-z0-9]+)*'
 
 
@@ -1202,6 +1200,23 @@ class RenderMethodsTests(unittest.TestCase):
             # review r1 F-13: `none` beside a recorded model step is a contradiction, stated in Provenance only
             ('agent model none beside a model step', edit(de, (('agent_model',), 'none')),
              ['rnaseq-de (workflow version v0.10.0) was run' + design + '.']),
+            # review r4 F-2: the reference clause appears only for a nextflow manifest, so its path guards are
+            # driven there: a path-like or bucket build drops the clause, a bucket release drops the release
+            ('nextflow build path-like', edit(nf, (('reference', 'build'), '/abs/secret/genome')),
+             ['nfcore-rnaseq-wrapper (workflow version 3.26.0) was run with the star_salmon aligner.',
+              'The agent model recorded for nfcore-rnaseq-wrapper was claude-opus-5-5.']),
+            ('nextflow build a bucket', edit(nf, (('reference', 'build'), 's3://refs-123456789012/genome')),
+             ['nfcore-rnaseq-wrapper (workflow version 3.26.0) was run with the star_salmon aligner.',
+              'The agent model recorded for nfcore-rnaseq-wrapper was claude-opus-5-5.']),
+            ('nextflow release a bucket', edit(nf, (('reference', 'annotation_release'), 's3://refs-123456789012/g.gtf')),
+             ['nfcore-rnaseq-wrapper (workflow version 3.26.0) was run against the fixture-build reference genome with '
+              'the star_salmon aligner.', 'The agent model recorded for nfcore-rnaseq-wrapper was claude-opus-5-5.']),
+            ('nextflow registry mismatch', edit(nf, (('reference', 'comparison'), 'mismatch')),
+             ['nfcore-rnaseq-wrapper (workflow version 3.26.0) was run with the star_salmon aligner.',
+              'The agent model recorded for nfcore-rnaseq-wrapper was claude-opus-5-5.']),
+            ('nextflow reference missing', edit(nf, (('reference',), 'delete')),
+             ['nfcore-rnaseq-wrapper (workflow version 3.26.0) was run with the star_salmon aligner.',
+              'The agent model recorded for nfcore-rnaseq-wrapper was claude-opus-5-5.']),
             # review r3 F-2: an annotation release only for a run that passed an annotation (methylseq: FASTA only)
             ('no annotation passed', edit(nf, (('params', 'gtf'), 'delete')),
              ['nfcore-rnaseq-wrapper (workflow version 3.26.0) was run against the fixture-build reference genome with '
@@ -1259,7 +1274,7 @@ class RenderMethodsTests(unittest.TestCase):
                  "The project's history records that custom analysis as complete, with the agent "
                  "model `opus *5*`."),
                 ('not recorded', HEADER, None),
-                # review r1 F-5 and F-2: a history date that is not a real date, or is path-like, is dropped
+                # review r1 F-5 and F-2: odd history dates (the paragraph states no date since r3; these trace Provenance)
                 ('an unfilled date', history.replace('## 2026-09-29 \u2014 03_custom', '## <ISO-8601 date> \u2014 03_custom'),
                  "The project's history records that custom analysis as complete, with the agent model claude-opus-5-5."),
                 ('a date without zero padding', history.replace('## 2026-09-29 \u2014 03_custom', '## 2026-9-29 \u2014 03_custom'),
