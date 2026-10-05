@@ -36,6 +36,10 @@ PATH_START = re.compile(r'''(?=(/|\\|~[^\s/"']*/|[A-Za-z]:[\\/]))''')
 # A path start preceded by one of these is part of a relative path, a word or a URL (a/b, ./b, a\b).
 IN_WORD = frozenset('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._~/:\\-')
 FILE_SCHEME = re.compile(r'(?<![A-Za-z0-9])[Ff][Ii][Ll][Ee]:')   # ASCII only, no re.I folding
+# A storage URI names a bucket or container, and a runs bucket's name can hold the cloud account id
+# (nextflow's -work-dir s3://<bucket>/...): withheld whole, like a local path (0276). ASCII only.
+STORAGE_SCHEME = re.compile(r'(?<![A-Za-z0-9+.-])(?:[Ss]3[AaNn]?|[Gg][Ss]|[Gg][Cc][Ss]|[Aa][Zz]|[Aa][Bb][Ff][Ss][Ss]?|'
+                            r'[Ww][Aa][Ss][Bb][Ss]?|[Ff][Ii][Ll][Ee])://')
 FLATTENED = ('Cc', 'Cf', 'Cs', 'Zl', 'Zp')  # control, format, surrogate, line and paragraph separators
 PLAIN = re.compile(r'[A-Za-z0-9]+(?:[._+:/-][A-Za-z0-9]+)*\Z')   # ASCII only, no re.I folding
 MONTHS = ('January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September',
@@ -133,8 +137,9 @@ def path_like(text):
     with nothing, or anything but a letter, digit or one of . _ ~ / : \\ - before it; right after a
     colon, a single slash (host:/x, not https://x), three (a URL with no host, https:///x), ~/ or
     ~user/ (user@host:~user/x) or a drive letter (x:C:\\x), but not a lone backslash; or a file:
-    scheme."""
-    if FILE_SCHEME.search(text):
+    scheme; or a storage URI (s3://, s3a://, s3n://, gs://, gcs://, az://, abfs://, abfss://, wasb://,
+    wasbs://, file://), whose bucket name can hold an account id."""
+    if FILE_SCHEME.search(text) or STORAGE_SCHEME.search(text):
         return True
     for start in PATH_START.finditer(text):
         at = start.start()

@@ -46,7 +46,10 @@ T_NOBY = 'with no approver named in its approval record'
 # would also match letters that case-fold to ASCII (the Kelvin sign), and this rule is ASCII.
 PATH_LIKE = re.compile(r'''(?<![A-Za-z0-9._~/:\\-])(?:/|~[^\s/"']*/|\\|[A-Za-z]:[\\/])'''
                        r'''|(?<=:)(?:/(?!/)|///|~[^\s/"']*/|[A-Za-z]:[\\/])'''
-                       r'''|(?<![A-Za-z0-9])[Ff][Ii][Ll][Ee]:''')
+                       r'''|(?<![A-Za-z0-9])[Ff][Ii][Ll][Ee]:'''
+                       # a storage URI: its bucket name can hold the cloud account id (0276)
+                       r'''|(?<![-A-Za-z0-9+.])(?:[Ss]3[AaNn]?|[Gg][Ss]|[Gg][Cc][Ss]|[Aa][Zz]|[Aa][Bb][Ff][Ss][Ss]?'''
+                       r'''|[Ww][Aa][Ss][Bb][Ss]?|[Ff][Ii][Ll][Ee])://''')
 HEADINGS = ('# Methods', '## Provenance', '### Parameters', '### Software used', '### Citation',
             '### Records read', '### Sources')
 METHODS, PARA, PARAM, SOFT, CITE, READ = HEADINGS[:6]
@@ -1132,7 +1135,14 @@ class RenderMethodsTests(unittest.TestCase):
                    'user@host:/abs/secret', 'cat x >/abs/secret', 'a|/abs/secret', 'key:/abs/secret',
                    'x&/abs/secret', 'a+/abs/secret', 'tab\t/abs/secret', 'https:///etc/secret',
                    'sftp:///abs/secret', '\u212a/abs/secret', 'user@host:~jdoe/secret', 'host:~/secret',
-                   'x:C:\\secret\\abs']
+                   'x:C:\\secret\\abs',
+                   # storage URIs (the coordinator's reproduced leak, 5 Oct): a runs bucket names the account
+                   's3://secret-runs-123456789012/work', 'S3://secret-runs-123456789012',
+                   'nextflow run nf-core/rnaseq -work-dir s3://secret-runs-123456789012/work -resume',
+                   '-work-dir=s3://secret-runs-123456789012/work', 's3a://secret-b/x', 's3n://secret-b/x',
+                   'gs://secret-bucket/x', 'gcs://secret-bucket/x', 'az://secret-container/x',
+                   'abfss://secret@acct.dfs.core.windows.net/x', 'wasbs://secret@acct/x', 'file://secret-host/x',
+                   '(s3://secret-b/x)', '"s3://secret-b/x"']
         for value in hostile:
             with self.subTest(value=value):
                 changed = dict(m, params={'p': value, value: 'key-side', 'nested': {'deep': [value]},
@@ -1146,13 +1156,14 @@ class RenderMethodsTests(unittest.TestCase):
                 self.assertNotIn(value, text)
                 self.assertNotIn('secret', text)
                 self.assertNotIn('/abs', text)
+                self.assertNotIn('123456789012', text)
                 self.assertIn('parameter `p`: a path-like value, withheld.', text)
                 self.assertIn('parameter `nested`: a path-like value, withheld.', text)
                 self.assertIn('parameter a path-like value, withheld: `key-side`.', text)
                 self.assertEqual(paragraph(text)[0], 'rnaseq-de was run.')   # every clause dropped (0276)
         for value in ('~ condition', 'condition,MT,WT', 'quay.io/biocontainers/fastqc:0.12.1',
                       'https://depot.galaxyproject.org/singularity/fastqc', 'pipeline_info/fixture.sif',
-                      'N/A', 'sha256:' + 'a' * 64, 's3://bucket/key', 'quay.io:443/biocontainers/fastqc',
+                      'N/A', 'sha256:' + 'a' * 64, 'quay.io:443/biocontainers/fastqc', 'my-s3://x', 'https://s3.amazonaws.com',
                       './relative/x', '../relative/x', '$HOME/x', 'a\\b', 'fixture/tool@sha256:' + 'b' * 64,
                       '\u212a:\\x', 'zero 0e-400', 'f\u0130le:x', 'pattern:\\d+'):
             with self.subTest(shown=value):

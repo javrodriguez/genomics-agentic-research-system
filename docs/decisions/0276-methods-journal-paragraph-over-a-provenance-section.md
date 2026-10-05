@@ -11,6 +11,7 @@ symptoms:
   - a generated Methods section reads as a manifest dump, with hashes and withheld-path notes in the paragraph
   - a journal-paragraph sentence states a tool, step, order or person that no record field holds
   - a missing record field leaves a guessed or misleading clause in the Methods paragraph
+  - an s3:// or other storage URI in a parameter or command line prints a runs bucket name, which can hold the cloud account id
 ---
 # The Methods page opens with a journal paragraph; the record trail becomes its Provenance section
 
@@ -41,7 +42,9 @@ The owner's readability rule (5 October): the paragraph carries only what change
    - `prose-approval`, only after 0236's binding check holds: `The analysis plan was approved[ on {D Month YYYY} at {HH:MM:SS} UTC] {by the approver the run recorded | with no approver named in its approval record}, and its approval record is bound to the plan's exact text.` The timestamp is the record's own, already validated; the actor is consulted for presence and never printed.
    - `prose-history`, per history entry 0236 matches to the approved analysis: `The project's history records the approved analysis as complete[ on {date}][, with the agent model {Model}].`
    - `prose-closing`, always: `Parameters, software versions and container images are listed below; every value traces to the run's records (Provenance).`
-5. **Traced like every other line.** Each sentence has a Sources entry listing the fields it used, and the test's oracle rebuilds each sentence from those fields and derives from the records which sentences and clauses must appear.
+5. **A storage URI is withheld** (amends 0236's point 5, which showed `s3://…`): a value holding `s3://`, `s3a://`, `s3n://`, `gs://`, `gcs://`, `az://`, `abfs://`, `abfss://`, `wasb://`, `wasbs://` or `file://`, in any letter case, with no letter, digit or one of `+ . -` glued before the scheme, reads `a path-like value, withheld` under Provenance and drops its clause in the paragraph.
+   A runs bucket's name can hold the cloud account id, and nextflow's `-work-dir s3://<bucket>/…` reaches a parameter or the command line; the Row-orchestrator relayed this leak on 5 October 2026, found and reproduced by the reproduction-package plan's reviewers.
+6. **Traced like every other line.** Each sentence has a Sources entry listing the fields it used, and the test's oracle rebuilds each sentence from those fields and derives from the records which sentences and clauses must appear.
 
 ## Rejected alternatives
 
@@ -61,7 +64,7 @@ The owner's readability rule (5 October): the paragraph carries only what change
 
 `python3 -m unittest discover -s gars/tests -p test_render_methods.py` (still 16 tests, so the suite total does not move) on Python 3.8 and 3.12.
 Both goldens carry the paragraph; the oracle restates every frame and rebuilds each sentence from its cited fields; `test_missing_and_empty_values_read_not_recorded` drives each dropped-clause path (name missing or withheld, version, status missing, failed or withheld, reference missing, unmatched or without build or release, formula, contrast, parameters, agent model missing or `none`, the pipeline's own name found, ambiguous or without a version, the approval time and approver, the history's model, an unmatched history) and pins each resulting paragraph.
-It must fail when a paragraph value differs from its field, a dropped clause is filled, "configured" becomes "run" without a `COMPLETE` status, a sentence is added or cites the wrong manifest or field, the approver is named, or a path-like value reaches the paragraph through any clause.
+It must fail when a paragraph value differs from its field, a dropped clause is filled, "configured" becomes "run" without a `COMPLETE` status, a sentence is added or cites the wrong manifest or field, the approver is named, or a path-like value reaches the paragraph through any clause; and `test_local_paths_are_never_printed` fails when a bucket URI in a parameter or a command line (`nextflow run … -work-dir s3://<bucket>/work`), or its account-id digits, reach the page.
 
 ## Status
 
