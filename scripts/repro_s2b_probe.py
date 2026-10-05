@@ -196,6 +196,7 @@ def scan(top, needles, dest):
             counts = [data.count(n.encode('utf-8')) for n in needles]
             if any(counts) or name.endswith('.gz'):
                 rows.append((path.relative_to(top).as_posix(), counts, name.endswith('.gz')))
+    rows.sort(key=lambda row: row[0])   # by path, never by walk order
     with io.open(str(dest), 'w', encoding='utf-8', newline='\n') as handle:
         handle.write('path\t' + '\t'.join('count:%s' % n for n in needles) + '\tcompressed\n')
         for rel, counts, gz in rows:
