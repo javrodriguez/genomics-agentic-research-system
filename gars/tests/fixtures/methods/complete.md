@@ -3,8 +3,8 @@
 nfcore-rnaseq-wrapper (workflow version 3.26.0) was run against the fixture-build reference genome (annotation release fixture-release) with the star_salmon aligner.
 rnaseq-de (workflow version v0.10.0) was run with the design formula `~ condition` and the contrast MT versus WT (factor condition).
 The agent model recorded for every workflow was claude-opus-5-5.
-A separate custom analysis was planned, and its plan was approved on 29 September 2026 by the approver named in its approval record.
-The project's history records that custom analysis as complete on 29 September 2026, with the agent model claude-opus-5-5.
+A separate custom analysis was planned, and its plan was approved by the approver named in its approval record.
+The project's history records that custom analysis as complete, with the agent model claude-opus-5-5.
 Parameters, software versions and container images are listed below, or marked not recorded; every value traces to the run's records (Provenance).
 
 ## Provenance
@@ -72,11 +72,11 @@ Cite GARS at commit `c54a71584b1347937e4315cbbeb3f27371655228`; the GARS reposit
 
 ### Sources
 
-- line 3: prose-run: `manifest1:/workflow_name manifest1:/workflow_version manifest1:/predicate_facts/status manifest1:/predicate_facts/wrapper_kind manifest1:/reference/comparison manifest1:/reference/build manifest1:/reference/annotation_release manifest1:/params/aligner`.
+- line 3: prose-run: `manifest1:/workflow_name manifest1:/workflow_version manifest1:/predicate_facts/status manifest1:/predicate_facts/wrapper_kind manifest1:/reference/comparison manifest1:/reference/build manifest1:/params/gtf? manifest1:/reference/annotation_release manifest1:/params/aligner`.
 - line 4: prose-run: `manifest2:/workflow_name manifest2:/workflow_version manifest2:/predicate_facts/status manifest2:/params/formula manifest2:/params/contrast`.
 - line 5: prose-agent-all: `manifest1:/agent_model manifest2:/agent_model`.
-- line 6: prose-approval: `approval:/plan_sha256 approval:/plan_path? approval:/timestamp approval:/actor?`.
-- line 7: prose-history: `history:#3/stage history:#3/outcome history:#3/date history:#3/model`.
+- line 6: prose-approval: `approval:/plan_sha256 approval:/plan_path? approval:/actor?`.
+- line 7: prose-history: `history:#3/stage history:#3/outcome history:#3/model`.
 - line 8: prose-closing.
 - line 12: workflow: `manifest1:/workflow_name manifest1:/workflow_version manifest1:/pipeline_commit manifest1:/wrapper manifest1:/gars_commit manifest1:/template_version manifest1:/predicate_facts/status`.
 - line 13: reference: `manifest1:/reference/build manifest1:/reference/annotation_release manifest1:/reference/fasta_sha256 manifest1:/reference/gtf_sha256`.
