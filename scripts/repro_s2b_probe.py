@@ -21,6 +21,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -177,8 +178,10 @@ def run(args):
                                       out=str(out / 'compare')))
     # The S2b acceptance item of review h3-7: where a real run's outputs (MultiQC's report, the trace, the
     # tables) name the box's user, the launch folder or a bucket, before render meets them in the paid S3.
-    import getpass
-    scan(out / 'run1', [getpass.getuser(), str(out / 'run1'), 's3://'], out / 'compare' / 'names.tsv')
+    # The user the run's own paths name (its launch folder's home), never the environment's user: on the
+    # pad the SSM environment reports root while the run is the stock login's (S2b, 5 Oct 2026).
+    users = sorted(set(re.findall(r'/(?:home|Users)/([^/]+)/', str(out) + '/'))) or ['(no home folder)']
+    scan(out / 'run1', users + [str(out / 'run1'), 's3://'], out / 'compare' / 'names.tsv')
     return code
 
 

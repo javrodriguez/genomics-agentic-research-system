@@ -36,7 +36,8 @@ LANE = 'f' * 40
 ACTOR = 'fixture-approver-q7x'
 STAGE_REL = '02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper'
 STAGE = 'atacseq_bulk.01_nfcore-atacseq-wrapper'
-LABELS = ('recorded at run', 'computed at harvest', 'supplied at packaging from ')
+LABELS = ('recorded at run', 'computed at harvest', 'supplied at packaging from ',
+          'computed at packaging from bytes matching the record')
 GIT_ENV = {'GIT_AUTHOR_NAME': 'fixture', 'GIT_AUTHOR_EMAIL': 'fixture@example.invalid',
            'GIT_COMMITTER_NAME': 'fixture', 'GIT_COMMITTER_EMAIL': 'fixture@example.invalid',
            'GIT_AUTHOR_DATE': '2026-10-05T12:00:00Z', 'GIT_COMMITTER_DATE': '2026-10-05T12:00:00Z'}
@@ -483,7 +484,8 @@ class HarvestAndRender(PackageCase):
 
     def test_h3_8_users_come_from_the_records_and_a_tool_image_is_not_a_user(self):
         tool = module(TOOL, 'package_run_users')
-        self.assertEqual(tool.record_users(['/home/ubuntu/x', '"/Users/jdoe/y"', '/home/conda/z']), ['jdoe', 'ubuntu'])
+        # the stock login is never armed (glitch-e7's ruling (a)); a real name always is
+        self.assertEqual(tool.record_users(['/home/ubuntu/x', '"/Users/jdoe/y"', '/home/conda/z']), ['jdoe'])
         self.assertFalse(tool.user_named('container nf-core/ubuntu:20.04', 'ubuntu'))
         self.assertTrue(tool.user_named('ran as ubuntu on the box', 'ubuntu'))
         self.assertTrue(tool.user_named('/home/ubuntu/run', 'ubuntu'))
@@ -1029,6 +1031,190 @@ class Rerun(PackageCase):
         self.assertEqual(proc.returncode, 2)
         self.assertIn('is not empty', proc.stderr.decode())
         self.assertFalse(self.nf_log.exists())
+
+
+NARROW = 'run/results/bwa/merged_library/macs2/narrow_peak'
+COUNTS = NARROW + '/consensus/consensus_peaks.mLb.clN.featureCounts.txt'
+PCA = NARROW + '/consensus/deseq2/consensus_peaks.mLb.clN.pca.vals.txt'
+METRICS = NARROW + '/qc/atac-a_REP1.mLb.mkD.sorted.MarkDuplicates.metrics.txt'
+REPORT = 'run/results/multiqc/narrow_peak/multiqc_report.html'
+
+
+def add_members(w, files):
+    """Write files into the stage's results and rebuild the recorded outputs, as collect would."""
+    for rel, text in files.items():
+        write(w.stage / rel, text)
+    manifest = json.loads(w.manifest_path.read_text())
+    manifest['outputs'] = wl.complete_output_index(w.stage)
+    w.manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
+
+
+S2B_FILES = {
+    PCA: '"PC1"\t"PC2"\n"atac-a"\t-9.56516077694756\t4.78390491930369\n"atac-b"\t6.32531222161207\t2.3983488406228\n',
+    METRICS: '## htsjdk\n# Started on: Mon Oct 05 21:27:08 GMT 2026\nLIBRARY\tREADS\nlib-a\t100\nlib-b\t200\n',
+}
+
+
+def s2b_entries(**override):
+    entries = [
+        dict(stage=STAGE, mode='column_matched_table', members=[COUNTS], origin='S2b-preregistered',
+             cause='sample columns in completion order', evidence='S2b'),
+        dict(stage=STAGE, mode='sign_aligned_numeric', members=[PCA], origin='S2b-preregistered',
+             cause='arbitrary component sign', evidence='S2b'),
+        dict(stage=STAGE, mode='sorted_table', drop_lines=['^# Started on: '], members=[METRICS],
+             origin='S2b-preregistered', cause='start time line', evidence='S2b'),
+        dict(stage=STAGE, mode='presence', members=[REPORT], origin='S2b-preregistered',
+             cause='embeds its generation time', evidence='S2b'),
+    ]
+    for entry in entries:
+        entry.update(override.get(entry['mode'], {}))
+    return entries
+
+
+class S2bModes(PackageCase):
+    """The four modes S2b measured (decision 0283), each on the kinds it is declared for only."""
+
+    def world_with(self, entries, findings=None):
+        w = self.world()
+        add_members(w, S2B_FILES)
+        body = {'entries': entries}
+        if findings is not None:
+            body['findings'] = findings
+        write(w.tolerances, json.dumps(body))
+        return w
+
+    def rerun_like_s2b(self, w):
+        rerun = w.rerun_copy()
+        top = rerun / 'results' / STAGE
+        counts = top / COUNTS[len('run/results/'):]
+        rows = [l.split('\t') for l in counts.read_text().splitlines()]
+        swapped = []
+        for r in rows:   # move the last column first: the same table, columns in another order
+            swapped.append('\t'.join(r if r[0].startswith('#') else [r[-1]] + r[:-1]))
+        write(counts, '\n'.join(swapped) + '\n')
+        write(top / PCA[len('run/results/'):],
+              '"PC1"\t"PC2"\n"atac-b"\t6.32531222161208\t-2.3983488406228\n"atac-a"\t-9.56516077694755\t-4.78390491930369\n')
+        write(top / METRICS[len('run/results/'):],
+              '## htsjdk\n# Started on: Mon Oct 05 22:00:22 GMT 2026\nLIBRARY\tREADS\nlib-b\t200\nlib-a\t100\n')
+        write(top / REPORT[len('run/results/'):], '<html>generated later</html>\n')
+        return rerun
+
+    def test_each_mode_matches_what_s2b_measured(self):
+        w = self.world_with(s2b_entries())
+        self.assertEqual(w.harvest().returncode, 0)
+        proc = w.render()
+        self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+        rerun = self.rerun_like_s2b(w)
+        result = comparer.compare(str(w.root / 'package'), str(rerun))
+        bad = [m for m in result['members'] if m['result'] not in ('match', 'present') and
+               not m['result'].startswith('within')]
+        self.assertEqual(bad, [])
+        self.assertEqual({k: result['counts'][k] for k in 'NMKPF'}, {'N': 4, 'M': 0, 'K': 3, 'P': 1, 'F': 0})
+        run_verify = run([sys.executable, w.root / 'package' / 'verify.py', '--against', rerun])
+        self.assertEqual(run_verify.returncode, 3, run_verify.stdout.decode())
+
+    def test_a_difference_beyond_the_mode_still_differs(self):
+        cases = {
+            'a count changed': (COUNTS, lambda t: t.replace('5\tpeak1', '6\tpeak1')),
+            'a PCA value moved by 1e-6': (PCA, lambda t: t.replace('6.32531222161208', '6.32531322161208')),
+            'a non-date line changed': (METRICS, lambda t: t.replace('lib-a\t100', 'lib-a\t101')),
+            'a second line dropped as if a date': (METRICS, lambda t: t.replace('## htsjdk', '## other')),
+        }
+        for name, (member, edit) in sorted(cases.items()):
+            with self.subTest(name):
+                w = self.world_with(s2b_entries())
+                self.assertEqual(w.harvest().returncode, 0)
+                self.assertEqual(w.render().returncode, 0)
+                rerun = self.rerun_like_s2b(w)
+                path = rerun / 'results' / STAGE / member[len('run/results/'):]
+                before = path.read_text()
+                self.assertNotEqual(edit(before), before, 'the edit must change the file')
+                write(path, edit(before))
+                self.assertGreaterEqual(comparer.compare(str(w.root / 'package'), str(rerun))['counts']['F'], 1)
+
+    def test_a_mode_never_applies_to_a_kind_it_is_not_declared_for(self):
+        narrow = NARROW + '/atac-a.mLb.clN_peaks.narrowPeak'
+        cases = {
+            'sign_aligned_numeric on a narrowPeak': {'sign_aligned_numeric': {'members': [narrow]}},
+            'column_matched_table on a narrowPeak': {'column_matched_table': {'members': [narrow]}},
+            'presence on a result table': {'presence': {'members': [narrow]}},
+        }
+        for name, override in sorted(cases.items()):
+            with self.subTest(name):
+                entries = s2b_entries(**override)
+                w = self.world_with(entries)
+                self.assertEqual(w.harvest().returncode, 0)
+                self.refused(w.render(), 'is not a kind the')
+        # and at compare: a re-run file of another kind under a declared mode fails, never matches
+        w = self.world_with(s2b_entries())
+        self.assertEqual(w.harvest().returncode, 0)
+        self.assertEqual(w.render().returncode, 0)
+        rerun = self.rerun_like_s2b(w)
+        write(rerun / 'results' / STAGE / PCA[len('run/results/'):], b'\x1f\x8b\x08binary')
+        member = [m for m in comparer.compare(str(w.root / 'package'), str(rerun))['members'] if m['path'] == PCA][0]
+        self.assertEqual(member['result'], 'not a kind sign_aligned_numeric is declared for')
+
+    def test_drop_lines_are_explicit_anchored_and_only_for_sorted_table(self):
+        for name, override, words in (
+                ('unanchored', {'sorted_table': {'drop_lines': ['Started on']}}, 'anchored'),
+                ('missing', {'sorted_table': {'drop_lines': None}}, 'every sorted_table entry lists it'),
+                ('on presence', {'presence': {'drop_lines': ['^x']}}, 'drop_lines belongs to a sorted_table')):
+            with self.subTest(name):
+                entries = s2b_entries(**override)
+                for e in entries:
+                    if e.get('drop_lines', 0) is None:
+                        del e['drop_lines']
+                w = self.world_with(entries)
+                self.assertEqual(w.harvest().returncode, 0)
+                self.refused(w.render(), words)
+
+    def test_findings_are_stated_plainly_and_bound_to_recorded_members(self):
+        homer = NARROW + '/atac-a.mLb.clN_peaks.narrowPeak'
+        finding = dict(stage=STAGE, members=[homer], counted='differ', evidence='S2b',
+                       finding="nf-core/atacseq 2.1.2's HOMER annotation picks between tied genes")
+        w = self.world_with(s2b_entries(), [finding])
+        self.assertEqual(w.harvest().returncode, 0)
+        self.assertEqual(w.render().returncode, 0)
+        provenance = (w.root / 'package/PROVENANCE.md').read_text()
+        self.assertIn("## Findings", provenance)
+        self.assertIn("HOMER annotation picks between tied genes", provenance)
+        for name, bad, words in (('unrecorded', dict(finding, members=[NARROW + '/none.txt']), 'finding names a member'),
+                                 ('also an entry', dict(finding, members=[COUNTS]), 'both a finding'),
+                                 ('not counted', dict(finding, counted='match'), 'counted: differ')):
+            with self.subTest(name):
+                w = self.world_with(s2b_entries(), [bad])
+                self.assertEqual(w.harvest().returncode, 0)
+                self.refused(w.render(), words)
+
+
+class StockLogins(PackageCase):
+    """glitch-e7's ruling (a), 5 Oct 2026: the pad's stock login is not a private name; any other is."""
+
+    def world_naming(self, user):
+        w = self.world()
+        manifest = json.loads(w.manifest_path.read_text())
+        manifest['input_data_location']['dataset'] = '/home/%s/seqrun/atacseq' % user
+        w.manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
+        add_members(w, {REPORT: '<html>launched in /home/%s/gars-launchpad/run by %s</html>\n' % (user, user)})
+        return w
+
+    def test_a_stock_login_in_a_multiqc_report_ships(self):
+        w = self.world_naming('ubuntu')
+        self.assertEqual(w.harvest().returncode, 0)
+        self.assertEqual(json.loads((w.root / 'harvest/HARVEST.json').read_text())['secrets']['users'], [])
+        proc = w.render()
+        self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+        self.assertIn('`ubuntu`, the stock login', (w.root / 'package/PROVENANCE.md').read_text())
+
+    def test_any_other_user_in_a_multiqc_report_is_refused(self):
+        w = self.world_naming('jdoe-q7')
+        self.assertEqual(w.harvest().returncode, 0)
+        self.refused(w.render(), 'its recorded sha256 would confirm')
+
+    def test_the_stock_list_is_exactly_the_ruled_one(self):
+        tool = module(TOOL, 'package_run_stock')
+        self.assertEqual(sorted(tool.STOCK_LOGINS), ['root', 'ubuntu'])
+        self.assertEqual(tool.record_users(['/home/ubuntu/x', '/home/ec2-user/y', '/Users/root/z']), ['ec2-user'])
 
 
 class Goldens(PackageCase):

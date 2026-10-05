@@ -182,6 +182,9 @@ def check_links(package, out):
     for key, row in listed.items():
         if row['mode'] != declared.get(key, 'exact'):
             raise Failed('the mode of %s %s is not its tolerance entry\'s' % key)
+        if row['mode'] in ('sorted_table', 'column_matched_table', 'sign_aligned_numeric') and \
+                row.get('normalised', '-') == '-':
+            raise Failed('%s %s has no normalised form for its mode' % key)
     if set(declared) - set(listed):
         raise Failed('a tolerance entry names a member the run did not record')
     out.append('ok: every non-exact member has a tolerance entry with a cause, evidence and origin')

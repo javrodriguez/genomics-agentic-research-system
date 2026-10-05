@@ -6,6 +6,7 @@ Every value in this package's tables carries one of three labels:
 - `recorded at run`: a field of a run record, named; only these are the run's attestation.
 - `computed at harvest`: hashed on the run's machine from the unmasked file, after the run and before teardown.
 - `supplied at packaging from <repository>@<commit>:<path>`: read from a named file at a pinned commit.
+- `computed at packaging from bytes matching the record`: a normalised form of a recorded output, computed from harvested bytes whose sha256 equals the run's record.
 
 ## Masked values
 
@@ -28,6 +29,7 @@ Limit: GARS records no sha256 of submit.sh. On the run's machine, harvest compar
 - atacseq_bulk.01_nfcore-atacseq-wrapper: `idempotency_key`, not printed: it hashes a file holding values the package masks.
 - atacseq_bulk.01_nfcore-atacseq-wrapper: `design_check.sha256`, not printed: the file it hashes is not in this package.
 - atacseq_bulk.01_nfcore-atacseq-wrapper: `execution_config[executor_descriptor]`, not printed: executor descriptor values beyond the backend name never ship.
+- The sweep is armed with every user name the run's records carry, except stock cloud logins, which name no person: `root`, the user the SSM agent's environment reports on the pad; `ubuntu`, the stock login of the launch pad's Ubuntu cloud image.
 
 ## Not recorded
 
@@ -48,6 +50,19 @@ Every member is compared `exact` unless an entry below declares another mode wit
 
 - entries of origin `S2b-preregistered`: 0
 - entries of origin `pass-1`: 0
+
+The declared modes (each applies only to the file kinds named here):
+- `presence`: the file exists and is not empty; counted as P, never as a match. For PDF, SVG, zip, gzip and R data files, and MultiQC outputs.
+- `sorted_table`: a text file's lines, less the lines its entry's listed patterns drop, sorted, then compared exactly.
+- `column_matched_table`: a featureCounts table compared exactly after its columns are matched by name.
+- `sign_aligned_numeric`: a PCA table compared per sample after each component's sign is aligned; every value within 1e-9 (absolute).
+
+
+## Findings
+
+Outputs that differ between two runs of the same code on the same machine type, for a reason no comparison mode declares; each counts as differing (F).
+
+- none.
 
 ## Result tables not shipped
 

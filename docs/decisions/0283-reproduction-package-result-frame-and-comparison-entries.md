@@ -68,12 +68,33 @@ Only the result line's counts, for one fixture run, never "GARS is reproducible"
 
 ## Entries
 
-Pending S2b (the early probe, two plain nf-core/atacseq 2.1.2 runs of the yeast fixture under the recorded clamp) and pass 1.
-Each entry is appended here with its member path, mode, cause, evidence and origin, and the numeric bounds if any.
+Frozen 5 October 2026 from S2b, before S3, under glitch-e7's rulings of the same day (the Row-orchestrator's words under the owner's delegation, not the owner's).
+S2b ran plain nf-core/atacseq 2.1.2 (commit `1a1dbe52ffbd82256c941a032b0e22abbd925b8a`) twice on one fresh m5.xlarge launch-pad machine, local executor in Docker, with the recorded clamp: 651 files compared, 342 equal, 309 different.
+Every BAM, BAM index, bigWig and narrowPeak file, and the SAF and consensus BED files, were byte-identical across the two runs.
+The evidence is the results tarball, sha256 `919a275be40cff204bd7376ed0c0b2d927efbb175abea1cc985980db9daf4bb0`, kept on the build machine and in the pad's private evidence prefix.
+
+**Two modes added beyond the three named above, both ruled on 5 October 2026:**
+`column_matched_table` (a featureCounts table, compared exactly after its columns are matched by sample name) and `sign_aligned_numeric` (a PCA table, compared per sample after each component's sign is aligned, every value within an absolute 1e-9).
+The bound 1e-9 is frozen here; the measured difference was about 1e-15.
+`bam_body` and `numeric` were not needed: no BAM and no numeric table other than the PCA differed.
+Each mode applies only to the file kinds its definition names (`compare.py`'s `kind_allows`), and a member of any other kind fails rather than matches.
+
+**The entries file** is `reproduction/yeast-atac/package-tolerances.json`, sha256 `9f5dddb143e953cb008a2a60f713c281816b42f60bf370508432349913ce536c` at this freeze: 10 entries naming 96 recorded members, every one origin `S2b-preregistered`, each with its cause read from the bytes:
+- `presence`: the PDFs, whose only difference is their embedded creation time; the DESeq2 plots PDF, which draws the PCA with its arbitrary component sign; the gzip files (some named `.tab`), whose header carries the write time and whose decompressed rows come in completion order; the serialized R objects, built from the counts with sample columns in completion order; the MultiQC report, which embeds its generation time and the launch folder.
+- `sorted_table`: rows in completion order (no line dropped); Picard metrics, dropping exactly the lines matching `^# Started on: `; ataqv JSON, dropping exactly the lines matching `^\s*"timestamp": "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z",?$`.
+- `column_matched_table`: the consensus featureCounts table and its summary.
+- `sign_aligned_numeric`: the DESeq2 PCA tables.
+
+**Findings, counted as differing (F), never entries:**
+- nf-core/atacseq 2.1.2's HOMER peak annotation is not deterministic: for a peak equally near two genes it names one or the other between runs (for example YOL103W-A or YOL103W-B), because `genome/genes.bed` lists tied genes in a different order each run. Six annotation files under the recorded outputs carry it, so every output that holds them (the peaks folder and the merged-library tree) counts as differing.
+- The DESeq2 sample-distance tables hold the same distances with samples in completion order; no mode is declared for them, so they count as differing too.
+
+The expected result for a re-run that behaves as S2b did, before any pass: of 6 outputs, the bigWig folder and the consensus BED match exactly (M = 2), the counts table within the stated tolerance (K = 1), the MultiQC report present but not byte-comparable (P = 1), and the peaks folder and merged-library tree differ (F = 2), causes in PROVENANCE.md.
+Pass 1 compares against the AWS Batch record, a different machine type, so its own differences may add `pass-1` entries, each counted apart.
 
 ## What this does not close
 
-- The entries themselves, and any numeric bound, until S2b and pass 1 have run.
+- Any `pass-1` entry, until pass 1 has run.
 - Independence: every pass is run by the repository's own machinery, never by another person.
 
 ## Test

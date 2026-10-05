@@ -42,7 +42,7 @@ HARVEST_FORMAT = 'gars-harvest/1'
 RUN = 'recorded at run'
 HARVEST = 'computed at harvest'
 PACKAGING = 'supplied at packaging from '
-LABELS = (RUN, HARVEST, PACKAGING.strip())
+LABELS = (RUN, HARVEST, PACKAGING.strip(), 'computed at packaging from bytes matching the record')
 NOT_RECORDED = 'not recorded'
 
 SMALL_LIMIT = 5 * 1024 * 1024
@@ -55,7 +55,14 @@ REFERENCE_PARAMS = {'fasta': 'fasta_sha256', 'gtf': 'gtf_sha256'}
 PUBLIC_REGISTRIES = ('quay.io', 'docker.io', 'registry-1.docker.io', 'ghcr.io', 'public.ecr.aws',
                      'community.wave.seqera.io', 'depot.galaxyproject.org')
 ORIGINS = ('S2b-preregistered', 'pass-1')
-COMPARISON_MODES = ('exact', 'presence')
+COMPARISON_MODES = ('exact', 'presence', 'sorted_table', 'column_matched_table', 'sign_aligned_numeric')
+NORMALISED_MODES = ('sorted_table', 'column_matched_table', 'sign_aligned_numeric')
+NORMALISED = 'computed at packaging from bytes matching the record'
+# Stock cloud logins: the login every launch-pad box is made with, and the user the SSM agent's
+# environment reports. Neither names a person, so neither arms the sweep (glitch-e7's ruling (a),
+# 5 Oct 2026). Every other user name the records carry stays armed.
+STOCK_LOGINS = {'ubuntu': "the stock login of the launch pad's Ubuntu cloud image",
+                'root': "the user the SSM agent's environment reports on the pad"}
 PROCESS_NAME = re.compile(r'[A-Za-z0-9_:]+\Z')
 COMMIT = re.compile(r'[0-9a-f]{40}\Z')
 DIGEST = re.compile(r'[0-9a-f]{64}\Z')
@@ -425,7 +432,7 @@ def record_users(texts):
     for text in texts:
         found.update(re.findall(r'/(?:home|Users)/([A-Za-z0-9_][A-Za-z0-9_.-]*)', text))
     found.discard('conda')
-    return sorted(found)
+    return sorted(found - set(STOCK_LOGINS))
 
 
 def stage_id_of(rel):
@@ -755,6 +762,22 @@ class Render(object):
                     not entry.get('cause') or not entry.get('evidence') or \
                     not isinstance(entry.get('members'), list) or not entry['members']:
                 raise Refusal('a tolerance entry lacks a declared mode, members, a cause, evidence or an origin')
+            drop = entry.get('drop_lines')
+            if (entry['mode'] == 'sorted_table') != isinstance(drop, list):
+                raise Refusal('drop_lines belongs to a sorted_table entry, and every sorted_table entry lists it')
+            for pattern in drop or []:
+                try:
+                    re.compile(pattern)
+                except (re.error, TypeError):
+                    raise Refusal('a drop_lines pattern does not compile')
+                if not isinstance(pattern, str) or not pattern.startswith('^'):
+                    raise Refusal('a drop_lines pattern must be anchored at the start of a line')
+        findings = value.get('findings', [])
+        if not isinstance(findings, list) or any(
+                not isinstance(f, dict) or not f.get('finding') or not f.get('evidence') or f.get('counted') != 'differ'
+                or not isinstance(f.get('members'), list) or not f['members'] for f in findings):
+            raise Refusal('a finding lacks members, its statement, evidence, or counted: differ')
+        self.findings = findings
         return data, entries
 
     # ---- the package files --------------------------------------------------------------------
@@ -1061,10 +1084,19 @@ class Render(object):
 
     def outputs(self, stages02):
         rows = []
-        declared = {}
+        declared, used = {}, set()
+        comparer = load_module(TEMPLATES / 'compare.py', 'package_run_compare')
         for entry in self.tolerances:
             for member in entry['members']:
-                declared[(entry.get('stage'), member)] = entry['mode']
+                if (entry.get('stage'), member) in declared:
+                    raise Refusal('member %s is named by two tolerance entries' % member)
+                declared[(entry.get('stage'), member)] = entry
+        found = {}
+        for finding in self.findings:
+            for member in finding['members']:
+                if (finding.get('stage'), member) in declared:
+                    raise Refusal('member %s is both a finding and a tolerance entry' % member)
+                found[(finding.get('stage'), member)] = finding
         copied = dict(((m['stage'], m['output_path'], m['member']), m) for m in self.record['members'])
         for s in stages02:
             for output in s['manifest'].get('outputs') or []:
@@ -1074,21 +1106,62 @@ class Render(object):
                           [(m['path'], m['sha256']) for m in output['members']])
                 for member, digest in listed:
                     full = output['path'] if member == '.' else output['path'] + '/' + member
-                    mode = declared.pop((s['id'], full), 'exact')
+                    entry = declared.get((s['id'], full))
+                    if entry is not None:
+                        used.add((s['id'], full))
+                    if (s['id'], full) in found:
+                        used.add(('finding',) + (s['id'], full))
+                    mode = entry['mode'] if entry else 'exact'
+                    harvested = copied.get((s['rel'], output['path'], member))
+                    normalised = self.normalised(s, full, digest, harvested, entry, comparer)
                     rows.append({'stage': s['id'], 'output_type': output['type'], 'output_path': output['path'],
                                  'member': member, 'recorded_sha256': digest,
                                  'recorded_sha256_source': run_label('outputs' if member == '.' else 'outputs[].members'),
                                  'mode': mode,
                                  'mode_source': PACKAGING + 'outputs/package-tolerances.json' if mode != 'exact'
-                                 else PACKAGING + 'the default comparison mode (decision 0283)'})
-                    harvested = copied.get((s['rel'], output['path'], member))
+                                 else PACKAGING + 'the default comparison mode (decision 0283)',
+                                 'normalised': normalised or '-',
+                                 'normalised_source': NORMALISED if normalised else
+                                 NORMALISED + ': none, this mode needs none'})
                     self.oracle_member(s, full, harvested)
                     self.small(s, full, digest, harvested)
-        if declared:
+        if set(declared) - used:
             raise Refusal('a tolerance entry names a member the run did not record')
+        if set(('finding',) + k for k in found) - used:
+            raise Refusal('a finding names a member the run did not record')
         self.pkg.add('outputs/outputs.tsv', tsv(('stage', 'output_type', 'output_path', 'member', 'recorded_sha256',
-                                                 'recorded_sha256_source', 'mode', 'mode_source'), rows))
+                                                 'recorded_sha256_source', 'mode', 'mode_source', 'normalised',
+                                                 'normalised_source'), rows))
         self.pkg.add('outputs/package-tolerances.json', self.tolerance_bytes)
+
+    def normalised(self, s, full, digest, harvested, entry, comparer):
+        """The recorded member's normalised form for a mode that needs one, from harvested bytes that
+        match the recorded sha256; the mode's declared kinds are checked on those same bytes."""
+        if entry is None:
+            return None
+        mode = entry['mode']
+        if mode == 'presence' and harvested is None:
+            raise Refusal('member %s of %s was not harvested; its kind cannot be checked' % (full, s['id']))
+        data = None
+        if harvested is not None and harvested['copied']:
+            data = (self.project / s['rel'] / full).read_bytes()
+            if sha256_bytes(data) != digest:
+                raise Refusal('a harvested member of %s differs from its recorded sha256' % s['rel'])
+        elif mode in NORMALISED_MODES or mode == 'presence':
+            raise Refusal('member %s of %s was not harvested; its %s form cannot be computed (harvest with '
+                          '--copy-large)' % (full, s['id'], mode))
+        if not comparer.kind_allows(mode, full, data):
+            raise Refusal('member %s of %s is not a kind the %s mode is declared for' % (full, s['id'], mode))
+        try:
+            if mode == 'sorted_table':
+                return 'sha256:' + sha256_bytes(comparer.sorted_table_form(data, entry['drop_lines']))
+            if mode == 'column_matched_table':
+                return 'sha256:' + sha256_bytes(comparer.column_matched_form(data))
+            if mode == 'sign_aligned_numeric':
+                return json.dumps(comparer.numeric_values(data), sort_keys=True, separators=(',', ':'))
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise Refusal('member %s of %s cannot be read as %s (%s)' % (full, s['id'], mode, exc))
+        return None
 
     def sensitive(self):
         record = self.record['secrets']
@@ -1290,6 +1363,8 @@ class Render(object):
                  '- `computed at harvest`: hashed on the run\'s machine from the unmasked file, after the run and '
                  'before teardown.',
                  '- `supplied at packaging from <repository>@<commit>:<path>`: read from a named file at a pinned commit.',
+                 '- `computed at packaging from bytes matching the record`: a normalised form of a recorded output, '
+                 'computed from harvested bytes whose sha256 equals the run\'s record.',
                  '', '## Masked values', '',
                  'Absolute paths, storage buckets and account ids are replaced; the originals are not in this package.',
                  '', '| Placeholder | Spans replaced |', '|---|---|']
@@ -1314,6 +1389,8 @@ class Render(object):
         for rel in sorted(self.unread):
             lines.append('- %s: larger than 5 MB and not harvested, so not read for masked values; its recorded '
                          'sha256 is printed for comparison.' % rel)
+        lines.append('- The sweep is armed with every user name the run\'s records carry, except stock cloud logins, '
+                     'which name no person: %s.' % '; '.join('`%s`, %s' % item for item in sorted(STOCK_LOGINS.items())))
         lines += ['', '## Not recorded', '']
         for text in self.not_recorded:
             lines.append('- %s: not recorded by the run.' % text)
@@ -1332,10 +1409,29 @@ class Render(object):
                   'from its bytes (decision 0283).', '']
         for origin in ORIGINS:
             lines.append('- entries of origin `%s`: %d' % (origin, sum(1 for e in self.tolerances if e['origin'] == origin)))
+        lines += ['', 'The declared modes (each applies only to the file kinds named here):',
+                  '- `presence`: the file exists and is not empty; counted as P, never as a match. For PDF, SVG, '
+                  'zip, gzip and R data files, and MultiQC outputs.',
+                  '- `sorted_table`: a text file\'s lines, less the lines its entry\'s listed patterns drop, sorted, '
+                  'then compared exactly.',
+                  '- `column_matched_table`: a featureCounts table compared exactly after its columns are matched by '
+                  'name.',
+                  '- `sign_aligned_numeric`: a PCA table compared per sample after each component\'s sign is '
+                  'aligned; every value within 1e-9 (absolute).', '']
         for entry in self.tolerances:
             lines.append('- %s, %d members, mode `%s`, origin `%s`: %s (evidence: %s).'
                          % (entry.get('stage'), len(entry['members']), entry['mode'], entry['origin'],
                             entry['cause'], entry['evidence']))
+            for pattern in entry.get('drop_lines') or []:
+                lines.append('  - a line matching `%s` is dropped before the comparison.' % pattern)
+        lines += ['', '## Findings', '',
+                  'Outputs that differ between two runs of the same code on the same machine type, for a reason '
+                  'no comparison mode declares; each counts as differing (F).', '']
+        for finding in self.findings:
+            lines.append('- %s, %d members: %s (evidence: %s).' % (finding.get('stage'), len(finding['members']),
+                                                                   finding['finding'], finding['evidence']))
+        if not self.findings:
+            lines.append('- none.')
         lines += ['', '## Result tables not shipped', '']
         for rel, reason in sorted(self.left_out):
             lines.append('- `%s`: %s.' % (rel, reason))

@@ -23,6 +23,7 @@ import argparse
 import csv
 import hashlib
 import io
+import json
 import os
 import sys
 
@@ -63,11 +64,137 @@ def mode_presence(path, row):
         return False, 'missing', ''
     if os.path.getsize(path) == 0:
         return False, 'empty', ''
+    if not kind_allows('presence', row['member_path'], read_head(path)):
+        return False, 'not a kind presence is declared for', ''
     return True, 'present', ''
 
 
+# ---- the modes added from S2b's measured causes (decision 0283) ---------------------------------
+# Each mode is declared for named file kinds only; a member of any other kind fails, never matches.
+PRESENCE_SUFFIXES = ('.pdf', '.svg', '.zip', '.gz', '.RData', '.rds')
+GZIP_MAGIC = b'\x1f\x8b'
+COLUMN_MATCHED_SUFFIXES = ('.featureCounts.txt', '.featureCounts.txt.summary')
+SIGN_ALIGNED_SUFFIXES = ('.pca.vals.txt', '.pca.vals_mqc.tsv')
+NUMERIC_ABSOLUTE = 1e-9   # sign_aligned_numeric's bound, frozen in decision 0283 before S3
+
+
+def read_head(path):
+    with open(path, 'rb') as handle:
+        return handle.read(8)
+
+
+def is_text(data):
+    if b'\x00' in data or data[:2] == GZIP_MAGIC:
+        return False
+    try:
+        data.decode('utf-8')
+    except UnicodeDecodeError:
+        return False
+    return True
+
+
+def kind_allows(mode, member, data):
+    """True when `mode` is declared for this member's kind: by its name and, where it matters, its bytes."""
+    name = member.rsplit('/', 1)[-1]
+    if mode in ('exact',):
+        return True
+    if mode == 'presence':
+        return (name.endswith(PRESENCE_SUFFIXES) or name == 'multiqc_report.html' or
+                'multiqc' in member.split('/')[:-1] or data[:2] == GZIP_MAGIC)
+    if mode == 'sorted_table':
+        return is_text(data)
+    if mode == 'column_matched_table':
+        return name.endswith(COLUMN_MATCHED_SUFFIXES) and is_text(data)
+    if mode == 'sign_aligned_numeric':
+        return name.endswith(SIGN_ALIGNED_SUFFIXES) and is_text(data)
+    return False
+
+
+def sorted_table_form(data, drop):
+    """The lines that are not dropped by one of the entry's listed patterns, sorted."""
+    import re
+    patterns = [re.compile(p) for p in drop]
+    lines = [l for l in data.decode('utf-8').split('\n') if not any(p.search(l) for p in patterns)]
+    return '\n'.join(sorted(lines)).encode('utf-8')
+
+
+def column_matched_form(data):
+    """A tab table with its comment lines set aside and its columns put in name order, rows kept."""
+    rows = [l.split('\t') for l in data.decode('utf-8').split('\n') if l and not l.startswith('#')]
+    if not rows:
+        raise ValueError('no table')
+    header = rows[0]
+    if len(set(header)) != len(header) or any(len(r) != len(header) for r in rows):
+        raise ValueError('not a rectangular table with unique column names')
+    order = sorted(range(len(header)), key=lambda i: header[i])
+    return '\n'.join('\t'.join(r[i] for i in order) for r in rows).encode('utf-8')
+
+
+def numeric_values(data):
+    """{row name: [floats]} from a table whose first column names the row; a header row is skipped
+    when its cells are not all numbers."""
+    values = {}
+    for line in data.decode('utf-8').split('\n'):
+        cells = line.rstrip('\r').split('\t')
+        if len(cells) < 2:
+            continue
+        try:
+            numbers = [float(c) for c in cells[1:]]
+        except ValueError:
+            continue
+        name = cells[0].strip('"')
+        if name in values:
+            raise ValueError('row %s repeats' % name)
+        values[name] = numbers
+    if not values:
+        raise ValueError('no numeric rows')
+    return values
+
+
+def sign_aligned_match(recorded, rerun):
+    """Per component (column), the re-run may be the recorded one times -1, since a principal
+    component's sign is arbitrary; after that every value is within NUMERIC_ABSOLUTE."""
+    if sorted(recorded) != sorted(rerun):
+        return False
+    width = len(next(iter(recorded.values())))
+    if any(len(v) != width for v in list(recorded.values()) + list(rerun.values())):
+        return False
+    names = sorted(recorded)
+    for j in range(width):
+        a = [recorded[n][j] for n in names]
+        b = [rerun[n][j] for n in names]
+        sign = -1.0 if sum(x * y for x, y in zip(a, b)) < 0 else 1.0
+        if any(abs(x - sign * y) > NUMERIC_ABSOLUTE for x, y in zip(a, b)):
+            return False
+    return True
+
+
+def normalised_mode(name):
+    def check(path, row):
+        if not regular(path):
+            return False, 'missing', ''
+        with open(path, 'rb') as handle:
+            data = handle.read()
+        if not kind_allows(name, row['member_path'], data):
+            return False, 'not a kind %s is declared for' % name, ''
+        try:
+            if name == 'sign_aligned_numeric':
+                ok = sign_aligned_match(json.loads(row['normalised']), numeric_values(data))
+                return ok, 'within %g after sign alignment' % NUMERIC_ABSOLUTE if ok else 'differs', ''
+            form = (sorted_table_form(data, row['entry']['drop_lines']) if name == 'sorted_table'
+                    else column_matched_form(data))
+        except (ValueError, UnicodeDecodeError, KeyError, TypeError):
+            return False, 'unreadable as %s' % name, ''
+        actual = 'sha256:' + hashlib.sha256(form).hexdigest()
+        return actual == row['normalised'], 'match' if actual == row['normalised'] else 'differs', actual
+    return check
+
+
 # The modes this package declares. A mode is added only with a cause read from the bytes (0283).
-MODES = {'exact': mode_exact, 'presence': mode_presence}
+MODES = {'exact': mode_exact, 'presence': mode_presence,
+         'sorted_table': normalised_mode('sorted_table'),
+         'column_matched_table': normalised_mode('column_matched_table'),
+         'sign_aligned_numeric': normalised_mode('sign_aligned_numeric')}
 
 
 def read_table(path):
@@ -125,8 +252,19 @@ def package_rows(package):
     rows = read_table(os.path.join(package, 'outputs', 'outputs.tsv'))
     if not rows:
         raise Unreadable('outputs/outputs.tsv lists no output')
+    try:
+        with io.open(os.path.join(package, 'outputs', 'package-tolerances.json'), encoding='utf-8') as handle:
+            entries = json.load(handle).get('entries') or []
+    except (OSError, ValueError) as exc:
+        raise Unreadable('cannot read outputs/package-tolerances.json (%s)' % type(exc).__name__)
+    by_member = {}
+    for entry in entries:
+        for member in entry.get('members') or []:
+            by_member[(entry.get('stage'), member)] = entry
     seen = {}
     for row in rows:
+        row['member_path'] = member_path(row)
+        row['entry'] = by_member.get((row['stage'], row['member_path']), {})
         if row['mode'] not in MODES:
             raise Unreadable('outputs/outputs.tsv names an undeclared mode %r' % row['mode'])
         key = (row['stage'], member_path(row))

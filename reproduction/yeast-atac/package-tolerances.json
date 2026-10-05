@@ -1,3 +1,223 @@
 {
-  "entries": []
+  "entries": [
+    {
+      "cause": "each PDF embeds its own creation time: the two runs' files are byte-identical once /CreationDate and /ModDate are blanked",
+      "evidence": "S2b probe, 5 Oct 2026: plain nf-core/atacseq 2.1.2 (1a1dbe52) run twice on one fresh m5.xlarge pad (lifetime 4, i-0521feb575ad6ee3d), local executor in Docker, the recorded clamp; results tarball sha256 919a275be40cff204bd7376ed0c0b2d927efbb175abea1cc985980db9daf4bb0; every one of these 34 PDFs compared equal with its dates blanked",
+      "members": [
+        "run/results/bwa/merged_library/deeptools/plotfingerprint/atac-a_REP1.mLb.clN.plotFingerprint.pdf",
+        "run/results/bwa/merged_library/deeptools/plotfingerprint/atac-a_REP2.mLb.clN.plotFingerprint.pdf",
+        "run/results/bwa/merged_library/deeptools/plotfingerprint/atac-b_REP1.mLb.clN.plotFingerprint.pdf",
+        "run/results/bwa/merged_library/deeptools/plotfingerprint/atac-b_REP2.mLb.clN.plotFingerprint.pdf",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP1.mLb.clN.reference_point.plotProfile.pdf",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP1.mLb.clN.scale_regions.plotHeatmap.pdf",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP2.mLb.clN.reference_point.plotProfile.pdf",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP2.mLb.clN.scale_regions.plotHeatmap.pdf",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP1.mLb.clN.reference_point.plotProfile.pdf",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP1.mLb.clN.scale_regions.plotHeatmap.pdf",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP2.mLb.clN.reference_point.plotProfile.pdf",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP2.mLb.clN.scale_regions.plotHeatmap.pdf",
+        "run/results/bwa/merged_library/macs2/narrow_peak/consensus/consensus_peaks.mLb.clN.boolean.intersect.plot.pdf",
+        "run/results/bwa/merged_library/macs2/narrow_peak/qc/macs2_peak.mLb.clN.plots.pdf",
+        "run/results/bwa/merged_library/picard_metrics/pdf/atac-a_REP1.mLb.clN.CollectMultipleMetrics.base_distribution_by_cycle.pdf",
+        "run/results/bwa/merged_library/picard_metrics/pdf/atac-a_REP1.mLb.clN.CollectMultipleMetrics.insert_size_histogram.pdf",
+        "run/results/bwa/merged_library/picard_metrics/pdf/atac-a_REP1.mLb.clN.CollectMultipleMetrics.quality_by_cycle.pdf",
+        "run/results/bwa/merged_library/picard_metrics/pdf/atac-a_REP1.mLb.clN.CollectMultipleMetrics.quality_distribution.pdf",
+        "run/results/bwa/merged_library/picard_metrics/pdf/atac-a_REP1.mLb.clN.CollectMultipleMetrics.read_length_histogram.pdf",
+        "run/results/bwa/merged_library/picard_metrics/pdf/atac-a_REP2.mLb.clN.CollectMultipleMetrics.base_distribution_by_cycle.pdf",
+        "run/results/bwa/merged_library/picard_metrics/pdf/atac-a_REP2.mLb.clN.CollectMultipleMetrics.insert_size_histogram.pdf",
+        "run/results/bwa/merged_library/picard_metrics/pdf/atac-a_REP2.mLb.clN.CollectMultipleMetrics.quality_by_cycle.pdf",
+        "run/results/bwa/merged_library/picard_metrics/pdf/atac-a_REP2.mLb.clN.CollectMultipleMetrics.quality_distribution.pdf",
+        "run/results/bwa/merged_library/picard_metrics/pdf/atac-a_REP2.mLb.clN.CollectMultipleMetrics.read_length_histogram.pdf",
+        "run/results/bwa/merged_library/picard_metrics/pdf/atac-b_REP1.mLb.clN.CollectMultipleMetrics.base_distribution_by_cycle.pdf",
+        "run/results/bwa/merged_library/picard_metrics/pdf/atac-b_REP1.mLb.clN.CollectMultipleMetrics.insert_size_histogram.pdf",
+        "run/results/bwa/merged_library/picard_metrics/pdf/atac-b_REP1.mLb.clN.CollectMultipleMetrics.quality_by_cycle.pdf",
+        "run/results/bwa/merged_library/picard_metrics/pdf/atac-b_REP1.mLb.clN.CollectMultipleMetrics.quality_distribution.pdf",
+        "run/results/bwa/merged_library/picard_metrics/pdf/atac-b_REP1.mLb.clN.CollectMultipleMetrics.read_length_histogram.pdf",
+        "run/results/bwa/merged_library/picard_metrics/pdf/atac-b_REP2.mLb.clN.CollectMultipleMetrics.base_distribution_by_cycle.pdf",
+        "run/results/bwa/merged_library/picard_metrics/pdf/atac-b_REP2.mLb.clN.CollectMultipleMetrics.insert_size_histogram.pdf",
+        "run/results/bwa/merged_library/picard_metrics/pdf/atac-b_REP2.mLb.clN.CollectMultipleMetrics.quality_by_cycle.pdf",
+        "run/results/bwa/merged_library/picard_metrics/pdf/atac-b_REP2.mLb.clN.CollectMultipleMetrics.quality_distribution.pdf",
+        "run/results/bwa/merged_library/picard_metrics/pdf/atac-b_REP2.mLb.clN.CollectMultipleMetrics.read_length_histogram.pdf"
+      ],
+      "mode": "presence",
+      "origin": "S2b-preregistered",
+      "stage": "atacseq_bulk.01_nfcore-atacseq-wrapper"
+    },
+    {
+      "cause": "the DESeq2 plots draw the PCA, whose component sign is arbitrary, with samples in completion order; besides its dates the PDF differs in the plotted coordinates",
+      "evidence": "S2b probe, 5 Oct 2026: plain nf-core/atacseq 2.1.2 (1a1dbe52) run twice on one fresh m5.xlarge pad (lifetime 4, i-0521feb575ad6ee3d), local executor in Docker, the recorded clamp; results tarball sha256 919a275be40cff204bd7376ed0c0b2d927efbb175abea1cc985980db9daf4bb0; the PCA table itself matches under sign_aligned_numeric",
+      "members": [
+        "run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/consensus_peaks.mLb.clN.plots.pdf"
+      ],
+      "mode": "presence",
+      "origin": "S2b-preregistered",
+      "stage": "atacseq_bulk.01_nfcore-atacseq-wrapper"
+    },
+    {
+      "cause": "gzip files (some named .tab) whose header carries the write time, and whose rows come in completion order: decompressed, the two runs hold the same lines",
+      "evidence": "S2b probe, 5 Oct 2026: plain nf-core/atacseq 2.1.2 (1a1dbe52) run twice on one fresh m5.xlarge pad (lifetime 4, i-0521feb575ad6ee3d), local executor in Docker, the recorded clamp; results tarball sha256 919a275be40cff204bd7376ed0c0b2d927efbb175abea1cc985980db9daf4bb0; each decompressed pair compared equal as content or as sorted lines",
+      "members": [
+        "run/results/bwa/merged_library/ataqv/narrow_peak/html/data/atac-a_REP1.json.gz",
+        "run/results/bwa/merged_library/ataqv/narrow_peak/html/data/atac-a_REP2.json.gz",
+        "run/results/bwa/merged_library/ataqv/narrow_peak/html/data/atac-b_REP1.json.gz",
+        "run/results/bwa/merged_library/ataqv/narrow_peak/html/data/atac-b_REP2.json.gz",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP1.mLb.clN.reference_point.computeMatrix.mat.gz",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP1.mLb.clN.scale_regions.computeMatrix.mat.gz",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP1.mLb.clN.scale_regions.plotHeatmap.mat.tab",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP2.mLb.clN.reference_point.computeMatrix.mat.gz",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP2.mLb.clN.scale_regions.computeMatrix.mat.gz",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP2.mLb.clN.scale_regions.plotHeatmap.mat.tab",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP1.mLb.clN.reference_point.computeMatrix.mat.gz",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP1.mLb.clN.scale_regions.computeMatrix.mat.gz",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP1.mLb.clN.scale_regions.plotHeatmap.mat.tab",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP2.mLb.clN.reference_point.computeMatrix.mat.gz",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP2.mLb.clN.scale_regions.computeMatrix.mat.gz",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP2.mLb.clN.scale_regions.plotHeatmap.mat.tab"
+      ],
+      "mode": "presence",
+      "origin": "S2b-preregistered",
+      "stage": "atacseq_bulk.01_nfcore-atacseq-wrapper"
+    },
+    {
+      "cause": "serialized R (DESeq2) objects built from the counts table, whose sample columns come in completion order; the objects' bytes differ with that order",
+      "evidence": "S2b probe, 5 Oct 2026: plain nf-core/atacseq 2.1.2 (1a1dbe52) run twice on one fresh m5.xlarge pad (lifetime 4, i-0521feb575ad6ee3d), local executor in Docker, the recorded clamp; results tarball sha256 919a275be40cff204bd7376ed0c0b2d927efbb175abea1cc985980db9daf4bb0; the counts table they are built from matches under column_matched_table",
+      "members": [
+        "run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/consensus_peaks.mLb.clN.dds.RData",
+        "run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/consensus_peaks.mLb.clN.rds",
+        "run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/size_factors/consensus_peaks.mLb.clN.size_factors.RData"
+      ],
+      "mode": "presence",
+      "origin": "S2b-preregistered",
+      "stage": "atacseq_bulk.01_nfcore-atacseq-wrapper"
+    },
+    {
+      "cause": "the MultiQC report embeds its generation time and the run's launch folder (4 occurrences), so it differs between any two runs",
+      "evidence": "S2b probe, 5 Oct 2026: plain nf-core/atacseq 2.1.2 (1a1dbe52) run twice on one fresh m5.xlarge pad (lifetime 4, i-0521feb575ad6ee3d), local executor in Docker, the recorded clamp; results tarball sha256 919a275be40cff204bd7376ed0c0b2d927efbb175abea1cc985980db9daf4bb0; names.tsv counts the launch folder in the report 4 times",
+      "members": [
+        "run/results/multiqc/narrow_peak/multiqc_report.html"
+      ],
+      "mode": "presence",
+      "origin": "S2b-preregistered",
+      "stage": "atacseq_bulk.01_nfcore-atacseq-wrapper"
+    },
+    {
+      "cause": "the same lines in a different order: rows are written as parallel tasks finish",
+      "drop_lines": [],
+      "evidence": "S2b probe, 5 Oct 2026: plain nf-core/atacseq 2.1.2 (1a1dbe52) run twice on one fresh m5.xlarge pad (lifetime 4, i-0521feb575ad6ee3d), local executor in Docker, the recorded clamp; results tarball sha256 919a275be40cff204bd7376ed0c0b2d927efbb175abea1cc985980db9daf4bb0; equal as sorted lines (the four computeMatrix.vals.mat.tab, over 5 MB, checked on the pad before down)",
+      "members": [
+        "run/results/bwa/merged_library/deeptools/plotfingerprint/atac-a_REP1.mLb.clN.plotFingerprint.raw.txt",
+        "run/results/bwa/merged_library/deeptools/plotfingerprint/atac-a_REP2.mLb.clN.plotFingerprint.raw.txt",
+        "run/results/bwa/merged_library/deeptools/plotfingerprint/atac-b_REP1.mLb.clN.plotFingerprint.raw.txt",
+        "run/results/bwa/merged_library/deeptools/plotfingerprint/atac-b_REP2.mLb.clN.plotFingerprint.raw.txt",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP1.mLb.clN.scale_regions.computeMatrix.vals.mat.tab",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-a_REP2.mLb.clN.scale_regions.computeMatrix.vals.mat.tab",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP1.mLb.clN.scale_regions.computeMatrix.vals.mat.tab",
+        "run/results/bwa/merged_library/deeptools/plotprofile/atac-b_REP2.mLb.clN.scale_regions.computeMatrix.vals.mat.tab",
+        "run/results/bwa/merged_library/macs2/narrow_peak/qc/macs2_peak.mLb.clN.summary.txt"
+      ],
+      "mode": "sorted_table",
+      "origin": "S2b-preregistered",
+      "stage": "atacseq_bulk.01_nfcore-atacseq-wrapper"
+    },
+    {
+      "cause": "Picard writes its start time in a \"# Started on:\" header line",
+      "drop_lines": [
+        "^# Started on: "
+      ],
+      "evidence": "S2b probe, 5 Oct 2026: plain nf-core/atacseq 2.1.2 (1a1dbe52) run twice on one fresh m5.xlarge pad (lifetime 4, i-0521feb575ad6ee3d), local executor in Docker, the recorded clamp; results tarball sha256 919a275be40cff204bd7376ed0c0b2d927efbb175abea1cc985980db9daf4bb0; equal once that one line is dropped",
+      "members": [
+        "run/results/bwa/merged_library/picard_metrics/atac-a_REP1.mLb.clN.CollectMultipleMetrics.alignment_summary_metrics",
+        "run/results/bwa/merged_library/picard_metrics/atac-a_REP1.mLb.clN.CollectMultipleMetrics.base_distribution_by_cycle_metrics",
+        "run/results/bwa/merged_library/picard_metrics/atac-a_REP1.mLb.clN.CollectMultipleMetrics.insert_size_metrics",
+        "run/results/bwa/merged_library/picard_metrics/atac-a_REP1.mLb.clN.CollectMultipleMetrics.quality_by_cycle_metrics",
+        "run/results/bwa/merged_library/picard_metrics/atac-a_REP1.mLb.clN.CollectMultipleMetrics.quality_distribution_metrics",
+        "run/results/bwa/merged_library/picard_metrics/atac-a_REP1.mLb.mkD.sorted.MarkDuplicates.metrics.txt",
+        "run/results/bwa/merged_library/picard_metrics/atac-a_REP2.mLb.clN.CollectMultipleMetrics.alignment_summary_metrics",
+        "run/results/bwa/merged_library/picard_metrics/atac-a_REP2.mLb.clN.CollectMultipleMetrics.base_distribution_by_cycle_metrics",
+        "run/results/bwa/merged_library/picard_metrics/atac-a_REP2.mLb.clN.CollectMultipleMetrics.insert_size_metrics",
+        "run/results/bwa/merged_library/picard_metrics/atac-a_REP2.mLb.clN.CollectMultipleMetrics.quality_by_cycle_metrics",
+        "run/results/bwa/merged_library/picard_metrics/atac-a_REP2.mLb.clN.CollectMultipleMetrics.quality_distribution_metrics",
+        "run/results/bwa/merged_library/picard_metrics/atac-a_REP2.mLb.mkD.sorted.MarkDuplicates.metrics.txt",
+        "run/results/bwa/merged_library/picard_metrics/atac-b_REP1.mLb.clN.CollectMultipleMetrics.alignment_summary_metrics",
+        "run/results/bwa/merged_library/picard_metrics/atac-b_REP1.mLb.clN.CollectMultipleMetrics.base_distribution_by_cycle_metrics",
+        "run/results/bwa/merged_library/picard_metrics/atac-b_REP1.mLb.clN.CollectMultipleMetrics.insert_size_metrics",
+        "run/results/bwa/merged_library/picard_metrics/atac-b_REP1.mLb.clN.CollectMultipleMetrics.quality_by_cycle_metrics",
+        "run/results/bwa/merged_library/picard_metrics/atac-b_REP1.mLb.clN.CollectMultipleMetrics.quality_distribution_metrics",
+        "run/results/bwa/merged_library/picard_metrics/atac-b_REP1.mLb.mkD.sorted.MarkDuplicates.metrics.txt",
+        "run/results/bwa/merged_library/picard_metrics/atac-b_REP2.mLb.clN.CollectMultipleMetrics.alignment_summary_metrics",
+        "run/results/bwa/merged_library/picard_metrics/atac-b_REP2.mLb.clN.CollectMultipleMetrics.base_distribution_by_cycle_metrics",
+        "run/results/bwa/merged_library/picard_metrics/atac-b_REP2.mLb.clN.CollectMultipleMetrics.insert_size_metrics",
+        "run/results/bwa/merged_library/picard_metrics/atac-b_REP2.mLb.clN.CollectMultipleMetrics.quality_by_cycle_metrics",
+        "run/results/bwa/merged_library/picard_metrics/atac-b_REP2.mLb.clN.CollectMultipleMetrics.quality_distribution_metrics",
+        "run/results/bwa/merged_library/picard_metrics/atac-b_REP2.mLb.mkD.sorted.MarkDuplicates.metrics.txt"
+      ],
+      "mode": "sorted_table",
+      "origin": "S2b-preregistered",
+      "stage": "atacseq_bulk.01_nfcore-atacseq-wrapper"
+    },
+    {
+      "cause": "ataqv writes its run time in one \"timestamp\" field",
+      "drop_lines": [
+        "^\\s*\"timestamp\": \"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\",?$"
+      ],
+      "evidence": "S2b probe, 5 Oct 2026: plain nf-core/atacseq 2.1.2 (1a1dbe52) run twice on one fresh m5.xlarge pad (lifetime 4, i-0521feb575ad6ee3d), local executor in Docker, the recorded clamp; results tarball sha256 919a275be40cff204bd7376ed0c0b2d927efbb175abea1cc985980db9daf4bb0; equal once that one line is dropped (exactly one line in each file)",
+      "members": [
+        "run/results/bwa/merged_library/ataqv/narrow_peak/atac-a_REP1.ataqv.json",
+        "run/results/bwa/merged_library/ataqv/narrow_peak/atac-a_REP2.ataqv.json",
+        "run/results/bwa/merged_library/ataqv/narrow_peak/atac-b_REP1.ataqv.json",
+        "run/results/bwa/merged_library/ataqv/narrow_peak/atac-b_REP2.ataqv.json"
+      ],
+      "mode": "sorted_table",
+      "origin": "S2b-preregistered",
+      "stage": "atacseq_bulk.01_nfcore-atacseq-wrapper"
+    },
+    {
+      "cause": "featureCounts orders its sample columns as the BAM files arrive; the counts are identical once columns are matched by sample name",
+      "evidence": "S2b probe, 5 Oct 2026: plain nf-core/atacseq 2.1.2 (1a1dbe52) run twice on one fresh m5.xlarge pad (lifetime 4, i-0521feb575ad6ee3d), local executor in Docker, the recorded clamp; results tarball sha256 919a275be40cff204bd7376ed0c0b2d927efbb175abea1cc985980db9daf4bb0; equal under column_matched_table",
+      "members": [
+        "run/results/bwa/merged_library/macs2/narrow_peak/consensus/consensus_peaks.mLb.clN.featureCounts.txt",
+        "run/results/bwa/merged_library/macs2/narrow_peak/consensus/consensus_peaks.mLb.clN.featureCounts.txt.summary"
+      ],
+      "mode": "column_matched_table",
+      "origin": "S2b-preregistered",
+      "stage": "atacseq_bulk.01_nfcore-atacseq-wrapper"
+    },
+    {
+      "cause": "DESeq2 PCA: samples in completion order, a principal component's sign is arbitrary, and the last float digits vary (about 1e-15)",
+      "evidence": "S2b probe, 5 Oct 2026: plain nf-core/atacseq 2.1.2 (1a1dbe52) run twice on one fresh m5.xlarge pad (lifetime 4, i-0521feb575ad6ee3d), local executor in Docker, the recorded clamp; results tarball sha256 919a275be40cff204bd7376ed0c0b2d927efbb175abea1cc985980db9daf4bb0; equal per sample after per-component sign alignment, every |difference| at most 1e-9",
+      "members": [
+        "run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/consensus_peaks.mLb.clN.pca.vals.txt",
+        "run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/consensus_peaks.mLb.clN.pca.vals_mqc.tsv"
+      ],
+      "mode": "sign_aligned_numeric",
+      "origin": "S2b-preregistered",
+      "stage": "atacseq_bulk.01_nfcore-atacseq-wrapper"
+    }
+  ],
+  "findings": [
+    {
+      "counted": "differ",
+      "evidence": "S2b probe, 5 Oct 2026: plain nf-core/atacseq 2.1.2 (1a1dbe52) run twice on one fresh m5.xlarge pad (lifetime 4, i-0521feb575ad6ee3d), local executor in Docker, the recorded clamp; results tarball sha256 919a275be40cff204bd7376ed0c0b2d927efbb175abea1cc985980db9daf4bb0; every differing line is such a tie, and genome/genes.bed differs only in the order of rows with equal coordinates",
+      "finding": "nf-core/atacseq 2.1.2's HOMER peak annotation is not deterministic: for a peak equally near two genes it names one or the other between runs (for example YOL103W-A or YOL103W-B), because genome/genes.bed lists tied genes in a different order each run",
+      "members": [
+        "run/results/bwa/merged_library/macs2/narrow_peak/atac-a_REP1.mLb.clN_peaks.annotatePeaks.txt",
+        "run/results/bwa/merged_library/macs2/narrow_peak/atac-a_REP2.mLb.clN_peaks.annotatePeaks.txt",
+        "run/results/bwa/merged_library/macs2/narrow_peak/atac-b_REP1.mLb.clN_peaks.annotatePeaks.txt",
+        "run/results/bwa/merged_library/macs2/narrow_peak/atac-b_REP2.mLb.clN_peaks.annotatePeaks.txt",
+        "run/results/bwa/merged_library/macs2/narrow_peak/consensus/consensus_peaks.mLb.clN.annotatePeaks.txt",
+        "run/results/bwa/merged_library/macs2/narrow_peak/qc/macs2_annotatePeaks.mLb.clN.plots.pdf"
+      ],
+      "stage": "atacseq_bulk.01_nfcore-atacseq-wrapper"
+    },
+    {
+      "counted": "differ",
+      "evidence": "S2b probe, 5 Oct 2026: plain nf-core/atacseq 2.1.2 (1a1dbe52) run twice on one fresh m5.xlarge pad (lifetime 4, i-0521feb575ad6ee3d), local executor in Docker, the recorded clamp; results tarball sha256 919a275be40cff204bd7376ed0c0b2d927efbb175abea1cc985980db9daf4bb0; the same pairwise distances, rows and columns permuted",
+      "finding": "the DESeq2 sample-distance tables hold the same distances with samples in completion order; no comparison mode is declared for them (decision 0283), so they count as differing",
+      "members": [
+        "run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/consensus_peaks.mLb.clN.sample.dists.txt",
+        "run/results/bwa/merged_library/macs2/narrow_peak/consensus/deseq2/consensus_peaks.mLb.clN.sample.dists_mqc.tsv"
+      ],
+      "stage": "atacseq_bulk.01_nfcore-atacseq-wrapper"
+    }
+  ]
 }
