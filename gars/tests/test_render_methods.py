@@ -99,6 +99,8 @@ KINDS = {
                        "preferred citation.", 'v'),
     'citation-absent': (CITE, 'The GARS commit to cite is not recorded for workflow {}.', 'va'),
     'record': (READ, '- {}: sha256 {}.', 'r'),
+    'record-unpublished': (READ, '- {}: sha256 not published, since the record holds values this page does not '
+                                 'print.', 'r'),
 }
 MISSING = object()
 SOURCE = re.compile(r'- line ([1-9][0-9]*): ([a-z-]+)(?:: `([^`]+)`)?\.\Z')
@@ -347,39 +349,47 @@ def o_expected(rec):
             add('citation', M + '/gars_commit')
     for name in ['manifest%d' % k for k in range(1, rec.n + 1)] + ['plan', 'approval', 'history']:
         if name in rec.raw:
-            add('record', name + ':bytes')
+            if o_hides(rec, name):
+                add('record-unpublished', name + ':withheld')
+            else:
+                add('record', name + ':bytes')
     return [line for heading in sections for line in sections[heading]]
 
 
 # ---- the oracle: the journal paragraph's frames (0276), restated --------------------------------
 # A clause is shown only when its field is recorded and shown; a dropped clause leaves no words and
-# no reference. Plain words are ASCII letters and digits joined singly by . _ + : / -; any other
-# shown value is a code span. Each frame below is the specification's, written again here.
+# no reference. Plain words are ASCII letters and digits joined singly by . _ + : / -, not starting
+# with www.; any other shown value, and any number or boolean, is a code span. Each frame below is
+# the specification's, written again here.
 
 PROSE = ('prose-run', 'prose-configured', 'prose-agent-all', 'prose-agent', 'prose-agent-none',
          'prose-approval', 'prose-history', 'prose-closing')
-P_NO_NAME = 'A workflow whose name is not recorded'
-P_HIDDEN_NAME = 'A workflow whose recorded name is withheld'
-P_CLOSING = ("Parameters, software versions and container images are listed below; every value traces to "
-             "the run's records (Provenance).")
+P_NO_NAME = 'a workflow whose name is not recorded'
+P_HIDDEN_NAME = 'a workflow whose recorded name is withheld'
+P_CLOSING = ("Parameters, software versions and container images are listed below, or marked not recorded; "
+             "every value traces to the run's records (Provenance).")
 P_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
             'November', 'December']
 P_PLAIN = r'[A-Za-z0-9]+(?:[._+:/-][A-Za-z0-9]+)*'
 
 
+def o_plain(text):
+    return re.fullmatch(P_PLAIN, text) is not None and not text.lower().startswith('www.')
+
+
 def o_words(value):
     if o_absent(value) or any(PATH_LIKE.search(o_flat(s)) for s in o_strings(value)):
         return None
-    text = value if isinstance(value, str) else json.dumps(
-        value, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
-    return text if re.fullmatch(P_PLAIN, text) else o_span(o_flat(text))
+    if not isinstance(value, str):
+        return o_span(json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False))
+    return value if o_plain(value) else o_span(o_flat(value))
 
 
 def o_contrast(value):
     """factor,numerator,denominator, read as "numerator versus denominator (factor factor)"."""
     if o_words(value) is not None and isinstance(value, str) and value.count(',') == 2:
         factor, numerator, denominator = value.split(',')
-        if all(re.fullmatch(P_PLAIN, part) for part in (factor, numerator, denominator)):
+        if all(o_plain(part) for part in (factor, numerator, denominator)):
             return '%s versus %s (factor %s)' % (numerator, denominator, factor)
     return o_words(value)
 
@@ -394,8 +404,23 @@ def o_dig(node, *keys):
     return node
 
 
+def o_date(text):
+    """A real YYYY-MM-DD as `29 September 2026`, or None."""
+    if not isinstance(text, str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', text) or not text.isascii():
+        return None
+    try:
+        import datetime
+        when = datetime.date(int(text[:4]), int(text[5:7]), int(text[8:10]))
+    except ValueError:
+        return None
+    return '%d %s %d' % (when.day, P_MONTHS[when.month - 1], when.year)
+
+
 def o_pipeline(m, M):
-    """References to the one Workflow/<name> versions entry other than Workflow/Nextflow, or None."""
+    """References to the one Workflow/<name> versions entry other than Workflow/Nextflow of a nextflow
+    wrapper (the wrapper kind first), or None."""
+    if o_dig(m, 'predicate_facts', 'wrapper_kind') != 'nextflow':
+        return None
     hits = []
     files = m.get('software_versions', MISSING)
     for i, entry in enumerate(files if isinstance(files, list) else []):
@@ -409,8 +434,15 @@ def o_pipeline(m, M):
     i, j, key = hits[0]
     if o_words(key[9:]) is None or o_words(files[i]['versions'][key]) is None:
         return None
-    return ['%s/software_versions/%d/versions#%d.key' % (M, i, j),
+    return [M + '/predicate_facts/wrapper_kind', '%s/software_versions/%d/versions#%d.key' % (M, i, j),
             '%s/software_versions/%d/versions#%d.value' % (M, i, j)]
+
+
+def o_subject(m):
+    name = m.get('workflow_name', MISSING)
+    if o_words(name) is not None:
+        return o_words(name)
+    return P_NO_NAME if o_absent(name) else P_HIDDEN_NAME
 
 
 def o_prose_expected(rec):
@@ -440,32 +472,43 @@ def o_prose_expected(rec):
         out.append(('prose-agent-all', tuple('manifest%d:/agent_model' % k for k in range(1, rec.n + 1))))
     else:
         for k, model in enumerate(models, 1):
-            refs = ('manifest%d:/workflow_name' % k, 'manifest%d:/agent_model' % k)
+            m, M = rec.json['manifest%d' % k], 'manifest%d:' % k
+            pipe = o_pipeline(m, M)
+            who = pipe[:2] if pipe else [M + '/workflow_name']
             if model == 'none':
-                out.append(('prose-agent-none', refs))
+                if o_absent(m.get('model_steps', MISSING)):
+                    out.append(('prose-agent-none', tuple(who + [M + '/agent_model', M + '/model_steps'])))
             elif o_words(model) is not None:
-                out.append(('prose-agent', refs))
+                out.append(('prose-agent', tuple(who + [M + '/agent_model'])))
     if rec.plan:
-        out.append(('prose-approval', tuple(['approval:/plan_sha256'] + (
+        custom = re.search(r'/03_custom_analysis/[^/]*/PLAN\.md\Z', '/' + rec.approval.get('plan_path', '')) \
+            if isinstance(rec.approval.get('plan_path'), str) else None
+        out.append(('prose-approval', tuple(['approval:/plan_sha256'] + (['approval:/plan_path?'] if custom else []) + (
             [] if o_absent(rec.approval.get('timestamp', MISSING)) else ['approval:/timestamp']) +
             ['approval:/actor?'])))
         if rec.history:
             for e, entry in enumerate(rec.entries):
                 if o_matches(entry, rec.approval):
                     H = 'history:#%d/' % e
-                    out.append(('prose-history', tuple([H + 'stage', H + 'outcome'] +
-                                                       [H + f for f in ('date', 'model')
-                                                        if o_words(MISSING if entry[f] is None else entry[f])
-                                                        is not None])))
+                    refs = [H + 'stage', H + 'outcome']
+                    if o_date(entry['date']) is not None:
+                        refs.append(H + 'date')
+                    if o_words(MISSING if entry['model'] is None else entry['model']) is not None:
+                        refs.append(H + 'model')
+                    out.append(('prose-history', tuple(refs)))
     out.append(('prose-closing', ()))
     return out
 
 
-def o_subject(m):
-    name = m.get('workflow_name', MISSING)
-    if o_words(name) is not None:
-        return o_words(name)
-    return P_NO_NAME if o_absent(name) else P_HIDDEN_NAME
+def o_who(refs, rec, M):
+    """The name an agent sentence uses, from the references it cites first."""
+    if refs[0] == M + '/predicate_facts/wrapper_kind':
+        if o_resolve(rec, refs[0]) != 'nextflow':
+            raise TraceError('a pipeline named for a wrapper that is not nextflow')
+        return o_words(o_resolve(rec, refs[1])[9:]), refs[2:]
+    if refs[0] != M + '/workflow_name':
+        raise TraceError('an agent sentence names no workflow')
+    return o_subject(rec.json[M[:-1]]), refs[1:]
 
 
 def o_prose_line(kind, refs, rec):
@@ -491,6 +534,10 @@ def o_prose_line(kind, refs, rec):
                 if value != 'matched':
                     raise TraceError('the reference clause cites an unmatched registry check')
                 continue
+            if path == '/predicate_facts/wrapper_kind':
+                if value != 'nextflow':
+                    raise TraceError('a pipeline named for a wrapper that is not nextflow')
+                continue
             if path == '/predicate_facts/status':
                 if (value == 'COMPLETE') != (kind == 'prose-run'):
                     raise TraceError('%s does not fit the recorded status' % kind)
@@ -501,6 +548,8 @@ def o_prose_line(kind, refs, rec):
                 raise TraceError('%s cites %s, which shows no words' % (kind, ref))
             shown[path] = (value, words)
         if keys:
+            if '/predicate_facts/wrapper_kind' not in tail:
+                raise TraceError('a pipeline named without its wrapper kind')
             name = o_resolve(rec, M + keys[0])
             if not name.startswith('Workflow/') or name == 'Workflow/Nextflow':
                 raise TraceError('%s names a pipeline from %s' % (kind, name))
@@ -511,11 +560,12 @@ def o_prose_line(kind, refs, rec):
         else:
             text = o_subject(m)
             if '/workflow_version' in shown:
-                version = shown['/workflow_version'][1]
-                text += (' (version %s)' % version) if text in (P_NO_NAME, P_HIDDEN_NAME) else ' ' + version
+                text += ' (workflow version %s)' % shown['/workflow_version'][1]
+            if text.startswith((P_NO_NAME, P_HIDDEN_NAME)):
+                text = text[0].upper() + text[1:]
         text += ' was run' if kind == 'prose-run' else ' was configured'
         if keys and '/workflow_name' in shown:
-            text += ' through the GARS wrapper ' + shown['/workflow_name'][1]
+            text += ' through the GARS workflow ' + shown['/workflow_name'][1]
         if '/reference/build' in shown:
             if '/reference/comparison' not in tail:
                 raise TraceError('the reference clause does not cite the registry check')
@@ -531,52 +581,80 @@ def o_prose_line(kind, refs, rec):
             text += ' with ' + withs[0]
         if kind == 'prose-configured':
             status = shown['/predicate_facts/status']
-            text += '; its run status is ' + (o_words(status) or (T_NOT if o_absent(status) else T_WITHHELD))
+            if o_words(status) is not None:
+                text += '; its run status is ' + o_words(status)
+            elif o_absent(status):
+                text += '; its run status is ' + T_NOT
         return text + '.'
     if kind == 'prose-agent-all':
         models = [o_resolve(rec, ref) for ref in refs]
         if len(models) < 2 or len(set(json.dumps(x) for x in models)) != 1 or models[0] == 'none':
             raise TraceError('the agent models differ, or there is one workflow')
-        return 'Every workflow records the agent model %s.' % o_words(models[0])
+        return 'The agent model recorded for every workflow was %s.' % o_words(models[0])
     if kind in ('prose-agent', 'prose-agent-none'):
-        name_ref, model_ref = refs
-        m = rec.json[name_ref.split(':')[0]]
-        model = o_resolve(rec, model_ref)
+        M = re.match(r'manifest\d+:', refs[0]).group(0)
+        who, rest = o_who(refs, rec, M)
+        model = o_resolve(rec, rest[0])
         if kind == 'prose-agent-none':
-            if model != 'none':
-                raise TraceError('prose-agent-none for the agent model %r' % model)
-            return '%s records no agent model.' % o_subject(m)
-        return '%s records the agent model %s.' % (o_subject(m), o_words(model))
+            if model != 'none' or not o_absent(o_resolve(rec, rest[1])):
+                raise TraceError('prose-agent-none for the agent model %r or beside model steps' % model)
+            return 'The record for %s names no agent model.' % who
+        return 'The agent model recorded for %s was %s.' % (who, o_words(model))
     if kind == 'prose-approval':
         if o_resolve(rec, 'approval:/plan_sha256') != hashlib.sha256(rec.raw['plan']).hexdigest():
             raise TraceError('the approval does not bind the plan')
-        text = 'The analysis plan was approved'
+        if 'approval:/plan_path?' in refs:
+            path = o_resolve(rec, 'approval:/plan_path?')
+            if not (isinstance(path, str) and re.search(r'(^|/)03_custom_analysis/[^/]*/PLAN\.md\Z', path)):
+                raise TraceError('a custom analysis named for a plan outside stage 03')
+            text = 'A separate custom analysis was planned, and its plan was approved'
+        else:
+            text = 'An analysis plan was approved'
         if 'approval:/timestamp' in refs:
-            stamp = o_resolve(rec, 'approval:/timestamp')
-            year, month, day, hms = stamp[:4], int(stamp[5:7]), int(stamp[8:10]), stamp[11:19]
-            text += ' on %d %s %s at %s UTC' % (day, P_MONTHS[month - 1], year, hms)
+            text += ' on ' + o_date(o_resolve(rec, 'approval:/timestamp')[:10])
         actor = o_resolve(rec, 'approval:/actor?')
-        return text + ' %s, and its approval record is bound to the plan\'s exact text.' % (
-            T_NOBY if o_absent(actor) else T_BY)
+        return text + ' %s; the approval record binds the plan\'s exact text.' % (T_NOBY if o_absent(actor) else T_BY)
     if kind == 'prose-history':
         e = int(re.match(r'history:#(\d+)/', refs[0]).group(1))
         if not o_matches(rec.entries[e], rec.approval):
             raise TraceError('the history sentence cites another analysis')
-        text = "The project's history records the approved analysis as complete"
+        text = "The project's history records that custom analysis as complete"
         if 'history:#%d/date' % e in refs:
-            text += ' on ' + o_words(rec.entries[e]['date'])
+            text += ' on ' + o_date(rec.entries[e]['date'])
         if 'history:#%d/model' % e in refs:
             text += ', with the agent model ' + o_words(rec.entries[e]['model'])
         return text + '.'
     raise TraceError('unknown paragraph kind ' + kind)
 
 
+def o_hides(rec, name):
+    """A record whose sha256 would confirm a guessed withheld value: a manifest or approval record
+    holding a path-like string anywhere (a storage URI included), an approval record naming an actor
+    or a plan path at all, a history whose text holds a path-like value. The plan's hash is the
+    approval's binding and stays published."""
+    def pathy(texts):
+        return any(PATH_LIKE.search(o_flat(t)) for t in texts)
+    if name == 'plan':
+        return False
+    if name == 'history':
+        return pathy([rec.raw['history'].decode('utf-8')])
+    record = rec.approval if name == 'approval' else rec.json[name]
+    if name == 'approval' and not (o_absent(record.get('actor', MISSING)) and o_absent(record.get('plan_path', MISSING))):
+        return True
+    return pathy(o_strings(record))
+
+
 def o_line(kind, refs, rec):
     section, template, slots = KINDS[kind]
-    if kind == 'record':
+    if kind in ('record', 'record-unpublished'):
         name = refs[0].split(':')[0]
         label = {'plan': 'plan', 'approval': 'approval record', 'history': 'history'}.get(
             name, 'manifest ' + name[len('manifest'):])
+        if (kind == 'record-unpublished') != o_hides(rec, name):
+            raise TraceError('%s: the hash of %s is %s' % (kind, name, 'withheld wrongly' if kind ==
+                                                            'record-unpublished' else 'an oracle for a withheld value'))
+        if kind == 'record-unpublished':
+            return template.format(label)
         return template.format(label, o_span(o_resolve(rec, refs[0])))
     if len(slots) != len(refs):
         raise TraceError('%s cites %d fields for %d slots' % (kind, len(refs), len(slots)))
@@ -652,11 +730,12 @@ def paragraph(text):
     return lines[2:lines.index('## Provenance') - 1]
 
 
-DE_RUN = ('rnaseq-de v0.10.0 was run against the fixture-build reference genome (annotation release '
+DE_RUN = ('rnaseq-de (workflow version v0.10.0) was run against the fixture-build reference genome (annotation release '
           'fixture-release) with the design formula `~ condition` and the contrast MT versus WT (factor condition).')
-APPROVED = ('The analysis plan was approved on 29 September 2026 at 18:04:05 UTC by the approver the run recorded, '
-            "and its approval record is bound to the plan's exact text.")
-COMPLETED = "The project's history records the approved analysis as complete on 2026-09-29, with the agent model claude-opus-5-5."
+APPROVED = ('A separate custom analysis was planned, and its plan was approved on 29 September 2026 by the approver '
+            "the run recorded; the approval record binds the plan's exact text.")
+COMPLETED = ("The project's history records that custom analysis as complete on 29 September 2026, with the agent "
+             "model claude-opus-5-5.")
 
 PLAN_DRAFT = (FIXTURE / 'approved-plan.md').read_text(encoding='utf-8').replace(
     'Status: APPROVED 2026-09-29', 'Status: DRAFT')
@@ -760,9 +839,9 @@ class RenderMethodsTests(unittest.TestCase):
         self.assertIn('parameter `formula`: `~ condition`.', text)
         # The journal paragraph (0276): six sentences for two workflows, a plan and its history.
         self.assertEqual(paragraph(text), [
-            'nfcore-rnaseq-wrapper 3.26.0 was run against the fixture-build reference genome (annotation release '
+            'nfcore-rnaseq-wrapper (workflow version 3.26.0) was run against the fixture-build reference genome (annotation release '
             'fixture-release) with the star_salmon aligner.',
-            DE_RUN, 'Every workflow records the agent model claude-opus-5-5.', APPROVED, COMPLETED, P_CLOSING])
+            DE_RUN, 'The agent model recorded for every workflow was claude-opus-5-5.', APPROVED, COMPLETED, P_CLOSING])
         for hidden in ('sha256', 'withheld', 'fixture-operator', 'fixture-workspace', '03_custom_analysis'):
             self.assertNotIn(hidden, '\n'.join(paragraph(text)))
         print('complete fixture: %d traced lines' % counted, flush=True)
@@ -777,7 +856,7 @@ class RenderMethodsTests(unittest.TestCase):
         self.assertIn('Its reference genome is not recorded.', text)
         self.assertIn('Its agent model is not recorded.', text)
         self.assertEqual(paragraph(text), [   # a prepare-only manifest: configured, never said to have run
-            'rnaseq-de v0.10.0 was configured with the design formula `~ condition` and the contrast MT versus WT '
+            'rnaseq-de (workflow version v0.10.0) was configured with the design formula `~ condition` and the contrast MT versus WT '
             '(factor condition); its run status is not recorded.', P_CLOSING])
         self.assertNotIn('UNKNOWN', text)
         self.assertNotIn('approv', text)
@@ -900,20 +979,22 @@ class RenderMethodsTests(unittest.TestCase):
                 ('was configured with the design formula `~ condition` and the contrast MT versus WT (factor '
                  'condition); its run status is not recorded.', 'was run with the design formula `~ condition` and '
                  'the contrast MT versus WT (factor condition).', sparse, sparse_rec),
-                ('rnaseq-de v0.10.0 was configured', 'rnaseq-de v0.10.0 was run', sparse, sparse_rec),
+                ('rnaseq-de (workflow version v0.10.0) was configured', 'rnaseq-de (workflow version v0.10.0) was run', sparse, sparse_rec),
                 ('the contrast MT versus WT', 'the contrast WT versus MT', complete, rec),
-                ('by the approver the run recorded, and', 'by fixture-operator, and', complete, rec),
-                ('records the approved analysis as complete on 2026-09-29,',
-                 'records the approved analysis as complete on 2026-09-30,', complete, rec),
-                ('Every workflow records the agent model claude-opus-5-5.',
+                ('by the approver the run recorded;', 'by fixture-operator;', complete, rec),
+                ('records that custom analysis as complete on 29 September 2026,',
+                 'records that custom analysis as complete on 30 September 2026,', complete, rec),
+                ('A separate custom analysis was planned, and its plan', 'The workflows\' plan', complete, rec),
+                ('The agent model recorded for every workflow was claude-opus-5-5.',
                  'Every workflow records the agent model claude-opus-5-6.', complete, rec),
                 ("every value traces to the run's records (Provenance).",
                  "every value traces to the run's records (Provenance), and the plan was executed as approved.",
                  complete, rec),
                 ('prose-run: `manifest1:/workflow_name', 'prose-run: `manifest2:/workflow_name', complete, rec),
                 ('manifest1:/params/aligner`', 'manifest1:/params/aligner manifest1:/params/fasta`', complete, rec),
-                ('prose-approval: `approval:/plan_sha256 approval:/timestamp approval:/actor?`',
-                 'prose-approval: `approval:/plan_sha256 approval:/expiry approval:/actor?`', complete, rec)):
+                ('prose-approval: `approval:/plan_sha256 approval:/plan_path? approval:/timestamp approval:/actor?`',
+                 'prose-approval: `approval:/plan_sha256 approval:/plan_path? approval:/expiry approval:/actor?`',
+                 complete, rec)):
             with self.subTest(paragraph=new):
                 with self.assertRaises(TraceError):
                     verify(plant(old, new, text), records)
@@ -943,10 +1024,6 @@ class RenderMethodsTests(unittest.TestCase):
         self.assertIn('with the GRCh38 aligner', filled)
         with self.assertRaises(TraceError):
             verify(filled, sparse_rec)
-        invented = self.in_process(argv, [('cell', inventing)])
-        self.assertIn('`v0.11.0`', invented)
-        with self.assertRaises(TraceError):
-            verify(invented, sparse_rec)
         self.assertEqual(self.in_process(argv), sparse)   # the unmutated control
 
     # ---- 5-6: absence and paths -----------------------------------------------------------------
@@ -992,8 +1069,8 @@ class RenderMethodsTests(unittest.TestCase):
                 self.dump('approval.json', changed)
                 text = self.traced(('local-manifest.json',))
                 self.assertIn('was approved at not recorded by the approver the run recorded.', text)
-                self.assertIn('The analysis plan was approved by the approver the run recorded, and its approval '
-                              "record is bound to the plan's exact text.", paragraph(text))
+                self.assertIn('A separate custom analysis was planned, and its plan was approved by the approver the '
+                              "run recorded; the approval record binds the plan's exact text.", paragraph(text))
         self.dump('approval.json', approval)
         self.paragraph_drops_clauses()
 
@@ -1017,71 +1094,111 @@ class RenderMethodsTests(unittest.TestCase):
                     target[path[-1]] = value
             return m
 
-        agent = 'rnaseq-de records the agent model claude-opus-5-5.'
+        agent = 'The agent model recorded for rnaseq-de was claude-opus-5-5.'
         cases = [
             ('name missing', edit(de, (('workflow_name',), 'delete')),
-             ['A workflow whose name is not recorded (version v0.10.0) was run' + reference + design + '.',
-              'A workflow whose name is not recorded records the agent model claude-opus-5-5.']),
+             ['A workflow whose name is not recorded (workflow version v0.10.0) was run' + reference + design + '.',
+              'The agent model recorded for a workflow whose name is not recorded was claude-opus-5-5.']),
             ('name path-like', edit(de, (('workflow_name',), '/abs/name')),
-             ['A workflow whose recorded name is withheld (version v0.10.0) was run' + reference + design + '.',
-              'A workflow whose recorded name is withheld records the agent model claude-opus-5-5.']),
+             ['A workflow whose recorded name is withheld (workflow version v0.10.0) was run' + reference + design + '.',
+              'The agent model recorded for a workflow whose recorded name is withheld was claude-opus-5-5.']),
             ('version missing', edit(de, (('workflow_version',), '')), ['rnaseq-de was run' + reference + design + '.', agent]),
             ('status missing', edit(de, (('predicate_facts', 'status'), 'delete')),
-             ['rnaseq-de v0.10.0 was configured' + reference + design + '; its run status is not recorded.', agent]),
+             ['rnaseq-de (workflow version v0.10.0) was configured' + reference + design + '; its run status is not recorded.', agent]),
             ('status failed', edit(de, (('predicate_facts', 'status'), 'FAILED')),
-             ['rnaseq-de v0.10.0 was configured' + reference + design + '; its run status is FAILED.', agent]),
+             ['rnaseq-de (workflow version v0.10.0) was configured' + reference + design + '; its run status is FAILED.', agent]),
             ('status path-like', edit(de, (('predicate_facts', 'status'), '/abs/status')),
-             ['rnaseq-de v0.10.0 was configured' + reference + design +
-              '; its run status is a path-like value, withheld.', agent]),
+             ['rnaseq-de (workflow version v0.10.0) was configured' + reference + design + '.', agent]),
             ('predicate facts missing', edit(de, (('predicate_facts',), 'delete')),
-             ['rnaseq-de v0.10.0 was configured' + reference + design + '; its run status is not recorded.', agent]),
-            ('reference missing', edit(de, (('reference',), 'delete')), ['rnaseq-de v0.10.0 was run' + design + '.', agent]),
+             ['rnaseq-de (workflow version v0.10.0) was configured' + reference + design + '; its run status is not recorded.', agent]),
+            ('reference missing', edit(de, (('reference',), 'delete')), ['rnaseq-de (workflow version v0.10.0) was run' + design + '.', agent]),
             ('registry mismatch', edit(de, (('reference', 'comparison'), 'mismatch')),
-             ['rnaseq-de v0.10.0 was run' + design + '.', agent]),
+             ['rnaseq-de (workflow version v0.10.0) was run' + design + '.', agent]),
             ('registry check missing', edit(de, (('reference', 'comparison'), 'delete')),
-             ['rnaseq-de v0.10.0 was run' + design + '.', agent]),
-            ('build missing', edit(de, (('reference', 'build'), None)), ['rnaseq-de v0.10.0 was run' + design + '.', agent]),
+             ['rnaseq-de (workflow version v0.10.0) was run' + design + '.', agent]),
+            ('build missing', edit(de, (('reference', 'build'), None)), ['rnaseq-de (workflow version v0.10.0) was run' + design + '.', agent]),
             ('release missing', edit(de, (('reference', 'annotation_release'), '  ')),
-             ['rnaseq-de v0.10.0 was run against the fixture-build reference genome' + design + '.', agent]),
+             ['rnaseq-de (workflow version v0.10.0) was run against the fixture-build reference genome' + design + '.', agent]),
             ('formula missing', edit(de, (('params', 'formula'), 'delete')),
-             ['rnaseq-de v0.10.0 was run' + reference + ' with the contrast MT versus WT (factor condition).', agent]),
+             ['rnaseq-de (workflow version v0.10.0) was run' + reference + ' with the contrast MT versus WT (factor condition).', agent]),
             ('formula path-like', edit(de, (('params', 'formula'), '~ /abs/batch')),
-             ['rnaseq-de v0.10.0 was run' + reference + ' with the contrast MT versus WT (factor condition).', agent]),
+             ['rnaseq-de (workflow version v0.10.0) was run' + reference + ' with the contrast MT versus WT (factor condition).', agent]),
             ('contrast missing', edit(de, (('params', 'contrast'), [])),
-             ['rnaseq-de v0.10.0 was run' + reference + ' with the design formula `~ condition`.', agent]),
+             ['rnaseq-de (workflow version v0.10.0) was run' + reference + ' with the design formula `~ condition`.', agent]),
             ('contrast of two parts', edit(de, (('params', 'contrast'), 'condition,MT')),
-             ['rnaseq-de v0.10.0 was run' + reference + ' with the design formula `~ condition` and the contrast '
+             ['rnaseq-de (workflow version v0.10.0) was run' + reference + ' with the design formula `~ condition` and the contrast '
               '`condition,MT`.', agent]),
-            ('params missing', edit(de, (('params',), 'delete')), ['rnaseq-de v0.10.0 was run' + reference + '.', agent]),
-            ('agent model missing', edit(de, (('agent_model',), 'delete')), ['rnaseq-de v0.10.0 was run' + reference + design + '.']),
+            ('params missing', edit(de, (('params',), 'delete')), ['rnaseq-de (workflow version v0.10.0) was run' + reference + '.', agent]),
+            ('agent model missing', edit(de, (('agent_model',), 'delete')), ['rnaseq-de (workflow version v0.10.0) was run' + reference + design + '.']),
             ('agent model none', edit(de, (('agent_model',), 'none'), (('model_steps',), [])),
-             ['rnaseq-de v0.10.0 was run' + reference + design + '.', 'rnaseq-de records no agent model.']),
+             ['rnaseq-de (workflow version v0.10.0) was run' + reference + design + '.', 'The record for rnaseq-de names no agent model.']),
             ('aligner missing', edit(nf, (('params', 'aligner'), 'delete')),
-             ['nfcore-rnaseq-wrapper 3.26.0 was run' + reference + '.',
-              'nfcore-rnaseq-wrapper records the agent model claude-opus-5-5.']),
+             ['nfcore-rnaseq-wrapper (workflow version 3.26.0) was run' + reference + '.',
+              'The agent model recorded for nfcore-rnaseq-wrapper was claude-opus-5-5.']),
             ('aligner not plain', edit(nf, (('params', 'aligner'), 'star*salmon')),
-             ['nfcore-rnaseq-wrapper 3.26.0 was run' + reference + ' with the `star*salmon` aligner.',
-              'nfcore-rnaseq-wrapper records the agent model claude-opus-5-5.']),
+             ['nfcore-rnaseq-wrapper (workflow version 3.26.0) was run' + reference + ' with the `star*salmon` aligner.',
+              'The agent model recorded for nfcore-rnaseq-wrapper was claude-opus-5-5.']),
             ('every with clause', edit(nf, (('params', 'formula'), '~ batch + condition'),
                                        (('params', 'contrast'), 'condition,MT,WT')),
-             ['nfcore-rnaseq-wrapper 3.26.0 was run' + reference + ' with the star_salmon aligner, the design '
+             ['nfcore-rnaseq-wrapper (workflow version 3.26.0) was run' + reference + ' with the star_salmon aligner, the design '
               'formula `~ batch + condition` and the contrast MT versus WT (factor condition).',
-              'nfcore-rnaseq-wrapper records the agent model claude-opus-5-5.']),
+              'The agent model recorded for nfcore-rnaseq-wrapper was claude-opus-5-5.']),
             ("the pipeline's own name", edit(nf, (('software_versions', 0, 'versions'), {
                 'FIXTURE_PROCESS/fixture-tool': '1.0.0', 'Workflow/Nextflow': '24.10.5', 'Workflow/nf-core/rnaseq': 'v3.26.0'})),
-             ['nf-core/rnaseq v3.26.0 was run through the GARS wrapper nfcore-rnaseq-wrapper' + reference +
-              ' with the star_salmon aligner.', 'nfcore-rnaseq-wrapper records the agent model claude-opus-5-5.']),
+             ['nf-core/rnaseq v3.26.0 was run through the GARS workflow nfcore-rnaseq-wrapper' + reference +
+              ' with the star_salmon aligner.', 'The agent model recorded for nf-core/rnaseq was claude-opus-5-5.']),
             ('two pipeline names', edit(nf, (('software_versions', 0, 'versions'), {
                 'Workflow/nf-core/rnaseq': 'v3.26.0', 'Workflow/nf-core/other': '1.0'})),
-             ['nfcore-rnaseq-wrapper 3.26.0 was run' + reference + ' with the star_salmon aligner.',
-              'nfcore-rnaseq-wrapper records the agent model claude-opus-5-5.']),
+             ['nfcore-rnaseq-wrapper (workflow version 3.26.0) was run' + reference + ' with the star_salmon aligner.',
+              'The agent model recorded for nfcore-rnaseq-wrapper was claude-opus-5-5.']),
             ('pipeline version missing', edit(nf, (('software_versions', 0, 'versions'), {'Workflow/nf-core/rnaseq': ''})),
-             ['nfcore-rnaseq-wrapper 3.26.0 was run' + reference + ' with the star_salmon aligner.',
-              'nfcore-rnaseq-wrapper records the agent model claude-opus-5-5.']),
+             ['nfcore-rnaseq-wrapper (workflow version 3.26.0) was run' + reference + ' with the star_salmon aligner.',
+              'The agent model recorded for nfcore-rnaseq-wrapper was claude-opus-5-5.']),
             ('pipeline with no wrapper name', edit(nf, (('workflow_name',), None), (('software_versions', 0, 'versions'), {
                 'Workflow/nf-core/rnaseq': 'v3.26.0'})),
              ['nf-core/rnaseq v3.26.0 was run' + reference + ' with the star_salmon aligner.',
-              'A workflow whose name is not recorded records the agent model claude-opus-5-5.']),
+              'The agent model recorded for nf-core/rnaseq was claude-opus-5-5.']),
+            # review r1 F-2: a path-like value driven into each clause on its own
+            ('release path-like', edit(de, (('reference', 'annotation_release'), '/abs/gencode.v44.gtf')),
+             ['rnaseq-de (workflow version v0.10.0) was run against the fixture-build reference genome' + design + '.', agent]),
+            ('pipeline name path-like', edit(nf, (('software_versions', 0, 'versions'), {'Workflow//abs/pipeline': 'v1'})),
+             ['nfcore-rnaseq-wrapper (workflow version 3.26.0) was run' + reference + ' with the star_salmon aligner.',
+              'The agent model recorded for nfcore-rnaseq-wrapper was claude-opus-5-5.']),
+            ('pipeline version path-like', edit(nf, (('software_versions', 0, 'versions'), {'Workflow/nf-core/rnaseq': '/abs/v1'})),
+             ['nfcore-rnaseq-wrapper (workflow version 3.26.0) was run' + reference + ' with the star_salmon aligner.',
+              'The agent model recorded for nfcore-rnaseq-wrapper was claude-opus-5-5.']),
+            ('pipeline version a bucket', edit(nf, (('software_versions', 0, 'versions'), {
+                'Workflow/nf-core/rnaseq': 's3://runs-123456789012/v1'})),
+             ['nfcore-rnaseq-wrapper (workflow version 3.26.0) was run' + reference + ' with the star_salmon aligner.',
+              'The agent model recorded for nfcore-rnaseq-wrapper was claude-opus-5-5.']),
+            ('wrapper name path-like with a pipeline', edit(nf, (('workflow_name',), '/abs/wrapper'), (
+                ('software_versions', 0, 'versions'), {'Workflow/nf-core/rnaseq': 'v3.26.0'})),
+             ['nf-core/rnaseq v3.26.0 was run' + reference + ' with the star_salmon aligner.',
+              'The agent model recorded for nf-core/rnaseq was claude-opus-5-5.']),
+            # review r1 F-11: only a nextflow wrapper's versions name a pipeline
+            ('a pipeline entry in a local wrapper', edit(de, (('software_versions', 0, 'versions'), {
+                'Workflow/lab/de-script': '0.1', 'python': '3.9.0'})),
+             [DE_RUN, agent]),
+            # review r1 F-3: a three-part contrast is read in parts only when every part is plain
+            ('contrast with Markdown in a part', edit(de, (('params', 'contrast'), 'condition,*MT*,[WT](http://x)')),
+             ['rnaseq-de (workflow version v0.10.0) was run' + reference + ' with the design formula `~ condition` and '
+              'the contrast `condition,*MT*,[WT](http://x)`.', agent]),
+            ('contrast with spaces', edit(de, (('params', 'contrast'), 'condition, MT, WT')),
+             ['rnaseq-de (workflow version v0.10.0) was run' + reference + ' with the design formula `~ condition` and '
+              'the contrast `condition, MT, WT`.', agent]),
+            ('contrast part starting www.', edit(de, (('params', 'contrast'), 'condition,www.x.com,WT')),
+             ['rnaseq-de (workflow version v0.10.0) was run' + reference + ' with the design formula `~ condition` and '
+              'the contrast `condition,www.x.com,WT`.', agent]),
+            # review r1 F-9 and F-12: a GitHub autolink and a non-string value stay in code spans
+            ('aligner starting www.', edit(nf, (('params', 'aligner'), 'WWW.example.com')),
+             ['nfcore-rnaseq-wrapper (workflow version 3.26.0) was run' + reference + ' with the `WWW.example.com` aligner.',
+              'The agent model recorded for nfcore-rnaseq-wrapper was claude-opus-5-5.']),
+            ('numbers and booleans', edit(de, (('params', 'formula'), True), (('params', 'contrast'), 3)),
+             ['rnaseq-de (workflow version v0.10.0) was run' + reference + ' with the design formula `true` and the '
+              'contrast `3`.', agent]),
+            # review r1 F-13: `none` beside a recorded model step is a contradiction, stated in Provenance only
+            ('agent model none beside a model step', edit(de, (('agent_model',), 'none')),
+             ['rnaseq-de (workflow version v0.10.0) was run' + reference + design + '.']),
         ]
         for label, manifest, expected in cases:
             with self.subTest(clause=label):
@@ -1091,30 +1208,47 @@ class RenderMethodsTests(unittest.TestCase):
         # Two workflows with different agent models each get their own sentence.
         self.dump('variant.json', dict(de, agent_model='other-model'))
         sentences = paragraph(self.traced(('nfcore-manifest.json', 'variant.json'), stage03=False))
-        self.assertEqual(sentences[2:], ['nfcore-rnaseq-wrapper records the agent model claude-opus-5-5.',
-                                         'rnaseq-de records the agent model other-model.', P_CLOSING])
+        self.assertEqual(sentences[2:], ['The agent model recorded for nfcore-rnaseq-wrapper was claude-opus-5-5.',
+                                         'The agent model recorded for rnaseq-de was other-model.', P_CLOSING])
         self.dump('variant.json', dict(de, agent_model='none', model_steps=[]))   # `none` is never an agent model
         self.dump('variant2.json', dict(nf, agent_model='none', model_steps=[]))
         sentences = paragraph(self.traced(('variant2.json', 'variant.json'), stage03=False))
-        self.assertEqual(sentences[2:], ['nfcore-rnaseq-wrapper records no agent model.',
-                                         'rnaseq-de records no agent model.', P_CLOSING])
+        self.assertEqual(sentences[2:], ['The record for nfcore-rnaseq-wrapper names no agent model.',
+                                         'The record for rnaseq-de names no agent model.', P_CLOSING])
+        for shared in ('/abs/agent', 's3://runs-123456789012/agent'):   # review r1 F-2: a shared path-like model
+            self.dump('variant.json', dict(de, agent_model=shared))
+            self.dump('variant2.json', dict(nf, agent_model=shared))
+            sentences = paragraph(self.traced(('variant2.json', 'variant.json'), stage03=False))
+            self.assertEqual(len(sentences), 3, sentences)
+            self.assertNotIn('agent model', '\n'.join(sentences))
         self.dump('variant.json', dict(de, agent_model=None))   # ... and an absent one is never folded in
         self.assertNotIn('Every workflow', '\n'.join(paragraph(self.traced(('nfcore-manifest.json', 'variant.json')))))
         # The approval and the history drop their clauses the same way.
         approval = self.load('approval.json')
         self.dump('approval.json', dict(approval, actor=''))
-        self.assertIn('The analysis plan was approved on 29 September 2026 at 18:04:05 UTC with no approver named '
-                      "in its approval record, and its approval record is bound to the plan's exact text.",
+        self.assertIn('A separate custom analysis was planned, and its plan was approved on 29 September 2026 with no '
+                      "approver named in its approval record; the approval record binds the plan's exact text.",
                       paragraph(self.traced(('local-manifest.json',))))
         self.dump('approval.json', approval)
         history = self.path('HISTORY.md').read_text(encoding='utf-8')
         for label, changed, sentence in (
                 ('no model line', history.replace('Model: claude-opus-5-5\nPlan:', 'Plan:'),
-                 "The project's history records the approved analysis as complete on 2026-09-29."),
+                 "The project's history records that custom analysis as complete on 29 September 2026."),
                 ('a model that is not plain', history.replace('Model: claude-opus-5-5\nPlan:', 'Model: opus *5*\nPlan:'),
-                 "The project's history records the approved analysis as complete on 2026-09-29, with the agent "
+                 "The project's history records that custom analysis as complete on 29 September 2026, with the agent "
                  "model `opus *5*`."),
-                ('not recorded', HEADER, None)):
+                ('not recorded', HEADER, None),
+                # review r1 F-5 and F-2: a history date that is not a real date, or is path-like, is dropped
+                ('an unfilled date', history.replace('## 2026-09-29 \u2014 03_custom', '## <ISO-8601 date> \u2014 03_custom'),
+                 "The project's history records that custom analysis as complete, with the agent model claude-opus-5-5."),
+                ('a date without zero padding', history.replace('## 2026-09-29 \u2014 03_custom', '## 2026-9-29 \u2014 03_custom'),
+                 "The project's history records that custom analysis as complete, with the agent model claude-opus-5-5."),
+                ('an impossible date', history.replace('## 2026-09-29 \u2014 03_custom', '## 2026-02-30 \u2014 03_custom'),
+                 "The project's history records that custom analysis as complete, with the agent model claude-opus-5-5."),
+                ('a path-like date', history.replace('## 2026-09-29 \u2014 03_custom', '## /abs/run-2026-09-29 \u2014 03_custom'),
+                 "The project's history records that custom analysis as complete, with the agent model claude-opus-5-5."),
+                ('a path-like model', history.replace('Model: claude-opus-5-5\nPlan:', 'Model: s3://runs-123456789012/m\nPlan:'),
+                 "The project's history records that custom analysis as complete on 29 September 2026.")):
             with self.subTest(history=label):
                 self.path('HISTORY.md').write_text(changed, encoding='utf-8')
                 sentences = paragraph(self.traced(('local-manifest.json',)))
@@ -1207,6 +1341,36 @@ class RenderMethodsTests(unittest.TestCase):
         text = self.traced(('local-manifest.json',))
         self.assertIn(T_BY, text)
         self.assertNotIn('someone-else', text)
+        # A record's sha256 is an offline oracle for any value the page does not print (0276, relayed by
+        # the Row-orchestrator from the reproduction-plan review): never published for such a record.
+        for name in ('approval.json', 'local-manifest.json', 'HISTORY.md'):
+            digest = hashlib.sha256(self.path(name).read_bytes()).hexdigest()
+            self.assertNotIn(digest, text, name)
+        self.assertIn('- approval record: sha256 not published, since the record holds values this page does not '
+                      'print.', text)
+        self.assertIn('- plan: sha256 `%s`.' % approval['plan_sha256'], text)   # the binding stays published
+        for changed, published in ((dict(approval, actor=None, plan_path=None), True),
+                                   (dict(approval, actor=None), False), (dict(approval, plan_path=''), False),
+                                   (dict(approval, actor=None, plan_path='projects/rna-test/03_custom_analysis/'
+                                                                          '01_fixture-followup/PLAN.md'), False),
+                                   (dict(approval, actor=None, plan_path=None, expiry='/abs/x'), False)):
+            with self.subTest(approval_hash=changed):
+                self.dump('approval.json', changed)
+                text = self.traced(('local-manifest.json',))
+                digest = hashlib.sha256(self.path('approval.json').read_bytes()).hexdigest()
+                self.assertEqual(digest in text, published)
+        m = self.load('local-manifest.json')   # a manifest with nothing withheld keeps its hash
+        clean = {key: value for key, value in m.items() if not PATH_LIKE.search(json.dumps(value))}
+        clean['params'] = {'formula': '~ condition', 'contrast': 'condition,MT,WT'}
+        self.dump('variant.json', clean)
+        self.assertIn(hashlib.sha256(self.path('variant.json').read_bytes()).hexdigest(),
+                      self.traced(('variant.json',), stage03=False))
+        for bucket in ('s3://runs-123456789012/work', 'nextflow run x -work-dir s3://runs-123456789012/w'):
+            with self.subTest(hidden_in=bucket):   # a bucket only in a field the page never prints
+                self.dump('variant.json', dict(clean, unprinted_field=bucket))
+                text = self.traced(('variant.json',), stage03=False)
+                self.assertNotIn(hashlib.sha256(self.path('variant.json').read_bytes()).hexdigest(), text)
+                self.assertIn('- manifest 1: sha256 not published', text)
 
     def test_history_names_only_the_approved_analysis(self):
         history = self.path('HISTORY.md').read_text(encoding='utf-8')
@@ -1249,7 +1413,7 @@ class RenderMethodsTests(unittest.TestCase):
                 rendered = self.traced(('local-manifest.json',))
                 lines = [l for l in rendered.split('\n') if l.startswith("The project's history records `")]
                 prose = [l for l in rendered.split('\n')
-                         if l.startswith("The project's history records the approved analysis")]
+                         if l.startswith("The project's history records that custom analysis")]
                 self.assertEqual(len(prose), len(lines))   # one paragraph sentence per matched entry
                 self.assertEqual(len(lines), len(shown) + (label == 'no model line'))
                 for model in shown:

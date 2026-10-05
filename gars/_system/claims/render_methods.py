@@ -98,6 +98,8 @@ KINDS = {
                            "the preferred citation."),
     'citation-absent': (CITATION, 'The GARS commit to cite is not recorded for workflow {}.'),
     'record': (RECORDS, '- {}: sha256 {}.'),
+    'record-unpublished': (RECORDS, '- {}: sha256 not published, since the record holds values this page does '
+                                    'not print.'),
 }
 MISSING = object()
 
@@ -177,13 +179,25 @@ def words(value):
     """The words a journal-paragraph clause shows for one record value, or None, which drops the
     clause: an absent value is stated as not recorded under Provenance, and a path-like one is
     withheld there. A value made only of ASCII letters and digits joined singly by . _ + : / -
-    (3.26.0, star_salmon, nf-core/rnaseq) is shown as plain words, since no Markdown can be built
-    from those characters; any other value is set in a code span, as under Provenance."""
+    (3.26.0, star_salmon, nf-core/rnaseq), and not starting with www., is shown as plain words,
+    since no Markdown structure or link can be built from it; any other value, and any number or
+    boolean, is set in a code span, as under Provenance."""
     if absent(value) or any(path_like(flatten(text)) for text in strings(value)):
         return None
-    if not isinstance(value, str):
-        value = json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
-    return value if PLAIN.match(value) else span(flatten(value))
+    if not isinstance(value, str):   # a number or a boolean is data, not a word
+        return span(json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False))
+    return value if plain(value) else span(flatten(value))
+
+
+def plain(text):
+    """Plain words: ASCII letters and digits joined singly by . _ + : / -, and not starting with
+    www., which GitHub's Markdown would turn into a link."""
+    return bool(PLAIN.match(text)) and not text[:4].lower() == 'www.'
+
+
+def holds_path(texts):
+    """True when any text holds a path-like value, a storage URI among them."""
+    return any(path_like(flatten(text)) for text in texts)
 
 
 def get(node, *path):
@@ -376,7 +390,14 @@ class Page(object):
         """A journal-paragraph sentence: fixed words built by a prose_* frame, and the fields it used."""
         self.lines[PARAGRAPH].append((text, kind, list(refs)))
 
-    def record(self, name, label, data):
+    def record(self, name, label, data, hidden):
+        """A record's sha256, unless the record holds a value the page withholds or never prints: a
+        printed hash of such a record would let anyone confirm a guessed user name, path or bucket
+        offline (0276)."""
+        if hidden:
+            section, text = KINDS['record-unpublished']
+            self.lines[section].append((text.format(label), 'record-unpublished', [name + ':withheld']))
+            return
         section, text = KINDS['record']
         self.lines[section].append((text.format(label, span(hashlib.sha256(data).hexdigest())),
                                     'record', [name + ':bytes']))
@@ -484,12 +505,18 @@ def manifest_lines(page, m, k):
 # can be shown; otherwise the clause is dropped, never filled, and Provenance below states the
 # field as not recorded or withheld. Each sentence's Sources entry lists the fields it used.
 
-NO_NAME = 'A workflow whose name is not recorded'
-HIDDEN_NAME = 'A workflow whose recorded name is withheld'
+NO_NAME = 'a workflow whose name is not recorded'
+HIDDEN_NAME = 'a workflow whose recorded name is withheld'
 PROSE_KINDS = ('prose-run', 'prose-configured', 'prose-agent-all', 'prose-agent', 'prose-agent-none',
                'prose-approval', 'prose-history', 'prose-closing')
-CLOSING = ("Parameters, software versions and container images are listed below; every value traces "
-           "to the run's records (Provenance).")
+CLOSING = ("Parameters, software versions and container images are listed below, or marked not recorded; "
+           "every value traces to the run's records (Provenance).")
+ISO_DATE = re.compile(r'[0-9]{4}-[0-9]{2}-[0-9]{2}\Z')
+
+
+def capital(text):
+    return text[:1].upper() + text[1:] if text in (NO_NAME, HIDDEN_NAME) or text.startswith(NO_NAME) \
+        or text.startswith(HIDDEN_NAME) else text
 
 
 def subject_name(m):
@@ -502,9 +529,12 @@ def subject_name(m):
 
 
 def pipeline(m, M):
-    """The pipeline's own name and version and their references: the one `Workflow/<name>` entry
-    other than `Workflow/Nextflow` across the run's versions files (nf-core's software_versions.yml
-    records `Workflow: nf-core/rnaseq: v3.26.0`), or None when there is not exactly one."""
+    """The pipeline's own name, version and their references, for a nextflow wrapper only: the one
+    `Workflow/<name>` entry other than `Workflow/Nextflow` across the run's versions files (nf-core's
+    software_versions.yml records `Workflow: nf-core/rnaseq: v3.26.0`), or None when there is not
+    exactly one, or either part cannot be shown."""
+    if get(m, 'predicate_facts', 'wrapper_kind') != 'nextflow':
+        return None
     found = []
     files = get(m, 'software_versions')
     for i, entry in enumerate(files if isinstance(files, list) else []):
@@ -520,7 +550,7 @@ def pipeline(m, M):
     name, number = words(key[len('Workflow/'):]), words(version)
     if name is None or number is None:
         return None
-    return name + ' ' + number, [ref + '.key', ref + '.value']
+    return name, number, [M + '/predicate_facts/wrapper_kind', ref + '.key', ref + '.value']
 
 
 def contrast_words(value):
@@ -529,9 +559,14 @@ def contrast_words(value):
     parts; any other value is shown whole, or dropped as words() drops it."""
     shown = words(value)   # a path-like value is withheld whole, before it is read in parts
     parts = value.split(',') if shown is not None and isinstance(value, str) else []
-    if len(parts) == 3 and all(PLAIN.match(part) for part in parts):
+    if len(parts) == 3 and all(plain(part) for part in parts):
         return '%s versus %s (factor %s)' % (parts[1], parts[2], parts[0])
     return shown
+
+
+def day(date):
+    """YYYY-MM-DD, already a real date, as `29 September 2026`."""
+    return '%d %s %s' % (int(date[8:10]), MONTHS[int(date[5:7]) - 1], date[:4])
 
 
 def prose_workflow(page, m, k):
@@ -539,24 +574,24 @@ def prose_workflow(page, m, k):
     refs = []
     found = pipeline(m, M)
     if found is not None:
-        subject = found[0]
-        refs += found[1]
+        subject = found[0] + ' ' + found[1]
+        refs += found[2]
     else:
         subject = subject_name(m)
         refs.append(M + '/workflow_name')
         version = words(get(m, 'workflow_version'))
         if version is not None:
             refs.append(M + '/workflow_version')
-            subject += (' (version %s)' if subject in (NO_NAME, HIDDEN_NAME) else ' %s') % version
+            subject += ' (workflow version %s)' % version
     status = get(m, 'predicate_facts', 'status')
     refs.append(M + '/predicate_facts/status')
     complete = status == 'COMPLETE'
-    text = subject + (' was run' if complete else ' was configured')
+    text = capital(subject) + (' was run' if complete else ' was configured')
     if found is not None:
         wrapper = words(get(m, 'workflow_name'))
         if wrapper is not None:
             refs.append(M + '/workflow_name')
-            text += ' through the GARS wrapper ' + wrapper
+            text += ' through the GARS workflow ' + wrapper
     reference = get(m, 'reference')
     if isinstance(reference, dict) and reference.get('comparison') == 'matched':
         build = words(reference.get('build', MISSING))
@@ -578,11 +613,20 @@ def prose_workflow(page, m, k):
             items.append(frame % shown)
     if items:
         text += ' with ' + (items[0] if len(items) == 1 else ', '.join(items[:-1]) + ' and ' + items[-1])
-    if not complete:
+    if not complete:   # a withheld status drops its clause; Provenance carries the note
         shown = words(status)
-        text += '; its run status is ' + (shown if shown is not None else
-                                          NOT_RECORDED if absent(status) else WITHHELD)
+        if shown is not None or absent(status):
+            text += '; its run status is ' + (shown if shown is not None else NOT_RECORDED)
     page.sentence('prose-run' if complete else 'prose-configured', text + '.', refs)
+
+
+def agent_subject(m, M):
+    """Who an agent-model sentence names: the pipeline when the run sentence named it, else the
+    workflow's name, with the references used."""
+    found = pipeline(m, M)
+    if found is not None:
+        return found[0], found[2][:2]
+    return subject_name(m), [M + '/workflow_name']
 
 
 def prose_agents(page, manifests):
@@ -590,41 +634,53 @@ def prose_agents(page, manifests):
     shown = words(models[0])
     if len(models) > 1 and shown is not None and models[0] != 'none' and \
             all(model == models[0] for model in models):
-        page.sentence('prose-agent-all', 'Every workflow records the agent model %s.' % shown,
+        page.sentence('prose-agent-all', 'The agent model recorded for every workflow was %s.' % shown,
                       ['manifest%d:/agent_model' % k for k in range(1, len(models) + 1)])
         return
     for k, (m, model) in enumerate(zip(manifests, models), 1):
-        refs = ['manifest%d:/workflow_name' % k, 'manifest%d:/agent_model' % k]
+        M = 'manifest%d:' % k
+        subject, refs = agent_subject(m, M)
         if model == 'none':
-            page.sentence('prose-agent-none', '%s records no agent model.' % subject_name(m), refs)
+            if absent(get(m, 'model_steps')):   # `none` beside a recorded model step contradicts itself
+                page.sentence('prose-agent-none', 'The record for %s names no agent model.' % subject,
+                              refs + [M + '/agent_model', M + '/model_steps'])
         elif words(model) is not None:
-            page.sentence('prose-agent', '%s records the agent model %s.' % (subject_name(m), words(model)),
-                          refs)
+            page.sentence('prose-agent', 'The agent model recorded for %s was %s.' % (subject, words(model)),
+                          refs + [M + '/agent_model'])
 
 
 def prose_approval(page, approved):
     """Only after check_approval: plan_sha256 is the plan's sha256 and the timestamp is a real UTC
-    instant. The actor is consulted for presence and never printed."""
-    refs, text = ['approval:/plan_sha256'], 'The analysis plan was approved'
+    instant. The plan_path is consulted to say the plan is a stage 03 custom analysis's, and the
+    actor for presence; neither is ever printed."""
+    refs = ['approval:/plan_sha256']
+    if approved_stage(approved) is not None:
+        refs.append('approval:/plan_path?')
+        text = 'A separate custom analysis was planned, and its plan was approved'
+    else:
+        text = 'An analysis plan was approved'
     stamp = approved.get('timestamp', MISSING)
     if not absent(stamp):
         refs.append('approval:/timestamp')
-        text += ' on %d %s %s at %s UTC' % (int(stamp[8:10]), MONTHS[int(stamp[5:7]) - 1], stamp[:4],
-                                            stamp[11:19])
+        text += ' on ' + day(stamp[:10])
     refs.append('approval:/actor?')
-    text += ' %s, and its approval record is bound to the plan\'s exact text.' % (
+    text += ' %s; the approval record binds the plan\'s exact text.' % (
         NO_APPROVER if absent(approved.get('actor', MISSING)) else BY_APPROVER)
     page.sentence('prose-approval', text, refs)
 
 
 def prose_history(page, e, entry):
-    """An entry already matched to the approved analysis, with the outcome `analysis complete`."""
+    """An entry already matched to the approved custom analysis, with the outcome `analysis complete`."""
     H = 'history:#%d/' % e
-    refs, text = [H + 'stage', H + 'outcome'], "The project's history records the approved analysis as complete"
-    date, model = words(entry['date']), words(entry['model'])
-    if date is not None:
-        refs.append(H + 'date')
-        text += ' on ' + date
+    refs, text = [H + 'stage', H + 'outcome'], "The project's history records that custom analysis as complete"
+    date, model = entry['date'], words(entry['model'])
+    if isinstance(date, str) and ISO_DATE.match(date):
+        try:
+            datetime.datetime.strptime(date, '%Y-%m-%d')
+            refs.append(H + 'date')
+            text += ' on ' + day(date)
+        except ValueError:
+            pass
     if model is not None:
         refs.append(H + 'model')
         text += ', with the agent model ' + model
@@ -638,7 +694,7 @@ def render(manifests, plan=None, approval=None, history=None):
         data = read(path, 'manifest %d' % k)
         manifest = load(data, 'manifest %d' % k)
         check_manifest(manifest, 'manifest %d' % k)
-        records.append(('manifest%d' % k, 'manifest %d' % k, data))
+        records.append(('manifest%d' % k, 'manifest %d' % k, data, holds_path(strings(manifest))))
         loaded.append(manifest)
     approved, entries = None, None
     if plan is not None:
@@ -646,11 +702,16 @@ def render(manifests, plan=None, approval=None, history=None):
         approval_bytes = read(approval, 'approval record')
         approved = load(approval_bytes, 'approval record')
         check_approval(approved, plan_bytes)
-        records += [('plan', 'plan', plan_bytes), ('approval', 'approval record', approval_bytes)]
+        # The plan's sha256 is the binding the approval line states, and stays published (0276 D11).
+        records += [('plan', 'plan', plan_bytes, False),
+                    ('approval', 'approval record', approval_bytes,
+                     not absent(approved.get('actor', MISSING)) or not absent(approved.get('plan_path', MISSING))
+                     or holds_path(strings(approved)))]
         if history is not None:
             history_bytes = read(history, 'history')
-            entries = history_entries(decode(history_bytes, 'history'))
-            records.append(('history', 'history', history_bytes))
+            history_text = decode(history_bytes, 'history')
+            entries = history_entries(history_text)
+            records.append(('history', 'history', history_bytes, holds_path([history_text])))
 
     page = Page()
     for k, manifest in enumerate(loaded, 1):
@@ -689,8 +750,8 @@ def render(manifests, plan=None, approval=None, history=None):
         elif cell(commit) not in cited:
             cited.append(cell(commit))
             page.add('citation', ('v', 'manifest%d:/gars_commit' % k, commit))
-    for name, label, data in records:
-        page.record(name, label, data)
+    for name, label, data, hidden in records:
+        page.record(name, label, data, hidden)
     return page.text()
 
 

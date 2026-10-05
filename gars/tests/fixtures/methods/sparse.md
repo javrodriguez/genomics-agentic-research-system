@@ -1,7 +1,7 @@
 # Methods
 
-rnaseq-de v0.10.0 was configured with the design formula `~ condition` and the contrast MT versus WT (factor condition); its run status is not recorded.
-Parameters, software versions and container images are listed below; every value traces to the run's records (Provenance).
+rnaseq-de (workflow version v0.10.0) was configured with the design formula `~ condition` and the contrast MT versus WT (factor condition); its run status is not recorded.
+Parameters, software versions and container images are listed below, or marked not recorded; every value traces to the run's records (Provenance).
 
 ## Provenance
 
@@ -37,7 +37,7 @@ Cite GARS at commit `c54a71584b1347937e4315cbbeb3f27371655228`; the GARS reposit
 
 ### Records read
 
-- manifest 1: sha256 `03ab0bc56158ad998db561fb2aca0d2fd81f9d806d6d534da270daa292d079fa`.
+- manifest 1: sha256 not published, since the record holds values this page does not print.
 
 ### Sources
 
@@ -63,4 +63,4 @@ Cite GARS at commit `c54a71584b1347937e4315cbbeb3f27371655228`; the GARS reposit
 - line 31: versions-absent: `manifest1:/workflow_name manifest1:/software_versions`.
 - line 32: containers-absent: `manifest1:/workflow_name manifest1:/containers`.
 - line 36: citation: `manifest1:/gars_commit`.
-- line 40: record: `manifest1:bytes`.
+- line 40: record-unpublished: `manifest1:withheld`.

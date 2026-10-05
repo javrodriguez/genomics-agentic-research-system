@@ -1,11 +1,11 @@
 # Methods
 
-nfcore-rnaseq-wrapper 3.26.0 was run against the fixture-build reference genome (annotation release fixture-release) with the star_salmon aligner.
-rnaseq-de v0.10.0 was run against the fixture-build reference genome (annotation release fixture-release) with the design formula `~ condition` and the contrast MT versus WT (factor condition).
-Every workflow records the agent model claude-opus-5-5.
-The analysis plan was approved on 29 September 2026 at 18:04:05 UTC by the approver the run recorded, and its approval record is bound to the plan's exact text.
-The project's history records the approved analysis as complete on 2026-09-29, with the agent model claude-opus-5-5.
-Parameters, software versions and container images are listed below; every value traces to the run's records (Provenance).
+nfcore-rnaseq-wrapper (workflow version 3.26.0) was run against the fixture-build reference genome (annotation release fixture-release) with the star_salmon aligner.
+rnaseq-de (workflow version v0.10.0) was run against the fixture-build reference genome (annotation release fixture-release) with the design formula `~ condition` and the contrast MT versus WT (factor condition).
+The agent model recorded for every workflow was claude-opus-5-5.
+A separate custom analysis was planned, and its plan was approved on 29 September 2026 by the approver the run recorded; the approval record binds the plan's exact text.
+The project's history records that custom analysis as complete on 29 September 2026, with the agent model claude-opus-5-5.
+Parameters, software versions and container images are listed below, or marked not recorded; every value traces to the run's records (Provenance).
 
 ## Provenance
 
@@ -64,18 +64,18 @@ Cite GARS at commit `c54a71584b1347937e4315cbbeb3f27371655228`; the GARS reposit
 
 ### Records read
 
-- manifest 1: sha256 `2f062673be291f9ef5c247bfb0d76bdf381f9f02d1b5e4e0a904999b3b19bff3`.
-- manifest 2: sha256 `1dcbf73179636cfead6ca263d2a3ab5293f911785226891059f52897a37c0970`.
+- manifest 1: sha256 not published, since the record holds values this page does not print.
+- manifest 2: sha256 not published, since the record holds values this page does not print.
 - plan: sha256 `b2fad3e6dd46adfbb19ab0ec2ee525ecc04cfa72a74758d1dc8439602c0e04c6`.
-- approval record: sha256 `f667db231c6b3c8e01fd333beb8e0989d0f83fa9bb82946b0abdb388be67aa42`.
-- history: sha256 `e104223b599ce04059e4e30e66e2c78e0b98289ffadc870db02860e763cc7d83`.
+- approval record: sha256 not published, since the record holds values this page does not print.
+- history: sha256 not published, since the record holds values this page does not print.
 
 ### Sources
 
 - line 3: prose-run: `manifest1:/workflow_name manifest1:/workflow_version manifest1:/predicate_facts/status manifest1:/reference/comparison manifest1:/reference/build manifest1:/reference/annotation_release manifest1:/params/aligner`.
 - line 4: prose-run: `manifest2:/workflow_name manifest2:/workflow_version manifest2:/predicate_facts/status manifest2:/reference/comparison manifest2:/reference/build manifest2:/reference/annotation_release manifest2:/params/formula manifest2:/params/contrast`.
 - line 5: prose-agent-all: `manifest1:/agent_model manifest2:/agent_model`.
-- line 6: prose-approval: `approval:/plan_sha256 approval:/timestamp approval:/actor?`.
+- line 6: prose-approval: `approval:/plan_sha256 approval:/plan_path? approval:/timestamp approval:/actor?`.
 - line 7: prose-history: `history:#3/stage history:#3/outcome history:#3/date history:#3/model`.
 - line 8: prose-closing.
 - line 12: workflow: `manifest1:/workflow_name manifest1:/workflow_version manifest1:/pipeline_commit manifest1:/wrapper manifest1:/gars_commit manifest1:/template_version manifest1:/predicate_facts/status`.
@@ -121,8 +121,8 @@ Cite GARS at commit `c54a71584b1347937e4315cbbeb3f27371655228`; the GARS reposit
 - line 58: version: `manifest2:/software_versions/0/versions#1.key manifest2:/software_versions/0/versions#1.value`.
 - line 59: containers-absent: `manifest2:/workflow_name manifest2:/containers`.
 - line 63: citation: `manifest1:/gars_commit`.
-- line 67: record: `manifest1:bytes`.
-- line 68: record: `manifest2:bytes`.
+- line 67: record-unpublished: `manifest1:withheld`.
+- line 68: record-unpublished: `manifest2:withheld`.
 - line 69: record: `plan:bytes`.
-- line 70: record: `approval:bytes`.
-- line 71: record: `history:bytes`.
+- line 70: record-unpublished: `approval:withheld`.
+- line 71: record-unpublished: `history:withheld`.
