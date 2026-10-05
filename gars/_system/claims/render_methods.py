@@ -4,6 +4,10 @@
   python3 _system/claims/render_methods.py --manifest <reproducibility/manifest.json> [--manifest ...]
       [--plan <PLAN.md> --approval <approval record> [--history <HISTORY.md>]] --out <methods.md>
 
+The page opens with a short journal-style Methods paragraph (decision 0276): each sentence is one
+fixed frame filled only from record fields, and a clause whose field is missing or withheld is
+dropped, never filled. Below it, a Provenance section holds every hash, record fingerprint,
+withheld-path note, parameter, software version and citation, and the Sources map.
 Every line is fixed words plus values read from the named records, and the Sources section lists,
 for every line, the record fields its values came from (decision 0236). A missing or empty field
 reads "not recorded"; a value holding a local path is withheld; nothing is guessed, no model and no
@@ -33,36 +37,42 @@ PATH_START = re.compile(r'''(?=(/|\\|~[^\s/"']*/|[A-Za-z]:[\\/]))''')
 IN_WORD = frozenset('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._~/:\\-')
 FILE_SCHEME = re.compile(r'(?<![A-Za-z0-9])[Ff][Ii][Ll][Ee]:')   # ASCII only, no re.I folding
 FLATTENED = ('Cc', 'Cf', 'Cs', 'Zl', 'Zp')  # control, format, surrogate, line and paragraph separators
+PLAIN = re.compile(r'[A-Za-z0-9]+(?:[._+:/-][A-Za-z0-9]+)*\Z')   # ASCII only, no re.I folding
+MONTHS = ('January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September',
+          'October', 'November', 'December')
 DIGEST = re.compile(r'[0-9a-f]{64}\Z')
 UTC = re.compile(r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\Z')
 ENTRY = re.compile('## (.+?) \u2014 (.+?) \u2014 (.+?)\\s*\\Z')
 
-PARAGRAPH, PARAMETERS, SOFTWARE, CITATION, RECORDS, SOURCES = (
-    '# Methods', '## Parameters', '## Software used', '## Citation', '## Records read', '## Sources')
-# The closed vocabulary: each kind of line, its section and its fixed words ({} is one slot).
+PARAGRAPH, PROVENANCE, PARAMETERS, SOFTWARE, CITATION, RECORDS, SOURCES = (
+    '# Methods', '## Provenance', '### Parameters', '### Software used', '### Citation',
+    '### Records read', '### Sources')
+SECTIONS = (PARAGRAPH, PROVENANCE, PARAMETERS, SOFTWARE, CITATION, RECORDS)
+# The closed vocabulary of the Provenance section: each kind of line, its section and its fixed
+# words ({} is one slot). The journal paragraph's kinds are the prose_* builders below (0276).
 KINDS = {
-    'workflow': (PARAGRAPH, 'The run manifest of workflow {} records: version {}; pipeline commit {}; '
+    'workflow': (PROVENANCE, 'The run manifest of workflow {} records: version {}; pipeline commit {}; '
                             'GARS wrapper {}; GARS commit {}; template version {}; status {}.'),
-    'failure': (PARAGRAPH, 'Its failure class is {}.'),
-    'reference': (PARAGRAPH, 'Its reference genome: build {}; annotation release {}; '
+    'failure': (PROVENANCE, 'Its failure class is {}.'),
+    'reference': (PROVENANCE, 'Its reference genome: build {}; annotation release {}; '
                              'FASTA sha256 {}; GTF sha256 {}.'),
-    'reference-check': (PARAGRAPH, 'Its reference registry check reads {}, reason {}; the run '
+    'reference-check': (PROVENANCE, 'Its reference registry check reads {}, reason {}; the run '
                                    'observed FASTA sha256 {} and GTF sha256 {}.'),
-    'reference-absent': (PARAGRAPH, 'Its reference genome is not recorded.'),
-    'config': (PARAGRAPH, 'Its configuration sha256 is {}.'),
-    'threads': (PARAGRAPH, 'Its thread count is {}.'),
-    'command': (PARAGRAPH, 'Its exact submission: {}, sha256 {}.'),
-    'command-absent': (PARAGRAPH, 'Its exact submission is not recorded.'),
-    'agent': (PARAGRAPH, 'Its agent model is {}.'),
-    'model-step': (PARAGRAPH, 'It records a model-mediated step: model {}; provider {}; '
+    'reference-absent': (PROVENANCE, 'Its reference genome is not recorded.'),
+    'config': (PROVENANCE, 'Its configuration sha256 is {}.'),
+    'threads': (PROVENANCE, 'Its thread count is {}.'),
+    'command': (PROVENANCE, 'Its exact submission: {}, sha256 {}.'),
+    'command-absent': (PROVENANCE, 'Its exact submission is not recorded.'),
+    'agent': (PROVENANCE, 'Its agent model is {}.'),
+    'model-step': (PROVENANCE, 'It records a model-mediated step: model {}; provider {}; '
                               'contract {}; contract hash {} (algorithm {}).'),
-    'model-steps-absent': (PARAGRAPH, 'Its model-mediated steps are not recorded.'),
-    'approval': (PARAGRAPH, 'The analysis plan with sha256 {} was approved at {} {}.'),
-    'history': (PARAGRAPH, "The project's history records {} as {} on {}, with model {} and template "
+    'model-steps-absent': (PROVENANCE, 'Its model-mediated steps are not recorded.'),
+    'approval': (PROVENANCE, 'The analysis plan with sha256 {} was approved at {} {}.'),
+    'history': (PROVENANCE, "The project's history records {} as {} on {}, with model {} and template "
                            "version {}."),
-    'history-absent': (PARAGRAPH, "The approved analysis's completion is not recorded in the "
+    'history-absent': (PROVENANCE, "The approved analysis's completion is not recorded in the "
                                   "project's history."),
-    'pointer': (PARAGRAPH, "Each workflow's parameters, random seeds, software versions and "
+    'pointer': (PROVENANCE, "Each workflow's parameters, random seeds, software versions and "
                            "container images are listed below."),
     'param': (PARAMETERS, '- {} parameter {}: {}.'),
     'params-absent': (PARAMETERS, '- {}: parameters are not recorded.'),
@@ -156,6 +166,19 @@ def cell(value):
     if not isinstance(value, str):
         value = json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
     return span(flatten(value))
+
+
+def words(value):
+    """The words a journal-paragraph clause shows for one record value, or None, which drops the
+    clause: an absent value is stated as not recorded under Provenance, and a path-like one is
+    withheld there. A value made only of ASCII letters and digits joined singly by . _ + : / -
+    (3.26.0, star_salmon, nf-core/rnaseq) is shown as plain words, since no Markdown can be built
+    from those characters; any other value is set in a code span, as under Provenance."""
+    if absent(value) or any(path_like(flatten(text)) for text in strings(value)):
+        return None
+    if not isinstance(value, str):
+        value = json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+    return value if PLAIN.match(value) else span(flatten(value))
 
 
 def get(node, *path):
@@ -329,7 +352,7 @@ def approved_stage(approval):
 
 class Page(object):
     def __init__(self):
-        self.lines = dict((section, []) for section in (PARAGRAPH, PARAMETERS, SOFTWARE, CITATION, RECORDS))
+        self.lines = dict((section, []) for section in SECTIONS)
 
     def add(self, kind, *slots):
         """slots: (v, ref, value) a record value; (p, ref, actor) the approver phrase;
@@ -344,6 +367,10 @@ class Page(object):
         section, text = KINDS[kind]
         self.lines[section].append((text.format(*words), kind, refs))
 
+    def sentence(self, kind, text, refs):
+        """A journal-paragraph sentence: fixed words built by a prose_* frame, and the fields it used."""
+        self.lines[PARAGRAPH].append((text, kind, list(refs)))
+
     def record(self, name, label, data):
         section, text = KINDS['record']
         self.lines[section].append((text.format(label, span(hashlib.sha256(data).hexdigest())),
@@ -351,7 +378,7 @@ class Page(object):
 
     def text(self):
         out, sources = [], []
-        for section in (PARAGRAPH, PARAMETERS, SOFTWARE, CITATION, RECORDS):
+        for section in SECTIONS:
             out += [section, '']
             for line, kind, refs in self.lines[section]:
                 out.append(line)
@@ -447,6 +474,158 @@ def manifest_lines(page, m, k):
                      v('containers', i, 'digest'), v('containers', i, 'image_sha256'))
 
 
+# ---- the journal paragraph (0276) ---------------------------------------------------------------
+# Each sentence is one fixed frame. A clause appears only when the field it states is recorded and
+# can be shown; otherwise the clause is dropped, never filled, and Provenance below states the
+# field as not recorded or withheld. Each sentence's Sources entry lists the fields it used.
+
+NO_NAME = 'A workflow whose name is not recorded'
+HIDDEN_NAME = 'A workflow whose recorded name is withheld'
+PROSE_KINDS = ('prose-run', 'prose-configured', 'prose-agent-all', 'prose-agent', 'prose-agent-none',
+               'prose-approval', 'prose-history', 'prose-closing')
+CLOSING = ("Parameters, software versions and container images are listed below; every value traces "
+           "to the run's records (Provenance).")
+
+
+def subject_name(m):
+    """The workflow's name as a sentence subject: its recorded name, or which way it is missing."""
+    name = get(m, 'workflow_name')
+    shown = words(name)
+    if shown is not None:
+        return shown
+    return NO_NAME if absent(name) else HIDDEN_NAME
+
+
+def pipeline(m, M):
+    """The pipeline's own name and version and their references: the one `Workflow/<name>` entry
+    other than `Workflow/Nextflow` across the run's versions files (nf-core's software_versions.yml
+    records `Workflow: nf-core/rnaseq: v3.26.0`), or None when there is not exactly one."""
+    found = []
+    files = get(m, 'software_versions')
+    for i, entry in enumerate(files if isinstance(files, list) else []):
+        versions = entry.get('versions', MISSING)
+        if absent(versions):
+            continue
+        for j, key in enumerate(sorted(versions)):
+            if key.startswith('Workflow/') and key != 'Workflow/Nextflow':
+                found.append(('%s/software_versions/%d/versions#%d' % (M, i, j), key, versions[key]))
+    if len(found) != 1:
+        return None
+    ref, key, version = found[0]
+    name, number = words(key[len('Workflow/'):]), words(version)
+    if name is None or number is None:
+        return None
+    return name + ' ' + number, [ref + '.key', ref + '.value']
+
+
+def contrast_words(value):
+    """GARS writes a contrast as factor,numerator,denominator (the rnaseq_bulk config template),
+    read here as "numerator versus denominator (factor factor)" when it is exactly three plain
+    parts; any other value is shown whole, or dropped as words() drops it."""
+    shown = words(value)   # a path-like value is withheld whole, before it is read in parts
+    parts = value.split(',') if shown is not None and isinstance(value, str) else []
+    if len(parts) == 3 and all(PLAIN.match(part) for part in parts):
+        return '%s versus %s (factor %s)' % (parts[1], parts[2], parts[0])
+    return shown
+
+
+def prose_workflow(page, m, k):
+    M = 'manifest%d:' % k
+    refs = []
+    found = pipeline(m, M)
+    if found is not None:
+        subject = found[0]
+        refs += found[1]
+    else:
+        subject = subject_name(m)
+        refs.append(M + '/workflow_name')
+        version = words(get(m, 'workflow_version'))
+        if version is not None:
+            refs.append(M + '/workflow_version')
+            subject += (' (version %s)' if subject in (NO_NAME, HIDDEN_NAME) else ' %s') % version
+    status = get(m, 'predicate_facts', 'status')
+    refs.append(M + '/predicate_facts/status')
+    complete = status == 'COMPLETE'
+    text = subject + (' was run' if complete else ' was configured')
+    if found is not None:
+        wrapper = words(get(m, 'workflow_name'))
+        if wrapper is not None:
+            refs.append(M + '/workflow_name')
+            text += ' through the GARS wrapper ' + wrapper
+    reference = get(m, 'reference')
+    if isinstance(reference, dict) and reference.get('comparison') == 'matched':
+        build = words(reference.get('build', MISSING))
+        if build is not None:   # the registry's build, which the run's own files matched
+            refs += [M + '/reference/comparison', M + '/reference/build']
+            text += ' against the %s reference genome' % build
+            release = words(reference.get('annotation_release', MISSING))
+            if release is not None:
+                refs.append(M + '/reference/annotation_release')
+                text += ' (annotation release %s)' % release
+    params = get(m, 'params')
+    params = params if isinstance(params, dict) else {}
+    items = []
+    for key, frame in (('aligner', 'the %s aligner'), ('formula', 'the design formula %s'),
+                       ('contrast', 'the contrast %s')):
+        shown = contrast_words(params.get(key, MISSING)) if key == 'contrast' else words(params.get(key, MISSING))
+        if shown is not None:
+            refs.append('%s/params/%s' % (M, key))
+            items.append(frame % shown)
+    if items:
+        text += ' with ' + (items[0] if len(items) == 1 else ', '.join(items[:-1]) + ' and ' + items[-1])
+    if not complete:
+        shown = words(status)
+        text += '; its run status is ' + (shown if shown is not None else
+                                          NOT_RECORDED if absent(status) else WITHHELD)
+    page.sentence('prose-run' if complete else 'prose-configured', text + '.', refs)
+
+
+def prose_agents(page, manifests):
+    models = [get(m, 'agent_model') for m in manifests]
+    shown = words(models[0])
+    if len(models) > 1 and shown is not None and models[0] != 'none' and \
+            all(model == models[0] for model in models):
+        page.sentence('prose-agent-all', 'Every workflow records the agent model %s.' % shown,
+                      ['manifest%d:/agent_model' % k for k in range(1, len(models) + 1)])
+        return
+    for k, (m, model) in enumerate(zip(manifests, models), 1):
+        refs = ['manifest%d:/workflow_name' % k, 'manifest%d:/agent_model' % k]
+        if model == 'none':
+            page.sentence('prose-agent-none', '%s records no agent model.' % subject_name(m), refs)
+        elif words(model) is not None:
+            page.sentence('prose-agent', '%s records the agent model %s.' % (subject_name(m), words(model)),
+                          refs)
+
+
+def prose_approval(page, approved):
+    """Only after check_approval: plan_sha256 is the plan's sha256 and the timestamp is a real UTC
+    instant. The actor is consulted for presence and never printed."""
+    refs, text = ['approval:/plan_sha256'], 'The analysis plan was approved'
+    stamp = approved.get('timestamp', MISSING)
+    if not absent(stamp):
+        refs.append('approval:/timestamp')
+        text += ' on %d %s %s at %s UTC' % (int(stamp[8:10]), MONTHS[int(stamp[5:7]) - 1], stamp[:4],
+                                            stamp[11:19])
+    refs.append('approval:/actor?')
+    text += ' %s, and its approval record is bound to the plan\'s exact text.' % (
+        NO_APPROVER if absent(approved.get('actor', MISSING)) else BY_APPROVER)
+    page.sentence('prose-approval', text, refs)
+
+
+def prose_history(page, e, entry):
+    """An entry already matched to the approved analysis, with the outcome `analysis complete`."""
+    H = 'history:#%d/' % e
+    refs, text = [H + 'stage', H + 'outcome'], "The project's history records the approved analysis as complete"
+    date, model = words(entry['date']), words(entry['model'])
+    if date is not None:
+        refs.append(H + 'date')
+        text += ' on ' + date
+    if model is not None:
+        refs.append(H + 'model')
+        text += ', with the agent model ' + model
+    page.sentence('prose-history', text + '.', refs)
+
+
 def render(manifests, plan=None, approval=None, history=None):
     """Validate every named input, then build the page; a refusal writes nothing."""
     records, loaded = [], []
@@ -471,10 +650,16 @@ def render(manifests, plan=None, approval=None, history=None):
     page = Page()
     for k, manifest in enumerate(loaded, 1):
         try:
+            prose_workflow(page, manifest, k)
             manifest_lines(page, manifest, k)
         except RecursionError:   # a value nested deeper than a JSON reader of this Python parses
             raise Refusal('manifest %d is nested too deeply' % k)
+    try:
+        prose_agents(page, loaded)
+    except RecursionError:
+        raise Refusal('a manifest is nested too deeply')
     if approved is not None:
+        prose_approval(page, approved)
         page.add('approval', ('v', 'approval:/plan_sha256', approved.get('plan_sha256', MISSING)),
                  ('v', 'approval:/timestamp', approved.get('timestamp', MISSING)),
                  ('p', 'approval:/actor?', approved.get('actor', MISSING)))
@@ -483,11 +668,13 @@ def render(manifests, plan=None, approval=None, history=None):
             matched = [(e, entry) for e, entry in enumerate(entries)
                        if stage is not None and entry['stage'] == stage and entry['outcome'] == 'analysis complete']
             for e, entry in matched:
+                prose_history(page, e, entry)
                 page.add('history', *(('v', 'history:#%d/%s' % (e, field), entry[field])
                                       for field in ('stage', 'outcome', 'date', 'model', 'template_version')))
             if not matched:
                 page.add('history-absent', ('x', 'history:entries'), ('x', 'approval:/plan_path?'))
     page.add('pointer')
+    page.sentence('prose-closing', CLOSING, [])
     cited = []
     for k, manifest in enumerate(loaded, 1):
         commit = get(manifest, 'gars_commit')
