@@ -6,6 +6,7 @@ python3 -B -W ignore evals/gap-study-4/tests/test_routing.py
 python3 -B -W ignore evals/gap-study-4/tests/test_batch.py
 python3 -B evals/gap-study-4/routing.py --check
 python3 -B evals/gap-study-4/batch.py --states
-! grep -nE "^[[:space:]]*(import|from)[[:space:]]+[^[:space:]]*(drive|claude|agent_adapter)" evals/gap-study-4/batch.py evals/gap-study-4/routing.py
-# Not yet a check: `python3 -B evals/gap-study-4/batch.py --check` exits 1 until round 3's pause_cap
-# is filled into routing.json (see the lane report's open questions); add it here once it is.
+! grep -nE "^[[:space:]]*(import|from)[[:space:]].*(drive|claude|agent_adapter)" evals/gap-study-4/batch.py evals/gap-study-4/routing.py
+# Not yet a check: `python3 -B evals/gap-study-4/batch.py --check` exits 1 (fail-closed) until round 3's
+# operator_reasons and pause_cap and CP5's pin_profiles are filled into routing.json and their *_status
+# no longer starts PENDING (see the lane report's open questions); add it here once they are.

@@ -4,7 +4,7 @@
     {
       "path": "graders/labels4.py",
       "status": "new",
-      "reason": "Round 4's closed vocabulary (interface 4); round 3 has no such module. Its reserved labels repeat round 3's graders/labels.py strings, imported nowhere from there."
+      "reason": "Round 4's closed vocabulary (interface 4); round 3 has no such module. Its reserved labels repeat round 3's graders/labels.py strings, imported nowhere from there. It also holds the turn ends (TURN_ENDS, GRADED_ENDS) that agent_adapter.py and routing.json use instead of retyping them (review round 1, W1B-7)."
     },
     {
       "path": "agent_adapter.py",
@@ -14,7 +14,7 @@
     {
       "path": "routing.json",
       "status": "new",
-      "reason": "CP1's routing table as pre-registered data; new in round 4 (round 3 routed inside drive.py)."
+      "reason": "CP1's routing table as pre-registered data, with its annotations (an outside reach, a quiescence kill: decided on every take, never routing) and the pin profiles CP5 pre-registers (PENDING); new in round 4 (round 3 routed inside drive.py)."
     },
     {
       "path": "routing.py",
@@ -24,7 +24,7 @@
     {
       "path": "batch.py",
       "status": "new",
-      "reason": "CP1's in-repo take loop, replacing round 3's out-of-repo batch.sh (verify-3 finding); new."
+      "reason": "CP1's in-repo take loop, replacing round 3's out-of-repo batch.sh (verify-3 finding); it decides each take's mask, events and fate before the commit and refuses to start on PENDING data; new."
     },
     {
       "path": "tests/test_labels4.py",

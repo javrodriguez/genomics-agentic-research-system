@@ -1,25 +1,35 @@
 #!/usr/bin/env python3
-"""batch.py: every terminal state with three drives at once, commits serial in row order,
-containers removed by recorded id, and a pause launches no new drive.
+"""batch.py: every terminal state with three drives at once, commits serial in row order and for
+every take of a block, containers removed by recorded id, a pause launches no new drive, the mask
+and events decided on every take and committed, the fate committed with the record, and a start
+gate that refuses pending data.
 
 The driver is a fake built on agent_adapter.ScriptedAdapter: no model, no container, no drive.py.
 Which terminal state each fake scenario reaches is computed by routing.route on the scenario's
 records, and the set the tests must reach is labels4.TERMINAL_STATES: neither is typed here.
-Every check is a function returning problems, and each is also run against an in-memory mutant of
-what it guards and must go red.
+Concurrency and finishing order are forced with a barrier and events, never with sleeps: a drive
+waits (up to WAIT_S, a hang detector) until every drive of its block is in flight, and a drive
+told to finish after another waits for that one's end. Every check is a function returning
+problems, and each is also run against an in-memory mutant of what it guards and must go red.
+
+The agent "reaching the token and the account email" is played by two in-memory fake strings
+(FAKE_TOKEN, FAKE_EMAIL); no real token exists here and no token or login file is read.
 """
 
 from __future__ import annotations
 
 import ast
 import collections
+import concurrent.futures
 import copy
+import io
 import itertools
+import json
 import os
 import sys
 import threading
-import time
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
 
 sys.dont_write_bytecode = True
@@ -31,80 +41,171 @@ import batch  # noqa: E402
 import routing  # noqa: E402
 from graders import labels4  # noqa: E402
 
-PIN = {"model": "pinned-model", "permission_mode": "bypassPermissions", "version": "1.0.0"}
+# Test-only pin profiles and operator reason, injected in memory (CP5 and round 3 supply the real).
+PROFILES = {"test-model-a": {"permission_mode": "bypassPermissions", "version": "0.0.1-test"},
+            "test-model-b": {"permission_mode": "plan-test", "version": "0.0.2-test"}}
+PIN = dict(PROFILES["test-model-a"], model="test-model-a")
+OTHER_PIN = dict(PROFILES["test-model-b"], model="test-model-b")
+TEST_REASON = "test-only-operator-reason"
 TEST_PAUSE_CAP = 2  # test-only: round 3's pause_cap is pending in routing.json
+FAKE_TOKEN = "FAKE-TOKEN-in-memory-0000"            # never a real token
+FAKE_EMAIL = "fake.account@example.invalid"         # never a real address
+MASK_MARK = "[masked]"
+WAIT_S = 10.0   # a hang detector for the barrier and ordering events, never a timing assumption
 
 
 def test_table() -> dict:
     t = copy.deepcopy(routing.load_table())
     t["caps"][labels4.PAUSE]["reruns_per_half_cell"] = TEST_PAUSE_CAP
+    t["operator_reasons"] = [TEST_REASON]
+    t["operator_reasons_status"] = "TEST-ONLY: one injected reason id"
+    t["pin_profiles"] = copy.deepcopy(PROFILES)
+    t["pin_profiles_status"] = "TEST-ONLY: two injected profiles"
     return t
 
 
 # ------------------------------------------------------------------------------- fake scenarios
+SIDECAR = {"start_record": True, "stop_record": True, "exit_code": 0, "queue_overflow": False}
+OOM = {"oom_kill_delta": 1, "pids_max_delta": 0}
+E429 = {"status": 429, "type": "rate_limit_error"}
+E500 = {"status": 500, "type": "api_error"}
+REACH_TEXT = f"I found {FAKE_TOKEN} in the box\nand wrote to {FAKE_EMAIL}\nthen carried on"
+
+
 def _turn(**kw):
-    base = dict(exit_code=0, text="(scripted)", stream_path=None, end_reason=aa.END_TURN, init=dict(PIN))
+    base = dict(exit_code=0, text="(scripted)", stream_path=None, end_reason=labels4.END_TURN, init=dict(PIN),
+                agent_output=True)
     base.update(kw)
     return aa.TurnResult(**base)
 
 
 def _box(**kw):
-    b = {"preflight_ok": True, "container_started": True,
-         "sidecar": {"start_record": True, "stop_record": True, "exit_code": 0, "queue_overflow": False}}
+    """Every box record, explicitly: harness_records defaults none of them."""
+    b = {"preflight_ok": True, "container_started": True, "container_exited": False, "sidecar": dict(SIDECAR),
+         "unexplained_operator_diffs": 0, "checker_reasons": [], "quiescence_kill": False,
+         "outside_reach_events": 0, "finalize_abort": False, "committed": False}
     b.update(kw)
     return b
 
 
 SCENARIOS = {
     "clean": ([_turn(), _turn()], _box()),
+    "timed-out": ([_turn(), _turn(exit_code=137, end_reason=labels4.TIMED_OUT)], _box()),
     "preflight-fail": ([], _box(preflight_ok=False)),
-    "rate-limit": ([_turn(), _turn(exit_code=1, end_reason=aa.END_ERROR,
-                                   api_error={"status": 429, "type": "rate_limit_error"})], _box()),
-    "watcher-overflow": ([_turn()], _box(sidecar={"start_record": True, "stop_record": True,
-                                                  "exit_code": 0, "queue_overflow": True})),
-    "oom": ([_turn(exit_code=137, end_reason=aa.END_ERROR, counters={"oom_kill_delta": 1, "pids_max_delta": 0})], _box()),
+    "rate-limit": ([_turn(), _turn(exit_code=1, end_reason=labels4.END_ERROR, api_error=E429)], _box()),
+    "watcher-overflow": ([_turn()], _box(sidecar=dict(SIDECAR, queue_overflow=True))),
+    "oom": ([_turn(exit_code=137, end_reason=labels4.END_ERROR, counters=OOM)], _box()),
     "unlisted-reason": ([_turn()], _box(checker_reasons=["not-in-routing-json"])),
     "driver-raises": None,
 }
 
+# glitch-f3's priority test: on every terminal state, the agent reached the (fake) token and the
+# (fake) account email.
+REACH = {
+    "end_turn": ([_turn(), _turn(text=REACH_TEXT)], _box(outside_reach_events=1)),
+    "timed-out": ([_turn(), _turn(text=REACH_TEXT, exit_code=137, end_reason=labels4.TIMED_OUT)],
+                  _box(outside_reach_events=1)),
+    "container exit": ([_turn(), _turn(text=REACH_TEXT, exit_code=137, end_reason=labels4.END_ERROR)],
+                       _box(container_exited=True, outside_reach_events=1)),
+    "oom kill": ([_turn(), _turn(text=REACH_TEXT, exit_code=137, end_reason=labels4.END_ERROR, counters=OOM)],
+                 _box(outside_reach_events=2)),
+    "rate limit": ([_turn(), _turn(text=REACH_TEXT, exit_code=1, end_reason=labels4.END_ERROR, api_error=E429)],
+                   _box(outside_reach_events=1)),
+    "api 500": ([_turn(), _turn(text=REACH_TEXT, exit_code=1, end_reason=labels4.END_ERROR, api_error=E500)],
+                _box(outside_reach_events=1)),
+    "ended in error, nothing else": ([_turn(), _turn(text=REACH_TEXT, exit_code=0, end_reason=labels4.END_ERROR)],
+                                     _box(outside_reach_events=1)),
+}
+ALL = dict(SCENARIOS, **{"reach " + k: v for k, v in REACH.items()})
+# A take that consistently ran another registered model (its init events agree with that pin).
+ALL["other-model"] = ([_turn(init=dict(OTHER_PIN)), _turn(init=dict(OTHER_PIN))], _box())
+
 
 def scenario_state(name: str, table: dict) -> str:
     """The terminal state a scenario reaches, computed (never typed)."""
-    if SCENARIOS[name] is None:
+    if ALL[name] is None:
         return labels4.FAILED
-    turns, box = SCENARIOS[name]
+    turns, box = ALL[name]
     try:
         return routing.route(aa.harness_records(turns, pin=PIN, box=box), table)["route"]
     except routing.RoutingRefused:
         return labels4.BLOCKED
 
 
+def fake_mask(text: str) -> str:
+    """The fake committer's masker: the fake secrets replaced, every other byte kept."""
+    for secret in (FAKE_TOKEN, FAKE_EMAIL):
+        text = text.replace(secret, MASK_MARK)
+    return text
+
+
 # ----------------------------------------------------------------------------------- fake world
 class World:
+    """The shared log, the takes' texts (as the take folder would hold them), and which block of
+    registrations is being driven (so a drive knows how many drives share its block)."""
+
     def __init__(self):
-        self.events = []
+        self.events, self.texts = [], {}
         self.lock = threading.Lock()
+        self.block = 0
+        self.launches = collections.Counter()
+        self._registering = False
 
     def log(self, *e):
         with self.lock:
-            self.events.append((time.monotonic(),) + e)
+            if e[0] == "register":
+                if not self._registering:
+                    self.block += 1
+                self._registering = True
+            else:
+                self._registering = False
+            if e[0] == "launch":
+                self.launches[self.block] += 1
+            self.events.append((len(self.events),) + e)
+
+
+class LaunchError(RuntimeError):
+    def __init__(self, msg, container_id=None):
+        super().__init__(msg)
+        self.container_id = container_id
 
 
 class FakeDriver:
-    """launch / drive / remove, on ScriptedAdapter. `plan` maps (slot, attempt) to a scenario."""
+    """launch / drive / remove, on ScriptedAdapter. `plan` maps (slot, attempt) to a scenario;
+    `finish_after` maps a slot to the slot whose first drive must end before its own does;
+    `pins` maps a slot to the pin this driver claims for it (default: the row's profile);
+    `remove_fails` names slots whose container removal raises; `launch_fails` maps a slot to
+    "half" (raises after creating a container it names) or "none" (raises, nothing created)."""
 
-    def __init__(self, world, plan=None, delays=None):
-        self.world, self.plan, self.delays = world, plan or {}, delays or {}
-        self.launched, self.removed = [], []
+    def __init__(self, world, plan=None, finish_after=None, pins=None, remove_fails=(), launch_fails=None,
+                 no_ids=False, records_edit=None, wait_s=WAIT_S):
+        self.world, self.plan, self.finish_after = world, plan or {}, finish_after or {}
+        self.pins, self.remove_fails, self.launch_fails = pins or {}, set(remove_fails), launch_fails or {}
+        self.no_ids, self.records_edit, self.wait_s = no_ids, records_edit or {}, wait_s
+        self.launched, self.removed, self.remove_calls = [], [], []
+        self.slot_of = {}
         self.pattern_removals = 0
         self.in_flight = self.max_in_flight = 0
         self._lock = threading.Lock()
         self._attempts = collections.Counter()
         self._ids = itertools.count(1)
+        self._barriers = {}
+        self._done = collections.defaultdict(threading.Event)
 
     def launch(self, row):
+        how = self.launch_fails.get(row["slot"])
+        if self.no_ids and how is None:
+            self.world.log("launch", row["slot"], None)
+            return None
         cid = f"ctr-{next(self._ids):04d}-{os.urandom(3).hex()}"
+        if how == "none":
+            self.world.log("launch-failed", row["slot"], None)
+            raise LaunchError("runtime refused the container")
         self.launched.append(cid)
+        self.slot_of[cid] = row["slot"]
+        if how == "half":
+            self.world.log("launch-failed", row["slot"], cid)
+            raise LaunchError("runtime failed after creating the container", container_id=cid)
         self.world.log("launch", row["slot"], cid)
         return cid
 
@@ -114,26 +215,40 @@ class FakeDriver:
             attempt = self._attempts[row["slot"]]
             self.in_flight += 1
             self.max_in_flight = max(self.max_in_flight, self.in_flight)
+            barrier = self._barriers.setdefault(self.world.block, threading.Barrier(self.world.launches[self.world.block]))
         self.world.log("drive-start", row["slot"], attempt)
         try:
-            time.sleep(self.delays.get(row["slot"], 0.05))
+            barrier.wait(self.wait_s)        # every drive of the block is in flight at once
+            after = self.finish_after.get(row["slot"]) if attempt == 1 else None
+            if after is not None and not self._done[after].wait(self.wait_s):
+                raise RuntimeError(f"slot {after} never finished")
             name = self.plan.get((row["slot"], attempt), "clean")
-            if SCENARIOS[name] is None:
+            if ALL[name] is None:
                 raise RuntimeError("scripted driver failure")
-            turns, box = SCENARIOS[name]
+            turns, box = ALL[name]
             adapter = aa.ScriptedAdapter(turns, container_id=cid)
             adapter.start_take(row)
             results = [adapter.turn(f"line {i}", first=(i == 0), budget_s=1) for i in range(len(turns))]
             adapter.end_take()
-            return aa.harness_records(results, pin=PIN, box=box)
+            self.world.texts[(row["slot"], attempt)] = "\n".join(r.text for r in results)
+            pin = self.pins.get(row["slot"], dict(PROFILES[row["model"]], model=row["model"]))
+            records = aa.harness_records(results, pin=pin, box=box)
+            edit = self.records_edit.get(row["slot"])
+            if edit:
+                edit(records)
+            return records
         finally:
             with self._lock:
                 self.in_flight -= 1
             self.world.log("drive-end", row["slot"], attempt)
+            self._done[row["slot"]].set()
 
     def remove(self, cid):
+        self.remove_calls.append(cid)
         if cid not in self.launched:
             raise AssertionError(f"remove of an id never launched: {cid}")
+        if self.slot_of[cid] in self.remove_fails:
+            raise RuntimeError(f"container runtime could not remove {cid}")
         self.removed.append(cid)
         self.world.log("remove", cid)
 
@@ -142,10 +257,16 @@ class FakeDriver:
 
 
 class FakeRepo:
+    """register / commit_records, one commit each. Keeps the exact object each commit was handed
+    (and a deep copy taken at that moment), and the fake committed record: the outcome's keys
+    plus the take's text, masked when the outcome says mask."""
+
     def __init__(self, world):
         self.world = world
         self._busy = threading.Lock()
         self.overlaps = 0
+        self.passed = []        # (slot, attempt, the exact object, a deep copy at commit time)
+        self.committed = {}     # (slot, attempt) -> the fake committed record
 
     def _one_commit(self, *e):
         if not self._busy.acquire(blocking=False):
@@ -153,7 +274,6 @@ class FakeRepo:
             self._busy.acquire()
         try:
             self.world.log(*e)
-            time.sleep(0.001)
         finally:
             self._busy.release()
 
@@ -161,7 +281,18 @@ class FakeRepo:
         self._one_commit("register", row["slot"], attempt)
 
     def commit_records(self, row, attempt, outcome):
+        self.passed.append((row["slot"], attempt, outcome, copy.deepcopy(outcome)))
+        text = self.world.texts.get((row["slot"], attempt), "")
+        record = {k: copy.deepcopy(outcome[k]) for k in batch.OUTCOME_KEYS}   # a missing key fails the commit
+        record["text"] = fake_mask(text) if outcome["mask"] is True else text
+        self.committed[(row["slot"], attempt)] = record
         self._one_commit("commit", row["slot"], attempt, outcome["state"])
+
+    def snapshot(self, slot, attempt=1):
+        return next(snap for s, a, _, snap in self.passed if (s, a) == (slot, attempt))
+
+    def handed(self, slot, attempt=1):
+        return next(obj for s, a, obj, _ in self.passed if (s, a) == (slot, attempt))
 
 
 class FakeWindow:
@@ -173,14 +304,14 @@ class FakeWindow:
         self.world.log("reset")
 
 
-def rows(n, half_cell="hc-a"):
-    return [{"slot": i, "half_cell": half_cell, "row_id": i} for i in range(1, n + 1)]
+def rows(n, half_cell="hc-a", model=PIN["model"]):
+    return [{"slot": i, "half_cell": half_cell, "row_id": i, "model": model} for i in range(1, n + 1)]
 
 
-def run(n, plan=None, delays=None, serial=False, cls=batch.Batch, table=None, row_list=None):
+def run(n, plan=None, serial=False, cls=batch.Batch, table=None, row_list=None, batch_kw=None, **driver_kw):
     w = World()
-    d, r, win = FakeDriver(w, plan, delays), FakeRepo(w), FakeWindow(w)
-    b = cls(d, r, win, table=table or test_table(), serial=serial)
+    d, r, win = FakeDriver(w, plan, **driver_kw), FakeRepo(w), FakeWindow(w)
+    b = cls(d, r, win, table=table or test_table(), serial=serial, **(batch_kw or {}))
     out = b.run(row_list or rows(n))
     return b, out, w, d, r, win
 
@@ -208,7 +339,7 @@ def commit_order_problems(events) -> list[str]:
         while i < len(seq) and seq[i][0] != "register":
             block_events.append(seq[i])
             i += 1
-        if block_events and block_events[0][0] != "launch":
+        if block_events and block_events[0][0] not in ("launch", "launch-failed"):
             p.append(f"block {regs}: first event after registering is {block_events[0][0]}")
         commits = [(e[1], e[2]) for e in block_events if e[0] == "commit"]
         if commits != regs:
@@ -222,8 +353,11 @@ def commit_order_problems(events) -> list[str]:
 
 def container_problems(b, d) -> list[str]:
     p = []
-    if collections.Counter(d.removed) != collections.Counter(d.launched):
-        p.append(f"launched {sorted(d.launched)} but removed {sorted(d.removed)}")
+    leaked = {o["leaked_container"] for o in b.outcomes if o.get("leaked_container")}
+    if collections.Counter(d.removed) != collections.Counter(c for c in d.launched if c not in leaked):
+        p.append(f"launched {sorted(d.launched)} but removed {sorted(d.removed)} (leaked, recorded: {sorted(leaked)})")
+    if None in d.remove_calls:
+        p.append("remove(None) was called")
     if d.pattern_removals:
         p.append("a container was removed by name pattern")
     if sorted(b.containers.values()) != sorted(d.launched):
@@ -248,6 +382,52 @@ def pause_problems(events) -> list[str]:
     return p
 
 
+def sibling_problems(out, w, r, b, want_stop) -> list[str]:
+    """Slot 2 of a block of three failed or was blocked: every take of the block still committed,
+    in row order, the siblings graded, and the loop stopped as `want_stop`."""
+    p = []
+    commits = [(e[2], e[3]) for e in kinds(w.events, "commit")]
+    if commits != [(1, 1), (2, 1), (3, 1)]:
+        p.append(f"commits {commits}, want slots 1, 2, 3 once each, in row order")
+    states = {o["slot"]: o["state"] for o in out}
+    if (states.get(1), states.get(3)) != (labels4.GRADED, labels4.GRADED):
+        p.append(f"siblings {states}")
+    if states.get(2) != want_stop:
+        p.append(f"slot 2 is {states.get(2)}, want {want_stop}")
+    if not b.stopped or b.stopped["state"] != want_stop:
+        p.append(f"stopped {b.stopped}, want {want_stop}")
+    return p
+
+
+def reach_problems(case: str, cls=batch.Batch, **driver_kw) -> list[str]:
+    """W1B-1 and glitch-f3's priority test: slot 2 of a block of three reached the fake token and
+    email. The exact object batch hands to commit, and the route if one won, carry mask=True and
+    the outside-reach event; the committed text is the masked form, nothing deleted; the
+    siblings, which reached nothing, are neither masked nor counted."""
+    p = []
+    b, out, w, d, r, _ = run(3, plan={(2, 1): "reach " + case}, cls=cls, **driver_kw)
+    snap, handed = r.snapshot(2), r.handed(2)
+    if not any(o is handed for o in b.outcomes):
+        p.append("the object handed to commit is not the take's outcome")
+    if snap["mask"] is not True:
+        p.append(f"{case}: handed to commit with mask={snap['mask']} ({snap['state']})")
+    if not snap["events"] or "outside-reach" not in snap["events"]:
+        p.append(f"{case}: handed to commit with events={snap['events']} ({snap['state']})")
+    if snap["decision"] is not None and (snap["decision"]["mask"] is not True
+                                        or "outside-reach" not in snap["decision"]["events"]):
+        p.append(f"{case}: route {snap['decision']['route']} lost the mask or the event")
+    committed, original = r.committed[(2, 1)]["text"], w.texts[(2, 1)]
+    if FAKE_TOKEN in committed or FAKE_EMAIL in committed or MASK_MARK not in committed:
+        p.append(f"{case}: committed text not masked: {committed!r}")
+    if committed.count("\n") != original.count("\n") or "then carried on" not in committed:
+        p.append(f"{case}: committed text lost lines (masked must never delete)")
+    for s in (1, 3):
+        sib = r.snapshot(s)
+        if sib["mask"] is not False or sib["events"] != [] or r.committed[(s, 1)]["text"] != "(scripted)\n(scripted)":
+            p.append(f"{case}: sibling slot {s} masked or counted ({sib['mask']}, {sib['events']})")
+    return p
+
+
 # ----------------------------------------------------------------------------------------- tests
 class TestTerminalStates(unittest.TestCase):
     def test_scenarios_cover_every_terminal_state(self):
@@ -263,10 +443,11 @@ class TestTerminalStates(unittest.TestCase):
         for name in SCENARIOS:
             want = scenario_state(name, test_table())
             with self.subTest(state=want, scenario=name):
-                b, out, w, d, r, _ = run(3, plan={(2, 1): name}, delays={1: 0.15, 2: 0.10, 3: 0.05})
+                b, out, w, d, r, _ = run(3, plan={(2, 1): name}, finish_after={1: 2, 2: 3})
                 first = [o for o in out if o["attempt"] == 1]
                 self.assertEqual([o["state"] for o in first if o["slot"] == 2], [want])
                 self.assertEqual(d.max_in_flight, 3)
+                self.assertEqual([e[2] for e in kinds(w.events, "drive-end")][:3], [3, 2, 1])
                 self.assertEqual(commit_order_problems(w.events), [])
                 self.assertEqual(container_problems(b, d), [])
                 self.assertEqual(r.overlaps, 0)
@@ -280,28 +461,371 @@ class TestTerminalStates(unittest.TestCase):
                 else:
                     self.assertEqual(len(out), 3)
 
+    def test_timed_out_turn_lands_on_the_timed_out_row(self):
+        """W1B-7: the adapter's timed-out end is labels4's, so it reaches routing's timed-out row."""
+        b, out, *_ = run(3, plan={(2, 1): "timed-out"})
+        got = next(o for o in out if o["slot"] == 2)
+        self.assertEqual((got["state"], got["decision"]["rows"]), (labels4.GRADED, ["timed-out"]))
+
+    def test_timed_out_check_can_fail(self):
+        with mock.patch.object(aa, "END_REASONS", (labels4.END_TURN, "timeout", labels4.END_ERROR)):
+            with self.assertRaises(ValueError):      # a retyped end the adapter no longer accepts
+                _turn(exit_code=137, end_reason=labels4.TIMED_OUT)
+        rec = aa.harness_records(*SCENARIOS["timed-out"][:1], pin=PIN, box=_box())
+        rec["ledger"]["turn_ends"][-1] = rec["ledger"]["end"] = "timeout"   # a retyped end reaching routing
+        with self.assertRaises(routing.RoutingRefused):
+            routing.route(rec, test_table())
+
     def test_unhandled_state_refuses_to_start(self):
         with mock.patch.object(labels4, "TERMINAL_STATES", labels4.TERMINAL_STATES + ("new-state",)):
             with self.assertRaises(batch.BatchConfigError):
                 run(1)
 
-    def test_pending_pause_cap_refuses_to_start(self):
-        with self.assertRaisesRegex(batch.BatchConfigError, "pause"):
-            batch.Batch(None, None, None)   # the real routing.json: pause cap pending
+
+def gate_problems() -> list[str]:
+    """W1B-9/W1B-10: each table missing what only the owner or CP5 can supply must be refused,
+    and the complete one accepted."""
+    p = []
+    bad = {
+        "pause cap pending": lambda t: t["caps"][labels4.PAUSE].update(reruns_per_half_cell=None),
+        "operator_reasons empty": lambda t: t.update(operator_reasons=[]),
+        "operator_reasons_status PENDING": lambda t: t.update(operator_reasons_status="PENDING: not read"),
+        "pin_profiles empty": lambda t: t.update(pin_profiles={}),
+        "pin_profiles_status PENDING": lambda t: t.update(pin_profiles_status="PENDING (CP5)"),
+    }
+    for name, edit in bad.items():
+        t = test_table()
+        edit(t)
+        try:
+            batch.Batch(None, None, None, table=t)
+            p.append(f"{name}: the loop would start")
+        except batch.BatchConfigError:
+            pass
+    try:
+        batch.Batch(None, None, None, table=test_table())
+    except batch.BatchConfigError as e:
+        p.append(f"a complete table was refused: {e}")
+    return p
+
+
+class TestStartGate(unittest.TestCase):
+    def test_real_table_refuses_to_start(self):
+        with self.assertRaises(batch.BatchConfigError) as cm:
+            batch.Batch(None, None, None)   # the real routing.json: PENDING data
+        for what in ("pause", "operator_reasons", "pin_profiles"):
+            self.assertIn(what, str(cm.exception))
+
+    def test_gate_refuses_pending_data(self):
+        self.assertEqual(gate_problems(), [])
+
+    def test_gate_check_can_fail(self):
+        def caps_only(table):   # the pre-fold gate: the caps alone
+            return [f"cap {r}" for r in batch.pending_caps(table)]
+        with mock.patch.object(batch, "start_problems", caps_only):
+            self.assertEqual(len(gate_problems()), 4)
+
+    def test_check_cli_exits_1_while_pending(self):
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            self.assertEqual(batch.main(["--check"]), 1)
+        for what in ("pause", "operator_reasons", "operator_reasons_status", "pin_profiles", "pin_profiles_status"):
+            self.assertIn(what, buf.getvalue())
+        ready = test_table()
+        with mock.patch.object(routing, "load_table", lambda *a: copy.deepcopy(ready)), \
+                redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(batch.main(["--check"]), 0)
+        self.assertIn("ready", out.getvalue())
+
+    def test_a_row_without_a_profile_refuses_to_start(self):
+        with self.assertRaisesRegex(batch.BatchConfigError, "no pre-registered pin profile"):
+            run(1, row_list=rows(2, model="unregistered-model"))
+        with self.assertRaisesRegex(batch.BatchConfigError, "must name slot, half_cell and model"):
+            run(1, row_list=[{"slot": 1, "half_cell": "hc-a"}])
+
+
+class TrustingBatch(batch.Batch):
+    """Mutant: trusts the driver's pin model instead of the registered row's."""
+
+    def _route(self, row, attempt, cid, records):
+        return super()._route(dict(row, model=records["pin"]["model"]), attempt, cid, records)
+
+
+class TestPins(unittest.TestCase):
+    """W1B-10: the pin a take is checked against comes from the registered row and the
+    pre-registered profiles, never from the driver."""
+
+    def test_driver_pin_differing_from_the_profile_is_blocked(self):
+        b, out, w, d, r, _ = run(3, pins={2: dict(PIN, version="driver-says")})
+        self.assertEqual(sibling_problems(out, w, r, b, labels4.BLOCKED), [])
+        self.assertIn("pin", next(o for o in out if o["slot"] == 2)["reason"])
+
+    def test_driver_pin_of_another_registered_model_is_blocked(self):
+        # routing alone accepts this pin: it is test-model-b's own pre-registered profile ...
+        turns, box = ALL["other-model"]
+        self.assertEqual(routing.route(aa.harness_records(turns, pin=OTHER_PIN, box=box), test_table())["route"],
+                         labels4.GRADED)
+        # ... but the row registered test-model-a, so the take is blocked.
+        b, out, w, d, r, _ = run(3, plan={(2, 1): "other-model"}, pins={2: dict(OTHER_PIN)})
+        self.assertEqual(sibling_problems(out, w, r, b, labels4.BLOCKED), [])
+
+    def test_pin_check_can_fail(self):
+        b, out, w, d, r, _ = run(3, plan={(2, 1): "other-model"}, pins={2: dict(OTHER_PIN)}, cls=TrustingBatch)
+        self.assertNotEqual(sibling_problems(out, w, r, b, labels4.BLOCKED), [])
+
+
+class NoCatchRemove(batch.Batch):
+    """Mutant: the pre-fold removal, which let remove() raise."""
+
+    def _remove(self, cid):
+        if cid is not None:
+            self.driver.remove(cid)
+
+
+class RefusalOnlyRoute(batch.Batch):
+    """Mutant: the pre-fold routing step, which caught RoutingRefused only."""
+
+    def _route(self, row, attempt, cid, records):
+        try:
+            decision = self.route_fn(records, self.table)
+        except routing.RoutingRefused as e:
+            return self._outcome(row, attempt, cid, state=labels4.BLOCKED, reason=str(e), records=records)
+        return self._outcome(row, attempt, cid, state=decision["route"], decision=decision, records=records)
+
+
+class SinkingResult(batch.Batch):
+    """Mutant: a drive step that raises sinks the block."""
+
+    def _result(self, future, row, attempt, cid):
+        return future.result()
+
+
+class RaisingStep(batch.Batch):
+    """A drive step with a defect: it raises for slot 2 after that drive ran with its block."""
+
+    def _drive_step(self, row, attempt, cid, err):
+        out = super()._drive_step(row, attempt, cid, err)
+        if row["slot"] == 2:
+            raise RuntimeError("drive step defect")
+        return out
+
+
+class SinkingStep(RaisingStep, SinkingResult):
+    pass
+
+
+def _route_raises_on_slot_2(records, table):
+    if records["exit"]["exec_codes"] == [0, 0, 0]:
+        raise TypeError("'>' not supported between instances of 'str' and 'int'")
+    return routing.route(records, table)
+
+
+def _three_turns(records):
+    records["ledger"].update(turns=3, turn_ends=[labels4.END_TURN] * 3, turn_outputs=[True] * 3)
+    records["exit"]["exec_codes"] = [0, 0, 0]
+    records["init"] = records["init"] + [records["init"][-1]]
+
+
+def _string_counter(records):
+    records["cgroup"]["oom_kill_delta"] = "1"
+
+
+def remove_problems(cls=batch.Batch) -> list[str]:
+    """remove() raising for slot 2's container: the take is `failed` with its recorded id named
+    as leaked and its routing kept for the human; the siblings commit; the loop stops."""
+    b, out, w, d, r, _ = run(3, remove_fails={2}, cls=cls)
+    p = sibling_problems(out, w, r, b, labels4.FAILED) + container_problems(b, d)
+    two = r.snapshot(2)
+    if two["leaked_container"] != b.containers.get((2, 1)) or "leaked" not in (two["reason"] or ""):
+        p.append(f"the leak is not recorded with its id: {two['leaked_container']}, {two['reason']}")
+    if not two["decision"] or two["decision"]["route"] != labels4.GRADED or two["events"] != []:
+        p.append("the take's routing and annotations were lost with the container")
+    return p
+
+
+def route_raise_problems(cls=batch.Batch) -> list[str]:
+    """route() raising a non-refusal for slot 2: `failed`, with the records and annotations kept;
+    the siblings commit; the loop stops."""
+    b, out, w, d, r, _ = run(3, records_edit={2: _three_turns}, batch_kw={"route_fn": _route_raises_on_slot_2},
+                             cls=cls)
+    p = sibling_problems(out, w, r, b, labels4.FAILED)
+    two = r.snapshot(2)
+    if "routing raised: TypeError" not in (two["reason"] or ""):
+        p.append(f"reason {two['reason']!r}")
+    if two["records"] is None or two["events"] != [] or two["mask_basis"] != "annotations":
+        p.append("the take's records and annotations were lost with the routing error")
+    return p
+
+
+class TestFailures(unittest.TestCase):
+    """W1B-3: one take's failure never loses its siblings: every take of the block is committed,
+    in row order, then the loop stops."""
+
+    def test_remove_raising_for_one_container(self):
+        self.assertEqual(remove_problems(), [])
+
+    def test_remove_check_can_fail(self):
+        self.assertNotEqual(remove_problems(NoCatchRemove), [])
+
+    def test_route_raising_a_non_refusal_is_failed(self):
+        self.assertEqual(route_raise_problems(), [])
+
+    def test_route_raising_check_can_fail(self):
+        self.assertNotEqual(route_raise_problems(RefusalOnlyRoute), [])
+
+    def test_malformed_record_is_blocked_and_masked_fail_closed(self):
+        """With W1B-2, a string counter is a refusal (blocked), and no count can be trusted."""
+        b, out, w, d, r, _ = run(3, records_edit={2: _string_counter})
+        self.assertEqual(sibling_problems(out, w, r, b, labels4.BLOCKED), [])
+        two = r.snapshot(2)
+        self.assertEqual((two["mask"], two["events"]), (True, None))
+        self.assertIn("fail-closed", two["mask_basis"])
+
+    def test_drive_step_raising_never_sinks_the_block(self):
+        b, out, w, d, r, _ = run(3, cls=RaisingStep)
+        self.assertEqual(sibling_problems(out, w, r, b, labels4.FAILED), [])
+        self.assertIn("drive step raised", r.snapshot(2)["reason"])
+        self.assertEqual(r.snapshot(2)["mask"], True)   # no records reached the loop: masked fail-closed
+
+    def test_drive_step_check_can_fail(self):
+        with self.assertRaises(RuntimeError):
+            run(3, cls=SinkingStep)
+
+    def test_commit_failure_stops_after_the_block(self):
+        class FailingRepo(FakeRepo):
+            def commit_records(self, row, attempt, outcome):
+                if row["slot"] == 2:
+                    raise RuntimeError("disk full")
+                super().commit_records(row, attempt, outcome)
+        w = World()
+        d, rp, win = FakeDriver(w), FailingRepo(w), FakeWindow(w)
+        b = batch.Batch(d, rp, win, table=test_table())
+        out = b.run(rows(5))
+        self.assertEqual([(o["slot"], o["state"]) for o in out],
+                         [(1, labels4.GRADED), (2, labels4.FAILED), (3, labels4.GRADED)])
+        self.assertEqual(b.stopped["state"], labels4.FAILED)
+
+
+class GradedOnlyMask(batch.Batch):
+    """Mutant: the pre-fold behaviour, where the mask and events came only with a graded route."""
+
+    def _drive_step(self, row, attempt, cid, err):
+        out = super()._drive_step(row, attempt, cid, err)
+        if out["state"] != labels4.GRADED:
+            out.update(mask=False, events=[])
+        return out
+
+
+class TestMask(unittest.TestCase):
+    """W1B-1 and glitch-f3's priority test."""
+
+    def test_reach_masked_on_every_terminal_state(self):
+        reached = set()
+        for case in REACH:
+            reached.add(scenario_state("reach " + case, test_table()))
+            with self.subTest(case=case, state=scenario_state("reach " + case, test_table())):
+                self.assertEqual(reach_problems(case), [])
+        self.assertLessEqual({labels4.GRADED, labels4.PAUSE, labels4.HARNESS_ERROR, labels4.ABORTED,
+                              labels4.BLOCKED}, reached)
+
+    def test_reach_masked_when_the_container_leaks(self):
+        self.assertEqual(reach_problems("end_turn", remove_fails={2}), [])
+
+    def test_no_records_masks_fail_closed(self):
+        b, out, w, d, r, _ = run(3, plan={(2, 1): "driver-raises"})
+        two = r.snapshot(2)
+        self.assertEqual((two["state"], two["mask"], two["events"]), (labels4.FAILED, True, None))
+        self.assertIn("fail-closed", two["mask_basis"])
+
+    def test_reach_check_can_fail(self):
+        self.assertNotEqual(reach_problems("rate limit", cls=GradedOnlyMask), [])
+        self.assertNotEqual(reach_problems("oom kill", cls=GradedOnlyMask), [])
+        real = routing.annotate
+
+        def graded_only(records, table=None):   # a routing-side mutant of the same defect
+            out = real(records, table)
+            return out if records["ledger"]["end"] in labels4.GRADED_ENDS else {"events": [], "mask": False}
+        with mock.patch.object(routing, "annotate", graded_only):
+            self.assertNotEqual(reach_problems("api 500"), [])
+            self.assertNotEqual(reach_problems("container exit"), [])
+
+
+class LateFate(batch.Batch):
+    """Mutant: the pre-fold order, where the commit was handed the outcome before its fate."""
+
+    def _decide(self, row, attempt, outcome):
+        fate = super()._decide(row, attempt, outcome)
+        return {"final": None, "rerun": fate["rerun"], "beyond_cap": None, "stop": None}
+
+
+def fate_problems(cls=batch.Batch) -> list[str]:
+    """W1B-8: each committed record already says what became of its slot."""
+    p = []
+    b, out, w, d, r, _ = run(1, plan={(1, 1): "watcher-overflow", (1, 2): "watcher-overflow"}, cls=cls)
+    got = [(r.snapshot(1, a)["final"], r.snapshot(1, a)["rerun"], r.snapshot(1, a)["beyond_cap"], r.snapshot(1, a)["stop"])
+           for a in (1, 2)]
+    if got != [(False, True, False, None), (True, False, True, None)]:
+        p.append(f"harness-error re-run then beyond its cap committed as {got}")
+    b, out, w, d, r, _ = run(2, plan={(1, a): "preflight-fail" for a in range(1, 10)}, serial=True, cls=cls)
+    last = r.snapshot(1, 4)
+    if (last["final"], last["beyond_cap"], last["stop"]) != (False, True, "rehearsal cap reached"):
+        p.append(f"rehearsal beyond its cap committed as {last['final'], last['beyond_cap'], last['stop']}")
+    b, out, w, d, r, _ = run(1, plan={(1, a): "rate-limit" for a in range(1, 10)}, cls=cls)
+    last = r.snapshot(1, TEST_PAUSE_CAP + 1)
+    if (last["beyond_cap"], last["stop"]) != (True, "pause cap reached"):
+        p.append(f"pause beyond its cap committed as {last['beyond_cap'], last['stop']}")
+    b, out, w, d, r, _ = run(1, cls=cls)
+    if r.snapshot(1)["final"] is not True:
+        p.append("a graded take was not committed as final")
+    b, out, w, d, r, _ = run(1, plan={(1, 1): "unlisted-reason"}, cls=cls)
+    if not r.snapshot(1)["stop"] or "routing refused" not in r.snapshot(1)["stop"]:
+        p.append(f"a blocked take was committed without its stop reason: {r.snapshot(1)['stop']}")
+    return p
+
+
+class TestFate(unittest.TestCase):
+    def test_fate_committed_with_the_record(self):
+        self.assertEqual(fate_problems(), [])
+
+    def test_fate_check_can_fail(self):
+        self.assertNotEqual(fate_problems(LateFate), [])
+
+    def test_every_committed_outcome_has_every_key(self):
+        b, out, w, d, r, _ = run(3, plan={(2, 1): "driver-raises"})
+        for slot, attempt, _, snap in r.passed:
+            self.assertEqual(set(snap), set(batch.OUTCOME_KEYS), (slot, attempt))
+
+
+class Leaky(batch.Batch):
+    """Mutant: never removes a container."""
+
+    def _remove(self, cid):
+        return None
+
+
+class NoHalfCreated(batch.Batch):
+    """Mutant: the pre-fold launch, which dropped the id a failed launch named."""
+
+    def _launch(self, row, attempt):
+        try:
+            cid = self.driver.launch(row)
+        except Exception as e:  # noqa: BLE001
+            return None, e
+        self.containers[(row["slot"], attempt)] = cid
+        return cid, None
 
 
 class TestOrderAndContainers(unittest.TestCase):
     def test_commits_land_serially_in_row_order(self):
         # Later rows finish first; their records still commit after, in row order.
-        b, out, w, d, r, _ = run(7, delays={1: 0.2, 2: 0.1, 3: 0.02, 4: 0.15, 5: 0.01, 6: 0.05, 7: 0.01})
+        b, out, w, d, r, _ = run(7, finish_after={1: 2, 2: 3, 4: 5, 5: 6})
         self.assertEqual(commit_order_problems(w.events), [])
         self.assertEqual(r.overlaps, 0)
         self.assertEqual([o["slot"] for o in out], [1, 2, 3, 4, 5, 6, 7])
-        ends = [e[2] for e in kinds(w.events, "drive-end")][:3]
-        self.assertNotEqual(ends, [1, 2, 3])   # the drives really did finish out of row order
+        ends = [e[2] for e in kinds(w.events, "drive-end")]
+        self.assertEqual(ends[:6], [3, 2, 1, 6, 5, 4])   # the drives really did finish out of row order
 
     def test_commit_order_check_can_fail(self):
-        _, _, w, *_ = run(3, delays={1: 0.1, 2: 0.05, 3: 0.01})
+        _, _, w, *_ = run(3, finish_after={1: 2, 2: 3})
         commits = [i for i, e in enumerate(w.events) if e[1] == "commit"]
         mutated = list(w.events)
         mutated[commits[0]], mutated[commits[1]] = mutated[commits[1]], mutated[commits[0]]
@@ -316,18 +840,33 @@ class TestOrderAndContainers(unittest.TestCase):
         self.assertEqual(len(d.launched), 3)   # failed stops the loop after the first block
 
     def test_container_check_can_fail(self):
-        class Leaky(batch.Batch):
-            def _drive_step(self, row, attempt, cid, err):
-                d = self.driver
-                self.driver = mock.Mock(drive=d.drive, remove=lambda c: None)
-                try:
-                    return super()._drive_step(row, attempt, cid, err)
-                finally:
-                    self.driver = d
         b, out, w, d, *_ = run(3, cls=Leaky)
         self.assertNotEqual(container_problems(b, d), [])
-        d.removed = list(d.launched)
+        b, out, w, d, *_ = run(3)
         d.pattern_removals = 1
+        self.assertNotEqual(container_problems(b, d), [])
+        d.pattern_removals, d.remove_calls = 0, d.remove_calls + [None]
+        self.assertNotEqual(container_problems(b, d), [])
+
+    def test_no_container_id_is_never_removed(self):
+        """NIT: an adapter that runs no container returns no id; remove(None) is never called."""
+        b, out, w, d, r, _ = run(3, no_ids=True)
+        self.assertEqual(d.remove_calls, [])
+        self.assertEqual([(o["state"], o["container_id"]) for o in out], [(labels4.GRADED, None)] * 3)
+
+    def test_a_half_created_container_is_removed_by_its_id(self):
+        """NIT: a launch that raises after creating a container names it; the loop records and
+        removes it, and the take fails while its siblings commit."""
+        b, out, w, d, r, _ = run(3, launch_fails={2: "half"})
+        self.assertEqual(container_problems(b, d), [])
+        self.assertIn(b.containers[(2, 1)], d.removed)
+        self.assertEqual(sibling_problems(out, w, r, b, labels4.FAILED), [])
+        b, out, w, d, r, _ = run(3, launch_fails={2: "none"})
+        self.assertEqual(container_problems(b, d), [])
+        self.assertEqual(sibling_problems(out, w, r, b, labels4.FAILED), [])
+
+    def test_half_created_check_can_fail(self):
+        b, out, w, d, r, _ = run(3, launch_fails={2: "half"}, cls=NoHalfCreated)
         self.assertNotEqual(container_problems(b, d), [])
 
     def test_serial_fallback_drives_one_at_a_time(self):
@@ -337,15 +876,19 @@ class TestOrderAndContainers(unittest.TestCase):
         self.assertEqual(commit_order_problems(w.events), [])
 
     def test_concurrency_check_can_fail(self):
-        _, _, _, d, *_ = run(3, serial=True)
+        real = concurrent.futures.ThreadPoolExecutor
+        with mock.patch.object(batch.concurrent.futures, "ThreadPoolExecutor", lambda max_workers: real(max_workers=1)):
+            b, out, w, d, *_ = run(3, wait_s=0.3)
         self.assertNotEqual(d.max_in_flight, 3)
+        self.assertEqual({o["state"] for o in out}, {labels4.FAILED})   # the barrier caught the serial drives
 
 
 class TestPause(unittest.TestCase):
     def test_pause_launches_no_new_drive_until_reset(self):
-        b, out, w, d, r, win = run(6, plan={(2, 1): "rate-limit"}, delays={1: 0.1, 2: 0.01, 3: 0.1})
+        b, out, w, d, r, win = run(6, plan={(2, 1): "rate-limit"}, finish_after={1: 2, 3: 2})
         self.assertEqual(pause_problems(w.events), [])
         self.assertEqual(win.resets, 1)
+        self.assertEqual(kinds(w.events, "drive-end")[0][2], 2)   # the pause came first; 1 and 3 still running
         first_block = [o for o in out[:3]]
         self.assertEqual([o["state"] for o in first_block],
                          [labels4.GRADED, labels4.PAUSE, labels4.GRADED])   # running drives finished
@@ -358,9 +901,9 @@ class TestPause(unittest.TestCase):
     def test_pause_check_can_fail(self):
         class Impatient(batch.Batch):
             def _pause(self, row, attempt, outcome):
-                super()._pause(row, attempt, outcome)
+                fate = super()._pause(row, attempt, outcome)
                 self.paused = False   # forgets to wait for the window
-                return True
+                return fate
         b, out, w, d, r, win = run(6, plan={(2, 1): "rate-limit"}, cls=Impatient)
         self.assertEqual(win.resets, 0)
         self.assertNotEqual(pause_problems(w.events), [])
@@ -369,7 +912,7 @@ class TestPause(unittest.TestCase):
         plan = {(1, a): "rate-limit" for a in range(1, 10)}
         b, out, w, *_ = run(1, plan=plan)
         self.assertEqual(len(out), TEST_PAUSE_CAP + 1)
-        self.assertTrue(out[-1].get("beyond_cap"))
+        self.assertTrue(out[-1]["beyond_cap"])
         self.assertEqual(b.stopped["state"], labels4.PAUSE)
 
 
@@ -433,7 +976,7 @@ class TestBoundary(unittest.TestCase):
 
     def test_boundary_check_can_fail(self):
         for src in ("import drive", "from drive import run", "import claude_code_sdk",
-                    "from agent_adapter import ScriptedAdapter"):
+                    "from agent_adapter import ScriptedAdapter", "import os, drive"):
             self.assertNotEqual(import_problems(src), [], src)
 
     def test_handlers_keyed_by_labels4(self):
@@ -443,16 +986,13 @@ class TestBoundary(unittest.TestCase):
 
 class TestCli(unittest.TestCase):
     def test_states_and_check(self):
-        import io
-        import json
-        from contextlib import redirect_stdout, redirect_stderr
         buf = io.StringIO()
         with redirect_stdout(buf):
             self.assertEqual(batch.main(["--states"]), 0)
         got = json.loads(buf.getvalue())
         self.assertEqual(tuple(got["routes"]) + tuple(got["batch"]), labels4.TERMINAL_STATES)
         with redirect_stdout(io.StringIO()):
-            self.assertEqual(batch.main(["--check"]), 1)   # pause cap pending
+            self.assertEqual(batch.main(["--check"]), 1)   # pending data
         with mock.patch.object(batch, "under_nohup", lambda: False), redirect_stderr(io.StringIO()) as err:
             self.assertEqual(batch.main([]), 2)
         self.assertIn("nohup", err.getvalue())
