@@ -154,6 +154,12 @@ Outputs that differ between two runs of the same code on the same machine type, 
 - atacseq_bulk.01_nfcore-atacseq-wrapper, 6 members: nf-core/atacseq 2.1.2's HOMER peak annotation is not deterministic: for a peak equally near two genes it names one or the other between runs (for example YOL103W-A or YOL103W-B), because genome/genes.bed lists tied genes in a different order each run (evidence: S2b probe, 5 Oct 2026: plain nf-core/atacseq 2.1.2 (1a1dbe52) run twice on one fresh m5.xlarge pad (lifetime 4, i-0521feb575ad6ee3d), local executor in Docker, the recorded clamp; results tarball sha256 919a275be40cff204bd7376ed0c0b2d927efbb175abea1cc985980db9daf4bb0; every differing line is such a tie, and genome/genes.bed differs only in the order of rows with equal coordinates).
 - atacseq_bulk.01_nfcore-atacseq-wrapper, 2 members: the DESeq2 sample-distance tables hold the same distances with samples in completion order; no comparison mode is declared for them (decision 0283), so they count as differing (evidence: S2b probe, 5 Oct 2026: plain nf-core/atacseq 2.1.2 (1a1dbe52) run twice on one fresh m5.xlarge pad (lifetime 4, i-0521feb575ad6ee3d), local executor in Docker, the recorded clamp; results tarball sha256 919a275be40cff204bd7376ed0c0b2d927efbb175abea1cc985980db9daf4bb0; the same pairwise distances, rows and columns permuted).
 
+## Corrections
+
+Corrections to a cause stated above, from outputs/package-errata.json; none changes a mode, a member's count or the result line.
+
+- atacseq_bulk.01_nfcore-atacseq-wrapper, `run/results/bwa/merged_library/macs2/narrow_peak/qc/macs2_annotatePeaks.mLb.clN.plots.pdf`: this plots PDF is filed under the HOMER finding above, but this PDF also embeds a creation date, so its difference is not shown to be HOMER's alone; it stays counted as differing (F); the finding's cause is shown for the five annotatePeaks tables, and for this PDF it is neither shown nor ruled out (evidence: decision 0283's erratum of 6 October 2026, which states that this PDF embeds a creation date; the pipeline-wide pattern is the S2b probe's presence entry for this pipeline's PDFs, whose files differ in their creation time; whether this PDF also differs in its plotted content was not read).
+
 ## Result tables not shipped
 
 - none.
