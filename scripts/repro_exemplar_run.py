@@ -147,15 +147,17 @@ class Run(object):
                                 '--assays', ASSAY])
         self.call('00.link', [py, '_system/stage00_register.py', 'link', '--project', self.project_rel,
                               '--assay', ASSAY, '--source', Path(self.args.fixtures).resolve()])
+        self.call('00.finalize', [py, '_system/stage00_register.py', 'finalize', '--project', self.project_rel,
+                                  '--data-class', 'public', '--purpose', 'fixture', '--agreement-ref', 'none',
+                                  '--model', 'none'])
+        # finalize seeds samples.csv (the header and the sample ids, design columns empty) and keeps it
+        # thereafter; the design is written after it, as the take card's second window did.
         design = self.project / '00_data' / ASSAY / 'samples.csv'
         seeded = design.read_text(encoding='utf-8').splitlines() if design.is_file() else []
         if not seeded or seeded[0] != DESIGN.splitlines()[0] or sorted(l.split(',')[0] for l in seeded[1:]) != list(SAMPLES):
             raise Stop('step 00.design: the seeded samples.csv is not the header and the four samples the card names')
         design.write_text(DESIGN, encoding='utf-8')
         self.note('step 00.design: samples.csv written (the take card\'s four rows)')
-        self.call('00.finalize', [py, '_system/stage00_register.py', 'finalize', '--project', self.project_rel,
-                                  '--data-class', 'public', '--purpose', 'fixture', '--agreement-ref', 'none',
-                                  '--model', 'none'])
 
     def stage01(self):
         config = self.project / '_config' / (ASSAY + '.yaml')

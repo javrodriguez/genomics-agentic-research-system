@@ -34,7 +34,9 @@ if name == 'stage00_register.py' and args[0] == 'create':
         'unit_of_replication: <REQUIRED: declare at stage 01>\nreference_release: <REQUIRED: declare at stage 01>\n'
         'compute:\n  mem: 64G\n  derived_dir: %s\n' % os.environ['STUB_DERIVED'])
 if name == 'stage00_register.py' and args[0] == 'link':
-    (project / '00_data/atacseq_bulk').mkdir(parents=True)
+    (project / '00_data/atacseq_bulk/raw').mkdir(parents=True)
+# GARS seeds samples.csv at finalize, never at link (stage00_register.py:694-704 at 0f602ea0; S3, 6 Oct)
+if name == 'stage00_register.py' and args[0] == 'finalize':
     (project / '00_data/atacseq_bulk/samples.csv').write_text(
         'sample_id,condition,group,replicate\n' + ''.join(s + ',,,\n' for s in os.environ['STUB_SAMPLES'].split()))
 if name == 'configure.py':
@@ -273,7 +275,7 @@ class DriverTests(unittest.TestCase):
         proc = self.stub.run(STUB_SAMPLES='atac-a-r1 atac-a-r2 atac-b-r1 other')
         self.assertEqual(proc.returncode, 1)
         self.assertIn('the seeded samples.csv', proc.stdout.decode())
-        self.assertEqual(self.stub.steps()[-1], ('stage00_register.py', 'link'))
+        self.assertEqual(self.stub.steps()[-1], ('stage00_register.py', 'finalize'))
 
 
 if __name__ == '__main__':
