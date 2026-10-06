@@ -38,6 +38,8 @@ profiles (`TEST_PROFILES`), because round 3's reasons and CP5's pins are not yet
 
 from __future__ import annotations
 
+import __future__
+import ast
 import collections
 import copy
 import json
@@ -472,6 +474,22 @@ _end_error = (lambda code: (lambda r: set_end(r, labels4.END_ERROR, code)))
 E500 = {"status": 500, "type": "api_error"}
 E429 = {"status": 429, "type": "rate_limit_error"}
 
+# glitch-f3's ruling (in-plan, 6 Oct 2026; glitch-f3's, not the owner's): "Keep both: structured (status 429,
+# type rate_limit_error) OR round 3's four text markers ('rate limit', 'usage limit', 'weekly limit', '429'),
+# word-bounded and case-insensitive, matched on the harness-side error text only, never on the agent's own
+# output. Make the small schema change so the API-error record carries that text."
+API_ERROR_FIELDS_WANT = ("status", "type", "text")   # the ruling's record, typed once here
+
+
+def _err(text, status=None, type_=None) -> dict:
+    """An API-error record whose harness-side error text is `text`."""
+    return {"status": status, "type": type_, "text": text}
+
+
+USAGE_TEXT = "Claude usage limit reached; resets at 9pm"
+EUSAGE = _err(USAGE_TEXT)                                   # a subscription usage-limit refusal: text only
+E500_TEXT = _err("internal server error", 500, "api_error")  # an API error that carries no marker
+
 REFUSED = "refused"
 # route: the expected route, or REFUSED. rows: the winning row ids. matched: every matched row id,
 # where an overlap's lower rows matter. events, mask: the annotations; events=None means the
@@ -567,6 +585,29 @@ SCENARIOS = {
     "a None counter (W1B-2)": Sc(_sc(A, [_set("cgroup.oom_kill_delta", None)]), REFUSED, None, None, None),
     "a string counter (W1B-2)": Sc(_sc(A, [_set("cgroup.oom_kill_delta", "1")]), REFUSED, None, None, None),
     "more API errors than turns": Sc(_sc(B, [lambda r: r.__setitem__("api_errors", [dict(E500)])]), REFUSED, None, None, None),
+    # glitch-f3's ruling: round 3's four text markers in the harness-side error text pause, word-bounded and
+    # case-insensitive, whatever the structured fields say; each marker alone, so a mutated marker goes red
+    "usage-limit refusal, text only, before the first turn (glitch-f3)": Sc(_sc(B, [_apis(EUSAGE)]), "pause", ["rate-limit"]),
+    "usage-limit refusal, text only, mid-take (glitch-f3)": Sc(_sc(A, [_multi_turn(3), _apis(EUSAGE), _end_error(1)]),
+                                                              "pause", ["rate-limit"]),
+    "'rate limit' alone in the error text": Sc(_sc(A, [_apis(_err("API Error: Rate limit reached")), _end_error(1)]),
+                                               "pause", ["rate-limit"]),
+    "'weekly limit' alone in the error text": Sc(_sc(A, [_apis(_err("You've reached your weekly limit")), _end_error(1)]),
+                                                 "pause", ["rate-limit"]),
+    "'429' alone in the error text": Sc(_sc(A, [_apis(_err("API Error: 429 Too Many Requests")), _end_error(1)]),
+                                        "pause", ["rate-limit"]),
+    "the error text's case does not matter (RATE LIMIT)": Sc(_sc(B, [_apis(_err("RATE LIMIT EXCEEDED"))]), "pause", ["rate-limit"]),
+    "a marker in a 500's error text pauses (structured OR text)": Sc(_sc(A, [_apis(_err("usage limit reached", 500, "api_error")),
+                                                                         _end_error(1)]),
+                                                                     "pause", ["rate-limit"], ["rate-limit", "api-error-after-first-turn"]),
+    "a marker inside another word is not one (prorate limits)": Sc(_sc(B, [_apis(_err("prorate limits apply"))]), "rehearsal",
+                                                                   ["api-error-before-first-turn"]),
+    "429 inside a number is not one (4290)": Sc(_sc(A, [_apis(_err("upstream error 4290")), _end_error(1)]), "harness-error",
+                                                ["api-error-after-first-turn"]),
+    "'resets' alone is not a marker (round 3's review 13, F6)": Sc(_sc(B, [_apis(_err("Session resets at 9pm"))]), "rehearsal",
+                                                                   ["api-error-before-first-turn"]),
+    "a 500 whose error text names no marker": Sc(_sc(A, [_apis(E500_TEXT), _end_error(1)]), "harness-error",
+                                                 ["api-error-after-first-turn"]),
 }
 
 
@@ -837,6 +878,63 @@ def count_confusion_problems(table: dict) -> list[str]:
     return p
 
 
+# ------------------------------------------------------- glitch-f3's ruling: the error text's markers
+# (harness-side error text, the marker round 3's bounded search finds in it, or None). Round 3's own
+# matched_marker is run on every probe (TestRound3Sources), so these are its rule, not a reading of it.
+TEXT_PROBES = (
+    (USAGE_TEXT, "usage limit"),
+    ("API Error: Rate limit reached", "rate limit"),
+    ("RATE LIMIT", "rate limit"),
+    ("You've hit your Weekly Limit", "weekly limit"),
+    ("API Error: 429 Too Many Requests", "429"),
+    ("(429)", "429"),
+    ("usage limit, then a rate limit", "rate limit"),   # the first marker in round 3's order, not the text's
+    ("prorate limits", None),                            # a marker inside another word
+    ("prorate limit", None),                             # the left bound alone
+    ("rate limits", None),                               # the right bound alone
+    ("4290", None),
+    ("x429", None),
+    ("rate_limit_error", None),                          # an underscore is a word character
+    ("Session resets at 9pm", None),                     # round 3 left 'resets' out (its review 13, F6)
+    ("internal server error", None),
+    ("", None),
+)
+
+
+def text_match_problems(fn, markers) -> list[str]:
+    """Every probe on which fn(text, markers) does not find exactly the probe's marker."""
+    p = []
+    for text, want in TEXT_PROBES:
+        got = fn(text, markers)
+        if got != want:
+            p.append(f"{text!r}: want {want!r}, got {got!r}")
+    return p
+
+
+# The agent's own reply, printing every marker (TurnResult.text): it must never reach the markers.
+AGENT_SAYS = ("rate limit", "429", "usage limit", "RATE LIMIT: usage limit, weekly limit, error 429")
+
+
+def agent_text_problems(table: dict) -> list[str]:
+    """glitch-f3's ruling: markers are matched on the harness-side error text only, never on the agent's own
+    reply. An agent that prints them beside an API error carrying none (a 500, "internal server error") never
+    pauses, before or after its first turn, and its reply never becomes the record's error text."""
+    p = []
+    for said in AGENT_SAYS:
+        cases = {B: ([a_silent_turn(text=said, api_error=dict(E500_TEXT))], labels4.REHEARSAL),
+                 A: ([a_turn(text=said), a_turn(text=said, exit_code=1, end_reason=labels4.END_ERROR,
+                                              api_error=dict(E500_TEXT))], labels4.HARNESS_ERROR)}
+        for phase, (turns, want) in cases.items():
+            rec = aa.harness_records(turns, pin=PIN, box=full_box())
+            if rec["api_errors"] != [E500_TEXT]:
+                p.append(f"{said!r} {phase}: api_errors {rec['api_errors']}")
+            got = try_route(rec, table)
+            route = got if isinstance(got, Exception) else got["route"]
+            if route != want:
+                p.append(f"{said!r} {phase}: routed {route}, want {want}")
+    return p
+
+
 # --------------------------------------------------------------------------------------- tests
 class TestRoutingTable(unittest.TestCase):
     def test_real_table_is_sound(self):
@@ -885,6 +983,15 @@ class TestRoutingTable(unittest.TestCase):
         t = copy.deepcopy(REAL)
         t["rate_limit_markers"]["code"] = [429]
         self.assertTrue(any("not an API-error field" in x for x in routing.check_table(t)))
+
+    def test_text_markers_are_non_empty_lower_case_strings(self):
+        """Round 3's bounded search lowercases the error text only, so an upper-case marker could never match,
+        and an empty one would match at every word boundary."""
+        self.assertEqual(REAL["rate_limit_markers"]["text"], [m.lower() for m in REAL["rate_limit_markers"]["text"]])
+        for bad in ("Rate Limit", "", 429, None):
+            t = copy.deepcopy(REAL)
+            t["rate_limit_markers"]["text"] = ["rate limit", bad]
+            self.assertTrue(any("text marker" in x for x in routing.check_table(t)), bad)
 
     def test_graded_ends_checked_against_labels4(self):
         """W1B-7."""
@@ -956,6 +1063,44 @@ class TestRound3Sources(unittest.TestCase):
         self.assertIn("evals/gap-study-3/prereg.json", cap["source"])
         self.assertIn(self.COMMIT, cap["source"])
 
+    # glitch-f3's ruling (6 Oct 2026): round 3's text markers and its bounded match. Only drive.py's lines
+    # 140-160 and 900-925 are read from round 3 (the gap4 lane lead's rule for this lane).
+    DRIVE = "evals/gap-study-3/drive.py"
+
+    def round3_lines(self, first: int, last: int) -> list[str]:
+        if not (140 <= first <= last <= 160 or 900 <= first <= last <= 925):
+            raise AssertionError(f"drive.py:{first}-{last} is outside the lines this lane may read")
+        return self.show(self.DRIVE).splitlines()[first - 1:last]
+
+    def round3_markers(self) -> tuple:
+        """RATE_LIMIT_MARKERS, from the assignment on drive.py:149, parsed with ast (never imported)."""
+        (line,) = self.round3_lines(149, 149)
+        node = ast.parse(line).body[0]
+        self.assertIsInstance(node, ast.Assign, line)
+        self.assertEqual([getattr(t, "id", None) for t in node.targets], ["RATE_LIMIT_MARKERS"], line)
+        markers = ast.literal_eval(node.value)
+        self.assertIsInstance(markers, tuple)
+        return markers
+
+    def test_text_markers_are_round_3s_in_order(self):
+        self.assertEqual(REAL["rate_limit_markers"]["text"], list(self.round3_markers()))
+        source = REAL["rate_limit_markers"]["source"]
+        for cite in ("glitch-f3", "evals/gap-study-3/drive.py:149", self.COMMIT, "driver_constants.rate_limit_markers"):
+            self.assertIn(cite, source)
+
+    def test_text_match_is_round_3s_matched_marker(self):
+        """Round 3's own matched_marker (drive.py:912-919), run on the probes, agrees with them and with routing's
+        match: the probes are round 3's rule, never this lane's reading of it."""
+        lines = self.round3_lines(912, 919)
+        self.assertTrue(lines[0].startswith("def matched_marker(text: str)"), lines[0])
+        ns = {"re": re, "RATE_LIMIT_MARKERS": self.round3_markers()}
+        exec(compile("\n".join(lines), f"{self.DRIVE}@{self.COMMIT[:8]}:912", "exec",    # noqa: S102 - pinned, read lines
+                     flags=__future__.annotations.compiler_flag, dont_inherit=True), ns)
+        theirs = ns["matched_marker"]
+        markers = REAL["rate_limit_markers"]["text"]
+        self.assertEqual(text_match_problems(lambda text, _markers: theirs(text), markers), [])
+        self.assertEqual(text_match_problems(routing.rate_limit_text_marker, markers), [])
+
 
 class TestRows(unittest.TestCase):
     """One test per row, generated from routing.json below."""
@@ -1017,6 +1162,26 @@ class TestRecordKeys(unittest.TestCase):
 
     def test_counts_and_flags_refuse_other_types(self):
         self.assertEqual(count_confusion_problems(test_table()), [])
+
+    def test_api_error_text_is_required_and_typed(self):
+        """glitch-f3's ruling under W1B-2's rule: every API-error record carries `text`, a str or None; a record
+        missing it, or holding anything else there, is refused by route and by annotate, never read as no text."""
+        self.assertEqual(tuple(routing.API_ERROR_KEYS), API_ERROR_FIELDS_WANT)
+        t = test_table()
+
+        def rec_with(err: dict) -> dict:
+            r = baseline(A)
+            set_api(r, [err])
+            set_end(r, labels4.END_ERROR, 1)
+            return r
+        for text in (None, "internal server error"):
+            got = routing.route(rec_with(_err(text, 500, "api_error")), t)
+            self.assertEqual((got["route"], got["rows"]), (labels4.HARNESS_ERROR, ["api-error-after-first-turn"]))
+        bad = [rec_with({"status": 500, "type": "api_error"})]
+        bad += [rec_with(_err(v, 500, "api_error")) for v in (429, True, b"usage limit", ["usage limit"], {"text": "x"})]
+        for rec in bad:
+            for fn in (routing.route, routing.annotate):
+                self.assertTrue(refuses(fn, rec, t), (fn.__name__, rec["api_errors"]))
 
     def test_type_checks_can_fail(self):
         with mock.patch.object(routing, "LEAF_TYPES", {}):
@@ -1085,6 +1250,51 @@ def _box_test(key):
 
 for _key in aa.BOX_KEYS:
     setattr(TestSeam, "test_box_" + _key + "_dropped_and_none_refused", _box_test(_key))
+
+
+class TestRateLimitText(unittest.TestCase):
+    """glitch-f3's ruling (in-plan, 6 Oct 2026; glitch-f3's, not the owner's): structured (status 429, type
+    rate_limit_error) OR round 3's four text markers, word-bounded and case-insensitive, matched on the
+    harness-side error text only, never on the agent's own output. The plan-oracle scenarios above route the
+    records; these build them through harness_records, as the driver will, and pin the match itself."""
+
+    def test_text_only_usage_limit_pauses_through_harness_records(self):
+        t = test_table()
+        for phase, turns in ((B, [a_silent_turn(api_error=dict(EUSAGE))]),
+                             (A, [a_turn(), a_turn(exit_code=1, end_reason=labels4.END_ERROR, api_error=dict(EUSAGE))])):
+            rec = aa.harness_records(turns, pin=PIN, box=full_box())
+            self.assertEqual(rec["api_errors"], [EUSAGE])
+            got = routing.route(rec, t)
+            self.assertEqual((got["route"], got["rows"], got["phase"]), (labels4.PAUSE, ["rate-limit"], phase))
+
+    def test_agent_text_never_reaches_the_markers(self):
+        self.assertEqual(agent_text_problems(test_table()), [])
+
+    def test_agent_text_check_can_fail(self):
+        real = aa.harness_records
+
+        def agent_text_in(turns, *, pin, box):   # the mutant: the agent's reply routed into the error text
+            out = real(turns, pin=pin, box=box)
+            erred = [t for t in turns if t.api_error is not None]
+            out["api_errors"] = [dict(e, text=t.text) for e, t in zip(out["api_errors"], erred)]
+            return out
+        with mock.patch.object(aa, "harness_records", agent_text_in):
+            self.assertTrue(any("routed pause" in x for x in agent_text_problems(test_table())))
+
+    def test_word_bounded_and_case_insensitive(self):
+        self.assertEqual(text_match_problems(routing.rate_limit_text_marker, REAL["rate_limit_markers"]["text"]), [])
+
+    def test_word_bound_check_can_fail(self):
+        def substring(text, markers):   # the mutant: a plain substring match
+            return next((m for m in markers if m in text.lower()), None)
+
+        def case_sensitive(text, markers):   # the mutant: the text not lowercased
+            return next((m for m in markers if re.search(r"(?<![\w])" + re.escape(m) + r"(?![\w])", text)), None)
+        markers = REAL["rate_limit_markers"]["text"]
+        for mutant in (substring, case_sensitive):
+            self.assertNotEqual(text_match_problems(mutant, markers), [], mutant.__name__)
+            with mock.patch.object(routing, "rate_limit_text_marker", mutant):
+                self.assertNotEqual(scenario_problems(test_table()), [], mutant.__name__)
 
 
 class TestProfiles(unittest.TestCase):

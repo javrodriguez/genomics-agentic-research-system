@@ -266,6 +266,63 @@ class TestTurns(unittest.TestCase):
             self.assertTrue(aa.harness_records([silent], pin=PIN, box=BOX)["ledger"]["first_turn_started"])
 
 
+API_ERROR_FIELDS_WANT = ("status", "type", "text")   # glitch-f3's ruling, typed once here
+USAGE = {"status": None, "type": None, "text": "Claude usage limit reached; resets at 9pm"}
+E500_TEXT = {"status": 500, "type": "api_error", "text": "internal server error"}
+AGENT_SAYS = ("rate limit", "429", "usage limit", SECRET_TEXT)
+
+
+def agent_text_problems() -> list[str]:
+    """The agent printing the markers (its TurnResult.text) beside a 500 whose own error text names none: the
+    record's error text stays the harness's, and the agent's text reaches no record."""
+    p = []
+    for said in AGENT_SAYS:
+        erred = turn(text=said, exit_code=1, end_reason=aa.END_ERROR, api_error=dict(E500_TEXT))
+        for turns in ([erred], [turn(text=said), erred]):
+            r = aa.harness_records(turns, pin=PIN, box=BOX)
+            if r["api_errors"] != [E500_TEXT]:
+                p.append(f"{said!r} ({len(turns)} turns): api_errors {r['api_errors']}")
+            if said == SECRET_TEXT and text_leaks(r):
+                p.append(f"the agent's text leaked into the records ({len(turns)} turns)")
+    return p
+
+
+class TestApiErrorText(unittest.TestCase):
+    """glitch-f3's ruling (in-plan, 6 Oct 2026; glitch-f3's, not the owner's): the API-error record carries a third
+    required field, `text`, the harness-side error text (what Claude Code or the API reported as the error), never
+    the agent's reply, so routing can match round 3's text markers on it."""
+
+    def test_fields(self):
+        self.assertEqual(aa.API_ERROR_FIELDS, API_ERROR_FIELDS_WANT)
+
+    def test_text_is_required(self):
+        with self.assertRaises(ValueError):
+            turn(api_error={"status": 500, "type": "api_error"})
+        for text in (None, "internal server error"):
+            self.assertEqual(turn(api_error=dict(E500_TEXT, text=text)).api_error["text"], text)
+
+    def test_text_projected(self):
+        silent = turn(exit_code=1, end_reason=aa.END_ERROR, agent_output=False, api_error=dict(USAGE, message="extra"))
+        r = aa.harness_records([silent], pin=PIN, box=BOX)
+        self.assertEqual(r["api_errors"], [USAGE])
+
+    def test_agent_text_never_becomes_the_error_text(self):
+        self.assertEqual(agent_text_problems(), [])
+
+    def test_agent_text_check_can_fail(self):
+        real = aa.harness_records
+
+        def agent_text_in(turns, *, pin, box):   # the mutant: the agent's reply routed into the error text
+            out = real(turns, pin=pin, box=box)
+            erred = [t for t in turns if t.api_error is not None]
+            out["api_errors"] = [dict(e, text=t.text) for e, t in zip(out["api_errors"], erred)]
+            return out
+        with mock.patch.object(aa, "harness_records", agent_text_in):
+            problems = agent_text_problems()
+        self.assertTrue(any("leaked" in x for x in problems), problems)
+        self.assertTrue(any("'rate limit'" in x for x in problems), problems)
+
+
 class TestVocabulary(unittest.TestCase):
     """W1B-7: the turn ends are labels4's, imported and never retyped."""
 

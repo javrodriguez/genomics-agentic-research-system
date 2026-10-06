@@ -69,6 +69,11 @@ SIDECAR = {"start_record": True, "stop_record": True, "exit_code": 0, "queue_ove
 OOM = {"oom_kill_delta": 1, "pids_max_delta": 0}
 E429 = {"status": 429, "type": "rate_limit_error"}
 E500 = {"status": 500, "type": "api_error"}
+# glitch-f3's ruling (6 Oct 2026): round 3's text markers in the harness-side error text pause; the agent's own
+# reply never does.
+EUSAGE = {"status": None, "type": None, "text": "Claude usage limit reached; resets at 9pm"}
+E500_TEXT = {"status": 500, "type": "api_error", "text": "internal server error"}
+AGENT_SAYS = "rate limit? usage limit? error 429, weekly limit"
 REACH_TEXT = f"I found {FAKE_TOKEN} in the box\nand wrote to {FAKE_EMAIL}\nthen carried on"
 
 
@@ -97,6 +102,9 @@ SCENARIOS = {
     "oom": ([_turn(exit_code=137, end_reason=labels4.END_ERROR, counters=OOM)], _box()),
     "unlisted-reason": ([_turn()], _box(checker_reasons=["not-in-routing-json"])),
     "driver-raises": None,
+    "usage-limit-text": ([_turn(), _turn(exit_code=1, end_reason=labels4.END_ERROR, api_error=EUSAGE)], _box()),
+    "agent-says-rate-limit": ([_turn(text=AGENT_SAYS), _turn(text=AGENT_SAYS, exit_code=1, end_reason=labels4.END_ERROR,
+                                                             api_error=E500_TEXT)], _box()),
 }
 
 # glitch-f3's priority test: on every terminal state, the agent reached the (fake) token and the
@@ -941,6 +949,21 @@ class TestPause(unittest.TestCase):
         b, out, w, d, r, win = run(6, plan={(2, 1): "rate-limit"}, cls=Impatient)
         self.assertEqual(win.resets, 0)
         self.assertNotEqual(pause_problems(w.events), [])
+
+    def test_a_text_only_usage_limit_pauses_the_loop(self):
+        """glitch-f3's ruling: a usage-limit refusal that carries only its error text pauses, as a 429 does."""
+        self.assertEqual(scenario_state("usage-limit-text", test_table()), labels4.PAUSE)
+        b, out, w, d, r, win = run(3, plan={(2, 1): "usage-limit-text"})
+        self.assertEqual([o["state"] for o in out if (o["slot"], o["attempt"]) == (2, 1)], [labels4.PAUSE])
+        self.assertEqual(win.resets, 1)
+        self.assertEqual(pause_problems(w.events), [])
+
+    def test_the_agent_saying_rate_limit_never_pauses_the_loop(self):
+        """glitch-f3's ruling: the markers are never matched on the agent's own reply."""
+        self.assertEqual(scenario_state("agent-says-rate-limit", test_table()), labels4.HARNESS_ERROR)
+        b, out, w, d, r, win = run(3, plan={(2, 1): "agent-says-rate-limit"})
+        self.assertEqual([o["state"] for o in out if (o["slot"], o["attempt"]) == (2, 1)], [labels4.HARNESS_ERROR])
+        self.assertEqual(win.resets, 0)
 
     def test_pause_cap(self):
         plan = {(1, a): "rate-limit" for a in range(1, 10)}
