@@ -42,6 +42,8 @@ import collections
 import copy
 import json
 import os
+import re
+import subprocess
 import sys
 import unittest
 from unittest import mock
@@ -883,13 +885,11 @@ class TestRoutingTable(unittest.TestCase):
         with mock.patch.object(labels4, "GRADED_ENDS", ("end_turn",)):
             self.assertNotEqual(routing.check_table(REAL), [])
 
-    def test_real_table_refuses_every_checker_reason_while_pending(self):
-        self.assertEqual(REAL["operator_reasons"], [])
-        self.assertTrue(REAL["operator_reasons_status"].startswith("PENDING"))
+    def test_real_table_refuses_an_unlisted_checker_reason(self):
         t = copy.deepcopy(REAL)
         t["pin_profiles"] = copy.deepcopy(TEST_PROFILES)   # isolate the reasons' refusal
         rec = baseline(A)
-        rec["checker_reasons"] = [TEST_REASON]
+        rec["checker_reasons"] = ["not-a-round-3-reason"]
         with self.assertRaisesRegex(routing.RoutingRefused, "checker reason"):
             routing.route(rec, t)
 
@@ -900,9 +900,48 @@ class TestRoutingTable(unittest.TestCase):
         with self.assertRaisesRegex(routing.RoutingRefused, "pre-registered profile"):
             routing.route(baseline(A), REAL)
 
-    def test_pause_cap_is_pending(self):
-        # Round 3's pause_cap was not read by this lane; batch.py must refuse to start without it.
-        self.assertIsNone(REAL["caps"][labels4.PAUSE]["reruns_per_half_cell"])
+
+class TestRound3Sources(unittest.TestCase):
+    """Javier's ruling "gap4 routing: A" (6 Oct 2026, 17:52:33 EDT): round 3's operator-side reasons and its
+    pause cap are copied into routing.json from round 3's committed files, each with its source. These tests
+    re-derive them from those files at round 3's done commit, so the table can never drift from its source."""
+
+    COMMIT = "e2979b3143081824aadea73523ec41af30c1ddb1"
+    ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+    def show(self, path):
+        p = subprocess.run(["git", "-C", self.ROOT, "show", f"{self.COMMIT}:{path}"], capture_output=True)
+        self.assertEqual(p.returncode, 0, f"{path} at {self.COMMIT} (git fetch --unshallow?)")
+        return p.stdout.decode()
+
+    def test_operator_reasons_are_round_3s_reasons_less_the_three_the_plan_makes_events(self):
+        listed = set(json.loads(self.show("evals/gap-study-3/prereg.json"))["rehearsal_reasons"])
+        emitted = set(re.findall(r"[\"']\[([a-z][a-z-]*)\] ", self.show("evals/gap-study-3/check_take.py")))
+        emitted.add("no-first-agent-turn")   # check_take.py's NO_FIRST_AGENT_TURN constant, used without brackets
+        self.assertEqual(emitted, listed)
+        events = set(REAL["checker_reasons_become_events"]["ids"])
+        self.assertEqual(events, {"study-materials-reached", "account-email", "read-outside-the-checkout"})
+        self.assertEqual(set(REAL["operator_reasons"]), listed - events)
+        self.assertEqual(len(REAL["operator_reasons"]), len(listed - events))
+        self.assertTrue(REAL["operator_reasons_status"].startswith("FILLED"))
+
+    def test_every_operator_reason_cites_its_source(self):
+        listed = json.loads(self.show("evals/gap-study-3/prereg.json"))["rehearsal_reasons"]
+        sources = REAL["operator_reason_sources"]
+        self.assertEqual(set(sources), set(REAL["operator_reasons"]))
+        for rid, src in sources.items():
+            self.assertEqual(src["file"], "evals/gap-study-3/prereg.json")
+            self.assertEqual(src["commit"], self.COMMIT)
+            self.assertEqual(src["key"], f"rehearsal_reasons.{rid}")
+            self.assertEqual(src["meaning"], listed[rid])
+            self.assertTrue(src["emitted_at"].startswith("evals/gap-study-3/check_take.py:"), rid)
+
+    def test_the_pause_cap_is_round_3s(self):
+        pre = json.loads(self.show("evals/gap-study-3/prereg.json"))
+        cap = REAL["caps"][labels4.PAUSE]
+        self.assertEqual(cap["reruns_per_half_cell"], int(pre["pause_cap"]))
+        self.assertIn("evals/gap-study-3/prereg.json", cap["source"])
+        self.assertIn(self.COMMIT, cap["source"])
 
 
 class TestRows(unittest.TestCase):
