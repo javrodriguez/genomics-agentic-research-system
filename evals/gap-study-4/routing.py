@@ -22,7 +22,8 @@ records are:
                      model, mode and version; the pin must be the pre-registered profile of its
                      model in routing.json's pin_profiles, never whatever the driver supplied
     api_errors       every API-error record of the take, in turn order: {status: int or None,
-                     type: str or None}
+                     type: str or None, text: str or None}. `text` is the harness-side error text
+                     (what Claude Code or the API reported as the error), never the agent's reply
     sidecar          the watcher's health: start_record, stop_record (bools), exit_code (int),
                      queue_overflow (bool)
     preflight        ok (bool)
@@ -43,6 +44,12 @@ The matched rows at the highest precedence level win. If none match, or the winn
 than one route, `route()` raises `RoutingRefused`: never a default, never a pick. Records already
 committed are refused too, since a route decided after the commit cannot free its slot.
 
+RATE-LIMIT MARKERS (glitch-f3's ruling, 6 Oct 2026). An API error carries a rate-limit marker when
+its status or type is one of routing.json's markers for that field (exact membership), or when its
+`text` carries one of the text markers by round 3's bounded search (`rate_limit_text_marker`): each
+marker word-bounded and case-insensitive. The text matched is only ever the API-error record's own
+harness-side text; the agent's reply never reaches the records.
+
 ANNOTATING. `annotate()` decides the table's annotations (an outside reach: an event, and the
 text masked before commit; a quiescence kill: an event) on every take, in every phase, whatever
 route wins and even when `route()` refuses the take. Rows never read the `events` record, so a
@@ -55,6 +62,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -81,8 +89,11 @@ RECORD_SCHEMA = {
     "events": ("outside_reach",),
 }
 
-# The fields of one API-error record (both required; status int or None, type str or None).
-API_ERROR_KEYS = ("status", "type")
+# The fields of one API-error record (all three required; status int or None, type str or None, text
+# str or None: the harness-side error text, never the agent's reply). glitch-f3's ruling added text.
+API_ERROR_KEYS = ("status", "type", "text")
+# API-error fields whose rate-limit markers match by round 3's bounded search, not exact membership.
+TEXT_MARKER_FIELDS = ("text",)
 
 # The plan's pin: "an init event whose model, mode or version differs from the pin".
 PLAN_PIN_FIELDS = ("model", "permission_mode", "version")
@@ -243,6 +254,12 @@ def check_table(table: dict) -> list[str]:
             p.append(f"rate_limit_markers key {k!r} is not an API-error field {list(API_ERROR_KEYS)}")
         if not isinstance(v, list) or not v:
             p.append(f"rate_limit_markers {k!r} must be a non-empty list")
+        elif k in TEXT_MARKER_FIELDS:
+            # Round 3's search lowercases the error text only: an upper-case marker could never match,
+            # and an empty one would match at every word boundary.
+            for m in v:
+                if not _is_str(m) or not m or m != m.lower():
+                    p.append(f"rate_limit_markers {k!r}: text marker {m!r} must be a non-empty lower-case string")
     ids = [row.get("id") for row in table["rows"]] + [a.get("id") for a in table["annotations"]]
     if len(set(ids)) != len(ids):
         p.append("row and annotation ids repeat")
@@ -341,8 +358,9 @@ def shape_problems(records: dict, table: dict) -> list[str]:
         for i, e in enumerate(records["api_errors"]):
             if not isinstance(e, dict) or set(e) != set(API_ERROR_KEYS):
                 p.append(f"api_errors[{i}] must hold exactly {list(API_ERROR_KEYS)}")
-            elif not (e["status"] is None or _is_int(e["status"])) or not (e["type"] is None or _is_str(e["type"])):
-                p.append(f"api_errors[{i}]: status must be an int or None, type a str or None")
+            elif (not (e["status"] is None or _is_int(e["status"])) or not (e["type"] is None or _is_str(e["type"]))
+                  or not (e["text"] is None or _is_str(e["text"]))):
+                p.append(f"api_errors[{i}]: status must be an int or None, type and text a str or None")
     if p:
         return p
     led = records["ledger"]
@@ -393,6 +411,18 @@ def _get(records: dict, path: str):
     return None if value is None else value.get(tail)
 
 
+def rate_limit_text_marker(text: str, markers) -> str | None:
+    """The first of `markers` that `text` carries, by round 3's bounded search (matched_marker,
+    evals/gap-study-3/drive.py:912-919 at e2979b3143081824aadea73523ec41af30c1ddb1): each marker
+    word-bounded and case-insensitive, the text lowercased (the markers are lower-case; check_table
+    enforces it). Called only on an API-error record's harness-side `text`, never on the agent's."""
+    low = text.lower()
+    for m in markers:
+        if re.search(r"(?<![\w])" + re.escape(m) + r"(?![\w])", low):
+            return m
+    return None
+
+
 def holds(cond: dict, records: dict, table: dict) -> bool:
     op, path = cond["op"], cond["path"]
     v = _get(records, path)
@@ -417,7 +447,10 @@ def holds(cond: dict, records: dict, table: dict) -> bool:
     if op == "in_operator_reasons":
         return any(r in table["operator_reasons"] for r in v)
     if op == "in_rate_limit_markers":
-        markers = table["rate_limit_markers"].get(path.partition(".")[2], [])
+        field = path.partition(".")[2]
+        markers = table["rate_limit_markers"].get(field, [])
+        if field in TEXT_MARKER_FIELDS:
+            return any(x is not None and rate_limit_text_marker(x, markers) is not None for x in v)
         return any(x is not None and x in markers for x in v)
     if op == "differs_from_pin":
         pin = records["pin"]

@@ -79,7 +79,7 @@ def box_key_problems() -> list[str]:
             continue
         p.append(f"{key} dropped: accepted")
     try:
-        aa.harness_records([turn()], pin=PIN, box=dict(BOX, api_error={"status": 500, "type": "x"}))
+        aa.harness_records([turn()], pin=PIN, box=dict(BOX, api_error={"status": 500, "type": "x", "text": None}))
         p.append("unknown box key accepted")
     except aa.BoxRecordError:
         pass
@@ -178,7 +178,7 @@ class TestAdapter(unittest.TestCase):
     def test_harness_records_shape(self):
         t1 = turn(api_error=None, init=dict(PIN, cwd="/host/run"))
         t2 = turn(exit_code=1, end_reason=aa.END_ERROR, api_error={"status": 429, "type": "rate_limit_error",
-                                                                   "message": "slow down"},
+                                                                   "text": None, "message": "slow down"},
                   counters={"oom_kill_delta": 1, "pids_max_delta": 0})
         r = aa.harness_records([t1, t2], pin=PIN, box=BOX)
         self.assertEqual(r["ledger"], {"first_turn_started": True, "turns": 2, "end": aa.END_ERROR,
@@ -186,7 +186,7 @@ class TestAdapter(unittest.TestCase):
                                        "committed": False, "finalize_abort": False})
         self.assertEqual(r["exit"]["exec_codes"], [0, 1])
         self.assertEqual(r["cgroup"], {"oom_kill_delta": 1, "pids_max_delta": 0})
-        self.assertEqual(r["api_errors"], [{"status": 429, "type": "rate_limit_error"}])   # projected
+        self.assertEqual(r["api_errors"], [{"status": 429, "type": "rate_limit_error", "text": None}])   # projected
         self.assertEqual(r["init"][0], PIN)                                                  # projected
         empty = aa.harness_records([], pin=PIN, box=BOX)
         self.assertEqual((empty["ledger"]["first_turn_started"], empty["ledger"]["end"], empty["api_errors"]),
@@ -226,14 +226,14 @@ class TestBoxRecords(unittest.TestCase):
 class TestTurns(unittest.TestCase):
     def test_every_api_error_carried_in_order(self):
         """W1B-4: a 500 then a 429 keeps both, so the rate limit still reads as one."""
-        t500 = turn(exit_code=1, end_reason=aa.END_ERROR, api_error={"status": 500, "type": "api_error"})
-        t429 = turn(exit_code=1, end_reason=aa.END_ERROR, api_error={"status": 429, "type": "rate_limit_error"})
+        t500 = turn(exit_code=1, end_reason=aa.END_ERROR, api_error={"status": 500, "type": "api_error", "text": None})
+        t429 = turn(exit_code=1, end_reason=aa.END_ERROR, api_error={"status": 429, "type": "rate_limit_error", "text": None})
         r = aa.harness_records([turn(), t500, t429], pin=PIN, box=BOX)
         self.assertEqual([e["status"] for e in r["api_errors"]], [500, 429])
 
     def test_api_error_check_can_fail(self):
-        t500 = turn(exit_code=1, end_reason=aa.END_ERROR, api_error={"status": 500, "type": "api_error"})
-        t429 = turn(exit_code=1, end_reason=aa.END_ERROR, api_error={"status": 429, "type": "rate_limit_error"})
+        t500 = turn(exit_code=1, end_reason=aa.END_ERROR, api_error={"status": 500, "type": "api_error", "text": None})
+        t429 = turn(exit_code=1, end_reason=aa.END_ERROR, api_error={"status": 429, "type": "rate_limit_error", "text": None})
         real = aa.harness_records
 
         def first_only(turns, *, pin, box):   # the pre-fold fold kept only the first API error
@@ -247,7 +247,7 @@ class TestTurns(unittest.TestCase):
     def test_first_turn_starts_with_agent_output(self):
         """W1B-5 (gap4 lane lead's ruling): a turn with no completed agent output is before it."""
         silent = turn(exit_code=1, end_reason=aa.END_ERROR, agent_output=False,
-                      api_error={"status": 500, "type": "api_error"})
+                      api_error={"status": 500, "type": "api_error", "text": None})
         r = aa.harness_records([silent], pin=PIN, box=BOX)
         self.assertEqual((r["ledger"]["first_turn_started"], r["ledger"]["turns"], r["ledger"]["turn_outputs"]),
                          (False, 1, [False]))

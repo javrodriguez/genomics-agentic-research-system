@@ -35,13 +35,17 @@ THE RECORD. `TurnResult` carries, for one turn:
 
     exit_code       the exec's exit code as the host saw it (None if it never returned one)
     text            the agent's text for the turn. Graders read it; routing NEVER does, and
-                    `harness_record()` leaves it out.
+                    `harness_record()` leaves it out. It is never copied into `api_error["text"]`.
     stream_path     path of the host-captured output stream for the turn (None if none)
     end_reason      how the host saw the turn end: one of `labels4.TURN_ENDS` ("end_turn",
                     "timed-out", "error"), never retyped here
     init            the turn's init event fields (model, permission_mode, version), or None
     api_error       the API-error record for the turn, {"status": int or None, "type": str or
-                    None} (both keys required; other keys are not carried to routing), or None
+                    None, "text": str or None} (all three keys required; other keys are not
+                    carried to routing), or None. `text` is the harness-side error text: what
+                    Claude Code or the API reported as the error, never the agent's reply
+                    (glitch-f3's ruling, 6 Oct 2026: routing matches round 3's rate-limit text
+                    markers on it)
     counters        the turn's cgroup counter rises, read host-side: {"oom_kill_delta": int,
                     "pids_max_delta": int}, non-negative
     started_at, ended_at   host clock (seconds since the epoch) at the turn's start and end
@@ -77,7 +81,7 @@ END_REASONS = labels4.TURN_ENDS
 
 INIT_FIELDS = ("model", "permission_mode", "version")
 COUNTER_FIELDS = ("oom_kill_delta", "pids_max_delta")
-API_ERROR_FIELDS = ("status", "type")
+API_ERROR_FIELDS = ("status", "type", "text")
 
 # The box's own records, every one REQUIRED by `harness_records` (a missing one is never read as
 # "nothing happened"): what no adapter produces.
@@ -251,8 +255,9 @@ def harness_records(turns: list[TurnResult], *, pin: dict, box: dict) -> dict:
     call failed, is still before it (gap4 lane lead's ruling on W1B-5), but a timeout is the agent's
     whatever it printed, as the plan says ("A timeout stays the agent's"; the lane lead's refinement,
     6 Oct 2026, so a silent timeout grades `timed-out` instead of stopping the loop). Every API error of every turn is carried, in turn
-    order, so a rate limit after another error still reads as a rate limit. The agent's text is
-    never copied in.
+    order, so a rate limit after another error still reads as a rate limit; each is projected onto
+    `API_ERROR_FIELDS`, its `text` the harness's own error text as the adapter recorded it. The
+    agent's text is never copied in.
     """
     if not isinstance(box, dict):
         raise BoxRecordError("box must be a dict")

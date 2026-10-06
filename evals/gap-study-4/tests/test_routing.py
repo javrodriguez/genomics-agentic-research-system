@@ -8,7 +8,8 @@ Five kinds of check, combined in `all_problems(table)`:
    witness record is built from the row's own conditions on a clean baseline of the row's phase,
    and must route to the row's route with the row among the winners; on the other phase's
    baseline the row must not match. Then every row's witness is crossed with every terminal state
-   (end_turn, timeout, API error, container failure, cgroup kill, init mismatch, rate limit), and
+   (end_turn, timeout, API error, container failure, cgroup kill, init mismatch, rate limit, a
+   usage limit carried only in the error text), and
    the route must be the higher-precedence of the two routes each produces alone. Rows, routes,
    precedence and phases all come from routing.json and labels4.py; nothing here retypes them.
 
@@ -30,6 +31,11 @@ Five kinds of check, combined in `all_problems(table)`:
    and mask flags, each condition, its condition group), the rate-limit markers, the graded ends,
    the pin fields and the precedence (every adjacent swap, merged levels), in memory, and
    `all_problems` must be non-empty for every mutation.
+
+6. THE ERROR TEXT (glitch-f3's ruling, 6 Oct 2026). Round 3's four text markers match an API error's
+   harness-side `text`, word-bounded and case-insensitive, and never the agent's own reply: the
+   markers and the match are re-derived from round 3's drive.py at its done commit (TestRound3Sources),
+   probed on both bounds and on case, and driven through harness_records (TestRateLimitText).
 
 The table under test carries one test-only operator reason (`TEST_REASON`) and two test-only pin
 profiles (`TEST_PROFILES`), because round 3's reasons and CP5's pins are not yet in routing.json
@@ -157,14 +163,14 @@ def apply_witness(rec: dict, cond: dict, table: dict) -> set:
     elif op == "falsy":
         set_path(rec, path, False)
     elif op == "nonempty" and path == "api_errors":
-        set_api(rec, [{"status": 500, "type": "api_error"}])
+        set_api(rec, [{"status": 500, "type": "api_error", "text": None}])
     elif op == "empty" and path == "api_errors":
         rec["api_errors"] = []
     elif op == "in_operator_reasons":
         set_path(rec, path, [table["operator_reasons"][0]])
     elif op == "in_rate_limit_markers":
         key = path.partition(".")[2]
-        err = {"status": None, "type": None}
+        err = {"status": None, "type": None, "text": None}
         err[key] = table["rate_limit_markers"][key][0]
         set_api(rec, [err])
     elif op == "differs_from_pin":
@@ -212,7 +218,7 @@ def _timeout(r):
 
 
 def _api(r):
-    set_api(r, [{"status": 500, "type": "api_error"}])
+    set_api(r, [{"status": 500, "type": "api_error", "text": None}])
 
 
 def _container(r):
@@ -229,7 +235,12 @@ def _mismatch(r):
 
 
 def _rate(r):
-    set_api(r, [{"status": 429, "type": "rate_limit_error"}])
+    set_api(r, [{"status": 429, "type": "rate_limit_error", "text": None}])
+
+
+def _usage_text(r):
+    """glitch-f3's ruling: a usage-limit refusal carrying only its harness-side error text."""
+    set_api(r, [{"status": None, "type": None, "text": "Claude usage limit reached; resets at 9pm"}])
 
 
 TERMINAL_STATES = {
@@ -240,6 +251,7 @@ TERMINAL_STATES = {
     "cgroup-kill": (_cgroup, {"cgroup", "exit"}),
     "mismatch": (_mismatch, {"init"}),
     "rate-limit": (_rate, {"api_errors"}),
+    "usage-limit-text": (_usage_text, {"api_errors"}),
 }
 
 
@@ -387,9 +399,9 @@ def _seam_edit(cond: dict, table: dict, turns: list, box: dict) -> bool:
     path, op = cond["path"], cond["op"]
     head, _, tail = path.partition(".")
     if path == "api_errors" and op == "nonempty":
-        turns[:] = [a_silent_turn(api_error={"status": 500, "type": "api_error"})]
+        turns[:] = [a_silent_turn(api_error={"status": 500, "type": "api_error", "text": None})]
     elif head == "api_errors" and op == "in_rate_limit_markers":
-        err = {"status": None, "type": None}
+        err = {"status": None, "type": None, "text": None}
         err[tail] = table["rate_limit_markers"][tail][0]
         turns[:] = [a_silent_turn(api_error=err)]
     elif path == "preflight.ok" and op == "falsy":
@@ -471,8 +483,8 @@ def _reach(n=1):
 
 
 _end_error = (lambda code: (lambda r: set_end(r, labels4.END_ERROR, code)))
-E500 = {"status": 500, "type": "api_error"}
-E429 = {"status": 429, "type": "rate_limit_error"}
+E500 = {"status": 500, "type": "api_error", "text": None}
+E429 = {"status": 429, "type": "rate_limit_error", "text": None}
 
 # glitch-f3's ruling (in-plan, 6 Oct 2026; glitch-f3's, not the owner's): "Keep both: structured (status 429,
 # type rate_limit_error) OR round 3's four text markers ('rate limit', 'usage limit', 'weekly limit', '429'),
@@ -513,8 +525,8 @@ SCENARIOS = {
     "operator diff before first turn": Sc(_sc(B, [_set("operator.unexplained_diffs", 1)]), "rehearsal", ["operator-diff-unexplained-before-first-turn"]),
     "finalize abort before first turn": Sc(_sc(B, [_set("ledger.finalize_abort", True)]), "rehearsal", ["finalize-abort-before-first-turn"]),
     "rate limit before first turn": Sc(_sc(B, [_rate]), "pause", ["rate-limit"]),
-    "rate-limit type alone": Sc(_sc(B, [_apis({"status": None, "type": "rate_limit_error"})]), "pause", ["rate-limit"]),
-    "429 with type None (W1B-6)": Sc(_sc(A, [_apis({"status": 429, "type": None}), _end_error(1)]), "pause", ["rate-limit"]),
+    "rate-limit type alone": Sc(_sc(B, [_apis({"status": None, "type": "rate_limit_error", "text": None})]), "pause", ["rate-limit"]),
+    "429 with type None (W1B-6)": Sc(_sc(A, [_apis({"status": 429, "type": None, "text": None}), _end_error(1)]), "pause", ["rate-limit"]),
     "nothing happened before first turn": Sc(_sc(B, []), REFUSED, None),
     "a turn with no agent output and nothing recorded": Sc(_sc(B, [silent_turn]), REFUSED, None),
     "counters rose before the first turn": Sc(_sc(B, [_set("cgroup.oom_kill_delta", 1)]), REFUSED, None),
@@ -842,13 +854,13 @@ def nested_problems(table: dict) -> list[str]:
                     target[f] = None
                 if not refuses(routing.route, rec, table):
                     p.append(f"{where}.{f} {how}: not refused")
-    for f in routing.API_ERROR_KEYS:
+    for f in API_ERROR_FIELDS_WANT:   # the test's own list, so a field dropped from routing's is still checked
         rec = _record_with_everything()
         del rec["api_errors"][0][f]
         if not refuses(routing.route, rec, table):
             p.append(f"api_errors[0].{f} dropped: not refused")
         rec = _record_with_everything()
-        rec["api_errors"][0][f] = {"status": "429", "type": 429}[f]
+        rec["api_errors"][0][f] = {"status": "429", "type": 429, "text": 429}[f]
         if not refuses(routing.route, rec, table):
             p.append(f"api_errors[0].{f} wrongly typed: not refused")
     return p
@@ -1374,8 +1386,12 @@ class TestGridAndMutations(unittest.TestCase):
         for a in REAL["annotations"]:
             for what in ("removed", "event flipped", "mask flipped"):
                 self.assertIn(f"annotation {a['id']}: {what}", described)
-        for what in ("rate_limit_markers: status[0]", "rate_limit_markers: type[0]", "graded_ends: timed-out dropped"):
+        for what in ("rate_limit_markers: status[0]", "rate_limit_markers: type[0]", "graded_ends: timed-out dropped",
+                     "rate_limit_markers: text deleted"):
             self.assertIn(what, described)
+        for j in range(len(REAL["rate_limit_markers"]["text"])):   # every text marker, alone (glitch-f3's ruling)
+            self.assertIn(f"rate_limit_markers: text[{j}]", described)
+        self.assertIn("rate-limit: any_of[2] in_rate_limit_markers mutated", described)
 
     def test_mask_and_events_never_from_the_winning_rows(self):
         """W1B-1/W1B-6: a route that reports mask and events from its winning rows goes red."""

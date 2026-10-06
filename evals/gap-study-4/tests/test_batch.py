@@ -67,8 +67,8 @@ def test_table() -> dict:
 # ------------------------------------------------------------------------------- fake scenarios
 SIDECAR = {"start_record": True, "stop_record": True, "exit_code": 0, "queue_overflow": False}
 OOM = {"oom_kill_delta": 1, "pids_max_delta": 0}
-E429 = {"status": 429, "type": "rate_limit_error"}
-E500 = {"status": 500, "type": "api_error"}
+E429 = {"status": 429, "type": "rate_limit_error", "text": None}
+E500 = {"status": 500, "type": "api_error", "text": None}
 # glitch-f3's ruling (6 Oct 2026): round 3's text markers in the harness-side error text pause; the agent's own
 # reply never does.
 EUSAGE = {"status": None, "type": None, "text": "Claude usage limit reached; resets at 9pm"}
