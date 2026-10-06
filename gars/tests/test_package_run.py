@@ -1557,6 +1557,33 @@ class StockLogins(PackageCase):
         proc = run([sys.executable, package / 'verify.py'])
         self.assertEqual(proc.returncode, 1, proc.stdout.decode())
 
+    def test_a_history_naming_a_bare_bucket_keeps_its_hash_out_of_methods(self):
+        """Review round 2, m2, pinned on a stage-03 world (glitch-f3's ruling, 6 Oct 2026): a bucket armed
+        with no account id in its name, written bare in HISTORY.md, marks that file as holding a masked
+        value, so the sha256 METHODS.md would print for it never leaves in the package."""
+        global BUCKET
+        saved = BUCKET
+        BUCKET = 'gars-demo-runs-east'
+        try:
+            w = self.world(stage03=True)
+            history = w.project / 'HISTORY.md'
+            history.write_bytes(b'# History\n\nRun outputs were kept in bucket ' + BUCKET.encode() + b'.\n')
+            h = w.harvest()
+            self.assertEqual(h.returncode, 0, h.stderr.decode())
+            secrets = json.loads((w.root / 'harvest/HARVEST.json').read_text())['secrets']
+            self.assertIn(BUCKET, secrets['buckets'])   # non-vacuous: the bare bucket is armed
+            self.assertFalse([a for a in secrets['accounts'] if a in BUCKET])   # and no account sits inside it
+            digest = sha(history.read_bytes())
+            proc = w.render()
+            if proc.returncode == 0:
+                for path in (w.root / 'package').rglob('*'):
+                    if path.is_file():
+                        self.assertNotIn(digest.encode(), path.read_bytes(), path)
+            else:
+                self.assertIn('the sha256 of a file holding a masked value', proc.stderr.decode())
+        finally:
+            BUCKET = saved
+
     def test_the_stock_list_is_exactly_the_ruled_one(self):
         tool = module(TOOL, 'package_run_stock')
         self.assertEqual(sorted(tool.STOCK_LOGINS), ['root', 'ubuntu'])
