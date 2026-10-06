@@ -162,7 +162,7 @@
       "path": "lint_language.py",
       "status": "edited",
       "source": "evals/gap-study-3/lint_language.py",
-      "reason": "Round 4 home fix (6 Oct 2026): AMENDMENT 4's comment no longer quotes round 3's published token figure 100,147, which decision 0271 corrected; GARS's costs-by-call sweep (tests/test_gap_study_costs_by_call.py) requires every tracked line quoting one to be cited, and citing round 4's copy would change 0271's published correction page. The rule itself is unchanged."
+      "reason": "Round 4 home fix (6 Oct 2026): AMENDMENT 4's comment no longer quotes round 3's published six-figure token count, which decision 0271 corrected; GARS's costs-by-call sweep (tests/test_gap_study_costs_by_call.py) requires every tracked line quoting one to be cited, and citing round 4's copy would change 0271's published correction page. The rule itself is unchanged."
     },
     {
       "path": "lint_pooling.py",
