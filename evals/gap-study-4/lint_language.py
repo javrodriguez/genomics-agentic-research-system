@@ -64,7 +64,7 @@ PATTERNS: list[tuple[str, str, str]] = [
      "'three out of three' is a rate in words"),
     ("one-point-zero", r"(?<![\w.])1\.0(?![\w.])",
      "a proportion of one is still a proportion"),
-    # AMENDMENT 4 (17 September 2026): a comma followed by three digits is a digit-group separator, so 100,147 is a
+    # AMENDMENT 4 (17 September 2026): a comma followed by three digits is a digit-group separator, so a comma-grouped six-figure count is a
     # count of tokens and not a hundred; the costs table's first six-figure count stopped the take loop on this rule.
     # AMENDMENT 6 (17 September 2026): a hundred in the study's own count form, `100 of 100` or `5 of 100`, is a count
     # and not a rate; the costs table's dollar line said "evidenced by 100 of 100 environment records" at the
