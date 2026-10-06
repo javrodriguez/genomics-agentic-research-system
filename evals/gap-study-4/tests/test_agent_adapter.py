@@ -31,7 +31,8 @@ BOX = {"preflight_ok": True, "container_started": True, "container_exited": Fals
 
 def turn(**kw) -> aa.TurnResult:
     base = dict(exit_code=0, text=SECRET_TEXT, stream_path="/host/stream.jsonl", end_reason=aa.END_TURN,
-                init=dict(PIN), started_at=1.0, ended_at=2.0, agent_output=True)
+                init=dict(PIN), api_errors=[], counters={"oom_kill_delta": 0, "pids_max_delta": 0}, started_at=1.0, ended_at=2.0,
+                agent_output=True)
     base.update(kw)
     return aa.TurnResult(**base)
 
@@ -159,7 +160,7 @@ class TestAdapter(unittest.TestCase):
                     dict(counters={"oom_kill_delta": True, "pids_max_delta": 0}),
                     dict(init={"model": "m"}), dict(started_at=3.0, ended_at=2.0),
                     dict(agent_output=None), dict(agent_output=1),
-                    dict(api_error={"status": 500}), dict(api_error="500")):
+                    dict(api_errors=[{"status": 500}]), dict(api_errors="500"), dict(api_errors=None)):
             with self.assertRaises(ValueError, msg=str(bad)):
                 turn(**bad)
 
@@ -176,9 +177,9 @@ class TestAdapter(unittest.TestCase):
         self.assertTrue(text_leaks({"leaked": SECRET_TEXT}))
 
     def test_harness_records_shape(self):
-        t1 = turn(api_error=None, init=dict(PIN, cwd="/host/run"))
-        t2 = turn(exit_code=1, end_reason=aa.END_ERROR, api_error={"status": 429, "type": "rate_limit_error",
-                                                                   "text": None, "message": "slow down"},
+        t1 = turn(api_errors=[], init=dict(PIN, cwd="/host/run"))
+        t2 = turn(exit_code=1, end_reason=aa.END_ERROR, api_errors=[{"status": 429, "type": "rate_limit_error",
+                                                                   "text": None, "message": "slow down"}],
                   counters={"oom_kill_delta": 1, "pids_max_delta": 0})
         r = aa.harness_records([t1, t2], pin=PIN, box=BOX)
         self.assertEqual(r["ledger"], {"first_turn_started": True, "turns": 2, "end": aa.END_ERROR,
@@ -226,14 +227,14 @@ class TestBoxRecords(unittest.TestCase):
 class TestTurns(unittest.TestCase):
     def test_every_api_error_carried_in_order(self):
         """W1B-4: a 500 then a 429 keeps both, so the rate limit still reads as one."""
-        t500 = turn(exit_code=1, end_reason=aa.END_ERROR, api_error={"status": 500, "type": "api_error", "text": None})
-        t429 = turn(exit_code=1, end_reason=aa.END_ERROR, api_error={"status": 429, "type": "rate_limit_error", "text": None})
+        t500 = turn(exit_code=1, end_reason=aa.END_ERROR, api_errors=[{"status": 500, "type": "api_error", "text": None}])
+        t429 = turn(exit_code=1, end_reason=aa.END_ERROR, api_errors=[{"status": 429, "type": "rate_limit_error", "text": None}])
         r = aa.harness_records([turn(), t500, t429], pin=PIN, box=BOX)
         self.assertEqual([e["status"] for e in r["api_errors"]], [500, 429])
 
     def test_api_error_check_can_fail(self):
-        t500 = turn(exit_code=1, end_reason=aa.END_ERROR, api_error={"status": 500, "type": "api_error", "text": None})
-        t429 = turn(exit_code=1, end_reason=aa.END_ERROR, api_error={"status": 429, "type": "rate_limit_error", "text": None})
+        t500 = turn(exit_code=1, end_reason=aa.END_ERROR, api_errors=[{"status": 500, "type": "api_error", "text": None}])
+        t429 = turn(exit_code=1, end_reason=aa.END_ERROR, api_errors=[{"status": 429, "type": "rate_limit_error", "text": None}])
         real = aa.harness_records
 
         def first_only(turns, *, pin, box):   # the pre-fold fold kept only the first API error
@@ -247,7 +248,7 @@ class TestTurns(unittest.TestCase):
     def test_first_turn_starts_with_agent_output(self):
         """W1B-5 (gap4 lane lead's ruling): a turn with no completed agent output is before it."""
         silent = turn(exit_code=1, end_reason=aa.END_ERROR, agent_output=False,
-                      api_error={"status": 500, "type": "api_error", "text": None})
+                      api_errors=[{"status": 500, "type": "api_error", "text": None}])
         r = aa.harness_records([silent], pin=PIN, box=BOX)
         self.assertEqual((r["ledger"]["first_turn_started"], r["ledger"]["turns"], r["ledger"]["turn_outputs"]),
                          (False, 1, [False]))
@@ -368,7 +369,7 @@ def agent_text_problems() -> list[str]:
     record's error text stays the harness's, and the agent's text reaches no record."""
     p = []
     for said in AGENT_SAYS:
-        erred = turn(text=said, exit_code=1, end_reason=aa.END_ERROR, api_error=dict(E500_TEXT))
+        erred = turn(text=said, exit_code=1, end_reason=aa.END_ERROR, api_errors=[dict(E500_TEXT)])
         for turns in ([erred], [turn(text=said), erred]):
             r = aa.harness_records(turns, pin=PIN, box=BOX)
             if r["api_errors"] != [E500_TEXT]:
@@ -388,12 +389,12 @@ class TestApiErrorText(unittest.TestCase):
 
     def test_text_is_required(self):
         with self.assertRaises(ValueError):
-            turn(api_error={"status": 500, "type": "api_error"})
+            turn(api_errors=[{"status": 500, "type": "api_error"}])
         for text in (None, "internal server error"):
-            self.assertEqual(turn(api_error=dict(E500_TEXT, text=text)).api_error["text"], text)
+            self.assertEqual(turn(api_errors=[dict(E500_TEXT, text=text)]).api_errors[0]["text"], text)
 
     def test_text_projected(self):
-        silent = turn(exit_code=1, end_reason=aa.END_ERROR, agent_output=False, api_error=dict(USAGE, message="extra"))
+        silent = turn(exit_code=1, end_reason=aa.END_ERROR, agent_output=False, api_errors=[dict(USAGE, message="extra")])
         r = aa.harness_records([silent], pin=PIN, box=BOX)
         self.assertEqual(r["api_errors"], [USAGE])
 
@@ -405,7 +406,7 @@ class TestApiErrorText(unittest.TestCase):
 
         def agent_text_in(turns, *, pin, box):   # the mutant: the agent's reply routed into the error text
             out = real(turns, pin=pin, box=box)
-            erred = [t for t in turns if t.api_error is not None]
+            erred = [t for t in turns for _ in t.api_errors]
             out["api_errors"] = [dict(e, text=t.text) for e, t in zip(out["api_errors"], erred)]
             return out
         with mock.patch.object(aa, "harness_records", agent_text_in):

@@ -22,7 +22,7 @@ IMPLEMENTING ANOTHER HARNESS. Subclass `AgentAdapter` and provide:
                               send one operator line to the agent and wait for the turn to end,
                               at most `budget_s` seconds. `first` is True for the take's opening
                               request. Never raise for something the agent did: a timeout is
-                              `end_reason="timed-out"`, an API error is an `api_error` record.
+                              `end_reason="timed-out"`, an API error is an `api_errors` entry.
                               Raise only when the harness itself cannot go on.
     end_take() -> None        tear down what start_take made (the runner still removes the
                               recorded container itself).
@@ -35,25 +35,31 @@ THE RECORD. `TurnResult` carries, for one turn:
 
     exit_code       the exec's exit code as the host saw it (None if it never returned one)
     text            the agent's text for the turn. Graders read it; routing NEVER does, and
-                    `harness_record()` leaves it out. It is never copied into `api_error["text"]`.
+                    `harness_record()` leaves it out. It is never copied into an API error's text.
     stream_path     path of the host-captured output stream for the turn (None if none)
     end_reason      how the host saw the turn end: one of `labels4.TURN_ENDS` ("end_turn",
                     "timed-out", "error"), never retyped here
-    init            the turn's init event fields (model, permission_mode, version), or None
-    api_error       the API-error record for the turn, {"status": int or None, "type": str or
-                    None, "text": str or None} (all three keys required; other keys are not
-                    carried to routing), or None. `text` is the harness-side error text: what
-                    Claude Code or the API reported as the error, never the agent's reply
-                    (glitch-f3's ruling, 6 Oct 2026: routing matches round 3's rate-limit text
-                    markers on it)
-    counters        the turn's cgroup counter rises, read host-side: {"oom_kill_delta": int,
-                    "pids_max_delta": int}, non-negative
+    init            REQUIRED keyword: the turn's init event fields (model, permission_mode,
+                    version), or an explicit None when the turn had no init event
+    api_errors      REQUIRED keyword: a list of every API-error record the turn met, in the order
+                    met ([] when none; review round 2, W1B2-7: one turn can meet a 529 and then a
+                    429). Each is {"status": int or None, "type": str or None, "text": str or
+                    None} (all three keys required; other keys are not carried to routing).
+                    `text` is the harness-side error text: what Claude Code or the API reported as
+                    the error, never the agent's reply (glitch-f3's ruling, 6 Oct 2026: routing
+                    matches round 3's rate-limit text markers on it)
+    counters        REQUIRED keyword: the turn's cgroup counter rises, read host-side:
+                    {"oom_kill_delta": int, "pids_max_delta": int}, non-negative. Never defaulted:
+                    an adapter that forgot them would turn an out-of-memory kill (aborted, never
+                    re-run) into a harness-error re-run (review round 2, W1B2-4)
     started_at, ended_at   host clock (seconds since the epoch) at the turn's start and end
     agent_output    REQUIRED bool: True when the host-captured stream holds at least one completed
                     agent message (text or tool call) for this turn. It is read from the stream's
                     event types, never from their content. A turn that produced no completed agent
-                    output (an API error on the first call, a container that died first) has not
-                    started the agent's first turn.
+                    output (an API error on the first call, a container that died first, a turn
+                    that timed out silently) has not started the agent's first turn.
+
+A required keyword left out raises TypeError naming it; None is never assumed for it.
 
 Everything except `text` is a harness-side record: it comes from the host, the runtime or the API,
 never from what the agent said or did.
@@ -65,7 +71,7 @@ from __future__ import annotations
 
 import os
 import sys
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
@@ -84,7 +90,8 @@ COUNTER_FIELDS = ("oom_kill_delta", "pids_max_delta")
 API_ERROR_FIELDS = ("status", "type", "text")
 
 # The box's own records, every one REQUIRED by `harness_records` (a missing one is never read as
-# "nothing happened"): what no adapter produces.
+# "nothing happened"): what no adapter produces. `outside_reach_events` is the drive step's count of
+# outside-reach events (routing.py's docstring says exactly what it counts).
 BOX_KEYS = ("preflight_ok", "container_started", "container_exited", "sidecar",
             "unexplained_operator_diffs", "checker_reasons", "quiescence_kill",
             "outside_reach_events", "finalize_abort", "committed")
@@ -102,31 +109,46 @@ def _count(v) -> bool:
     return isinstance(v, int) and not isinstance(v, bool) and v >= 0
 
 
+class _Required:
+    """The default of a keyword TurnResult requires: never a value, only "left out"."""
+
+    def __repr__(self):
+        return "<required>"
+
+
+REQUIRED = _Required()
+# W1B2-4: the harness-side records an adapter must state on every turn (None is a legal explicit init).
+REQUIRED_KEYWORDS = ("init", "api_errors", "counters")
+
+
 @dataclass(frozen=True)
 class TurnResult:
     exit_code: int | None
     text: str
     stream_path: str | None
     end_reason: str
-    init: dict | None = None
-    api_error: dict | None = None
-    counters: dict = field(default_factory=lambda: {k: 0 for k in COUNTER_FIELDS})
+    init: dict | None = REQUIRED          # required keyword; an explicit None is legal
+    api_errors: list = REQUIRED           # required keyword; [] when the turn met none
+    counters: dict = REQUIRED             # required keyword
     started_at: float = 0.0
     ended_at: float = 0.0
     agent_output: bool | None = None   # required: see THE RECORD; None is refused
 
     def __post_init__(self):
+        for name in REQUIRED_KEYWORDS:
+            if getattr(self, name) is REQUIRED:
+                raise TypeError(f"TurnResult: `{name}` is a required keyword (state it, never leave it out)")
         if self.end_reason not in END_REASONS:
             raise ValueError(f"end_reason {self.end_reason!r} is not one of {END_REASONS}")
         if not isinstance(self.counters, dict) or set(self.counters) != set(COUNTER_FIELDS):
             raise ValueError(f"counters must name exactly {COUNTER_FIELDS}")
         if not all(_count(v) for v in self.counters.values()):
             raise ValueError("counter rises must be non-negative ints")
-        if self.init is not None and not set(INIT_FIELDS) <= set(self.init):
-            raise ValueError(f"init must carry {INIT_FIELDS}")
-        if self.api_error is not None and (not isinstance(self.api_error, dict)
-                                           or not set(API_ERROR_FIELDS) <= set(self.api_error)):
-            raise ValueError(f"api_error must be None or a dict carrying {API_ERROR_FIELDS}")
+        if self.init is not None and (not isinstance(self.init, dict) or not set(INIT_FIELDS) <= set(self.init)):
+            raise ValueError(f"init must be None or a dict carrying {INIT_FIELDS}")
+        if not isinstance(self.api_errors, list) or not all(
+                isinstance(e, dict) and set(API_ERROR_FIELDS) <= set(e) for e in self.api_errors):
+            raise ValueError(f"api_errors must be a list ([] for none) of dicts carrying {API_ERROR_FIELDS}")
         if not isinstance(self.agent_output, bool):
             raise ValueError("agent_output must be a bool: did the turn's stream hold a completed agent message?")
         if self.ended_at < self.started_at:
@@ -251,13 +273,14 @@ def harness_records(turns: list[TurnResult], *, pin: dict, box: dict) -> dict:
     None or a string counter is refused there instead of silently becoming 0 or True.
 
     The agent's first turn has started once a turn produced completed agent output
-    (`agent_output`), or once a turn timed out: a turn that produced none, such as one whose first API
-    call failed, is still before it (gap4 lane lead's ruling on W1B-5), but a timeout is the agent's
-    whatever it printed, as the plan says ("A timeout stays the agent's"; the lane lead's refinement,
-    6 Oct 2026, so a silent timeout grades `timed-out` instead of stopping the loop). Every API error of every turn is carried, in turn
-    order, so a rate limit after another error still reads as a rate limit; each is projected onto
-    `API_ERROR_FIELDS`, its `text` the harness's own error text as the adapter recorded it. The
-    agent's text is never copied in.
+    (`agent_output`), and only then: a turn that produced none, such as one whose first API call
+    failed or one that timed out silently, is still before it (gap4 lane lead's ruling on W1B-5;
+    review round 2, W1B2-1, reverting 3fcab58d under glitch-f3's correction, 6 Oct 2026: a silent
+    timeout cannot be told from a hung API, CLI or egress, so it is a rehearsal). Every API error
+    of every turn is carried, flattened in turn order and, within a turn, in the order met (W1B-4,
+    W1B2-7), so a rate limit after another error still reads as a rate limit; each is projected
+    onto `API_ERROR_FIELDS`, its `text` the harness's own error text as the adapter recorded it.
+    The agent's text is never copied in.
     """
     if not isinstance(box, dict):
         raise BoxRecordError("box must be a dict")
@@ -270,7 +293,7 @@ def harness_records(turns: list[TurnResult], *, pin: dict, box: dict) -> dict:
     reasons = box["checker_reasons"]
     return {
         "ledger": {
-            "first_turn_started": any(outputs) or any(t.end_reason == END_TIMED_OUT for t in turns),
+            "first_turn_started": any(outputs),
             "turns": len(turns),
             "end": turns[-1].end_reason if turns else None,
             "turn_ends": [t.end_reason for t in turns],
@@ -286,7 +309,7 @@ def harness_records(turns: list[TurnResult], *, pin: dict, box: dict) -> dict:
         "cgroup": {k: sum(t.counters[k] for t in turns) for k in COUNTER_FIELDS},
         "init": [None if t.init is None else {f: t.init[f] for f in INIT_FIELDS} for t in turns],
         "pin": dict(pin) if isinstance(pin, dict) else pin,
-        "api_errors": [{f: t.api_error[f] for f in API_ERROR_FIELDS} for t in turns if t.api_error is not None],
+        "api_errors": [{f: e[f] for f in API_ERROR_FIELDS} for t in turns for e in t.api_errors],
         "sidecar": dict(sidecar) if isinstance(sidecar, dict) else sidecar,
         "preflight": {"ok": box["preflight_ok"]},
         "operator": {"unexplained_diffs": box["unexplained_operator_diffs"]},

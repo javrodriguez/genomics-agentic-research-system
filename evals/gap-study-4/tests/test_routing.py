@@ -390,7 +390,7 @@ def full_box(**kw) -> dict:
 
 def a_turn(**kw) -> aa.TurnResult:
     base = dict(exit_code=0, text="(scripted)", stream_path=None, end_reason=labels4.END_TURN, init=dict(PIN),
-                agent_output=True)
+                api_errors=[], counters={"oom_kill_delta": 0, "pids_max_delta": 0}, agent_output=True)
     base.update(kw)
     return aa.TurnResult(**base)
 
@@ -484,11 +484,11 @@ def _seam_edit(cond: dict, table: dict, turns: list, box: dict, end: str | None 
     path, op = cond["path"], cond["op"]
     head, _, tail = path.partition(".")
     if path == "api_errors" and op == "nonempty":
-        turns[:] = [_silent(end, api_error={"status": 500, "type": "api_error", "text": None})]
+        turns[:] = [_silent(end, api_errors=[{"status": 500, "type": "api_error", "text": None}])]
     elif head == "api_errors" and op == "in_rate_limit_markers":
         err = {"status": None, "type": None, "text": None}
         err[tail] = table["rate_limit_markers"][tail][0]
-        turns[:] = [_silent(end, api_error=err)]
+        turns[:] = [_silent(end, api_errors=[err])]
     elif path == "ledger.end" and op == "eq" and cond["value"] in (labels4.TIMED_OUT, labels4.END_ERROR):
         turns[:] = [_silent(cond["value"])]
     elif path == "preflight.ok" and op == "falsy":
@@ -816,7 +816,8 @@ def all_problems(table: dict) -> list[str]:
 _CONDITION_MUTANT = {"eq": ("value", "__mutated__"), "ne": ("op", "eq"), "gt": ("value", 10 ** 9),
                      "truthy": ("op", "falsy"), "falsy": ("op", "truthy"), "not_null": ("op", "is_null"),
                      "is_null": ("op", "not_null"), "nonempty": ("op", "empty"), "empty": ("op", "nonempty"),
-                     "in_operator_reasons": ("op", "is_null"), "in_rate_limit_markers": ("op", "is_null"),
+                     "in_operator_reasons": ("op", "is_null"), "in_checker_events": ("op", "is_null"),
+                     "in_rate_limit_markers": ("op", "is_null"),
                      "differs_from_pin": ("op", "is_null"), "nonzero_outside_timeout": ("op", "is_null")}
 
 
@@ -882,6 +883,10 @@ def mutants(table: dict):
     t = copy.deepcopy(table)
     t["rate_limit_markers"]["code"] = t["rate_limit_markers"].pop("status")
     yield "rate_limit_markers: status renamed to a non-API-error key", t
+    for j, eid in enumerate(table["checker_reasons_become_events"]["ids"]):   # W1B2-2
+        t = copy.deepcopy(table)
+        del t["checker_reasons_become_events"]["ids"][j]
+        yield f"checker_reasons_become_events: {eid} dropped", t
     for j, end in enumerate(table["graded_ends"]):
         t = copy.deepcopy(table)
         del t["graded_ends"][j]
@@ -1050,9 +1055,9 @@ def agent_text_problems(table: dict) -> list[str]:
     pauses, before or after its first turn, and its reply never becomes the record's error text."""
     p = []
     for said in AGENT_SAYS:
-        cases = {B: ([a_silent_turn(text=said, api_error=dict(E500_TEXT))], labels4.REHEARSAL),
+        cases = {B: ([a_silent_turn(text=said, api_errors=[dict(E500_TEXT)])], labels4.REHEARSAL),
                  A: ([a_turn(text=said), a_turn(text=said, exit_code=1, end_reason=labels4.END_ERROR,
-                                              api_error=dict(E500_TEXT))], labels4.HARNESS_ERROR)}
+                                              api_errors=[dict(E500_TEXT)])], labels4.HARNESS_ERROR)}
         for phase, (turns, want) in cases.items():
             rec = aa.harness_records(turns, pin=PIN, box=full_box())
             if rec["api_errors"] != [E500_TEXT]:
@@ -1368,8 +1373,8 @@ class TestSeam(unittest.TestCase):
 
     def test_two_api_errors_through_harness_records(self):
         """W1B-4: a 500 then a 429 routes pause, not harness-error."""
-        turns = [a_turn(), a_turn(exit_code=1, end_reason=labels4.END_ERROR, api_error=dict(E500)),
-                 a_turn(exit_code=1, end_reason=labels4.END_ERROR, api_error=dict(E429))]
+        turns = [a_turn(), a_turn(exit_code=1, end_reason=labels4.END_ERROR, api_errors=[dict(E500)]),
+                 a_turn(exit_code=1, end_reason=labels4.END_ERROR, api_errors=[dict(E429)])]
         got = routing.route(aa.harness_records(turns, pin=PIN, box=full_box()), test_table())
         self.assertEqual((got["route"], got["rows"]), (labels4.PAUSE, ["rate-limit"]))
 
@@ -1400,8 +1405,8 @@ class TestRateLimitText(unittest.TestCase):
 
     def test_text_only_usage_limit_pauses_through_harness_records(self):
         t = test_table()
-        for phase, turns in ((B, [a_silent_turn(api_error=dict(EUSAGE))]),
-                             (A, [a_turn(), a_turn(exit_code=1, end_reason=labels4.END_ERROR, api_error=dict(EUSAGE))])):
+        for phase, turns in ((B, [a_silent_turn(api_errors=[dict(EUSAGE)])]),
+                             (A, [a_turn(), a_turn(exit_code=1, end_reason=labels4.END_ERROR, api_errors=[dict(EUSAGE)])])):
             rec = aa.harness_records(turns, pin=PIN, box=full_box())
             self.assertEqual(rec["api_errors"], [EUSAGE])
             got = routing.route(rec, t)
@@ -1415,7 +1420,7 @@ class TestRateLimitText(unittest.TestCase):
 
         def agent_text_in(turns, *, pin, box):   # the mutant: the agent's reply routed into the error text
             out = real(turns, pin=pin, box=box)
-            erred = [t for t in turns if t.api_error is not None]
+            erred = [t for t in turns for _ in t.api_errors]
             out["api_errors"] = [dict(e, text=t.text) for e, t in zip(out["api_errors"], erred)]
             return out
         with mock.patch.object(aa, "harness_records", agent_text_in):

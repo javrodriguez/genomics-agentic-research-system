@@ -66,7 +66,7 @@
       "when": "before-first-turn",
       "route": "rehearsal",
       "any_of": [{"path": "api_errors", "op": "nonempty"}],
-      "source": "Plan table row 1: 'API error'. A rate-limit marker also matches rate-limit (pause), which wins on precedence. Phase per the gap4 lane lead's ruling on W1B-5: a turn that produced no completed agent output and carries an API-error record is before the agent's first turn."
+      "source": "Plan table row 1: 'API error'. A rate-limit marker also matches rate-limit (pause), which wins on precedence. Phase per the gap4 lane lead's ruling on W1B-5: the agent's first turn starts with the first turn that produced completed agent output (a text or tool-call message, read from the stream's event types), so an API error in a turn that produced none, however that turn ended (in error, or timed out), is before the agent's first turn. Review round 2 (W1B2-1) reverted 3fcab58d, which had let any timed-out turn start the agent's turn and so sent this row's silent-timeout cases to harness-error; glitch-f3's correction (6 Oct 2026; glitch-f3's, not the owner's) keeps a silent timeout before the first turn (see silent-timeout-before-first-turn)."
     },
     {
       "id": "sidecar-unhealthy-before-first-turn",
@@ -95,6 +95,14 @@
       "route": "rehearsal",
       "any_of": [{"path": "ledger.finalize_abort", "op": "truthy"}],
       "source": "Plan table last row: 'round 3's finalize abort (drive.py:1417) ... a rehearsal before the first turn'. Cited from the plan text; evals/gap-study-3/drive.py was not read by lane w1b."
+    },
+    {
+      "id": "silent-timeout-before-first-turn",
+      "when": "before-first-turn",
+      "route": "rehearsal",
+      "any_of": [{"path": "ledger.end", "op": "eq", "value": "timed-out"}],
+      "none_of": [{"path": "init", "op": "differs_from_pin"}],
+      "source": "glitch-f3's correction (6 Oct 2026, relayed by the gap4 lane lead; recorded as glitch-f3's, not the owner's), which withdrew his earlier acceptance that a timed-out silent first turn is the agent's: \"A silent timeout with no completed agent output can't be told apart from a hung API, CLI or egress using harness records, and round 3 already routes it as rehearsal through no-first-agent-turn. 'A timeout stays the agent's' applies once the agent has produced completed output.\" Plan table row 1: before the agent's first turn, a harness fault is a rehearsal. This row's route is its one value in routing.json: a ruling change is a one-word edit of it. It sits at rehearsal's level, so every before-first-turn harness row it meets (an API error, an operator reason such as no-first-agent-turn, a container exit, a preflight failure) names the same route and is one answer with it, and the rate-limit row (pause) outranks it. Review round 2, W1B2-1 (the gap4 lane lead's brief): its own row, any_of ledger.end eq timed-out, none_of an init event that differs from the pin, so a silent timeout under the wrong model, mode or version (or with no init event) matches no row and is refused for a human."
     },
     {
       "id": "rate-limit",
@@ -197,6 +205,13 @@
       "mask": false,
       "any_of": [{"path": "quiescence_kill", "op": "truthy"}],
       "source": "CP1 task: 'the box-only records (..., a quiescence kill)'; CP3 endstate: 'Writes by a background process the driver recorded and stopped at the cap are attributed to the turn that launched it'. Lane w1b decision: the agent's own behaviour, counted as an event; it does not route (the take routes by its other records, graded on a graded end). Review round 1 (W1B-1): an annotation, on every take."
+    },
+    {
+      "id": "checker-event-reason",
+      "event": true,
+      "mask": true,
+      "any_of": [{"path": "checker_reasons", "op": "in_checker_events"}],
+      "source": "Review round 2 (W1B2-2). Plan, CP2 check_take.py task: the study-materials-reached and account-email reasons 'become events, graded as usual with the text masked', and outside reads 'are recorded as events, not rehearsals' (checker_reasons_become_events). Round 4's checker emits them as events, which the drive step counts in events.outside_reach. If one still arrives as a checker reason, routing refuses the take (the id is not an operator reason, and never may be: routing.py checks the two lists are disjoint), so batch.py commits it blocked; this annotation holds on every take whose checker_reasons carry any of those ids, whatever route wins or whether one does, so the event is still counted and the text masked, never lost to the refusal."
     }
   ]
 }

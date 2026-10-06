@@ -30,15 +30,26 @@ records are:
     operator         unexplained_diffs (count): operator-step diffs no logged operator event explains
     checker_reasons  the checker's reason ids (strs), computed in the drive step
     quiescence_kill  (bool) the box stopped a background process at the quiescence cap
-    events           outside_reach (count): the drive step's count of the agent reaching the
-                     token, the account email, a study path or anything outside the run tree
+    events           outside_reach (count, int >= 0): how many outside-reach EVENTS the drive step
+                     recorded for the take, each one an instance of the agent's own text or actions
+                     reaching the token, the account email, a study path or anything outside the run
+                     tree. It counts what the drive step's own scans find and what round 4's checker
+                     reports as events (the ids in routing.json's checker_reasons_become_events:
+                     study-materials-reached, account-email, read-outside-the-checkout), one per
+                     event, never per turn or per take; 0 means none was found. It does NOT count
+                     those ids when they arrive in checker_reasons instead: the
+                     `checker-event-reason` annotation covers that case (review round 2, W1B2-2).
+                     It is derived from the agent's text and actions, so only annotations read it
 
 `agent_adapter.harness_records()` builds this shape from an adapter's turn results; this module
 does not import it, nor any driver or agent (lane lead's interface 5).
 
 DECIDING. The agent's first turn has started once a turn produced completed agent output (the
-gap4 lane lead's ruling on W1B-5); until then the take is `before-first-turn`, else
-`after-first-turn` (`any` is both). A row matches when the take is in the row's phase, every
+gap4 lane lead's ruling on W1B-5), however that turn or any earlier one ended; until then the take
+is `before-first-turn`, else `after-first-turn` (`any` is both). A turn that timed out without
+completed output has not started it: glitch-f3's correction (6 Oct 2026; glitch-f3's, not the
+owner's) routes a bare silent timeout as a rehearsal on its own row, because harness records
+cannot tell it from a hung API, CLI or egress (review round 2, W1B2-1, reverting 3fcab58d). A row matches when the take is in the row's phase, every
 `all_of` condition holds, at least one `any_of` condition holds, and no `none_of` condition holds.
 The matched rows at the highest precedence level win. If none match, or the winners name more
 than one route, `route()` raises `RoutingRefused`: never a default, never a pick. Records already
@@ -51,8 +62,9 @@ marker word-bounded and case-insensitive. The text matched is only ever the API-
 harness-side text; the agent's reply never reaches the records.
 
 ANNOTATING. `annotate()` decides the table's annotations (an outside reach: an event, and the
-text masked before commit; a quiescence kill: an event) on every take, in every phase, whatever
-route wins and even when `route()` refuses the take. Rows never read the `events` record, so a
+text masked before commit; a quiescence kill: an event; an event id arriving as a checker reason:
+an event, and the text masked) on every take, in every phase, whatever route wins and even when
+`route()` refuses the take. Rows never read the `events` record, so a
 text-derived count can never route a take, and an annotation can never be lost to a route.
 
 No model is called anywhere in this module. Standard library only.
@@ -102,7 +114,8 @@ PLAN_PIN_FIELDS = ("model", "permission_mode", "version")
 ANNOTATION_ONLY = ("events",)
 
 OPS = ("eq", "ne", "gt", "truthy", "falsy", "not_null", "is_null", "nonempty", "empty",
-       "in_operator_reasons", "in_rate_limit_markers", "differs_from_pin", "nonzero_outside_timeout")
+       "in_operator_reasons", "in_checker_events", "in_rate_limit_markers", "differs_from_pin",
+       "nonzero_outside_timeout")
 _VALUE_OPS = ("eq", "ne", "gt")
 
 
@@ -212,7 +225,7 @@ def check_table(table: dict) -> list[str]:
         if r not in caps:
             p.append(f"no cap for route {r}")
     for key in ("pin_fields", "graded_ends", "rate_limit_markers", "operator_reasons", "operator_reasons_status",
-                "pin_profiles", "pin_profiles_status", "rows", "annotations"):
+                "checker_reasons_become_events", "pin_profiles", "pin_profiles_status", "rows", "annotations"):
         if key not in table:
             p.append(f"missing {key}")
     if p:
@@ -221,6 +234,15 @@ def check_table(table: dict) -> list[str]:
         p.append("operator_reasons must be a list of ids")
     elif len(set(table["operator_reasons"])) != len(table["operator_reasons"]):
         p.append("operator_reasons repeats an id")
+    events = table["checker_reasons_become_events"]
+    if (not isinstance(events, dict) or not isinstance(events.get("ids"), list) or not events["ids"]
+            or not all(_is_str(r) and r for r in events["ids"]) or not events.get("source")):
+        p.append("checker_reasons_become_events must give a non-empty list of ids and its source")
+    elif set(events["ids"]) & set(table["operator_reasons"] if isinstance(table["operator_reasons"], list) else []):
+        # W1B2-2/W1B2-10: an event id listed as an operator reason would route a rehearsal or harness-error
+        # where the plan says "graded as usual, the text masked".
+        p.append(f"operator_reasons and checker_reasons_become_events share ids "
+                 f"{sorted(set(events['ids']) & set(table['operator_reasons']))}: an event is never an operator reason")
     for key in ("operator_reasons_status", "pin_profiles_status"):
         if not _is_str(table[key]) or not table[key]:
             p.append(f"{key} must say where the data stands")
@@ -368,8 +390,9 @@ def shape_problems(records: dict, table: dict) -> list[str]:
     if (len(led["turn_ends"]) != n or len(led["turn_outputs"]) != n or len(records["exit"]["exec_codes"]) != n
             or len(records["init"]) != n):
         p.append("per-turn records do not cover every turn")
-    elif led["first_turn_started"] != (any(led["turn_outputs"]) or labels4.TIMED_OUT in led["turn_ends"]):
-        p.append("ledger.first_turn_started disagrees with ledger.turn_outputs and turn_ends")
+    elif led["first_turn_started"] != any(led["turn_outputs"]):
+        # W1B-5 and W1B2-1: completed agent output, and nothing else, starts the agent's first turn.
+        p.append("ledger.first_turn_started disagrees with ledger.turn_outputs")
     if n and led["end"] != led["turn_ends"][-1]:
         p.append("ledger.end is not the last turn's end")
     if not n and led["end"] is not None:
@@ -446,6 +469,8 @@ def holds(cond: dict, records: dict, table: dict) -> bool:
         return len(v) == 0
     if op == "in_operator_reasons":
         return any(r in table["operator_reasons"] for r in v)
+    if op == "in_checker_events":
+        return any(r in table["checker_reasons_become_events"]["ids"] for r in v)
     if op == "in_rate_limit_markers":
         field = path.partition(".")[2]
         markers = table["rate_limit_markers"].get(field, [])

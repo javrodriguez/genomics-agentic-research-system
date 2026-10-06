@@ -48,7 +48,8 @@ with every key below always present (None where it does not apply), decided BEFO
                                  be read (then nothing can be counted, and a human must look)
     mask                         True when the take's text must be masked, never deleted, before
                                  this commit writes it. Decided on every take from the annotations;
-                                 True, fail-closed, whenever the records could not be read
+                                 True, fail-closed, whenever the records could not be read and on
+                                 every blocked or failed take (review round 2, W1B2-2)
     mask_basis                   "annotations" or why the mask was set fail-closed
     leaked_container             the recorded id of a container remove() failed on (else None)
     final                        True when this record is the slot's final result
@@ -56,7 +57,19 @@ with every key below always present (None where it does not apply), decided BEFO
     beyond_cap                   True when a cap was reached
     stop                         why the loop stops after this block (else None)
 
-The repo masks the take's text whenever `mask` is true; it never deletes it.
+The repo masks the take's text whenever `mask` is true; it never deletes it. The mask rule is
+applied at the one place every outcome passes before its commit (`_seal`), so no road to a commit
+can skip it.
+
+A RESTART CONTINUES, never resets (review round 2, W1B2-3). The caps and attempt numbers live in
+the committed outcomes, not in this process: `Batch` reads them from the repo (`repo.history()`,
+every outcome committed so far, in commit order; or a `history` argument read from it) and
+rebuilds, before anything runs, the re-runs spent per half-cell and per slot, and each slot's next
+attempt (one past its last committed attempt). It refuses a row whose slot is already final, or
+ended at a cap the plan gives no fate (rehearsal, pause), and a history it cannot trust (not a
+list, a missing key, an unknown state, a (slot, attempt) twice, a slot under two half-cells, an
+attempt after the slot's final one). Lane w1b decision: when any of the last BLOCK committed
+outcomes is a pause, a restart waits for the usage window before its first launch.
 
 THE START GATE. The loop refuses to start (`BatchConfigError`, and `batch.py --check` exits 1)
 while routing.json still lacks what only the owner or a later checkpoint can supply: round 3's
@@ -76,7 +89,8 @@ object with three methods,
     remove(container_id) -> None     remove exactly that container (never called with None)
 
 and a repo object with `register(row, attempt)` and `commit_records(row, attempt, outcome)`, each
-one commit, and a usage window with `wait_reset()`. CP2 supplies the real three.
+one commit, and `history()` (the committed outcomes), and a usage window with `wait_reset()`. CP2
+supplies the real three.
 
 No model is called anywhere in this module. Standard library only.
 """
@@ -106,8 +120,13 @@ OUTCOME_KEYS = ("slot", "half_cell", "attempt", "container_id", "state", "reason
                 "events", "mask", "mask_basis", "leaked_container", "final", "rerun", "beyond_cap", "stop")
 
 
+# Routes that re-run a slot, whose spent re-runs a restart must count again.
+RERUN_ROUTES = (labels4.REHEARSAL, labels4.HARNESS_ERROR, labels4.PAUSE)
+
+
 class BatchConfigError(RuntimeError):
-    """The loop cannot start: pending data, an unhandled terminal state, a bad row, no nohup."""
+    """The loop cannot start: pending data, an unhandled terminal state, a bad row, no nohup,
+    untrustworthy history."""
 
 
 def pending_caps(table: dict) -> list[str]:
@@ -140,7 +159,7 @@ def expected_pin(row: dict, table: dict) -> dict:
 
 class Batch:
     def __init__(self, driver, repo, window, *, table: dict | None = None, serial: bool = False,
-                 route_fn=None, annotate_fn=None):
+                 route_fn=None, annotate_fn=None, history: list | None = None):
         self.driver, self.repo, self.window = driver, repo, window
         self.table = table if table is not None else routing.load_table()
         self.route_fn = route_fn or routing.route
@@ -167,8 +186,75 @@ class Batch:
         self.containers: dict = {}           # (slot, attempt) -> recorded container id
         self.reruns = collections.Counter()  # (half_cell, route) -> re-runs spent
         self.slot_reruns = collections.Counter()  # (slot, route) -> re-runs spent
+        self.next_attempt: dict = {}         # slot -> the attempt its next drive registers
+        self.slot_cell: dict = {}            # slot -> its half-cell, as committed
+        self.closed: dict = {}               # slot -> why it is never driven again
         self.stopped = None
         self.paused = False
+        if history is None:
+            read = getattr(repo, "history", None)
+            if not callable(read):
+                raise BatchConfigError("the repo gives no history(): the caps and attempts of earlier runs "
+                                       "cannot be rebuilt, so a restart could spend re-runs twice")
+            history = read()
+        self._replay(history)
+
+    # ---------------------------------------------------------------------------- the history
+    @staticmethod
+    def history_problems(history) -> list[str]:
+        """Why the committed outcomes cannot be trusted (empty when they can)."""
+        if not isinstance(history, list):
+            return ["history must be a list of committed outcomes"]
+        p, seen, cell, final_at = [], set(), {}, {}
+        for i, o in enumerate(history):
+            if not isinstance(o, dict) or set(o) != set(OUTCOME_KEYS):
+                p.append(f"history[{i}] must hold exactly the committed outcome keys")
+                continue
+            if o["state"] not in labels4.TERMINAL_STATES:
+                p.append(f"history[{i}]: state {o['state']!r} is not a labels4 terminal state")
+            if not (isinstance(o["attempt"], int) and not isinstance(o["attempt"], bool) and o["attempt"] >= 1):
+                p.append(f"history[{i}]: attempt {o['attempt']!r} is not a positive int")
+                continue
+            if not all(isinstance(o[k], bool) for k in ("final", "rerun", "beyond_cap")):
+                p.append(f"history[{i}]: final, rerun and beyond_cap must be bools")
+            key = (o["slot"], o["attempt"])
+            if key in seen:
+                p.append(f"history[{i}]: slot {o['slot']} attempt {o['attempt']} committed twice")
+            seen.add(key)
+            if cell.setdefault(o["slot"], o["half_cell"]) != o["half_cell"]:
+                p.append(f"history[{i}]: slot {o['slot']} committed under two half-cells")
+        for i, o in enumerate(history):   # an attempt after the slot's final one
+            if isinstance(o, dict) and o.get("final") is True and isinstance(o.get("attempt"), int):
+                final_at[o.get("slot")] = min(final_at.get(o.get("slot"), o["attempt"]), o["attempt"])
+        for i, o in enumerate(history):
+            if (isinstance(o, dict) and o.get("slot") in final_at and isinstance(o.get("attempt"), int)
+                    and o["attempt"] > final_at[o["slot"]]):
+                p.append(f"history[{i}]: slot {o['slot']} attempt {o['attempt']} comes after its final attempt")
+        return p
+
+    def _replay(self, history) -> None:
+        """Rebuild the re-runs spent, each slot's next attempt and the closed slots from the committed
+        outcomes, so a restart continues where the stopped run committed (W1B2-3)."""
+        problems = self.history_problems(history)
+        if problems:
+            raise BatchConfigError("the repo's history cannot be trusted: " + "; ".join(problems))
+        for o in history:
+            if o["rerun"] and o["state"] in RERUN_ROUTES:
+                self.reruns[(o["half_cell"], o["state"])] += 1
+                self.slot_reruns[(o["slot"], o["state"])] += 1
+            self._note_committed(o)
+        # A restart after a pause launches nothing before the window resets (lane w1b decision).
+        self.paused = any(o["state"] == labels4.PAUSE for o in history[-BLOCK:])
+
+    def _note_committed(self, o: dict) -> None:
+        """What one committed outcome tells the loop about its slot."""
+        slot = o["slot"]
+        self.slot_cell.setdefault(slot, o["half_cell"])
+        self.next_attempt[slot] = max(self.next_attempt.get(slot, 1), o["attempt"] + 1)
+        if o["final"]:
+            self.closed[slot] = f"already final ({o['state']}, attempt {o['attempt']})"
+        elif o["beyond_cap"] and not o["rerun"] and o["state"] in RERUN_ROUTES:
+            self.closed[slot] = f"ended at its {o['state']} cap (attempt {o['attempt']}): a human decides its fate"
 
     # ------------------------------------------------------------------------------- the loop
     def row_problems(self, rows: list[dict]) -> list[str]:
@@ -178,6 +264,11 @@ class Batch:
                 p.append(f"row {r!r} must name slot, half_cell and model")
             elif r["model"] not in self.table["pin_profiles"]:
                 p.append(f"row {r['slot']}: model {r['model']!r} has no pre-registered pin profile")
+            elif r["slot"] in self.closed:
+                p.append(f"row {r['slot']}: the slot is {self.closed[r['slot']]}, never driven again")
+            elif self.slot_cell.get(r["slot"], r["half_cell"]) != r["half_cell"]:
+                p.append(f"row {r['slot']}: committed under half-cell {self.slot_cell[r['slot']]!r}, "
+                         f"not {r['half_cell']!r}")
         slots = [r.get("slot") for r in rows if isinstance(r, dict)]
         if len(set(slots)) != len(slots):
             p.append("slots repeat")
@@ -187,7 +278,7 @@ class Batch:
         problems = self.row_problems(rows)
         if problems:
             raise BatchConfigError("; ".join(problems))
-        queue = collections.deque((dict(r), 1) for r in rows)
+        queue = collections.deque((dict(r), self.next_attempt.get(r["slot"], 1)) for r in rows)
         while queue and self.stopped is None:
             if self.paused:
                 self.window.wait_reset()
@@ -203,18 +294,37 @@ class Batch:
                            for (row, attempt, cid, _), f in zip(launched, futures)]
             requeue = []
             for (row, attempt, _, _), outcome in zip(launched, results):   # serial, row order, all of them
-                outcome.update(self._decide(row, attempt, outcome))   # the fate, before the commit
-                try:
-                    self.repo.commit_records(row, attempt, outcome)
-                except Exception as e:  # noqa: BLE001
-                    outcome = dict(outcome, state=labels4.FAILED, reason=f"commit failed: {e}",
-                                   final=False, rerun=False, stop=f"commit failed: {e}")
-                    self._stop(row, attempt, outcome)
-                self.outcomes.append(outcome)
+                outcome = self._commit(row, attempt, outcome)
                 if outcome["rerun"]:
                     requeue.append((row, attempt + 1))
             queue.extendleft(reversed(requeue))              # same slots, first, in row order
         return self.outcomes
+
+    def _commit(self, row, attempt, outcome) -> dict:
+        """Decide the take's fate, seal its mask, commit it: the one road every outcome takes to the repo."""
+        outcome.update(self._decide(row, attempt, outcome))   # the fate, before the commit
+        self._seal(outcome)
+        try:
+            self.repo.commit_records(row, attempt, outcome)
+        except Exception as e:  # noqa: BLE001
+            outcome = dict(outcome, state=labels4.FAILED, reason=f"commit failed: {e}",
+                           final=False, rerun=False, stop=f"commit failed: {e}")
+            self._seal(outcome)
+            self._stop(row, attempt, outcome)
+        else:
+            self._note_committed(outcome)
+        self.outcomes.append(outcome)
+        return outcome
+
+    @staticmethod
+    def _seal(outcome) -> None:
+        """The mask rule, at the commit (W1B2-2): a take that is blocked or failed is masked, fail-closed,
+        whatever its annotations said; so is one whose records could not be read (`_annotations`)."""
+        if outcome["state"] in labels4.BATCH_STATES and outcome["mask_basis"] == "annotations":
+            outcome["mask"] = True
+            outcome["mask_basis"] = f"the take is {outcome['state']}: masked fail-closed (annotations read)"
+        elif outcome["state"] in labels4.BATCH_STATES or outcome["mask_basis"] != "annotations":
+            outcome["mask"] = True
 
     @staticmethod
     def _outcome(row, attempt, cid, **kw) -> dict:
