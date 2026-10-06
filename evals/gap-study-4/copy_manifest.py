@@ -33,7 +33,14 @@ exist, and the freeze writes it once from derive(). What --check refuses:
   - (W1A-1) a `new` file whose bytes are any blob under evals/ at the source or the base commit, at any path;
   - (W1A-3) a tracked cache file (`*.pyc`, `__pycache__/`), which a fragment could never claim and a sourceless
     .pyc imports; and a symbolic link anywhere under this folder;
-  - (N2) a reason that is not a non-empty string.
+  - (N2) a reason that is not a non-empty string;
+  - (review round 2) any file whose bytes are a round 3 record at the source or base commit, whatever its
+    status; an `edited` copy whose bytes are already a file under evals/ (it is an `identical` copy of that file);
+    and any copy of the first study's three named fixture builders that is not `identical`.
+
+What --check cannot see (review round 2 W1A2-6): a record changed by even one byte is a new blob, so a derivative
+of a record (a record plus a line, a record re-wrapped) passes these byte guards. Keeping records out in that sense
+is the reviews' job, not this check's.
 
 Round 3's uneditable list (check_take.py, the graders, the label reader, lint_language.py, commit_msg.py) is
 NOT carried: round 4 edits its checker and writes new graders, and the copied list would refuse both.
@@ -61,10 +68,14 @@ sys.path.insert(0, str(HERE))
 import study  # noqa: E402
 
 # Round 3's done commit: every copy is read from here.
-SOURCE_COMMIT = "e2979b31"
+SOURCE_COMMIT = "e2979b3143081824aadea73523ec41af30c1ddb1"
 SOURCE_DIR = "evals/gap-study-3"
 # The commit round 4 was cut from. Everything below is unchanged since it, so nothing here can have been edited there.
 BASE_COMMIT = "68ec902f63bfbe4a18d07e0f564847531898ff95"
+# Where the shared copy sources are read (review round 2 NIT): a constant of its own, so moving the pin baseline
+# can never silently redefine "identical" for a shared builder. A test binds that each shared file here equals
+# round 3's at SOURCE_COMMIT wherever both exist.
+SHARED_COMMIT = "68ec902f63bfbe4a18d07e0f564847531898ff95"
 PINNED_UNCHANGED = ("evals/gap-study", "evals/gap-study-2", "evals/gap-study-3", "evals/graders",
                     "evals/fixtures", "evals/transcript.py", "evals/haiku-prestudy", "evals/gap-study-intervals")
 
@@ -82,8 +93,13 @@ IGNORED_SUFFIXES = (".pyc",)
 # Where a copy may come from (review W1A-1): round 3's folder, and the shared files the round 4 plan names as
 # copy sources (the first study's fixture builders and classifier, lane E1's interval code). Anything else is
 # refused rather than allowed by default.
-ALLOWED_SOURCES = ("evals/gap-study-3/", "evals/fixtures/", "evals/graders/confounded_refusal.py",
+ALLOWED_SOURCES = ("evals/gap-study-3/", "evals/fixtures/gen_fastq.py", "evals/fixtures/neutralise.py",
+                   "evals/fixtures/rank_check.py", "evals/graders/confounded_refusal.py",
                    "evals/gap-study-intervals/intervals.py")
+# The first study's fixture builders the plan names (review round 2 W1A2-4): copied byte-identical, as `identical`
+# only, so the copies stay exactly as the earlier rounds ran them. The rest of evals/fixtures/ (its pilot record,
+# its planted answer keys) is no copy source at all.
+SHARED_UNEDITABLE = ("evals/fixtures/gen_fastq.py", "evals/fixtures/neutralise.py", "evals/fixtures/rank_check.py")
 # Round 3's records, never copied whatever the status (W1A-1; the lane's own exclusions, made a check).
 ROUND3_RECORDS = tuple(f"{SOURCE_DIR}/{r}" for r in (
     "prereg.json", "prereg-draft.json", "takes.json", "COPIED.json", "RESULT.md", "COSTS.md", "PROGRESS.md",
@@ -103,8 +119,8 @@ def sha256(b: bytes) -> str:
 
 def source_commit(src: str) -> str:
     """Round 3's files are read at its done commit; the shared files the plan names (some landed after it, such
-    as lane E1's intervals) are read at the base commit, where PINNED_UNCHANGED holds them still."""
-    return SOURCE_COMMIT if src.startswith(SOURCE_DIR + "/") else BASE_COMMIT
+    as lane E1's intervals) are read at SHARED_COMMIT, where PINNED_UNCHANGED holds them still."""
+    return SOURCE_COMMIT if src.startswith(SOURCE_DIR + "/") else SHARED_COMMIT
 
 
 def source_bytes(src: str) -> bytes | None:
@@ -156,10 +172,37 @@ def prior_blobs() -> set[str]:
     return _PRIOR_BLOBS
 
 
+_RECORD_BLOBS: set[str] | None = None
+
+
+def record_blobs() -> set[str]:
+    """Every blob at a ROUND3_RECORDS path, at the source and the base commit (review round 2 W1A2-1)."""
+    global _RECORD_BLOBS
+    if _RECORD_BLOBS is None:
+        blobs = set()
+        for commit in (SOURCE_COMMIT, BASE_COMMIT):
+            listed = git("ls-tree", "-r", "-z", commit, "--", SOURCE_DIR + "/").stdout.decode()
+            for entry in listed.split("\0"):
+                if entry:
+                    meta, path = entry.split("\t", 1)
+                    if is_record(path):
+                        blobs.add(meta.split()[2])
+        _RECORD_BLOBS = blobs - {EMPTY_BLOB}
+    return _RECORD_BLOBS
+
+
+def is_record(src: str) -> bool:
+    return any(src == r or (r.endswith(("/", "-")) and src.startswith(r)) for r in ROUND3_RECORDS)
+
+
+def is_link(name: str) -> bool:
+    return (HERE / name).is_symlink()
+
+
 def source_problem(src: str) -> str | None:
     if not any(src == a or (a.endswith("/") and src.startswith(a)) for a in ALLOWED_SOURCES):
         return f"its source {src} is not an allowed copy source ({', '.join(ALLOWED_SOURCES)})"
-    if any(src == r or (r.endswith(("/", "-")) and src.startswith(r)) for r in ROUND3_RECORDS):
+    if is_record(src):
         return f"its source {src} is one of round 3's records, which are never copied"
     return None
 
@@ -237,6 +280,9 @@ def problems(folder: Path = FRAGMENTS, present: set[str] | None = None, read=rea
             out.append(f"{path} ({lane}) is claimed but does not exist")
             continue
         copy = read(path)
+        if blob_id(copy) in record_blobs():
+            out.append(f"{path} ({lane}): its bytes are one of round 3's records, which are never copied")
+            continue
         if status == "new":
             if src:
                 out.append(f"{path} ({lane}) is new and names a source; a copy is identical or edited")
@@ -270,6 +316,11 @@ def problems(folder: Path = FRAGMENTS, present: set[str] | None = None, read=rea
             out.append(f"{path} ({lane}) is identical and carries a reason; a reason is for an edit or a new file")
         if status == "edited" and not differs:
             out.append(f"{path} ({lane}) carries an edit reason but is byte-identical to {src}")
+        if status == "edited" and blob_id(copy) in prior_blobs():
+            out.append(f"{path} ({lane}) is recorded as edited but its bytes are a file under evals/; record it "
+                       f"identical from that file")
+        if src in SHARED_UNEDITABLE and (differs or status != "identical"):
+            out.append(f"{path} ({lane}) copies the shared builder {src}, which is uneditable: identical only")
         if status == "edited" and not why:
             out.append(f"{path} ({lane}) differs from {src} and no reason is recorded")
         if path in UNEDITABLE and (differs or status != "identical"):
@@ -283,7 +334,7 @@ def problems(folder: Path = FRAGMENTS, present: set[str] | None = None, read=rea
         if name not in claimed:
             out.append(f"{name} is a tracked interpreter cache under {study.STUDY_REL}/; caches are never tracked")
     for name in sorted(present):
-        if (HERE / name).is_symlink():
+        if is_link(name):
             out.append(f"{name} is a symbolic link; every file of the study is a regular file")
     for name in UNEDITABLE:
         if name not in claimed:
@@ -322,7 +373,8 @@ def main() -> int:
         count = {s: sum(e["status"] == s for _, e in entries) for s in STATUSES}
         lanes = sorted({lane for lane, _ in entries})
         print(f"ok: {len(entries)} files from {len(lanes)} fragment(s) ({', '.join(lanes)}): "
-              f"{count['identical']} identical and {count['edited']} edited from {SOURCE_DIR} at {SOURCE_COMMIT}, "
+              f"{count['identical']} identical and {count['edited']} edited (round 3 at {SOURCE_COMMIT[:8]}, "
+              f"shared files at {SHARED_COMMIT[:8]}), "
               f"{count['new']} new; {len(UNEDITABLE)} fixture builders byte-identical; "
               f"{len(PINNED_UNCHANGED)} frozen paths unchanged since {BASE_COMMIT[:12]}")
     return 1 if bad else 0

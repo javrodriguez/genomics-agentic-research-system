@@ -73,10 +73,14 @@ def verdict(k: int, n: int) -> int:
     return 0 if n >= 1 and k == n else 1
 
 
-def run_all(cmds: list[tuple[str, str]], cwd: Path = REPO) -> tuple[int, int]:
+def run_all(cmds: list[tuple[str, str]], cwd: Path = REPO, tally: dict | None = None) -> tuple[int, int]:
+    """Run every command, counting into `tally` as each one ends, so an interrupt still leaves a true count
+    (review round 2 W1A2-7): an interrupted command counts as one failed command, then the interrupt goes on."""
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
+    tally = {"k": 0, "n": 0} if tally is None else tally
     k = 0
     for where, cmd in cmds:
+        tally["n"] += 1
         t0 = time.monotonic()
         try:
             p = subprocess.run(cmd, shell=True, cwd=str(cwd), env=env, capture_output=True, text=True,
@@ -86,10 +90,17 @@ def run_all(cmds: list[tuple[str, str]], cwd: Path = REPO) -> tuple[int, int]:
             code, output = "timeout", f"no result within {TIMEOUT_S} s"
         except Exception as e:  # anything the command raises is a failure, never a lost closing line
             code, output = "error", f"{type(e).__name__}: {e}"
+        except BaseException:
+            print(f"FAIL [{where}] interrupted: {cmd}", flush=True)
+            raise
         took = time.monotonic() - t0
         ok = code == 0
         k += ok
+        tally["k"] += ok
         print(f"{'PASS' if ok else 'FAIL'} [{where}] exit {code} in {took:.1f}s: {cmd}", flush=True)
+        for line in output.splitlines():
+            if line.startswith("test_round4: ") and ok:
+                print(f"    {line}")   # the battery's own run and skip count, on a pass too (review round 2)
         if not ok:
             for line in output.strip().splitlines()[-20:]:
                 print(f"    {line}")
@@ -97,19 +108,19 @@ def run_all(cmds: list[tuple[str, str]], cwd: Path = REPO) -> tuple[int, int]:
 
 
 def main() -> int:
-    k = n = 0
+    tally = {"k": 0, "n": 0}
     try:
         for name, why in file_problems():
-            n += 1
+            tally["n"] += 1
             print(f"FAIL [checks.d/{name}] {why}", flush=True)
-        k2, n2 = run_all(commands())
-        k, n = k + k2, n + n2
+        run_all(commands(), tally=tally)
     except Exception as e:  # the closing line is printed whatever happened
-        n += 1
+        tally["n"] += 1
         print(f"FAIL [run_checks] {type(e).__name__}: {e}", flush=True)
     finally:
-        print(summary(k, n), flush=True)
-    return verdict(k, n)
+        # also on an interrupt: the count of what really ended, the interrupted command counted as failed
+        print(summary(tally["k"], tally["n"]), flush=True)
+    return verdict(tally["k"], tally["n"])
 
 
 if __name__ == "__main__":

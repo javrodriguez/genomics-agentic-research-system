@@ -11,6 +11,11 @@ Home fold of review round 1 (W1A-2): the count is per module, not per battery. E
 on its own and must hold at least one test, and a test_*.py anywhere deeper under tests/ (which discovery would
 not load) fails the battery, so no module rides on another's tests.
 
+Review round 2: a skipped test fails the battery unless its reason is named in SKIP_ALLOWED (empty: no skip is
+allowed yet), whatever the form (a skip decorator, skipUnless, a module-level SkipTest, a SkipTest in
+setUpClass); a .py file in tests/ that discovery would never run fails it too; and the battery always ends with
+one line, `test_round4: <n> run, <m> skipped`, which run_checks prints even on a pass.
+
 No model, no network, stdlib only.
 """
 
@@ -25,6 +30,12 @@ TESTS = HERE / "tests"
 PATTERN = "test_*.py"
 sys.path.insert(0, str(HERE))
 
+# Skip reasons a test may give and still pass the battery. Each entry needs a review that it measures nothing the
+# round relies on. Empty: no skip is allowed.
+SKIP_ALLOWED: tuple[str, ...] = ()
+# Python files in tests/ that are helpers, not test modules. Empty.
+HELPERS: tuple[str, ...] = ()
+
 
 def suite(folder: Path | None = None) -> unittest.TestSuite:
     folder = TESTS if folder is None else folder
@@ -36,6 +47,9 @@ def module_problems(folder: Path | None = None) -> list[str]:
     tests/ itself."""
     folder = TESTS if folder is None else folder
     out = []
+    for f in sorted(folder.glob("*.py")):
+        if f.name != "__init__.py" and not f.name.startswith("test_") and f.name not in HELPERS:
+            out.append(f"{f.name} is not test_*.py; the battery would never run it")
     for f in sorted(folder.rglob(PATTERN)):
         if "__pycache__" in f.parts:
             continue
@@ -69,7 +83,11 @@ def main(folder: Path | None = None) -> int:
     for b in bad:
         print(f"test_round4: {b}")
     result = unittest.TextTestRunner(verbosity=2).run(s)
-    return 0 if result.wasSuccessful() and not bad else 1
+    banned = [(str(t), why) for t, why in result.skipped if why not in SKIP_ALLOWED]
+    for test, why in banned:
+        print(f"test_round4: skipped, and its reason is not in SKIP_ALLOWED: {test}: {why}")
+    print(f"test_round4: {result.testsRun - len(result.skipped)} run, {len(result.skipped)} skipped", flush=True)
+    return 0 if result.wasSuccessful() and not bad and not banned else 1
 
 
 if __name__ == "__main__":
