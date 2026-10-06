@@ -9,12 +9,12 @@
     {
       "path": "agent_adapter.py",
       "status": "new",
-      "reason": "The runner's only agent interface (interface 5); new in round 4."
+      "reason": "The runner's only agent interface (interface 5); new in round 4. TurnResult's init, api_errors (every API error of the turn, in order) and counters are required keywords, and the agent's first turn starts only with completed agent output (review round 2: W1B2-1, W1B2-4, W1B2-7)."
     },
     {
       "path": "routing.json",
       "status": "new",
-      "reason": "CP1's routing table as pre-registered data, with its annotations (an outside reach, a quiescence kill: decided on every take, never routing) and the pin profiles CP5 pre-registers (PENDING); new in round 4 (round 3 routed inside drive.py)."
+      "reason": "CP1's routing table as pre-registered data, with its annotations (an outside reach, a quiescence kill, an event id arriving as a checker reason: decided on every take, never routing), round 3's operator-side and driver-decided reasons and caps copied under Javier's ruling \"gap4 routing: A\" with their sources, glitch-f3's rulings on the rate-limit markers and the silent first-turn timeout, and the pin profiles CP5 pre-registers (PENDING); new in round 4 (round 3 routed inside drive.py)."
     },
     {
       "path": "routing.py",
@@ -24,7 +24,7 @@
     {
       "path": "batch.py",
       "status": "new",
-      "reason": "CP1's in-repo take loop, replacing round 3's out-of-repo batch.sh (verify-3 finding); it decides each take's mask, events and fate before the commit and refuses to start on PENDING data; new."
+      "reason": "CP1's in-repo take loop, replacing round 3's out-of-repo batch.sh (verify-3 finding); it decides each take's mask, events and fate before the commit (blocked and failed masked fail-closed), rebuilds its caps and attempts from the committed outcomes on a restart, stops cleanly on a repo or window failure, and refuses to start on PENDING data; new."
     },
     {
       "path": "tests/test_labels4.py",

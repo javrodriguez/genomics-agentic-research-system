@@ -7,6 +7,8 @@ python3 -B -W ignore evals/gap-study-4/tests/test_batch.py
 python3 -B evals/gap-study-4/routing.py --check
 python3 -B evals/gap-study-4/batch.py --states
 ! grep -nE "^[[:space:]]*(import|from)[[:space:]].*(drive|claude|agent_adapter)" evals/gap-study-4/batch.py evals/gap-study-4/routing.py
-# Not yet a check: `python3 -B evals/gap-study-4/batch.py --check` exits 1 (fail-closed) until round 3's
-# operator_reasons and pause_cap and CP5's pin_profiles are filled into routing.json and their *_status
-# no longer starts PENDING (see the lane report's open questions); add it here once they are.
+# batch.py --check must exit 1 naming CP5's pin profiles and nothing else: round 3's operator reasons and pause
+# cap are filled (Javier's ruling "gap4 routing: A") and the rate-limit markers are ruled (glitch-f3, W1B2-6).
+# When CP5 fills pin_profiles this line goes red on purpose; replace it then with the plain
+# `python3 -B evals/gap-study-4/batch.py --check`, which must exit 0.
+out=$(python3 -B evals/gap-study-4/batch.py --check); rc=$?; [ "$rc" -eq 1 ] && [ -n "$out" ] && ! printf '%s\n' "$out" | grep -v pin_profiles
