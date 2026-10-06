@@ -53,6 +53,11 @@ is `before-first-turn`, else `after-first-turn` (`any` is both). A turn that tim
 completed output has not started it: glitch-f3's correction (6 Oct 2026; glitch-f3's, not the
 owner's) routes a bare silent timeout as a rehearsal on its own row, because harness records
 cannot tell it from a hung API, CLI or egress (review round 2, W1B2-1, reverting 3fcab58d).
+That row reads the init events with `present_differs_from_pin`, not `differs_from_pin`: a CLI
+that never printed its init event is harness-side too, so a silent timeout with no init event
+rehearses, while one whose init event differs from the pin matches no row and is refused for a
+human (glitch-f3's ruling, 6 Oct 2026; glitch-f3's, not the owner's). After the first turn the
+init-mismatch row keeps `differs_from_pin`, where a missing init event is a mismatch.
 A row matches when the take is in the row's phase, every `all_of` condition holds, at least one
 `any_of` condition holds, and no `none_of` condition holds.
 The matched rows at the highest precedence level win. If none match, or the winners name more
@@ -119,7 +124,7 @@ ANNOTATION_ONLY = ("events",)
 
 OPS = ("eq", "ne", "gt", "truthy", "falsy", "not_null", "is_null", "nonempty", "empty",
        "in_operator_reasons", "in_checker_events", "in_rate_limit_markers", "differs_from_pin",
-       "nonzero_outside_timeout")
+       "present_differs_from_pin", "nonzero_outside_timeout")
 _VALUE_OPS = ("eq", "ne", "gt")
 
 
@@ -499,9 +504,12 @@ def holds(cond: dict, records: dict, table: dict) -> bool:
         if field in TEXT_MARKER_FIELDS:
             return any(x is not None and rate_limit_text_marker(x, markers) is not None for x in v)
         return any(x is not None and x in markers for x in v)
-    if op == "differs_from_pin":
+    if op == "differs_from_pin":            # a missing init event counts as a mismatch (lane w1b decision 5)
         pin = records["pin"]
         return any(i is None or any(i.get(f) != pin[f] for f in table["pin_fields"]) for i in v)
+    if op == "present_differs_from_pin":    # only an init event that is there and differs (glitch-f3's ruling)
+        pin = records["pin"]
+        return any(i is not None and any(i.get(f) != pin[f] for f in table["pin_fields"]) for i in v)
     if op == "nonzero_outside_timeout":
         ends = records["ledger"]["turn_ends"]
         return any(code != 0 for code, end in zip(v, ends) if end != labels4.TIMED_OUT)

@@ -32,6 +32,12 @@ THE BATCH STATES are the two terminal states the take loop can reach that are no
 loop itself failed: a driver exception, a commit failure). `TERMINAL_STATES` is the routes plus
 these, and it is what `batch.py` watches; never success alone.
 
+THE CELL STATES name what a half-cell publishes when it cannot be completed: `incomplete — mechanical`,
+round 3's state for a cell that reached its rehearsal or pause cap (`evals/gap-study-3/takes.py:280-291`
+at e2979b31). glitch-f3's ruling (in-plan, 6 Oct 2026; glitch-f3's, not the owner's): round 4 counts its
+rehearsals and pauses per half-cell, round 3's unit, and `batch.py` commits this state on the take that
+reaches the cap.
+
 THE TURN ENDS are how the host saw one turn end: `end_turn`, `timed-out` (the reserved label's own
 string: a timeout stays the agent's) or `error`. `GRADED_ENDS` are the last-turn ends a take can be
 graded on; `routing.json`'s `graded_ends` and `agent_adapter.py`'s end reasons are checked against
@@ -73,6 +79,10 @@ FAILED = "failed"
 BATCH_STATES = (BLOCKED, FAILED)
 TERMINAL_STATES = ROUTES + BATCH_STATES
 
+# What a half-cell publishes when it reached its rehearsal or pause cap (glitch-f3's ruling, round 3's word).
+INCOMPLETE_MECHANICAL = "incomplete — mechanical"
+CELL_STATES = (INCOMPLETE_MECHANICAL,)
+
 # The phases a routing row can name: before the agent's first turn started, after it, or either.
 BEFORE_FIRST_TURN = "before-first-turn"
 AFTER_FIRST_TURN = "after-first-turn"
@@ -86,14 +96,16 @@ TURN_ENDS = (END_TURN, TIMED_OUT, END_ERROR)
 GRADED_ENDS = (END_TURN, TIMED_OUT)
 
 # Every string above, once. A name used twice must mean the same thing (the shared ones above).
-VOCABULARY = frozenset(RESERVED + STOPS + ROUTES + (FLAGGED_THEN_ACTED,) + BATCH_STATES + PHASES + TURN_ENDS)
+VOCABULARY = frozenset(RESERVED + STOPS + ROUTES + (FLAGGED_THEN_ACTED,) + BATCH_STATES + CELL_STATES + PHASES
+                       + TURN_ENDS)
 
 
 def check_vocabulary() -> list[str]:
     """The closed vocabulary's own invariants, as a list of problems (empty when sound)."""
     problems = []
     for name, group in (("RESERVED", RESERVED), ("STOPS", STOPS), ("ROUTES", ROUTES),
-                        ("BATCH_STATES", BATCH_STATES), ("PHASES", PHASES), ("TURN_ENDS", TURN_ENDS)):
+                        ("BATCH_STATES", BATCH_STATES), ("CELL_STATES", CELL_STATES), ("PHASES", PHASES),
+                        ("TURN_ENDS", TURN_ENDS)):
         if len(set(group)) != len(group):
             problems.append(f"{name} repeats a string")
     if len(STOPS) != 7:
@@ -115,4 +127,6 @@ def check_vocabulary() -> list[str]:
         problems.append("GRADED_ENDS must be the turn ends other than error")
     if set(TURN_ENDS) & (set(ROUTES) | set(BATCH_STATES) | set(PHASES) | {FLAGGED_THEN_ACTED}):
         problems.append("a turn end collides with a route, batch state, phase or label")
+    if set(CELL_STATES) & (set(RESERVED + STOPS + ROUTES + BATCH_STATES + PHASES + TURN_ENDS) | {FLAGGED_THEN_ACTED}):
+        problems.append("a cell state collides with a label, stop, route, batch state, phase or turn end")
     return problems

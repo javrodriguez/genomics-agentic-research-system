@@ -25,15 +25,30 @@ raised, a container could not be removed, routing raised, or a commit failed). T
 keyed by `labels4.TERMINAL_STATES`; a state with no handler stops the loop from starting.
 
   graded, aborted  final for the slot (aborted is never re-run)
-  rehearsal        re-run in the same slot while the half-cell's rehearsal cap allows
+  rehearsal        re-run in the same slot until its half-cell has had its cap of rehearsals; then
+                   the half-cell closes (THE CELL CAPS)
   harness-error    one re-run in the same slot, within the half-cell's cap; beyond it the slot is
                    final as harness-error (published in its own column, out of the denominator)
-  pause            the slot is re-run in the same slot within the pause cap, and NO NEW DRIVE is
-                   launched until the usage window resets; drives already running finish and are
+  pause            re-run in the same slot until its half-cell has had its cap of pauses, then the
+                   half-cell closes (THE CELL CAPS); either way NO NEW DRIVE is launched until the
+                   usage window resets (THE USAGE WINDOW); drives already running finish and are
                    routed as usual
   blocked, failed  the loop stops launching; the rest of the queue stays unstarted for a human
 
-A cap beyond which the plan names no fate (rehearsal, pause) stops the loop for a human.
+THE CELL CAPS (glitch-f3's ruling, in-plan, 6 Oct 2026; recorded as glitch-f3's, not the owner's).
+Rehearsals and pauses are counted per half-cell, round 3's unit. Round 3 counted the rehearsals (or
+the pauses) of a cell, (task, half, model), and once the count reached the cap registered nothing
+more for it, which published `incomplete — mechanical` (evals/gap-study-3/takes.py:280-291 at
+e2979b31). Round 4's half-cell is (arm, task, half, model), the registered row's `half_cell`, with
+wording and repeat or pressure as the slot inside it; the loop keys its counts by that value and
+never reads inside it. Every committed rehearsal (or pause) of a half-cell counts, the take that
+brings the count to routing.json's cap among them. That take is its slot's last (final, never
+re-run, beyond_cap), and it is committed with `cell_state` = labels4.INCOMPLETE_MECHANICAL and a
+`cell_reason` before the loop moves on. From then on nothing more is registered for the half-cell:
+its queued rows and re-runs are dropped, each listed in `skipped`. The loop goes on with the other
+half-cells; it never stops for a human here. A drive of the same block that was already running
+when its half-cell closed is committed as usual, never re-run, and carries the cell state too.
+Harness-error's own caps and its beyond-cap fate are unchanged.
 
 WHAT IS COMMITTED. `repo.commit_records(row, attempt, outcome)` receives one outcome per take,
 with every key below always present (None where it does not apply), decided BEFORE the commit:
@@ -56,6 +71,9 @@ with every key below always present (None where it does not apply), decided BEFO
     rerun                        True when the slot is re-run (same slot, next attempt)
     beyond_cap                   True when a cap was reached
     stop                         why the loop stops after this block (else None)
+    cell_state                   labels4.INCOMPLETE_MECHANICAL once the take's half-cell has closed at
+                                 its rehearsal or pause cap, by this take or an earlier one (else None)
+    cell_reason                  why the half-cell closed: its count and cap (else None)
 
 The repo masks the take's text whenever `mask` is true; it never deletes it. The mask rule is
 applied at the one place every outcome passes before its commit (`_seal`), so no road to a commit
@@ -64,12 +82,16 @@ can skip it.
 A RESTART CONTINUES, never resets (review round 2, W1B2-3). The caps and attempt numbers live in
 the committed outcomes, not in this process: `Batch` reads them from the repo (`repo.history()`,
 every outcome committed so far, in commit order; or a `history` argument read from it) and
-rebuilds, before anything runs, the re-runs spent per half-cell and per slot, and each slot's next
-attempt (one past its last committed attempt). It refuses a row whose slot is already final, or
-ended at a cap the plan gives no fate (rehearsal, pause), and a history it cannot trust (not a
-list, a missing key, an unknown state, a (slot, attempt) twice, a slot under two half-cells, an
-attempt after the slot's final one). Lane w1b decision: when any of the last BLOCK committed
-outcomes is a pause, a restart waits for the usage window before its first launch.
+rebuilds, before anything runs, the re-runs spent per half-cell and per slot, the rehearsals and
+pauses counted per half-cell, the closed half-cells (from their committed cell state), and each
+slot's next attempt (one past its last committed attempt). It never registers a row of a closed
+half-cell (each is listed in `skipped`, and the other rows run), refuses a row whose slot is
+already final, and refuses a history it cannot trust (not a list, a missing key, an unknown state
+or cell state, a cell state without its reason, a (slot, attempt) twice, a slot under two
+half-cells, an attempt after the slot's final one, or a cell state that disagrees with the counts:
+the take that brings a half-cell to a cap carries it, so does every later take of that half-cell,
+no other take does, and none of them is re-run). Lane w1b decision: when any of the last BLOCK
+committed outcomes is a pause, a restart waits for the usage window before its first launch.
 
 THE START GATE. The loop refuses to start (`BatchConfigError`, and `batch.py --check` exits 1)
 while routing.json still lacks what only the owner or a later checkpoint can supply: round 3's
@@ -99,6 +121,17 @@ and a repo object with `register(row, attempt)` and `commit_records(row, attempt
 one commit, and `history()` (the committed outcomes), and a usage window with `wait_reset()`. CP2
 supplies the real three.
 
+THE USAGE WINDOW (glitch-f3's ruling, in-plan, 6 Oct 2026; recorded as glitch-f3's, not the
+owner's). The loop calls `window.wait_reset()` before its next launch after a committed pause, and
+on a restart when any of the last BLOCK committed outcomes is a pause (lane w1b decision 11); only
+then does it register and launch. The contract CP2's window keeps, and this loop relies on:
+
+    - wait_reset() returns promptly when the usage window has already reset (so a restart after a
+      pause whose window reset meanwhile waits once and goes on, never a whole window again);
+    - it blocks until the window resets otherwise;
+    - it raises on failure, and the loop then stops as `failed` (W1B2-5): nothing of the next
+      block is registered, launched or committed, and `stopped` says why.
+
 No model is called anywhere in this module. Standard library only.
 """
 
@@ -124,11 +157,14 @@ PENDING = "PENDING"
 
 # Every key of a committed outcome (see WHAT IS COMMITTED).
 OUTCOME_KEYS = ("slot", "half_cell", "attempt", "container_id", "state", "reason", "decision", "records",
-                "events", "mask", "mask_basis", "leaked_container", "final", "rerun", "beyond_cap", "stop")
+                "events", "mask", "mask_basis", "leaked_container", "final", "rerun", "beyond_cap", "stop",
+                "cell_state", "cell_reason")
 
 
 # Routes that re-run a slot, whose spent re-runs a restart must count again.
 RERUN_ROUTES = (labels4.REHEARSAL, labels4.HARNESS_ERROR, labels4.PAUSE)
+# Routes counted per half-cell, round 3's unit, whose cap closes the half-cell (glitch-f3's ruling, THE CELL CAPS).
+CELL_CAPPED_ROUTES = (labels4.REHEARSAL, labels4.PAUSE)
 
 
 class BatchConfigError(RuntimeError):
@@ -177,7 +213,7 @@ class Batch:
         self.handlers = {
             labels4.GRADED: self._final,
             labels4.ABORTED: self._final,
-            labels4.REHEARSAL: self._rerun_within_cap,
+            labels4.REHEARSAL: self._count_in_cell,
             labels4.HARNESS_ERROR: self._rerun_within_cap,
             labels4.PAUSE: self._pause,
             labels4.BLOCKED: self._stop,
@@ -198,6 +234,9 @@ class Batch:
         self.next_attempt: dict = {}         # slot -> the attempt its next drive registers
         self.slot_cell: dict = {}            # slot -> its half-cell, as committed
         self.closed: dict = {}               # slot -> why it is never driven again
+        self.cell_counts = collections.Counter()  # (half_cell, route) -> that route's outcomes committed in it
+        self.closed_cells: dict = {}         # half_cell -> why nothing more is registered for it (as committed)
+        self.skipped: list = []              # rows of a closed half-cell, dropped unregistered
         self.stopped = None
         self.paused = False
         if history is None:
@@ -226,6 +265,11 @@ class Batch:
                 continue
             if not all(isinstance(o[k], bool) for k in ("final", "rerun", "beyond_cap")):
                 p.append(f"history[{i}]: final, rerun and beyond_cap must be bools")
+            if o["cell_state"] is not None and o["cell_state"] not in labels4.CELL_STATES:
+                p.append(f"history[{i}]: cell state {o['cell_state']!r} is not a labels4 cell state")
+            elif (o["cell_state"] is None) != (o["cell_reason"] is None) or not (
+                    o["cell_reason"] is None or (isinstance(o["cell_reason"], str) and o["cell_reason"])):
+                p.append(f"history[{i}]: a cell state comes with its reason, and a reason with its state")
             key = (o["slot"], o["attempt"])
             if key in seen:
                 p.append(f"history[{i}]: slot {o['slot']} attempt {o['attempt']} committed twice")
@@ -247,6 +291,9 @@ class Batch:
         problems = self.history_problems(history)
         if problems:
             raise BatchConfigError("the repo's history cannot be trusted: " + "; ".join(problems))
+        problems = self.cell_history_problems(history)
+        if problems:
+            raise BatchConfigError("the repo's history cannot be trusted: " + "; ".join(problems))
         for o in history:
             if o["rerun"] and o["state"] in RERUN_ROUTES:
                 self.reruns[(o["half_cell"], o["state"])] += 1
@@ -255,15 +302,43 @@ class Batch:
         # A restart after a pause launches nothing before the window resets (lane w1b decision).
         self.paused = any(o["state"] == labels4.PAUSE for o in history[-BLOCK:])
 
+    def cell_history_problems(self, history) -> list[str]:
+        """The committed cell states agree with the counts (glitch-f3's cap ruling): walking the history in commit
+        order, the take that brings a half-cell's rehearsals (or pauses) to the cap carries the cell state, so does
+        every later take of that half-cell, no other take does, and none of them is re-run. A restart closes a
+        half-cell from its committed state, so a state that disagrees with the counts is refused, never read."""
+        p, counts, closed = [], collections.Counter(), set()
+        for i, o in enumerate(history):
+            cell, state = o["half_cell"], o["state"]
+            reaches = False
+            if state in CELL_CAPPED_ROUTES:
+                counts[(cell, state)] += 1
+                reaches = counts[(cell, state)] >= self.table["caps"][state]["reruns_per_half_cell"]
+            should = cell in closed or reaches
+            carries = o["cell_state"] == labels4.INCOMPLETE_MECHANICAL
+            if should and not carries:
+                p.append(f"history[{i}]: half-cell {cell!r} has reached a cap, and slot {o['slot']} attempt "
+                         f"{o['attempt']} does not carry its cell state")
+            elif carries and not should:
+                p.append(f"history[{i}]: slot {o['slot']} attempt {o['attempt']} carries a cell state below the "
+                         f"caps of half-cell {cell!r}")
+            if should and o["rerun"]:
+                p.append(f"history[{i}]: slot {o['slot']} attempt {o['attempt']} is re-run in a closed half-cell")
+            if should:
+                closed.add(cell)
+        return p
+
     def _note_committed(self, o: dict) -> None:
-        """What one committed outcome tells the loop about its slot."""
+        """What one committed outcome tells the loop about its slot and its half-cell."""
         slot = o["slot"]
         self.slot_cell.setdefault(slot, o["half_cell"])
         self.next_attempt[slot] = max(self.next_attempt.get(slot, 1), o["attempt"] + 1)
+        if o["state"] in CELL_CAPPED_ROUTES:
+            self.cell_counts[(o["half_cell"], o["state"])] += 1
+        if o["cell_state"] == labels4.INCOMPLETE_MECHANICAL:   # closed from the committed record, never memory
+            self.closed_cells.setdefault(o["half_cell"], o["cell_reason"])
         if o["final"]:
             self.closed[slot] = f"already final ({o['state']}, attempt {o['attempt']})"
-        elif o["beyond_cap"] and not o["rerun"] and o["state"] in RERUN_ROUTES:
-            self.closed[slot] = f"ended at its {o['state']} cap (attempt {o['attempt']}): a human decides its fate"
 
     # ------------------------------------------------------------------------------- the loop
     def row_problems(self, rows: list[dict]) -> list[str]:
@@ -273,11 +348,13 @@ class Batch:
                 p.append(f"row {r!r} must name slot, half_cell and model")
             elif r["model"] not in self.table["pin_profiles"]:
                 p.append(f"row {r['slot']}: model {r['model']!r} has no pre-registered pin profile")
-            elif r["slot"] in self.closed:
-                p.append(f"row {r['slot']}: the slot is {self.closed[r['slot']]}, never driven again")
             elif self.slot_cell.get(r["slot"], r["half_cell"]) != r["half_cell"]:
                 p.append(f"row {r['slot']}: committed under half-cell {self.slot_cell[r['slot']]!r}, "
                          f"not {r['half_cell']!r}")
+            elif r["half_cell"] in self.closed_cells:
+                pass   # a closed half-cell's row: run() drops it unregistered (glitch-f3's cap ruling)
+            elif r["slot"] in self.closed:
+                p.append(f"row {r['slot']}: the slot is {self.closed[r['slot']]}, never driven again")
         slots = [r.get("slot") for r in rows if isinstance(r, dict)]
         if len(set(slots)) != len(slots):
             p.append("slots repeat")
@@ -288,7 +365,10 @@ class Batch:
         if problems:
             raise BatchConfigError("; ".join(problems))
         queue = collections.deque((dict(r), self.next_attempt.get(r["slot"], 1)) for r in rows)
-        while queue and self.stopped is None:
+        while self.stopped is None:
+            queue = self._drop_closed(queue)                 # nothing more for a closed half-cell
+            if not queue:
+                break
             if self.paused:
                 if not self._wait_window():
                     return self.outcomes
@@ -310,8 +390,22 @@ class Batch:
             queue.extendleft(reversed(requeue))              # same slots, first, in row order
         return self.outcomes
 
+    def _drop_closed(self, queue):
+        """The queue without the rows (first drives and re-runs alike) of a half-cell that closed at its rehearsal or
+        pause cap: they are never registered, and each is listed in `skipped` (glitch-f3's cap ruling)."""
+        kept = collections.deque()
+        for row, attempt in queue:
+            if row["half_cell"] in self.closed_cells:
+                self.skipped.append({"slot": row["slot"], "attempt": attempt, "half_cell": row["half_cell"],
+                                     "why": self.closed_cells[row["half_cell"]]})
+            else:
+                kept.append((row, attempt))
+        return kept
+
     def _wait_window(self) -> bool:
-        """Wait for the usage window; on a failure, stop with why (W1B2-5). True when it reset."""
+        """Wait for the usage window (THE USAGE WINDOW: wait_reset() returns at once if the window has already reset,
+        blocks until it does otherwise, raises on failure); on a failure, stop with why (W1B2-5). True when it
+        reset."""
         try:
             self.window.wait_reset()
         except Exception as e:  # noqa: BLE001 - a window failure is a stop, never a sunk loop
@@ -344,8 +438,10 @@ class Batch:
         try:
             self.repo.commit_records(row, attempt, outcome)
         except Exception as e:  # noqa: BLE001
+            closed = self.closed_cells.get(row["half_cell"])   # a cell closes only by a committed record
             outcome = dict(outcome, state=labels4.FAILED, reason=f"commit failed: {e}",
-                           final=False, rerun=False, stop=f"commit failed: {e}")
+                           final=False, rerun=False, stop=f"commit failed: {e}",
+                           cell_state=labels4.INCOMPLETE_MECHANICAL if closed else None, cell_reason=closed)
             self._seal(outcome)
             self._stop(row, attempt, outcome)
         else:
@@ -458,11 +554,23 @@ class Batch:
     # Each returns the take's fate: {final, rerun, beyond_cap, stop}. It is decided before the
     # commit and committed with the take's records.
     def _decide(self, row, attempt, outcome) -> dict:
-        return self.handlers[outcome["state"]](row, attempt, outcome)
+        """The take's fate, from its state's handler. In a half-cell that has already closed (a drive of the same
+        block, running when it closed), never a re-run, and the cell state is carried (glitch-f3's cap ruling)."""
+        cell = row["half_cell"]
+        if cell not in self.closed_cells:
+            return self.handlers[outcome["state"]](row, attempt, outcome)
+        if outcome["state"] in RERUN_ROUTES:
+            if outcome["state"] == labels4.PAUSE:
+                self.paused = True                       # the window is still spent for every other half-cell
+            fate = self._fate(final=True, beyond_cap=True)
+        else:
+            fate = self.handlers[outcome["state"]](row, attempt, outcome)
+        return dict(fate, cell_state=labels4.INCOMPLETE_MECHANICAL, cell_reason=self.closed_cells[cell])
 
     @staticmethod
-    def _fate(final=False, rerun=False, beyond_cap=False, stop=None) -> dict:
-        return {"final": final, "rerun": rerun, "beyond_cap": beyond_cap, "stop": stop}
+    def _fate(final=False, rerun=False, beyond_cap=False, stop=None, cell_state=None, cell_reason=None) -> dict:
+        return {"final": final, "rerun": rerun, "beyond_cap": beyond_cap, "stop": stop,
+                "cell_state": cell_state, "cell_reason": cell_reason}
 
     def _final(self, row, attempt, outcome):
         return self._fate(final=True)
@@ -480,22 +588,29 @@ class Batch:
         return True
 
     def _rerun_within_cap(self, row, attempt, outcome):
-        route = outcome["state"]
-        if self._within_cap(row, route):
+        """harness-error: one re-run in the same slot within its per-slot and per-half-cell caps (re-runs granted);
+        beyond them the slot is final as harness-error, published in its own column."""
+        if self._within_cap(row, outcome["state"]):
             return self._fate(rerun=True)
-        if route == labels4.HARNESS_ERROR:
-            return self._fate(final=True, beyond_cap=True)   # final: harness-error, its own column
-        fate = self._fate(beyond_cap=True, stop=f"{route} cap reached")   # the plan names no fate
-        self._stop(row, attempt, dict(outcome, **fate))
-        return fate
+        return self._fate(final=True, beyond_cap=True)
+
+    def _count_in_cell(self, row, attempt, outcome):
+        """glitch-f3's cap ruling (THE CELL CAPS): a rehearsal (or a pause) is re-run in the same slot until its
+        half-cell has had routing.json's cap of them, this take counted. The take that brings the count to the cap
+        is its slot's last, and it closes the half-cell `incomplete — mechanical`, with why, in its own committed
+        record; the loop goes on with the other half-cells."""
+        route, cell = outcome["state"], row["half_cell"]
+        cap = self.table["caps"][route]["reruns_per_half_cell"]
+        count = self.cell_counts[(cell, route)] + 1          # every committed one, and this take
+        if count < cap:
+            return self._fate(rerun=True)
+        return self._fate(final=True, beyond_cap=True, cell_state=labels4.INCOMPLETE_MECHANICAL,
+                          cell_reason=f"half-cell {cell!r} has had {count} {route}s and its {route} cap is {cap} "
+                                      f"(round 3's unit, glitch-f3's ruling): nothing more is registered for it")
 
     def _pause(self, row, attempt, outcome):
-        self.paused = True
-        if self._within_cap(row, labels4.PAUSE):
-            return self._fate(rerun=True)
-        fate = self._fate(beyond_cap=True, stop="pause cap reached")
-        self._stop(row, attempt, dict(outcome, **fate))
-        return fate
+        self.paused = True   # no new drive until the usage window resets, whatever the count
+        return self._count_in_cell(row, attempt, outcome)
 
     def _stop(self, row, attempt, outcome):
         reason = outcome.get("stop") or outcome.get("reason") or outcome["state"]
