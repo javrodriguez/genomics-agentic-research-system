@@ -4,7 +4,7 @@
 
 - Docker, with at least 4 CPUs and about 16 GB of memory available to it.
 - Java, curl, python3 and the Nextflow launcher (`nextflow`) on PATH; rerun.sh pins the Nextflow version the run recorded (code/pipelines.tsv).
-- About 10 GB of free disk.
+- About 16 GB of free disk: a pass with no container image cached used 15.02 GB, images included.
 
 ## Re-run
 
@@ -21,4 +21,4 @@ The exit code is 0 when every output matched (M + K = N), 2 when any output diff
 
 ## On a mismatch
 
-Read the member table verify.py prints and the comparison entries in PROVENANCE.md; a member that differs with no entry is a finding about this package, not a failure of your machine.
+Write the member table with `python3 verify.py --against <that folder> --table-out <table folder>` (members.tsv names each member's mode and result) and read it beside the comparison entries in PROVENANCE.md; a member that differs with no entry is a finding about this package, not a failure of your machine.

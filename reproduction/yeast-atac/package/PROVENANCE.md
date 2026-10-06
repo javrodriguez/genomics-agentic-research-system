@@ -2,11 +2,13 @@
 
 ## Labels
 
-Every value in this package's tables carries one of three labels:
+Every value in this package's tables carries one of six labels:
 - `recorded at run`: a field of a run record, named; only these are the run's attestation.
 - `computed at harvest`: hashed on the run's machine from the unmasked file, after the run and before teardown.
-- `supplied at packaging from <repository>@<commit>:<path>`: read from a named file at a pinned commit.
-- `computed at packaging from bytes matching the record`: a normalised form of a recorded output, computed from harvested bytes whose sha256 equals the run's record.
+- `supplied at packaging from <source>`: read from a named file at a pinned commit (`<repository>@<commit>:<path>`), or from a lane file shipped in this package.
+- `computed at packaging from <source>`: derived when the package was rendered: a normalised form of a recorded output from harvested bytes whose sha256 equals the record, or a recorded value whose path was replaced by the re-run's own folder.
+- `not recorded by the run`: the run record lacks the field; nothing fills it.
+- `withheld`: a recorded sha256 this package does not print (see "Hash oracle").
 
 ## Masked values
 
@@ -16,15 +18,18 @@ Absolute paths, storage buckets and account ids are replaced; the originals are 
 |---|---|
 | `<WORKSPACE>` | 2 |
 
+Two further rewrites keep a re-run's inputs and outputs in its own folder: each input path in the shipped samplesheet becomes `<INPUTS>/<file name>`, and each path a parameter held becomes a path under `<RERUN>` (params/params.tsv labels each such value `computed at packaging`).
+
 ## Hash oracle
 
 A sha256 of a run record holding a masked value would let anyone confirm a guessed user name, path or bucket, so this package prints no such hash; the fields below are cited by name only and are not checkable from the package.
-Output sha256 values are printed, since the comparison needs them; render refuses an output holding a bucket, account id, approver or user name, and a result table holding a path is named under "Result tables not shipped".
+Output sha256 values are printed, since the comparison needs them, with three exceptions: no `presence` member's sha256 is printed (it compares no hash), no directory output's tree hash is printed when it holds a withheld member, and render refuses to print the sha256 of an output whose bytes hold a bucket, an account id, the approver or a user name.
+A result table holding only a path is left out of outputs/small/ (named under "Result tables not shipped"), but its sha256 is still printed: a path is not one of the values that check refuses.
 submit.sh is not shipped: no run record binds its bytes. code/<stage>/commands.sh, the recorded submission line, is.
 Limit: GARS records no sha256 of submit.sh. On the run's machine, harvest compared the launch line Nextflow itself logged (run/.nextflow.log) with the nextflow run line in submit.sh and refused on any difference; the rest of submit.sh (its environment lines) is bound by nothing.
 
 - atacseq_bulk.01_nfcore-atacseq-wrapper: `outputs: run/results/multiqc/narrow_peak/multiqc_report.html sha256`, not printed: the file holds a run bucket name and an account id; presence compares no hash.
-- atacseq_bulk.01_nfcore-atacseq-wrapper: `outputs: the sha256 of 60 presence member(s)`, not printed: presence compares no hash, so none is published; each row reads withheld.
+- atacseq_bulk.01_nfcore-atacseq-wrapper: `outputs: the sha256 of 54 presence member(s)`, not printed: presence compares no hash, so none is published; each row reads withheld.
 - atacseq_bulk.01_nfcore-atacseq-wrapper: `command.sha256`, not printed: it hashes a file holding values the package masks.
 - atacseq_bulk.01_nfcore-atacseq-wrapper: `config_sha256`, not printed: it hashes a file holding values the package masks.
 - atacseq_bulk.01_nfcore-atacseq-wrapper: `samplesheet_sha256`, not printed: it hashes a file holding values the package masks.
@@ -124,8 +129,10 @@ Every member is compared `exact` unless an entry below declares another mode wit
 The declared modes (each applies only to the file kinds named here):
 - `presence`: the file exists and is not empty; counted as P, never as a match. For PDF, SVG, zip, gzip and R data files, and MultiQC outputs.
 - `sorted_table`: a text file's lines, less the lines its entry's listed patterns drop, sorted, then compared exactly.
-- `column_matched_table`: a featureCounts table compared exactly after its columns are matched by name.
-- `sign_aligned_numeric`: a PCA table compared per sample after each component's sign is aligned; every value within 1e-9 (absolute).
+- `column_matched_table`: a featureCounts table compared exactly after its columns are matched by name; its `#` comment lines (featureCounts' program and command line) are dropped first.
+- `sign_aligned_numeric`: a PCA table's numbers compared per sample after each component's sign is aligned, every value within 1e-9 (absolute); its header row and `#` comment lines are not compared.
+A normalised match is reported as `match after <mode>`, apart from a byte-identical `match`.
+A file a re-run holds inside a recorded directory output that the run did not record counts that output as differing (F).
 
 - atacseq_bulk.01_nfcore-atacseq-wrapper, 34 members, mode `presence`, origin `S2b-preregistered`: each PDF embeds its own creation time: the two runs' files are byte-identical once /CreationDate and /ModDate are blanked (evidence: S2b probe, 5 Oct 2026: plain nf-core/atacseq 2.1.2 (1a1dbe52) run twice on one fresh m5.xlarge pad (lifetime 4, i-0521feb575ad6ee3d), local executor in Docker, the recorded clamp; results tarball sha256 919a275be40cff204bd7376ed0c0b2d927efbb175abea1cc985980db9daf4bb0; every one of these 34 PDFs compared equal with its dates blanked).
 - atacseq_bulk.01_nfcore-atacseq-wrapper, 1 members, mode `presence`, origin `S2b-preregistered`: the DESeq2 plots draw the PCA, whose component sign is arbitrary, with samples in completion order; besides its dates the PDF differs in the plotted coordinates (evidence: S2b probe, 5 Oct 2026: plain nf-core/atacseq 2.1.2 (1a1dbe52) run twice on one fresh m5.xlarge pad (lifetime 4, i-0521feb575ad6ee3d), local executor in Docker, the recorded clamp; results tarball sha256 919a275be40cff204bd7376ed0c0b2d927efbb175abea1cc985980db9daf4bb0; the PCA table itself matches under sign_aligned_numeric).
@@ -158,8 +165,8 @@ Outputs that differ between two runs of the same code on the same machine type, 
 
 ## Sources
 
-- code/, env/containers.tsv, params/, outputs/outputs.tsv, records/: the run's manifests, as harvested.
+- code/, env/containers.tsv, params/, outputs/outputs.tsv, records/: read from the run's manifests; records/ carries only the allowlisted fields (agent_model, backend, containers, data_class, execution, execution_config, failure_class, gars_commit, model_steps, outputs, pipeline_commit, predicate_facts, purpose, random_seeds, reference, software_versions, template_version, threads, venue, workflow_name, workflow_version, wrapper), masked, with the hashes named above withheld.
 - inputs/inputs.tsv: checksums computed at harvest; URLs from inputs/lane-sources.tsv.
 - inputs/reference.tsv: checksums recorded at run; URLs from inputs/lane-sources.tsv.
-- METHODS.md: the GARS Methods renderer, run over the same records.
+- METHODS.md: the GARS Methods renderer of the render's checkout (code/GARS.txt), run over the same records.
 - code/GARS.txt: the harvest record (the package_run.py checkout and the clone status).

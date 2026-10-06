@@ -72,8 +72,8 @@ Mutation runs on 6 October 2026 for the hash-oracle rules, each on a byte backup
 ## The exemplar
 
 `reproduction/yeast-atac/package/` is one real GARS run: nf-core/atacseq 2.1.2 on the yeast R64-1-1 fixture through GARS's stage 00-02 wrappers at public GARS `0f602ea0`, with no model step (`agent_model: none`), on the launch pad's AWS Batch road (6 October 2026, pad lifetime 5, 187 Batch jobs), harvested on the run's machine before teardown by `package_run.py` at lane commit `a56f0b48`.
-It was rendered from that harvest at lane commit `70983396`: package sha256 `ab2b9f45ff8d6df03a78f8f8dd199f9f5554c54a8605344891494bd87f504830`, rendered twice byte-identical.
-An earlier render of the same harvest (`15e294bb…`) came from code left uncommitted by an earlier session of the build lane, and is superseded; the two differ only by hashes the reviewed code withholds, with `rerun.sh`, `compare.py`, the inputs, params and environment byte-identical.
+It was rendered from that harvest at lane commit `af3671f9`, which `code/GARS.txt` names as the render commit: package sha256 `65737e4ac4717148e6909c3e8d45b51fa41bda61a9525f19fbf3b2ddcb7e62f7`, rendered twice byte-identical.
+Two earlier renders of the same harvest are superseded, and every render ran the same re-run commands (`rerun.sh`, `env/rerun.config`, the inputs, references and params are byte-identical across all three): `15e294bb…`, from code an earlier session of the build lane left uncommitted, and `ab2b9f45…`, from the reviewed hash-oracle rules at `70983396`, which differs from `15e294bb` only by withheld hashes; `65737e4a` differs from `ab2b9f45` only in labels, documentation and the offline `verify.py` and `compare.py` (the S5 review's round 1).
 The run's two driver faults found on the machine (stage 00 seeds the design at `finalize`; the job submission prints its JSON over several lines) were fixed with a red test each before the run that completed (`9ff50222`, `a56f0b48`).
 
 ## Status
