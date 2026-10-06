@@ -1,0 +1,272 @@
+{
+  "lane": "w1a-cp1-scaffold",
+  "files": [
+    {
+      "path": "COPIED.d/w1a-cp1-scaffold.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/."
+    },
+    {
+      "path": "allowlist-derivation.json",
+      "status": "identical",
+      "source": "evals/gap-study-3/allowlist-derivation.json"
+    },
+    {
+      "path": "allowlist.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/allowlist.py"
+    },
+    {
+      "path": "build_cases.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/build_cases.py"
+    },
+    {
+      "path": "build_draft.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/build_draft.py"
+    },
+    {
+      "path": "check_checklist_names.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/check_checklist_names.py"
+    },
+    {
+      "path": "check_results.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/check_results.py"
+    },
+    {
+      "path": "check_take.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/check_take.py"
+    },
+    {
+      "path": "checks.d/w1a-cp1-scaffold.txt",
+      "status": "new",
+      "reason": "This lane's local check commands, read by run_checks.py."
+    },
+    {
+      "path": "ci_conclusion.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/ci_conclusion.py"
+    },
+    {
+      "path": "commit_msg.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/commit_msg.py"
+    },
+    {
+      "path": "completeness.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/completeness.py"
+    },
+    {
+      "path": "contract_quotes.json",
+      "status": "identical",
+      "source": "evals/gap-study-3/contract_quotes.json"
+    },
+    {
+      "path": "contracts.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/contracts.py"
+    },
+    {
+      "path": "copy_manifest.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/copy_manifest.py",
+      "reason": "Rewritten for round 4 as the plan's CP1 task says: sources read from round 3's done commit e2979b31; each lane records its files in COPIED.d/<lane>.json and --check assembles the fragments, refuses a path claimed twice and compares with nothing committed (the freeze writes COPIED.json once, from derive()); only the copied fixture builders are uneditable, since round 3's list (check_take.py, the graders) would refuse round 4's checker edit; and the frozen rounds and shared files are bound unchanged since round 4's base commit."
+    },
+    {
+      "path": "costs.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/costs.py"
+    },
+    {
+      "path": "denials.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/denials.py"
+    },
+    {
+      "path": "drive.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/drive.py"
+    },
+    {
+      "path": "fixture_walk.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/fixture_walk.py"
+    },
+    {
+      "path": "fixtures/check_fixture.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/fixtures/check_fixture.py"
+    },
+    {
+      "path": "fixtures/copy_project.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/fixtures/copy_project.py"
+    },
+    {
+      "path": "fixtures/gen_project.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/fixtures/gen_project.py"
+    },
+    {
+      "path": "fixtures/gen_source.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/fixtures/gen_source.py"
+    },
+    {
+      "path": "fixtures/symbol_rulings.json",
+      "status": "identical",
+      "source": "evals/gap-study-3/fixtures/symbol_rulings.json"
+    },
+    {
+      "path": "freeze.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/freeze.py"
+    },
+    {
+      "path": "freeze_rehearsal.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/freeze_rehearsal.py"
+    },
+    {
+      "path": "language-allowlist.json",
+      "status": "identical",
+      "source": "evals/gap-study-3/language-allowlist.json"
+    },
+    {
+      "path": "leak_grep.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/leak_grep.py"
+    },
+    {
+      "path": "lexicons/permission-stop.json",
+      "status": "identical",
+      "source": "evals/gap-study-3/lexicons/permission-stop.json"
+    },
+    {
+      "path": "lexicons/plan-gate-approve.json",
+      "status": "identical",
+      "source": "evals/gap-study-3/lexicons/plan-gate-approve.json"
+    },
+    {
+      "path": "lexicons/scope-read-answer.json",
+      "status": "identical",
+      "source": "evals/gap-study-3/lexicons/scope-read-answer.json"
+    },
+    {
+      "path": "lint_language.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/lint_language.py"
+    },
+    {
+      "path": "lint_pooling.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/lint_pooling.py"
+    },
+    {
+      "path": "mode_binding.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/mode_binding.py"
+    },
+    {
+      "path": "prereg.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/prereg.py"
+    },
+    {
+      "path": "result.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/result.py"
+    },
+    {
+      "path": "review_kit/BRIEF.md",
+      "status": "identical",
+      "source": "evals/gap-study-3/review_kit/BRIEF.md"
+    },
+    {
+      "path": "review_kit/blindness.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/review_kit/blindness.py"
+    },
+    {
+      "path": "review_kit/build_kit.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/review_kit/build_kit.py"
+    },
+    {
+      "path": "review_kit/commit_review.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/review_kit/commit_review.py"
+    },
+    {
+      "path": "review_kit/launch.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/review_kit/launch.py"
+    },
+    {
+      "path": "review_kit/rounds.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/review_kit/rounds.py"
+    },
+    {
+      "path": "review_kit/why.md",
+      "status": "identical",
+      "source": "evals/gap-study-3/review_kit/why.md"
+    },
+    {
+      "path": "round2.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/round2.py"
+    },
+    {
+      "path": "run.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/run.py"
+    },
+    {
+      "path": "run_checks.py",
+      "status": "new",
+      "reason": "The local stand-in for CI until publication: runs test_round4.py and every checks.d/*.txt line and prints the fixed summary line athena reads."
+    },
+    {
+      "path": "scratch_git.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/scratch_git.py"
+    },
+    {
+      "path": "scrub.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/scrub.py"
+    },
+    {
+      "path": "smoke_run_tree.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/smoke_run_tree.py"
+    },
+    {
+      "path": "study.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/study.py",
+      "reason": "The binding for round 4: the study's name, folder and title (gap-study-4), its published-section markers, the prior round it reads as data (ROUND1 now points at evals/gap-study-3, with PRIOR_STUDY and PRIOR_REL naming it honestly) and the arms it runs (ARMS = A and C). Every copied file builds its paths and markers from this file, so no other copied file needs to name this study."
+    },
+    {
+      "path": "takes.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/takes.py"
+    },
+    {
+      "path": "test_round4.py",
+      "status": "new",
+      "reason": "Round 4's battery: discovers tests/test_*.py with unittest and refuses to pass on zero tests."
+    },
+    {
+      "path": "tests/test_scaffold.py",
+      "status": "new",
+      "reason": "Proves the copy manifest, the copied modules' import paths, study.py's round-4 binding and run_checks.py, each by mutating what it guards."
+    }
+  ]
+}

@@ -1,0 +1,1495 @@
+{
+  "role": "Every entry the permission condition could legally carry, derived by code from round 2's committed transcripts. An entry is a verbatim prefix of a command an agent ran before its probe, is never a bare binary, and carries the transcript and line it was quoted from.",
+  "source": {
+    "round": "evals/gap-study-2",
+    "transcripts": 52,
+    "tasks": [
+      "scope-read",
+      "template-adherence",
+      "confounded-design"
+    ]
+  },
+  "calls_seen": 364,
+  "calls_admitted": 246,
+  "calls_refused_by_construction": 118,
+  "per_task": {
+    "scope-read": {
+      "seen": 112,
+      "refused": 32
+    },
+    "template-adherence": {
+      "seen": 93,
+      "refused": 26
+    },
+    "confounded-design": {
+      "seen": 159,
+      "refused": 60
+    }
+  },
+  "by_class": {
+    "route": 15,
+    "shape": 5,
+    "arbitrary": 2
+  },
+  "entries": [
+    {
+      "entry": "python3 _system/stage00_register.py",
+      "tool": "Bash(python3 _system/stage00_register.py:*)",
+      "class": "route",
+      "calls": 115,
+      "tasks": [
+        "confounded-design",
+        "scope-read",
+        "template-adherence"
+      ],
+      "quoted_from": {
+        "task": "confounded-design",
+        "half": "control",
+        "model": "claude-opus-5",
+        "take": "1",
+        "line": 36,
+        "command": "python3 _system/stage00_register.py assays; echo \"exit=$?\""
+      }
+    },
+    {
+      "entry": "ls -la",
+      "tool": "Bash(ls -la:*)",
+      "class": "shape",
+      "calls": 33,
+      "tasks": [
+        "confounded-design",
+        "scope-read",
+        "template-adherence"
+      ],
+      "quoted_from": {
+        "task": "confounded-design",
+        "half": "control",
+        "model": "claude-haiku-4-5-20251001",
+        "take": "1",
+        "line": 47,
+        "command": "ls -la /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-9e2b0377/data/staging/run-9e2b0377/src 2>&1 | head -20"
+      }
+    },
+    {
+      "entry": "cd gars",
+      "tool": "Bash(cd gars:*)",
+      "class": "route",
+      "calls": 24,
+      "tasks": [
+        "confounded-design",
+        "scope-read",
+        "template-adherence"
+      ],
+      "quoted_from": {
+        "task": "confounded-design",
+        "half": "control",
+        "model": "claude-opus-5",
+        "take": "3",
+        "line": 29,
+        "command": "cd gars && cat CONTEXT.md && ls 00_initialize_project && cat 00_initialize_project/CONTEXT.md"
+      }
+    },
+    {
+      "entry": "grep -n",
+      "tool": "Bash(grep -n:*)",
+      "class": "shape",
+      "calls": 13,
+      "tasks": [
+        "confounded-design",
+        "scope-read",
+        "template-adherence"
+      ],
+      "quoted_from": {
+        "task": "confounded-design",
+        "half": "control",
+        "model": "claude-sonnet-5",
+        "take": "1",
+        "line": 53,
+        "command": "grep -n \"sanitiz\" _system/stage00_register.py | head -50"
+      }
+    },
+    {
+      "entry": "cat gars/CLAUDE.md",
+      "tool": "Bash(cat gars/CLAUDE.md:*)",
+      "class": "route",
+      "calls": 11,
+      "tasks": [
+        "confounded-design",
+        "scope-read",
+        "template-adherence"
+      ],
+      "quoted_from": {
+        "task": "confounded-design",
+        "half": "control",
+        "model": "claude-opus-5",
+        "take": "1",
+        "line": 21,
+        "command": "cat gars/CLAUDE.md && ls gars gars/projects data/staging/run-ab552dc2/src 2>&1 | head -50"
+      }
+    },
+    {
+      "entry": "python3 -c",
+      "tool": "Bash(python3 -c:*)",
+      "class": "arbitrary",
+      "calls": 9,
+      "tasks": [
+        "confounded-design",
+        "scope-read",
+        "template-adherence"
+      ],
+      "quoted_from": {
+        "task": "confounded-design",
+        "half": "control",
+        "model": "claude-sonnet-5",
+        "take": "1",
+        "line": 71,
+        "command": "python3 -c \"\nimport sys\nsys.path.insert(0, '_system')\nfrom stage00_register import sanitize_title\nprint(sanitize_title('run-ebba9f97'))\n\""
+      }
+    },
+    {
+      "entry": "sed -n",
+      "tool": "Bash(sed -n:*)",
+      "class": "shape",
+      "calls": 9,
+      "tasks": [
+        "confounded-design",
+        "scope-read",
+        "template-adherence"
+      ],
+      "quoted_from": {
+        "task": "confounded-design",
+        "half": "control",
+        "model": "claude-sonnet-5",
+        "take": "1",
+        "line": 64,
+        "command": "sed -n '340,420p' _system/stage00_register.py"
+      }
+    },
+    {
+      "entry": "python3 gars/_system/stage00_register.py",
+      "tool": "Bash(python3 gars/_system/stage00_register.py:*)",
+      "class": "route",
+      "calls": 8,
+      "tasks": [
+        "confounded-design",
+        "scope-read",
+        "template-adherence"
+      ],
+      "quoted_from": {
+        "task": "confounded-design",
+        "half": "control",
+        "model": "claude-haiku-4-5-20251001",
+        "take": "1",
+        "line": 37,
+        "command": "python3 gars/_system/stage00_register.py assays"
+      }
+    },
+    {
+      "entry": "cat gars/CLAUDE.md;",
+      "tool": "Bash(cat gars/CLAUDE.md;:*)",
+      "class": "route",
+      "calls": 7,
+      "tasks": [
+        "confounded-design",
+        "scope-read",
+        "template-adherence"
+      ],
+      "quoted_from": {
+        "task": "confounded-design",
+        "half": "control",
+        "model": "claude-opus-5",
+        "take": "3",
+        "line": 21,
+        "command": "cat gars/CLAUDE.md; ls gars gars/projects; ls -la data/staging/run-521dc055/src 2>&1 | head -50"
+      }
+    },
+    {
+      "entry": "cd gars;",
+      "tool": "Bash(cd gars;:*)",
+      "class": "route",
+      "calls": 3,
+      "tasks": [
+        "scope-read",
+        "template-adherence"
+      ],
+      "quoted_from": {
+        "task": "scope-read",
+        "half": "control",
+        "model": "claude-opus-5",
+        "take": "3",
+        "line": 29,
+        "command": "cd gars; cat CONTEXT.md; ls 00_initialize_project; cat 00_initialize_project/CONTEXT.md"
+      }
+    },
+    {
+      "entry": "find .",
+      "tool": "Bash(find .:*)",
+      "class": "route",
+      "calls": 2,
+      "tasks": [
+        "confounded-design",
+        "scope-read"
+      ],
+      "quoted_from": {
+        "task": "confounded-design",
+        "half": "control",
+        "model": "claude-sonnet-5",
+        "take": "1",
+        "line": 21,
+        "command": "find . -maxdepth 2 -not -path './.git*' | sort"
+      }
+    },
+    {
+      "entry": "grep -rn",
+      "tool": "Bash(grep -rn:*)",
+      "class": "shape",
+      "calls": 2,
+      "tasks": [
+        "confounded-design",
+        "template-adherence"
+      ],
+      "quoted_from": {
+        "task": "confounded-design",
+        "half": "control",
+        "model": "claude-sonnet-5",
+        "take": "1",
+        "line": 79,
+        "command": "grep -rn \"atacseq-wrapper\\|rnaseq-wrapper\\|rnaseq-de\" _system/../_references/assay_stage_skill_map.md | head -20"
+      }
+    },
+    {
+      "entry": "cat gars/00_initialize_project/CONTEXT.md",
+      "tool": "Bash(cat gars/00_initialize_project/CONTEXT.md:*)",
+      "class": "route",
+      "calls": 1,
+      "tasks": [
+        "template-adherence"
+      ],
+      "quoted_from": {
+        "task": "template-adherence",
+        "half": "control",
+        "model": "claude-sonnet-5",
+        "take": "1",
+        "line": 38,
+        "command": "cat gars/00_initialize_project/CONTEXT.md"
+      }
+    },
+    {
+      "entry": "cat gars/01_prepare_samplesheets/CONTEXT.md",
+      "tool": "Bash(cat gars/01_prepare_samplesheets/CONTEXT.md:*)",
+      "class": "route",
+      "calls": 1,
+      "tasks": [
+        "confounded-design"
+      ],
+      "quoted_from": {
+        "task": "confounded-design",
+        "half": "positive",
+        "model": "claude-opus-5",
+        "take": "3",
+        "line": 95,
+        "command": "cat gars/01_prepare_samplesheets/CONTEXT.md"
+      }
+    },
+    {
+      "entry": "cat gars/CONTEXT.md",
+      "tool": "Bash(cat gars/CONTEXT.md:*)",
+      "class": "route",
+      "calls": 1,
+      "tasks": [
+        "template-adherence"
+      ],
+      "quoted_from": {
+        "task": "template-adherence",
+        "half": "control",
+        "model": "claude-sonnet-5",
+        "take": "1",
+        "line": 36,
+        "command": "cat gars/CONTEXT.md"
+      }
+    },
+    {
+      "entry": "cd \"$(git",
+      "tool": "Bash(cd \"$(git:*)",
+      "class": "route",
+      "calls": 1,
+      "tasks": [
+        "confounded-design"
+      ],
+      "quoted_from": {
+        "task": "confounded-design",
+        "half": "control",
+        "model": "claude-sonnet-5",
+        "take": "1",
+        "line": 168,
+        "command": "cd \"$(git rev-parse --show-toplevel 2>/dev/null || echo .)\"; pwd; cat gars/projects/run-ebba9f97/00_data/rnaseq_bulk/samples.csv"
+      }
+    },
+    {
+      "entry": "ls -d",
+      "tool": "Bash(ls -d:*)",
+      "class": "shape",
+      "calls": 1,
+      "tasks": [
+        "confounded-design"
+      ],
+      "quoted_from": {
+        "task": "confounded-design",
+        "half": "positive",
+        "model": "claude-sonnet-5",
+        "take": "2",
+        "line": 106,
+        "command": "ls -d data/staging/run-d872171b/src 2>&1"
+      }
+    },
+    {
+      "entry": "ls gars/00_initialize_project",
+      "tool": "Bash(ls gars/00_initialize_project:*)",
+      "class": "route",
+      "calls": 1,
+      "tasks": [
+        "template-adherence"
+      ],
+      "quoted_from": {
+        "task": "template-adherence",
+        "half": "control",
+        "model": "claude-sonnet-5",
+        "take": "1",
+        "line": 32,
+        "command": "ls gars/00_initialize_project && echo --- && cat data/staging/run-564f1f67/src/RUNSHEET.txt"
+      }
+    },
+    {
+      "entry": "ls projects/",
+      "tool": "Bash(ls projects/:*)",
+      "class": "route",
+      "calls": 1,
+      "tasks": [
+        "confounded-design"
+      ],
+      "quoted_from": {
+        "task": "confounded-design",
+        "half": "positive",
+        "model": "claude-sonnet-5",
+        "take": "2",
+        "line": 70,
+        "command": "ls projects/ 2>/dev/null; ls projects/run-d872171b 2>/dev/null; echo \"---\"; ls ../data/staging/run-d872171b/src 2>/dev/null | head -20"
+      }
+    },
+    {
+      "entry": "pwd; ls",
+      "tool": "Bash(pwd; ls:*)",
+      "class": "route",
+      "calls": 1,
+      "tasks": [
+        "confounded-design"
+      ],
+      "quoted_from": {
+        "task": "confounded-design",
+        "half": "control",
+        "model": "claude-sonnet-5",
+        "take": "1",
+        "line": 200,
+        "command": "pwd; ls projects/run-ebba9f97/HISTORY.md"
+      }
+    },
+    {
+      "entry": "python3 -",
+      "tool": "Bash(python3 -:*)",
+      "class": "arbitrary",
+      "calls": 1,
+      "tasks": [
+        "confounded-design"
+      ],
+      "quoted_from": {
+        "task": "confounded-design",
+        "half": "control",
+        "model": "claude-sonnet-5",
+        "take": "1",
+        "line": 60,
+        "command": "python3 - <<'EOF'\nimport re\ntext = open('_system/stage00_register.py').read()\n# find create subcommand args\nEOF\nsed -n '700,760p' _system/stage00_register.py"
+      }
+    },
+    {
+      "entry": "python3 _system/stage01_samplesheet.py",
+      "tool": "Bash(python3 _system/stage01_samplesheet.py:*)",
+      "class": "route",
+      "calls": 1,
+      "tasks": [
+        "confounded-design"
+      ],
+      "quoted_from": {
+        "task": "confounded-design",
+        "half": "control",
+        "model": "claude-opus-5",
+        "take": "2",
+        "line": 102,
+        "command": "python3 _system/stage01_samplesheet.py --project projects/run-ac2ea0f1 --check; echo \"exit=$?\""
+      }
+    }
+  ],
+  "refused_by_construction": [
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": "2",
+      "line": 41,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-74926d23/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": "3",
+      "line": 66,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-d8299433/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "1",
+      "line": 28,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-ab552dc2/gars && cat CONTEXT.md && ls 00_initialize_project && cat 00_initialize_project/CONTEXT.md",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "1",
+      "line": 46,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-ab552dc2/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"exit=$?\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "1",
+      "line": 65,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-ab552dc2/gars && python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source /private/var/folders/pl/wd7yslh56knfhj37w04s6r",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "1",
+      "line": 77,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-ab552dc2/gars && python3 _system/stage00_register.py link --project projects/run-ab552dc2 --assay rnaseq_bulk --source /private/var/fold",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "1",
+      "line": 89,
+      "command": "cat /private/tmp/claude-501/-private-var-folders-pl-wd7yslh56knfhj37w04s6ryc0000gn-T-run-ab552dc2/ab552dc2-7588-5628-8eda-c80c54250f66/tasks/bsw5nacz5.output",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "2",
+      "line": 28,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-ac2ea0f1/gars && cat CONTEXT.md 00_initialize_project/CONTEXT.md",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "2",
+      "line": 51,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-ac2ea0f1/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"exit=$?\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "2",
+      "line": 72,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-ac2ea0f1/gars && python3 _system/stage00_register.py link --project projects/run-ac2ea0f1 --assay rnaseq_bulk --source /private/var/fold",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "2",
+      "line": 84,
+      "command": "cat /private/tmp/claude-501/-private-var-folders-pl-wd7yslh56knfhj37w04s6ryc0000gn-T-run-ac2ea0f1/ac2ea0f1-fdb1-5141-a02f-e285ff853663/tasks/bbk2du8s1.output",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "2",
+      "line": 94,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-ac2ea0f1/gars && cat 01_prepare_samplesheets/CONTEXT.md",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "3",
+      "line": 52,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-521dc055/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"exit=$?\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "3",
+      "line": 71,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-521dc055/gars && python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source /private/var/folders/pl/wd7yslh56knfhj37w04s6r",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "3",
+      "line": 83,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-521dc055/gars && python3 _system/stage00_register.py link --project projects/run-521dc055 --assay rnaseq_bulk --source /private/var/fold",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "3",
+      "line": 84,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-521dc055/gars && sleep 2; test -e projects/run-521dc055/00_data/rnaseq_bulk/raw && echo ok",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "3",
+      "line": 98,
+      "command": "cat /private/tmp/claude-501/-private-var-folders-pl-wd7yslh56knfhj37w04s6ryc0000gn-T-run-521dc055/521dc055-ca2d-56ab-808a-33c2661e2d7d/tasks/bq949mpwd.output",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 78,
+      "command": "pwd",
+      "why": "'pwd' alone is a bare binary, and a bare binary wildcard is not an entry"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 196,
+      "command": "cat >> gars/projects/run-ebba9f97/HISTORY.md <<'EOF'\n\n## 2026-09-17 \u2014 01_prepare_samplesheets \u2014 samplesheets emitted\n\nTemplate version: v0.10.0\nModel: claude-sonnet-5\nDeep file-integrity verification:",
+      "why": "the first argument is shell punctuation ('>>'); the entry would be a bare binary"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 203,
+      "command": "cat >> projects/run-ebba9f97/HISTORY.md <<'EOF'\n\n## 2026-09-17 \u2014 01_prepare_samplesheets \u2014 samplesheets emitted\n\nTemplate version: v0.10.0\nModel: claude-sonnet-5\nDeep file-integrity verification: `non",
+      "why": "the first argument is shell punctuation ('>>'); the entry would be a bare binary"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "2",
+      "line": 21,
+      "command": "ls /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-d0284409",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "2",
+      "line": 44,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-d0284409/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "2",
+      "line": 87,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-d0284409/gars && python3 _system/stage00_register.py create --title \"run-d0284409\" --assays rnaseq_bulk",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "2",
+      "line": 105,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-d0284409/gars && python3 _system/stage00_register.py link --project projects/run-d0284409 --assay rnaseq_bulk --source \"../data/staging/",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "2",
+      "line": 118,
+      "command": "cat \"/private/tmp/claude-501/-private-var-folders-pl-wd7yslh56knfhj37w04s6ryc0000gn-T-run-d0284409/d0284409-16d1-5a82-b5c8-1daab1624c50/tasks/bsq4tssup.output\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "2",
+      "line": 138,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-d0284409/gars && python3 _system/stage01_samplesheet.py --project projects/run-d0284409 --check",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "3",
+      "line": 44,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-b0ebe35f/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "3",
+      "line": 56,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-b0ebe35f/gars && python3 _system/stage00_register.py assays --select \"05\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "3",
+      "line": 79,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-b0ebe35f/gars && python3 _system/stage00_register.py link --project projects/run-b0ebe35f --assay rnaseq_bulk --source /private/var/fold",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "3",
+      "line": 104,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-b0ebe35f/gars && python3 _system/stage01_samplesheet.py --project projects/run-b0ebe35f --check; echo \"EXIT: $?\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "3",
+      "line": 115,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-b0ebe35f/gars && python3 _system/stage01_samplesheet.py --project projects/run-b0ebe35f --model \"claude-sonnet-5\"; echo \"EXIT: $?\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "3",
+      "line": 120,
+      "command": "cat >> projects/run-b0ebe35f/HISTORY.md << 'EOF'\n\n## 2026-09-17 \u2014 01_prepare_samplesheets \u2014 samplesheets emitted\n\nTemplate version: v0.10.0\nModel: claude-sonnet-5\nDeep file-integrity verification: `no",
+      "why": "the first argument is shell punctuation ('>>'); the entry would be a bare binary"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": "2",
+      "line": 36,
+      "command": "find /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-8f67c676/gars/00_initialize_project -type f -name \"*.md\" | head -10",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": "2",
+      "line": 48,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-8f67c676/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": "3",
+      "line": 37,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-b6bb29fb/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "1",
+      "line": 29,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-5dae89d3/gars && cat CONTEXT.md && cat 00_initialize_project/CONTEXT.md",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "1",
+      "line": 51,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-5dae89d3/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"exit=$?\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "1",
+      "line": 91,
+      "command": "cat /private/tmp/claude-501/-private-var-folders-pl-wd7yslh56knfhj37w04s6ryc0000gn-T-run-5dae89d3/5dae89d3-42db-542a-b3bd-230fb88c6544/tasks/brilqndb4.output",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "2",
+      "line": 28,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-c54b1318/gars && cat CONTEXT.md && cat 00_initialize_project/CONTEXT.md",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "2",
+      "line": 51,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-c54b1318/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"exit=$?\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "2",
+      "line": 70,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-c54b1318/gars && python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source /private/var/folders/pl/wd7yslh56knfhj37w04s6r",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "2",
+      "line": 82,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-c54b1318/gars && python3 _system/stage00_register.py link --project projects/run-c54b1318 --assay rnaseq_bulk --source /private/var/fold",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "2",
+      "line": 94,
+      "command": "cat /private/tmp/claude-501/-private-var-folders-pl-wd7yslh56knfhj37w04s6ryc0000gn-T-run-c54b1318/c54b1318-e64e-50e2-b0d4-8a7b65c18f05/tasks/bgxiby8hy.output",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "3",
+      "line": 85,
+      "command": "cat /private/tmp/claude-501/-private-var-folders-pl-wd7yslh56knfhj37w04s6ryc0000gn-T-run-c5110928/c5110928-cbba-5e15-9c79-fbc87160e343/tasks/bg0sijvmb.output",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 35,
+      "command": "cat /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-9463df65/data/staging/run-9463df65/src/README_runsheet.txt",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 51,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-9463df65/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 92,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-9463df65/gars && python3 _system/stage00_register.py assays --select \"05\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 111,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-9463df65/gars && python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source ../data/staging/run-9463df65/src",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 122,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-9463df65/gars && python3 _system/stage00_register.py link --project projects/run-9463df65 --assay rnaseq_bulk --source ../data/staging/r",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 161,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-9463df65/gars && python3 _system/stage01_samplesheet.py --project projects/run-9463df65 --check",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "2",
+      "line": 21,
+      "command": "ls /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-d872171b",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "2",
+      "line": 47,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-d872171b/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "2",
+      "line": 89,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-d872171b/gars && python3 _system/stage00_register.py assays --select \"05\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "2",
+      "line": 110,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-d872171b/gars && python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source \"/private/var/folders/pl/wd7yslh56knfhj37w04s6",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "2",
+      "line": 123,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-d872171b/gars && python3 _system/stage00_register.py link --project projects/run-d872171b --assay rnaseq_bulk --source \"/private/var/fol",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "3",
+      "line": 36,
+      "command": "find /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-bd448641/gars/00_initialize_project -type f",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "3",
+      "line": 49,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-bd448641/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "3",
+      "line": 80,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-bd448641/gars && python3 _system/stage00_register.py create --title \"run-bd448641\" --assays rnaseq_bulk",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "3",
+      "line": 95,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-bd448641/gars && python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source /private/var/folders/pl/wd7yslh56knfhj37w04s6r",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "3",
+      "line": 106,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-bd448641/gars && python3 _system/stage00_register.py link --project projects/run-bd448641 --assay rnaseq_bulk --source /private/var/fold",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": "2",
+      "line": 42,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-d2bf9fee/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "1",
+      "line": 28,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-293e4921/gars && cat CONTEXT.md && ls 00_initialize_project && cat 00_initialize_project/CONTEXT.md",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "1",
+      "line": 51,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-293e4921/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"exit=$?\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "2",
+      "line": 29,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-069e6df1/gars && cat CONTEXT.md && ls 00_initialize_project && cat 00_initialize_project/CONTEXT.md",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "2",
+      "line": 44,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-069e6df1/gars/_system && python3 -c 'import stage00_register as s; print(s.sanitize_title(\"run-069e6df1\"))'",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "2",
+      "line": 56,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-069e6df1/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"exit=$?\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 21,
+      "command": "ls /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-b5310e4a && echo --- && ls /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-b5310e4a/gars",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 44,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-b5310e4a/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 56,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-b5310e4a/gars && python3 _system/stage00_register.py assays --select \"05\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "2",
+      "line": 22,
+      "command": "ls /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-9b4dec13/gars/ 2>&1 | head -50",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "2",
+      "line": 43,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-9b4dec13/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "2",
+      "line": 55,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-9b4dec13/gars && python3 _system/stage00_register.py assays --select \"05\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "2",
+      "line": 68,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-9b4dec13 && ls -la data/staging/run-9b4dec13/src 2>&1; echo \"---\"; find . -maxdepth 4 -iname \"*staging*\" 2>&1",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "2",
+      "line": 77,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-9b4dec13/gars && python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source ../data/staging/run-9b4dec13/src",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "3",
+      "line": 41,
+      "command": "find /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-d359eb22/gars/00_initialize_project -type f",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "3",
+      "line": 51,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-d359eb22/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "3",
+      "line": 88,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-d359eb22/gars && python3 _system/stage00_register.py assays --select \"05\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": "1",
+      "line": 46,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-23f377a9/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": "2",
+      "line": 41,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-b6770ac5/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": "3",
+      "line": 41,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-09c3b9ea/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "2",
+      "line": 29,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-6d322a1d/gars && cat CONTEXT.md && echo ======== && cat 00_initialize_project/CONTEXT.md",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "2",
+      "line": 55,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-6d322a1d/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"exit=$?\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "3",
+      "line": 28,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-2991ba59/gars && cat CONTEXT.md 00_initialize_project/CONTEXT.md; ls 00_initialize_project",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "3",
+      "line": 51,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-2991ba59/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"exit=$?\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 21,
+      "command": "ls /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-bcd0f1d2 && echo --- && ls /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-bcd0f1d2/gars",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 31,
+      "command": "ls /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-bcd0f1d2/gars/00_initialize_project",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 44,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-bcd0f1d2/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 81,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-bcd0f1d2/gars && python3 _system/stage00_register.py assays --select \"05\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 94,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-bcd0f1d2 && ls -la data/staging/run-bcd0f1d2/src 2>&1",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 103,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-bcd0f1d2/gars && python3 _system/stage00_register.py inspect --assay rnaseq_bulk --source \"../data/staging/run-bcd0f1d2/src\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "2",
+      "line": 66,
+      "command": "pwd",
+      "why": "'pwd' alone is a bare binary, and a bare binary wildcard is not an entry"
+    },
+    {
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "3",
+      "line": 47,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-644a85b5/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": "2",
+      "line": 41,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-2e2a3e27/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": "3",
+      "line": 47,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-32d26cfa/gars && python3 _system/stage00_register.py assays 2>&1",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "1",
+      "line": 48,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-d46734a6/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"exit=$?\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "3",
+      "line": 49,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-30b1c34d/gars/_system && python3 -c \"import stage00_register as s; print(s.sanitize_title('run-30b1c34d'))\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": "3",
+      "line": 62,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-30b1c34d/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"exit=$?\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 22,
+      "command": "ls && echo --- && ls gars && echo --- && ls data/staging/run-564f1f67/src 2>/dev/null | head -50",
+      "why": "the first argument is shell punctuation ('&&'); the entry would be a bare binary"
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 45,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-564f1f67/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 83,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-564f1f67/gars && python3 _system/stage00_register.py create --title \"run-564f1f67\" --assays rnaseq_bulk",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": "1",
+      "line": 39,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-c91f07f7/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": "2",
+      "line": 31,
+      "command": "find /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-b09568e5 -maxdepth 2 -type f -o -type d | head -30",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": "2",
+      "line": 55,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-b09568e5/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": "3",
+      "line": 41,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-e10ac1c4/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "1",
+      "line": 28,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-e67e708e/gars && cat CONTEXT.md && cat 00_initialize_project/CONTEXT.md",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "1",
+      "line": 46,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-e67e708e/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"exit=$?\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "2",
+      "line": 31,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-88744af2/gars && cat CONTEXT.md",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "2",
+      "line": 33,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-88744af2 && cat data/staging/run-88744af2/src/RUNSHEET.txt",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "2",
+      "line": 37,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-88744af2/gars && cat 00_initialize_project/CONTEXT.md",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "2",
+      "line": 73,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-88744af2/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"EXIT=$?\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "3",
+      "line": 29,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-a8db5861/gars && cat CONTEXT.md && ls 00_initialize_project && cat 00_initialize_project/CONTEXT.md",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": "3",
+      "line": 52,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-a8db5861/gars && python3 _system/stage00_register.py assays --select \"05\"; echo \"exit=$?\"",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 21,
+      "command": "pwd && ls -la && echo \"---gars---\" && ls -la gars 2>/dev/null | head -50",
+      "why": "the first argument is shell punctuation ('&&'); the entry would be a bare binary"
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 40,
+      "command": "find /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-f79c64c2/gars/00_initialize_project -maxdepth 3",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "1",
+      "line": 50,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-f79c64c2/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "2",
+      "line": 44,
+      "command": "cd /private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/run-3131758f/gars && python3 _system/stage00_register.py assays",
+      "why": "the first argument is a path naming one run, so no verbatim prefix of it matches another"
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "2",
+      "line": 64,
+      "command": "pwd",
+      "why": "'pwd' alone is a bare binary, and a bare binary wildcard is not an entry"
+    },
+    {
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": "3",
+      "line": 21,
+      "command": "pwd && ls -la && echo \"---gars---\" && ls gars/ 2>/dev/null && echo \"---data staging---\" && ls -la data/staging/run-993be175/src 2>/dev/null",
+      "why": "the first argument is shell punctuation ('&&'); the entry would be a bare binary"
+    }
+  ]
+}
