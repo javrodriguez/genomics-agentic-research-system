@@ -183,7 +183,7 @@ def apply_witness(rec: dict, cond: dict, table: dict) -> set:
     elif op == "empty" and path == "api_errors":
         rec["api_errors"] = []
     elif op == "in_operator_reasons":
-        set_path(rec, path, [table["operator_reasons"][0]])
+        set_path(rec, path, [any_phase_reason(table)])
     elif op == "in_checker_events":
         set_path(rec, path, [table["checker_reasons_become_events"]["ids"][0]])
     elif op == "in_rate_limit_markers":
@@ -200,6 +200,13 @@ def apply_witness(rec: dict, cond: dict, table: dict) -> set:
     else:
         raise AssertionError(f"no witness for op {op}")
     return {"ledger.end"} if path == "ledger.end" else {path.partition(".")[0]}
+
+
+def any_phase_reason(table: dict) -> str:
+    """The first operator reason that may arrive in either phase (W1B2-8 refuses no-first-agent-turn after
+    the agent's first turn)."""
+    early = set(table.get("reasons_only_before_first_turn", {}).get("ids", []))
+    return next(r for r in table["operator_reasons"] if r not in early)
 
 
 def row_phases(row: dict) -> list[str]:
@@ -713,7 +720,23 @@ SCENARIOS = {
                                                                         [i.update(model="unregistered") for i in r["init"]])]), REFUSED, None),
     "a None counter (W1B-2)": Sc(_sc(A, [_set("cgroup.oom_kill_delta", None)]), REFUSED, None, None, None),
     "a string counter (W1B-2)": Sc(_sc(A, [_set("cgroup.oom_kill_delta", "1")]), REFUSED, None, None, None),
-    "more API errors than turns": Sc(_sc(B, [lambda r: r.__setitem__("api_errors", [dict(E500)])]), REFUSED, None, None, None),
+    "an API error with no turn (lane w1b decision)": Sc(_sc(B, [lambda r: r.__setitem__("api_errors", [dict(E500)])]), REFUSED,
+                                                        None, None, None),
+    # W1B2-7: one turn can meet several API errors; they are all read, and no count of them is refused
+    "a 529 then a 429 in one turn -> pause (W1B2-7)": Sc(_sc(A, [_multi_turn(1), _apis(E529, E429), _end_error(1)]), "pause",
+                                                       ["rate-limit"], ["rate-limit", "api-error-after-first-turn"]),
+    "a 529 then a 429 in the first, silent turn -> pause (W1B2-7)": Sc(_sc(B, [_apis(E529, E429)]), "pause", ["rate-limit"],
+                                                                     ["api-error-before-first-turn", "rate-limit"]),
+    "three API errors in two turns, none a marker": Sc(_sc(A, [_apis(E500, E529, E500), _end_error(1)]), "harness-error",
+                                                       ["api-error-after-first-turn"]),
+    # W1B2-8: no-first-agent-turn means "before the first turn"; after it started, the records disagree
+    "no-first-agent-turn before the first turn -> rehearsal": Sc(_sc(B, [_set("checker_reasons", [NFAT])]), "rehearsal",
+                                                                 ["operator-reason-before-first-turn"]),
+    "no-first-agent-turn after the first turn -> refused (W1B2-8)": Sc(_sc(A, [_set("checker_reasons", [NFAT])]), REFUSED, None),
+    "no-first-agent-turn beside another reason after the first turn -> refused (W1B2-8)":
+        Sc(_sc(A, [_set("checker_reasons", [READERS, NFAT])]), REFUSED, None),
+    "no-first-agent-turn after a timeout with output -> refused (W1B2-8)": Sc(_sc(B, [output_timeout, _set("checker_reasons", [NFAT])]),
+                                                                            REFUSED, None),
     # glitch-f3's ruling: round 3's four text markers in the harness-side error text pause, word-bounded and
     # case-insensitive, whatever the structured fields say; each marker alone, so a mutated marker goes red
     "usage-limit refusal, text only, before the first turn (glitch-f3)": Sc(_sc(B, [_apis(EUSAGE)]), "pause", ["rate-limit"]),
@@ -887,6 +910,16 @@ def mutants(table: dict):
         t = copy.deepcopy(table)
         del t["checker_reasons_become_events"]["ids"][j]
         yield f"checker_reasons_become_events: {eid} dropped", t
+        t = copy.deepcopy(table)                                               # W1B2-10
+        t["operator_reasons"].append(eid)
+        yield f"operator_reasons: event id {eid} added", t
+    for j, rid in enumerate(table["reasons_only_before_first_turn"]["ids"]):   # W1B2-8
+        t = copy.deepcopy(table)
+        t["reasons_only_before_first_turn"]["ids"][j] = any_phase_reason(table)
+        yield f"reasons_only_before_first_turn: {rid} -> {any_phase_reason(table)}", t
+    t = copy.deepcopy(table)                                                   # W1B2-10
+    t["driver_decided_reasons"]["ids"].append("not-an-operator-reason")
+    yield "driver_decided_reasons: an id outside operator_reasons", t
     for j, end in enumerate(table["graded_ends"]):
         t = copy.deepcopy(table)
         del t["graded_ends"][j]
@@ -1112,6 +1145,63 @@ class TestRoutingTable(unittest.TestCase):
         t["rows"][0]["mask"] = True
         self.assertTrue(any("never routing rows" in x for x in routing.check_table(t)))
 
+    def test_operator_reasons_and_event_ids_are_disjoint(self):
+        """W1B2-10 (and W1B2-2): an event id is never an operator reason, or it would route a rehearsal or a
+        harness-error where the plan says graded as usual, masked."""
+        self.assertFalse(set(REAL["operator_reasons"]) & set(REAL["checker_reasons_become_events"]["ids"]))
+        for eid in REAL["checker_reasons_become_events"]["ids"]:
+            t = copy.deepcopy(REAL)
+            t["operator_reasons"].append(eid)   # the mutant
+            self.assertTrue(any("an event is never an operator reason" in x for x in routing.check_table(t)), eid)
+
+    def test_driver_decided_reasons_route_by_the_generic_rule(self):
+        """W1B2-10: round 3's driver-decided reasons need no rule of their own: each is an operator reason, so a
+        rehearsal before the first turn and harness-error after it."""
+        t = test_table()
+        ids = t["driver_decided_reasons"]["ids"]
+        self.assertLessEqual(set(ids), set(t["operator_reasons"]))
+        for rid in ids:
+            for phase, want, row in ((B, labels4.REHEARSAL, "operator-reason-before-first-turn"),
+                                     (A, labels4.HARNESS_ERROR, "operator-reason-after-first-turn")):
+                rec = baseline(phase)
+                rec["checker_reasons"] = [rid]
+                got = routing.route(rec, t)
+                self.assertEqual((got["route"], got["rows"]), (want, [row]), (rid, phase))
+        bad = copy.deepcopy(REAL)
+        bad["driver_decided_reasons"]["ids"].append("not-an-operator-reason")   # the mutant
+        self.assertTrue(any("driver_decided_reasons" in x for x in routing.check_table(bad)))
+        bad = copy.deepcopy(REAL)
+        bad["reasons_only_before_first_turn"]["ids"].append("not-an-operator-reason")
+        self.assertTrue(any("reasons_only_before_first_turn" in x for x in routing.check_table(bad)))
+
+    def test_rate_limit_markers_status_is_ruled(self):
+        """W1B2-6: the markers' status says glitch-f3 ruled them and names the CP6 walk check still to do."""
+        status = REAL["rate_limit_markers_status"]
+        self.assertTrue(status.startswith("RULED"), status)
+        for cite in ("glitch-f3", "6 Oct 2026",
+                     "a replay of a real recorded usage-limit refusal through harness_records", "CP6"):
+            self.assertIn(cite, status)
+        for bad in (None, "", 3):
+            t = copy.deepcopy(REAL)
+            t["rate_limit_markers_status"] = bad
+            self.assertTrue(any("rate_limit_markers_status" in x for x in routing.check_table(t)), bad)
+        t = copy.deepcopy(REAL)
+        del t["rate_limit_markers_status"]
+        self.assertIn("missing rate_limit_markers_status", routing.check_table(t))
+
+    def test_no_first_agent_turn_after_the_first_turn_is_refused(self):
+        """W1B2-8: the reason says "before the first turn"; carried after it started, the records disagree."""
+        rec = baseline(A)
+        rec["checker_reasons"] = [NFAT]
+        with self.assertRaisesRegex(routing.RoutingRefused, "mean before the agent's first turn"):
+            routing.route(rec, test_table())
+        real = routing.check_records
+
+        def lenient(records, table):   # the mutant: the phase check dropped
+            return [x for x in real(records, table) if "mean before the agent's first turn" not in x]
+        with mock.patch.object(routing, "check_records", lenient):
+            self.assertTrue(any("no-first-agent-turn after" in x for x in scenario_problems(test_table())))
+
     def test_rate_limit_marker_keys_are_api_error_fields(self):
         """W1B-6."""
         t = copy.deepcopy(REAL)
@@ -1153,6 +1243,44 @@ class TestRoutingTable(unittest.TestCase):
         self.assertTrue(REAL["pin_profiles_status"].startswith("PENDING"))
         with self.assertRaisesRegex(routing.RoutingRefused, "pre-registered profile"):
             routing.route(baseline(A), REAL)
+
+
+CHECK_TAKE = "evals/gap-study-3/check_take.py"
+_REASON_LINE = re.compile(r"[\"']\[([a-z][a-z-]*)\] ")
+
+
+def emitted_at_problems(table: dict, lines: list[str]) -> list[str]:
+    """W1B2-10: each emitted_at citation names check_take.py lines that emit its id (its `"[id] ` prefix, or
+    for no-first-agent-turn the NO_FIRST_AGENT_TURN constant), and every reason-id line is cited under its id.
+    Only the lines this lane may read are kept (reason-id lines and 80-95); every other line is dropped unread."""
+    readable = {n: x for n, x in enumerate(lines, 1) if _REASON_LINE.search(x) or 80 <= n <= 95}
+    cites = {rid: src["emitted_at"] for rid, src in table["operator_reason_sources"].items()}
+    cites.update(table["checker_reasons_become_events"]["emitted_at"])
+    p, cited = [], {}
+    for rid, cite in cites.items():
+        path, _, nums = cite.partition(":")
+        if path != CHECK_TAKE:
+            p.append(f"{rid}: cites {path}, not {CHECK_TAKE}")
+            continue
+        for n in (int(x) for x in nums.split(",")):
+            line = readable.get(n)
+            if line is None:
+                p.append(f"{rid}: check_take.py:{n} is not a reason-id line")
+            elif f'"[{rid}] ' in line or f"'[{rid}] " in line or line.strip() == f'NO_FIRST_AGENT_TURN = "{rid}"':
+                cited[n] = rid
+            else:
+                p.append(f"{rid}: check_take.py:{n} does not emit it")
+    for n, line in readable.items():
+        for rid in _REASON_LINE.findall(line):
+            if cited.get(n) != rid:
+                p.append(f"check_take.py:{n} emits [{rid}] and is not cited under it")
+    return p
+
+
+def _print_text(lines: list[str]) -> str:
+    """The literal text of a print(f"..." f"...") call spread over `lines` (its formatted values dropped)."""
+    call = ast.parse("".join(x.strip() for x in lines)).body[0].value
+    return "".join(v.value for v in call.args[0].values if isinstance(v, ast.Constant))
 
 
 class TestRound3Sources(unittest.TestCase):
@@ -1197,18 +1325,90 @@ class TestRound3Sources(unittest.TestCase):
         self.assertIn("evals/gap-study-3/prereg.json", cap["source"])
         self.assertIn(self.COMMIT, cap["source"])
 
-    # glitch-f3's ruling (6 Oct 2026): round 3's text markers and its bounded match. Only drive.py's lines
-    # 140-160 and 900-925 are read from round 3 (the gap4 lane lead's rule for this lane).
-    DRIVE = "evals/gap-study-3/drive.py"
+    def test_the_rehearsal_cap_is_round_3s(self):
+        """W1B2-11 (lane w1b's addition): the plan's 'round 3's cap' is prereg.json's rehearsal_cap."""
+        pre = json.loads(self.show("evals/gap-study-3/prereg.json"))
+        cap = REAL["caps"][labels4.REHEARSAL]
+        self.assertEqual(cap["reruns_per_half_cell"], int(pre["rehearsal_cap"]))
+        self.assertIn(self.COMMIT, cap["source"])
 
-    def round3_lines(self, first: int, last: int) -> list[str]:
-        if not (140 <= first <= last <= 160 or 900 <= first <= last <= 925):
-            raise AssertionError(f"drive.py:{first}-{last} is outside the lines this lane may read")
-        return self.show(self.DRIVE).splitlines()[first - 1:last]
+    def test_driver_decided_reasons_are_round_3s(self):
+        """W1B2-10: round 3's driver_decided_reasons, copied in order, with their source."""
+        pre = json.loads(self.show("evals/gap-study-3/prereg.json"))
+        self.assertEqual(REAL["driver_decided_reasons"]["ids"], pre["driver_decided_reasons"])
+        self.assertEqual(len(REAL["driver_decided_reasons"]["ids"]), 6)
+        for cite in ("driver_decided_reasons", self.COMMIT, "operator_reasons"):
+            self.assertIn(cite, REAL["driver_decided_reasons"]["source"])
+
+    def test_every_emitted_at_line_carries_its_id(self):
+        """W1B2-10: every emitted_at line number names a check_take.py line at e2979b31 that emits that id, and
+        every reason-id line there is cited under its id."""
+        lines = self.show(CHECK_TAKE).splitlines()
+        self.assertEqual(set(REAL["checker_reasons_become_events"]["emitted_at"]),
+                         set(REAL["checker_reasons_become_events"]["ids"]))
+        self.assertEqual(emitted_at_problems(REAL, lines), [])
+
+    def test_emitted_at_check_can_fail(self):
+        lines = self.show(CHECK_TAKE).splitlines()
+        for rid, edit in (("operator-lines", lambda c: c.replace(":1115,", ":1116,")),     # a line number shifted
+                          ("fixture-binding", lambda c: c.replace(",1677", "")),           # a cited line dropped
+                          (NFAT, lambda c: c.replace(":83,", ":84,"))):                    # the constant's line
+            t = copy.deepcopy(REAL)
+            src = t["operator_reason_sources"][rid]
+            src["emitted_at"] = edit(src["emitted_at"])
+            self.assertNotEqual(src["emitted_at"], REAL["operator_reason_sources"][rid]["emitted_at"])
+            self.assertNotEqual(emitted_at_problems(t, lines), [], rid)
+        t = copy.deepcopy(REAL)
+        t["checker_reasons_become_events"]["emitted_at"]["account-email"] = f"{CHECK_TAKE}:715"
+        self.assertNotEqual(emitted_at_problems(t, lines), [])
+
+    def test_pause_cap_sources_record_both_of_round_3s_files(self):
+        """W1B2-11: the pause cap's source quotes drive.py:147-148 ("a pause is uncapped where a rehearsal is
+        capped") and records that prereg.json's pause_cap = 3 is applied per cell by takes.py:280-285; both
+        quotes are checked against the files, and the rehearsal cap's against takes.py:286-291."""
+        drive = " ".join(x.strip().lstrip("#").strip() for x in self.round3_lines(self.DRIVE, 147, 148))
+        uncapped = "a pause is uncapped where a rehearsal is capped"
+        self.assertIn(uncapped, drive)
+        pause_src = REAL["caps"][labels4.PAUSE]["source"]
+        for cite in (uncapped, "drive.py:147-148", "takes.py:280-285", "pause_cap = 3"):
+            self.assertIn(cite, pause_src)
+        takes = self.round3_lines(self.TAKES, 280, 291)
+        self.assertIn('outcome(i) == "pause"', takes[0])
+        self.assertIn('int(pre["pause_cap"])', takes[1])
+        self.assertIn(f"'{_print_text(takes[2:5]).split('. ', 1)[1]}'", pause_src)
+        self.assertIn('int(pre["rehearsal_cap"])', takes[7])
+        rehearsal_src = REAL["caps"][labels4.REHEARSAL]["source"]
+        self.assertIn(f"'{_print_text(takes[8:11]).split('. ', 1)[1]}'", rehearsal_src)
+        self.assertIn("takes.py:286-291", rehearsal_src)
+
+    def test_finalize_abort_rows_record_round_3s_treatment(self):
+        """W1B2-11: round 3 graded a finalize abort `aborted` (drive.py:1408-1409, 1417); both rows record that
+        beside the plan's re-route, quoting the lines checked here."""
+        comment = " ".join(x.strip().lstrip("#").strip() for x in self.round3_lines(self.DRIVE, 1408, 1409))
+        graded = "the take has a first agent turn, so it is graded, and the label whose definition it meets is `aborted`"
+        self.assertIn(graded, comment)
+        (line,) = self.round3_lines(self.DRIVE, 1417, 1417)
+        outcome = 'aborted — finalize did not write samples.csv within {wait_s} s'
+        self.assertEqual(line.strip(), f'ledger["outcome"] = f"{outcome}"')
+        for rid in ("finalize-abort-before-first-turn", "finalize-abort-after-first-turn"):
+            src = next(r for r in REAL["rows"] if r["id"] == rid)["source"]
+            for cite in (graded, outcome, "drive.py:1405-1419", self.COMMIT):
+                self.assertIn(cite, src, rid)
+
+    # Round 3's lines this lane may read (the gap4 lane lead's rule, owner's ruling "gap4 routing: A"): only
+    # these ranges, besides check_take.py's reason-id lines and prereg.json's four keys.
+    DRIVE = "evals/gap-study-3/drive.py"
+    TAKES = "evals/gap-study-3/takes.py"
+    ALLOWED = {DRIVE: ((140, 160), (857, 923), (1405, 1420)), TAKES: ((268, 292),), CHECK_TAKE: ((80, 95),)}
+
+    def round3_lines(self, path: str, first: int, last: int) -> list[str]:
+        if not any(lo <= first <= last <= hi for lo, hi in self.ALLOWED[path]):
+            raise AssertionError(f"{path}:{first}-{last} is outside the lines this lane may read")
+        return self.show(path).splitlines()[first - 1:last]
 
     def round3_markers(self) -> tuple:
         """RATE_LIMIT_MARKERS, from the assignment on drive.py:149, parsed with ast (never imported)."""
-        (line,) = self.round3_lines(149, 149)
+        (line,) = self.round3_lines(self.DRIVE, 149, 149)
         node = ast.parse(line).body[0]
         self.assertIsInstance(node, ast.Assign, line)
         self.assertEqual([getattr(t, "id", None) for t in node.targets], ["RATE_LIMIT_MARKERS"], line)
@@ -1225,7 +1425,7 @@ class TestRound3Sources(unittest.TestCase):
     def test_text_match_is_round_3s_matched_marker(self):
         """Round 3's own matched_marker (drive.py:912-919), run on the probes, agrees with them and with routing's
         match: the probes are round 3's rule, never this lane's reading of it."""
-        lines = self.round3_lines(912, 919)
+        lines = self.round3_lines(self.DRIVE, 912, 919)
         self.assertTrue(lines[0].startswith("def matched_marker(text: str)"), lines[0])
         ns = {"re": re, "RATE_LIMIT_MARKERS": self.round3_markers()}
         exec(compile("\n".join(lines), f"{self.DRIVE}@{self.COMMIT[:8]}:912", "exec",    # noqa: S102 - pinned, read lines
@@ -1370,6 +1570,27 @@ class TestSeam(unittest.TestCase):
         t["rows"].append({"id": "probe-new-row", "when": "before-first-turn", "route": "rehearsal",
                           "any_of": [{"path": "cgroup.pids_max_delta", "op": "gt", "value": 0}], "source": "probe"})
         self.assertTrue(any("no seam witness" in x for x in seam_problems(t)))
+
+    def test_two_api_errors_in_one_turn_through_harness_records(self):
+        """W1B2-7: a 529 then a 429 in one turn routes pause, before and after the first turn."""
+        t = test_table()
+        for phase, turns in ((B, [a_silent_turn(api_errors=[dict(E529), dict(E429)])]),
+                             (A, [a_turn(), a_turn(exit_code=1, end_reason=labels4.END_ERROR,
+                                                   api_errors=[dict(E529), dict(E429)])])):
+            rec = aa.harness_records(turns, pin=PIN, box=full_box())
+            self.assertEqual([e["status"] for e in rec["api_errors"]], [529, 429])
+            got = routing.route(rec, t)
+            self.assertEqual((got["route"], got["rows"], got["phase"]), (labels4.PAUSE, ["rate-limit"], phase))
+        real = aa.harness_records
+
+        def first_per_turn(turns, *, pin, box):   # the mutant: one API error per turn, as before W1B2-7
+            out = real(turns, pin=pin, box=box)
+            out["api_errors"] = [{f: x.api_errors[0][f] for f in aa.API_ERROR_FIELDS} for x in turns if x.api_errors]
+            return out
+        with mock.patch.object(aa, "harness_records", first_per_turn):
+            rec = aa.harness_records([a_turn(), a_turn(exit_code=1, end_reason=labels4.END_ERROR,
+                                                       api_errors=[dict(E529), dict(E429)])], pin=PIN, box=full_box())
+        self.assertEqual(routing.route(rec, t)["route"], labels4.HARNESS_ERROR)
 
     def test_two_api_errors_through_harness_records(self):
         """W1B-4: a 500 then a 429 routes pause, not harness-error."""

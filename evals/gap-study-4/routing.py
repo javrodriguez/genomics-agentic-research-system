@@ -21,14 +21,17 @@ records are:
     init, pin        the init event of every turn (None when a turn had none), and the pinned
                      model, mode and version; the pin must be the pre-registered profile of its
                      model in routing.json's pin_profiles, never whatever the driver supplied
-    api_errors       every API-error record of the take, in turn order: {status: int or None,
+    api_errors       every API-error record of the take, in turn order and, within a turn, in the
+                     order met (a turn can meet several, W1B2-7): {status: int or None,
                      type: str or None, text: str or None}. `text` is the harness-side error text
                      (what Claude Code or the API reported as the error), never the agent's reply
     sidecar          the watcher's health: start_record, stop_record (bools), exit_code (int),
                      queue_overflow (bool)
     preflight        ok (bool)
     operator         unexplained_diffs (count): operator-step diffs no logged operator event explains
-    checker_reasons  the checker's reason ids (strs), computed in the drive step
+    checker_reasons  the checker's reason ids (strs), computed in the drive step. An id listed in
+                     routing.json's reasons_only_before_first_turn (no-first-agent-turn) after
+                     the agent's first turn started is refused (W1B2-8)
     quiescence_kill  (bool) the box stopped a background process at the quiescence cap
     events           outside_reach (count, int >= 0): how many outside-reach EVENTS the drive step
                      recorded for the take, each one an instance of the agent's own text or actions
@@ -224,7 +227,8 @@ def check_table(table: dict) -> list[str]:
     for r in labels4.ROUTES:
         if r not in caps:
             p.append(f"no cap for route {r}")
-    for key in ("pin_fields", "graded_ends", "rate_limit_markers", "operator_reasons", "operator_reasons_status",
+    for key in ("pin_fields", "graded_ends", "rate_limit_markers", "rate_limit_markers_status", "operator_reasons",
+                "operator_reasons_status", "driver_decided_reasons", "reasons_only_before_first_turn",
                 "checker_reasons_become_events", "pin_profiles", "pin_profiles_status", "rows", "annotations"):
         if key not in table:
             p.append(f"missing {key}")
@@ -243,9 +247,19 @@ def check_table(table: dict) -> list[str]:
         # where the plan says "graded as usual, the text masked".
         p.append(f"operator_reasons and checker_reasons_become_events share ids "
                  f"{sorted(set(events['ids']) & set(table['operator_reasons']))}: an event is never an operator reason")
-    for key in ("operator_reasons_status", "pin_profiles_status"):
+    for key in ("operator_reasons_status", "pin_profiles_status", "rate_limit_markers_status"):
         if not _is_str(table[key]) or not table[key]:
             p.append(f"{key} must say where the data stands")
+    listed = set(table["operator_reasons"]) if isinstance(table["operator_reasons"], list) else set()
+    for key, why in (("driver_decided_reasons", "each routes by the generic operator-reason rows"),
+                     ("reasons_only_before_first_turn", "each is refused after the first turn, routed before it")):
+        sub = table[key]
+        if (not isinstance(sub, dict) or not isinstance(sub.get("ids"), list) or not sub["ids"]
+                or not all(_is_str(r) and r for r in sub["ids"]) or not sub.get("source")):
+            p.append(f"{key} must give a non-empty list of ids and its source")
+        elif not set(sub["ids"]) <= listed:
+            # W1B2-10, W1B2-8: an id outside operator_reasons would be refused as unlisted, never routed.
+            p.append(f"{key} ids {sorted(set(sub['ids']) - listed)} are not in operator_reasons ({why})")
     if list(table["pin_fields"]) != list(PLAN_PIN_FIELDS):
         p.append(f"pin_fields must be the plan's {list(PLAN_PIN_FIELDS)}")
     profiles = table["pin_profiles"]
@@ -397,8 +411,10 @@ def shape_problems(records: dict, table: dict) -> list[str]:
         p.append("ledger.end is not the last turn's end")
     if not n and led["end"] is not None:
         p.append("ledger.end must be None when no turn ran")
-    if len(records["api_errors"]) > n:
-        p.append("more API-error records than turns: every API error belongs to a turn")
+    if records["api_errors"] and not n:
+        # W1B2-7 dropped "no more API errors than turns" (one turn can meet several); an API error with no turn
+        # at all still belongs to nothing (lane w1b decision).
+        p.append("API-error records with no turn: every API error belongs to a turn")
     if n and not records["preflight"]["ok"]:
         p.append("a take whose preflight failed cannot have run a turn")
     return p
@@ -421,6 +437,11 @@ def check_records(records: dict, table: dict) -> list[str]:
         p.append(f"the pin is not {pin['model']!r}'s pre-registered profile: the driver is never trusted for it")
     if records["ledger"]["committed"]:
         p.append("the take is already committed: a route must be decided before the commit")
+    early = [r for r in records["checker_reasons"] if r in table["reasons_only_before_first_turn"]["ids"]]
+    if early and phase_of(records) == labels4.AFTER_FIRST_TURN:
+        # W1B2-8: the reason says "before the first turn" while the harness records say it started.
+        p.append(f"checker reason(s) {early} mean before the agent's first turn, and the records show it started "
+                 f"(completed agent output): the checker and the records disagree, so a human must look")
     return p
 
 

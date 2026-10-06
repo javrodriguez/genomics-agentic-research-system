@@ -41,13 +41,15 @@ import batch  # noqa: E402
 import routing  # noqa: E402
 from graders import labels4  # noqa: E402
 
-# Test-only pin profiles and operator reason, injected in memory (CP5 and round 3 supply the real).
+# Test-only pin profiles, injected in memory (CP5 pre-registers the real ones; until then routing.json's
+# pin_profiles is empty and PENDING).
 PROFILES = {"test-model-a": {"permission_mode": "bypassPermissions", "version": "0.0.1-test"},
             "test-model-b": {"permission_mode": "plan-test", "version": "0.0.2-test"}}
 PIN = dict(PROFILES["test-model-a"], model="test-model-a")
 OTHER_PIN = dict(PROFILES["test-model-b"], model="test-model-b")
-TEST_REASON = "test-only-operator-reason"
-TEST_PAUSE_CAP = 2  # test-only: round 3's pause_cap is pending in routing.json
+# The real pause cap: round 3's pause_cap (3 per half-cell), filled under Javier's ruling "gap4 routing: A"
+# and re-derived from round 3's prereg.json by test_routing.py's TestRound3Sources.
+PAUSE_CAP = routing.load_table()["caps"][labels4.PAUSE]["reruns_per_half_cell"]
 FAKE_TOKEN = "FAKE-TOKEN-in-memory-0000"            # never a real token
 FAKE_EMAIL = "fake.account@example.invalid"         # never a real address
 MASK_MARK = "[masked]"
@@ -56,9 +58,6 @@ WAIT_S = 10.0   # a hang detector for the barrier and ordering events, never a t
 
 def test_table() -> dict:
     t = copy.deepcopy(routing.load_table())
-    t["caps"][labels4.PAUSE]["reruns_per_half_cell"] = TEST_PAUSE_CAP
-    t["operator_reasons"] = [TEST_REASON]
-    t["operator_reasons_status"] = "TEST-ONLY: one injected reason id"
     t["pin_profiles"] = copy.deepcopy(PROFILES)
     t["pin_profiles_status"] = "TEST-ONLY: two injected profiles"
     return t
@@ -414,6 +413,14 @@ def restart_problems(cls=batch.Batch) -> list[str]:
     except batch.BatchConfigError as e:
         if "cap" not in str(e):
             p.append(f"capped slot: refused for another reason: {e}")
+    # 5. a slot re-registered under another half-cell is refused (its caps would be counted in the wrong cell).
+    _, _, _, _, r1, _ = run(1, plan={(1, 1): blocked})
+    try:
+        b, out, *_ = restart(r1, rows(1, half_cell="hc-other"), cls=cls)
+        p.append(f"moved slot: the restart drove it under another half-cell ({[(o['attempt'], o['state']) for o in out]})")
+    except batch.BatchConfigError as e:
+        if "committed under half-cell" not in str(e):
+            p.append(f"moved slot: refused for another reason: {e}")
     return p
 
 
@@ -645,6 +652,8 @@ def gate_problems() -> list[str]:
         "operator_reasons_status PENDING": lambda t: t.update(operator_reasons_status="PENDING: not read"),
         "pin_profiles empty": lambda t: t.update(pin_profiles={}),
         "pin_profiles_status PENDING": lambda t: t.update(pin_profiles_status="PENDING (CP5)"),
+        "rate_limit_markers_status PENDING": lambda t: t.update(rate_limit_markers_status="PENDING: not ruled"),
+        "rate_limit_markers_status missing": lambda t: t.pop("rate_limit_markers_status"),
     }
     for name, edit in bad.items():
         t = test_table()
@@ -666,8 +675,9 @@ class TestStartGate(unittest.TestCase):
         with self.assertRaises(batch.BatchConfigError) as cm:
             batch.Batch(None, None, None)   # the real routing.json: the CP5 pins are still PENDING
         self.assertIn("pin_profiles", str(cm.exception))
-        # round 3's reasons and pause cap are filled (Javier's "gap4 routing: A"), so only the pins remain
-        for filled in ("pause", "operator_reasons"):
+        # round 3's reasons and pause cap are filled (Javier's "gap4 routing: A") and the markers ruled
+        # (glitch-f3, W1B2-6), so only the pins remain
+        for filled in ("pause", "operator_reasons", "rate_limit"):
             self.assertNotIn(filled, str(cm.exception))
 
     def test_gate_refuses_pending_data(self):
@@ -677,7 +687,14 @@ class TestStartGate(unittest.TestCase):
         def caps_only(table):   # the pre-fold gate: the caps alone
             return [f"cap {r}" for r in batch.pending_caps(table)]
         with mock.patch.object(batch, "start_problems", caps_only):
-            self.assertEqual(len(gate_problems()), 4)
+            self.assertEqual(len(gate_problems()), 6)
+        real = batch.start_problems
+
+        def ignores_the_markers(table):   # W1B2-6's mutant: the markers' ruling not gated
+            return [x for x in real(table) if "rate_limit_markers_status" not in x]
+        with mock.patch.object(batch, "start_problems", ignores_the_markers):
+            self.assertEqual(sorted(gate_problems()), ["rate_limit_markers_status PENDING: the loop would start",
+                                                       "rate_limit_markers_status missing: the loop would start"])
 
     def test_check_cli_exits_1_while_pending(self):
         buf = io.StringIO()
@@ -685,8 +702,9 @@ class TestStartGate(unittest.TestCase):
             self.assertEqual(batch.main(["--check"]), 1)
         for what in ("pin_profiles", "pin_profiles_status"):
             self.assertIn(what, buf.getvalue())
-        for filled in ("pause", "operator_reasons"):   # filled under Javier's "gap4 routing: A"
+        for filled in ("pause", "operator_reasons", "rate_limit"):   # filled, or ruled (W1B2-6)
             self.assertNotIn(filled, buf.getvalue())
+        self.assertTrue(all("pin_profiles" in x for x in buf.getvalue().splitlines()), buf.getvalue())
         ready = test_table()
         with mock.patch.object(routing, "load_table", lambda *a: copy.deepcopy(ready)), \
                 redirect_stdout(io.StringIO()) as out:
@@ -1020,7 +1038,7 @@ def fate_problems(cls=batch.Batch) -> list[str]:
     if (last["final"], last["beyond_cap"], last["stop"]) != (False, True, "rehearsal cap reached"):
         p.append(f"rehearsal beyond its cap committed as {last['final'], last['beyond_cap'], last['stop']}")
     b, out, w, d, r, _ = run(1, plan={(1, a): "rate-limit" for a in range(1, 10)}, cls=cls)
-    last = r.snapshot(1, TEST_PAUSE_CAP + 1)
+    last = r.snapshot(1, PAUSE_CAP + 1)
     if (last["beyond_cap"], last["stop"]) != (True, "pause cap reached"):
         p.append(f"pause beyond its cap committed as {last['beyond_cap'], last['stop']}")
     b, out, w, d, r, _ = run(1, cls=cls)
@@ -1176,7 +1194,7 @@ class TestPause(unittest.TestCase):
     def test_pause_cap(self):
         plan = {(1, a): "rate-limit" for a in range(1, 10)}
         b, out, w, *_ = run(1, plan=plan)
-        self.assertEqual(len(out), TEST_PAUSE_CAP + 1)
+        self.assertEqual(len(out), PAUSE_CAP + 1)
         self.assertTrue(out[-1]["beyond_cap"])
         self.assertEqual(b.stopped["state"], labels4.PAUSE)
 
@@ -1215,6 +1233,105 @@ class TestCaps(unittest.TestCase):
                          [(1, labels4.ABORTED), (2, labels4.GRADED), (3, labels4.GRADED)])
 
 
+class RegisterFailsRepo(FakeRepo):
+    """register() raises for `fail_slot` (say, a stale git index.lock)."""
+
+    fail_slot = 2
+
+    def register(self, row, attempt):
+        if row["slot"] == self.fail_slot:
+            raise OSError("git index.lock exists")
+        super().register(row, attempt)
+
+
+class WindowFails(FakeWindow):
+    def wait_reset(self):
+        self.resets += 1
+        raise RuntimeError("usage window unreachable")
+
+
+def repo_window_failure_problems(cls=batch.Batch) -> list[str]:
+    """W1B2-5: register() raising on slot 2 of a block of three commits slot 1 (registered) as failed, masked,
+    nothing launched; register() raising on the block's first row commits nothing; wait_reset() raising after a
+    pause launches nothing more. Each time run() returns with `stopped` saying why, never raising."""
+    p = []
+    for fail_slot, want_failed in ((2, [1]), (1, [])):
+        w = World()
+        d, r, win = FakeDriver(w), RegisterFailsRepo(w), FakeWindow(w)
+        r.fail_slot = fail_slot
+        try:
+            b = cls(d, r, win, table=test_table())
+            out = b.run(rows(3))
+        except Exception as e:  # noqa: BLE001
+            p.append(f"register fails on slot {fail_slot}: run raised {type(e).__name__}: {e}")
+            continue
+        got = [(snap["slot"], snap["state"], snap["mask"], snap["container_id"]) for _, _, _, snap in r.passed]
+        if got != [(s, labels4.FAILED, True, None) for s in want_failed]:
+            p.append(f"register fails on slot {fail_slot}: committed {got}")
+        if d.launched or kinds(w.events, "drive-start"):
+            p.append(f"register fails on slot {fail_slot}: something was launched or driven")
+        if not b.stopped or b.stopped["state"] != labels4.FAILED or "register failed" not in b.stopped["reason"]:
+            p.append(f"register fails on slot {fail_slot}: stopped {b.stopped}")
+        if [o["slot"] for o in out] != want_failed:
+            p.append(f"register fails on slot {fail_slot}: outcomes {[o['slot'] for o in out]}")
+    w = World()
+    d, r, win = FakeDriver(w, {(2, 1): "rate-limit"}), FakeRepo(w), WindowFails(w)
+    try:
+        b = cls(d, r, win, table=test_table())
+        out = b.run(rows(6))
+    except Exception as e:  # noqa: BLE001
+        return p + [f"wait_reset fails: run raised {type(e).__name__}: {e}"]
+    if win.resets != 1 or len(d.launched) != 3:
+        p.append(f"wait_reset fails: {win.resets} waits, {len(d.launched)} launches (want 1 and 3)")
+    if not b.stopped or b.stopped["state"] != labels4.FAILED or "wait_reset failed" not in b.stopped["reason"]:
+        p.append(f"wait_reset fails: stopped {b.stopped}")
+    if [snap["state"] for _, _, _, snap in r.passed] != [labels4.GRADED, labels4.PAUSE, labels4.GRADED]:
+        p.append(f"wait_reset fails: committed {[snap['state'] for _, _, _, snap in r.passed]}")
+    return p
+
+
+class TestRepoAndWindowFailures(unittest.TestCase):
+    """W1B2-5: a register or wait_reset failure stops the loop with every registered row committed."""
+
+    def test_register_and_wait_reset_failures(self):
+        self.assertEqual(repo_window_failure_problems(), [])
+
+    def test_register_and_wait_reset_check_can_fail(self):
+        class Raises(batch.Batch):            # the pre-fold loop: the repo's and window's errors propagate
+            def _register(self, block):
+                for row, attempt in block:
+                    self.repo.register(row, attempt)
+                return True
+
+            def _wait_window(self):
+                self.window.wait_reset()
+                return True
+
+        class Forgets(batch.Batch):           # stops, but never commits the rows it had registered
+            def _register(self, block):
+                for row, attempt in block:
+                    try:
+                        self.repo.register(row, attempt)
+                    except Exception as e:  # noqa: BLE001
+                        self.stopped = {"slot": row["slot"], "attempt": attempt, "state": labels4.FAILED,
+                                        "reason": f"register failed: {e}"}
+                        return False
+                return True
+        found = repo_window_failure_problems(Raises)
+        self.assertTrue(any("register fails on slot 2: run raised" in x for x in found), found)
+        self.assertTrue(any("wait_reset fails: run raised" in x for x in found), found)
+        found = repo_window_failure_problems(Forgets)
+        self.assertIn("register fails on slot 2: committed []", found)
+
+    def test_a_restart_after_a_register_failure_continues(self):
+        w = World()
+        r = RegisterFailsRepo(w)
+        batch.Batch(FakeDriver(w), r, FakeWindow(w), table=test_table()).run(rows(3))
+        b, out, *_ = restart(r, rows(3))
+        self.assertEqual([(o["slot"], o["attempt"], o["state"]) for o in out],
+                         [(1, 2, labels4.GRADED), (2, 1, labels4.GRADED), (3, 1, labels4.GRADED)])
+
+
 class TestRestart(unittest.TestCase):
     """W1B2-3: the caps and attempt numbers come back from the committed outcomes after a stop."""
 
@@ -1248,6 +1365,11 @@ class TestRestart(unittest.TestCase):
                 super()._replay(history)
                 self.closed.clear()
 
+        class ForgetsCells(batch.Batch):      # a slot's committed half-cell forgotten
+            def _replay(self, history):
+                super()._replay(history)
+                self.slot_cell.clear()
+
         class ForgetsThePause(batch.Batch):   # a restart after a pause launches at once
             def _replay(self, history):
                 super()._replay(history)
@@ -1258,6 +1380,7 @@ class TestRestart(unittest.TestCase):
         self.assertTrue(any("committed 2 times" in x for x in restart_problems(ForgetsAttempts)))
         found = restart_problems(DrivesClosedSlots)
         self.assertTrue(any("final slot" in x for x in found) and any("capped slot" in x for x in found), found)
+        self.assertTrue(any("moved slot" in x for x in restart_problems(ForgetsCells)))
         self.assertNotEqual(restart_pause_problems(ForgetsThePause), [])
         self.assertNotEqual(restart_pause_problems(NoReplay), [])
 

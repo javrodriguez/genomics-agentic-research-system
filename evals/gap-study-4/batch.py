@@ -73,8 +73,15 @@ outcomes is a pause, a restart waits for the usage window before its first launc
 
 THE START GATE. The loop refuses to start (`BatchConfigError`, and `batch.py --check` exits 1)
 while routing.json still lacks what only the owner or a later checkpoint can supply: round 3's
-pause cap, round 3's operator-side reasons (an empty list, or a status starting PENDING), or the
-pre-registered pin profiles (CP5). Every row must name a model that has a profile.
+pause cap, round 3's operator-side reasons (an empty list, or a status starting PENDING), the
+rate-limit markers' ruling (a status starting PENDING, W1B2-6), or the pre-registered pin
+profiles (CP5). Every row must name a model that has a profile.
+
+A REPO OR WINDOW FAILURE STOPS, never sinks (review round 2, W1B2-5). If `register` raises, every
+row of the block already registered is committed `failed` (masked fail-closed, nothing launched),
+the loop records why in `stopped` and returns; if `wait_reset` raises, nothing of the next block
+was registered, so the loop records why in `stopped` and returns. A restart then continues from
+the committed outcomes.
 
 THE DRIVER. `Batch` never imports drive.py, Claude Code or any adapter: it receives a driver
 object with three methods,
@@ -149,6 +156,8 @@ def start_problems(table: dict) -> list[str]:
         p.append("pin_profiles is empty in routing.json (CP5 pre-registers them)")
     if str(table.get("pin_profiles_status", PENDING)).startswith(PENDING):
         p.append("pin_profiles_status is PENDING in routing.json")
+    if str(table.get("rate_limit_markers_status", PENDING)).startswith(PENDING):
+        p.append("rate_limit_markers_status is PENDING in routing.json")
     return p
 
 
@@ -281,11 +290,12 @@ class Batch:
         queue = collections.deque((dict(r), self.next_attempt.get(r["slot"], 1)) for r in rows)
         while queue and self.stopped is None:
             if self.paused:
-                self.window.wait_reset()
+                if not self._wait_window():
+                    return self.outcomes
                 self.paused = False
             block = [queue.popleft() for _ in range(min(self.block, len(queue)))]
-            for row, attempt in block:                       # serial: one commit each
-                self.repo.register(row, attempt)
+            if not self._register(block):                    # serial: one commit each
+                return self.outcomes
             launched = [(row, attempt) + self._launch(row, attempt) for row, attempt in block]   # ids recorded
             with concurrent.futures.ThreadPoolExecutor(max_workers=len(block)) as pool:
                 futures = [pool.submit(self._drive_step, row, attempt, cid, err)
@@ -299,6 +309,33 @@ class Batch:
                     requeue.append((row, attempt + 1))
             queue.extendleft(reversed(requeue))              # same slots, first, in row order
         return self.outcomes
+
+    def _wait_window(self) -> bool:
+        """Wait for the usage window; on a failure, stop with why (W1B2-5). True when it reset."""
+        try:
+            self.window.wait_reset()
+        except Exception as e:  # noqa: BLE001 - a window failure is a stop, never a sunk loop
+            self.stopped = {"slot": None, "attempt": None, "state": labels4.FAILED,
+                            "reason": f"wait_reset failed: {type(e).__name__}: {e}"}
+            return False
+        return True
+
+    def _register(self, block) -> bool:
+        """Register the block's rows, one commit each, in row order. If one fails, commit every row
+        already registered as `failed`, stop with why, and return False (W1B2-5)."""
+        registered = []
+        for row, attempt in block:
+            try:
+                self.repo.register(row, attempt)
+            except Exception as e:  # noqa: BLE001 - a register failure is a stop, never a sunk loop
+                reason = f"register failed for slot {row['slot']} attempt {attempt}: {type(e).__name__}: {e}"
+                if self.stopped is None:
+                    self.stopped = {"slot": row["slot"], "attempt": attempt, "state": labels4.FAILED, "reason": reason}
+                for r, a in registered:
+                    self._commit(r, a, self._outcome(r, a, None, state=labels4.FAILED, reason=reason))
+                return False
+            registered.append((row, attempt))
+        return True
 
     def _commit(self, row, attempt, outcome) -> dict:
         """Decide the take's fate, seal its mask, commit it: the one road every outcome takes to the repo."""

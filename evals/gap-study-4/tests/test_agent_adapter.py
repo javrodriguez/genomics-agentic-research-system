@@ -245,6 +245,23 @@ class TestTurns(unittest.TestCase):
             r = aa.harness_records([turn(), t500, t429], pin=PIN, box=BOX)
         self.assertNotEqual([e["status"] for e in r["api_errors"]], [500, 429])
 
+    def test_every_api_error_of_one_turn_carried_in_order(self):
+        """W1B2-7: one turn can meet several API errors (a 529, then a 429); harness_records flattens every
+        turn's list in order, so the 429 still reads as a rate limit."""
+        e529 = {"status": 529, "type": "overloaded_error", "text": None}
+        e429 = {"status": 429, "type": "rate_limit_error", "text": "Rate limit reached"}
+        t500 = turn(exit_code=1, end_reason=aa.END_ERROR, api_errors=[{"status": 500, "type": "api_error", "text": None}])
+        both = turn(exit_code=1, end_reason=aa.END_ERROR, api_errors=[e529, e429])
+        self.assertEqual(api_error_order(aa.harness_records([turn(), t500, both], pin=PIN, box=BOX)), [500, 529, 429])
+        real = aa.harness_records
+
+        def first_per_turn(turns, *, pin, box):   # the mutant: the single api_error of before W1B2-7
+            out = real(turns, pin=pin, box=box)
+            out["api_errors"] = [{f: t.api_errors[0][f] for f in aa.API_ERROR_FIELDS} for t in turns if t.api_errors]
+            return out
+        with mock.patch.object(aa, "harness_records", first_per_turn):
+            self.assertEqual(api_error_order(aa.harness_records([turn(), t500, both], pin=PIN, box=BOX)), [500, 529])
+
     def test_first_turn_starts_with_agent_output(self):
         """W1B-5 (gap4 lane lead's ruling): a turn with no completed agent output is before it."""
         silent = turn(exit_code=1, end_reason=aa.END_ERROR, agent_output=False,
@@ -279,6 +296,10 @@ class TestTurns(unittest.TestCase):
     def test_first_turn_rule(self):
         """W1B2-1: the agent's first turn starts only with completed agent output, a timed-out turn included."""
         self.assertEqual(first_turn_problems(), [])
+
+
+def api_error_order(records) -> list:
+    return [e["status"] for e in records["api_errors"]]
 
 
 def first_turn_problems() -> list[str]:
