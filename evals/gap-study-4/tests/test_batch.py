@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """batch.py: every terminal state with three drives at once, commits serial in row order and for
 every take of a block, containers removed by recorded id, a pause launches no new drive, the mask
-and events decided on every take and committed, the fate committed with the record, and a start
-gate that refuses pending data.
+and events decided on every take and committed, the fate committed with the record, a start
+gate that refuses pending data, and glitch-f3's rulings of 6 Oct 2026 (a half-cell closing
+`incomplete — mechanical` at its rehearsal or pause cap, round 3's unit; the wait_reset contract).
 
 The driver is a fake built on agent_adapter.ScriptedAdapter: no model, no container, no drive.py.
 Which terminal state each fake scenario reaches is computed by routing.route on the scenario's
@@ -50,6 +51,8 @@ OTHER_PIN = dict(PROFILES["test-model-b"], model="test-model-b")
 # The real pause cap: round 3's pause_cap (3 per half-cell), filled under Javier's ruling "gap4 routing: A"
 # and re-derived from round 3's prereg.json by test_routing.py's TestRound3Sources.
 PAUSE_CAP = routing.load_table()["caps"][labels4.PAUSE]["reruns_per_half_cell"]
+# Round 3's rehearsal_cap (3 per half-cell), re-derived from round 3's prereg.json by test_routing.py too.
+REHEARSAL_CAP = routing.load_table()["caps"][labels4.REHEARSAL]["reruns_per_half_cell"]
 FAKE_TOKEN = "FAKE-TOKEN-in-memory-0000"            # never a real token
 FAKE_EMAIL = "fake.account@example.invalid"         # never a real address
 MASK_MARK = "[masked]"
@@ -327,6 +330,20 @@ def rows(n, half_cell="hc-a", model=PIN["model"]):
     return [{"slot": i, "half_cell": half_cell, "row_id": i, "model": model} for i in range(1, n + 1)]
 
 
+def row(slot, half_cell, model=PIN["model"]):
+    return {"slot": slot, "half_cell": half_cell, "row_id": slot, "model": model}
+
+
+def rows_in(cells: list[str]) -> list[dict]:
+    """Slots 1..n, slot i in the half-cell cells[i - 1]."""
+    return [row(i, hc) for i, hc in enumerate(cells, 1)]
+
+
+def closed_state():
+    """labels4's cell state at a cap (glitch-f3's ruling), never retyped here; a visible stand-in when it is missing."""
+    return getattr(labels4, "INCOMPLETE_MECHANICAL", "(labels4 has no INCOMPLETE_MECHANICAL)")
+
+
 def run(n, plan=None, serial=False, cls=batch.Batch, table=None, row_list=None, batch_kw=None, **driver_kw):
     w = World()
     d, r, win = FakeDriver(w, plan, **driver_kw), FakeRepo(w), FakeWindow(w)
@@ -336,12 +353,12 @@ def run(n, plan=None, serial=False, cls=batch.Batch, table=None, row_list=None, 
 
 
 def restart(prev_repo, row_list, plan=None, start_attempts=None, cls=batch.Batch, table=None, serial=False,
-            **driver_kw):
+            window_cls=None, **driver_kw):
     """W1B2-3: a new process after a stop. A new driver, window and loop; the repo holds every outcome
     committed before (its history), and the loop is handed nothing else."""
     w = World()
     d = FakeDriver(w, plan, start_attempts=start_attempts, **driver_kw)
-    r, win = FakeRepo(w, prior=prev_repo.history()), FakeWindow(w)
+    r, win = FakeRepo(w, prior=prev_repo.history()), (window_cls or FakeWindow)(w)
     b = cls(d, r, win, table=table or test_table(), serial=serial)
     out = b.run(row_list)
     return b, out, w, d, r, win
@@ -405,14 +422,18 @@ def restart_problems(cls=batch.Batch) -> list[str]:
         except batch.BatchConfigError as e:
             if "final" not in str(e):
                 p.append(f"final slot {slot}: refused for another reason: {e}")
-    # 4. a slot that ended at its rehearsal cap (no fate in the plan: the loop stopped for a human) is refused.
+    # 4. a half-cell closed at its rehearsal cap (glitch-f3's cap ruling): the restart registers nothing for it, its
+    #    capped slot and its unstarted slot alike, and runs another half-cell's row.
     _, _, _, _, r1, _ = run(1, plan={(1, a): "preflight-fail" for a in range(1, 10)}, serial=True)
     try:
-        b, out, *_ = restart(r1, rows(1), start_attempts={1: 4}, cls=cls)
-        p.append(f"capped slot: the restart drove it again ({[(o['attempt'], o['state']) for o in out]})")
-    except batch.BatchConfigError as e:
-        if "cap" not in str(e):
-            p.append(f"capped slot: refused for another reason: {e}")
+        b, out, w, *_ = restart(r1, [row(1, "hc-a"), row(2, "hc-a"), row(3, "hc-b")],
+                                start_attempts={1: REHEARSAL_CAP}, cls=cls)
+        regs = [(e[2], e[3]) for e in kinds(w.events, "register")]
+        if regs != [(3, 1)] or [(o["slot"], o["state"]) for o in out] != [(3, labels4.GRADED)]:
+            p.append(f"capped cell: the restart registered {regs} and committed "
+                     f"{[(o['slot'], o['attempt'], o['state']) for o in out]}")
+    except Exception as e:  # noqa: BLE001
+        p.append(f"capped cell: the restart raised {type(e).__name__}: {e}")
     # 5. a slot re-registered under another half-cell is refused (its caps would be counted in the wrong cell).
     _, _, _, _, r1, _ = run(1, plan={(1, 1): blocked})
     try:
@@ -427,11 +448,18 @@ def restart_problems(cls=batch.Batch) -> list[str]:
 def restart_pause_problems(cls=batch.Batch) -> list[str]:
     """W1B2-3 (lane w1b's decision): a restart after a pause launches nothing before the usage window resets."""
     _, _, _, _, r1, _ = run(1, plan={(1, a): "rate-limit" for a in range(1, 10)})
-    b, out, w, d, r2, win = restart(r1, [dict(rows(2)[1])], cls=cls)
+    # slot 1's half-cell closed at its pause cap (glitch-f3's cap ruling), so the restart drives another half-cell
+    b, out, w, d, r2, win = restart(r1, [row(2, "hc-b")], cls=cls)
     seq = [e[1] for e in w.events]
     if "reset" not in seq or "launch" not in seq or seq.index("reset") > seq.index("launch"):
         return [f"the restart launched before the window reset: {seq}"]
     return []
+
+
+def capped_history() -> list[dict]:
+    """The committed outcomes of a half-cell closed at its pause cap: slot 1 pauses on every attempt."""
+    _, _, _, _, r, _ = run(1, plan={(1, a): "rate-limit" for a in range(1, 10)})
+    return r.history()
 
 
 def history_validation_problems(cls=batch.Batch) -> list[str]:
@@ -447,6 +475,21 @@ def history_validation_problems(cls=batch.Batch) -> list[str]:
         "an attempt after the slot's final one": good + [dict(copy.deepcopy(good[-1]), attempt=good[-1]["attempt"] + 1)],
         "not a list": {"slot": 1},
     }
+    # glitch-f3's cap ruling: the committed cell state is the record a restart closes a half-cell from, so it must
+    # agree with the counts it is rebuilt beside.
+    capped = capped_history()
+    shut = len(capped) - 1                                  # the take that brought hc-a's pauses to the cap
+    bad.update({
+        "a cell state that is not labels4's": [dict(o, cell_state="incomplete") if i == shut else o
+                                               for i, o in enumerate(capped)],
+        "a cell state without its reason": [dict(o, cell_reason=None) if i == shut else o for i, o in enumerate(capped)],
+        "a half-cell at its cap without its committed state": [dict(o, cell_state=None, cell_reason=None) if i == shut
+                                                               else o for i, o in enumerate(capped)],
+        "a committed cell state below the cap": [dict(o, cell_state=closed_state(), cell_reason="early") if i == 0
+                                                 else o for i, o in enumerate(capped)],
+        "a re-run in a closed half-cell": capped + [dict(copy.deepcopy(capped[shut]), slot=9, attempt=1, final=False,
+                                                         rerun=True, beyond_cap=False)],
+    })
     for name, hist in bad.items():
         class Repo(FakeRepo):
             def history(self, _h=hist):
@@ -1060,14 +1103,15 @@ def fate_problems(cls=batch.Batch) -> list[str]:
            for a in (1, 2)]
     if got != [(False, True, False, None), (True, False, True, None)]:
         p.append(f"harness-error re-run then beyond its cap committed as {got}")
-    b, out, w, d, r, _ = run(2, plan={(1, a): "preflight-fail" for a in range(1, 10)}, serial=True, cls=cls)
-    last = r.snapshot(1, 4)
-    if (last["final"], last["beyond_cap"], last["stop"]) != (False, True, "rehearsal cap reached"):
-        p.append(f"rehearsal beyond its cap committed as {last['final'], last['beyond_cap'], last['stop']}")
-    b, out, w, d, r, _ = run(1, plan={(1, a): "rate-limit" for a in range(1, 10)}, cls=cls)
-    last = r.snapshot(1, PAUSE_CAP + 1)
-    if (last["beyond_cap"], last["stop"]) != (True, "pause cap reached"):
-        p.append(f"pause beyond its cap committed as {last['beyond_cap'], last['stop']}")
+    # glitch-f3's cap ruling: the take that brings its half-cell's rehearsals (or pauses) to the cap is the slot's
+    # last, committed with the cell state; the loop goes on (no stop)
+    for route, scenario, cap in ((labels4.REHEARSAL, "preflight-fail", REHEARSAL_CAP),
+                                 (labels4.PAUSE, "rate-limit", PAUSE_CAP)):
+        b, out, w, d, r, _ = run(2, plan={(1, a): scenario for a in range(1, 10)}, serial=True, cls=cls)
+        last = r.snapshot(1, cap)
+        got = (last["final"], last["rerun"], last["beyond_cap"], last["stop"], last.get("cell_state"))
+        if got != (True, False, True, None, closed_state()) or not last.get("cell_reason"):
+            p.append(f"{route} reaching its cap committed as {got} ({last.get('cell_reason')!r})")
     b, out, w, d, r, _ = run(1, cls=cls)
     if r.snapshot(1)["final"] is not True:
         p.append("a graded take was not committed as final")
@@ -1219,11 +1263,13 @@ class TestPause(unittest.TestCase):
         self.assertEqual(win.resets, 0)
 
     def test_pause_cap(self):
+        """glitch-f3's cap ruling: the half-cell's third pause is its last; it closes `incomplete — mechanical`."""
         plan = {(1, a): "rate-limit" for a in range(1, 10)}
         b, out, w, *_ = run(1, plan=plan)
-        self.assertEqual(len(out), PAUSE_CAP + 1)
-        self.assertTrue(out[-1]["beyond_cap"])
-        self.assertEqual(b.stopped["state"], labels4.PAUSE)
+        self.assertEqual(len(out), PAUSE_CAP)
+        self.assertEqual((out[-1]["final"], out[-1]["rerun"], out[-1]["beyond_cap"]), (True, False, True))
+        self.assertEqual(out[-1].get("cell_state"), closed_state())
+        self.assertIsNone(b.stopped)   # never a stop for a human
 
 
 class TestCaps(unittest.TestCase):
@@ -1241,12 +1287,15 @@ class TestCaps(unittest.TestCase):
         self.assertEqual(sorted(o["slot"] for o in reruns), [1, 2])
         self.assertTrue(next(o for o in out if o["slot"] == 3)["beyond_cap"])
 
-    def test_rehearsal_cap_three_per_half_cell_then_blocked(self):
+    def test_rehearsal_cap_three_per_half_cell_then_the_half_cell_closes(self):
+        """glitch-f3's cap ruling: three rehearsals in a half-cell, then nothing more is registered for it; another
+        half-cell's row still runs."""
         plan = {(1, a): "preflight-fail" for a in range(1, 10)}
-        b, out, *_ = run(2, plan=plan, serial=True)
-        self.assertEqual([o["state"] for o in out if o["slot"] == 1], [labels4.REHEARSAL] * 4)
-        self.assertEqual(b.stopped["state"], labels4.REHEARSAL)
-        self.assertNotIn(2, [o["slot"] for o in out])   # nothing new launched once stopped
+        b, out, w, *_ = run(0, plan=plan, serial=True, row_list=rows_in(["hc-a", "hc-a", "hc-b"]))
+        self.assertEqual([o["state"] for o in out if o["slot"] == 1], [labels4.REHEARSAL] * REHEARSAL_CAP)
+        self.assertIsNone(b.stopped)
+        self.assertNotIn(2, [e[2] for e in kinds(w.events, "register")])   # the closed half-cell's other slot
+        self.assertEqual([(o["slot"], o["state"]) for o in out if o["slot"] != 1], [(3, labels4.GRADED)])
 
     def test_cap_checks_can_fail(self):
         t = test_table()
@@ -1387,7 +1436,7 @@ class TestRestart(unittest.TestCase):
                 super()._replay(history)
                 self.next_attempt.clear()
 
-        class DrivesClosedSlots(batch.Batch):  # a final or capped slot is driven again
+        class DrivesClosedSlots(batch.Batch):  # a final slot is driven again
             def _replay(self, history):
                 super()._replay(history)
                 self.closed.clear()
@@ -1396,17 +1445,13 @@ class TestRestart(unittest.TestCase):
             def _replay(self, history):
                 super()._replay(history)
                 self.slot_cell.clear()
-
-        class ForgetsThePause(batch.Batch):   # a restart after a pause launches at once
-            def _replay(self, history):
-                super()._replay(history)
-                self.paused = False
         self.assertNotEqual(restart_problems(NoReplay), [])
         found = restart_problems(ForgetsReruns)
         self.assertTrue(any("slot cap" in x for x in found) and any("half-cell cap" in x for x in found), found)
         self.assertTrue(any("committed 2 times" in x for x in restart_problems(ForgetsAttempts)))
         found = restart_problems(DrivesClosedSlots)
-        self.assertTrue(any("final slot" in x for x in found) and any("capped slot" in x for x in found), found)
+        self.assertTrue(any("final slot" in x for x in found), found)
+        self.assertTrue(any("capped cell" in x for x in restart_problems(ForgetsClosedCells)))   # glitch-f3's cap ruling
         self.assertTrue(any("moved slot" in x for x in restart_problems(ForgetsCells)))
         self.assertNotEqual(restart_pause_problems(ForgetsThePause), [])
         self.assertNotEqual(restart_pause_problems(NoReplay), [])
@@ -1428,6 +1473,310 @@ class TestRestart(unittest.TestCase):
         self.assertIn("a repo that cannot give its history: accepted", history_validation_problems(DefaultsToNothing))
 
 
+# ------------------------------------------------- glitch-f3's rulings (6 Oct 2026): the cell caps
+# Recorded as glitch-f3's in-plan rulings, never as the owner's. Round 3 counts the pauses (or rehearsals) of a
+# cell, (task, half, model), and once the count reaches the cap registers nothing more for it, which publishes
+# `incomplete — mechanical` (evals/gap-study-3/takes.py:280-291 at e2979b31). Round 4's half-cell is
+# (arm, task, half, model), the row's `half_cell`; wording and repeat or pressure are the slot inside it.
+ROUTE_SCENARIO = {labels4.PAUSE: "rate-limit", labels4.REHEARSAL: "preflight-fail"}
+CELL_CAP = {labels4.PAUSE: PAUSE_CAP, labels4.REHEARSAL: REHEARSAL_CAP}
+
+
+def _fields(o, *keys):
+    return tuple(o.get(k) for k in keys)
+
+
+def cell_cap_problems(route: str, cls=batch.Batch) -> list[str]:
+    """Through Batch.run with the fake driver: a half-cell meets `route` until it reaches its cap. The take that
+    brings the count to the cap is not re-run; it is committed with the cell state `incomplete — mechanical` and
+    its reason before the loop moves on; nothing more is registered for that half-cell; the other half-cells' rows
+    run and the loop never stops for a human; and a restart built from the repo's history keeps it closed."""
+    p = []
+    cap, scenario, closed = CELL_CAP[route], ROUTE_SCENARIO[route], closed_state()
+    keys = ("final", "rerun", "beyond_cap", "stop", "cell_state")
+    # 1. one at a time: slot 1 (hc-a) meets the route on every attempt; slots 2 and 3 are hc-b; slot 4 is hc-a's
+    b, out, w, d, r, _ = run(0, plan={(1, a): scenario for a in range(1, 10)}, serial=True, cls=cls,
+                             row_list=rows_in(["hc-a", "hc-b", "hc-b", "hc-a"]))
+    regs = [(e[2], e[3]) for e in kinds(w.events, "register")]
+    ones = [o for o in out if o["slot"] == 1]
+    if [o["state"] for o in ones] != [route] * cap:
+        p.append(f"serial: slot 1 committed {[o['state'] for o in ones]}, want {cap} x {route}")
+    if (1, cap + 1) in regs:
+        p.append(f"serial: slot 1's attempt {cap + 1} was registered past its half-cell's cap")
+    if any(s == 4 for s, _ in regs):
+        p.append("serial: slot 4 was registered in a closed half-cell")
+    if [(o["slot"], o["state"]) for o in out if o["slot"] != 1] != [(2, labels4.GRADED), (3, labels4.GRADED)]:
+        p.append(f"serial: the other half-cell's rows: {[(o['slot'], o['state']) for o in out if o['slot'] != 1]}")
+    if b.stopped is not None:
+        p.append(f"serial: the loop stopped for a human: {b.stopped}")
+    for o in ones:
+        want = (True, False, True, None, closed) if o["attempt"] == cap else (False, True, False, None, None)
+        if _fields(o, *keys) != want:
+            p.append(f"serial: slot 1 attempt {o['attempt']} handed to commit as {_fields(o, *keys)}, want {want}")
+    rec = r.committed.get((1, cap), {})
+    if rec.get("cell_state") != closed or not isinstance(rec.get("cell_reason"), str) or str(cap) not in rec.get("cell_reason", ""):
+        p.append(f"serial: the committed record carries {rec.get('cell_state')!r} ({rec.get('cell_reason')!r})")
+    # 2. a restart from the repo's history keeps hc-a closed: its capped and its unstarted slot are never
+    #    registered; another half-cell's new row runs
+    try:
+        b2, out2, w2, *_ = restart(r, [row(1, "hc-a"), row(4, "hc-a"), row(5, "hc-b")], cls=cls)
+        regs2 = [(e[2], e[3]) for e in kinds(w2.events, "register")]
+        if regs2 != [(5, 1)] or [(o["slot"], o["state"]) for o in out2] != [(5, labels4.GRADED)]:
+            p.append(f"restart: registered {regs2}, committed {[(o['slot'], o['attempt'], o['state']) for o in out2]}")
+    except Exception as e:  # noqa: BLE001
+        p.append(f"restart: raised {type(e).__name__}: {e}")
+    # 3. three at once: hc-a's three slots meet the route together; the one whose commit brings the count to the
+    #    cap closes the half-cell, and the re-runs granted before it in the block are never registered
+    b, out, w, d, r, _ = run(0, plan={(s, 1): scenario for s in (1, 2, 3)}, cls=cls,
+                             row_list=rows_in(["hc-a", "hc-a", "hc-a", "hc-b"]))
+    regs = [(e[2], e[3]) for e in kinds(w.events, "register")]
+    if regs != [(1, 1), (2, 1), (3, 1), (4, 1)]:
+        p.append(f"block: registered {regs}, want hc-a's three slots once each, then hc-b's")
+    for o in out:
+        if o["slot"] == 4:
+            want = (True, False, False, None, None)
+        elif o["slot"] < cap:
+            want = (False, True, False, None, None)
+        else:
+            want = (True, False, True, None, closed)
+        if _fields(o, *keys) != want:
+            p.append(f"block: slot {o['slot']} attempt {o['attempt']} committed as {_fields(o, *keys)}, want {want}")
+    if b.stopped is not None:
+        p.append(f"block: the loop stopped for a human: {b.stopped}")
+    return p
+
+
+class StopsForAHuman(batch.Batch):
+    """Mutant: the pre-ruling fate at a rehearsal or pause cap, where the loop stopped for a human."""
+
+    def _count_in_cell(self, row, attempt, outcome):
+        fate = super()._count_in_cell(row, attempt, outcome)
+        if fate.get("cell_state") is not None:
+            fate = dict(fate, stop=f"{outcome['state']} cap reached")
+            self._stop(row, attempt, dict(outcome, **fate))
+        return fate
+
+
+class CountsReruns(batch.Batch):
+    """Mutant: the pre-ruling unit, the re-runs granted per half-cell, so a half-cell closes one take later."""
+
+    def _count_in_cell(self, row, attempt, outcome):
+        if self._within_cap(row, outcome["state"]):
+            return self._fate(rerun=True)
+        return super()._count_in_cell(row, attempt, outcome)
+
+
+class ClosesInMemoryOnly(batch.Batch):
+    """Mutant: the half-cell closed in memory, its state never committed with the take."""
+
+    def _count_in_cell(self, row, attempt, outcome):
+        fate = super()._count_in_cell(row, attempt, outcome)
+        if fate.get("cell_state") is not None:
+            self.closed_cells[row["half_cell"]] = fate["cell_reason"]
+            fate = dict(fate, cell_state=None, cell_reason=None)
+        return fate
+
+
+class KeepsQueuedRows(batch.Batch):
+    """Mutant: a closed half-cell's queued rows are still registered."""
+
+    def _drop_closed(self, queue):
+        return queue
+
+
+class ForgetsClosedCells(batch.Batch):
+    """Mutant: a restart rebuilds the counts but forgets which half-cells closed."""
+
+    def _replay(self, history):
+        super()._replay(history)
+        self.closed_cells.clear()
+
+
+class TrustsCellHistory(batch.Batch):
+    """Mutant: committed cell states read without checking them against the counts."""
+
+    def cell_history_problems(self, history):
+        return []
+
+
+class TestCellCaps(unittest.TestCase):
+    """glitch-f3's cap ruling (in-plan, 6 Oct 2026; glitch-f3's, not the owner's): pauses and rehearsals are
+    counted per half-cell, round 3's unit; at the cap the half-cell closes `incomplete — mechanical` and the loop
+    goes on."""
+
+    def test_pause_cap_closes_the_half_cell(self):
+        self.assertEqual(cell_cap_problems(labels4.PAUSE), [])
+
+    def test_rehearsal_cap_closes_the_half_cell(self):
+        self.assertEqual(cell_cap_problems(labels4.REHEARSAL), [])
+
+    def test_cell_cap_check_can_fail(self):
+        for route in (labels4.PAUSE, labels4.REHEARSAL):
+            with self.subTest(route=route):
+                found = cell_cap_problems(route, StopsForAHuman)
+                self.assertTrue(any("stopped for a human" in x for x in found), found)
+                found = cell_cap_problems(route, CountsReruns)
+                self.assertTrue(any("registered past its half-cell's cap" in x for x in found), found)
+                found = cell_cap_problems(route, ClosesInMemoryOnly)
+                self.assertTrue(any(x.startswith("serial: the committed record carries None") for x in found), found)
+                self.assertTrue(any(x.startswith("restart: raised BatchConfigError") for x in found), found)
+                found = cell_cap_problems(route, KeepsQueuedRows)
+                self.assertTrue(any("slot 4 was registered in a closed half-cell" in x for x in found), found)
+                self.assertTrue(any(x.startswith("block: registered") for x in found), found)
+                found = cell_cap_problems(route, ForgetsClosedCells)
+                self.assertTrue(any(x.startswith("restart:") for x in found), found)
+
+    def test_cell_history_check_can_fail(self):
+        found = history_validation_problems(TrustsCellHistory)
+        for case in ("a half-cell at its cap without its committed state", "a committed cell state below the cap",
+                     "a re-run in a closed half-cell"):
+            self.assertIn(f"{case}: accepted", found)
+
+        class NoStateCheck(batch.Batch):   # the outcome's own cell fields never checked
+            @staticmethod
+            def history_problems(history):
+                return []
+
+            def cell_history_problems(self, history):
+                return []
+        found = history_validation_problems(NoStateCheck)
+        for case in ("a cell state that is not labels4's", "a cell state without its reason"):
+            self.assertIn(f"{case}: accepted", found)
+
+
+# ------------------------------------------------- glitch-f3's rulings (6 Oct 2026): the wait_reset contract
+WAIT_RESET_CONTRACT = ("returns promptly when the usage window has already reset",
+                       "blocks until the window resets otherwise",
+                       "raises on failure, and the loop then stops as `failed`")
+
+
+def contract_problems(doc: str) -> list[str]:
+    """The contract of the driver side's wait_reset(), written where the loop's driver interface lives."""
+    flat = " ".join((doc or "").split())
+    return [f"batch.py does not state that wait_reset() {c}" for c in WAIT_RESET_CONTRACT if c not in flat]
+
+
+class ResetWindow(FakeWindow):
+    """A usage window keeping the contract: wait_reset() returns at once when the window has already reset, and
+    otherwise blocks until it does (until `reset` is set; WAIT_S is a hang detector, never a timing assumption)."""
+
+    def __init__(self, world, already_reset=True):
+        super().__init__(world)
+        self.reset = threading.Event()
+        if already_reset:
+            self.reset.set()
+
+    def wait_reset(self):
+        self.resets += 1
+        if not self.reset.wait(WAIT_S):
+            raise RuntimeError("the usage window never reset (hang detector)")
+        self.world.log("reset")
+
+
+def paused_history_repo():
+    """A repo whose last committed outcome is a pause: slot 1 paused, then the window failed and the loop stopped."""
+    w = World()
+    r = FakeRepo(w)
+    batch.Batch(FakeDriver(w, {(1, 1): "rate-limit"}), r, WindowFails(w), table=test_table()).run(rows(1))
+    return r
+
+
+def restart_wait_problems(cls=batch.Batch) -> list[str]:
+    """glitch-f3's wait_reset contract, through the loop. A restart after a pause calls wait_reset() once, before
+    anything is registered, and proceeds when the window reports it has already reset. A raising wait_reset()
+    stops the restarted loop `failed` (W1B2-5) with nothing new registered, launched or committed."""
+    p = []
+    r1 = paused_history_repo()
+    hist = [(o["slot"], o["attempt"], o["state"], o["rerun"]) for o in r1.history()]
+    if hist != [(1, 1, labels4.PAUSE, True)]:
+        return [f"precondition: the stopped run committed {hist}, want slot 1's pause alone"]
+    try:
+        b, out, w, d, r, win = restart(r1, rows(4), cls=cls, window_cls=ResetWindow)
+        seq = [e[1] for e in w.events]
+        if win.resets != 1:
+            p.append(f"already reset: the restart called wait_reset() {win.resets} times, want once")
+        if "reset" not in seq or "register" not in seq or seq.index("reset") > seq.index("register"):
+            p.append(f"already reset: the restart registered before the window reset: {seq[:4]}")
+        got = [(o["slot"], o["attempt"], o["state"]) for o in out]
+        if got != [(1, 2, labels4.GRADED)] + [(s, 1, labels4.GRADED) for s in (2, 3, 4)] or b.stopped is not None:
+            p.append(f"already reset: the restart committed {got}, stopped {b.stopped}")
+    except Exception as e:  # noqa: BLE001
+        p.append(f"already reset: the restart raised {type(e).__name__}: {e}")
+    try:
+        b, out, w, d, r, win = restart(r1, rows(4), cls=cls, window_cls=WindowFails)
+        if win.resets != 1:
+            p.append(f"raising: wait_reset() called {win.resets} times, want once")
+        if kinds(w.events, "register") or d.launched or r.passed or out:
+            p.append(f"raising: something new was registered, launched or committed ({[e[1:] for e in w.events]})")
+        if not b.stopped or b.stopped["state"] != labels4.FAILED or "wait_reset failed" not in b.stopped["reason"]:
+            p.append(f"raising: stopped {b.stopped}")
+    except Exception as e:  # noqa: BLE001
+        p.append(f"raising: the restart raised {type(e).__name__}: {e}")
+    return p
+
+
+class ForgetsThePause(batch.Batch):
+    """Mutant: a restart after a pause launches at once."""
+
+    def _replay(self, history):
+        super()._replay(history)
+        self.paused = False
+
+
+class WaitsEveryBlock(batch.Batch):
+    """Mutant: waits for the usage window before every block, not only after a pause."""
+
+    def _register(self, block):
+        ok = super()._register(block)
+        self.paused = True
+        return ok
+
+
+class WindowErrorPropagates(batch.Batch):
+    """Mutant: the pre-W1B2-5 loop, where a wait_reset() failure escaped the loop."""
+
+    def _wait_window(self):
+        self.window.wait_reset()
+        return True
+
+
+class ProceedsOnAWindowFailure(batch.Batch):
+    """Mutant: a wait_reset() failure read as a reset window."""
+
+    def _wait_window(self):
+        try:
+            self.window.wait_reset()
+        except Exception:  # noqa: BLE001
+            pass
+        return True
+
+
+class TestWaitReset(unittest.TestCase):
+    """glitch-f3's ruling (in-plan, 6 Oct 2026; glitch-f3's, not the owner's): the wait_reset() contract, written
+    down, and the loop's side of it driven through fakes."""
+
+    def test_contract_is_written(self):
+        self.assertEqual(contract_problems(batch.__doc__), [])
+
+    def test_contract_check_can_fail(self):
+        for clause in WAIT_RESET_CONTRACT:
+            doc = " ".join(batch.__doc__.split()).replace(clause, "")
+            self.assertEqual(len(contract_problems(doc)), 1, clause)
+
+    def test_restart_after_a_pause_waits_once_or_stops_failed(self):
+        self.assertEqual(restart_wait_problems(), [])
+
+    def test_restart_wait_check_can_fail(self):
+        self.assertTrue(any(x.startswith("already reset: the restart called wait_reset() 0 times")
+                            for x in restart_wait_problems(ForgetsThePause)))
+        self.assertTrue(any(x.startswith("already reset: the restart called wait_reset() 2 times")
+                            for x in restart_wait_problems(WaitsEveryBlock)))
+        self.assertTrue(any(x.startswith("raising: the restart raised RuntimeError")
+                            for x in restart_wait_problems(WindowErrorPropagates)))
+        self.assertTrue(any(x.startswith("raising: something new was registered")
+                            for x in restart_wait_problems(ProceedsOnAWindowFailure)))
+
+
 # ---------------------------------------------------------------------------- import boundary
 FORBIDDEN_IMPORTS = ("drive", "claude", "agent_adapter")
 
@@ -1446,6 +1795,17 @@ def import_problems(source: str) -> list[str]:
     return p
 
 
+def retyped_problems(source: str, words) -> list[str]:
+    """Every string literal outside a docstring that types one of `words` (an f-string's literal parts too)."""
+    tree = ast.parse(source)
+    docs = {id(n.body[0].value) for n in ast.walk(tree)
+            if isinstance(n, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)) and n.body
+            and isinstance(n.body[0], ast.Expr) and isinstance(n.body[0].value, ast.Constant)}
+    return [f"line {n.lineno}: {n.value!r}" for n in ast.walk(tree)
+            if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs
+            and any(w in n.value for w in words)]
+
+
 class TestBoundary(unittest.TestCase):
     def test_batch_and_routing_import_no_driver_or_agent(self):
         for name in ("batch.py", "routing.py"):
@@ -1456,6 +1816,18 @@ class TestBoundary(unittest.TestCase):
         for src in ("import drive", "from drive import run", "import claude_code_sdk",
                     "from agent_adapter import ScriptedAdapter", "import os, drive"):
             self.assertNotEqual(import_problems(src), [], src)
+
+    def test_the_cell_state_is_never_retyped(self):
+        """glitch-f3's cap ruling uses labels4's word (interface 4: imported, never retyped)."""
+        for name in ("batch.py", "routing.py"):
+            with open(os.path.join(_ROOT, name), encoding="utf-8") as fh:
+                self.assertEqual(retyped_problems(fh.read(), [closed_state()]), [], name)
+
+    def test_retyped_check_can_fail(self):
+        word = closed_state()
+        for src in (f"x = {word!r}", f"y = f'the half-cell is {word} now ({{n}})'", f"z = ('state', {word!r})"):
+            self.assertNotEqual(retyped_problems(src, [word]), [], src)
+        self.assertEqual(retyped_problems(f"def f():\n    {(word + ', in a docstring')!r}\n", [word]), [])
 
     def test_handlers_keyed_by_labels4(self):
         b = batch.Batch(None, None, None, table=test_table(), history=[])

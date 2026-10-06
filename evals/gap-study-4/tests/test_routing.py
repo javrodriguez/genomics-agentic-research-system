@@ -191,7 +191,7 @@ def apply_witness(rec: dict, cond: dict, table: dict) -> set:
         err = {"status": None, "type": None, "text": None}
         err[key] = table["rate_limit_markers"][key][0]
         set_api(rec, [err])
-    elif op == "differs_from_pin":
+    elif op in ("differs_from_pin", "present_differs_from_pin"):
         rec["init"][0] = dict(rec["pin"], model="not-the-pin")
     elif op == "nonzero_outside_timeout":
         rec["exit"]["exec_codes"][0] = 1
@@ -473,6 +473,81 @@ class TestSilentTimeout(unittest.TestCase):
         next(r for r in t["rows"] if r["id"] == SILENT_TIMEOUT_ROW)["route"] = labels4.GRADED
         self.assertTrue(any(x.startswith("a bare silent") for x in silent_timeout_problems(t)))
 
+    def test_missing_init_rehearses_a_differing_init_is_refused(self):
+        """glitch-f3's ruling (in-plan, 6 Oct 2026; glitch-f3's, not the owner's), both ways, through
+        harness_records and route."""
+        self.assertEqual(missing_init_problems(test_table()), [])
+        src = next(r for r in REAL["rows"] if r["id"] == SILENT_TIMEOUT_ROW)["source"]
+        for cite in ("glitch-f3", "A CLI that never printed its init event is harness-side", "refused for a human"):
+            self.assertIn(cite, src)
+
+    def test_missing_init_check_can_fail(self):
+        def silent_row_none_of(op):
+            t = test_table()
+            row = next(r for r in t["rows"] if r["id"] == SILENT_TIMEOUT_ROW)
+            if op is None:
+                del row["none_of"]
+            else:
+                row["none_of"][0]["op"] = op
+            return t
+        # (a) lane decision 5's old none_of: a missing init counts as a mismatch, so it is refused
+        found = missing_init_problems(silent_row_none_of("differs_from_pin"))
+        self.assertTrue(any(x.startswith(f"{NO_INIT_TIMEOUT}: refused") for x in found), found)
+        # (b) the pin check dropped: a differing init rehearses instead of being refused
+        found = missing_init_problems(silent_row_none_of(None))
+        for field in ("model", "mode", "version"):
+            self.assertTrue(any(f"init {field} differs: want refused" in x for x in found), (field, found))
+        real = routing.holds
+
+        def blind_to_a_difference(cond, records, table):   # (b) the new op reads a missing init only
+            if cond["op"] == "present_differs_from_pin":
+                return False
+            return real(cond, records, table)
+        with mock.patch.object(routing, "holds", blind_to_a_difference):
+            found = missing_init_problems(test_table())
+        self.assertTrue(any("init mode differs: want refused" in x for x in found), found)
+
+
+NO_INIT_TIMEOUT = "a silent first-turn timeout with no init event"
+
+
+def missing_init_problems(table: dict) -> list[str]:
+    """glitch-f3's ruling (in-plan, 6 Oct 2026, relayed by the gap4 lane lead; glitch-f3's, not the owner's): a CLI
+    that never printed its init event is harness-side, by the same reason as W1B2-1. So before the agent's first
+    turn a silent timed-out turn with no init event routes rehearsal, on the silent-timeout row alone (it never
+    meets the init-mismatch row, so no tie); one whose init event differs from the pin in model, mode or version
+    is refused for a human (a pin mismatch). Built through harness_records, as the driver will, then routed."""
+    p = []
+    rehearse = (
+        (NO_INIT_TIMEOUT, [a_silent_timeout(init=None)]),
+        ("a silent error turn, then a silent timeout, neither with an init event",
+         [a_silent_turn(init=None), a_silent_timeout(init=None)]),
+        ("a silent turn under the pin, then a silent timeout with no init event",
+         [a_silent_turn(), a_silent_timeout(init=None)]),
+    )
+    for name, turns in rehearse:
+        rec = aa.harness_records(turns, pin=PIN, box=full_box())
+        if rec["init"][-1] is not None:
+            p.append(f"{name}: harness_records lost the missing init ({rec['init']})")
+        got = try_route(rec, table)
+        want = (labels4.REHEARSAL, [SILENT_TIMEOUT_ROW], [SILENT_TIMEOUT_ROW], labels4.BEFORE_FIRST_TURN)
+        if isinstance(got, Exception):
+            p.append(f"{name}: refused ({got})")
+        elif (got["route"], got["rows"], got["matched"], got["phase"]) != want:
+            p.append(f"{name}: want {want}, got {(got['route'], got['rows'], got['matched'], got['phase'])}")
+    refuse = (
+        ("init model differs", [a_silent_timeout(init=dict(PIN, model="not-the-pin"))]),
+        ("init mode differs", [a_silent_timeout(init=dict(PIN, permission_mode="default"))]),
+        ("init version differs", [a_silent_timeout(init=dict(PIN, version="9.9.9"))]),
+        ("init missing on one turn and differing on another",
+         [a_silent_turn(init=None), a_silent_timeout(init=dict(PIN, model="not-the-pin"))]),
+    )
+    for name, turns in refuse:
+        got = try_route(aa.harness_records(turns, pin=PIN, box=full_box()), table)
+        if not isinstance(got, routing.RoutingRefused) or "no row matches" not in str(got):
+            p.append(f"a silent first-turn timeout whose {name}: want refused (no row), got {got}")
+    return p
+
 
 SEAM_VARIANTS = {   # how the seam's one silent turn ended (W1B-5; W1B2-1)
     "no turn": None,
@@ -641,6 +716,18 @@ SCENARIOS = {
                                                  ["api-error-before-first-turn", "silent-timeout-before-first-turn", "rate-limit"]),
     "silent timeout with an init mismatch -> refused (W1B2-1)": Sc(_sc(B, [silent_timeout, lambda r: r["init"].__setitem__(0, dict(PIN, model="x"))]),
                                                                    REFUSED, None),
+    # glitch-f3's ruling (6 Oct 2026; glitch-f3's, not the owner's): a CLI that never printed its init event is
+    # harness-side, so a silent first-turn timeout with no init event rehearses; one whose init differs is refused
+    "silent timeout with no init event -> rehearsal (glitch-f3, fold 3)":
+        Sc(_sc(B, [silent_timeout, lambda r: r["init"].__setitem__(0, None)]), "rehearsal",
+           ["silent-timeout-before-first-turn"], ["silent-timeout-before-first-turn"]),
+    "silent timeout with an init mode mismatch -> refused (glitch-f3, fold 3)":
+        Sc(_sc(B, [silent_timeout, lambda r: r["init"].__setitem__(0, dict(PIN, permission_mode="default"))]), REFUSED, None),
+    "silent timeout with an init version mismatch -> refused (glitch-f3, fold 3)":
+        Sc(_sc(B, [silent_timeout, lambda r: r["init"].__setitem__(0, dict(PIN, version="9.9.9"))]), REFUSED, None),
+    "a silent turn with no init, then a silent timeout under another model -> refused (glitch-f3, fold 3)":
+        Sc(_sc(B, [silent_turn, silent_timeout, lambda r: r["init"].__setitem__(0, None),
+                   lambda r: r["init"].__setitem__(1, dict(PIN, model="x"))]), REFUSED, None),
     "a silent error turn, then a silent timeout": Sc(_sc(B, [silent_turn, silent_timeout]), "rehearsal", ["silent-timeout-before-first-turn"]),
     "a timeout after completed output grades (glitch-f3)": Sc(_sc(A, [_multi_turn(1), silent_timeout]), "graded", ["timed-out"]),
     "one turn with output that timed out grades (glitch-f3)": Sc(_sc(B, [output_timeout]), "graded", ["timed-out"]),
@@ -847,7 +934,9 @@ _CONDITION_MUTANT = {"eq": ("value", "__mutated__"), "ne": ("op", "eq"), "gt": (
                      "is_null": ("op", "not_null"), "nonempty": ("op", "empty"), "empty": ("op", "nonempty"),
                      "in_operator_reasons": ("op", "is_null"), "in_checker_events": ("op", "is_null"),
                      "in_rate_limit_markers": ("op", "is_null"),
-                     "differs_from_pin": ("op", "is_null"), "nonzero_outside_timeout": ("op", "is_null")}
+                     "differs_from_pin": ("op", "is_null"), "nonzero_outside_timeout": ("op", "is_null"),
+                     # glitch-f3's ruling (fold 3): the mutant is lane decision 5's old rule, a missing init a mismatch
+                     "present_differs_from_pin": ("op", "differs_from_pin")}
 
 
 def _other(v):
@@ -1108,6 +1197,22 @@ def agent_text_problems(table: dict) -> list[str]:
     return p
 
 
+def cap_unit_problems(table: dict) -> list[str]:
+    """glitch-f3's cap ruling, stated where the caps live: each of the rehearsal and pause sources cites the
+    ruling, names round 4's half-cell (arm, task, half, model) as round 3's cell, says what is counted (that
+    route's committed outcomes in the half-cell) and that the loop goes on, and no longer calls it open."""
+    p = []
+    for route in (labels4.REHEARSAL, labels4.PAUSE):
+        src = table["caps"][route]["source"]
+        for cite in ("glitch-f3's ruling", "(arm, task, half, model)", f"{route}s committed in the half-cell",
+                     "the loop goes on"):
+            if cite not in src:
+                p.append(f"{route}: the cap's source does not say {cite!r}")
+        if "open question" in src:
+            p.append(f"{route}: the cap's unit is still left open in its source")
+    return p
+
+
 # --------------------------------------------------------------------------------------- tests
 class TestRoutingTable(unittest.TestCase):
     def test_real_table_is_sound(self):
@@ -1194,6 +1299,20 @@ class TestRoutingTable(unittest.TestCase):
         t = copy.deepcopy(REAL)
         del t["rate_limit_markers_status"]
         self.assertIn("missing rate_limit_markers_status", routing.check_table(t))
+
+    def test_cap_units_are_glitch_f3s_ruling(self):
+        """glitch-f3's ruling (in-plan, 6 Oct 2026; glitch-f3's, not the owner's): the rehearsal and pause caps count
+        that route's committed outcomes per half-cell, round 3's unit; the sources say so and leave nothing open."""
+        self.assertEqual(cap_unit_problems(REAL), [])
+
+    def test_cap_unit_check_can_fail(self):
+        for route in (labels4.REHEARSAL, labels4.PAUSE):
+            t = copy.deepcopy(REAL)
+            t["caps"][route]["source"] = t["caps"][route]["source"].split(" Unit")[0]   # the unit sentence dropped
+            self.assertTrue(any(x.startswith(route) for x in cap_unit_problems(t)), route)
+            t = copy.deepcopy(REAL)
+            t["caps"][route]["source"] += " Unit: still an open question in the lane report."
+            self.assertTrue(any("left open" in x for x in cap_unit_problems(t)), route)
 
     def test_no_first_agent_turn_after_the_first_turn_is_refused(self):
         """W1B2-8: the reason says "before the first turn"; carried after it started, the records disagree."""

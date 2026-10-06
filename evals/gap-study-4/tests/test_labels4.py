@@ -25,6 +25,8 @@ ROUND3_RESERVED = ("did-not-reach", "asked-to-proceed", "timed-out", "aborted")
 # agent's), and error. Only the first two can end a graded take.
 TURN_ENDS = ("end_turn", "timed-out", "error")
 GRADED_ENDS = ("end_turn", "timed-out")
+# Round 3's cell state at a rehearsal or pause cap, as takes.py:284 and 289 print it (e2979b31).
+ROUND3_CELL_STATE = "incomplete — mechanical"
 
 
 def plan_mismatches(mod) -> list[str]:
@@ -43,6 +45,19 @@ def plan_mismatches(mod) -> list[str]:
         out.append("TURN_ENDS")
     if tuple(mod.GRADED_ENDS) != GRADED_ENDS:
         out.append("GRADED_ENDS")
+    return out
+
+
+def cell_state_mismatches(mod) -> list[str]:
+    """glitch-f3's cap ruling: round 3's cell state is a labels4 word, in its own group and in the vocabulary."""
+    out = []
+    word = getattr(mod, "INCOMPLETE_MECHANICAL", None)
+    if word != ROUND3_CELL_STATE:
+        out.append("INCOMPLETE_MECHANICAL")
+    if tuple(getattr(mod, "CELL_STATES", ())) != (ROUND3_CELL_STATE,):
+        out.append("CELL_STATES")
+    if ROUND3_CELL_STATE not in getattr(mod, "VOCABULARY", ()):
+        out.append("VOCABULARY")
     return out
 
 
@@ -76,6 +91,25 @@ class TestLabels4(unittest.TestCase):
         for name, bad in mutations:
             with mock.patch.object(labels4, name, bad):
                 self.assertNotEqual(labels4.check_vocabulary(), [], name)
+
+    def test_incomplete_mechanical_is_round_3s_cell_state(self):
+        """glitch-f3's ruling (in-plan, 6 Oct 2026; glitch-f3's, not the owner's): a half-cell that reaches its
+        rehearsal or pause cap publishes round 3's cell state (evals/gap-study-3/takes.py:280-291 at e2979b31),
+        and that word lives once, here, in the closed vocabulary."""
+        self.assertEqual(cell_state_mismatches(labels4), [])
+        self.assertEqual(labels4.check_vocabulary(), [])
+
+    def test_cell_state_check_can_fail(self):
+        for name, bad in (("INCOMPLETE_MECHANICAL", "incomplete - mechanical"),   # retyped
+                          ("INCOMPLETE_MECHANICAL", "incomplete"),                # cut short
+                          ("CELL_STATES", ())):                                   # dropped from its group
+            with mock.patch.object(labels4, name, bad):
+                self.assertIn(name, cell_state_mismatches(labels4), (name, bad))
+        with mock.patch.object(labels4, "VOCABULARY", labels4.VOCABULARY - {ROUND3_CELL_STATE}):
+            self.assertIn("VOCABULARY", cell_state_mismatches(labels4))
+        for bad in (("graded",), ("blocked",), ("timed-out",), (ROUND3_CELL_STATE, ROUND3_CELL_STATE)):
+            with mock.patch.object(labels4, "CELL_STATES", bad):        # collides with a route, a batch state,
+                self.assertNotEqual(labels4.check_vocabulary(), [], bad)  # a turn end, or repeats
 
     def test_shared_strings_are_the_same_objects_of_meaning(self):
         # A stop and a reserved label that share a string name the same event; the route
