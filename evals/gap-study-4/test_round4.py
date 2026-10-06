@@ -14,7 +14,9 @@ not load) fails the battery, so no module rides on another's tests.
 Review round 2: a skipped test fails the battery unless its reason is named in SKIP_ALLOWED (empty: no skip is
 allowed yet), whatever the form (a skip decorator, skipUnless, a module-level SkipTest, a SkipTest in
 setUpClass); a .py file in tests/ that discovery would never run fails it too; and the battery always ends with
-one line, `test_round4: <n> run, <m> skipped`, which run_checks prints even on a pass.
+one line, `test_round4: <n> run, <m> skipped, <x> expected failures`, which run_checks requires and prints.
+Review round 3 (W1A3-2): an @expectedFailure test turns a red guard green, so every expected failure fails the
+battery too (no allowance), and it is counted on the closing line.
 
 No model, no network, stdlib only.
 """
@@ -86,8 +88,12 @@ def main(folder: Path | None = None) -> int:
     banned = [(str(t), why) for t, why in result.skipped if why not in SKIP_ALLOWED]
     for test, why in banned:
         print(f"test_round4: skipped, and its reason is not in SKIP_ALLOWED: {test}: {why}")
-    print(f"test_round4: {result.testsRun - len(result.skipped)} run, {len(result.skipped)} skipped", flush=True)
-    return 0 if result.wasSuccessful() and not bad and not banned else 1
+    for test, _trace in result.expectedFailures:
+        print(f"test_round4: an expected failure, which the battery never allows: {test}")
+    xfail = len(result.expectedFailures)
+    print(f"test_round4: {result.testsRun - len(result.skipped)} run, {len(result.skipped)} skipped, "
+          f"{xfail} expected failures", flush=True)
+    return 0 if result.wasSuccessful() and not bad and not banned and not xfail else 1
 
 
 if __name__ == "__main__":

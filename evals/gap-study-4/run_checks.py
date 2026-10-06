@@ -13,6 +13,9 @@ exactly
 (k passed of n run, the battery counted as one), and the exit is 0 only when k equals n and n is at least 1.
 athena's `gars-gap4` suite kind reads that line, so its wording is fixed.
 
+Review round 3: every command runs under `bash -o pipefail`, so a pipeline fails when any stage fails (W1A3-4),
+and the battery passes only with its own closing count as its last line (W1A3-3).
+
 Home fold of review round 1: a file in checks.d that is not `<lane>.txt` in lower case, or a lane file that lists
 no command, counts as one failed command (W1A-4), so a lane's checks cannot be recorded and never run. Each command
 has a time limit (TIMEOUT_S), output is decoded with replacement, and anything a command raises counts as a
@@ -36,6 +39,10 @@ CHECKS = HERE / "checks.d"
 BATTERY = "python3 -W ignore evals/gap-study-4/test_round4.py"
 TIMEOUT_S = 3600
 LANE_FILE = re.compile(r"^[a-z0-9][a-z0-9-]*\.txt$")
+# The battery's own closing line (review round 3 W1A3-3): the battery passes only with exit 0 AND this as its last
+# line of output, at least one test run and no expected failure. A battery that exits 0 without it (a test that
+# calls os._exit(0)) counts as a failed command.
+BATTERY_CLOSING = re.compile(r"^test_round4: ([1-9]\d*) run, (\d+) skipped, 0 expected failures$")
 
 
 def commands(folder: Path | None = None) -> list[tuple[str, str]]:
@@ -83,9 +90,13 @@ def run_all(cmds: list[tuple[str, str]], cwd: Path = REPO, tally: dict | None = 
         tally["n"] += 1
         t0 = time.monotonic()
         try:
-            p = subprocess.run(cmd, shell=True, cwd=str(cwd), env=env, capture_output=True, text=True,
-                               errors="replace", timeout=TIMEOUT_S)
+            p = subprocess.run(["bash", "-o", "pipefail", "-c", cmd], cwd=str(cwd), env=env, capture_output=True,
+                               text=True, errors="replace", timeout=TIMEOUT_S)
             code, output = p.returncode, (p.stdout or "") + (p.stderr or "")
+            if code == 0 and where == "test_round4":
+                last = [l for l in (p.stdout or "").splitlines() if l.strip()][-1:]
+                if not last or not BATTERY_CLOSING.match(last[0]):
+                    code, output = "no-closing-count", output + "\nthe battery's last line is not its closing count"
         except subprocess.TimeoutExpired:
             code, output = "timeout", f"no result within {TIMEOUT_S} s"
         except Exception as e:  # anything the command raises is a failure, never a lost closing line

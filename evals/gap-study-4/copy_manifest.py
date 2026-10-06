@@ -39,8 +39,14 @@ exist, and the freeze writes it once from derive(). What --check refuses:
     and any copy of the first study's three named fixture builders that is not `identical`.
 
 What --check cannot see (review round 2 W1A2-6): a record changed by even one byte is a new blob, so a derivative
-of a record (a record plus a line, a record re-wrapped) passes these byte guards. Keeping records out in that sense
-is the reviews' job, not this check's.
+of a record (a record plus a line, a record re-wrapped) passes these byte guards. So does an older version of a
+record (review round 3 W1A3-5): the guards read the record blobs at the source and the base commit only, so a
+record's exact bytes as they stood at an earlier commit pass. Keeping records out in that sense is the reviews'
+job, not this check's.
+
+A tree named as a source (round 3 W1A3-7, recorded, not fixed): `git show <commit>:<folder>` prints the folder's
+listing, and a record folder named without its trailing slash is not matched as a record, so a listing of
+record NAMES (never their content) can be copied as `identical`.
 
 Round 3's uneditable list (check_take.py, the graders, the label reader, lint_language.py, commit_msg.py) is
 NOT carried: round 4 edits its checker and writes new graders, and the copied list would refuse both.
@@ -156,18 +162,32 @@ def blob_id(data: bytes) -> str:
 _PRIOR_BLOBS: set[str] | None = None
 
 
+class ManifestError(Exception):
+    """The check could not read what it needs; it fails, never passes on an empty read (review round 3 W1A3-6)."""
+
+
+def listed_blobs(commit: str, prefix: str) -> list[tuple[str, str]]:
+    """(blob id, path) for every blob under `prefix` at `commit`; raises when git cannot list it."""
+    listed = git("ls-tree", "-r", "-z", commit, "--", prefix)
+    if listed.returncode != 0:
+        raise ManifestError(f"cannot list {prefix} at {commit[:12]}: git ls-tree exited {listed.returncode}")
+    out = []
+    for entry in listed.stdout.decode().split("\0"):
+        if entry:
+            meta, path = entry.split("\t", 1)
+            out.append((meta.split()[2], path))
+    return out
+
+
 def prior_blobs() -> set[str]:
     """Every blob under evals/ (round 4's own folder left out) at the source commit and the base commit."""
     global _PRIOR_BLOBS
     if _PRIOR_BLOBS is None:
         blobs = set()
         for commit in (SOURCE_COMMIT, BASE_COMMIT):
-            listed = git("ls-tree", "-r", "-z", commit, "--", "evals/").stdout.decode()
-            for entry in listed.split("\0"):
-                if entry:
-                    meta, path = entry.split("\t", 1)
-                    if not path.startswith(study.STUDY_REL + "/"):
-                        blobs.add(meta.split()[2])
+            blobs |= {b for b, path in listed_blobs(commit, "evals/") if not path.startswith(study.STUDY_REL + "/")}
+        if not blobs - {EMPTY_BLOB}:
+            raise ManifestError("cannot list evals/: git listed no file at the source or the base commit")
         _PRIOR_BLOBS = blobs - {EMPTY_BLOB}
     return _PRIOR_BLOBS
 
@@ -181,12 +201,10 @@ def record_blobs() -> set[str]:
     if _RECORD_BLOBS is None:
         blobs = set()
         for commit in (SOURCE_COMMIT, BASE_COMMIT):
-            listed = git("ls-tree", "-r", "-z", commit, "--", SOURCE_DIR + "/").stdout.decode()
-            for entry in listed.split("\0"):
-                if entry:
-                    meta, path = entry.split("\t", 1)
-                    if is_record(path):
-                        blobs.add(meta.split()[2])
+            found = {b for b, path in listed_blobs(commit, SOURCE_DIR + "/") if is_record(path)}
+            if not found:
+                raise ManifestError(f"cannot list round 3's records: none found at {commit[:12]}")
+            blobs |= found
         _RECORD_BLOBS = blobs - {EMPTY_BLOB}
     return _RECORD_BLOBS
 
@@ -260,6 +278,11 @@ def problems(folder: Path = FRAGMENTS, present: set[str] | None = None, read=rea
              pinned: bool = True) -> list[str]:
     """Every problem with the assembled fragments. `present` and `read` stand in for the folder (tests mutate them)."""
     entries, out = load_fragments(folder)
+    try:
+        record_blobs()
+        prior_blobs()
+    except ManifestError as e:   # the byte guards cannot read: the check fails, it never runs them empty
+        return out + [str(e)]
     present = files_here() if present is None else present
     claimed: dict[str, str] = {}
     for lane, e in entries:
@@ -353,7 +376,7 @@ def main() -> int:
     g.add_argument("--check", action="store_true")
     g.add_argument("--derive", action="store_true")
     args = ap.parse_args()
-    for commit in (SOURCE_COMMIT, BASE_COMMIT):
+    for commit in (SOURCE_COMMIT, BASE_COMMIT, SHARED_COMMIT):
         if git("cat-file", "-e", f"{commit}^{{commit}}").returncode != 0:
             print(f"FAIL commit {commit} is not in this clone (git fetch --unshallow)")
             return 1
