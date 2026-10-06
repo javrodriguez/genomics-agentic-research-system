@@ -1113,6 +1113,62 @@ class S2bModes(PackageCase):
         run_verify = run([sys.executable, w.root / 'package' / 'verify.py', '--against', rerun])
         self.assertEqual(run_verify.returncode, 3, run_verify.stdout.decode())
 
+    def errata_world(self, member=None):
+        w = self.world_with(s2b_entries())
+        entry = s2b_entries()[0]
+        errata = w.root / 'errata.json'
+        write(errata, json.dumps({'corrections': [{'stage': entry['stage'], 'members': [member or entry['members'][0]],
+                                                    'correction': 'a narrower cause', 'evidence': 'the record'}]}))
+        self.assertEqual(w.harvest().returncode, 0)
+        return w, errata
+
+    def render_with(self, w, errata, out='package'):
+        return run([sys.executable, TOOL, 'render', '--harvest', w.root / 'harvest', '--gars-repo', w.clone,
+                    '--sources', w.sources, '--tolerances', w.tolerances, '--errata', errata,
+                    '--out', w.root / out], env=w.env)
+
+    def test_errata_ship_hashed_print_under_corrections_and_change_no_count(self):
+        w, errata = self.errata_world()
+        plain = w.render(out='plain')
+        self.assertEqual(plain.returncode, 0, plain.stderr.decode())
+        proc = self.render_with(w, errata)
+        self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+        package = w.root / 'package'
+        self.assertEqual((package / 'outputs/package-errata.json').read_bytes(), errata.read_bytes())
+        self.assertIn('outputs/package-errata.json', (package / 'SHA256SUMS').read_text())
+        self.assertIn('## Corrections', (package / 'PROVENANCE.md').read_text())
+        self.assertIn('a narrower cause', (package / 'PROVENANCE.md').read_text())
+        self.assertEqual((package / 'outputs/outputs.tsv').read_bytes(),
+                         (w.root / 'plain/outputs/outputs.tsv').read_bytes())   # no mode or member changes
+        verified = run([sys.executable, package / 'verify.py'])
+        self.assertEqual(verified.returncode, 0, verified.stdout.decode())
+        rerun = self.rerun_like_s2b(w)
+        a = comparer.compare(str(package), str(rerun))['counts']
+        b = comparer.compare(str(w.root / 'plain'), str(rerun))['counts']
+        self.assertEqual(a, b)   # the result line is unchanged
+
+    def test_a_correction_naming_an_unknown_member_refuses(self):
+        w, errata = self.errata_world(member='run/results/not/a/member.txt')
+        self.refused(self.render_with(w, errata), 'which no finding or entry names')
+
+    def test_verify_refuses_a_tampered_errata_file(self):
+        w, errata = self.errata_world()
+        self.assertEqual(self.render_with(w, errata).returncode, 0)
+        package = w.root / 'package'
+        target = package / 'outputs/package-errata.json'
+        target.write_text(target.read_text().replace('a narrower cause', 'a stronger cause'))
+        proc = run([sys.executable, package / 'verify.py'])
+        self.assertEqual(proc.returncode, 1, proc.stdout.decode())   # SHA256SUMS
+        body = json.loads(target.read_text())
+        body['corrections'][0]['members'] = ['run/results/not/a/member.txt']
+        target.write_text(json.dumps(body))
+        write(package / 'SHA256SUMS', ''.join('%s  %s\n' % (sha(p.read_bytes()), p.relative_to(package).as_posix())
+                                              for p in sorted(package.rglob('*'))
+                                              if p.is_file() and p.name != 'SHA256SUMS'))
+        proc = run([sys.executable, package / 'verify.py'])
+        self.assertEqual(proc.returncode, 1, proc.stdout.decode())   # the cross-link, with sums re-summed
+        self.assertIn('no finding or entry names', proc.stdout.decode())
+
     def test_rerun_note_counts_normalised_and_sign_aligned_matches_as_compare_does(self):
         """The landing README's line equals compare.py's own line for the same pass (S5 review r1: rerun-note
         had counted `match after <mode>` and sign-aligned members as differing, and had no test)."""

@@ -208,6 +208,20 @@ def check_links(package, out):
         raise Failed('a tolerance entry names a member the run did not record')
     out.append('ok: every non-exact member has a tolerance entry with a cause, evidence and origin')
 
+    if os.path.exists(os.path.join(package, 'outputs', 'package-errata.json')):
+        named = set()
+        tolerances = read_json(package, 'outputs/package-tolerances.json')
+        for item in (tolerances.get('entries') or []) + (tolerances.get('findings') or []):
+            named.update((item.get('stage'), m) for m in item.get('members') or [])
+        corrections = read_json(package, 'outputs/package-errata.json').get('corrections')
+        if not isinstance(corrections, list) or not corrections:
+            raise Failed('outputs/package-errata.json holds no corrections')
+        for c in corrections:
+            if not c.get('correction') or not c.get('evidence') or not c.get('members') or \
+                    any((c.get('stage'), m) not in named for m in c['members']):
+                raise Failed('a correction in outputs/package-errata.json names a member no finding or entry names')
+        out.append('ok: every correction names only members a finding or entry names')
+
     for row in table(package, 'params/approval.tsv') if os.path.exists(
             os.path.join(package, 'params', 'approval.tsv')) else []:
         plan = 'params/%s.PLAN.md' % row['stage']

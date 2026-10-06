@@ -749,6 +749,8 @@ class Render(object):
         self.masker = Masker(self.record)
         self.sources = self.read_sources(Path(args.sources))
         self.tolerance_bytes, self.tolerances = self.read_tolerances(Path(args.tolerances))
+        errata = getattr(args, 'errata', None)
+        self.errata_bytes, self.errata = self.read_errata(Path(errata)) if errata else (None, [])
         self.pkg = Package()
         self.not_recorded, self.withheld, self.left_out, self.unread = [], [], [], []
         self.masked_scripts = []
@@ -824,6 +826,29 @@ class Render(object):
             raise Refusal('a finding lacks members, its statement, evidence, or counted: differ')
         self.findings = findings
         return data, entries
+
+    def read_errata(self, path):
+        """The lane's errata file: corrections to a stated cause, beside the frozen tolerances file, never
+        changing a mode or a count. Each names only members a finding or an entry already names."""
+        try:
+            data = path.read_bytes()
+            value = json.loads(data.decode('utf-8'))
+        except (OSError, UnicodeError, ValueError):
+            raise Refusal('cannot read the package errata file')
+        corrections = value.get('corrections') if isinstance(value, dict) else None
+        if not isinstance(corrections, list) or not corrections or set(value) != {'corrections'}:
+            raise Refusal('the package errata file holds no corrections list, or more than one')
+        named = set()
+        for item in self.tolerances + self.findings:
+            named.update((item.get('stage'), m) for m in item['members'])
+        for c in corrections:
+            if not isinstance(c, dict) or set(c) != {'stage', 'members', 'correction', 'evidence'} or \
+                    not c['correction'] or not c['evidence'] or not isinstance(c['members'], list) or not c['members']:
+                raise Refusal('a correction lacks its stage, members, correction or evidence')
+            for member in c['members']:
+                if (c['stage'], member) not in named:
+                    raise Refusal('a correction names %s, which no finding or entry names' % member)
+        return data, corrections
 
     # ---- the package files --------------------------------------------------------------------
 
@@ -1202,6 +1227,8 @@ class Render(object):
                                                  'recorded_sha256_source', 'mode', 'mode_source', 'normalised',
                                                  'normalised_source'), rows))
         self.pkg.add('outputs/package-tolerances.json', self.tolerance_bytes)
+        if self.errata_bytes is not None:
+            self.pkg.add('outputs/package-errata.json', self.errata_bytes)
 
     def normalised(self, s, full, digest, harvested, entry, comparer):
         """The recorded member's normalised form for a mode that needs one, from harvested bytes that
@@ -1561,6 +1588,13 @@ class Render(object):
                                                                    finding['finding'], finding['evidence']))
         if not self.findings:
             lines.append('- none.')
+        if self.errata:
+            lines += ['', '## Corrections', '',
+                      'Corrections to a cause stated above, from outputs/package-errata.json; none changes a mode, a '
+                      'member\'s count or the result line.', '']
+            for c in self.errata:
+                lines.append('- %s, %s: %s (evidence: %s).' % (c['stage'], ', '.join('`%s`' % m for m in c['members']),
+                                                              c['correction'], c['evidence']))
         lines += ['', '## Result tables not shipped', '']
         for rel, reason in sorted(self.left_out):
             lines.append('- `%s`: %s.' % (rel, reason))
@@ -1775,6 +1809,7 @@ def main(argv=None):
     p.add_argument('--render-commit')
     p.add_argument('--sources', required=True)
     p.add_argument('--tolerances', required=True)
+    p.add_argument('--errata')
     p.add_argument('--out', required=True)
     p = sub.add_parser('rerun-note')
     p.add_argument('--package', required=True)
