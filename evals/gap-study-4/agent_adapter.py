@@ -247,8 +247,10 @@ def harness_records(turns: list[TurnResult], *, pin: dict, box: dict) -> dict:
     None or a string counter is refused there instead of silently becoming 0 or True.
 
     The agent's first turn has started once a turn produced completed agent output
-    (`agent_output`); a turn that produced none, such as one whose first API call failed, is still
-    before it (gap4 lane lead's ruling on W1B-5). Every API error of every turn is carried, in turn
+    (`agent_output`), or once a turn timed out: a turn that produced none, such as one whose first API
+    call failed, is still before it (gap4 lane lead's ruling on W1B-5), but a timeout is the agent's
+    whatever it printed, as the plan says ("A timeout stays the agent's"; the lane lead's refinement,
+    6 Oct 2026, so a silent timeout grades `timed-out` instead of stopping the loop). Every API error of every turn is carried, in turn
     order, so a rate limit after another error still reads as a rate limit. The agent's text is
     never copied in.
     """
@@ -263,7 +265,7 @@ def harness_records(turns: list[TurnResult], *, pin: dict, box: dict) -> dict:
     reasons = box["checker_reasons"]
     return {
         "ledger": {
-            "first_turn_started": any(outputs),
+            "first_turn_started": any(outputs) or any(t.end_reason == END_TIMED_OUT for t in turns),
             "turns": len(turns),
             "end": turns[-1].end_reason if turns else None,
             "turn_ends": [t.end_reason for t in turns],

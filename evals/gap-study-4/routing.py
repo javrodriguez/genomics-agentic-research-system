@@ -350,8 +350,8 @@ def shape_problems(records: dict, table: dict) -> list[str]:
     if (len(led["turn_ends"]) != n or len(led["turn_outputs"]) != n or len(records["exit"]["exec_codes"]) != n
             or len(records["init"]) != n):
         p.append("per-turn records do not cover every turn")
-    elif led["first_turn_started"] != any(led["turn_outputs"]):
-        p.append("ledger.first_turn_started disagrees with ledger.turn_outputs")
+    elif led["first_turn_started"] != (any(led["turn_outputs"]) or labels4.TIMED_OUT in led["turn_ends"]):
+        p.append("ledger.first_turn_started disagrees with ledger.turn_outputs and turn_ends")
     if n and led["end"] != led["turn_ends"][-1]:
         p.append("ledger.end is not the last turn's end")
     if not n and led["end"] is not None:

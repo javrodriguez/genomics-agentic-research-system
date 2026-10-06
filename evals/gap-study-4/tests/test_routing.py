@@ -367,6 +367,19 @@ def a_silent_turn(**kw) -> aa.TurnResult:
     return a_turn(exit_code=1, end_reason=labels4.END_ERROR, agent_output=False, **kw)
 
 
+class TestSilentTimeout(unittest.TestCase):
+    """The plan: "A timeout stays the agent's". A first turn that printed nothing and timed out is the agent's
+    turn (the lane lead's refinement of the W1B-5 ruling, 6 Oct 2026): it grades timed-out, never refused."""
+
+    def test_a_silent_timeout_grades_timed_out(self):
+        turns = [a_turn(exit_code=124, end_reason=labels4.TIMED_OUT, agent_output=False)]
+        rec = aa.harness_records(turns, pin=PIN, box=full_box())
+        self.assertTrue(rec["ledger"]["first_turn_started"])
+        decision = routing.route(rec, test_table())
+        self.assertEqual(decision["route"], labels4.GRADED, decision)
+        self.assertIn("timed-out", decision["rows"])
+
+
 def _seam_edit(cond: dict, table: dict, turns: list, box: dict) -> bool:
     """Make `cond` hold through the adapter's inputs; False when no seam witness is known."""
     path, op = cond["path"], cond["op"]
