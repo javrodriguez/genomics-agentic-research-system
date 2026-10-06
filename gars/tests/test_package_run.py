@@ -36,8 +36,8 @@ LANE = 'f' * 40
 ACTOR = 'fixture-approver-q7x'
 STAGE_REL = '02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper'
 STAGE = 'atacseq_bulk.01_nfcore-atacseq-wrapper'
-LABELS = ('recorded at run', 'computed at harvest', 'supplied at packaging from ',
-          'computed at packaging from bytes matching the record')
+LABELS = ('recorded at run', 'computed at harvest', 'supplied at packaging from ', 'computed at packaging from ',
+          'not recorded by the run', 'withheld')   # the six defined labels (S5 review r1, m1)
 GIT_ENV = {'GIT_AUTHOR_NAME': 'fixture', 'GIT_AUTHOR_EMAIL': 'fixture@example.invalid',
            'GIT_COMMITTER_NAME': 'fixture', 'GIT_COMMITTER_EMAIL': 'fixture@example.invalid',
            'GIT_AUTHOR_DATE': '2026-10-05T12:00:00Z', 'GIT_COMMITTER_DATE': '2026-10-05T12:00:00Z'}
@@ -795,7 +795,7 @@ class Privacy(PackageCase):
 
 
 class Labels(PackageCase):
-    def test_every_cell_carries_one_of_three_labels(self):
+    def test_every_cell_carries_one_of_the_defined_labels(self):
         w, package = self.built()
         seen = 0
         for path in sorted(package.rglob('*.tsv')) + [package / 'code/GARS.txt']:
@@ -1107,11 +1107,35 @@ class S2bModes(PackageCase):
         rerun = self.rerun_like_s2b(w)
         result = comparer.compare(str(w.root / 'package'), str(rerun))
         bad = [m for m in result['members'] if m['result'] not in ('match', 'present') and
-               not m['result'].startswith('within')]
+               not m['result'].startswith(('within', 'match after '))]   # a normalised match names its mode
         self.assertEqual(bad, [])
         self.assertEqual({k: result['counts'][k] for k in 'NMKPF'}, {'N': 4, 'M': 0, 'K': 3, 'P': 1, 'F': 0})
         run_verify = run([sys.executable, w.root / 'package' / 'verify.py', '--against', rerun])
         self.assertEqual(run_verify.returncode, 3, run_verify.stdout.decode())
+
+    def test_rerun_note_counts_normalised_and_sign_aligned_matches_as_compare_does(self):
+        """The landing README's line equals compare.py's own line for the same pass (S5 review r1: rerun-note
+        had counted `match after <mode>` and sign-aligned members as differing, and had no test)."""
+        w = self.world_with(s2b_entries())
+        self.assertEqual(w.harvest().returncode, 0)
+        self.assertEqual(w.render().returncode, 0)
+        package = w.root / 'package'
+        rerun = self.rerun_like_s2b(w)
+        artifacts = []
+        for n in ('2', '3'):
+            folder = w.root / ('pass' + n)
+            proc = run([sys.executable, package / 'verify.py', '--against', rerun, '--table-out', folder])
+            self.assertEqual(proc.returncode, 3, proc.stdout.decode())
+            write(folder / 'package-sha256.txt', sha((package / 'SHA256SUMS').read_bytes()) + '\n')
+            write(folder / 'machine.txt', '4-CPU 16 GB pad m5.xlarge\n2026-10-07\n')
+            artifacts += ['--artifact', folder]
+        expected = comparer.line(comparer.compare(str(package), str(rerun))['counts'])
+        note = w.root / 'README.md'
+        proc = run([sys.executable, TOOL, 'rerun-note', '--package', package, '--workflow', 'reproduction-yeast-atac.yml',
+                    '--out', note] + artifacts)
+        self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+        self.assertIn(expected, note.read_text())
+        self.assertIn('0 differ', expected)
 
     def test_a_difference_beyond_the_mode_still_differs(self):
         cases = {
@@ -1588,6 +1612,86 @@ class StockLogins(PackageCase):
         tool = module(TOOL, 'package_run_stock')
         self.assertEqual(sorted(tool.STOCK_LOGINS), ['root', 'ubuntu'])
         self.assertEqual(tool.record_users(['/home/ubuntu/x', '/home/ec2-user/y', '/Users/root/z']), ['ec2-user'])
+
+
+class S5Review(PackageCase):
+    """The S5 review's round 1 fixes (6 Oct 2026)."""
+
+    def test_render_names_the_commit_whose_package_run_rendered_it(self):
+        w = self.world()
+        self.assertEqual(w.harvest().returncode, 0)
+        commit = w.lane or w.commit
+        proc = run([sys.executable, TOOL, 'render', '--harvest', w.root / 'harvest', '--gars-repo', w.clone,
+                    '--render-commit', commit, '--sources', w.sources, '--tolerances', w.tolerances,
+                    '--out', w.root / 'package'], env=w.env)
+        self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+        gars = dict((r['field'], r) for r in csv.DictReader(
+            io.StringIO((w.root / 'package/code/GARS.txt').read_text()), delimiter='\t'))
+        self.assertEqual(gars['render_commit']['value'], commit)
+        self.assertEqual(gars['render_package_run_sha256']['value'], sha(TOOL.read_bytes()))
+
+    def test_a_render_commit_holding_another_package_run_refuses(self):
+        w = self.world()
+        self.assertEqual(w.harvest().returncode, 0)
+        proc = run([sys.executable, TOOL, 'render', '--harvest', w.root / 'harvest', '--gars-repo', w.clone,
+                    '--render-commit', '0' * 40, '--sources', w.sources, '--tolerances', w.tolerances,
+                    '--out', w.root / 'package'], env=w.env)
+        self.refused(proc, 'is not in the GARS repository')
+        # a commit that exists but holds another package_run.py: on a side branch of the clone
+        base = git(w.clone, 'rev-parse', 'HEAD')
+        git(w.clone, 'checkout', '-q', '-b', 'other')
+        target = w.clone / 'gars/_system/claims/package_run.py'
+        write(target, TOOL.read_bytes() + b'# another file\n')
+        git(w.clone, 'add', '-f', 'gars/_system/claims/package_run.py')
+        git(w.clone, 'commit', '-qm', 'another package_run.py')
+        other = git(w.clone, 'rev-parse', 'HEAD')
+        git(w.clone, 'checkout', '-q', base)
+        proc = run([sys.executable, TOOL, 'render', '--harvest', w.root / 'harvest', '--gars-repo', w.clone,
+                    '--render-commit', other, '--sources', w.sources, '--tolerances', w.tolerances,
+                    '--out', w.root / 'package2'], env=w.env)
+        self.refused(proc, 'is not the file at the render commit it names')
+
+    def test_an_unlabelled_source_cell_refuses(self):
+        tool = module(TOOL, 'package_run_labels')
+        with self.assertRaises(tool.Refusal):
+            tool.tsv(('value', 'value_source'), [{'value': 'x', 'value_source': 'from somewhere'}])
+        self.assertTrue(tool.tsv(('value', 'value_source'), [{'value': 'x', 'value_source': 'withheld: x'}]))
+
+    def test_verify_checks_the_mode_of_every_row_of_a_member_listed_twice(self):
+        """S5 review r1, m3: a mode edit on the first of two rows of a nested member fails offline."""
+        w = self.world()
+        member = NARROW + '/qc/atac-a.mLb.clN.frip.txt'
+        add_members(w, {member: 'frip\t0.42\n'})
+        self.assertEqual(w.harvest().returncode, 0)
+        self.assertEqual(w.render().returncode, 0)
+        package = w.root / 'package'
+        table = package / 'outputs/outputs.tsv'
+        lines = table.read_text().split('\n')
+        hits = [i for i, l in enumerate(lines) if len(l.split('\t')) > 3 and
+                l.split('\t')[2] + '/' + l.split('\t')[3] == member]
+        self.assertEqual(len(hits), 2)   # non-vacuous: listed under two directory outputs
+        cells = lines[hits[0]].split('\t')
+        cells[6] = 'sorted_table'
+        lines[hits[0]] = '\t'.join(cells)
+        table.write_text('\n'.join(lines))
+        write(package / 'SHA256SUMS', ''.join('%s  %s\n' % (sha(p.read_bytes()), p.relative_to(package).as_posix())
+                                              for p in sorted(package.rglob('*'))
+                                              if p.is_file() and p.name != 'SHA256SUMS'))
+        proc = run([sys.executable, package / 'verify.py'])
+        self.assertEqual(proc.returncode, 1, proc.stdout.decode())
+
+    def test_a_normalised_match_is_reported_apart_from_a_byte_identical_one(self):
+        """S5 review r1, M2: compare's member result names the mode a normalised match needed."""
+        tool = module(CLAIMS / 'package' / 'compare.py', 'compare_normalised')
+        import tempfile
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'x.tsv'
+            path.write_bytes(b'b\ta\n1\t2\n')
+            form = tool.sorted_table_form(path.read_bytes(), [])
+            row = {'member_path': 'x.tsv', 'normalised': 'sha256:' + sha(form), 'entry': {'drop_lines': []}}
+            ok, result, _ = tool.MODES['sorted_table'](str(path), row)
+            self.assertTrue(ok, result)
+            self.assertEqual(result, 'match after sorted_table')
 
 
 class Goldens(PackageCase):

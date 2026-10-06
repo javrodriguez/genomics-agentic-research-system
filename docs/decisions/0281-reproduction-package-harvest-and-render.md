@@ -1,6 +1,6 @@
 ---
 date: 2026-10-05
-status: standing # draft until S5: the design is built and tested; the exemplar and the landing are open
+status: standing # draft until S6: the exemplar is in; passes 2 and 3 and the landing are open
 kind: decision
 touches:
   - gars/_system/claims/package_run.py
@@ -39,8 +39,9 @@ A field the run did not record reads "not recorded", with a PROVENANCE line nami
 
 **What never ships.**
 One mask map per package replaces the run's absolute path prefixes (both spellings), storage URIs (`s3://<BUCKET>/<key>`) and account ids, and lists only placeholders and counts.
-A sweep armed with the real values read at harvest (buckets, account ids also in the dddd-dddd-dddd form, approval actors, the user name that ran harvest, the original prefixes) refuses any survivor, any unmasked storage URI, any 12-digit id bounded by non-hex characters unless it lies inside a decimal number's fraction (after the point, before any exponent), and any sha256 of a file that holds a masked value.
+A sweep armed with the real values read at harvest (buckets, account ids also in the dddd-dddd-dddd form, approval actors, the user name that ran harvest, the original prefixes) refuses any survivor, any unmasked storage URI, any 12-digit id bounded by non-hex characters unless it lies inside a decimal number's fraction (after the point, before any exponent), and any sha256 of a run record that holds a masked value.
 An output whose recorded sha256 would be printed while its bytes hold a bucket, account id, approver or user name is refused, since that hash would confirm the value offline; a gzip or BGZF member is searched in its decompressed stream too.
+An output that holds only a path is not refused: a result table holding a path is left out of `outputs/small/`, but its recorded sha256 is still printed.
 **No `presence` member's sha256 is published**, whatever its bytes hold: `presence` compares no hash, and a byte search cannot see inside every compressed kind, so `outputs.tsv` and the records print `withheld`, the digest joins the sweep's oracle set, and a `presence` member never ships in `outputs/small/`; a `presence` member that holds a user name or approver still refuses.
 **A directory output that holds a withheld member withholds its own tree hash**, because that hash is a public function of the member list printed beside it.
 **An output member that harvest did not read** (over 5 MB without `--copy-large`) refuses render, so no unread member's sha256 is ever printed.
@@ -65,7 +66,7 @@ Its `compare.py` compares a re-run member by member under the package's declared
 ## Test
 
 `gars/tests/test_package_run.py` builds each world with GARS's own record writers and drives harvest, render, verify, compare and rerun.sh (with stand-ins for docker, java, curl and nextflow).
-Mutation runs on 5 October 2026: 32 of 32 mutants killed, among them URI masking off, the actor printed, a label dropped or relabelled `recorded at run`, an absent digest guessed, each refusal skipped, a member skipped, presence counted as a match, a presence output dropped from N, a masked file's hash printed, the oracle sweep off, the rerun.sh checksum and machine gates off, and each verify cross-link off.
+Mutation runs on 5 October 2026, every mutant killed, 84 on `package_run.py` and the package scripts by the end of the day (32 through S2, 66 after the harvest reviews, 84 with S2b's entries), among them URI masking off, the actor printed, a label dropped or relabelled `recorded at run`, an absent digest guessed, each refusal skipped, a member skipped, presence counted as a match, a presence output dropped from N, a masked file's hash printed, the oracle sweep off, the rerun.sh checksum and machine gates off, and each verify cross-link off.
 Mutation runs on 6 October 2026 for the hash-oracle rules, each on a byte backup restored and sha-verified: 21 of 21 mutants killed at `c614a39e` (20 at `70983396`, and the bare-bucket rule's mutant once a stage-03 world pinned it), among them a presence hash printed, a tree hash kept over a withheld member, an unread member's hash printed, a gzip member searched raw, each oracle addition dropped, the decimal exemption widened to an integer part, an exponent or any dotted token, and verify accepting a printed presence hash, a kept tree hash or an edit to the first of two duplicate rows.
 
 ## The exemplar
@@ -77,7 +78,7 @@ The run's two driver faults found on the machine (stage 00 seeds the design at `
 
 ## Status
 
-Draft on the build branch `lane/repro-package`; finalised with the exemplar at slice S5 and the delegated approval of its protected additions (0282).
+Draft on the build branch `lane/repro-package`; the exemplar is in (S5); finalised at the landing (S6), with the delegated approval of its protected additions (0282).
 
 ## Date
 

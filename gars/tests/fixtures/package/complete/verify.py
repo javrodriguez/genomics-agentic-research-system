@@ -193,7 +193,8 @@ def check_links(package, out):
             raise Failed('a tolerance entry lacks a declared mode, a cause, evidence or an origin')
         for member in entry.get('members') or []:
             declared[(entry.get('stage'), member)] = entry['mode']
-    for key, row in listed.items():
+    for row in rows:   # every row: a dict by member would hide an edit to the first of two (S5 review r1, m3)
+        key = (row['stage'], compare.member_path(row))
         if row['mode'] != declared.get(key, 'exact'):
             raise Failed('the mode of %s %s is not its tolerance entry\'s' % key)
         if row['mode'] in ('sorted_table', 'column_matched_table', 'sign_aligned_numeric') and \

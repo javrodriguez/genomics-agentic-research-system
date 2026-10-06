@@ -186,7 +186,9 @@ def normalised_mode(name):
         except (ValueError, UnicodeDecodeError, KeyError, TypeError):
             return False, 'unreadable as %s' % name, ''
         actual = 'sha256:' + hashlib.sha256(form).hexdigest()
-        return actual == row['normalised'], 'match' if actual == row['normalised'] else 'differs', actual
+        # a normalised match is reported apart from a byte-identical one, so no tally can conflate them
+        # (S5 review r1, M2)
+        return actual == row['normalised'], 'match after %s' % name if actual == row['normalised'] else 'differs', actual
     return check
 
 

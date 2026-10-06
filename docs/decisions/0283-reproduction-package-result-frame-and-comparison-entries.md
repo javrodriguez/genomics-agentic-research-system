@@ -1,6 +1,6 @@
 ---
 date: 2026-10-05
-status: standing # draft until S5: the frame and the rules below are frozen at S0; the entries wait for S2b and pass 1
+status: standing # draft until S6: the frame, rules and entries are frozen and pass 1 is in; passes 2 and 3 are open
 kind: decision
 touches:
   - gars/_system/claims/package_run.py
@@ -92,11 +92,17 @@ Each mode applies only to the file kinds its definition names (`compare.py`'s `k
 The expected result for a re-run that behaves as S2b did, before any pass: of 6 outputs, the bigWig folder and the consensus BED match exactly (M = 2), the counts table within the stated tolerance (K = 1), the MultiQC report present but not byte-comparable (P = 1), and the peaks folder and merged-library tree differ (F = 2), causes in PROVENANCE.md.
 Pass 1 compares against the AWS Batch record, a different machine type, so its own differences may add `pass-1` entries, each counted apart.
 
+**Erratum, 6 October 2026 (S5 review round 1; the entries file and the frame above are unchanged):**
+- `column_matched_table` also drops the table's `#` comment lines (featureCounts' program and command line) before comparing, and `sign_aligned_numeric` compares a PCA table's numbers only, not its header row or `#` comment lines; the shipped PROVENANCE.md declares both.
+- A file a re-run holds inside a recorded directory output that the run did not record counts that output as differing (F), beside the four rollup rules above.
+- "Six annotation files" above are five annotatePeaks tables and the plots PDF drawn from them; that PDF also embeds a creation date, so its difference is not shown to be HOMER's alone.
+- A match under a normalising mode is reported as `match after <mode>`, apart from a byte-identical `match`, so no member tally can conflate the two.
+
 ## Pass 1
 
 Run 6 October 2026 on a fresh m5.xlarge launch-pad machine (4 vCPU, 16,550,289,408 bytes of memory for Docker, no container image cached), by the package's own `rerun.sh` and `verify.py --against`, against the exemplar's AWS Batch record: `rerun.sh` exit 0 in 2026 seconds.
 **Result: of 6 outputs (209 files), 2 matched exactly, 1 within the stated tolerance, 1 present but not byte-comparable, 2 differ (causes in PROVENANCE.md)**, the expected result above.
-Members: 144 matched exactly, 55 present (`presence`), 2 within 1e-9 after sign alignment (the PCA), 8 differ; the 8 are exactly the two findings above (the HOMER annotation files and the plots PDF drawn from them; the two sample-distance tables).
+Members: 105 byte-identical, 39 equal after their declared normalisation (37 `sorted_table`, 2 `column_matched_table`), 2 within 1e-9 after sign alignment (the PCA), 55 present (`presence`), 8 differ; the 8 are exactly the two findings above (the HOMER annotation files and the plots PDF drawn from them; the two sample-distance tables).
 No `pass-1` entry was needed: every member that did not match exactly is covered by an `S2b-preregistered` entry or a finding.
 Pass 1 ran against an earlier render of the same harvest; it is **re-judged** against the package of record (`ab2b9f45…`, decision 0281), whose `rerun.sh`, `compare.py`, inputs, params and environment are byte-identical, and reads the same line.
 A cold-cache pass raised the machine's root-disk use by 15.02 GB (container images included); the re-run folder held 0.90 GB.
@@ -111,7 +117,7 @@ A cold-cache pass raised the machine's root-disk use by 15.02 GB (container imag
 
 ## Status
 
-Draft, on the build branch `lane/repro-package`; the frame and rules are frozen, the entries are open, and the record is finalised with the exemplar at slice S5.
+Draft, on the build branch `lane/repro-package`; the frame, rules and entries are frozen and pass 1 is in; finalised with passes 2 and 3 and the landing (S6).
 
 ## Date
 

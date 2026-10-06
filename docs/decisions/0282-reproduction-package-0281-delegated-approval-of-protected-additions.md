@@ -57,7 +57,7 @@ Outside the protected prefix, recorded for completeness: `.gitignore` gains `.ga
 ## Test
 
 - Full suite on the build node at the lane commits that changed these files, each verdict derived on the Mac; the latest, `70983396`: `athena-suite repro-oracle-7098339-20261006T192931Z PASS kind=gars ran=1387 passed=1305 failures=0 errors=0 skipped=82`.
-- Mutation, on byte backups restored and sha-verified: the 5 October runs (66 mutants on `package_run.py`, all killed) and the 6 October hash-oracle runs (21 of 21 killed), named in 0281.
+- Mutation, on byte backups restored and sha-verified: the 5 October runs (84 mutants, all killed, named in 0281) and the 6 October hash-oracle runs (21 of 21 killed), named in 0281.
 - The landing merge, its full suite, the outgoing range's scans, the smoke delta and `audit_trailers.py` are run at slice S6 and recorded here then.
 
 ## Status

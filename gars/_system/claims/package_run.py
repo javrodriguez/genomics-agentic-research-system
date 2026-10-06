@@ -44,7 +44,12 @@ HARVEST_FORMAT = 'gars-harvest/1'
 RUN = 'recorded at run'
 HARVEST = 'computed at harvest'
 PACKAGING = 'supplied at packaging from '
-LABELS = (RUN, HARVEST, PACKAGING.strip(), 'computed at packaging from bytes matching the record')
+COMPUTED = 'computed at packaging from '
+NOT_RECORDED_LABEL = 'not recorded by the run'
+WITHHELD = 'withheld'
+# Every *_source cell starts with one of these (S5 review r1, m1: an absent field is "not recorded by
+# the run", a rewritten value is "computed at packaging", and a withheld hash says so).
+LABELS = (RUN, HARVEST, PACKAGING.strip(), COMPUTED.strip(), NOT_RECORDED_LABEL, WITHHELD)
 NOT_RECORDED = 'not recorded'
 
 SMALL_LIMIT = 5 * 1024 * 1024
@@ -146,6 +151,7 @@ def git(repo, *args):
 
 
 def tsv(columns, rows):
+    tables_sources(rows, columns)   # every *_source cell carries a label (S5 review r1, m1: was never called)
     out = io.StringIO()
     out.write('\t'.join(columns) + '\n')
     for row in rows:
@@ -721,6 +727,16 @@ class Render(object):
     def __init__(self, args):
         self.harvest = Path(args.harvest)
         self.repo = Path(args.gars_repo)
+        self.render_commit = getattr(args, 'render_commit', None)
+        if self.render_commit:
+            if not COMMIT.match(self.render_commit):
+                raise Refusal('--render-commit must be a full 40-hex commit')
+            try:
+                named = sha256_bytes(git(self.repo, 'show', '%s:gars/_system/claims/package_run.py' % self.render_commit))
+            except Refusal:
+                raise Refusal('the render commit %s is not in the GARS repository' % self.render_commit[:12])
+            if named != sha256_file(Path(__file__).resolve()):
+                raise Refusal('the package_run.py rendering is not the file at the render commit it names')
         try:
             self.record = json.loads((self.harvest / 'HARVEST.json').read_text(encoding='utf-8'))
         except (OSError, ValueError):
@@ -853,6 +869,11 @@ class Render(object):
              'source': HARVEST + ': sha256 of that package_run.py'},
             {'field': 'gars_clone_status', 'value': 'clean (git status --porcelain: 0 lines)',
              'source': HARVEST + ': git status of the GARS clone that ran'},
+            {'field': 'render_package_run_sha256', 'value': sha256_file(Path(__file__).resolve()),
+             'source': COMPUTED + 'the package_run.py that rendered this package (S5 review r1, m9)'},
+            {'field': 'render_commit', 'value': self.render_commit or NOT_RECORDED,
+             'source': (PACKAGING + 'the render\'s --render-commit, whose package_run.py is the file above')
+             if self.render_commit else NOT_RECORDED_LABEL + ': render was given no --render-commit'},
         ]
         lane = self.record['package_run']
         try:
@@ -959,7 +980,8 @@ class Render(object):
                     'stage': s['id'], 'process': c['process'], 'image': image,
                     'image_source': run_label('containers[%d].image' % i),
                     'digest': digest if digest else NOT_RECORDED,
-                    'digest_source': run_label('containers[%d].digest' % i) + ('' if digest else ' (absent)')})
+                    'digest_source': run_label('containers[%d].digest' % i) if digest else
+                    '%s: manifest field containers[%d].digest is absent' % (NOT_RECORDED_LABEL, i)})
                 if not digest:
                     self.note_not_recorded('%s: container digest of process %s' % (s['id'], c['process']))
         if len(configs) != 1:
@@ -1085,7 +1107,7 @@ class Render(object):
                         value = '%s/refs/%s' % (RERUN_TOKEN, Path(value).name)
                     else:
                         raise Refusal('%s: parameter %s holds a path the package cannot ship' % (s['rel'], key))
-                    label += ', the path replaced by the re-run\'s own folder'
+                    label = COMPUTED + 'manifest field params.%s, the path replaced by the re-run\'s own folder' % key
                 if isinstance(value, str) and YAML_SCALAR.match(value):
                     # params.yaml wrote it bare, so Nextflow's YAML reader saw a boolean or a number.
                     value = yaml_scalar(value)
@@ -1106,7 +1128,7 @@ class Render(object):
                                   'seed_source': run_label('random_seeds[%d]' % i)})
             else:
                 seeds.append({'stage': s['id'], 'call': 'every call', 'seed': NOT_RECORDED,
-                              'seed_source': run_label('random_seeds') + ' (absent)'})
+                              'seed_source': '%s: manifest field random_seeds is absent' % NOT_RECORDED_LABEL})
                 self.note_not_recorded('%s: random seeds' % s['id'])
         self.pkg.add('params/params.tsv', tsv(('stage', 'key', 'value', 'value_source'), rows))
         self.pkg.add('params/seeds.tsv', tsv(('stage', 'call', 'seed', 'seed_source'), seeds))
@@ -1151,7 +1173,7 @@ class Render(object):
                         # member, so no presence member's sha256 is ever published (review MAJOR 2).
                         self.oracle.add(digest)
                         self.withheld_outputs.add((s['id'], full))
-                        presence_withheld[s['id']] = presence_withheld.get(s['id'], 0) + 1
+                        presence_withheld.setdefault(s['id'], set()).add(full)
                     rows.append({'stage': s['id'], 'output_type': output['type'], 'output_path': output['path'],
                                  'member': member, 'recorded_sha256': 'withheld' if mode == 'presence' else digest,
                                  'recorded_sha256_source': ('withheld: %s holds %s, so its %s sha256 is cited by '
@@ -1161,7 +1183,8 @@ class Render(object):
                                        'never published' % field) if mode == 'presence'
                                  else run_label(field),
                                  'mode': mode,
-                                 'mode_source': PACKAGING + 'outputs/package-tolerances.json' if mode != 'exact'
+                                 'mode_source': PACKAGING + 'the lane file outputs/package-tolerances.json, shipped in '
+                                 'this package' if mode != 'exact'
                                  else PACKAGING + 'the default comparison mode (decision 0283)',
                                  'normalised': normalised or '-',
                                  'normalised_source': NORMALISED if normalised else
@@ -1169,7 +1192,7 @@ class Render(object):
                     if mode != 'presence':
                         self.small(s, full, digest, harvested)
         for stage_id in sorted(presence_withheld):
-            self.withheld.append((stage_id, 'outputs: the sha256 of %d presence member(s)' % presence_withheld[stage_id],
+            self.withheld.append((stage_id, 'outputs: the sha256 of %d presence member(s)' % len(presence_withheld[stage_id]),
                                   'presence compares no hash, so none is published; each row reads withheld'))
         if set(declared) - used:
             raise Refusal('a tolerance entry names a member the run did not record')
@@ -1428,7 +1451,7 @@ class Render(object):
             '- Docker, with at least 4 CPUs and about 16 GB of memory available to it.',
             '- Java, curl, python3 and the Nextflow launcher (`nextflow`) on PATH; rerun.sh pins the Nextflow '
             'version the run recorded (code/pipelines.tsv).',
-            '- About 10 GB of free disk.', '',
+            '- About 16 GB of free disk: a pass with no container image cached used 15.02 GB, images included.', '',
             '## Re-run', '', '`bash rerun.sh --out <empty folder>`', '',
             'It downloads every input and reference file from the URL the package names, and refuses before '
             'any pipeline starts if a checksum differs, saying which file and where its checksum came from.', '',
@@ -1438,8 +1461,10 @@ class Render(object):
             'The exit code is 0 when every output matched (M + K = N), 2 when any output differs, and 3 when '
             'none differs but some are presence-only.', '',
             '## On a mismatch', '',
-            'Read the member table verify.py prints and the comparison entries in PROVENANCE.md; a member '
-            'that differs with no entry is a finding about this package, not a failure of your machine.', '']
+            'Write the member table with `python3 verify.py --against <that folder> --table-out <table folder>` '
+            '(members.tsv names each member\'s mode and result) and read it beside the comparison entries in '
+            'PROVENANCE.md; a member that differs with no entry is a finding about this package, not a failure '
+            'of your machine.', '']
         if any(s['kind'] == '03' for s in self.stages):
             reproduce += ['A stage 03 analysis is packaged in full (params/, code/), but its re-run is not '
                           'automated in this version.', '']
@@ -1448,25 +1473,35 @@ class Render(object):
 
     def provenance(self):
         lines = ['# Provenance', '', '## Labels', '',
-                 'Every value in this package\'s tables carries one of three labels:',
+                 'Every value in this package\'s tables carries one of six labels:',
                  '- `recorded at run`: a field of a run record, named; only these are the run\'s attestation.',
                  '- `computed at harvest`: hashed on the run\'s machine from the unmasked file, after the run and '
                  'before teardown.',
-                 '- `supplied at packaging from <repository>@<commit>:<path>`: read from a named file at a pinned commit.',
-                 '- `computed at packaging from bytes matching the record`: a normalised form of a recorded output, '
-                 'computed from harvested bytes whose sha256 equals the run\'s record.',
+                 '- `supplied at packaging from <source>`: read from a named file at a pinned commit '
+                 '(`<repository>@<commit>:<path>`), or from a lane file shipped in this package.',
+                 '- `computed at packaging from <source>`: derived when the package was rendered: a normalised form '
+                 'of a recorded output from harvested bytes whose sha256 equals the record, or a recorded value '
+                 'whose path was replaced by the re-run\'s own folder.',
+                 '- `not recorded by the run`: the run record lacks the field; nothing fills it.',
+                 '- `withheld`: a recorded sha256 this package does not print (see "Hash oracle").',
                  '', '## Masked values', '',
                  'Absolute paths, storage buckets and account ids are replaced; the originals are not in this package.',
                  '', '| Placeholder | Spans replaced |', '|---|---|']
         for name in sorted(self.masker.counts):
             lines.append('| `%s` | %d |' % (name, self.masker.counts[name]))
+        lines += ['', 'Two further rewrites keep a re-run\'s inputs and outputs in its own folder: each input path '
+                  'in the shipped samplesheet becomes `<INPUTS>/<file name>`, and each path a parameter held becomes '
+                  'a path under `<RERUN>` (params/params.tsv labels each such value `computed at packaging`).']
         lines += ['', '## Hash oracle', '',
                   'A sha256 of a run record holding a masked value would let anyone confirm a guessed user name, '
                   'path or bucket, so this package prints no such hash; the fields below are cited by name only '
                   'and are not checkable from the package.',
-                  'Output sha256 values are printed, since the comparison needs them; render refuses an output '
-                  'holding a bucket, account id, approver or user name, and a result table holding a path is '
-                  'named under "Result tables not shipped".',
+                  'Output sha256 values are printed, since the comparison needs them, with three exceptions: no '
+                  '`presence` member\'s sha256 is printed (it compares no hash), no directory output\'s tree hash '
+                  'is printed when it holds a withheld member, and render refuses to print the sha256 of an output '
+                  'whose bytes hold a bucket, an account id, the approver or a user name.',
+                  'A result table holding only a path is left out of outputs/small/ (named under "Result tables not '
+                  'shipped"), but its sha256 is still printed: a path is not one of the values that check refuses.',
                   'submit.sh is not shipped: no run record binds its bytes. code/<stage>/commands.sh, the recorded '
                   'submission line, is.',
                   'Limit: GARS records no sha256 of submit.sh. On the run\'s machine, harvest compared the launch line '
@@ -1505,9 +1540,13 @@ class Render(object):
                   '- `sorted_table`: a text file\'s lines, less the lines its entry\'s listed patterns drop, sorted, '
                   'then compared exactly.',
                   '- `column_matched_table`: a featureCounts table compared exactly after its columns are matched by '
-                  'name.',
-                  '- `sign_aligned_numeric`: a PCA table compared per sample after each component\'s sign is '
-                  'aligned; every value within 1e-9 (absolute).', '']
+                  'name; its `#` comment lines (featureCounts\' program and command line) are dropped first.',
+                  '- `sign_aligned_numeric`: a PCA table\'s numbers compared per sample after each component\'s sign '
+                  'is aligned, every value within 1e-9 (absolute); its header row and `#` comment lines are not '
+                  'compared.',
+                  'A normalised match is reported as `match after <mode>`, apart from a byte-identical `match`.',
+                  'A file a re-run holds inside a recorded directory output that the run did not record counts that '
+                  'output as differing (F).', '']
         for entry in self.tolerances:
             lines.append('- %s, %d members, mode `%s`, origin `%s`: %s (evidence: %s).'
                          % (entry.get('stage'), len(entry['members']), entry['mode'], entry['origin'],
@@ -1533,10 +1572,13 @@ class Render(object):
                   '- env/rerun.config pins each process to the image tag the run recorded, on 4 CPUs and the run\'s '
                   'own resource clamp; the original ran on AWS Batch, so a re-run here is cross-platform.',
                   '', '## Sources', '',
-                  '- code/, env/containers.tsv, params/, outputs/outputs.tsv, records/: the run\'s manifests, as harvested.',
+                  '- code/, env/containers.tsv, params/, outputs/outputs.tsv, records/: read from the run\'s manifests; '
+                  'records/ carries only the allowlisted fields (%s), masked, with the hashes named above withheld.'
+                  % ', '.join(self.ALLOWED),
                   '- inputs/inputs.tsv: checksums computed at harvest; URLs from inputs/lane-sources.tsv.',
                   '- inputs/reference.tsv: checksums recorded at run; URLs from inputs/lane-sources.tsv.',
-                  '- METHODS.md: the GARS Methods renderer, run over the same records.',
+                  '- METHODS.md: the GARS Methods renderer of the render\'s checkout (code/GARS.txt), run over the '
+                  'same records.',
                   '- code/GARS.txt: the harvest record (the package_run.py checkout and the clone status).', '']
         return '\n'.join(lines)
 
@@ -1617,6 +1659,13 @@ def render(args):
 # =================================================================================================
 
 OK_RESULTS = ('match', 'present')
+
+
+def result_ok(result):
+    """A member result compare.py counts as matching: byte-identical, present, a normalised match
+    (`match after <mode>`) or a sign-aligned one (`within ... after sign alignment`). S5 review r1:
+    the landing README had counted the last two as differing."""
+    return result in OK_RESULTS or result.startswith(('match after ', 'within '))
 MACHINE = re.compile(r'[A-Za-z0-9 .,/()+-]{1,80}\Z')
 DATE = re.compile(r'[0-9]{4}-[0-9]{2}-[0-9]{2}\Z')
 
@@ -1659,7 +1708,7 @@ def rerun_note(args):
         if not stable:
             unstable.append(key)
         row = next(r for r in rows if (r['stage'], compare.member_path(r)) == key)
-        members[key] = {'row': row, 'ok': stable and seen[0][1] in OK_RESULTS,
+        members[key] = {'row': row, 'ok': stable and result_ok(seen[0][1]),
                         'result': seen[0][1] if stable else 'unstable', 'rerun_sha256': ''}
     extra = {}
     for p in passes:
@@ -1723,6 +1772,7 @@ def main(argv=None):
     p = sub.add_parser('render')
     p.add_argument('--harvest', required=True)
     p.add_argument('--gars-repo', required=True)
+    p.add_argument('--render-commit')
     p.add_argument('--sources', required=True)
     p.add_argument('--tolerances', required=True)
     p.add_argument('--out', required=True)
