@@ -1,5 +1,5 @@
 {
-  "about": "Round 4's routing table, pre-registered data. Decided by routing.py only, from harness-side records only, never from the agent's text. Route, phase and batch-state strings are graders/labels4.py's and are checked against it on load. A row matches when the take is in its phase, every all_of condition holds, at least one any_of condition holds (when any_of is given), and no none_of condition holds. The winning rows are the matched rows at the highest precedence level; matched rows at that level that name different routes are a tie and are refused, as is an input that matches no row.",
+  "about": "Round 4's routing table, pre-registered data. Decided by routing.py only, from harness-side records only, never from the agent's text. Route, phase, turn-end and batch-state strings are graders/labels4.py's and are checked against it on load. A row matches when the take is in its phase, every all_of condition holds, at least one any_of condition holds (when any_of is given), and no none_of condition holds. The winning rows are the matched rows at the highest precedence level; matched rows at that level that name different routes are a tie and are refused, as is an input that matches no row. Rows never read a text-derived count (the events record): those are annotations, below.",
   "plan_source": "Round 4 plan, 'What round 4 measures' > 'Outcomes' > routing table and its precedence paragraph; CP1 task 'CREATE .../routing.py'.",
   "precedence": [["pause"], ["aborted"], ["harness-error", "rehearsal"], ["graded"]],
   "precedence_source": "Plan: 'pause, then aborted, then harness-error, then graded'. Lane w1b decision: rehearsal shares harness-error's level (both are harness faults, split only by phase), so a double match between them is refused, never picked.",
@@ -8,10 +8,12 @@
   "rate_limit_markers": {
     "status": [429],
     "type": ["rate_limit_error"],
-    "source": "Lane w1b proposal, to be confirmed by the home session against round 3's driver: the API's HTTP 429 status and its rate_limit_error type. Plan: 'a pre-registered rate-limit marker in the API-error record'."
+    "source": "Lane w1b proposal, to be confirmed by the home session against round 3's driver: the API's HTTP 429 status and its rate_limit_error type. Plan: 'a pre-registered rate-limit marker in the API-error record'. Keys are API-error record fields (routing.py checks this)."
   },
   "operator_reasons": [],
   "operator_reasons_status": "PENDING. Round 3's operator-side reasons (evals/gap-study-3/prereg.json rehearsal_reasons and driver_decided_reasons, and evals/gap-study-3/check_take.py) were NOT read by lane w1b: a safety classifier denied the read, and the lane's hard rules forbid routing around a denial. Until the home session lists them here, routing.py refuses any checker reason id, because an id not in this list matches no row.",
+  "pin_profiles": {},
+  "pin_profiles_status": "PENDING (CP5). One profile per model the round runs: the model id, and the permission mode and Claude Code version pre-registered for it. The init-mismatch row compares every init event with the take's pin, and routing.py refuses a pin that is not the pre-registered profile of its model, so the driver is never trusted for it. Until CP5 pre-registers the profiles, routing.py refuses every take and batch.py refuses to start.",
   "caps": {
     "rehearsal": {"reruns_per_slot": null, "reruns_per_half_cell": 3, "source": "Plan: 're-run in the same slot (capped at 3 per half-cell, round 3's cap)'."},
     "harness-error": {"reruns_per_slot": 1, "reruns_per_half_cell": 2, "beyond_cap": "published as harness-error in its own column; leaves the denominator, the cell's n printed", "source": "Plan: 'one re-run in the same slot (capped at 2 per half-cell)'."},
@@ -38,8 +40,8 @@
       "id": "api-error-before-first-turn",
       "when": "before-first-turn",
       "route": "rehearsal",
-      "any_of": [{"path": "api_error", "op": "not_null"}],
-      "source": "Plan table row 1: 'API error'. A rate-limit marker also matches rate-limit (pause), which wins on precedence."
+      "any_of": [{"path": "api_errors", "op": "nonempty"}],
+      "source": "Plan table row 1: 'API error'. A rate-limit marker also matches rate-limit (pause), which wins on precedence. Phase per the gap4 lane lead's ruling on W1B-5: a turn that produced no completed agent output and carries an API-error record is before the agent's first turn."
     },
     {
       "id": "sidecar-unhealthy-before-first-turn",
@@ -73,8 +75,8 @@
       "id": "rate-limit",
       "when": "any",
       "route": "pause",
-      "any_of": [{"path": "api_error.status", "op": "in_rate_limit_markers"}, {"path": "api_error.type", "op": "in_rate_limit_markers"}],
-      "source": "Plan table: 'any time | a pre-registered rate-limit marker in the API-error record | pause'."
+      "any_of": [{"path": "api_errors.status", "op": "in_rate_limit_markers"}, {"path": "api_errors.type", "op": "in_rate_limit_markers"}],
+      "source": "Plan table: 'any time | a pre-registered rate-limit marker in the API-error record | pause'. Every API error of the take is read (W1B-4): a marker on any one of them matches."
     },
     {
       "id": "cgroup-kill",
@@ -87,7 +89,7 @@
       "id": "api-error-after-first-turn",
       "when": "after-first-turn",
       "route": "harness-error",
-      "any_of": [{"path": "api_error", "op": "not_null"}],
+      "any_of": [{"path": "api_errors", "op": "nonempty"}],
       "source": "Plan table: 'after the first turn | API-error record'."
     },
     {
@@ -116,7 +118,7 @@
       "when": "after-first-turn",
       "route": "harness-error",
       "any_of": [{"path": "exit.exec_codes", "op": "nonzero_outside_timeout"}],
-      "none_of": [{"path": "api_error", "op": "not_null"}, {"path": "cgroup.oom_kill_delta", "op": "gt", "value": 0}, {"path": "cgroup.pids_max_delta", "op": "gt", "value": 0}],
+      "none_of": [{"path": "api_errors", "op": "nonempty"}, {"path": "cgroup.oom_kill_delta", "op": "gt", "value": 0}, {"path": "cgroup.pids_max_delta", "op": "gt", "value": 0}],
       "source": "Plan table: 'after the first turn | a non-zero exec exit with no API-error record and no rise in those counters | harness-error'. Lane w1b decision: the exit of a turn the host ended as timed-out is not read, because 'a timeout stays the agent's' and the host's own kill exits non-zero."
     },
     {
@@ -153,25 +155,23 @@
       "route": "graded",
       "any_of": [{"path": "ledger.end", "op": "eq", "value": "timed-out"}],
       "source": "Plan: 'A timeout stays the agent's (timed-out, as in rounds 1-3), because an agent that loops is behaving'."
-    },
+    }
+  ],
+  "annotations_about": "Annotations are decided on every take, in every phase, whatever route wins and even when routing refuses the take: they never route. An annotation holds when at least one of its any_of conditions holds; it is reported as an event when event is true, and sets mask (the take's text is masked, never deleted, before commit) when mask is true.",
+  "annotations": [
     {
       "id": "outside-reach",
-      "when": "after-first-turn",
-      "route": "graded",
       "event": true,
       "mask": true,
-      "all_of": [{"path": "ledger.end", "op": "in_graded_ends"}],
       "any_of": [{"path": "events.outside_reach", "op": "gt", "value": 0}],
-      "source": "Plan table: 'any time | the agent's own text or actions reaching the token, the account email, a study path or anything outside the run tree | graded as usual; masked, never deleted, before commit, and counted as an event'. Read from the drive step's count, never from the text. Lane w1b decision: phase after-first-turn, since before it the agent has neither text nor actions."
+      "source": "Plan table: 'any time | the agent's own text or actions reaching the token, the account email, a study path or anything outside the run tree | graded as usual; the text is masked, never deleted, before commit, and counted as an event'. Read from the drive step's count, never from the text. Review round 1 (W1B-1): an annotation on every take in every phase, independent of the routing rows and of how the last turn ended, so it never routes and is never lost."
     },
     {
       "id": "quiescence-kill",
-      "when": "after-first-turn",
-      "route": "graded",
       "event": true,
-      "all_of": [{"path": "ledger.end", "op": "in_graded_ends"}],
+      "mask": false,
       "any_of": [{"path": "quiescence_kill", "op": "truthy"}],
-      "source": "CP1 task: 'the box-only records (..., a quiescence kill)'; CP3 endstate: 'Writes by a background process the driver recorded and stopped at the cap are attributed to the turn that launched it'. Lane w1b decision: the agent's own behaviour, so graded, counted as an event."
+      "source": "CP1 task: 'the box-only records (..., a quiescence kill)'; CP3 endstate: 'Writes by a background process the driver recorded and stopped at the cap are attributed to the turn that launched it'. Lane w1b decision: the agent's own behaviour, counted as an event; it does not route (the take routes by its other records, graded on a graded end). Review round 1 (W1B-1): an annotation, on every take."
     }
   ]
 }

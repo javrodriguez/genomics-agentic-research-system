@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""agent_adapter.py: the call order is enforced, text never reaches the harness records, and the
-scripted adapter replays exactly its script. Each check also runs against an in-memory mutation of
-what it guards and must go red."""
+"""agent_adapter.py: the call order is enforced, text never reaches the harness records, every box
+record is required and never coerced, every API error is carried, the first turn starts only with
+agent output, and the turn ends are labels4's. Each check also runs against an in-memory mutation
+of what it guards and must go red."""
 
 from __future__ import annotations
 
+import ast
 import json
 import os
 import sys
@@ -12,19 +14,24 @@ import unittest
 from unittest import mock
 
 sys.dont_write_bytecode = True
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, _ROOT)
 
 import agent_adapter as aa  # noqa: E402
+from graders import labels4  # noqa: E402
 
 PIN = {"model": "pinned-model", "permission_mode": "bypassPermissions", "version": "1.0.0"}
 SECRET_TEXT = "AGENT-TEXT-MUST-NOT-LEAK-7f3a"
-BOX = {"preflight_ok": True, "container_started": True,
-       "sidecar": {"start_record": True, "stop_record": True, "exit_code": 0, "queue_overflow": False}}
+SIDECAR = {"start_record": True, "stop_record": True, "exit_code": 0, "queue_overflow": False}
+# Every box key, explicitly (none is defaulted by harness_records).
+BOX = {"preflight_ok": True, "container_started": True, "container_exited": False, "sidecar": dict(SIDECAR),
+       "unexplained_operator_diffs": 0, "checker_reasons": [], "quiescence_kill": False,
+       "outside_reach_events": 0, "finalize_abort": False, "committed": False}
 
 
 def turn(**kw) -> aa.TurnResult:
     base = dict(exit_code=0, text=SECRET_TEXT, stream_path="/host/stream.jsonl", end_reason=aa.END_TURN,
-                init=dict(PIN), started_at=1.0, ended_at=2.0)
+                init=dict(PIN), started_at=1.0, ended_at=2.0, agent_output=True)
     base.update(kw)
     return aa.TurnResult(**base)
 
@@ -54,6 +61,60 @@ def order_violations(make) -> list[str]:
 
 def text_leaks(records) -> bool:
     return SECRET_TEXT in json.dumps(records)
+
+
+def box_key_problems() -> list[str]:
+    """Each box key whose absence harness_records did NOT refuse with BoxRecordError, and an
+    unknown key it did not refuse."""
+    p = []
+    for key in sorted(BOX):
+        b = dict(BOX)
+        del b[key]
+        try:
+            aa.harness_records([turn()], pin=PIN, box=b)
+        except aa.BoxRecordError:
+            continue
+        except Exception as e:  # noqa: BLE001 - a crash is not a refusal
+            p.append(f"{key} dropped: {type(e).__name__}")
+            continue
+        p.append(f"{key} dropped: accepted")
+    try:
+        aa.harness_records([turn()], pin=PIN, box=dict(BOX, api_error={"status": 500, "type": "x"}))
+        p.append("unknown box key accepted")
+    except aa.BoxRecordError:
+        pass
+    return p
+
+
+# Box key -> where its value lands in the records.
+BOX_LANDS = {"preflight_ok": ("preflight", "ok"), "container_started": ("exit", "container_started"),
+             "container_exited": ("exit", "container_exited"), "sidecar": ("sidecar", None),
+             "unexplained_operator_diffs": ("operator", "unexplained_diffs"),
+             "checker_reasons": ("checker_reasons", None), "quiescence_kill": ("quiescence_kill", None),
+             "outside_reach_events": ("events", "outside_reach"), "finalize_abort": ("ledger", "finalize_abort"),
+             "committed": ("ledger", "committed")}
+
+
+def coercion_problems() -> list[str]:
+    """Each box key whose None value did not reach the records as None (a coercion would turn
+    missing evidence into 'nothing happened')."""
+    p = []
+    for key, (head, tail) in BOX_LANDS.items():
+        rec = aa.harness_records([turn()], pin=PIN, box=dict(BOX, **{key: None}))
+        got = rec[head] if tail is None else rec[head][tail]
+        if got is not None:
+            p.append(f"{key}: None became {got!r}")
+    return p
+
+
+def retyped_turn_ends(source: str) -> list[str]:
+    """String constants in a module's code (docstrings excluded) that retype a labels4 turn end."""
+    tree = ast.parse(source)
+    docs = {id(n.body[0].value) for n in ast.walk(tree)
+            if isinstance(n, (ast.Module, ast.ClassDef, ast.FunctionDef)) and n.body
+            and isinstance(n.body[0], ast.Expr) and isinstance(n.body[0].value, ast.Constant)}
+    return [n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and id(n) not in docs
+            and n.value in labels4.TURN_ENDS]
 
 
 class TestAdapter(unittest.TestCase):
@@ -94,7 +155,11 @@ class TestAdapter(unittest.TestCase):
 
     def test_turnresult_validation(self):
         for bad in (dict(end_reason="done"), dict(counters={"oom_kill_delta": 0}),
-                    dict(init={"model": "m"}), dict(started_at=3.0, ended_at=2.0)):
+                    dict(counters={"oom_kill_delta": -1, "pids_max_delta": 0}),
+                    dict(counters={"oom_kill_delta": True, "pids_max_delta": 0}),
+                    dict(init={"model": "m"}), dict(started_at=3.0, ended_at=2.0),
+                    dict(agent_output=None), dict(agent_output=1),
+                    dict(api_error={"status": 500}), dict(api_error="500")):
             with self.assertRaises(ValueError, msg=str(bad)):
                 turn(**bad)
 
@@ -111,17 +176,108 @@ class TestAdapter(unittest.TestCase):
         self.assertTrue(text_leaks({"leaked": SECRET_TEXT}))
 
     def test_harness_records_shape(self):
-        t1 = turn(api_error=None)
-        t2 = turn(exit_code=1, end_reason=aa.END_ERROR, api_error={"status": 429, "type": "rate_limit_error"},
+        t1 = turn(api_error=None, init=dict(PIN, cwd="/host/run"))
+        t2 = turn(exit_code=1, end_reason=aa.END_ERROR, api_error={"status": 429, "type": "rate_limit_error",
+                                                                   "message": "slow down"},
                   counters={"oom_kill_delta": 1, "pids_max_delta": 0})
         r = aa.harness_records([t1, t2], pin=PIN, box=BOX)
         self.assertEqual(r["ledger"], {"first_turn_started": True, "turns": 2, "end": aa.END_ERROR,
-                                       "turn_ends": [aa.END_TURN, aa.END_ERROR], "committed": False, "finalize_abort": False})
+                                       "turn_ends": [aa.END_TURN, aa.END_ERROR], "turn_outputs": [True, True],
+                                       "committed": False, "finalize_abort": False})
         self.assertEqual(r["exit"]["exec_codes"], [0, 1])
         self.assertEqual(r["cgroup"], {"oom_kill_delta": 1, "pids_max_delta": 0})
-        self.assertEqual(r["api_error"]["status"], 429)
+        self.assertEqual(r["api_errors"], [{"status": 429, "type": "rate_limit_error"}])   # projected
+        self.assertEqual(r["init"][0], PIN)                                                  # projected
         empty = aa.harness_records([], pin=PIN, box=BOX)
-        self.assertEqual((empty["ledger"]["first_turn_started"], empty["ledger"]["end"]), (False, None))
+        self.assertEqual((empty["ledger"]["first_turn_started"], empty["ledger"]["end"], empty["api_errors"]),
+                         (False, None, []))
+
+
+class TestBoxRecords(unittest.TestCase):
+    """W1B-2: every box record is required, and a None is carried as None, never coerced."""
+
+    def test_every_box_key_required(self):
+        self.assertEqual(box_key_problems(), [])
+
+    def test_box_key_check_can_fail(self):
+        with mock.patch.object(aa, "BOX_KEYS", tuple(k for k in aa.BOX_KEYS if k != "outside_reach_events")):
+            self.assertIn("outside_reach_events dropped: KeyError", box_key_problems())
+        with mock.patch.object(aa, "BOX_KEYS", aa.BOX_KEYS + ("api_error",)):
+            self.assertIn("unknown box key accepted", box_key_problems())
+
+    def test_box_lands_covers_every_key(self):
+        self.assertEqual(set(BOX_LANDS), set(aa.BOX_KEYS))
+        self.assertEqual(set(BOX), set(aa.BOX_KEYS))
+
+    def test_no_coercion(self):
+        self.assertEqual(coercion_problems(), [])
+
+    def test_coercion_check_can_fail(self):
+        real = aa.harness_records
+
+        def coercing(turns, *, pin, box):   # the pre-fold fold: bool() and int() on the box
+            out = real(turns, pin=pin, box=box)
+            out["events"]["outside_reach"] = int(box["outside_reach_events"] or 0)
+            return out
+        with mock.patch.object(aa, "harness_records", coercing):
+            self.assertIn("outside_reach_events: None became 0", coercion_problems())
+
+
+class TestTurns(unittest.TestCase):
+    def test_every_api_error_carried_in_order(self):
+        """W1B-4: a 500 then a 429 keeps both, so the rate limit still reads as one."""
+        t500 = turn(exit_code=1, end_reason=aa.END_ERROR, api_error={"status": 500, "type": "api_error"})
+        t429 = turn(exit_code=1, end_reason=aa.END_ERROR, api_error={"status": 429, "type": "rate_limit_error"})
+        r = aa.harness_records([turn(), t500, t429], pin=PIN, box=BOX)
+        self.assertEqual([e["status"] for e in r["api_errors"]], [500, 429])
+
+    def test_api_error_check_can_fail(self):
+        t500 = turn(exit_code=1, end_reason=aa.END_ERROR, api_error={"status": 500, "type": "api_error"})
+        t429 = turn(exit_code=1, end_reason=aa.END_ERROR, api_error={"status": 429, "type": "rate_limit_error"})
+        real = aa.harness_records
+
+        def first_only(turns, *, pin, box):   # the pre-fold fold kept only the first API error
+            out = real(turns, pin=pin, box=box)
+            out["api_errors"] = out["api_errors"][:1]
+            return out
+        with mock.patch.object(aa, "harness_records", first_only):
+            r = aa.harness_records([turn(), t500, t429], pin=PIN, box=BOX)
+        self.assertNotEqual([e["status"] for e in r["api_errors"]], [500, 429])
+
+    def test_first_turn_starts_with_agent_output(self):
+        """W1B-5 (gap4 lane lead's ruling): a turn with no completed agent output is before it."""
+        silent = turn(exit_code=1, end_reason=aa.END_ERROR, agent_output=False,
+                      api_error={"status": 500, "type": "api_error"})
+        r = aa.harness_records([silent], pin=PIN, box=BOX)
+        self.assertEqual((r["ledger"]["first_turn_started"], r["ledger"]["turns"], r["ledger"]["turn_outputs"]),
+                         (False, 1, [False]))
+        r = aa.harness_records([silent, turn()], pin=PIN, box=BOX)
+        self.assertTrue(r["ledger"]["first_turn_started"])
+
+    def test_first_turn_check_can_fail(self):
+        silent = turn(exit_code=1, end_reason=aa.END_ERROR, agent_output=False)
+        real = aa.harness_records
+
+        def any_turn(turns, *, pin, box):   # the pre-fold rule: bool(turns)
+            out = real(turns, pin=pin, box=box)
+            out["ledger"]["first_turn_started"] = bool(turns)
+            return out
+        with mock.patch.object(aa, "harness_records", any_turn):
+            self.assertTrue(aa.harness_records([silent], pin=PIN, box=BOX)["ledger"]["first_turn_started"])
+
+
+class TestVocabulary(unittest.TestCase):
+    """W1B-7: the turn ends are labels4's, imported and never retyped."""
+
+    def test_turn_ends_are_labels4s(self):
+        self.assertIs(aa.END_TIMED_OUT, labels4.TIMED_OUT)
+        self.assertEqual(aa.END_REASONS, labels4.TURN_ENDS)
+        with open(os.path.join(_ROOT, "agent_adapter.py"), encoding="utf-8") as fh:
+            self.assertEqual(retyped_turn_ends(fh.read()), [])
+
+    def test_retyping_check_can_fail(self):
+        self.assertEqual(retyped_turn_ends('END_TIMED_OUT = "timed-out"'), ["timed-out"])
+        self.assertEqual(retyped_turn_ends('"""end_turn in a docstring is prose"""\nx = 1'), [])
 
 
 if __name__ == "__main__":

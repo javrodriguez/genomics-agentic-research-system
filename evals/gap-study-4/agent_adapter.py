@@ -37,12 +37,19 @@ THE RECORD. `TurnResult` carries, for one turn:
     text            the agent's text for the turn. Graders read it; routing NEVER does, and
                     `harness_record()` leaves it out.
     stream_path     path of the host-captured output stream for the turn (None if none)
-    end_reason      "end_turn", "timed-out" or "error": how the host saw the turn end
+    end_reason      how the host saw the turn end: one of `labels4.TURN_ENDS` ("end_turn",
+                    "timed-out", "error"), never retyped here
     init            the turn's init event fields (model, permission_mode, version), or None
-    api_error       the API-error record for the turn ({"status": int, "type": str, ...}), or None
+    api_error       the API-error record for the turn, {"status": int or None, "type": str or
+                    None} (both keys required; other keys are not carried to routing), or None
     counters        the turn's cgroup counter rises, read host-side: {"oom_kill_delta": int,
-                    "pids_max_delta": int}
+                    "pids_max_delta": int}, non-negative
     started_at, ended_at   host clock (seconds since the epoch) at the turn's start and end
+    agent_output    REQUIRED bool: True when the host-captured stream holds at least one completed
+                    agent message (text or tool call) for this turn. It is read from the stream's
+                    event types, never from their content. A turn that produced no completed agent
+                    output (an API error on the first call, a container that died first) has not
+                    started the agent's first turn.
 
 Everything except `text` is a harness-side record: it comes from the host, the runtime or the API,
 never from what the agent said or did.
@@ -52,19 +59,43 @@ No model is called anywhere in this module. Standard library only.
 
 from __future__ import annotations
 
+import os
+import sys
 from dataclasses import dataclass, field, asdict
 
-END_TURN = "end_turn"
-END_TIMED_OUT = "timed-out"
-END_ERROR = "error"
-END_REASONS = (END_TURN, END_TIMED_OUT, END_ERROR)
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+
+from graders import labels4  # noqa: E402
+
+# The turn ends are labels4's (interface 4): imported, never retyped.
+END_TURN = labels4.END_TURN
+END_TIMED_OUT = labels4.TIMED_OUT
+END_ERROR = labels4.END_ERROR
+END_REASONS = labels4.TURN_ENDS
 
 INIT_FIELDS = ("model", "permission_mode", "version")
 COUNTER_FIELDS = ("oom_kill_delta", "pids_max_delta")
+API_ERROR_FIELDS = ("status", "type")
+
+# The box's own records, every one REQUIRED by `harness_records` (a missing one is never read as
+# "nothing happened"): what no adapter produces.
+BOX_KEYS = ("preflight_ok", "container_started", "container_exited", "sidecar",
+            "unexplained_operator_diffs", "checker_reasons", "quiescence_kill",
+            "outside_reach_events", "finalize_abort", "committed")
 
 
 class AdapterStateError(RuntimeError):
     """A call out of the start_take / turn / end_take order."""
+
+
+class BoxRecordError(ValueError):
+    """The box's records given to `harness_records` miss a required key or carry an unknown one."""
+
+
+def _count(v) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool) and v >= 0
 
 
 @dataclass(frozen=True)
@@ -78,14 +109,22 @@ class TurnResult:
     counters: dict = field(default_factory=lambda: {k: 0 for k in COUNTER_FIELDS})
     started_at: float = 0.0
     ended_at: float = 0.0
+    agent_output: bool | None = None   # required: see THE RECORD; None is refused
 
     def __post_init__(self):
         if self.end_reason not in END_REASONS:
             raise ValueError(f"end_reason {self.end_reason!r} is not one of {END_REASONS}")
-        if set(self.counters) != set(COUNTER_FIELDS):
+        if not isinstance(self.counters, dict) or set(self.counters) != set(COUNTER_FIELDS):
             raise ValueError(f"counters must name exactly {COUNTER_FIELDS}")
+        if not all(_count(v) for v in self.counters.values()):
+            raise ValueError("counter rises must be non-negative ints")
         if self.init is not None and not set(INIT_FIELDS) <= set(self.init):
             raise ValueError(f"init must carry {INIT_FIELDS}")
+        if self.api_error is not None and (not isinstance(self.api_error, dict)
+                                           or not set(API_ERROR_FIELDS) <= set(self.api_error)):
+            raise ValueError(f"api_error must be None or a dict carrying {API_ERROR_FIELDS}")
+        if not isinstance(self.agent_output, bool):
+            raise ValueError("agent_output must be a bool: did the turn's stream hold a completed agent message?")
         if self.ended_at < self.started_at:
             raise ValueError("a turn cannot end before it starts")
 
@@ -199,35 +238,52 @@ class ScriptedAdapter(AgentAdapter):
 def harness_records(turns: list[TurnResult], *, pin: dict, box: dict) -> dict:
     """Fold one take's turn results and the box's own records into the shape `routing.py` reads.
 
-    `box` carries the records no adapter produces: `preflight_ok`, `container_started`,
-    `container_exited` (the runtime's exit record shows the container itself died),
-    `sidecar` ({start_record, stop_record, exit_code, queue_overflow}), `unexplained_operator_diffs`,
-    `checker_reasons`, `quiescence_kill`, `outside_reach_events`, `finalize_abort`, `committed`.
-    The agent's text is never copied in.
+    `box` must carry exactly `BOX_KEYS`: `preflight_ok`, `container_started`, `container_exited`
+    (the runtime's exit record shows the container itself died), `sidecar` ({start_record,
+    stop_record, exit_code, queue_overflow}), `unexplained_operator_diffs`, `checker_reasons`,
+    `quiescence_kill`, `outside_reach_events`, `finalize_abort`, `committed`. A missing key raises
+    `BoxRecordError` (missing evidence is never read as "nothing happened"), and so does an unknown
+    one. Values are copied as given, never coerced: `routing.check_records` type-checks them, so a
+    None or a string counter is refused there instead of silently becoming 0 or True.
+
+    The agent's first turn has started once a turn produced completed agent output
+    (`agent_output`); a turn that produced none, such as one whose first API call failed, is still
+    before it (gap4 lane lead's ruling on W1B-5). Every API error of every turn is carried, in turn
+    order, so a rate limit after another error still reads as a rate limit. The agent's text is
+    never copied in.
     """
-    api_errors = [t.api_error for t in turns if t.api_error is not None]
+    if not isinstance(box, dict):
+        raise BoxRecordError("box must be a dict")
+    missing = [k for k in BOX_KEYS if k not in box]
+    unknown = sorted(set(box) - set(BOX_KEYS))
+    if missing or unknown:
+        raise BoxRecordError(f"box records missing {missing}, unknown {unknown}")
+    outputs = [t.agent_output for t in turns]
+    sidecar = box["sidecar"]
+    reasons = box["checker_reasons"]
     return {
         "ledger": {
-            "first_turn_started": bool(turns),
+            "first_turn_started": any(outputs),
             "turns": len(turns),
             "end": turns[-1].end_reason if turns else None,
             "turn_ends": [t.end_reason for t in turns],
-            "committed": bool(box.get("committed", False)),
-            "finalize_abort": bool(box.get("finalize_abort", False)),
+            "turn_outputs": outputs,
+            "committed": box["committed"],
+            "finalize_abort": box["finalize_abort"],
         },
         "exit": {
-            "container_started": bool(box["container_started"]),
-            "container_exited": bool(box.get("container_exited", False)),
+            "container_started": box["container_started"],
+            "container_exited": box["container_exited"],
             "exec_codes": [t.exit_code for t in turns],
         },
         "cgroup": {k: sum(t.counters[k] for t in turns) for k in COUNTER_FIELDS},
-        "init": [t.init for t in turns],
-        "pin": dict(pin),
-        "api_error": api_errors[0] if api_errors else None,
-        "sidecar": dict(box["sidecar"]),
-        "preflight": {"ok": bool(box["preflight_ok"])},
-        "operator": {"unexplained_diffs": int(box.get("unexplained_operator_diffs", 0))},
-        "checker_reasons": list(box.get("checker_reasons", [])),
-        "quiescence_kill": bool(box.get("quiescence_kill", False)),
-        "events": {"outside_reach": int(box.get("outside_reach_events", 0))},
+        "init": [None if t.init is None else {f: t.init[f] for f in INIT_FIELDS} for t in turns],
+        "pin": dict(pin) if isinstance(pin, dict) else pin,
+        "api_errors": [{f: t.api_error[f] for f in API_ERROR_FIELDS} for t in turns if t.api_error is not None],
+        "sidecar": dict(sidecar) if isinstance(sidecar, dict) else sidecar,
+        "preflight": {"ok": box["preflight_ok"]},
+        "operator": {"unexplained_diffs": box["unexplained_operator_diffs"]},
+        "checker_reasons": list(reasons) if isinstance(reasons, list) else reasons,
+        "quiescence_kill": box["quiescence_kill"],
+        "events": {"outside_reach": box["outside_reach_events"]},
     }

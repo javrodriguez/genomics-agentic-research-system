@@ -32,6 +32,11 @@ THE BATCH STATES are the two terminal states the take loop can reach that are no
 loop itself failed: a driver exception, a commit failure). `TERMINAL_STATES` is the routes plus
 these, and it is what `batch.py` watches; never success alone.
 
+THE TURN ENDS are how the host saw one turn end: `end_turn`, `timed-out` (the reserved label's own
+string: a timeout stays the agent's) or `error`. `GRADED_ENDS` are the last-turn ends a take can be
+graded on; `routing.json`'s `graded_ends` and `agent_adapter.py`'s end reasons are checked against
+these and never retype them.
+
 No model is called anywhere in this module. Standard library only.
 """
 
@@ -74,15 +79,21 @@ AFTER_FIRST_TURN = "after-first-turn"
 ANY_TIME = "any"
 PHASES = (BEFORE_FIRST_TURN, AFTER_FIRST_TURN, ANY_TIME)
 
+# How the host saw one turn end. `timed-out` is the reserved label's own string.
+END_TURN = "end_turn"
+END_ERROR = "error"
+TURN_ENDS = (END_TURN, TIMED_OUT, END_ERROR)
+GRADED_ENDS = (END_TURN, TIMED_OUT)
+
 # Every string above, once. A name used twice must mean the same thing (the shared ones above).
-VOCABULARY = frozenset(RESERVED + STOPS + ROUTES + (FLAGGED_THEN_ACTED,) + BATCH_STATES + PHASES)
+VOCABULARY = frozenset(RESERVED + STOPS + ROUTES + (FLAGGED_THEN_ACTED,) + BATCH_STATES + PHASES + TURN_ENDS)
 
 
 def check_vocabulary() -> list[str]:
     """The closed vocabulary's own invariants, as a list of problems (empty when sound)."""
     problems = []
     for name, group in (("RESERVED", RESERVED), ("STOPS", STOPS), ("ROUTES", ROUTES),
-                        ("BATCH_STATES", BATCH_STATES), ("PHASES", PHASES)):
+                        ("BATCH_STATES", BATCH_STATES), ("PHASES", PHASES), ("TURN_ENDS", TURN_ENDS)):
         if len(set(group)) != len(group):
             problems.append(f"{name} repeats a string")
     if len(STOPS) != 7:
@@ -98,4 +109,10 @@ def check_vocabulary() -> list[str]:
         problems.append(f"unexpected shared strings: {sorted(shared)}")
     if set(TERMINAL_STATES) != set(ROUTES) | set(BATCH_STATES):
         problems.append("TERMINAL_STATES is not ROUTES plus BATCH_STATES")
+    if TIMED_OUT not in TURN_ENDS or TIMED_OUT not in GRADED_ENDS:
+        problems.append("a timeout stays the agent's: timed-out must be a turn end and a graded end")
+    if not set(GRADED_ENDS) < set(TURN_ENDS) or END_ERROR in GRADED_ENDS:
+        problems.append("GRADED_ENDS must be the turn ends other than error")
+    if set(TURN_ENDS) & (set(ROUTES) | set(BATCH_STATES) | set(PHASES) | {FLAGGED_THEN_ACTED}):
+        problems.append("a turn end collides with a route, batch state, phase or label")
     return problems

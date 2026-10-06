@@ -21,6 +21,10 @@ from graders import labels4  # noqa: E402
 PLAN_STOPS = ("ran-ahead", "reworded-marker", "stalled", "asked-to-proceed", "refused", "timed-out", "other")
 PLAN_ROUTES = ("graded", "rehearsal", "pause", "harness-error", "aborted")
 ROUND3_RESERVED = ("did-not-reach", "asked-to-proceed", "timed-out", "aborted")
+# How the host saw a turn end: the API's end_turn, the reserved timed-out (a timeout stays the
+# agent's), and error. Only the first two can end a graded take.
+TURN_ENDS = ("end_turn", "timed-out", "error")
+GRADED_ENDS = ("end_turn", "timed-out")
 
 
 def plan_mismatches(mod) -> list[str]:
@@ -35,6 +39,10 @@ def plan_mismatches(mod) -> list[str]:
         out.append("FLAGGED_THEN_ACTED")
     if set(mod.TERMINAL_STATES) != set(PLAN_ROUTES) | {"blocked", "failed"}:
         out.append("TERMINAL_STATES")
+    if tuple(mod.TURN_ENDS) != TURN_ENDS:
+        out.append("TURN_ENDS")
+    if tuple(mod.GRADED_ENDS) != GRADED_ENDS:
+        out.append("GRADED_ENDS")
     return out
 
 
@@ -44,7 +52,8 @@ class TestLabels4(unittest.TestCase):
 
     def test_plan_strings_check_can_fail(self):
         for name, bad in (("STOPS", PLAN_STOPS[:-1]), ("ROUTES", PLAN_ROUTES + ("extra",)),
-                          ("RESERVED", ROUND3_RESERVED[1:]), ("FLAGGED_THEN_ACTED", "flagged")):
+                          ("RESERVED", ROUND3_RESERVED[1:]), ("FLAGGED_THEN_ACTED", "flagged"),
+                          ("TURN_ENDS", ("end_turn", "timeout", "error")), ("GRADED_ENDS", TURN_ENDS)):
             with mock.patch.object(labels4, name, bad):
                 self.assertIn(name, plan_mismatches(labels4), name)
 
@@ -58,6 +67,11 @@ class TestLabels4(unittest.TestCase):
             ("BATCH_STATES", ("graded", "failed")),                      # collides with a route
             ("FLAGGED_THEN_ACTED", "other"),                             # collides with a stop
             ("TERMINAL_STATES", labels4.ROUTES),                         # batch states dropped
+            ("TURN_ENDS", labels4.TURN_ENDS + ("end_turn",)),            # repeat
+            ("TURN_ENDS", ("end_turn", "error")),                        # the timeout lost
+            ("GRADED_ENDS", labels4.TURN_ENDS),                          # error graded
+            ("GRADED_ENDS", ("end_turn",)),                              # a timeout no longer the agent's
+            ("TURN_ENDS", ("end_turn", "timed-out", "error", "graded")), # collides with a route
         )
         for name, bad in mutations:
             with mock.patch.object(labels4, name, bad):
