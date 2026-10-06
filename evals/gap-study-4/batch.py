@@ -355,13 +355,13 @@ class Batch:
 
     @staticmethod
     def _seal(outcome) -> None:
-        """The mask rule, at the commit (W1B2-2): a take that is blocked or failed is masked, fail-closed,
-        whatever its annotations said; so is one whose records could not be read (`_annotations`)."""
-        if outcome["state"] in labels4.BATCH_STATES and outcome["mask_basis"] == "annotations":
+        """The mask rule for stopped takes, at the commit (W1B2-2): a take that is blocked or failed is
+        masked, fail-closed, whatever its annotations said. (A take whose records could not be read is
+        masked fail-closed by `_annotations`, whatever its state.)"""
+        if outcome["state"] in labels4.BATCH_STATES:
             outcome["mask"] = True
-            outcome["mask_basis"] = f"the take is {outcome['state']}: masked fail-closed (annotations read)"
-        elif outcome["state"] in labels4.BATCH_STATES or outcome["mask_basis"] != "annotations":
-            outcome["mask"] = True
+            if outcome["mask_basis"] == "annotations":
+                outcome["mask_basis"] = f"the take is {outcome['state']}: masked fail-closed (annotations read)"
 
     @staticmethod
     def _outcome(row, attempt, cid, **kw) -> dict:

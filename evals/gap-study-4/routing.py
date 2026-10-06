@@ -52,8 +52,9 @@ gap4 lane lead's ruling on W1B-5), however that turn or any earlier one ended; u
 is `before-first-turn`, else `after-first-turn` (`any` is both). A turn that timed out without
 completed output has not started it: glitch-f3's correction (6 Oct 2026; glitch-f3's, not the
 owner's) routes a bare silent timeout as a rehearsal on its own row, because harness records
-cannot tell it from a hung API, CLI or egress (review round 2, W1B2-1, reverting 3fcab58d). A row matches when the take is in the row's phase, every
-`all_of` condition holds, at least one `any_of` condition holds, and no `none_of` condition holds.
+cannot tell it from a hung API, CLI or egress (review round 2, W1B2-1, reverting 3fcab58d).
+A row matches when the take is in the row's phase, every `all_of` condition holds, at least one
+`any_of` condition holds, and no `none_of` condition holds.
 The matched rows at the highest precedence level win. If none match, or the winners name more
 than one route, `route()` raises `RoutingRefused`: never a default, never a pick. Records already
 committed are refused too, since a route decided after the commit cannot free its slot.
@@ -67,8 +68,8 @@ harness-side text; the agent's reply never reaches the records.
 ANNOTATING. `annotate()` decides the table's annotations (an outside reach: an event, and the
 text masked before commit; a quiescence kill: an event; an event id arriving as a checker reason:
 an event, and the text masked) on every take, in every phase, whatever route wins and even when
-`route()` refuses the take. Rows never read the `events` record, so a
-text-derived count can never route a take, and an annotation can never be lost to a route.
+`route()` refuses the take. Rows never read the `events` record, so a text-derived count can never
+route a take, and an annotation can never be lost to a route.
 
 No model is called anywhere in this module. Standard library only.
 """

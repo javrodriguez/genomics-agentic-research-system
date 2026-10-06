@@ -644,6 +644,12 @@ SCENARIOS = {
     "a silent error turn, then a silent timeout": Sc(_sc(B, [silent_turn, silent_timeout]), "rehearsal", ["silent-timeout-before-first-turn"]),
     "a timeout after completed output grades (glitch-f3)": Sc(_sc(A, [_multi_turn(1), silent_timeout]), "graded", ["timed-out"]),
     "one turn with output that timed out grades (glitch-f3)": Sc(_sc(B, [output_timeout]), "graded", ["timed-out"]),
+    # W1B2-1: routing's own consistency check binds first_turn_started to completed agent output, whoever built
+    # the records (a driver writing 3fcab58d's rule, or the reverse, is refused, never routed)
+    "a silent timeout recorded as the first turn started -> refused (W1B2-1)":
+        Sc(_sc(B, [silent_timeout, lambda r: r["ledger"].__setitem__("first_turn_started", True)]), REFUSED, None, None, None),
+    "completed output recorded as no first turn -> refused (W1B2-1)":
+        Sc(_sc(A, [lambda r: r["ledger"].__setitem__("first_turn_started", False)]), REFUSED, None, None, None),
     "nothing happened before first turn": Sc(_sc(B, []), REFUSED, None),
     "a turn with no agent output and nothing recorded": Sc(_sc(B, [silent_turn]), REFUSED, None),
     "counters rose before the first turn": Sc(_sc(B, [_set("cgroup.oom_kill_delta", 1)]), REFUSED, None),

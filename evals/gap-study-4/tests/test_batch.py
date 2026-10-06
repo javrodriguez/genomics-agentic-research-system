@@ -912,6 +912,22 @@ class TestFailures(unittest.TestCase):
         self.assertEqual(b.stopped["state"], labels4.FAILED)
 
 
+def _annotate_raises_on_slot_2(records, table):
+    if records["exit"]["exec_codes"] == [0, 0, 0]:
+        raise ValueError("annotations unreadable")
+    return routing.annotate(records, table)
+
+
+def unreadable_annotation_problems(cls=batch.Batch) -> list[str]:
+    """Slot 2 routes graded, but its annotations cannot be read: it is committed masked, fail-closed."""
+    b, out, w, d, r, _ = run(3, records_edit={2: _three_turns}, batch_kw={"annotate_fn": _annotate_raises_on_slot_2},
+                             cls=cls)
+    two = r.snapshot(2)
+    if (two["state"], two["mask"], two["events"]) != (labels4.GRADED, True, None) or "fail-closed" not in two["mask_basis"]:
+        return [f"slot 2 committed {two['state']} with mask={two['mask']}, events={two['events']} ({two['mask_basis']})"]
+    return []
+
+
 def fail_closed_problems(cls=batch.Batch) -> list[str]:
     """Every road to `blocked` or `failed` (W1B2-2): each such outcome handed to commit carries mask=True,
     and its mask_basis says fail-closed; and every road was taken (a run that reached neither proves nothing)."""
@@ -981,6 +997,17 @@ class TestMask(unittest.TestCase):
     def test_every_blocked_and_failed_outcome_is_masked(self):
         """W1B2-2: a take that is blocked or failed is committed masked, fail-closed, whatever its annotations."""
         self.assertEqual(fail_closed_problems(), [])
+
+    def test_unreadable_annotations_mask_a_routed_take(self):
+        """W1B-1: a take routing graded whose annotations cannot be read is masked fail-closed, events None."""
+        self.assertEqual(unreadable_annotation_problems(), [])
+
+    def test_unreadable_annotations_check_can_fail(self):
+        class Open(batch.Batch):              # the review's mutant: unreadable annotations leave the text open
+            def _annotations(self, records):
+                out = super()._annotations(records)
+                return dict(out, mask=False) if out["mask_basis"] != "annotations" else out
+        self.assertNotEqual(unreadable_annotation_problems(Open), [])
 
     def test_fail_closed_check_can_fail(self):
         class NoSeal(batch.Batch):            # the pre-fold commit: the mask only from the annotations
