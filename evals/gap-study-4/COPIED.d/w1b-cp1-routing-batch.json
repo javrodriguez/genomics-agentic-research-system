@@ -1,0 +1,60 @@
+{
+  "lane": "w1b-cp1-routing-batch",
+  "files": [
+    {
+      "path": "graders/labels4.py",
+      "status": "new",
+      "reason": "Round 4's closed vocabulary (interface 4); round 3 has no such module. Its reserved labels repeat round 3's graders/labels.py strings, imported nowhere from there."
+    },
+    {
+      "path": "agent_adapter.py",
+      "status": "new",
+      "reason": "The runner's only agent interface (interface 5); new in round 4."
+    },
+    {
+      "path": "routing.json",
+      "status": "new",
+      "reason": "CP1's routing table as pre-registered data; new in round 4 (round 3 routed inside drive.py)."
+    },
+    {
+      "path": "routing.py",
+      "status": "new",
+      "reason": "CP1's routing decision as one pure module; new in round 4."
+    },
+    {
+      "path": "batch.py",
+      "status": "new",
+      "reason": "CP1's in-repo take loop, replacing round 3's out-of-repo batch.sh (verify-3 finding); new."
+    },
+    {
+      "path": "tests/test_labels4.py",
+      "status": "new",
+      "reason": "Tests for labels4.py (interface 3)."
+    },
+    {
+      "path": "tests/test_agent_adapter.py",
+      "status": "new",
+      "reason": "Tests for agent_adapter.py (interface 3)."
+    },
+    {
+      "path": "tests/test_routing.py",
+      "status": "new",
+      "reason": "Tests for routing.py and routing.json (interface 3)."
+    },
+    {
+      "path": "tests/test_batch.py",
+      "status": "new",
+      "reason": "Tests for batch.py (interface 3)."
+    },
+    {
+      "path": "COPIED.d/w1b-cp1-routing-batch.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "checks.d/w1b-cp1-routing-batch.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2)."
+    }
+  ]
+}
