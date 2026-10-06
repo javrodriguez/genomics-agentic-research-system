@@ -1,0 +1,15 @@
+atac-a_REP1.mLb.clN&atac-a_REP2.mLb.clN&atac-b_REP1.mLb.clN&atac-b_REP2.mLb.clN	304
+atac-a_REP1.mLb.clN	210
+atac-b_REP1.mLb.clN	152
+atac-b_REP2.mLb.clN	144
+atac-a_REP1.mLb.clN&atac-b_REP1.mLb.clN&atac-b_REP2.mLb.clN	102
+atac-b_REP1.mLb.clN&atac-b_REP2.mLb.clN	83
+atac-a_REP2.mLb.clN	78
+atac-a_REP1.mLb.clN&atac-b_REP1.mLb.clN	43
+atac-a_REP1.mLb.clN&atac-a_REP2.mLb.clN&atac-b_REP2.mLb.clN	41
+atac-a_REP1.mLb.clN&atac-a_REP2.mLb.clN	37
+atac-a_REP1.mLb.clN&atac-b_REP2.mLb.clN	30
+atac-a_REP2.mLb.clN&atac-b_REP1.mLb.clN&atac-b_REP2.mLb.clN	28
+atac-a_REP1.mLb.clN&atac-a_REP2.mLb.clN&atac-b_REP1.mLb.clN	26
+atac-a_REP2.mLb.clN&atac-b_REP2.mLb.clN	17
+atac-a_REP2.mLb.clN&atac-b_REP1.mLb.clN	13

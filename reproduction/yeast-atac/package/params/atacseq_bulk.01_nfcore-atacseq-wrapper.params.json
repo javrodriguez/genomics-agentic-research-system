@@ -1,0 +1,11 @@
+{
+  "aligner": "bwa",
+  "fasta": "<RERUN>/refs/genome.fa",
+  "gtf": "<RERUN>/refs/genes.gtf",
+  "input": "<RERUN>/inputs/atacseq_bulk.01_nfcore-atacseq-wrapper.samplesheet.csv",
+  "macs_gsize": 11624332,
+  "mito_name": "MT",
+  "narrow_peak": true,
+  "outdir": "<RERUN>/results/atacseq_bulk.01_nfcore-atacseq-wrapper",
+  "save_reference": true
+}

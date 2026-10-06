@@ -1,0 +1,10 @@
+stage	key	value	value_source
+atacseq_bulk.01_nfcore-atacseq-wrapper	aligner	"bwa"	recorded at run: manifest field params.aligner
+atacseq_bulk.01_nfcore-atacseq-wrapper	fasta	"<RERUN>/refs/genome.fa"	recorded at run: manifest field params.fasta, the path replaced by the re-run's own folder
+atacseq_bulk.01_nfcore-atacseq-wrapper	gtf	"<RERUN>/refs/genes.gtf"	recorded at run: manifest field params.gtf, the path replaced by the re-run's own folder
+atacseq_bulk.01_nfcore-atacseq-wrapper	input	"<RERUN>/inputs/atacseq_bulk.01_nfcore-atacseq-wrapper.samplesheet.csv"	recorded at run: manifest field params.input, the path replaced by the re-run's own folder
+atacseq_bulk.01_nfcore-atacseq-wrapper	macs_gsize	11624332	recorded at run: manifest field params.macs_gsize, typed as the run's params.yaml was read
+atacseq_bulk.01_nfcore-atacseq-wrapper	mito_name	"MT"	recorded at run: manifest field params.mito_name
+atacseq_bulk.01_nfcore-atacseq-wrapper	narrow_peak	true	recorded at run: manifest field params.narrow_peak, typed as the run's params.yaml was read
+atacseq_bulk.01_nfcore-atacseq-wrapper	outdir	"<RERUN>/results/atacseq_bulk.01_nfcore-atacseq-wrapper"	recorded at run: manifest field params.outdir, the path replaced by the re-run's own folder
+atacseq_bulk.01_nfcore-atacseq-wrapper	save_reference	true	recorded at run: manifest field params.save_reference, typed as the run's params.yaml was read

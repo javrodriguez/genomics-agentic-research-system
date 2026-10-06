@@ -1,0 +1,5 @@
+sample	Intergenic	TTS	exon	promoter-TSS
+atac-a_REP1	7	27	9	764
+atac-a_REP2	10	22	8	508
+atac-b_REP1	10	22	9	722
+atac-b_REP2	9	20	7	719

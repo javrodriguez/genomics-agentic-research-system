@@ -1,0 +1,544 @@
+# Methods
+
+nf-core/atacseq 2.1.2 was run through the GARS workflow nfcore-atacseq-wrapper against the R64-1-1 reference genome (annotation release `test-datasets atacseq branch, fetched 2026-09-30`) with the bwa aligner.
+The record for nf-core/atacseq names no agent model.
+Parameters, software versions and container images are listed below, or marked not recorded; every value traces to the run's records (Provenance).
+
+## Provenance
+
+The run manifest of workflow `nfcore-atacseq-wrapper` records: version `2.1.2`; pipeline commit `1a1dbe52ffbd82256c941a032b0e22abbd925b8a`; GARS wrapper `atacseq_bulk`; GARS commit `0f602ea0b991cd3c85f361fc625cec21cfd9dbc1`; template version `v0.10.0`; status `COMPLETE`.
+Its reference genome: build `R64-1-1`; annotation release `test-datasets atacseq branch, fetched 2026-09-30`; FASTA sha256 `c0b7305c230b550c3d8ccc692df52338afc7a297b43d965868c285b98aa64ae1`; GTF sha256 `3a1e64b8f290127562612b47d6014bc6e4c130399da3e06ad062b268fd6d08fb`.
+Its configuration sha256 is not published, since the file names local paths.
+Its thread count is `8`.
+Its exact submission: `reproducibility/commands.sh`, sha256 not published, since the file names local paths.
+Its agent model is `none`.
+Each workflow's parameters, random seeds, software versions and container images are listed below.
+
+### Parameters
+
+- `nfcore-atacseq-wrapper` parameter `aligner`: `bwa`.
+- `nfcore-atacseq-wrapper` parameter `fasta`: a path-like value, withheld.
+- `nfcore-atacseq-wrapper` parameter `gtf`: a path-like value, withheld.
+- `nfcore-atacseq-wrapper` parameter `input`: a path-like value, withheld.
+- `nfcore-atacseq-wrapper` parameter `macs_gsize`: `11624332`.
+- `nfcore-atacseq-wrapper` parameter `mito_name`: `MT`.
+- `nfcore-atacseq-wrapper` parameter `narrow_peak`: `true`.
+- `nfcore-atacseq-wrapper` parameter `outdir`: a path-like value, withheld.
+- `nfcore-atacseq-wrapper` parameter `save_reference`: `true`.
+- `nfcore-atacseq-wrapper` random seeds: `no-rng-in-code-path`.
+
+### Software used
+
+- GARS commit `0f602ea0b991cd3c85f361fc625cec21cfd9dbc1`, template version `v0.10.0` (workflow `nfcore-atacseq-wrapper`).
+- Workflow `nfcore-atacseq-wrapper` version `2.1.2`, pipeline commit `1a1dbe52ffbd82256c941a032b0e22abbd925b8a`.
+- `nfcore-atacseq-wrapper` software versions (file `run/results/pipeline_info/software_versions.yml`, sha256 `6a1a3a27b93047f2378932027ba77a953e6e6808338034ee8292fd1ac03e397c`):
+  - `BAMTOOLS_FILTER/bamtools`: `2.5.2`.
+  - `BAMTOOLS_FILTER/samtools`: `1.15.1`.
+  - `BAM_REMOVE_ORPHANS/samtools`: `1.15.1`.
+  - `BEDTOOLS_GENOMECOV/bedtools`: `2.30.0`.
+  - `BWA_INDEX/bwa`: `0.7.17-r1188`.
+  - `BWA_MEM/bwa`: `0.7.17-r1188`.
+  - `BWA_MEM/samtools`: `1.16.1`.
+  - `CUSTOM_DUMPSOFTWAREVERSIONS/python`: `3.11.0`.
+  - `CUSTOM_DUMPSOFTWAREVERSIONS/yaml`: `6.0`.
+  - `CUSTOM_GETCHROMSIZES/getchromsizes`: `1.16.1`.
+  - `DEEPTOOLS_COMPUTEMATRIX_REFERENCE_POINT/deeptools`: `3.5.1`.
+  - `DEEPTOOLS_COMPUTEMATRIX_SCALE_REGIONS/deeptools`: `3.5.1`.
+  - `DEEPTOOLS_PLOTHEATMAP/deeptools`: `3.5.1`.
+  - `DEEPTOOLS_PLOTPROFILE/deeptools`: `3.5.1`.
+  - `DESEQ2_QC/bioconductor-deseq2`: `1.28.0`.
+  - `DESEQ2_QC/r-base`: `4.0.3`.
+  - `FASTQC/fastqc`: `0.11.9`.
+  - `FRIP_SCORE/bedtools`: `2.30.0`.
+  - `FRIP_SCORE/samtools`: `1.15.1`.
+  - `GENOME_BLACKLIST_REGIONS/bedtools`: `2.30.0`.
+  - `GET_AUTOSOMES/python`: `3.8.3`.
+  - `GTF2BED/perl`: `5.26.2`.
+  - `HOMER_ANNOTATEPEAKS/homer`: `4.11`.
+  - `IGV/python`: `3.8.3`.
+  - `MACS2_CALLPEAK/macs2`: `2.2.7.1`.
+  - `MACS2_CONSENSUS/python`: `3.10.0`.
+  - `MACS2_CONSENSUS/r-base`: `4.1.1`.
+  - `MERGED_LIBRARY_ATAQV_ATAQV/ataqv`: `1.3.1`.
+  - `MERGED_LIBRARY_ATAQV_MKARV/ataqv`: `1.3.1`.
+  - `MERGED_LIBRARY_DEEPTOOLS_PLOTFINGERPRINT/deeptools`: `3.5.1`.
+  - `MERGED_LIBRARY_PICARD_COLLECTMULTIPLEMETRICS/picard`: `3.0.0`.
+  - `MULTIQC_CUSTOM_PEAKS/sed`: `4.7`.
+  - `PICARD_MARKDUPLICATES/picard`: `3.0.0`.
+  - `PICARD_MERGESAMFILES_LIBRARY/picard`: `3.0.0`.
+  - `PICARD_MERGESAMFILES_REPLICATE/picard`: `3.0.0`.
+  - `PLOT_HOMER_ANNOTATEPEAKS/r-base`: `4.0.3`.
+  - `PLOT_MACS2_QC/r-base`: `4.0.3`.
+  - `SAMPLESHEET_CHECK/python`: `3.8.3`.
+  - `SAMTOOLS_FLAGSTAT/samtools`: `1.17`.
+  - `SAMTOOLS_IDXSTATS/samtools`: `1.17`.
+  - `SAMTOOLS_INDEX/samtools`: `1.17`.
+  - `SAMTOOLS_SORT/samtools`: `1.17`.
+  - `SAMTOOLS_STATS/samtools`: `1.17`.
+  - `SUBREAD_FEATURECOUNTS/subread`: `2.0.1`.
+  - `TRIMGALORE/cutadapt`: `3.4`.
+  - `TRIMGALORE/trimgalore`: `0.6.7`.
+  - `TSS_EXTRACT/sed`: `4.7`.
+  - `UCSC_BEDGRAPHTOBIGWIG/ucsc`: `445`.
+  - `Workflow/Nextflow`: `26.04.6`.
+  - `Workflow/nf-core/atacseq`: `2.1.2`.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:INPUT_CHECK:SAMPLESHEET_CHECK`: image `quay.io/biocontainers/python:3.8.3`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:PREPARE_GENOME:CUSTOM_GETCHROMSIZES`: image `quay.io/biocontainers/samtools:1.16.1--h6899075_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:PREPARE_GENOME:GET_AUTOSOMES`: image `quay.io/biocontainers/python:3.8.3`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:PREPARE_GENOME:GTF2BED`: image `quay.io/biocontainers/perl:5.26.2`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:PREPARE_GENOME:BWA_INDEX`: image `quay.io/biocontainers/bwa:0.7.17--hed695b0_7`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:PREPARE_GENOME:GENOME_BLACKLIST_REGIONS`: image `quay.io/biocontainers/bedtools:2.30.0--hc088bd4_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_FASTQC_UMITOOLS_TRIMGALORE:FASTQC`: image `quay.io/biocontainers/fastqc:0.11.9--0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_FASTQC_UMITOOLS_TRIMGALORE:TRIMGALORE`: image `quay.io/biocontainers/trim-galore:0.6.7--hdfd78af_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_FASTQC_UMITOOLS_TRIMGALORE:TRIMGALORE`: image `quay.io/biocontainers/trim-galore:0.6.7--hdfd78af_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_FASTQC_UMITOOLS_TRIMGALORE:FASTQC`: image `quay.io/biocontainers/fastqc:0.11.9--0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_FASTQC_UMITOOLS_TRIMGALORE:FASTQC`: image `quay.io/biocontainers/fastqc:0.11.9--0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_FASTQC_UMITOOLS_TRIMGALORE:TRIMGALORE`: image `quay.io/biocontainers/trim-galore:0.6.7--hdfd78af_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_FASTQC_UMITOOLS_TRIMGALORE:FASTQC`: image `quay.io/biocontainers/fastqc:0.11.9--0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_FASTQC_UMITOOLS_TRIMGALORE:TRIMGALORE`: image `quay.io/biocontainers/trim-galore:0.6.7--hdfd78af_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:PREPARE_GENOME:TSS_EXTRACT`: image `quay.io/nf-core/ubuntu:20.04`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BWA_MEM`: image `quay.io/biocontainers/mulled-v2-fe8faa35dbf6dc65a0f7f5d4ea12e31a79f73e40:219b6c272b25e7e642ae3ff0bf0c5c81a5135ab4-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BWA_MEM`: image `quay.io/biocontainers/mulled-v2-fe8faa35dbf6dc65a0f7f5d4ea12e31a79f73e40:219b6c272b25e7e642ae3ff0bf0c5c81a5135ab4-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BWA_MEM`: image `quay.io/biocontainers/mulled-v2-fe8faa35dbf6dc65a0f7f5d4ea12e31a79f73e40:219b6c272b25e7e642ae3ff0bf0c5c81a5135ab4-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BWA_MEM`: image `quay.io/biocontainers/mulled-v2-fe8faa35dbf6dc65a0f7f5d4ea12e31a79f73e40:219b6c272b25e7e642ae3ff0bf0c5c81a5135ab4-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BAM_SORT_STATS_SAMTOOLS:SAMTOOLS_SORT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BAM_SORT_STATS_SAMTOOLS:SAMTOOLS_SORT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BAM_SORT_STATS_SAMTOOLS:SAMTOOLS_SORT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BAM_SORT_STATS_SAMTOOLS:SAMTOOLS_SORT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BAM_SORT_STATS_SAMTOOLS:SAMTOOLS_INDEX`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BAM_SORT_STATS_SAMTOOLS:SAMTOOLS_INDEX`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BAM_SORT_STATS_SAMTOOLS:SAMTOOLS_INDEX`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BAM_SORT_STATS_SAMTOOLS:SAMTOOLS_INDEX`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:PICARD_MERGESAMFILES_LIBRARY`: image `quay.io/biocontainers/picard:3.0.0--hdfd78af_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:PICARD_MERGESAMFILES_LIBRARY`: image `quay.io/biocontainers/picard:3.0.0--hdfd78af_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:PICARD_MERGESAMFILES_LIBRARY`: image `quay.io/biocontainers/picard:3.0.0--hdfd78af_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:PICARD_MERGESAMFILES_LIBRARY`: image `quay.io/biocontainers/picard:3.0.0--hdfd78af_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_IDXSTATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_FLAGSTAT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_STATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_FLAGSTAT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_IDXSTATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_FLAGSTAT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_IDXSTATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_STATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_IDXSTATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_FLAGSTAT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_STATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:FASTQ_ALIGN_BWA:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_STATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_MARKDUPLICATES_PICARD:PICARD_MARKDUPLICATES`: image `quay.io/biocontainers/picard:3.0.0--hdfd78af_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_MARKDUPLICATES_PICARD:PICARD_MARKDUPLICATES`: image `quay.io/biocontainers/picard:3.0.0--hdfd78af_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_MARKDUPLICATES_PICARD:PICARD_MARKDUPLICATES`: image `quay.io/biocontainers/picard:3.0.0--hdfd78af_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_MARKDUPLICATES_PICARD:PICARD_MARKDUPLICATES`: image `quay.io/biocontainers/picard:3.0.0--hdfd78af_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_MARKDUPLICATES_PICARD:SAMTOOLS_INDEX`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_MARKDUPLICATES_PICARD:SAMTOOLS_INDEX`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_MARKDUPLICATES_PICARD:SAMTOOLS_INDEX`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_MARKDUPLICATES_PICARD:SAMTOOLS_INDEX`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAMTOOLS_FILTER`: image `quay.io/biocontainers/mulled-v2-0560a8046fc82aa4338588eca29ff18edab2c5aa:5687a7da26983502d0a8a9a6b05ed727c740ddc4-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAMTOOLS_FILTER`: image `quay.io/biocontainers/mulled-v2-0560a8046fc82aa4338588eca29ff18edab2c5aa:5687a7da26983502d0a8a9a6b05ed727c740ddc4-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAMTOOLS_FILTER`: image `quay.io/biocontainers/mulled-v2-0560a8046fc82aa4338588eca29ff18edab2c5aa:5687a7da26983502d0a8a9a6b05ed727c740ddc4-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_IDXSTATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_FLAGSTAT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_FLAGSTAT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_IDXSTATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_STATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_STATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_FLAGSTAT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_FLAGSTAT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_IDXSTATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_IDXSTATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAMTOOLS_FILTER`: image `quay.io/biocontainers/mulled-v2-0560a8046fc82aa4338588eca29ff18edab2c5aa:5687a7da26983502d0a8a9a6b05ed727c740ddc4-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:SAMTOOLS_SORT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_STATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_STATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:SAMTOOLS_SORT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:SAMTOOLS_SORT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:SAMTOOLS_SORT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_REMOVE_ORPHANS`: image `quay.io/biocontainers/mulled-v2-57736af1eb98c01010848572c9fec9fff6ffaafd:402e865b8f6af2f3e58c6fc8d57127ff0144b2c7-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_REMOVE_ORPHANS`: image `quay.io/biocontainers/mulled-v2-57736af1eb98c01010848572c9fec9fff6ffaafd:402e865b8f6af2f3e58c6fc8d57127ff0144b2c7-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_REMOVE_ORPHANS`: image `quay.io/biocontainers/mulled-v2-57736af1eb98c01010848572c9fec9fff6ffaafd:402e865b8f6af2f3e58c6fc8d57127ff0144b2c7-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_REMOVE_ORPHANS`: image `quay.io/biocontainers/mulled-v2-57736af1eb98c01010848572c9fec9fff6ffaafd:402e865b8f6af2f3e58c6fc8d57127ff0144b2c7-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_SORT_STATS_SAMTOOLS:SAMTOOLS_SORT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_SORT_STATS_SAMTOOLS:SAMTOOLS_SORT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_SORT_STATS_SAMTOOLS:SAMTOOLS_SORT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_SORT_STATS_SAMTOOLS:SAMTOOLS_SORT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_SORT_STATS_SAMTOOLS:SAMTOOLS_INDEX`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_SORT_STATS_SAMTOOLS:SAMTOOLS_INDEX`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:PICARD_MERGESAMFILES_REPLICATE`: image `quay.io/biocontainers/picard:3.0.0--hdfd78af_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_PICARD_COLLECTMULTIPLEMETRICS`: image `quay.io/biocontainers/picard:3.0.0--hdfd78af_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_SORT_STATS_SAMTOOLS:SAMTOOLS_INDEX`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_SORT_STATS_SAMTOOLS:SAMTOOLS_INDEX`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:PICARD_MERGESAMFILES_REPLICATE`: image `quay.io/biocontainers/picard:3.0.0--hdfd78af_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_PICARD_COLLECTMULTIPLEMETRICS`: image `quay.io/biocontainers/picard:3.0.0--hdfd78af_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_PICARD_COLLECTMULTIPLEMETRICS`: image `quay.io/biocontainers/picard:3.0.0--hdfd78af_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_PICARD_COLLECTMULTIPLEMETRICS`: image `quay.io/biocontainers/picard:3.0.0--hdfd78af_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_MARKDUPLICATES_PICARD:PICARD_MARKDUPLICATES`: image `quay.io/biocontainers/picard:3.0.0--hdfd78af_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CALL_ANNOTATE_PEAKS:MACS2_CALLPEAK`: image `quay.io/biocontainers/macs2:2.2.7.1--py38h4a8c8d9_3`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CALL_ANNOTATE_PEAKS:MACS2_CALLPEAK`: image `quay.io/biocontainers/macs2:2.2.7.1--py38h4a8c8d9_3`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CALL_ANNOTATE_PEAKS:MACS2_CALLPEAK`: image `quay.io/biocontainers/macs2:2.2.7.1--py38h4a8c8d9_3`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_DEEPTOOLS_PLOTFINGERPRINT`: image `quay.io/biocontainers/deeptools:3.5.1--py_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CALL_ANNOTATE_PEAKS:MACS2_CALLPEAK`: image `quay.io/biocontainers/macs2:2.2.7.1--py38h4a8c8d9_3`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_STATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_IDXSTATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_FLAGSTAT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_FLAGSTAT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_DEEPTOOLS_PLOTFINGERPRINT`: image `quay.io/biocontainers/deeptools:3.5.1--py_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_DEEPTOOLS_PLOTFINGERPRINT`: image `quay.io/biocontainers/deeptools:3.5.1--py_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_STATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_IDXSTATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_FLAGSTAT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_IDXSTATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_STATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_STATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_IDXSTATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_FILTER_BAM:BAM_SORT_STATS_SAMTOOLS:BAM_STATS_SAMTOOLS:SAMTOOLS_FLAGSTAT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CALL_ANNOTATE_PEAKS:FRIP_SCORE`: image `quay.io/biocontainers/mulled-v2-8186960447c5cb2faa697666dc1e6d919ad23f3e:3127fcae6b6bdaf8181e21a26ae61231030a9fcb-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CALL_ANNOTATE_PEAKS:FRIP_SCORE`: image `quay.io/biocontainers/mulled-v2-8186960447c5cb2faa697666dc1e6d919ad23f3e:3127fcae6b6bdaf8181e21a26ae61231030a9fcb-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CALL_ANNOTATE_PEAKS:FRIP_SCORE`: image `quay.io/biocontainers/mulled-v2-8186960447c5cb2faa697666dc1e6d919ad23f3e:3127fcae6b6bdaf8181e21a26ae61231030a9fcb-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CALL_ANNOTATE_PEAKS:HOMER_ANNOTATEPEAKS`: image `quay.io/biocontainers/homer:4.11--pl526hc9558a2_3`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_MARKDUPLICATES_PICARD:PICARD_MARKDUPLICATES`: image `quay.io/biocontainers/picard:3.0.0--hdfd78af_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_MARKDUPLICATES_PICARD:SAMTOOLS_INDEX`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_DEEPTOOLS_PLOTFINGERPRINT`: image `quay.io/biocontainers/deeptools:3.5.1--py_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_CALL_ANNOTATE_PEAKS:MACS2_CALLPEAK`: image `quay.io/biocontainers/macs2:2.2.7.1--py38h4a8c8d9_3`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_ATAQV_ATAQV`: image `quay.io/biocontainers/ataqv:1.3.1--py310ha155cf9_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_ATAQV_ATAQV`: image `quay.io/biocontainers/ataqv:1.3.1--py310ha155cf9_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CALL_ANNOTATE_PEAKS:HOMER_ANNOTATEPEAKS`: image `quay.io/biocontainers/homer:4.11--pl526hc9558a2_3`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CALL_ANNOTATE_PEAKS:FRIP_SCORE`: image `quay.io/biocontainers/mulled-v2-8186960447c5cb2faa697666dc1e6d919ad23f3e:3127fcae6b6bdaf8181e21a26ae61231030a9fcb-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_ATAQV_ATAQV`: image `quay.io/biocontainers/ataqv:1.3.1--py310ha155cf9_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CALL_ANNOTATE_PEAKS:HOMER_ANNOTATEPEAKS`: image `quay.io/biocontainers/homer:4.11--pl526hc9558a2_3`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CALL_ANNOTATE_PEAKS:HOMER_ANNOTATEPEAKS`: image `quay.io/biocontainers/homer:4.11--pl526hc9558a2_3`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_ATAQV_ATAQV`: image `quay.io/biocontainers/ataqv:1.3.1--py310ha155cf9_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BAM_TO_BIGWIG:BEDTOOLS_GENOMECOV`: image `quay.io/biocontainers/bedtools:2.30.0--hc088bd4_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BAM_TO_BIGWIG:BEDTOOLS_GENOMECOV`: image `quay.io/biocontainers/bedtools:2.30.0--hc088bd4_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_CALL_ANNOTATE_PEAKS:FRIP_SCORE`: image `quay.io/biocontainers/mulled-v2-8186960447c5cb2faa697666dc1e6d919ad23f3e:3127fcae6b6bdaf8181e21a26ae61231030a9fcb-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_CALL_ANNOTATE_PEAKS:HOMER_ANNOTATEPEAKS`: image `quay.io/biocontainers/homer:4.11--pl526hc9558a2_3`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CALL_ANNOTATE_PEAKS:PLOT_MACS2_QC`: image `quay.io/biocontainers/mulled-v2-ad9dd5f398966bf899ae05f8e7c54d0fb10cdfa7:05678da05b8e5a7a5130e90a9f9a6c585b965afa-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BAM_TO_BIGWIG:BEDTOOLS_GENOMECOV`: image `quay.io/biocontainers/bedtools:2.30.0--hc088bd4_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BAM_TO_BIGWIG:BEDTOOLS_GENOMECOV`: image `quay.io/biocontainers/bedtools:2.30.0--hc088bd4_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_MARKDUPLICATES_PICARD:SAMTOOLS_INDEX`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CONSENSUS_PEAKS:MACS2_CONSENSUS`: image `quay.io/biocontainers/mulled-v2-2f48cc59b03027e31ead6d383fe1b8057785dd24:5d182f583f4696f4c4d9f3be93052811b383341f-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_CALL_ANNOTATE_PEAKS:MACS2_CALLPEAK`: image `quay.io/biocontainers/macs2:2.2.7.1--py38h4a8c8d9_3`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CALL_ANNOTATE_PEAKS:MULTIQC_CUSTOM_PEAKS`: image `quay.io/nf-core/ubuntu:20.04`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CALL_ANNOTATE_PEAKS:MULTIQC_CUSTOM_PEAKS`: image `quay.io/nf-core/ubuntu:20.04`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BAM_TO_BIGWIG:UCSC_BEDGRAPHTOBIGWIG`: image `quay.io/biocontainers/ucsc-bedgraphtobigwig:445--h954228d_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_ATAQV_MKARV`: image `quay.io/biocontainers/ataqv:1.3.1--py310ha155cf9_1`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CALL_ANNOTATE_PEAKS:MULTIQC_CUSTOM_PEAKS`: image `quay.io/nf-core/ubuntu:20.04`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CALL_ANNOTATE_PEAKS:MULTIQC_CUSTOM_PEAKS`: image `quay.io/nf-core/ubuntu:20.04`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CALL_ANNOTATE_PEAKS:PLOT_HOMER_ANNOTATEPEAKS`: image `quay.io/biocontainers/mulled-v2-ad9dd5f398966bf899ae05f8e7c54d0fb10cdfa7:05678da05b8e5a7a5130e90a9f9a6c585b965afa-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BAM_TO_BIGWIG:UCSC_BEDGRAPHTOBIGWIG`: image `quay.io/biocontainers/ucsc-bedgraphtobigwig:445--h954228d_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_IDXSTATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BAM_TO_BIGWIG:UCSC_BEDGRAPHTOBIGWIG`: image `quay.io/biocontainers/ucsc-bedgraphtobigwig:445--h954228d_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_FLAGSTAT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_FLAGSTAT`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BAM_TO_BIGWIG:UCSC_BEDGRAPHTOBIGWIG`: image `quay.io/biocontainers/ucsc-bedgraphtobigwig:445--h954228d_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_CALL_ANNOTATE_PEAKS:PLOT_MACS2_QC`: image `quay.io/biocontainers/mulled-v2-ad9dd5f398966bf899ae05f8e7c54d0fb10cdfa7:05678da05b8e5a7a5130e90a9f9a6c585b965afa-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_IDXSTATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_CALL_ANNOTATE_PEAKS:FRIP_SCORE`: image `quay.io/biocontainers/mulled-v2-8186960447c5cb2faa697666dc1e6d919ad23f3e:3127fcae6b6bdaf8181e21a26ae61231030a9fcb-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_STATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_MARKDUPLICATES_PICARD:BAM_STATS_SAMTOOLS:SAMTOOLS_STATS`: image `quay.io/biocontainers/samtools:1.17--h00cdaf9_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CONSENSUS_PEAKS:SUBREAD_FEATURECOUNTS`: image `quay.io/biocontainers/subread:2.0.1--hed695b0_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_CONSENSUS_PEAKS:MACS2_CONSENSUS`: image `quay.io/biocontainers/mulled-v2-2f48cc59b03027e31ead6d383fe1b8057785dd24:5d182f583f4696f4c4d9f3be93052811b383341f-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CONSENSUS_PEAKS:HOMER_ANNOTATEPEAKS`: image `quay.io/biocontainers/homer:4.11--pl526hc9558a2_3`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_CALL_ANNOTATE_PEAKS:MULTIQC_CUSTOM_PEAKS`: image `quay.io/nf-core/ubuntu:20.04`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_CALL_ANNOTATE_PEAKS:HOMER_ANNOTATEPEAKS`: image `quay.io/biocontainers/homer:4.11--pl526hc9558a2_3`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BIGWIG_PLOT_DEEPTOOLS:DEEPTOOLS_COMPUTEMATRIX_REFERENCE_POINT`: image `quay.io/biocontainers/deeptools:3.5.1--py_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BIGWIG_PLOT_DEEPTOOLS:DEEPTOOLS_COMPUTEMATRIX_SCALE_REGIONS`: image `quay.io/biocontainers/deeptools:3.5.1--py_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BIGWIG_PLOT_DEEPTOOLS:DEEPTOOLS_COMPUTEMATRIX_REFERENCE_POINT`: image `quay.io/biocontainers/deeptools:3.5.1--py_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_BAM_TO_BIGWIG:BEDTOOLS_GENOMECOV`: image `quay.io/biocontainers/bedtools:2.30.0--hc088bd4_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BIGWIG_PLOT_DEEPTOOLS:DEEPTOOLS_COMPUTEMATRIX_SCALE_REGIONS`: image `quay.io/biocontainers/deeptools:3.5.1--py_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BIGWIG_PLOT_DEEPTOOLS:DEEPTOOLS_COMPUTEMATRIX_SCALE_REGIONS`: image `quay.io/biocontainers/deeptools:3.5.1--py_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_BAM_TO_BIGWIG:BEDTOOLS_GENOMECOV`: image `quay.io/biocontainers/bedtools:2.30.0--hc088bd4_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_CALL_ANNOTATE_PEAKS:MULTIQC_CUSTOM_PEAKS`: image `quay.io/nf-core/ubuntu:20.04`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_CONSENSUS_PEAKS:HOMER_ANNOTATEPEAKS`: image `quay.io/biocontainers/homer:4.11--pl526hc9558a2_3`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BIGWIG_PLOT_DEEPTOOLS:DEEPTOOLS_COMPUTEMATRIX_SCALE_REGIONS`: image `quay.io/biocontainers/deeptools:3.5.1--py_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BIGWIG_PLOT_DEEPTOOLS:DEEPTOOLS_COMPUTEMATRIX_REFERENCE_POINT`: image `quay.io/biocontainers/deeptools:3.5.1--py_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_CONSENSUS_PEAKS:SUBREAD_FEATURECOUNTS`: image `quay.io/biocontainers/subread:2.0.1--hed695b0_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BIGWIG_PLOT_DEEPTOOLS:DEEPTOOLS_PLOTHEATMAP`: image `quay.io/biocontainers/deeptools:3.5.1--py_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BIGWIG_PLOT_DEEPTOOLS:DEEPTOOLS_COMPUTEMATRIX_REFERENCE_POINT`: image `quay.io/biocontainers/deeptools:3.5.1--py_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_CONSENSUS_PEAKS:DESEQ2_QC`: image `quay.io/biocontainers/mulled-v2-8849acf39a43cdd6c839a369a74c0adc823e2f91:ab110436faf952a33575c64dd74615a84011450b-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_CALL_ANNOTATE_PEAKS:PLOT_HOMER_ANNOTATEPEAKS`: image `quay.io/biocontainers/mulled-v2-ad9dd5f398966bf899ae05f8e7c54d0fb10cdfa7:05678da05b8e5a7a5130e90a9f9a6c585b965afa-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_BAM_TO_BIGWIG:UCSC_BEDGRAPHTOBIGWIG`: image `quay.io/biocontainers/ucsc-bedgraphtobigwig:445--h954228d_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_BAM_TO_BIGWIG:UCSC_BEDGRAPHTOBIGWIG`: image `quay.io/biocontainers/ucsc-bedgraphtobigwig:445--h954228d_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BIGWIG_PLOT_DEEPTOOLS:DEEPTOOLS_PLOTPROFILE`: image `quay.io/biocontainers/deeptools:3.5.1--py_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BIGWIG_PLOT_DEEPTOOLS:DEEPTOOLS_PLOTPROFILE`: image `quay.io/biocontainers/deeptools:3.5.1--py_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BIGWIG_PLOT_DEEPTOOLS:DEEPTOOLS_PLOTHEATMAP`: image `quay.io/biocontainers/deeptools:3.5.1--py_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BIGWIG_PLOT_DEEPTOOLS:DEEPTOOLS_PLOTPROFILE`: image `quay.io/biocontainers/deeptools:3.5.1--py_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BIGWIG_PLOT_DEEPTOOLS:DEEPTOOLS_PLOTHEATMAP`: image `quay.io/biocontainers/deeptools:3.5.1--py_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BIGWIG_PLOT_DEEPTOOLS:DEEPTOOLS_PLOTPROFILE`: image `quay.io/biocontainers/deeptools:3.5.1--py_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_LIBRARY_BIGWIG_PLOT_DEEPTOOLS:DEEPTOOLS_PLOTHEATMAP`: image `quay.io/biocontainers/deeptools:3.5.1--py_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:IGV`: image `quay.io/biocontainers/python:3.8.3`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MERGED_REPLICATE_CONSENSUS_PEAKS:DESEQ2_QC`: image `quay.io/biocontainers/mulled-v2-8849acf39a43cdd6c839a369a74c0adc823e2f91:ab110436faf952a33575c64dd74615a84011450b-0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:CUSTOM_DUMPSOFTWAREVERSIONS`: image `quay.io/biocontainers/multiqc:1.14--pyhdfd78af_0`, digest not recorded, image file sha256 not recorded.
+- `nfcore-atacseq-wrapper` container for process `NFCORE_ATACSEQ:ATACSEQ:MULTIQC`: image `quay.io/biocontainers/multiqc:1.13--pyhdfd78af_0`, digest not recorded, image file sha256 not recorded.
+
+### Citation
+
+Cite GARS at commit `0f602ea0b991cd3c85f361fc625cec21cfd9dbc1`; the GARS repository's CITATION.cff file gives the preferred citation.
+
+### Records read
+
+- manifest 1: sha256 not published, since the record holds values this page does not print.
+
+### Sources
+
+- line 3: prose-run: `manifest1:/predicate_facts/wrapper_kind manifest1:/software_versions/0/versions#49.key manifest1:/software_versions/0/versions#49.value manifest1:/predicate_facts/status manifest1:/workflow_name manifest1:/reference/comparison manifest1:/reference/build manifest1:/params/gtf? manifest1:/reference/annotation_release manifest1:/params/aligner`.
+- line 4: prose-agent-none: `manifest1:/predicate_facts/wrapper_kind manifest1:/software_versions/0/versions#49.key manifest1:/agent_model manifest1:/model_steps`.
+- line 5: prose-closing.
+- line 9: workflow: `manifest1:/workflow_name manifest1:/workflow_version manifest1:/pipeline_commit manifest1:/wrapper manifest1:/gars_commit manifest1:/template_version manifest1:/predicate_facts/status`.
+- line 10: reference: `manifest1:/reference/build manifest1:/reference/annotation_release manifest1:/reference/fasta_sha256 manifest1:/reference/gtf_sha256`.
+- line 11: config: `manifest1:/config_sha256`.
+- line 12: threads: `manifest1:/threads`.
+- line 13: command: `manifest1:/command/path manifest1:/command/sha256`.
+- line 14: agent: `manifest1:/agent_model`.
+- line 15: pointer.
+- line 19: param: `manifest1:/workflow_name manifest1:/params#0.key manifest1:/params#0.value`.
+- line 20: param: `manifest1:/workflow_name manifest1:/params#1.key manifest1:/params#1.value`.
+- line 21: param: `manifest1:/workflow_name manifest1:/params#2.key manifest1:/params#2.value`.
+- line 22: param: `manifest1:/workflow_name manifest1:/params#3.key manifest1:/params#3.value`.
+- line 23: param: `manifest1:/workflow_name manifest1:/params#4.key manifest1:/params#4.value`.
+- line 24: param: `manifest1:/workflow_name manifest1:/params#5.key manifest1:/params#5.value`.
+- line 25: param: `manifest1:/workflow_name manifest1:/params#6.key manifest1:/params#6.value`.
+- line 26: param: `manifest1:/workflow_name manifest1:/params#7.key manifest1:/params#7.value`.
+- line 27: param: `manifest1:/workflow_name manifest1:/params#8.key manifest1:/params#8.value`.
+- line 28: seeds-text: `manifest1:/workflow_name manifest1:/random_seeds`.
+- line 32: gars: `manifest1:/gars_commit manifest1:/template_version manifest1:/workflow_name`.
+- line 33: workflow-version: `manifest1:/workflow_name manifest1:/workflow_version manifest1:/pipeline_commit`.
+- line 34: versions-file: `manifest1:/workflow_name manifest1:/software_versions/0/path manifest1:/software_versions/0/sha256`.
+- line 35: version: `manifest1:/software_versions/0/versions#0.key manifest1:/software_versions/0/versions#0.value`.
+- line 36: version: `manifest1:/software_versions/0/versions#1.key manifest1:/software_versions/0/versions#1.value`.
+- line 37: version: `manifest1:/software_versions/0/versions#2.key manifest1:/software_versions/0/versions#2.value`.
+- line 38: version: `manifest1:/software_versions/0/versions#3.key manifest1:/software_versions/0/versions#3.value`.
+- line 39: version: `manifest1:/software_versions/0/versions#4.key manifest1:/software_versions/0/versions#4.value`.
+- line 40: version: `manifest1:/software_versions/0/versions#5.key manifest1:/software_versions/0/versions#5.value`.
+- line 41: version: `manifest1:/software_versions/0/versions#6.key manifest1:/software_versions/0/versions#6.value`.
+- line 42: version: `manifest1:/software_versions/0/versions#7.key manifest1:/software_versions/0/versions#7.value`.
+- line 43: version: `manifest1:/software_versions/0/versions#8.key manifest1:/software_versions/0/versions#8.value`.
+- line 44: version: `manifest1:/software_versions/0/versions#9.key manifest1:/software_versions/0/versions#9.value`.
+- line 45: version: `manifest1:/software_versions/0/versions#10.key manifest1:/software_versions/0/versions#10.value`.
+- line 46: version: `manifest1:/software_versions/0/versions#11.key manifest1:/software_versions/0/versions#11.value`.
+- line 47: version: `manifest1:/software_versions/0/versions#12.key manifest1:/software_versions/0/versions#12.value`.
+- line 48: version: `manifest1:/software_versions/0/versions#13.key manifest1:/software_versions/0/versions#13.value`.
+- line 49: version: `manifest1:/software_versions/0/versions#14.key manifest1:/software_versions/0/versions#14.value`.
+- line 50: version: `manifest1:/software_versions/0/versions#15.key manifest1:/software_versions/0/versions#15.value`.
+- line 51: version: `manifest1:/software_versions/0/versions#16.key manifest1:/software_versions/0/versions#16.value`.
+- line 52: version: `manifest1:/software_versions/0/versions#17.key manifest1:/software_versions/0/versions#17.value`.
+- line 53: version: `manifest1:/software_versions/0/versions#18.key manifest1:/software_versions/0/versions#18.value`.
+- line 54: version: `manifest1:/software_versions/0/versions#19.key manifest1:/software_versions/0/versions#19.value`.
+- line 55: version: `manifest1:/software_versions/0/versions#20.key manifest1:/software_versions/0/versions#20.value`.
+- line 56: version: `manifest1:/software_versions/0/versions#21.key manifest1:/software_versions/0/versions#21.value`.
+- line 57: version: `manifest1:/software_versions/0/versions#22.key manifest1:/software_versions/0/versions#22.value`.
+- line 58: version: `manifest1:/software_versions/0/versions#23.key manifest1:/software_versions/0/versions#23.value`.
+- line 59: version: `manifest1:/software_versions/0/versions#24.key manifest1:/software_versions/0/versions#24.value`.
+- line 60: version: `manifest1:/software_versions/0/versions#25.key manifest1:/software_versions/0/versions#25.value`.
+- line 61: version: `manifest1:/software_versions/0/versions#26.key manifest1:/software_versions/0/versions#26.value`.
+- line 62: version: `manifest1:/software_versions/0/versions#27.key manifest1:/software_versions/0/versions#27.value`.
+- line 63: version: `manifest1:/software_versions/0/versions#28.key manifest1:/software_versions/0/versions#28.value`.
+- line 64: version: `manifest1:/software_versions/0/versions#29.key manifest1:/software_versions/0/versions#29.value`.
+- line 65: version: `manifest1:/software_versions/0/versions#30.key manifest1:/software_versions/0/versions#30.value`.
+- line 66: version: `manifest1:/software_versions/0/versions#31.key manifest1:/software_versions/0/versions#31.value`.
+- line 67: version: `manifest1:/software_versions/0/versions#32.key manifest1:/software_versions/0/versions#32.value`.
+- line 68: version: `manifest1:/software_versions/0/versions#33.key manifest1:/software_versions/0/versions#33.value`.
+- line 69: version: `manifest1:/software_versions/0/versions#34.key manifest1:/software_versions/0/versions#34.value`.
+- line 70: version: `manifest1:/software_versions/0/versions#35.key manifest1:/software_versions/0/versions#35.value`.
+- line 71: version: `manifest1:/software_versions/0/versions#36.key manifest1:/software_versions/0/versions#36.value`.
+- line 72: version: `manifest1:/software_versions/0/versions#37.key manifest1:/software_versions/0/versions#37.value`.
+- line 73: version: `manifest1:/software_versions/0/versions#38.key manifest1:/software_versions/0/versions#38.value`.
+- line 74: version: `manifest1:/software_versions/0/versions#39.key manifest1:/software_versions/0/versions#39.value`.
+- line 75: version: `manifest1:/software_versions/0/versions#40.key manifest1:/software_versions/0/versions#40.value`.
+- line 76: version: `manifest1:/software_versions/0/versions#41.key manifest1:/software_versions/0/versions#41.value`.
+- line 77: version: `manifest1:/software_versions/0/versions#42.key manifest1:/software_versions/0/versions#42.value`.
+- line 78: version: `manifest1:/software_versions/0/versions#43.key manifest1:/software_versions/0/versions#43.value`.
+- line 79: version: `manifest1:/software_versions/0/versions#44.key manifest1:/software_versions/0/versions#44.value`.
+- line 80: version: `manifest1:/software_versions/0/versions#45.key manifest1:/software_versions/0/versions#45.value`.
+- line 81: version: `manifest1:/software_versions/0/versions#46.key manifest1:/software_versions/0/versions#46.value`.
+- line 82: version: `manifest1:/software_versions/0/versions#47.key manifest1:/software_versions/0/versions#47.value`.
+- line 83: version: `manifest1:/software_versions/0/versions#48.key manifest1:/software_versions/0/versions#48.value`.
+- line 84: version: `manifest1:/software_versions/0/versions#49.key manifest1:/software_versions/0/versions#49.value`.
+- line 85: container: `manifest1:/workflow_name manifest1:/containers/0/process manifest1:/containers/0/image manifest1:/containers/0/digest manifest1:/containers/0/image_sha256`.
+- line 86: container: `manifest1:/workflow_name manifest1:/containers/1/process manifest1:/containers/1/image manifest1:/containers/1/digest manifest1:/containers/1/image_sha256`.
+- line 87: container: `manifest1:/workflow_name manifest1:/containers/2/process manifest1:/containers/2/image manifest1:/containers/2/digest manifest1:/containers/2/image_sha256`.
+- line 88: container: `manifest1:/workflow_name manifest1:/containers/3/process manifest1:/containers/3/image manifest1:/containers/3/digest manifest1:/containers/3/image_sha256`.
+- line 89: container: `manifest1:/workflow_name manifest1:/containers/4/process manifest1:/containers/4/image manifest1:/containers/4/digest manifest1:/containers/4/image_sha256`.
+- line 90: container: `manifest1:/workflow_name manifest1:/containers/5/process manifest1:/containers/5/image manifest1:/containers/5/digest manifest1:/containers/5/image_sha256`.
+- line 91: container: `manifest1:/workflow_name manifest1:/containers/6/process manifest1:/containers/6/image manifest1:/containers/6/digest manifest1:/containers/6/image_sha256`.
+- line 92: container: `manifest1:/workflow_name manifest1:/containers/7/process manifest1:/containers/7/image manifest1:/containers/7/digest manifest1:/containers/7/image_sha256`.
+- line 93: container: `manifest1:/workflow_name manifest1:/containers/8/process manifest1:/containers/8/image manifest1:/containers/8/digest manifest1:/containers/8/image_sha256`.
+- line 94: container: `manifest1:/workflow_name manifest1:/containers/9/process manifest1:/containers/9/image manifest1:/containers/9/digest manifest1:/containers/9/image_sha256`.
+- line 95: container: `manifest1:/workflow_name manifest1:/containers/10/process manifest1:/containers/10/image manifest1:/containers/10/digest manifest1:/containers/10/image_sha256`.
+- line 96: container: `manifest1:/workflow_name manifest1:/containers/11/process manifest1:/containers/11/image manifest1:/containers/11/digest manifest1:/containers/11/image_sha256`.
+- line 97: container: `manifest1:/workflow_name manifest1:/containers/12/process manifest1:/containers/12/image manifest1:/containers/12/digest manifest1:/containers/12/image_sha256`.
+- line 98: container: `manifest1:/workflow_name manifest1:/containers/13/process manifest1:/containers/13/image manifest1:/containers/13/digest manifest1:/containers/13/image_sha256`.
+- line 99: container: `manifest1:/workflow_name manifest1:/containers/14/process manifest1:/containers/14/image manifest1:/containers/14/digest manifest1:/containers/14/image_sha256`.
+- line 100: container: `manifest1:/workflow_name manifest1:/containers/15/process manifest1:/containers/15/image manifest1:/containers/15/digest manifest1:/containers/15/image_sha256`.
+- line 101: container: `manifest1:/workflow_name manifest1:/containers/16/process manifest1:/containers/16/image manifest1:/containers/16/digest manifest1:/containers/16/image_sha256`.
+- line 102: container: `manifest1:/workflow_name manifest1:/containers/17/process manifest1:/containers/17/image manifest1:/containers/17/digest manifest1:/containers/17/image_sha256`.
+- line 103: container: `manifest1:/workflow_name manifest1:/containers/18/process manifest1:/containers/18/image manifest1:/containers/18/digest manifest1:/containers/18/image_sha256`.
+- line 104: container: `manifest1:/workflow_name manifest1:/containers/19/process manifest1:/containers/19/image manifest1:/containers/19/digest manifest1:/containers/19/image_sha256`.
+- line 105: container: `manifest1:/workflow_name manifest1:/containers/20/process manifest1:/containers/20/image manifest1:/containers/20/digest manifest1:/containers/20/image_sha256`.
+- line 106: container: `manifest1:/workflow_name manifest1:/containers/21/process manifest1:/containers/21/image manifest1:/containers/21/digest manifest1:/containers/21/image_sha256`.
+- line 107: container: `manifest1:/workflow_name manifest1:/containers/22/process manifest1:/containers/22/image manifest1:/containers/22/digest manifest1:/containers/22/image_sha256`.
+- line 108: container: `manifest1:/workflow_name manifest1:/containers/23/process manifest1:/containers/23/image manifest1:/containers/23/digest manifest1:/containers/23/image_sha256`.
+- line 109: container: `manifest1:/workflow_name manifest1:/containers/24/process manifest1:/containers/24/image manifest1:/containers/24/digest manifest1:/containers/24/image_sha256`.
+- line 110: container: `manifest1:/workflow_name manifest1:/containers/25/process manifest1:/containers/25/image manifest1:/containers/25/digest manifest1:/containers/25/image_sha256`.
+- line 111: container: `manifest1:/workflow_name manifest1:/containers/26/process manifest1:/containers/26/image manifest1:/containers/26/digest manifest1:/containers/26/image_sha256`.
+- line 112: container: `manifest1:/workflow_name manifest1:/containers/27/process manifest1:/containers/27/image manifest1:/containers/27/digest manifest1:/containers/27/image_sha256`.
+- line 113: container: `manifest1:/workflow_name manifest1:/containers/28/process manifest1:/containers/28/image manifest1:/containers/28/digest manifest1:/containers/28/image_sha256`.
+- line 114: container: `manifest1:/workflow_name manifest1:/containers/29/process manifest1:/containers/29/image manifest1:/containers/29/digest manifest1:/containers/29/image_sha256`.
+- line 115: container: `manifest1:/workflow_name manifest1:/containers/30/process manifest1:/containers/30/image manifest1:/containers/30/digest manifest1:/containers/30/image_sha256`.
+- line 116: container: `manifest1:/workflow_name manifest1:/containers/31/process manifest1:/containers/31/image manifest1:/containers/31/digest manifest1:/containers/31/image_sha256`.
+- line 117: container: `manifest1:/workflow_name manifest1:/containers/32/process manifest1:/containers/32/image manifest1:/containers/32/digest manifest1:/containers/32/image_sha256`.
+- line 118: container: `manifest1:/workflow_name manifest1:/containers/33/process manifest1:/containers/33/image manifest1:/containers/33/digest manifest1:/containers/33/image_sha256`.
+- line 119: container: `manifest1:/workflow_name manifest1:/containers/34/process manifest1:/containers/34/image manifest1:/containers/34/digest manifest1:/containers/34/image_sha256`.
+- line 120: container: `manifest1:/workflow_name manifest1:/containers/35/process manifest1:/containers/35/image manifest1:/containers/35/digest manifest1:/containers/35/image_sha256`.
+- line 121: container: `manifest1:/workflow_name manifest1:/containers/36/process manifest1:/containers/36/image manifest1:/containers/36/digest manifest1:/containers/36/image_sha256`.
+- line 122: container: `manifest1:/workflow_name manifest1:/containers/37/process manifest1:/containers/37/image manifest1:/containers/37/digest manifest1:/containers/37/image_sha256`.
+- line 123: container: `manifest1:/workflow_name manifest1:/containers/38/process manifest1:/containers/38/image manifest1:/containers/38/digest manifest1:/containers/38/image_sha256`.
+- line 124: container: `manifest1:/workflow_name manifest1:/containers/39/process manifest1:/containers/39/image manifest1:/containers/39/digest manifest1:/containers/39/image_sha256`.
+- line 125: container: `manifest1:/workflow_name manifest1:/containers/40/process manifest1:/containers/40/image manifest1:/containers/40/digest manifest1:/containers/40/image_sha256`.
+- line 126: container: `manifest1:/workflow_name manifest1:/containers/41/process manifest1:/containers/41/image manifest1:/containers/41/digest manifest1:/containers/41/image_sha256`.
+- line 127: container: `manifest1:/workflow_name manifest1:/containers/42/process manifest1:/containers/42/image manifest1:/containers/42/digest manifest1:/containers/42/image_sha256`.
+- line 128: container: `manifest1:/workflow_name manifest1:/containers/43/process manifest1:/containers/43/image manifest1:/containers/43/digest manifest1:/containers/43/image_sha256`.
+- line 129: container: `manifest1:/workflow_name manifest1:/containers/44/process manifest1:/containers/44/image manifest1:/containers/44/digest manifest1:/containers/44/image_sha256`.
+- line 130: container: `manifest1:/workflow_name manifest1:/containers/45/process manifest1:/containers/45/image manifest1:/containers/45/digest manifest1:/containers/45/image_sha256`.
+- line 131: container: `manifest1:/workflow_name manifest1:/containers/46/process manifest1:/containers/46/image manifest1:/containers/46/digest manifest1:/containers/46/image_sha256`.
+- line 132: container: `manifest1:/workflow_name manifest1:/containers/47/process manifest1:/containers/47/image manifest1:/containers/47/digest manifest1:/containers/47/image_sha256`.
+- line 133: container: `manifest1:/workflow_name manifest1:/containers/48/process manifest1:/containers/48/image manifest1:/containers/48/digest manifest1:/containers/48/image_sha256`.
+- line 134: container: `manifest1:/workflow_name manifest1:/containers/49/process manifest1:/containers/49/image manifest1:/containers/49/digest manifest1:/containers/49/image_sha256`.
+- line 135: container: `manifest1:/workflow_name manifest1:/containers/50/process manifest1:/containers/50/image manifest1:/containers/50/digest manifest1:/containers/50/image_sha256`.
+- line 136: container: `manifest1:/workflow_name manifest1:/containers/51/process manifest1:/containers/51/image manifest1:/containers/51/digest manifest1:/containers/51/image_sha256`.
+- line 137: container: `manifest1:/workflow_name manifest1:/containers/52/process manifest1:/containers/52/image manifest1:/containers/52/digest manifest1:/containers/52/image_sha256`.
+- line 138: container: `manifest1:/workflow_name manifest1:/containers/53/process manifest1:/containers/53/image manifest1:/containers/53/digest manifest1:/containers/53/image_sha256`.
+- line 139: container: `manifest1:/workflow_name manifest1:/containers/54/process manifest1:/containers/54/image manifest1:/containers/54/digest manifest1:/containers/54/image_sha256`.
+- line 140: container: `manifest1:/workflow_name manifest1:/containers/55/process manifest1:/containers/55/image manifest1:/containers/55/digest manifest1:/containers/55/image_sha256`.
+- line 141: container: `manifest1:/workflow_name manifest1:/containers/56/process manifest1:/containers/56/image manifest1:/containers/56/digest manifest1:/containers/56/image_sha256`.
+- line 142: container: `manifest1:/workflow_name manifest1:/containers/57/process manifest1:/containers/57/image manifest1:/containers/57/digest manifest1:/containers/57/image_sha256`.
+- line 143: container: `manifest1:/workflow_name manifest1:/containers/58/process manifest1:/containers/58/image manifest1:/containers/58/digest manifest1:/containers/58/image_sha256`.
+- line 144: container: `manifest1:/workflow_name manifest1:/containers/59/process manifest1:/containers/59/image manifest1:/containers/59/digest manifest1:/containers/59/image_sha256`.
+- line 145: container: `manifest1:/workflow_name manifest1:/containers/60/process manifest1:/containers/60/image manifest1:/containers/60/digest manifest1:/containers/60/image_sha256`.
+- line 146: container: `manifest1:/workflow_name manifest1:/containers/61/process manifest1:/containers/61/image manifest1:/containers/61/digest manifest1:/containers/61/image_sha256`.
+- line 147: container: `manifest1:/workflow_name manifest1:/containers/62/process manifest1:/containers/62/image manifest1:/containers/62/digest manifest1:/containers/62/image_sha256`.
+- line 148: container: `manifest1:/workflow_name manifest1:/containers/63/process manifest1:/containers/63/image manifest1:/containers/63/digest manifest1:/containers/63/image_sha256`.
+- line 149: container: `manifest1:/workflow_name manifest1:/containers/64/process manifest1:/containers/64/image manifest1:/containers/64/digest manifest1:/containers/64/image_sha256`.
+- line 150: container: `manifest1:/workflow_name manifest1:/containers/65/process manifest1:/containers/65/image manifest1:/containers/65/digest manifest1:/containers/65/image_sha256`.
+- line 151: container: `manifest1:/workflow_name manifest1:/containers/66/process manifest1:/containers/66/image manifest1:/containers/66/digest manifest1:/containers/66/image_sha256`.
+- line 152: container: `manifest1:/workflow_name manifest1:/containers/67/process manifest1:/containers/67/image manifest1:/containers/67/digest manifest1:/containers/67/image_sha256`.
+- line 153: container: `manifest1:/workflow_name manifest1:/containers/68/process manifest1:/containers/68/image manifest1:/containers/68/digest manifest1:/containers/68/image_sha256`.
+- line 154: container: `manifest1:/workflow_name manifest1:/containers/69/process manifest1:/containers/69/image manifest1:/containers/69/digest manifest1:/containers/69/image_sha256`.
+- line 155: container: `manifest1:/workflow_name manifest1:/containers/70/process manifest1:/containers/70/image manifest1:/containers/70/digest manifest1:/containers/70/image_sha256`.
+- line 156: container: `manifest1:/workflow_name manifest1:/containers/71/process manifest1:/containers/71/image manifest1:/containers/71/digest manifest1:/containers/71/image_sha256`.
+- line 157: container: `manifest1:/workflow_name manifest1:/containers/72/process manifest1:/containers/72/image manifest1:/containers/72/digest manifest1:/containers/72/image_sha256`.
+- line 158: container: `manifest1:/workflow_name manifest1:/containers/73/process manifest1:/containers/73/image manifest1:/containers/73/digest manifest1:/containers/73/image_sha256`.
+- line 159: container: `manifest1:/workflow_name manifest1:/containers/74/process manifest1:/containers/74/image manifest1:/containers/74/digest manifest1:/containers/74/image_sha256`.
+- line 160: container: `manifest1:/workflow_name manifest1:/containers/75/process manifest1:/containers/75/image manifest1:/containers/75/digest manifest1:/containers/75/image_sha256`.
+- line 161: container: `manifest1:/workflow_name manifest1:/containers/76/process manifest1:/containers/76/image manifest1:/containers/76/digest manifest1:/containers/76/image_sha256`.
+- line 162: container: `manifest1:/workflow_name manifest1:/containers/77/process manifest1:/containers/77/image manifest1:/containers/77/digest manifest1:/containers/77/image_sha256`.
+- line 163: container: `manifest1:/workflow_name manifest1:/containers/78/process manifest1:/containers/78/image manifest1:/containers/78/digest manifest1:/containers/78/image_sha256`.
+- line 164: container: `manifest1:/workflow_name manifest1:/containers/79/process manifest1:/containers/79/image manifest1:/containers/79/digest manifest1:/containers/79/image_sha256`.
+- line 165: container: `manifest1:/workflow_name manifest1:/containers/80/process manifest1:/containers/80/image manifest1:/containers/80/digest manifest1:/containers/80/image_sha256`.
+- line 166: container: `manifest1:/workflow_name manifest1:/containers/81/process manifest1:/containers/81/image manifest1:/containers/81/digest manifest1:/containers/81/image_sha256`.
+- line 167: container: `manifest1:/workflow_name manifest1:/containers/82/process manifest1:/containers/82/image manifest1:/containers/82/digest manifest1:/containers/82/image_sha256`.
+- line 168: container: `manifest1:/workflow_name manifest1:/containers/83/process manifest1:/containers/83/image manifest1:/containers/83/digest manifest1:/containers/83/image_sha256`.
+- line 169: container: `manifest1:/workflow_name manifest1:/containers/84/process manifest1:/containers/84/image manifest1:/containers/84/digest manifest1:/containers/84/image_sha256`.
+- line 170: container: `manifest1:/workflow_name manifest1:/containers/85/process manifest1:/containers/85/image manifest1:/containers/85/digest manifest1:/containers/85/image_sha256`.
+- line 171: container: `manifest1:/workflow_name manifest1:/containers/86/process manifest1:/containers/86/image manifest1:/containers/86/digest manifest1:/containers/86/image_sha256`.
+- line 172: container: `manifest1:/workflow_name manifest1:/containers/87/process manifest1:/containers/87/image manifest1:/containers/87/digest manifest1:/containers/87/image_sha256`.
+- line 173: container: `manifest1:/workflow_name manifest1:/containers/88/process manifest1:/containers/88/image manifest1:/containers/88/digest manifest1:/containers/88/image_sha256`.
+- line 174: container: `manifest1:/workflow_name manifest1:/containers/89/process manifest1:/containers/89/image manifest1:/containers/89/digest manifest1:/containers/89/image_sha256`.
+- line 175: container: `manifest1:/workflow_name manifest1:/containers/90/process manifest1:/containers/90/image manifest1:/containers/90/digest manifest1:/containers/90/image_sha256`.
+- line 176: container: `manifest1:/workflow_name manifest1:/containers/91/process manifest1:/containers/91/image manifest1:/containers/91/digest manifest1:/containers/91/image_sha256`.
+- line 177: container: `manifest1:/workflow_name manifest1:/containers/92/process manifest1:/containers/92/image manifest1:/containers/92/digest manifest1:/containers/92/image_sha256`.
+- line 178: container: `manifest1:/workflow_name manifest1:/containers/93/process manifest1:/containers/93/image manifest1:/containers/93/digest manifest1:/containers/93/image_sha256`.
+- line 179: container: `manifest1:/workflow_name manifest1:/containers/94/process manifest1:/containers/94/image manifest1:/containers/94/digest manifest1:/containers/94/image_sha256`.
+- line 180: container: `manifest1:/workflow_name manifest1:/containers/95/process manifest1:/containers/95/image manifest1:/containers/95/digest manifest1:/containers/95/image_sha256`.
+- line 181: container: `manifest1:/workflow_name manifest1:/containers/96/process manifest1:/containers/96/image manifest1:/containers/96/digest manifest1:/containers/96/image_sha256`.
+- line 182: container: `manifest1:/workflow_name manifest1:/containers/97/process manifest1:/containers/97/image manifest1:/containers/97/digest manifest1:/containers/97/image_sha256`.
+- line 183: container: `manifest1:/workflow_name manifest1:/containers/98/process manifest1:/containers/98/image manifest1:/containers/98/digest manifest1:/containers/98/image_sha256`.
+- line 184: container: `manifest1:/workflow_name manifest1:/containers/99/process manifest1:/containers/99/image manifest1:/containers/99/digest manifest1:/containers/99/image_sha256`.
+- line 185: container: `manifest1:/workflow_name manifest1:/containers/100/process manifest1:/containers/100/image manifest1:/containers/100/digest manifest1:/containers/100/image_sha256`.
+- line 186: container: `manifest1:/workflow_name manifest1:/containers/101/process manifest1:/containers/101/image manifest1:/containers/101/digest manifest1:/containers/101/image_sha256`.
+- line 187: container: `manifest1:/workflow_name manifest1:/containers/102/process manifest1:/containers/102/image manifest1:/containers/102/digest manifest1:/containers/102/image_sha256`.
+- line 188: container: `manifest1:/workflow_name manifest1:/containers/103/process manifest1:/containers/103/image manifest1:/containers/103/digest manifest1:/containers/103/image_sha256`.
+- line 189: container: `manifest1:/workflow_name manifest1:/containers/104/process manifest1:/containers/104/image manifest1:/containers/104/digest manifest1:/containers/104/image_sha256`.
+- line 190: container: `manifest1:/workflow_name manifest1:/containers/105/process manifest1:/containers/105/image manifest1:/containers/105/digest manifest1:/containers/105/image_sha256`.
+- line 191: container: `manifest1:/workflow_name manifest1:/containers/106/process manifest1:/containers/106/image manifest1:/containers/106/digest manifest1:/containers/106/image_sha256`.
+- line 192: container: `manifest1:/workflow_name manifest1:/containers/107/process manifest1:/containers/107/image manifest1:/containers/107/digest manifest1:/containers/107/image_sha256`.
+- line 193: container: `manifest1:/workflow_name manifest1:/containers/108/process manifest1:/containers/108/image manifest1:/containers/108/digest manifest1:/containers/108/image_sha256`.
+- line 194: container: `manifest1:/workflow_name manifest1:/containers/109/process manifest1:/containers/109/image manifest1:/containers/109/digest manifest1:/containers/109/image_sha256`.
+- line 195: container: `manifest1:/workflow_name manifest1:/containers/110/process manifest1:/containers/110/image manifest1:/containers/110/digest manifest1:/containers/110/image_sha256`.
+- line 196: container: `manifest1:/workflow_name manifest1:/containers/111/process manifest1:/containers/111/image manifest1:/containers/111/digest manifest1:/containers/111/image_sha256`.
+- line 197: container: `manifest1:/workflow_name manifest1:/containers/112/process manifest1:/containers/112/image manifest1:/containers/112/digest manifest1:/containers/112/image_sha256`.
+- line 198: container: `manifest1:/workflow_name manifest1:/containers/113/process manifest1:/containers/113/image manifest1:/containers/113/digest manifest1:/containers/113/image_sha256`.
+- line 199: container: `manifest1:/workflow_name manifest1:/containers/114/process manifest1:/containers/114/image manifest1:/containers/114/digest manifest1:/containers/114/image_sha256`.
+- line 200: container: `manifest1:/workflow_name manifest1:/containers/115/process manifest1:/containers/115/image manifest1:/containers/115/digest manifest1:/containers/115/image_sha256`.
+- line 201: container: `manifest1:/workflow_name manifest1:/containers/116/process manifest1:/containers/116/image manifest1:/containers/116/digest manifest1:/containers/116/image_sha256`.
+- line 202: container: `manifest1:/workflow_name manifest1:/containers/117/process manifest1:/containers/117/image manifest1:/containers/117/digest manifest1:/containers/117/image_sha256`.
+- line 203: container: `manifest1:/workflow_name manifest1:/containers/118/process manifest1:/containers/118/image manifest1:/containers/118/digest manifest1:/containers/118/image_sha256`.
+- line 204: container: `manifest1:/workflow_name manifest1:/containers/119/process manifest1:/containers/119/image manifest1:/containers/119/digest manifest1:/containers/119/image_sha256`.
+- line 205: container: `manifest1:/workflow_name manifest1:/containers/120/process manifest1:/containers/120/image manifest1:/containers/120/digest manifest1:/containers/120/image_sha256`.
+- line 206: container: `manifest1:/workflow_name manifest1:/containers/121/process manifest1:/containers/121/image manifest1:/containers/121/digest manifest1:/containers/121/image_sha256`.
+- line 207: container: `manifest1:/workflow_name manifest1:/containers/122/process manifest1:/containers/122/image manifest1:/containers/122/digest manifest1:/containers/122/image_sha256`.
+- line 208: container: `manifest1:/workflow_name manifest1:/containers/123/process manifest1:/containers/123/image manifest1:/containers/123/digest manifest1:/containers/123/image_sha256`.
+- line 209: container: `manifest1:/workflow_name manifest1:/containers/124/process manifest1:/containers/124/image manifest1:/containers/124/digest manifest1:/containers/124/image_sha256`.
+- line 210: container: `manifest1:/workflow_name manifest1:/containers/125/process manifest1:/containers/125/image manifest1:/containers/125/digest manifest1:/containers/125/image_sha256`.
+- line 211: container: `manifest1:/workflow_name manifest1:/containers/126/process manifest1:/containers/126/image manifest1:/containers/126/digest manifest1:/containers/126/image_sha256`.
+- line 212: container: `manifest1:/workflow_name manifest1:/containers/127/process manifest1:/containers/127/image manifest1:/containers/127/digest manifest1:/containers/127/image_sha256`.
+- line 213: container: `manifest1:/workflow_name manifest1:/containers/128/process manifest1:/containers/128/image manifest1:/containers/128/digest manifest1:/containers/128/image_sha256`.
+- line 214: container: `manifest1:/workflow_name manifest1:/containers/129/process manifest1:/containers/129/image manifest1:/containers/129/digest manifest1:/containers/129/image_sha256`.
+- line 215: container: `manifest1:/workflow_name manifest1:/containers/130/process manifest1:/containers/130/image manifest1:/containers/130/digest manifest1:/containers/130/image_sha256`.
+- line 216: container: `manifest1:/workflow_name manifest1:/containers/131/process manifest1:/containers/131/image manifest1:/containers/131/digest manifest1:/containers/131/image_sha256`.
+- line 217: container: `manifest1:/workflow_name manifest1:/containers/132/process manifest1:/containers/132/image manifest1:/containers/132/digest manifest1:/containers/132/image_sha256`.
+- line 218: container: `manifest1:/workflow_name manifest1:/containers/133/process manifest1:/containers/133/image manifest1:/containers/133/digest manifest1:/containers/133/image_sha256`.
+- line 219: container: `manifest1:/workflow_name manifest1:/containers/134/process manifest1:/containers/134/image manifest1:/containers/134/digest manifest1:/containers/134/image_sha256`.
+- line 220: container: `manifest1:/workflow_name manifest1:/containers/135/process manifest1:/containers/135/image manifest1:/containers/135/digest manifest1:/containers/135/image_sha256`.
+- line 221: container: `manifest1:/workflow_name manifest1:/containers/136/process manifest1:/containers/136/image manifest1:/containers/136/digest manifest1:/containers/136/image_sha256`.
+- line 222: container: `manifest1:/workflow_name manifest1:/containers/137/process manifest1:/containers/137/image manifest1:/containers/137/digest manifest1:/containers/137/image_sha256`.
+- line 223: container: `manifest1:/workflow_name manifest1:/containers/138/process manifest1:/containers/138/image manifest1:/containers/138/digest manifest1:/containers/138/image_sha256`.
+- line 224: container: `manifest1:/workflow_name manifest1:/containers/139/process manifest1:/containers/139/image manifest1:/containers/139/digest manifest1:/containers/139/image_sha256`.
+- line 225: container: `manifest1:/workflow_name manifest1:/containers/140/process manifest1:/containers/140/image manifest1:/containers/140/digest manifest1:/containers/140/image_sha256`.
+- line 226: container: `manifest1:/workflow_name manifest1:/containers/141/process manifest1:/containers/141/image manifest1:/containers/141/digest manifest1:/containers/141/image_sha256`.
+- line 227: container: `manifest1:/workflow_name manifest1:/containers/142/process manifest1:/containers/142/image manifest1:/containers/142/digest manifest1:/containers/142/image_sha256`.
+- line 228: container: `manifest1:/workflow_name manifest1:/containers/143/process manifest1:/containers/143/image manifest1:/containers/143/digest manifest1:/containers/143/image_sha256`.
+- line 229: container: `manifest1:/workflow_name manifest1:/containers/144/process manifest1:/containers/144/image manifest1:/containers/144/digest manifest1:/containers/144/image_sha256`.
+- line 230: container: `manifest1:/workflow_name manifest1:/containers/145/process manifest1:/containers/145/image manifest1:/containers/145/digest manifest1:/containers/145/image_sha256`.
+- line 231: container: `manifest1:/workflow_name manifest1:/containers/146/process manifest1:/containers/146/image manifest1:/containers/146/digest manifest1:/containers/146/image_sha256`.
+- line 232: container: `manifest1:/workflow_name manifest1:/containers/147/process manifest1:/containers/147/image manifest1:/containers/147/digest manifest1:/containers/147/image_sha256`.
+- line 233: container: `manifest1:/workflow_name manifest1:/containers/148/process manifest1:/containers/148/image manifest1:/containers/148/digest manifest1:/containers/148/image_sha256`.
+- line 234: container: `manifest1:/workflow_name manifest1:/containers/149/process manifest1:/containers/149/image manifest1:/containers/149/digest manifest1:/containers/149/image_sha256`.
+- line 235: container: `manifest1:/workflow_name manifest1:/containers/150/process manifest1:/containers/150/image manifest1:/containers/150/digest manifest1:/containers/150/image_sha256`.
+- line 236: container: `manifest1:/workflow_name manifest1:/containers/151/process manifest1:/containers/151/image manifest1:/containers/151/digest manifest1:/containers/151/image_sha256`.
+- line 237: container: `manifest1:/workflow_name manifest1:/containers/152/process manifest1:/containers/152/image manifest1:/containers/152/digest manifest1:/containers/152/image_sha256`.
+- line 238: container: `manifest1:/workflow_name manifest1:/containers/153/process manifest1:/containers/153/image manifest1:/containers/153/digest manifest1:/containers/153/image_sha256`.
+- line 239: container: `manifest1:/workflow_name manifest1:/containers/154/process manifest1:/containers/154/image manifest1:/containers/154/digest manifest1:/containers/154/image_sha256`.
+- line 240: container: `manifest1:/workflow_name manifest1:/containers/155/process manifest1:/containers/155/image manifest1:/containers/155/digest manifest1:/containers/155/image_sha256`.
+- line 241: container: `manifest1:/workflow_name manifest1:/containers/156/process manifest1:/containers/156/image manifest1:/containers/156/digest manifest1:/containers/156/image_sha256`.
+- line 242: container: `manifest1:/workflow_name manifest1:/containers/157/process manifest1:/containers/157/image manifest1:/containers/157/digest manifest1:/containers/157/image_sha256`.
+- line 243: container: `manifest1:/workflow_name manifest1:/containers/158/process manifest1:/containers/158/image manifest1:/containers/158/digest manifest1:/containers/158/image_sha256`.
+- line 244: container: `manifest1:/workflow_name manifest1:/containers/159/process manifest1:/containers/159/image manifest1:/containers/159/digest manifest1:/containers/159/image_sha256`.
+- line 245: container: `manifest1:/workflow_name manifest1:/containers/160/process manifest1:/containers/160/image manifest1:/containers/160/digest manifest1:/containers/160/image_sha256`.
+- line 246: container: `manifest1:/workflow_name manifest1:/containers/161/process manifest1:/containers/161/image manifest1:/containers/161/digest manifest1:/containers/161/image_sha256`.
+- line 247: container: `manifest1:/workflow_name manifest1:/containers/162/process manifest1:/containers/162/image manifest1:/containers/162/digest manifest1:/containers/162/image_sha256`.
+- line 248: container: `manifest1:/workflow_name manifest1:/containers/163/process manifest1:/containers/163/image manifest1:/containers/163/digest manifest1:/containers/163/image_sha256`.
+- line 249: container: `manifest1:/workflow_name manifest1:/containers/164/process manifest1:/containers/164/image manifest1:/containers/164/digest manifest1:/containers/164/image_sha256`.
+- line 250: container: `manifest1:/workflow_name manifest1:/containers/165/process manifest1:/containers/165/image manifest1:/containers/165/digest manifest1:/containers/165/image_sha256`.
+- line 251: container: `manifest1:/workflow_name manifest1:/containers/166/process manifest1:/containers/166/image manifest1:/containers/166/digest manifest1:/containers/166/image_sha256`.
+- line 252: container: `manifest1:/workflow_name manifest1:/containers/167/process manifest1:/containers/167/image manifest1:/containers/167/digest manifest1:/containers/167/image_sha256`.
+- line 253: container: `manifest1:/workflow_name manifest1:/containers/168/process manifest1:/containers/168/image manifest1:/containers/168/digest manifest1:/containers/168/image_sha256`.
+- line 254: container: `manifest1:/workflow_name manifest1:/containers/169/process manifest1:/containers/169/image manifest1:/containers/169/digest manifest1:/containers/169/image_sha256`.
+- line 255: container: `manifest1:/workflow_name manifest1:/containers/170/process manifest1:/containers/170/image manifest1:/containers/170/digest manifest1:/containers/170/image_sha256`.
+- line 256: container: `manifest1:/workflow_name manifest1:/containers/171/process manifest1:/containers/171/image manifest1:/containers/171/digest manifest1:/containers/171/image_sha256`.
+- line 257: container: `manifest1:/workflow_name manifest1:/containers/172/process manifest1:/containers/172/image manifest1:/containers/172/digest manifest1:/containers/172/image_sha256`.
+- line 258: container: `manifest1:/workflow_name manifest1:/containers/173/process manifest1:/containers/173/image manifest1:/containers/173/digest manifest1:/containers/173/image_sha256`.
+- line 259: container: `manifest1:/workflow_name manifest1:/containers/174/process manifest1:/containers/174/image manifest1:/containers/174/digest manifest1:/containers/174/image_sha256`.
+- line 260: container: `manifest1:/workflow_name manifest1:/containers/175/process manifest1:/containers/175/image manifest1:/containers/175/digest manifest1:/containers/175/image_sha256`.
+- line 261: container: `manifest1:/workflow_name manifest1:/containers/176/process manifest1:/containers/176/image manifest1:/containers/176/digest manifest1:/containers/176/image_sha256`.
+- line 262: container: `manifest1:/workflow_name manifest1:/containers/177/process manifest1:/containers/177/image manifest1:/containers/177/digest manifest1:/containers/177/image_sha256`.
+- line 263: container: `manifest1:/workflow_name manifest1:/containers/178/process manifest1:/containers/178/image manifest1:/containers/178/digest manifest1:/containers/178/image_sha256`.
+- line 264: container: `manifest1:/workflow_name manifest1:/containers/179/process manifest1:/containers/179/image manifest1:/containers/179/digest manifest1:/containers/179/image_sha256`.
+- line 265: container: `manifest1:/workflow_name manifest1:/containers/180/process manifest1:/containers/180/image manifest1:/containers/180/digest manifest1:/containers/180/image_sha256`.
+- line 266: container: `manifest1:/workflow_name manifest1:/containers/181/process manifest1:/containers/181/image manifest1:/containers/181/digest manifest1:/containers/181/image_sha256`.
+- line 267: container: `manifest1:/workflow_name manifest1:/containers/182/process manifest1:/containers/182/image manifest1:/containers/182/digest manifest1:/containers/182/image_sha256`.
+- line 268: container: `manifest1:/workflow_name manifest1:/containers/183/process manifest1:/containers/183/image manifest1:/containers/183/digest manifest1:/containers/183/image_sha256`.
+- line 269: container: `manifest1:/workflow_name manifest1:/containers/184/process manifest1:/containers/184/image manifest1:/containers/184/digest manifest1:/containers/184/image_sha256`.
+- line 270: container: `manifest1:/workflow_name manifest1:/containers/185/process manifest1:/containers/185/image manifest1:/containers/185/digest manifest1:/containers/185/image_sha256`.
+- line 271: container: `manifest1:/workflow_name manifest1:/containers/186/process manifest1:/containers/186/image manifest1:/containers/186/digest manifest1:/containers/186/image_sha256`.
+- line 275: citation: `manifest1:/gars_commit`.
+- line 279: record-unpublished: `manifest1:withheld`.
