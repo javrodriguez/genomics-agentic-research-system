@@ -264,6 +264,97 @@ class TestTurns(unittest.TestCase):
             return out
         with mock.patch.object(aa, "harness_records", any_turn):
             self.assertTrue(aa.harness_records([silent], pin=PIN, box=BOX)["ledger"]["first_turn_started"])
+        with mock.patch.object(aa, "harness_records", any_turn):
+            self.assertNotEqual(first_turn_problems(), [])
+
+        def timeout_starts(turns, *, pin, box):   # 3fcab58d's refinement, reverted by W1B2-1
+            out = real(turns, pin=pin, box=box)
+            out["ledger"]["first_turn_started"] = (any(t.agent_output for t in turns)
+                                                   or any(t.end_reason == aa.END_TIMED_OUT for t in turns))
+            return out
+        with mock.patch.object(aa, "harness_records", timeout_starts):
+            self.assertIn("a silent timed-out turn started the agent's first turn", first_turn_problems())
+
+    def test_first_turn_rule(self):
+        """W1B2-1: the agent's first turn starts only with completed agent output, a timed-out turn included."""
+        self.assertEqual(first_turn_problems(), [])
+
+
+def first_turn_problems() -> list[str]:
+    """W1B-5 and W1B2-1 (glitch-f3's correction, 6 Oct 2026): `first_turn_started` is exactly "some turn produced
+    completed agent output", whatever the turns' ends."""
+    p = []
+    silent_error = turn(exit_code=1, end_reason=aa.END_ERROR, agent_output=False)
+    silent_timeout = turn(exit_code=124, end_reason=aa.END_TIMED_OUT, agent_output=False)
+    output_timeout = turn(exit_code=124, end_reason=aa.END_TIMED_OUT, agent_output=True)
+    cases = (([silent_error], False, "a silent error turn"),
+             ([silent_timeout], False, "a silent timed-out turn"),
+             ([silent_error, silent_timeout], False, "two silent turns"),
+             ([output_timeout], True, "a timed-out turn with output"),
+             ([turn(), silent_timeout], True, "an output turn, then a silent timeout"),
+             ([], False, "no turn"))
+    for turns, want, name in cases:
+        got = aa.harness_records(turns, pin=PIN, box=BOX)["ledger"]["first_turn_started"]
+        if got is not want:
+            p.append(f"{name} started the agent's first turn" if got else f"{name} did not start the agent's first turn")
+    return p
+
+
+# W1B2-4: the three harness-side records an adapter could forget, each a required keyword.
+REQUIRED_KW = ("counters", "init", "api_errors")
+
+
+def full_turn_kw(**kw) -> dict:
+    """Every TurnResult keyword, explicitly."""
+    base = dict(exit_code=0, text=SECRET_TEXT, stream_path=None, end_reason=aa.END_TURN, init=dict(PIN),
+                api_errors=[], counters={"oom_kill_delta": 0, "pids_max_delta": 0}, started_at=1.0, ended_at=2.0,
+                agent_output=True)
+    base.update(kw)
+    return base
+
+
+def omission_problems() -> list[str]:
+    """Each required keyword whose omission did NOT raise a TypeError naming it (W1B2-4: an adapter that omits
+    counters would make an out-of-memory kill route harness-error, a re-run, instead of aborted)."""
+    p = []
+    for name in REQUIRED_KW:
+        kw = full_turn_kw()
+        del kw[name]
+        try:
+            aa.TurnResult(**kw)
+        except TypeError as e:
+            if f"`{name}` is a required keyword" not in str(e):
+                p.append(f"{name} omitted: TypeError for another reason ({e})")
+            continue
+        except Exception as e:  # noqa: BLE001
+            p.append(f"{name} omitted: {type(e).__name__} ({e})")
+            continue
+        p.append(f"{name} omitted: accepted")
+    return p
+
+
+class TestRequiredKeywords(unittest.TestCase):
+    """W1B2-4: counters, init and api_errors are required keywords; None stays a legal explicit init."""
+
+    def test_omission_raises(self):
+        self.assertEqual(omission_problems(), [])
+
+    def test_explicit_values(self):
+        self.assertIsNone(aa.TurnResult(**full_turn_kw(init=None)).init)
+        self.assertEqual(aa.TurnResult(**full_turn_kw(api_errors=[])).api_errors, [])
+        for bad in (dict(api_errors=None), dict(counters=None), dict(api_errors={"status": 500}),
+                    dict(api_errors=[{"status": 500, "type": "x"}]), dict(api_errors=["500"])):
+            with self.assertRaises(ValueError, msg=str(bad)):
+                aa.TurnResult(**full_turn_kw(**bad))
+
+    def test_omission_check_can_fail(self):
+        real_init = aa.TurnResult.__init__
+
+        def defaulting(self, *args, **kw):   # the pre-fold dataclass: counters defaulted to no rise
+            kw.setdefault("counters", {"oom_kill_delta": 0, "pids_max_delta": 0})
+            real_init(self, *args, **kw)
+        with mock.patch.object(aa.TurnResult, "__init__", defaulting):
+            self.assertIn("counters omitted: accepted", omission_problems())
 
 
 API_ERROR_FIELDS_WANT = ("status", "type", "text")   # glitch-f3's ruling, typed once here

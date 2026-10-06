@@ -127,6 +127,12 @@ REACH = {
 ALL = dict(SCENARIOS, **{"reach " + k: v for k, v in REACH.items()})
 # A take that consistently ran another registered model (its init events agree with that pin).
 ALL["other-model"] = ([_turn(init=dict(OTHER_PIN)), _turn(init=dict(OTHER_PIN))], _box())
+# W1B2-2: on every terminal state, one of the ids the plan makes events arrives as a checker reason instead
+# (routing refuses it: it is not an operator reason), the agent having reached the fake token and email.
+EVENT_IDS = tuple(routing.load_table()["checker_reasons_become_events"]["ids"])
+CHECKER_EVENT = {f"{case} + {eid}": (turns, dict(box, checker_reasons=[eid], outside_reach_events=0))
+                 for case, (turns, box) in REACH.items() for eid in EVENT_IDS}
+ALL.update({"event " + k: v for k, v in CHECKER_EVENT.items()})
 
 
 def scenario_state(name: str, table: dict) -> str:
@@ -186,7 +192,7 @@ class FakeDriver:
     "half" (raises after creating a container it names) or "none" (raises, nothing created)."""
 
     def __init__(self, world, plan=None, finish_after=None, pins=None, remove_fails=(), launch_fails=None,
-                 no_ids=False, records_edit=None, wait_s=WAIT_S):
+                 no_ids=False, records_edit=None, wait_s=WAIT_S, start_attempts=None):
         self.world, self.plan, self.finish_after = world, plan or {}, finish_after or {}
         self.pins, self.remove_fails, self.launch_fails = pins or {}, set(remove_fails), launch_fails or {}
         self.no_ids, self.records_edit, self.wait_s = no_ids, records_edit or {}, wait_s
@@ -195,7 +201,8 @@ class FakeDriver:
         self.pattern_removals = 0
         self.in_flight = self.max_in_flight = 0
         self._lock = threading.Lock()
-        self._attempts = collections.Counter()
+        # Drives this slot had before a restart, so `plan` keeps counting the slot's drives across it.
+        self._attempts = collections.Counter(start_attempts or {})
         self._ids = itertools.count(1)
         self._barriers = {}
         self._done = collections.defaultdict(threading.Event)
@@ -269,12 +276,17 @@ class FakeRepo:
     (and a deep copy taken at that moment), and the fake committed record: the outcome's keys
     plus the take's text, masked when the outcome says mask."""
 
-    def __init__(self, world):
+    def __init__(self, world, prior=None):
         self.world = world
         self._busy = threading.Lock()
         self.overlaps = 0
         self.passed = []        # (slot, attempt, the exact object, a deep copy at commit time)
         self.committed = {}     # (slot, attempt) -> the fake committed record
+        self.prior = copy.deepcopy(list(prior or []))   # outcomes committed before a restart
+
+    def history(self):
+        """W1B2-3: every outcome committed so far, in commit order, as the repo holds them."""
+        return copy.deepcopy(self.prior + [snap for _, _, _, snap in self.passed])
 
     def _one_commit(self, *e):
         if not self._busy.acquire(blocking=False):
@@ -322,6 +334,135 @@ def run(n, plan=None, serial=False, cls=batch.Batch, table=None, row_list=None, 
     b = cls(d, r, win, table=table or test_table(), serial=serial, **(batch_kw or {}))
     out = b.run(row_list or rows(n))
     return b, out, w, d, r, win
+
+
+def restart(prev_repo, row_list, plan=None, start_attempts=None, cls=batch.Batch, table=None, serial=False,
+            **driver_kw):
+    """W1B2-3: a new process after a stop. A new driver, window and loop; the repo holds every outcome
+    committed before (its history), and the loop is handed nothing else."""
+    w = World()
+    d = FakeDriver(w, plan, start_attempts=start_attempts, **driver_kw)
+    r, win = FakeRepo(w, prior=prev_repo.history()), FakeWindow(w)
+    b = cls(d, r, win, table=table or test_table(), serial=serial)
+    out = b.run(row_list)
+    return b, out, w, d, r, win
+
+
+def history_problems(history) -> list[str]:
+    """No (slot, attempt) committed twice, and no re-run spent past a cap, across every run (W1B2-3)."""
+    p = []
+    t = test_table()
+    pairs = collections.Counter((o["slot"], o["attempt"]) for o in history)
+    p += [f"slot {s} attempt {a} committed {n} times" for (s, a), n in sorted(pairs.items()) if n > 1]
+    for route in (labels4.REHEARSAL, labels4.HARNESS_ERROR, labels4.PAUSE):
+        cap = t["caps"][route]
+        cells = collections.Counter(o["half_cell"] for o in history if o["state"] == route and o["rerun"])
+        slots = collections.Counter(o["slot"] for o in history if o["state"] == route and o["rerun"])
+        if cap["reruns_per_half_cell"] is not None:
+            p += [f"{route}: {n} re-runs in half-cell {hc}, cap {cap['reruns_per_half_cell']}"
+                  for hc, n in cells.items() if n > cap["reruns_per_half_cell"]]
+        if cap["reruns_per_slot"] is not None:
+            p += [f"{route}: {n} re-runs of slot {s}, cap {cap['reruns_per_slot']}"
+                  for s, n in slots.items() if n > cap["reruns_per_slot"]]
+    finals = [o["slot"] for o in history if o["final"]]
+    p += [f"slot {s} has {n} final outcomes" for s, n in collections.Counter(finals).items() if n > 1]
+    return p
+
+
+def restart_problems(cls=batch.Batch) -> list[str]:
+    """W1B2-3: stop, restart, and no extra re-run. Each case stops a first run, then restarts on the repo's
+    history alone; the restarted loop must continue the slots' attempts and spend no re-run its caps forbid."""
+    p = []
+    he, blocked = "watcher-overflow", "unlisted-reason"
+    # 1. the per-slot harness-error cap: slot 1 re-ran once, then was blocked; on restart its next
+    #    harness-error is final, beyond the cap, never a second re-run.
+    _, _, _, _, r1, _ = run(1, plan={(1, 1): he, (1, 2): blocked})
+    try:
+        b, out, *_ , r2, _ = restart(r1, rows(1), plan={(1, 3): he}, start_attempts={1: 2}, cls=cls)
+        got = [(o["slot"], o["attempt"], o["state"], o["rerun"], o["final"]) for o in out]
+        if got != [(1, 3, labels4.HARNESS_ERROR, False, True)]:
+            p.append(f"slot cap: the restart committed {got}")
+        p += [f"slot cap: {x}" for x in history_problems(r2.history())]
+    except Exception as e:  # noqa: BLE001
+        p.append(f"slot cap: the restart raised {type(e).__name__}: {e}")
+    # 2. the per-half-cell harness-error cap: slots 1 and 2 spent both re-runs, slot 3 was blocked; on restart
+    #    slot 3's harness-error is final, beyond the cap.
+    _, _, _, _, r1, _ = run(3, plan={(1, 1): he, (2, 1): he, (3, 1): blocked})
+    try:
+        b, out, *_, r2, _ = restart(r1, rows(3), plan={(3, 2): he}, start_attempts={1: 1, 2: 1, 3: 1}, cls=cls)
+        got = [(o["slot"], o["attempt"], o["state"], o["rerun"]) for o in out]
+        want = [(1, 2, labels4.GRADED, False), (2, 2, labels4.GRADED, False), (3, 2, labels4.HARNESS_ERROR, False)]
+        if got != want:
+            p.append(f"half-cell cap: the restart committed {got}")
+        p += [f"half-cell cap: {x}" for x in history_problems(r2.history())]
+    except Exception as e:  # noqa: BLE001
+        p.append(f"half-cell cap: the restart raised {type(e).__name__}: {e}")
+    # 3. a slot already final is refused, never driven again.
+    _, _, _, _, r1, _ = run(2)
+    for slot in (1, 2):
+        try:
+            b, out, w, d, r2, _ = restart(r1, [r for r in rows(2) if r["slot"] == slot], cls=cls)
+            p.append(f"final slot {slot}: the restart drove it again ({[(o['attempt'], o['state']) for o in out]})")
+        except batch.BatchConfigError as e:
+            if "final" not in str(e):
+                p.append(f"final slot {slot}: refused for another reason: {e}")
+    # 4. a slot that ended at its rehearsal cap (no fate in the plan: the loop stopped for a human) is refused.
+    _, _, _, _, r1, _ = run(1, plan={(1, a): "preflight-fail" for a in range(1, 10)}, serial=True)
+    try:
+        b, out, *_ = restart(r1, rows(1), start_attempts={1: 4}, cls=cls)
+        p.append(f"capped slot: the restart drove it again ({[(o['attempt'], o['state']) for o in out]})")
+    except batch.BatchConfigError as e:
+        if "cap" not in str(e):
+            p.append(f"capped slot: refused for another reason: {e}")
+    return p
+
+
+def restart_pause_problems(cls=batch.Batch) -> list[str]:
+    """W1B2-3 (lane w1b's decision): a restart after a pause launches nothing before the usage window resets."""
+    _, _, _, _, r1, _ = run(1, plan={(1, a): "rate-limit" for a in range(1, 10)})
+    b, out, w, d, r2, win = restart(r1, [dict(rows(2)[1])], cls=cls)
+    seq = [e[1] for e in w.events]
+    if "reset" not in seq or "launch" not in seq or seq.index("reset") > seq.index("launch"):
+        return [f"the restart launched before the window reset: {seq}"]
+    return []
+
+
+def history_validation_problems(cls=batch.Batch) -> list[str]:
+    """W1B2-3: history the loop cannot trust is refused, never read as "nothing committed"."""
+    p = []
+    _, _, _, _, r1, _ = run(2, plan={(1, 1): "watcher-overflow"})
+    good = r1.history()
+    bad = {
+        "a (slot, attempt) committed twice": good + [copy.deepcopy(good[0])],
+        "an outcome missing a key": [{k: v for k, v in o.items() if k != "rerun"} for o in good],
+        "an outcome with an unknown state": [dict(o, state="success") for o in good],
+        "a slot under two half-cells": [good[0], dict(copy.deepcopy(good[0]), attempt=2, half_cell="hc-other")],
+        "an attempt after the slot's final one": good + [dict(copy.deepcopy(good[-1]), attempt=good[-1]["attempt"] + 1)],
+        "not a list": {"slot": 1},
+    }
+    for name, hist in bad.items():
+        class Repo(FakeRepo):
+            def history(self, _h=hist):
+                return copy.deepcopy(_h)
+        w = World()
+        try:
+            cls(FakeDriver(w), Repo(w), FakeWindow(w), table=test_table())
+            p.append(f"{name}: accepted")
+        except batch.BatchConfigError:
+            pass
+
+    class NoHistoryRepo:
+        def register(self, row, attempt):
+            pass
+
+        def commit_records(self, row, attempt, outcome):
+            pass
+    try:
+        cls(FakeDriver(World()), NoHistoryRepo(), FakeWindow(World()), table=test_table())
+        p.append("a repo that cannot give its history: accepted")
+    except batch.BatchConfigError:
+        pass
+    return p
 
 
 # --------------------------------------------------------------------------------------- checks
@@ -407,22 +548,24 @@ def sibling_problems(out, w, r, b, want_stop) -> list[str]:
     return p
 
 
-def reach_problems(case: str, cls=batch.Batch, **driver_kw) -> list[str]:
+def reach_problems(case: str, cls=batch.Batch, event: str = "outside-reach", prefix: str = "reach ",
+                   **driver_kw) -> list[str]:
     """W1B-1 and glitch-f3's priority test: slot 2 of a block of three reached the fake token and
     email. The exact object batch hands to commit, and the route if one won, carry mask=True and
-    the outside-reach event; the committed text is the masked form, nothing deleted; the
-    siblings, which reached nothing, are neither masked nor counted."""
+    the event (`outside-reach`, or W1B2-2's `checker-event-reason` when an event id arrived as a
+    checker reason); the committed text is the masked form, nothing deleted; the siblings, which
+    reached nothing, are neither masked nor counted."""
     p = []
-    b, out, w, d, r, _ = run(3, plan={(2, 1): "reach " + case}, cls=cls, **driver_kw)
+    b, out, w, d, r, _ = run(3, plan={(2, 1): prefix + case}, cls=cls, **driver_kw)
     snap, handed = r.snapshot(2), r.handed(2)
     if not any(o is handed for o in b.outcomes):
         p.append("the object handed to commit is not the take's outcome")
     if snap["mask"] is not True:
         p.append(f"{case}: handed to commit with mask={snap['mask']} ({snap['state']})")
-    if not snap["events"] or "outside-reach" not in snap["events"]:
+    if not snap["events"] or event not in snap["events"]:
         p.append(f"{case}: handed to commit with events={snap['events']} ({snap['state']})")
     if snap["decision"] is not None and (snap["decision"]["mask"] is not True
-                                        or "outside-reach" not in snap["decision"]["events"]):
+                                        or event not in snap["decision"]["events"]):
         p.append(f"{case}: route {snap['decision']['route']} lost the mask or the event")
     committed, original = r.committed[(2, 1)]["text"], w.texts[(2, 1)]
     if FAKE_TOKEN in committed or FAKE_EMAIL in committed or MASK_MARK not in committed:
@@ -747,6 +890,33 @@ class TestFailures(unittest.TestCase):
         self.assertEqual(b.stopped["state"], labels4.FAILED)
 
 
+def fail_closed_problems(cls=batch.Batch) -> list[str]:
+    """Every road to `blocked` or `failed` (W1B2-2): each such outcome handed to commit carries mask=True,
+    and its mask_basis says fail-closed; and every road was taken (a run that reached neither proves nothing)."""
+    p = []
+    roads = {
+        "unlisted checker reason (blocked)": dict(plan={(2, 1): "unlisted-reason"}),
+        "the driver's pin (blocked)": dict(pins={2: dict(PIN, version="driver-says")}),
+        "malformed records (blocked)": dict(records_edit={2: _string_counter}),
+        "the driver raised (failed)": dict(plan={(2, 1): "driver-raises"}),
+        "a launch failed (failed)": dict(launch_fails={2: "half"}),
+        "remove failed (failed)": dict(remove_fails={2}),
+        "routing raised (failed)": dict(records_edit={2: _three_turns}, batch_kw={"route_fn": _route_raises_on_slot_2}),
+        "routing returned no route (failed)": dict(records_edit={2: _three_turns},
+                                                   batch_kw={"route_fn": _route_success_on_slot_2}),
+    }
+    for name, kw in roads.items():
+        b, out, w, d, r, _ = run(3, cls=cls, **kw)
+        stopped = [snap for _, _, _, snap in r.passed if snap["state"] in labels4.BATCH_STATES]
+        if not stopped:
+            p.append(f"{name}: no blocked or failed take was committed")
+        for snap in stopped:
+            if snap["mask"] is not True or "fail-closed" not in (snap["mask_basis"] or ""):
+                p.append(f"{name}: slot {snap['slot']} {snap['state']} committed with mask={snap['mask']} "
+                         f"({snap['mask_basis']})")
+    return p
+
+
 class GradedOnlyMask(batch.Batch):
     """Mutant: the pre-fold behaviour, where the mask and events came only with a graded route."""
 
@@ -777,6 +947,18 @@ class TestMask(unittest.TestCase):
         two = r.snapshot(2)
         self.assertEqual((two["state"], two["mask"], two["events"]), (labels4.FAILED, True, None))
         self.assertIn("fail-closed", two["mask_basis"])
+
+    def test_checker_event_reason_masked_on_every_terminal_state(self):
+        """W1B2-2: an id the plan makes an event, arriving as a checker reason, is refused by routing (blocked);
+        the take is still committed masked and counted, on every terminal state, for each of the three ids."""
+        for name in CHECKER_EVENT:
+            with self.subTest(case=name, state=scenario_state("event " + name, test_table())):
+                self.assertEqual(scenario_state("event " + name, test_table()), labels4.BLOCKED)
+                self.assertEqual(reach_problems(name, event="checker-event-reason", prefix="event "), [])
+
+    def test_every_blocked_and_failed_outcome_is_masked(self):
+        """W1B2-2: a take that is blocked or failed is committed masked, fail-closed, whatever its annotations."""
+        self.assertEqual(fail_closed_problems(), [])
 
     def test_reach_check_can_fail(self):
         self.assertNotEqual(reach_problems("rate limit", cls=GradedOnlyMask), [])
@@ -1005,6 +1187,19 @@ class TestCaps(unittest.TestCase):
         b, out, *_ = run(3, plan={(1, 1): "oom"})
         self.assertEqual([(o["slot"], o["state"]) for o in out],
                          [(1, labels4.ABORTED), (2, labels4.GRADED), (3, labels4.GRADED)])
+
+
+class TestRestart(unittest.TestCase):
+    """W1B2-3: the caps and attempt numbers come back from the committed outcomes after a stop."""
+
+    def test_stop_restart_no_extra_rerun(self):
+        self.assertEqual(restart_problems(), [])
+
+    def test_restart_after_a_pause_waits_for_the_window(self):
+        self.assertEqual(restart_pause_problems(), [])
+
+    def test_untrustworthy_history_is_refused(self):
+        self.assertEqual(history_validation_problems(), [])
 
 
 # ---------------------------------------------------------------------------- import boundary

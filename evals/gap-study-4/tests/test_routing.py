@@ -18,8 +18,9 @@ Five kinds of check, combined in `all_problems(table)`:
    whatever route wins or whether one does (W1B-1).
 
 3. THE SEAM. Every before-first-turn row's witness is built through `agent_adapter.harness_records`
-   (from turn results and box records, as the driver will), with no turn and with one turn that
-   produced no agent output, and must route to the row (W1B-5).
+   (from turn results and box records, as the driver will), with no turn, with one turn that
+   produced no agent output and ended in error, and with one that produced none and timed out, and
+   must route to the row (W1B-5; review round 2, W1B2-1).
 
 4. THE PLAN'S ORACLE. A derived grid cannot catch a mutated table (a row whose route is changed
    still routes its own witness to the new route), so the plan's table is also stated here once,
@@ -37,9 +38,10 @@ Five kinds of check, combined in `all_problems(table)`:
    markers and the match are re-derived from round 3's drive.py at its done commit (TestRound3Sources),
    probed on both bounds and on case, and driven through harness_records (TestRateLimitText).
 
-The table under test carries one test-only operator reason (`TEST_REASON`) and two test-only pin
-profiles (`TEST_PROFILES`), because round 3's reasons and CP5's pins are not yet in routing.json
-(see its *_status fields); the real table's refusals while they are pending are tested on their own.
+The table under test is the real routing.json with two test-only pin profiles (`TEST_PROFILES`)
+injected in memory, because CP5's pins are not yet in it (pin_profiles_status); the real table's
+refusal while they are pending is tested on its own. Round 3's operator-side reasons are the real,
+filled list (Javier's ruling "gap4 routing: A").
 """
 
 from __future__ import annotations
@@ -63,8 +65,10 @@ import agent_adapter as aa  # noqa: E402  (the seam only; routing.py never impor
 import routing  # noqa: E402
 from graders import labels4  # noqa: E402
 
-TEST_REASON = "test-only-operator-reason"
 REAL = routing.load_table()
+# Round 3's reason ids the scenarios name, typed once (TestRound3Sources binds the list they come from).
+READERS = "readers-disagree"          # an operator-side reason of either phase
+NFAT = "no-first-agent-turn"          # round 3's "before the agent's first turn" reason
 # Test-only pin profiles, injected in memory (CP5 pre-registers the real ones).
 TEST_PROFILES = {
     "test-model-a": {"permission_mode": "bypassPermissions", "version": "0.0.1-test"},
@@ -75,8 +79,6 @@ PIN = dict(TEST_PROFILES["test-model-a"], model="test-model-a")
 
 def test_table() -> dict:
     t = copy.deepcopy(REAL)
-    t["operator_reasons"] = [TEST_REASON]
-    t["operator_reasons_status"] = "TEST-ONLY: one injected reason id"
     t["pin_profiles"] = copy.deepcopy(TEST_PROFILES)
     t["pin_profiles_status"] = "TEST-ONLY: two injected profiles"
     return t
@@ -112,15 +114,28 @@ def set_end(rec: dict, end: str, code: int | None = None):
         rec["exit"]["exec_codes"][-1] = code
 
 
-def silent_turn(rec: dict):
+def silent_turn(rec: dict, end: str = labels4.END_ERROR, code: int = 1):
     """Append a turn that produced no agent output and ended in error (W1B-5's 'before the first turn')."""
     led = rec["ledger"]
     led["turns"] += 1
-    led["turn_ends"].append(labels4.END_ERROR)
+    led["turn_ends"].append(end)
     led["turn_outputs"].append(False)
-    led["end"] = labels4.END_ERROR
-    rec["exit"]["exec_codes"].append(1)
+    led["end"] = end
+    rec["exit"]["exec_codes"].append(code)
     rec["init"].append(dict(rec["pin"]))
+
+
+def silent_timeout(rec: dict):
+    """Append a turn that produced no completed agent output and timed out, the host's kill exiting 124
+    (W1B2-1: before the agent's first turn, glitch-f3's correction)."""
+    silent_turn(rec, labels4.TIMED_OUT, 124)
+
+
+def output_timeout(rec: dict):
+    """Append a turn that produced completed agent output (a tool call, say) and then timed out."""
+    silent_turn(rec, labels4.TIMED_OUT, 124)
+    rec["ledger"]["turn_outputs"][-1] = True
+    rec["ledger"]["first_turn_started"] = True
 
 
 def ensure_turn(rec: dict):
@@ -136,6 +151,7 @@ def set_api(rec: dict, errors: list):
 def set_path(rec: dict, path: str, value):
     head, _, tail = path.partition(".")
     if path == "ledger.end":
+        ensure_turn(rec)          # an end needs a turn: before the first turn, a silent one
         set_end(rec, value)
     elif tail:
         rec[head][tail] = value
@@ -168,6 +184,8 @@ def apply_witness(rec: dict, cond: dict, table: dict) -> set:
         rec["api_errors"] = []
     elif op == "in_operator_reasons":
         set_path(rec, path, [table["operator_reasons"][0]])
+    elif op == "in_checker_events":
+        set_path(rec, path, [table["checker_reasons_become_events"]["ids"][0]])
     elif op == "in_rate_limit_markers":
         key = path.partition(".")[2]
         err = {"status": None, "type": None, "text": None}
@@ -381,29 +399,98 @@ def a_silent_turn(**kw) -> aa.TurnResult:
     return a_turn(exit_code=1, end_reason=labels4.END_ERROR, agent_output=False, **kw)
 
 
+def a_silent_timeout(**kw) -> aa.TurnResult:
+    """A turn that produced no completed agent output and timed out (the host's kill exits 124)."""
+    return a_turn(exit_code=124, end_reason=labels4.TIMED_OUT, agent_output=False, **kw)
+
+
+SILENT_TIMEOUT_ROW = "silent-timeout-before-first-turn"
+
+
+def silent_timeout_problems(table: dict) -> list[str]:
+    """W1B2-1 with glitch-f3's correction (6 Oct 2026, relayed by the gap4 lane lead; glitch-f3's, not the
+    owner's): a bare silent first-turn timeout is before the agent's first turn and routes rehearsal on its own
+    row; a timeout after completed agent output (a turn with output, then a timed-out one, or one turn with
+    output that timed out) is the agent's and grades timed-out. Built through harness_records, as the driver
+    will."""
+    p = []
+    cases = (
+        ("a bare silent first-turn timeout", [a_silent_timeout()], labels4.REHEARSAL, [SILENT_TIMEOUT_ROW],
+         labels4.BEFORE_FIRST_TURN),
+        ("a turn with output, then a silent timeout", [a_turn(), a_silent_timeout()], labels4.GRADED, ["timed-out"],
+         labels4.AFTER_FIRST_TURN),
+        ("one turn with output that timed out", [a_turn(exit_code=124, end_reason=labels4.TIMED_OUT)], labels4.GRADED,
+         ["timed-out"], labels4.AFTER_FIRST_TURN),
+    )
+    for name, turns, route, rows, phase in cases:
+        got = try_route(aa.harness_records(turns, pin=PIN, box=full_box()), table)
+        if isinstance(got, Exception):
+            p.append(f"{name}: refused ({got})")
+        elif (got["route"], got["rows"], got["phase"]) != (route, rows, phase):
+            p.append(f"{name}: want {route} via {rows} ({phase}), got {got['route']} via {got['rows']} ({got['phase']})")
+    return p
+
+
 class TestSilentTimeout(unittest.TestCase):
-    """The plan: "A timeout stays the agent's". A first turn that printed nothing and timed out is the agent's
-    turn (the lane lead's refinement of the W1B-5 ruling, 6 Oct 2026): it grades timed-out, never refused."""
+    """The plan: "A timeout stays the agent's". glitch-f3's correction (6 Oct 2026, relayed by the gap4 lane lead;
+    glitch-f3's, not the owner's): it applies once the agent has produced completed output. A silent first-turn
+    timeout cannot be told from a hung API, CLI or egress, so it is a rehearsal (W1B2-1)."""
 
-    def test_a_silent_timeout_grades_timed_out(self):
-        turns = [a_turn(exit_code=124, end_reason=labels4.TIMED_OUT, agent_output=False)]
-        rec = aa.harness_records(turns, pin=PIN, box=full_box())
-        self.assertTrue(rec["ledger"]["first_turn_started"])
-        decision = routing.route(rec, test_table())
-        self.assertEqual(decision["route"], labels4.GRADED, decision)
-        self.assertIn("timed-out", decision["rows"])
+    def test_silent_timeout_both_ways(self):
+        self.assertEqual(silent_timeout_problems(test_table()), [])
+
+    def test_silent_timeout_check_can_fail(self):
+        real = aa.harness_records
+
+        def timeout_starts(turns, *, pin, box):   # 3fcab58d's rule: any timed-out turn starts the agent's turn
+            out = real(turns, pin=pin, box=box)
+            timed = [t.end_reason == labels4.TIMED_OUT for t in turns]
+            out["ledger"]["turn_outputs"] = [o or x for o, x in zip(out["ledger"]["turn_outputs"], timed)]
+            out["ledger"]["first_turn_started"] = any(out["ledger"]["turn_outputs"])
+            return out
+
+        def timeout_never_output(turns, *, pin, box):   # a timed-out turn's output is never read
+            out = real(turns, pin=pin, box=box)
+            timed = [t.end_reason == labels4.TIMED_OUT for t in turns]
+            out["ledger"]["turn_outputs"] = [o and not x for o, x in zip(out["ledger"]["turn_outputs"], timed)]
+            out["ledger"]["first_turn_started"] = any(out["ledger"]["turn_outputs"])
+            return out
+        with mock.patch.object(aa, "harness_records", timeout_starts):
+            self.assertTrue(any(x.startswith("a bare silent") for x in silent_timeout_problems(test_table())))
+        with mock.patch.object(aa, "harness_records", timeout_never_output):
+            self.assertTrue(any(x.startswith("one turn with output") for x in silent_timeout_problems(test_table())))
+        t = test_table()
+        next(r for r in t["rows"] if r["id"] == SILENT_TIMEOUT_ROW)["when"] = labels4.ANY_TIME
+        self.assertTrue(any(x.startswith("a turn with output") for x in silent_timeout_problems(t)))
+        t = test_table()
+        next(r for r in t["rows"] if r["id"] == SILENT_TIMEOUT_ROW)["route"] = labels4.GRADED
+        self.assertTrue(any(x.startswith("a bare silent") for x in silent_timeout_problems(t)))
 
 
-def _seam_edit(cond: dict, table: dict, turns: list, box: dict) -> bool:
-    """Make `cond` hold through the adapter's inputs; False when no seam witness is known."""
+SEAM_VARIANTS = {   # how the seam's one silent turn ended (W1B-5; W1B2-1)
+    "no turn": None,
+    "a silent turn": labels4.END_ERROR,
+    "a silent timed-out turn": labels4.TIMED_OUT,
+}
+
+
+def _silent(end: str | None, **kw) -> aa.TurnResult:
+    return a_silent_timeout(**kw) if end == labels4.TIMED_OUT else a_silent_turn(**kw)
+
+
+def _seam_edit(cond: dict, table: dict, turns: list, box: dict, end: str | None = None) -> bool:
+    """Make `cond` hold through the adapter's inputs; False when no seam witness is known. A witness
+    that needs a turn uses a silent turn that ended as `end` (error when the variant has no turn)."""
     path, op = cond["path"], cond["op"]
     head, _, tail = path.partition(".")
     if path == "api_errors" and op == "nonempty":
-        turns[:] = [a_silent_turn(api_error={"status": 500, "type": "api_error", "text": None})]
+        turns[:] = [_silent(end, api_error={"status": 500, "type": "api_error", "text": None})]
     elif head == "api_errors" and op == "in_rate_limit_markers":
         err = {"status": None, "type": None, "text": None}
         err[tail] = table["rate_limit_markers"][tail][0]
-        turns[:] = [a_silent_turn(api_error=err)]
+        turns[:] = [_silent(end, api_error=err)]
+    elif path == "ledger.end" and op == "eq" and cond["value"] in (labels4.TIMED_OUT, labels4.END_ERROR):
+        turns[:] = [_silent(cond["value"])]
     elif path == "preflight.ok" and op == "falsy":
         box["preflight_ok"] = False
     elif path == "exit.container_started" and op == "falsy":
@@ -426,18 +513,19 @@ def _seam_edit(cond: dict, table: dict, turns: list, box: dict) -> bool:
 def seam_problems(table: dict) -> list[str]:
     """Every before-first-turn row's witness, built through harness_records, routes to the row:
     with no turn, and (except a preflight failure, which cannot have run a turn) with one turn
-    that produced no agent output."""
+    that produced no agent output and ended in error, and with one that produced none and timed
+    out (W1B2-1: a silent timeout is before the agent's first turn too)."""
     p = []
     for row in table["rows"]:
         if labels4.BEFORE_FIRST_TURN not in row_phases(row):
             continue
         for alt, cond in enumerate(row["any_of"]):
-            for variant in ("no turn", "a silent turn"):
-                turns, box = ([] if variant == "no turn" else [a_silent_turn()]), full_box()
-                if not all(_seam_edit(c, table, turns, box) for c in row.get("all_of", []) + [cond]):
+            for variant, end in SEAM_VARIANTS.items():
+                turns, box = ([] if end is None else [_silent(end)]), full_box()
+                if not all(_seam_edit(c, table, turns, box, end) for c in row.get("all_of", []) + [cond]):
                     p.append(f"seam {row['id']}[{alt}]: no seam witness for {cond}")
                     break
-                if variant == "a silent turn" and box["preflight_ok"] is False:
+                if turns and box["preflight_ok"] is False:
                     continue
                 rec = aa.harness_records(turns, pin=PIN, box=box)
                 got = try_route(rec, table)
@@ -485,6 +573,9 @@ def _reach(n=1):
 _end_error = (lambda code: (lambda r: set_end(r, labels4.END_ERROR, code)))
 E500 = {"status": 500, "type": "api_error", "text": None}
 E429 = {"status": 429, "type": "rate_limit_error", "text": None}
+E529 = {"status": 529, "type": "overloaded_error", "text": None}   # the API overloaded: no rate-limit marker
+EVENT_IDS = tuple(REAL["checker_reasons_become_events"]["ids"])
+CE = "checker-event-reason"   # W1B2-2's annotation
 
 # glitch-f3's ruling (in-plan, 6 Oct 2026; glitch-f3's, not the owner's): "Keep both: structured (status 429,
 # type rate_limit_error) OR round 3's four text markers ('rate limit', 'usage limit', 'weekly limit', '429'),
@@ -521,12 +612,31 @@ SCENARIOS = {
     "watcher start missing before first turn": Sc(_sc(B, [_set("sidecar.start_record", False)]), "rehearsal", ["sidecar-unhealthy-before-first-turn"]),
     "watcher non-zero exit before first turn": Sc(_sc(B, [_set("sidecar.exit_code", 2)]), "rehearsal", ["sidecar-unhealthy-before-first-turn"]),
     "watcher overflow before first turn": Sc(_sc(B, [_set("sidecar.queue_overflow", True)]), "rehearsal", ["sidecar-unhealthy-before-first-turn"]),
-    "operator reason before first turn": Sc(_sc(B, [_set("checker_reasons", [TEST_REASON])]), "rehearsal", ["operator-reason-before-first-turn"]),
+    "operator reason before first turn": Sc(_sc(B, [_set("checker_reasons", [READERS])]), "rehearsal", ["operator-reason-before-first-turn"]),
     "operator diff before first turn": Sc(_sc(B, [_set("operator.unexplained_diffs", 1)]), "rehearsal", ["operator-diff-unexplained-before-first-turn"]),
     "finalize abort before first turn": Sc(_sc(B, [_set("ledger.finalize_abort", True)]), "rehearsal", ["finalize-abort-before-first-turn"]),
     "rate limit before first turn": Sc(_sc(B, [_rate]), "pause", ["rate-limit"]),
     "rate-limit type alone": Sc(_sc(B, [_apis({"status": None, "type": "rate_limit_error", "text": None})]), "pause", ["rate-limit"]),
     "429 with type None (W1B-6)": Sc(_sc(A, [_apis({"status": 429, "type": None, "text": None}), _end_error(1)]), "pause", ["rate-limit"]),
+    # W1B2-1, glitch-f3's correction (6 Oct 2026; glitch-f3's, not the owner's): a silent first-turn timeout is
+    # before the agent's first turn; on its own it is a rehearsal by its own row, and every before-first-turn
+    # harness row it meets agrees (the same route, one answer). The review's four probe cases, and the bare one.
+    "a bare silent first-turn timeout (glitch-f3)": Sc(_sc(B, [silent_timeout]), "rehearsal", ["silent-timeout-before-first-turn"]),
+    "silent timeout + API error 529 (W1B2-1)": Sc(_sc(B, [silent_timeout, _apis(E529)]), "rehearsal",
+                                                  ["api-error-before-first-turn", "silent-timeout-before-first-turn"]),
+    "silent timeout + API error 500 (W1B2-1)": Sc(_sc(B, [silent_timeout, _apis(E500)]), "rehearsal",
+                                                  ["api-error-before-first-turn", "silent-timeout-before-first-turn"]),
+    "silent timeout + no-first-agent-turn (W1B2-1)": Sc(_sc(B, [silent_timeout, _set("checker_reasons", [NFAT])]), "rehearsal",
+                                                        ["operator-reason-before-first-turn", "silent-timeout-before-first-turn"]),
+    "silent timeout + container exit (W1B2-1)": Sc(_sc(B, [silent_timeout, _set("exit.container_exited", True)]), "rehearsal",
+                                                   ["container-start-failed", "silent-timeout-before-first-turn"]),
+    "silent timeout + a rate limit -> pause": Sc(_sc(B, [silent_timeout, _rate]), "pause", ["rate-limit"],
+                                                 ["api-error-before-first-turn", "silent-timeout-before-first-turn", "rate-limit"]),
+    "silent timeout with an init mismatch -> refused (W1B2-1)": Sc(_sc(B, [silent_timeout, lambda r: r["init"].__setitem__(0, dict(PIN, model="x"))]),
+                                                                   REFUSED, None),
+    "a silent error turn, then a silent timeout": Sc(_sc(B, [silent_turn, silent_timeout]), "rehearsal", ["silent-timeout-before-first-turn"]),
+    "a timeout after completed output grades (glitch-f3)": Sc(_sc(A, [_multi_turn(1), silent_timeout]), "graded", ["timed-out"]),
+    "one turn with output that timed out grades (glitch-f3)": Sc(_sc(B, [output_timeout]), "graded", ["timed-out"]),
     "nothing happened before first turn": Sc(_sc(B, []), REFUSED, None),
     "a turn with no agent output and nothing recorded": Sc(_sc(B, [silent_turn]), REFUSED, None),
     "counters rose before the first turn": Sc(_sc(B, [_set("cgroup.oom_kill_delta", 1)]), REFUSED, None),
@@ -546,7 +656,7 @@ SCENARIOS = {
     "init event missing": Sc(_sc(A, [lambda r: r["init"].__setitem__(0, None)]), "harness-error", ["init-mismatch"]),
     "mismatch on the last turn of an otherwise graded take": Sc(_sc(A, [_multi_turn(4), _mismatch]), "harness-error", ["init-mismatch"]),
     "non-zero exec exit, nothing else": Sc(_sc(A, [lambda r: r["exit"]["exec_codes"].__setitem__(0, 1)]), "harness-error", ["nonzero-exec-exit"]),
-    "operator reason after first turn": Sc(_sc(A, [_set("checker_reasons", [TEST_REASON])]), "harness-error", ["operator-reason-after-first-turn"]),
+    "operator reason after first turn": Sc(_sc(A, [_set("checker_reasons", [READERS])]), "harness-error", ["operator-reason-after-first-turn"]),
     "operator diff after first turn": Sc(_sc(A, [_set("operator.unexplained_diffs", 2)]), "harness-error", ["operator-diff-unexplained-after-first-turn"]),
     "finalize abort after first turn": Sc(_sc(A, [_set("ledger.finalize_abort", True)]), "harness-error", ["finalize-abort-after-first-turn"]),
     "out-of-memory counter rose": Sc(_sc(A, [_set("cgroup.oom_kill_delta", 1)]), "aborted", ["cgroup-kill"]),
@@ -567,6 +677,13 @@ SCENARIOS = {
     "ended in error plus a quiescence kill only -> refused (W1B-6)": Sc(_sc(A, [_end_error(0), _set("quiescence_kill", True)]), REFUSED, None, None, [QK], False),
     "quiescence kill with an OOM kill (aborted)": Sc(_sc(A, [_cgroup, _end_error(137), _set("quiescence_kill", True)]), "aborted", ["cgroup-kill"], None, [QK], False),
     "outside reach and a quiescence kill": Sc(_sc(A, [_reach(), _set("quiescence_kill", True)]), "graded", ["end-turn"], None, [OR, QK], True),
+    # W1B2-2: an id the plan makes an event, arriving as a checker reason: routing refuses it (it is not an
+    # operator reason), and the annotation still reports the event and masks, in either phase
+    **{f"{e} as a checker reason, {ph}: refused, masked, an event (W1B2-2)":
+       Sc(_sc(ph, [_set("checker_reasons", [e])]), REFUSED, None, None, [CE], True)
+       for e in EVENT_IDS for ph in (B, A)},
+    "an event id beside an operator reason: refused, masked (W1B2-2)": Sc(_sc(A, [_set("checker_reasons", [READERS, EVENT_IDS[0]])]),
+                                                                          REFUSED, None, None, [CE], True),
     # every API error is read (W1B-4)
     "a 500 then a 429 in one take -> pause (W1B-4)": Sc(_sc(A, [_multi_turn(3), _apis(E500, E429), _end_error(1)]), "pause", ["rate-limit"],
                                                         ["rate-limit", "api-error-after-first-turn"]),
@@ -1233,6 +1350,17 @@ class TestSeam(unittest.TestCase):
             return out
         with mock.patch.object(aa, "harness_records", old_phase):
             self.assertTrue(any("api-error-before-first-turn" in x for x in seam_problems(test_table())))
+
+        def timeout_starts(turns, *, pin, box):   # 3fcab58d's refinement: a timed-out turn starts the agent's turn
+            out = real(turns, pin=pin, box=box)
+            timed = [t.end_reason == labels4.TIMED_OUT for t in turns]
+            out["ledger"]["turn_outputs"] = [o or x for o, x in zip(out["ledger"]["turn_outputs"], timed)]
+            out["ledger"]["first_turn_started"] = any(out["ledger"]["turn_outputs"])
+            return out
+        with mock.patch.object(aa, "harness_records", timeout_starts):
+            found = seam_problems(test_table())
+        for row in ("api-error-before-first-turn", "operator-reason-before-first-turn", "container-start-failed"):
+            self.assertTrue(any(x.startswith(f"seam {row}") and "silent timed-out turn" in x for x in found), row)
         t = test_table()
         t["rows"].append({"id": "probe-new-row", "when": "before-first-turn", "route": "rehearsal",
                           "any_of": [{"path": "cgroup.pids_max_delta", "op": "gt", "value": 0}], "source": "probe"})
