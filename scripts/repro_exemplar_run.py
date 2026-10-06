@@ -84,11 +84,18 @@ class Run(object):
         if proc.returncode != 0:
             raise Stop('step %s exited %d; see %s' % (step, proc.returncode, self.log))
         if want_json:
-            for line in reversed(text.strip().splitlines()):
+            # executorlib prints one object indented over several lines (S3, 6 Oct); a helper that
+            # prints notes first ends with its object, so the last line opening a parseable object wins.
+            lines = text.strip().splitlines()
+            for start in range(len(lines) - 1, -1, -1):
+                if not lines[start].startswith('{'):
+                    continue
                 try:
-                    return json.loads(line)
+                    value = json.loads('\n'.join(lines[start:]))
                 except ValueError:
                     continue
+                if isinstance(value, dict):
+                    return value
             raise Stop('step %s printed no JSON object' % step)
         return text
 

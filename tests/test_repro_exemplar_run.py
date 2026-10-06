@@ -46,13 +46,14 @@ if name == 'nfcore_atacseq_wrapper.py' and args[0] == 'prepare':
     (sub / 'params.yaml').write_text('# generated\n' + os.environ.get('STUB_PARAMS', 'save_reference: true\n'))
     (sub / 'submit.sh').write_text('#!/bin/bash\n')
 if name == 'executorlib.py' and args[0] == 'submit':
-    print(json.dumps({'command': 'submit', 'job_id': '4242', 'ok': True}))
+    # executorlib prints its object indented over several lines (S3, 6 Oct: job 4657)
+    print(json.dumps({'command': 'submit', 'job_id': '4242', 'ok': True}, indent=2))
 if name == 'executorlib.py' and args[0] == 'status':
     states = os.environ['STUB_STATES'].split()
     counter = Path(os.environ['STUB_LOG'] + '.status')
     n = int(counter.read_text()) if counter.exists() else 0
     counter.write_text(str(n + 1))
-    print(json.dumps({'command': 'status', 'job_id': args[-1], 'state': states[min(n, len(states) - 1)]}))
+    print(json.dumps({'command': 'status', 'job_id': args[-1], 'state': states[min(n, len(states) - 1)]}, indent=2))
 if name == 'gen_executor_config.sh':
     (Path(args[0]) / '_config' / 'executor.yaml').write_text('name: local\n')
 if name == 'package_run.py' and args[0] == 'harvest':
