@@ -541,6 +541,13 @@ class TestStartGate(unittest.TestCase):
             run(1, row_list=rows(2, model="unregistered-model"))
         with self.assertRaisesRegex(batch.BatchConfigError, "must name slot, half_cell and model"):
             run(1, row_list=[{"slot": 1, "half_cell": "hc-a"}])
+        with self.assertRaisesRegex(batch.BatchConfigError, "slots repeat"):
+            run(1, row_list=rows(2) + rows(1))
+
+    def test_row_check_can_fail(self):
+        with mock.patch.object(batch.Batch, "row_problems", lambda self, rows: []):
+            b, out, *_ = run(1, row_list=rows(2, model="unregistered-model"))   # starts, and every take fails
+        self.assertEqual({o["state"] for o in out}, {labels4.FAILED})
 
 
 class TrustingBatch(batch.Batch):
@@ -619,6 +626,20 @@ def _route_raises_on_slot_2(records, table):
     return routing.route(records, table)
 
 
+def _route_success_on_slot_2(records, table):
+    if records["exit"]["exec_codes"] == [0, 0, 0]:
+        return {"route": "success"}   # not a labels4 route
+    return routing.route(records, table)
+
+
+class UncheckedRoute(batch.Batch):
+    """Mutant: takes whatever route routing returns."""
+
+    def _route(self, row, attempt, cid, records):
+        decision = self.route_fn(records, self.table)
+        return self._outcome(row, attempt, cid, state=decision["route"], decision=decision, records=records)
+
+
 def _three_turns(records):
     records["ledger"].update(turns=3, turn_ends=[labels4.END_TURN] * 3, turn_outputs=[True] * 3)
     records["exit"]["exec_codes"] = [0, 0, 0]
@@ -671,6 +692,15 @@ class TestFailures(unittest.TestCase):
 
     def test_route_raising_check_can_fail(self):
         self.assertNotEqual(route_raise_problems(RefusalOnlyRoute), [])
+
+    def test_route_returning_no_labels4_route_is_failed(self):
+        b, out, w, d, r, _ = run(3, records_edit={2: _three_turns}, batch_kw={"route_fn": _route_success_on_slot_2})
+        self.assertEqual(sibling_problems(out, w, r, b, labels4.FAILED), [])
+        self.assertIn("no labels4 route", r.snapshot(2)["reason"])
+
+    def test_unknown_route_check_can_fail(self):
+        with self.assertRaises(KeyError):   # no handler for "success": the block sinks
+            run(3, records_edit={2: _three_turns}, batch_kw={"route_fn": _route_success_on_slot_2}, cls=UncheckedRoute)
 
     def test_malformed_record_is_blocked_and_masked_fail_closed(self):
         """With W1B-2, a string counter is a refusal (blocked), and no count can be trusted."""
