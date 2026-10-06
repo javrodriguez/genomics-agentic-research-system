@@ -511,9 +511,11 @@ def gate_problems() -> list[str]:
 class TestStartGate(unittest.TestCase):
     def test_real_table_refuses_to_start(self):
         with self.assertRaises(batch.BatchConfigError) as cm:
-            batch.Batch(None, None, None)   # the real routing.json: PENDING data
-        for what in ("pause", "operator_reasons", "pin_profiles"):
-            self.assertIn(what, str(cm.exception))
+            batch.Batch(None, None, None)   # the real routing.json: the CP5 pins are still PENDING
+        self.assertIn("pin_profiles", str(cm.exception))
+        # round 3's reasons and pause cap are filled (Javier's "gap4 routing: A"), so only the pins remain
+        for filled in ("pause", "operator_reasons"):
+            self.assertNotIn(filled, str(cm.exception))
 
     def test_gate_refuses_pending_data(self):
         self.assertEqual(gate_problems(), [])
@@ -528,8 +530,10 @@ class TestStartGate(unittest.TestCase):
         buf = io.StringIO()
         with redirect_stdout(buf):
             self.assertEqual(batch.main(["--check"]), 1)
-        for what in ("pause", "operator_reasons", "operator_reasons_status", "pin_profiles", "pin_profiles_status"):
+        for what in ("pin_profiles", "pin_profiles_status"):
             self.assertIn(what, buf.getvalue())
+        for filled in ("pause", "operator_reasons"):   # filled under Javier's "gap4 routing: A"
+            self.assertNotIn(filled, buf.getvalue())
         ready = test_table()
         with mock.patch.object(routing, "load_table", lambda *a: copy.deepcopy(ready)), \
                 redirect_stdout(io.StringIO()) as out:
