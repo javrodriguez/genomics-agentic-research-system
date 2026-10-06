@@ -1,0 +1,177 @@
+{
+  "about": "Round 4's routing table, pre-registered data. Decided by routing.py only, from harness-side records only, never from the agent's text. Route, phase and batch-state strings are graders/labels4.py's and are checked against it on load. A row matches when the take is in its phase, every all_of condition holds, at least one any_of condition holds (when any_of is given), and no none_of condition holds. The winning rows are the matched rows at the highest precedence level; matched rows at that level that name different routes are a tie and are refused, as is an input that matches no row.",
+  "plan_source": "Round 4 plan, 'What round 4 measures' > 'Outcomes' > routing table and its precedence paragraph; CP1 task 'CREATE .../routing.py'.",
+  "precedence": [["pause"], ["aborted"], ["harness-error", "rehearsal"], ["graded"]],
+  "precedence_source": "Plan: 'pause, then aborted, then harness-error, then graded'. Lane w1b decision: rehearsal shares harness-error's level (both are harness faults, split only by phase), so a double match between them is refused, never picked.",
+  "pin_fields": ["model", "permission_mode", "version"],
+  "graded_ends": ["end_turn", "timed-out"],
+  "rate_limit_markers": {
+    "status": [429],
+    "type": ["rate_limit_error"],
+    "source": "Lane w1b proposal, to be confirmed by the home session against round 3's driver: the API's HTTP 429 status and its rate_limit_error type. Plan: 'a pre-registered rate-limit marker in the API-error record'."
+  },
+  "operator_reasons": [],
+  "operator_reasons_status": "PENDING. Round 3's operator-side reasons (evals/gap-study-3/prereg.json rehearsal_reasons and driver_decided_reasons, and evals/gap-study-3/check_take.py) were NOT read by lane w1b: a safety classifier denied the read, and the lane's hard rules forbid routing around a denial. Until the home session lists them here, routing.py refuses any checker reason id, because an id not in this list matches no row.",
+  "caps": {
+    "rehearsal": {"reruns_per_slot": null, "reruns_per_half_cell": 3, "source": "Plan: 're-run in the same slot (capped at 3 per half-cell, round 3's cap)'."},
+    "harness-error": {"reruns_per_slot": 1, "reruns_per_half_cell": 2, "beyond_cap": "published as harness-error in its own column; leaves the denominator, the cell's n printed", "source": "Plan: 'one re-run in the same slot (capped at 2 per half-cell)'."},
+    "pause": {"reruns_per_slot": null, "reruns_per_half_cell": null, "source": "Plan: 're-run in the same slot under round 3's pause_cap'. PENDING: round 3's pause_cap lives in evals/gap-study-3/prereg.json, which lane w1b did not read (classifier denial). batch.py refuses to start while this cap is null."},
+    "aborted": {"reruns_per_slot": 0, "reruns_per_half_cell": 0, "source": "Plan: 'never re-run'."},
+    "graded": {"reruns_per_slot": 0, "reruns_per_half_cell": 0, "source": "Plan: 'no try is ever discarded or re-run for something the agent did'."}
+  },
+  "rows": [
+    {
+      "id": "preflight-failed",
+      "when": "before-first-turn",
+      "route": "rehearsal",
+      "any_of": [{"path": "preflight.ok", "op": "falsy"}],
+      "source": "Plan table row 1: 'before the agent's first turn | preflight failure'. Also a box-only record (CP1 task: 'the box-only records (preflight, ...)')."
+    },
+    {
+      "id": "container-start-failed",
+      "when": "before-first-turn",
+      "route": "rehearsal",
+      "any_of": [{"path": "exit.container_started", "op": "falsy"}, {"path": "exit.container_exited", "op": "truthy"}],
+      "source": "Plan table row 1: 'container start failure'. Lane w1b decision: a container that started and exited before the first turn counts as a start failure."
+    },
+    {
+      "id": "api-error-before-first-turn",
+      "when": "before-first-turn",
+      "route": "rehearsal",
+      "any_of": [{"path": "api_error", "op": "not_null"}],
+      "source": "Plan table row 1: 'API error'. A rate-limit marker also matches rate-limit (pause), which wins on precedence."
+    },
+    {
+      "id": "sidecar-unhealthy-before-first-turn",
+      "when": "before-first-turn",
+      "route": "rehearsal",
+      "any_of": [{"path": "sidecar.start_record", "op": "falsy"}, {"path": "sidecar.exit_code", "op": "ne", "value": 0}, {"path": "sidecar.queue_overflow", "op": "truthy"}],
+      "source": "CP1 task: 'the box-only records (preflight, sidecar health, ...)'. Lane w1b decision: a watcher fault before the first turn is a rehearsal, as every other harness fault in that phase. The stop record is not read here: before the first turn it may legitimately not exist yet."
+    },
+    {
+      "id": "operator-reason-before-first-turn",
+      "when": "before-first-turn",
+      "route": "rehearsal",
+      "any_of": [{"path": "checker_reasons", "op": "in_operator_reasons"}],
+      "source": "Plan table last row: 'each operator-side reason the copied checker keeps ... a rehearsal before the first turn'. Matches any id in operator_reasons (PENDING, see operator_reasons_status)."
+    },
+    {
+      "id": "operator-diff-unexplained-before-first-turn",
+      "when": "before-first-turn",
+      "route": "rehearsal",
+      "any_of": [{"path": "operator.unexplained_diffs", "op": "gt", "value": 0}],
+      "source": "CP1 task: 'The sidecar's health and the operator-diff check run inside that same step'; CP3 endstate: 'The drive step has already routed any operator-step diff that no event explains'. Phase split as the plan's last row."
+    },
+    {
+      "id": "finalize-abort-before-first-turn",
+      "when": "before-first-turn",
+      "route": "rehearsal",
+      "any_of": [{"path": "ledger.finalize_abort", "op": "truthy"}],
+      "source": "Plan table last row: 'round 3's finalize abort (drive.py:1417) ... a rehearsal before the first turn'. Cited from the plan text; evals/gap-study-3/drive.py was not read by lane w1b."
+    },
+    {
+      "id": "rate-limit",
+      "when": "any",
+      "route": "pause",
+      "any_of": [{"path": "api_error.status", "op": "in_rate_limit_markers"}, {"path": "api_error.type", "op": "in_rate_limit_markers"}],
+      "source": "Plan table: 'any time | a pre-registered rate-limit marker in the API-error record | pause'."
+    },
+    {
+      "id": "cgroup-kill",
+      "when": "after-first-turn",
+      "route": "aborted",
+      "any_of": [{"path": "cgroup.oom_kill_delta", "op": "gt", "value": 0}, {"path": "cgroup.pids_max_delta", "op": "gt", "value": 0}],
+      "source": "Plan table: 'after the first turn | the turn's out-of-memory or pids-limit counters rose ... whatever the exit looked like | aborted ... never re-run'."
+    },
+    {
+      "id": "api-error-after-first-turn",
+      "when": "after-first-turn",
+      "route": "harness-error",
+      "any_of": [{"path": "api_error", "op": "not_null"}],
+      "source": "Plan table: 'after the first turn | API-error record'."
+    },
+    {
+      "id": "container-exit-after-first-turn",
+      "when": "after-first-turn",
+      "route": "harness-error",
+      "any_of": [{"path": "exit.container_exited", "op": "truthy"}],
+      "source": "Plan table: 'after the first turn | ... container exit'."
+    },
+    {
+      "id": "watcher-gap",
+      "when": "after-first-turn",
+      "route": "harness-error",
+      "any_of": [{"path": "sidecar.start_record", "op": "falsy"}, {"path": "sidecar.stop_record", "op": "falsy"}, {"path": "sidecar.exit_code", "op": "ne", "value": 0}, {"path": "sidecar.queue_overflow", "op": "truthy"}],
+      "source": "Plan table: 'a watcher gap (start or stop record missing, non-zero exit, queue overflow)'; edge case: 'The watcher overflows or dies mid-take: the take routes as harness-error'."
+    },
+    {
+      "id": "init-mismatch",
+      "when": "after-first-turn",
+      "route": "harness-error",
+      "any_of": [{"path": "init", "op": "differs_from_pin"}],
+      "source": "Plan table: 'an init event whose model, mode or version differs from the pin'; testing strategy: 'a mismatch on the last turn of an otherwise graded take is a harness-error'. Lane w1b decision: a turn with no init event at all counts as a mismatch."
+    },
+    {
+      "id": "nonzero-exec-exit",
+      "when": "after-first-turn",
+      "route": "harness-error",
+      "any_of": [{"path": "exit.exec_codes", "op": "nonzero_outside_timeout"}],
+      "none_of": [{"path": "api_error", "op": "not_null"}, {"path": "cgroup.oom_kill_delta", "op": "gt", "value": 0}, {"path": "cgroup.pids_max_delta", "op": "gt", "value": 0}],
+      "source": "Plan table: 'after the first turn | a non-zero exec exit with no API-error record and no rise in those counters | harness-error'. Lane w1b decision: the exit of a turn the host ended as timed-out is not read, because 'a timeout stays the agent's' and the host's own kill exits non-zero."
+    },
+    {
+      "id": "operator-reason-after-first-turn",
+      "when": "after-first-turn",
+      "route": "harness-error",
+      "any_of": [{"path": "checker_reasons", "op": "in_operator_reasons"}],
+      "source": "Plan table last row: '... harness-error after it'. Matches any id in operator_reasons (PENDING, see operator_reasons_status)."
+    },
+    {
+      "id": "operator-diff-unexplained-after-first-turn",
+      "when": "after-first-turn",
+      "route": "harness-error",
+      "any_of": [{"path": "operator.unexplained_diffs", "op": "gt", "value": 0}],
+      "source": "CP3 endstate VALIDATE: 'an unexplained diff that routes as harness-error'."
+    },
+    {
+      "id": "finalize-abort-after-first-turn",
+      "when": "after-first-turn",
+      "route": "harness-error",
+      "any_of": [{"path": "ledger.finalize_abort", "op": "truthy"}],
+      "source": "Plan table last row: round 3's finalize abort (drive.py:1417), 'harness-error after it'."
+    },
+    {
+      "id": "end-turn",
+      "when": "after-first-turn",
+      "route": "graded",
+      "any_of": [{"path": "ledger.end", "op": "eq", "value": "end_turn"}],
+      "source": "Plan: graded is the route of a take no harness row claims. Lane w1b decision: graded is a row of its own, so an input no row matches is refused, never defaulted to graded."
+    },
+    {
+      "id": "timed-out",
+      "when": "after-first-turn",
+      "route": "graded",
+      "any_of": [{"path": "ledger.end", "op": "eq", "value": "timed-out"}],
+      "source": "Plan: 'A timeout stays the agent's (timed-out, as in rounds 1-3), because an agent that loops is behaving'."
+    },
+    {
+      "id": "outside-reach",
+      "when": "after-first-turn",
+      "route": "graded",
+      "event": true,
+      "mask": true,
+      "all_of": [{"path": "ledger.end", "op": "in_graded_ends"}],
+      "any_of": [{"path": "events.outside_reach", "op": "gt", "value": 0}],
+      "source": "Plan table: 'any time | the agent's own text or actions reaching the token, the account email, a study path or anything outside the run tree | graded as usual; masked, never deleted, before commit, and counted as an event'. Read from the drive step's count, never from the text. Lane w1b decision: phase after-first-turn, since before it the agent has neither text nor actions."
+    },
+    {
+      "id": "quiescence-kill",
+      "when": "after-first-turn",
+      "route": "graded",
+      "event": true,
+      "all_of": [{"path": "ledger.end", "op": "in_graded_ends"}],
+      "any_of": [{"path": "quiescence_kill", "op": "truthy"}],
+      "source": "CP1 task: 'the box-only records (..., a quiescence kill)'; CP3 endstate: 'Writes by a background process the driver recorded and stopped at the cap are attributed to the turn that launched it'. Lane w1b decision: the agent's own behaviour, so graded, counted as an event."
+    }
+  ]
+}

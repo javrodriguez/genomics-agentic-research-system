@@ -116,7 +116,7 @@ class TestAdapter(unittest.TestCase):
                   counters={"oom_kill_delta": 1, "pids_max_delta": 0})
         r = aa.harness_records([t1, t2], pin=PIN, box=BOX)
         self.assertEqual(r["ledger"], {"first_turn_started": True, "turns": 2, "end": aa.END_ERROR,
-                                       "committed": False, "finalize_abort": False})
+                                       "turn_ends": [aa.END_TURN, aa.END_ERROR], "committed": False, "finalize_abort": False})
         self.assertEqual(r["exit"]["exec_codes"], [0, 1])
         self.assertEqual(r["cgroup"], {"oom_kill_delta": 1, "pids_max_delta": 0})
         self.assertEqual(r["api_error"]["status"], 429)

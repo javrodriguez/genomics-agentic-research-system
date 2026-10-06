@@ -211,6 +211,7 @@ def harness_records(turns: list[TurnResult], *, pin: dict, box: dict) -> dict:
             "first_turn_started": bool(turns),
             "turns": len(turns),
             "end": turns[-1].end_reason if turns else None,
+            "turn_ends": [t.end_reason for t in turns],
             "committed": bool(box.get("committed", False)),
             "finalize_abort": bool(box.get("finalize_abort", False)),
         },
