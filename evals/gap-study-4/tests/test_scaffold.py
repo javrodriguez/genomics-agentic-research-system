@@ -179,15 +179,136 @@ class TheManifest(unittest.TestCase):
         finally:
             cm.BASE_COMMIT = saved
 
-    def test_no_round3_record_is_copied(self):
-        records = ("prereg.json", "prereg-draft.json", "takes.json", "COPIED.json", "RESULT.md", "COSTS.md",
-                   "PROGRESS.md", "results/", "transcripts/", "rehearsals/", "walks/", "verification/", "cases/",
-                   "graders/", "test_round3.py", "review_kit/rounds.json", "review_kit/prefreeze-")
-        sources = [e.get("source") or "" for e in json.loads(OWN_FRAGMENT.read_text())["files"]]
-        hits = [s for s in sources for r in records if s.startswith(f"{cm.SOURCE_DIR}/{r}")]
-        self.assertEqual(hits, [])
-        sources.append(f"{cm.SOURCE_DIR}/results/x.json")
-        self.assertTrue([s for s in sources for r in records if s.startswith(f"{cm.SOURCE_DIR}/{r}")])
+    def later_lane(self, files: list[dict], blobs: dict[str, bytes]):
+        """problems() with this lane's fragment plus a later lane's, whose files exist with the given bytes."""
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            own_fragment_in(d)
+            (d / "zz-later.json").write_text(json.dumps({"lane": "zz-later", "files": files}))
+            read = lambda path: blobs[path] if path in blobs else cm.read_copy(path)
+            return cm.problems(d, present=cm.files_here() | set(blobs), read=read, pinned=False)
+
+    def test_a_round3_record_copied_by_any_lane_is_refused(self):
+        # review W1A-1: a later lane's fragment copying a record or a grader of round 3 must go red
+        for src in ("evals/gap-study-3/prereg.json", "evals/gap-study-3/takes.json", "evals/gap-study-3/RESULT.md",
+                    "evals/gap-study-3/graders/labels.py", "evals/gap-study-3/test_round3.py",
+                    "evals/gap-study-3/review_kit/rounds.json"):
+            data = cm.source_bytes(src)
+            self.assertIsNotNone(data, src)
+            bad = self.later_lane([{"path": "prior/x", "status": "identical", "source": src}], {"prior/x": data})
+            self.assertTrue(any("one of round 3's records" in b for b in bad), (src, bad))
+
+    def test_a_transcript_copied_by_any_lane_is_refused(self):
+        listed = cm.git("ls-tree", "-r", "--name-only", cm.SOURCE_COMMIT, "--", "evals/gap-study-3/transcripts/")
+        src = next(n for n in listed.stdout.decode().splitlines() if n.endswith("transcript.jsonl"))
+        bad = self.later_lane([{"path": "data/t.jsonl", "status": "identical", "source": src}],
+                              {"data/t.jsonl": cm.source_bytes(src)})
+        self.assertTrue(any("one of round 3's records" in b for b in bad), bad)
+
+    def test_a_source_outside_the_allowed_ones_is_refused(self):
+        src = "evals/gap-study-2/takes.py"
+        bad = self.later_lane([{"path": "x.py", "status": "identical", "source": src}], {"x.py": cm.source_bytes(src)})
+        self.assertTrue(any("not an allowed copy source" in b for b in bad), bad)
+        allowed = self.later_lane([{"path": "intervals.py", "status": "identical",
+                                    "source": "evals/gap-study-intervals/intervals.py"}],
+                                  {"intervals.py": cm.source_bytes("evals/gap-study-intervals/intervals.py")})
+        self.assertEqual(allowed, [])
+
+    def test_a_record_recorded_as_new_at_another_path_is_refused(self):
+        data = cm.source_bytes("evals/gap-study-3/takes.json")
+        bad = self.later_lane([{"path": "prior/takes.json", "status": "new", "reason": "a fresh file"}],
+                              {"prior/takes.json": data})
+        self.assertTrue(any("its bytes are a file under evals/" in b for b in bad), bad)
+        ok = self.later_lane([{"path": "fresh.txt", "status": "new", "reason": "a fresh file"}],
+                             {"fresh.txt": b"round 4 only\n"})
+        self.assertEqual(ok, [])
+
+    def test_the_record_guard_itself_is_bound(self):
+        data = cm.source_bytes("evals/gap-study-3/prereg.json")
+        saved = cm.ROUND3_RECORDS
+        try:
+            cm.ROUND3_RECORDS = ()
+            bad = self.later_lane([{"path": "p.json", "status": "identical", "source": "evals/gap-study-3/prereg.json"}],
+                                  {"p.json": data})
+            self.assertFalse(any("one of round 3's records" in b for b in bad), bad)
+        finally:
+            cm.ROUND3_RECORDS = saved
+
+    def test_a_tracked_cache_is_refused(self):
+        # review W1A-3: a force-added .pyc or __pycache__ entry must be claimed-or-refused, never ignored
+        saved = cm.tracked_here
+        try:
+            cm.tracked_here = lambda: saved() | {"graders/labels.pyc", "__pycache__/x.py"}
+            bad = cm.problems(pinned=False, present=cm.files_here())
+            self.assertTrue(any("graders/labels.pyc is a tracked interpreter cache" in b for b in bad), bad)
+            self.assertTrue(any("__pycache__/x.py is a tracked interpreter cache" in b for b in bad), bad)
+        finally:
+            cm.tracked_here = saved
+        self.assertFalse(any(cm.is_cache(n) for n in cm.files_here()))
+
+    def test_every_entry_refusal_fires(self):
+        # review W1A-5: each refusal branch of problems(), driven once
+        study_src = "evals/gap-study-3/study.py"
+        takes = cm.source_bytes("evals/gap-study-3/takes.py")
+        cases = [
+            ({"path": "takes.py", "status": "identical", "source": "evals/gap-study-3/takes.py", "reason": "x"},
+             "is identical and carries a reason"),
+            ({"path": "takes.py", "status": "identical"}, "names no source"),
+            ({"path": "fresh.txt", "status": "new", "source": study_src, "reason": "x"}, "is new and names a source"),
+            ({"path": "fresh.txt", "status": "new"}, "is new and carries no reason"),
+            ({"path": "study.py", "status": "edited", "source": study_src}, "no reason is recorded"),
+            ({"path": "study.py", "status": "edited", "source": study_src, "reason": "  "},
+             "its reason is not a non-empty string"),
+            ({"path": "takes.py", "status": "identical", "source": "evals/gap-study-3/no-such-file.py"},
+             "does not exist at"),
+        ]
+        for entry, want in cases:
+            rec = [e for e in json.loads(OWN_FRAGMENT.read_text())["files"] if e["path"] != entry["path"]] + [entry]
+            with tempfile.TemporaryDirectory() as d:
+                d = Path(d)
+                own_fragment_in(d, rec)
+                read = lambda path: b"round 4 only\n" if path == "fresh.txt" else cm.read_copy(path)
+                bad = cm.problems(d, present=cm.files_here() | {"fresh.txt"}, read=read, pinned=False)
+            self.assertTrue(any(want in b for b in bad), (entry, want, bad))
+        self.assertIsNotNone(takes)
+
+    def test_a_fixture_builder_from_another_source_or_unclaimed_is_refused(self):
+        rec = json.loads(OWN_FRAGMENT.read_text())["files"]
+        moved = [dict(e, source="evals/gap-study-3/fixtures/gen_source.py") if e["path"] == "fixtures/gen_project.py"
+                 else e for e in rec]
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            own_fragment_in(d, moved)
+            bad = cm.problems(d, pinned=False, read=lambda p: cm.source_bytes("evals/gap-study-3/fixtures/gen_source.py")
+                              if p == "fixtures/gen_project.py" else cm.read_copy(p))
+        self.assertTrue(any("fixtures/gen_project.py" in b and "whose source is" in b for b in bad), bad)
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            own_fragment_in(d, [e for e in rec if e["path"] != "fixtures/gen_source.py"])
+            bad = cm.problems(d, pinned=False)
+        self.assertTrue(any("fixtures/gen_source.py, a copied fixture builder, is not claimed" in b for b in bad), bad)
+
+    def test_the_working_tree_branch_of_the_pin_fires(self):
+        saved = cm.git
+        def fake(*args):
+            if args[:2] == ("diff", "--quiet") and "HEAD" not in args:
+                return subprocess.CompletedProcess(args, 1, b"", b"")
+            return saved(*args)
+        try:
+            cm.git = fake
+            bad = cm.problems()
+        finally:
+            cm.git = saved
+        self.assertTrue(any("differs from" in b and "in the working tree" in b for b in bad), bad)
+
+    def test_derive_refuses_a_bad_manifest(self):
+        # review N9: the record the freeze writes comes only from a clean manifest
+        code = ("import sys; sys.path.insert(0, sys.argv[1]); import copy_manifest as cm; "
+                "cm.problems = lambda *a, **k: ['planted']; sys.argv = ['x', '--derive']; sys.exit(cm.main())")
+        p = subprocess.run([sys.executable, "-c", code, str(STUDY_DIR)], capture_output=True, text=True, cwd=str(REPO),
+                           env={"PYTHONDONTWRITEBYTECODE": "1", "PATH": "/usr/bin:/bin"})
+        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+        self.assertIn("FAIL planted", p.stdout)
 
 
 class TheImports(unittest.TestCase):
@@ -282,6 +403,43 @@ class TheRunner(unittest.TestCase):
                 self.assertEqual(p.returncode, want_code, p.stdout + p.stderr)
                 self.assertEqual(p.stdout.splitlines()[-1], want_last)
 
+    def test_a_misnamed_or_empty_checks_file_counts_as_a_failure(self):
+        # review W1A-4
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            (d / "w1a.txt").write_text("true\n")
+            (d / "w1b-lane.text").write_text("true\n")
+            (d / "W1C.TXT").write_text("true\n")
+            (d / "w1d.txt").write_text("# only a comment\n\n")
+            got = run_checks.file_problems(d)
+        self.assertEqual(sorted(n for n, _ in got), ["W1C.TXT", "w1b-lane.text", "w1d.txt"])
+        code = ("import sys; sys.path.insert(0, sys.argv[1]); import run_checks as r; from pathlib import Path; "
+                "r.BATTERY = 'true'; r.CHECKS = Path(sys.argv[2]); sys.exit(r.main())")
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "a.txt").write_text("true\n")
+            (Path(d) / "b.TXT").write_text("true\n")
+            p = subprocess.run([sys.executable, "-c", code, str(STUDY_DIR), d], capture_output=True, text=True)
+        self.assertEqual(p.returncode, 1, p.stdout)
+        self.assertEqual(p.stdout.splitlines()[-1], "run_checks: 2 of 3 commands passed")
+
+    def test_a_timeout_or_a_crash_is_a_failure_and_the_line_stays_last(self):
+        # review N1
+        saved = run_checks.TIMEOUT_S
+        try:
+            run_checks.TIMEOUT_S = 1
+            with redirect_stdout(io.StringIO()) as out:
+                k, n = run_checks.run_all([("slow", "sleep 5"), ("bytes", "printf '\\377\\376'; exit 1")])
+        finally:
+            run_checks.TIMEOUT_S = saved
+        self.assertEqual((k, n), (0, 2))
+        self.assertIn("FAIL [slow] exit timeout", out.getvalue())
+        self.assertIn("FAIL [bytes] exit 1", out.getvalue())
+        code = ("import sys; sys.path.insert(0, sys.argv[1]); import run_checks as r; "
+                "r.commands = lambda: (_ for _ in ()).throw(RuntimeError('boom')); sys.exit(r.main())")
+        p = subprocess.run([sys.executable, "-c", code, str(STUDY_DIR)], capture_output=True, text=True)
+        self.assertEqual(p.returncode, 1)
+        self.assertEqual(p.stdout.splitlines()[-1], "run_checks: 0 of 1 commands passed")
+
     def test_this_lane_lists_its_check(self):
         self.assertIn(("w1a-cp1-scaffold.txt:2", "python3 evals/gap-study-4/copy_manifest.py --check"),
                       run_checks.commands())
@@ -296,6 +454,25 @@ class TheBattery(unittest.TestCase):
                 walk(t) if isinstance(t, unittest.TestSuite) else names.add(type(t).__module__)
         walk(test_round4.suite())
         self.assertIn("test_scaffold", names)
+
+    def test_a_module_with_no_test_fails_even_beside_a_live_one(self):
+        # review W1A-2: the count is per module
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            (d / "test_a.py").write_text("import unittest\nclass T(unittest.TestCase):\n    def test_x(self):\n        pass\n")
+            (d / "test_b.py").write_text("class NotATestCase:\n    def test_y(self):\n        pass\n")
+            (d / "sub").mkdir()
+            (d / "sub" / "test_c.py").write_text("import unittest\nclass T(unittest.TestCase):\n    def test_z(self):\n        pass\n")
+            got = test_round4.module_problems(d)
+            self.assertTrue(any(g.startswith("test_b.py holds no test") for g in got), got)
+            self.assertTrue(any(g.startswith("sub/test_c.py is below") for g in got), got)
+            with redirect_stdout(io.StringIO()), __import__("contextlib").redirect_stderr(io.StringIO()):
+                self.assertEqual(test_round4.main(d), 1)
+            (d / "test_b.py").unlink()
+            (d / "sub" / "test_c.py").unlink()
+            with redirect_stdout(io.StringIO()), __import__("contextlib").redirect_stderr(io.StringIO()):
+                self.assertEqual(test_round4.main(d), 0)
+        self.assertEqual(test_round4.module_problems(), [])
 
     def test_an_empty_battery_is_not_a_pass(self):
         with tempfile.TemporaryDirectory() as d, redirect_stdout(io.StringIO()) as out:
