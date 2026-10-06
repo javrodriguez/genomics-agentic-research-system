@@ -24,6 +24,7 @@ import csv
 import hashlib
 import io
 import json
+import math
 import os
 import sys
 
@@ -131,17 +132,29 @@ def column_matched_form(data):
 
 
 def numeric_values(data):
-    """{row name: [floats]} from a table whose first column names the row; a header row is skipped
-    when its cells are not all numbers."""
+    """{row name: [floats]} from a table whose first column names the row. `#` comment lines and blank
+    lines are skipped, and so is the first other line when its cells are not all numbers (the header);
+    any other line that does not parse, and any value that is not finite, fails (S5 review r2, M1:
+    a NaN or an injected row had matched)."""
     values = {}
+    header_seen = False
     for line in data.decode('utf-8').split('\n'):
-        cells = line.rstrip('\r').split('\t')
-        if len(cells) < 2:
+        line = line.rstrip('\r')
+        if not line.strip() or line.startswith('#'):
             continue
+        cells = line.split('\t')
         try:
+            if len(cells) < 2:
+                raise ValueError('a row with no values')
             numbers = [float(c) for c in cells[1:]]
         except ValueError:
+            if header_seen:
+                raise ValueError('a row that is not numeric: %s' % cells[0][:40])
+            header_seen = True
             continue
+        header_seen = True
+        if not all(math.isfinite(x) for x in numbers):
+            raise ValueError('a value that is not finite in row %s' % cells[0][:40])
         name = cells[0].strip('"')
         if name in values:
             raise ValueError('row %s repeats' % name)

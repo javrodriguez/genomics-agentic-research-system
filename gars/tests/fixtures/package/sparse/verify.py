@@ -63,6 +63,10 @@ def files_in(package):
     found = []
     for folder, dirs, files in os.walk(package, followlinks=False):
         dirs.sort()
+        for name in dirs:   # a linked folder is not walked, so it is refused here (S5 review r2, M9)
+            if os.path.islink(os.path.join(folder, name)):
+                raise Failed('%s is a link; a package holds only regular files'
+                             % os.path.relpath(os.path.join(folder, name), package).replace(os.sep, '/'))
         for name in files:
             full = os.path.join(folder, name)
             rel = os.path.relpath(full, package).replace(os.sep, '/')

@@ -1694,6 +1694,41 @@ class S5Review(PackageCase):
             self.assertEqual(result, 'match after sorted_table')
 
 
+class S5ReviewRound2(PackageCase):
+    """S5 review round 2's two check-loosening MINORs (6 Oct 2026), fixed under the stop rule."""
+
+    PCA = ('#id: pca\n#plot_type: scatter\n"sample"\t"PC1: 58% variance"\t"PC2: 24% variance"\n'
+           '"atac-b_REP1"\t-7.23271284930167\t0.170213954159205\n"atac-a_REP1"\t3.9928642939662\t-7.35246771408569\n')
+
+    def test_sign_aligned_refuses_a_nan_and_an_injected_row(self):
+        tool = module(CLAIMS / 'package' / 'compare.py', 'compare_numeric')
+        recorded = tool.numeric_values(self.PCA.encode())
+        self.assertEqual(sorted(recorded), ['atac-a_REP1', 'atac-b_REP1'])   # the real shape still reads
+        nan = self.PCA.replace('-7.23271284930167', 'NaN')
+        with self.assertRaises(ValueError):
+            tool.numeric_values(nan.encode())
+        injected = self.PCA + 'INJECTED\tnot-a-number\tgarbage\n'
+        with self.assertRaises(ValueError):
+            tool.numeric_values(injected.encode())
+        import tempfile
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'consensus_peaks.mLb.clN.pca.vals.txt'
+            path.write_bytes(nan.encode())
+            row = {'member_path': path.name, 'normalised': json.dumps(recorded), 'entry': {}}
+            ok, result, _ = tool.MODES['sign_aligned_numeric'](str(path), row)
+            self.assertFalse(ok, result)
+
+    def test_verify_refuses_a_linked_folder(self):
+        w, package = self.built()
+        import tempfile
+        outside = Path(tempfile.mkdtemp(dir=str(w.root)))
+        write(outside / 'x.txt', 'x\n')
+        os.symlink(str(outside), str(package / 'outputs' / 'linked'))
+        proc = run([sys.executable, package / 'verify.py'])
+        self.assertEqual(proc.returncode, 1, proc.stdout.decode())
+        self.assertIn('is a link', proc.stdout.decode())
+
+
 class Goldens(PackageCase):
     """A complete and a sparse package, normalised for the values a fixture world cannot hold still:
     its GARS commit, the pipeline commit and package_run.py's own sha256. SHA256SUMS is derived and
