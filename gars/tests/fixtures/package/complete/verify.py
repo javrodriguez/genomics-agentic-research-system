@@ -151,8 +151,22 @@ def check_links(package, out):
             else:
                 for member in output['members']:
                     expected[(stage, output['path'] + '/' + member['path'])] = member['sha256']
-    if set(expected) != set(listed) or any(listed[k]['recorded_sha256'] != v for k, v in expected.items()):
+    # every row, not one per key: a member two nested outputs share is listed twice (a dict would keep
+    # only the last row and hide an edit to the first)
+    if set(expected) != set(listed) or any(expected.get((r['stage'], compare.member_path(r))) != r['recorded_sha256']
+                                           for r in rows):
         raise Failed('outputs/outputs.tsv does not list exactly the members the records name, with their sha256')
+    for row in rows:
+        if row['recorded_sha256'] == 'withheld' and row['mode'] != 'presence':
+            raise Failed('%s: a withheld sha256 is allowed only on a presence member' % compare.member_path(row))
+        if row['mode'] == 'presence' and row['recorded_sha256'] != 'withheld':
+            raise Failed('%s: a presence member must read withheld, never a sha256' % compare.member_path(row))
+    for stage, record in sorted(recs.items()):
+        for output in record.get('outputs') or []:
+            if output.get('members') and any(m['sha256'] == 'withheld' for m in output['members']) \
+                    and output.get('sha256') != 'withheld':
+                raise Failed('%s: a directory output holding a withheld member must withhold its tree hash'
+                             % output['path'])
     out.append('ok: outputs/outputs.tsv lists the %d recorded members with their recorded sha256' % len(expected))
 
     small = [rel for rel in files_in(package) if rel.startswith('outputs/small/')]

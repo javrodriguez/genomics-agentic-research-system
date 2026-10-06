@@ -21,6 +21,7 @@ Standard library only, Python 3.6 or later.
 """
 import argparse
 import csv
+import gzip
 import hashlib
 import importlib.util
 import io
@@ -33,6 +34,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import zlib
 
 HERE = Path(__file__).resolve().parent
 TEMPLATES = HERE / 'package'
@@ -69,6 +71,32 @@ DIGEST = re.compile(r'[0-9a-f]{64}\Z')
 STORAGE_URI = re.compile(r'(?i)(?<![A-Za-z0-9+.-])(s3[an]?|gs|gcs|az|abfss?|wasbs?)://([^/\s\'"<>]+)')
 ARN_ACCOUNT = re.compile(r'arn:aws[a-z-]*:[a-z0-9-]*:[a-z0-9-]*:([0-9]{12}):')
 BOUNDED_12 = re.compile(r'(?<![0-9A-Fa-f])[0-9]{12}(?![0-9A-Fa-f])')
+# A twelve-digit run is spared only when the whole token around it is a decimal number: MACS2's summary
+# printed 408.955439056357 (S3, 6 Oct 2026). A run after any other dot (us-east-1.<id>, v1.2.<id>,
+# run1.<id>) is still an id (review of the oracle fix, MINOR 1). The real account id is also armed as a
+# literal from the harvest's records.
+TOKEN_SPLIT = re.compile(r'[\s,;"\'()\[\]{}<>=|]+')
+DECIMAL_TOKEN = re.compile(r'[+-]?[0-9]+\.[0-9]+(?:[eE][+-]?[0-9]+)?\Z')
+
+
+def id_like(text):
+    """The first twelve-digit run, bounded by non-hex neighbours, that is not the fraction of a decimal number."""
+    for match in BOUNDED_12.finditer(text):
+        start = end = match.start()
+        while start > 0 and not TOKEN_SPLIT.match(text[start - 1]):
+            start -= 1
+        end = match.end()
+        while end < len(text) and not TOKEN_SPLIT.match(text[end]):
+            end += 1
+        token = text[start:end]
+        point = token.find('.')
+        exponent = min([i for i in (token.find('e'), token.find('E')) if i >= 0] or [len(token)])
+        # spared only inside a decimal number's fraction: after its point, before any exponent
+        # (review round 2, m3), never its integer part
+        if not (DECIMAL_TOKEN.match(token) and 0 <= point < match.start() - start
+                and match.end() - start <= exponent):
+            return match.group(0)
+    return None
 UNMASKED_URI = re.compile(r'(?i)(?<![A-Za-z0-9+.-])(?:s3[an]?|gs|gcs|az|abfss?|wasbs?)://(?!<BUCKET>)')
 PLACEHOLDERS = ('<WORKSPACE>', '<HOME>', '<SCRATCH>')
 # A home folder in any file. The one exception is conda's own build prefix, which GARS's public pip
@@ -660,8 +688,8 @@ class Masker(object):
         return text
 
     def holds(self, text):
-        """True when `text` holds a value this map masks."""
-        return text != Masker.mask(self._quiet(), text)
+        """True when `text` holds a value this map masks, or names an armed bucket bare (review round 2, m2)."""
+        return text != Masker.mask(self._quiet(), text) or any(b and b in text for b in self.buckets)
 
     def _quiet(self):
         clone = Masker.__new__(Masker)
@@ -709,6 +737,7 @@ class Render(object):
         self.not_recorded, self.withheld, self.left_out, self.unread = [], [], [], []
         self.masked_scripts = []
         self.oracle = set()
+        self.withheld_outputs = set()   # (stage id, member path) whose recorded sha256 is withheld
         self.project = self.harvest / 'project'
         self.stages = []
         for stage in self.record['stages']:
@@ -1098,6 +1127,7 @@ class Render(object):
                     raise Refusal('member %s is both a finding and a tolerance entry' % member)
                 found[(finding.get('stage'), member)] = finding
         copied = dict(((m['stage'], m['output_path'], m['member']), m) for m in self.record['members'])
+        presence_withheld = {}
         for s in stages02:
             for output in s['manifest'].get('outputs') or []:
                 if not output['path'].startswith(RESULTS_PREFIX):
@@ -1114,17 +1144,33 @@ class Render(object):
                     mode = entry['mode'] if entry else 'exact'
                     harvested = copied.get((s['rel'], output['path'], member))
                     normalised = self.normalised(s, full, digest, harvested, entry, comparer)
+                    held = self.oracle_member(s, full, harvested, mode, digest)
+                    field = 'outputs' if member == '.' else 'outputs[].members'
+                    if mode == 'presence' and not held:
+                        # Presence compares no hash, and a byte search cannot see inside a compressed
+                        # member, so no presence member's sha256 is ever published (review MAJOR 2).
+                        self.oracle.add(digest)
+                        self.withheld_outputs.add((s['id'], full))
+                        presence_withheld[s['id']] = presence_withheld.get(s['id'], 0) + 1
                     rows.append({'stage': s['id'], 'output_type': output['type'], 'output_path': output['path'],
-                                 'member': member, 'recorded_sha256': digest,
-                                 'recorded_sha256_source': run_label('outputs' if member == '.' else 'outputs[].members'),
+                                 'member': member, 'recorded_sha256': 'withheld' if mode == 'presence' else digest,
+                                 'recorded_sha256_source': ('withheld: %s holds %s, so its %s sha256 is cited by '
+                                                            'field name only (presence compares no hash)'
+                                                            % ('the file', held, field)) if held
+                                 else ('withheld: a presence member is compared by no hash, so its %s sha256 is '
+                                       'never published' % field) if mode == 'presence'
+                                 else run_label(field),
                                  'mode': mode,
                                  'mode_source': PACKAGING + 'outputs/package-tolerances.json' if mode != 'exact'
                                  else PACKAGING + 'the default comparison mode (decision 0283)',
                                  'normalised': normalised or '-',
                                  'normalised_source': NORMALISED if normalised else
                                  NORMALISED + ': none, this mode needs none'})
-                    self.oracle_member(s, full, harvested)
-                    self.small(s, full, digest, harvested)
+                    if mode != 'presence':
+                        self.small(s, full, digest, harvested)
+        for stage_id in sorted(presence_withheld):
+            self.withheld.append((stage_id, 'outputs: the sha256 of %d presence member(s)' % presence_withheld[stage_id],
+                                  'presence compares no hash, so none is published; each row reads withheld'))
         if set(declared) - used:
             raise Refusal('a tolerance entry names a member the run did not record')
         if set(('finding',) + k for k in found) - used:
@@ -1170,22 +1216,51 @@ class Render(object):
                 [('the approver the run recorded', a) for a in record.get('actors', [])] +
                 [('a user name the run\'s records carry', u) for u in record.get('users', [])])
 
-    def oracle_member(self, s, full, harvested):
+    WITHHOLDABLE = ('a run bucket name', 'an account id')
+
+    def oracle_member(self, s, full, harvested, mode, digest):
         """A recorded output's sha256 is printed for comparison, so an output holding a bucket, account
-        id, approver or user name would make that hash an oracle: refused. A member too large to
+        id, approver or user name would make that hash an oracle. A presence member is compared by no
+        hash, so when what it holds is only the runs bucket or the account id (the AWS Batch road's
+        MultiQC report names the S3 work folder; S3, 6 Oct 2026), its sha256 is withheld and cited by
+        field name (plan 4.2's hash-oracle rule), and the sweep is armed with it; anything else, or any
+        other mode, is refused. Returns what a withheld member holds, else None. A member too large to
         harvest was not read, and PROVENANCE says so."""
         rel = '%s/%s' % (s['id'], full)
         if harvested is None or not harvested['copied']:
+            if mode != 'presence':
+                # Review round 2, MAJOR: a member never read cannot be cleared of the bucket or the
+                # account id, and its sha256 would be printed; fail closed (a presence hash is never printed).
+                raise Refusal('output member %s was not harvested, so it was not read for masked values, and '
+                              'its recorded sha256 would be printed; harvest with --copy-large' % rel)
             if rel not in self.unread:
                 self.unread.append(rel)
-            return
+            return None
         data = (self.project / s['rel'] / full).read_bytes()
+        if data[:2] == b'\x1f\x8b':
+            # review round 2, m1: a gzip (or BGZF) member is searched in its decompressed stream too
+            try:
+                data = data + b'\n' + gzip.decompress(data)
+            except (OSError, EOFError, zlib.error):
+                raise Refusal('output member %s is gzip that does not decompress, so it cannot be read for '
+                              'masked values' % rel)
         text = data.decode('utf-8', 'replace')
+        held = []
         for what, value in self.sensitive():
             hit = user_named(text, value) if what.startswith('a user name') else value.encode('utf-8') in data
             if value and hit:
-                raise Refusal('output member %s holds %s; its recorded sha256 would confirm that value offline'
-                              % (rel, what))
+                if mode != 'presence' or what not in self.WITHHOLDABLE:
+                    raise Refusal('output member %s holds %s; its recorded sha256 would confirm that value offline'
+                                  % (rel, what))
+                if what not in held:
+                    held.append(what)
+        if not held:
+            return None
+        self.oracle.add(digest)
+        self.withheld_outputs.add((s['id'], full))
+        self.withheld.append((s['id'], 'outputs: %s sha256' % full,
+                              'the file holds %s; presence compares no hash' % ' and '.join(held)))
+        return ' and '.join(held)
 
     def small(self, s, full, digest, harvested):
         if not full.endswith(TABLE_SUFFIXES) or 'pipeline_info/' in full:
@@ -1219,7 +1294,22 @@ class Render(object):
         for s in stages02:
             m = s['manifest']
             self.mark_oracle(s['manifest_path'].read_text(encoding='utf-8'))
-            kept = dict((k, m[k]) for k in self.ALLOWED if k in m)
+            kept = json.loads(json.dumps(dict((k, m[k]) for k in self.ALLOWED if k in m)))
+            for output in kept.get('outputs') or []:
+                if output.get('members') is None:
+                    if (s['id'], output['path']) in self.withheld_outputs:
+                        output['sha256'] = 'withheld'
+                else:
+                    held = False
+                    for member in output['members']:
+                        if (s['id'], output['path'] + '/' + member['path']) in self.withheld_outputs:
+                            member['sha256'] = 'withheld'
+                            held = True
+                    if held:
+                        # The tree hash is a public function of the member list (wrapperlib), so with
+                        # the other members printed it would confirm a guessed withheld file.
+                        self.oracle.add(str(output['sha256']).split(':', 1)[-1])
+                        output['sha256'] = 'withheld'
             kept['containers'] = [dict((k, c[k]) for k in ('process', 'image', 'digest') if k in c)
                                   for c in m.get('containers') or []]
             kept['execution_config'] = [dict((k, e[k]) for k in ('role', 'path', 'sha256') if k in e)
@@ -1455,6 +1545,8 @@ class Render(object):
     def sweep(self):
         literal = [('a run bucket name', b) for b in self.masker.buckets] + \
                   [('an account id', a) for a in self.masker.accounts] + \
+                  [('an account id', '%s-%s-%s' % (a[:4], a[4:8], a[8:])) for a in self.masker.accounts
+                   if len(a) == 12] + \
                   [('the approver the run recorded', a) for a in self.record['secrets'].get('actors', [])] + \
                   [('an original path prefix', p) for p, _ in self.masker.prefixes]
         for rel in sorted(self.pkg.files):
@@ -1470,7 +1562,7 @@ class Render(object):
             for user in self.record['secrets'].get('users', []):
                 if user_named(text, user):
                     hits.append('a user name the run\'s records carry')
-            if BOUNDED_12.search(text):
+            if id_like(text):
                 hits.append('a 12-digit id')
             if SURVIVOR.search(text):   # every shipped text, not only the masked files (h3-4)
                 hits.append('an absolute path (%s)' % SURVIVOR.search(text).group(0))

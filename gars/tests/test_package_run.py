@@ -1211,6 +1211,352 @@ class StockLogins(PackageCase):
         self.assertEqual(w.harvest().returncode, 0)
         self.refused(w.render(), 'its recorded sha256 would confirm')
 
+    def presence_report(self, text, presence=True):
+        """S3, 6 Oct 2026: on the AWS Batch road MultiQC prints the S3 work folder, so the recorded
+        report holds the runs bucket and the account id inside its name."""
+        w = self.world()
+        add_members(w, {REPORT: text})
+        if presence:
+            write(w.tolerances, json.dumps({'entries': [{
+                'stage': STAGE, 'members': [REPORT], 'mode': 'presence', 'origin': 'S2b-preregistered',
+                'cause': 'the report embeds its run time', 'evidence': 'S2b'}]}))
+        self.assertEqual(w.harvest().returncode, 0)
+        return w
+
+    def test_a_bucket_in_a_presence_report_ships_with_its_hash_withheld(self):
+        w = self.presence_report('<html>work dir s3://%s/work/launchpad/repro-s3</html>\n' % BUCKET)
+        digest = sha((w.stage / REPORT).read_bytes())
+        proc = w.render()
+        self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+        package = w.root / 'package'
+        rows = [r for r in csv.DictReader(io.StringIO((package / 'outputs/outputs.tsv').read_text()), delimiter='\t')
+                if r['output_path'] == REPORT]
+        self.assertEqual([(r['recorded_sha256'], r['mode']) for r in rows], [('withheld', 'presence')])
+        self.assertIn('withheld', rows[0]['recorded_sha256_source'])
+        for path in package.rglob('*'):
+            if path.is_file():
+                self.assertNotIn(digest.encode(), path.read_bytes(), path)
+                self.assertNotIn(BUCKET.encode(), path.read_bytes(), path)
+        [record] = list((package / 'records').glob('*.manifest.json'))
+        outputs = json.loads(record.read_text())['outputs']
+        self.assertEqual([o['sha256'] for o in outputs if o['path'] == REPORT], ['withheld'])
+        self.assertIn(REPORT, (package / 'PROVENANCE.md').read_text())
+        verified = run([sys.executable, package / 'verify.py'])
+        self.assertEqual(verified.returncode, 0, verified.stdout.decode())
+
+    def test_a_bucket_in_an_exact_member_still_refuses(self):
+        w = self.presence_report('<html>work dir s3://%s/work</html>\n' % BUCKET, presence=False)
+        self.refused(w.render(), 'its recorded sha256 would confirm')
+
+    def test_a_user_name_in_a_presence_report_still_refuses(self):
+        w = self.world_naming('jdoe-q7')
+        write(w.tolerances, json.dumps({'entries': [{
+            'stage': STAGE, 'members': [REPORT], 'mode': 'presence', 'origin': 'S2b-preregistered',
+            'cause': 'the report embeds its run time', 'evidence': 'S2b'}]}))
+        self.assertEqual(w.harvest().returncode, 0)
+        self.refused(w.render(), 'its recorded sha256 would confirm')
+
+    def test_verify_refuses_a_withheld_hash_off_a_presence_row(self):
+        w = self.presence_report('<html>work dir s3://%s/work</html>\n' % BUCKET)
+        self.assertEqual(w.render().returncode, 0)
+        package = w.root / 'package'
+        table = package / 'outputs/outputs.tsv'
+        lines = table.read_text().splitlines(True)
+        lines = [l.replace('\tpresence\t', '\texact\t') if l.split('\t')[2] == REPORT else l for l in lines]
+        table.write_text(''.join(lines))
+        sums = ''.join('%s  %s\n' % (sha(p.read_bytes()), p.relative_to(package).as_posix())
+                       for p in sorted(package.rglob('*')) if p.is_file() and p.name != 'SHA256SUMS')
+        write(package / 'SHA256SUMS', sums)
+        proc = run([sys.executable, package / 'verify.py'])
+        self.assertEqual(proc.returncode, 1, proc.stdout.decode())
+        self.assertIn('withheld', proc.stdout.decode())
+
+    SUMMARY = 'run/results/bwa/merged_library/macs2/narrow_peak/qc/macs2_peak.mLb.clN.summary.txt'
+
+    def test_a_decimal_with_twelve_fraction_digits_is_not_an_id(self):
+        """S3, 6 Oct 2026: MACS2's peak summary printed a mean of 408.955439056357, whose twelve
+        fraction digits the bounded sweep read as an account-shaped id."""
+        w = self.world()
+        add_members(w, {self.SUMMARY: 'Min.\tMean\tmeasure\n192\t408.955439056357\tlength\n'})
+        self.assertEqual(w.harvest().returncode, 0)
+        proc = w.render()
+        self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+        self.assertTrue(list((w.root / 'package/outputs/small').rglob('macs2_peak.mLb.clN.summary.txt')))
+
+    def test_a_bare_twelve_digit_run_in_a_table_still_refuses(self):
+        w = self.world()
+        add_members(w, {self.SUMMARY: 'owner\tmeasure\n987654321098\tlength\n'})
+        self.assertEqual(w.harvest().returncode, 0)
+        self.refused(w.render(), 'a 12-digit id')
+
+    def test_a_presence_report_holding_a_user_name_beside_the_bucket_still_refuses(self):
+        """glitch-f3's condition (a), 6 Oct 2026: only a file whose sole sensitive content is the runs
+        bucket or the account id has its sha256 withheld; a second kind of value beside it refuses."""
+        w = self.world_naming('jdoe-q7')
+        add_members(w, {REPORT: '<html>work dir s3://%s/work, launched in /home/jdoe-q7/run</html>\n' % BUCKET})
+        write(w.tolerances, json.dumps({'entries': [{
+            'stage': STAGE, 'members': [REPORT], 'mode': 'presence', 'origin': 'S2b-preregistered',
+            'cause': 'the report embeds its run time', 'evidence': 'S2b'}]}))
+        self.assertEqual(w.harvest().returncode, 0)
+        self.refused(w.render(), 'a user name')
+
+    def test_a_presence_report_holding_a_user_name_beside_the_account_id_still_refuses(self):
+        w = self.world_naming('jdoe-q7')
+        add_members(w, {REPORT: '<html>account %s, launched in /home/jdoe-q7/run</html>\n' % ACCOUNT})
+        write(w.tolerances, json.dumps({'entries': [{
+            'stage': STAGE, 'members': [REPORT], 'mode': 'presence', 'origin': 'S2b-preregistered',
+            'cause': 'the report embeds its run time', 'evidence': 'S2b'}]}))
+        self.assertEqual(w.harvest().returncode, 0)
+        self.refused(w.render(), 'a user name')
+
+    def test_the_twelve_digit_sweep_catches_every_id_form_and_spares_only_a_fraction(self):
+        """glitch-f3's condition (b), 6 Oct 2026: an account-shaped run is caught bare, inside an ARN,
+        after a colon or a slash, at a line's start or end; only digits.digits fractions are exempt.
+        A synthetic id, never a real one."""
+        id_like = module(TOOL, 'package_run_bounded').id_like
+        fake = '210987654321'
+        caught = [fake, 'owner %s here' % fake, 'arn:aws:iam::%s:role/batch' % fake,
+                  'arn:aws:s3:::bucket-%s' % fake, 'key:%s' % fake, 'path/%s/work' % fake,
+                  '%s\tlength' % fake, 'value\t%s' % fake, 'line\n%s\nnext' % fake,
+                  'bucket-%s' % fake, '"%s"' % fake, 'v%s' % fake, '%s.5' % fake, '-%s' % fake,
+                  'bucket.%s' % fake, '.%s' % fake, 'host.%s.internal' % fake, 'a:.%s' % fake,
+                  'us-east-1.%s' % fake, 'v1.2.%s' % fake, 'run1.%s' % fake, 'gars-runs-v1.%s' % fake,
+                  's3://gars.v2.%s/work' % fake, '192.168.1.%s' % fake, 'x86_64.%s' % fake,
+                  'sample_2.%s.bam' % fake, '1.2.%s' % fake, '408.%s.5' % fake]
+        caught += ['1.5E+%s' % fake, '-3.0e-%s' % fake]   # review round 2, m3: an exponent is not a fraction
+        for text in caught:
+            self.assertEqual(id_like(text), fake, text)
+        spared = ['408.%s' % fake, 'mean 0.%s\n' % fake, '\t7.%s\t' % fake, '-3.%se-05' % fake,
+                  '"Mean": 408.%s,' % fake]
+        for text in spared:
+            self.assertIsNone(id_like(text), text)
+
+    def presence_entry(self, w, member):
+        write(w.tolerances, json.dumps({'entries': [{
+            'stage': STAGE, 'members': [member], 'mode': 'presence', 'origin': 'S2b-preregistered',
+            'cause': 'a plot embeds its creation time', 'evidence': 'S2b'}]}))
+
+    def test_every_presence_sha256_is_withheld_even_when_nothing_is_seen_in_it(self):
+        """Review MAJOR 2 (6 Oct 2026): a byte search cannot see a bucket inside a compressed member,
+        so no presence member's sha256 is published, whatever the search finds."""
+        import gzip
+        w = self.world()
+        member = 'run/results/bwa/merged_library/deeptools/plotprofile/atac-a.computeMatrix.vals.mat.tab'
+        blob = gzip.compress(('{"work": "s3://%s/work"}' % BUCKET).encode(), mtime=0)
+        self.assertNotIn(BUCKET.encode(), blob)   # non-vacuous: the raw bytes hide the bucket
+        clean = NARROW + '/qc/atac-b.mLb.clN.plots.pdf'
+        clean_body = b'%PDF-1.4\nnothing sensitive at all\n'   # a presence member nothing is seen in
+        add_members(w, {member: blob, clean: clean_body})
+        write(w.tolerances, json.dumps({'entries': [{
+            'stage': STAGE, 'members': [member, clean], 'mode': 'presence', 'origin': 'S2b-preregistered',
+            'cause': 'a plot embeds its creation time', 'evidence': 'S2b'}]}))
+        self.assertEqual(w.harvest().returncode, 0)
+        proc = w.render()
+        self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+        package = w.root / 'package'
+        for digest in (sha(blob), sha(clean_body)):
+            for path in package.rglob('*'):
+                if path.is_file():
+                    self.assertNotIn(digest.encode(), path.read_bytes(), path)
+        rows = [r for r in csv.DictReader(io.StringIO((package / 'outputs/outputs.tsv').read_text()), delimiter='\t')
+                if r['mode'] == 'presence']
+        self.assertTrue(rows)
+        self.assertEqual(set(r['recorded_sha256'] for r in rows), {'withheld'})
+        self.assertFalse([p for p in (package / 'outputs').rglob('*computeMatrix.vals.mat.tab')])   # a table suffix, never shipped
+        self.assertEqual(run([sys.executable, package / 'verify.py']).returncode, 0)
+
+    def test_a_presence_table_never_ships_in_small(self):
+        """A presence member with a table suffix is never copied into outputs/small/: its bytes would carry
+        the hash the package withholds, and verify cross-checks small/ against recorded sha256."""
+        w = self.world()
+        import gzip
+        member = NARROW + '/qc/atac-a.mLb.clN.summary.txt'   # gzip bytes under a table suffix
+        add_members(w, {member: gzip.compress(b'measure\tvalue\nlength\t192\n', mtime=0)})
+        self.presence_entry(w, member)
+        self.assertEqual(w.harvest().returncode, 0)
+        proc = w.render()
+        self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+        package = w.root / 'package'
+        self.assertFalse([p for p in (package / 'outputs/small').rglob('atac-a.mLb.clN.summary.txt')])
+        self.assertEqual(run([sys.executable, package / 'verify.py']).returncode, 0)
+
+    def test_a_withheld_member_withholds_its_directory_tree_hash(self):
+        """Review MAJOR 1 (6 Oct 2026): a directory output's tree hash is a public function of its
+        member list, so a withheld member must take its directory's tree hash with it."""
+        w = self.world()
+        member = NARROW + '/qc/atac-a.mLb.clN.plots.pdf'
+        add_members(w, {member: '%%PDF-1.4\nwork dir s3://%s/work\n' % BUCKET})
+        self.presence_entry(w, member)
+        self.assertEqual(w.harvest().returncode, 0)
+        recorded = json.loads(w.manifest_path.read_text())['outputs']
+        trees = [o['sha256'].split(':', 1)[1] for o in recorded
+                 if o.get('members') and any(o['path'] + '/' + m['path'] == member for m in o['members'])]
+        self.assertTrue(trees)   # non-vacuous: the member sits in at least one directory output
+        proc = w.render()
+        self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+        package = w.root / 'package'
+        for path in package.rglob('*'):
+            if path.is_file():
+                for tree in trees:
+                    self.assertNotIn(tree.encode(), path.read_bytes(), path)
+        [record] = list((package / 'records').glob('*.manifest.json'))
+        shipped = json.loads(record.read_text())['outputs']
+        self.assertTrue([o for o in shipped if o.get('members') and o['sha256'] == 'withheld'])
+
+    def test_a_withheld_digest_repeated_in_another_field_refuses(self):
+        """Review MINOR 2 (6 Oct 2026): the withheld digest is in the sweep's oracle set, so the same
+        digest printed through any other allowlisted field refuses the render."""
+        w = self.world()
+        member = NARROW + '/qc/atac-a.mLb.clN.plots.pdf'
+        body = '%%PDF-1.4\nwork dir s3://%s/work\n' % BUCKET
+        add_members(w, {member: body})
+        self.presence_entry(w, member)
+        manifest = json.loads(w.manifest_path.read_text())
+        manifest['predicate_facts']['echo'] = sha(body.encode())   # kept beside the run's own facts
+        w.manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
+        self.assertEqual(w.harvest().returncode, 0)
+        self.refused(w.render(), 'the sha256 of a file holding a masked value')
+
+    def echo_world(self, echo_of):
+        w = self.world()
+        member = NARROW + '/qc/atac-a.mLb.clN.plots.pdf'
+        add_members(w, {member: '%PDF-1.4\nnothing sensitive here\n'})
+        self.presence_entry(w, member)
+        manifest = json.loads(w.manifest_path.read_text())
+        manifest['predicate_facts']['echo'] = echo_of(manifest, member)
+        w.manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
+        self.assertEqual(w.harvest().returncode, 0)
+        return w
+
+    def test_a_clean_presence_digest_repeated_in_another_field_refuses(self):
+        w = self.echo_world(lambda m, member: sha(b'%PDF-1.4\nnothing sensitive here\n'))
+        self.refused(w.render(), 'the sha256 of a file holding a masked value')
+
+    def test_a_withheld_tree_hash_repeated_in_another_field_refuses(self):
+        def tree(m, member):
+            return [o['sha256'] for o in m['outputs']
+                    if o.get('members') and any(o['path'] + '/' + x['path'] == member for x in o['members'])][0]
+        w = self.echo_world(tree)
+        self.refused(w.render(), 'the sha256 of a file holding a masked value')
+
+    def test_an_unread_large_exact_member_refuses(self):
+        """Review round 2, MAJOR (6 Oct 2026): a member over 5 MB harvested without --copy-large was never
+        read for the bucket or the account id, so its sha256 is never printed: render refuses."""
+        w = self.world()
+        add_members(w, {REPORT: '<html>work dir s3://%s/work</html>\n' % BUCKET + 'x' * (6 * 1000 * 1000)})
+        self.assertEqual(w.harvest().returncode, 0)
+        self.refused(w.render(), 'was not harvested')
+
+    def test_an_unread_large_presence_member_refuses_too(self):
+        w = self.world()
+        member = NARROW + '/qc/atac-a.mLb.clN.plots.pdf'
+        add_members(w, {member: '%PDF-1.4\n' + 'x' * (6 * 1000 * 1000)})
+        self.presence_entry(w, member)
+        self.assertEqual(w.harvest().returncode, 0)
+        self.refused(w.render(), 'was not harvested')   # its presence form needs its bytes, so unread refuses too
+
+    def test_a_bucket_inside_a_gzip_exact_member_refuses(self):
+        """Review round 2, m1: an exact-mode gzip member is read in its decompressed stream too."""
+        import gzip
+        w = self.world()
+        member = 'run/results/bwa/merged_library/deeptools/atac-a.computeMatrix.mat.gz'
+        blob = gzip.compress(('work s3://%s/work\n' % BUCKET).encode(), mtime=0)
+        self.assertNotIn(BUCKET.encode(), blob)
+        add_members(w, {member: blob})
+        self.assertEqual(w.harvest().returncode, 0)
+        self.refused(w.render(), 'its recorded sha256 would confirm')
+
+    def test_the_dashed_account_form_is_swept(self):
+        """Review round 2, m6: the console's dddd-dddd-dddd form of the armed account id refuses."""
+        w = self.world()
+        add_members(w, {NARROW + '/qc/note.mLb.clN.summary.txt':
+                        'account %s-%s-%s\n' % (ACCOUNT[:4], ACCOUNT[4:8], ACCOUNT[8:])})
+        self.assertEqual(w.harvest().returncode, 0)
+        self.refused(w.render(), 'an account id')
+
+    def test_verify_refuses_a_printed_presence_hash_and_a_kept_tree_hash(self):
+        """Review round 2, m4: verify enforces both directions of the withheld rule."""
+        w = self.world()
+        member = NARROW + '/qc/atac-a.mLb.clN.plots.pdf'
+        body = '%PDF-1.4\nplain\n'
+        add_members(w, {member: body})
+        self.presence_entry(w, member)
+        self.assertEqual(w.harvest().returncode, 0)
+        self.assertEqual(w.render().returncode, 0)
+        package = w.root / 'package'
+        recorded = json.loads(w.manifest_path.read_text())['outputs']
+
+        def resum():
+            write(package / 'SHA256SUMS', ''.join('%s  %s\n' % (sha(p.read_bytes()), p.relative_to(package).as_posix())
+                                                  for p in sorted(package.rglob('*'))
+                                                  if p.is_file() and p.name != 'SHA256SUMS'))
+        table = package / 'outputs/outputs.tsv'
+        original = table.read_text()
+        table.write_text(original.replace('withheld', sha(body.encode()), 1))
+        resum()
+        self.assertEqual(run([sys.executable, package / 'verify.py']).returncode, 1)
+        table.write_text(original)
+        [record] = list((package / 'records').glob('*.manifest.json'))
+        shipped = json.loads(record.read_text())
+        tree = dict((o['path'], o['sha256']) for o in recorded if o.get('members'))
+        for o in shipped['outputs']:
+            if o.get('members') and o['sha256'] == 'withheld':
+                o['sha256'] = tree[o['path']]
+        record.write_text(json.dumps(shipped, indent=2, sort_keys=True) + '\n')
+        resum()
+        proc = run([sys.executable, package / 'verify.py'])
+        self.assertEqual(proc.returncode, 1, proc.stdout.decode())
+
+    def test_verify_refuses_a_consistent_printed_presence_hash(self):
+        """R5 alone: outputs.tsv and the records both print the presence member's sha256."""
+        w = self.world()
+        member = NARROW + '/qc/atac-a.mLb.clN.plots.pdf'
+        body = '%PDF-1.4\nplain\n'
+        add_members(w, {member: body})
+        self.presence_entry(w, member)
+        self.assertEqual(w.harvest().returncode, 0)
+        self.assertEqual(w.render().returncode, 0)
+        package = w.root / 'package'
+        digest = sha(body.encode())
+        table = package / 'outputs/outputs.tsv'
+        table.write_text('\n'.join(l.replace('\twithheld\t', '\t%s\t' % digest) if member.split('/')[-1] in l else l
+                                    for l in table.read_text().split('\n')))
+        [record] = list((package / 'records').glob('*.manifest.json'))
+        shipped = json.loads(record.read_text())
+        for o in shipped['outputs']:
+            for m in o.get('members') or []:
+                if (o['path'] + '/' + m['path']) == member:
+                    m['sha256'] = digest
+        record.write_text(json.dumps(shipped, indent=2, sort_keys=True) + '\n')
+        write(package / 'SHA256SUMS', ''.join('%s  %s\n' % (sha(p.read_bytes()), p.relative_to(package).as_posix())
+                                              for p in sorted(package.rglob('*'))
+                                              if p.is_file() and p.name != 'SHA256SUMS'))
+        proc = run([sys.executable, package / 'verify.py'])
+        self.assertEqual(proc.returncode, 1, proc.stdout.decode())
+        self.assertIn('must read withheld', proc.stdout.decode())
+
+    def test_verify_checks_every_row_of_a_member_listed_twice(self):
+        """R7 alone: an exact member two nested outputs share is listed twice; an edit to the first row fails."""
+        w = self.world()
+        member = NARROW + '/qc/atac-a.mLb.clN.frip.txt'
+        add_members(w, {member: 'frip\t0.42\n'})
+        self.assertEqual(w.harvest().returncode, 0)
+        self.assertEqual(w.render().returncode, 0)
+        package = w.root / 'package'
+        table = package / 'outputs/outputs.tsv'
+        lines = table.read_text().split('\n')
+        hits = [i for i, l in enumerate(lines) if l.split('\t')[3:4] and l.split('\t')[2] + '/' + l.split('\t')[3] == member]
+        self.assertEqual(len(hits), 2)   # non-vacuous: the member is listed under two directory outputs
+        cells = lines[hits[0]].split('\t')
+        cells[4] = '0' * 64
+        lines[hits[0]] = '\t'.join(cells)
+        table.write_text('\n'.join(lines))
+        write(package / 'SHA256SUMS', ''.join('%s  %s\n' % (sha(p.read_bytes()), p.relative_to(package).as_posix())
+                                              for p in sorted(package.rglob('*'))
+                                              if p.is_file() and p.name != 'SHA256SUMS'))
+        proc = run([sys.executable, package / 'verify.py'])
+        self.assertEqual(proc.returncode, 1, proc.stdout.decode())
+
     def test_the_stock_list_is_exactly_the_ruled_one(self):
         tool = module(TOOL, 'package_run_stock')
         self.assertEqual(sorted(tool.STOCK_LOGINS), ['root', 'ubuntu'])
