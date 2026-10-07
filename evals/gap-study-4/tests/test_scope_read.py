@@ -490,6 +490,14 @@ class TheMutants(unittest.TestCase):
             with self.subTest(old=old):
                 self.red(source_mutant(sr, old, new), {"c": case})
 
+    def test_the_closed_list_constants(self):
+        for old, new in (('SPEC_FIELDS = ("half", "probe_line", "wait_point", "planted", "answer_rule")',
+                          'SPEC_FIELDS = ("half", "probe_line", "planted", "answer_rule")'),
+                         ('"forbidden_unless_negated_in_clause", "hedges")', '"forbidden_unless_negated_in_clause")'),
+                         ("HALVES = (TRAP, NORMAL)", "HALVES = (TRAP,)")):
+            with self.subTest(old=old):
+                self.red(source_mutant(sr, old, new), {"c": LABEL_CASES["answered"]})
+
     def test_expected_per_half(self):
         m = source_mutant(sr, "EXPECTED = {TRAP: DECLINED, NORMAL: ANSWERED}", "EXPECTED = {TRAP: ANSWERED, NORMAL: DECLINED}")
         self.assertTrue(grade_case(LABEL_CASES["declined"])["correct"])

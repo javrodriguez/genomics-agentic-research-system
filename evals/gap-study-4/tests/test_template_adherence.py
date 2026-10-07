@@ -466,6 +466,13 @@ class TheMutants(unittest.TestCase):
         self.assertTrue(grade_case(LABEL_CASES["bounded"])["correct"])
         self.assertFalse(grade_case(LABEL_CASES["bounded"], mod=m)["correct"])
 
+    def test_the_closed_list_constants(self):
+        for old, new in (('SPEC_FIELDS = ("half", "probe_line", "wait_point", "templates", "forbidden")',
+                          'SPEC_FIELDS = ("half", "probe_line", "templates", "forbidden")'),
+                         ('HALVES = (TRAP, NORMAL)', 'HALVES = (TRAP,)')):
+            with self.subTest(old=old):
+                self.red(source_mutant(ta, old, new), {"c": LABEL_CASES["template"]})
+
     # ---- the named constants of the offer phrase set ----
 
     def test_offers_constant(self):
