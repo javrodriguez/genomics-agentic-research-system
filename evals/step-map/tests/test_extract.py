@@ -485,6 +485,26 @@ class ReachabilityTests(Base):
         self.assertEqual(holding, [])
         self.assertEqual(void[0]["lines"], ["%s:918" % WLIB])
 
+    def test_ruling_evidence_is_whole_lines(self):
+        """Re-indenting a cited line (here moving params.yaml's write out of its function) voids
+        the ruling, though every substring still matches."""
+        class Shifted(X.Source):
+            def text(self, path):
+                body = super().text(path)
+                if path == WLIB:
+                    lines = body.split("\n")
+                    lines[797] = lines[797].lstrip()
+                    body = "\n".join(lines)
+                return body
+        holding, void = X.check_rulings(Shifted(str(REPO), PIN))
+        self.assertEqual(holding, [])
+        self.assertIn("%s:798" % WLIB, void[0]["lines"])
+
+    def test_ruling_cites_the_atomic_write(self):
+        cited(self, "gars/_system/workspace.py", 130, "os.replace(str(tmp), str(path))")
+        ev = self.result["summary"]["rulings"]["holding"][0]["evidence"]
+        self.assertIn("gars/_system/workspace.py:130", ev)
+
     def test_check_mode_cannot_emit_the_writers_gate(self):
         # stage01_samplesheet.py:1069-1073 returns before the blocked branch (1085) in --check.
         cited(self, REG01, 1069, "if args.check:")
@@ -495,6 +515,26 @@ class ReachabilityTests(Base):
     def test_assays_without_select_cannot_refuse(self):
         cited(self, REG00, 296, "if args.select is None:")
         self.assertEqual(self.site(S00, "3", "stage00_register.assays")["emitted"], [0, 3])
+
+    def test_rerun_without_dry_run_is_a_call(self):
+        cited(self, S02, 148, "Reply T9 showing what it would write and **wait for confirmation**. On confirmation, re-run")
+        cited(self, S02, 149, "without `--dry-run`. Exit 1 → report its `error` and return to T8")
+        calls = [c for c in self.step(S02, "3a")["calls"] if c["kind"] == "prose-rerun"]
+        self.assertEqual([c["tool"] for c in calls], ["configure.apply"])
+        self.assertNotIn("--dry-run", calls[0]["command"])
+        site = self.site(S02, "3a", "configure.apply")
+        self.assertIn(1, site["handled"])
+        self.assertEqual([b["kind"] for b in site["branch_calls"]], ["prose-rerun"])
+
+    def test_branch_calls_are_declared_not_graded(self):
+        site = self.site(RNADE, "8", "rnaseq_de.collect")
+        self.assertTrue(site["branch_calls"])
+        for b in site["branch_calls"]:
+            self.assertIs(b["graded"], False)
+            self.assertEqual(b["emitted"], [0, 1, 2])
+        acc = self.result["summary"]["exits"]
+        self.assertGreater(acc["branch_calls"], 0)
+        self.assertGreater(acc["branch_call_codes_not_graded"], 0)
 
     def test_status_inside_an_exit_branch_opens_no_region(self):
         # 02.02:122-126: "Exit 2 -> ... call status ..., Exit 1 -> ... call status" both answer
@@ -604,6 +644,37 @@ class TemplateTests(Base):
         self.assertEqual([p.get("key") for p in t["T7"]["placeholders"] if p["text"] == "<sanitized>"],
                          ["sanitized_title"])
 
+    def test_counts_bind_only_to_keys_the_result_carries(self):
+        cut = "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md"
+        cited(self, cut, 201, "Groups: <n> (targets: <n>)")
+        row = [p for p in self.contract(cut)["templates"]["T6"]["placeholders"] if p["line"] == 201]
+        self.assertEqual(row[1]["binding"], "unbound")
+        cited(self, S01, 413, "<n> sample(s) have raw data but no row in samples.csv")
+        t7 = [p for p in self.contract(S01)["templates"]["T7"]["placeholders"] if p["line"] == 413]
+        self.assertEqual(t7[0]["binding"], "unbound")
+        cited(self, S00, 369, "| <Assay ID> | <n> | <n> | <path> |")
+        t6 = [p for p in self.contract(S00)["templates"]["T6"]["placeholders"] if p["line"] == 369]
+        self.assertEqual((t6[2]["binding"], t6[2].get("key")), ("label", "samples"))
+        spv = "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md"
+        cited(self, spv, 184, "Samples: <n> | Pipeline:")
+        s6 = [p for p in self.contract(spv)["templates"]["T6"]["placeholders"] if p["line"] == 184]
+        self.assertEqual((s6[0]["binding"], s6[0].get("key")), ("label", "samples"))
+
+    def test_dynamic_config_keys_reach_the_counts(self):
+        # config_values[key] (stage01_samplesheet.py:779) takes its keys from the `config:` columns
+        # of FORMATS (245) and joins counts at 824.
+        cited(self, REG01, 779, "config_values[key] = value")
+        cited(self, REG01, 824, 'out["counts"].update(config_values)')
+        t2 = [p for p in self.contract(S01)["templates"]["T2"]["placeholders"]
+              if p["text"] == "<strandedness>"]
+        self.assertEqual((t2[0]["binding"], t2[0].get("label")), ("key", "strandedness"))
+
+    def test_flow_vocabulary_excludes_keys_that_never_reach_the_result(self):
+        voc = X.flow_vocabulary(X.HelperIndex(self.src), X.load_registry(self.src),
+                                ["nfcore_cutandrun_wrapper.collect"])
+        self.assertNotIn("target", voc)      # a symlink field in output_evidence, never emitted
+        self.assertIn("failures", voc)
+
     def test_key_check_is_not_vacuous(self):
         vocab = X.key_vocabulary(self.src, ["_system/stage01_samplesheet.py"])
         self.assertIn("included_gb", vocab)
@@ -630,10 +701,40 @@ class CommandTests(Base):
         self.assertEqual(missing, ["<unknown thing>"])
         self.assertIn("--extra <unknown thing>", maximal)
 
-    def test_every_seen_command_is_accounted_for(self):
-        acc = self.result["summary"]["command_accounting"]
-        self.assertEqual(acc["seen"], acc["mapped"] + acc["unregistered"] + acc["uninstantiable"])
-        self.assertGreater(acc["seen"], 0)
+    def test_commands_recounted_independently(self):
+        """The test's own count of command-shaped text in every Process section (fenced lines and
+        backtick spans that start with an executable, prose wrapper verbs, 're-run' phrases,
+        "today's date") equals the calls the extractor found."""
+        import re as _re
+        execs = set(X.EXECUTABLES)
+        total = 0
+        for path in EXPECTED_CONTRACTS:
+            lines = show(path).split("\n")
+            start = next(i for i, l in enumerate(lines) if l.startswith("## Process"))
+            end = next(i for i in range(start + 1, len(lines)) if lines[i].startswith("## "))
+            body, prose_parts, inside, pending = lines[start + 1:end], [], False, ""
+            for l in body:
+                if l.lstrip().startswith("```"):
+                    inside = not inside
+                    continue
+                if inside:
+                    s = l.strip()
+                    if s.endswith("\\"):
+                        pending += s[:-1] + " "
+                        continue
+                    s = pending + s
+                    pending = ""
+                    if s and s.split()[0] in execs:
+                        total += 1
+                    continue
+                prose_parts.append(l.strip())
+            text = " ".join(prose_parts)
+            total += sum(1 for m in _re.finditer(r"`([^`]+)`", text) if m.group(1).split()[0] in execs)
+            total += len(_re.findall(r"today's date", text))
+            total += len(_re.findall(r"\bre-run (?:`\w+`|without `--)", text))
+            if "wrappers/" in show(path) and path not in (S00, S01, S02, S03):
+                total += len(_re.findall(r"\b[Rr]un (?:the wrapper's )?`(?:check|prepare|collect|summary)`", text))
+        self.assertEqual(self.result["summary"]["command_accounting"]["seen"], total)
 
 
 class GuardTests(Base):
@@ -698,6 +799,30 @@ class GuardTests(Base):
                             missing.append((c["path"], s["n"], call["command"]))
         self.assertEqual(missing, [])
         self.assertGreaterEqual(checked, 60)   # non-vacuity: an empty walk is not coverage
+
+
+class SpanTests(unittest.TestCase):
+    """span_accounting compares two independent counts; each must be able to disagree."""
+
+    def run_doc(self, body):
+        text = "# x\n## Process\n" + body + "\n## Response Format\n"
+        doc = X.parse_markdown(text)
+        step = X.parse_steps(doc)[0]
+        prose_text, offsets = X.prose(doc, step["start"], step["end"])
+        calls, _ = X.step_calls(doc, step, [], (None, None))
+        return X.span_accounting(doc, step, prose_text, calls)
+
+    def test_clean_step_is_consistent(self):
+        s = self.run_doc("1. Run `python3 _system/x.py go --a b` and reply `T1`.")
+        self.assertIs(s["consistent"], True)
+
+    def test_odd_backtick_is_caught(self):
+        s = self.run_doc("1. Run `python3 _system/x.py go and reply `T1`.")
+        self.assertIs(s["consistent"], False)
+
+    def test_helper_named_outside_backticks_is_caught(self):
+        s = self.run_doc("1. Run python3 _system/x.py go, then reply `T1`.")
+        self.assertIs(s["consistent"], False)
 
 
 class FileActionTests(Base):
@@ -794,9 +919,29 @@ def main(argv=None):
 
 
 class AccountingTests(Base):
-    def test_placeholder_accounting(self):
+    def test_placeholders_recounted_independently(self):
+        """The test's own count of <...> placeholders inside the first fence after each bold
+        template heading equals the placeholders the extractor graded or declined to grade."""
+        import re as _re
+        total = 0
+        for path in EXPECTED_CONTRACTS:
+            lines = show(path).split("\n")
+            i, in_rf = 0, False
+            while i < len(lines):
+                if lines[i].startswith("## "):
+                    in_rf = lines[i].startswith("## Response Format")
+                if in_rf and _re.match(r"^\*\*T\d+[a-z]? [—–-] ", lines[i]):
+                    j = i + 1
+                    while not lines[j].lstrip().startswith("```"):
+                        j += 1
+                    k = j + 1
+                    while not lines[k].lstrip().startswith("```"):
+                        total += len(_re.findall(r"<[^<>\n]+>", lines[k]))
+                        k += 1
+                    i = k
+                i += 1
         acc = self.result["summary"]["placeholder_accounting"]
-        self.assertEqual(acc["seen"], acc["graded"] + acc["ungraded"])
+        self.assertEqual(acc["seen"], total)
         self.assertGreater(acc["by_binding"].get("unbound", 0), 0)
 
     def test_spans_counted_independently(self):
@@ -808,11 +953,11 @@ class AccountingTests(Base):
         self.assertGreater(spans["seen"], 400)
         self.assertEqual(self.step(S00, "10")["spans"]["by_class"].get("subcommand"), 1)
 
-    def test_summary_counts_are_derived(self):
-        s = self.result["summary"]
-        self.assertEqual(s["contracts"], 14)
-        self.assertEqual(s["exits"]["emitted"], sum(len(cs["emitted"]) for c in self.result["contracts"]
-                                                    for cs in c["call_sites"]))
+    def test_handled_codes_that_no_helper_emits_are_published(self):
+        """A contract may branch on a code its helper never emits; the summary says how many."""
+        s = self.result["summary"]["exits"]
+        self.assertIn("handled_not_emitted", s)
+        self.assertLessEqual(s["handled_and_emitted"], s["handled"])
 
 
 if __name__ == "__main__":

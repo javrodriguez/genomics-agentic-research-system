@@ -21,6 +21,8 @@ import tempfile
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# The facts snapshot, by its test id: it fails on any change of output, so it never counts as a kill.
+SNAPSHOT_TEST = "PublishedFactsTests.test_committed_facts_equal_a_fresh_extraction"
 EXTRACT = os.path.join(os.path.dirname(HERE), "extract.py")
 TESTS = os.path.join(HERE, "test_extract.py")
 
@@ -185,7 +187,7 @@ def run(selected):
             red = [ln.split(" ")[0] for ln in proc.stdout.splitlines()
                    if ln.endswith("... FAIL") or ln.endswith("... ERROR")]
             snapshot = [ln for ln in proc.stdout.splitlines()
-                        if ("committed_facts" in ln or "re-derived and diffed" in ln)
+                        if SNAPSHOT_TEST in ln
                         and (ln.endswith("... FAIL") or ln.endswith("... ERROR"))]
             red = [r for r in red if not r.startswith("The")]
             bound = len([ln for ln in proc.stdout.splitlines()
