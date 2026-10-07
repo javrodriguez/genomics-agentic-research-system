@@ -1,0 +1,25 @@
+{
+  "lane": "w3b-cp3-graders-refusal-plangate",
+  "files": [
+    {
+      "path": "COPIED.d/w3b-cp3-graders-refusal-plangate.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/."
+    },
+    {
+      "path": "checks.d/w3b-cp3-graders-refusal-plangate.txt",
+      "status": "new",
+      "reason": "This lane's local check commands, read by run_checks.py."
+    },
+    {
+      "path": "graders/plan_gate.py",
+      "status": "new",
+      "reason": "Round 4's plan-gate grader (CP3, F-06 and F-14): the approval read from the plan's stamp and approval record in the end state through graders/endstate.py, beside round 2's token command reader (ruling J1) read through transcript_view; written new, not a copy of round 3's."
+    },
+    {
+      "path": "graders/precondition_refusal.py",
+      "status": "new",
+      "reason": "Round 4's precondition-refusal grader (CP3, F-07 and F-14): the refusal marker read after the probe only, the gate flags as tokens of the stage's own command, and any fabricated data file read from the end state; written new, not a copy of round 3's."
+    }
+  ]
+}
