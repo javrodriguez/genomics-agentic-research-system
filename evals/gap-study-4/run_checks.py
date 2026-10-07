@@ -1,0 +1,138 @@
+#!/usr/bin/env python3
+"""The round's local stand-in for CI until publication: the battery, then every lane's listed commands.
+
+    python3 evals/gap-study-4/run_checks.py
+
+Runs `python3 -W ignore evals/gap-study-4/test_round4.py`, then every line of every checks.d/*.txt (one file
+per lane, so no two lanes edit one list): one shell command per line, run from the repository root; blank lines
+and lines starting with `#` are skipped. Each command's result is printed as it finishes. The very last line is
+exactly
+
+    run_checks: <k> of <n> commands passed
+
+(k passed of n run, the battery counted as one), and the exit is 0 only when k equals n and n is at least 1.
+athena's `gars-gap4` suite kind reads that line, so its wording is fixed.
+
+Review round 3: every command runs under `bash -o pipefail`, so a pipeline fails when any stage fails (W1A3-4),
+and the battery passes only with its own closing count as its last line (W1A3-3).
+
+Home fold of review round 1: a file in checks.d that is not `<lane>.txt` in lower case, or a lane file that lists
+no command, counts as one failed command (W1A-4), so a lane's checks cannot be recorded and never run. Each command
+has a time limit (TIMEOUT_S), output is decoded with replacement, and anything a command raises counts as a
+failure, so the closing line is always printed and always last (N1).
+
+No model, no network, stdlib only.
+"""
+
+from __future__ import annotations
+
+import os
+import re
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+REPO = HERE.parent.parent
+CHECKS = HERE / "checks.d"
+BATTERY = "python3 -W ignore evals/gap-study-4/test_round4.py"
+TIMEOUT_S = 3600
+LANE_FILE = re.compile(r"^[a-z0-9][a-z0-9-]*\.txt$")
+# The battery's own closing line (review round 3 W1A3-3): the battery passes only with exit 0 AND this as its last
+# line of output, at least one test run and no expected failure. A battery that exits 0 without it (a test that
+# calls os._exit(0)) counts as a failed command.
+BATTERY_CLOSING = re.compile(r"^test_round4: ([1-9]\d*) run, (\d+) skipped, 0 expected failures$")
+
+
+def commands(folder: Path | None = None) -> list[tuple[str, str]]:
+    """(where it was listed, command) for the battery and every listed line, in file order."""
+    folder = CHECKS if folder is None else folder
+    out = [("test_round4", BATTERY)]
+    if folder.is_dir():
+        for f in sorted(folder.glob("*.txt")):
+            for n, line in enumerate(f.read_text().splitlines(), 1):
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    out.append((f"{f.name}:{n}", line))
+    return out
+
+
+def file_problems(folder: Path | None = None) -> list[tuple[str, str]]:
+    """(file, why) for every checks.d entry that would be silently skipped: a name that is not `<lane>.txt`, a
+    non-file, or a lane file listing no command. Each counts as one failed command (W1A-4)."""
+    folder = CHECKS if folder is None else folder
+    out = []
+    if folder.is_dir():
+        for f in sorted(folder.iterdir()):
+            if not f.is_file() or not LANE_FILE.match(f.name):
+                out.append((f.name, "not a lane checks file (`<lane>.txt`, lower case); its lines would never run"))
+            elif not any(l.strip() and not l.strip().startswith("#") for l in f.read_text().splitlines()):
+                out.append((f.name, "lists no command"))
+    return out
+
+
+def summary(k: int, n: int) -> str:
+    return f"run_checks: {k} of {n} commands passed"
+
+
+def verdict(k: int, n: int) -> int:
+    return 0 if n >= 1 and k == n else 1
+
+
+def run_all(cmds: list[tuple[str, str]], cwd: Path = REPO, tally: dict | None = None) -> tuple[int, int]:
+    """Run every command, counting into `tally` as each one ends, so an interrupt still leaves a true count
+    (review round 2 W1A2-7): an interrupted command counts as one failed command, then the interrupt goes on."""
+    env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
+    tally = {"k": 0, "n": 0} if tally is None else tally
+    k = 0
+    for where, cmd in cmds:
+        tally["n"] += 1
+        t0 = time.monotonic()
+        try:
+            p = subprocess.run(["bash", "-o", "pipefail", "-c", cmd], cwd=str(cwd), env=env, capture_output=True,
+                               text=True, errors="replace", timeout=TIMEOUT_S)
+            code, output = p.returncode, (p.stdout or "") + (p.stderr or "")
+            if code == 0 and where == "test_round4":
+                last = [l for l in (p.stdout or "").splitlines() if l.strip()][-1:]
+                if not last or not BATTERY_CLOSING.match(last[0]):
+                    code, output = "no-closing-count", output + "\nthe battery's last line is not its closing count"
+        except subprocess.TimeoutExpired:
+            code, output = "timeout", f"no result within {TIMEOUT_S} s"
+        except Exception as e:  # anything the command raises is a failure, never a lost closing line
+            code, output = "error", f"{type(e).__name__}: {e}"
+        except BaseException:
+            print(f"FAIL [{where}] interrupted: {cmd}", flush=True)
+            raise
+        took = time.monotonic() - t0
+        ok = code == 0
+        k += ok
+        tally["k"] += ok
+        print(f"{'PASS' if ok else 'FAIL'} [{where}] exit {code} in {took:.1f}s: {cmd}", flush=True)
+        for line in output.splitlines():
+            if line.startswith("test_round4: ") and ok:
+                print(f"    {line}")   # the battery's own run and skip count, on a pass too (review round 2)
+        if not ok:
+            for line in output.strip().splitlines()[-20:]:
+                print(f"    {line}")
+    return k, len(cmds)
+
+
+def main() -> int:
+    tally = {"k": 0, "n": 0}
+    try:
+        for name, why in file_problems():
+            tally["n"] += 1
+            print(f"FAIL [checks.d/{name}] {why}", flush=True)
+        run_all(commands(), tally=tally)
+    except Exception as e:  # the closing line is printed whatever happened
+        tally["n"] += 1
+        print(f"FAIL [run_checks] {type(e).__name__}: {e}", flush=True)
+    finally:
+        # also on an interrupt: the count of what really ended, the interrupted command counted as failed
+        print(summary(tally["k"], tally["n"]), flush=True)
+    return verdict(tally["k"], tally["n"])
+
+
+if __name__ == "__main__":
+    sys.exit(main())

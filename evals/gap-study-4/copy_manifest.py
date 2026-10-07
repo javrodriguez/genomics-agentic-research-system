@@ -1,0 +1,407 @@
+#!/usr/bin/env python3
+"""What this study copied from round 3, from which commit, and what it changed -- assembled from one fragment per lane.
+
+    python3 evals/gap-study-4/copy_manifest.py --check     assemble COPIED.d/*.json, re-derive every entry; exit 1 on any problem
+    python3 evals/gap-study-4/copy_manifest.py --derive    print the assembled record (what the freeze writes as COPIED.json)
+
+ROUND 4'S SHAPE. Round 3's manifest compared one committed COPIED.json with what the files derived, so every
+lane that added a file would have rewritten that same file. Here each build lane writes its own fragment,
+COPIED.d/<lane id>.json:
+
+    {"lane": "<lane id>", "files": [{"path": "<path under evals/gap-study-4/>",
+                                      "status": "identical" | "edited" | "new",
+                                      "source": "<repo path at the source commit, for identical and edited>",
+                                      "reason": "<required for edited and new>"}]}
+
+`--check` assembles the fragments and compares with NOTHING committed: during the build COPIED.json does not
+exist, and the freeze writes it once from derive(). What --check refuses:
+
+  - a fragment that is not that shape, or whose `lane` is not its own file name;
+  - a path claimed by two fragments (or twice by one);
+  - a file under this folder that no fragment claims, or a claimed file that does not exist;
+  - an `identical` copy whose bytes differ from its source blob at the source commit, or that carries a reason;
+  - an `edited` copy that is byte-identical to its source, or that carries no reason;
+  - a `new` file that carries a source or no reason, or that is byte-identical to the round 3 file at the same
+    path (that is a copy and says so);
+  - an edit to any copied fixture builder (UNEDITABLE): the fixtures round 3 ran are rebuilt exactly as it ran
+    them, and new fixtures are new files;
+  - any change to the frozen rounds, the shared graders and fixtures, the shared transcript parser or the
+    pre-study since BASE_COMMIT, in a commit or in the working tree;
+  - (review W1A-1, home fold) a source outside ALLOWED_SOURCES, or any source that is one of round 3's records
+    (ROUND3_RECORDS): its pre-registration, ledgers, results, transcripts, graders, battery and review records
+    are round 3's, never copied;
+  - (W1A-1) a `new` file whose bytes are any blob under evals/ at the source or the base commit, at any path;
+  - (W1A-3) a tracked cache file (`*.pyc`, `__pycache__/`), which a fragment could never claim and a sourceless
+    .pyc imports; and a symbolic link anywhere under this folder;
+  - (N2) a reason that is not a non-empty string;
+  - (review round 2) any file whose bytes are a round 3 record at the source or base commit, whatever its
+    status; an `edited` copy whose bytes are already a file under evals/ (it is an `identical` copy of that file);
+    and any copy of the first study's three named fixture builders that is not `identical`.
+
+What --check cannot see (review round 2 W1A2-6): a record changed by even one byte is a new blob, so a derivative
+of a record (a record plus a line, a record re-wrapped) passes these byte guards. So does an older version of a
+record (review round 3 W1A3-5): the guards read the record blobs at the source and the base commit only, so a
+record's exact bytes as they stood at an earlier commit pass. Keeping records out in that sense is the reviews'
+job, not this check's.
+
+A tree named as a source (round 3 W1A3-7, recorded, not fixed): `git show <commit>:<folder>` prints the folder's
+listing, and a record folder named without its trailing slash is not matched as a record, so a listing of
+record NAMES (never their content) can be copied as `identical`.
+
+Round 3's uneditable list (check_take.py, the graders, the label reader, lint_language.py, commit_msg.py) is
+NOT carried: round 4 edits its checker and writes new graders, and the copied list would refuse both.
+
+Every source is read with `git show`, never from a working tree: round 3's files at its done commit, and the
+shared files the plan names as copy sources at the base commit (lane E1's intervals landed after round 3).
+
+No model, no network, stdlib only.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+REPO = HERE.parent.parent
+FRAGMENTS = HERE / "COPIED.d"
+sys.path.insert(0, str(HERE))
+
+import study  # noqa: E402
+
+# Round 3's done commit: every copy is read from here.
+SOURCE_COMMIT = "e2979b3143081824aadea73523ec41af30c1ddb1"
+SOURCE_DIR = "evals/gap-study-3"
+# The commit round 4 was cut from. Everything below is unchanged since it, so nothing here can have been edited there.
+BASE_COMMIT = "68ec902f63bfbe4a18d07e0f564847531898ff95"
+# Where the shared copy sources are read (review round 2 NIT): a constant of its own, so moving the pin baseline
+# can never silently redefine "identical" for a shared builder. A test binds that each shared file here equals
+# round 3's at SOURCE_COMMIT wherever both exist.
+SHARED_COMMIT = "68ec902f63bfbe4a18d07e0f564847531898ff95"
+PINNED_UNCHANGED = ("evals/gap-study", "evals/gap-study-2", "evals/gap-study-3", "evals/graders",
+                    "evals/fixtures", "evals/transcript.py", "evals/haiku-prestudy", "evals/gap-study-intervals")
+
+STATUSES = ("identical", "edited", "new")
+ENTRY_KEYS = {"path", "status", "source", "reason"}
+
+# The copied fixture builders: uneditable. Each must be claimed, as `identical`, from its round 3 path.
+UNEDITABLE = ("fixtures/check_fixture.py", "fixtures/copy_project.py", "fixtures/gen_project.py",
+              "fixtures/gen_source.py", "fixtures/symbol_rulings.json")
+
+# Never part of a fragment: caches the interpreter may leave behind ON DISK. A tracked one is refused (W1A-3).
+IGNORED_PARTS = ("__pycache__",)
+IGNORED_SUFFIXES = (".pyc",)
+
+# Where a copy may come from (review W1A-1): round 3's folder, and the shared files the round 4 plan names as
+# copy sources (the first study's fixture builders and classifier, lane E1's interval code). Anything else is
+# refused rather than allowed by default.
+ALLOWED_SOURCES = ("evals/gap-study-3/", "evals/fixtures/gen_fastq.py", "evals/fixtures/neutralise.py",
+                   "evals/fixtures/rank_check.py", "evals/graders/confounded_refusal.py",
+                   "evals/gap-study-intervals/intervals.py")
+# The first study's fixture builders the plan names (review round 2 W1A2-4): copied byte-identical, as `identical`
+# only, so the copies stay exactly as the earlier rounds ran them. The rest of evals/fixtures/ (its pilot record,
+# its planted answer keys) is no copy source at all.
+SHARED_UNEDITABLE = ("evals/fixtures/gen_fastq.py", "evals/fixtures/neutralise.py", "evals/fixtures/rank_check.py")
+# Round 3's records, never copied whatever the status (W1A-1; the lane's own exclusions, made a check).
+ROUND3_RECORDS = tuple(f"{SOURCE_DIR}/{r}" for r in (
+    "prereg.json", "prereg-draft.json", "takes.json", "COPIED.json", "RESULT.md", "COSTS.md", "PROGRESS.md",
+    "test_round3.py", "results/", "transcripts/", "rehearsals/", "pauses/", "walks/", "verification/", "cases/",
+    "graders/", "review_kit/rounds.json", "review_kit/prefreeze-"))
+# The empty blob is every empty file; an empty new file copies nothing.
+EMPTY_BLOB = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+
+
+def git(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", "-C", str(REPO), *args], capture_output=True)
+
+
+def sha256(b: bytes) -> str:
+    return hashlib.sha256(b).hexdigest()
+
+
+def source_commit(src: str) -> str:
+    """Round 3's files are read at its done commit; the shared files the plan names (some landed after it, such
+    as lane E1's intervals) are read at SHARED_COMMIT, where PINNED_UNCHANGED holds them still."""
+    return SOURCE_COMMIT if src.startswith(SOURCE_DIR + "/") else SHARED_COMMIT
+
+
+def source_bytes(src: str) -> bytes | None:
+    shown = git("show", f"{source_commit(src)}:{src}")
+    return shown.stdout if shown.returncode == 0 else None
+
+
+def is_cache(rel: str) -> bool:
+    return any(part in IGNORED_PARTS for part in rel.split("/")) or rel.endswith(IGNORED_SUFFIXES)
+
+
+def files_here() -> set[str]:
+    """Every file under this folder, on disk or in the index, as a path relative to this folder. Untracked caches
+    on disk are left out; a TRACKED cache is kept, so the check refuses it (W1A-3)."""
+    out = set()
+    for p in HERE.rglob("*"):
+        rel = p.relative_to(HERE).as_posix()
+        if (p.is_file() or p.is_symlink()) and not is_cache(rel):
+            out.add(rel)
+    out |= tracked_here()
+    return out
+
+
+def tracked_here() -> set[str]:
+    listed = git("ls-files", "-z", "--", study.STUDY_REL)
+    return {name[len(study.STUDY_REL) + 1:] for name in listed.stdout.decode().split("\0") if name}
+
+
+def blob_id(data: bytes) -> str:
+    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
+
+
+_PRIOR_BLOBS: set[str] | None = None
+
+
+class ManifestError(Exception):
+    """The check could not read what it needs; it fails, never passes on an empty read (review round 3 W1A3-6)."""
+
+
+def listed_blobs(commit: str, prefix: str) -> list[tuple[str, str]]:
+    """(blob id, path) for every blob under `prefix` at `commit`; raises when git cannot list it."""
+    listed = git("ls-tree", "-r", "-z", commit, "--", prefix)
+    if listed.returncode != 0:
+        raise ManifestError(f"cannot list {prefix} at {commit[:12]}: git ls-tree exited {listed.returncode}")
+    out = []
+    for entry in listed.stdout.decode().split("\0"):
+        if entry:
+            meta, path = entry.split("\t", 1)
+            out.append((meta.split()[2], path))
+    return out
+
+
+def prior_blobs() -> set[str]:
+    """Every blob under evals/ (round 4's own folder left out) at the source commit and the base commit."""
+    global _PRIOR_BLOBS
+    if _PRIOR_BLOBS is None:
+        blobs = set()
+        for commit in (SOURCE_COMMIT, BASE_COMMIT):
+            blobs |= {b for b, path in listed_blobs(commit, "evals/") if not path.startswith(study.STUDY_REL + "/")}
+        if not blobs - {EMPTY_BLOB}:
+            raise ManifestError("cannot list evals/: git listed no file at the source or the base commit")
+        _PRIOR_BLOBS = blobs - {EMPTY_BLOB}
+    return _PRIOR_BLOBS
+
+
+_RECORD_BLOBS: set[str] | None = None
+
+
+def record_blobs() -> set[str]:
+    """Every blob at a ROUND3_RECORDS path, at the source and the base commit (review round 2 W1A2-1)."""
+    global _RECORD_BLOBS
+    if _RECORD_BLOBS is None:
+        blobs = set()
+        for commit in (SOURCE_COMMIT, BASE_COMMIT):
+            found = {b for b, path in listed_blobs(commit, SOURCE_DIR + "/") if is_record(path)}
+            if not found:
+                raise ManifestError(f"cannot list round 3's records: none found at {commit[:12]}")
+            blobs |= found
+        _RECORD_BLOBS = blobs - {EMPTY_BLOB}
+    return _RECORD_BLOBS
+
+
+def is_record(src: str) -> bool:
+    return any(src == r or (r.endswith(("/", "-")) and src.startswith(r)) for r in ROUND3_RECORDS)
+
+
+def is_link(name: str) -> bool:
+    return (HERE / name).is_symlink()
+
+
+def source_problem(src: str) -> str | None:
+    if not any(src == a or (a.endswith("/") and src.startswith(a)) for a in ALLOWED_SOURCES):
+        return f"its source {src} is not an allowed copy source ({', '.join(ALLOWED_SOURCES)})"
+    if is_record(src):
+        return f"its source {src} is one of round 3's records, which are never copied"
+    return None
+
+
+def load_fragments(folder: Path = FRAGMENTS) -> tuple[list[tuple[str, dict]], list[str]]:
+    """(lane, entry) for every entry of every fragment, and the shape problems found reading them."""
+    entries, out = [], []
+    if not folder.is_dir():
+        return entries, [f"no {folder.name}/ folder: no lane has recorded its files"]
+    for frag in sorted(folder.glob("*.json")):
+        try:
+            rec = json.loads(frag.read_text())
+        except (OSError, ValueError) as e:
+            out.append(f"{frag.name} is not JSON: {e}")
+            continue
+        if not isinstance(rec, dict) or set(rec) != {"lane", "files"} or not isinstance(rec["files"], list):
+            out.append(f"{frag.name} is not {{\"lane\": ..., \"files\": [...]}}")
+            continue
+        if rec["lane"] != frag.stem:
+            out.append(f"{frag.name} names lane {rec['lane']!r}; a fragment's lane is its file name")
+        for e in rec["files"]:
+            if not isinstance(e, dict) or not {"path", "status"} <= set(e) or not set(e) <= ENTRY_KEYS:
+                out.append(f"{frag.name}: entry {e!r} is not {{path, status, source?, reason?}}")
+                continue
+            entries.append((frag.stem, e))
+    return entries, out
+
+
+def derive(folder: Path = FRAGMENTS) -> dict:
+    """The assembled record, with each copy's source blob and both hashes. What the freeze writes as COPIED.json."""
+    entries, _ = load_fragments(folder)
+    files = []
+    for lane, e in sorted(entries, key=lambda le: le[1]["path"]):
+        p = HERE / e["path"]
+        row = {"path": study.rel(e["path"]), "lane": lane, "status": e["status"],
+               "source": e.get("source"), "reason": e.get("reason"),
+               "copy_sha256": sha256(p.read_bytes()) if p.is_file() else None}
+        if e.get("source"):
+            src = source_bytes(e["source"])
+            row["source_commit"] = source_commit(e["source"])
+            row["source_blob"] = git("rev-parse", f"{row['source_commit']}:{e['source']}").stdout.decode().strip() or None
+            row["source_sha256"] = sha256(src) if src is not None else None
+        files.append(row)
+    return {"role": "Every file of this study, per build lane: copied from round 3's done commit (identical or edited "
+                    "with a reason) or new, assembled from COPIED.d/.",
+            "source_commit": git("rev-parse", SOURCE_COMMIT).stdout.decode().strip(),
+            "base_commit": BASE_COMMIT, "files": files}
+
+
+def read_copy(path: str) -> bytes:
+    return (HERE / path).read_bytes()
+
+
+def problems(folder: Path = FRAGMENTS, present: set[str] | None = None, read=read_copy,
+             pinned: bool = True) -> list[str]:
+    """Every problem with the assembled fragments. `present` and `read` stand in for the folder (tests mutate them)."""
+    entries, out = load_fragments(folder)
+    try:
+        record_blobs()
+        prior_blobs()
+    except ManifestError as e:   # the byte guards cannot read: the check fails, it never runs them empty
+        return out + [str(e)]
+    present = files_here() if present is None else present
+    claimed: dict[str, str] = {}
+    for lane, e in entries:
+        path, status, src, why = e["path"], e["status"], e.get("source"), e.get("reason")
+        if path in claimed:
+            out.append(f"{path} is claimed by {claimed[path]} and again by {lane}; a file has one owner")
+            continue
+        claimed[path] = lane
+        if why is not None and (not isinstance(why, str) or not why.strip()):
+            out.append(f"{path} ({lane}): its reason is not a non-empty string")
+            why = None
+        if is_cache(path):
+            out.append(f"{path} ({lane}) is an interpreter cache; caches are never part of the study")
+        if status not in STATUSES:
+            out.append(f"{path} ({lane}): status {status!r} is not one of {', '.join(STATUSES)}")
+            continue
+        if path not in present:
+            out.append(f"{path} ({lane}) is claimed but does not exist")
+            continue
+        copy = read(path)
+        if blob_id(copy) in record_blobs():
+            out.append(f"{path} ({lane}): its bytes are one of round 3's records, which are never copied")
+            continue
+        if status == "new":
+            if src:
+                out.append(f"{path} ({lane}) is new and names a source; a copy is identical or edited")
+            if not why:
+                out.append(f"{path} ({lane}) is new and carries no reason")
+            same = source_bytes(f"{SOURCE_DIR}/{path}")
+            if same is not None and same == copy:
+                out.append(f"{path} ({lane}) is recorded as new but is byte-identical to {SOURCE_DIR}/{path} at "
+                           f"{SOURCE_COMMIT}; it is a copy and must say so")
+            elif blob_id(copy) in prior_blobs():
+                out.append(f"{path} ({lane}) is recorded as new but its bytes are a file under evals/ at "
+                           f"{SOURCE_COMMIT} or {BASE_COMMIT[:12]}; it is a copy and must say so")
+            if path in UNEDITABLE:
+                out.append(f"{path} ({lane}) is a copied fixture builder recorded as new")
+            continue
+        if not src:
+            out.append(f"{path} ({lane}) is {status} and names no source")
+            continue
+        bad_source = source_problem(src)
+        if bad_source:
+            out.append(f"{path} ({lane}): {bad_source}")
+            continue
+        orig = source_bytes(src)
+        if orig is None:
+            out.append(f"{path} ({lane}): its source {src} does not exist at {source_commit(src)}")
+            continue
+        differs = orig != copy
+        if status == "identical" and differs:
+            out.append(f"{path} ({lane}) differs from {src} at {SOURCE_COMMIT} and has no `edited` entry")
+        if status == "identical" and why:
+            out.append(f"{path} ({lane}) is identical and carries a reason; a reason is for an edit or a new file")
+        if status == "edited" and not differs:
+            out.append(f"{path} ({lane}) carries an edit reason but is byte-identical to {src}")
+        if status == "edited" and blob_id(copy) in prior_blobs():
+            out.append(f"{path} ({lane}) is recorded as edited but its bytes are a file under evals/; record it "
+                       f"identical from that file")
+        if src in SHARED_UNEDITABLE and (differs or status != "identical"):
+            out.append(f"{path} ({lane}) copies the shared builder {src}, which is uneditable: identical only")
+        if status == "edited" and not why:
+            out.append(f"{path} ({lane}) differs from {src} and no reason is recorded")
+        if path in UNEDITABLE and (differs or status != "identical"):
+            out.append(f"{path} ({lane}) is a copied fixture builder and differs from {src}, or is recorded as "
+                       f"edited; that is a FAIL, not a manifest entry")
+        if path in UNEDITABLE and src != f"{SOURCE_DIR}/{path}":
+            out.append(f"{path} ({lane}) is a copied fixture builder whose source is {src}, not {SOURCE_DIR}/{path}")
+    for name in sorted(present - set(claimed)):
+        out.append(f"{name} is under {study.STUDY_REL}/ and no fragment in {folder.name}/ claims it")
+    for name in sorted(n for n in present if is_cache(n)):
+        if name not in claimed:
+            out.append(f"{name} is a tracked interpreter cache under {study.STUDY_REL}/; caches are never tracked")
+    for name in sorted(present):
+        if is_link(name):
+            out.append(f"{name} is a symbolic link; every file of the study is a regular file")
+    for name in UNEDITABLE:
+        if name not in claimed:
+            out.append(f"{name}, a copied fixture builder, is not claimed by any fragment")
+    for p in (PINNED_UNCHANGED if pinned else ()):
+        if git("diff", "--quiet", BASE_COMMIT, "HEAD", "--", p).returncode != 0:
+            out.append(f"{p} has changed since {BASE_COMMIT[:12]}; a frozen round or shared file was edited")
+        elif git("diff", "--quiet", BASE_COMMIT, "--", p).returncode != 0:
+            out.append(f"{p} differs from {BASE_COMMIT[:12]} in the working tree")
+    return out
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    g = ap.add_mutually_exclusive_group(required=True)
+    g.add_argument("--check", action="store_true")
+    g.add_argument("--derive", action="store_true")
+    args = ap.parse_args()
+    for commit in (SOURCE_COMMIT, BASE_COMMIT, SHARED_COMMIT):
+        if git("cat-file", "-e", f"{commit}^{{commit}}").returncode != 0:
+            print(f"FAIL commit {commit} is not in this clone (git fetch --unshallow)")
+            return 1
+    bad = problems()
+    if args.derive:
+        # the record the freeze writes is derived only from a manifest that checks clean (review N9)
+        if bad:
+            for b in bad:
+                print(f"FAIL {b}")
+            return 1
+        print(json.dumps(derive(), indent=2))
+        return 0
+    for b in bad:
+        print(f"FAIL {b}")
+    if not bad:
+        entries, _ = load_fragments()
+        count = {s: sum(e["status"] == s for _, e in entries) for s in STATUSES}
+        lanes = sorted({lane for lane, _ in entries})
+        print(f"ok: {len(entries)} files from {len(lanes)} fragment(s) ({', '.join(lanes)}): "
+              f"{count['identical']} identical and {count['edited']} edited (round 3 at {SOURCE_COMMIT[:8]}, "
+              f"shared files at {SHARED_COMMIT[:8]}), "
+              f"{count['new']} new; {len(UNEDITABLE)} fixture builders byte-identical; "
+              f"{len(PINNED_UNCHANGED)} frozen paths unchanged since {BASE_COMMIT[:12]}")
+    return 1 if bad else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
