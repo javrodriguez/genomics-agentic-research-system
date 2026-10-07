@@ -1,19 +1,26 @@
 # What GARS leaves the model to decide: the top three per stage
 
-_For Javier's review, about two hours. Written 7 Oct 2026 from the full step map of GARS as of commit `a626cdc2`._
+**What you are reviewing.** Fifteen places where GARS lets the AI agent decide something on its own, because no rule, menu or script decides it for it: the three that matter most in each part of the pipeline.
+For each one I say what the agent decides, what can go wrong, why I ranked it where it is, and the fix I would propose.
+The fixes would go into the batch of GARS fixes that opens after the freeze on 16 Oct; nothing changes before you answer.
 
-## What this is, and what I am asking of you
+**How to answer.** One line per item, in whatever words you like, for example:
+- `agree`, if the risk is real and the ranking and the fix look right;
+- `re-rank: higher than X, because ...` or `re-rank: lower, because ...`;
+- `not a real risk: ...`, if you think the agent would never get this wrong, or it would not matter;
+- `different fix: ...`, if the risk is right but you would fix it another way.
 
-GARS's stage contracts tell the agent what to do, step by step, and its scripts do the computing.
-I read every numbered step of all 14 contracts (142 steps) and asked, at each one, what the model still decides on its own because no rule, menu or script decides it.
+Each item ends with an "Your answer:" line for this. Your reasons are what I most need: they set how the rest of the 29 decisions are ranked.
+It should take about two hours; the items are independent, so you can stop and resume anywhere.
+
+_Written 7 Oct 2026 from the full step map of GARS as of commit `a626cdc2`._
+
+## How this was done
+
+I read every numbered step of all 14 GARS stage contracts (142 steps) and asked, at each one, what the agent still decides on its own.
 I found 29 such decisions.
-Below are the three that matter most in each part of the pipeline, 15 in all, in plain words.
-
-Each was ranked the way the method we agreed on ranks them: first by how bad the outcome would be if the model gets it wrong (harm, 1 to 10), then by how likely the mistake is to slip past everything that comes after it (slip-through, 1 to 10; 10 means nothing later would notice).
-How often a model actually gets each one wrong has not been measured for any of them; the Gap Study is how we would measure it, and these are the first candidates.
-
-For each item, I would like your call on two things: is the ranking right (would you move it up or down, and why), and is the proposed fix the right kind of fix.
-A short "agree", "move up", "move down" or "different fix" per item is enough; your reasons are what matter most.
+Each was ranked by how bad the outcome would be if the agent got it wrong (harm, 1 to 10), then by how likely the mistake is to slip past everything that comes after it (slip-through, 1 to 10; 10 means nothing later would notice).
+How often an agent actually gets each one wrong has not been measured for any of them; the Gap Study is how we would measure it, and these fifteen are the first candidates.
 
 ## Stage 00: registering a project and its raw data
 
@@ -25,11 +32,13 @@ The opening message promises to ask only for the title, the assay types and the 
 
 **What can go wrong.** Both are written into the project's permanent record and cannot be changed afterwards, and the closing message never shows them to the user.
 GARS's safety layer only lets the agent say "public" for a folder a person has declared public, which limits the damage for the class.
-Nothing limits the purpose, and the purpose decides how long the data may be kept and whether a job may run on the local machine.
+Nothing limits the purpose, and the purpose decides where the project's jobs may run: each class allows only certain machine-and-purpose pairs, and the local machine accepts only test fixtures. (How long the data may be kept follows the class, not the purpose.)
 
 **Why it ranks first here.** Harm 8, slip-through 8: a permanent record of how the data may be used, chosen without asking and never shown back.
 
 **Proposed fix.** Ask both from a fixed list taken from GARS's own data-policy table, show them in the closing message, and give the script's refusals an answer.
+
+Your answer:
 
 ### 2. "Your request matches 01": the model matches the user's words to an assay
 
@@ -44,6 +53,8 @@ A user who sees "Your request matches 01" will usually reply "01", and the proje
 
 **Proposed fix.** Let the script match the original words (it already can) and have the model only show its answer.
 
+Your answer:
+
 ### 3. Sample names: the model writes the pattern that reads them
 
 <!-- S00-pattern -->
@@ -56,6 +67,8 @@ There is a second problem: GARS's safety layer refuses any such expression, beca
 **Why it ranks here.** Harm 8, slip-through 3: the derived sample names are shown for confirmation before anything is linked, and the stage's final human check asks the same question.
 
 **Proposed fix.** The script proposes a few candidate patterns from the actual file names, the user picks one by number, and the safety layer accepts the chosen one.
+
+Your answer:
 
 ## Stage 01: checking the design and writing the samplesheets
 
@@ -73,6 +86,8 @@ The history file quotes the user's words, but nothing checks the translation aga
 
 **Proposed fix.** Offer each setting as a numbered list with what each value means, the way stage 02 already offers genomes and contrasts; the user picks; the script writes the file and the history line.
 
+Your answer:
+
 ### 2. Free-text values for the remaining settings: the contract says both yes and no
 
 <!-- S01-offer -->
@@ -86,6 +101,8 @@ The settings file then looks complete, so stage 02 skips its menus, which are wh
 
 **Proposed fix.** Delete the offer; the closing message already tells the user stage 02 will offer menus.
 
+Your answer:
+
 ### 3. What counts as "yes" before excluding samples or overwriting files
 
 <!-- S01-yes -->
@@ -97,6 +114,8 @@ Only "cancel" is a fixed answer; any other reply ("ok", "yes, but keep sample 4"
 **Why it ranks here.** Harm 7, slip-through 4: the counts in the next message and the history file show what happened, afterwards.
 
 **Proposed fix.** A fixed word for each gate ("exclude", "overwrite"), and the script refuses a switch that has no matching recorded answer.
+
+Your answer:
 
 ## Stage 02, the router: settings menus and routing
 
@@ -114,6 +133,8 @@ The pre-flight check refuses only a chemistry the chosen aligner cannot run.
 
 **Proposed fix.** Add the chemistry menu to the router's settings step for single-cell, and show the choice in the confirmation message. The code already exists; only the contract omits it.
 
+Your answer:
+
 ### 2. The user's words about the statistical model become a formula
 
 <!-- R-formula -->
@@ -126,6 +147,8 @@ Users rarely give formula syntax; they say "account for batch" or "the donors ar
 
 **Proposed fix.** Offer formula choices built from the design table's own columns, the way the contrasts are already offered, and confirm them in the same message.
 
+Your answer:
+
 ### 3. Which project and assay the user means
 
 <!-- R-project -->
@@ -136,6 +159,8 @@ Users rarely give formula syntax; they say "account for batch" or "the donors ar
 **Why it ranks here.** Harm 6, slip-through 3: the opening message names the project and assay before anything runs, so an attentive user catches it.
 
 **Proposed fix.** A script lists the matching projects and assays, the model shows them, the user picks.
+
+Your answer:
 
 ## Stage 02, the sub-stages: running the pipelines
 
@@ -153,6 +178,8 @@ The contract's submit step says only "capture the job id", and the next message 
 
 **Proposed fix.** Give the submit step an answer for each refusal: report it word for word and stop, and never change a setting to get past a venue rule.
 
+Your answer:
+
 ### 2. Carrying the input file from the router into the sub-stage
 
 <!-- D-handoff -->
@@ -164,6 +191,8 @@ Nothing passes them on except the conversation, so the model carries or re-deriv
 **Why it ranks here.** Harm 6, slip-through 4: the scripts' own checks catch most wrong inputs, but nothing checks the provenance line.
 
 **Proposed fix.** Each analysis finds its own input with GARS's resolver (the differential-expression step already does), and the final check takes the producer's name from the resolver, not from the model.
+
+Your answer:
 
 ### 3. Where to pick up again after a job has finished
 
@@ -177,6 +206,8 @@ Only a later step's phrase "on a later invocation" hints that the model should j
 **Why it ranks here.** Harm 5, slip-through 4: wasted work and a rewritten provenance file rather than a wrong result.
 
 **Proposed fix.** The first steps route each job state to its own step, as the router already does; better, the script says which step comes next.
+
+Your answer:
 
 ## Stage 03: custom analysis
 
@@ -193,6 +224,8 @@ The approval locks the plan text, not the scripts, and the final check confirms 
 
 **Proposed fix.** Show the scripts for approval too, and lock their fingerprints into the approval record the way the plan's already is.
 
+Your answer:
+
 ### 2. Which project and assay the analysis draws on
 
 <!-- S03-assay -->
@@ -204,6 +237,8 @@ The approval locks the plan text, not the scripts, and the final check confirms 
 
 **Proposed fix.** List every assay's results and let the plan name the assay of each input.
 
+Your answer:
+
 ### 3. How to "monitor" a running analysis
 
 <!-- S03-monitor -->
@@ -214,6 +249,8 @@ The approval locks the plan text, not the scripts, and the final check confirms 
 **Why it ranks here.** Harm 3, slip-through 2: minor, and listed only because stage 03 has few silent decisions.
 
 **Proposed fix.** Return after submitting; the next visit checks once.
+
+Your answer:
 
 ## What else the map found
 

@@ -397,7 +397,7 @@
     {
      "id": "S00-class",
      "decision": "The dataset's data class and purpose, passed to finalize",
-     "goes_wrong": "Step 15's command carries --data-class and --purpose, but T1 promises to collect only the title, the assays and the paths, and no step asks. The model picks both, finalize locks them in dataset.tsv, and T6 never shows them. The guard lets an agent register 'public' only for a source a human declared public, so the class is fenced; the purpose (fixture, internal, pilot, commercial) is not, and it decides retention and whether local execution is allowed",
+     "goes_wrong": "Step 15's command carries --data-class and --purpose, but T1 promises to collect only the title, the assays and the paths, and no step asks. The model picks both, finalize locks them in dataset.tsv, and T6 never shows them. The guard lets an agent register 'public' only for a source a human declared public, so the class is fenced; the purpose (fixture, internal, pilot, commercial) is not, and it decides where the project's jobs may run: each class permits a list of venue and purpose pairs (data_policy.tsv, permitted_backends) and the local machine accepts only 'fixture' (venue_policy.py:56-87); retention follows the class, not the purpose",
      "severity": 8,
      "detection": 8,
      "occurrence": null,
