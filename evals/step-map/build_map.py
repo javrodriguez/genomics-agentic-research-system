@@ -374,6 +374,9 @@ def render(maps, ranked, summary, contracts):
             ", ".join("%s %d" % kv for kv in sorted(s["placeholder_accounting"]["by_binding"].items()))),
         "| Exit codes ruled unreachable by a cited reading | %d (rulings re-checked against their lines"
         " on every run) |" % s["exits"]["ruled_out"],
+        "| Calls made inside an exit branch (declared, not graded) | %d, with %d non-zero codes |"
+        % (s["exits"]["branch_calls"], s["exits"]["branch_call_codes_not_graded"]),
+        "| Codes a step branches on that its helper never emits | %d |" % s["exits"]["handled_not_emitted"],
         "| Backtick spans in steps | %d, counted independently in the raw lines and matched |"
         % s["span_accounting"]["seen"],
         "| Calls and flag variants put to the pinned guard | %d calls, in 5 synthetic workspaces |"

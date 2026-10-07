@@ -149,11 +149,25 @@
   {
    "branch_calls": [
     {
+     "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+     "emitted": [
+      0,
+      1,
+      2
+     ],
+     "graded": false,
      "kind": "inline",
      "line": 98,
      "tool": "executor.status"
     },
     {
+     "command": "python3 <workspace>/_system/executorlib.py status --workspace <project dir> <job_id>",
+     "emitted": [
+      0,
+      1,
+      2
+     ],
+     "graded": false,
      "kind": "inline",
      "line": 99,
      "tool": "executor.status"
@@ -301,9 +315,9 @@
    "source": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md:84-84",
    "spans": {
     "by_class": {},
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 0,
     "seen": 0
    },
@@ -358,9 +372,9 @@
     "by_class": {
      "value": 3
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 3,
     "seen": 3
    },
@@ -460,9 +474,9 @@
      "flag": 1,
      "value": 2
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 3,
     "seen": 3
    },
@@ -571,9 +585,9 @@
      "path": 1,
      "subcommand": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 2,
     "seen": 2
    },
@@ -667,9 +681,9 @@
      "command": 1,
      "value": 1
     },
-    "command_spans": 1,
     "consistent": true,
-    "inline_calls": 1,
+    "helper_calls": 1,
+    "helper_mentions": 1,
     "raw_backtick_pairs": 2,
     "seen": 2
    },
@@ -761,9 +775,9 @@
      "command": 1,
      "value": 1
     },
-    "command_spans": 1,
     "consistent": true,
-    "inline_calls": 1,
+    "helper_calls": 1,
+    "helper_mentions": 1,
     "raw_backtick_pairs": 2,
     "seen": 2
    },
@@ -857,9 +871,9 @@
      "command": 1,
      "value": 3
     },
-    "command_spans": 1,
     "consistent": true,
-    "inline_calls": 1,
+    "helper_calls": 1,
+    "helper_mentions": 1,
     "raw_backtick_pairs": 4,
     "seen": 4
    },
@@ -1102,9 +1116,9 @@
      "subcommand": 1,
      "value": 1
     },
-    "command_spans": 2,
     "consistent": true,
-    "inline_calls": 2,
+    "helper_calls": 2,
+    "helper_mentions": 2,
     "raw_backtick_pairs": 6,
     "seen": 6
    },
@@ -1211,9 +1225,9 @@
      "path": 1,
      "value": 2
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 3,
     "seen": 3
    },

@@ -302,9 +302,9 @@
    "source": "gars/01_prepare_samplesheets/CONTEXT.md:248-248",
    "spans": {
     "by_class": {},
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 0,
     "seen": 0
    },
@@ -416,9 +416,9 @@
      "path": 2,
      "value": 2
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 4,
     "seen": 4
    },
@@ -511,9 +511,9 @@
    "source": "gars/01_prepare_samplesheets/CONTEXT.md:261-268",
    "spans": {
     "by_class": {},
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 1,
+    "helper_mentions": 1,
     "raw_backtick_pairs": 0,
     "seen": 0
    },
@@ -545,9 +545,9 @@
     "by_class": {
      "value": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 1,
     "seen": 1
    },
@@ -581,9 +581,9 @@
     "by_class": {
      "value": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 1,
     "seen": 1
    },
@@ -621,9 +621,9 @@
     "by_class": {
      "value": 3
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 3,
     "seen": 3
    },
@@ -661,9 +661,9 @@
     "by_class": {
      "value": 2
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 2,
     "seen": 2
    },
@@ -737,9 +737,9 @@
      "command": 1,
      "value": 3
     },
-    "command_spans": 1,
     "consistent": true,
-    "inline_calls": 1,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 4,
     "seen": 4
    },
@@ -863,9 +863,9 @@
      "flag": 4,
      "value": 2
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 1,
+    "helper_mentions": 1,
     "raw_backtick_pairs": 6,
     "seen": 6
    },
@@ -897,9 +897,9 @@
     "by_class": {
      "value": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 1,
     "seen": 1
    },
@@ -939,9 +939,9 @@
     "by_class": {
      "value": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 1,
     "seen": 1
    },
@@ -977,9 +977,9 @@
     "by_class": {
      "value": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 1,
     "seen": 1
    },
@@ -1078,9 +1078,9 @@
      "path": 1,
      "value": 2
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 3,
     "seen": 3
    },
@@ -1105,9 +1105,9 @@
      "path": 1,
      "value": 3
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 4,
     "seen": 4
    },
@@ -1387,8 +1387,7 @@
    "line": 411,
    "placeholders": [
     {
-     "binding": "label",
-     "key": "sample_dir",
+     "binding": "unbound",
      "label": "sample(s)",
      "line": 413,
      "text": "<n>"
@@ -1419,7 +1418,14 @@
    ],
    "source": "gars/01_prepare_samplesheets/CONTEXT.md:411",
    "title": "Samples excluded, awaiting confirmation",
-   "unbound": []
+   "unbound": [
+    {
+     "binding": "unbound",
+     "label": "sample(s)",
+     "line": 413,
+     "text": "<n>"
+    }
+   ]
   },
   "T8": {
    "accept_tokens": [

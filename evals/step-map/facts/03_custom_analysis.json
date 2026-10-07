@@ -304,9 +304,9 @@
     "by_class": {
      "command": 1
     },
-    "command_spans": 1,
     "consistent": true,
-    "inline_calls": 1,
+    "helper_calls": 1,
+    "helper_mentions": 1,
     "raw_backtick_pairs": 1,
     "seen": 1
    },
@@ -399,9 +399,9 @@
     "by_class": {
      "command": 1
     },
-    "command_spans": 1,
     "consistent": true,
-    "inline_calls": 1,
+    "helper_calls": 1,
+    "helper_mentions": 1,
     "raw_backtick_pairs": 1,
     "seen": 1
    },
@@ -455,9 +455,9 @@
      "path": 1,
      "value": 7
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 8,
     "seen": 8
    },
@@ -479,9 +479,9 @@
    "source": "gars/03_custom_analysis/CONTEXT.md:127-127",
    "spans": {
     "by_class": {},
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 0,
     "seen": 0
    },
@@ -538,9 +538,9 @@
     "by_class": {
      "path": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 1,
     "seen": 1
    },
@@ -577,9 +577,9 @@
      "subcommand": 1,
      "value": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 2,
     "seen": 2
    },
@@ -706,9 +706,9 @@
      "path": 5,
      "value": 2
     },
-    "command_spans": 1,
     "consistent": true,
-    "inline_calls": 1,
+    "helper_calls": 1,
+    "helper_mentions": 1,
     "raw_backtick_pairs": 8,
     "seen": 8
    },
@@ -802,9 +802,9 @@
     "by_class": {
      "command": 1
     },
-    "command_spans": 1,
     "consistent": true,
-    "inline_calls": 1,
+    "helper_calls": 1,
+    "helper_mentions": 1,
     "raw_backtick_pairs": 1,
     "seen": 1
    },
@@ -913,9 +913,9 @@
      "command": 1,
      "flag": 1
     },
-    "command_spans": 1,
     "consistent": true,
-    "inline_calls": 1,
+    "helper_calls": 1,
+    "helper_mentions": 1,
     "raw_backtick_pairs": 2,
     "seen": 2
    },
@@ -1022,9 +1022,9 @@
      "path": 1,
      "value": 2
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 3,
     "seen": 3
    },

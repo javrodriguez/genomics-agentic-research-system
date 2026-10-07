@@ -70,7 +70,20 @@
    "unhandled_sites": {}
   },
   {
-   "branch_calls": [],
+   "branch_calls": [
+    {
+     "command": "python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula \"<theirs>\"] [--peaks-type <n>]",
+     "emitted": [
+      0,
+      1,
+      3
+     ],
+     "graded": false,
+     "kind": "prose-rerun",
+     "line": 148,
+     "tool": "configure.apply"
+    }
+   ],
    "by_table": {},
    "command": "python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula \"<theirs>\"] [--peaks-type <n>] --dry-run",
    "emitted": [
@@ -158,89 +171,7 @@
   {
    "descriptive": false,
    "flag": "--dry-run",
-   "guard": {
-    "allowed_where_intended": true,
-    "dispatcher": {
-     "decisions": {
-      "closed": {
-       "allow": false,
-       "reason": "Blocked: projects/demo is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
-      },
-      "fresh": {
-       "allow": false,
-       "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
-      },
-      "fresh_declared": {
-       "allow": false,
-       "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
-      },
-      "mixed": {
-       "allow": true,
-       "reason": ""
-      },
-      "public": {
-       "allow": true,
-       "reason": ""
-      }
-     }
-    },
-    "forms": {
-     "maximal": {
-      "command": "python3 _system/configure.py apply --project projects/demo --assay rnaseq_bulk --genome 1 --contrast 1 --formula \"~ condition\" --peaks-type 1",
-      "decisions": {
-       "closed": {
-        "allow": false,
-        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
-       },
-       "fresh": {
-        "allow": false,
-        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
-       },
-       "fresh_declared": {
-        "allow": false,
-        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
-       },
-       "mixed": {
-        "allow": false,
-        "reason": "Blocked: ~ condition starts with a tilde, which this path check does not resolve; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: spell the workspace-relative path out."
-       },
-       "public": {
-        "allow": true,
-        "reason": ""
-       }
-      }
-     },
-     "minimal": {
-      "command": "python3 _system/configure.py apply --project projects/demo --assay rnaseq_bulk --genome 1",
-      "decisions": {
-       "closed": {
-        "allow": false,
-        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
-       },
-       "fresh": {
-        "allow": false,
-        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
-       },
-       "fresh_declared": {
-        "allow": false,
-        "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
-       },
-       "mixed": {
-        "allow": true,
-        "reason": ""
-       },
-       "public": {
-        "allow": true,
-        "reason": ""
-       }
-      }
-     }
-    },
-    "intended": "public",
-    "missing_placeholders": [],
-    "status": "checked"
-   },
-   "in_command": true,
+   "in_command": false,
    "line": 149,
    "prohibited": false,
    "removal": true,
@@ -248,7 +179,7 @@
    "target_step": "3a",
    "target_tool": "configure.apply",
    "value": null,
-   "variant": "python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula \"<theirs>\"] [--peaks-type <n>]"
+   "variant": null
   }
  ],
  "schema": "stepmap-facts/1",
@@ -310,9 +241,9 @@
    "source": "gars/02_bioinformatics/CONTEXT.md:121-121",
    "spans": {
     "by_class": {},
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 0,
     "seen": 0
    },
@@ -336,9 +267,9 @@
    "source": "gars/02_bioinformatics/CONTEXT.md:122-123",
    "spans": {
     "by_class": {},
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 0,
     "seen": 0
    },
@@ -393,9 +324,9 @@
     "by_class": {
      "path": 2
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 2,
     "seen": 2
    },
@@ -750,6 +681,97 @@
      "line": 144,
      "literal": "python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula \"<theirs>\"] [--peaks-type <n>] --dry-run",
      "tool": "configure.apply"
+    },
+    {
+     "command": "python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula \"<theirs>\"] [--peaks-type <n>]",
+     "comment": null,
+     "executable": "python3",
+     "guard": {
+      "allowed_where_intended": true,
+      "dispatcher": {
+       "decisions": {
+        "closed": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is deidentified_under_agreement; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "fresh": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "fresh_declared": {
+         "allow": false,
+         "reason": "Blocked: projects/demo is in project demo, whose data_class is unclassified; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: read 00_data/dataset.tsv and the STATUS files; ask the human to run the step, declare a public source in data_sources.tsv, or read a public project."
+        },
+        "mixed": {
+         "allow": true,
+         "reason": ""
+        },
+        "public": {
+         "allow": true,
+         "reason": ""
+        }
+       }
+      },
+      "forms": {
+       "maximal": {
+        "command": "python3 _system/configure.py apply --project projects/demo --assay rnaseq_bulk --genome 1 --contrast 1 --formula \"~ condition\" --peaks-type 1",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": false,
+          "reason": "Blocked: ~ condition starts with a tilde, which this path check does not resolve; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: spell the workspace-relative path out."
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       },
+       "minimal": {
+        "command": "python3 _system/configure.py apply --project projects/demo --assay rnaseq_bulk --genome 1",
+        "decisions": {
+         "closed": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
+         },
+         "fresh": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
+         },
+         "fresh_declared": {
+          "allow": false,
+          "reason": "Blocked: this call names project demo, whose data is not public; Only public data may enter a hosted-model prompt (spec §6.1, §21 Q4; R-061/R-074; decision 0107). Next: reach this door through the dispatcher, which filters its output: python3 _system/tool_call.py configure.apply '<json>' (decision 0141)."
+         },
+         "mixed": {
+          "allow": true,
+          "reason": ""
+         },
+         "public": {
+          "allow": true,
+          "reason": ""
+         }
+        }
+       }
+      },
+      "intended": "public",
+      "missing_placeholders": [],
+      "status": "checked"
+     },
+     "kind": "prose-rerun",
+     "line": 148,
+     "literal": "python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula \"<theirs>\"] [--peaks-type <n>]",
+     "tool": "configure.apply"
     }
    ],
    "end": 153,
@@ -771,9 +793,9 @@
      "path": 2,
      "value": 6
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 4,
+    "helper_mentions": 4,
     "raw_backtick_pairs": 9,
     "seen": 9
    },
@@ -832,9 +854,9 @@
     "by_class": {
      "path": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 1,
     "seen": 1
    },
@@ -887,9 +909,9 @@
     "by_class": {
      "value": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 1,
     "seen": 1
    },
@@ -915,9 +937,9 @@
     "by_class": {
      "value": 2
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 2,
     "seen": 2
    },
@@ -945,9 +967,9 @@
     "by_class": {
      "value": 2
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 2,
     "seen": 2
    },
@@ -973,9 +995,9 @@
     "by_class": {
      "value": 2
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 2,
     "seen": 2
    },
@@ -1106,9 +1128,9 @@
      "path": 1,
      "value": 5
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 1,
+    "helper_mentions": 1,
     "raw_backtick_pairs": 6,
     "seen": 6
    },
@@ -1163,9 +1185,9 @@
     "by_class": {
      "path": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 1,
     "seen": 1
    },

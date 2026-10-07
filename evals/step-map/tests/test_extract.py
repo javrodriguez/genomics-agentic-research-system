@@ -901,6 +901,34 @@ def main(argv=None):
         tool = {"name": "fake", "argv": ["python3", "_system/fake.py"]}
         return X.helper_exits(src, index, tool, words)[0]
 
+    FLOW = """
+def emit(result, code):
+    return code
+def wrap(rows):
+    return [dict(r) for r in rows]
+def pair():
+    return {"kept": 1}, {"dropped": 2}
+def main(argv=None):
+    rows = [{"deep": 1}]
+    menu = wrap(rows)
+    a, b = pair()
+    return emit({"menu": menu, "first": a}, 0)
+"""
+
+    def flow_keys(self):
+        src = self.FakeSource({"gars/_system/flow.py": self.FLOW})
+        index = X.HelperIndex(src)
+        return X.flow_vocabulary(index, [{"name": "flow", "argv": ["python3", "_system/flow.py"]}],
+                                 ["flow"], src)
+
+    def test_a_callees_parameter_flows_back_to_the_callers_argument(self):
+        self.assertIn("deep", self.flow_keys())
+
+    def test_only_the_kept_tuple_position_flows(self):
+        keys = self.flow_keys()
+        self.assertIn("kept", keys)
+        self.assertNotIn("dropped", keys)
+
     def test_default_exit_code_is_resolved(self):
         codes = self.exits(["python3", "_system/fake.py"])
         self.assertIn("1", codes)              # failure(result) with code defaulting to EXIT_FAILURE

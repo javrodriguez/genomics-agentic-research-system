@@ -571,6 +571,7 @@ def step_calls(doc, step, registry, wrapper):
 
 
 RERUN_RE = re.compile(r"\bre-run `(\w+)`(?: with `(--[^`]+)`)?")
+RERUN_WITHOUT_RE = re.compile(r"\bre-run without `(--[a-z][a-z0-9-]*)`")
 
 
 def rerun_calls(text, offsets, calls_here, earlier_steps, registry):
@@ -584,6 +585,15 @@ def rerun_calls(text, offsets, calls_here, earlier_steps, registry):
         if not base:
             continue
         command = base[-1]["command"] + (" " + flag if flag else "")
+        out.append(make_call(command, line_at(offsets, m.start()), "prose-rerun", registry,
+                             m.start()))
+    for m in RERUN_WITHOUT_RE.finditer(text):
+        flag = m.group(1)
+        previous = [c for s in earlier_steps for c in s["calls"]] + list(calls_here)
+        base = [c for c in previous if c["tool"] and flag in c["command"].split()]
+        if not base:
+            continue
+        command = " ".join(w for w in base[-1]["command"].split() if w != flag)
         out.append(make_call(command, line_at(offsets, m.start()), "prose-rerun", registry,
                              m.start()))
     return out
@@ -616,11 +626,16 @@ def span_accounting(doc, step, text, calls):
             cls = "value"
         classes[cls] = classes.get(cls, 0) + 1
     seen = sum(classes.values())
-    inline_calls = sum(1 for c in calls if c["kind"] in ("inline", "executable"))
+    # An independent recount: every mention of a helper script in the step's raw lines, fenced or
+    # not, against the calls found in fences and backticks. A helper named outside both is a
+    # command the extractor would drop.
+    raw_text = " ".join(doc["lines"][i - 1] for i in range(step["start"], step["end"] + 1))
+    helper_mentions = len(re.findall(r"python3\s+\S*_system/\S+\.py\b", raw_text))
+    helper_calls = sum(1 for c in calls if c["kind"] in ("fenced", "inline")
+                       and re.search(r"_system/\S+\.py\b", c["command"]))
     return {"raw_backtick_pairs": raw // 2, "seen": seen, "by_class": dict(sorted(classes.items())),
-            "command_spans": classes.get("command", 0), "inline_calls": inline_calls,
-            "consistent": raw % 2 == 0 and raw // 2 == seen and
-            classes.get("command", 0) == inline_calls}
+            "helper_mentions": helper_mentions, "helper_calls": helper_calls,
+            "consistent": raw % 2 == 0 and raw // 2 == seen and helper_mentions == helper_calls}
 
 
 def make_call(command, line, kind, registry, pos=0):
@@ -1151,21 +1166,69 @@ RULINGS = [{
     "site": "gars/_system/wrapperlib.py:925",
     "tools": ["nfcore_%s_wrapper.prepare" % a for a in NFCORE],
     "why": ("write_reproducibility raises exit 2 only when key_formula is downstream-v2; an nf-core "
-            "wrapper's prepare writes params.yaml first and passes samplesheet and config, so "
-            "key_formula is stage01-v1"),
+            "wrapper's prepare writes params.yaml first (an atomic write that renames the file into "
+            "place before returning) and passes samplesheet and config, so key_formula is "
+            "stage01-v1. Every cited line must read exactly as cited, indentation included"),
     "evidence": [
-        ("gars/_system/wrapperlib.py", 797, "def write_params_yaml(substage, assay, params):"),
-        ("gars/_system/wrapperlib.py", 798, 'with ws.atomic_open(substage / "params.yaml") as fh:'),
-        ("gars/_system/wrapperlib.py", 917, "manifest['key_formula'] = ('stage01-v1' if (substage / 'params.yaml').is_file()"),
-        ("gars/_system/wrapperlib.py", 918, "and 'samplesheet' in inputs and 'config' in inputs else 'downstream-v2')"),
-        ("gars/_system/wrapperlib.py", 919, "if manifest['key_formula'] == 'downstream-v2':"),
-    ] + [e for a in NFCORE for e in (
-        ("gars/_system/wrappers/nfcore-%s-wrapper/nfcore_%s_wrapper.py" % (a, a),
-         NFCORE_LINES[a][0], "    wl.write_params_yaml(substage, ASSAY, params)"),
-        ("gars/_system/wrappers/nfcore-%s-wrapper/nfcore_%s_wrapper.py" % (a, a),
-         NFCORE_LINES[a][1], "    wl.write_reproducibility(substage, ASSAY, paths[\"checkout\"],"),
-        ("gars/_system/wrappers/nfcore-%s-wrapper/nfcore_%s_wrapper.py" % (a, a),
-         NFCORE_LINES[a][1] + 1, '{"samplesheet": paths["samplesheet"], "config": paths["config"]},'))],
+        ('gars/_system/wrapperlib.py', 797,
+         'def write_params_yaml(substage, assay, params):'),
+        ('gars/_system/wrapperlib.py', 798,
+         '    with ws.atomic_open(substage / "params.yaml") as fh:'),
+        ('gars/_system/wrapperlib.py', 917,
+         "    manifest['key_formula'] = ('stage01-v1' if (substage / 'params.yaml').is_file()"),
+        ('gars/_system/wrapperlib.py', 918,
+         "                               and 'samplesheet' in inputs and 'config' in inputs else 'downstream-v2')"),
+        ('gars/_system/wrapperlib.py', 919,
+         "    if manifest['key_formula'] == 'downstream-v2':"),
+        ('gars/_system/workspace.py', 111,
+         'def atomic_open(path, newline="", mode=None):'),
+        ('gars/_system/workspace.py', 123,
+         '    tmp = path.with_name(path.name + ".tmp")'),
+        ('gars/_system/workspace.py', 130,
+         '        os.replace(str(tmp), str(path))'),
+        ('gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py', 189,
+         '    wl.write_params_yaml(substage, ASSAY, params)'),
+        ('gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py', 206,
+         '    wl.write_reproducibility(substage, ASSAY, paths["checkout"],'),
+        ('gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py', 207,
+         '                             {"samplesheet": paths["samplesheet"], "config": paths["config"]},'),
+        ('gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py', 188,
+         '    wl.write_params_yaml(substage, ASSAY, params)'),
+        ('gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py', 205,
+         '    wl.write_reproducibility(substage, ASSAY, paths["checkout"],'),
+        ('gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py', 206,
+         '                             {"samplesheet": paths["samplesheet"], "config": paths["config"]},'),
+        ('gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py', 190,
+         '    wl.write_params_yaml(substage, ASSAY, params)'),
+        ('gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py', 204,
+         '    wl.write_reproducibility(substage, ASSAY, paths["checkout"],'),
+        ('gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py', 205,
+         '                             {"samplesheet": paths["samplesheet"], "config": paths["config"]},'),
+        ('gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py', 118,
+         '    wl.write_params_yaml(substage, ASSAY, params)'),
+        ('gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py', 132,
+         '    wl.write_reproducibility(substage, ASSAY, paths["checkout"],'),
+        ('gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py', 133,
+         '                             {"samplesheet": paths["samplesheet"], "config": paths["config"]},'),
+        ('gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py', 152,
+         '    wl.write_params_yaml(substage, ASSAY, params)'),
+        ('gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py', 169,
+         '    wl.write_reproducibility(substage, ASSAY, paths["checkout"],'),
+        ('gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py', 170,
+         '                             {"samplesheet": paths["samplesheet"], "config": paths["config"]},'),
+        ('gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py', 260,
+         '    wl.write_params_yaml(substage, ASSAY, params)'),
+        ('gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py', 277,
+         '    wl.write_reproducibility(substage, ASSAY, paths["checkout"],'),
+        ('gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py', 278,
+         '                             {"samplesheet": paths["samplesheet"], "config": paths["config"]},'),
+        ('gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py', 225,
+         '    wl.write_params_yaml(substage, ASSAY, params)'),
+        ('gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py', 242,
+         '    wl.write_reproducibility(substage, ASSAY, paths["checkout"],'),
+        ('gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py', 243,
+         '                             {"samplesheet": paths["samplesheet"], "config": paths["config"]},'),
+    ],
 }]
 
 
@@ -1173,11 +1236,7 @@ def check_rulings(src):
     """(rulings that hold, findings for rulings whose evidence no longer reads as cited)."""
     holding, void = [], []
     for ruling in RULINGS:
-        broken = []
-        for path, line, needle in ruling["evidence"]:
-            lines = src.text(path).split("\n")
-            if len(lines) < line or needle not in lines[line - 1]:
-                broken.append("%s:%d" % (path, line))
+        broken = evidence_holds(src, ruling["evidence"])
         if broken:
             void.append({"kind": "ruling_void", "ruling": ruling["id"], "lines": broken})
         else:
@@ -1201,79 +1260,307 @@ def apply_rulings(exits, tool, rulings):
     return out, ruled
 
 
-# --- the keys a called subcommand can write --------------------------------------------------------
+# --- the keys that reach a subcommand's emitted result ----------------------------------------------
+# Data flow, not vocabulary: start from what is passed to emit (and what a helper that emits its
+# parameter is given), and follow it back through assignments, updates, loops, comprehensions,
+# returned values and functions that write into it. Only keys written into that flow count.
+# A key computed at run time (`d[key] = v`) is unknown to a static walk; KEY_DOMAINS records,
+# with whole-line evidence re-checked on every run, where such keys come from.
 
-def node_keys(nodes):
-    vocab, calls = set(), []
-    for root in nodes:
-        for node in ast.walk(root):
-            if isinstance(node, ast.Dict):
-                vocab |= {k.value for k in node.keys
-                          if isinstance(k, ast.Constant) and isinstance(k.value, str)}
-            elif isinstance(node, (ast.Assign, ast.AugAssign)):
-                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-                for tgt in targets:
-                    if isinstance(tgt, ast.Subscript) and isinstance(tgt.slice, ast.Constant) \
-                            and isinstance(tgt.slice.value, str):
-                        vocab.add(tgt.slice.value)
-            if isinstance(node, ast.Call):
-                calls.append(node)
-                if isinstance(node.func, ast.Attribute):
-                    if node.func.attr == "setdefault" and node.args and \
-                            isinstance(node.args[0], ast.Constant) and \
-                            isinstance(node.args[0].value, str):
-                        vocab.add(node.args[0].value)
-                    if node.func.attr == "update":
-                        vocab |= {kw.arg for kw in node.keywords if kw.arg}
-                if getattr(node.func, "id", None) == "dict":
-                    vocab |= {kw.arg for kw in node.keywords if kw.arg}
-    return vocab, calls
+KEY_DOMAINS = [{
+    "id": "stage01-config-columns",
+    "site": "gars/_system/stage01_samplesheet.py:779",
+    "why": ("config_values[key] takes its keys from config_columns(fmt), the `config:` sources of "
+            "the assay's FORMATS entry, and joins the counts at line 824"),
+    "evidence": [
+        ("gars/_system/stage01_samplesheet.py", 245,
+         '    return [src.split(":", 1)[1] for _, src in fmt if src.startswith("config:")]'),
+        ("gars/_system/stage01_samplesheet.py", 770, "    for key in config_columns(fmt):"),
+        ("gars/_system/stage01_samplesheet.py", 779, "            config_values[key] = value"),
+        ("gars/_system/stage01_samplesheet.py", 824, '    out["counts"].update(config_values)'),
+    ],
+    "keys_from": ("gars/_system/stage01_samplesheet.py", "FORMATS", "config:"),
+}]
 
 
-def scoped_vocabulary(index, registry, tool_names):
-    """Keys the named tools' subcommands can write: main's common statements, the subcommand's
-    own function or block, and every function they call (followed through the helper modules),
-    never the module's other subcommands."""
-    vocab = set()
-    for name in tool_names:
-        tool = next((t for t in registry if t["name"] == name), None)
-        if tool is None or tool.get("filesystem"):
-            continue
-        argv = tool["argv"]
-        mod = index.by_path("gars/" + argv[1])
-        main = mod.functions.get("main")
-        sub = argv[2] if len(argv) >= 3 and not argv[2].startswith("-") else None
-        if main is None:
-            continue
-        if sub is None:
-            roots = [(mod, main.body)]
+def key_domain_keys(src, domain):
+    """The keys a key domain admits: every string constant inside the named module constant that
+    starts with the prefix, with the prefix removed."""
+    path, name, prefix = domain["keys_from"]
+    tree = ast.parse(src.text(path))
+    out = set()
+    for top in tree.body:
+        if isinstance(top, ast.Assign) and any(isinstance(t, ast.Name) and t.id == name
+                                               for t in top.targets):
+            for node in ast.walk(top.value):
+                if isinstance(node, ast.Constant) and isinstance(node.value, str) and \
+                        node.value.startswith(prefix):
+                    out.add(node.value[len(prefix):])
+    return out
+
+
+def evidence_holds(src, evidence):
+    """The cited lines that no longer read exactly as cited (whole line, indentation included)."""
+    broken = []
+    for path, line, expected in evidence:
+        lines = src.text(path).split("\n")
+        if len(lines) < line or lines[line - 1].rstrip() != expected.rstrip():
+            broken.append("%s:%d" % (path, line))
+    return broken
+
+
+def subscript_chain(node):
+    """(base name, [constant string slices], dynamic) for x["a"]["b"][k]."""
+    slices, dynamic = [], False
+    while isinstance(node, ast.Subscript):
+        sl = node.slice
+        if isinstance(sl, ast.Constant) and isinstance(sl.value, str):
+            slices.insert(0, sl.value)
         else:
-            scoped, common = dispatch_scopes(main)
-            roots = [(mod, common)] + [(mod, mod.functions[item].body if kind == "func"
-                                         else item.body) for kind, item in scoped.get(sub, [])]
-        seen = set()
-        while roots:
-            m, body = roots.pop()
-            keys, calls = node_keys(body)
-            vocab |= keys
-            # keys of the module's dict constants this code reads (e.g. a loop over CONFIG_RULES
-            # that writes one count per rule)
-            names = {n.id for root in body for n in ast.walk(root)
-                     if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
-            for top in m.tree.body:
-                if isinstance(top, ast.Assign) and isinstance(top.value, ast.Dict) and \
-                        any(isinstance(tg, ast.Name) and tg.id in names for tg in top.targets):
-                    vocab |= {k.value for k in top.value.keys
-                              if isinstance(k, ast.Constant) and isinstance(k.value, str)}
-            for call in calls:
-                target = index.function(m, call.func)
-                if target is None:
-                    continue
-                key = (target[0].path, target[1].name)
-                if key not in seen:
-                    seen.add(key)
-                    roots.append((target[0], target[1].body))
-    return vocab
+            dynamic = True
+        node = node.value
+    return (node.id if isinstance(node, ast.Name) else None), slices, dynamic
+
+
+def pruned_nodes(body, flags):
+    """Every node of a body, except the branches of a top-level `if` the command's flags decide
+    the other way."""
+    out = []
+    for stmt in body:
+        if flags is not None and isinstance(stmt, ast.If):
+            truth = flags.truth(stmt.test)
+            out += list(ast.walk(stmt.test))
+            if truth is not False:
+                out += pruned_nodes(stmt.body, flags)
+            if truth is not True:
+                out += pruned_nodes(stmt.orelse, flags)
+            continue
+        out += list(ast.walk(stmt))
+    return out
+
+
+class Flow:
+    def __init__(self, src, index, flags=None):
+        self.src, self.index, self.flags = src, index, flags
+        self.keys, self.dynamic, self.memo = set(), [], {}
+
+    def module_dict(self, mod, name):
+        for top in mod.tree.body:
+            if isinstance(top, ast.Assign) and isinstance(top.value, ast.Dict) and \
+                    any(isinstance(t, ast.Name) and t.id == name for t in top.targets):
+                return top.value
+        return None
+
+    def walk(self, mod, name, args, body, tracked, returned, top=False, positions=None):
+        """Follow the flow through one function body; returns the indexes of its parameters
+        whose content flows (so the caller can follow its own arguments). `positions` limits a
+        returned tuple to the elements the caller keeps."""
+        key = (mod.path, name, len(body), frozenset(tracked), returned, top,
+               None if positions is None else frozenset(positions))
+        if key in self.memo:
+            return self.memo[key]
+        self.memo[key] = set()
+        tracked = set(tracked)
+        nodes = pruned_nodes(body, self.flags if top else None)
+        params = [a.arg for a in args.args] if args else []
+        while True:
+            before = (len(tracked), len(self.keys))
+            for n in nodes:
+                if isinstance(n, ast.Call) and is_emit(self.index, mod, n) and n.args:
+                    self.expr(mod, n.args[0], tracked)
+                elif isinstance(n, ast.Return) and returned and n.value is not None:
+                    if positions is not None and isinstance(n.value, ast.Tuple):
+                        for i in sorted(positions):
+                            if i < len(n.value.elts):
+                                self.expr(mod, n.value.elts[i], tracked)
+                    else:
+                        self.expr(mod, n.value, tracked)
+                elif isinstance(n, ast.Assign):
+                    for tgt in n.targets:
+                        if isinstance(tgt, (ast.Tuple, ast.List)):
+                            self.tuple_assign(mod, tgt, n.value, tracked)
+                        else:
+                            self.assign(mod, tgt, n.value, tracked, n.lineno)
+                elif isinstance(n, ast.AugAssign):
+                    self.assign(mod, n.target, n.value, tracked, n.lineno)
+                elif isinstance(n, ast.For):
+                    names = {x.id for x in ast.walk(n.target) if isinstance(x, ast.Name)}
+                    if names & tracked:
+                        self.expr(mod, n.iter, tracked)
+                elif isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute):
+                    base, slices, _ = subscript_chain(n.func.value)
+                    if base in tracked:
+                        if n.func.attr == "update":
+                            self.keys |= set(slices)
+                            for a in n.args:
+                                self.expr(mod, a, tracked)
+                            self.keys |= {kw.arg for kw in n.keywords if kw.arg}
+                        elif n.func.attr == "setdefault" and n.args and \
+                                isinstance(n.args[0], ast.Constant):
+                            self.keys |= set(slices) | {n.args[0].value}
+                        elif n.func.attr in ("append", "extend", "insert"):
+                            self.keys |= set(slices)
+                            for a in n.args:
+                                self.expr(mod, a, tracked)
+            if (len(tracked), len(self.keys)) == before:
+                break
+        # functions that write into a tracked name, and every helper that emits on its own
+        for n in nodes:
+            if not isinstance(n, ast.Call):
+                continue
+            target = self.index.function(mod, n.func)
+            if target is None or target[1].name == "emit":
+                continue
+            names = [p.arg for p in target[1].args.args]
+            inner = {names[i] for i, a in enumerate(n.args)
+                     if i < len(names) and isinstance(a, ast.Name) and a.id in tracked}
+            self.walk(target[0], target[1].name, target[1].args, target[1].body, inner, False)
+        flowing = {i for i, p in enumerate(params) if p in tracked}
+        self.memo[key] = flowing
+        return flowing
+
+    def tuple_assign(self, mod, tgt, value, tracked):
+        """`a, b = value`: only the positions whose names flow carry the value's flow."""
+        keep = {i for i, el in enumerate(tgt.elts)
+                if isinstance(el, ast.Name) and el.id in tracked}
+        if not keep:
+            return
+        if isinstance(value, (ast.Tuple, ast.List)):
+            for i in sorted(keep):
+                if i < len(value.elts):
+                    self.expr(mod, value.elts[i], tracked)
+            return
+        target = self.index.function(mod, value.func) if isinstance(value, ast.Call) else None
+        if target is not None and target[1].name != "emit":
+            flowing = self.walk(target[0], target[1].name, target[1].args, target[1].body,
+                                set(), True, False, keep)
+            for i in sorted(flowing):
+                if i < len(value.args):
+                    self.expr(mod, value.args[i], tracked)
+            return
+        self.expr(mod, value, tracked)
+
+    def assign(self, mod, tgt, value, tracked, lineno):
+        base, slices, dynamic = subscript_chain(tgt)
+        if base is None:
+            return
+        if base in tracked:
+            if slices or dynamic or not isinstance(tgt, ast.Name):
+                self.keys |= set(slices)
+                if dynamic:
+                    self.dynamic.append("%s:%d" % (mod.path, lineno))
+            self.expr(mod, value, tracked)
+
+    def expr(self, mod, node, tracked):
+        if node is None:
+            return
+        if isinstance(node, ast.Name):
+            if node.id not in tracked:
+                tracked.add(node.id)
+            const = self.module_dict(mod, node.id)
+            if const is not None:
+                self.expr(mod, const, tracked)
+        elif isinstance(node, ast.Dict):
+            for k, v in zip(node.keys, node.values):
+                if isinstance(k, ast.Constant) and isinstance(k.value, str):
+                    self.keys.add(k.value)
+                elif k is None:
+                    self.expr(mod, v, tracked)
+                self.expr(mod, v, tracked)
+        elif isinstance(node, (ast.DictComp, ast.ListComp, ast.SetComp, ast.GeneratorExp)):
+            if isinstance(node, ast.DictComp):
+                if isinstance(node.key, ast.Constant) and isinstance(node.key.value, str):
+                    self.keys.add(node.key.value)
+                self.expr(mod, node.value, tracked)
+            else:
+                self.expr(mod, node.elt, tracked)
+            for gen in node.generators:
+                self.expr(mod, gen.iter, tracked)
+        elif isinstance(node, ast.Call):
+            func = node.func
+            if isinstance(func, ast.Attribute) and func.attr in ("values", "get"):
+                self.expr_values(mod, func.value, tracked)
+                return
+            if isinstance(func, ast.Attribute) and func.attr in ("items", "keys", "copy"):
+                self.expr(mod, func.value, tracked)
+                return
+            if getattr(func, "id", None) in ("dict", "sorted", "list", "enumerate", "reversed",
+                                             "zip", "tuple", "set"):
+                for a in node.args:
+                    self.expr(mod, a, tracked)
+                self.keys |= {kw.arg for kw in node.keywords if kw.arg}
+                return
+            target = self.index.function(mod, func)
+            if target is not None and target[1].name != "emit":
+                flowing = self.walk(target[0], target[1].name, target[1].args, target[1].body,
+                                    set(), True)
+                for i in sorted(flowing):
+                    if i < len(node.args):
+                        self.expr(mod, node.args[i], tracked)
+        elif isinstance(node, (ast.List, ast.Tuple, ast.Set)):
+            for e in node.elts:
+                self.expr(mod, e, tracked)
+        elif isinstance(node, ast.IfExp):
+            self.expr(mod, node.body, tracked)
+            self.expr(mod, node.orelse, tracked)
+        elif isinstance(node, ast.BoolOp):
+            for v in node.values:
+                self.expr(mod, v, tracked)
+        elif isinstance(node, ast.Subscript):
+            base, _, _ = subscript_chain(node)
+            if base:
+                self.expr_values(mod, ast.Name(id=base, ctx=ast.Load()), tracked)
+
+    def expr_values(self, mod, node, tracked):
+        """A value read out of a dict (`d.get(k)`, `d[k]`, `d.values()`): for a module dict
+        constant only its values' contents flow, never its own keys."""
+        if isinstance(node, ast.Name):
+            const = self.module_dict(mod, node.id)
+            if const is not None:
+                for v in const.values:
+                    self.expr(mod, v, tracked)
+                return
+        self.expr(mod, node, tracked)
+
+
+def flow_vocabulary(index, registry, tool_names, src=None, words=None):
+    """Keys that reach the named tools' emitted results (see Flow), plus the keys of a dynamic
+    site a holding key domain explains. With `words` (a concrete command line), the top-level
+    branches its flags decide are followed one way only."""
+    src = src or index.src
+    keys = set()
+    for name in tool_names:
+        keys |= _flow_one(index, registry, name, src, words)
+    return keys
+
+
+def _flow_one(index, registry, name, src, words):
+    tool = next((t for t in registry if t["name"] == name), None)
+    if tool is None or tool.get("filesystem"):
+        return set()
+    mod0 = index.by_path("gars/" + tool["argv"][1])
+    flow = Flow(src, index, Flags(mod0, words) if words is not None else None)
+    argv, mod = tool["argv"], mod0
+    main = mod.functions.get("main")
+    if main is None:
+        return set()
+    sub = argv[2] if len(argv) >= 3 and not argv[2].startswith("-") else None
+    if sub is None:
+        flow.walk(mod, "main", main.args, main.body, set(), False, True)
+    else:
+        scoped, common = dispatch_scopes(main)
+        flow.walk(mod, "main", main.args, common, set(), False, True)
+        for kind, item in scoped.get(sub, []):
+            if kind == "func":
+                fn = mod.functions[item]
+                flow.walk(mod, fn.name, fn.args, fn.body, set(), True, True)
+            else:
+                flow.walk(mod, "main", main.args, item.body, set(), False, True)
+    keys = set(flow.keys)
+    for domain in KEY_DOMAINS:
+        if domain["site"] in flow.dynamic and not evidence_holds(src, domain["evidence"]):
+            keys |= key_domain_keys(src, domain)
+    return keys
 
 
 # --- JSON key vocabulary ---------------------------------------------------------------------
@@ -1318,6 +1605,7 @@ def key_tokens(vocab):
 
 
 GRADED = ("key", "label", "unbound", "no_source")
+COUNT_WORDS = {"count", "n", "num"}
 GENERIC = {"n", "path", "title", "project_title", "raw", "Assay ID", "assay_id",
            "assay", "name", "ids", "workspace", "project dir", "NN_name", "NN_slug", "sample_id",
            "timestamp", "sub-stage", "type", "jobid", "step"}
@@ -1386,15 +1674,29 @@ def bind_placeholder(text, line, vocab, start=None, header=None):
             return {"text": text, "binding": "no_source", "label": first}
         if not cands:
             return {"text": text, "binding": "ungraded"}
-        keys = sorted(vocab)
+        best = None
         for cand in cands:
-            content = [singular(w) for w in cand if re.search(r"[a-z]", w.lower())]
-            allowed = 1 if len(content) >= 3 else 0
-            for key in keys:
+            words = {singular(w) for w in cand if re.search(r"[a-z]", w.lower())}
+            for key in sorted(vocab):
                 ktoks = {singular(tok) for tok in re.split(r"[^a-z0-9]+", key.lower()) if tok}
-                if content and sum(w not in ktoks for w in content) <= allowed:
-                    return {"text": text, "binding": "label", "label": " ".join(cand).lower(),
-                            "key": key}
+                core = ktoks - COUNT_WORDS
+                if not core:
+                    continue
+                if ktoks == words or core == words:
+                    tier = 0                  # the label is the key
+                elif core <= words and len(ktoks - core) <= 1:
+                    tier = 1                  # every word of the key is in the label
+                else:
+                    continue
+                surface = "_".join(w.lower().replace("(s)", "s") for w in cand)
+                rank = (tier, 0 if key.lower() == surface else 1, len(words - core), key)
+                if best is None or rank < best[0]:
+                    best = (rank, cand, key)
+            if best is not None:
+                break
+        if best is not None:
+            return {"text": text, "binding": "label", "label": " ".join(best[1]).lower(),
+                    "key": best[2]}
         return {"text": text, "binding": "unbound", "label": first}
     if inner in GENERIC:
         return {"text": text, "binding": "generic"}
@@ -1725,10 +2027,12 @@ def extract_text(path, text, src, registry=None, index=None, guard=None, helpers
             if any(c != 0 for c in item):
                 nonzero_in_step.add(k)
             continue
-        if current is not None and k in nonzero_in_step:
+        if current is not None and (k in nonzero_in_step or (
+                item["kind"] == "prose-rerun" and current["_k"] == k
+                and current["tool"] == item["tool"])):
             # after "Exit 2 -> ..." in the same step: a branch action of the open call
             current["branch_calls"].append({"tool": item["tool"], "line": item["line"],
-                                            "kind": item["kind"]})
+                                            "kind": item["kind"], "command": item["command"]})
             continue
         current = {"step": out_steps[k]["n"], "_k": k, "line": item["line"],
                    "tool": item["tool"], "command": item["command"], "handled": set(),
@@ -1759,6 +2063,13 @@ def extract_text(path, text, src, registry=None, index=None, guard=None, helpers
                     site["by_table"][str(code)] = row["reply"]
         site["unhandled"] = [c for c in emitted if c != 0 and c not in site["handled"]
                              and str(c) not in site["by_table"]]
+        for b in site["branch_calls"]:
+            btool = next(t_ for t_ in registry if t_["name"] == b["tool"])
+            bexits, _ = helper_exits(src, index, btool,
+                                     split_words(instantiate(b["command"])[0]))
+            bexits, _ = apply_rulings(bexits, b["tool"], rulings)
+            b["emitted"] = real_codes(bexits)
+            b["graded"] = False
         site["unhandled_sites"] = {str(c): [s["at"] for s in exits.get(str(c), [])
                                             if s["how"] != "argparse"]
                                    for c in site["unhandled"]}
@@ -1768,7 +2079,10 @@ def extract_text(path, text, src, registry=None, index=None, guard=None, helpers
     out_templates = {}
     for tid, tpl in templates.items():
         backing = backing_tools(out_steps, tid, call_sites)
-        vocab = scoped_vocabulary(index, registry, backing) if backing else None
+        vocab = None
+        for call in backing_calls(out_steps, tid, call_sites):
+            words = split_words(instantiate(call["command"])[0])
+            vocab = (vocab or set()) | flow_vocabulary(index, registry, [call["tool"]], src, words)
         phs = []
         header = None
         for ln, line in tpl["body"]:
@@ -1931,6 +2245,10 @@ def module_for(tool_name, registry):
 
 
 def backing_tools(steps, tid, call_sites=None):
+    return list(dict.fromkeys(c["tool"] for c in backing_calls(steps, tid, call_sites)))
+
+
+def backing_calls(steps, tid, call_sites=None):
     """Where template `tid`'s values can come from. Walking back from each step that sends it,
     the nearest step with a data source decides: its call sites (their JSON; in the template's
     own step, every call there), or, if that step has only Reads the agent makes itself, files
@@ -1941,7 +2259,7 @@ def backing_tools(steps, tid, call_sites=None):
         if tid not in step["templates"]:
             continue
         for prev in reversed(steps[:k + 1]):
-            calls = [c["tool"] for c in prev["calls"]
+            calls = [c for c in prev["calls"]
                      if c["tool"] and (call_sites is None or (prev["n"], c["line"]) in openers)]
             reads = [a for a in prev["file_actions"] if a["tool"] == "Read"]
             if calls:
@@ -1949,7 +2267,12 @@ def backing_tools(steps, tid, call_sites=None):
                 break
             if reads:
                 break
-    return list(dict.fromkeys(out))
+    seen, unique = set(), []
+    for c in out:
+        if (c["tool"], c["command"]) not in seen:
+            seen.add((c["tool"], c["command"]))
+            unique.append(c)
+    return unique
 
 
 def guard_row(guard, path, call, assay, substage):
@@ -2052,7 +2375,10 @@ LIMITS = [
     "reachability rulings record the ones a reader proved, re-checked against the cited lines.",
     "Exit regions are linear: a contract loop ('return to step 6') is not followed back.",
     "Prose failure handling is recorded as sentences, never counted as a handled code.",
-    "Labels on counts are matched to helper keys by word; a match is a screen, not a proof.",
+    "Labels on counts are matched to helper keys by word, against only the keys that flow into "
+    "the emitted result; a match is a screen, not a proof.",
+    "Calls made inside an exit branch (branch actions) carry their emitted codes but are not "
+    "graded; the summary counts them.",
 ]
 
 
@@ -2119,6 +2445,13 @@ def summarize(contracts, helpers, registry):
                   "unhandled": sum(len(cs["unhandled"]) for cs in sites),
                   "ruled_out": sum(len(cs["ruled_out"]) for cs in sites),
                   "by_stage_table": sum(len(cs["by_table"]) for cs in sites),
+                  "handled_and_emitted": sum(len(set(cs["handled"]) & set(cs["emitted"]))
+                                             for cs in sites),
+                  "handled_not_emitted": sum(len(set(cs["handled"]) - set(cs["emitted"]))
+                                             for cs in sites),
+                  "branch_calls": sum(len(cs["branch_calls"]) for cs in sites),
+                  "branch_call_codes_not_graded": sum(len([c for c in b["emitted"] if c != 0])
+                                                      for cs in sites for b in cs["branch_calls"]),
                   "unhandled_list": [{"contract": c["id"], "step": cs["step"], "tool": cs["tool"],
                                       "codes": cs["unhandled"]}
                                      for c in contracts for cs in c["call_sites"] if cs["unhandled"]]},

@@ -259,6 +259,30 @@
       "kind": "fenced",
       "source": "gars/02_bioinformatics/CONTEXT.md:144",
       "tool": "configure.apply"
+     },
+     {
+      "command": "python3 _system/configure.py apply --project projects/<title> --assay <Assay ID> --genome <n> [--contrast <n>] [--formula \"<theirs>\"] [--peaks-type <n>]",
+      "guard": {
+       "allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "allowed_where_intended": true,
+       "dispatcher_allowed_by_workspace": {
+        "closed": false,
+        "fresh": false,
+        "fresh_declared": false,
+        "mixed": true,
+        "public": true
+       },
+       "intended_workspace": "public"
+      },
+      "kind": "prose-rerun",
+      "source": "gars/02_bioinformatics/CONTEXT.md:148",
+      "tool": "configure.apply"
      }
     ],
     "exit_branches": [
@@ -347,9 +371,9 @@
     "file_actions": [],
     "prose_flags": [
      {
-      "allowed_where_intended": true,
+      "allowed_where_intended": null,
       "flag": "--dry-run",
-      "in_command": true,
+      "in_command": false,
       "prohibited": false,
       "source": "gars/02_bioinformatics/CONTEXT.md:149",
       "target_tool": "configure.apply",

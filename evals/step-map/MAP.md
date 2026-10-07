@@ -27,7 +27,7 @@ Scores, each 1 to 10, applied to every decision by these anchors.
 | Contracts | 14 |
 | Numbered steps | 142 |
 | Response templates | 94 |
-| Commands named in steps | 93 (80 mapped to a registry tool, 13 unregistered, 0 uninstantiable) |
+| Commands named in steps | 94 (81 mapped to a registry tool, 13 unregistered, 0 uninstantiable) |
 | Unregistered commands steps need | `date` (implicit); `sbatch` (executable) |
 | Call sites with exit branches compared | 73 |
 | Exit codes the helpers can emit there (static) | 230 |
@@ -36,8 +36,10 @@ Scores, each 1 to 10, applied to every decision by these anchors.
 | Fixed answers (accept tokens) | `cancel`, `skip`, `verify` |
 | Template placeholders | 385 seen: 152 graded against the backing call's keys (key, label, unbound, no source), 233 not graded (context words, choices, model-written text, artifact paths); by kind: artifact 50, choice 19, composed 69, generic 95, key 79, label 17, no_source 38, unbound 18 |
 | Exit codes ruled unreachable by a cited reading | 7 (rulings re-checked against their lines on every run) |
+| Calls made inside an exit branch (declared, not graded) | 8, with 15 non-zero codes |
+| Codes a step branches on that its helper never emits | 1 |
 | Backtick spans in steps | 471, counted independently in the raw lines and matched |
-| Calls and flag variants put to the pinned guard | 93 calls, in 5 synthetic workspaces |
+| Calls and flag variants put to the pinned guard | 94 calls, in 5 synthetic workspaces |
 | File actions put to the pinned guard | 34 |
 | File-verb sentences seen but not classified | 32 (listed in `facts/`) |
 

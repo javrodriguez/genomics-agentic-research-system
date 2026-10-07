@@ -5,18 +5,22 @@
   "verify"
  ],
  "command_accounting": {
-  "mapped": 80,
-  "seen": 93,
+  "mapped": 81,
+  "seen": 94,
   "uninstantiable": 0,
   "unregistered": 13
  },
  "contracts": 14,
  "empty_findings": [],
  "exits": {
+  "branch_call_codes_not_graded": 15,
+  "branch_calls": 8,
   "by_stage_table": 6,
   "call_sites": 73,
   "emitted": 230,
   "handled": 85,
+  "handled_and_emitted": 84,
+  "handled_not_emitted": 1,
   "ruled_out": 7,
   "unhandled": 95,
   "unhandled_list": [
@@ -567,7 +571,7 @@
  },
  "file_mentions_unclassified": 32,
  "guard": {
-  "calls_checked": 93,
+  "calls_checked": 94,
   "file_actions_checked": 34,
   "prohibited_flags": [
    {
@@ -728,7 +732,8 @@
   "Facts carried in data (a file written earlier, a dict's keys) are not evaluated; the reachability rulings record the ones a reader proved, re-checked against the cited lines.",
   "Exit regions are linear: a contract loop ('return to step 6') is not followed back.",
   "Prose failure handling is recorded as sentences, never counted as a handled code.",
-  "Labels on counts are matched to helper keys by word; a match is a screen, not a proof."
+  "Labels on counts are matched to helper keys by word, against only the keys that flow into the emitted result; a match is a screen, not a proof.",
+  "Calls made inside an exit branch (branch actions) carry their emitted codes but are not graded; the summary counts them."
  ],
  "placeholder_accounting": {
   "by_binding": {
@@ -754,6 +759,9 @@
      "gars/_system/wrapperlib.py:917",
      "gars/_system/wrapperlib.py:918",
      "gars/_system/wrapperlib.py:919",
+     "gars/_system/workspace.py:111",
+     "gars/_system/workspace.py:123",
+     "gars/_system/workspace.py:130",
      "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:189",
      "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:206",
      "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py:207",
@@ -787,7 +795,7 @@
      "nfcore_scrnaseq_wrapper.prepare",
      "nfcore_spatialvi_wrapper.prepare"
     ],
-    "why": "write_reproducibility raises exit 2 only when key_formula is downstream-v2; an nf-core wrapper's prepare writes params.yaml first and passes samplesheet and config, so key_formula is stage01-v1"
+    "why": "write_reproducibility raises exit 2 only when key_formula is downstream-v2; an nf-core wrapper's prepare writes params.yaml first (an atomic write that renames the file into place before returning) and passes samplesheet and config, so key_formula is stage01-v1. Every cited line must read exactly as cited, indentation included"
    }
   ],
   "void": []

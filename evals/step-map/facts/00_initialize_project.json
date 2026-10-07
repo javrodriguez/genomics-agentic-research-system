@@ -70,6 +70,12 @@
   {
    "branch_calls": [
     {
+     "command": "python3 _system/stage00_register.py inspect --assay <Assay ID> --source <path> --sample-id-pattern '<their answer as a regex with named groups sample, read and optionally lane>'",
+     "emitted": [
+      0,
+      2
+     ],
+     "graded": false,
      "kind": "prose-rerun",
      "line": 241,
      "tool": "stage00_register.inspect"
@@ -727,9 +733,9 @@
    "source": "gars/00_initialize_project/CONTEXT.md:195-195",
    "spans": {
     "by_class": {},
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 0,
     "seen": 0
    },
@@ -755,9 +761,9 @@
    "source": "gars/00_initialize_project/CONTEXT.md:196-197",
    "spans": {
     "by_class": {},
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 0,
     "seen": 0
    },
@@ -848,9 +854,9 @@
     "by_class": {
      "value": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 1,
+    "helper_mentions": 1,
     "raw_backtick_pairs": 1,
     "seen": 1
    },
@@ -943,9 +949,9 @@
    "source": "gars/00_initialize_project/CONTEXT.md:208-216",
    "spans": {
     "by_class": {},
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 1,
+    "helper_mentions": 1,
     "raw_backtick_pairs": 0,
     "seen": 0
    },
@@ -977,9 +983,9 @@
     "by_class": {
      "value": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 1,
     "seen": 1
    },
@@ -1082,9 +1088,9 @@
     "by_class": {
      "value": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 1,
+    "helper_mentions": 1,
     "raw_backtick_pairs": 1,
     "seen": 1
    },
@@ -1123,9 +1129,9 @@
     "by_class": {
      "value": 2
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 2,
     "seen": 2
    },
@@ -1162,9 +1168,9 @@
     "by_class": {
      "path": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 1,
     "seen": 1
    },
@@ -1257,9 +1263,9 @@
    "source": "gars/00_initialize_project/CONTEXT.md:234-238",
    "spans": {
     "by_class": {},
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 1,
+    "helper_mentions": 1,
     "raw_backtick_pairs": 0,
     "seen": 0
    },
@@ -1360,9 +1366,9 @@
      "subcommand": 1,
      "value": 2
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 4,
     "seen": 4
    },
@@ -1400,9 +1406,9 @@
     "by_class": {
      "value": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 1,
     "seen": 1
    },
@@ -1506,9 +1512,9 @@
      "flag": 1,
      "value": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 1,
+    "helper_mentions": 1,
     "raw_backtick_pairs": 2,
     "seen": 2
    },
@@ -1540,9 +1546,9 @@
     "by_class": {
      "value": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 1,
     "seen": 1
    },
@@ -1566,9 +1572,9 @@
    "source": "gars/00_initialize_project/CONTEXT.md:255-255",
    "spans": {
     "by_class": {},
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 0,
     "seen": 0
    },
@@ -1711,9 +1717,9 @@
      "path": 3,
      "value": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 1,
+    "helper_mentions": 1,
     "raw_backtick_pairs": 8,
     "seen": 8
    },
@@ -1746,9 +1752,9 @@
     "by_class": {
      "value": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 1,
     "seen": 1
    },
@@ -1782,9 +1788,9 @@
     "by_class": {
      "value": 2
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 2,
     "seen": 2
    },
@@ -2013,7 +2019,8 @@
      "text": "<Assay ID>"
     },
     {
-     "binding": "unbound",
+     "binding": "label",
+     "key": "broken",
      "label": "broken links",
      "line": 348,
      "text": "<n>"
@@ -2026,14 +2033,7 @@
    ],
    "source": "gars/00_initialize_project/CONTEXT.md:346",
    "title": "Symlinks created",
-   "unbound": [
-    {
-     "binding": "unbound",
-     "label": "broken links",
-     "line": 348,
-     "text": "<n>"
-    }
-   ]
+   "unbound": []
   },
   "T5": {
    "accept_tokens": [
@@ -2101,14 +2101,15 @@
      "text": "<Assay ID>"
     },
     {
-     "binding": "unbound",
+     "binding": "label",
+     "key": "files",
      "label": "files linked",
      "line": 369,
      "text": "<n>"
     },
     {
      "binding": "label",
-     "key": "sample_dir",
+     "key": "samples",
      "label": "samples",
      "line": 369,
      "text": "<n>"
@@ -2138,14 +2139,7 @@
    ],
    "source": "gars/00_initialize_project/CONTEXT.md:363",
    "title": "Stage complete",
-   "unbound": [
-    {
-     "binding": "unbound",
-     "label": "files linked",
-     "line": 369,
-     "text": "<n>"
-    }
-   ]
+   "unbound": []
   },
   "T7": {
    "accept_tokens": [],

@@ -243,9 +243,9 @@
    "source": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md:79-79",
    "spans": {
     "by_class": {},
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 0,
     "seen": 0
    },
@@ -300,9 +300,9 @@
     "by_class": {
      "value": 3
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 3,
     "seen": 3
    },
@@ -401,9 +401,9 @@
     "by_class": {
      "value": 5
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 5,
     "seen": 5
    },
@@ -512,9 +512,9 @@
      "path": 2,
      "subcommand": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 3,
     "seen": 3
    },
@@ -608,9 +608,9 @@
      "command": 1,
      "value": 1
     },
-    "command_spans": 1,
     "consistent": true,
-    "inline_calls": 1,
+    "helper_calls": 1,
+    "helper_mentions": 1,
     "raw_backtick_pairs": 2,
     "seen": 2
    },
@@ -634,9 +634,9 @@
     "by_class": {
      "value": 1
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 1,
     "seen": 1
    },
@@ -730,9 +730,9 @@
      "command": 1,
      "value": 11
     },
-    "command_spans": 1,
     "consistent": true,
-    "inline_calls": 1,
+    "helper_calls": 1,
+    "helper_mentions": 1,
     "raw_backtick_pairs": 12,
     "seen": 12
    },
@@ -842,9 +842,9 @@
      "subcommand": 1,
      "value": 7
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 9,
     "seen": 9
    },
@@ -951,9 +951,9 @@
      "path": 2,
      "value": 4
     },
-    "command_spans": 0,
     "consistent": true,
-    "inline_calls": 0,
+    "helper_calls": 0,
+    "helper_mentions": 0,
     "raw_backtick_pairs": 6,
     "seen": 6
    },
