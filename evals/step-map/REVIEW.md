@@ -1,6 +1,6 @@
 # What GARS leaves the model to decide: the top three per stage
 
-**What you are reviewing.** Fifteen places where GARS lets the AI agent decide something on its own, because no rule, menu or script decides it for it: the three that matter most in each part of the pipeline.
+**What you are reviewing.** Fifteen places where GARS lets the AI agent decide something on its own, because no rule, menu or script decides it for it, or a written rule does but nothing checks it: the three that matter most in each part of the pipeline.
 For each one I say what the agent decides, what can go wrong, why I ranked it where it is, and the fix I would propose.
 The fixes would go into the batch of GARS fixes that opens after the freeze on 16 Oct; nothing changes before you answer.
 
@@ -14,13 +14,14 @@ Each item ends with a "Your answer:" line for this. Your reasons are what I most
 It should take about two hours; the items are independent, so you can stop and resume anywhere.
 
 _Written 7 Oct 2026 from the full step map of GARS as of commit `a626cdc2`, and corrected the same night after independent reviews._
+_The last corrections (two decisions rescored, which changed the top three of stage 01 and of the router, plus wording fixes) came after the final independent review and were not checked again by a model; your read is the check._
 
 ## How this was done
 
 I read every numbered step of all 14 GARS stage contracts (142 steps) and asked, at each one, what the agent still decides on its own.
 I found 43 such decisions. Most have no rule at all; a few are covered by a written rule that nothing checks, and those are marked.
 Each was scored on two fixed 1-to-10 scales and ranked first by harm, then by slip-through.
-Harm is how bad the outcome would be if the agent got it wrong: 10 is a wrong scientific result that no check flags, 9 a wrong scientific result, 8 the wrong analysis running, 6 false provenance in the project's record, 5 a dead end or wasted compute, 3 a misleading message.
+Harm is how bad the outcome would be if the agent got it wrong: 10 is a wrong scientific result that no check flags, 9 a wrong scientific result, 8 the wrong analysis running or a permanent record of how the data may be used set wrong, 6 false provenance in the project's record, 5 a dead end or wasted compute, 3 a misleading message.
 Slip-through is how likely the mistake is to get past everything after it: 4 means you are asked to confirm it first, 5 that it is shown to you without asking, 8 that nothing shows it at all.
 How often an agent actually gets each one wrong has not been measured for any of them; a paired test of each, run many times, is how we would measure it, and these fifteen are the first candidates.
 
@@ -81,8 +82,8 @@ For answers to its question, the contract says to write exactly what the user su
 A strandedness the user volunteers ("the libraries are dUTP") has no rule at all: the agent decides whether, and how, to turn it into one of the allowed values.
 The check rejects an unknown replication unit or strandedness, but the reference release is free text that nothing checks.
 
-**What can go wrong.** A wrong but allowed strandedness passes every check and miscounts reads, which gives a complete, plausible, wrong result.
-A wrong pairing, written down as the contract asks, raises no warning either.
+**What can go wrong.** A wrong but allowed strandedness passes every GARS check and miscounts reads, which gives a complete, plausible, wrong result; the pipeline's own strandedness check reports a mismatch only as a warning in its quality report.
+Declaring samples paired when they are not, written down as the contract asks, raises no warning either.
 
 **Why it ranks first here.** Harm 9, slip-through 5: the next message shows the strandedness in its own column without asking, so you see it, but nothing asks you to check it.
 
@@ -90,7 +91,24 @@ A wrong pairing, written down as the contract asks, raises no warning either.
 
 Your answer:
 
-### 2. What counts as "yes" before excluding samples or overwriting files
+### 2. Which message follows the first, read-only check
+
+<!-- S01-table -->
+**What the agent decides on its own.** Stage 01 first runs a check that writes nothing.
+The contract's table of exit codes, which it says decides the next message, sends a clean check straight to "validation passed" and then "stage complete".
+The numbered steps instead send a clean check on to ask about excluded samples and existing files, offer the deep integrity check, and only then run the script that writes the samplesheets.
+The agent decides which of the two to follow.
+
+**What can go wrong.** Following the table, the agent tells you "Samplesheets written" when nothing was written.
+If samplesheets from an earlier run are still there, stage 02 accepts them, since it checks only that the files exist, and the analysis runs on a design you have since replaced.
+
+**Why it ranks here.** Harm 8, slip-through 5: stage 01's own human check asks you to open the samplesheet and design files, and the next pipeline's start message shows their rows; with no earlier files, stage 02 stops at once.
+
+**Proposed fix.** The table's row for a clean check names the order the steps give, and says that the writing script, not the check, completes the stage.
+
+Your answer:
+
+### 3. What counts as "yes" before excluding samples or overwriting files
 
 <!-- S01-yes -->
 **What the agent decides on its own.** Two moments in stage 01 need the user's consent: excluding samples the user left out of the design, and overwriting samplesheets that already exist.
@@ -102,21 +120,6 @@ The contract says each of the two switches that clear these gates needs the user
 **Why it ranks here.** Harm 8, slip-through 5: the counts in the next message and the history file show what happened, but only afterwards and without asking.
 
 **Proposed fix.** A fixed word for each gate ("exclude", "overwrite"), and the script refuses a switch that has no matching recorded answer.
-
-Your answer:
-
-### 3. Free-text values for the remaining settings: the contract says both yes and no
-
-<!-- S01-offer -->
-**What the agent decides on its own.** At the end of stage 01, one line tells the agent to offer to write any values the user gives for the settings still open (the reference genome, the contrast).
-A note on the same message says never to offer that, because stage 02 offers those as menus.
-
-**What can go wrong.** An agent that follows the first line writes a reference path or a contrast by hand.
-If stage 02 then judges the settings complete, it skips its menus, which are what keep the genome sequence and its annotation matched and the contrast tied to levels that exist in the design.
-
-**Why it ranks here.** Harm 8, slip-through 5: stage 02's human check asks you to confirm the reference and contrast before the first pipeline runs.
-
-**Proposed fix.** Delete the offer; the closing message already tells the user stage 02 will offer menus.
 
 Your answer:
 
@@ -138,7 +141,22 @@ The pre-flight check refuses only a chemistry the chosen aligner cannot run.
 
 Your answer:
 
-### 2. The user's words about the statistical model become a formula (a rule exists; nothing checks it)
+### 2. What counts as "yes" before the settings are written
+
+<!-- R-confirm -->
+**What the agent decides on its own.** After you pick from the menus, the router runs the settings script in a trial mode, shows you what it would write, and asks you to "Confirm to write it, or say what to change".
+No answer is fixed: a reply such as "ok, but the other contrast" is the agent's to read, and the real write carries whatever its command holds.
+
+**What can go wrong.** A misread yes writes a contrast, formula or genome you did not choose.
+The router's own human check says of a wrong contrast that nothing downstream can detect it: it produces a complete, confident, wrong result.
+
+**Why it ranks here.** Harm 9, slip-through 5: the next pipeline's start message shows the settings without asking, and the router's human check asks you to confirm them before anything runs.
+
+**Proposed fix.** A fixed word ("write"), and the settings script refuses a write that differs from the trial run you saw.
+
+Your answer:
+
+### 3. The user's words about the statistical model become a formula (a rule exists; nothing checks it)
 
 <!-- R-formula -->
 **What the agent decides on its own.** The differential-expression formula defaults to "~ condition", and the contract allows only a formula "the user gave you".
@@ -153,21 +171,6 @@ The settings script checks only that each term names a column of the design tabl
 
 Your answer:
 
-### 3. Which design factor the contrast compares
-
-<!-- R-factor -->
-**What the agent decides on its own.** The contrast menu is built from one factor of the design table, "condition" by default, and no contract mentions how to choose another.
-When the design carries another factor the user cares about, the agent decides which factor the menu is built from.
-(A contrast typed out in full is accepted only when it matches a pair on that same menu, so the factor, not the typing, is the open choice.)
-
-**What can go wrong.** The comparison runs on the wrong factor. The router's own human check says of a wrong contrast that nothing downstream can detect it: it produces a complete, confident, wrong result.
-
-**Why it ranks here.** Harm 9, slip-through 4: you are asked to confirm the contrast before it is written.
-
-**Proposed fix.** The contract names the factor setting, the menu shows the factor beside each pair, and a design with more than one candidate factor is asked about.
-
-Your answer:
-
 ## Stage 02, the sub-stages: running the pipelines
 
 These ten contracts share two shapes (seven nf-core pipelines, three analyses that follow them), so each item below applies to several of them.
@@ -179,7 +182,7 @@ These ten contracts share two shapes (seven nf-core pipelines, three analyses th
 
 **What can go wrong.** A wrong path analyses the wrong object.
 
-**Why it ranks first here.** Harm 8, slip-through 5: the start message shows the input path without asking. The final check compares only which samples are present and that each has cells, so another file from the same pipeline run passes it.
+**Why it ranks first here.** Harm 8, slip-through 5: the start message shows the input path without asking. The final check compares only which samples are present (and, for clustering, that each has cells), so another file from the same pipeline run passes it.
 
 **Proposed fix.** Each analysis finds its own input with GARS's resolver, as the differential-expression step already does.
 
@@ -188,8 +191,8 @@ Your answer:
 ### 2. Which AI model the history says ran the step (a rule exists; nothing checks it)
 
 <!-- G-model -->
-**What the agent decides on its own.** Every step that writes the project's history passes the agent's own model name to the script that writes it: registration, the samplesheet writer, each pipeline's and analysis's collecting step, and stage 03's final check.
-The contracts ask for the exact name the agent's software reports, and to leave it out rather than guess; GARS's own decision record makes the model part of each result's provenance.
+**What the agent decides on its own.** The scripts that close each stage take the agent's own model name and write it into the project's history: registration, the samplesheet writer, each pipeline's and analysis's collecting step, and stage 03's final check.
+The contracts ask for the exact model the agent is running as, and stages 00, 01 and 03 add that it should be left out rather than guessed; GARS's own decision record makes the model part of each result's provenance.
 
 **What can go wrong.** The script puts whatever the agent passes, word for word, into the history entry and the run's record, and nothing compares it with the model actually running.
 A wrong or guessed name is false provenance in the permanent record.

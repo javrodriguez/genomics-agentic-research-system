@@ -191,10 +191,10 @@
      "kind": "unsaid",
      "decision": "Whether a free-text reply confirms the dry run (T9) before apply writes the config",
      "goes_wrong": "T9 ends 'Confirm to write it, or say what to change' (02:262) and step 3a re-runs without --dry-run 'On confirmation' (02:148); no answer is fixed, so 'ok, but the other contrast' is the model's to read, and the write carries whatever the re-run command holds",
-     "severity": 8,
+     "severity": 9,
      "detection": 5,
      "occurrence": null,
-     "why_rank": "Settings the user did not confirm run the analysis; the sub-stage's T1 shows them unasked, and the router's human check asks the user to confirm the config before dispatch (02:313-317)",
+     "why_rank": "A misread yes writes a contrast, formula or genome the user did not choose; a wrong contrast gives a complete, confident, wrong result nothing downstream detects (02:316-317). The sub-stage's T1 shows the settings unasked, and the router's human check asks the user to confirm them before dispatch (02:313-317)",
      "fix": "A fixed answer (`write`), and the write refuses unless it matches the dry run the user saw",
      "fix_rung": "R2"
     },
@@ -357,7 +357,7 @@
    "rung_target": "R0",
    "question": 1,
    "rung_why": "Resolution is code, but its direct spelling is refused wherever a non-public project exists and the contract names no other (G-door); the resolved paths then travel to the sub-stage in the conversation (D-input and D-supplier, judged there).",
-   "note": "Exit 3 (no such project, nothing to resolve) has no branch.",
+   "note": "Exit 3 (no such project) has no branch. The extractor also lists resolve_artifact.py:140 ('nothing to resolve'), which --consumes makes unreachable (a declared limit).",
    "silent": [
     {
      "id": "G-door",

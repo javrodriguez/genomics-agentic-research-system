@@ -2634,6 +2634,9 @@ LIMITS = [
     "binding can be wrong for this reason; an 'unbound' one is not weakened by it.",
     "Placeholders the model writes in prose (composed: '<sample id list>', '<n of n>') are not "
     "graded, though some carry data.",
+    "Placeholders are graded against JSON keys only: a value the helper returns inside a text "
+    "field (a history_entry line such as 'Cells: N in, M after QC') still reads unbound or no "
+    "source; unbound means no key, not absent from the output.",
     "A flag given on the command line is not read as `is not None`, so a branch on it is kept "
     "both ways (resolve_artifact.py:140 is listed for the router's step 9 though --consumes is "
     "given); this can add an unhandled site, never hide one.",

@@ -249,7 +249,7 @@
    "rung_now": "R5",
    "rung_target": "R1",
    "question": 1,
-   "rung_why": "Scope forbids composing a pattern while the step asks for 'their answer as a regex': the rule contradicts itself, and the guard refuses every named-group pattern (D4).",
+   "rung_why": "Scope says to pass back only a pattern the user gave (00:32-34) while the step asks for 'their answer as a regex' (00:242), and users answer in words: a tension the model resolves; the guard refuses every named-group pattern (D4).",
    "note": "The re-run is a branch action of step 9's inspect. A malformed pattern crashes inspect with a traceback and exit 1; the stage's exit table sends exit 1 to T9, whose text ('failed its exit checks') is wrong here and whose table needs a failures list a traceback never gives (D22).",
    "silent": [
     {

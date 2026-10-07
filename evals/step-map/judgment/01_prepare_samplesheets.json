@@ -49,7 +49,7 @@
      "id": "S01-declare",
      "kind": "unchecked",
      "decision": "Turning the user's words into the replication unit, the reference release, pairing and, when it is not the seeded `auto`, strandedness",
-     "goes_wrong": "Step 2 sends T9 only for undeclared keys (01:249-251), and every seeded rnaseq config carries `strandedness: auto` (_templates/config/rnaseq_bulk.yaml:18), which stage 01 accepts (01:154); so strandedness is asked only if `auto` was removed, and a strandedness the user volunteers has no rule at all: step 2's rules cover T9 answers and volunteered pairing only (01:251-259). For T9 answers the contract says to write exactly what the user supplied (01:251-253), and nothing checks that the value written is what the user said; an invalid replication unit or strandedness is rejected (01:109-113, 153), but reference_release is free text with no registry check (01:111-114). Pairing is recorded only when the user declares it (01:254-255); the check warns only when `paired: paired` has no HISTORY line (stage01_samplesheet.py:560-561), so a misread pairing logged as the rule requires raises nothing. A wrong but allowed strandedness passes every check",
+     "goes_wrong": "Step 2 sends T9 only for undeclared keys (01:249-251), and every seeded rnaseq config carries `strandedness: auto` (_templates/config/rnaseq_bulk.yaml:18), which stage 01 accepts (01:154); so strandedness is asked only if `auto` was removed, and a strandedness the user volunteers has no rule at all: step 2's rules cover T9 answers and volunteered pairing only (01:251-259). For T9 answers the contract says to write exactly what the user supplied (01:251-253), and nothing checks that the value written is what the user said; an invalid replication unit or strandedness is rejected (01:109-113, 153), but reference_release is free text with no registry check (01:111-114). Pairing is recorded only when the user declares it (01:254-255); the check warns only when `paired: paired` has no HISTORY line (stage01_samplesheet.py:560-561), so a misread pairing logged as the rule requires raises nothing. A wrong but allowed strandedness passes every GARS check; nf-core's own strandedness check reports a mismatch only as a warning (_templates/config/rnaseq_bulk.yaml:12-14)",
      "severity": 9,
      "detection": 5,
      "occurrence": null,
@@ -140,12 +140,12 @@
      "id": "S01-table",
      "kind": "unsaid",
      "decision": "Which reply follows the check's exit 0: the exit table's T2 then T4, or steps 6-8's T7, T5 and T8",
-     "goes_wrong": "The Definitions table routes exit 0 to 'T2 then T4' (01:209), while steps 6-8 route exit 0 with pending exclusions or existing outputs to T7 and T5, then offer the deep check (T8) before the writer runs (01:273-283); the contract says the table, not the model's reading, decides the branch (01:205). Read after this check, which writes nothing, the table's T4 says 'Stage 01 complete. Samplesheets written' (01:354)",
-     "severity": 4,
-     "detection": 2,
+     "goes_wrong": "Step 3 says to branch on the check's exit code per Definitions (01:267-268), and the table routes exit 0 to 'T2 then T4' (01:209), while steps 6-8 route exit 0 with pending exclusions or existing outputs to T7 and T5, then offer the deep check (T8) before the writer runs (01:273-283). Following the table skips both consent waits, the offer and the writer, and T4 says 'Stage 01 complete. Samplesheets written' (01:354) though `--check` wrote nothing",
+     "severity": 8,
+     "detection": 5,
      "occurrence": null,
-     "why_rank": "A false completion message and a stall: nothing was written, so stage 02's precondition check refuses at once (02:124-125)",
-     "fix": "The table's exit-0 row names the step-6-to-8 order",
+     "why_rank": "Where earlier samplesheets exist (the case step 7 handles, 01:276), stage 02's existence checks accept them (02:124-125; wrapperlib.py:630-649) and nothing compares them with samples.csv: the analysis runs on a design the user replaced. Stage 01's human check asks the user to open both files (01:450-453), and the sub-stage's T1 shows the rows; where none exist, stage 02 refuses at once",
+     "fix": "The table's exit-0 row names the step-6-to-8 order and that the writer, not the check, completes the stage",
      "fix_rung": "R4"
     }
    ]

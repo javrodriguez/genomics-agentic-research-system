@@ -34,6 +34,29 @@
    "why_rank": "A plausible wrong matrix and no error; the scrnaseq sub-stage's human check tells every user to compare cell counts with the number loaded and names wrong chemistry as a cause"
   },
   {
+   "decision": "Whether a free-text reply confirms the dry run (T9) before apply writes the config",
+   "detection": 5,
+   "elsewhere": [],
+   "fix": "A fixed answer (`write`), and the write refuses unless it matches the dry run the user saw",
+   "fix_rung": "R2",
+   "goes_wrong": "T9 ends 'Confirm to write it, or say what to change' (02:262) and step 3a re-runs without --dry-run 'On confirmation' (02:148); no answer is fixed, so 'ok, but the other contrast' is the model's to read, and the write carries whatever the re-run command holds",
+   "group": 2,
+   "id": "R-confirm",
+   "kind": "unsaid",
+   "occurrence": null,
+   "rank_in_stage": 2,
+   "severity": 9,
+   "stage": "Stage 02 router: settings menus and routing",
+   "where": [
+    {
+     "contract": "02_bioinformatics",
+     "source": "gars/02_bioinformatics/CONTEXT.md:126-153",
+     "step": "3a"
+    }
+   ],
+   "why_rank": "A misread yes writes a contrast, formula or genome the user did not choose; a wrong contrast gives a complete, confident, wrong result nothing downstream detects (02:316-317). The sub-stage's T1 shows the settings unasked, and the router's human check asks the user to confirm them before dispatch (02:313-317)"
+  },
+  {
    "decision": "Turning the user's words about the model ('account for batch') into a DE formula",
    "detection": 4,
    "elsewhere": [],
@@ -44,7 +67,7 @@
    "id": "R-formula",
    "kind": "unchecked",
    "occurrence": null,
-   "rank_in_stage": 2,
+   "rank_in_stage": 3,
    "severity": 9,
    "stage": "Stage 02 router: settings menus and routing",
    "where": [
@@ -67,7 +90,7 @@
    "id": "R-factor",
    "kind": "unsaid",
    "occurrence": null,
-   "rank_in_stage": 3,
+   "rank_in_stage": 4,
    "severity": 9,
    "stage": "Stage 02 router: settings menus and routing",
    "where": [
@@ -78,29 +101,6 @@
     }
    ],
    "why_rank": "A wrong contrast gives a complete, confident, wrong result (the router's own human check says nothing downstream can detect it); T9 asks the user to confirm the contrast"
-  },
-  {
-   "decision": "Whether a free-text reply confirms the dry run (T9) before apply writes the config",
-   "detection": 5,
-   "elsewhere": [],
-   "fix": "A fixed answer (`write`), and the write refuses unless it matches the dry run the user saw",
-   "fix_rung": "R2",
-   "goes_wrong": "T9 ends 'Confirm to write it, or say what to change' (02:262) and step 3a re-runs without --dry-run 'On confirmation' (02:148); no answer is fixed, so 'ok, but the other contrast' is the model's to read, and the write carries whatever the re-run command holds",
-   "group": 2,
-   "id": "R-confirm",
-   "kind": "unsaid",
-   "occurrence": null,
-   "rank_in_stage": 4,
-   "severity": 8,
-   "stage": "Stage 02 router: settings menus and routing",
-   "where": [
-    {
-     "contract": "02_bioinformatics",
-     "source": "gars/02_bioinformatics/CONTEXT.md:126-153",
-     "step": "3a"
-    }
-   ],
-   "why_rank": "Settings the user did not confirm run the analysis; the sub-stage's T1 shows them unasked, and the router's human check asks the user to confirm the config before dispatch (02:313-317)"
   },
   {
    "decision": "Which project (and assay) the user's words mean",
@@ -814,8 +814,8 @@
       "id": "R-confirm",
       "kind": "unsaid",
       "occurrence": null,
-      "severity": 8,
-      "why_rank": "Settings the user did not confirm run the analysis; the sub-stage's T1 shows them unasked, and the router's human check asks the user to confirm the config before dispatch (02:313-317)"
+      "severity": 9,
+      "why_rank": "A misread yes writes a contrast, formula or genome the user did not choose; a wrong contrast gives a complete, confident, wrong result nothing downstream detects (02:316-317). The sub-stage's T1 shows the settings unasked, and the router's human check asks the user to confirm them before dispatch (02:313-317)"
      },
      {
       "decision": "How to proceed when the guard refuses a step on a non-public project",
@@ -1179,7 +1179,7 @@
      "the sub-stage's Consumes types"
     ],
     "kind": "judgment",
-    "note": "Exit 3 (no such project, nothing to resolve) has no branch.",
+    "note": "Exit 3 (no such project) has no branch. The extractor also lists resolve_artifact.py:140 ('nothing to resolve'), which --consumes makes unreachable (a declared limit).",
     "question": 1,
     "rung_now": "R5",
     "rung_target": "R0",

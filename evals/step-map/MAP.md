@@ -57,6 +57,7 @@ Scores, each 1 to 10, applied to every decision by these anchors.
 - A key computed at run time is resolved only from the loop that encloses the write, over literal strings; a key domain or an item-key ruling (whole-line evidence) explains others. The rest (descriptor and config fields read from a file) are published per template, and a missing key there is reported as unknown, never as unbound.
 - The key set over-approximates: a constant subscript or .get() read carries the whole dict, keyword arguments such as sorted(key=) and enumerate(start=) count as keys (configure apply's set holds keys it never emits), and a key written on any path counts. A 'key' binding can be wrong for this reason; an 'unbound' one is not weakened by it.
 - Placeholders the model writes in prose (composed: '<sample id list>', '<n of n>') are not graded, though some carry data.
+- Placeholders are graded against JSON keys only: a value the helper returns inside a text field (a history_entry line such as 'Cells: N in, M after QC') still reads unbound or no source; unbound means no key, not absent from the output.
 - A flag given on the command line is not read as `is not None`, so a branch on it is kept both ways (resolve_artifact.py:140 is listed for the router's step 9 though --consumes is given); this can add an unhandled site, never hide one.
 - Ruling and key-domain evidence is whole lines, re-checked on every run; an edit between two cited lines leaves the evidence holding. The config-columns key domain admits every assay's `config:` keys, not only the one format's (strandedness is the only one at the pin).
 - A command is instantiated from its own text only: rnaseq-de's 'Run prepare with the same paths' is published without the --counts and --design it implies.
@@ -77,8 +78,8 @@ An R5 step is one with at least one decision no rule covers; most carry only a l
 
 | Worst unsaid decision in the step | R5 steps |
 |---|---|
-| severity 7-10 | 13 |
-| severity 5-6 | 60 |
+| severity 7-10 | 14 |
+| severity 5-6 | 59 |
 | severity 1-4 | 44 |
 
 Of the severity 1-4 steps, the unsaid decisions are: G-door (19 steps); G-door, W-jobid, W-poll (10 steps); W-startvalues (10 steps); R-failed (1 step); S00-counts (1 step); S00-title (1 step); S01-route (1 step); W-poll (1 step).
@@ -106,14 +107,14 @@ Of the severity 1-4 steps, the unsaid decisions are: G-door (19 steps); G-door, 
 | Rank | Id | Kind | Where | Decision the model makes silently | Sev | Det | Fix |
 |---|---|---|---|---|---|---|---|
 | 1 | S01-declare | unchecked | 01_prepare_samplesheets 2 | Turning the user's words into the replication unit, the reference release, pairing and, when it is not the seeded `auto`, strandedness | 9 | 5 | A numbered menu per setting with each value's meaning, as stage 02 offers genomes, used for a volunteered strandedness too; an answer outside it is re-asked; code writes the YAML and the HISTORY line → R1 |
-| 2 | S01-yes | unsaid | 01_prepare_samplesheets 6, 01_prepare_samplesheets 7 | Whether a free-text reply confirms the exclusions (T7) or the overwrite (T5), and whether one yes covers both | 8 | 5 | A fixed answer per gate (`exclude`, `overwrite`), and the writer refuses a switch with no matching recorded answer → R2 |
-| 3 | S01-offer | unsaid | 01_prepare_samplesheets 14 | Whether to take values for the remaining config decisions in free text | 8 | 5 | Delete step 14's offer; T4 already says stage 02 will offer menus → R4 |
-| 4 | S01-gate | unsaid | 01_prepare_samplesheets 11 | What the writer's exit 1 means, and what it leaves on disk | 8 | 2 | Distinct codes or a phase field the reply keys on, and the writer removes what it wrote when its own gate fails → R0 |
-| 5 | G-model | unchecked | 01_prepare_samplesheets 9 (also in: Stage 00: register the project and its raw data; Stage 02 sub-stages: run the pipelines; Stage 03: custom analysis) | Which model id to pass as --model | 6 | 8 | The helper takes the id from the harness, or records `unknown`; never from the model's own words → R0 |
-| 6 | G-project | unsaid | 01_prepare_samplesheets 2 (also in: Stage 02 router: settings menus and routing) | Which project (and assay) the user's words mean | 6 | 5 | A resolver lists the matching projects and assays; the model renders them, the user picks → R1 |
-| 7 | S01-deep | unsaid | 01_prepare_samplesheets 8 | How to run an accepted deep check when the cohort needs scheduling | 5 | 6 | The deep check runs through the executor with a generated script, like every pipeline → R0 |
-| 8 | G-closed | unsaid | 01_prepare_samplesheets 2, 01_prepare_samplesheets 3 and 2 more (also in: Stage 02 router: settings menus and routing; Stage 02 sub-stages: run the pipelines; Stage 03: custom analysis) | How to proceed when the guard refuses a step on a non-public project | 5 | 2 | Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops → R4 |
-| 9 | S01-table | unsaid | 01_prepare_samplesheets 3 | Which reply follows the check's exit 0: the exit table's T2 then T4, or steps 6-8's T7, T5 and T8 | 4 | 2 | The table's exit-0 row names the step-6-to-8 order → R4 |
+| 2 | S01-table | unsaid | 01_prepare_samplesheets 3 | Which reply follows the check's exit 0: the exit table's T2 then T4, or steps 6-8's T7, T5 and T8 | 8 | 5 | The table's exit-0 row names the step-6-to-8 order and that the writer, not the check, completes the stage → R4 |
+| 3 | S01-yes | unsaid | 01_prepare_samplesheets 6, 01_prepare_samplesheets 7 | Whether a free-text reply confirms the exclusions (T7) or the overwrite (T5), and whether one yes covers both | 8 | 5 | A fixed answer per gate (`exclude`, `overwrite`), and the writer refuses a switch with no matching recorded answer → R2 |
+| 4 | S01-offer | unsaid | 01_prepare_samplesheets 14 | Whether to take values for the remaining config decisions in free text | 8 | 5 | Delete step 14's offer; T4 already says stage 02 will offer menus → R4 |
+| 5 | S01-gate | unsaid | 01_prepare_samplesheets 11 | What the writer's exit 1 means, and what it leaves on disk | 8 | 2 | Distinct codes or a phase field the reply keys on, and the writer removes what it wrote when its own gate fails → R0 |
+| 6 | G-model | unchecked | 01_prepare_samplesheets 9 (also in: Stage 00: register the project and its raw data; Stage 02 sub-stages: run the pipelines; Stage 03: custom analysis) | Which model id to pass as --model | 6 | 8 | The helper takes the id from the harness, or records `unknown`; never from the model's own words → R0 |
+| 7 | G-project | unsaid | 01_prepare_samplesheets 2 (also in: Stage 02 router: settings menus and routing) | Which project (and assay) the user's words mean | 6 | 5 | A resolver lists the matching projects and assays; the model renders them, the user picks → R1 |
+| 8 | S01-deep | unsaid | 01_prepare_samplesheets 8 | How to run an accepted deep check when the cohort needs scheduling | 5 | 6 | The deep check runs through the executor with a generated script, like every pipeline → R0 |
+| 9 | G-closed | unsaid | 01_prepare_samplesheets 2, 01_prepare_samplesheets 3 and 2 more (also in: Stage 02 router: settings menus and routing; Stage 02 sub-stages: run the pipelines; Stage 03: custom analysis) | How to proceed when the guard refuses a step on a non-public project | 5 | 2 | Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops → R4 |
 | 10 | S01-route | unsaid | 01_prepare_samplesheets 5 | Which failures send the user back to T9 and which stop the stage | 3 | 1 | The check's JSON marks each failure's owner (config or design) → R0 |
 | 11 | G-date | unsaid | 01_prepare_samplesheets 13, 01_prepare_samplesheets 2 (also in: Stage 02 sub-stages: run the pipelines; Stage 03: custom analysis) | What today's date is, for the HISTORY.md entry | 2 | 9 | The helper stamps the date itself, as stage 00's finalize already does, and appends the entry → R0 |
 
@@ -122,9 +123,9 @@ Of the severity 1-4 steps, the unsaid decisions are: G-door (19 steps); G-door, 
 | Rank | Id | Kind | Where | Decision the model makes silently | Sev | Det | Fix |
 |---|---|---|---|---|---|---|---|
 | 1 | R-protocol | unsaid | 02_bioinformatics 3a | How a scrnaseq user's library chemistry gets into the config | 9 | 5 | Step 3a runs `configure.py protocols --aligner <a>` for protocol assays, T8 renders it, T9 confirms it → R1 |
-| 2 | R-formula | unchecked | 02_bioinformatics 3a | Turning the user's words about the model ('account for batch') into a DE formula | 9 | 4 | Formula choices built from the design table's own columns, as the contrasts are, confirmed in T9 → R1 |
-| 3 | R-factor | unsaid | 02_bioinformatics 3a | Which design factor the contrast compares | 9 | 4 | The contract names --factor and the contrast menu shows the factor beside each pair; a design with more than one candidate factor is asked about → R1 |
-| 4 | R-confirm | unsaid | 02_bioinformatics 3a | Whether a free-text reply confirms the dry run (T9) before apply writes the config | 8 | 5 | A fixed answer (`write`), and the write refuses unless it matches the dry run the user saw → R2 |
+| 2 | R-confirm | unsaid | 02_bioinformatics 3a | Whether a free-text reply confirms the dry run (T9) before apply writes the config | 9 | 5 | A fixed answer (`write`), and the write refuses unless it matches the dry run the user saw → R2 |
+| 3 | R-formula | unchecked | 02_bioinformatics 3a | Turning the user's words about the model ('account for batch') into a DE formula | 9 | 4 | Formula choices built from the design table's own columns, as the contrasts are, confirmed in T9 → R1 |
+| 4 | R-factor | unsaid | 02_bioinformatics 3a | Which design factor the contrast compares | 9 | 4 | The contract names --factor and the contrast menu shows the factor beside each pair; a design with more than one candidate factor is asked about → R1 |
 | 5 | G-project | unsaid | 02_bioinformatics 2 (also in: Stage 01: validate the design and write samplesheets) | Which project (and assay) the user's words mean | 6 | 5 | A resolver lists the matching projects and assays; the model renders them, the user picks → R1 |
 | 6 | G-closed | unsaid | 02_bioinformatics 2, 02_bioinformatics 3, 02_bioinformatics 3a (also in: Stage 01: validate the design and write samplesheets; Stage 02 sub-stages: run the pipelines; Stage 03: custom analysis) | How to proceed when the guard refuses a step on a non-public project | 5 | 2 | Each contract states the closed-project mode, with a branch: a guard refusal sends a template naming the human's command, and stops → R4 |
 | 7 | R-failed | unsaid | 02_bioinformatics 8 | What to do once the user decides how to resolve a failed or cancelled sub-stage | 4 | 3 | A written recovery branch per failure class, naming the human's approval command → R4 |
