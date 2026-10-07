@@ -303,22 +303,60 @@ class UnhandledExitTests(Base):
                 out |= set(site["unhandled"])
         return sorted(out)
 
-    def test_pilot_create_exit_3(self):
+    def site_of(self, path, step, tool):
+        hits = [s for s in self.contract(path)["call_sites"] if s["step"] == step and s["tool"] == tool]
+        self.assertEqual(len(hits), 1)
+        return hits[0]
+
+    def test_stage_exit_table_is_handling(self):
+        """Stage 00's Definitions table decides the branch for its script's codes (00:173-180):
+        exit 3 replies T9, and exit 2 replies whatever the JSON's template field names."""
+        cited(self, S00, 173, "These, and not your reading of its output, determine the branch")
+        cited(self, S00, 179, "| 2 | refused; its `template` field names the reply | T5 / T7 / T8 |")
+        cited(self, S00, 180, "| 3 | usage or precondition error | T9 |")
+        table = self.contract(S00)["exit_table"]
+        self.assertEqual(table["source"], "%s:175" % S00)
+        self.assertEqual(table["script"], "_system/stage00_register.py")
+        self.assertEqual(table["codes"]["3"]["reply"], "T9")
+        self.assertIs(table["codes"]["2"]["needs_template_field"], True)
+        create = self.site_of(S00, "6", "stage00_register.create")
+        self.assertEqual(create["by_table"], {"3": "T9"})
+        self.assertEqual(create["unhandled"], [])
+
+    def test_pilot_create_exit_3_is_routed_by_the_table(self):
+        # The pilot's "create exit 3 has no branch" does not hold: the table sends it to T9.
         cited(self, REG00, 366, "return emit(result, EXIT_USAGE)")
-        cited(self, S00, 228, "7. Exit 2 with `template: T7`")
-        self.assertEqual(self.unhandled(S00, "stage00_register.create"), [3])
+        self.assertEqual(self.unhandled(S00, "stage00_register.create"), [])
 
-    def test_pilot_link_exit_2_and_also_3(self):
-        # Pilot: "link exit 2". The extractor also finds exit 3 (stage00_register.py:500).
-        cited(self, REG00, 500, "return emit(result, EXIT_USAGE)")
+    def test_pilot_link_exit_2_is_routed_by_its_template_field(self):
+        # link's exit 2 sets template T5 (stage00_register.py:506) before emitting (510), so the
+        # table routes it; exit 3 goes to T9 by the table.
+        cited(self, REG00, 506, 'result["template"] = "T5"')
         cited(self, REG00, 510, "return emit(result, EXIT_REFUSED)")
-        cited(self, S00, 252, "Never add `--force`. Exit 1 → report its `error` and stop")
-        self.assertEqual(self.unhandled(S00, "stage00_register.link"), [2, 3])
+        site = self.site_of(S00, "12", "stage00_register.link")
+        self.assertEqual(site["by_table"], {"2": "template field", "3": "T9"})
+        self.assertEqual(site["unhandled"], [])
 
-    def test_pilot_finalize_exit_2(self):
+    def test_pilot_finalize_exit_2_holds(self):
+        # finalize's refusals set no template field (stage00_register.py:620-621), so the
+        # table's exit-2 row names no reply for them.
+        cited(self, REG00, 620, 'result["failures"].append("data_class_required')
         cited(self, REG00, 621, "return emit(result, EXIT_REFUSED)")
         cited(self, S00, 277, "16. Exit 1 or 3 → reply T9")
         self.assertEqual(self.unhandled(S00, "stage00_register.finalize"), [2])
+        site = self.site_of(S00, "15", "stage00_register.finalize")
+        self.assertNotIn("2", site["by_table"])
+
+    def test_stage01_table_covers_the_writers_exit_3(self):
+        cited(self, S01, 212, "| 3 | preconditions not met | T6 |")
+        site = self.site_of(S01, "9", "stage01_samplesheet")
+        self.assertEqual(site["by_table"].get("3"), "T6")
+        self.assertEqual(site["unhandled"], [])
+
+    def test_a_sentence_naming_codes_without_replies_is_not_handling(self):
+        cited(self, RNA01, 56, "2 refused (a gate), 3 usage. Branch on them")
+        self.assertIsNone(self.contract(RNA01)["exit_table"])
+        self.assertEqual([s["line"] for s in self.contract(RNA01)["exit_rules_without_reply"]], [55])
 
     def test_inspect_fully_handled(self):
         cited(self, S00, 240, "10. Exit 2 → reply T5")
