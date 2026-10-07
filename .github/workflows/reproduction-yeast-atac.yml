@@ -115,8 +115,11 @@ jobs:
                       for m in f.get('members') or []}
           if set(agreed) != set(rerun):
               sys.exit('the re-run lists other members than agreed-members.tsv')
-          bad = [k for k in sorted(agreed) if agreed[k] != rerun[k]
-                 and not (k in findings and agreed[k][0] == rerun[k][0] and rerun[k][1] in ('match', 'differs'))]
+          def held(key):
+              if key in findings:   # a finding's member: its mode, and match or differs, never missing
+                  return agreed[key][0] == rerun[key][0] and rerun[key][1] in ('match', 'differs')
+              return agreed[key] == rerun[key]
+          bad = [k for k in sorted(agreed) if not held(k)]
           for stage, path in bad:
               print('%s %s: agreed %s, re-run %s' % (stage, path, agreed[(stage, path)], rerun[(stage, path)]))
           with open(outputs_path, encoding='utf-8', newline='') as handle:
@@ -126,7 +129,7 @@ jobs:
           if bad or extra:
               sys.exit('%d members differ from the agreed outcome; %d outputs hold unrecorded files'
                        % (len(bad), len(extra)))
-          print('all %d members match the agreed outcome (%d finding members free to vary)'
+          print('all %d members match the agreed outcome (%d finding members match or differ)'
                 % (len(agreed), len(findings & set(agreed))))
           PY
       - name: The pass artifact (what rerun-note reads)

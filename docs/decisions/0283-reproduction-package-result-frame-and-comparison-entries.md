@@ -13,7 +13,7 @@ symptoms:
 ---
 # The reproduction package's result frame and comparison entries, frozen before any result exists
 
-The owner approved the reproduction package plan on 5 October 2026 in his own typed words: "A1 B1 C2", taking the plan's three recommended options, and "gars-repro yes".
+The owner approved the reproduction package plan on 5 October 2026 in his own typed words: "A1 B1 C2" (A1 approves the plan as written; B1 and C2 are its two other decisions) and "gars-repro yes".
 The frame and the rules below are the plan's own (its section 8; the plan is the owner's private working document and is not published), frozen here before any result existed, under that approval.
 No other sentence in this record is the owner's.
 

@@ -16,7 +16,7 @@ symptoms:
 ---
 # A reproduction package per run: harvest on the run's machine, render anywhere, verify offline
 
-The owner approved the reproduction package plan on 5 October 2026 in his own typed words: "A1 B1 C2", taking the plan's three recommended options, and "gars-repro yes".
+The owner approved the reproduction package plan on 5 October 2026 in his own typed words: "A1 B1 C2" (A1 approves the plan as written; B1 and C2 are its two other decisions) and "gars-repro yes".
 The design below is the plan's (the plan is the owner's private working document and is not published), built under that approval; every other ruling here is the builders' or the coordinating session's, made under his delegation, never the owner's own words.
 
 ## Context

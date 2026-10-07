@@ -74,7 +74,9 @@ class YeastAtacExemplar(unittest.TestCase):
         """The workflow lets a finding's members match or differ and holds every other member to its agreed result,
         so an agreed table marking any other member as not matching would let a re-run that differs there pass.
         Two results swapped inside one output keep every count, so the rollup test alone cannot see it (the
-        follow-up check of the landing review's round 2, MAJOR 1)."""
+        follow-up check of the landing review's round 2, MAJOR 1). A finding's members are agreed as match or
+        differs, never missing: both count as failed, so the rollup cannot tell them apart (the second check,
+        MAJOR 1); the workflow also holds a finding's member to match or differs whatever this table says."""
         findings = finding_members()
         agreed = agreed_members()
         self.assertTrue(findings)
@@ -82,6 +84,7 @@ class YeastAtacExemplar(unittest.TestCase):
         not_matching = set(key for key, row in agreed.items() if not result_ok(row['result']))
         self.assertTrue(not_matching)
         self.assertLessEqual(not_matching, findings, sorted(not_matching - findings))
+        self.assertEqual([key for key in sorted(findings) if agreed[key]['result'] not in ('match', 'differs')], [])
 
     def test_the_readme_line_and_table_are_the_agreed_members_rolled_up(self):
         compare = load_compare()
